@@ -14,10 +14,8 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
     public DbSet<ApiTokenPolicyModel> ApiTokenPolicies { get; set; } = default!;
     public DbSet<BlockModel> Blocks { get; set; } = default!;
     public DbSet<ContentModel> Contents { get; set; } = default!;
-    public DbSet<ContentDataModel> ContentData { get; set; } = default!;
     public DbSet<ContentTypeModel> ContentTypes { get; set; } = default!;
     public DbSet<ContentTypeFieldModel> ContentTypeFields { get; set; } = default!;
-    public DbSet<ContentTypeFieldSettingsModel> ContentTypeFieldSettings { get; set; } = default!;
     public DbSet<FileModel> Files { get; set; } = default!;
     public DbSet<FolderModel> Folders { get; set; } = default!;
     public DbSet<GlobalSettingsModel> GlobalSettings { get; set; } = default!;
@@ -26,7 +24,6 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
     public DbSet<PermissionModel> Permissions { get; set; } = default!;
     public DbSet<PluginModel> Plugins { get; set; } = default!;
     public DbSet<PluginContentModel> PluginContents { get; set; } = default!;
-    public DbSet<PluginContentDataModel> PluginContentData { get; set; } = default!;
     public DbSet<PluginDefinitionModel> PluginDefinitions { get; set; } = default!;
     public DbSet<PluginDefinitionTypeModel> PluginDefinitionTypes { get; set; } = default!;
     public DbSet<RoleModel> Roles { get; set; } = default!;
@@ -60,16 +57,6 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
                 .HasForeignKey(e => e.ApiTokenId);
         });
 
-        modelBuilder.Entity<ContentModel>(entity =>
-        {
-            entity.HasMany(e => e.Data)
-                .WithOne(p => p.Content)
-                .HasForeignKey(p => p.ContentId)
-                .OnDelete(DeleteBehavior.Cascade); // Cascade delete on related Policies
-
-            entity.Navigation(e => e.Data).AutoInclude();
-        });
-
         modelBuilder.Entity<ContentTypeModel>(entity =>
         {
             entity.HasMany(e => e.Fields)
@@ -80,26 +67,6 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
             entity.Navigation(e => e.Fields).AutoInclude();
         });
 
-        modelBuilder.Entity<ContentTypeFieldModel>(entity =>
-        {
-            entity.HasMany(e => e.Settings)
-                .WithOne(f => f.ContentTypeField)
-                .HasForeignKey(f => f.ContentTypeFieldId)
-                .OnDelete(DeleteBehavior.Cascade); // Cascade delete on related Fields
-
-            entity.Navigation(e => e.Settings).AutoInclude();
-        });
-
-        modelBuilder.Entity<PluginContentModel>(entity =>
-        {
-            entity.HasMany(e => e.Data)
-                .WithOne(f => f.PluginContent)
-                .HasForeignKey(f => f.PluginContentId)
-                .OnDelete(DeleteBehavior.Cascade); // Cascade delete on related Fields
-
-            entity.Navigation(e => e.Data).AutoInclude();
-        });
-
         modelBuilder.Entity<PluginDefinitionModel>(entity =>
         {
             entity.HasMany(e => e.Types)
@@ -107,94 +74,8 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
                 .HasForeignKey(f => f.PluginDefinitionId)
                 .OnDelete(DeleteBehavior.Cascade); // Cascade delete on related Fields
 
-            //entity.HasMany(e => e.Plugins)
-            //    .WithOne(f => f.PluginDefinition)
-            //    .HasForeignKey(f => f.PluginDefinitionId)
-            //    .OnDelete(DeleteBehavior.Cascade); // Cascade delete on related Fields
-
             entity.Navigation(e => e.Types).AutoInclude();
         });
-
-        //modelBuilder.Entity<BlockModel>(entity =>
-        //{
-        //    entity.HasOne(e => e.Site)
-        //        .WithMany(e => e.Blocks)
-        //        .HasForeignKey(e => e.SiteId);
-        //});
-                
-        //modelBuilder.Entity<ContentModel>(entity =>
-        //{
-        //    entity.HasOne(e => e.Type)
-        //        .WithMany(ct => ct.Contents)
-        //        .HasForeignKey(e => e.TypeId);
-        //});
-
-        //modelBuilder.Entity<ContentTypeModel>(entity =>
-        //{
-        //    entity.HasMany(e => e.Fields)
-        //        .WithOne(f => f.Type)
-        //        .HasForeignKey(f => f.TypeId)
-        //        .OnDelete(DeleteBehavior.Cascade); // Cascade delete on related Fields
-        //});
-
-        //modelBuilder.Entity<ContentTypeFieldModel>(entity =>
-        //{
-        //    entity.HasOne(e => e.Type)
-        //        .WithMany(ct => ct.Fields)
-        //        .HasForeignKey(e => e.TypeId);
-        //});
-
-
-        //// Site Configuration
-        //modelBuilder.Entity<SiteModel>(entity =>
-        //{
-        //    entity.HasMany(e => e.Pages).HasForeignKey(p => p.SiteId);
-        //    entity.HasMany(e => e.Blocks).WithOne(b => b.Site).HasForeignKey(b => b.SiteId);
-        //    entity.HasMany(e => e.Layout).WithOne(l => l.Site).HasForeignKey(l => l.SiteId);
-        //});
-
-        //// Role Configuration
-        //modelBuilder.Entity<RoleModel>(entity =>
-        //{
-        //    entity.ToTable("Roles");
-        //    entity.HasKey(e => e.Id);
-        //    entity.Property(e => e.Name).IsRequired().HasMaxLength(256);
-        //    entity.HasIndex(e => new { e.SiteId, e.Name }).IsUnique(); // Unique per site
-        //});
-
-        //// Page Configuration
-        //modelBuilder.Entity<PageModel>(entity =>
-        //{
-        //    entity.HasKey(e => e.Id);
-        //    entity.Property(e => e.Title).IsRequired().HasMaxLength(256);
-        //    entity.Property(e => e.Path).IsRequired().HasMaxLength(256);
-        //    entity.HasOne(e => e.Layout).WithMany().HasForeignKey(e => e.LayoutId);
-        //    entity.HasOne(e => e.DetailLayout).WithMany().HasForeignKey(e => e.DetailLayoutId);
-        //    entity.HasOne(e => e.EditLayout).WithMany().HasForeignKey(e => e.EditLayoutId);
-        //});
-
-        //// Permission Configuration
-        //modelBuilder.Entity<PermissionModel>(entity =>
-        //{
-        //    entity.HasKey(e => e.Id);
-        //    entity.Property(e => e.EntityType).IsRequired().HasMaxLength(128);
-        //    entity.Property(e => e.Action).IsRequired().HasMaxLength(128);
-        //});
-
-        //// Plugin Configuration
-        //modelBuilder.Entity<PluginModel>(entity =>
-        //{
-        //    entity.HasKey(e => e.Id);
-        //    entity.Property(e => e.Section).IsRequired().HasMaxLength(256);
-        //    entity.HasOne(e => e.PluginDefinition).WithMany(pd => pd.Plugins).HasForeignKey(e => e.DefinitionId);
-        //});
-
-        //// Content Configuration
-        //modelBuilder.Entity<ContentModel>(entity =>
-        //{
-        //    entity.HasKey(e => e.Id);
-        //    entity.HasOne(e => e.Type).WithMany(ct => ct.Fields).HasForeignKey(e => e.TypeId);
-        //});
 
         modelBuilder.Entity<SettingsModel>(entity =>
         {

@@ -19,6 +19,7 @@ public abstract class SiteAssociatedRepository<TEntity, TDBEntity>(FluentCmsDbCo
 
     public virtual async Task<IEnumerable<TEntity>> GetAllForSite(Guid siteId, CancellationToken cancellationToken = default)
     {
-        return await DbContext.Set<TEntity>().Where(x => x.SiteId == siteId).ToListAsync(cancellationToken);
+        var dbEntites = await DbContext.Set<TDBEntity>().Where(x => x.SiteId == siteId).ToListAsync(cancellationToken);
+        return Mapper.Map<IEnumerable<TEntity>>(dbEntites);
     }
 }

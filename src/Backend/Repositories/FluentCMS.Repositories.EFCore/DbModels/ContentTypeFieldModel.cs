@@ -10,6 +10,6 @@ public class ContentTypeFieldModel : EntityModel
     public bool Required { get; set; }
     public bool Unique { get; set; }
     public string Label { get; set; } = default!;
+    public string Settings { get; set; } = default!; // JSON string for settings
     public ContentTypeModel ContentType { get; set; } = default!; // Navigation property
-    public ICollection<ContentTypeFieldSettingsModel> Settings { get; set; } = []; // Navigation property
 }

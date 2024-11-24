@@ -67,7 +67,8 @@ GO
 CREATE TABLE [dbo].[Contents](
 	[Id] [uniqueidentifier] NOT NULL,
 	[SiteId] [uniqueidentifier] NOT NULL,
-	[ContentTypeId] [uniqueidentifier] NOT NULL,
+	[TypeId] [uniqueidentifier] NOT NULL,
+	[Data] [nvarchar](MAX) NOT NULL,
 	[CreatedBy] [nvarchar](255) NOT NULL,
 	[CreatedAt] [datetime] NOT NULL,
 	[ModifiedBy] [nvarchar](255) NULL,
@@ -89,26 +90,11 @@ CREATE TABLE [dbo].[ContentTypeFields](
 	[Name] [nvarchar](max) NOT NULL,
 	[Description] [nvarchar](max) NOT NULL,
 	[Type] [nvarchar](max) NOT NULL,
+	[Settings] [nvarchar](max) NOT NULL,
 	[Required] [bit] NOT NULL,
 	[Unique] [bit] NOT NULL,
 	[Label] [nvarchar](max) NULL,
  CONSTRAINT [PK_ContentTypeFields] PRIMARY KEY CLUSTERED 
-(
-	[Id] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
-) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
-GO
-/****** Object:  Table [dbo].[ContentTypeFieldSettings]    Script Date: 2024-11-23 11:13:52 AM ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TABLE [dbo].[ContentTypeFieldSettings](
-	[Id] [uniqueidentifier] NOT NULL,
-	[ContentTypeFieldId] [uniqueidentifier] NOT NULL,
-	[Key] [nvarchar](max) NOT NULL,
-	[Value] [nvarchar](max) NOT NULL,
- CONSTRAINT [PK_ContentTypeFieldSettings] PRIMARY KEY CLUSTERED 
 (
 	[Id] ASC
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
@@ -267,22 +253,6 @@ CREATE TABLE [dbo].[Permissions](
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
 GO
-/****** Object:  Table [dbo].[PluginContentData]    Script Date: 2024-11-23 11:13:52 AM ******/
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TABLE [dbo].[PluginContentData](
-	[Id] [uniqueidentifier] NOT NULL,
-	[PluginContentId] [uniqueidentifier] NOT NULL,
-	[Key] [nvarchar](max) NOT NULL,
-	[Value] [nvarchar](max) NOT NULL,
- CONSTRAINT [PK_PluginContentData] PRIMARY KEY CLUSTERED 
-(
-	[Id] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
-) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
-GO
 /****** Object:  Table [dbo].[PluginContents]    Script Date: 2024-11-23 11:13:52 AM ******/
 SET ANSI_NULLS ON
 GO
@@ -292,7 +262,8 @@ CREATE TABLE [dbo].[PluginContents](
 	[Id] [uniqueidentifier] NOT NULL,
 	[SiteId] [uniqueidentifier] NOT NULL,
 	[PluginId] [uniqueidentifier] NOT NULL,
-	[Type] [nvarchar](max) NOT NULL,
+	[Data] [nvarchar](max) NOT NULL,
+	[Type] [nvarchar](max) NULL,
 	[CreatedBy] [nvarchar](255) NOT NULL,
 	[CreatedAt] [datetime] NOT NULL,
 	[ModifiedBy] [nvarchar](255) NULL,
@@ -539,10 +510,6 @@ ON DELETE CASCADE
 GO
 ALTER TABLE [dbo].[Blocks] CHECK CONSTRAINT [FK_Blocks_Sites]
 GO
-ALTER TABLE [dbo].[Contents]  WITH CHECK ADD  CONSTRAINT [FK_Contents_ContentTypes] FOREIGN KEY([ContentTypeId])
-REFERENCES [dbo].[ContentTypes] ([Id])
-ON DELETE CASCADE
-GO
 ALTER TABLE [dbo].[Contents] CHECK CONSTRAINT [FK_Contents_ContentTypes]
 GO
 ALTER TABLE [dbo].[ContentTypeFields]  WITH CHECK ADD  CONSTRAINT [FK_ContentTypeFields_ContentTypes] FOREIGN KEY([ContentTypeId])
@@ -550,12 +517,6 @@ REFERENCES [dbo].[ContentTypes] ([Id])
 ON DELETE CASCADE
 GO
 ALTER TABLE [dbo].[ContentTypeFields] CHECK CONSTRAINT [FK_ContentTypeFields_ContentTypes]
-GO
-ALTER TABLE [dbo].[ContentTypeFieldSettings]  WITH CHECK ADD  CONSTRAINT [FK_ContentTypeFieldSettings_ContentTypes] FOREIGN KEY([ContentTypeFieldId])
-REFERENCES [dbo].[ContentTypes] ([Id])
-ON DELETE CASCADE
-GO
-ALTER TABLE [dbo].[ContentTypeFieldSettings] CHECK CONSTRAINT [FK_ContentTypeFieldSettings_ContentTypes]
 GO
 ALTER TABLE [dbo].[ContentTypes]  WITH CHECK ADD  CONSTRAINT [FK_ContentTypes_Sites] FOREIGN KEY([SiteId])
 REFERENCES [dbo].[Sites] ([Id])
@@ -597,12 +558,6 @@ REFERENCES [dbo].[Sites] ([Id])
 ON DELETE CASCADE
 GO
 ALTER TABLE [dbo].[Permissions] CHECK CONSTRAINT [FK_Permissions_Sites]
-GO
-ALTER TABLE [dbo].[PluginContentData]  WITH CHECK ADD  CONSTRAINT [FK_PluginContentData_PluginContents] FOREIGN KEY([PluginContentId])
-REFERENCES [dbo].[PluginContents] ([Id])
-ON DELETE CASCADE
-GO
-ALTER TABLE [dbo].[PluginContentData] CHECK CONSTRAINT [FK_PluginContentData_PluginContents]
 GO
 ALTER TABLE [dbo].[PluginContents]  WITH CHECK ADD  CONSTRAINT [FK_PluginContents_Plugins] FOREIGN KEY([PluginId])
 REFERENCES [dbo].[Plugins] ([Id])

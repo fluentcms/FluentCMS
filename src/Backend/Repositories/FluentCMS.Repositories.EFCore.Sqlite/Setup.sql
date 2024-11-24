@@ -51,21 +51,13 @@ CREATE TABLE Blocks (
 CREATE TABLE Contents (
     Id TEXT NOT NULL PRIMARY KEY,
     SiteId TEXT NOT NULL,
-    ContentTypeId TEXT NOT NULL,
+    TypeId TEXT NOT NULL,
+    Data TEXT NOT NULL,
     CreatedBy TEXT NOT NULL,
     CreatedAt DATETIME NOT NULL,
     ModifiedBy TEXT,
     ModifiedAt DATETIME,
-    FOREIGN KEY (ContentTypeId) REFERENCES ContentTypes (Id) ON DELETE CASCADE
-);
-
--- Table: ContentData
-CREATE TABLE ContentData (
-    Id TEXT NOT NULL PRIMARY KEY,
-    ContentId TEXT NOT NULL,
-    Key TEXT NOT NULL,
-    Value TEXT NOT NULL,
-    FOREIGN KEY (ContentId) REFERENCES Contents (Id) ON DELETE CASCADE
+    FOREIGN KEY (TypeId) REFERENCES ContentTypes (Id) ON DELETE CASCADE
 );
 
 -- Table: ContentTypeFields
@@ -78,16 +70,8 @@ CREATE TABLE ContentTypeFields (
     Required INTEGER NOT NULL,
     "Unique" INTEGER NOT NULL,
     Label TEXT,
+    Settings TEXT NOT NULL,
     FOREIGN KEY (ContentTypeId) REFERENCES ContentTypes (Id) ON DELETE CASCADE
-);
-
--- Table: ContentTypeFieldSettings
-CREATE TABLE ContentTypeFieldSettings (
-    Id TEXT NOT NULL PRIMARY KEY,
-    ContentTypeFieldId TEXT NOT NULL,
-    Key TEXT NOT NULL,
-    Value TEXT NOT NULL,
-    FOREIGN KEY (ContentTypeFieldId) REFERENCES ContentTypeFields (Id) ON DELETE CASCADE
 );
 
 -- Table: ContentTypes
@@ -184,21 +168,13 @@ CREATE TABLE Permissions (
     FOREIGN KEY (SiteId) REFERENCES Sites (Id) ON DELETE CASCADE
 );
 
--- Table: PluginContentData
-CREATE TABLE PluginContentData (
-    Id TEXT NOT NULL PRIMARY KEY,
-    PluginContentId TEXT NOT NULL,
-    Key TEXT NOT NULL,
-    Value TEXT NOT NULL,
-    FOREIGN KEY (PluginContentId) REFERENCES PluginContents (Id) ON DELETE CASCADE
-);
-
 -- Table: PluginContents
 CREATE TABLE PluginContents (
     Id TEXT NOT NULL PRIMARY KEY,
     SiteId TEXT NOT NULL,
     PluginId TEXT NOT NULL,
     Type TEXT,
+    Data TEXT NOT NULL,
     CreatedBy TEXT NOT NULL,
     CreatedAt DATETIME NOT NULL,
     ModifiedBy TEXT,

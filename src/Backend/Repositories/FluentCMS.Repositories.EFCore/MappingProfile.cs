@@ -4,10 +4,12 @@ namespace FluentCMS.Repositories.EFCore;
 
 public class MappingProfile : Profile
 {
+    private readonly JsonSerializerOptions _jsonSerializerOptions;
+
     public MappingProfile()
     {
-        var jsonSerializerOptions = new JsonSerializerOptions();
-        jsonSerializerOptions.Converters.Add(new DictionaryJsonConverter());
+        _jsonSerializerOptions = new JsonSerializerOptions();
+        _jsonSerializerOptions.Converters.Add(new DictionaryJsonConverter());
 
         // Generic mappings for base entities
         CreateMap<EntityModel, Entity>().ReverseMap();
@@ -34,54 +36,18 @@ public class MappingProfile : Profile
 
         // Map between ContentModel and Content
         CreateMap<ContentModel, Content>()
-            .ForMember(dest => dest.TypeId, opt => opt.MapFrom(src => src.ContentTypeId)) // Map TypeId
-            .ForMember(dest => dest.Data, opt => opt.MapFrom(src => src.Data.ToDictionary(
-                data => data.Key,
-                data => JsonSerializer.Deserialize<object?>(data.Value, jsonSerializerOptions))))
+            .ForMember(dest => dest.Data, opt => opt.MapFrom(src => MapStringToDictionary(src.Data)))
             .ReverseMap()
-            .ForMember(dest => dest.ContentTypeId, opt => opt.MapFrom(src => src.TypeId)) // Map TypeId
-            .ForMember(dest => dest.Data, opt => opt.MapFrom(src => src.Data.Select(kv => new ContentDataModel
-            {
-                Key = kv.Key,
-                Value = JsonSerializer.Serialize(kv.Value, jsonSerializerOptions)
-            })));
-
-        // Map between ContentDataModel and KeyValuePair<string, object?>
-        CreateMap<ContentDataModel, KeyValuePair<string, object?>>()
-            .ConstructUsing(src => new KeyValuePair<string, object?>(
-                src.Key,
-                JsonSerializer.Deserialize<object?>(src.Value, jsonSerializerOptions)))
-            .ReverseMap()
-            .ForMember(dest => dest.Key, opt => opt.MapFrom(src => src.Key))
-            .ForMember(dest => dest.Value, opt => opt.MapFrom(src => JsonSerializer.Serialize(src.Value, jsonSerializerOptions)));
-
+            .ForMember(dest => dest.Data, opt => opt.MapFrom(src => MapDictionaryToString(src.Data)));
 
         // Map between ContentTypeModel and ContentType
         CreateMap<ContentTypeModel, ContentType>().ReverseMap();
 
         // Map between ContentTypeFieldModel and ContentTypeField
         CreateMap<ContentTypeFieldModel, ContentTypeField>()
-            .ForMember(dest => dest.Settings, opt => opt.MapFrom(src => src.Settings.ToDictionary(
-                setting => setting.Key,
-                setting => JsonSerializer.Deserialize<object?>(setting.Value, jsonSerializerOptions))))
+            .ForMember(dest => dest.Settings, opt => opt.MapFrom(src => MapStringToDictionary(src.Settings)))
             .ReverseMap()
-            .ForMember(dest => dest.Settings, opt => opt.MapFrom(src =>
-                src.Settings != null ?
-                src.Settings.Select(kv => new ContentTypeFieldSettingsModel
-                {
-                    Key = kv.Key,
-                    Value = JsonSerializer.Serialize(kv.Value, jsonSerializerOptions)
-                }) : new List<ContentTypeFieldSettingsModel>()
-                ));
-
-        // Map between ContentTypeFieldSettingsModel and KeyValuePair<string, object?>
-        CreateMap<ContentTypeFieldSettingsModel, KeyValuePair<string, object?>>()
-            .ConstructUsing(src => new KeyValuePair<string, object?>(
-                src.Key,
-                JsonSerializer.Deserialize<object?>(src.Value, jsonSerializerOptions)))
-            .ReverseMap()
-            .ForMember(dest => dest.Key, opt => opt.MapFrom(src => src.Key))
-            .ForMember(dest => dest.Value, opt => opt.MapFrom(src => JsonSerializer.Serialize(src.Value, jsonSerializerOptions)));
+            .ForMember(dest => dest.Settings, opt => opt.MapFrom(src => MapDictionaryToString(src.Settings)));
 
         CreateMap<FileModel, File>().ReverseMap();
         CreateMap<FolderModel, Folder>().ReverseMap();
@@ -105,19 +71,9 @@ public class MappingProfile : Profile
 
         // Map from PluginContentModel to PluginContent
         CreateMap<PluginContentModel, PluginContent>()
-            .ForMember(dest => dest.Data, opt => opt.MapFrom(src =>
-                src.Data.ToDictionary(
-                    data => data.Key,
-                    data => JsonSerializer.Deserialize<object?>(data.Value, jsonSerializerOptions))));
-
-        // Map from PluginContent to PluginContentModel
-        CreateMap<PluginContent, PluginContentModel>()
-            .ForMember(dest => dest.Data, opt => opt.MapFrom(src =>
-                src.Data.Select(kv => new PluginContentDataModel
-                {
-                    Key = kv.Key,
-                    Value = JsonSerializer.Serialize(kv.Value, jsonSerializerOptions)
-                }).ToList()));
+            .ForMember(dest => dest.Data, opt => opt.MapFrom(src => MapStringToDictionary(src.Data)))
+            .ReverseMap()
+            .ForMember(dest => dest.Data, opt => opt.MapFrom(src => MapDictionaryToString(src.Data)));
 
         CreateMap<PluginModel, Plugin>().ReverseMap();
 
@@ -155,5 +111,23 @@ public class MappingProfile : Profile
                     Value = kv.Value
                 })));
 
+    }
+
+    // mapp Dictionary<string, object?> to string
+    private string MapDictionaryToString(Dictionary<string, object?>? dictionary)
+    {
+        if (dictionary == null)
+            return string.Empty;
+
+        return JsonSerializer.Serialize(dictionary, _jsonSerializerOptions);
+    }
+
+    // mapp string to Dictionary<string, object?>
+    private Dictionary<string, object?> MapStringToDictionary(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return [];
+
+        return JsonSerializer.Deserialize<Dictionary<string, object?>>(value, _jsonSerializerOptions) ?? [];
     }
 }

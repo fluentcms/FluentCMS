@@ -3,6 +3,6 @@
 [Table("Contents")]
 public class ContentModel : SiteAssociatedEntityModel
 {
-    public Guid ContentTypeId { get; set; }
-    public ICollection<ContentDataModel> Data { get; set; } = [];
+    public Guid TypeId { get; set; }
+    public string Data { get; set; } = default!;
 }

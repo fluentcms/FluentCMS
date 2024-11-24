@@ -6,7 +6,7 @@ public class ContentRepository(FluentCmsDbContext dbContext, IMapper mapper, IAp
 
     public async Task<IEnumerable<Content>> GetAll(Guid contentTypeId, CancellationToken cancellationToken = default)
     {
-        var dbEntity = await DbContext.Contents.Where(x => x.ContentTypeId == contentTypeId).ToListAsync(cancellationToken);
+        var dbEntity = await DbContext.Contents.Where(x => x.TypeId == contentTypeId).ToListAsync(cancellationToken);
         return Mapper.Map<IEnumerable<Content>>(dbEntity);
     }
 }
