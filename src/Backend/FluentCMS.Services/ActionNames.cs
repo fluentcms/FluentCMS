@@ -122,4 +122,5 @@ public static class ActionNames
     public const string UserRoleDeleted = "UserRoleDeleted";
 
     #endregion
+    public const string SiteFilesCreated = "SiteFilesCreated";
 }
