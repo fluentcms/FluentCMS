@@ -1,11 +1,11 @@
 ﻿namespace FluentCMS.Repositories.EFCore;
 
-public class GlobalSettingsRepository(FluentCmsDbContext dbContext, IApiExecutionContext apiExecutionContext) : IGlobalSettingsRepository
+public class GlobalSettingsRepository(FluentCmsDbContext dbContext, IApiExecutionContext apiExecutionContext, IMapper mapper) : IGlobalSettingsRepository
 {
-
     public async Task<GlobalSettings?> Get(CancellationToken cancellationToken = default)
     {
-        return await dbContext.GlobalSettings.FirstOrDefaultAsync(cancellationToken);
+        var dbEntities = await dbContext.GlobalSettings.FirstOrDefaultAsync(cancellationToken);
+        return mapper.Map<GlobalSettings>(dbEntities);
     }
 
     public async Task<GlobalSettings?> Update(GlobalSettings settings, CancellationToken cancellationToken = default)
@@ -13,27 +13,26 @@ public class GlobalSettingsRepository(FluentCmsDbContext dbContext, IApiExecutio
         var existingSettings = await Get(cancellationToken);
 
         if (existingSettings == null)
-            return await Create(settings, cancellationToken);
+        {
+            SetAuditableFieldsForCreate(settings);
 
-        // since we have always one record on the table, the id is always the same
-        settings.Id = existingSettings.Id;
+            var dbEntities = mapper.Map<GlobalSettingsModel>(settings);
 
-        SetAuditableFieldsForUpdate(settings);
+            dbContext.GlobalSettings.Add(dbEntities);
+            await dbContext.SaveChangesAsync(cancellationToken);
 
-        dbContext.GlobalSettings.Update(settings);
+            return mapper.Map(dbEntities, settings);
+        }
+        else
+        {
+            // since we have always one record on the table, the id is always the same
+            settings.Id = existingSettings.Id;
+            SetAuditableFieldsForUpdate(settings);
 
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        return settings;
-    }
-
-    private async Task<GlobalSettings?> Create(GlobalSettings settings, CancellationToken cancellationToken = default)
-    {
-        SetAuditableFieldsForCreate(settings);
-        dbContext.GlobalSettings.Add(settings);
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        return settings;
+            var dbEntities = mapper.Map(settings, existingSettings);
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return mapper.Map(dbEntities, settings);
+        }
     }
 
     private void SetAuditableFieldsForCreate(GlobalSettings settings)

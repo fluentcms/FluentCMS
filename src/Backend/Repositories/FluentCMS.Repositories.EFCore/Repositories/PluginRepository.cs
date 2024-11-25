@@ -1,10 +1,11 @@
 ﻿namespace FluentCMS.Repositories.EFCore;
 
-public class PluginRepository(FluentCmsDbContext dbContext, IApiExecutionContext apiExecutionContext) : SiteAssociatedRepository<Plugin>(dbContext, apiExecutionContext), IPluginRepository
+public class PluginRepository(FluentCmsDbContext dbContext,IMapper mapper, IApiExecutionContext apiExecutionContext) : SiteAssociatedRepository<Plugin, PluginModel>(dbContext, mapper, apiExecutionContext), IPluginRepository
 {
     public async Task<IEnumerable<Plugin>> GetByPageId(Guid pageId, CancellationToken cancellationToken = default)
     {
-        return await DbContext.Plugins.Where(x => x.PageId == pageId).ToListAsync(cancellationToken);
+        var dbEntities = await DbContext.Plugins.Where(x => x.PageId == pageId).ToListAsync(cancellationToken);
+        return Mapper.Map<IEnumerable<Plugin>>(dbEntities);
     }
 
     public async Task<Plugin?> UpdateOrder(Guid pluginId, string section, int order, CancellationToken cancellationToken = default)

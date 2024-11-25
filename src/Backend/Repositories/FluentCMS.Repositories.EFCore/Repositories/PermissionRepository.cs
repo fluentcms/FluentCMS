@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Repositories.EFCore;
 
-public class PermissionRepository(FluentCmsDbContext dbContext, IApiExecutionContext apiExecutionContext) : SiteAssociatedRepository<Permission>(dbContext, apiExecutionContext), IPermissionRepository
+public class PermissionRepository(FluentCmsDbContext dbContext, IMapper mapper, IApiExecutionContext apiExecutionContext) : SiteAssociatedRepository<Permission, PermissionModel>(dbContext, mapper, apiExecutionContext), IPermissionRepository
 {
     public async Task<IEnumerable<Permission>> Set(Guid siteId, Guid entityId, string entityTypeName, string action, IEnumerable<Guid> roleIds, CancellationToken cancellationToken = default)
     {
@@ -27,6 +27,7 @@ public class PermissionRepository(FluentCmsDbContext dbContext, IApiExecutionCon
 
     public async Task<IEnumerable<Permission>> Get(Guid siteId, Guid entityId, string entityTypeName, string action, CancellationToken cancellationToken)
     {
-        return await DbContext.Permissions.Where(x => x.EntityId == entityId && x.EntityType == entityTypeName && x.Action == action).ToListAsync(cancellationToken);
+        var debEntities = await DbContext.Permissions.Where(x => x.EntityId == entityId && x.EntityType == entityTypeName && x.Action == action).ToListAsync(cancellationToken);
+        return Mapper.Map<IEnumerable<Permission>>(debEntities);
     }
 }

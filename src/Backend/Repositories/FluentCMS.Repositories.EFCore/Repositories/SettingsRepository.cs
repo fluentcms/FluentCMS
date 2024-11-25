@@ -1,6 +1,4 @@
-﻿using AutoMapper;
-
-namespace FluentCMS.Repositories.EFCore;
+﻿namespace FluentCMS.Repositories.EFCore;
 
 public class SettingsRepository(FluentCmsDbContext dbContext, IApiExecutionContext apiExecutionContext, IMapper mapper) : ISettingsRepository
 {
@@ -29,26 +27,19 @@ public class SettingsRepository(FluentCmsDbContext dbContext, IApiExecutionConte
         if (existingDbSettings == null)
         {
             // Create a new Settings entity if it doesn't exist
-            var newDbSettings = new DbModels.Settings
+            var newDbSettings = new SettingsModel
             {
                 Id = entityId,
                 CreatedAt = DateTime.UtcNow,
-                CreatedBy = apiExecutionContext.Username
-            };
-
-
-            // Add each dictionary entry to the SettingValues table
-            foreach (var kvp in settings.Where(x => !string.IsNullOrEmpty(x.Value)))
-            {
-                var settingValue = new DbModels.SettingValue
+                CreatedBy = apiExecutionContext.Username,
+                Values = settings.Where(x => !string.IsNullOrEmpty(x.Value)).Select(x=> new SettingValuesModel
                 {
                     Id = Guid.NewGuid(),
-                    SettingsId = newDbSettings.Id,
-                    Key = kvp.Key,
-                    Value = kvp.Value
-                };
-                newDbSettings.Values.Add(settingValue);
-            }
+                    Key = x.Key,
+                    Value = x.Value,
+                    SettingId = entityId
+                } ).ToList()
+            };
 
             dbContext.Settings.Add(newDbSettings);
             // Save changes to the database
@@ -67,10 +58,11 @@ public class SettingsRepository(FluentCmsDbContext dbContext, IApiExecutionConte
                 var settingValue = existingDbSettings.Values.FirstOrDefault(x => x.Key == kvp.Key);
                 if (settingValue == null)
                 {
-                    settingValue = new DbModels.SettingValue
+                    // Create a new SettingValues entity if it doesn't exist
+                    settingValue = new SettingValuesModel
                     {
                         Id = Guid.NewGuid(),
-                        SettingsId = existingDbSettings.Id,
+                        SettingId = existingDbSettings.Id,
                         Key = kvp.Key,
                         Value = kvp.Value
                     };
@@ -78,6 +70,7 @@ public class SettingsRepository(FluentCmsDbContext dbContext, IApiExecutionConte
                 }
                 else
                 {
+                    // Update the existing SettingValues entity
                     settingValue.Value = kvp.Value;
                 }
             }
