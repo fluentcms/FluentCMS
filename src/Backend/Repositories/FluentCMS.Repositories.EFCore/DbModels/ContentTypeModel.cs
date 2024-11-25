@@ -1,9 +1,10 @@
 ﻿namespace FluentCMS.Repositories.EFCore.DbModels;
 
-public class ContentType : SiteAssociatedEntity
+[Table("ContentTypes")]
+public class ContentTypeModel : SiteAssociatedEntityModel
 {
     public string Slug { get; set; } = default!;
     public string Title { get; set; } = default!;
     public string? Description { get; set; }
-    public ICollection<ContentTypeField> Fields { get; set; } = [];
+    public ICollection<ContentTypeFieldModel> Fields { get; set; } = [];
 }

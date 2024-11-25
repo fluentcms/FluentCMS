@@ -1,3 +1,3 @@
 ﻿namespace FluentCMS.Repositories.EFCore;
 
-public class PluginDefinitionRepository(FluentCmsDbContext dbContext, IApiExecutionContext apiExecutionContext) : AuditableEntityRepository<PluginDefinition>(dbContext, apiExecutionContext), IPluginDefinitionRepository;
+public class PluginDefinitionRepository(FluentCmsDbContext dbContext, IMapper mapper, IApiExecutionContext apiExecutionContext) : AuditableEntityRepository<PluginDefinition, PluginDefinitionModel>(dbContext, mapper, apiExecutionContext), IPluginDefinitionRepository;

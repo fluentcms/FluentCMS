@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 
 namespace FluentCMS.Repositories.EFCore;
@@ -8,33 +9,29 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
 
     #region DbSets
 
-    public DbSet<DbModels.ApiToken> ApiTokens { get; set; } = default!;
-    public DbSet<DbModels.ApiTokenPolicy> ApiTokenPolicies { get; set; } = default!;
-
-    public DbSet<Block> Blocks { get; set; } = default!;
-    public DbSet<Content> Contents { get; set; } = default!;
-    public DbSet<DbModels.ContentType> ContentTypes { get; set; } = default!;
-    public DbSet<DbModels.ContentTypeField> ContentTypeFields { get; set; } = default!;
-    public DbSet<File> Files { get; set; } = default!;
-    public DbSet<Folder> Folders { get; set; } = default!;
-    public DbSet<GlobalSettings> GlobalSettings { get; set; } = default!;
-    public DbSet<Layout> Layouts { get; set; } = default!;
-    public DbSet<Page> Pages { get; set; } = default!;
-    public DbSet<Permission> Permissions { get; set; } = default!;
-    public DbSet<PluginContent> PluginContents { get; set; } = default!;
-    public DbSet<PluginDefinition> PluginDefinitions { get; set; } = default!;
-    public DbSet<PluginDefinitionType> PluginDefinitionTypes { get; set; } = default!;
-    public DbSet<Plugin> Plugins { get; set; } = default!;
-    public DbSet<Role> Roles { get; set; } = default!;
-    public DbSet<DbModels.Settings> Settings { get; set; } = default!;
-    public DbSet<DbModels.SettingValue> SettingValues { get; set; }
-    public DbSet<Site> Sites { get; set; } = default!;
-    public DbSet<User> Users { get; set; } = default!;
-    public DbSet<IdentityUserLogin<Guid>> UserLogins { get; set; } = default!;
-    public DbSet<IdentityUserToken<Guid>> UserTokens { get; set; } = default!;
-    public DbSet<UserTwoFactorRecoveryCode> UserTwoFactorRecoveryCodes { get; set; } = default!;
-    public DbSet<IdentityUserClaim<Guid>> UserClaims { get; set; } = default!;
-    public DbSet<UserRole> UserRoles { get; set; } = default!;
+    // DbSets for all entities
+    public DbSet<ApiTokenModel> ApiTokens { get; set; } = default!;
+    public DbSet<ApiTokenPolicyModel> ApiTokenPolicies { get; set; } = default!;
+    public DbSet<BlockModel> Blocks { get; set; } = default!;
+    public DbSet<ContentModel> Contents { get; set; } = default!;
+    public DbSet<ContentTypeModel> ContentTypes { get; set; } = default!;
+    public DbSet<ContentTypeFieldModel> ContentTypeFields { get; set; } = default!;
+    public DbSet<FileModel> Files { get; set; } = default!;
+    public DbSet<FolderModel> Folders { get; set; } = default!;
+    public DbSet<GlobalSettingsModel> GlobalSettings { get; set; } = default!;
+    public DbSet<LayoutModel> Layouts { get; set; } = default!;
+    public DbSet<PageModel> Pages { get; set; } = default!;
+    public DbSet<PermissionModel> Permissions { get; set; } = default!;
+    public DbSet<PluginModel> Plugins { get; set; } = default!;
+    public DbSet<PluginContentModel> PluginContents { get; set; } = default!;
+    public DbSet<PluginDefinitionModel> PluginDefinitions { get; set; } = default!;
+    public DbSet<PluginDefinitionTypeModel> PluginDefinitionTypes { get; set; } = default!;
+    public DbSet<RoleModel> Roles { get; set; } = default!;
+    public DbSet<SiteModel> Sites { get; set; } = default!;
+    public DbSet<SettingsModel> Settings { get; set; } = default!;
+    public DbSet<SettingValuesModel> SettingValues { get; set; } = default!;
+    public DbSet<UserModel> Users { get; set; } = default!;
+    public DbSet<UserRoleModel> UserRoles { get; set; } = default!;
 
     #endregion
 
@@ -43,203 +40,99 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
         var jsonSerializerOptions = new JsonSerializerOptions();
         jsonSerializerOptions.Converters.Add(new DictionaryJsonConverter());
 
-        modelBuilder.Entity<DbModels.ApiToken>()
-            .Navigation(e => e.Policies).AutoInclude();
-
-
-        #region ContentType
-
-        modelBuilder.Entity<DbModels.ContentType>(entity =>
+        modelBuilder.Entity<ApiTokenModel>(entity =>
         {
+            entity.HasMany(e => e.Policies)
+                .WithOne(p => p.ApiToken)
+                .HasForeignKey(p => p.ApiTokenId)
+                .OnDelete(DeleteBehavior.Cascade); // Cascade delete on related Policies
+
+            entity.Navigation(e => e.Policies).AutoInclude();
+        });
+
+        modelBuilder.Entity<ApiTokenPolicyModel>(entity =>
+        {
+            entity.HasOne(e => e.ApiToken)
+                .WithMany(e => e.Policies)
+                .HasForeignKey(e => e.ApiTokenId);
+        });
+
+        modelBuilder.Entity<ContentTypeModel>(entity =>
+        {
+            entity.HasMany(e => e.Fields)
+                .WithOne(f => f.ContentType)
+                .HasForeignKey(f => f.ContentTypeId)
+                .OnDelete(DeleteBehavior.Cascade); // Cascade delete on related Fields
+
             entity.Navigation(e => e.Fields).AutoInclude();
         });
 
-        modelBuilder.Entity<DbModels.ContentTypeField>(entity =>
+        modelBuilder.Entity<PluginDefinitionModel>(entity =>
         {
-            entity.Property(e => e.Settings)
-                .HasConversion(
-                    // Serialize the dictionary to JSON when saving to the database
-                    v => JsonSerializer.Serialize(v, jsonSerializerOptions),
-                    // Deserialize the JSON string back to a dictionary when reading from the database
-                    v => JsonSerializer.Deserialize<Dictionary<string, object?>>(v, jsonSerializerOptions)
-                );
-        });
-
-        #endregion
-
-        #region Settings
-
-        modelBuilder.Entity<DbModels.Settings>()
-            .Ignore(s => s.Values);
-
-        modelBuilder.Entity<DbModels.SettingValue>()
-            .HasOne(sv => sv.Settings)
-            .WithMany()
-            .HasForeignKey(sv => sv.SettingsId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        #endregion
-
-        #region GlobalSettings
-
-        // Configure SuperAdmins as a comma-separated string
-        modelBuilder.Entity<GlobalSettings>()
-            .Property(gs => gs.SuperAdmins)
-            .HasConversion(
-                v => string.Join(",", v), // Convert IEnumerable<string> to string for storage
-                v => v.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList() // Convert string to IEnumerable<string>
-            );
-
-        #endregion
-
-        #region Content
-
-        modelBuilder.Entity<Content>(entity =>
-        {
-            // Configure the Data property to be stored as a JSON string
-            entity.Property(e => e.Data)
-                .HasConversion(
-                    // Serialize the dictionary to JSON when saving to the database
-                    v => JsonSerializer.Serialize(v, jsonSerializerOptions),
-                    // Deserialize the JSON string back to a dictionary when reading from the database
-                    v => JsonSerializer.Deserialize<Dictionary<string, object?>>(v, jsonSerializerOptions)
-                );
-        });
-
-        #endregion
-
-        #region Plugin Content
-
-        modelBuilder.Entity<PluginContent>(entity =>
-        {
-            // Configure the Data property to be stored as a JSON string
-            entity.Property(e => e.Data)
-                .HasConversion(
-                    // Serialize the dictionary to JSON when saving to the database
-                    v => JsonSerializer.Serialize(v, jsonSerializerOptions),
-                    // Deserialize the JSON string back to a dictionary when reading from the database
-                    v => JsonSerializer.Deserialize<Dictionary<string, object?>>(v, jsonSerializerOptions)
-                );
-        });
-
-        #endregion
-
-        #region Plugin Defition
-
-        // Configure PluginDefinition entity
-        modelBuilder.Entity<PluginDefinition>(entity =>
-        {
-            // Define one-to-many relationship between PluginDefinition and PluginDefinitionType
-            entity.HasMany(p => p.Types)
-                  .WithOne() // No navigation property back to PluginDefinition in PluginDefinitionType
-                  .HasForeignKey("PluginDefinitionId") // Shadow property for the foreign key
-                  .OnDelete(DeleteBehavior.Cascade); // Configure cascade delete if needed
+            entity.HasMany(e => e.Types)
+                .WithOne(f => f.PluginDefinition)
+                .HasForeignKey(f => f.PluginDefinitionId)
+                .OnDelete(DeleteBehavior.Cascade); // Cascade delete on related Fields
 
             entity.Navigation(e => e.Types).AutoInclude();
         });
 
-        // Configure PluginDefinitionType entity
-        modelBuilder.Entity<PluginDefinitionType>(entity =>
+        modelBuilder.Entity<SettingsModel>(entity =>
         {
-            // Define the shadow property for Id
-            entity.Property<int>("Id")
-                  .ValueGeneratedOnAdd(); // Configure it to be generated by the database
+            // Configure the relationship with SettingValuesModel
+            entity.HasMany(e => e.Values) // One SettingsModel has many SettingValuesModel
+                .WithOne(e => e.Setting) // Each SettingValuesModel belongs to one SettingsModel
+                .HasForeignKey(e => e.SettingId) // Foreign key in SettingValuesModel
+                .OnDelete(DeleteBehavior.Cascade); // Cascade delete
 
-            // Configure composite key (or use Id as the primary key if preferred)
-            entity.HasKey("Id"); // Using the shadow Id as the primary key
-
-            // Foreign key relationship to PluginDefinitionType
-            entity.HasOne<PluginDefinition>()
-                  .WithMany(a => a.Types)
-                  .HasForeignKey("PluginDefinitionId") // Shadow foreign key to link to ApiToken
-                  .OnDelete(DeleteBehavior.Cascade); // Cascade delete for related policies
+            // Enable automatic inclusion of navigation property
+            entity.Navigation(e => e.Values).AutoInclude(); // Always include Values when querying SettingsModel
         });
 
-        #endregion
-
-        #region User and Role
-
-        // Configure User entity
-        modelBuilder.Entity<User>(entity =>
+        // Configure SettingValuesModel
+        modelBuilder.Entity<SettingValuesModel>(entity =>
         {
-            // Define one-to-many relationships with shadow foreign keys for each child collection
-            entity.HasMany(u => u.Logins)
-                  .WithOne()
-                  .HasForeignKey("UserId") // Shadow foreign key for User
-                  .OnDelete(DeleteBehavior.Cascade);
+            // Define the primary key
+            entity.HasKey(e => e.Id);
 
-            entity.HasMany(u => u.Tokens)
-                  .WithOne()
-                  .HasForeignKey("UserId") // Shadow foreign key for User
-                  .OnDelete(DeleteBehavior.Cascade);
+            // Define the foreign key to SettingsModel
+            entity.HasOne(e => e.Setting) // Each SettingValuesModel belongs to one SettingsModel
+                .WithMany(e => e.Values) // One SettingsModel has many SettingValuesModel
+                .HasForeignKey(e => e.SettingId) // Foreign key in SettingValuesModel
+                .OnDelete(DeleteBehavior.Cascade); // Cascade delete on SettingsModel deletion
 
-            entity.HasMany(u => u.Claims)
-                  .WithOne()
-                  .HasForeignKey("UserId") // Shadow foreign key for User
-                  .OnDelete(DeleteBehavior.Cascade);
-
-            entity.HasMany(u => u.RecoveryCodes)
-                  .WithOne()
-                  .HasForeignKey("UserId") // Shadow foreign key for User
-                  .OnDelete(DeleteBehavior.Cascade);
-
-            //entity.Navigation(e => e.Logins).AutoInclude();
-            //entity.Navigation(e => e.Tokens).AutoInclude();
-            //entity.Navigation(e => e.Claims).AutoInclude();
-            //entity.Navigation(e => e.RecoveryCodes).AutoInclude();
         });
 
-        // Configure UserTwoFactorRecoveryCode as a separate entity
-        modelBuilder.Entity<UserTwoFactorRecoveryCode>(entity =>
+        modelBuilder.Entity<UserModel>(entity =>
         {
-            // Define the shadow property for Id
-            entity.Property<Guid>("Id")
-                  .ValueGeneratedOnAdd(); // Configure it to be generated by the database
 
-            // Configure composite key (or use Id as the primary key if preferred)
-            entity.HasKey("Id"); // Using the shadow Id as the primary key
-        });
-
-        // Configure IdentityUserLogin, IdentityUserToken, and IdentityUserClaim with composite keys
-        modelBuilder.Entity<IdentityUserLogin<Guid>>(entity =>
-        {
-            entity.HasKey(login => new { login.LoginProvider, login.ProviderKey });
-        });
-
-        modelBuilder.Entity<IdentityUserToken<Guid>>(entity =>
-        {
-            entity.HasKey(token => new { token.UserId, token.LoginProvider, token.Name });
-        });
-
-        modelBuilder.Entity<IdentityUserClaim<Guid>>(entity =>
-        {
-            entity.HasKey(claim => claim.Id); // Id as primary key for claims
-        });
-
-        #endregion
-
-        #region Site
-
-        modelBuilder.Entity<Site>(entity =>
-        {
-            // Configure the Urls property to be stored as a comma-separated string
-            entity.Property(e => e.Urls)
+            entity.Property(u => u.Tokens)
                 .HasConversion(
-                    // Convert the List<string> to a comma-separated string for storage
-                    v => string.Join(",", v),
-                    // Convert the comma-separated string back to a List<string> when reading
-                    v => v.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).ToList()
-                );
-        });
+                    tokens => JsonSerializer.Serialize(tokens, jsonSerializerOptions),
+                    tokens => JsonSerializer.Deserialize<List<IdentityUserToken<Guid>>>(tokens, jsonSerializerOptions) ?? new List<IdentityUserToken<Guid>>());
 
-        #endregion
+            entity.Property(u => u.Logins)
+                .HasConversion(
+                    logins => JsonSerializer.Serialize(logins, jsonSerializerOptions),
+                    logins => JsonSerializer.Deserialize<List<IdentityUserLogin<Guid>>>(logins, jsonSerializerOptions) ?? new List<IdentityUserLogin<Guid>>());
+
+            entity.Property(u => u.RecoveryCodes)
+                .HasConversion(
+                    codes => JsonSerializer.Serialize(codes, jsonSerializerOptions),
+                    codes => JsonSerializer.Deserialize<List<UserTwoFactorRecoveryCode>>(codes, jsonSerializerOptions) ?? new List<UserTwoFactorRecoveryCode>());
+
+            entity.Property(u => u.Claims)
+                .HasConversion(
+                    claims => JsonSerializer.Serialize(claims, jsonSerializerOptions),
+                    claims => JsonSerializer.Deserialize<List<IdentityUserClaim<Guid>>>(claims, jsonSerializerOptions) ?? new List<IdentityUserClaim<Guid>>());
+        });
 
         base.OnModelCreating(modelBuilder);
     }
 
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    {
-        // Configure the DbContext to use NoTracking by default
-        optionsBuilder.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
-    }
+    //protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    //{
+    //    // Configure the DbContext to use NoTracking by default
+    //    optionsBuilder.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
+    //}
 }
