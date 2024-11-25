@@ -8,24 +8,7 @@ var configuration = builder.Configuration;
 services.AddApiServices();
 services.AddUIComponents();
 services.AddCmsServices(configuration);
-
-// Use LiteDB as database
-//services.AddLiteDbRepositories("LiteDb");
-
-// Use MongoDB as database
-//services.AddMongoDbRepositories("MongoDb");
-
-// Use Sqlite as database
-services.AddSqliteRepositories("Sqlite");
-
-// Use SqlServer as database
-//services.AddSqlServerRepositories("SqlServer");
-
-// Use MySql as database
-//services.AddMySqlRepositories("MySql");
-
-// Use PostgreSQL as database
-//services.AddPostgresRepositories("PostgreSQL");
+services.AddRepositoryServices(configuration);
 
 // Enable caching for repository layer
 services.AddCachedRepositories();
