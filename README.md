@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://fluentcms.com">
+  <a href="https://fluentcms.com" target="_blank">
     <img src="docs/resources/logo.png" width="120" alt="FluentCMS"/>
   </a>
 </p>
@@ -7,11 +7,11 @@
 <h3 align="center">FluentCMS: ASP.NET Core Blazor Content Management System (CMS)</h3>
 
 <p align="center">
-<img alt="GitHub last commit" src="https://img.shields.io/github/last-commit/FluentCMS/fluentcms?style=for-the-badge">
-<img alt="GitHub commit activity" src="https://img.shields.io/github/commit-activity/y/FluentCMS/fluentcms?style=for-the-badge">
-<img alt="GitHub License" src="https://img.shields.io/github/license/FluentCMS/fluentcms?style=for-the-badge">
-<img alt="GitHub contributors" src="https://img.shields.io/github/contributors/FluentCMS/fluentcms?style=for-the-badge">
-<a href="https://discord.gg/WyqYuC6YbY"><img alt="Discord" src="https://img.shields.io/discord/1165300406902067280&style=for-the-badge"></a>
+  <img alt="GitHub last commit" src="https://img.shields.io/github/last-commit/FluentCMS/fluentcms?style=for-the-badge">
+  <img alt="GitHub commit activity" src="https://img.shields.io/github/commit-activity/y/FluentCMS/fluentcms?style=for-the-badge">
+  <img alt="GitHub License" src="https://img.shields.io/github/license/FluentCMS/fluentcms?style=for-the-badge">
+  <img alt="GitHub contributors" src="https://img.shields.io/github/contributors/FluentCMS/fluentcms?style=for-the-badge">
+  <a href="https://discord.gg/WyqYuC6YbY"><img alt="Discord" src="https://img.shields.io/discord/1165300406902067280&style=for-the-badge"></a>
 </p>
 
 
