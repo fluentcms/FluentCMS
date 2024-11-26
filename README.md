@@ -1,6 +1,6 @@
 <p align="center">
     <a href="https://fluentcms.com" target="_blank">
-    <picture width="1220">
+    <picture width="120">
         <source
             srcset="docs/resources/logo-dark.svg"
             media="(prefers-color-scheme: dark)"
@@ -24,7 +24,19 @@
   <a href="https://discord.gg/WyqYuC6YbY"><img alt="Discord" src="https://img.shields.io/discord/1165300406902067280?label=discord"></a>
 </p>
 
+---
+## Table of contents
 
+* [Introduction](#introduction)
+* [Features](#features)
+* [Supported Databases](#supported-databases)
+* [Getting Started](#getting-started)
+  * [Prerequisites](#prerequisites)
+  * [Installation](#installation)
+* [Documentation](#roadmap)
+* [Contributing](#contributing)
+
+## Introduction
 FluentCMS is a modern Content Management System (CMS) built on the powerful ASP.NET Core and the innovative Blazor technology. FluentCMS assists content writers in crafting content more efficiently. Designed to be fast, flexible, and user-friendly, it not only serves as a traditional content-based CMS but also excels as a headless CMS, making it perfect for a diverse range of digital applications.
 
 ![Demo Gif](./docs/resources/demo.gif)
