@@ -11,7 +11,7 @@
   <img alt="GitHub commit activity" src="https://img.shields.io/github/commit-activity/y/FluentCMS/fluentcms?style=for-the-badge">
   <img alt="GitHub License" src="https://img.shields.io/github/license/FluentCMS/fluentcms?style=for-the-badge">
   <img alt="GitHub contributors" src="https://img.shields.io/github/contributors/FluentCMS/fluentcms?style=for-the-badge">
-  <img alt="Discord" src="https://img.shields.io/discord/1165300406902067280&style=for-the-badge">
+  <a href="https://discord.gg/WyqYuC6YbY"><img alt="Discord" src="https://img.shields.io/discord/1165300406902067280?label=discord&style=for-the-badge"></a>
 </p>
 
 
