@@ -1,10 +1,19 @@
-# FluentCMS
+<p align="center">
+  <a href="https://fluentcms.com">
+    <img src="docs/resources/logo.png" alt="FluentCMS"/>
+  </a>
+</p>
 
-![GitHub last commit](https://img.shields.io/github/last-commit/FluentCMS/fluentcms)
-![GitHub commit activity](https://img.shields.io/github/commit-activity/y/FluentCMS/fluentcms)
-![GitHub License](https://img.shields.io/github/license/FluentCMS/fluentcms)
-![GitHub contributors](https://img.shields.io/github/contributors/FluentCMS/fluentcms)
-![Discord](https://img.shields.io/discord/1165300406902067280)
+<h3 align="center">FluentCMS: ASP.NET Core Blazor Content Management System (CMS)</h3>
+
+<p align="center">
+<img alt="GitHub last commit" src="https://img.shields.io/github/last-commit/FluentCMS/fluentcms?style=for-the-badge">
+<img alt="GitHub commit activity" src="https://img.shields.io/github/commit-activity/y/FluentCMS/fluentcms?style=for-the-badge">
+<img alt="GitHub License" src="https://img.shields.io/github/license/FluentCMS/fluentcms?style=for-the-badge">
+<img alt="GitHub contributors" src="https://img.shields.io/github/contributors/FluentCMS/fluentcms?style=for-the-badge">
+<a href="https://discord.gg/WyqYuC6YbY"><img alt="Discord" src="https://img.shields.io/discord/1165300406902067280&style=for-the-badge"></a>
+</p>
+
 
 FluentCMS is a modern Content Management System (CMS) built on the powerful ASP.NET Core and the innovative Blazor technology. FluentCMS assists content writers in crafting content more efficiently. Designed to be fast, flexible, and user-friendly, it not only serves as a traditional content-based CMS but also excels as a headless CMS, making it perfect for a diverse range of digital applications.
 
