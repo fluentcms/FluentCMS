@@ -4,6 +4,18 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageId>FluentCMS.Repositories.EFCore.Sqlite</PackageId>
+    <Version>0.0.1</Version>
+    <Authors>Amir Pournasserian</Authors>
+    <Company>FluentCMS</Company>
+    <Description>Repositories EFCore SQLite.</Description>
+    <PackageTags>fluentcms;cms;efcore;sqlite;core;repository</PackageTags>
+    <RepositoryUrl>https://github.com/fluentcms/FluentCMS</RepositoryUrl>
+    <PackageProjectUrl>https://fluentcms.com</PackageProjectUrl>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -18,4 +30,8 @@
     <ProjectReference Include="..\FluentCMS.Repositories.EFCore\FluentCMS.Repositories.EFCore.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="..\..\..\icon.png" Pack="true" PackagePath="icon.png" />
+    <None Include="README.md" Pack="true" PackagePath="README.md" />
+  </ItemGroup>
 </Project>

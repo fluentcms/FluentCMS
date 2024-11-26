@@ -1,9 +1,20 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageId>FluentCMS.Providers.TemplateRenderingProviders</PackageId>
+    <Version>0.0.1</Version>
+    <Authors>Amir Pournasserian</Authors>
+    <Company>FluentCMS</Company>
+    <Description>template rendering provider abstractions.</Description>
+    <PackageTags>fluentcms;cms;template;rendering;provider;core</PackageTags>
+    <RepositoryUrl>https://github.com/fluentcms/FluentCMS</RepositoryUrl>
+    <PackageProjectUrl>https://fluentcms.com</PackageProjectUrl>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -15,4 +26,8 @@
     <ProjectReference Include="..\FluentCMS.Providers.TemplateRenderingProviders.Abstractions\FluentCMS.Providers.TemplateRenderingProviders.Abstractions.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="..\..\..\icon.png" Pack="true" PackagePath="icon.png" />
+    <None Include="README.md" Pack="true" PackagePath="README.md" />
+  </ItemGroup>
 </Project>

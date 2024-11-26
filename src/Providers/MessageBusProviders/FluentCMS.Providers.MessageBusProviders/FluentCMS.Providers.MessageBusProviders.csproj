@@ -1,9 +1,22 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageId>FluentCMS.Providers.MessageBusProviders</PackageId>
+    <Version>0.0.1</Version>
+    <Authors>Amir Pournasserian</Authors>
+    <Company>FluentCMS</Company>
+    <Description>message bus provider.</Description>
+    <PackageTags>fluentcms;cms;messagebus;provider;core</PackageTags>
+    <RepositoryUrl>https://github.com/fluentcms/FluentCMS</RepositoryUrl>
+    <PackageProjectUrl>https://fluentcms.com</PackageProjectUrl>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,4 +27,8 @@
     <ProjectReference Include="..\FluentCMS.Providers.MessageBusProviders.Abstractions\FluentCMS.Providers.MessageBusProviders.Abstractions.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="..\..\..\icon.png" Pack="true" PackagePath="icon.png" />
+    <None Include="README.md" Pack="true" PackagePath="README.md" />
+  </ItemGroup>
 </Project>

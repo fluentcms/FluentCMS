@@ -1,9 +1,20 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
-
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageId>FluentCMS.Web.Plugins.Block</PackageId>
+    <Version>0.0.1</Version>
+    <Authors>Amir Pournasserian</Authors>
+    <Company>FluentCMS</Company>
+    <Description>Block plugin.</Description>
+    <PackageTags>fluentcms;cms;block;plugin;core</PackageTags>
+    <RepositoryUrl>https://github.com/fluentcms/FluentCMS</RepositoryUrl>
+    <PackageProjectUrl>https://fluentcms.com</PackageProjectUrl>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,7 +25,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Scriban" Version="5.11.0" />
+    <None Include="..\..\..\icon.png" Pack="true" PackagePath="icon.png" />
+    <None Include="README.md" Pack="true" PackagePath="README.md" />
   </ItemGroup>
-
 </Project>
