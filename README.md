@@ -14,7 +14,7 @@
     </a>
 </p>
 
-<h3 align="center">FluentCMS: ASP.NET Core Blazor Content Management System (CMS)</h3>
+<h1 align="center">FluentCMS</h1>
 
 <p align="center">
   <img alt="GitHub last commit" src="https://img.shields.io/github/last-commit/FluentCMS/fluentcms">
