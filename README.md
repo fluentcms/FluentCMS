@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://fluentcms.com">
-    <img src="docs/resources/logo.png" alt="FluentCMS"/>
+    <img src="docs/resources/logo.png" width="120" alt="FluentCMS"/>
   </a>
 </p>
 
