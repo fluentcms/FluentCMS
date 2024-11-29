@@ -9,13 +9,19 @@ public class HttpLogRepository(ILiteDBContext liteDbContext) : IHttpLogRepositor
 
     public async Task Create(HttpLog log, CancellationToken cancellationToken = default)
     {
-        log.Id = Guid.NewGuid();
-
         cancellationToken.ThrowIfCancellationRequested();
 
-        var collectionName = $"{nameof(HttpLog)}s{log.StatusCode.ToString()[..1]}";
-        var collection = LiteDbContext.Database.GetCollection < HttpLog>(collectionName);
-        
+        log.Id = Guid.NewGuid();
+        var collection = LiteDbContext.Database.GetCollection<HttpLog>(GetCollectionName(log.StatusCode));
+
         await collection.InsertAsync(log);
     }
+
+    private static string GetCollectionName(int statusCode) => statusCode switch
+    {
+        < 500 and >= 400 => "HttpLog400",
+        < 400 and >= 300 => "HttpLog300",
+        >= 500 => "HttpLog500",
+        _ => "HttpLog200"
+    };
 }

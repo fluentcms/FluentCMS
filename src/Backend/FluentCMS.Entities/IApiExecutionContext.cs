@@ -62,4 +62,10 @@ public interface IApiExecutionContext
     /// Returns an empty string if the user is not authenticated.
     /// </summary>
     string Username { get; }
+
+
+    /// <summary>
+    /// Gets the API token key associated with the current request, which can be used for
+    /// </summary>
+    string ApiTokenKey { get; }
 }

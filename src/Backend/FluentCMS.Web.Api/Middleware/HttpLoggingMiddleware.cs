@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using System.Text;
 
 namespace FluentCMS.Web.Api.Middleware;
@@ -48,6 +49,10 @@ internal sealed class HttpLoggingMiddleware
             var responseBody = await ReadResponseBody(context, originalResponseStream, responseMemoryStream);
 
             exception ??= context.Features.Get<IExceptionHandlerFeature>()?.Error;
+            var assembly = Assembly.GetEntryAssembly();
+            var assemblyName = assembly?.GetName();
+            var process = Process.GetCurrentProcess();
+            var thread = Thread.CurrentThread;
 
             var httpLog = new HttpLog
             {
@@ -55,9 +60,26 @@ internal sealed class HttpLoggingMiddleware
                 Response = GetHttpResponseLog(context.Response, responseBody),
                 StatusCode = context.Response.StatusCode,
                 Duration = stopwatch.ElapsedMilliseconds,
-                Context = apiContext,
-                Exception = GetHttpException(exception)
-
+                Exception = GetHttpException(exception),
+                AssemblyName = assemblyName?.Name ?? string.Empty,
+                AssemblyVersion = assemblyName?.Version?.ToString() ?? string.Empty,
+                ProcessId = process.Id,
+                ProcessName = process.ProcessName,
+                ThreadId = thread.ManagedThreadId,
+                MemoryUsage = process.PrivateMemorySize64,
+                MachineName = Environment.MachineName,
+                EnvironmentName = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? string.Empty,
+                EnvironmentUserName = Environment.UserName,
+                ApiTokenKey = apiContext.ApiTokenKey,
+                IsAuthenticated = apiContext.IsAuthenticated,
+                Language = apiContext.Language,
+                SessionId = apiContext.SessionId,
+                StartDate = apiContext.StartDate,
+                TraceId = apiContext.TraceId,
+                UniqueId = apiContext.UniqueId,
+                UserId = apiContext.UserId,
+                UserIp = apiContext.UserIp,
+                Username = apiContext.Username
             };
 
             await repository.Create(httpLog);
@@ -113,7 +135,7 @@ internal sealed class HttpLoggingMiddleware
             ContentType = response.ContentType ?? string.Empty,
             ContentLength = response.ContentLength,
             Body = responseBody,
-            Headers = response.Headers?.ToDictionary(x => x.Key, x => x.Value.ToString()) ?? [];
+            Headers = response.Headers?.ToDictionary(x => x.Key, x => x.Value.ToString()) ?? []
         };
     }
 
@@ -129,7 +151,7 @@ internal sealed class HttpLoggingMiddleware
             HResult = exception.HResult,
             Message = exception.Message ?? string.Empty,
             Source = exception.Source ?? string.Empty,
-            StackTrace = exception.StackTrace ?? string.Empty ,
+            StackTrace = exception.StackTrace ?? string.Empty,
         };
     }
 }
