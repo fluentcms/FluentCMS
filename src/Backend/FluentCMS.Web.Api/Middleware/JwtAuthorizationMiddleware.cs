@@ -17,7 +17,9 @@ public class JwtAuthorizationMiddleware
     /// Constructor to initialize the middleware with the next delegate in the pipeline.
     /// </summary>
     /// <param name="next">The next delegate/middleware in the request pipeline.</param>
+#pragma warning disable IDE0290 // Use primary constructor
     public JwtAuthorizationMiddleware(RequestDelegate next)
+#pragma warning restore IDE0290 // Use primary constructor
     {
         _next = next; // Store the next middleware delegate
     }
