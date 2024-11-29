@@ -23,9 +23,9 @@
             case "sqlserver":
                 services.AddSqlServerRepositories(connectionStringName);
                 break;
-            case "mysql":
-                services.AddMySqlRepositories(connectionStringName);
-                break;
+            //case "mysql":
+            //    services.AddMySqlRepositories(connectionStringName);
+            //    break;
             case "postgresql":
                 services.AddPostgresRepositories(connectionStringName);
                 break;
