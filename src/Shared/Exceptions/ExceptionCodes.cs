@@ -155,6 +155,7 @@ public static class ExceptionCodes
     public const string PageUnableToDelete = "Page.UnableToDelete";
     public const string PagePathMustBeUnique = "Page.PathMustBeUnique";
     public const string PageNotFound = "Page.NotFound";
+    public const string PageCannotDeleteHome = "Page.CannotDeleteHome";
     public const string PagePathInvalidCharacter = "Page.PathInvalidCharacter";
     public const string PageParentPageNotFound = "Page.ParentPageNotFound";
     public const string PageParentCannotBeHome = "Page.ParentCannotBeHome";

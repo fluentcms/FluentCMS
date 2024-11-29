@@ -100,6 +100,10 @@ public class PageService(IPageRepository pageRepository, IPageInternalService in
         if (pageModel.Children.Count != 0)
             throw new AppException(ExceptionCodes.PageHasChildren);
 
+        // check that if page is home page
+        if (pageModel.FullPath == "/")
+            throw new AppException(ExceptionCodes.PageCannotDeleteHome);
+
         var deletedPage = await pageRepository.Delete(id, cancellationToken) ??
              throw new AppException(ExceptionCodes.PageUnableToDelete);
 

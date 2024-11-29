@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
@@ -16,7 +16,6 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\..\FluentCMS.Web.ApiClients\FluentCMS.Web.ApiClients.csproj" />
     <ProjectReference Include="..\..\FluentCMS.Web.UI.Components\FluentCMS.Web.UI.Components.csproj" />

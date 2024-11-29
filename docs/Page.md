@@ -52,7 +52,7 @@ FluentCMS offers comprehensive tools for DailyNews to create and manage dynamic 
 * Custom HTML/CSS: Add custom HTML and CSS to further personalize the look and feel of a page (FluentCMS HtmlString Plugin).
 * Preview Mode: View pages in a preview mode to see how they will appear to end users before publishing.
 * Add New/Existing Plugin into specific part of page by simple drag and drop.
-* Copy exsisting Plugin into specific part of page by simple drag and drop.
+* Copy existing Plugin into specific part of page by simple drag and drop.
 
 ### Navigation and SEO
 * Page Hierarchy: Define a hierarchical structure for pages to organize content and improve navigation.

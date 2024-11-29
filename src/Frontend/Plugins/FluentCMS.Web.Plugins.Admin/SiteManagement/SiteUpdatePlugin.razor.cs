@@ -72,9 +72,14 @@ public partial class SiteUpdatePlugin
     {
         var settings = siteDetailResponse.Settings ?? [];
 
+        settings.TryGetValue("MetaTitle", out var metaTitle);
+        settings.TryGetValue("MetaDescription", out var metaDescription);
+        settings.TryGetValue("GoogleTagsId", out var googleTagsId);
         settings.TryGetValue("Index", out var index);
         settings.TryGetValue("Follow", out var follow);
-
+        settings.TryGetValue("RobotsTxt", out var robotsTxt);
+        settings.TryGetValue("OgType", out var ogType);
+        settings.TryGetValue("Head", out var head);
 
         var model = new SiteUpdateModel
         {
@@ -86,14 +91,14 @@ public partial class SiteUpdatePlugin
             EditLayoutId = siteDetailResponse.EditLayoutId,
             AdminRoleIds = siteDetailResponse.AdminRoleIds!,
             ContributorRoleIds = siteDetailResponse.ContributorRoleIds!,
-            MetaTitle = settings["MetaTitle"] ?? string.Empty,
-            MetaDescription = settings["MetaDescription"] ?? string.Empty,
-            GoogleTagsId = settings["GoogleTagsId"] ?? string.Empty,
+            MetaTitle = metaTitle ?? string.Empty,
+            MetaDescription = metaDescription ?? string.Empty,
+            GoogleTagsId = googleTagsId ?? string.Empty,
             Index = index == "true",
             Follow = follow == "true",
-            RobotsTxt = settings["RobotsTxt"] ?? string.Empty,
-            OgType = settings["OgType"] ?? string.Empty,
-            Head = settings["Head"] ?? string.Empty,
+            RobotsTxt = robotsTxt ?? string.Empty,
+            OgType = ogType ?? string.Empty,
+            Head = head ?? string.Empty,
             Urls = string.Join(",", siteDetailResponse.Urls ?? []),
         };
         return model;
