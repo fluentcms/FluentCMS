@@ -20,7 +20,7 @@
                 @if (!context.Locked)
                 {
                     <ActionButtonEdit Href="@GetUrl("Update Page", new { id = @context.Id })"/>
-                    <ActionButtonDelete @onclick="() => OnConfirm(context)"/>
+                    <ActionButtonDelete Visible="@(context.Path != "/")" @onclick="() => OnConfirm(context)"/>
                 }
                 <ActionButton IconName="IconName.Eye" Color="Color.Success" Label="Open" Href="@context.FullPath" target="_blank" />
             </ActionButtons>
