@@ -1,4 +1,4 @@
-﻿namespace FluentCMS;
+﻿namespace FluentCMS.Entities;
 
 // TODO: move this to a project which include server side shared resources which will be accessible in any other server projects
 

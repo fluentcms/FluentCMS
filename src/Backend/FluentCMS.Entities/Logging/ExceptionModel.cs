@@ -1,7 +1,6 @@
-﻿using Microsoft.AspNetCore.Http;
-using System.Collections;
+﻿using System.Collections;
 
-namespace FluentCMS.Web.Api.Logging.Models;
+namespace FluentCMS.Entities.Logging;
 
 public class ExceptionModel
 {

@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Web.Api.Logging.Models;
+﻿namespace FluentCMS.Entities.Logging;
 
 public sealed class HttpLog : Entity
 {
