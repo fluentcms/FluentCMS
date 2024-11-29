@@ -23,7 +23,8 @@ public class ContentMessageHandler(IContentService contentService) : IMessageHan
                                 }
                                 else if (field.Type == "multiple-file" && value is IEnumerable<string> filePaths)
                                 {
-                                    processedData[field.Name] = filePaths.Select(filePath => {
+                                    processedData[field.Name] = filePaths.Select(filePath =>
+                                    {
                                         return GetFileIdByPath(site, filePath, cancellationToken);
                                     });
                                 }
