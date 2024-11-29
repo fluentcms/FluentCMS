@@ -30,7 +30,7 @@ jobs:
         run: |
           for package in $(find ./src -name "*.nupkg"); do
             echo "Should publish $package to nuget"
-            # dotnet nuget push "$package" --source https://api.nuget.org/v3/index.json --api-key ${NUGET_TOKEN} &
+            dotnet nuget push "$package" --source https://api.nuget.org/v3/index.json --api-key ${NUGET_TOKEN} &
           done
           wait
         env:
