@@ -3,17 +3,37 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageId>FluentCMS.Web.Plugins.Admin</PackageId>
+    <Version>0.0.1</Version>
+    <Authors>Amir Pournasserian</Authors>
+    <Company>FluentCMS</Company>
+    <Description>admin plugins.</Description>
+    <PackageTags>fluentcms;cms;admin;plugin;core</PackageTags>
+    <RepositoryUrl>https://github.com/fluentcms/FluentCMS</RepositoryUrl>
+    <PackageProjectUrl>https://fluentcms.com</PackageProjectUrl>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.Forms" Version="9.0.0" />
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="9.0.0" />
   </ItemGroup>
+
   <ItemGroup>
     <Folder Include="Auth\" />
   </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\FluentCMS.Web.Plugins.Base\FluentCMS.Web.Plugins.Base.csproj" />
     <ProjectReference Include="..\..\FluentCMS.Web.ApiClients\FluentCMS.Web.ApiClients.csproj" />
     <ProjectReference Include="..\..\FluentCMS.Web.UI.Components\FluentCMS.Web.UI.Components.csproj" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <None Include="..\..\..\icon.png" Pack="true" PackagePath="icon.png" />
+    <None Include="README.md" Pack="true" PackagePath="README.md" />
   </ItemGroup>
 </Project>
