@@ -1,18 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
-    <PropertyGroup>
-        <TargetFramework>net8.0</TargetFramework>
-        <ImplicitUsings>disable</ImplicitUsings>
-        <Nullable>enable</Nullable>
-    </PropertyGroup>
-
-    <ItemGroup>
-        <PackageReference Include="AutoMapper" Version="13.0.1" />
-        <PackageReference Include="Swashbuckle.AspNetCore" Version="6.9.0" />
-    </ItemGroup>
-
-    <ItemGroup>
-        <ProjectReference Include="..\FluentCMS.Services\FluentCMS.Services.csproj" />
-    </ItemGroup>
-
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="AutoMapper" Version="13.0.1" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="7.1.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\FluentCMS.Services\FluentCMS.Services.csproj" />
+  </ItemGroup>
 </Project>

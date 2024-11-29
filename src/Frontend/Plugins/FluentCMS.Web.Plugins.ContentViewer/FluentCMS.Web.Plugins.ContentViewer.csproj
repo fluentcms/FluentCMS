@@ -1,16 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
-
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\..\..\Providers\TemplateRenderingProviders\FluentCMS.Providers.TemplateRenderingProviders.Abstractions\FluentCMS.Providers.TemplateRenderingProviders.Abstractions.csproj" />
     <ProjectReference Include="..\FluentCMS.Web.Plugins.Base\FluentCMS.Web.Plugins.Base.csproj" />
     <ProjectReference Include="..\..\FluentCMS.Web.ApiClients\FluentCMS.Web.ApiClients.csproj" />
     <ProjectReference Include="..\..\FluentCMS.Web.UI.Components\FluentCMS.Web.UI.Components.csproj" />
   </ItemGroup>
-
 </Project>
