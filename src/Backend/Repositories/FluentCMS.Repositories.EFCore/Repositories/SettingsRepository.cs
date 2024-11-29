@@ -32,13 +32,13 @@ public class SettingsRepository(FluentCmsDbContext dbContext, IApiExecutionConte
                 Id = entityId,
                 CreatedAt = DateTime.UtcNow,
                 CreatedBy = apiExecutionContext.Username,
-                Values = settings.Where(x => !string.IsNullOrEmpty(x.Value)).Select(x=> new SettingValuesModel
+                Values = settings.Where(x => !string.IsNullOrEmpty(x.Value)).Select(x => new SettingValuesModel
                 {
                     Id = Guid.NewGuid(),
                     Key = x.Key,
                     Value = x.Value,
                     SettingId = entityId
-                } ).ToList()
+                }).ToList()
             };
 
             dbContext.Settings.Add(newDbSettings);

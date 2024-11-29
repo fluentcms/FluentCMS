@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 
 namespace FluentCMS.Repositories.EFCore;

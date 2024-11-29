@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Repositories.EFCore;
 
-public class PluginRepository(FluentCmsDbContext dbContext,IMapper mapper, IApiExecutionContext apiExecutionContext) : SiteAssociatedRepository<Plugin, PluginModel>(dbContext, mapper, apiExecutionContext), IPluginRepository
+public class PluginRepository(FluentCmsDbContext dbContext, IMapper mapper, IApiExecutionContext apiExecutionContext) : SiteAssociatedRepository<Plugin, PluginModel>(dbContext, mapper, apiExecutionContext), IPluginRepository
 {
     public async Task<IEnumerable<Plugin>> GetByPageId(Guid pageId, CancellationToken cancellationToken = default)
     {
