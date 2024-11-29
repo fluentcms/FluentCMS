@@ -2,6 +2,7 @@
 
 public sealed class HttpLog : Entity
 {
+    public string Url { get; set; } = string.Empty;
     public HttpRequestLog? Request { get; set; }
     public HttpResponseLog? Response { get; set; }
     public HttpException? Exception { get; set; }

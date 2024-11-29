@@ -56,6 +56,7 @@ internal sealed class HttpLoggingMiddleware
 
             var httpLog = new HttpLog
             {
+                Url = context.Request.GetDisplayUrl(),
                 Request = GetHttpRequestLog(context.Request, requestBody),
                 Response = GetHttpResponseLog(context.Response, responseBody),
                 StatusCode = context.Response.StatusCode,
@@ -114,7 +115,7 @@ internal sealed class HttpLoggingMiddleware
     {
         return new HttpRequestLog
         {
-            DisplayUrl = request.GetDisplayUrl(),
+            Url = request.GetDisplayUrl(),
             Protocol = request.Protocol,
             Method = request.Method,
             Scheme = request.Scheme,

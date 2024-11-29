@@ -2,7 +2,7 @@
 
 namespace FluentCMS.Repositories.LiteDb;
 
-public class HttpLogRepository: IHttpLogRepository
+public class HttpLogRepository : IHttpLogRepository
 {
     private readonly ILiteDatabaseAsync _liteDatabase;
     private readonly ILiteDBContext _liteDbContext;
@@ -13,7 +13,7 @@ public class HttpLogRepository: IHttpLogRepository
     {
         _liteDatabase = liteDbContext.Database;
         _liteDbContext = liteDbContext;
-                
+
         if (!_isInitialized)
         {
             // check if DB exists and has at least one collection (any collection)
@@ -23,6 +23,7 @@ public class HttpLogRepository: IHttpLogRepository
 
     public async Task Create(HttpLog log, CancellationToken cancellationToken = default)
     {
+        // log into DB only if it is initialized
         if (_isInitialized)
         {
             cancellationToken.ThrowIfCancellationRequested();
