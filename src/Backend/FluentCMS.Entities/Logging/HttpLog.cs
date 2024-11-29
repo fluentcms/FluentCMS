@@ -17,5 +17,5 @@ public sealed class HttpLog : Entity
     public string EnvironmentName { get; set; } = string.Empty;
     public string EnvironmentUserName { get; set; } = string.Empty;
     public IApiExecutionContext? Context { get; set; }
-    public ExceptionModel? Exception { get; set; }
+    public HttpException? Exception { get; set; }
 }

@@ -2,6 +2,7 @@
 using FluentCMS.Repositories.Abstractions;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Extensions;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
@@ -12,51 +13,59 @@ internal sealed class HttpLoggingMiddleware
 {
     private readonly RequestDelegate _next;
 
+#pragma warning disable IDE0290 // Use primary constructor
     public HttpLoggingMiddleware(RequestDelegate next)
+#pragma warning restore IDE0290 // Use primary constructor
     {
         _next = next;
     }
 
     public async Task Invoke(HttpContext context, IHttpLogRepository repository, IApiExecutionContext apiContext)
     {
+        var stopwatch = Stopwatch.StartNew();
+
+        var requestBody = await ReadRequestBody(context.Request);
+
+        var originalResponseStream = context.Response.Body;
+        await using var responseMemoryStream = new MemoryStream();
+        context.Response.Body = responseMemoryStream;
+
+        Exception? exception = null;
+
         try
         {
-            var stopwatch = Stopwatch.StartNew();
-
-            var requestBody = await ReadRequestBody(context.Request);
-
-            var originalResponseStream = context.Response.Body;
-            await using var responseMemoryStream = new MemoryStream();
-            context.Response.Body = responseMemoryStream;
-
-            Exception exception = null;
-
-            try
-            {
-                await _next(context);
-            }
-            catch (Exception ex)
-            {
-                exception = ex;
-                throw;
-            }
-            finally
-            {
-                var responseBody = await ReadResponseBody(context, originalResponseStream, responseMemoryStream);
-
-                stopwatch.Stop();
-
-                var logModel = CreateLogModel(context, apiContext, requestBody, responseBody, stopwatch.ElapsedMilliseconds, exception != null ? 500 : null, exception);
-                await Log(logModel, repository);
-            }
+            await _next(context);
         }
         catch (Exception ex)
         {
+            exception = ex;
             throw;
+        }
+        finally
+        {
+            stopwatch.Stop();
+
+            var responseBody = await ReadResponseBody(context, originalResponseStream, responseMemoryStream);
+
+            exception ??= context.Features.Get<IExceptionHandlerFeature>()?.Error;
+
+            var httpLog = new HttpLog
+            {
+                Request = GetHttpRequestLog(context.Request, requestBody),
+                Response = GetHttpResponseLog(context.Response, responseBody),
+                StatusCode = context.Response.StatusCode,
+                Duration = stopwatch.ElapsedMilliseconds,
+                Context = apiContext,
+                Exception = GetHttpException(exception)
+
+            };
+
+            await repository.Create(httpLog);
+
         }
     }
 
-    private async Task<string> ReadRequestBody(HttpRequest request)
+    private static async Task<string> ReadRequestBody(HttpRequest request)
     {
         request.EnableBuffering();
 
@@ -67,7 +76,7 @@ internal sealed class HttpLoggingMiddleware
         return requestBody;
     }
 
-    private async Task<string> ReadResponseBody(HttpContext context, Stream originalResponseStream, Stream memoryStream)
+    private static async Task<string> ReadResponseBody(HttpContext context, Stream originalResponseStream, Stream memoryStream)
     {
         memoryStream.Position = 0;
         using var reader = new StreamReader(memoryStream, encoding: Encoding.UTF8);
@@ -79,23 +88,48 @@ internal sealed class HttpLoggingMiddleware
         return responseBody;
     }
 
-    private static HttpLog CreateLogModel(HttpContext context, IApiExecutionContext apiContext, string requestBody, string responseBody, long duration, int? statusCode = null, Exception exception = null)
+    private static HttpRequestLog GetHttpRequestLog(HttpRequest request, string requestBody)
     {
-        exception ??= context.Features.Get<IExceptionHandlerFeature>()?.Error;
-
-        return new HttpLog
+        return new HttpRequestLog
         {
-            Request = new HttpRequestLog(context.Request, requestBody),
-            Response = new HttpResponseLog(context.Response, responseBody),
-            StatusCode = statusCode ?? context.Response.StatusCode,
-            Duration = duration,
-            Context = apiContext,
-            Exception = exception == null ? null : new ExceptionModel(exception)
+            DisplayUrl = request.GetDisplayUrl(),
+            Protocol = request.Protocol,
+            Method = request.Method,
+            Scheme = request.Scheme,
+            PathBase = request.PathBase,
+            Path = request.Path,
+            QueryString = request.QueryString.Value ?? string.Empty,
+            ContentType = request.ContentType ?? string.Empty,
+            ContentLength = request.ContentLength,
+            Headers = request.Headers?.ToDictionary(x => x.Key, x => x.Value.ToString()) ?? [],
+            Body = requestBody
         };
     }
 
-    private static async Task Log(HttpLog log, IHttpLogRepository repository)
+    private static HttpResponseLog GetHttpResponseLog(HttpResponse response, string responseBody)
     {
-        await repository.Create(log);
+        return new HttpResponseLog
+        {
+            ContentType = response.ContentType ?? string.Empty,
+            ContentLength = response.ContentLength,
+            Body = responseBody,
+            Headers = response.Headers?.ToDictionary(x => x.Key, x => x.Value.ToString()) ?? [];
+        };
+    }
+
+    private static HttpException? GetHttpException(Exception? exception)
+    {
+        if (exception == null)
+            return null;
+
+        return new HttpException
+        {
+            Data = exception.Data,
+            HelpLink = exception.HelpLink ?? string.Empty,
+            HResult = exception.HResult,
+            Message = exception.Message ?? string.Empty,
+            Source = exception.Source ?? string.Empty,
+            StackTrace = exception.StackTrace ?? string.Empty ,
+        };
     }
 }
