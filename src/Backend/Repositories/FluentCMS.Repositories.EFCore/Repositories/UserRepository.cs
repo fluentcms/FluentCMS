@@ -1,5 +1,5 @@
-﻿using System.Security.Claims;
-using AutoMapper.QueryableExtensions;
+﻿using AutoMapper.QueryableExtensions;
+using System.Security.Claims;
 
 namespace FluentCMS.Repositories.EFCore;
 
