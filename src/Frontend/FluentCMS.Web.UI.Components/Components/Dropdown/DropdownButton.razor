@@ -1,0 +1,18 @@
+@inherits Button
+
+@namespace FluentCMS.Web.UI.Components
+
+@if(Visible)
+{
+    <Button @attributes="AdditionalAttributes"
+            Color="@Color"
+            Disabled="@Disabled"
+            Ghost="@Ghost"
+            Href="@Href"
+            Outline="@Outline"
+            Size="@Size"
+            Type="@Type">
+        @ChildContent
+        <Icon Name="IconName.AngleDown" />
+    </Button>
+}

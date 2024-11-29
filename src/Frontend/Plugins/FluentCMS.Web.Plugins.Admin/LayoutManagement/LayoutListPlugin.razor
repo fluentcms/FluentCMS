@@ -1,0 +1,25 @@
+﻿@inherits BasePlugin
+@rendermode InteractiveServer
+
+<PluginBody Title="Layouts">
+    <ActionsFragment>
+        <ActionButtonCreate Href="@GetUrl("Create Layout")" Label="Add Layout" />
+    </ActionsFragment>
+    <ChildContent>
+        <DataTable Items="Layouts">
+            <DataTableItem Label="Name">@context.Name</DataTableItem>
+            <DataTableItem Label="Created By">@(context.CreatedBy ?? string.Empty)</DataTableItem>
+            <DataTableItem Label="Created At">@context.CreatedAt</DataTableItem>
+            <DataTableItem Label="Modified By">@(context.ModifiedBy ?? string.Empty)</DataTableItem>
+            <DataTableItem Label="Modified At">@context.ModifiedAt</DataTableItem>
+            <ActionButtons>
+                <ActionButtonDelete Visible="@(context.Id != Site.LayoutId && context.Id != Site.EditLayoutId && context.Id != Site.DetailLayoutId)" @onclick="() => OnConfirm(context)" />
+                <ActionButtonEdit Href="@GetUrl("Update Layout", new { id = @context.Id })" />
+            </ActionButtons>
+        </DataTable>
+    </ChildContent>
+</PluginBody>
+
+<Confirm OnConfirm="OnDelete" OnCancel="OnConfirmClose" Visible="SelectedLayout != null">
+    Are you sure to delete <b>"@SelectedLayout!.Name"</b> layout?
+</Confirm>

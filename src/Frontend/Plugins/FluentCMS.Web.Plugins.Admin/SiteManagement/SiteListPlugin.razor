@@ -1,0 +1,39 @@
+﻿@inherits BasePlugin
+@rendermode InteractiveServer
+
+<PluginBody Title="Sites">
+    <ActionsFragment>
+        <ActionButtonCreate Href="@GetUrl("Create Site")" Label="Add Site" />
+    </ActionsFragment>
+    <ChildContent>
+        <DataTable Items="Sites">
+            <DataTableItem Label="Name">@context.Name</DataTableItem>
+            <DataTableItem Label="Description">@context.Description</DataTableItem>
+            <DataTableItem Label="Url">
+                <Stack Visible="@(context?.Urls != null)">
+                    @foreach (var url in context!.Urls!)
+                    {
+                        <Badge Color="Color.Primary">@url</Badge>
+                    }
+                </Stack>
+            </DataTableItem>
+            <DataTableItem Label="Layout">
+                @Layouts.Find(x => x.Id == context.LayoutId)?.Name
+            </DataTableItem>
+            <DataTableItem Label="Detail Layout">
+                @Layouts.Find(x => x.Id == context.DetailLayoutId)?.Name
+            </DataTableItem>
+            <DataTableItem Label="Edit Layout">
+                @Layouts.Find(x => x.Id == context.EditLayoutId)?.Name
+            </DataTableItem>
+            <ActionButtons>
+                <ActionButtonEdit Href="@GetUrl("Update Site", new { id = @context.Id })" />
+                <ActionButtonDelete @onclick="() => OnConfirm(context)" Visible="ViewState.Site.Id != context.Id" />
+            </ActionButtons>
+        </DataTable>
+    </ChildContent>
+</PluginBody>
+
+<Confirm OnConfirm="OnDelete" OnCancel="OnConfirmClose" Visible="SelectedSite != null">
+    Are you sure to delete <b>"@SelectedSite!.Name"</b> site?
+</Confirm>

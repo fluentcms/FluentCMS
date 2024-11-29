@@ -1,0 +1,36 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageId>FluentCMS.Services</PackageId>
+    <Version>0.0.1</Version>
+    <Authors>Amir Pournasserian</Authors>
+    <Company>FluentCMS</Company>
+    <Description>Services.</Description>
+    <PackageTags>fluentcms;cms;services;core</PackageTags>
+    <RepositoryUrl>https://github.com/fluentcms/FluentCMS</RepositoryUrl>
+    <PackageProjectUrl>https://fluentcms.com</PackageProjectUrl>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="AutoMapper" Version="13.0.1" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.0" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Providers\ApiTokenProviders\FluentCMS.Providers.ApiTokenProviders.Abstractions\FluentCMS.Providers.ApiTokenProviders.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Providers\CacheProviders\FluentCMS.Providers.CacheProviders.Abstractions\FluentCMS.Providers.CacheProviders.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Providers\EmailProviders\FluentCMS.Providers.EmailProviders.Abstractions\FluentCMS.Providers.EmailProviders.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Providers\FileStorageProviders\FluentCMS.Providers.FileStorageProviders.Abstractions\FluentCMS.Providers.FileStorageProviders.Abstractions.csproj" />
+    <ProjectReference Include="..\..\Providers\MessageBusProviders\FluentCMS.Providers.MessageBusProviders.Abstractions\FluentCMS.Providers.MessageBusProviders.Abstractions.csproj" />
+    <ProjectReference Include="..\FluentCMS.Identity\FluentCMS.Identity.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\icon.png" Pack="true" PackagePath="icon.png" />
+    <None Include="README.md" Pack="true" PackagePath="README.md" />
+  </ItemGroup>
+</Project>

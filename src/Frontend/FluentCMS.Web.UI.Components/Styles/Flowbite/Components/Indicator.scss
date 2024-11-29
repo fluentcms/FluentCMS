@@ -1,0 +1,34 @@
+$indicator-wrapper: $prefix + 'indicator-wrapper';
+$indicator-dot: $prefix + 'indicator-dot';
+$indicator: $prefix + 'indicator';
+
+.#{$indicator-wrapper} {
+    @apply inline-flex items-center text-xs font-medium px-2.5 py-0.5 rounded-full;
+
+    &.#{$indicator}-color-default {
+        @apply bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300;
+    }
+
+    @each $key, $value in $colors {
+        &.#{$indicator}-color-#{$key} {
+            @apply bg-#{$value}-100 text-#{$value}-800 dark:bg-#{$value}-900 dark:text-#{$value}-300;
+        }
+    }
+}
+
+.#{$indicator-dot} {
+    @apply flex w-2 h-2 me-1 rounded-full flex-shrink-0;
+
+    .#{$indicator}-color-default &,
+    &.#{$indicator}-color-default {
+        @apply bg-gray-600;
+    }
+
+    @each $key, $value in $colors {
+
+        .#{$indicator}-color-#{$key} &,
+        &.#{$indicator}-color-#{$key} {
+            @apply bg-#{$value}-600;
+        }
+    }
+}

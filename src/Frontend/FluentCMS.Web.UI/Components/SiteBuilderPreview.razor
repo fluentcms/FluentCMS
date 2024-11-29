@@ -1,0 +1,33 @@
+@namespace FluentCMS.Web.UI
+
+@if (ViewState.Page.HasAdminAccess)
+{
+    <HeadContent>
+        <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/sitebuilder.preview.css">
+        @if (Head != null)
+        {
+            @Head
+        }
+    </HeadContent>
+    @if (Body != null)
+    {
+        @Body
+    }
+    <div class="f-page-editor-sidebar f-page-editor-sidebar-open">
+        <div class="f-plugin-definition-list">
+            @foreach (var pluginDef in PluginDefinitions.Where(x => !x.Locked))
+            {
+                <div data-id="@pluginDef.Id" class="f-plugin-definition-item">
+                    <span class="f-plugin-definition-item-icon">
+                        @((MarkupString)(pluginDef.Icon ?? ""))
+                    </span>
+                    <div class="f-plugin-definition-item-content">
+                        <span class="f-name">@pluginDef.Name</span>
+                        <span class="f-description">@pluginDef.Description</span>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+    <SiteBuilderPreviewScript />
+}

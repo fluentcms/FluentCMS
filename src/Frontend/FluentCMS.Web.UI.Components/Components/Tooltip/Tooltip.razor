@@ -1,0 +1,13 @@
+@inherits BaseComponent
+
+@namespace FluentCMS.Web.UI.Components
+
+@if(Visible)
+{
+    <div @attributes="AdditionalAttributes" @ref="Element" class="@this.GetClasses()">
+        @if (ChildContent != null)
+        {
+            @ChildContent
+        }
+    </div>
+}

@@ -1,0 +1,10 @@
+@inherits BasePlugin
+@rendermode InteractiveServer
+
+<PluginForm Model="@Model" Name="@FORM_NAME" Title="Update Block" OnSubmit="OnSubmit">
+    <FormInput @bind-Value="Model!.Name" Cols="6" Label="Name" Placeholder="Enter Name" Required />
+    <FormInput @bind-Value="Model!.Category" Cols="6" Label="Category" Placeholder="Enter Category" Required />
+    <FormTextarea @bind-Value="Model!.Description" Rows="5" Label="Description" Placeholder="Enter Description" Required />
+    <FormTextarea Hint="Use data-inline-editable attribute for text elements to enable Inline edit!" @bind-Value="Model!.Content" Rows="20" Label="Content" Placeholder="Enter Content as HTML" Required />
+    <FormActions Cancel Submit />
+</PluginForm>

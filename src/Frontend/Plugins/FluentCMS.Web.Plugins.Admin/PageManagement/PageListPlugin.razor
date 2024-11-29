@@ -1,0 +1,33 @@
+@inherits BasePlugin
+@rendermode InteractiveServer
+
+<PluginBody Title="Pages">
+    <ActionsFragment>
+        <ActionButtonCreate Href="@GetUrl("Create Page")" Label="Add Page"/>
+    </ActionsFragment>
+    <ChildContent>
+        <DataTable Items="Pages">
+            <DataTableItem Label="Title">@context.Title</DataTableItem>
+            <DataTableItem Label="Full Path">@context.FullPath</DataTableItem>
+            <DataTableItem Label="Layout">
+                @(Layouts?.Where(x => x.Id == context.LayoutId).FirstOrDefault()?.Name ?? "(default)")
+            </DataTableItem>
+            <DataTableItem Label="Locked">
+                <Indicator Color="Color.Success" Visible="@context.Locked">YES</Indicator>
+                <Indicator Color="Color.Danger" Visible="@(!context.Locked)">NO</Indicator>
+            </DataTableItem>
+            <ActionButtons>
+                @if (!context.Locked)
+                {
+                    <ActionButtonEdit Href="@GetUrl("Update Page", new { id = @context.Id })"/>
+                    <ActionButtonDelete Visible="@(context.Path != "/")" @onclick="() => OnConfirm(context)"/>
+                }
+                <ActionButton IconName="IconName.Eye" Color="Color.Success" Label="Open" Href="@context.FullPath" target="_blank" />
+            </ActionButtons>
+        </DataTable>
+    </ChildContent>
+</PluginBody>
+
+<Confirm OnConfirm="OnDelete" OnCancel="OnConfirmClose" Visible="SelectedPage != null">
+    Are you sure to delete <b>"@SelectedPage!.Title"</b> page?
+</Confirm>

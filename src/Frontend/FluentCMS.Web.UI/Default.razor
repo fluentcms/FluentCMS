@@ -1,0 +1,61 @@
+﻿@page "/{**Route:nonfile}"
+
+@if (ViewState.Type == ViewStateType.PageEdit)
+{
+    <SiteBuilder />
+}
+else if (ViewState.Type == ViewStateType.PagePreview)
+{
+    <SiteBuilderPreview>
+        <Head>
+            @RenderDynamicContent(ViewState.Layout?.Head ?? string.Empty)
+        </Head>
+        <Body>
+            @RenderDynamicContent(ViewState.Layout?.Body ?? string.Empty)
+        </Body>
+    </SiteBuilderPreview>
+}
+else if (ViewState.Type == ViewStateType.PluginEdit)
+{
+    <HeadContent>
+        @RenderDynamicContent(ViewState.EditLayout?.Head ?? string.Empty)
+    </HeadContent>
+
+    @RenderDynamicContent(ViewState.EditLayout?.Body ?? string.Empty)
+}
+else if (ViewState.Type == ViewStateType.PluginDetail)
+{
+    <HeadContent>
+        @RenderDynamicContent(ViewState.DetailLayout?.Head ?? string.Empty)
+    </HeadContent>
+    @RenderDynamicContent(ViewState.DetailLayout?.Body ?? string.Empty)
+}
+else
+{
+    <PageTitle>@ViewState.Page?.Title</PageTitle>
+    <HeadContent>
+        @if (ViewState.Page.HasViewAccess)
+        {
+            @RenderDynamicContent(ViewState.Layout?.Head ?? string.Empty)
+        }
+        @if (!ViewState.Page.Locked && ViewState.Page.HasAdminAccess)
+        {
+            <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/sitebuilder.default.css">
+        }
+        <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/html.css">
+        <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/columns.css">
+    </HeadContent>
+    @if (!ViewState.Page.Locked && ViewState.Page.HasAdminAccess)
+    {
+        <SiteBuilderDefaultToolbar />
+    }
+    
+    @if (ViewState.Page.HasViewAccess)
+    {
+        @RenderDynamicContent(ViewState.Layout?.Body ?? string.Empty)
+    }
+    else
+    {
+        <h1>You have No Access to view this page.</h1>
+    }
+}

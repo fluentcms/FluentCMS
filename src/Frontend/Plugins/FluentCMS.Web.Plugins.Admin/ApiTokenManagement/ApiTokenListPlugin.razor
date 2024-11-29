@@ -1,0 +1,46 @@
+@inherits BasePlugin
+@rendermode InteractiveServer
+
+<PluginBody Title="API Tokens">
+    <ActionsFragment>
+        <ActionButtonCreate Href="@GetUrl("Create Api Token")" Label="Add API Token" />
+    </ActionsFragment>
+    <ChildContent>
+        <DataTable Items="ApiTokens">
+            <DataTableItem Label="Name">@context.Name</DataTableItem>
+            <DataTableItem Label="Description">@context.Description</DataTableItem>
+            <DataTableItem Label="Enabled">
+                <Indicator Color="Color.Success" Visible="@context.Enabled">YES</Indicator>
+                <Indicator Color="Color.Danger" Visible="@(!context.Enabled)">NO</Indicator>
+            </DataTableItem>
+            <DataTableItem Label="Expire At">@context.ExpireAt</DataTableItem>
+            <DataTableItem Label="Token">
+                @if (ViewApiTokenId == context.Id)
+                {
+                    <span class="f-font-monospace">@($"{context.Key}:{@context.Secret}")</span>
+                }
+                else
+                {
+                    <span class="f-font-monospace">***********************************</span>
+                }
+            </DataTableItem>
+            <ActionButtons>
+                <ActionButton Visible="ViewApiTokenId != context.Id" IconName="IconName.Eye" @onclick="() => ToggleTokenKey(context.Id)" />
+                <ActionButton Visible="ViewApiTokenId == context.Id" IconName="IconName.EyeSlash" @onclick="() => ToggleTokenKey(context.Id)" />
+                <ActionButton IconName="IconName.Refresh" Color="Color.Success" Label="Re-Generate" @onclick="() => OnRegenerateConfirm(context)" />
+                <ActionButtonEdit Href="@GetUrl("Update Api Token", new { id = @context.Id })" />
+                <ActionButtonDelete Visible="@(ClientSettingsOptions.Value?.Key != $"{context.Key}:{@context.Secret}")" @onclick="() => OnDeleteConfirm(context)" />
+            </ActionButtons>
+        </DataTable>
+    </ChildContent>
+</PluginBody>
+
+<Confirm OnConfirm="OnDelete" OnCancel="OnConfirmComplete" Visible="ShowDeleteModal ">
+    Are you sure to delete <b>"@SelectedApiToken!.Name"</b> token?
+</Confirm>
+
+<Confirm OnConfirm="OnRegenerate" OnCancel="OnConfirmComplete" Visible="ShowRegenerateModal">
+    After regenerate, previous token will be invalidated and no longer works. Are you sure to re-generate token?
+</Confirm>
+
+

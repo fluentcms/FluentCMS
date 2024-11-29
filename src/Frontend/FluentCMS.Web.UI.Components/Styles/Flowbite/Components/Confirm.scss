@@ -1,0 +1,37 @@
+$confirm: $prefix + "confirm";
+
+.#{$confirm} {
+    @apply fixed left-0 right-0 top-0 z-50 max-h-full w-full overflow-y-auto overflow-x-hidden p-4 md:inset-0 justify-center items-center flex;
+
+    &-backdrop {
+        @apply bg-gray-900/50 dark:bg-gray-900/80 fixed inset-0 z-40;
+    }
+
+    &-body {
+        @apply p-4 md:p-5 text-center;
+
+        &>.#{$prefix + "icon"} {
+            @apply block mx-auto mb-4 text-gray-400 w-12 h-12 dark:text-gray-200;
+        }
+    }
+
+    &-content {
+        @apply relative bg-white rounded-lg shadow dark:bg-gray-700;
+
+        &>.#{$prefix + "close-button"} {
+            @apply absolute top-3 end-2.5;
+        }
+    }
+
+    &-message {
+        @apply mb-5 text-lg font-normal text-gray-500 dark:text-gray-400;
+    }
+
+    &-wrapper {
+        @apply relative p-4 w-full max-w-md max-h-full;
+    }
+
+    &-button-stack {
+        @apply justify-center;
+    }
+}

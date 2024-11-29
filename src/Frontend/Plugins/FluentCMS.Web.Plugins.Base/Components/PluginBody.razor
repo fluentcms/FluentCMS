@@ -1,0 +1,30 @@
+﻿@namespace FluentCMS.Web.Plugins
+
+@* TODO: change class to f-plugin-body *@
+@if (Visible)
+{
+    <div class="m-4">
+        <Grid Visible="!string.IsNullOrEmpty(Title)" ItemsSmall="GridItems.Start" JustifySmall="GridJustify.Between">
+            <GridItem>
+                <Typography Size="TextSize.H5">@Title</Typography>
+            </GridItem>
+            <GridItem>
+                <Stack>
+                    <CascadingValue Value="true" Name="ActionButtonHeader">
+                        @ActionsFragment
+                    </CascadingValue>
+                </Stack>
+            </GridItem>
+        </Grid>
+
+        @if (SubtitleFragment != null)
+        {
+            @SubtitleFragment
+        }
+
+        <Spacer Visible="!string.IsNullOrEmpty(Title)" />
+        <Card Visible="ChildContent != null">
+            @ChildContent
+        </Card>
+    </div>
+}

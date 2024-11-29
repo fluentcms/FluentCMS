@@ -1,0 +1,18 @@
+@inherits BasePlugin
+
+<PluginForm Model="@ProfileModel" Name="@PROFILE_FORM_NAME" Title="Profile" OnSubmit="OnProfileSubmit">
+    <FormInput @bind-Value="ProfileModel!.Email" Cols="6" Label="Email" Placeholder="Enter Email" Required />
+    <FormInput @bind-Value="ProfileModel!.PhoneNumber" Cols="6" Label="Phone Number" Placeholder="Enter Phone Number" />
+    <FormInput @bind-Value="ProfileModel!.FirstName" Cols="6" Label="First Name" Placeholder="Enter First Name" />
+    <FormInput @bind-Value="ProfileModel!.LastName" Cols="6" Label="Last Name" Placeholder="Enter Last Name" />
+    <FormActions Submit />
+</PluginForm>
+
+<PluginForm Model="@ChangePasswordModel" Name="@CHANGE_PASSWORD_FORM_NAME" Title="Change password" OnSubmit="OnChangePasswordSubmit">
+    <FormInput @bind-Value="ChangePasswordModel!.OldPassword" Cols="6" Label="Old Password" Placeholder="Enter Old Password" Required type="password" />
+    <FormFieldBreak />
+    <FormInput @bind-Value="ChangePasswordModel!.NewPassword" Cols="6" Label="New Password" Placeholder="Enter New Password" Required type="password" />
+    <FormInput @bind-Value="ChangePasswordModel!.NewPasswordConfirm" Cols="6" Label="Confirm New Password" Placeholder="Enter New Password" Required type="password" />
+    <FormActions Submit />
+</PluginForm>
+

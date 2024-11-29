@@ -1,0 +1,61 @@
+<Solution>
+  <Folder Name="/Backend/">
+    <Project Path="Backend/FluentCMS.Entities/FluentCMS.Entities.csproj" />
+    <Project Path="Backend/FluentCMS.Identity/FluentCMS.Identity.csproj" />
+    <Project Path="Backend/FluentCMS.Services/FluentCMS.Services.csproj" />
+    <Project Path="Backend/FluentCMS.Web.Api/FluentCMS.Web.Api.csproj" />
+  </Folder>
+  <Folder Name="/Backend/Repositories/">
+    <Project Path="Backend/Repositories/FluentCMS.Repositories.Abstractions/FluentCMS.Repositories.Abstractions.csproj" />
+    <Project Path="Backend/Repositories/FluentCMS.Repositories.Caching/FluentCMS.Repositories.Caching.csproj" />
+    <Project Path="Backend/Repositories/FluentCMS.Repositories.EFCore.MySql/FluentCMS.Repositories.EFCore.MySql.csproj" />
+    <Project Path="Backend/Repositories/FluentCMS.Repositories.EFCore.PostgreSQL/FluentCMS.Repositories.EFCore.PostgreSQL.csproj" />
+    <Project Path="Backend/Repositories/FluentCMS.Repositories.EFCore.Sqlite/FluentCMS.Repositories.EFCore.Sqlite.csproj" />
+    <Project Path="Backend/Repositories/FluentCMS.Repositories.EFCore.SqlServer/FluentCMS.Repositories.EFCore.SqlServer.csproj" />
+    <Project Path="Backend/Repositories/FluentCMS.Repositories.EFCore/FluentCMS.Repositories.EFCore.csproj" />
+    <Project Path="Backend/Repositories/FluentCMS.Repositories.LiteDb/FluentCMS.Repositories.LiteDb.csproj" />
+    <Project Path="Backend/Repositories/FluentCMS.Repositories.MongoDB/FluentCMS.Repositories.MongoDB.csproj" />
+  </Folder>
+  <Folder Name="/Frontend/">
+    <Project Path="Frontend/FluentCMS.Web.ApiClients/FluentCMS.Web.ApiClients.csproj" />
+    <Project Path="Frontend/FluentCMS.Web.UI.Components/FluentCMS.Web.UI.Components.csproj" />
+    <Project Path="Frontend/FluentCMS.Web.UI/FluentCMS.Web.UI.csproj" />
+  </Folder>
+  <Folder Name="/Frontend/Plugins/">
+    <Project Path="Frontend/Plugins/FluentCMS.Web.Plugins.Admin/FluentCMS.Web.Plugins.Admin.csproj" />
+    <Project Path="Frontend/Plugins/FluentCMS.Web.Plugins.Base/FluentCMS.Web.Plugins.Base.csproj" />
+    <Project Path="Frontend/Plugins/FluentCMS.Web.Plugins.Block/FluentCMS.Web.Plugins.Block.csproj" />
+    <Project Path="Frontend/Plugins/FluentCMS.Web.Plugins.ContactUs/FluentCMS.Web.Plugins.ContactUs.csproj" />
+    <Project Path="Frontend/Plugins/FluentCMS.Web.Plugins.ContentViewer/FluentCMS.Web.Plugins.ContentViewer.csproj" />
+    <Project Path="Frontend/Plugins/FluentCMS.Web.Plugins.IFrame/FluentCMS.Web.Plugins.IFrame.csproj" />
+    <Project Path="Frontend/Plugins/FluentCMS.Web.Plugins.RichText/FluentCMS.Web.Plugins.RichText.csproj" />
+    <Project Path="Frontend/Plugins/FluentCMS.Web.Plugins.TextHTML/FluentCMS.Web.Plugins.TextHTML.csproj" />
+  </Folder>
+  <Folder Name="/Providers/" />
+  <Folder Name="/Providers/ApiTokenProviders/">
+    <Project Path="Providers/ApiTokenProviders/FluentCMS.Providers.ApiTokenProviders.Abstractions/FluentCMS.Providers.ApiTokenProviders.Abstractions.csproj" />
+    <Project Path="Providers/ApiTokenProviders/FluentCMS.Providers.ApiTokenProviders/FluentCMS.Providers.ApiTokenProviders.csproj" />
+  </Folder>
+  <Folder Name="/Providers/CacheProviders/">
+    <Project Path="Providers/CacheProviders/FluentCMS.Providers.CacheProviders.Abstractions/FluentCMS.Providers.CacheProviders.Abstractions.csproj" />
+    <Project Path="Providers/CacheProviders/FluentCMS.Providers.CacheProviders/FluentCMS.Providers.CacheProviders.csproj" />
+  </Folder>
+  <Folder Name="/Providers/EmailProviders/">
+    <Project Path="Providers/EmailProviders/FluentCMS.Providers.EmailProviders.Abstractions/FluentCMS.Providers.EmailProviders.Abstractions.csproj" />
+    <Project Path="Providers/EmailProviders/FluentCMS.Providers.EmailProviders/FluentCMS.Providers.EmailProviders.csproj" />
+  </Folder>
+  <Folder Name="/Providers/FileStorageProviders/">
+    <Project Path="Providers/FileStorageProviders/FluentCMS.Providers.FileStorageProviders.Abstractions/FluentCMS.Providers.FileStorageProviders.Abstractions.csproj" />
+    <Project Path="Providers/FileStorageProviders/FluentCMS.Providers.FileStorageProviders/FluentCMS.Providers.FileStorageProviders.csproj" />
+  </Folder>
+  <Folder Name="/Providers/MessageBusProviders/">
+    <Project Path="Providers/MessageBusProviders/FluentCMS.Providers.MessageBusProviders.Abstractions/FluentCMS.Providers.MessageBusProviders.Abstractions.csproj" />
+    <Project Path="Providers/MessageBusProviders/FluentCMS.Providers.MessageBusProviders/FluentCMS.Providers.MessageBusProviders.csproj" />
+  </Folder>
+  <Folder Name="/Providers/TemplateRenderingProviders/">
+    <Project Path="Providers/TemplateRenderingProviders/FluentCMS.Providers.TemplateRenderingProviders.Abstractions/FluentCMS.Providers.TemplateRenderingProviders.Abstractions.csproj" />
+    <Project Path="Providers/TemplateRenderingProviders/FluentCMS.Providers.TemplateRenderingProviders/FluentCMS.Providers.TemplateRenderingProviders.csproj" />
+  </Folder>
+  <Project Path="FluentCMS/FluentCMS.csproj" />
+  <Project Path="Shared/Shared.csproj" />
+</Solution>

@@ -1,0 +1,28 @@
+@namespace FluentCMS.Web.UI
+
+<div class="f-plugin-container" data-id="@Plugin.Id" data-order="@Plugin.Order" data-cols="@Plugin.Cols" data-cols-md="@Plugin.ColsMd" data-cols-lg="@Plugin.ColsLg" @key="Plugin">
+    <PluginContainerActions Plugin="@Plugin" OnUpdate="ReloadPlugin"/>
+    <ErrorBoundary>
+        <ChildContent>
+            @if (ViewState.Type == ViewStateType.Default || ViewState.Type == ViewStateType.PagePreview)
+            {
+                <div class="f-plugin-container-content">
+                    <div class="f-plugin-container-content-wrapper @GetSetting("Class")" style="@GetSetting("Style")">
+                        <DynamicComponent Type=@GetPluginType() Parameters=@Parameters />
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="f-plugin-container-content">
+                    <DynamicComponent Type=@GetPluginType() Parameters=@Parameters />
+                </div>
+            }
+        </ChildContent>
+        <ErrorContent>
+            <div class="f-plugin-container-error">
+                @context.Message
+            </div>
+        </ErrorContent>
+    </ErrorBoundary>
+</div>

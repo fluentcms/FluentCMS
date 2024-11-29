@@ -1,0 +1,33 @@
+﻿@inherits BaseContentPlugin
+@rendermode InteractiveServer
+
+@if (ContentType != null)
+{
+    <PluginBody Title="@ContentType.Title">
+        <ActionsFragment>
+            <ActionButtonBack @onclick="() => NavigateBack()"/>
+            <ActionButtonCreate Href="@GetUrl("Create Content", new { slug = ContentTypeSlug })" Label="New Content" />
+        </ActionsFragment>
+        <ChildContent>
+            <CascadingValue Value="ContentType">
+                <DataTable Items="Contents">
+                    @foreach (var field in GetVisibleFields())
+                    {
+                        <DataTableItem Label="@field.Name">
+                            <DynamicComponent Type=@GetDataTableComponent(field.Type,field.DataTableViewComponent,field.Name) Parameters=@GetParameters(context,field) />
+                        </DataTableItem>
+                    }
+                    <ActionButtons>
+                        <ActionButtonEdit Href="@GetUrl("Update Content", new { slug = ContentTypeSlug, id = context.Id })" />
+                        <ActionButtonDelete @onclick="() => OnConfirm(context.Id)" />
+                    </ActionButtons>
+                </DataTable>
+            </CascadingValue>
+        </ChildContent>
+    </PluginBody>
+
+    <Confirm OnConfirm="OnDelete" OnCancel="OnConfirmClose" Visible="SelectedContentId != null">
+        Are you sure to delete this content?
+    </Confirm>
+}
+

@@ -1,0 +1,4 @@
+﻿@inherits BaseFieldValueComponent<ICollection<string>, MultiSelectFieldModel>
+@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
+
+<FormAutocompleteMultiple Data="Options" Placeholder="@Field.Placeholder" @bind-Value="@FieldValue.Value" Label="@ContentTypeField!.Label" Required="@ContentTypeField!.Required" />

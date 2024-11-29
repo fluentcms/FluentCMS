@@ -1,0 +1,13 @@
+@inherits BaseComponent
+
+@namespace FluentCMS.Web.UI.Components
+
+@if(Visible)
+{
+    <div class="@this.GetClasses()">
+        <hr class="@this.ClassName("DividerLine")">
+        <span class="@this.ClassName("DividerText")">
+            @ChildContent
+        </span>
+    </div>
+}

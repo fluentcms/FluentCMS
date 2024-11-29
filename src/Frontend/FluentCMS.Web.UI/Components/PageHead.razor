@@ -1,0 +1,29 @@
+@namespace FluentCMS.Web.UI
+
+<title>@ViewState.Page.Title</title>
+
+<meta name="title" content="@GetSetting("MetaTitle")">
+<meta name="description" content="@GetSetting("MetaDescription")">
+<meta name="robots" content="@GetRobots()" />
+
+<meta property="og:title" content="@GetSetting("MetaTitle")" />
+<meta property="og:description" content="@GetSetting("MetaDescription")" />
+<meta property="og:type" content="@GetSetting("OgType")" />
+
+<meta property="twitter:title" content="@GetSetting("MetaTitle")" />
+<meta property="twitter:description" content="@GetSetting("MetaDescription")" />
+<meta property="twitter:type" content="@GetSetting("OgType")" />
+
+@* Uncomment if you have images 
+<!-- <meta property="og:image" content="@GetImageUrl(Site.SocialImage)" /> -->
+*@
+
+@if (!string.IsNullOrEmpty(GetSetting("GoogleTagsId")))
+{
+    @((MarkupString)GetGoogleTagsScript())
+}
+
+@if (!string.IsNullOrEmpty(GetSetting("Head")))
+{
+    @((MarkupString)GetSetting("Head"))
+}

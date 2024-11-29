@@ -1,0 +1,30 @@
+﻿@inherits BasePlugin
+
+<PluginForm Model="@Model" Name="@FORM_NAME" Title="Update Site" OnSubmit="OnSubmit">
+    <FormInput @bind-Value="Model!.Name" Label="Name" Placeholder="Enter Name" Required />
+    <FormTextarea @bind-Value="Model!.Description" Label="Description" Placeholder="Enter Description" />
+    <FormInput Hint="Comma separated Urls without http(s)" @bind-Value="Model!.Urls" Cols="6" Label="Urls" Placeholder="Enter each url in new line" />
+    <FormSelect @bind-Value="Model!.LayoutId" Data="Layouts" ValueField="Id" TextField="Name" Cols="6" Label="Default Layout" Placeholder="Choose Layout" Visible="@(Layouts != null)" />
+    <FormSelect @bind-Value="Model!.EditLayoutId" Data="Layouts" ValueField="Id" TextField="Name" Cols="6" Label="EditView Layout" Placeholder="Choose Layout" Visible="@(Layouts != null)" />
+    <FormSelect @bind-Value="Model!.DetailLayoutId" Data="Layouts" ValueField="Id" TextField="Name" Cols="6" Label="SingleView Layout" Placeholder="Choose Layout" Visible="@(Layouts != null)" />
+
+    <FormTextarea @bind-Value="Model!.Head" Label="Head" Placeholder="Enter Head content for all pages" />
+    <GridItem Small="GridItemColumn.Twelve">
+        <Alert Type="AlertType.Info">
+            These SEO Fields will be used as default values. when page doesn't have any of the values.
+        </Alert>
+        <Spacer />
+    </GridItem>
+
+    <FormInput @bind-Value="Model!.MetaTitle" Cols="12" Label="Meta Title" Placeholder="Enter Meta Title" />
+    <FormTextarea @bind-Value="Model.MetaDescription" Label="Meta Description" Placeholder="Enter Meta Description" />
+    <FormTextarea @bind-Value="Model.RobotsTxt" Label="Content of robots.txt" Placeholder="Enter content for robots.txt file" />
+    <FormInput @bind-Value="Model!.GoogleTagsId" Cols="12" Label="Google Tags id" Placeholder="Enter Google Tags Id" />
+    <FormSelect Data="OgTypeOptions" @bind-Value="Model!.OgType" TextField="Title" ValueField="Key" Cols="12" Label="default type of Pages" Placeholder="Choose default page type" />
+    <FormCheckbox Text="Default option for index option of pages." Label="Index" @bind-Value="@Model.Index" Cols="6"/>
+    <FormCheckbox Text="Default option for Follow option of pages." Label="Follow" @bind-Value="@Model.Follow" Cols="6"/>
+    <FormCheckboxGroup Hint="Roles which can manage pages of site." @bind-Value="Model!.ContributorRoleIds" Data="AdminRoleOptions" Label="Contributor Roles" TextField="Name" ValueField="Id" />
+    <FormCheckboxGroup Hint="Roles which are able to manage site." @bind-Value="Model!.AdminRoleIds" Data="AdminRoleOptions" Label="Admin Roles" TextField="Name" ValueField="Id" />
+
+    <FormActions Cancel Submit />
+</PluginForm>
