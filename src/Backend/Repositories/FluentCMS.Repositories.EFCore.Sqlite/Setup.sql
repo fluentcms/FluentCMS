@@ -1,4 +1,57 @@
-﻿-- Table: ApiTokenPolicies
+﻿-- Table: HttpLogs
+CREATE TABLE HttpLogs (
+    Id TEXT NOT NULL PRIMARY KEY, -- Assuming Id is a GUID stored as TEXT
+    StatusCode INTEGER NOT NULL,
+    Duration INTEGER NOT NULL,
+    AssemblyName TEXT NOT NULL,
+    AssemblyVersion TEXT NOT NULL,
+    ProcessId INTEGER NOT NULL,
+    ProcessName TEXT NOT NULL,
+    ThreadId INTEGER NOT NULL,
+    MemoryUsage INTEGER NOT NULL,
+    MachineName TEXT NOT NULL,
+    EnvironmentName TEXT NOT NULL,
+    EnvironmentUserName TEXT NOT NULL,
+    IsAuthenticated INTEGER NOT NULL, -- SQLite uses 0 (false) and 1 (true) for boolean
+    Language TEXT NOT NULL,
+    SessionId TEXT NOT NULL,
+    StartDate TEXT NOT NULL, -- ISO 8601 format for DATETIME
+    TraceId TEXT NOT NULL,
+    UniqueId TEXT NOT NULL,
+    UserId TEXT NOT NULL, -- GUID stored as TEXT
+    UserIp TEXT NOT NULL,
+    Username TEXT NOT NULL,
+    ApiTokenKey TEXT NOT NULL,
+
+    -- Request details
+    ReqUrl TEXT NOT NULL,
+    ReqProtocol TEXT NOT NULL,
+    ReqMethod TEXT NOT NULL,
+    ReqScheme TEXT NOT NULL,
+    ReqPathBase TEXT NOT NULL,
+    ReqPath TEXT NOT NULL,
+    QueryString TEXT NOT NULL,
+    ReqContentType TEXT NOT NULL,
+    ReqContentLength INTEGER NULL,
+    ReqBody TEXT NULL,
+    ReqHeaders TEXT NOT NULL, -- Store headers as JSON
+
+    -- Response details
+    ResContentType TEXT NOT NULL,
+    ResContentLength INTEGER NULL,
+    ResBody TEXT NULL,
+    ResHeaders TEXT NOT NULL, -- Store headers as JSON
+
+    -- Exception details
+    ExData TEXT NULL, -- Store exception data as JSON or serialized string
+    ExHelpLink TEXT NULL,
+    ExHResult INTEGER NULL,
+    ExMessage TEXT NULL,
+    ExSource TEXT NULL,
+    ExStackTrace TEXT NULL
+);
+
+-- Table: ApiTokenPolicies
 CREATE TABLE ApiTokenPolicies (
     Id TEXT NOT NULL PRIMARY KEY,
     ApiTokenId TEXT NOT NULL,
