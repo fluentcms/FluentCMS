@@ -1,6 +1,6 @@
 ﻿using System.Collections;
 
-namespace FluentCMS.Entities.Logging;
+namespace FluentCMS.Entities;
 
 public sealed class HttpLog : Entity
 {

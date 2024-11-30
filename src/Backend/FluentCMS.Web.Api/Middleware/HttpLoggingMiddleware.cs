@@ -1,5 +1,4 @@
-﻿using FluentCMS.Entities.Logging;
-using FluentCMS.Repositories.Abstractions;
+﻿using FluentCMS.Repositories.Abstractions;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
@@ -17,7 +16,6 @@ internal sealed class HttpLoggingMiddleware
     private readonly RequestDelegate _next;
     private readonly HttpLogConfig _httpLogConfig;
     private readonly Assembly? _assembly;
-    private readonly Process _process;
     private readonly AssemblyName? _assemblyName;
 
 #pragma warning disable IDE0290 // Use primary constructor
@@ -27,7 +25,6 @@ internal sealed class HttpLoggingMiddleware
         _next = next;
         _httpLogConfig = options.Value ?? new HttpLogConfig();
         _assembly = Assembly.GetEntryAssembly();
-        _process = Process.GetCurrentProcess();
         _assemblyName = _assembly?.GetName();
     }
 
@@ -147,16 +144,17 @@ internal sealed class HttpLoggingMiddleware
     private async Task FillHttpLog(HttpLog httpLog, HttpContext context, Stopwatch stopwatch)
     {
         var thread = Thread.CurrentThread;
+        var process = Process.GetCurrentProcess();
         var apiContext = context.RequestServices.GetRequiredService<IApiExecutionContext>();
 
         httpLog.StatusCode = context.Response.StatusCode;
         httpLog.Duration = stopwatch.ElapsedMilliseconds;
         httpLog.AssemblyName = _assemblyName?.Name ?? string.Empty;
         httpLog.AssemblyVersion = _assemblyName?.Version?.ToString() ?? string.Empty;
-        httpLog.ProcessId = _process.Id;
-        httpLog.ProcessName = _process.ProcessName;
+        httpLog.ProcessId = process.Id;
+        httpLog.ProcessName = process.ProcessName;
         httpLog.ThreadId = thread.ManagedThreadId;
-        httpLog.MemoryUsage = _process.PrivateMemorySize64;
+        httpLog.MemoryUsage = process.PrivateMemorySize64;
         httpLog.MachineName = Environment.MachineName;
         httpLog.EnvironmentName = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? string.Empty;
         httpLog.EnvironmentUserName = Environment.UserName;

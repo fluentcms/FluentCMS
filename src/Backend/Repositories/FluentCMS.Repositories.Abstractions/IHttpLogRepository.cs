@@ -1,6 +1,4 @@
-﻿using FluentCMS.Entities.Logging;
-
-namespace FluentCMS.Repositories.Abstractions;
+﻿namespace FluentCMS.Repositories.Abstractions;
 
 public interface IHttpLogRepository
 {

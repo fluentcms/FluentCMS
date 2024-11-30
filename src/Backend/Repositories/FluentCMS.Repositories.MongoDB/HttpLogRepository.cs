@@ -1,6 +1,4 @@
-﻿using FluentCMS.Entities.Logging;
-
-namespace FluentCMS.Repositories.MongoDB;
+﻿namespace FluentCMS.Repositories.MongoDB;
 
 public class HttpLogRepository(IMongoDBContext mongoDbContext) : IHttpLogRepository
 {

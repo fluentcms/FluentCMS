@@ -1,6 +1,4 @@
-﻿using FluentCMS.Entities.Logging;
-
-namespace FluentCMS.Services;
+﻿namespace FluentCMS.Services;
 
 public interface IHttpLogService : IAutoRegisterService
 {

@@ -1,6 +1,4 @@
-﻿using FluentCMS.Entities.Logging;
-
-namespace FluentCMS.Repositories.LiteDb;
+﻿namespace FluentCMS.Repositories.LiteDb;
 
 public class HttpLogRepository : IHttpLogRepository
 {
