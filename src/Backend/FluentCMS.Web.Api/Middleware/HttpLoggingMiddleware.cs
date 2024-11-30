@@ -4,9 +4,7 @@ using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using System.Diagnostics;
-using System.IO;
 using System.Reflection;
-using System.Text;
 
 namespace FluentCMS.Web.Api.Middleware;
 
@@ -25,11 +23,11 @@ internal sealed class HttpLoggingMiddleware
     {
         var stopwatch = Stopwatch.StartNew();
 
-        var requestBody = await ReadRequestBody(context.Request);
+        var requestBody = string.Empty; // await ReadRequestBody(context.Request);
 
-        var originalResponseStream = context.Response.Body;
-        await using var responseMemoryStream = new MemoryStream();
-        context.Response.Body = responseMemoryStream;
+        //var originalResponseStream = context.Response.Body;
+        //await using var responseMemoryStream = new MemoryStream();
+        //context.Response.Body = responseMemoryStream;
 
         Exception? exception = null;
 
@@ -46,7 +44,7 @@ internal sealed class HttpLoggingMiddleware
         {
             stopwatch.Stop();
 
-            var responseBody = await ReadResponseBody(context, originalResponseStream, responseMemoryStream);
+            var responseBody = string.Empty; // await ReadResponseBody(context, originalResponseStream, responseMemoryStream);
 
             exception ??= context.Features.Get<IExceptionHandlerFeature>()?.Error;
             var assembly = Assembly.GetEntryAssembly();
@@ -88,28 +86,29 @@ internal sealed class HttpLoggingMiddleware
         }
     }
 
-    private static async Task<string> ReadRequestBody(HttpRequest request)
-    {
-        request.EnableBuffering();
+    // TODO: think of when to log the request and response body
+    //private static async Task<string> ReadRequestBody(HttpRequest request)
+    //{
+    //    request.EnableBuffering();
 
-        using var reader = new StreamReader(request.Body, encoding: Encoding.UTF8, detectEncodingFromByteOrderMarks: false, leaveOpen: true);
-        var requestBody = await reader.ReadToEndAsync();
-        request.Body.Position = 0;
+    //    using var reader = new StreamReader(request.Body, encoding: Encoding.UTF8, detectEncodingFromByteOrderMarks: false, leaveOpen: true);
+    //    var requestBody = await reader.ReadToEndAsync();
+    //    request.Body.Position = 0;
 
-        return requestBody;
-    }
+    //    return requestBody;
+    //}
 
-    private static async Task<string> ReadResponseBody(HttpContext context, Stream originalResponseStream, Stream memoryStream)
-    {
-        memoryStream.Position = 0;
-        using var reader = new StreamReader(memoryStream, encoding: Encoding.UTF8);
-        var responseBody = await reader.ReadToEndAsync();
-        memoryStream.Position = 0;
-        await memoryStream.CopyToAsync(originalResponseStream);
-        context.Response.Body = originalResponseStream;
+    //private static async Task<string> ReadResponseBody(HttpContext context, Stream originalResponseStream, Stream memoryStream)
+    //{
+    //    memoryStream.Position = 0;
+    //    using var reader = new StreamReader(memoryStream, encoding: Encoding.UTF8);
+    //    var responseBody = await reader.ReadToEndAsync();
+    //    memoryStream.Position = 0;
+    //    await memoryStream.CopyToAsync(originalResponseStream);
+    //    context.Response.Body = originalResponseStream;
 
-        return responseBody;
-    }
+    //    return responseBody;
+    //}
 
     private static HttpRequestLog GetHttpRequestLog(HttpRequest request, string requestBody)
     {
