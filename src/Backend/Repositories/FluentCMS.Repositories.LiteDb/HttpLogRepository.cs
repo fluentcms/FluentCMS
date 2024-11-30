@@ -7,6 +7,8 @@ public class HttpLogRepository : IHttpLogRepository
     private readonly ILiteDatabaseAsync _liteDatabase;
     private readonly ILiteDBContext _liteDbContext;
 
+    // TODO: This is a workaround to check if DB is initialized
+    // TODO: Not sure it is a valid approach
     private static bool _isInitialized = false;
 
     public HttpLogRepository(ILiteDBContext liteDbContext)
