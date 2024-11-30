@@ -1,4 +1,57 @@
-﻿/****** Object:  Table [dbo].[ApiTokenPolicies]    Script Date: 2024-11-24 5:32:26 PM ******/
+﻿CREATE TABLE HttpLogs (
+    Id UNIQUEIDENTIFIER NOT NULL PRIMARY KEY, -- Assuming inherited from Entity
+    StatusCode INT NOT NULL,
+    Duration BIGINT NOT NULL,
+    AssemblyName NVARCHAR(255) NOT NULL,
+    AssemblyVersion NVARCHAR(50) NOT NULL,
+    ProcessId INT NOT NULL,
+    ProcessName NVARCHAR(255) NOT NULL,
+    ThreadId INT NOT NULL,
+    MemoryUsage BIGINT NOT NULL,
+    MachineName NVARCHAR(255) NOT NULL,
+    EnvironmentName NVARCHAR(100) NOT NULL,
+    EnvironmentUserName NVARCHAR(255) NOT NULL,
+    IsAuthenticated BIT NOT NULL,
+    Language NVARCHAR(50) NOT NULL,
+    SessionId NVARCHAR(255) NOT NULL,
+    StartDate DATETIME2 NOT NULL,
+    TraceId NVARCHAR(255) NOT NULL,
+    UniqueId NVARCHAR(255) NOT NULL,
+    UserId UNIQUEIDENTIFIER NOT NULL,
+    UserIp NVARCHAR(50) NOT NULL,
+    Username NVARCHAR(255) NOT NULL,
+    ApiTokenKey NVARCHAR(255) NOT NULL,
+
+    -- Request details
+    ReqUrl NVARCHAR(MAX) NOT NULL,
+    ReqProtocol NVARCHAR(50) NOT NULL,
+    ReqMethod NVARCHAR(50) NOT NULL,
+    ReqScheme NVARCHAR(50) NOT NULL,
+    ReqPathBase NVARCHAR(255) NOT NULL,
+    ReqPath NVARCHAR(255) NOT NULL,
+    QueryString NVARCHAR(MAX) NOT NULL,
+    ReqContentType NVARCHAR(255) NOT NULL,
+    ReqContentLength BIGINT NULL,
+    ReqBody NVARCHAR(MAX) NULL,
+    ReqHeaders NVARCHAR(MAX) NOT NULL, -- Store headers as JSON
+
+    -- Response details
+    ResContentType NVARCHAR(255) NOT NULL,
+    ResContentLength BIGINT NULL,
+    ResBody NVARCHAR(MAX) NULL,
+    ResHeaders NVARCHAR(MAX) NOT NULL, -- Store headers as JSON
+
+    -- Exception details
+    ExData NVARCHAR(MAX) NULL, -- Store exception data as JSON or serialized string
+    ExHelpLink NVARCHAR(MAX) NULL,
+    ExHResult INT NULL,
+    ExMessage NVARCHAR(MAX) NULL,
+    ExSource NVARCHAR(MAX) NULL,
+    ExStackTrace NVARCHAR(MAX) NULL
+);
+
+
+/****** Object:  Table [dbo].[ApiTokenPolicies]    Script Date: 2024-11-24 5:32:26 PM ******/
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
