@@ -19,6 +19,7 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
     public DbSet<FileModel> Files { get; set; } = default!;
     public DbSet<FolderModel> Folders { get; set; } = default!;
     public DbSet<GlobalSettingsModel> GlobalSettings { get; set; } = default!;
+    public DbSet<HttpLog> HttpLogs { get; set; } = default!;
     public DbSet<LayoutModel> Layouts { get; set; } = default!;
     public DbSet<PageModel> Pages { get; set; } = default!;
     public DbSet<PermissionModel> Permissions { get; set; } = default!;
