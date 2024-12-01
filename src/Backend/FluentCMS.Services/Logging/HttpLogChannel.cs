@@ -28,16 +28,7 @@ public class HttpLogChannel : IHttpLogChannel
 
     public IAsyncEnumerable<HttpLog> ReadAllAsync(CancellationToken cancellationToken = default)
     {
-        try
-        {
-            return _logChannel.Reader.ReadAllAsync(cancellationToken);
-        }
-        catch (Exception ex)
-        {
-
-            throw;
-        }
-        
+        return _logChannel.Reader.ReadAllAsync(cancellationToken);
     }
 }
 

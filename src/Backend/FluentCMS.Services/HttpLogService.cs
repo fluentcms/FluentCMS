@@ -1,14 +1,14 @@
-﻿//namespace FluentCMS.Services;
+﻿namespace FluentCMS.Services;
 
-//public interface IHttpLogService : IAutoRegisterService
-//{
-//    void Log(HttpLog httpLog);
-//}
+public interface IHttpLogService : IAutoRegisterService
+{
+    void Log(HttpLog httpLog);
+}
 
-//public class HttpLogService(IHttpLogChannel httpLogChannel) : IHttpLogService
-//{
-//    public void Log(HttpLog httpLog)
-//    {
-//        httpLogChannel.Write(httpLog);
-//    }
-//}
+public class HttpLogService(IHttpLogChannel httpLogChannel) : IHttpLogService
+{
+    public void Log(HttpLog httpLog)
+    {
+        httpLogChannel.Write(httpLog);
+    }
+}

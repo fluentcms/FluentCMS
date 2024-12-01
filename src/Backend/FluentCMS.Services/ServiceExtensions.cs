@@ -13,8 +13,8 @@ public static class ServiceExtensions
         services.AddScoped<IPermissionManager, PermissionManager>();
         services.AddScoped<IUserTokenProvider, JwtUserTokenProvider>();
 
-        //services.AddHostedService<BackgroundHttpLogProcessor>();
-        //services.AddSingleton<IHttpLogChannel, HttpLogChannel>();
+        services.AddSingleton<IHttpLogChannel, HttpLogChannel>();
+        services.AddHostedService<BackgroundHttpLogProcessor>();
 
         AddIdentity(services);
 

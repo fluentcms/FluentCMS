@@ -108,7 +108,7 @@ public static class ApiServiceExtensions
         {
             // this will be executed only when the path starts with "/api"
             app.UseMiddleware<JwtAuthorizationMiddleware>();
-            //app.UseMiddleware<HttpLoggingMiddleware>();
+            app.UseMiddleware<HttpLoggingMiddleware>();
         });
 
         app.UseAuthorization();
