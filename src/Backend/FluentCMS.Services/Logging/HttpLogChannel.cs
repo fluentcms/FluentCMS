@@ -1,4 +1,5 @@
-﻿using System.Threading.Channels;
+﻿using Microsoft.Extensions.Options;
+using System.Threading.Channels;
 
 namespace FluentCMS.Services;
 
@@ -11,14 +12,19 @@ public interface IHttpLogChannel
 public class HttpLogChannel : IHttpLogChannel
 {
     private readonly Channel<HttpLog> _logChannel;
+    private readonly HttpLogConfig _config;
 
-    public HttpLogChannel()
+    public HttpLogChannel(IOptions<HttpLogConfig> options)
     {
         _logChannel = Channel.CreateUnbounded<HttpLog>();
+        _config = options.Value ?? new HttpLogConfig();
     }
 
     public void Write(HttpLog httpLog)
     {
+        if (!_config.Enable)
+            return;
+
         if (!_logChannel.Writer.TryWrite(httpLog))
         {
             // Handle overflow if needed

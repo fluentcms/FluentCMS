@@ -1,15 +1,18 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 
 namespace FluentCMS.Services;
 
-public class BackgroundHttpLogProcessor(IHttpLogChannel logChannel, IServiceProvider serviceProvider) : BackgroundService
+public class BackgroundHttpLogProcessor(IHttpLogChannel logChannel, IServiceProvider serviceProvider, IOptions<HttpLogConfig> options) : BackgroundService
 {
-    // TODO: move this to HttpLogConfig being read from appsettings.json
-    private readonly int _batchSize = 50; // Number of logs per batch
+    private readonly HttpLogConfig _config = options.Value ?? new HttpLogConfig();
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        if (!_config.Enable)
+            return;
+
         var batch = new List<HttpLog>();
 
         try
@@ -19,7 +22,7 @@ public class BackgroundHttpLogProcessor(IHttpLogChannel logChannel, IServiceProv
                 batch.Add(log);
 
                 // Process the batch when the size reaches the limit
-                if (batch.Count >= _batchSize)
+                if (batch.Count >= _config.BatchSize)
                 {
                     await ProcessBatchAsync(batch, stoppingToken);
                     batch.Clear();
