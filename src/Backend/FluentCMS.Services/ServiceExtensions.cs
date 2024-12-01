@@ -11,8 +11,10 @@ public static class ServiceExtensions
         services.AddAutoMapper(typeof(MappingProfile));
 
         services.AddScoped<IPermissionManager, PermissionManager>();
-
         services.AddScoped<IUserTokenProvider, JwtUserTokenProvider>();
+
+        //services.AddHostedService<BackgroundHttpLogProcessor>();
+        //services.AddSingleton<IHttpLogChannel, HttpLogChannel>();
 
         AddIdentity(services);
 

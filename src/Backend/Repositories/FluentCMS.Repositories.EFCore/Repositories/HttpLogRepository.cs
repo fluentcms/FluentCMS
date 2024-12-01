@@ -1,5 +1,4 @@
-﻿
-namespace FluentCMS.Repositories.EFCore;
+﻿namespace FluentCMS.Repositories.EFCore;
 
 public class HttpLogRepository(FluentCmsDbContext dbContext) : IHttpLogRepository
 {
