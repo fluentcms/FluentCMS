@@ -67,7 +67,7 @@ internal sealed class HttpLoggingMiddleware
 
                 // Wait for all tasks to complete
                 await Task.WhenAll(tasks);
-                await httpLogService.Log(httpLog);
+                httpLogService.Log(httpLog);
             }
         }
 
@@ -107,7 +107,7 @@ internal sealed class HttpLoggingMiddleware
 
                 // Wait for all tasks to complete
                 await Task.WhenAll(tasks);
-                await httpLogService.Log(httpLog);
+                httpLogService.Log(httpLog);
             }
         }
     }

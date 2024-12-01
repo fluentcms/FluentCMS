@@ -1,14 +1,16 @@
-﻿namespace FluentCMS.Repositories.EFCore;
+﻿
+namespace FluentCMS.Repositories.EFCore;
 
 public class HttpLogRepository(FluentCmsDbContext dbContext) : IHttpLogRepository
 {
-    public async Task Create(HttpLog log, CancellationToken cancellationToken = default)
+    public async Task CreateMany(IEnumerable<HttpLog> httpLogs, CancellationToken cancellationToken = default)
     {
-        if (log.Id == Guid.Empty)
-            log.Id = Guid.NewGuid();
-
-        await dbContext.HttpLogs.AddAsync(log, cancellationToken);
-
+        foreach (var http in httpLogs)
+        {
+            if (http.Id == Guid.Empty)
+                http.Id = Guid.NewGuid();
+        }
+        await dbContext.HttpLogs.AddRangeAsync(httpLogs, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
     }
 }

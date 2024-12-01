@@ -2,5 +2,5 @@
 
 public interface IHttpLogRepository
 {
-    Task Create(HttpLog log, CancellationToken cancellationToken = default);
+    Task CreateMany(IEnumerable<HttpLog> httpLogs, CancellationToken cancellationToken = default);
 }

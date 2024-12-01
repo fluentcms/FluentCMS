@@ -1,38 +1,29 @@
-﻿namespace FluentCMS.Repositories.LiteDb;
+﻿
+namespace FluentCMS.Repositories.LiteDb;
 
-public class HttpLogRepository : IHttpLogRepository
+public class HttpLogRepository(ILiteDBContext liteDbContext) : IHttpLogRepository
 {
-    private readonly ILiteDatabaseAsync _liteDatabase;
-    private readonly ILiteDBContext _liteDbContext;
-
-    // TODO: This is a workaround to check if DB is initialized
-    // TODO: Not sure it is a valid approach
-    private static bool _isInitialized = false;
-
-    public HttpLogRepository(ILiteDBContext liteDbContext)
+    public async Task CreateMany(IEnumerable<HttpLog> httpLogs, CancellationToken cancellationToken = default)
     {
-        _liteDatabase = liteDbContext.Database;
-        _liteDbContext = liteDbContext;
+        cancellationToken.ThrowIfCancellationRequested();
 
-        if (!_isInitialized)
-        {
-            // check if DB exists and has at least one collection (any collection)
-            _isInitialized = _liteDatabase.GetCollectionNamesAsync().GetAwaiter().GetResult().Any();
-        }
-    }
+        if (httpLogs == null)
+            return;
 
-    public async Task Create(HttpLog log, CancellationToken cancellationToken = default)
-    {
-        // log into DB only if it is initialized
-        if (_isInitialized)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
+        // Create a list of tasks to insert the HTTP logs into the appropriate collection.
+        var tasks = httpLogs.GroupBy(log => GetCollectionName(log.StatusCode))
+            .Select(async group =>
+            {
+                // Get the collection name from the group.
+                var collectionName = group.Key;
+                // Get the collection from the database.
+                var collection = liteDbContext.Database.GetCollection<HttpLog>(collectionName);
+                // Insert the HTTP logs into the collection.
+                await collection.InsertBulkAsync(group);
+            });
 
-            log.Id = Guid.NewGuid();
-            var collection = _liteDbContext.Database.GetCollection<HttpLog>(GetCollectionName(log.StatusCode));
-
-            await collection.InsertAsync(log);
-        }
+        // Wait for all tasks to complete.
+        await Task.WhenAll(tasks);
     }
 
     private static string GetCollectionName(int statusCode) => statusCode switch
