@@ -28,7 +28,7 @@ internal sealed class HttpLoggingMiddleware
         _assemblyName = _assembly?.GetName();
     }
 
-    public async Task Invoke(HttpContext context, IHttpLogRepository repository)
+    public async Task Invoke(HttpContext context, IHttpLogService httpLogService)
     {
         if (!_httpLogConfig.Enable)
         {
@@ -67,7 +67,7 @@ internal sealed class HttpLoggingMiddleware
 
                 // Wait for all tasks to complete
                 await Task.WhenAll(tasks);
-                await repository.Create(httpLog);
+                await httpLogService.Log(httpLog);
             }
         }
 
@@ -107,7 +107,7 @@ internal sealed class HttpLoggingMiddleware
 
                 // Wait for all tasks to complete
                 await Task.WhenAll(tasks);
-                await repository.Create(httpLog);
+                await httpLogService.Log(httpLog);
             }
         }
     }
