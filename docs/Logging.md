@@ -21,25 +21,25 @@ The HTTP Logging Middleware `HttpLoggingMiddleware.cs` is responsible for captur
 
 ---
 
-## Configuring `HttpLogConfig`
-
-The `HttpLogConfig` class allows you to customize the logging behavior. It can be configured via the application's `appsettings.json` or other configuration providers.
-
 ### Configuration Properties
 
-- `Enable` (bool): Toggles the logging functionality. Default is `false`.
-- `EnableRequestBody` (bool): Enables or disables logging of the HTTP request body. Default is `false`.
-- `EnableResponseBody` (bool): Enables or disables logging of the HTTP response body. Default is `false`.
+The `HttpLogging` section in the appsettings.json file allows you to customize the behavior of the HTTP logging middleware and background processor. Below are the available configuration properties:
+
+| Property               | Type    | Default Value | Description                                                                 |
+|------------------------|---------|---------------|-----------------------------------------------------------------------------|
+| `Enable`               | `bool`  | `false`       | Toggles the logging functionality on or off.                               |
+| `EnableRequestBody`    | `bool`  | `false`       | Enables or disables logging of the HTTP request body.                      |
+| `EnableResponseBody`   | `bool`  | `false`       | Enables or disables logging of the HTTP response body.                     |
+| `BatchSize`            | `int`   | `50`          | Specifies the number of log entries to process in a single batch.          |
 
 ### Example `appsettings.json` Configuration
 
 ```json
-{
-  "HttpLogConfig": {
+"HttpLogging": {
     "Enable": true,
-    "EnableRequestBody": true,
-    "EnableResponseBody": true
-  }
+    "EnableRequestBody": false,
+    "EnableResponseBody": false,
+    "BatchSize": 50
 }
 ```
 
