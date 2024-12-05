@@ -2,15 +2,8 @@
 
 namespace FluentCMS.Web.Api.Filters;
 
-public class ApiResultExceptionFilter : IExceptionFilter
+public class ApiResultExceptionFilter(IApiExecutionContext apiExecutionContext) : IExceptionFilter
 {
-    private readonly IApiExecutionContext _apiExecutionContext;
-
-    public ApiResultExceptionFilter(IApiExecutionContext apiExecutionContext)
-    {
-        _apiExecutionContext = apiExecutionContext;
-    }
-
     public void OnException(ExceptionContext context)
     {
         if (!context.ActionDescriptor.IsApiResultType())
@@ -18,10 +11,10 @@ public class ApiResultExceptionFilter : IExceptionFilter
 
         var apiResult = new ApiResult<object>
         {
-            Duration = (DateTime.UtcNow - _apiExecutionContext.StartDate).TotalMilliseconds,
-            SessionId = _apiExecutionContext.SessionId,
-            TraceId = _apiExecutionContext.TraceId,
-            UniqueId = _apiExecutionContext.UniqueId,
+            Duration = (DateTime.UtcNow - apiExecutionContext.StartDate).TotalMilliseconds,
+            SessionId = apiExecutionContext.SessionId,
+            TraceId = apiExecutionContext.TraceId,
+            UniqueId = apiExecutionContext.UniqueId,
             Status = 500,
             IsSuccess = false,
         };

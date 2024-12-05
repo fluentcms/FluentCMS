@@ -2,14 +2,8 @@
 
 namespace FluentCMS.Web.Api.Filters;
 
-public class ApiResultActionFilter : IAsyncActionFilter
+public class ApiResultActionFilter(IApiExecutionContext apiExecutionContext) : IAsyncActionFilter
 {
-    private readonly IApiExecutionContext _apiExecutionContext;
-
-    public ApiResultActionFilter(IApiExecutionContext apiExecutionContext)
-    {
-        _apiExecutionContext = apiExecutionContext;
-    }
     public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
         // Execute the action
@@ -25,10 +19,10 @@ public class ApiResultActionFilter : IAsyncActionFilter
                 return;
 
             var apiResult = (IApiResult)value;
-            apiResult.Duration = (DateTime.UtcNow - _apiExecutionContext.StartDate).TotalMilliseconds;
-            apiResult.SessionId = _apiExecutionContext.SessionId;
-            apiResult.TraceId = _apiExecutionContext.TraceId;
-            apiResult.UniqueId = _apiExecutionContext.UniqueId;
+            apiResult.Duration = (DateTime.UtcNow - apiExecutionContext.StartDate).TotalMilliseconds;
+            apiResult.SessionId = apiExecutionContext.SessionId;
+            apiResult.TraceId = apiExecutionContext.TraceId;
+            apiResult.UniqueId = apiExecutionContext.UniqueId;
             apiResult.Status = 200;
             apiResult.IsSuccess = true;
         }
