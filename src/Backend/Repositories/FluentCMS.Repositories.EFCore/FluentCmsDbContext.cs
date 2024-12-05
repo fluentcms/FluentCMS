@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using System.Collections;
 using System.Text.Json;
 
 namespace FluentCMS.Repositories.EFCore;
@@ -18,6 +19,7 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
     public DbSet<FileModel> Files { get; set; } = default!;
     public DbSet<FolderModel> Folders { get; set; } = default!;
     public DbSet<GlobalSettingsModel> GlobalSettings { get; set; } = default!;
+    public DbSet<HttpLog> HttpLogs { get; set; } = default!;
     public DbSet<LayoutModel> Layouts { get; set; } = default!;
     public DbSet<PageModel> Pages { get; set; } = default!;
     public DbSet<PermissionModel> Permissions { get; set; } = default!;
@@ -126,6 +128,22 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
                     claims => JsonSerializer.Deserialize<List<IdentityUserClaim<Guid>>>(claims, jsonSerializerOptions) ?? new List<IdentityUserClaim<Guid>>());
         });
 
+        modelBuilder.Entity<HttpLog>(entity =>
+        {
+            entity.Property(h => h.ReqHeaders)
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, jsonSerializerOptions),
+                    v => JsonSerializer.Deserialize<Dictionary<string, string>>(v, jsonSerializerOptions) ?? new Dictionary<string, string>());
+            entity.Property(h => h.ResHeaders)
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, jsonSerializerOptions),
+                    v => JsonSerializer.Deserialize<Dictionary<string, string>>(v, jsonSerializerOptions) ?? new Dictionary<string, string>());
+            entity.Property(h => h.ExData)
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, jsonSerializerOptions),
+                    v => JsonSerializer.Deserialize<IDictionary>(v, jsonSerializerOptions) ?? new Dictionary<string, object>());
+        });
+ 
         base.OnModelCreating(modelBuilder);
     }
 

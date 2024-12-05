@@ -15,6 +15,7 @@ public class ApiExecutionContext : IApiExecutionContext
     public const string SESSION_ID_HEADER_KEY = "X_Session_Id";
     public const string UNIQUE_USER_ID_HEADER_KEY = "X-Unique-Id";
     public const string DEFAULT_LANGUAGE = "en-US";
+    public const string API_AUTH_HEADER = "X-API-AUTH";
 
     // Properties to store various contextual information
     public string TraceId { get; } = string.Empty;  // Unique identifier for the current request
@@ -26,6 +27,7 @@ public class ApiExecutionContext : IApiExecutionContext
     public Guid UserId { get; } = Guid.Empty;       // User ID extracted from the user's claims, default is Guid.Empty
     public string Username { get; } = string.Empty; // Username extracted from the user's claims, default is empty string
     public bool IsAuthenticated { get; } = false;   // Indicates if the user is authenticated, default is false
+    public string ApiTokenKey { get; } = string.Empty; // API token key extracted from the request headers
 
     /// <summary>
     /// Constructor initializes the ApiExecutionContext with the current HTTP context information.
@@ -60,6 +62,9 @@ public class ApiExecutionContext : IApiExecutionContext
 
             // Determine if the user is authenticated
             IsAuthenticated = user.Identity?.IsAuthenticated ?? false;
+
+            // extract the API token key from the request headers
+            ApiTokenKey = context.Request?.Headers?.FirstOrDefault(_ => _.Key.Equals(API_AUTH_HEADER, StringComparison.OrdinalIgnoreCase)).Value.ToString() ?? string.Empty;
         }
     }
 }

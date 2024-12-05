@@ -19,6 +19,7 @@ public static class LiteDbServiceExtensions
         services.AddScoped<IFileRepository, FileRepository>();
         services.AddScoped<IFolderRepository, FolderRepository>();
         services.AddScoped<IGlobalSettingsRepository, GlobalSettingsRepository>();
+        services.AddScoped<IHttpLogRepository, HttpLogRepository>();
         services.AddScoped<ILayoutRepository, LayoutRepository>();
         services.AddScoped<IPageRepository, PageRepository>();
         services.AddScoped<IPermissionRepository, PermissionRepository>();

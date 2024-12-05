@@ -1,17 +1,8 @@
 ﻿namespace FluentCMS.Repositories.MongoDB;
 
-public class GlobalSettingsRepository : IGlobalSettingsRepository
+public class GlobalSettingsRepository(IMongoDBContext mongoDbContext, IApiExecutionContext apiExecutionContext) : IGlobalSettingsRepository
 {
-    private readonly IMongoCollection<GlobalSettings> _collection;
-    private readonly IApiExecutionContext _apiExecutionContext;
-    private readonly IMongoDBContext _mongoDbContext;
-
-    public GlobalSettingsRepository(IMongoDBContext mongoDbContext, IApiExecutionContext apiExecutionContext)
-    {
-        _collection = mongoDbContext.Database.GetCollection<GlobalSettings>(nameof(GlobalSettings).ToLowerInvariant());
-        _apiExecutionContext = apiExecutionContext;
-        _mongoDbContext = mongoDbContext;
-    }
+    private readonly IMongoCollection<GlobalSettings> _collection = mongoDbContext.Database.GetCollection<GlobalSettings>(nameof(GlobalSettings).ToLowerInvariant());
 
     public async Task<GlobalSettings?> Get(CancellationToken cancellationToken = default)
     {
@@ -47,12 +38,12 @@ public class GlobalSettingsRepository : IGlobalSettingsRepository
     {
         settings.Id = Guid.NewGuid();
         settings.CreatedAt = DateTime.UtcNow;
-        settings.CreatedBy = _apiExecutionContext.Username;
+        settings.CreatedBy = apiExecutionContext.Username;
     }
 
     private void SetAuditableFieldsForUpdate(GlobalSettings settings)
     {
         settings.ModifiedAt = DateTime.UtcNow;
-        settings.ModifiedBy = _apiExecutionContext.Username;
+        settings.ModifiedBy = apiExecutionContext.Username;
     }
 }
