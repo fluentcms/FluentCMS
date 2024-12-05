@@ -5,7 +5,6 @@ using FluentCMS.Web.Api.Filters;
 using FluentCMS.Web.Api.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Cryptography;
@@ -86,7 +85,7 @@ public static class ApiServiceExtensions
 
         services.AddHttpContextAccessor();
 
-        services.AddScoped<IApiExecutionContext>(sp => new ApiExecutionContext(sp.GetRequiredService<IHttpContextAccessor>()));
+        services.AddScoped<IApiExecutionContext, ApiExecutionContext>();
 
         services.AddAutoMapper(typeof(ApiServiceExtensions));
 
