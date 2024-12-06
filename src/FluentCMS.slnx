@@ -57,5 +57,5 @@
     <Project Path="Providers/TemplateRenderingProviders/FluentCMS.Providers.TemplateRenderingProviders/FluentCMS.Providers.TemplateRenderingProviders.csproj" />
   </Folder>
   <Project Path="FluentCMS/FluentCMS.csproj" />
-  <Project Path="Shared/Shared.csproj" />
+  <Project Path="FluentCMS.Shared/FluentCMS.Shared.csproj" />
 </Solution>

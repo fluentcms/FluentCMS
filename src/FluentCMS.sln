@@ -33,7 +33,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.UI", "Fronten
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Plugins", "Plugins", "{BB5FD6A0-0840-4381-AB68-AD61499368ED}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Shared", "Shared\Shared.csproj", "{E78B903B-4307-4220-B451-3000ED3E9971}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Shared", "FluentCMS.Shared\FluentCMS.Shared.csproj", "{E78B903B-4307-4220-B451-3000ED3E9971}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FluentCMS.Web.Plugins.Admin", "Frontend\Plugins\FluentCMS.Web.Plugins.Admin\FluentCMS.Web.Plugins.Admin.csproj", "{70B5742E-C249-4B51-985C-2B4B7BDAB489}"
 EndProject

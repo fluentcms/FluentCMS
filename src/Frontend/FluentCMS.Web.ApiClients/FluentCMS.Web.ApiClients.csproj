@@ -28,7 +28,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\..\Shared\Shared.csproj" />
+	  <ProjectReference Include="..\..\FluentCMS.Shared/FluentCMS.Shared.csproj" />
 	</ItemGroup>
 
   <ItemGroup>
