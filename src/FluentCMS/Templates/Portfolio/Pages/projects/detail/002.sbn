@@ -1,0 +1,17 @@
+<div class="project-detail bg-white px-8">
+    {{ if Item.image }}
+        <div class="project-image mt-6">
+            <img class="w-full max-h-[500px] object-cover rounded-lg" src="/files/{{ Item.image }}" alt="{{ Item.project_title }}">
+        </div>
+    {{ end }}
+    <div class="project-meta text-gray-700 mt-8 space-y-4">
+        <div>
+            <strong class="text-lg">Duration:</strong>
+            <span class="text-gray-600">{{ Item.start_date }} - {{ Item.end_date }}</span>
+        </div>
+        <div>
+            <strong class="text-lg">Technologies:</strong>
+            <span class="text-gray-600">{{ Item.technologies }}</span>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,5 @@
+<div class="flex flex-wrap gap-4 mt-2 text-gray-600">
+    {{ for skill in Items }}
+        <span class="px-3 py-1 bg-teal-100 text-teal-700 rounded-full">{{ skill.skill_name }} - {{ skill.proficiency }}</span>
+    {{ end }}
+</div>

@@ -1,0 +1,21 @@
+<section id="projects" class="py-8 bg-gray-100">
+    <div class="container mx-auto text-center">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            {{ for project in Items }}
+                <div class="bg-white shadow-lg rounded-lg overflow-hidden">
+                    <img src="/files/{{ project.image }}" alt="{{ project.project_title }}" class="w-full h-48 object-cover">
+                    <div class="p-6">
+                        <h3 class="text-xl font-semibold text-gray-900">{{ project.project_title }}</h3>
+                        <p class="text-gray-600 mt-2">
+                            {{ project.description }}
+                        </p>
+                        <a href="/projects/detail/{{ project.Id }}"
+                            class="inline-block mt-4 text-teal-500 hover:text-teal-600">
+                            View Project &rarr;
+                        </a>
+                    </div>
+                </div>
+            {{ end }}
+        </div>
+    </div>
+</section>

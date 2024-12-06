@@ -229,6 +229,7 @@ public class SiteService(ISiteRepository siteRepository, IPluginDefinitionReposi
 
         foreach (var page in siteTemplate.Pages)
         {
+            page.Template = siteTemplate.Template;
             SetIds(siteTemplate, page, pluginDefinitions);
         }
     }
@@ -244,6 +245,7 @@ public class SiteService(ISiteRepository siteRepository, IPluginDefinitionReposi
         }
         foreach (var childPage in page.Children)
         {
+            childPage.Template = siteTemplate.Template;
             SetIds(siteTemplate, childPage, pluginDefinitions);
         }
     }
