@@ -1,0 +1,41 @@
+<div class="blog-post block mb-8 p-4 bg-white dark:bg-gray-900 dark:text-white shadow rounded-lg">
+    <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-200">{{ Item.Title }}</h2>
+    {{ if Item.FeaturedImage }}
+        <div class="blog-featured-image mt-6">
+            <img class="w-full sm:w-1/2 h-auto rounded-lg" src="/files/{{ Item.FeaturedImage }}" alt="Featured Image">
+        </div>
+    {{ end }}
+    <div class="blog-meta text-sm text-gray-600 dark:text-gray-200 mt-2">
+        <span class="blog-slug">
+            Slug:
+            <span class="font-medium text-gray-700 dark:text-gray-400">
+                {{ Item.Slug }}
+            </span>
+        </span> |
+        <span class="blog-published-at">Published At:
+            <span class="font-medium
+                text-gray-700 dark:text-gray-400">
+                {{ Item.PublishedAt }}
+            </span></span> |
+        <span class="blog-status">Status:
+            <span class="font-medium text-gray-700 dark:text-gray-400">
+                {{ Item.Status }}
+            </span></span> |
+        <span class="blog-order">Order:
+            <span class="font-medium text-gray-700">
+                {{ Item.Order }}
+            </span>
+        </span>
+    </div>
+    <div class="f-rich-text-content my-8">{{ Item.Content }}</div>
+    <div class="blog-tags mt-4">
+        <strong class="text-gray-800 dark:text-gray-300">Tags:</strong>
+        <div class="inline-flex flex-wrap space-x-2 mt-2">
+            {{ for tag in Item.Tags }}
+                <span class="blog-tag bg-blue-100 dark:bg-blue-800/20 text-blue-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded">
+                    {{ tag }}
+                </span>
+            {{ end }}
+        </div>
+    </div>
+</div>

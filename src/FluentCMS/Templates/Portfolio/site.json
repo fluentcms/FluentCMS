@@ -75,48 +75,28 @@
                 {
                     "Definition": "TextHTML Plugin",
                     "Section": "Main",
-                    "Type": "TextHTMLContent",
-                    "Content": [
-                        {
-                            "Content": "<section class=\"bg-gray-100 dark:bg-gray-900 dark:text-white py-20\">\n    <div class=\"container mx-auto flex flex-col items-center justify-center text-center\">\n        <!-- Hero Content -->\n        <h1 class=\"text-4xl sm:text-5xl lg:text-6xl font-bold mb-4\">\n            <span data-inline-editable>Hi, I'm </span> <span class=\"text-teal-400\" data-inline-editable>Your Name</span>\n        </h1>\n        <p class=\"text-lg sm:text-xl lg:text-2xl max-w-2xl mb-8\" data-inline-editable>\n            A passionate <span class=\"font-semibold\">Full Stack Developer</span> specialized in building modern,\n            responsive web applications with the latest technologies.\n        </p>\n\n        <!-- CTA Buttons -->\n        <div class=\"space-x-4\">\n            <a href=\"/projects\" class=\"px-6 py-3 bg-teal-400 text-gray-900 font-medium rounded hover:bg-teal-500 transition\">\n                <span data-inline-editable>View My Work</span>\n            </a>\n            <a href=\"/contact\" class=\"px-6 py-3 border border-teal-400 text-teal-400 font-medium rounded hover:bg-teal-400 hover:text-gray-900 transition\">\n                <span data-inline-editable>Contact Me</span>\n            </a>\n        </div>\n    </div>\n</section>"
-                        }
-                    ]
+                    "ContentPath": "001.html"
                 },
                 {
                     "Definition": "TextHTML Plugin",
                     "Section": "Main",
-                    "Type": "TextHTMLContent",
-                    "Content": [
-                        {
-                            "Content": "<div class=\"mx-auto max-w-screen-md text-center my-8 lg:my-16\">\n    <h2 class=\"mb-4 text-4xl tracking-tight font-extrabold text-gray-900 dark:text-white\" data-inline-editable>My Services</h2>\n    <p class=\"font-light text-gray-500 dark:text-gray-400 sm:text-xl\" data-inline-editable>Custom solutions crafted to meet your unique business needs.</p>\n</div>"
-                        }
-                    ]
+                    "ContentPath": "002.html"
                 },
                 {
                     "Definition": "TextHTML Plugin",
                     "Section": "Main",
-                    "Type": "TextHTMLContent",
-                    "Content": [
-                        {
-                            "Content": "<section class=\"bg-gray-100 dark:bg-gray-900\">\n    <div class=\"py-8 px-4 mx-auto max-w-screen-xl sm:py-16 lg:px-6\">\n        <div class=\"space-y-8 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-12 md:space-y-0\">\n            <div>\n                <h3 class=\"mb-2 text-xl font-bold dark:text-white\" data-inline-editable>\n                    Web &amp; Mobile App Development\n                </h3>\n                <p class=\"text-gray-500 dark:text-gray-400\" data-inline-editable>\n                    We develop custom web and mobile applications tailored to your business needs for optimal user\n                    experience and functionality.\n                </p>\n            </div>\n            <div>\n                <h3 class=\"mb-2 text-xl font-bold dark:text-white\" data-inline-editable>Custom Software Development</h3>\n                <p class=\"text-gray-500 dark:text-gray-400\" data-inline-editable>\n                    Our team creates custom software solutions to automate and streamline your business processes,\n                    boosting efficiency and reducing costs.\n                </p>\n            </div>\n            <div>\n                <h3 class=\"mb-2 text-xl font-bold dark:text-white\" data-inline-editable>UI/UX design</h3>\n                <p class=\"text-gray-500 dark:text-gray-400\" data-inline-editable>\n                    Auto-assign tasks, send Slack messages, and much more. Now power up with hundreds of new templates\n                    to help you get started.\n                </p>\n            </div>\n            <div>\n                <h3 class=\"mb-2 text-xl font-bold dark:text-white\" data-inline-editable>\n                    Application, API and Data Integration\n                </h3>\n                <p class=\"text-gray-500 dark:text-gray-400\" data-inline-editable>\n                    Audit-proof software built for critical financial operations like month-end close and quarterly\n                    budgeting.\n                </p>\n            </div>\n            <div>\n                <h3 class=\"mb-2 text-xl font-bold dark:text-white\" data-inline-editable>\n                    Cloud &amp; DevOps Engineering\n                </h3>\n                <p class=\"text-gray-500 dark:text-gray-400\" data-inline-editable>\n                    Craft beautiful, delightful experiences for both marketing and product with real cross-company\n                    collaboration.\n                </p>\n            </div>\n            <div>\n                <h3 class=\"mb-2 text-xl font-bold dark:text-white\" data-inline-editable>IT consultation</h3>\n                <p class=\"text-gray-500 dark:text-gray-400\" data-inline-editable>\n                    Keep your company’s lights on with customizable, iterative, and structured workflows built for all\n                    efficient teams and individual.\n                </p>\n            </div>\n        </div>\n    </div>\n</section>"
-                        }
-                    ]
+                    "ContentPath": "003.html"
                 },
                 {
                     "Definition": "TextHTML Plugin",
                     "Section": "Main",
-                    "Type": "TextHTMLContent",
-                    "Content": [
-                        {
-                            "Content": "<div class=\"mx-auto max-w-screen-md text-center my-8 lg:my-16\">\n    <h2 class=\"mb-4 text-4xl tracking-tight font-extrabold text-gray-900 dark:text-white\" data-inline-editable>My Projects</h2>\n    <p class=\"font-light text-gray-500 dark:text-gray-400 sm:text-xl\" data-inline-editable>Here is list of some of my projects.</p>\n</div>"
-                        }
-                    ]
+                    "ContentPath": "004.html"
                 },
                 {
                     "Definition": "Content List",
                     "Section": "Main",
                     "Settings": {
-                        "Template": "<section id=\"projects\" class=\"py-8 bg-gray-100\">\n    <div class=\"container mx-auto text-center\">\n        <div class=\"grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8\">\n            {{ for project in (Items | array.limit 3) }}\n            <div class=\"bg-white shadow-lg rounded-lg overflow-hidden\">\n                <img src=\"/files/{{ project.image }}\" alt=\"{{ project.project_title }}\" class=\"w-full h-48 object-cover\">\n                <div class=\"p-6\">\n                    <h3 class=\"text-xl font-semibold text-gray-900\">{{ project.project_title }}</h3>\n                    <p class=\"text-gray-600 mt-2\">\n                        {{ project.description }}\n                    </p>\n                    <a href=\"/projects/detail/{{ project.Id }}\"\n                        class=\"inline-block mt-4 text-teal-500 hover:text-teal-600\">\n                        View Project &rarr;\n                    </a>\n                </div>\n            </div>\n            {{ end }}\n        </div>\n        <div class=\"mt-12\">\n            <a href=\"/projects\"\n                class=\"px-6 py-3 bg-teal-500 text-white font-medium rounded hover:bg-teal-600 transition\">\n                View More Projects\n            </a>\n        </div>\n    </div>\n</section>",
+                        "Template": "005.sbn",
                         "ContentTypeSlug": "project"
                     }
                 }
@@ -135,18 +115,13 @@
                 {
                     "Definition": "TextHTML Plugin",
                     "Section": "Main",
-                    "Type": "TextHTMLContent",
-                    "Content": [
-                        {
-                            "Content": "<div class=\"mx-auto max-w-screen-md text-center my-8 lg:my-16\">\n    <h2 class=\"mb-4 text-4xl tracking-tight font-extrabold text-gray-900 dark:text-white\" data-inline-editable>My Projects</h2>\n    <p class=\"font-light text-gray-500 dark:text-gray-400 sm:text-xl\" data-inline-editable>Here is list of my projects.</p>\n</div>"
-                        }
-                    ]
+                    "ContentPath": "projects/001.html"
                 },
                 {
                     "Definition": "Content List",
                     "Section": "Main",
                     "Settings": {
-                        "Template": "<section id=\"projects\" class=\"py-8 bg-gray-100\">\n    <div class=\"container mx-auto text-center\">\n        <div class=\"grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8\">\n            {{ for project in Items }}\n            <div class=\"bg-white shadow-lg rounded-lg overflow-hidden\">\n                <img src=\"/files/{{ project.image }}\" alt=\"{{ project.project_title }}\" class=\"w-full h-48 object-cover\">\n                <div class=\"p-6\">\n                    <h3 class=\"text-xl font-semibold text-gray-900\">{{ project.project_title }}</h3>\n                    <p class=\"text-gray-600 mt-2\">\n                        {{ project.description }}\n                    </p>\n                    <a href=\"/projects/detail/{{ project.Id }}\"\n                        class=\"inline-block mt-4 text-teal-500 hover:text-teal-600\">\n                        View Project &rarr;\n                    </a>\n                </div>\n            </div>\n            {{ end }}\n        </div>\n         </div>\n</section>",
+                        "Template": "projects/002.sbn",
                         "ContentTypeSlug": "project"
                     }
                 }
@@ -167,7 +142,7 @@
                             "Section": "Main",
                             "Cols": 12,
                             "Settings": {
-                                "Template": "<div class=\"mx-auto max-w-screen-md text-center my-8 lg:my-16\">\n    <h2 class=\"mb-4 text-4xl tracking-tight font-extrabold text-gray-900 dark:text-white\" data-inline-editable>{{ Item.project_title }}</h2>\n    <p class=\"font-light text-gray-500 dark:text-gray-400 sm:text-xl\" data-inline-editable>{{Item.description}}</p>\n</div>",
+                                "Template": "projects/detail/001.sbn",
                                 "ContentTypeSlug": "project"
                             }
                         },
@@ -176,7 +151,7 @@
                             "Section": "Main",
                             "Cols": 12,
                             "Settings": {
-                                "Template": "<div class=\"project-detail bg-white px-8\">\n    {{ if Item.image }}\n    <div class=\"project-image mt-6\">\n        <img class=\"w-full max-h-[500px] object-cover rounded-lg\" src=\"/files/{{ Item.image }}\" alt=\"{{ Item.project_title }}\">\n    </div>\n    {{ end }}\n\n    <div class=\"project-meta text-gray-700 mt-8 space-y-4\">\n        <div>\n            <strong class=\"text-lg\">Duration:</strong>\n            <span class=\"text-gray-600\">{{ Item.start_date }} - {{ Item.end_date }}</span>\n        </div>\n        <div>\n            <strong class=\"text-lg\">Technologies:</strong>\n            <span class=\"text-gray-600\">{{ Item.technologies }}</span>\n        </div>\n    </div>\n</div>",
+                                "Template": "projects/detail/002.sbn",
                                 "ContentTypeSlug": "project"
                             }
                         }
@@ -197,94 +172,58 @@
                 {
                     "Definition": "TextHTML Plugin",
                     "Section": "Top",
-                    "Type": "TextHTMLContent",
-                    "Content": [
-                        {
-                            "Content": "<div class=\"max-w-screen-md mx-auto px-4 my-8 lg:my-16 text-center\">\n    <h2 class=\"mb-4 text-4xl tracking-tight font-extrabold text-gray-900 dark:text-white\" data-inline-editable>About Me</h2>\n    <p class=\"text-gray-500 sm:text-xl dark:text-gray-400\" data-inline-editable>I am a full-stack web developer with a passion for creating engaging, responsive, and scalable applications. With over four years in the field, I specialize in frameworks like React and Svelte and have expertise in Tailwind CSS and Bootstrap for designing beautiful, efficient interfaces.</p>\n</div>"
-                        }
-                    ]
+                    "ContentPath": "about/001.html"
                 },
                 {
                     "Definition": "TextHTML Plugin",
                     "Section": "Left",
-                    "Type": "TextHTMLContent",
-                    "Content": [
-                        {
-                            "Content": "<div class=\"sm:pr-12\"><img src=\"/files/images/blocks/joseph-mcfall.png\" alt=\"Profile Image\" class=\"w-full md:w-full md:h-auto rounded-full shadow-lg object-cover\"></div>"
-                        }
-                    ]
+                    "ContentPath": "about/002.html"
                 },
                 {
                     "Definition": "TextHTML Plugin",
                     "Section": "Right",
-                    "Content": [
-                        {
-                            "Content": "<h3 class=\"text-2xl font-semibold text-gray-700 mt-6\">My Skills</h3>"
-                        }
-                    ]
+                    "ContentPath": "about/003.html"
                 },
                 {
                     "Definition": "Content List",
                     "Section": "Right",
                     "Settings": {
-                        "Template": "<div class=\"flex flex-wrap gap-4 mt-2 text-gray-600\">\n    {{ for skill in Items }}\n        <span class=\"px-3 py-1 bg-teal-100 text-teal-700 rounded-full\">{{ skill.skill_name }} - {{ skill.proficiency }}</span>\n    {{ end }}\n</div>",
+                        "Template": "about/004.sbn",
                         "ContentTypeSlug": "skill"
                     }
                 },
                 {
                     "Definition": "TextHTML Plugin",
                     "Section": "Right",
-                    "Content": [
-                        {
-                            "Content": "<h3 class=\"text-2xl font-semibold text-gray-700 mt-6\">Notable Projects</h3>"
-                        }
-                    ]
+                    "ContentPath": "about/005.html"
                 },
                 {
                     "Definition": "Content List",
                     "Section": "Right",
                     "Settings": {
-                        "Template": "<div class=\"mt-4 grid sm:grid-cols-2 gap-4\">\n        {{for project in Items | array.limit 2 }}\n            <div class=\"p-4 bg-white rounded shadow-lg\">\n                <h4 class=\"text-xl font-semibold text-gray-800\">{{project.project_title}}</h4>\n                <p class=\"text-gray-600 mt-2\">{{project.description}}</p>\n                <a href=\"/projects/detail/{{project.Id}}\" class=\"text-teal-500 hover:text-teal-600 underline mt-2 block\">View Project</a>\n            </div>\n        {{end}}\n    </div>",
+                        "Template": "about/006.sbn",
                         "ContentTypeSlug": "project"
                     }
                 },
                 {
                     "Definition": "TextHTML Plugin",
                     "Section": "Right",
-                    "Content": [
-                        {
-                            "Content": "<h3 class=\"text-2xl font-semibold text-gray-700 mt-6\">Testimonials</h3>"
-                        }
-                    ]
+                    "ContentPath": "about/007.html"
                 },
                 {
                     "Definition": "TextHTML Plugin",
                     "Section": "Right",
-                    "Content": [
-                        {
-                            "Content": "<section class=\"bg-gray-100 dark:bg-gray-900\">\n    <div class=\"grid mb-8 lg:mb-12 lg:grid-cols-2\">\n        <figure\n            class=\"flex flex-col justify-center items-center p-8 text-center border-b border-gray-200 md:p-12 lg:border-r dark:bg-gray-800 dark:border-gray-700\">\n            <blockquote class=\"mx-auto mb-8 max-w-2xl text-gray-500 dark:text-gray-400\">\n                <h3 class=\"text-lg font-semibold text-gray-900 dark:text-white\" data-inline-editable>\n                    A Seamless Launch\n                </h3>\n                <p class=\"my-4\" data-inline-editable>\n                    \"Working with [Your Name] was a game-changer for our\n                    project. Their expertise allowed us to launch a user-friendly platform that exceeded our\n                    expectations. They took the time to understand our needs and delivered a solution that not only\n                    looked great but also performed flawlessly.\"\n                </p>\n            </blockquote>\n            <figcaption class=\"flex justify-center items-center space-x-3\">\n                <img class=\"w-9 h-9 rounded-full\" src=\"/files/images/karen-nelson.png\" alt=\"profile picture\">\n                <div class=\"space-y-0.5 font-medium dark:text-white text-left\">\n                    <div data-inline-editable>Sarah T.</div>\n                    <div class=\"text-sm font-light text-gray-500 dark:text-gray-400\" data-inline-editable>\n                        Product Manager at Innovate Tech</div>\n                </div>\n            </figcaption>\n        </figure>\n        <figure\n            class=\"flex flex-col justify-center items-center p-8 text-center border-b border-gray-200 md:p-12 dark:bg-gray-800 dark:border-gray-700\">\n            <blockquote class=\"mx-auto mb-8 max-w-2xl text-gray-500 dark:text-gray-400\">\n                <h3 class=\"text-lg font-semibold text-gray-900 dark:text-white\" data-inline-editable>\n                    Transforming Our Vision\n                </h3>\n                <p class=\"my-4\" data-inline-editable>\n                    \"[Your Name] transformed our vision into reality with their\n                    exceptional development skills. They crafted a tailored solution that streamlined our processes and\n                    increased efficiency across the board. Their attention to detail and commitment to quality is\n                    unmatched.\"\n                </p>\n            </blockquote>\n            <figcaption class=\"flex justify-center items-center space-x-3\">\n                <img class=\"w-9 h-9 rounded-full\" src=\"/files/images/roberta-casas.png\" alt=\"profile picture\">\n                <div class=\"space-y-0.5 font-medium dark:text-white text-left\">\n                    <div data-inline-editable>&nbsp;James R.</div>\n                    <div class=\"text-sm font-light text-gray-500 dark:text-gray-400\" data-inline-editable>\n                        CEO of EcoSolutions</div>\n                </div>\n            </figcaption>\n        </figure>\n        <figure\n            class=\"flex flex-col justify-center items-center p-8 text-center border-b border-gray-200 lg:border-b-0 md:p-12 lg:border-r dark:bg-gray-800 dark:border-gray-700\">\n            <blockquote class=\"mx-auto mb-8 max-w-2xl text-gray-500 dark:text-gray-400\">\n                <h3 class=\"text-lg font-semibold text-gray-900 dark:text-white\" data-inline-editable>\n                    Elevating User Experience\n                </h3>\n                <p class=\"my-4\" data-inline-editable>\n                    \"The UI/UX design work by [Your Name] elevated our user\n                    experience significantly. They researched our target audience and implemented design elements that\n                    resonated deeply. Our users have praised the intuitive navigation and modern aesthetics, which have\n                    greatly improved engagement.\"\n                </p>\n            </blockquote>\n            <figcaption class=\"flex justify-center items-center space-x-3\">\n                <img class=\"w-9 h-9 rounded-full\" src=\"/files/images/jese-leos.png\" alt=\"profile picture\">\n                <div class=\"space-y-0.5 font-medium dark:text-white text-left\">\n                    <div data-inline-editable>Linda K.</div>\n                    <div class=\"text-sm font-light text-gray-500 dark:text-gray-400\" data-inline-editable>\n                        Marketing Director at TrendyApp\n                    </div>\n                </div>\n            </figcaption>\n        </figure>\n        <figure\n            class=\"flex flex-col justify-center items-center p-8 text-center border-gray-200 md:p-12 dark:bg-gray-800 dark:border-gray-700\">\n            <blockquote class=\"mx-auto mb-8 max-w-2xl text-gray-500 dark:text-gray-400\">\n                <h3 class=\"text-lg font-semibold text-gray-900 dark:text-white\" data-inline-editable>\n                    Revolutionizing Our Infrastructure\n                </h3>\n                <p class=\"my-4\" data-inline-editable>\n                    \"[Your Name]'s expertise in cloud and DevOps engineering\n                    revolutionized our deployment process. They helped us migrate our infrastructure to the cloud\n                    seamlessly and set up CI/CD pipelines that improved our development cycle efficiency. Their\n                    proactive support and knowledge made a significant difference in our scalability.\"\n                </p>\n            </blockquote>\n            <figcaption class=\"flex justify-center items-center space-x-3\">\n                <img class=\"w-9 h-9 rounded-full\" src=\"/files/images/blocks/joseph-mcfall.png\" alt=\"profile picture\">\n                <div class=\"space-y-0.5 font-medium dark:text-white text-left\">\n                    <div data-inline-editable>Mark D.</div>\n                    <div class=\"text-sm font-light text-gray-500 dark:text-gray-400\" data-inline-editable>\n                        CTO of FutureSoft\n                    </div>\n                </div>\n            </figcaption>\n        </figure>\n    </div>\n</section>"
-                        }
-                    ]
+                    "ContentPath": "about/008.html" 
                 },
                 {
                     "Definition": "TextHTML Plugin",
                     "Section": "Left",
-                    "Type": "TextHTMLContent",
-                    "Content": [
-                        {
-                            "Content": "<section id=\"contact\" class=\"py-16 bg-gray-100\">\n    <div class=\"container mx-auto px-4\">\n        <h2 class=\"text-4xl font-bold text-gray-800 mb-8\">Contact Me</h2>\n        <div class=\"flex flex-col justify-center items-start\">\n            \n            <div class=\"flex items-center space-x-4 text-teal-500\">\n                <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\" viewBox=\"0 0 24 24\"><path fill=\"currentColor\" d=\"M4 20q-.825 0-1.412-.587T2 18V6q0-.825.588-1.412T4 4h16q.825 0 1.413.588T22 6v12q0 .825-.587 1.413T20 20zm8-7l8-5V6l-8 5l-8-5v2z\"/></svg>\n                <p class=\"text-gray-700 text-lg\">your.email@example.com</p>\n            </div>\n\n            <div class=\"flex items-center space-x-4 text-teal-600\">\n                <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\" viewBox=\"0 0 24 24\"><path fill=\"currentColor\" d=\"M19.95 21q-3.125 0-6.175-1.362t-5.55-3.863t-3.862-5.55T3 4.05q0-.45.3-.75t.75-.3H8.1q.35 0 .625.238t.325.562l.65 3.5q.05.4-.025.675T9.4 8.45L6.975 10.9q.5.925 1.187 1.787t1.513 1.663q.775.775 1.625 1.438T13.1 17l2.35-2.35q.225-.225.588-.337t.712-.063l3.45.7q.35.1.575.363T21 15.9v4.05q0 .45-.3.75t-.75.3\"/></svg>\n                <p class=\"text-gray-700 text-lg\">+123 456 7890</p>\n            </div>\n\n            <div class=\"flex items-center space-x-4 text-teal-600\">\n                <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\" viewBox=\"0 0 24 24\"><path fill=\"currentColor\" d=\"M12.004 11.73q.667 0 1.14-.475t.472-1.143t-.476-1.14t-1.143-.472t-1.14.476t-.472 1.143t.475 1.14t1.144.472M12 21.019q-3.525-3.117-5.31-5.814q-1.786-2.697-1.786-4.909q0-3.173 2.066-5.234Q9.037 3 12 3t5.03 2.062q2.066 2.061 2.066 5.234q0 2.212-1.785 4.909q-1.786 2.697-5.311 5.814\"/></svg>\n                <p class=\"text-gray-700 text-lg\">Your City, Country</p>\n            </div>\n        </div>\n\n        <!-- Get in Touch Button -->\n        <div class=\"flex justify-center mt-10\">\n            <a href=\"mailto:your.email@example.com\" class=\"px-8 py-3 bg-teal-500 text-white font-medium rounded hover:bg-teal-600 transition\">\n                Get in Touch\n            </a>\n        </div>\n    </div>\n</section>"
-                        }
-                    ]
+                    "ContentPath": "about/009.html"
                 },
                 {
                     "Definition": "TextHTML Plugin",
                     "Section": "Right",
-                    "Type": "TextHTMLContent",
-                    "Content": [
-                        {
-                            "Content": "<a href=\"/files/resume.pdf\" download=\"Resume\" class=\"mt-8 inline-block px-6 py-3 bg-teal-500 text-white font-medium rounded hover:bg-teal-600 transition\">Download Resume</a>"
-                        }
-                    ]
+                    "ContentPath": "about/010.html"
                 }
             ]
         },
@@ -297,12 +236,7 @@
                 {
                     "Definition": "TextHTML Plugin",
                     "Section": "Main",
-                    "Type": "TextHTMLContent",
-                    "Content": [
-                        {
-                            "Content": "<div class=\"max-w-screen-md mx-auto text-center my-8\">\n\t<h2 class=\"mb-4 text-4xl tracking-tight font-extrabold text-gray-900 dark:text-white\" data-inline-editable>Contact Me</h2>\n\t<p class=\"text-gray-500 sm:text-xl dark:text-gray-400\" data-inline-editable>\n\t\tYou can contact me by filling this form, I will reach you ASAP.\n\t</p>\n</div>"
-                        }
-                    ]
+                    "ContentPath": "contact/001.html"
                 },
                 {
                     "Definition": "Contact Us Plugin",
