@@ -1,7 +1,13 @@
+using FluentCMS.Providers.MessageBusProviders;
+using FluentCMS.Web.Plugins.Base;
+
 namespace FluentCMS.Web.Plugins.Block;
 
 public partial class BlockViewPlugin
 {
+    [Inject]
+    private IMessagePublisher MessagePublisher { get; set; } = default!;
+
     public const string CONTENT_TYPE_NAME = nameof(BlockContent);
 
     private BlockContent? Item { get; set; }
@@ -24,6 +30,7 @@ public partial class BlockViewPlugin
 
         Item.Content = content;
         await ApiClient.PluginContent.UpdateAsync(CONTENT_TYPE_NAME, Plugin.Id, Item.Id, Item.ToDictionary());
+        await MessagePublisher.Publish(new Message<string>(ActionNames.InvalidateStyles, Path.Combine(ViewState.Site.Id.ToString(), ViewState.Page.Id.ToString() + ".css")));
     }
 
     private async Task SaveBlockContent(BlockDetailResponse selectedBlock)
@@ -34,6 +41,7 @@ public partial class BlockViewPlugin
         };
 
         await ApiClient.PluginContent.CreateAsync(CONTENT_TYPE_NAME, Plugin.Id, block.ToDictionary());
+        await MessagePublisher.Publish(new Message<string>(ActionNames.InvalidateStyles, Path.Combine(ViewState.Site.Id.ToString(), ViewState.Page.Id.ToString() + ".css")));
         await Load();
     }
 

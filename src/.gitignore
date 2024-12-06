@@ -407,3 +407,4 @@ FodyWeavers.xsd
 FluentCMS/files
 FluentCMS/LiteDb-log.db
 FluentCMS/LiteDb.db
+FluentCMS/wwwroot/tailwind

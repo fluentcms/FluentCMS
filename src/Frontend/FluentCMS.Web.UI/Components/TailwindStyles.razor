@@ -1,0 +1,10 @@
+@namespace FluentCMS.Web.UI
+
+@if (System.IO.File.Exists($"wwwroot/tailwind/{ViewState.Site.Id}/{ViewState.Page.Id}.css") && ViewState.Type == ViewStateType.Default)
+{
+    <link rel="stylesheet" href=@($"/tailwind/{ViewState.Site.Id}/{ViewState.Page.Id}.css")>
+}
+else
+{
+    <TailwindStyleBuilder />
+}
