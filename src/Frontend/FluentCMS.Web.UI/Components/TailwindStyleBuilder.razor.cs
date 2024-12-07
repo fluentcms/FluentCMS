@@ -44,11 +44,20 @@ public partial class TailwindStyleBuilder : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        // throw new NotImplementedException();
-        if (DotNetRef != null)
-            DotNetRef.Dispose();
+        try
+        {
+            if (Module is not null)
+            {
+                await Module.DisposeAsync();
+            }
 
-        await Module.DisposeAsync();
+            if (DotNetRef != null)
+                DotNetRef.Dispose();
+        } 
+        catch(Exception ex)
+        {
+            // 
+        }        
     }
 
 }

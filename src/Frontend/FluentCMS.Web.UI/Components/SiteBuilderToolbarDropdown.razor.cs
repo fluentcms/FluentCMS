@@ -13,13 +13,18 @@ public partial class SiteBuilderToolbarDropdown : IAsyncDisposable
 
     async ValueTask IAsyncDisposable.DisposeAsync()
     {
+        try {
+            if (Module is not null)
+            {
+                await Module.DisposeAsync();
+            }
 
-        if (Module is not null)
+            DotNetRef?.Dispose();
+        } 
+        catch(Exception ex)
         {
-            await Module.DisposeAsync();
+            // 
         }
-
-        DotNetRef?.Dispose();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
