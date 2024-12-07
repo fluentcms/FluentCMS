@@ -73,15 +73,15 @@ public class SiteService(ISiteRepository siteRepository, IPluginDefinitionReposi
         // loading layout data from files
         foreach (var layout in siteTemplate.Layouts)
         {
-            var bodyLayoutFilePath = Path.Combine(ServiceConstants.SetupTemplatesFolder, siteTemplate.Template, $"{layout.Name}.body.html");
-            var headLayoutFilePath = Path.Combine(ServiceConstants.SetupTemplatesFolder, siteTemplate.Template, $"{layout.Name}.head.html");
+            var bodyLayoutFilePath = Path.Combine(ServiceConstants.SetupTemplatesFolder, siteTemplate.Template, ServiceConstants.SetupLayoutsFolder, $"{layout.Name}.body.html");
+            var headLayoutFilePath = Path.Combine(ServiceConstants.SetupTemplatesFolder, siteTemplate.Template, ServiceConstants.SetupLayoutsFolder, $"{layout.Name}.head.html");
             layout.Body = await System.IO.File.ReadAllTextAsync(bodyLayoutFilePath, cancellationToken);
             layout.Head = await System.IO.File.ReadAllTextAsync(headLayoutFilePath, cancellationToken);
         }
 
         foreach (var block in siteTemplate.Blocks)
         {
-            var blockContentFilePath = Path.Combine(ServiceConstants.SetupTemplatesFolder, siteTemplate.Template, "Blocks", block.Category, $"{block.Name}.html");
+            var blockContentFilePath = Path.Combine(ServiceConstants.SetupTemplatesFolder, siteTemplate.Template, ServiceConstants.SetupBlocksFolder, block.Category, $"{block.Name}.html");
             block.Content = await System.IO.File.ReadAllTextAsync(blockContentFilePath, cancellationToken);
         }
 

@@ -45,6 +45,7 @@ public class SetupService(IMessagePublisher messagePublisher, ISetupRepository s
         var jsonSetupTemplate = await JsonSerializer.DeserializeAsync<SetupTemplate>(System.IO.File.OpenRead(manifestFilePath), jsonSerializerOptions) ??
                throw new AppException($"Failed to read/deserialize {ServiceConstants.SetupManifestFile}");
 
+        setupTemplate.GlobalSettings = jsonSetupTemplate.GlobalSettings;
         setupTemplate.PluginDefinitions = jsonSetupTemplate.PluginDefinitions;
 
         setupTemplate.Site = new SiteTemplate

@@ -7,10 +7,9 @@ public class GlobalSettingsMessageHandler(IGlobalSettingsService globalSettingsS
         switch (notification.Action)
         {
             case ActionNames.SetupStarted:
-                var globalSettings = new GlobalSettings
-                {
-                    SuperAdmins = [notification.Payload.Username]
-                };
+                var globalSettings = notification.Payload.GlobalSettings;
+                globalSettings.SuperAdmins ??= [notification.Payload.Username];
+
                 await globalSettingsService.Update(globalSettings, cancellationToken);
                 break;
 
