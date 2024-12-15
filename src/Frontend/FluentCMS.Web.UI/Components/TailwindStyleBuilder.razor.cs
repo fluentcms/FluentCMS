@@ -8,7 +8,7 @@ public partial class TailwindStyleBuilder : IAsyncDisposable
     private ViewState ViewState { get; set; } = default!;
 
     [Inject]
-    private ApiClientFactory ApiClient { get; set; } = default!; 
+    private ApiClientFactory ApiClient { get; set; } = default!;
 
     [Inject]
     public IJSRuntime JS { get; set; } = default!;
@@ -30,7 +30,8 @@ public partial class TailwindStyleBuilder : IAsyncDisposable
         await OnCssGenerated(css);
     }
 
-    private async Task OnCssGenerated(string css) {
+    private async Task OnCssGenerated(string css)
+    {
         var cssFilePath = Path.Combine("wwwroot", "tailwind", ViewState.Site.Id.ToString(), $"{ViewState.Page.Id}.css");
 
         var directoryPath = Path.GetDirectoryName(cssFilePath);

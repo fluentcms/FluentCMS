@@ -15,6 +15,7 @@ public class SiteUpdateModel
     public bool Index { get; set; } = default!;
     public bool Follow { get; set; } = default!;
     public string RobotsTxt { get; set; } = default!;
+    public string Theme { get; set; } = default!;
     public string OgType { get; set; } = default!;
     public string GoogleTagsId { get; set; } = default!;
     public string Head { get; set; } = default!;

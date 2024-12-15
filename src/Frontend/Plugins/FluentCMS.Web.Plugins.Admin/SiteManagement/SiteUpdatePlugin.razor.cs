@@ -78,6 +78,7 @@ public partial class SiteUpdatePlugin
         settings.TryGetValue("Index", out var index);
         settings.TryGetValue("Follow", out var follow);
         settings.TryGetValue("RobotsTxt", out var robotsTxt);
+        settings.TryGetValue("Theme", out var theme);
         settings.TryGetValue("OgType", out var ogType);
         settings.TryGetValue("Head", out var head);
 
@@ -97,6 +98,7 @@ public partial class SiteUpdatePlugin
             Index = index == "true",
             Follow = follow == "true",
             RobotsTxt = robotsTxt ?? string.Empty,
+            Theme = theme ?? string.Empty,
             OgType = ogType ?? string.Empty,
             Head = head ?? string.Empty,
             Urls = string.Join(",", siteDetailResponse.Urls ?? []),
@@ -133,6 +135,7 @@ public partial class SiteUpdatePlugin
                 ["Index"] = Model.Index ? "true" : "false",
                 ["Follow"] = Model.Follow ? "true" : "false",
                 ["RobotsTxt"] = Model.RobotsTxt,
+                ["Theme"] = Model.Theme,
                 ["OgType"] = Model.OgType,
                 ["Head"] = Model.Head
             }

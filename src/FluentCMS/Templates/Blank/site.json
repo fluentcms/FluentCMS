@@ -6,6 +6,17 @@
     "DetailLayout": "SingleLayout",
     "AdminRoles": [ "Administrators" ],
     "ContributorRoles": [ "Contributors" ],
+    "Settings": {
+        "MetaTitle": "FluentCMS - AI-Driven Blazor CMS",
+        "MetaDescription": "FluentCMS is an AI-powered, open-source Blazor CMS designed to streamline content management, offering flexibility and scalability for modern websites.",
+        "GoogleTagsId": "",
+        "Head": "",
+        "Index": "true",
+        "Follow": "true",
+        "OgType": "website",
+        "RobotsTxt": "User-agent: *\nDisallow: /admin",
+        "Theme": ":root {\n        --f-primary-50: 48 100% 96.1%;\n        --f-primary-100: 48 96.5% 88.8%;\n        --f-primary-200: 48 96.6% 76.7%;\n        --f-primary-300: 45.9 96.7% 64.5%;\n        --f-primary-400: 43.3 96.4% 56.3%;\n        --f-primary-500: 37.7 92.1% 50.2%;\n        --f-primary-600: 32.1 94.6% 43.7%;\n        --f-primary-700: 26 90.5% 37.1%;\n        --f-primary-800: 22.7 82.5% 31.4%;\n        --f-primary-900: 21.7 77.8% 26.5%;\n}\n\n            :root {\n        --f-surface: 240, 17%, 98%; \n        --f-surface-muted: 240, 10%, 96%; \n        --f-surface-accent: 0, 0%, 100%; \n        --f-content: 240, 10%, 38%; \n        --f-content-muted: 240, 8%, 55%; \n        --f-content-accent: 240, 17%, 15%; \n        --f-border: 240, 7%, 89%; \n        --f-border-muted: 240, 10%, 96%; \n        --f-border-accent: 240, 5%, 75%; \n    }\n\n    .dark {\n        --f-surface: 220.91, 39.29%, 10.98%; \n        --f-surface-muted: 240, 10%, 38%; \n        --f-surface-accent: 215, 28%, 17%; \n\n        --f-content: 240, 7%, 89%; \n        --f-content-muted: 240, 8%, 77%; \n        --f-content-accent: 0, 0%, 100%; \n\n        --f-border: 240, 10%, 38%; \n        --f-border-muted: 240, 10%, 38%; \n        --f-border-accent: 240, 8%, 55%; \n    }"
+    },
     "Roles": [
         {
             "Name": "Administrators",
