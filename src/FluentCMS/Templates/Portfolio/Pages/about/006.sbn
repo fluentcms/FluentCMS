@@ -1,9 +1,9 @@
 <div class="mt-4 grid sm:grid-cols-2 gap-4">
     {{for project in Items | array.limit 2 }}
-        <div class="p-4 bg-white rounded shadow-lg">
-            <h4 class="text-xl font-semibold text-gray-800">{{project.project_title}}</h4>
-            <p class="text-gray-600 mt-2">{{project.description}}</p>
-            <a href="/projects/detail/{{project.Id}}" class="text-teal-500 hover:text-teal-600 underline mt-2 block">View Project</a>
+        <div class="p-4 bg-surface-accent border border-border-muted rounded shadow-lg">
+            <h4 class="text-xl font-semibold text-content-accent">{{project.project_title}}</h4>
+            <p class="text-content mt-2">{{project.description}}</p>
+            <a href="/projects/detail/{{project.Id}}" class="text-primary-500 hover:text-primary-600 underline mt-2 block">View Project</a>
         </div>
     {{end}}
 </div>

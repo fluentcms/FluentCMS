@@ -1,5 +1,45 @@
 @namespace FluentCMS.Web.UI
 
+<style>
+    :root {
+        --f-primary: 240;
+    }
+
+    :root {
+        --f-surface: 240, 17%, 98%; 
+        --f-surface-muted: 240, 10%, 96%; 
+        --f-surface-accent: 0, 0%, 100%; 
+        --f-content: 240, 10%, 38%; 
+        --f-content-muted: 240, 8%, 55%; 
+        --f-content-accent: 240, 17%, 15%; 
+        --f-border: 240, 7%, 89%; 
+        --f-border-muted: 240, 10%, 96%; 
+        --f-border-accent: 240, 5%, 75%; 
+    }
+
+    .dark {
+        --f-surface: 220.91, 39.29%, 10.98%; 
+        --f-surface-muted: 240, 10%, 38%; 
+        --f-surface-accent: 215, 28%, 17%; 
+
+        --f-content: 240, 7%, 89%; 
+        --f-content-muted: 240, 8%, 77%; 
+        --f-content-accent: 0, 0%, 100%; 
+
+        --f-border: 240, 10%, 38%; 
+        --f-border-muted: 240, 10%, 38%; 
+        --f-border-accent: 240, 8%, 55%; 
+    }
+</style>
+
+@* Below code will override the default theme *@
+@if (ViewState.Site.Settings.TryGetValue("Theme", out var theme))
+{
+    <style>
+        @theme
+    </style>
+}
+
 @if (System.IO.File.Exists($"wwwroot/tailwind/{ViewState.Site.Id}/{ViewState.Page.Id}.css") && ViewState.Type == ViewStateType.Default)
 {
     <link rel="stylesheet" href=@($"/tailwind/{ViewState.Site.Id}/{ViewState.Page.Id}.css")>

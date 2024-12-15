@@ -14,7 +14,8 @@
         "Index": "true",
         "Follow": "true",
         "OgType": "website",
-        "RobotsTxt": "User-agent: *\nDisallow: /admin"
+        "RobotsTxt": "User-agent: *\nDisallow: /admin",
+        "Theme": ":root {\n        --f-primary-50: 204 100% 97.1%;\n        --f-primary-100: 204 93.8% 93.7%;\n        --f-primary-200: 200.6 94.4% 86.1%;\n        --f-primary-300: 199.4 95.5% 73.9%;\n        --f-primary-400: 198.4 93.2% 59.6%;\n        --f-primary-500: 198.6 88.7% 48.4%;\n        --f-primary-600: 200.4 98% 39.4%;\n        --f-primary-700: 201.3 96.3% 32.2%;\n        --f-primary-800: 201 90% 27.5%;\n        --f-primary-900: 202 80.3% 23.9%;\n        }\n\n            :root {\n        --f-surface: 240, 17%, 98%; \n        --f-surface-muted: 240, 10%, 96%; \n        --f-surface-accent: 0, 0%, 100%; \n        --f-content: 240, 10%, 38%; \n        --f-content-muted: 240, 8%, 55%; \n        --f-content-accent: 240, 17%, 15%; \n        --f-border: 240, 7%, 89%; \n        --f-border-muted: 240, 10%, 96%; \n        --f-border-accent: 240, 5%, 75%; \n    }\n\n    .dark {\n        --f-surface: 220.91, 39.29%, 10.98%; \n        --f-surface-muted: 240, 10%, 38%; \n        --f-surface-accent: 215, 28%, 17%; \n\n        --f-content: 240, 7%, 89%; \n        --f-content-muted: 240, 8%, 77%; \n        --f-content-accent: 0, 0%, 100%; \n\n        --f-border: 240, 10%, 38%; \n        --f-border-muted: 240, 10%, 38%; \n        --f-border-accent: 240, 8%, 55%; \n    }"
     },
     "Roles": [
         {

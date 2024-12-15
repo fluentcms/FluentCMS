@@ -12,7 +12,8 @@
         "GoogleTagsId": "",
         "Head": "",
         "Robots": "index,follow",
-        "OgType": "website"
+        "OgType": "website",
+        "Theme": ":root {\n            --f-primary-50: 151.8 81% 95.9%;\n            --f-primary-100: 149.3 80.4% 90%;\n            --f-primary-200: 152.4 76% 80.4%;\n            --f-primary-300: 156.2 71.6% 66.9%;\n            --f-primary-400: 158.1 64.4% 51.6%;\n            --f-primary-500: 160.1 84.1% 39.4%;\n            --f-primary-600: 161.4 93.5% 30.4%;\n            --f-primary-700: 162.9 93.5% 24.3%;\n            --f-primary-800: 163.1 88.1% 19.8%;\n            --f-primary-900: 164.2 85.7% 16.5%;\n        }\n\n            :root {\n        --f-surface: 240, 17%, 98%; \n        --f-surface-muted: 240, 10%, 96%; \n        --f-surface-accent: 0, 0%, 100%; \n        --f-content: 240, 10%, 38%; \n        --f-content-muted: 240, 8%, 55%; \n        --f-content-accent: 240, 17%, 15%; \n        --f-border: 240, 7%, 89%; \n        --f-border-muted: 240, 10%, 96%; \n        --f-border-accent: 240, 5%, 75%; \n    }\n\n    .dark {\n        --f-surface: 220.91, 39.29%, 10.98%; \n        --f-surface-muted: 240, 10%, 38%; \n        --f-surface-accent: 215, 28%, 17%; \n\n        --f-content: 240, 7%, 89%; \n        --f-content-muted: 240, 8%, 77%; \n        --f-content-accent: 0, 0%, 100%; \n\n        --f-border: 240, 10%, 38%; \n        --f-border-muted: 240, 10%, 38%; \n        --f-border-accent: 240, 8%, 55%; \n    }"
     },
     "Roles": [
         {
