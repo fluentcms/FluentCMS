@@ -19,6 +19,7 @@
   <Folder Name="/Frontend/">
     <Project Path="Frontend/FluentCMS.Web.ApiClients/FluentCMS.Web.ApiClients.csproj" />
     <Project Path="Frontend/FluentCMS.Web.UI.Components/FluentCMS.Web.UI.Components.csproj" />
+    <Project Path="Frontend/FluentCMS.Web.UI.TailwindStyleBuilder/FluentCMS.Web.UI.TailwindStyleBuilder.csproj" />
     <Project Path="Frontend/FluentCMS.Web.UI/FluentCMS.Web.UI.csproj" />
   </Folder>
   <Folder Name="/Frontend/Plugins/">

@@ -101,6 +101,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Repositories.EFCo
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Repositories.EFCore.Sqlite", "Backend\Repositories\FluentCMS.Repositories.EFCore.Sqlite\FluentCMS.Repositories.EFCore.Sqlite.csproj", "{1914FAAB-9B86-4B76-90CA-E16D3C8984FC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Web.UI.TailwindStyleBuilder", "Frontend\FluentCMS.Web.UI.TailwindStyleBuilder\FluentCMS.Web.UI.TailwindStyleBuilder.csproj", "{9A614AAB-D386-4D5F-971B-33BA9E820AF8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -259,6 +261,10 @@ Global
 		{1914FAAB-9B86-4B76-90CA-E16D3C8984FC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1914FAAB-9B86-4B76-90CA-E16D3C8984FC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1914FAAB-9B86-4B76-90CA-E16D3C8984FC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9A614AAB-D386-4D5F-971B-33BA9E820AF8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9A614AAB-D386-4D5F-971B-33BA9E820AF8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9A614AAB-D386-4D5F-971B-33BA9E820AF8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9A614AAB-D386-4D5F-971B-33BA9E820AF8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -308,6 +314,7 @@ Global
 		{8E46C73B-D442-489F-B313-CD26F3C1F2DF} = {1CC73AD2-CFC9-4FE7-96C0-0E4FEFBB66F1}
 		{E4350BBB-204F-4FD1-A187-7C8381860831} = {1CC73AD2-CFC9-4FE7-96C0-0E4FEFBB66F1}
 		{1914FAAB-9B86-4B76-90CA-E16D3C8984FC} = {1CC73AD2-CFC9-4FE7-96C0-0E4FEFBB66F1}
+		{9A614AAB-D386-4D5F-971B-33BA9E820AF8} = {5961A5E0-54A6-42F5-92A2-9A9E48DE2878}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {2E9F4217-7A58-48A4-9850-84CD0CDA31DA}
