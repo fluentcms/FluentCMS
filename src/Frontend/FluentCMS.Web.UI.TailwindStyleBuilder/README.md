@@ -56,7 +56,7 @@ Use the component in Head section of your App.razor file:
 
 <head>
     ...
-    <TailwinStyleBuilder />
+    <TailwindStyleBuilder />
 </head>
 
 <body>
@@ -81,10 +81,11 @@ To utilize the dynamic CSS generation feature, you can build an interactive comp
 
 ```csharp
 @rendermode RenderMode.InteractiveServer
+@using FluentCMS.Web.UI.TailwindStyleBuilder
 
-@if (System.IO.File.Exists($"wwwroot/{Name}.css"))
+@if (System.IO.File.Exists($"wwwroot/css/{Name}.css"))
 {
-    <link rel="stylesheet" href=@($"/{Name}.css")>
+    <link rel="stylesheet" href=@($"/css/{Name}.css")>
 }
 else
 {
@@ -110,14 +111,15 @@ else
 ```
 Here is full implementation of Wrapper component used in fluentCMS [TailwindStyleBuilderWrapper.razor](https://github.com/fluentcms/FluentCMS/blob/dev/src/Frontend/FluentCMS.Web.UI/Components/TailwindStyleBuilderWrapper.razor) and [TailwindStyleBuilderWrapper.razor.cs](https://github.com/fluentcms/FluentCMS/blob/dev/src/Frontend/FluentCMS.Web.UI/Components/TailwindStyleBuilderWrapper.razor.cs)
 
-Now you can use this component in your page like this:
+Now you should remove `<TailwindStyleBiulder />` from App.razor and use this component in your page like this:
 
 ```csharp
 @page "/example"
 
-
- @* will use example.css if exists, otherwise it will build that file in first visit *@ 
-<TailwindStyles Name="example" />
+<HeadContent>
+    @* will use example.css if exists, otherwise it will build that file in first visit *@ 
+    <TailwindStyles Name="example" />
+</HeadContent>
 
 <div class="p-4 bg-blue-100 text-blue-900">
     <h1>Hello Tailwind!</h1>
@@ -128,7 +130,7 @@ Now you can use this component in your page like this:
 ## Update Styles
 
 to update the css files, you need to remove previously generated css file.\
-in above example, when you update /example page,  you should remove /wwwroot/example.css file. 
+in above example, when you update /example page,  you should remove /wwwroot/css/example.css file. 
 
 ## Benefits
 
