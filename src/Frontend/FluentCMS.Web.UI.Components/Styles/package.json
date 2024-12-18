@@ -1,9 +1,22 @@
 {
     "name": "fluentcms.web.ui.components",
     "scripts": {
-        "tailwind": "tailwindcss -i ./dist/flowbite.css -o ../wwwroot/css/flowbite.min.css --minify",
-        "sass": "sass ./Flowbite/App.scss:./dist/flowbite.css",
-        "build": "npm run sass && npm run tailwind"
+        "tailwind:admin": "tailwindcss -i ./dist/admin.css -o ../wwwroot/css/admin.min.css --minify",
+        "sass:admin": "sass ./Flowbite/Admin.scss:./dist/admin.css",
+        "build:admin": "npm run sass:admin && npm run tailwind:admin",
+        "tailwind:plugins": "tailwindcss -i ./dist/plugins.css -o ../wwwroot/css/plugins.min.css --minify",
+        "sass:plugins": "sass ./Flowbite/Plugins.scss:./dist/plugins.css",
+        "build:plugins": "npm run sass:plugins && npm run tailwind:plugins",
+        "tailwind:sitebuilder": "tailwindcss -i ./dist/sitebuilder.css -o ../wwwroot/css/sitebuilder.min.css --minify",
+        "sass:sitebuilder": "sass ./Flowbite/SiteBuilder.scss:./dist/sitebuilder.css",
+        "build:sitebuilder": "npm run sass:sitebuilder && npm run tailwind:sitebuilder",
+        "tailwind:sitebuilder-preview": "tailwindcss -i ./dist/sitebuilder-preview.css -o ../wwwroot/css/sitebuilder-preview.min.css --minify",
+        "sass:sitebuilder-preview": "sass ./Flowbite/SiteBuilderPreview.scss:./dist/sitebuilder-preview.css",
+        "build:sitebuilder-preview": "npm run sass:sitebuilder-preview && npm run tailwind:sitebuilder-preview",
+        "tailwind:sitebuilder-default": "tailwindcss -i ./dist/sitebuilder-default.css -o ../wwwroot/css/sitebuilder-default.min.css --minify",
+        "sass:sitebuilder-default": "sass ./Flowbite/SiteBuilderDefault.scss:./dist/sitebuilder-default.css",
+        "build:sitebuilder-default": "npm run sass:sitebuilder-default && npm run tailwind:sitebuilder-default",
+        "build": "npm run build:admin && npm run build:plugins && npm run build:sitebuilder && npm run build:sitebuilder-preview && npm run build:sitebuilder-default"
     },
     "devDependencies": {
         "conc": "^0.0.3",
