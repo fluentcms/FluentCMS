@@ -39,7 +39,7 @@ public class SettingsRepository : AuditableEntityRepository<Settings>, ISettings
                 foreach (var setting in settings)
                     existing.Data.Values[setting.Key] = setting.Value;
 
-                SetAuditableFieldsForUpdate(existing.Data, existing.Data);
+                SetAuditableFieldsForUpdate(existing.Data);
             }
 
             await session.SaveChangesAsync();

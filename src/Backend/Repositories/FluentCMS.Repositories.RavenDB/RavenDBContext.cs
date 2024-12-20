@@ -29,6 +29,7 @@ public class RavenDBContext : IRavenDBContext
             // Set conventions as necessary (optional)
             Conventions =
             {
+                DisposeCertificate = false,
                 MaxNumberOfRequestsPerSession = 10,
                 UseOptimisticConcurrency = true,
                 AddIdFieldToDynamicObjects = false,

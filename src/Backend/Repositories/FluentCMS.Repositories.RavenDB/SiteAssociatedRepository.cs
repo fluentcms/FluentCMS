@@ -2,25 +2,41 @@
 
 public abstract class SiteAssociatedRepository<TEntity>(IRavenDBContext RavenDbContext, IApiExecutionContext apiExecutionContext) : AuditableEntityRepository<TEntity>(RavenDbContext, apiExecutionContext), ISiteAssociatedRepository<TEntity> where TEntity : ISiteAssociatedEntity
 {
-    // public override async Task<TEntity?> Update(TEntity entity, CancellationToken cancellationToken = default)
-    // {
-    //     cancellationToken.ThrowIfCancellationRequested();
+    public override async Task<TEntity?> Update(TEntity entity, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
 
-    //     using (var session = Store.OpenAsyncSession())
-    //     {
-    //         var existing = await session.Query<RavenEntity<TEntity>>().SingleOrDefaultAsync(x => x.Data.Id == entity.Id, cancellationToken);
-    //         if (existing == null)
-    //             return default;
+        using (var session = Store.OpenAsyncSession())
+        {
+            Guid id = entity.Id;
+            var dbEntity = await session.Query<RavenEntity<TEntity>>().SingleOrDefaultAsync(x => x.Data.Id == id, cancellationToken);
+            if (dbEntity == null)
+            {
+                SetAuditableFieldsForCreate(entity);
 
-    //         SetAuditableFieldsForUpdate(entity, existing.Data);
+                dbEntity = new RavenEntity<TEntity>(entity);
 
-    //         existing.Data.SiteId = entity.SiteId;
+                await session.StoreAsync(dbEntity, cancellationToken);
+            }
+            else
+            {
+                Guid siteId = dbEntity.Data.SiteId;
 
-    //         await session.SaveChangesAsync();
+                entity.CopyProperties(dbEntity.Data);
 
-    //         return existing.Data;
-    //     }
-    // }
+                dbEntity.Data.SiteId = siteId;
+
+                SetAuditableFieldsForUpdate(dbEntity.Data);
+            }
+
+            if (entity.SiteId != Guid.Empty)
+                dbEntity.Data.SiteId = entity.SiteId;
+
+            await session.SaveChangesAsync();
+
+            return dbEntity.Data;
+        }
+    }
 
     public async Task<IEnumerable<TEntity>> GetAllForSite(Guid siteId, CancellationToken cancellationToken = default)
     {
