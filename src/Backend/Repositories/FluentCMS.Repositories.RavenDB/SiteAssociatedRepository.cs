@@ -20,10 +20,13 @@ public abstract class SiteAssociatedRepository<TEntity>(IRavenDBContext RavenDbC
             }
             else
             {
+                // Preserve the site id since it is not part of the entity in the request
                 Guid siteId = dbEntity.Data.SiteId;
 
                 entity.CopyProperties(dbEntity.Data);
 
+                // Restore the site id
+                // This means that the site id cannot be changed
                 dbEntity.Data.SiteId = siteId;
 
                 SetAuditableFieldsForUpdate(dbEntity.Data);
