@@ -1,0 +1,12 @@
+{
+    "name": "fluentcms.web.ui.components",
+    "scripts": {
+        "sitebuilder": "sass ./Scss/SiteBuilder.scss:./dist/sitebuilder.css",
+        "sitebuilder-preview": "sass ./Scss/SiteBuilderPreview.scss:./dist/sitebuilder-preview.css",
+        "sitebuilder-default": "sass ./Scss/SiteBuilderDefault.scss:./dist/sitebuilder-default.css",
+        "build": "npm run sitebuilder && npm run sitebuilder-preview && npm run sitebuilder-default"
+    },
+    "devDependencies": {
+        "sass": "^1.69.5"
+    }
+}

@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+$prefix: "f-";
+$colors: (
+    "primary": "blue",
+    "success": "green",
+    "info": "cyan",
+    "danger": "red",
+    "warning": "yellow",
+    "secondary": "gray",
+);
+
+html {
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
+}
+
+// BODY
+
+body {
+    @apply bg-gray-50;
+}
+
+.dark body {
+    @apply bg-gray-800;
+    color-scheme: dark;
+}
+
+.hidden {
+    display: none;
+}
