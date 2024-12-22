@@ -42,6 +42,7 @@ CREATE TABLE PluginDefinitions (
     Assembly VARCHAR(255) NOT NULL,
     Icon VARCHAR(255), -- Nullable
     Description TEXT, -- Nullable
+    Stylesheets TEXT, -- Nullable
     Locked TINYINT(1) NOT NULL DEFAULT 0, -- Boolean as TINYINT(1)
     CreatedBy VARCHAR(255) NOT NULL,
     CreatedAt DATETIME NOT NULL,
