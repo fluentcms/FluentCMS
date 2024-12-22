@@ -1,5 +1,8 @@
+$page-editor-sidebar: $prefix + 'page-editor-sidebar';
+$plugin-definition: $prefix + 'plugin-definition';
+$sidebar: $prefix + 'page-editor-sidebar';
 
-.f-page-editor-sidebar .f-plugin-definition-list {
+.#{$sidebar} .#{$plugin-definition}-list {
     overflow: scroll;
     height: 100%;
     display: flex;
@@ -11,12 +14,12 @@
     width: 100%;
 }
 
-.f-page-editor-sidebar .f-plugin-definition-list-title {
+.#{$sidebar} .#{$plugin-definition}-list-title {
     font-size: 12px;
     font-family: sans-serif;
 }
 
-.f-page-editor-sidebar .f-plugin-definition-item {
+.#{$sidebar} .#{$plugin-definition}-item {
     padding: 0.75rem;
     display: flex;
     font-family: sans-serif;
@@ -27,38 +30,38 @@
     border-radius: 3px;
 }
 
-.f-page-editor-sidebar .f-plugin-definition-item:hover {
+.#{$sidebar} .#{$plugin-definition}-item:hover {
     background-color: white;
     border-color: #C1C1C1;
     cursor: grab;
 }
 
-.f-plugin-definition-item-icon {
+.#{$plugin-definition}-item-icon {
     width: 48px;
     height: 48px;
 }
 
-.f-plugin-definition-item-content {
+.#{$plugin-definition}-item-content {
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
 }
 
-.f-page-editor-sidebar .f-plugin-definition-item .f-name {
+.#{$sidebar} .#{$plugin-definition}-item .f-name {
     /* font-weight: bold; */
     font-size: 14px;
     line-height: 150%;
     color: #222222;
 }
 
-.f-page-editor-sidebar .f-plugin-definition-item .f-description {
+.#{$sidebar} .#{$plugin-definition}-item .f-description {
     font-size: 12px;
     line-height: 150%;
     color: #333333;
 
 }
 
-.f-page-editor-sidebar {
+.#{$sidebar} {
     width: 240px;
     background-color: #F9F9F9;
     box-shadow: inset 1px 0 2px #dfdfdf;
@@ -71,22 +74,22 @@
     z-index: 5;
 }
 
-.f-page-editor-sidebar.f-page-editor-sidebar-open {
+.#{$sidebar}.#{$sidebar}-open {
     right: 0;
 }
 
-.f-section .f-plugin-definition-item {
+.#{$section} .#{$plugin-definition}-item {
     background-color: transparent;
     color: transparent;
     width: 100%;
     border: 2px dashed #154EF2;
 }
 
-.f-section .f-plugin-definition-item-icon {
+.#{$section} .#{$plugin-definition}-item-icon {
     display: none;
 }
 
-.f-section:has(.f-plugin-definition-item) .f-plugin-container-content {
+.#{$section}:has(.#{$plugin-definition}-item) .#{$prefix}plugin-container-content {
     border-color: #154EF250;
 }
 
@@ -94,6 +97,6 @@ body {
     transition: all 0.3s ease;
 }
 
-body:not([data-responsive-mode]):has(.f-page-editor-sidebar-open) {
+body:not([data-responsive-mode]):has(.#{$sidebar}-open) {
     padding-right: 240px;
 }

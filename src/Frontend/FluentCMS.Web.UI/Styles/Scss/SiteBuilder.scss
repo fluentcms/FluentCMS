@@ -1,14 +1,16 @@
-﻿@import './toolbar.css';
+@import './Base.scss';
+
+@import './SiteBuilder/Toolbar';
 
 * {
     box-sizing: border-box;
 }
 
-.f-toolbar-container {
+.#{$prefix}-toolbar-container {
     margin-right: var(--scrollbar-width);
 }
 
-.f-page-editor-toggler {
+.#{$prefix}page-editor-toggler {
     position: fixed;
     transition: all 0.3s ease;
     top: 0;
@@ -22,7 +24,7 @@
     z-index: 100;
 }
 
-.f-page-editor-toggler .f-page-editor-toggler-button {
+.#{$prefix}page-editor-toggler .#{$prefix}page-editor-toggler-button {
     cursor: pointer;
     width: 2rem;
     height: 2rem;
@@ -41,13 +43,13 @@ body {
     margin: 0;
 }
 
-.f-page-editor {
+.#{$prefix}page-editor {
     width: 100%;
     overflow: hidden;
     height: 100vh;
 }
 
-.f-page-editor-iframe-wrapper {
+.#{$prefix}page-editor-iframe-wrapper {
     background-color: #EBEBEB;
     position: relative;
     height: calc(100% - 40px);
@@ -59,7 +61,7 @@ body {
     justify-content: center;
 }
 
-.f-page-editor-iframe {
+.#{$prefix}page-editor-iframe {
     position: absolute;
     /* transition: all 0.1s ease; */
     top: 0;
@@ -71,7 +73,7 @@ body {
     border: none;
 }
 
-.f-page-editor-iframe-resizer {
+.#{$prefix}page-editor-iframe-resizer {
     border-radius: 2px;
     box-shadow: 0 0 8px -4px rgb(129, 129, 129);
     display: none;
@@ -84,7 +86,7 @@ body {
     bottom: 50%;
     cursor: grab;
 }
-.f-page-editor-iframe-resizer:hover {
+.#{$prefix}page-editor-iframe-resizer:hover {
     background-color: #d4d4d4;
     height: 64px;
     width: 12px;
@@ -95,7 +97,7 @@ body {
     cursor: grab;
 }
 
-.f-page-editor-iframe-resizer::before, .f-page-editor-iframe-resizer::after {
+.#{$prefix}page-editor-iframe-resizer::before, .#{$prefix}page-editor-iframe-resizer::after {
     content: '';
     background-color: #aaaaaa;
     position: absolute;
@@ -105,19 +107,19 @@ body {
     bottom: 8px;
 }
 
-.f-page-editor-iframe-resizer:hover::after, .f-page-editor-iframe-resizer:hover::before {
+.#{$prefix}page-editor-iframe-resizer:hover::after, .#{$prefix}page-editor-iframe-resizer:hover::before {
     background-color: #c0c0c0;
 }
 
-.f-page-editor-iframe-resizer::before {
+.#{$prefix}page-editor-iframe-resizer::before {
     left: 3px;
 }
 
-.f-page-editor-iframe-resizer::after {
+.#{$prefix}page-editor-iframe-resizer::after {
     right: 3px;
 }
 
-[data-responsive-mode] .f-page-editor-iframe {
+[data-responsive-mode] .#{$prefix}page-editor-iframe {
     left: auto;
     right: auto;
     top: 1rem;
@@ -131,11 +133,7 @@ body {
     display: flex;
 }
 
-.f-page-editor-sidebar-open .f-page-editor-iframe-wrapper {
-    /* width: calc(100% - 240px); */
-}
-
-.f-page-editor-header {
+.#{$prefix}page-editor-header {
     width: 100%;
     height: 40px;
     background-color: rgb(24, 24, 24);
@@ -146,22 +144,22 @@ body {
     box-sizing: border-box;
 }
 
-.f-page-editor-header-separator {
+.#{$prefix}page-editor-header-separator {
     transition: all 0.3s ease;
     width: 0;
 }
 
-.f-page-editor-sidebar-close .f-page-editor-header-separator {
+.#{$prefix}page-editor-sidebar-close .#{$prefix}page-editor-header-separator {
     /* width: 240px; */
 }
 
-.f-page-editor-header-button-list {
+.#{$prefix}page-editor-header-button-list {
     display: flex;
     gap: 4px;
     /* justify-content: space-between; */
 }
 
-.f-page-editor-header-button {
+.#{$prefix}page-editor-header-button {
     padding: 4px 8px;
     display: flex;
     align-items: center;
@@ -171,102 +169,102 @@ body {
     color: white;
     border: 1px solid #505050;
 }
-.f-page-editor-header-button svg {
+.#{$prefix}page-editor-header-button svg {
     width: 16px;
     height: 16px;
 }
 
-.f-page-editor-header-button-primary {
+.#{$prefix}page-editor-header-button-primary {
     background-color: #2558a5;
     border: 1px solid #3b48bd;
 }
 
-.f-page-editor-header-button-primary:hover {
+.#{$prefix}page-editor-header-button-primary:hover {
     background-color: #2c6bc9;
 
 }
 
 
-.f-page-editor-sidebar-open .f-page-editor-toggler {
+.#{$prefix}page-editor-sidebar-open .#{$prefix}page-editor-toggler {
     right: 240px;
     margin-right: -1px;
 }
 
-.f-page-editor-toggler .f-page-editor-toggler-button:hover {
+.#{$prefix}page-editor-toggler .#{$prefix}page-editor-toggler-button:hover {
     background-color: #dbdbdb;
 }
 
-.f-page-editor-toggler .f-page-editor-toggler-button-primary {
+.#{$prefix}page-editor-toggler .#{$prefix}page-editor-toggler-button-primary {
     color: white;
     background-color: #2558a5;
     border: none;
 }
 
-.f-page-editor-toggler .f-page-editor-toggler-button-primary:hover {
+.#{$prefix}page-editor-toggler .#{$prefix}page-editor-toggler-button-primary:hover {
     background-color: #2c6bc9;
 }
 
-.f-plugin-container {
+.#{$prefix}plugin-container {
     position: relative;
 }
 
-.f-page-editor-forms {
+.#{$prefix}page-editor-forms {
     display: none;
 }
 
-.f-only-sidebar-opened {
+.#{$prefix}only-sidebar-opened {
     display: none;
 }
 
-.f-page-editor-sidebar-open .f-only-sidebar-opened {
+.#{$prefix}page-editor-sidebar-open .#{$prefix}only-sidebar-opened {
     display: inherit;
 }
 
-.f-page-editor-sidebar-open .f-only-sidebar-closed {
+.#{$prefix}page-editor-sidebar-open .#{$prefix}only-sidebar-closed {
     display: none;
 }
 
-.f-page-editor-sidebar-close .f-only-sidebar-opened {
+.#{$prefix}page-editor-sidebar-close .#{$prefix}only-sidebar-opened {
     display: none;
 }
 
-.f-page-editor-sidebar-close .f-only-sidebar-closed {
+.#{$prefix}page-editor-sidebar-close .#{$prefix}only-sidebar-closed {
     display: inherit;
 }
 
 /* Dark mode */
 
-.dark .f-page-editor-sidebar {
+.dark .#{$prefix}page-editor-sidebar {
     background-color: #242424;
     border-color: #303030;
     color-scheme: dark;
 }
 
 
-.dark .f-plugin-definition-item {
+.dark .#{$prefix}plugin-definition-item {
     background-color: #383838;
     border-color: #404040;
     color: white;
 }
-.dark .f-plugin-definition-item:hover {
+.dark .#{$prefix}plugin-definition-item:hover {
     background-color: #444444;
     border-color: #707070;
 }
 
-.dark .f-page-editor-toggler-button {
+.dark .#{$prefix}page-editor-toggler-button {
     background-color: #505050;
     border-color: #404040;
     color: white;
     fill: white;
 }
-.dark .f-page-editor-toggler-button:hover {
+.dark .#{$prefix}page-editor-toggler-button:hover {
     background-color: #606060;
     border-color: #404040;
 }
-.dark .f-page-editor-toggler-button-primary {
+.dark .#{$prefix}page-editor-toggler-button-primary {
     background-color: #2e3bb3;
 }
-.dark .f-page-editor-toggler-button-primary:hover {
+.dark .#{$prefix}page-editor-toggler-button-primary:hover {
     
     background-color: #3b48bd;
 }

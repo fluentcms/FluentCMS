@@ -1,13 +1,11 @@
 {
     "name": "fluentcms.web.ui.components",
     "scripts": {
-        "tailwind": "tailwindcss -i ./dist/flowbite.css -o ../wwwroot/css/flowbite.min.css --minify",
-        "sass": "sass ./Flowbite/App.scss:./dist/flowbite.css",
+        "tailwind": "tailwindcss -i ./dist/app.css -o ../wwwroot/css/app.min.css --minify",
+        "sass": "sass ./Flowbite/App.scss:./dist/app.css",
         "build": "npm run sass && npm run tailwind"
     },
     "devDependencies": {
-        "conc": "^0.0.3",
-        "concurrently": "^8.2.2",
         "flowbite": "^2.1.1",
         "flowbite-typography": "^1.0.3",
         "sass": "^1.69.5",
