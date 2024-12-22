@@ -1,0 +1,38 @@
+$icon: $prefix + "icon";
+
+$icon-size: (
+    small: 0.875rem,
+    medium: 1rem,
+    large: 1.25rem,
+    x1: 1rem,
+    x2: 2rem,
+    x3: 3rem,
+    x4: 4rem,
+    x5: 5rem,
+    x6: 6rem,
+    x7: 7rem,
+    x8: 8rem,
+    x9: 9rem
+);
+
+.#{$icon} {
+    @apply inline-flex items-center justify-center;
+
+    @each $key, $value in $colors {
+        &-color-#{$key} {
+            @apply text-#{$value}-500;
+        }
+    }
+
+    &-size-default {
+        width: 1em;
+        height: 1em;
+    }
+
+    @each $key, $value in $icon-size {
+        &-size-#{$key} {
+            width: $value;
+            height: $value;
+        }
+    }
+}
