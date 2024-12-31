@@ -1,0 +1,190 @@
+html {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial, Noto Sans, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
+}
+
+.dark body {
+  color-scheme: dark;
+}
+
+.hidden {
+  display: none;
+}
+
+:root {
+  --color-primary: #154EF2;
+}
+
+.f-toolbar {
+  padding-top: 6px;
+  padding-bottom: 6px;
+  background-color: white;
+  box-shadow: inset 0 -1px 4px rgba(0, 0, 0, 0.2509803922);
+  height: 46px;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+}
+.f-toolbar-container {
+  padding-left: 1rem;
+  padding-right: 1rem;
+  display: flex;
+  justify-content: space-between;
+}
+.f-toolbar-start {
+  display: flex;
+  gap: 20px;
+  min-width: 200px;
+}
+.f-toolbar-center {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+}
+.f-toolbar-end {
+  display: flex;
+  gap: 20px;
+  min-width: 200px;
+  justify-content: end;
+}
+.f-toolbar-button {
+  height: 34px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  cursor: pointer;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+  gap: 0.25rem;
+  border: none;
+  outline: none;
+}
+.f-toolbar-button-outline {
+  border: 1px solid var(--color-primary);
+  color: var(--color-primary);
+  background-color: white;
+}
+.f-toolbar-button-text {
+  white-space: nowrap;
+}
+.f-toolbar-button-icon {
+  width: 34px;
+  padding: 0;
+  background-color: transparent;
+}
+.f-toolbar-responsive-buttons {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.f-toolbar-responsive-button {
+  width: 34px;
+  border: none;
+  cursor: pointer;
+  color: #999999;
+  background-color: transparent;
+}
+.f-toolbar-responsive-button:hover, .f-toolbar-responsive-button-active {
+  color: var(--color-primary);
+}
+.f-toolbar-spacer {
+  width: 34px;
+}
+.f-toolbar-button-link {
+  font-size: 12px;
+  line-height: 150%;
+  color: var(--color-primary);
+  padding-left: 0;
+  padding-right: 0;
+  background-color: transparent;
+  text-decoration: none;
+}
+.f-toolbar-button-link:hover {
+  text-decoration: underline;
+}
+.f-toolbar-toggle-buttons {
+  display: flex;
+  border-radius: 4px;
+  height: 32px;
+  overflow: hidden;
+}
+.f-toolbar-toggle-button-active {
+  color: white;
+  background-color: var(--color-primary);
+}
+.f-toolbar-toggle-button-disabled {
+  color: var(--color-primary);
+  background-color: #D9D9D9;
+  cursor: pointer;
+  box-shadow: inset 0.5px 0.5px 1px hsla(0, 0%, 0%, 0.25);
+}
+.f-toolbar-toggle-button {
+  width: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+}
+.f-toolbar-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.f-toolbar-dropdown {
+  position: relative;
+  cursor: pointer;
+}
+.f-toolbar-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  display: none;
+  border: 1px solid #E0E0E0;
+  border-radius: 8px;
+  background-color: white;
+  z-index: 1;
+}
+.f-toolbar-dropdown-open {
+  display: block;
+}
+.f-toolbar-dropdown-item {
+  color: var(--color-primary);
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+}
+.f-toolbar-dropdown-item:hover {
+  background-color: #f0f0f0;
+}
+.f-toolbar-dropdown-item-danger {
+  color: #e22323;
+}
+.f-toolbar-dropdown-separator {
+  border-top: 1px solid #E0E0E0;
+}
+.f-toolbar-dropdown-item-text {
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .f-toolbar-button-text {
+    display: none;
+  }
+  .f-toolbar-button {
+    padding: 0;
+    width: 36px;
+  }
+}
+.f-button-hidden {
+  display: none;
+}
+
+.f-avatar-image {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+/*# sourceMappingURL=sitebuilder-default.css.map */

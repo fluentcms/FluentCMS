@@ -117,6 +117,7 @@ public class PluginDefinitionViewState
     public string? Description { get; set; }
     public List<PluginDefinitionTypeViewState> Types { get; set; } = default!;
     public bool Locked { get; set; } = false;
+    public List<string> Stylesheets { get; set; } = [];
 
 }
 

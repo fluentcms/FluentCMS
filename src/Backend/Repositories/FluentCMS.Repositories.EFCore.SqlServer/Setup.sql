@@ -286,6 +286,7 @@ CREATE TABLE [dbo].[PluginDefinitions](
 	[Assembly] [nvarchar](max) NOT NULL,
 	[Icon] [nvarchar](max) NULL,
 	[Description] [nvarchar](max) NULL,
+	[Stylesheets] [nvarchar](max) NULL,
 	[Locked] [bit] NOT NULL,
 	[CreatedBy] [nvarchar](256) NOT NULL,
 	[CreatedAt] [datetime] NOT NULL,

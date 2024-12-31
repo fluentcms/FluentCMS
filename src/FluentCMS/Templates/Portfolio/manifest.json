@@ -368,6 +368,9 @@
                     "Name": "Edit",
                     "Type": "RichTextEditPlugin"
                 }
+            ],
+            "Stylesheets": [
+                "/css/html.css"
             ]
         },
         {
@@ -386,6 +389,9 @@
                     "Name": "Edit",
                     "Type": "IFrameEditPlugin"
                 }
+            ],
+            "Stylesheets": [
+                "/css/iframe.css"
             ]
         },
         {
@@ -404,6 +410,9 @@
                     "Name": "Edit",
                     "Type": "BlockEditPlugin"
                 }
+            ],
+            "Stylesheets": [
+                "/css/block.css"
             ]
         },
         {

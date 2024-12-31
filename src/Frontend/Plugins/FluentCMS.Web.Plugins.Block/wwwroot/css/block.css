@@ -1,0 +1,85 @@
+.f-block-empty-button {
+    padding: 4rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.f-block-modal-body {
+    display: flex;
+    height: calc(80vh - 3rem);
+    overflow: hidden;
+}
+
+.f-block-modal-close-button {
+    position: absolute;
+    top: 1rem;
+    right: 2rem;
+}
+
+.f-block-modal-sidebar {
+    padding: 24px;
+    overflow: auto;
+    width: 260px;
+    flex-shrink: 0;
+    cursor: pointer;
+    border-right: 1px solid #E5E7EB;
+}
+
+.f-block-modal-sidebar-title {
+    font-size: 1.5rem; /* text-2xl */
+    font-weight: bold;
+    color: #1F2937; /* text-gray-900 */
+    padding-bottom: 1rem; /* pb-4 */
+}
+
+.f-block-modal-sidebar-item {
+    padding: 0.625rem 0.75rem; /* py-2.5 px-3 */
+    border-bottom: 1px solid #D1D5DB; /* border-gray-300 */
+    white-space: nowrap;
+}
+
+.f-block-modal-sidebar-item-active {
+    background-color: #F9FAFB; /* bg-gray-50 */
+    font-weight: bold;
+}
+
+.f-block-modal-previews {
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    gap: 16px;
+    overflow: auto;
+    padding: 1rem;
+    padding-top: 4rem;
+}
+
+.f-block-modal-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: calc(50% - 8px);
+}
+
+.f-block-modal-preview-item {
+    position: relative;
+    cursor: pointer;
+}
+
+.f-block-modal-preview-title {
+    padding: 8px 0;
+}
+
+.f-block-modal-preview-content {
+    zoom: calc(100% / 3);
+    overflow: hidden;
+    user-select: none;
+    pointer-events: none;
+    border-radius: 16px;
+    transition: all 0.3s ease;
+    border: 1px solid #dbdbdb;
+}
+
+.f-block-modal-preview-item:hover .f-block-modal-preview-content {
+    border-color: #3F83F8;
+}

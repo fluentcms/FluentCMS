@@ -27,3 +27,8 @@
 {
     @((MarkupString)GetSetting("Head"))
 }
+
+@foreach (var stylesheet in Stylesheets)
+{
+    <link rel="stylesheet" href="@stylesheet" />
+}
