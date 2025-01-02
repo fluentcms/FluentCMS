@@ -25,6 +25,7 @@ public partial class Default
     {
         // check if setup is not done
         // if not it should be redirected to /setup route
+        // if you see and exception here in development time, continue running! it's a known issue in Blazor
         if (!await SetupManager.IsInitialized() && !NavigationManager.Uri.ToLower().EndsWith("/setup"))
         {
             NavigationManager.NavigateTo("/setup", true);
