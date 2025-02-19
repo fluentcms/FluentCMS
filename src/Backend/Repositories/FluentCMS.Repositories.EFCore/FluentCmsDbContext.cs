@@ -125,6 +125,21 @@ public class FluentCmsDbContext(DbContextOptions<FluentCmsDbContext> options) : 
                     claims => JsonSerializer.Serialize(claims, jsonSerializerOptions),
                     claims => JsonSerializer.Deserialize<List<IdentityUserClaim<Guid>>>(claims, jsonSerializerOptions) ?? new List<IdentityUserClaim<Guid>>());
         });
+        //This script requierd when use postgres
+        // Configure value converters for all DateTime properties
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            foreach (var property in entityType.GetProperties())
+            {
+                if (property.ClrType == typeof(DateTime) || property.ClrType == typeof(DateTime?))
+                {
+                    property.SetValueConverter(new ValueConverter<DateTime, DateTime>(
+                        v => v.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(v, DateTimeKind.Utc) : v.ToUniversalTime(),
+                        v => DateTime.SpecifyKind(v, DateTimeKind.Utc)
+                    ));
+                }
+            }
+        }
 
         base.OnModelCreating(modelBuilder);
     }
