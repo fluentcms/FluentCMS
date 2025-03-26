@@ -38,9 +38,7 @@ else
         {
             @RenderDynamicContent(ViewState.Layout?.Head ?? string.Empty)
         }
-        <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/sitebuilder-default.min.css">
-
-        <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/columns.css">
+        <link rel="stylesheet" href="/_content/FluentCMS.Web.UI/css/sitebuilder-default.css">
     </HeadContent>
     @if (!ViewState.Page.Locked && ViewState.Page.HasAdminAccess)
     {

@@ -70,7 +70,7 @@ The library includes the following components:
 3. Add link to Styles in head section of the `App.razor` file:
 
     ```razor
-    <link rel="stylesheet" href="/_content/FluentCMS.Web.UI.Components/css/flowbite.min.css">
+    <link rel="stylesheet" href="/_content/FluentCMS.Web.UI.Components/css/app.min.css">
     ```
 4. Use components in your project:
     ```razor
