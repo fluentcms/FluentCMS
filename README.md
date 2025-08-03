@@ -25,17 +25,17 @@
 </p>
 
 ![Demo Gif](./docs/resources/demo.gif)
----
+
 ## Table of contents
 
-- [](#)
-- [Table of contents](#table-of-contents)
 - [Introduction](#introduction)
+- [Connect with us](#connect-with-us)
 - [Features](#features)
 - [Supported Databases](#supported-databases)
 - [Getting Started](#getting-started)
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
+- [Component Library](#component-library)
 - [Documentation](#documentation)
 - [Contributing](#contributing)
 - [License](#license)
@@ -44,6 +44,18 @@
 FluentCMS is a modern Content Management System (CMS) built on the powerful ASP.NET Core and the innovative Blazor technology. FluentCMS assists content writers in crafting content more efficiently. Designed to be fast, flexible, and user-friendly, it not only serves as a traditional content-based CMS but also excels as a headless CMS, making it perfect for a diverse range of digital applications.
 
 FluentCMS is an open-source project, and we welcome contributions from the community. If you're interested in helping us improve FluentCMS, please read our [CONTRIBUTING.md](./CONTRIBUTING.md) guide.
+
+## Connect with us
+
+<a href="https://discord.gg/WyqYuC6YbY">
+<img width="48" height="48" src="/docs/resources/discord.svg" alt="discord">
+</a>
+<a href="https://reddit.com/r/FluentCMS">
+<img width="48" height="48" src="/docs/resources/reddit.svg" alt="reddit">
+</a>
+<a href="https://fluentcms.com">
+<img width="48" height="48" src="/docs/resources/website.svg" alt="website">
+</a>
 
 ## Features
 
@@ -122,6 +134,10 @@ FluentCMS is an open-source project, and we welcome contributions from the commu
    ```
 
 5. Visit `http://localhost:5000` in your browser.
+
+## Component Library
+
+This project includes a custom, independent Blazor-based component library styled with flowbite's Design System. You can learn more in [Component Library's README file](/src/Frontend/FluentCMS.Web.UI.Components/).
 
 ## Documentation
 

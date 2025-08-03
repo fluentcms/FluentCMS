@@ -34,7 +34,7 @@ public class SetupRepository(FluentCmsDbContext dbContext) : ISetupRepository
                 return false; // Database is already initialized
 
             var assembly = Assembly.GetExecutingAssembly();
-            var resourceName = "FluentCMS.Repositories.EFCore.PostgreSql.Setup.sql";
+            var resourceName = "FluentCMS.Repositories.EFCore.PostgreSQL.Setup.sql";
 
             using Stream stream = assembly.GetManifestResourceStream(resourceName) ??
                 throw new InvalidOperationException($"Resource '{resourceName}' not found.");

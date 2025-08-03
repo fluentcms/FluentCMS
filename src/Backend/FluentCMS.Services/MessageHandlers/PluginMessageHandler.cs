@@ -44,9 +44,47 @@ public class PluginMessageHandler(IPluginService pluginService, IPluginContentSe
 
             await pluginService.Create(plugin, cancellationToken);
 
-            if (pluginTemplate.Settings != null && pluginTemplate.Settings.Count != 0)
-                await settingsService.Update(plugin.Id, pluginTemplate.Settings, cancellationToken);
+            var pluginContentBasePath = System.IO.Path.Combine(ServiceConstants.SetupTemplatesFolder, pageTemplate.Template, ServiceConstants.SetupPagesFolder);
 
+            if (pluginTemplate.Settings != null && pluginTemplate.Settings.Count != 0) 
+            {
+                if(pluginTemplate.Settings.TryGetValue("Template", out var template))
+                {
+                    if (template.EndsWith(".sbn", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var filePath = System.IO.Path.Combine(pluginContentBasePath, template);
+                        if (System.IO.File.Exists(filePath))
+                        {
+                            var fileContent = await System.IO.File.ReadAllTextAsync(filePath, cancellationToken);
+                            pluginTemplate.Settings["Template"] = fileContent;
+                        }
+                    }
+                }
+                await settingsService.Update(plugin.Id, pluginTemplate.Settings, cancellationToken);
+            }
+
+            if (!string.IsNullOrEmpty(pluginTemplate.ContentPath))
+            {
+                var filePath = System.IO.Path.Combine(pluginContentBasePath, pluginTemplate.ContentPath);
+
+                if (System.IO.File.Exists(filePath))
+                {
+                    var fileContent = await System.IO.File.ReadAllTextAsync(filePath, cancellationToken);
+                    
+                    var pluginContent = new PluginContent
+                    {
+                        SiteId = pageTemplate.SiteId,
+                        PluginId = plugin.Id,
+                        Type = "TextHTMLContent",
+                        Data = new Dictionary<string, object?> {
+                            { "Content", fileContent }
+                        }
+                    };
+
+                    await pluginContentService.Create(pluginContent, cancellationToken);
+                }
+            }
+            
             if (pluginTemplate.Content != null)
             {
                 foreach (var pluginContentTemplate in pluginTemplate.Content)
@@ -69,5 +107,4 @@ public class PluginMessageHandler(IPluginService pluginService, IPluginContentSe
             await CreatePlugins(childPage, cancellationToken);
         }
     }
-
 }

@@ -1,0 +1,103 @@
+$section: $prefix + 'section';
+
+.#{$section} {
+    position: relative;
+    overflow-x: hidden;
+    --resizer-color: #154EF250;
+
+    &.dragging * {
+        user-select: none;
+        --resizer-color: #154EF2;
+    }
+
+    &.active .line {
+        position: absolute;
+        top: 0;
+        height: 100%;
+        width: 1px;
+        background-color: #c9c9c921;
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    &.dragging .line {
+        opacity: 1;
+    }
+
+    &.active [data-cols] {
+        transition: all 0.3s ease;
+        position: relative;
+        /* box-shadow: 0 0 0 1px rgba(161, 161, 161, 0.459); */
+    }
+
+    &.active .resizer-handle {
+        position: absolute;
+        z-index: 1;
+        top: 50%;
+        /* height: 100%; */
+        right: -24px;
+        width: 48px;
+        height: 48px;
+        transform: translate(0, -50%);
+        cursor: col-resize;
+    }
+
+    &.active .resizer-handle::before {
+        content: '';
+        position: absolute;
+        transition: all 0.3s ease;
+        border-radius: 50px;
+        opacity: 0;
+        display: block;
+        right: 19px;
+        top: 50%;
+        bottom: 50%;
+        width: 12px;
+        height: 12px;
+        transform: translate(0, -50%);
+        background-color: white;
+        border: 2px solid var(--resizer-color);
+    }
+
+    &.active .resizer-handle::after {
+        content: '';
+        position: absolute;
+        transition: all 0.3s ease;
+        opacity: 0;
+        display: block;
+        /* right: 19px; */
+        background-color: var(--resizer-color);
+        top: 50%;
+        transform: translate(0, -50%);
+        bottom: 50%;
+        height: 2px;
+        width: 2px;
+        left: 22px;
+    }
+
+    &.active:has(.dragging) {
+        cursor: col-resize;
+    }
+
+    &.active .resizer-handle.dragging::before,
+    &.active .resizer-handle:hover::before,
+    &.active .resizer-handle.dragging::after,
+    &.active .resizer-handle:hover::after,
+    &.active .#{$prefix}plugin-container:hover .resizer-handle::before {
+        opacity: 1;
+    }
+
+    &.active .resizer-handle.dragging::before,
+    &.active .resizer-handle:hover::before {
+        height: 32px;
+    }
+
+    &.active .resizer-handle.dragging::after,
+    &.active .resizer-handle:hover::after {
+        height: 20px;
+    }
+
+    .#{$prefix}plugin-container:has(.resizer-handle.dragging) .#{$prefix}plugin-container-content {
+        border-color: var(--resizer-color);
+    }
+}

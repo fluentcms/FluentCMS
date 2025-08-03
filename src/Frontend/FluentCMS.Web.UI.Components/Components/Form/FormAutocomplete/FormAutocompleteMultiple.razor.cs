@@ -73,12 +73,19 @@ public partial class FormAutocompleteMultiple<TItem, TValue> : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        if (Module is not null)
+        try
         {
-            await Module.InvokeVoidAsync("dispose", DotNetRef, Element);
-            await Module.DisposeAsync();
+            if (Module is not null)
+            {
+                await Module.InvokeVoidAsync("dispose", DotNetRef, Element);
+                await Module.DisposeAsync();
+            }
+            DotNetRef?.Dispose();
         }
-        DotNetRef?.Dispose();
+        catch(Exception ex)
+        {
+            //
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

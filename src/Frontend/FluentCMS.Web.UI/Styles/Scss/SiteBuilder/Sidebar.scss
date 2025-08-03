@@ -1,0 +1,102 @@
+$page-editor-sidebar: $prefix + 'page-editor-sidebar';
+$plugin-definition: $prefix + 'plugin-definition';
+$sidebar: $prefix + 'page-editor-sidebar';
+
+.#{$sidebar} .#{$plugin-definition}-list {
+    overflow: scroll;
+    height: 100%;
+    display: flex;
+    padding: 0.5rem;
+    box-sizing: border-box;
+    flex-direction: column;
+    gap: 6px;
+    overflow: auto;
+    width: 100%;
+}
+
+.#{$sidebar} .#{$plugin-definition}-list-title {
+    font-size: 12px;
+    font-family: sans-serif;
+}
+
+.#{$sidebar} .#{$plugin-definition}-item {
+    padding: 0.75rem;
+    display: flex;
+    font-family: sans-serif;
+    height: 72px;
+    gap: 10px;
+    border: 1px solid #C1C1C1;
+    background-color: white;
+    border-radius: 3px;
+}
+
+.#{$sidebar} .#{$plugin-definition}-item:hover {
+    background-color: white;
+    border-color: #C1C1C1;
+    cursor: grab;
+}
+
+.#{$plugin-definition}-item-icon {
+    width: 48px;
+    height: 48px;
+}
+
+.#{$plugin-definition}-item-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.#{$sidebar} .#{$plugin-definition}-item .f-name {
+    /* font-weight: bold; */
+    font-size: 14px;
+    line-height: 150%;
+    color: #222222;
+}
+
+.#{$sidebar} .#{$plugin-definition}-item .f-description {
+    font-size: 12px;
+    line-height: 150%;
+    color: #333333;
+
+}
+
+.#{$sidebar} {
+    width: 240px;
+    background-color: #F9F9F9;
+    box-shadow: inset 1px 0 2px #dfdfdf;
+    transition: all 0.3s ease;
+    top: 46px;
+    bottom: 0;
+    right: -240px;
+    position: fixed;
+    top: 0;
+    z-index: 5;
+}
+
+.#{$sidebar}.#{$sidebar}-open {
+    right: 0;
+}
+
+.#{$section} .#{$plugin-definition}-item {
+    background-color: transparent;
+    color: transparent;
+    width: 100%;
+    border: 2px dashed #154EF2;
+}
+
+.#{$section} .#{$plugin-definition}-item-icon {
+    display: none;
+}
+
+.#{$section}:has(.#{$plugin-definition}-item) .#{$prefix}plugin-container-content {
+    border-color: #154EF250;
+}
+
+body {
+    transition: all 0.3s ease;
+}
+
+body:not([data-responsive-mode]):has(.#{$sidebar}-open) {
+    padding-right: 240px;
+}

@@ -1,0 +1,40 @@
+<div class="blog-post block mb-8 p-4 bg-surface text-content-accent shadow rounded-lg">
+    <h2 class="text-2xl font-bold text-content">{{ Item.Title }}</h2>
+    {{ if Item.FeaturedImage }}
+        <div class="blog-featured-image mt-6">
+            <img class="w-full sm:w-1/2 h-auto rounded-lg" src="/files/{{ Item.FeaturedImage }}" alt="Featured Image">
+        </div>
+    {{ end }}
+    <div class="blog-meta text-sm text-content mt-2">
+        <span class="blog-slug">
+            Slug:
+            <span class="font-medium text-content-muted">
+                {{ Item.Slug }}
+            </span>
+        </span> |
+        <span class="blog-published-at">Published At:
+            <span class="font-medium text-content-muted">
+                {{ Item.PublishedAt }}
+            </span></span> |
+        <span class="blog-status">Status:
+            <span class="font-medium text-content-muted">
+                {{ Item.Status }}
+            </span></span> |
+        <span class="blog-order">Order:
+            <span class="font-medium text-content-muted">
+                {{ Item.Order }}
+            </span>
+        </span>
+    </div>
+    <div class="f-rich-text-content my-8">{{ Item.Content }}</div>
+    <div class="blog-tags mt-4">
+        <strong class="text-content">Tags:</strong>
+        <div class="inline-flex flex-wrap space-x-2 mt-2">
+            {{ for tag in Item.Tags }}
+                <span class="blog-tag bg-primary-100 dark:bg-primary-800/20 text-primary-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded">
+                    {{ tag }}
+                </span>
+            {{ end }}
+        </div>
+    </div>
+</div>

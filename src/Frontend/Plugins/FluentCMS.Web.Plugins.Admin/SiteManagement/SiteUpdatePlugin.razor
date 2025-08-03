@@ -19,6 +19,7 @@
     <FormInput @bind-Value="Model!.MetaTitle" Cols="12" Label="Meta Title" Placeholder="Enter Meta Title" />
     <FormTextarea @bind-Value="Model.MetaDescription" Label="Meta Description" Placeholder="Enter Meta Description" />
     <FormTextarea @bind-Value="Model.RobotsTxt" Label="Content of robots.txt" Placeholder="Enter content for robots.txt file" />
+    <FormTextarea @bind-Value="Model.Theme" Label="Theme" Placeholder="Enter css variables to override teme" />
     <FormInput @bind-Value="Model!.GoogleTagsId" Cols="12" Label="Google Tags id" Placeholder="Enter Google Tags Id" />
     <FormSelect Data="OgTypeOptions" @bind-Value="Model!.OgType" TextField="Title" ValueField="Key" Cols="12" Label="default type of Pages" Placeholder="Choose default page type" />
     <FormCheckbox Text="Default option for index option of pages." Label="Index" @bind-Value="@Model.Index" Cols="6"/>

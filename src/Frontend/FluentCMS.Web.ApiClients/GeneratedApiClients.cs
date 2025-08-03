@@ -13788,6 +13788,9 @@ namespace FluentCMS.Web.ApiClients
         [System.Text.Json.Serialization.JsonPropertyName("types")]
         public System.Collections.Generic.ICollection<PluginDefinitionType>? Types { get; set; } = default!;
 
+        [System.Text.Json.Serialization.JsonPropertyName("stylesheets")]
+        public System.Collections.Generic.ICollection<string>? Stylesheets { get; set; } = default!;
+
         [System.Text.Json.Serialization.JsonPropertyName("locked")]
         public bool Locked { get; set; } = default!;
 

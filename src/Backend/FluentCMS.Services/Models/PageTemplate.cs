@@ -4,6 +4,7 @@ public class PageTemplate
 {
     public Guid Id { get; set; }
     public Guid SiteId { get; set; }
+    public string Template { get; set; } = default!;
     public string Path { get; set; } = default!;
     public string Title { get; set; } = default!;
     public string? Layout { get; set; } = default!;

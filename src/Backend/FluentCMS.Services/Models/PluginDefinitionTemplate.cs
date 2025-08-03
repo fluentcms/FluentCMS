@@ -7,5 +7,6 @@ internal class PluginDefinitionTemplate
     public string? Description { get; set; }
     public string Assembly { get; set; } = default!;
     public List<PluginDefinitionType> Types { get; set; } = [];
+    public List<string> Stylesheets { get; set; } = [];
     public bool Locked { get; set; } = false;
 }

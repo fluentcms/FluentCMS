@@ -63,8 +63,19 @@ public class MappingProfile : Profile
 
         CreateMap<PermissionModel, Permission>().ReverseMap();
 
-        // Map between PluginDefinitionModel and PluginDefinition
-        CreateMap<PluginDefinitionModel, PluginDefinition>().ReverseMap();
+          // Map from PluginDefinitionModel to PluginDefinition
+        CreateMap<PluginDefinitionModel, PluginDefinition>()
+            .ForMember(dest => dest.Stylesheets, opt => opt.MapFrom(src =>
+                string.IsNullOrWhiteSpace(src.Stylesheets)
+                    ? new List<string>()
+                    : src.Stylesheets.Split(',', StringSplitOptions.RemoveEmptyEntries).ToList()));
+
+        // Map from PluginDefinition to PluginDefinitionModel
+        CreateMap<PluginDefinition, PluginDefinitionModel>()
+            .ForMember(dest => dest.Stylesheets, opt => opt.MapFrom(src =>
+                src.Stylesheets == null || !src.Stylesheets.Any()
+                    ? string.Empty
+                    : string.Join(',', src.Stylesheets)));
 
         // Map between PluginDefinitionTypeModel and PluginDefinitionType
         CreateMap<PluginDefinitionTypeModel, PluginDefinitionType>().ReverseMap();

@@ -1,8 +1,14 @@
+using FluentCMS.Providers.MessageBusProviders;
+using FluentCMS.Web.Plugins.Base;
+
 namespace FluentCMS.Web.Plugins.ContentViewer;
 
 public partial class ContentDetailEditPlugin
 {
     public const string FORM_NAME = "CONTENT_DETAIL_EDIT_FORM";
+
+    [Inject]
+    private IMessagePublisher MessagePublisher { get; set; } = default!;
 
     private SettingsModel Model { get; set; } = default!;
     private List<ContentTypeDetailResponse> ContentTypes { get; set; } = [];
@@ -43,6 +49,8 @@ public partial class ContentDetailEditPlugin
         };
 
         await ApiClient.Settings.UpdateAsync(request);
+
+        await MessagePublisher.Publish(new Message<string>(ActionNames.InvalidateStyles, Path.Combine(ViewState.Site.Id.ToString(), ViewState.Page.Id.ToString() + ".css")));
 
         await OnSubmit.InvokeAsync();
     }

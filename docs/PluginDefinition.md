@@ -35,3 +35,4 @@ Modular Design: Ensure each plugin is self-contained and follows a modular desig
 - Autor
 - Version
 - ViewTypes/Widgets
+- Stylesheets

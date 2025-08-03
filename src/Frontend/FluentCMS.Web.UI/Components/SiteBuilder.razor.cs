@@ -33,11 +33,20 @@ public partial class SiteBuilder : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        if (Module is not null)
+        try
         {
-            await Module.DisposeAsync();
-        }
-        DotNetRef?.Dispose();
+            if (Module is not null)
+            {
+                await Module.DisposeAsync();
+            }
+
+            if (DotNetRef != null)
+                DotNetRef.Dispose();
+        } 
+        catch(Exception ex)
+        {
+            // 
+        }  
     }
 
 }

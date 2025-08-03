@@ -199,6 +199,7 @@ CREATE TABLE PluginDefinitions (
     Assembly TEXT NOT NULL,
     Icon TEXT,
     Description TEXT,
+    Stylesheets TEXT,
     Locked INTEGER NOT NULL,
     CreatedBy TEXT NOT NULL,
     CreatedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

@@ -11,6 +11,7 @@ public class PluginTemplate
     public int ColsMd { get; set; }
     public int ColsLg { get; set; }
     public List<Dictionary<string, object?>> Content { get; set; } = default!;
+    public string? ContentPath { get; set; } = default!;
     public Dictionary<string, string> Settings { get; set; } = [];
     public bool Locked { get; set; } = false;
     public List<string> AdminRoles { get; set; } = [];

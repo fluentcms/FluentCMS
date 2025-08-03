@@ -1,0 +1,115 @@
+$plugin-container: $prefix + 'plugin-container';
+$plugin-toolbar: $prefix + 'plugin-toolbar';
+
+.#{$plugin-container} {
+    position: relative;
+    transition: all 0.3s ease;
+
+    &-content {
+        border: 1px dashed transparent;
+        position: relative;
+        overflow: hidden;
+        min-height: 75px;
+        transition: all 0.3s ease;
+        border: 2px dashed transparent;
+    }
+
+    &:hover .#{$plugin-container}-content {
+        border: 2px dashed #154EF250;
+        /* border: 2px dashed #154EF2; */
+    }
+
+    &-actions {
+        z-index: 4;
+        position: absolute;
+        display: flex;
+        transition: all 0.3s ease;
+        align-items: center;
+        padding: 8px;
+        gap: 8px;
+        opacity: 1;
+        right: 0;
+    }
+}
+
+.#{$plugin-toolbar} {
+    &-dropdown {
+        position: relative;
+        display: inline-block;
+    }
+
+    &-action {
+        width: 22px;
+        height: 22px;
+        display: flex;
+        border-radius: 3px;
+        align-items: center;
+        justify-content: center;
+        padding: 2px;
+        color: #154EF2;
+        background-color: white;
+        border: 1px solid #154EF250;
+    }
+
+    &-action:hover,
+    &-dropdown:hover &-dropdown-toggler {
+        cursor: pointer;
+        background-color: #f0f0f0;
+    }
+
+    &-dropdown:hover &-dropdown-toggler {
+        margin-left: 4rem;
+    }
+
+    &-dropdown-menu {
+        display: none;
+        position: absolute;
+        right: 0;
+        background-color: #fff;
+        border: 1px solid #ccc;
+        padding: 4px;
+        min-width: 160px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        z-index: 1;
+    }
+
+    &-dropdown-menu &-dropdown-item {
+        padding: 4px 8px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        cursor: pointer;
+        color: #333;
+    }
+
+    &-dropdown-menu &-dropdown-item:hover {
+        background-color: #f1f1f1;
+    }
+
+    &-dropdown:hover &-dropdown-menu,
+    &-dropdown:has(.#{$plugin-toolbar}:hover) .#{$plugin-toolbar}-dropdown-menu {
+        display: block;
+    }
+}
+
+.#{$plugin-container}::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: transparent;
+    pointer-events: none;
+}
+
+
+[data-responsive-mode] .#{$plugin-container}-actions {
+    display: none;
+}
+
+[data-responsive-mode] .f-page-editor-sidebar {
+    display: none;
+}

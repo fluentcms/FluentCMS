@@ -1,7 +1,12 @@
 namespace FluentCMS.Web.Plugins.TextHTML;
+using FluentCMS.Providers.MessageBusProviders;
+using FluentCMS.Web.Plugins.Base;
 
 public partial class TextHTMLEditPlugin
 {
+    [Inject]
+    private IMessagePublisher MessagePublisher { get; set; } = default!;
+
     public const string CONTENT_TYPE_NAME = nameof(TextHTMLContent);
 
     [SupplyParameterFromForm(FormName = CONTENT_TYPE_NAME)]
@@ -46,6 +51,7 @@ public partial class TextHTMLEditPlugin
         else
             await ApiClient.PluginContent.CreateAsync(CONTENT_TYPE_NAME, Plugin.Id, Model.ToDictionary());
 
+        await MessagePublisher.Publish(new Message<string>(ActionNames.InvalidateStyles, Path.Combine(ViewState.Site.Id.ToString(), ViewState.Page.Id.ToString() + ".css")));
         await OnSubmit.InvokeAsync();
     }
 }

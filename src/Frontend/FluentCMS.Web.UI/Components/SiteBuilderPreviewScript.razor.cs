@@ -76,13 +76,19 @@ public partial class SiteBuilderPreviewScript : IAsyncDisposable
     async ValueTask IAsyncDisposable.DisposeAsync()
     {
         ViewState.OnStateChanged -= ViewStateChanged;
-
-        if (Module is not null)
+        try
         {
-            await Module.DisposeAsync();
-        }
+            if (Module is not null)
+            {
+                await Module.DisposeAsync();
+            }
 
-        DotNetRef?.Dispose();
+            DotNetRef?.Dispose();
+        } 
+        catch(Exception ex)
+        {
+            // 
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

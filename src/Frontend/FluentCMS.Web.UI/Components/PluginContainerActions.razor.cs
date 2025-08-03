@@ -1,7 +1,13 @@
+using FluentCMS.Providers.MessageBusProviders;
+using FluentCMS.Web.Plugins.Base;
+
 namespace FluentCMS.Web.UI;
 
 public partial class PluginContainerActions
 {
+    [Inject]
+    private IMessagePublisher MessagePublisher { get; set; } = default!;
+
     [Parameter]
     public PluginViewState Plugin { get; set; } = default!;
 
@@ -118,6 +124,8 @@ public partial class PluginContainerActions
         };
 
         SettingsModalOpen = true;
+
+        await MessagePublisher.Publish(new Message<string>(ActionNames.InvalidateStyles, Path.Combine(ViewState.Site.Id.ToString(), ViewState.Page.Id.ToString() + ".css")));
         await Task.CompletedTask;
     }
 

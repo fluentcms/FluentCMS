@@ -20,7 +20,7 @@
     <PackageReference Include="Microsoft.Extensions.Identity.Stores" Version="9.0.0" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\Shared\Shared.csproj" />
+    <ProjectReference Include="..\..\FluentCMS.Shared/FluentCMS.Shared.csproj" />
   </ItemGroup>
 
   <ItemGroup>

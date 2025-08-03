@@ -1,0 +1,44 @@
+@import './Base.scss';
+
+@import './SiteBuilder/ColumnEditor';
+@import './SiteBuilder/Sidebar';
+@import './SiteBuilder/Columns';
+@import './SiteBuilder/PluginContainer';
+
+a[href] {
+    pointer-events: none;
+    user-select: none;
+}
+
+.#{$prefix}plugin-container-actions a {
+    pointer-events: unset;
+    user-select: unset;
+}
+
+.#{$prefix}page-editor-forms {
+    display: none;
+}
+
+.#{$prefix}plugin-container-action-drag {
+    cursor: grab;
+}
+
+.#{$prefix}section {
+    min-height: 100px;
+}
+
+.#{$prefix}section:has(.#{$prefix}plugin-definition-item) {
+    box-shadow: inset 0 0 1px #2032ff;
+}
+
+.#{$prefix}plugin-definition-item {
+    /* background-color: #005490a8; */
+    /* color: transparent; */
+    /* width: 100%; */
+    /* min-height: 40px; */
+}
+
+a[disabled] {
+    pointer-events: none;
+    cursor: default;
+}
