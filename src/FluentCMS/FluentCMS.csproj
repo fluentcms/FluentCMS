@@ -41,6 +41,8 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational">
+      <Version>9.0.8</Version>
+    </PackageReference>
   </ItemGroup>
 </Project>
