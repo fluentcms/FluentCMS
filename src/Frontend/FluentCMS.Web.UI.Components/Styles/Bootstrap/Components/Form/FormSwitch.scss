@@ -6,6 +6,7 @@ $prefix-form-switch: $prefix + 'form-switch';
 
     & &-input {
         @extend .form-check-input;
+        cursor: pointer;
     }
 
     & &-label {

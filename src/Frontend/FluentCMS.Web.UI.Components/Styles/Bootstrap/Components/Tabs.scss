@@ -11,6 +11,7 @@ $tab: $prefix + 'tab';
             @extend .nav-tabs;
             border: none;
             border-bottom: 1px solid $nav-tabs-border-color; 
+            margin-bottom: 1rem;
         }
     }
 

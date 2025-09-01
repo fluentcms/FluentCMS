@@ -3,7 +3,8 @@
     "scripts": {
         "tailwind": "tailwindcss -i ./dist/app.css -o ../wwwroot/css/app.min.css --minify",
         "sass": "sass ./Flowbite/App.scss:./dist/app.css",
-        "build": "npm run sass && npm run tailwind"
+        "build": "sass ./Bootstrap/App.scss:../wwwroot/css/app.min.css",
+        "build-tailwind": "npm run sass && npm run tailwind"
     },
     "devDependencies": {
         "sass": "^1.69.5"

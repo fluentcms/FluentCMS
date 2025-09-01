@@ -8,10 +8,11 @@ export function update(dotnet, element, config) {
 }
 
 export function initialize(dotnet, element, config) {
-    console.log('initialize', element, window.FloatingUIDOM)
     dispose(dotnet, element);
 
     const target = element;
+    if (!element) return;
+    const trigger = element.previousElementSibling;
 
     const options = {
         placement: config.placement,
@@ -57,4 +58,10 @@ export function initialize(dotnet, element, config) {
 
 
     tooltips.set(element, tooltip);
+}
+
+export function dispose(dotnet, element) {
+    const tooltip = tooltips.get(element);
+    tooltip?.destroy();
+    tooltips.delete(element);
 }

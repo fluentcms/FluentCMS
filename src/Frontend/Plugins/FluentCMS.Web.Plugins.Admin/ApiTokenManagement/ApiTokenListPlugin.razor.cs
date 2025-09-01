@@ -53,9 +53,16 @@ public partial class ApiTokenListPlugin
 
     private async Task OnRegenerate()
     {
-        await ApiClient.ApiToken.RegenerateSecretAsync(SelectedApiToken!.Id);
-        await OnConfirmComplete();
-        await Load();
+        try
+        {
+            await ApiClient.ApiToken.RegenerateSecretAsync(SelectedApiToken!.Id);
+            await OnConfirmComplete();
+            await Load();
+        }
+        catch (Exception ex)
+        {
+            // 
+        }
     }
 
 

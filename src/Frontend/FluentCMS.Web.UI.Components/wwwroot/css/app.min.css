@@ -14735,6 +14735,9 @@ span[data-img-src]::after {
   align-items: center;
   gap: 4px;
 }
+.f-breadcrumb-item-text[href] {
+  cursor: pointer;
+}
 .f-breadcrumb-item-separator {
   width: 24px;
   height: 24px;
@@ -14935,7 +14938,7 @@ span[data-img-src]::after {
 }
 [data-bs-theme=dark] .f-divider-text {
   color: #fff;
-  background-color: #1f2937;
+  background-color: var(--f-gray-800);
 }
 
 .f-form-field-hint {
@@ -14987,32 +14990,32 @@ span[data-img-src]::after {
 }
 
 .f-form-markdown-editor .EasyMDEContainer {
-  border-color: #e5e7eb;
+  border-color: var(--f-gray-200);
   border-radius: 0.5rem;
-  background-color: #f9fafb;
+  background-color: var(--f-gray-50);
 }
 .f-form-markdown-editor .editor-toolbar {
   border-top: none;
   border-left: none;
   border-right: none;
   border-bottom: 1px solid #fff;
-  border-color: #e5e7eb;
+  border-color: var(--f-gray-200);
 }
 .f-form-markdown-editor .editor-toolbar > button {
   width: max-content;
-  color: #6b7280;
+  color: var(--f-gray-500);
   border-radius: 0.375rem;
   cursor: pointer;
 }
 .f-form-markdown-editor .editor-toolbar > button:hover {
-  color: #111827;
-  background-color: #f3f4f6;
+  color: var(--f-gray-900);
+  background-color: var(--f-gray-100);
 }
 .f-form-markdown-editor .editor-toolbar > button.active, .f-form-markdown-editor .f-tab-item.f-tab-item-active-true .editor-toolbar > button, .f-tab-item.f-tab-item-active-true .f-form-markdown-editor .editor-toolbar > button {
-  background-color: #f3f4f6;
+  background-color: var(--f-gray-100);
 }
 .f-form-markdown-editor .editor-toolbar > i.separator {
-  border-color: #6b7280;
+  border-color: var(--f-gray-500);
 }
 .f-form-markdown-editor .CodeMirror,
 .f-form-markdown-editor .editor-preview {
@@ -15020,52 +15023,52 @@ span[data-img-src]::after {
   border-left: none;
   border-right: none;
   border-bottom: 1px solid #fff;
-  border-color: #e5e7eb;
+  border-color: var(--f-gray-200);
   background-color: #fff;
 }
 .f-form-markdown-editor .CodeMirror-cursor {
-  border-color: #f3f4f6;
+  border-color: var(--f-gray-100);
 }
 .f-form-markdown-editor span.CodeMirror-selectedtext *::selection {
-  background-color: #374151;
+  background-color: var(--f-gray-700);
 }
 .f-form-markdown-editor .editor-preview-active-side {
-  border-left: 1px solid #e5e7eb;
+  border-left: 1px solid var(--f-gray-200);
 }
 
 [data-bs-theme=dark] .f-form-markdown-editor .EasyMDEContainer {
-  background-color: #374151;
-  border-color: #4b5563;
+  background-color: var(--f-gray-700);
+  border-color: var(--f-gray-600);
 }
 [data-bs-theme=dark] .f-form-markdown-editor .editor-toolbar {
-  border-color: #4b5563;
+  border-color: var(--f-gray-600);
 }
 [data-bs-theme=dark] .f-form-markdown-editor .editor-toolbar > button {
-  color: #9ca3af;
+  color: var(--f-gray-400);
 }
 [data-bs-theme=dark] .f-form-markdown-editor .editor-toolbar > button:hover {
   color: #fff;
-  background-color: #4b5563;
+  background-color: var(--f-gray-600);
 }
 [data-bs-theme=dark] .f-form-markdown-editor .editor-toolbar > button.active, [data-bs-theme=dark] .f-form-markdown-editor .f-tab-item.f-tab-item-active-true .editor-toolbar > button, .f-tab-item.f-tab-item-active-true [data-bs-theme=dark] .f-form-markdown-editor .editor-toolbar > button {
-  background-color: #4b5563;
-  color: #d1d5db;
-  border-color: #6b7280;
+  background-color: var(--f-gray-600);
+  color: var(--f-gray-300);
+  border-color: var(--f-gray-500);
 }
 [data-bs-theme=dark] .f-form-markdown-editor .CodeMirror,
 [data-bs-theme=dark] .f-form-markdown-editor .editor-preview {
-  border-color: #4b5563;
-  background-color: #1f2937;
+  border-color: var(--f-gray-600);
+  background-color: var(--f-gray-800);
   color: #fff;
 }
 [data-bs-theme=dark] .f-form-markdown-editor .CodeMirror-cursor {
-  border-color: #f3f4f6;
+  border-color: var(--f-gray-100);
 }
 [data-bs-theme=dark] .f-form-markdown-editor span.CodeMirror-selectedtext *::selection {
-  background-color: #374151;
+  background-color: var(--f-gray-700);
 }
 [data-bs-theme=dark] .f-form-markdown-editor .editor-preview-active-side {
-  border-color: #4b5563;
+  border-color: var(--f-gray-600);
 }
 
 .f-form-rich-text-editor-wrapper {
@@ -15075,27 +15078,27 @@ span[data-img-src]::after {
 }
 .f-form-rich-text-editor-wrapper .ql-toolbar.ql-snow {
   padding: 8px 12px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--f-gray-200);
   border-top-right-radius: 8px;
   border-top-left-radius: 8px;
 }
 .f-form-rich-text-editor-wrapper .ql-snow .ql-stroke {
-  stroke: #6b7280;
+  stroke: var(--f-gray-500);
 }
 .f-form-rich-text-editor-wrapper .ql-snow .ql-fill {
-  fill: #6b7280;
+  fill: var(--f-gray-500);
 }
 .f-form-rich-text-editor-wrapper .ql-editor a[href] {
   pointer-events: none;
 }
 .f-form-rich-text-editor-wrapper .ql-container.ql-snow {
   max-height: calc(100% - 50px);
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--f-gray-200);
   border-top-width: 0;
   border-bottom-right-radius: 8px;
   border-bottom-left-radius: 8px;
   font-size: 14px;
-  color: #1f2937;
+  color: var(--f-gray-800);
   background-color: #fff;
 }
 .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar button, .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar button {
@@ -15105,7 +15108,7 @@ span[data-img-src]::after {
   justify-content: center;
   align-items: center;
   padding: 4px;
-  color: #6b7280;
+  color: var(--f-gray-500);
   border-radius: 6px;
   cursor: pointer;
 }
@@ -15118,7 +15121,7 @@ span[data-img-src]::after {
   display: flex;
   align-items: center;
   padding: 0;
-  color: #6b7280;
+  color: var(--f-gray-500);
   border-radius: 6px;
   cursor: pointer;
 }
@@ -15127,36 +15130,36 @@ span[data-img-src]::after {
   height: 1rem;
 }
 .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar button:hover, .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar button:hover, .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar button:focus, .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar button:focus, .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar button.ql-active, .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar button.ql-active, .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar .ql-picker-label:hover, .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar .ql-picker-label:hover, .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar .ql-picker-label.ql-active, .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar .ql-picker-label.ql-active, .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar .ql-picker-item:hover, .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar .ql-picker-item:hover, .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar .ql-picker-item.ql-selected, .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar .ql-picker-item.ql-selected {
-  background-color: #f3f4f6;
+  background-color: var(--f-gray-100);
 }
 .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar button:hover svg, .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar button:hover svg {
-  color: #111827;
+  color: var(--f-gray-900);
 }
 .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar button:hover svg, .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar button:hover svg {
-  color: #111827;
+  color: var(--f-gray-900);
 }
 .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar button:hover .ql-stroke {
-  stroke: #111827;
+  stroke: var(--f-gray-900);
 }
 .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar button:hover .ql-fill {
-  fill: #111827;
+  fill: var(--f-gray-900);
 }
 .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar button:hover, .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar button:hover, .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar button:focus, .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar button:focus, .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar button.ql-active, .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar button.ql-active, .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar .ql-picker-label:hover, .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar .ql-picker-label:hover, .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar .ql-picker-label.ql-active, .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar .ql-picker-label.ql-active, .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar .ql-picker-item:hover, .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar .ql-picker-item:hover, .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar .ql-picker-item.ql-selected, .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar .ql-picker-item.ql-selected {
-  color: #111827;
+  color: var(--f-gray-900);
 }
 .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar button:hover .ql-stroke, .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar button:hover .ql-stroke, .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar button:focus .ql-stroke, .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar button:focus .ql-stroke, .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar button.ql-active .ql-stroke, .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar button.ql-active .ql-stroke, .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar .ql-picker-label:hover .ql-stroke, .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar .ql-picker-label:hover .ql-stroke, .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar .ql-picker-label.ql-active .ql-stroke, .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar .ql-picker-label.ql-active .ql-stroke, .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar .ql-picker-item:hover .ql-stroke, .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar .ql-picker-item:hover .ql-stroke, .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar .ql-picker-item.ql-selected .ql-stroke, .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar .ql-picker-item.ql-selected .ql-stroke, .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar button:hover .ql-stroke-miter, .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar button:hover .ql-stroke-miter, .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar button:focus .ql-stroke-miter, .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar button:focus .ql-stroke-miter, .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar button.ql-active .ql-stroke-miter, .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar button.ql-active .ql-stroke-miter, .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar .ql-picker-label:hover .ql-stroke-miter, .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar .ql-picker-label:hover .ql-stroke-miter, .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar .ql-picker-label.ql-active .ql-stroke-miter, .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar .ql-picker-label.ql-active .ql-stroke-miter, .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar .ql-picker-item:hover .ql-stroke-miter, .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar .ql-picker-item:hover .ql-stroke-miter, .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar .ql-picker-item.ql-selected .ql-stroke-miter, .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar .ql-picker-item.ql-selected .ql-stroke-miter {
-  stroke: #111827;
+  stroke: var(--f-gray-900);
 }
 .f-form-rich-text-editor-wrapper .ql-toolbar.ql-snow .ql-picker.ql-expanded .ql-picker-options {
   padding: 8px 0;
   padding-right: 0;
   z-index: 10;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--f-gray-200);
   background-color: white;
   border-radius: 0.5rem;
   width: 11rem;
   font-size: 14px;
-  color: #374151;
+  color: var(--f-gray-700);
 }
 .f-form-rich-text-editor-wrapper .ql-snow .ql-picker-options .ql-picker-item {
   border: none;
@@ -15164,7 +15167,7 @@ span[data-img-src]::after {
   padding: 8px 1rem;
 }
 .f-form-rich-text-editor-wrapper .ql-snow .ql-picker-options .ql-picker-item:hover {
-  background-color: #f3f4f6;
+  background-color: var(--f-gray-100);
 }
 .f-form-rich-text-editor-wrapper #editor-resizer .toolbar {
   top: auto;
@@ -15172,31 +15175,31 @@ span[data-img-src]::after {
 }
 
 [data-bs-theme=dark] .f-form-rich-text-editor-wrapper .ql-editor.ql-blank::before {
-  color: #9ca3af;
+  color: var(--f-gray-400);
 }
 [data-bs-theme=dark] .f-form-rich-text-editor-wrapper .ql-toolbar.ql-snow {
-  border-color: #4b5563;
-  background-color: #374151;
+  border-color: var(--f-gray-600);
+  background-color: var(--f-gray-700);
 }
 [data-bs-theme=dark] .f-form-rich-text-editor-wrapper .ql-snow .ql-stroke {
-  stroke: #9ca3af;
+  stroke: var(--f-gray-400);
 }
 [data-bs-theme=dark] .f-form-rich-text-editor-wrapper .ql-snow .ql-fill {
-  fill: #9ca3af;
+  fill: var(--f-gray-400);
 }
 [data-bs-theme=dark] .f-form-rich-text-editor-wrapper .ql-container.ql-snow {
-  border-color: #4b5563;
-  background-color: #1f2937;
+  border-color: var(--f-gray-600);
+  background-color: var(--f-gray-800);
   color: #fff;
 }
 [data-bs-theme=dark] .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar button, [data-bs-theme=dark] .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar button {
-  color: #9ca3af;
+  color: var(--f-gray-400);
 }
 [data-bs-theme=dark] .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar .ql-picker-label, [data-bs-theme=dark] .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar .ql-picker-label {
-  color: #9ca3af;
+  color: var(--f-gray-400);
 }
 [data-bs-theme=dark] .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar button:hover, [data-bs-theme=dark] .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar button:hover, [data-bs-theme=dark] .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar button:focus, [data-bs-theme=dark] .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar button:focus, [data-bs-theme=dark] .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar button.ql-active, [data-bs-theme=dark] .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar button.ql-active, [data-bs-theme=dark] .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar .ql-picker-label:hover, [data-bs-theme=dark] .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar .ql-picker-label:hover, [data-bs-theme=dark] .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar .ql-picker-label.ql-active, [data-bs-theme=dark] .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar .ql-picker-label.ql-active, [data-bs-theme=dark] .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar .ql-picker-item:hover, [data-bs-theme=dark] .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar .ql-picker-item:hover, [data-bs-theme=dark] .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar .ql-picker-item.ql-selected, [data-bs-theme=dark] .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar .ql-picker-item.ql-selected {
-  background-color: #4b5563;
+  background-color: var(--f-gray-600);
 }
 [data-bs-theme=dark] .f-form-rich-text-editor-wrapper .ql-snow.ql-toolbar button:hover svg, [data-bs-theme=dark] .f-form-rich-text-editor-wrapper .ql-snow .ql-toolbar button:hover svg {
   color: white;
@@ -15217,15 +15220,18 @@ span[data-img-src]::after {
   stroke: #fff;
 }
 [data-bs-theme=dark] .f-form-rich-text-editor-wrapper .ql-toolbar.ql-snow .ql-picker.ql-expanded .ql-picker-options {
-  border-color: #4b5563;
-  background-color: #374151;
-  color: #e5e7eb;
+  border-color: var(--f-gray-600);
+  background-color: var(--f-gray-700);
+  color: var(--f-gray-200);
 }
 [data-bs-theme=dark] .f-form-rich-text-editor-wrapper .ql-snow .ql-picker-options .ql-picker-item:hover {
-  background-color: #4b5563;
+  background-color: var(--f-gray-600);
   color: #fff;
 }
 
+.f-form-switch .f-form-switch-input {
+  cursor: pointer;
+}
 .f-form-tree-selector-input {
   cursor: pointer;
 }
@@ -15280,6 +15286,10 @@ span[data-img-src]::after {
 .f-grid {
   --grid-gutter-x: 0;
   --grid-gutter-y: 0;
+}
+.f-grid > div {
+  --f-gutter-x: unset;
+  --f-gutter-y: unset;
 }
 .f-grid-item-small-auto {
   width: unset !important;
@@ -15492,6 +15502,7 @@ span[data-img-src]::after {
 .f-tab-list-inner {
   border: none;
   border-bottom: 1px solid var(--f-border-color);
+  margin-bottom: 1rem;
 }
 .f-tab-panel {
   display: none;

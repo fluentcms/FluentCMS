@@ -35,6 +35,6 @@ $divider: $prefix + 'divider';
 
     .#{$divider}-text {
         color: $white;
-        background-color: $gray-800;
+        background-color: var(--f-gray-800);
     }
 }

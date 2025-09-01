@@ -19,6 +19,8 @@ $grid-item-column: ( one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 
         @extend .row;
         // @extend .row-cols-auto;
 
+        --f-gutter-x: unset;
+        --f-gutter-y: unset;
     }
     --grid-gutter-x: 0;
     --grid-gutter-y: 0;
