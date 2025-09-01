@@ -2,6 +2,7 @@ $close-button: $prefix + "close-button";
 
 .#{$close-button} {
     @extend .btn-close;
+    margin-right: 0px !important;
 
     .#{$prefix}icon {
         display: none;

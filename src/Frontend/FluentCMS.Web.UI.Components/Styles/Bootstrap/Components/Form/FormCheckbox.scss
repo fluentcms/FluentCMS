@@ -10,6 +10,5 @@ $prefix-form-checkbox: $prefix + 'form-checkbox';
     
     & &-label {
         @extend .form-check-label;
-        margin-left: 0 !important;
     }
 }

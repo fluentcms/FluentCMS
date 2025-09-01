@@ -51,14 +51,15 @@ $button: $prefix + "button";
     }
 
     .#{$button}-color-#{$key}.#{$button}-link-false.#{$button}-ghost-true.#{$button}-outline-false {
+        --f-btn-box-shadow: none;
         @extend .text-#{$key};
     }
 
     .#{$button}-color-#{$key}.#{$button}-link-true.#{$button}-ghost-false.#{$button}-outline-false {
+        --f-btn-box-shadow: none;
         @extend .btn-link;
         @extend .p-0;
         @extend .text-#{$key};
-        box-shadow: none;
     }
 }
 
@@ -67,6 +68,7 @@ $button: $prefix + "button";
 }
 
 .#{$button}-color-default.#{$button}-link-false.#{$button}-ghost-true.#{$button}-outline-false {
+    --f-btn-box-shadow: none;
     @extend .btn-ghost;
 }
 
@@ -82,5 +84,6 @@ $button: $prefix + "button";
 .#{$button}-color-default.#{$button}-link-true.#{$button}-ghost-false.#{$button}-outline-false {
     @extend .btn-link-default;
     @extend .p-0;
-    box-shadow: none;
+    --f-btn-box-shadow: none;
+    
 }

@@ -12,7 +12,6 @@ export function initialize(dotnet, element, config) {
     dispose(dotnet, element);
 
     const target = element;
-	@@ -15,10 +19,46 @@ export function initialize(dotnet, element, config) {
 
     const options = {
         placement: config.placement,

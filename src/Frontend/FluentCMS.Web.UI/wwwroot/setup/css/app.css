@@ -32,3 +32,8 @@ body:is(.dark *) {
 .f-font-monospace {
     font-family: monospace;
 }
+
+.f-plugin-body-title {
+    font-size: 24px;
+    font-weight: bold;
+}

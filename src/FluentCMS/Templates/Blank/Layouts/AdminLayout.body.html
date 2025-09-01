@@ -68,12 +68,12 @@
 <header class="navbar sticky-top border-bottom flex-md-nowrap p-0">
   <div style="padding-left: 12px" class="d-flex align-items-center">
     <!-- TODO: Support icon only for sidebar -->
-    <button class="nav-link px-3 text-white" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false" aria-label="Toggle navigation">
+    <button class="nav-link px-3 md:hidden" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false" aria-label="Toggle navigation">
       <svg width="24" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
         <path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h6a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path>
       </svg>
     </button>
-    <a class="navbar-brand fs-6 text-white" href="/">
+    <a class="navbar-brand fs-6" href="/">
       <img class="brand-image brand-light" src="/files/images/logo.svg" alt="FluentCMS Logo"/>
       <img class="brand-image brand-dark" src="/files/images/logo-dark.svg" alt="FluentCMS Logo" />
     </a>
@@ -126,7 +126,7 @@
 
       <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="bd-theme-text">
         <li>
-          <p class="ps-2 profile-username" role="none">
+          <p class="ps-3 profile-username" role="none">
             {{user.user_name}}
           </p>
           <a href="/auth/profile" class="dropdown-item d-flex align-items-center">

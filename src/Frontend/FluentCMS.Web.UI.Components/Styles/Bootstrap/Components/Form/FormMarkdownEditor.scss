@@ -2,7 +2,7 @@ $form-markdown-editor: $prefix + "form-markdown-editor";
 
 .#{$form-markdown-editor} {
     .EasyMDEContainer {
-        @extend .w-100; // equivalent to Tailwind's w-full
+        @extend .w-100;
         @extend .mb-4;
         @extend .border;
         border-color: $gray-200;

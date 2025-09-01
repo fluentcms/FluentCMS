@@ -95,6 +95,17 @@ $tree-selector: $prefix + 'form-tree-selector';
     background-color: $blue-50;
 }
 
+
+// Active / selected states
+[data-bs-theme="dark"] .#{$tree-selector}-option-active > .#{$tree-selector}-option-header > .#{$tree-selector}-option-content {
+    background-color: rgba($blue-100, 0.5);
+    color: $blue-200;
+}
+
+[data-bs-theme="dark"] .#{$tree-selector}-option:has(.#{$tree-selector}-option-active) > .#{$tree-selector}-option-header > .#{$tree-selector}-option-content {
+    background-color: rgba($blue-50, 0.5);
+}
+
 // $tree-selector: $prefix + 'tree-selector';
 
 // .#{$tree-selector} {

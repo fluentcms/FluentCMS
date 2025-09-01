@@ -101,13 +101,13 @@
   opacity: 0.5 !important;
 }
 
-.form-check-input, .f-form-switch .f-form-switch-input, .f-form-radio-group-input, .f-form-checkbox-group-input, .f-form-checkbox .f-form-checkbox-input {
+.form-switch .form-check-input, .f-form-switch .form-check-input, .f-form-switch .f-form-switch-input, .form-switch .f-form-radio-group-input, .f-form-switch .f-form-radio-group-input, .form-switch .f-form-checkbox-group-input, .f-form-switch .f-form-checkbox-group-input, .form-switch .f-form-checkbox .f-form-checkbox-input, .f-form-switch .f-form-checkbox .f-form-checkbox-input, .f-form-checkbox .form-switch .f-form-checkbox-input, .f-form-checkbox .f-form-switch .f-form-checkbox-input {
   width: 1.5rem;
   height: 1.5rem;
   margin-top: 0.75rem;
 }
 
-.form-check-label, .f-form-switch .f-form-switch-label, .f-form-radio-group-label, .f-form-checkbox-group-label, .f-form-checkbox .f-form-checkbox-label {
+.form-switch .form-check-label, .f-form-switch .form-check-label, .f-form-switch .f-form-switch-label, .form-switch .f-form-radio-group-label, .f-form-switch .f-form-radio-group-label, .form-switch .f-form-checkbox-group-label, .f-form-switch .f-form-checkbox-group-label, .form-switch .f-form-checkbox .f-form-checkbox-label, .f-form-switch .f-form-checkbox .f-form-checkbox-label, .f-form-checkbox .form-switch .f-form-checkbox-label, .f-form-checkbox .f-form-switch .f-form-checkbox-label {
   margin-left: 2rem;
   line-height: 1.5rem;
 }
@@ -2215,7 +2215,7 @@ progress {
     -webkit-overflow-scrolling: touch;
   }
 }
-.form-label, .f-form-label, .f-form-form-field-label {
+.form-label, .f-form-label, .f-form-field-label {
   margin-bottom: 0.5rem;
   font-size: 0.875rem;
 }
@@ -8286,7 +8286,7 @@ textarea.form-control-lg {
   margin-bottom: 0.5rem !important;
 }
 
-.mb-3, .f-form-form-field {
+.mb-3, .f-form-field {
   margin-bottom: 1rem !important;
 }
 
@@ -14761,40 +14761,76 @@ span[data-img-src]::after {
   height: 1.75rem;
 }
 
+.f-button-color-primary.f-button-link-false.f-button-ghost-true.f-button-outline-false {
+  --f-btn-box-shadow: none;
+}
+
 .f-button-color-primary.f-button-link-true.f-button-ghost-false.f-button-outline-false {
-  box-shadow: none;
+  --f-btn-box-shadow: none;
+}
+
+.f-button-color-secondary.f-button-link-false.f-button-ghost-true.f-button-outline-false {
+  --f-btn-box-shadow: none;
 }
 
 .f-button-color-secondary.f-button-link-true.f-button-ghost-false.f-button-outline-false {
-  box-shadow: none;
+  --f-btn-box-shadow: none;
+}
+
+.f-button-color-success.f-button-link-false.f-button-ghost-true.f-button-outline-false {
+  --f-btn-box-shadow: none;
 }
 
 .f-button-color-success.f-button-link-true.f-button-ghost-false.f-button-outline-false {
-  box-shadow: none;
+  --f-btn-box-shadow: none;
+}
+
+.f-button-color-info.f-button-link-false.f-button-ghost-true.f-button-outline-false {
+  --f-btn-box-shadow: none;
 }
 
 .f-button-color-info.f-button-link-true.f-button-ghost-false.f-button-outline-false {
-  box-shadow: none;
+  --f-btn-box-shadow: none;
+}
+
+.f-button-color-warning.f-button-link-false.f-button-ghost-true.f-button-outline-false {
+  --f-btn-box-shadow: none;
 }
 
 .f-button-color-warning.f-button-link-true.f-button-ghost-false.f-button-outline-false {
-  box-shadow: none;
+  --f-btn-box-shadow: none;
+}
+
+.f-button-color-danger.f-button-link-false.f-button-ghost-true.f-button-outline-false {
+  --f-btn-box-shadow: none;
 }
 
 .f-button-color-danger.f-button-link-true.f-button-ghost-false.f-button-outline-false {
-  box-shadow: none;
+  --f-btn-box-shadow: none;
+}
+
+.f-button-color-light.f-button-link-false.f-button-ghost-true.f-button-outline-false {
+  --f-btn-box-shadow: none;
 }
 
 .f-button-color-light.f-button-link-true.f-button-ghost-false.f-button-outline-false {
-  box-shadow: none;
+  --f-btn-box-shadow: none;
+}
+
+.f-button-color-dark.f-button-link-false.f-button-ghost-true.f-button-outline-false {
+  --f-btn-box-shadow: none;
 }
 
 .f-button-color-dark.f-button-link-true.f-button-ghost-false.f-button-outline-false {
-  box-shadow: none;
+  --f-btn-box-shadow: none;
+}
+
+.f-button-color-default.f-button-link-false.f-button-ghost-true.f-button-outline-false {
+  --f-btn-box-shadow: none;
 }
 
 .f-button-color-default.f-button-link-true.f-button-ghost-false.f-button-outline-false {
-  box-shadow: none;
+  --f-btn-box-shadow: none;
 }
 
 .f-card {
@@ -14806,6 +14842,9 @@ span[data-img-src]::after {
   border-color: var(--f-gray-700);
 }
 
+.f-close-button {
+  margin-right: 0px !important;
+}
 .f-close-button .f-icon {
   display: none;
 }
@@ -14899,8 +14938,12 @@ span[data-img-src]::after {
   background-color: #1f2937;
 }
 
-.f-form-checkbox .f-form-checkbox-label {
-  margin-left: 0 !important;
+.f-form-field-hint {
+  color: #374151;
+}
+
+[data-bs-theme=dark] .f-form-field-hint {
+  color: #9ca3af;
 }
 
 .f-form-file-upload {
@@ -15223,6 +15266,15 @@ span[data-img-src]::after {
 
 .f-form-tree-selector-option:has(.f-form-tree-selector-option-active) > .f-form-tree-selector-option-header > .f-form-tree-selector-option-content {
   background-color: #f4f8fd;
+}
+
+[data-bs-theme=dark] .f-form-tree-selector-option-active > .f-form-tree-selector-option-header > .f-form-tree-selector-option-content {
+  background-color: rgba(232, 241, 251, 0.5);
+  color: #c6ddf4;
+}
+
+[data-bs-theme=dark] .f-form-tree-selector-option:has(.f-form-tree-selector-option-active) > .f-form-tree-selector-option-header > .f-form-tree-selector-option-content {
+  background-color: rgba(244, 248, 253, 0.5);
 }
 
 .f-grid {
@@ -18197,7 +18249,7 @@ progress {
   margin-bottom: 0.5rem !important;
 }
 
-.mb-3, .f-form-form-field {
+.mb-3, .f-form-field {
   margin-bottom: 1rem !important;
 }
 
@@ -22129,40 +22181,76 @@ progress {
   height: 1.75rem;
 }
 
+.f-button-color-primary.f-button-link-false.f-button-ghost-true.f-button-outline-false {
+  --f-btn-box-shadow: none;
+}
+
 .f-button-color-primary.f-button-link-true.f-button-ghost-false.f-button-outline-false {
-  box-shadow: none;
+  --f-btn-box-shadow: none;
+}
+
+.f-button-color-secondary.f-button-link-false.f-button-ghost-true.f-button-outline-false {
+  --f-btn-box-shadow: none;
 }
 
 .f-button-color-secondary.f-button-link-true.f-button-ghost-false.f-button-outline-false {
-  box-shadow: none;
+  --f-btn-box-shadow: none;
+}
+
+.f-button-color-success.f-button-link-false.f-button-ghost-true.f-button-outline-false {
+  --f-btn-box-shadow: none;
 }
 
 .f-button-color-success.f-button-link-true.f-button-ghost-false.f-button-outline-false {
-  box-shadow: none;
+  --f-btn-box-shadow: none;
+}
+
+.f-button-color-info.f-button-link-false.f-button-ghost-true.f-button-outline-false {
+  --f-btn-box-shadow: none;
 }
 
 .f-button-color-info.f-button-link-true.f-button-ghost-false.f-button-outline-false {
-  box-shadow: none;
+  --f-btn-box-shadow: none;
+}
+
+.f-button-color-warning.f-button-link-false.f-button-ghost-true.f-button-outline-false {
+  --f-btn-box-shadow: none;
 }
 
 .f-button-color-warning.f-button-link-true.f-button-ghost-false.f-button-outline-false {
-  box-shadow: none;
+  --f-btn-box-shadow: none;
+}
+
+.f-button-color-danger.f-button-link-false.f-button-ghost-true.f-button-outline-false {
+  --f-btn-box-shadow: none;
 }
 
 .f-button-color-danger.f-button-link-true.f-button-ghost-false.f-button-outline-false {
-  box-shadow: none;
+  --f-btn-box-shadow: none;
+}
+
+.f-button-color-light.f-button-link-false.f-button-ghost-true.f-button-outline-false {
+  --f-btn-box-shadow: none;
 }
 
 .f-button-color-light.f-button-link-true.f-button-ghost-false.f-button-outline-false {
-  box-shadow: none;
+  --f-btn-box-shadow: none;
+}
+
+.f-button-color-dark.f-button-link-false.f-button-ghost-true.f-button-outline-false {
+  --f-btn-box-shadow: none;
 }
 
 .f-button-color-dark.f-button-link-true.f-button-ghost-false.f-button-outline-false {
-  box-shadow: none;
+  --f-btn-box-shadow: none;
+}
+
+.f-button-color-default.f-button-link-false.f-button-ghost-true.f-button-outline-false {
+  --f-btn-box-shadow: none;
 }
 
 .f-button-color-default.f-button-link-true.f-button-ghost-false.f-button-outline-false {
-  box-shadow: none;
+  --f-btn-box-shadow: none;
 }
 
 /*# sourceMappingURL=app.min.css.map */
