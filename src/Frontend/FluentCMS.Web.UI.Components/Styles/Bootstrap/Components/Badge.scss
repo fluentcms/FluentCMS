@@ -1,0 +1,19 @@
+$badge: $prefix + 'badge';
+
+.#{$badge} {
+    @extend .badge;
+    font-size: 12px;
+    padding: 4px 10px;
+
+    &-color-default {
+        @extend .text-bg-secondary;
+    }
+
+    @each $key, $value in $theme-colors {
+        &-color-#{$key} {
+            @extend .text-#{$key};
+            --f-bg-opacity: 0.1;
+            background-color: rgba(var(--f-#{$key}-rgb), var(--f-bg-opacity)) !important;
+        }
+    }
+}

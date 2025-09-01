@@ -16,7 +16,7 @@ export function initialize(dotnet, element, config) {
 
     let instance = TreeSelector(element, {
         options: config.items,
-        cssPrefix: 'f-tree-selector',
+        cssPrefix: 'f-form-tree-selector',
         value: config.value,
         onChange(value) {
             dotnet.invokeMethodAsync('UpdateValue', value)

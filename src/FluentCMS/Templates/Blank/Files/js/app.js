@@ -14,7 +14,7 @@ window.addEventListener('fluentcms:afterenhanced', () => {
     if(theme) theme.initialize()
     if(sidebar) sidebar.initialize()
 
-    initFlowbite()
+    // initFlowbite()
 })
 
 window.addEventListener('fluentcms:init', () => {

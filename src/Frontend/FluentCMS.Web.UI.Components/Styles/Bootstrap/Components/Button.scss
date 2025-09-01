@@ -1,0 +1,86 @@
+$button: $prefix + "button";
+
+.#{$button} {
+    @extend .btn;
+    display: inline-flex;
+    align-items: center;
+    font-size: 14px;
+    gap: 0.5rem;
+
+
+    .#{$prefix}icon {
+        width: 1.5rem;
+        height: 1.5rem;
+    }
+
+    &-block-true {
+        @extend .w-100;
+    }
+
+    &-size-small.#{$button}-link-false {
+        @extend .btn-sm;
+
+        .#{$prefix}icon {
+            width: 1.25rem;
+            height: 1.25rem;
+        }
+    }
+
+    &-size-large.#{$button}-link-false {
+        @extend .btn-lg;
+
+        .#{$prefix}icon {
+            width: 1.75rem;
+            height: 1.75rem;
+        }
+    }
+}
+
+@each $key, $value in $theme-colors {
+    .#{$button}-color-#{$key}.#{$button}-link-false.#{$button}-outline-false.#{$button}-disabled-false.#{$button}-ghost-false {
+        @extend .btn-#{$key};
+    }
+
+    .#{$button}-color-#{$key}.#{$button}-link-false.#{$button}-disabled-true {
+        @extend .disabled;
+        @extend .btn-#{$key};
+    }
+
+    .#{$button}-color-#{$key}.#{$button}-link-false.#{$button}-outline-true.#{$button}-ghost-false {
+        @extend .btn-outline-#{$key};
+    }
+
+    .#{$button}-color-#{$key}.#{$button}-link-false.#{$button}-ghost-true.#{$button}-outline-false {
+        @extend .text-#{$key};
+    }
+
+    .#{$button}-color-#{$key}.#{$button}-link-true.#{$button}-ghost-false.#{$button}-outline-false {
+        @extend .btn-link;
+        @extend .p-0;
+        @extend .text-#{$key};
+        box-shadow: none;
+    }
+}
+
+.#{$button}-color-default.#{$button}-link-false.#{$button}-ghost-false.#{$button}-outline-false {
+    @extend .btn-default;
+}
+
+.#{$button}-color-default.#{$button}-link-false.#{$button}-ghost-true.#{$button}-outline-false {
+    @extend .btn-ghost;
+}
+
+.#{$button}-color-default.#{$button}-link-false.#{$button}-outline-true.#{$button}-ghost-false {
+    @extend .btn-outline-default;
+}
+
+.#{$button}-color-default.#{$button}-link-false.#{$button}-disabled-true {
+    @extend .disabled;
+    // @extend .btn-disabled;
+}
+
+.#{$button}-color-default.#{$button}-link-true.#{$button}-ghost-false.#{$button}-outline-false {
+    @extend .btn-link-default;
+    @extend .p-0;
+    box-shadow: none;
+}

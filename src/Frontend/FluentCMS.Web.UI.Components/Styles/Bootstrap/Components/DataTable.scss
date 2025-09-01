@@ -1,0 +1,40 @@
+$data-table: $prefix + "data-table";
+
+.#{$data-table} {
+    @extend .table;
+    margin-bottom: 0;
+
+    &-cell {
+        white-space: nowrap;
+        background-color: transparent !important;
+        font-size: 14px !important;
+    }
+
+    &-head {
+        .#{$data-table}-cell:last-child {
+            width: 0;
+        }
+
+        .#{$data-table}-cell {
+            font-weight: bold !important;
+            text-transform: uppercase !important;
+            font-size: 12px !important;
+        }
+
+    }
+
+    &-wrapper {
+        @extend .table-responsive;
+    }
+
+    &-hoverable-true {
+        @extend .table-hover;
+    }
+}
+
+@include color-mode(dark) {
+    .#{$data-table}-cell {
+        color: var(--#{$prefix}gray-400);
+        border-color: var(--#{$prefix}gray-700);
+    }
+}

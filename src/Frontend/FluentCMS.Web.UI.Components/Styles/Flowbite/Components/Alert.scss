@@ -1,23 +1,68 @@
 $alert: $prefix + "alert";
 
 $alert-types: (
-    "info": "blue",
-    "danger": "red",
-    "warning": "yellow",
-    "success": "green",
-    "default": "gray"
+  "info":    $info,
+  "danger":  $danger,
+  "warning": $warning,
+  "success": $success,
+  "default": $secondary
 );
 
 .#{$alert} {
-    @apply flex items-center p-4 text-sm rounded-lg w-full;
+  @extend .alert;        // base alert style
+  @extend .d-flex;       // flexbox alignment
+  @extend .align-items-center;
+  @extend .w-100;
+  @extend .text-sm;      // if you want smaller font size, Bootstrap 5 has .small
 
-    @each $type, $color in $alert-types {
-        &-type-#{$type} {
-            @apply text-#{$color}-800 bg-#{$color}-50 dark:bg-gray-800 dark:text-#{$color}-400;
+  border-radius: $border-radius-lg;
+  padding: $spacer;
 
-            .#{$alert}-close {
-                @apply bg-#{$color}-50 text-#{$color}-500 hover:bg-#{$color}-200 hover:text-#{$color}-500 focus:ring-2 focus:ring-#{$color}-400 dark:hover:bg-gray-700 dark:bg-gray-800 dark:text-#{$color}-400;
-            }
+  // Loop through alert types
+  @each $type, $color in $alert-types {
+    &-type-#{$type} {
+      @extend .alert-#{$type};
+
+      background-color: rgba($color, 0.5) !important;
+      border-color: rgba($color, 0.6);
+      
+      .#{$alert}-close {
+        @extend .btn-close;         // Bootstrap close button
+        @extend .ms-auto;           // push to the right
+        opacity: .75;
+
+        &:hover {
+          opacity: 1;
         }
+
+        &:focus {
+          box-shadow: 0 0 0 0.25rem rgba($color, .25);
+        }
+      }
     }
+  }
 }
+
+// $alert: $prefix + "alert";
+
+// $alert-types: (
+//     "info": "blue",
+//     "danger": "red",
+//     "warning": "yellow",
+//     "success": "green",
+//     "default": "gray"
+// );
+
+// .#{$alert} {
+//     @apply flex items-center p-4 text-sm rounded-lg w-full;
+
+//     @each $type, $color in $alert-types {
+//         &-type-#{$type} {
+//             @apply text-#{$color}-800 bg-#{$color}-50 dark:bg-gray-800 dark:text-#{$color}-400;
+
+//             .#{$alert}-close {
+//                 @apply bg-#{$color}-50 text-#{$color}-500 hover:bg-#{$color}-200 hover:text-#{$color}-500 focus:ring-2 focus:ring-#{$color}-400 dark:hover:bg-gray-700 dark:bg-gray-800 dark:text-#{$color}-400;
+//             }
+//         }
+//     }
+// }

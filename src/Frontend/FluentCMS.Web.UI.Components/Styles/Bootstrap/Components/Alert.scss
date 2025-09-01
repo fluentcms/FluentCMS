@@ -1,0 +1,42 @@
+$alert: $prefix + "alert";
+
+$alert-types: ( 
+    "info": $blue, 
+    "danger": $red, 
+    "warning": $yellow, 
+    "success": $green, 
+);
+
+.#{$alert} {
+    @extend .alert;
+
+    [data-bs-theme="light"] &-type-default {
+        @extend .alert-light;
+        background-color: rgba($gray-100, .25) !important;
+        border-color: rgba($gray-300, .5) !important;
+    }
+
+    [data-bs-theme="dark"] &-type-default {
+        @extend .alert-dark;
+        background-color: rgba($gray-800, .25) !important;
+        border-color: rgba($gray-700, .5) !important;
+    }
+
+    &:has(.#{$alert}-close) {
+        @extend .alert-dismissible;
+    }
+
+    @each $type, $color in $alert-types {
+        &-type-#{$type} {
+            @extend .alert-#{$type};
+
+            // Override Bootstrap background & border with 50% opacity
+            background-color: rgba($color, .25) !important;
+            border-color: rgba($color, .6) !important;
+
+            .#{$alert}-close {
+                @extend .btn-close;
+            }
+        }
+    }
+}

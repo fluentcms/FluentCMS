@@ -1,0 +1,20 @@
+$nav-link-padding-y:                1rem;
+$nav-link-padding-x:                1rem;
+$nav-link-font-size:                0.875rem; // text-sm
+$nav-link-font-weight:              500; // font-medium
+$nav-link-color:                    $gray-500; // text-gray-500
+$nav-link-hover-color:              $gray-600; // hover:text-gray-600
+$nav-link-transition:               color .15s ease-in-out, border-color .15s ease-in-out;
+$nav-link-disabled-color:           $gray-400; // text-gray-400
+$nav-link-border-radius:            0.5rem 0.5rem 0 0; // rounded-t-lg
+
+// $nav-tabs-border-color:             $gray-200; // border-gray-200
+// $nav-tabs-link-hover-border-color:  $gray-300;// hover:border-gray-300
+$nav-tabs-link-active-color:        $blue-600; // text-blue-600
+$nav-tabs-link-active-bg:           transparent; // no background color for active state
+$nav-tabs-link-active-border-color: $blue-600; // border-blue-600
+
+// Custom styling for dark mode
+$nav-tabs-link-dark-active-color:   $blue-500; // dark:text-blue-500
+$nav-tabs-link-dark-hover-color:    $gray-300; // dark:hover:border-gray-300
+$nav-tabs-link-dark-disabled-color: $gray-500; // dark:text-gray-500

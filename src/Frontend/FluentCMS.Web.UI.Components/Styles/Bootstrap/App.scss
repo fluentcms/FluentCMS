@@ -1,0 +1,116 @@
+$prefix: "f-";
+
+// Functions first
+@import "../node_modules/bootstrap/scss/functions";
+@import "../node_modules/bootstrap/scss/variables";
+@import "../node_modules/bootstrap/scss/variables-dark";
+@import "../node_modules/bootstrap/scss/maps";
+@import "../node_modules/bootstrap/scss/mixins";
+@import "../node_modules/bootstrap/scss/utilities";
+
+// Variable overrides second
+$primary: rgb(22, 110, 211);
+$enable-shadows: true;
+
+.hidden {
+    display: none;
+}
+
+@import './Variables/Colors.scss';
+@import './Variables/Card.scss';
+@import './Variables/Button.scss';
+@import './Variables/Input.scss';
+@import './Variables/Modal.scss';
+@import './Variables/Switch.scss';
+@import './Variables/Table.scss';
+@import './Variables/Tabs.scss';
+
+// Layout & components
+@import "../node_modules/bootstrap/scss/root";
+@import "../node_modules/bootstrap/scss/reboot";
+@import "../node_modules/bootstrap/scss/type";
+@import "../node_modules/bootstrap/scss/images";
+@import "../node_modules/bootstrap/scss/containers";
+@import "../node_modules/bootstrap/scss/grid";
+@import "../node_modules/bootstrap/scss/tables";
+@import "../node_modules/bootstrap/scss/forms";
+@import "../node_modules/bootstrap/scss/buttons";
+@import "../node_modules/bootstrap/scss/transitions";
+@import "../node_modules/bootstrap/scss/dropdown";
+@import "../node_modules/bootstrap/scss/button-group";
+@import "../node_modules/bootstrap/scss/nav";
+@import "../node_modules/bootstrap/scss/navbar";
+@import "../node_modules/bootstrap/scss/card";
+@import "../node_modules/bootstrap/scss/accordion";
+@import "../node_modules/bootstrap/scss/breadcrumb";
+@import "../node_modules/bootstrap/scss/pagination";
+@import "../node_modules/bootstrap/scss/badge";
+@import "../node_modules/bootstrap/scss/alert";
+@import "../node_modules/bootstrap/scss/progress";
+@import "../node_modules/bootstrap/scss/list-group";
+@import "../node_modules/bootstrap/scss/close";
+@import "../node_modules/bootstrap/scss/toasts";
+@import "../node_modules/bootstrap/scss/modal";
+@import "../node_modules/bootstrap/scss/tooltip";
+@import "../node_modules/bootstrap/scss/popover";
+@import "../node_modules/bootstrap/scss/carousel";
+@import "../node_modules/bootstrap/scss/spinners";
+@import "../node_modules/bootstrap/scss/offcanvas";
+@import "../node_modules/bootstrap/scss/placeholders";
+
+// Helpers
+@import "../node_modules/bootstrap/scss/helpers";
+
+// Utilities
+@import "../node_modules/bootstrap/scss/utilities/api";
+// scss-docs-end import-stack
+
+// Shared
+@import '../Shared/FormAutocomplete.core';
+@import '../Shared/FormMarkdownEditor.core';
+@import '../Shared/FormRichTextEditor.core';
+
+@import './Components/Alert';
+@import './Components/Badge.scss'; 
+@import './Components/Breadcrumb.scss'; 
+@import './Components/Button.scss';
+@import './Components/Card.scss';
+@import './Components/CloseButton.scss';
+@import './Components/Confirm.scss';
+@import './Components/DataTable.scss';
+@import './Components/Divider.scss'; 
+@import './Components/Form/FormAutocomplete.scss';
+@import './Components/Form/FormCheckbox.scss';
+@import './Components/Form/FormCheckboxGroup.scss';
+@import './Components/Form/FormDateInput.scss';
+@import './Components/Form/FormField.scss';
+@import './Components/Form/FormFileUpload.scss';
+@import './Components/Form/FormInput.scss';
+@import './Components/Form/FormLabel.scss';
+@import './Components/Form/FormMarkdownEditor.scss';
+@import './Components/Form/FormNumberInput.scss';
+@import './Components/Form/FormRadioGroup.scss';
+@import './Components/Form/FormRichTextEditor.scss';
+@import './Components/Form/FormSelect.scss';
+@import './Components/Form/FormSwitch.scss';
+@import './Components/Form/FormTextarea.scss';
+@import './Components/Form/FormTreeSelector.scss';
+@import './Components/Grid.scss';
+@import './Components/Icon.scss';
+@import './Components/Indicator.scss'; 
+@import './Components/Modal.scss';
+@import './Components/Spacer.scss';
+@import './Components/Stack.scss';
+@import './Components/Tabs.scss';
+@import './Components/Tooltip.scss';
+
+
+// Optional components
+@import "../node_modules/bootstrap/scss/utilities";
+@import "../node_modules/bootstrap/scss/reboot";
+@import "../node_modules/bootstrap/scss/containers";
+@import "../node_modules/bootstrap/scss/grid";
+@import "../node_modules/bootstrap/scss/helpers";
+@import "../node_modules/bootstrap/scss/utilities/api";
+
+@import './Components/Button.scss';

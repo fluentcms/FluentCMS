@@ -1,0 +1,38 @@
+$stack: $prefix + 'stack';
+
+$stack-items: ( start, end, center, baseline, stretch);
+
+$stack-justify: ( start, end, center, between, around, evenly);
+
+.#{$stack} {
+    @extend .d-flex;
+    @extend .align-items-center;
+
+    &-gutter-small, &-gutter-default {
+        @extend .gap-2;
+    }
+
+    &-gutter-medium {
+        @extend .gap-3;
+    }
+
+    &-gutter-large {
+        @extend .gap-4;
+    }
+
+    &-vertical-true {
+        @extend .flex-column;
+    }
+
+    @each $key in $stack-items {
+        &-items-#{$key} {
+            @extend .align-items-#{$key};
+        }
+    }
+
+    @each $key in $stack-justify {
+        &-justify-#{$key} {
+            @extend .justify-content-#{$key};
+        }
+    }
+}

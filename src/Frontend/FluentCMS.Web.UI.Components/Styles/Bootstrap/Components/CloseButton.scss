@@ -1,0 +1,9 @@
+$close-button: $prefix + "close-button";
+
+.#{$close-button} {
+    @extend .btn-close;
+
+    .#{$prefix}icon {
+        display: none;
+    }
+}
