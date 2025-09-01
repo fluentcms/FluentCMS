@@ -1,0 +1,80 @@
+$inline-editor: $prefix + 'inline-editor';
+
+// Inline editor wrapper
+.#{$inline-editor} {
+  a {
+    pointer-events: none;
+  }
+
+  [data-inline-editable] {
+    border: 1px dashed transparent;
+    transition: $transition-base; // Bootstrap default transition
+  }
+
+  [data-inline-editable]:hover {
+    border: 1px dashed rgba($primary, .3);
+  }
+
+  [data-inline-editable]:focus {
+    border: 1px dashed $primary;
+    outline: 0;
+  }
+
+  // Backdrop when dirty
+  .#{$inline-editor}-dirty &-content::after {
+    content: '';
+    position: absolute;
+    inset: 0; // shorthand for top/right/bottom/left: 0
+    background-color: rgba($black, .125); // Bootstrap alpha
+    transition: $transition-base;
+    opacity: 1;
+    pointer-events: none;
+  }
+
+  &-actions {
+    @extend .d-flex; // Bootstrap flexbox mixin
+    gap: $spacer * .25; // ~4px if $spacer = 1rem
+    position: absolute;
+    top: $spacer * .375; // ~6px
+    right: 70px;
+    opacity: 0;
+    pointer-events: none;
+    transition: $transition-base;
+  }
+
+  &-action-save {
+    @extend .btn;
+    @extend .btn-primary; // Bootstrap button styling
+    border-radius: $btn-border-radius-sm;
+    font-size: $font-size-sm;
+    padding: .125rem .625rem; // 2px 10px
+    color: $white;
+  }
+
+  &-action-cancel {
+    @extend .btn;
+    @extend .btn-outline-primary;
+    font-size: $font-size-sm;
+    padding: .125rem .625rem;
+
+    &:hover {
+      color: shade-color($secondary, 20%);
+    }
+  }
+
+  &-action-message {
+    color: $primary;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-bold;
+  }
+}
+
+// Hover behavior
+.f-plugin-container:hover .#{$inline-editor}-dirty .#{$inline-editor}-content::after {
+  opacity: 0;
+}
+
+.#{$inline-editor}-dirty .#{$inline-editor}-actions {
+  opacity: 1;
+  pointer-events: all;
+}

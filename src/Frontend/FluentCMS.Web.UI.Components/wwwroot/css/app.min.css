@@ -2588,7 +2588,7 @@ textarea.form-control-lg {
   clip: rect(0, 0, 0, 0);
   pointer-events: none;
 }
-.btn-check[disabled] + .btn, .btn-check[disabled] + .f-form-tree-selector-option-toggler, .btn-check[disabled] + .f-button, .btn-check:disabled + .btn, .btn-check:disabled + .f-form-tree-selector-option-toggler, .btn-check:disabled + .f-button {
+.btn-check[disabled] + .btn, .btn-check[disabled] + .f-inline-editor-action-cancel, .btn-check[disabled] + .f-inline-editor-action-save, .btn-check[disabled] + .f-form-tree-selector-option-toggler, .btn-check[disabled] + .f-button, .btn-check:disabled + .btn, .btn-check:disabled + .f-inline-editor-action-cancel, .btn-check:disabled + .f-inline-editor-action-save, .btn-check:disabled + .f-form-tree-selector-option-toggler, .btn-check:disabled + .f-button {
   pointer-events: none;
   filter: none;
   opacity: 0.65;
@@ -2797,11 +2797,11 @@ textarea.form-control-lg {
 .input-group > .form-floating:focus-within {
   z-index: 5;
 }
-.input-group .btn, .input-group .f-form-tree-selector-option-toggler, .input-group .f-button {
+.input-group .btn, .input-group .f-inline-editor-action-cancel, .input-group .f-inline-editor-action-save, .input-group .f-form-tree-selector-option-toggler, .input-group .f-button {
   position: relative;
   z-index: 2;
 }
-.input-group .btn:focus, .input-group .f-form-tree-selector-option-toggler:focus, .input-group .f-button:focus {
+.input-group .btn:focus, .input-group .f-inline-editor-action-cancel:focus, .input-group .f-inline-editor-action-save:focus, .input-group .f-form-tree-selector-option-toggler:focus, .input-group .f-button:focus {
   z-index: 5;
 }
 
@@ -2824,6 +2824,8 @@ textarea.form-control-lg {
 .input-group-lg > .form-select,
 .input-group-lg > .input-group-text,
 .input-group-lg > .btn,
+.input-group-lg > .f-inline-editor-action-cancel,
+.input-group-lg > .f-inline-editor-action-save,
 .input-group-lg > .f-form-tree-selector-option-toggler,
 .input-group-lg > .f-button {
   padding: 0.5rem 1rem;
@@ -2835,6 +2837,8 @@ textarea.form-control-lg {
 .input-group-sm > .form-select,
 .input-group-sm > .input-group-text,
 .input-group-sm > .btn,
+.input-group-sm > .f-inline-editor-action-cancel,
+.input-group-sm > .f-inline-editor-action-save,
 .input-group-sm > .f-form-tree-selector-option-toggler,
 .input-group-sm > .f-button {
   padding: 0.25rem 0.5rem;
@@ -3065,7 +3069,7 @@ textarea.form-control-lg {
   z-index: 4;
 }
 
-.btn, .f-form-tree-selector-option-toggler, .f-button {
+.btn, .f-inline-editor-action-cancel, .f-inline-editor-action-save, .f-form-tree-selector-option-toggler, .f-button {
   --f-btn-padding-x: 1.25rem;
   --f-btn-padding-y: 0.625rem;
   --f-btn-font-family: ;
@@ -3100,45 +3104,45 @@ textarea.form-control-lg {
   transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
 }
 @media (prefers-reduced-motion: reduce) {
-  .btn, .f-form-tree-selector-option-toggler, .f-button {
+  .btn, .f-inline-editor-action-cancel, .f-inline-editor-action-save, .f-form-tree-selector-option-toggler, .f-button {
     transition: none;
   }
 }
-.btn:hover, .f-form-tree-selector-option-toggler:hover, .f-button:hover {
+.btn:hover, .f-inline-editor-action-cancel:hover, .f-inline-editor-action-save:hover, .f-form-tree-selector-option-toggler:hover, .f-button:hover {
   color: var(--f-btn-hover-color);
   background-color: var(--f-btn-hover-bg);
   border-color: var(--f-btn-hover-border-color);
 }
-.btn-check + .btn:hover, .btn-check + .f-form-tree-selector-option-toggler:hover, .btn-check + .f-button:hover {
+.btn-check + .btn:hover, .btn-check + .f-inline-editor-action-cancel:hover, .btn-check + .f-inline-editor-action-save:hover, .btn-check + .f-form-tree-selector-option-toggler:hover, .btn-check + .f-button:hover {
   color: var(--f-btn-color);
   background-color: var(--f-btn-bg);
   border-color: var(--f-btn-border-color);
 }
-.btn:focus-visible, .f-form-tree-selector-option-toggler:focus-visible, .f-button:focus-visible {
+.btn:focus-visible, .f-inline-editor-action-cancel:focus-visible, .f-inline-editor-action-save:focus-visible, .f-form-tree-selector-option-toggler:focus-visible, .f-button:focus-visible {
   color: var(--f-btn-hover-color);
   background-color: var(--f-btn-hover-bg);
   border-color: var(--f-btn-hover-border-color);
   outline: 0;
   box-shadow: var(--f-btn-box-shadow), var(--f-btn-focus-box-shadow);
 }
-.btn-check:focus-visible + .btn, .btn-check:focus-visible + .f-form-tree-selector-option-toggler, .btn-check:focus-visible + .f-button {
+.btn-check:focus-visible + .btn, .btn-check:focus-visible + .f-inline-editor-action-cancel, .btn-check:focus-visible + .f-inline-editor-action-save, .btn-check:focus-visible + .f-form-tree-selector-option-toggler, .btn-check:focus-visible + .f-button {
   border-color: var(--f-btn-hover-border-color);
   outline: 0;
   box-shadow: var(--f-btn-box-shadow), var(--f-btn-focus-box-shadow);
 }
-.btn-check:checked + .btn, .btn-check:checked + .f-form-tree-selector-option-toggler, .btn-check:checked + .f-button, :not(.btn-check) + .btn:active, :not(.btn-check) + .f-form-tree-selector-option-toggler:active, :not(.btn-check) + .f-button:active, .btn:first-child:active, .f-form-tree-selector-option-toggler:first-child:active, .f-button:first-child:active, .btn.active, .f-tab-item.f-tab-item-active-true button.btn, .active.f-form-tree-selector-option-toggler, .f-tab-item.f-tab-item-active-true button.f-form-tree-selector-option-toggler, .active.f-button, .f-tab-item.f-tab-item-active-true button.f-button, .btn.show, .btn.f-tooltip, .btn.f-modal-backdrop, .show.f-form-tree-selector-option-toggler, .f-form-tree-selector-option-toggler.f-tooltip, .f-form-tree-selector-option-toggler.f-modal-backdrop, .btn.f-confirm-backdrop, .f-confirm-backdrop.f-form-tree-selector-option-toggler, .show.f-button, .f-button.f-tooltip, .f-button.f-modal-backdrop, .f-button.f-confirm-backdrop {
+.btn-check:checked + .btn, .btn-check:checked + .f-inline-editor-action-cancel, .btn-check:checked + .f-inline-editor-action-save, .btn-check:checked + .f-form-tree-selector-option-toggler, .btn-check:checked + .f-button, :not(.btn-check) + .btn:active, :not(.btn-check) + .f-inline-editor-action-cancel:active, :not(.btn-check) + .f-inline-editor-action-save:active, :not(.btn-check) + .f-form-tree-selector-option-toggler:active, :not(.btn-check) + .f-button:active, .btn:first-child:active, .f-inline-editor-action-cancel:first-child:active, .f-inline-editor-action-save:first-child:active, .f-form-tree-selector-option-toggler:first-child:active, .f-button:first-child:active, .btn.active, .f-tab-item.f-tab-item-active-true button.btn, .active.f-inline-editor-action-cancel, .f-tab-item.f-tab-item-active-true button.f-inline-editor-action-cancel, .active.f-inline-editor-action-save, .f-tab-item.f-tab-item-active-true button.f-inline-editor-action-save, .active.f-form-tree-selector-option-toggler, .f-tab-item.f-tab-item-active-true button.f-form-tree-selector-option-toggler, .active.f-button, .f-tab-item.f-tab-item-active-true button.f-button, .btn.show, .btn.f-tooltip, .btn.f-modal-backdrop, .show.f-inline-editor-action-cancel, .f-inline-editor-action-cancel.f-tooltip, .f-inline-editor-action-cancel.f-modal-backdrop, .show.f-inline-editor-action-save, .f-inline-editor-action-save.f-tooltip, .f-inline-editor-action-save.f-modal-backdrop, .show.f-form-tree-selector-option-toggler, .f-form-tree-selector-option-toggler.f-tooltip, .f-form-tree-selector-option-toggler.f-modal-backdrop, .btn.f-confirm-backdrop, .f-confirm-backdrop.f-inline-editor-action-cancel, .f-confirm-backdrop.f-inline-editor-action-save, .f-confirm-backdrop.f-form-tree-selector-option-toggler, .show.f-button, .f-button.f-tooltip, .f-button.f-modal-backdrop, .f-button.f-confirm-backdrop {
   color: var(--f-btn-active-color);
   background-color: var(--f-btn-active-bg);
   border-color: var(--f-btn-active-border-color);
   box-shadow: var(--f-btn-active-shadow);
 }
-.btn-check:checked + .btn:focus-visible, .btn-check:checked + .f-form-tree-selector-option-toggler:focus-visible, .btn-check:checked + .f-button:focus-visible, :not(.btn-check) + .btn:active:focus-visible, :not(.btn-check) + .f-form-tree-selector-option-toggler:active:focus-visible, :not(.btn-check) + .f-button:active:focus-visible, .btn:first-child:active:focus-visible, .f-form-tree-selector-option-toggler:first-child:active:focus-visible, .f-button:first-child:active:focus-visible, .btn.active:focus-visible, .f-tab-item.f-tab-item-active-true button.btn:focus-visible, .active.f-form-tree-selector-option-toggler:focus-visible, .f-tab-item.f-tab-item-active-true button.f-form-tree-selector-option-toggler:focus-visible, .active.f-button:focus-visible, .f-tab-item.f-tab-item-active-true button.f-button:focus-visible, .btn.show:focus-visible, .btn.f-tooltip:focus-visible, .btn.f-modal-backdrop:focus-visible, .show.f-form-tree-selector-option-toggler:focus-visible, .f-form-tree-selector-option-toggler.f-tooltip:focus-visible, .f-form-tree-selector-option-toggler.f-modal-backdrop:focus-visible, .btn.f-confirm-backdrop:focus-visible, .f-confirm-backdrop.f-form-tree-selector-option-toggler:focus-visible, .show.f-button:focus-visible, .f-button.f-tooltip:focus-visible, .f-button.f-modal-backdrop:focus-visible, .f-button.f-confirm-backdrop:focus-visible {
+.btn-check:checked + .btn:focus-visible, .btn-check:checked + .f-inline-editor-action-cancel:focus-visible, .btn-check:checked + .f-inline-editor-action-save:focus-visible, .btn-check:checked + .f-form-tree-selector-option-toggler:focus-visible, .btn-check:checked + .f-button:focus-visible, :not(.btn-check) + .btn:active:focus-visible, :not(.btn-check) + .f-inline-editor-action-cancel:active:focus-visible, :not(.btn-check) + .f-inline-editor-action-save:active:focus-visible, :not(.btn-check) + .f-form-tree-selector-option-toggler:active:focus-visible, :not(.btn-check) + .f-button:active:focus-visible, .btn:first-child:active:focus-visible, .f-inline-editor-action-cancel:first-child:active:focus-visible, .f-inline-editor-action-save:first-child:active:focus-visible, .f-form-tree-selector-option-toggler:first-child:active:focus-visible, .f-button:first-child:active:focus-visible, .btn.active:focus-visible, .f-tab-item.f-tab-item-active-true button.btn:focus-visible, .active.f-inline-editor-action-cancel:focus-visible, .f-tab-item.f-tab-item-active-true button.f-inline-editor-action-cancel:focus-visible, .active.f-inline-editor-action-save:focus-visible, .f-tab-item.f-tab-item-active-true button.f-inline-editor-action-save:focus-visible, .active.f-form-tree-selector-option-toggler:focus-visible, .f-tab-item.f-tab-item-active-true button.f-form-tree-selector-option-toggler:focus-visible, .active.f-button:focus-visible, .f-tab-item.f-tab-item-active-true button.f-button:focus-visible, .btn.show:focus-visible, .btn.f-tooltip:focus-visible, .btn.f-modal-backdrop:focus-visible, .show.f-inline-editor-action-cancel:focus-visible, .f-inline-editor-action-cancel.f-tooltip:focus-visible, .f-inline-editor-action-cancel.f-modal-backdrop:focus-visible, .show.f-inline-editor-action-save:focus-visible, .f-inline-editor-action-save.f-tooltip:focus-visible, .f-inline-editor-action-save.f-modal-backdrop:focus-visible, .show.f-form-tree-selector-option-toggler:focus-visible, .f-form-tree-selector-option-toggler.f-tooltip:focus-visible, .f-form-tree-selector-option-toggler.f-modal-backdrop:focus-visible, .btn.f-confirm-backdrop:focus-visible, .f-confirm-backdrop.f-inline-editor-action-cancel:focus-visible, .f-confirm-backdrop.f-inline-editor-action-save:focus-visible, .f-confirm-backdrop.f-form-tree-selector-option-toggler:focus-visible, .show.f-button:focus-visible, .f-button.f-tooltip:focus-visible, .f-button.f-modal-backdrop:focus-visible, .f-button.f-confirm-backdrop:focus-visible {
   box-shadow: var(--f-btn-active-shadow), var(--f-btn-focus-box-shadow);
 }
-.btn-check:checked:focus-visible + .btn, .btn-check:checked:focus-visible + .f-form-tree-selector-option-toggler, .btn-check:checked:focus-visible + .f-button {
+.btn-check:checked:focus-visible + .btn, .btn-check:checked:focus-visible + .f-inline-editor-action-cancel, .btn-check:checked:focus-visible + .f-inline-editor-action-save, .btn-check:checked:focus-visible + .f-form-tree-selector-option-toggler, .btn-check:checked:focus-visible + .f-button {
   box-shadow: var(--f-btn-active-shadow), var(--f-btn-focus-box-shadow);
 }
-.btn:disabled, .f-form-tree-selector-option-toggler:disabled, .f-button:disabled, .btn.disabled, .disabled.f-form-tree-selector-option-toggler, .btn.f-button-color-default.f-button-link-false.f-button-disabled-true, .f-button-color-default.f-button-link-false.f-button-disabled-true.f-form-tree-selector-option-toggler, .btn.f-button-color-dark.f-button-link-false.f-button-disabled-true, .f-button-color-dark.f-button-link-false.f-button-disabled-true.f-form-tree-selector-option-toggler, .btn.f-button-color-light.f-button-link-false.f-button-disabled-true, .f-button-color-light.f-button-link-false.f-button-disabled-true.f-form-tree-selector-option-toggler, .btn.f-button-color-danger.f-button-link-false.f-button-disabled-true, .f-button-color-danger.f-button-link-false.f-button-disabled-true.f-form-tree-selector-option-toggler, .btn.f-button-color-warning.f-button-link-false.f-button-disabled-true, .f-button-color-warning.f-button-link-false.f-button-disabled-true.f-form-tree-selector-option-toggler, .btn.f-button-color-info.f-button-link-false.f-button-disabled-true, .f-button-color-info.f-button-link-false.f-button-disabled-true.f-form-tree-selector-option-toggler, .btn.f-button-color-success.f-button-link-false.f-button-disabled-true, .f-button-color-success.f-button-link-false.f-button-disabled-true.f-form-tree-selector-option-toggler, .btn.f-button-color-secondary.f-button-link-false.f-button-disabled-true, .f-button-color-secondary.f-button-link-false.f-button-disabled-true.f-form-tree-selector-option-toggler, .btn.f-button-color-primary.f-button-link-false.f-button-disabled-true, .f-button-color-primary.f-button-link-false.f-button-disabled-true.f-form-tree-selector-option-toggler, .disabled.f-button, .f-button.f-button-color-default.f-button-link-false.f-button-disabled-true, .f-button.f-button-color-dark.f-button-link-false.f-button-disabled-true, .f-button.f-button-color-light.f-button-link-false.f-button-disabled-true, .f-button.f-button-color-danger.f-button-link-false.f-button-disabled-true, .f-button.f-button-color-warning.f-button-link-false.f-button-disabled-true, .f-button.f-button-color-info.f-button-link-false.f-button-disabled-true, .f-button.f-button-color-success.f-button-link-false.f-button-disabled-true, .f-button.f-button-color-secondary.f-button-link-false.f-button-disabled-true, .f-button.f-button-color-primary.f-button-link-false.f-button-disabled-true, fieldset:disabled .btn, fieldset:disabled .f-form-tree-selector-option-toggler, fieldset:disabled .f-button {
+.btn:disabled, .f-inline-editor-action-cancel:disabled, .f-inline-editor-action-save:disabled, .f-form-tree-selector-option-toggler:disabled, .f-button:disabled, .btn.disabled, .disabled.f-inline-editor-action-cancel, .disabled.f-inline-editor-action-save, .disabled.f-form-tree-selector-option-toggler, .btn.f-button-color-default.f-button-link-false.f-button-disabled-true, .f-button-color-default.f-button-link-false.f-button-disabled-true.f-inline-editor-action-cancel, .f-button-color-default.f-button-link-false.f-button-disabled-true.f-inline-editor-action-save, .f-button-color-default.f-button-link-false.f-button-disabled-true.f-form-tree-selector-option-toggler, .btn.f-button-color-dark.f-button-link-false.f-button-disabled-true, .f-button-color-dark.f-button-link-false.f-button-disabled-true.f-inline-editor-action-cancel, .f-button-color-dark.f-button-link-false.f-button-disabled-true.f-inline-editor-action-save, .f-button-color-dark.f-button-link-false.f-button-disabled-true.f-form-tree-selector-option-toggler, .btn.f-button-color-light.f-button-link-false.f-button-disabled-true, .f-button-color-light.f-button-link-false.f-button-disabled-true.f-inline-editor-action-cancel, .f-button-color-light.f-button-link-false.f-button-disabled-true.f-inline-editor-action-save, .f-button-color-light.f-button-link-false.f-button-disabled-true.f-form-tree-selector-option-toggler, .btn.f-button-color-danger.f-button-link-false.f-button-disabled-true, .f-button-color-danger.f-button-link-false.f-button-disabled-true.f-inline-editor-action-cancel, .f-button-color-danger.f-button-link-false.f-button-disabled-true.f-inline-editor-action-save, .f-button-color-danger.f-button-link-false.f-button-disabled-true.f-form-tree-selector-option-toggler, .btn.f-button-color-warning.f-button-link-false.f-button-disabled-true, .f-button-color-warning.f-button-link-false.f-button-disabled-true.f-inline-editor-action-cancel, .f-button-color-warning.f-button-link-false.f-button-disabled-true.f-inline-editor-action-save, .f-button-color-warning.f-button-link-false.f-button-disabled-true.f-form-tree-selector-option-toggler, .btn.f-button-color-info.f-button-link-false.f-button-disabled-true, .f-button-color-info.f-button-link-false.f-button-disabled-true.f-inline-editor-action-cancel, .f-button-color-info.f-button-link-false.f-button-disabled-true.f-inline-editor-action-save, .f-button-color-info.f-button-link-false.f-button-disabled-true.f-form-tree-selector-option-toggler, .btn.f-button-color-success.f-button-link-false.f-button-disabled-true, .f-button-color-success.f-button-link-false.f-button-disabled-true.f-inline-editor-action-cancel, .f-button-color-success.f-button-link-false.f-button-disabled-true.f-inline-editor-action-save, .f-button-color-success.f-button-link-false.f-button-disabled-true.f-form-tree-selector-option-toggler, .btn.f-button-color-secondary.f-button-link-false.f-button-disabled-true, .f-button-color-secondary.f-button-link-false.f-button-disabled-true.f-inline-editor-action-cancel, .f-button-color-secondary.f-button-link-false.f-button-disabled-true.f-inline-editor-action-save, .f-button-color-secondary.f-button-link-false.f-button-disabled-true.f-form-tree-selector-option-toggler, .btn.f-button-color-primary.f-button-link-false.f-button-disabled-true, .f-button-color-primary.f-button-link-false.f-button-disabled-true.f-inline-editor-action-cancel, .f-button-color-primary.f-button-link-false.f-button-disabled-true.f-inline-editor-action-save, .f-button-color-primary.f-button-link-false.f-button-disabled-true.f-form-tree-selector-option-toggler, .disabled.f-button, .f-button.f-button-color-default.f-button-link-false.f-button-disabled-true, .f-button.f-button-color-dark.f-button-link-false.f-button-disabled-true, .f-button.f-button-color-light.f-button-link-false.f-button-disabled-true, .f-button.f-button-color-danger.f-button-link-false.f-button-disabled-true, .f-button.f-button-color-warning.f-button-link-false.f-button-disabled-true, .f-button.f-button-color-info.f-button-link-false.f-button-disabled-true, .f-button.f-button-color-success.f-button-link-false.f-button-disabled-true, .f-button.f-button-color-secondary.f-button-link-false.f-button-disabled-true, .f-button.f-button-color-primary.f-button-link-false.f-button-disabled-true, fieldset:disabled .btn, fieldset:disabled .f-inline-editor-action-cancel, fieldset:disabled .f-inline-editor-action-save, fieldset:disabled .f-form-tree-selector-option-toggler, fieldset:disabled .f-button {
   color: var(--f-btn-disabled-color);
   pointer-events: none;
   background-color: var(--f-btn-disabled-bg);
@@ -3147,7 +3151,7 @@ textarea.form-control-lg {
   box-shadow: none;
 }
 
-.btn-primary, .f-button-color-primary.f-button-link-false.f-button-disabled-true, .f-button-color-primary.f-button-link-false.f-button-outline-false.f-button-disabled-false.f-button-ghost-false {
+.btn-primary, .f-inline-editor-action-save, .f-button-color-primary.f-button-link-false.f-button-disabled-true, .f-button-color-primary.f-button-link-false.f-button-outline-false.f-button-disabled-false.f-button-ghost-false {
   --f-btn-color: #fff;
   --f-btn-bg: #0d6efd;
   --f-btn-border-color: #0d6efd;
@@ -3283,7 +3287,7 @@ textarea.form-control-lg {
   --f-btn-disabled-border-color: #212529;
 }
 
-.btn-outline-primary, .f-button-color-primary.f-button-link-false.f-button-outline-true.f-button-ghost-false {
+.btn-outline-primary, .f-inline-editor-action-cancel, .f-button-color-primary.f-button-link-false.f-button-outline-true.f-button-ghost-false {
   --f-btn-color: #0d6efd;
   --f-btn-border-color: #0d6efd;
   --f-btn-hover-color: #fff;
@@ -3441,14 +3445,14 @@ textarea.form-control-lg {
   color: var(--f-btn-hover-color);
 }
 
-.btn-lg, .f-button-size-large.f-button-link-false, .btn-group-lg > .btn, .btn-group-lg > .f-form-tree-selector-option-toggler, .btn-group-lg > .f-button {
+.btn-lg, .f-button-size-large.f-button-link-false, .btn-group-lg > .btn, .btn-group-lg > .f-inline-editor-action-cancel, .btn-group-lg > .f-inline-editor-action-save, .btn-group-lg > .f-form-tree-selector-option-toggler, .btn-group-lg > .f-button {
   --f-btn-padding-y: 0.5rem;
   --f-btn-padding-x: 1rem;
   --f-btn-font-size: 1.25rem;
   --f-btn-border-radius: var(--f-border-radius-lg);
 }
 
-.btn-sm, .f-form-tree-selector-option-toggler, .f-button-size-small.f-button-link-false, .btn-group-sm > .btn, .btn-group-sm > .f-form-tree-selector-option-toggler, .btn-group-sm > .f-button {
+.btn-sm, .f-form-tree-selector-option-toggler, .f-button-size-small.f-button-link-false, .btn-group-sm > .btn, .btn-group-sm > .f-inline-editor-action-cancel, .btn-group-sm > .f-inline-editor-action-save, .btn-group-sm > .f-form-tree-selector-option-toggler, .btn-group-sm > .f-button {
   --f-btn-padding-y: 0.25rem;
   --f-btn-padding-x: 0.5rem;
   --f-btn-font-size: 0.875rem;
@@ -3816,49 +3820,77 @@ textarea.form-control-lg {
   display: inline-flex;
   vertical-align: middle;
 }
-.btn-group > .btn, .btn-group > .f-form-tree-selector-option-toggler, .btn-group > .f-button,
+.btn-group > .btn, .btn-group > .f-inline-editor-action-cancel, .btn-group > .f-inline-editor-action-save, .btn-group > .f-form-tree-selector-option-toggler, .btn-group > .f-button,
 .btn-group-vertical > .btn,
+.btn-group-vertical > .f-inline-editor-action-cancel,
+.btn-group-vertical > .f-inline-editor-action-save,
 .btn-group-vertical > .f-form-tree-selector-option-toggler,
 .btn-group-vertical > .f-button {
   position: relative;
   flex: 1 1 auto;
 }
-.btn-group > .btn-check:checked + .btn, .btn-group > .btn-check:checked + .f-form-tree-selector-option-toggler, .btn-group > .btn-check:checked + .f-button,
+.btn-group > .btn-check:checked + .btn, .btn-group > .btn-check:checked + .f-inline-editor-action-cancel, .btn-group > .btn-check:checked + .f-inline-editor-action-save, .btn-group > .btn-check:checked + .f-form-tree-selector-option-toggler, .btn-group > .btn-check:checked + .f-button,
 .btn-group > .btn-check:focus + .btn,
+.btn-group > .btn-check:focus + .f-inline-editor-action-cancel,
+.btn-group > .btn-check:focus + .f-inline-editor-action-save,
 .btn-group > .btn-check:focus + .f-form-tree-selector-option-toggler,
 .btn-group > .btn-check:focus + .f-button,
 .btn-group > .btn:hover,
+.btn-group > .f-inline-editor-action-cancel:hover,
+.btn-group > .f-inline-editor-action-save:hover,
 .btn-group > .f-form-tree-selector-option-toggler:hover,
 .btn-group > .f-button:hover,
 .btn-group > .btn:focus,
+.btn-group > .f-inline-editor-action-cancel:focus,
+.btn-group > .f-inline-editor-action-save:focus,
 .btn-group > .f-form-tree-selector-option-toggler:focus,
 .btn-group > .f-button:focus,
 .btn-group > .btn:active,
+.btn-group > .f-inline-editor-action-cancel:active,
+.btn-group > .f-inline-editor-action-save:active,
 .btn-group > .f-form-tree-selector-option-toggler:active,
 .btn-group > .f-button:active,
 .btn-group > .btn.active,
 .f-tab-item.f-tab-item-active-true .btn-group > button.btn,
+.btn-group > .active.f-inline-editor-action-cancel,
+.f-tab-item.f-tab-item-active-true .btn-group > button.f-inline-editor-action-cancel,
+.btn-group > .active.f-inline-editor-action-save,
+.f-tab-item.f-tab-item-active-true .btn-group > button.f-inline-editor-action-save,
 .btn-group > .active.f-form-tree-selector-option-toggler,
 .f-tab-item.f-tab-item-active-true .btn-group > button.f-form-tree-selector-option-toggler,
 .btn-group > .active.f-button,
 .f-tab-item.f-tab-item-active-true .btn-group > button.f-button,
 .btn-group-vertical > .btn-check:checked + .btn,
+.btn-group-vertical > .btn-check:checked + .f-inline-editor-action-cancel,
+.btn-group-vertical > .btn-check:checked + .f-inline-editor-action-save,
 .btn-group-vertical > .btn-check:checked + .f-form-tree-selector-option-toggler,
 .btn-group-vertical > .btn-check:checked + .f-button,
 .btn-group-vertical > .btn-check:focus + .btn,
+.btn-group-vertical > .btn-check:focus + .f-inline-editor-action-cancel,
+.btn-group-vertical > .btn-check:focus + .f-inline-editor-action-save,
 .btn-group-vertical > .btn-check:focus + .f-form-tree-selector-option-toggler,
 .btn-group-vertical > .btn-check:focus + .f-button,
 .btn-group-vertical > .btn:hover,
+.btn-group-vertical > .f-inline-editor-action-cancel:hover,
+.btn-group-vertical > .f-inline-editor-action-save:hover,
 .btn-group-vertical > .f-form-tree-selector-option-toggler:hover,
 .btn-group-vertical > .f-button:hover,
 .btn-group-vertical > .btn:focus,
+.btn-group-vertical > .f-inline-editor-action-cancel:focus,
+.btn-group-vertical > .f-inline-editor-action-save:focus,
 .btn-group-vertical > .f-form-tree-selector-option-toggler:focus,
 .btn-group-vertical > .f-button:focus,
 .btn-group-vertical > .btn:active,
+.btn-group-vertical > .f-inline-editor-action-cancel:active,
+.btn-group-vertical > .f-inline-editor-action-save:active,
 .btn-group-vertical > .f-form-tree-selector-option-toggler:active,
 .btn-group-vertical > .f-button:active,
 .btn-group-vertical > .btn.active,
 .f-tab-item.f-tab-item-active-true .btn-group-vertical > button.btn,
+.btn-group-vertical > .active.f-inline-editor-action-cancel,
+.f-tab-item.f-tab-item-active-true .btn-group-vertical > button.f-inline-editor-action-cancel,
+.btn-group-vertical > .active.f-inline-editor-action-save,
+.f-tab-item.f-tab-item-active-true .btn-group-vertical > button.f-inline-editor-action-save,
 .btn-group-vertical > .active.f-form-tree-selector-option-toggler,
 .f-tab-item.f-tab-item-active-true .btn-group-vertical > button.f-form-tree-selector-option-toggler,
 .btn-group-vertical > .active.f-button,
@@ -3878,25 +3910,33 @@ textarea.form-control-lg {
 .btn-group {
   border-radius: 0.5rem;
 }
-.btn-group > :not(.btn-check:first-child) + .btn, .btn-group > :not(.btn-check:first-child) + .f-form-tree-selector-option-toggler, .btn-group > :not(.btn-check:first-child) + .f-button,
+.btn-group > :not(.btn-check:first-child) + .btn, .btn-group > :not(.btn-check:first-child) + .f-inline-editor-action-cancel, .btn-group > :not(.btn-check:first-child) + .f-inline-editor-action-save, .btn-group > :not(.btn-check:first-child) + .f-form-tree-selector-option-toggler, .btn-group > :not(.btn-check:first-child) + .f-button,
 .btn-group > .btn-group:not(:first-child) {
   margin-left: calc(-1 * var(--f-border-width));
 }
-.btn-group > .btn:not(:last-child):not(.dropdown-toggle), .btn-group > .f-form-tree-selector-option-toggler:not(:last-child):not(.dropdown-toggle), .btn-group > .f-button:not(:last-child):not(.dropdown-toggle),
+.btn-group > .btn:not(:last-child):not(.dropdown-toggle), .btn-group > .f-inline-editor-action-cancel:not(:last-child):not(.dropdown-toggle), .btn-group > .f-inline-editor-action-save:not(:last-child):not(.dropdown-toggle), .btn-group > .f-form-tree-selector-option-toggler:not(:last-child):not(.dropdown-toggle), .btn-group > .f-button:not(:last-child):not(.dropdown-toggle),
 .btn-group > .btn.dropdown-toggle-split:first-child,
+.btn-group > .dropdown-toggle-split.f-inline-editor-action-cancel:first-child,
+.btn-group > .dropdown-toggle-split.f-inline-editor-action-save:first-child,
 .btn-group > .dropdown-toggle-split.f-form-tree-selector-option-toggler:first-child,
 .btn-group > .dropdown-toggle-split.f-button:first-child,
 .btn-group > .btn-group:not(:last-child) > .btn,
+.btn-group > .btn-group:not(:last-child) > .f-inline-editor-action-cancel,
+.btn-group > .btn-group:not(:last-child) > .f-inline-editor-action-save,
 .btn-group > .btn-group:not(:last-child) > .f-form-tree-selector-option-toggler,
 .btn-group > .btn-group:not(:last-child) > .f-button {
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
 }
-.btn-group > .btn:nth-child(n+3), .btn-group > .f-form-tree-selector-option-toggler:nth-child(n+3), .btn-group > .f-button:nth-child(n+3),
+.btn-group > .btn:nth-child(n+3), .btn-group > .f-inline-editor-action-cancel:nth-child(n+3), .btn-group > .f-inline-editor-action-save:nth-child(n+3), .btn-group > .f-form-tree-selector-option-toggler:nth-child(n+3), .btn-group > .f-button:nth-child(n+3),
 .btn-group > :not(.btn-check) + .btn,
+.btn-group > :not(.btn-check) + .f-inline-editor-action-cancel,
+.btn-group > :not(.btn-check) + .f-inline-editor-action-save,
 .btn-group > :not(.btn-check) + .f-form-tree-selector-option-toggler,
 .btn-group > :not(.btn-check) + .f-button,
 .btn-group > .btn-group:not(:first-child) > .btn,
+.btn-group > .btn-group:not(:first-child) > .f-inline-editor-action-cancel,
+.btn-group > .btn-group:not(:first-child) > .f-inline-editor-action-save,
 .btn-group > .btn-group:not(:first-child) > .f-form-tree-selector-option-toggler,
 .btn-group > .btn-group:not(:first-child) > .f-button {
   border-top-left-radius: 0;
@@ -3914,12 +3954,12 @@ textarea.form-control-lg {
   margin-right: 0;
 }
 
-.btn-sm + .dropdown-toggle-split, .f-form-tree-selector-option-toggler + .dropdown-toggle-split, .f-button-size-small.f-button-link-false + .dropdown-toggle-split, .btn-group-sm > .btn + .dropdown-toggle-split, .btn-group-sm > .f-button + .dropdown-toggle-split {
+.btn-sm + .dropdown-toggle-split, .f-form-tree-selector-option-toggler + .dropdown-toggle-split, .f-button-size-small.f-button-link-false + .dropdown-toggle-split, .btn-group-sm > .btn + .dropdown-toggle-split, .btn-group-sm > .f-inline-editor-action-cancel + .dropdown-toggle-split, .btn-group-sm > .f-inline-editor-action-save + .dropdown-toggle-split, .btn-group-sm > .f-button + .dropdown-toggle-split {
   padding-right: 0.375rem;
   padding-left: 0.375rem;
 }
 
-.btn-lg + .dropdown-toggle-split, .f-button-size-large.f-button-link-false + .dropdown-toggle-split, .btn-group-lg > .btn + .dropdown-toggle-split, .btn-group-lg > .f-form-tree-selector-option-toggler + .dropdown-toggle-split, .btn-group-lg > .f-button + .dropdown-toggle-split {
+.btn-lg + .dropdown-toggle-split, .f-button-size-large.f-button-link-false + .dropdown-toggle-split, .btn-group-lg > .btn + .dropdown-toggle-split, .btn-group-lg > .f-inline-editor-action-cancel + .dropdown-toggle-split, .btn-group-lg > .f-inline-editor-action-save + .dropdown-toggle-split, .btn-group-lg > .f-form-tree-selector-option-toggler + .dropdown-toggle-split, .btn-group-lg > .f-button + .dropdown-toggle-split {
   padding-right: 0.75rem;
   padding-left: 0.75rem;
 }
@@ -3936,26 +3976,32 @@ textarea.form-control-lg {
   align-items: flex-start;
   justify-content: center;
 }
-.btn-group-vertical > .btn, .btn-group-vertical > .f-form-tree-selector-option-toggler, .btn-group-vertical > .f-button,
+.btn-group-vertical > .btn, .btn-group-vertical > .f-inline-editor-action-cancel, .btn-group-vertical > .f-inline-editor-action-save, .btn-group-vertical > .f-form-tree-selector-option-toggler, .btn-group-vertical > .f-button,
 .btn-group-vertical > .btn-group {
   width: 100%;
 }
-.btn-group-vertical > .btn:not(:first-child), .btn-group-vertical > .f-form-tree-selector-option-toggler:not(:first-child), .btn-group-vertical > .f-button:not(:first-child),
+.btn-group-vertical > .btn:not(:first-child), .btn-group-vertical > .f-inline-editor-action-cancel:not(:first-child), .btn-group-vertical > .f-inline-editor-action-save:not(:first-child), .btn-group-vertical > .f-form-tree-selector-option-toggler:not(:first-child), .btn-group-vertical > .f-button:not(:first-child),
 .btn-group-vertical > .btn-group:not(:first-child) {
   margin-top: calc(-1 * var(--f-border-width));
 }
-.btn-group-vertical > .btn:not(:last-child):not(.dropdown-toggle), .btn-group-vertical > .f-form-tree-selector-option-toggler:not(:last-child):not(.dropdown-toggle), .btn-group-vertical > .f-button:not(:last-child):not(.dropdown-toggle),
+.btn-group-vertical > .btn:not(:last-child):not(.dropdown-toggle), .btn-group-vertical > .f-inline-editor-action-cancel:not(:last-child):not(.dropdown-toggle), .btn-group-vertical > .f-inline-editor-action-save:not(:last-child):not(.dropdown-toggle), .btn-group-vertical > .f-form-tree-selector-option-toggler:not(:last-child):not(.dropdown-toggle), .btn-group-vertical > .f-button:not(:last-child):not(.dropdown-toggle),
 .btn-group-vertical > .btn-group:not(:last-child) > .btn,
+.btn-group-vertical > .btn-group:not(:last-child) > .f-inline-editor-action-cancel,
+.btn-group-vertical > .btn-group:not(:last-child) > .f-inline-editor-action-save,
 .btn-group-vertical > .btn-group:not(:last-child) > .f-form-tree-selector-option-toggler,
 .btn-group-vertical > .btn-group:not(:last-child) > .f-button {
   border-bottom-right-radius: 0;
   border-bottom-left-radius: 0;
 }
-.btn-group-vertical > .btn:nth-child(n+3), .btn-group-vertical > .f-form-tree-selector-option-toggler:nth-child(n+3), .btn-group-vertical > .f-button:nth-child(n+3),
+.btn-group-vertical > .btn:nth-child(n+3), .btn-group-vertical > .f-inline-editor-action-cancel:nth-child(n+3), .btn-group-vertical > .f-inline-editor-action-save:nth-child(n+3), .btn-group-vertical > .f-form-tree-selector-option-toggler:nth-child(n+3), .btn-group-vertical > .f-button:nth-child(n+3),
 .btn-group-vertical > :not(.btn-check) + .btn,
+.btn-group-vertical > :not(.btn-check) + .f-inline-editor-action-cancel,
+.btn-group-vertical > :not(.btn-check) + .f-inline-editor-action-save,
 .btn-group-vertical > :not(.btn-check) + .f-form-tree-selector-option-toggler,
 .btn-group-vertical > :not(.btn-check) + .f-button,
 .btn-group-vertical > .btn-group:not(:first-child) > .btn,
+.btn-group-vertical > .btn-group:not(:first-child) > .f-inline-editor-action-cancel,
+.btn-group-vertical > .btn-group:not(:first-child) > .f-inline-editor-action-save,
 .btn-group-vertical > .btn-group:not(:first-child) > .f-form-tree-selector-option-toggler,
 .btn-group-vertical > .btn-group:not(:first-child) > .f-button {
   border-top-left-radius: 0;
@@ -5082,7 +5128,7 @@ textarea.form-control-lg {
   display: none;
 }
 
-.btn .badge, .f-form-tree-selector-option-toggler .badge, .f-button .badge, .btn .f-badge, .f-form-tree-selector-option-toggler .f-badge, .f-button .f-badge {
+.btn .badge, .f-inline-editor-action-cancel .badge, .f-inline-editor-action-save .badge, .f-form-tree-selector-option-toggler .badge, .f-button .badge, .btn .f-badge, .f-inline-editor-action-cancel .f-badge, .f-inline-editor-action-save .f-badge, .f-form-tree-selector-option-toggler .f-badge, .f-button .f-badge {
   position: relative;
   top: -1px;
 }
@@ -7052,7 +7098,7 @@ textarea.form-control-lg {
   background-color: currentcolor;
   opacity: 0.5;
 }
-.placeholder.btn::before, .placeholder.f-form-tree-selector-option-toggler::before, .placeholder.f-button::before {
+.placeholder.btn::before, .placeholder.f-inline-editor-action-cancel::before, .placeholder.f-inline-editor-action-save::before, .placeholder.f-form-tree-selector-option-toggler::before, .placeholder.f-button::before {
   display: inline-block;
   content: "";
 }
@@ -7582,7 +7628,7 @@ textarea.form-control-lg {
   display: table-cell !important;
 }
 
-.d-flex, .f-stack, .f-form-tree-selector-option-toggler, .f-form-tree-selector-option-header, .f-form-tree-selector-option-content, .f-form-tree-selector-option, .f-form-tree-selector-menu-inner-open, .f-form-markdown-editor .editor-toolbar > button, .f-form-markdown-editor .editor-toolbar {
+.d-flex, .f-stack, .f-inline-editor-actions, .f-form-tree-selector-option-toggler, .f-form-tree-selector-option-header, .f-form-tree-selector-option-content, .f-form-tree-selector-option, .f-form-tree-selector-menu-inner-open, .f-form-markdown-editor .editor-toolbar > button, .f-form-markdown-editor .editor-toolbar {
   display: flex !important;
 }
 
@@ -15476,6 +15522,66 @@ span[data-img-src]::after {
   background-color: rgba(33, 37, 41, 0.2);
 }
 
+.f-inline-editor a {
+  pointer-events: none;
+}
+.f-inline-editor [data-inline-editable] {
+  border: 1px dashed transparent;
+  transition: all 0.2s ease-in-out;
+}
+.f-inline-editor [data-inline-editable]:hover {
+  border: 1px dashed rgba(23, 106, 189, 0.3);
+}
+.f-inline-editor [data-inline-editable]:focus {
+  border: 1px dashed #176abd;
+  outline: 0;
+}
+.f-inline-editor-dirty .f-inline-editor-content::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.125);
+  transition: all 0.2s ease-in-out;
+  opacity: 1;
+  pointer-events: none;
+}
+.f-inline-editor-actions {
+  gap: 0.25rem;
+  position: absolute;
+  top: 0.375rem;
+  right: 70px;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.2s ease-in-out;
+}
+.f-inline-editor-action-save {
+  border-radius: var(--f-border-radius-sm);
+  font-size: 0.875rem;
+  padding: 0.125rem 0.625rem;
+  color: #fff;
+}
+.f-inline-editor-action-cancel {
+  font-size: 0.875rem;
+  padding: 0.125rem 0.625rem;
+}
+.f-inline-editor-action-cancel:hover {
+  color: #3c444f;
+}
+.f-inline-editor-action-message {
+  color: #176abd;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.f-plugin-container:hover .f-inline-editor-dirty .f-inline-editor-content::after {
+  opacity: 0;
+}
+
+.f-inline-editor-dirty .f-inline-editor-actions {
+  opacity: 1;
+  pointer-events: all;
+}
+
 .f-modal {
   display: block;
 }
@@ -17556,7 +17662,7 @@ progress {
   display: table-cell !important;
 }
 
-.d-flex, .f-form-markdown-editor .editor-toolbar, .f-form-markdown-editor .editor-toolbar > button, .f-form-tree-selector-menu-inner-open, .f-form-tree-selector-option, .f-form-tree-selector-option-content, .f-form-tree-selector-option-header, .f-form-tree-selector-option-toggler, .f-stack {
+.d-flex, .f-form-markdown-editor .editor-toolbar, .f-form-markdown-editor .editor-toolbar > button, .f-form-tree-selector-menu-inner-open, .f-form-tree-selector-option, .f-form-tree-selector-option-content, .f-form-tree-selector-option-header, .f-form-tree-selector-option-toggler, .f-inline-editor-actions, .f-stack {
   display: flex !important;
 }
 
