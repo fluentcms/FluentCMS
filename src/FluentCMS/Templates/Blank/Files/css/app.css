@@ -178,6 +178,31 @@
   fill: var(--f-gray-500);
 }
 
+[data-bs-theme="dark"] .custom-dark-section {
+  background-color: #111827 !important; /* Tailwind gray-900 */
+}
+
+[data-bs-theme="dark"] .logo-light {
+  display: none !important;
+}
+[data-bs-theme="dark"] .logo-dark {
+  display: inline-block !important;
+}
+
+/* Muted text colors */
+.text-muted {
+  color: #9ca3af !important; /* Tailwind gray-400 */
+}
+
+/* Tooltip replacement */
+.tooltip {
+  font-size: 0.875rem;
+  background: #111827;
+  color: #fff;
+  padding: .5rem .75rem;
+  border-radius: .5rem;
+}
+
 .f-plugin-body {
   padding: 1rem;
 }
