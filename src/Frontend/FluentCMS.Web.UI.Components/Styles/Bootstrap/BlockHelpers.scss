@@ -66,3 +66,7 @@
 [data-bs-theme="dark"] .bg-surface-card {
   background-color: var(--f-secondary-bg);
 }
+
+[data-bs-theme="dark"] .bg-surface-accent {
+    background-color: var(--f-tertiary-bg);
+  }

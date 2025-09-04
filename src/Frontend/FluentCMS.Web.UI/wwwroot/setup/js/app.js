@@ -176,9 +176,9 @@ function createTheme() {
     
     function initTheme() {
         if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            document.documentElement.classList.add('dark');
+            document.documentElement.setAttribute('data-bs-theme', 'dark');
         } else {
-            document.documentElement.classList.remove('dark')
+            document.documentElement.setAttribute('data-bs-theme', 'light');
         }
     }
     
@@ -189,20 +189,20 @@ function createTheme() {
         // if set via local storage previously
         if (localStorage.getItem('color-theme')) {
             if (localStorage.getItem('color-theme') === 'light') {
-                document.documentElement.classList.add('dark');
+                document.documentElement.setAttribute('data-bs-theme', 'dark');
                 localStorage.setItem('color-theme', 'dark');
             } else {
-                document.documentElement.classList.remove('dark');
+                document.documentElement.setAttribute('data-bs-theme', 'light');
                 localStorage.setItem('color-theme', 'light');
             }
 
             // if NOT set via local storage previously
         } else {
-            if (document.documentElement.classList.contains('dark')) {
-                document.documentElement.classList.remove('dark');
+            if (document.documentElement.dataset.bsTheme === 'dark') {
+                document.documentElement.setAttribute('data-bs-theme', 'light');
                 localStorage.setItem('color-theme', 'light');
             } else {
-                document.documentElement.classList.add('dark');
+                document.documentElement.setAttribute('data-bs-theme', 'dark');
                 localStorage.setItem('color-theme', 'dark');
             }
         }
@@ -213,7 +213,7 @@ function createTheme() {
     function updateThemeIcon() {
         setTimeout(() => {
             // Change the icons inside the button based on previous settings
-            if (document.documentElement.classList.contains('dark')) {
+            if (document.documentElement.dataset.bsTheme === 'dark') {
                 themeToggleDarkIcon.classList.add('hidden');
                 themeToggleLightIcon.classList.remove('hidden');
             } else {

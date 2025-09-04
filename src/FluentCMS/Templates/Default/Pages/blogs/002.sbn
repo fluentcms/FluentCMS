@@ -1,26 +1,26 @@
 {{ for item in Items }}
-    <a href="/blogs/detail/{{ item.Id }}" class="blog-post border border-border-muted flex flex-wrap mb-8 p-4 bg-surface-accent shadow rounded-lg">
-        {{ if item.FeaturedImage }}
-        <div class="blog-featured-image w-32 h-32 flex-shrink-0 mr-4">
-            <img class="w-full h-full object-cover rounded-lg" src="/files/{{ item.FeaturedImage }}" alt="Featured Image">
+<a href="/blogs/detail/{{ item.Id }}" class="blog-post border mb-4 p-3 bg-light shadow-sm rounded d-flex flex-wrap">
+    {{ if item.FeaturedImage }}
+    <div class="blog-featured-image flex-shrink-0 me-3" style="width: 8rem; height: 8rem;">
+        <img src="/files/{{ item.FeaturedImage }}" alt="Featured Image" class="img-fluid rounded" style="width: 100%; height: 100%; object-fit: cover;">
+    </div>
+    {{ end }}
+    <div class="flex-grow-1">
+        <h2 class="h5 fw-bold text-dark">{{ item.Title }}</h2>
+        <div class="blog-meta text-muted small mt-2">
+            <span class="blog-slug">Slug: <span class="fw-medium text-secondary">{{ item.Slug }}</span></span> | 
+            <span class="blog-published-at">Published At: <span class="fw-medium text-secondary">{{ item.PublishedAt }}</span></span> | 
+            <span class="blog-status">Status: <span class="fw-medium text-secondary">{{ item.Status }}</span></span> | 
+            <span class="blog-order">Order: <span class="fw-medium text-secondary">{{ item.Order }}</span></span>
         </div>
-        {{ end }}
-        <div class="flex-1">
-            <h2 class="text-2xl font-bold text-content">{{ item.Title }}</h2>
-            <div class="blog-meta text-sm text-content mt-2">
-                <span class="blog-slug">Slug: <span class="font-medium text-content-muted">{{ item.Slug }}</span></span> | 
-                <span class="blog-published-at">Published At: <span class="font-medium text-content-muted">{{ item.PublishedAt }}</span></span> | 
-                <span class="blog-status">Status: <span class="font-medium text-content-muted">{{ item.Status }}</span></span> | 
-                <span class="blog-order">Order: <span class="font-medium text-content-muted">{{ item.Order }}</span></span>
-            </div>
-            <div class="blog-tags mt-4">
-                <strong class="text-content">Tags:</strong>
-                <div class="inline-flex flex-wrap space-x-2 mt-2">
-                    {{ for tag in item.Tags }}
-                        <span class="blog-tag bg-primary-100  dark:bg-primary-800/20 text-primary-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded">{{ tag }}</span>
-                    {{ end }}
-                </div>
+        <div class="blog-tags mt-3">
+            <strong>Tags:</strong>
+            <div class="d-flex flex-wrap mt-2 gap-2">
+                {{ for tag in item.Tags }}
+                    <span class="badge bg-primary text-dark text-truncate" style="font-size: 0.75rem;">{{ tag }}</span>
+                {{ end }}
             </div>
         </div>
-    </a>
+    </div>
+</a>
 {{ end }}

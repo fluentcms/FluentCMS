@@ -134,7 +134,7 @@
                     "Section": "BottomGray",
                     "Settings": {
                         "EmailAddress": "support@fluentcms.com",
-                        "Class": "p-4 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded shadow"
+                        "Class": "p-3 bg-surface-card border rounded shadow"
                     }
                 }
             ]

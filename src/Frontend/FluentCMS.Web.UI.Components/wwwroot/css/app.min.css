@@ -22342,15 +22342,19 @@ progress {
 }
 
 [data-bs-theme=dark] .text-content-muted {
-  color: var(--f-gray-300);
+  color: var(--f-gray-400);
 }
 
 [data-bs-theme=dark] .text-content {
-  color: var(--f-gray-200);
+  color: var(--f-gray-300);
 }
 
 [data-bs-theme=dark] .bg-surface-card {
   background-color: var(--f-secondary-bg);
+}
+
+[data-bs-theme=dark] .bg-surface-accent {
+  background-color: var(--f-tertiary-bg);
 }
 
 /*# sourceMappingURL=app.min.css.map */
