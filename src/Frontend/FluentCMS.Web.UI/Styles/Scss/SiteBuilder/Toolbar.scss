@@ -161,6 +161,8 @@
 
         &-item {
             color: var(--color-primary);
+            background-color: transparent;
+            border: none;
             padding: 8px 16px;
             display: flex;
             align-items: center;
