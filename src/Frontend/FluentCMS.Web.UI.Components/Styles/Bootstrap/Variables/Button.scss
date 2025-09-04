@@ -37,24 +37,24 @@ $btn-default-dark-focus-ring-color: $gray-700;
 
 // Apply to Bootstrap Button Class
 .btn-default {
-    color: $btn-default-color;
-    background-color: $btn-default-bg;
-    border-color: $btn-default-border;
+    color: $btn-default-color !important;
+    background-color: $btn-default-bg !important;
+    border-color: $btn-default-border !important;
     &:hover {
-        background-color: $btn-default-hover-bg;
-        color: $btn-default-hover-color;
+        background-color: $btn-default-hover-bg !important;
+        color: $btn-default-hover-color !important;
     }
     &:focus {
         box-shadow: 0 0 0 0.25rem rgba($btn-default-focus-ring-color, 0.5);
     }
     // Dark mode
     [data-bs-theme="dark"] & {
-        background-color: $btn-default-dark-bg;
-        color: $btn-default-dark-color;
-        border-color: $btn-default-dark-border;
+        background-color: $btn-default-dark-bg !important;
+        color: $btn-default-dark-color !important;
+        border-color: $btn-default-dark-border !important;
         &:hover {
-            background-color: $btn-default-dark-hover-bg;
-            color: $btn-default-dark-hover-color;
+            background-color: $btn-default-dark-hover-bg !important;
+            color: $btn-default-dark-hover-color !important;
         }
         &:focus {
             box-shadow: 0 0 0 0.25rem rgba($btn-default-dark-focus-ring-color, 0.5);
@@ -71,6 +71,7 @@ $btn-ghost-dark-hover-color:    $gray-700;
 .btn-ghost {
     color: $btn-ghost-color;
     background-color: transparent;
+    --f-btn-box-shadow: none;
     &:hover {
         color: $btn-ghost-hover-color;
     }

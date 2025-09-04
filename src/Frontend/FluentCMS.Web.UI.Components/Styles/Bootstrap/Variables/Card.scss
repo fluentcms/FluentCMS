@@ -2,3 +2,7 @@ $card-bg:                  $white;
 $card-border-width:        1px;
 $card-border-color:        $gray-200;
 $card-border-radius:       $border-radius-lg;
+
+[data-bs-theme="dark"] .card {
+    background-color: var(--f-secondary-bg);
+}
