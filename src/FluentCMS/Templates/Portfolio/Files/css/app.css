@@ -178,10 +178,6 @@
   fill: var(--f-gray-500);
 }
 
-[data-bs-theme="dark"] .custom-dark-section {
-  background-color: #111827 !important; /* Tailwind gray-900 */
-}
-
 [data-bs-theme="dark"] .logo-light {
   display: none !important;
 }
