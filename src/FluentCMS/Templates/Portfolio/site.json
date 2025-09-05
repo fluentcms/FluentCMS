@@ -244,7 +244,7 @@
                     "Section": "Main",
                     "Settings": {
                         "EmailAddress": "your.email@example.com",
-                        "Class": "p-4"
+                        "Class": "p-4 container mx-auto"
                     }
                 }
             ]
