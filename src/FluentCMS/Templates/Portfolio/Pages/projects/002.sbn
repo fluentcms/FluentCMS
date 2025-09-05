@@ -1,20 +1,21 @@
-<section id="projects" class="py-8 bg-surface">
-    <div class="container mx-auto text-center">
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+<section id="projects" class="py-5 bg-surface">
+    <div class="container text-center">
+        <div class="row g-4">
             {{ for project in Items }}
-                <div class="bg-surface-accent border border-border-muted shadow-lg rounded-lg overflow-hidden">
-                    <img src="/files/{{ project.image }}" alt="{{ project.project_title }}" class="w-full h-48 object-cover">
-                    <div class="p-6">
-                        <h3 class="text-xl font-semibold text-content-accent">{{ project.project_title }}</h3>
+            <div class="col-sm-6 col-lg-4">
+                <div class="bg-surface-accent border shadow-lg rounded overflow-hidden h-100">
+                    <img src="/files/{{ project.image }}" alt="{{ project.project_title }}" class="w-100" style="height:12rem;object-fit:cover;">
+                    <div class="p-4">
+                        <h3 class="h5 fw-semibold text-content-accent">{{ project.project_title }}</h3>
                         <p class="text-content-muted mt-2">
                             {{ project.description }}
                         </p>
-                        <a href="/projects/detail/{{ project.Id }}"
-                            class="inline-block mt-4 text-primary-500 hover:text-primary-600">
-                            View Project &rarr;
+                        <a href="/projects/detail/{{ project.Id }}" class="d-inline-block mt-3 text-primary hover-text-primary">
+                            View Project →
                         </a>
                     </div>
                 </div>
+            </div>
             {{ end }}
         </div>
     </div>

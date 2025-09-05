@@ -1,9 +1,11 @@
-<div class="mt-4 grid sm:grid-cols-2 gap-4">
+<div class="mt-3 row g-3">
     {{for project in Items | array.limit 2 }}
-        <div class="p-4 bg-surface-accent border border-border-muted rounded shadow-lg">
-            <h4 class="text-xl font-semibold text-content-accent">{{project.project_title}}</h4>
-            <p class="text-content mt-2">{{project.description}}</p>
-            <a href="/projects/detail/{{project.Id}}" class="text-primary-500 hover:text-primary-600 underline mt-2 block">View Project</a>
+        <div class="col-12 col-sm-6">
+            <div class="p-3 bg-surface-accent border border-border-muted rounded shadow">
+                <h4 class="h5 fw-semibold text-content-accent">{{project.project_title}}</h4>
+                <p class="text-content mt-2">{{project.description}}</p>
+                <a href="/projects/detail/{{project.Id}}" class="text-primary text-decoration-underline mt-2 d-block">View Project</a>
+            </div>
         </div>
     {{end}}
 </div>

@@ -244,7 +244,7 @@
                     "Section": "Main",
                     "Settings": {
                         "EmailAddress": "your.email@example.com",
-                        "Class": "p-8"
+                        "Class": "p-4"
                     }
                 }
             ]
