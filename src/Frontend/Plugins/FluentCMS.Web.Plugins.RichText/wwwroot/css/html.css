@@ -1,37 +1,19 @@
 :root {
-    --font-color-h1: #333;
-    --font-color-h2: #444;
-    --font-color-h3: #555;
-    --font-color-h4-h6: #666;
-    --font-color-p: #222;
-    --link-color: #007bff;
-    --blockquote-border: #ccc;
-    --blockquote-bg: #f9f9f9;
-    --blockquote-color: #666;
-    --code-bg: #f8f8f8;
-    --code-color: #d63384;
-    --pre-bg: #f8f8f8;
-    --pre-color: #d63384;
-    --code-block-bg: #f5f5f5;
-    --code-block-border: #e0e0e0;
-}
-
-.text-white, .dark {
-    --font-color-h1: #ccc;
-    --font-color-h2: #bbb;
-    --font-color-h3: #aaa;
-    --font-color-h4-h6: #999;
-    --font-color-p: #ddd;
-    --link-color: #66bfff;
-    --blockquote-border: #888;
-    --blockquote-bg: #333;
-    --blockquote-color: #ccc;
-    --code-bg: #444;
-    --code-color: #ff6fcf;
-    --pre-bg: #444;
-    --pre-color: #ff6fcf;
-    --code-block-bg: #3b3b3b;
-    --code-block-border: #555;
+  --font-color-h1: var(--bs-emphasis-color);
+  --font-color-h2: var(--bs-body-color);
+  --font-color-h3: var(--bs-secondary-color);
+  --font-color-h4-h6: var(--bs-tertiary-color);
+  --font-color-p: var(--bs-body-color);
+  --link-color: var(--bs-link-color);
+  --blockquote-border: var(--bs-border-color);
+  --blockquote-bg: var(--bs-tertiary-bg);
+  --blockquote-color: var(--bs-secondary-color);
+  --code-bg: var(--bs-body-bg);
+  --code-color: var(--bs-code-color);
+  --pre-bg: var(--bs-body-bg);
+  --pre-color: var(--bs-code-color);
+  --code-block-bg: var(--bs-tertiary-bg);
+  --code-block-border: var(--bs-border-color);
 }
 
 .f-rich-text-content h1 {

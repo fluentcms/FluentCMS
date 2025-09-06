@@ -14,7 +14,7 @@
             <span class="blog-order">Order: <span class="fw-medium text-secondary">{{ item.Order }}</span></span>
         </div>
         <div class="blog-tags mt-3">
-            <strong>Tags:</strong>
+            <strong class="text-content">Tags:</strong>
             <div class="d-flex flex-wrap mt-2 gap-2">
                 {{ for tag in item.Tags }}
                     <span class="badge bg-primary text-white text-truncate" style="font-size: 0.75rem;">{{ tag }}</span>

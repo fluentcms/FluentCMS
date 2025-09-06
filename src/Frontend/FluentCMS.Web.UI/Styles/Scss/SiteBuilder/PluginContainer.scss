@@ -82,6 +82,8 @@ $plugin-toolbar: $prefix + 'plugin-toolbar';
         width: 100%;
         cursor: pointer;
         color: #333;
+        border: none;
+        background-color: transparent;
     }
 
     &-dropdown-menu &-dropdown-item:hover {
