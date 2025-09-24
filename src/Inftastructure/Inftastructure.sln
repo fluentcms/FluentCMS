@@ -86,6 +86,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Providers.EventBu
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Providers.EventBus.InMemory", "Providers\EventBus\FluentCMS.Providers.EventBus.InMemory\FluentCMS.Providers.EventBus.InMemory.csproj", "{1C20670C-BFE4-697A-F1B9-2DCF31D75E11}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Repositories.Caching", "Repositories\FluentCMS.Repositories.Caching\FluentCMS.Repositories.Caching.csproj", "{273539F2-41A7-4E87-B169-89AF9FE19EF6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -212,6 +214,10 @@ Global
 		{1C20670C-BFE4-697A-F1B9-2DCF31D75E11}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1C20670C-BFE4-697A-F1B9-2DCF31D75E11}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1C20670C-BFE4-697A-F1B9-2DCF31D75E11}.Release|Any CPU.Build.0 = Release|Any CPU
+		{273539F2-41A7-4E87-B169-89AF9FE19EF6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{273539F2-41A7-4E87-B169-89AF9FE19EF6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{273539F2-41A7-4E87-B169-89AF9FE19EF6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{273539F2-41A7-4E87-B169-89AF9FE19EF6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -250,6 +256,7 @@ Global
 		{46AC977A-2B99-C435-D847-A64914FC0FA5} = {D9007A03-FD03-1159-6598-E081D0A1BEBA}
 		{C5EC76FD-CE92-E37C-00B9-79D7F0B11EAB} = {46AC977A-2B99-C435-D847-A64914FC0FA5}
 		{1C20670C-BFE4-697A-F1B9-2DCF31D75E11} = {46AC977A-2B99-C435-D847-A64914FC0FA5}
+		{273539F2-41A7-4E87-B169-89AF9FE19EF6} = {C45387E7-A239-B248-5540-D77B4284F48B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {F9649E9A-5619-4FAE-97BC-3E256E32491D}

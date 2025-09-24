@@ -6,7 +6,6 @@ public static class DatabaseRegistrationExtensions
     {
         services.AddMemoryCache();
         services.AddScoped<IRepository<TEntity>, Repository<TEntity, TContext>>();
-        services.AddScoped<ICachedRepository<TEntity>, CachedRepository<TEntity, TContext>>();
         return services;
     }
 
