@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Repositories.Abstractions;
+﻿namespace FluentCMS.Repositories.EntityFramework;
 
 // In shared abstractions project
 public interface IDatabaseConfiguration

@@ -6,6 +6,7 @@ public interface IRepository
 
 public interface IRepository<TEntity> : IRepository where TEntity : class, IEntity
 {
+    // Core CRUD operations
     Task<TEntity> Add(TEntity entity, CancellationToken cancellationToken = default);
     Task<IEnumerable<TEntity>> AddRange(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default);
     Task<TEntity> Update(TEntity entity, CancellationToken cancellationToken = default);
@@ -13,7 +14,13 @@ public interface IRepository<TEntity> : IRepository where TEntity : class, IEnti
     Task<TEntity?> Remove(TEntity entity, CancellationToken cancellationToken = default);
     Task<TEntity?> GetById(Guid id, CancellationToken cancellationToken = default);
     Task<IEnumerable<TEntity>> GetAll(CancellationToken cancellationToken = default);
-    Task<IEnumerable<TEntity>> Find(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
-    Task<long> Count(Expression<Func<TEntity, bool>>? filter = default, CancellationToken cancellationToken = default);
-    Task<bool> Any(Expression<Func<TEntity, bool>>? filter = default, CancellationToken cancellationToken = default);
+
+    // Core specification-based query methods
+    Task<IEnumerable<TEntity>> Query(ISpecification<TEntity> specification, CancellationToken cancellationToken = default);
+    Task<TEntity?> FirstOrDefault(ISpecification<TEntity> specification, CancellationToken cancellationToken = default);
+    Task<TEntity?> SingleOrDefault(ISpecification<TEntity> specification, CancellationToken cancellationToken = default);
+    Task<long> Count(ISpecification<TEntity> specification, CancellationToken cancellationToken = default);
+    Task<bool> Any(ISpecification<TEntity> specification, CancellationToken cancellationToken = default);
+    Task<PagedResult<TEntity>> FindPaged(ISpecification<TEntity> specification, int page, int pageSize, CancellationToken cancellationToken = default);
+    Task<decimal> Sum(ISpecification<TEntity> specification, Expression<Func<TEntity, decimal>> selector, CancellationToken cancellationToken = default);
 }

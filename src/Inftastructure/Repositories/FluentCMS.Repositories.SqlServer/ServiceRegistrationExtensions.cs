@@ -1,4 +1,4 @@
-﻿using FluentCMS.Repositories.Abstractions;
+﻿using FluentCMS.Repositories.EntityFramework;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Repositories.SqlServer;
