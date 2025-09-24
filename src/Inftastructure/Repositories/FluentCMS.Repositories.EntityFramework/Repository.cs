@@ -274,9 +274,9 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
         // Get total count first
         var totalCount = await Count(specification, cancellationToken);
 
-        // Get all items and apply pagination in memory (simplified approach)
-        var allItems = await Query(specification, cancellationToken);
-        var pagedItems = allItems.Skip((page - 1) * pageSize).Take(pageSize);
+        // Apply specification and pagination at the database level
+        var query = specification.Apply(DbSet.AsNoTracking());
+        var pagedItems = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(cancellationToken);
 
         return new PagedResult<TEntity>
         {
