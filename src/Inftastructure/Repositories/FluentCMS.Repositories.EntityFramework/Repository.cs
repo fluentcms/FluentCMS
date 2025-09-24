@@ -24,7 +24,7 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
             await SaveChangesAsync(cancellationToken);
 
             Logger.LogInformation("Entity {EntityType} with id {EntityId} added", typeof(TEntity).Name, entity.Id);
-            
+
             // Detach entity to prevent tracking issues in future operations
             Context.Entry(entity).State = EntityState.Detached;
 
@@ -37,13 +37,13 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
         }
     }
 
-    public virtual async Task<List<TEntity>> AddRange(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default)
+    public virtual async Task<IEnumerable<TEntity>> AddRange(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(entities);
 
         var entityList = entities.ToList();
-        
+
         foreach (var entity in entityList)
         {
             if (entity.Id == Guid.Empty)
@@ -84,7 +84,7 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
 
             // Detach entity to prevent tracking issues in future operations
             Context.Entry(entity).State = EntityState.Detached;
-            
+
             return entity;
         }
         catch (Exception ex)
@@ -115,10 +115,10 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
             }
 
             Logger.LogInformation("Entity {EntityType} with id {EntityId} removed", typeof(TEntity).Name, entity.Id);
-            
+
             // Detach entity to prevent tracking issues in future operations
             Context.Entry(entity).State = EntityState.Detached;
-            
+
             return entity;
         }
         catch (Exception ex)
@@ -165,7 +165,7 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
         }
     }
 
-    public virtual async Task<List<TEntity>> GetAll(CancellationToken cancellationToken = default)
+    public virtual async Task<IEnumerable<TEntity>> GetAll(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -337,7 +337,7 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
         }
     }
 
-    public virtual async Task<TResult> FindFirstProjected<TResult>(IProjectionSpecification<TResult> projection, CancellationToken cancellationToken = default)
+    public virtual async Task<TResult?> FindFirstProjected<TResult>(IProjectionSpecification<TResult> projection, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(projection);

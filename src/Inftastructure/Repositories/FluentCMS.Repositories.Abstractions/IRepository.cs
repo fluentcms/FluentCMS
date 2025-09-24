@@ -8,12 +8,12 @@ public interface IRepository<TEntity> : IRepository where TEntity : class, IEnti
 {
     // Existing CRUD operations
     Task<TEntity> Add(TEntity entity, CancellationToken cancellationToken = default);
-    Task<List<TEntity>> AddRange(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default);
+    Task<IEnumerable<TEntity>> AddRange(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default);
     Task<TEntity> Update(TEntity entity, CancellationToken cancellationToken = default);
     Task<TEntity?> Remove(Guid id, CancellationToken cancellationToken = default);
     Task<TEntity?> Remove(TEntity entity, CancellationToken cancellationToken = default);
     Task<TEntity?> GetById(Guid id, CancellationToken cancellationToken = default);
-    Task<List<TEntity>> GetAll(CancellationToken cancellationToken = default);
+    Task<IEnumerable<TEntity>> GetAll(CancellationToken cancellationToken = default);
 
     // Specification-based query methods
     Task<IEnumerable<TEntity>> Find(ISpecification<TEntity> specification, CancellationToken cancellationToken = default);
@@ -29,7 +29,7 @@ public interface IRepository<TEntity> : IRepository where TEntity : class, IEnti
 
     // Projection support
     Task<IEnumerable<TResult>> FindProjected<TResult>(IProjectionSpecification<TResult> projection, CancellationToken cancellationToken = default);
-    Task<TResult> FindFirstProjected<TResult>(IProjectionSpecification<TResult> projection, CancellationToken cancellationToken = default);
+    Task<TResult?> FindFirstProjected<TResult>(IProjectionSpecification<TResult> projection, CancellationToken cancellationToken = default);
 
     // Basic aggregation method (keeping Sum as it's commonly used)
     Task<decimal> Sum(ISpecification<TEntity> specification, Expression<Func<TEntity, decimal>> selector, CancellationToken cancellationToken = default);

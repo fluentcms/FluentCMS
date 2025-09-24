@@ -1,5 +1,3 @@
-using System.Linq.Expressions;
-
 namespace FluentCMS.Repositories.Abstractions;
 
 /// <summary>
@@ -149,7 +147,7 @@ internal class QueryBasedSpecification<T> : Specification<T> where T : class, IE
 /// <summary>
 /// Implementation for projection specifications that can return any type
 /// </summary>
-public class ProjectionSpecification<TSource, TResult> : IProjectionSpecification<TResult> 
+public class ProjectionSpecification<TSource, TResult> : IProjectionSpecification<TResult>
     where TSource : class, IEntity
 {
     private readonly List<Func<IQueryable<TSource>, IQueryable<TSource>>> _sourceOperations;
@@ -261,12 +259,12 @@ public class ProjectionSpecification<TSource, TResult> : IProjectionSpecificatio
     public IQueryable<TResult> Build<T>(IQueryable<T> source) where T : class, IEntity
     {
         // Apply source operations first
-        var sourceQuery = _sourceOperations.Aggregate((IQueryable<TSource>)source, 
+        var sourceQuery = _sourceOperations.Aggregate((IQueryable<TSource>)source,
             (current, operation) => operation(current));
-        
+
         // Apply the projection
         var projectedQuery = sourceQuery.Select(_selector);
-        
+
         // Apply result operations
         return _resultOperations.Aggregate(projectedQuery, (current, operation) => operation(current));
     }
@@ -353,19 +351,19 @@ internal class ChainedProjectionSpecification<TSource, TIntermediate, TResult> :
     public IQueryable<TResult> Build<T>(IQueryable<T> source) where T : class, IEntity
     {
         // Apply source operations
-        var sourceQuery = _sourceOperations.Aggregate((IQueryable<TSource>)source, 
+        var sourceQuery = _sourceOperations.Aggregate((IQueryable<TSource>)source,
             (current, operation) => operation(current));
-        
+
         // Apply first projection
         var intermediateQuery = sourceQuery.Select(_firstSelector);
-        
+
         // Apply intermediate operations
-        var processedIntermediate = _intermediateOperations.Aggregate(intermediateQuery, 
+        var processedIntermediate = _intermediateOperations.Aggregate(intermediateQuery,
             (current, operation) => operation(current));
-        
+
         // Apply second projection
         var finalQuery = processedIntermediate.Select(_secondSelector);
-        
+
         // Apply final operations
         return _resultOperations.Aggregate(finalQuery, (current, operation) => operation(current));
     }

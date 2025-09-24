@@ -1,5 +1,3 @@
-using System.Linq.Expressions;
-
 namespace FluentCMS.Repositories.Abstractions;
 
 /// <summary>
@@ -18,7 +16,7 @@ public static class SpecificationExtensions
     {
         if (left is ICompositeSpecification<T> composite)
             return composite.And(right);
-        
+
         return new ExpressionSpecification<T>(x => true).And(left).And(right);
     }
 
@@ -27,7 +25,7 @@ public static class SpecificationExtensions
     {
         if (left is ICompositeSpecification<T> composite)
             return composite.Or(right);
-        
+
         return new ExpressionSpecification<T>(x => true).And(left).Or(right);
     }
 
@@ -48,7 +46,7 @@ public static class SpecificationExtensions
     {
         if (page < 1) page = 1;
         if (pageSize < 1) pageSize = 10;
-        
+
         return specification.Skip((page - 1) * pageSize).Take(pageSize);
     }
 
@@ -134,12 +132,12 @@ public static class RepositorySpecificationExtensions
     {
         // Get total count first
         var totalCount = await repository.Count(specification, cancellationToken);
-        
+
         // Create a combined specification that includes the original specification and pagination
         // This is a simplified approach since we removed AsQueryable()
         var allItems = await repository.Find(specification, cancellationToken);
         var pagedItems = allItems.Skip((page - 1) * pageSize).Take(pageSize);
-        
+
         return new PagedResult<T>
         {
             Items = pagedItems,

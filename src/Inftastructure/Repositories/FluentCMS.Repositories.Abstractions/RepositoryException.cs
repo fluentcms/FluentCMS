@@ -1,7 +1,4 @@
-﻿using FluentCMS.Exceptions;
-using System.Text;
-
-namespace FluentCMS.Repositories.Abstractions;
+﻿namespace FluentCMS.Repositories.Abstractions;
 
 [Serializable]
 public class RepositoryException<TEntity>(string message, Exception? innerException) : EnhancedException("Repository", message, innerException) where TEntity : class, IEntity

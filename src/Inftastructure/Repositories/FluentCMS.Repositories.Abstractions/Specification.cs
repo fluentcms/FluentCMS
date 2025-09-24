@@ -1,5 +1,3 @@
-using System.Linq.Expressions;
-
 namespace FluentCMS.Repositories.Abstractions;
 
 /// <summary>
@@ -70,7 +68,7 @@ internal class OrSpecification<T> : Specification<T> where T : class, IEntity
         // This is more complex as we need to work with expression trees
         var leftQuery = _left.Apply(query);
         var rightQuery = _right.Apply(query);
-        
+
         // Note: This is a simplified implementation
         // A more sophisticated implementation would need to combine the actual expressions
         return leftQuery.Union(rightQuery);

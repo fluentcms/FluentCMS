@@ -26,20 +26,14 @@ public class CachedRepository<TEntity, TContext>(TContext context, IMemoryCache 
     public override async Task<TEntity?> Remove(TEntity entity, CancellationToken cancellationToken = default)
     {
         var removedEntity = await base.Remove(entity, cancellationToken);
-        if (removedEntity != null)
-        {
-            InvalidateCache();
-        }
+        InvalidateCache();
         return removedEntity;
     }
 
     public override async Task<TEntity?> Remove(Guid id, CancellationToken cancellationToken = default)
     {
         var removedEntity = await base.Remove(id, cancellationToken);
-        if (removedEntity != null)
-        {
-            InvalidateCache();
-        }
+        InvalidateCache();
         return removedEntity;
     }
 
@@ -80,7 +74,7 @@ public class CachedRepository<TEntity, TContext>(TContext context, IMemoryCache 
         {
             var entitiesDict = await GetCachedDictionary(cancellationToken);
             var query = specification.Apply(entitiesDict.Values.AsQueryable());
-            return query.ToList();
+            return [.. query];
         }
         catch (Exception ex)
         {
@@ -231,7 +225,7 @@ public class CachedRepository<TEntity, TContext>(TContext context, IMemoryCache 
         return await base.FindProjected(projection, cancellationToken);
     }
 
-    public override async Task<TResult> FindFirstProjected<TResult>(IProjectionSpecification<TResult> projection, CancellationToken cancellationToken = default)
+    public override async Task<TResult?> FindFirstProjected<TResult>(IProjectionSpecification<TResult> projection, CancellationToken cancellationToken = default) where TResult : default
     {
         // For complex projections, it's often better to go directly to the database
         return await base.FindFirstProjected(projection, cancellationToken);
@@ -255,7 +249,7 @@ public class CachedRepository<TEntity, TContext>(TContext context, IMemoryCache 
         return await memoryCache.GetOrCreateAsync(GetAllCacheKey, async factory =>
         {
             cancellationToken.ThrowIfCancellationRequested();
-            
+
             // Load entities from database using the base implementation
             var entities = await base.GetAll(cancellationToken);
             var entitiesDict = entities.ToDictionary(e => e.Id);

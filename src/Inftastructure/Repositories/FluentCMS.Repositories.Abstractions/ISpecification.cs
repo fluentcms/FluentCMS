@@ -1,5 +1,3 @@
-using System.Linq.Expressions;
-
 namespace FluentCMS.Repositories.Abstractions;
 
 /// <summary>
@@ -18,10 +16,10 @@ public interface ICompositeSpecification<T> : ISpecification<T> where T : class,
 {
     // Combines this specification with another using AND logic
     ICompositeSpecification<T> And(ISpecification<T> other);
-    
+
     // Combines this specification with another using OR logic
     ICompositeSpecification<T> Or(ISpecification<T> other);
-    
+
     // Negates this specification
     ICompositeSpecification<T> Not();
 }
@@ -33,29 +31,29 @@ public interface IQuerySpecification<T> where T : class, IEntity
 {
     // Filtering
     IQuerySpecification<T> Where(Expression<Func<T, bool>> predicate);
-    
+
     // Ordering
     IQuerySpecification<T> OrderBy<TKey>(Expression<Func<T, TKey>> keySelector);
     IQuerySpecification<T> OrderByDescending<TKey>(Expression<Func<T, TKey>> keySelector);
     IQuerySpecification<T> ThenBy<TKey>(Expression<Func<T, TKey>> keySelector);
     IQuerySpecification<T> ThenByDescending<TKey>(Expression<Func<T, TKey>> keySelector);
-    
+
     // Pagination
     IQuerySpecification<T> Skip(int count);
     IQuerySpecification<T> Take(int count);
-    
+
     // Grouping
     IQuerySpecification<T> GroupBy<TKey>(Expression<Func<T, TKey>> keySelector);
-    
+
     // Projection - returns a projection specification for any result type
     IProjectionSpecification<TResult> Select<TResult>(Expression<Func<T, TResult>> selector);
-    
+
     // Distinct
     IQuerySpecification<T> Distinct();
-    
+
     // Build the final queryable
     IQueryable<T> Build(IQueryable<T> source);
-    
+
     // Convert to specification for repository usage
     ISpecification<T> ToSpecification();
 }
@@ -74,10 +72,10 @@ public interface IProjectionSpecification<TResult>
     IProjectionSpecification<TResult> Skip(int count);
     IProjectionSpecification<TResult> Take(int count);
     IProjectionSpecification<TResult> Distinct();
-    
+
     // Further projections
     IProjectionSpecification<TNewResult> Select<TNewResult>(Expression<Func<TResult, TNewResult>> selector);
-    
+
     // Build the final queryable
     IQueryable<TResult> Build<T>(IQueryable<T> source) where T : class, IEntity;
 }
