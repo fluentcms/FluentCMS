@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.9" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Core" Version="2.3.0" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <ProjectReference Include="..\..\Database\FluentCMS.Database.Abstractions\FluentCMS.Database.Abstractions.csproj" />
+    <ProjectReference Include="..\..\DataSeeding\FluentCMS.DataSeeding\FluentCMS.DataSeeding.csproj" />
+    <ProjectReference Include="..\..\Repositories\FluentCMS.Repositories.EntityFramework\FluentCMS.Repositories.EntityFramework.csproj" />
+    <ProjectReference Include="..\Core\FluentCMS.Plugins.Abstractions\FluentCMS.Plugins.Abstractions.csproj" />
+  </ItemGroup>
+
+</Project>
