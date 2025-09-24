@@ -9,12 +9,12 @@ public class QuerySpecification<T> : IQuerySpecification<T> where T : class, IEn
 
     public QuerySpecification()
     {
-        _operations = new List<Func<IQueryable<T>, IQueryable<T>>>();
+        _operations = [];
     }
 
     private QuerySpecification(List<Func<IQueryable<T>, IQueryable<T>>> operations)
     {
-        _operations = new List<Func<IQueryable<T>, IQueryable<T>>>(operations);
+        _operations = [.. operations];
     }
 
     // Adds a where clause to the query
@@ -129,18 +129,11 @@ public class QuerySpecification<T> : IQuerySpecification<T> where T : class, IEn
 /// <summary>
 /// Specification wrapper for query specifications
 /// </summary>
-internal class QueryBasedSpecification<T> : Specification<T> where T : class, IEntity
+internal class QueryBasedSpecification<T>(IQuerySpecification<T> querySpecification) : Specification<T> where T : class, IEntity
 {
-    private readonly IQuerySpecification<T> _querySpecification;
-
-    public QueryBasedSpecification(IQuerySpecification<T> querySpecification)
-    {
-        _querySpecification = querySpecification;
-    }
-
     public override IQueryable<T> Apply(IQueryable<T> query)
     {
-        return _querySpecification.Build(query);
+        return querySpecification.Build(query);
     }
 }
 
@@ -160,7 +153,7 @@ public class ProjectionSpecification<TSource, TResult> : IProjectionSpecificatio
     {
         _sourceOperations = sourceOperations;
         _selector = selector;
-        _resultOperations = new List<Func<IQueryable<TResult>, IQueryable<TResult>>>();
+        _resultOperations = [];
     }
 
     private ProjectionSpecification(
@@ -170,7 +163,7 @@ public class ProjectionSpecification<TSource, TResult> : IProjectionSpecificatio
     {
         _sourceOperations = sourceOperations;
         _selector = selector;
-        _resultOperations = new List<Func<IQueryable<TResult>, IQueryable<TResult>>>(resultOperations);
+        _resultOperations = [.. resultOperations];
     }
 
     // Continue filtering on projected results
@@ -256,7 +249,7 @@ public class ProjectionSpecification<TSource, TResult> : IProjectionSpecificatio
     }
 
     // Build the final queryable
-    public IQueryable<TResult> Build<T>(IQueryable<T> source) where T : class, IEntity
+    public IQueryable<TResult> Build<T>(IQueryable<T> source) where T : class
     {
         // Apply source operations first
         var sourceQuery = _sourceOperations.Aggregate((IQueryable<TSource>)source,
@@ -273,27 +266,14 @@ public class ProjectionSpecification<TSource, TResult> : IProjectionSpecificatio
 /// <summary>
 /// Handles chained projections (Select after Select)
 /// </summary>
-internal class ChainedProjectionSpecification<TSource, TIntermediate, TResult> : IProjectionSpecification<TResult>
+internal class ChainedProjectionSpecification<TSource, TIntermediate, TResult>(
+    List<Func<IQueryable<TSource>, IQueryable<TSource>>> sourceOperations,
+    Expression<Func<TSource, TIntermediate>> firstSelector,
+    List<Func<IQueryable<TIntermediate>, IQueryable<TIntermediate>>> intermediateOperations,
+    Expression<Func<TIntermediate, TResult>> secondSelector) : IProjectionSpecification<TResult>
     where TSource : class, IEntity
 {
-    private readonly List<Func<IQueryable<TSource>, IQueryable<TSource>>> _sourceOperations;
-    private readonly Expression<Func<TSource, TIntermediate>> _firstSelector;
-    private readonly List<Func<IQueryable<TIntermediate>, IQueryable<TIntermediate>>> _intermediateOperations;
-    private readonly Expression<Func<TIntermediate, TResult>> _secondSelector;
-    private readonly List<Func<IQueryable<TResult>, IQueryable<TResult>>> _resultOperations;
-
-    public ChainedProjectionSpecification(
-        List<Func<IQueryable<TSource>, IQueryable<TSource>>> sourceOperations,
-        Expression<Func<TSource, TIntermediate>> firstSelector,
-        List<Func<IQueryable<TIntermediate>, IQueryable<TIntermediate>>> intermediateOperations,
-        Expression<Func<TIntermediate, TResult>> secondSelector)
-    {
-        _sourceOperations = sourceOperations;
-        _firstSelector = firstSelector;
-        _intermediateOperations = intermediateOperations;
-        _secondSelector = secondSelector;
-        _resultOperations = new List<Func<IQueryable<TResult>, IQueryable<TResult>>>();
-    }
+    private readonly List<Func<IQueryable<TResult>, IQueryable<TResult>>> _resultOperations = new List<Func<IQueryable<TResult>, IQueryable<TResult>>>();
 
     // Implementation of all IProjectionSpecification methods would go here
     // For brevity, I'll implement just a few key ones
@@ -305,7 +285,7 @@ internal class ChainedProjectionSpecification<TSource, TIntermediate, TResult> :
             query => query.Where(predicate)
         };
         return new ChainedProjectionSpecification<TSource, TIntermediate, TResult>(
-            _sourceOperations, _firstSelector, _intermediateOperations, _secondSelector);
+            sourceOperations, firstSelector, intermediateOperations, secondSelector);
     }
 
     public IProjectionSpecification<TResult> OrderBy<TKey>(Expression<Func<TResult, TKey>> keySelector)
@@ -348,21 +328,21 @@ internal class ChainedProjectionSpecification<TSource, TIntermediate, TResult> :
         throw new NotImplementedException();
     }
 
-    public IQueryable<TResult> Build<T>(IQueryable<T> source) where T : class, IEntity
+    public IQueryable<TResult> Build<T>(IQueryable<T> source) where T : class
     {
         // Apply source operations
-        var sourceQuery = _sourceOperations.Aggregate((IQueryable<TSource>)source,
+        var sourceQuery = sourceOperations.Aggregate((IQueryable<TSource>)source,
             (current, operation) => operation(current));
 
         // Apply first projection
-        var intermediateQuery = sourceQuery.Select(_firstSelector);
+        var intermediateQuery = sourceQuery.Select(firstSelector);
 
         // Apply intermediate operations
-        var processedIntermediate = _intermediateOperations.Aggregate(intermediateQuery,
+        var processedIntermediate = intermediateOperations.Aggregate(intermediateQuery,
             (current, operation) => operation(current));
 
         // Apply second projection
-        var finalQuery = processedIntermediate.Select(_secondSelector);
+        var finalQuery = processedIntermediate.Select(secondSelector);
 
         // Apply final operations
         return _resultOperations.Aggregate(finalQuery, (current, operation) => operation(current));

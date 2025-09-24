@@ -3,7 +3,7 @@ namespace FluentCMS.Repositories.Abstractions;
 /// <summary>
 /// Base interface for all specifications
 /// </summary>
-public interface ISpecification<T> where T : class, IEntity
+public interface ISpecification<T> where T : class
 {
     // Applies the specification to a queryable source
     IQueryable<T> Apply(IQueryable<T> query);
@@ -12,7 +12,7 @@ public interface ISpecification<T> where T : class, IEntity
 /// <summary>
 /// Interface for composable specifications that can be combined with logical operators
 /// </summary>
-public interface ICompositeSpecification<T> : ISpecification<T> where T : class, IEntity
+public interface ICompositeSpecification<T> : ISpecification<T> where T : class
 {
     // Combines this specification with another using AND logic
     ICompositeSpecification<T> And(ISpecification<T> other);
@@ -27,7 +27,7 @@ public interface ICompositeSpecification<T> : ISpecification<T> where T : class,
 /// <summary>
 /// Interface for fluent query building similar to LINQ
 /// </summary>
-public interface IQuerySpecification<T> where T : class, IEntity
+public interface IQuerySpecification<T> where T : class
 {
     // Filtering
     IQuerySpecification<T> Where(Expression<Func<T, bool>> predicate);
@@ -77,5 +77,5 @@ public interface IProjectionSpecification<TResult>
     IProjectionSpecification<TNewResult> Select<TNewResult>(Expression<Func<TResult, TNewResult>> selector);
 
     // Build the final queryable
-    IQueryable<TResult> Build<T>(IQueryable<T> source) where T : class, IEntity;
+    IQueryable<TResult> Build<T>(IQueryable<T> source) where T : class;
 }
