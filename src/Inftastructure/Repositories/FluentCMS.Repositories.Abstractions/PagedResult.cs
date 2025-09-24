@@ -1,4 +1,4 @@
-namespace FluentCMS.Repositories.Abstractions;
+namespace FluentCMS.Repositories;
 
 /// <summary>
 /// Pagination result wrapper

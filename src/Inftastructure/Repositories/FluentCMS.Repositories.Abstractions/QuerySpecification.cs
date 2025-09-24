@@ -1,4 +1,4 @@
-namespace FluentCMS.Repositories.Abstractions;
+namespace FluentCMS.Repositories;
 
 /// <summary>
 /// Fluent query specification builder that provides LINQ-like syntax

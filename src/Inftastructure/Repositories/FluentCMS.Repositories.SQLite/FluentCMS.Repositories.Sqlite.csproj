@@ -11,7 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\FluentCMS.Repositories.Abstractions\FluentCMS.Repositories.Abstractions.csproj" />
+    <ProjectReference Include="..\FluentCMS.Repositories.EntityFramework\FluentCMS.Repositories.EntityFramework.csproj" />
   </ItemGroup>
 
 </Project>

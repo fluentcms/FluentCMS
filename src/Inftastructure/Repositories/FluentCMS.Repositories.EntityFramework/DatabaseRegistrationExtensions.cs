@@ -4,7 +4,6 @@ public static class DatabaseRegistrationExtensions
 {
     public static IServiceCollection AddGenericRepository<TEntity, TContext>(this IServiceCollection services) where TEntity : class, IEntity where TContext : DbContext
     {
-        services.AddMemoryCache();
         services.AddScoped<IRepository<TEntity>, Repository<TEntity, TContext>>();
         return services;
     }

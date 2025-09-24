@@ -184,7 +184,7 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
 
     #region Specification-based Query Methods
 
-    public virtual async Task<IEnumerable<TEntity>> Find(ISpecification<TEntity> specification, CancellationToken cancellationToken = default)
+    public virtual async Task<IEnumerable<TEntity>> Query(ISpecification<TEntity> specification, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(specification);
@@ -196,12 +196,12 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Unable to find entities of type {EntityType} using specification", typeof(TEntity).Name);
-            throw RepositoryException<TEntity>.ForOperation("Find", $"Unable to find entities of type {typeof(TEntity).Name} using specification", ex);
+            Logger.LogError(ex, "Unable to query entities of type {EntityType} using specification", typeof(TEntity).Name);
+            throw RepositoryException<TEntity>.ForOperation("Query", $"Unable to query entities of type {typeof(TEntity).Name} using specification", ex);
         }
     }
 
-    public virtual async Task<TEntity?> FindFirst(ISpecification<TEntity> specification, CancellationToken cancellationToken = default)
+    public virtual async Task<TEntity?> FirstOrDefault(ISpecification<TEntity> specification, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(specification);
@@ -214,11 +214,11 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
         catch (Exception ex)
         {
             Logger.LogError(ex, "Unable to find first entity of type {EntityType} using specification", typeof(TEntity).Name);
-            throw RepositoryException<TEntity>.ForOperation("FindFirst", $"Unable to find first entity of type {typeof(TEntity).Name} using specification", ex);
+            throw RepositoryException<TEntity>.ForOperation("FirstOrDefault", $"Unable to find first entity of type {typeof(TEntity).Name} using specification", ex);
         }
     }
 
-    public virtual async Task<TEntity?> FindSingle(ISpecification<TEntity> specification, CancellationToken cancellationToken = default)
+    public virtual async Task<TEntity?> SingleOrDefault(ISpecification<TEntity> specification, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(specification);
@@ -231,7 +231,7 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
         catch (Exception ex)
         {
             Logger.LogError(ex, "Unable to find single entity of type {EntityType} using specification", typeof(TEntity).Name);
-            throw RepositoryException<TEntity>.ForOperation("FindSingle", $"Unable to find single entity of type {typeof(TEntity).Name} using specification", ex);
+            throw RepositoryException<TEntity>.ForOperation("SingleOrDefault", $"Unable to find single entity of type {typeof(TEntity).Name} using specification", ex);
         }
     }
 
@@ -274,9 +274,8 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
         // Get total count first
         var totalCount = await Count(specification, cancellationToken);
 
-        // Create a combined specification that includes the original specification and pagination
-        // This is a simplified approach since we removed AsQueryable()
-        var allItems = await Find(specification, cancellationToken);
+        // Get all items and apply pagination in memory (simplified approach)
+        var allItems = await Query(specification, cancellationToken);
         var pagedItems = allItems.Skip((page - 1) * pageSize).Take(pageSize);
 
         return new PagedResult<TEntity>
@@ -286,15 +285,6 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
             Page = page,
             PageSize = pageSize
         };
-    }
-
-    #endregion
-
-    #region Fluent Query Builder
-
-    public virtual IQuerySpecification<TEntity> Query()
-    {
-        return new QuerySpecification<TEntity>();
     }
 
     #endregion
