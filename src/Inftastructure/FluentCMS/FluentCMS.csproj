@@ -15,7 +15,6 @@
     <ProjectReference Include="..\Configuration\FluentCMS.Configuration.Sqlite\FluentCMS.Configuration.Sqlite.csproj" />
     <ProjectReference Include="..\Database\FluentCMS.Database.Sqlite\FluentCMS.Database.Sqlite.csproj" />
     <ProjectReference Include="..\Plugins\Core\FluentCMS.Plugins\FluentCMS.Plugins.csproj" />
-    <ProjectReference Include="..\Plugins\FluentCMS.Plugins.AuditTrailManager\FluentCMS.Plugins.AuditTrailManager.csproj" />
     <ProjectReference Include="..\Plugins\FluentCMS.Plugins.IdentityManager\FluentCMS.Plugins.IdentityManager.csproj" />
     <ProjectReference Include="..\Plugins\FluentCMS.Plugins.TodoManager\FluentCMS.Plugins.TodoManager.csproj" />
     <ProjectReference Include="..\Providers\Caching\FluentCMS.Providers.Caching.InMemory\FluentCMS.Providers.Caching.InMemory.csproj" />

@@ -1,91 +1,12 @@
 ﻿namespace FluentCMS.Repositories.EntityFramework;
 
-public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<TEntity, TContext>> logger) : IRepository<TEntity>, ITransactionalRepository<TEntity>
+public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<TEntity, TContext>> logger) : IRepository<TEntity>
     where TEntity : class, IEntity
     where TContext : DbContext
 {
     protected readonly ILogger<Repository<TEntity, TContext>> Logger = logger;
     protected readonly TContext Context = context;
     protected readonly DbSet<TEntity> DbSet = context.Set<TEntity>();
-    private IDbContextTransaction? _currentTransaction;
-
-    public bool IsTransactionActive => _currentTransaction != null;
-
-    protected virtual async Task SaveChangesAsync(CancellationToken cancellationToken = default)
-    {
-        // Only save changes if not in a transaction
-        if (!IsTransactionActive)
-        {
-            await Context.SaveChangesAsync(cancellationToken);
-            Logger.LogInformation("Changes saved for {EntityType}", typeof(TEntity).Name);
-        }
-    }
-
-    protected virtual async Task<int> SaveChangesWithAffectedRowsAsync(CancellationToken cancellationToken = default)
-    {
-        // Only save changes if not in a transaction
-        if (!IsTransactionActive)
-        {
-            var result = await Context.SaveChangesAsync(cancellationToken);
-            Logger.LogInformation("Changes saved for {EntityType} with {AffectedRows} affected rows", typeof(TEntity).Name, result);
-            return result;
-        }
-        return 0; // No affected rows when in transaction
-    }
-
-    public virtual async Task BeginTransaction(CancellationToken cancellationToken = default)
-    {
-        if (_currentTransaction != null)
-        {
-            Logger.LogError("A transaction is already active for {EntityType}", typeof(TEntity).Name);
-            throw new RepositoryException<TEntity>("A transaction is already active.");
-        }
-
-        _currentTransaction = await Context.Database.BeginTransactionAsync(cancellationToken);
-        Logger.LogInformation("Transaction started for {EntityType}", typeof(TEntity).Name);
-    }
-
-    public virtual async Task Commit(CancellationToken cancellationToken = default)
-    {
-        if (_currentTransaction == null)
-        {
-            Logger.LogError("No active transaction to commit for {EntityType}", typeof(TEntity).Name);
-            throw new RepositoryException<TEntity>("No active transaction to commit.");
-        }
-
-        try
-        {
-            await _currentTransaction.CommitAsync(cancellationToken);
-            Logger.LogInformation("Transaction committed for {EntityType}", typeof(TEntity).Name);
-        }
-        finally
-        {
-            await _currentTransaction.DisposeAsync();
-            Logger.LogInformation("Transaction disposed for {EntityType}", typeof(TEntity).Name);
-            _currentTransaction = null;
-        }
-    }
-
-    public virtual async Task Rollback(CancellationToken cancellationToken = default)
-    {
-        if (_currentTransaction == null)
-        {
-            Logger.LogError("No active transaction to rollback for {EntityType}", typeof(TEntity).Name);
-            throw new RepositoryException<TEntity>("No active transaction to rollback.");
-        }
-
-        try
-        {
-            await _currentTransaction.RollbackAsync(cancellationToken);
-            Logger.LogInformation("Transaction rolled back for {EntityType}", typeof(TEntity).Name);
-        }
-        finally
-        {
-            await _currentTransaction.DisposeAsync();
-            Logger.LogInformation("Transaction disposed for {EntityType}", typeof(TEntity).Name);
-            _currentTransaction = null;
-        }
-    }
 
     public virtual async Task<TEntity> Add(TEntity entity, CancellationToken cancellationToken = default)
     {
@@ -114,7 +35,7 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
 
     }
 
-    public virtual async Task<IEnumerable<TEntity>> AddMany(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default)
+    public virtual async Task<IEnumerable<TEntity>> AddRange(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -144,7 +65,7 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
         }
     }
 
-    public virtual async Task<TEntity> Remove(TEntity entity, CancellationToken cancellationToken = default)
+    public virtual async Task<TEntity?> Remove(TEntity entity, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(entity);
@@ -161,13 +82,11 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
             var affectedRows = await SaveChangesWithAffectedRowsAsync(cancellationToken);
             if (affectedRows == 0)
             {
-                Logger.LogError("Unable to Remove entity {EntityType} with id {EntityId}", typeof(TEntity).Name, entity.Id);
-                throw RepositoryException<TEntity>.ForEntityOperation("Remove", entity.Id, $"Unable to Remove entity {typeof(TEntity).Name} with id {entity.Id}");
+                Logger.LogWarning("Unable to Remove entity {EntityType} with id {EntityId}", typeof(TEntity).Name, entity.Id);
             }
             else if (affectedRows > 1)
             {
-                Logger.LogError("More than one entity was removed for entity {EntityType} with id {EntityId}", typeof(TEntity).Name, entity.Id);
-                throw RepositoryException<TEntity>.ForEntityOperation("Remove", entity.Id, $"More than one entity was removed for Entity {typeof(TEntity).Name} with id {entity.Id}");
+                Logger.LogWarning("More than one entity was removed for entity {EntityType} with id {EntityId}", typeof(TEntity).Name, entity.Id);
             }
 
             Logger.LogInformation("Entity {EntityType} with id {EntityId} removed", typeof(TEntity).Name, entity.Id);
@@ -180,7 +99,7 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
         }
     }
 
-    public virtual async Task<TEntity> Remove(Guid id, CancellationToken cancellationToken = default)
+    public virtual async Task<TEntity?> Remove(Guid id, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -272,7 +191,7 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
 
         try
         {
-            return await DbSet.Where(predicate).ToListAsync(cancellationToken);
+            return await DbSet.Where(predicate).AsNoTracking().ToListAsync(cancellationToken);
         }
         catch (Exception ex)
         {
@@ -287,7 +206,7 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
 
         try
         {
-            return await DbSet.ToListAsync(cancellationToken);
+            return await DbSet.AsNoTracking().ToListAsync(cancellationToken);
         }
         catch (Exception ex)
         {
@@ -295,4 +214,18 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
             throw RepositoryException<TEntity>.ForOperation("GetAll", $"Unable in GetAll for entity {typeof(TEntity).Name}", ex);
         }
     }
+
+    protected virtual async Task SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        await Context.SaveChangesAsync(cancellationToken);
+        Logger.LogInformation("Changes saved for {EntityType}", typeof(TEntity).Name);
+    }
+
+    protected virtual async Task<int> SaveChangesWithAffectedRowsAsync(CancellationToken cancellationToken = default)
+    {
+        var result = await Context.SaveChangesAsync(cancellationToken);
+        Logger.LogInformation("Changes saved for {EntityType} with {AffectedRows} affected rows", typeof(TEntity).Name, result);
+        return result;
+    }
+
 }

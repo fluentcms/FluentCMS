@@ -12,7 +12,6 @@
   
   <ItemGroup>
     <ProjectReference Include="..\..\FluentCMS.Shared\FluentCMS.Shared.csproj" />
-    <ProjectReference Include="..\..\Providers\EventBus\FluentCMS.Providers.EventBus.Abstractions\FluentCMS.Providers.EventBus.Abstractions.csproj" />
   </ItemGroup>
   
 </Project>

@@ -20,6 +20,6 @@ public class TodoSchemaValidator(TodoDbContext dbContext, IDatabaseManager<ITodo
     {
         if (!await databaseManager.DatabaseExists(cancellationToken))
             return true;
-        return !await databaseManager.TablesExist(["Todos"], cancellationToken);
+        return await databaseManager.TablesExist(["Todos"], cancellationToken);
     }
 }

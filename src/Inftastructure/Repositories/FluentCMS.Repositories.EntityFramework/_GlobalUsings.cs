@@ -1,11 +1,7 @@
-﻿global using FluentCMS.Exceptions;
-global using FluentCMS.Providers.Caching.Abstractions;
-global using FluentCMS.Providers.EventBus.Abstractions;
-global using FluentCMS.Repositories.Abstractions;
-global using FluentCMS.Repositories.EntityFramework.Interceptors;
+﻿global using FluentCMS.Repositories.Abstractions;
+global using Microsoft.Extensions.Caching.Memory;
 global using Microsoft.EntityFrameworkCore;
 global using Microsoft.EntityFrameworkCore.Diagnostics;
-global using Microsoft.EntityFrameworkCore.Storage;
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.DependencyInjection.Extensions;
 global using Microsoft.Extensions.Logging;
