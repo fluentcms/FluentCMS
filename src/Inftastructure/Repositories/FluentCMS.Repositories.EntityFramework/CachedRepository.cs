@@ -119,25 +119,7 @@ public class CachedRepository<TEntity, TContext>(TContext context, IMemoryCache 
         }
     }
 
-    public override async Task<int> Count(ISpecification<TEntity> specification, CancellationToken cancellationToken = default)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        ArgumentNullException.ThrowIfNull(specification);
-
-        try
-        {
-            var entitiesDict = await GetCachedDictionary(cancellationToken);
-            var query = specification.Apply(entitiesDict.Values.AsQueryable());
-            return query.Count();
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Unable to count entities of type {EntityType} using specification (cached)", typeof(TEntity).Name);
-            throw RepositoryException<TEntity>.ForOperation("Count", $"Unable to count entities of type {typeof(TEntity).Name} using specification (cached)", ex);
-        }
-    }
-
-    public override async Task<long> LongCount(ISpecification<TEntity> specification, CancellationToken cancellationToken = default)
+    public override async Task<long> Count(ISpecification<TEntity> specification, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(specification);
@@ -173,26 +155,6 @@ public class CachedRepository<TEntity, TContext>(TContext context, IMemoryCache 
         }
     }
 
-    public override async Task<bool> All(ISpecification<TEntity> specification, CancellationToken cancellationToken = default)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        ArgumentNullException.ThrowIfNull(specification);
-
-        try
-        {
-            var entitiesDict = await GetCachedDictionary(cancellationToken);
-            var totalCount = entitiesDict.Count;
-            var query = specification.Apply(entitiesDict.Values.AsQueryable());
-            var matchingCount = query.Count();
-            return totalCount == matchingCount;
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Unable to check if all entities of type {EntityType} satisfy specification (cached)", typeof(TEntity).Name);
-            throw RepositoryException<TEntity>.ForOperation("All", $"Unable to check if all entities of type {typeof(TEntity).Name} satisfy specification (cached)", ex);
-        }
-    }
-
     public override async Task<decimal> Sum(ISpecification<TEntity> specification, Expression<Func<TEntity, decimal>> selector, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -210,25 +172,6 @@ public class CachedRepository<TEntity, TContext>(TContext context, IMemoryCache 
             Logger.LogError(ex, "Unable to calculate sum for entities of type {EntityType} using specification (cached)", typeof(TEntity).Name);
             throw RepositoryException<TEntity>.ForOperation("Sum", $"Unable to calculate sum for entities of type {typeof(TEntity).Name} using specification (cached)", ex);
         }
-    }
-
-    #endregion
-
-    #region Projection Support (Falls back to base implementation)
-
-    // Note: Projection operations typically involve complex queries that benefit less from simple caching
-    // and may require database-specific optimizations, so we fall back to the base implementation
-    public override async Task<IEnumerable<TResult>> FindProjected<TResult>(IProjectionSpecification<TResult> projection, CancellationToken cancellationToken = default)
-    {
-        // For complex projections, it's often better to go directly to the database
-        // rather than loading all entities into memory and then projecting
-        return await base.FindProjected(projection, cancellationToken);
-    }
-
-    public override async Task<TResult?> FindFirstProjected<TResult>(IProjectionSpecification<TResult> projection, CancellationToken cancellationToken = default) where TResult : default
-    {
-        // For complex projections, it's often better to go directly to the database
-        return await base.FindFirstProjected(projection, cancellationToken);
     }
 
     #endregion

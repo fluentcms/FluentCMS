@@ -13,7 +13,7 @@ public static class DatabaseRegistrationExtensions
     public static IServiceCollection AddEfDbContext<TContext>(this IServiceCollection services, Action<DbContextOptionsBuilder>? additionalConfiguration = null) where TContext : DbContext
     {
         services.TryAddScoped<AuditableEntityInterceptor>();
-
+        
         services.AddDbContext<TContext>((provider, options) =>
         {
             options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);

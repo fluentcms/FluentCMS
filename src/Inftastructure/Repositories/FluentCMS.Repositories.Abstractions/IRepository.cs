@@ -19,17 +19,9 @@ public interface IRepository<TEntity> : IRepository where TEntity : class, IEnti
     Task<IEnumerable<TEntity>> Find(ISpecification<TEntity> specification, CancellationToken cancellationToken = default);
     Task<TEntity?> FindFirst(ISpecification<TEntity> specification, CancellationToken cancellationToken = default);
     Task<TEntity?> FindSingle(ISpecification<TEntity> specification, CancellationToken cancellationToken = default);
-    Task<int> Count(ISpecification<TEntity> specification, CancellationToken cancellationToken = default);
-    Task<long> LongCount(ISpecification<TEntity> specification, CancellationToken cancellationToken = default);
+    Task<long> Count(ISpecification<TEntity> specification, CancellationToken cancellationToken = default);
     Task<bool> Any(ISpecification<TEntity> specification, CancellationToken cancellationToken = default);
-    Task<bool> All(ISpecification<TEntity> specification, CancellationToken cancellationToken = default);
-
-    // Fluent specification builder - starts a new query specification
-    IQuerySpecification<TEntity> Query();
-
-    // Projection support
-    Task<IEnumerable<TResult>> FindProjected<TResult>(IProjectionSpecification<TResult> projection, CancellationToken cancellationToken = default);
-    Task<TResult?> FindFirstProjected<TResult>(IProjectionSpecification<TResult> projection, CancellationToken cancellationToken = default);
+    Task<PagedResult<TEntity>> FindPaged(ISpecification<TEntity> specification, int page, int pageSize, CancellationToken cancellationToken = default);
 
     // Basic aggregation method (keeping Sum as it's commonly used)
     Task<decimal> Sum(ISpecification<TEntity> specification, Expression<Func<TEntity, decimal>> selector, CancellationToken cancellationToken = default);

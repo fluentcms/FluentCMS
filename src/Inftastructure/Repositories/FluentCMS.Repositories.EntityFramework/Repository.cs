@@ -24,7 +24,7 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
             await SaveChangesAsync(cancellationToken);
 
             Logger.LogInformation("Entity {EntityType} with id {EntityId} added", typeof(TEntity).Name, entity.Id);
-
+            
             // Detach entity to prevent tracking issues in future operations
             Context.Entry(entity).State = EntityState.Detached;
 
@@ -43,7 +43,7 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
         ArgumentNullException.ThrowIfNull(entities);
 
         var entityList = entities.ToList();
-
+        
         foreach (var entity in entityList)
         {
             if (entity.Id == Guid.Empty)
@@ -84,7 +84,7 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
 
             // Detach entity to prevent tracking issues in future operations
             Context.Entry(entity).State = EntityState.Detached;
-
+            
             return entity;
         }
         catch (Exception ex)
@@ -115,10 +115,10 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
             }
 
             Logger.LogInformation("Entity {EntityType} with id {EntityId} removed", typeof(TEntity).Name, entity.Id);
-
+            
             // Detach entity to prevent tracking issues in future operations
             Context.Entry(entity).State = EntityState.Detached;
-
+            
             return entity;
         }
         catch (Exception ex)
@@ -235,24 +235,7 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
         }
     }
 
-    public virtual async Task<int> Count(ISpecification<TEntity> specification, CancellationToken cancellationToken = default)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        ArgumentNullException.ThrowIfNull(specification);
-
-        try
-        {
-            var query = specification.Apply(DbSet.AsNoTracking());
-            return await query.CountAsync(cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Unable to count entities of type {EntityType} using specification", typeof(TEntity).Name);
-            throw RepositoryException<TEntity>.ForOperation("Count", $"Unable to count entities of type {typeof(TEntity).Name} using specification", ex);
-        }
-    }
-
-    public virtual async Task<long> LongCount(ISpecification<TEntity> specification, CancellationToken cancellationToken = default)
+    public virtual async Task<long> Count(ISpecification<TEntity> specification, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(specification);
@@ -286,25 +269,23 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
         }
     }
 
-    public virtual async Task<bool> All(ISpecification<TEntity> specification, CancellationToken cancellationToken = default)
+    public async Task<PagedResult<TEntity>> FindPaged(ISpecification<TEntity> specification, int page, int pageSize, CancellationToken cancellationToken = default)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        ArgumentNullException.ThrowIfNull(specification);
+        // Get total count first
+        var totalCount = await Count(specification, cancellationToken);
 
-        try
+        // Create a combined specification that includes the original specification and pagination
+        // This is a simplified approach since we removed AsQueryable()
+        var allItems = await Find(specification, cancellationToken);
+        var pagedItems = allItems.Skip((page - 1) * pageSize).Take(pageSize);
+
+        return new PagedResult<TEntity>
         {
-            var query = specification.Apply(DbSet.AsNoTracking());
-            // For All() operation, we need to check if all entities in the DbSet satisfy the specification
-            // This is equivalent to checking if Count(all entities) == Count(entities matching specification)
-            var totalCount = await DbSet.CountAsync(cancellationToken);
-            var matchingCount = await query.CountAsync(cancellationToken);
-            return totalCount == matchingCount;
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Unable to check if all entities of type {EntityType} satisfy specification", typeof(TEntity).Name);
-            throw RepositoryException<TEntity>.ForOperation("All", $"Unable to check if all entities of type {typeof(TEntity).Name} satisfy specification", ex);
-        }
+            Items = pagedItems,
+            TotalCount = totalCount,
+            Page = page,
+            PageSize = pageSize
+        };
     }
 
     #endregion
@@ -317,45 +298,7 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
     }
 
     #endregion
-
-    #region Projection Support
-
-    public virtual async Task<IEnumerable<TResult>> FindProjected<TResult>(IProjectionSpecification<TResult> projection, CancellationToken cancellationToken = default)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        ArgumentNullException.ThrowIfNull(projection);
-
-        try
-        {
-            var query = projection.Build(DbSet.AsNoTracking());
-            return await query.ToListAsync(cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Unable to find projected results of type {ResultType} from entities of type {EntityType}", typeof(TResult).Name, typeof(TEntity).Name);
-            throw RepositoryException<TEntity>.ForOperation("FindProjected", $"Unable to find projected results of type {typeof(TResult).Name} from entities of type {typeof(TEntity).Name}", ex);
-        }
-    }
-
-    public virtual async Task<TResult?> FindFirstProjected<TResult>(IProjectionSpecification<TResult> projection, CancellationToken cancellationToken = default)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        ArgumentNullException.ThrowIfNull(projection);
-
-        try
-        {
-            var query = projection.Build(DbSet.AsNoTracking());
-            return await query.FirstOrDefaultAsync(cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Unable to find first projected result of type {ResultType} from entities of type {EntityType}", typeof(TResult).Name, typeof(TEntity).Name);
-            throw RepositoryException<TEntity>.ForOperation("FindFirstProjected", $"Unable to find first projected result of type {typeof(TResult).Name} from entities of type {typeof(TEntity).Name}", ex);
-        }
-    }
-
-    #endregion
-
+        
     #region Aggregation
 
     public virtual async Task<decimal> Sum(ISpecification<TEntity> specification, Expression<Func<TEntity, decimal>> selector, CancellationToken cancellationToken = default)
@@ -392,6 +335,8 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
         Logger.LogDebug("Changes saved for {EntityType} with {AffectedRows} affected rows", typeof(TEntity).Name, result);
         return result;
     }
+
+   
 
     #endregion
 }

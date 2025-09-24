@@ -3,7 +3,7 @@ namespace FluentCMS.Repositories.Abstractions;
 /// <summary>
 /// Fluent query specification builder that provides LINQ-like syntax
 /// </summary>
-public class QuerySpecification<T> : IQuerySpecification<T> where T : class, IEntity
+public class QuerySpecification<T> : IQuerySpecification<T> where T : class
 {
     private readonly List<Func<IQueryable<T>, IQueryable<T>>> _operations;
 
@@ -97,12 +97,6 @@ public class QuerySpecification<T> : IQuerySpecification<T> where T : class, IEn
         return new QuerySpecification<T>(newOperations);
     }
 
-    // Creates a projection specification for selecting specific fields/properties
-    public IProjectionSpecification<TResult> Select<TResult>(Expression<Func<T, TResult>> selector)
-    {
-        return new ProjectionSpecification<T, TResult>(_operations, selector);
-    }
-
     // Adds a distinct operation to remove duplicates
     public IQuerySpecification<T> Distinct()
     {
@@ -129,222 +123,17 @@ public class QuerySpecification<T> : IQuerySpecification<T> where T : class, IEn
 /// <summary>
 /// Specification wrapper for query specifications
 /// </summary>
-internal class QueryBasedSpecification<T>(IQuerySpecification<T> querySpecification) : Specification<T> where T : class, IEntity
+internal class QueryBasedSpecification<T> : Specification<T> where T : class
 {
+    private readonly IQuerySpecification<T> _querySpecification;
+
+    public QueryBasedSpecification(IQuerySpecification<T> querySpecification)
+    {
+        _querySpecification = querySpecification;
+    }
+
     public override IQueryable<T> Apply(IQueryable<T> query)
     {
-        return querySpecification.Build(query);
-    }
-}
-
-/// <summary>
-/// Implementation for projection specifications that can return any type
-/// </summary>
-public class ProjectionSpecification<TSource, TResult> : IProjectionSpecification<TResult>
-    where TSource : class, IEntity
-{
-    private readonly List<Func<IQueryable<TSource>, IQueryable<TSource>>> _sourceOperations;
-    private readonly Expression<Func<TSource, TResult>> _selector;
-    private readonly List<Func<IQueryable<TResult>, IQueryable<TResult>>> _resultOperations;
-
-    internal ProjectionSpecification(
-        List<Func<IQueryable<TSource>, IQueryable<TSource>>> sourceOperations,
-        Expression<Func<TSource, TResult>> selector)
-    {
-        _sourceOperations = sourceOperations;
-        _selector = selector;
-        _resultOperations = [];
-    }
-
-    private ProjectionSpecification(
-        List<Func<IQueryable<TSource>, IQueryable<TSource>>> sourceOperations,
-        Expression<Func<TSource, TResult>> selector,
-        List<Func<IQueryable<TResult>, IQueryable<TResult>>> resultOperations)
-    {
-        _sourceOperations = sourceOperations;
-        _selector = selector;
-        _resultOperations = [.. resultOperations];
-    }
-
-    // Continue filtering on projected results
-    public IProjectionSpecification<TResult> Where(Expression<Func<TResult, bool>> predicate)
-    {
-        var newOperations = new List<Func<IQueryable<TResult>, IQueryable<TResult>>>(_resultOperations)
-        {
-            query => query.Where(predicate)
-        };
-        return new ProjectionSpecification<TSource, TResult>(_sourceOperations, _selector, newOperations);
-    }
-
-    // Continue ordering on projected results
-    public IProjectionSpecification<TResult> OrderBy<TKey>(Expression<Func<TResult, TKey>> keySelector)
-    {
-        var newOperations = new List<Func<IQueryable<TResult>, IQueryable<TResult>>>(_resultOperations)
-        {
-            query => query.OrderBy(keySelector)
-        };
-        return new ProjectionSpecification<TSource, TResult>(_sourceOperations, _selector, newOperations);
-    }
-
-    public IProjectionSpecification<TResult> OrderByDescending<TKey>(Expression<Func<TResult, TKey>> keySelector)
-    {
-        var newOperations = new List<Func<IQueryable<TResult>, IQueryable<TResult>>>(_resultOperations)
-        {
-            query => query.OrderByDescending(keySelector)
-        };
-        return new ProjectionSpecification<TSource, TResult>(_sourceOperations, _selector, newOperations);
-    }
-
-    public IProjectionSpecification<TResult> ThenBy<TKey>(Expression<Func<TResult, TKey>> keySelector)
-    {
-        var newOperations = new List<Func<IQueryable<TResult>, IQueryable<TResult>>>(_resultOperations)
-        {
-            query => ((IOrderedQueryable<TResult>)query).ThenBy(keySelector)
-        };
-        return new ProjectionSpecification<TSource, TResult>(_sourceOperations, _selector, newOperations);
-    }
-
-    public IProjectionSpecification<TResult> ThenByDescending<TKey>(Expression<Func<TResult, TKey>> keySelector)
-    {
-        var newOperations = new List<Func<IQueryable<TResult>, IQueryable<TResult>>>(_resultOperations)
-        {
-            query => ((IOrderedQueryable<TResult>)query).ThenByDescending(keySelector)
-        };
-        return new ProjectionSpecification<TSource, TResult>(_sourceOperations, _selector, newOperations);
-    }
-
-    public IProjectionSpecification<TResult> Skip(int count)
-    {
-        var newOperations = new List<Func<IQueryable<TResult>, IQueryable<TResult>>>(_resultOperations)
-        {
-            query => query.Skip(count)
-        };
-        return new ProjectionSpecification<TSource, TResult>(_sourceOperations, _selector, newOperations);
-    }
-
-    public IProjectionSpecification<TResult> Take(int count)
-    {
-        var newOperations = new List<Func<IQueryable<TResult>, IQueryable<TResult>>>(_resultOperations)
-        {
-            query => query.Take(count)
-        };
-        return new ProjectionSpecification<TSource, TResult>(_sourceOperations, _selector, newOperations);
-    }
-
-    public IProjectionSpecification<TResult> Distinct()
-    {
-        var newOperations = new List<Func<IQueryable<TResult>, IQueryable<TResult>>>(_resultOperations)
-        {
-            query => query.Distinct()
-        };
-        return new ProjectionSpecification<TSource, TResult>(_sourceOperations, _selector, newOperations);
-    }
-
-    // Chain another projection
-    public IProjectionSpecification<TNewResult> Select<TNewResult>(Expression<Func<TResult, TNewResult>> selector)
-    {
-        // This creates a new projection chain
-        return new ChainedProjectionSpecification<TSource, TResult, TNewResult>(
-            _sourceOperations, _selector, _resultOperations, selector);
-    }
-
-    // Build the final queryable
-    public IQueryable<TResult> Build<T>(IQueryable<T> source) where T : class
-    {
-        // Apply source operations first
-        var sourceQuery = _sourceOperations.Aggregate((IQueryable<TSource>)source,
-            (current, operation) => operation(current));
-
-        // Apply the projection
-        var projectedQuery = sourceQuery.Select(_selector);
-
-        // Apply result operations
-        return _resultOperations.Aggregate(projectedQuery, (current, operation) => operation(current));
-    }
-}
-
-/// <summary>
-/// Handles chained projections (Select after Select)
-/// </summary>
-internal class ChainedProjectionSpecification<TSource, TIntermediate, TResult>(
-    List<Func<IQueryable<TSource>, IQueryable<TSource>>> sourceOperations,
-    Expression<Func<TSource, TIntermediate>> firstSelector,
-    List<Func<IQueryable<TIntermediate>, IQueryable<TIntermediate>>> intermediateOperations,
-    Expression<Func<TIntermediate, TResult>> secondSelector) : IProjectionSpecification<TResult>
-    where TSource : class, IEntity
-{
-    private readonly List<Func<IQueryable<TResult>, IQueryable<TResult>>> _resultOperations = new List<Func<IQueryable<TResult>, IQueryable<TResult>>>();
-
-    // Implementation of all IProjectionSpecification methods would go here
-    // For brevity, I'll implement just a few key ones
-
-    public IProjectionSpecification<TResult> Where(Expression<Func<TResult, bool>> predicate)
-    {
-        var newOperations = new List<Func<IQueryable<TResult>, IQueryable<TResult>>>(_resultOperations)
-        {
-            query => query.Where(predicate)
-        };
-        return new ChainedProjectionSpecification<TSource, TIntermediate, TResult>(
-            sourceOperations, firstSelector, intermediateOperations, secondSelector);
-    }
-
-    public IProjectionSpecification<TResult> OrderBy<TKey>(Expression<Func<TResult, TKey>> keySelector)
-    {
-        throw new NotImplementedException();
-    }
-
-    public IProjectionSpecification<TResult> OrderByDescending<TKey>(Expression<Func<TResult, TKey>> keySelector)
-    {
-        throw new NotImplementedException();
-    }
-
-    public IProjectionSpecification<TResult> ThenBy<TKey>(Expression<Func<TResult, TKey>> keySelector)
-    {
-        throw new NotImplementedException();
-    }
-
-    public IProjectionSpecification<TResult> ThenByDescending<TKey>(Expression<Func<TResult, TKey>> keySelector)
-    {
-        throw new NotImplementedException();
-    }
-
-    public IProjectionSpecification<TResult> Skip(int count)
-    {
-        throw new NotImplementedException();
-    }
-
-    public IProjectionSpecification<TResult> Take(int count)
-    {
-        throw new NotImplementedException();
-    }
-
-    public IProjectionSpecification<TResult> Distinct()
-    {
-        throw new NotImplementedException();
-    }
-
-    public IProjectionSpecification<TNewResult> Select<TNewResult>(Expression<Func<TResult, TNewResult>> selector)
-    {
-        throw new NotImplementedException();
-    }
-
-    public IQueryable<TResult> Build<T>(IQueryable<T> source) where T : class
-    {
-        // Apply source operations
-        var sourceQuery = sourceOperations.Aggregate((IQueryable<TSource>)source,
-            (current, operation) => operation(current));
-
-        // Apply first projection
-        var intermediateQuery = sourceQuery.Select(firstSelector);
-
-        // Apply intermediate operations
-        var processedIntermediate = intermediateOperations.Aggregate(intermediateQuery,
-            (current, operation) => operation(current));
-
-        // Apply second projection
-        var finalQuery = processedIntermediate.Select(secondSelector);
-
-        // Apply final operations
-        return _resultOperations.Aggregate(finalQuery, (current, operation) => operation(current));
+        return _querySpecification.Build(query);
     }
 }
