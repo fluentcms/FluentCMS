@@ -4,7 +4,6 @@ using FluentCMS.Repositories.Sqlite;
 using FluentCMS.Repositories.Tests.Integration.TestEntities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Repositories.Tests.Integration.TestFixtures;

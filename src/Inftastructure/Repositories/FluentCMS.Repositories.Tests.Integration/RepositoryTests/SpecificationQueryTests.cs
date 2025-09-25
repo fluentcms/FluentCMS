@@ -3,8 +3,6 @@ using FluentCMS.Repositories.Abstractions;
 using FluentCMS.Repositories.Tests.Integration.Helpers;
 using FluentCMS.Repositories.Tests.Integration.TestEntities;
 using FluentCMS.Repositories.Tests.Integration.TestFixtures;
-using Microsoft.Extensions.DependencyInjection;
-using Xunit;
 
 namespace FluentCMS.Repositories.Tests.Integration.RepositoryTests;
 

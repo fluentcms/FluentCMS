@@ -1,5 +1,3 @@
-using FluentCMS;
-
 namespace FluentCMS.Repositories.Tests.Integration.TestEntities;
 
 public class TestCategory : IEntity

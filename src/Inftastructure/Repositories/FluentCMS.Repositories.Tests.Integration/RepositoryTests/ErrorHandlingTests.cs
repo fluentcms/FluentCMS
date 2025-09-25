@@ -5,7 +5,6 @@ using FluentCMS.Repositories.Tests.Integration.TestEntities;
 using FluentCMS.Repositories.Tests.Integration.TestFixtures;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Xunit;
 
 namespace FluentCMS.Repositories.Tests.Integration.RepositoryTests;
 

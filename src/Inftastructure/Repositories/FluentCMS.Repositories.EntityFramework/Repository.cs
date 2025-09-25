@@ -86,7 +86,7 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
         {
             DbSet.Update(entity);
             await SaveChangesAsync(cancellationToken);
-            
+
             Logger.LogInformation("Entity {EntityType} with id {EntityId} updated", typeof(TEntity).Name, entity.Id);
 
             // Detach entity to prevent tracking issues in future operations

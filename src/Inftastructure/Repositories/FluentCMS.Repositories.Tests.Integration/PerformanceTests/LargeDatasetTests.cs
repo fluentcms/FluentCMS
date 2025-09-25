@@ -3,9 +3,7 @@ using FluentCMS.Repositories.Abstractions;
 using FluentCMS.Repositories.Tests.Integration.Helpers;
 using FluentCMS.Repositories.Tests.Integration.TestEntities;
 using FluentCMS.Repositories.Tests.Integration.TestFixtures;
-using Microsoft.Extensions.DependencyInjection;
 using System.Diagnostics;
-using Xunit;
 using Xunit.Abstractions;
 
 namespace FluentCMS.Repositories.Tests.Integration.PerformanceTests;
