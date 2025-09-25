@@ -657,7 +657,7 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
 
         // Assert
         result.Should().BeGreaterThan(0);
-        result.Should().BeLessOrEqualTo(1000);
+        result.Should().BeLessThanOrEqualTo(1000);
     }
 
     [Fact]
@@ -745,7 +745,7 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
 
         // Assert
         var resultList = result.ToList();
-        resultList.Should().HaveCountLessOrEqualTo(5);
+        resultList.Should().HaveCountLessThanOrEqualTo(5);
         resultList.Should().OnlyContain(u => u.Age >= 25);
         resultList.Should().BeInAscendingOrder(u => u.Name);
     }
@@ -759,7 +759,7 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
         await _userRepository.AddRange(users);
 
         var specification = SpecificationExtensions.Where<TestUser>(u => 
-            (u.Age > 25 && u.Name.Contains("o")) || u.Email.Contains("alice"));
+            (u.Age > 25 && u.Name.Contains('o')) || u.Email.Contains("alice"));
 
         // Act
         var result = await _userRepository.Query(specification);
@@ -768,7 +768,7 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
         result.Should().NotBeEmpty();
         var resultList = result.ToList();
         resultList.Should().OnlyContain(u => 
-            (u.Age > 25 && u.Name.Contains("o")) || u.Email.Contains("alice"));
+            (u.Age > 25 && u.Name.Contains('o')) || u.Email.Contains("alice"));
     }
 
     [Fact]

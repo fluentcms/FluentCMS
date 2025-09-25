@@ -125,7 +125,7 @@ public class LargeDatasetTests : IClassFixture<SqliteTestFixture>
         _output.WriteLine($"Count on {entityCount} entities took {elapsedMs}ms");
         
         result.Should().BeGreaterThan(0);
-        result.Should().BeLessOrEqualTo(entityCount);
+        result.Should().BeLessThanOrEqualTo(entityCount);
         elapsedMs.Should().BeLessThan(2000, "Count operation should complete within 2 seconds");
     }
 
