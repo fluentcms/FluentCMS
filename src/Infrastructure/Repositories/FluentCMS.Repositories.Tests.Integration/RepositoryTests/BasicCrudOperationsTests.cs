@@ -10,7 +10,7 @@ namespace FluentCMS.Repositories.Tests.Integration.RepositoryTests;
 /// Each test gets its own isolated database instance, eliminating cross-test contamination.
 /// Compare this with the original BasicCrudOperationsTests to see the improvements.
 /// </summary>
-public class BasicCrudOperationsTestsImproved(IsolatedSqliteTestFixture fixture) : IClassFixture<IsolatedSqliteTestFixture>
+public class BasicCrudOperationsTests(IsolatedSqliteTestFixture fixture) : IClassFixture<IsolatedSqliteTestFixture>
 {
 
     #region Add Operations Tests
