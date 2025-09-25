@@ -48,7 +48,7 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
         for (int i = 0; i < entityList.Count; i++)
         {
             if (entityList[i] == null)
-                throw new ArgumentNullException($"entities[{i}]", "Entity at index " + i + " cannot be null");
+                throw new ArgumentNullException($"entities[{i}]", $"Entity at index {i} cannot be null");
         }
 
         foreach (var entity in entityList)
