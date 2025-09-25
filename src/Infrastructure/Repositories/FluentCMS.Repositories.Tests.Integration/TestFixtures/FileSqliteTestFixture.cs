@@ -85,9 +85,9 @@ public class FileTestScope : IDisposable
     private readonly TestDbContext _context;
     private readonly string _databaseFilePath;
 
-    public FileTestScope(string databaeFilePath)
+    public FileTestScope(string databaseFilePath)
     {
-        _databaseFilePath = databaeFilePath;
+        _databaseFilePath = databaseFilePath;
         // Create isolated service collection for this test
         var services = new ServiceCollection();
 
