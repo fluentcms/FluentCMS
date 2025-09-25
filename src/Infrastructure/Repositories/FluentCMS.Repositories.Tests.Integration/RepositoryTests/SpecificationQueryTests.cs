@@ -1,22 +1,21 @@
 using FluentAssertions;
-using FluentCMS.Repositories.Abstractions;
 using FluentCMS.Repositories.Tests.Integration.Helpers;
 using FluentCMS.Repositories.Tests.Integration.TestEntities;
 using FluentCMS.Repositories.Tests.Integration.TestFixtures;
 
 namespace FluentCMS.Repositories.Tests.Integration.RepositoryTests;
 
-public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
+/// <summary>
+/// Specification query tests using isolated database instances for each test.
+/// Each test gets its own fresh database, ensuring complete test isolation.
+/// </summary>
+public class SpecificationQueryTests : IClassFixture<IsolatedSqliteTestFixture>
 {
-    private readonly SqliteTestFixture _fixture;
-    private readonly IRepository<TestUser> _userRepository;
-    private readonly IRepository<TestProduct> _productRepository;
+    private readonly IsolatedSqliteTestFixture _fixture;
 
-    public SpecificationQueryTests(SqliteTestFixture fixture)
+    public SpecificationQueryTests(IsolatedSqliteTestFixture fixture)
     {
         _fixture = fixture;
-        _userRepository = _fixture.GetRepository<TestUser>();
-        _productRepository = _fixture.GetRepository<TestProduct>();
     }
 
     #region Basic Query Operations Tests
@@ -24,15 +23,17 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     [Fact]
     public async Task Query_WithWhereSpecification_ShouldReturnFilteredResults()
     {
-        // Arrange
-        await _fixture.CleanDatabase();
+        // Arrange - Each test gets its own isolated database
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         var users = TestDataBuilder.CreateUsersForFiltering();
-        await _userRepository.AddRange(users);
+        await userRepository.AddRange(users);
 
         var specification = SpecificationExtensions.Where<TestUser>(u => u.Age > 30);
 
         // Act
-        var result = await _userRepository.Query(specification);
+        var result = await userRepository.Query(specification);
 
         // Assert
         var resultList = result.ToList();
@@ -43,15 +44,17 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     [Fact]
     public async Task Query_WithMultipleWhereConditions_ShouldApplyAllFilters()
     {
-        // Arrange
-        await _fixture.CleanDatabase();
+        // Arrange - Fresh isolated database
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         var users = TestDataBuilder.CreateUsersForFiltering();
-        await _userRepository.AddRange(users);
+        await userRepository.AddRange(users);
 
         var specification = SpecificationExtensions.Where<TestUser>(u => u.Age >= 25 && u.Age <= 35);
 
         // Act
-        var result = await _userRepository.Query(specification);
+        var result = await userRepository.Query(specification);
 
         // Assert
         var resultList = result.ToList();
@@ -62,15 +65,17 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     [Fact]
     public async Task Query_WithNoMatches_ShouldReturnEmptyList()
     {
-        // Arrange
-        await _fixture.CleanDatabase();
+        // Arrange - Isolated test environment
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         var users = TestDataBuilder.CreateUsersForFiltering();
-        await _userRepository.AddRange(users);
+        await userRepository.AddRange(users);
 
         var specification = SpecificationExtensions.Where<TestUser>(u => u.Age > 100);
 
         // Act
-        var result = await _userRepository.Query(specification);
+        var result = await userRepository.Query(specification);
 
         // Assert
         result.Should().BeEmpty();
@@ -80,14 +85,16 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     public async Task FirstOrDefault_WithMatches_ShouldReturnFirstEntity()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         var users = TestDataBuilder.CreateUsersForFiltering();
-        await _userRepository.AddRange(users);
+        await userRepository.AddRange(users);
 
         var specification = SpecificationExtensions.Where<TestUser>(u => u.Age > 30);
 
         // Act
-        var result = await _userRepository.FirstOrDefault(specification);
+        var result = await userRepository.FirstOrDefault(specification);
 
         // Assert
         result.Should().NotBeNull();
@@ -98,14 +105,16 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     public async Task FirstOrDefault_WithNoMatches_ShouldReturnNull()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         var users = TestDataBuilder.CreateUsersForFiltering();
-        await _userRepository.AddRange(users);
+        await userRepository.AddRange(users);
 
         var specification = SpecificationExtensions.Where<TestUser>(u => u.Age > 100);
 
         // Act
-        var result = await _userRepository.FirstOrDefault(specification);
+        var result = await userRepository.FirstOrDefault(specification);
 
         // Assert
         result.Should().BeNull();
@@ -115,14 +124,16 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     public async Task SingleOrDefault_WithSingleMatch_ShouldReturnEntity()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         var users = TestDataBuilder.CreateUsersForFiltering();
-        await _userRepository.AddRange(users);
+        await userRepository.AddRange(users);
 
         var specification = SpecificationExtensions.Where<TestUser>(u => u.Name == "John Doe");
 
         // Act
-        var result = await _userRepository.SingleOrDefault(specification);
+        var result = await userRepository.SingleOrDefault(specification);
 
         // Assert
         result.Should().NotBeNull();
@@ -133,14 +144,16 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     public async Task SingleOrDefault_WithNoMatches_ShouldReturnNull()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         var users = TestDataBuilder.CreateUsersForFiltering();
-        await _userRepository.AddRange(users);
+        await userRepository.AddRange(users);
 
         var specification = SpecificationExtensions.Where<TestUser>(u => u.Name == "Nonexistent User");
 
         // Act
-        var result = await _userRepository.SingleOrDefault(specification);
+        var result = await userRepository.SingleOrDefault(specification);
 
         // Assert
         result.Should().BeNull();
@@ -150,14 +163,16 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     public async Task SingleOrDefault_WithMultipleMatches_ShouldThrowException()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         var users = TestDataBuilder.CreateUsersForFiltering();
-        await _userRepository.AddRange(users);
+        await userRepository.AddRange(users);
 
         var specification = SpecificationExtensions.Where<TestUser>(u => u.Age > 25);
 
         // Act & Assert
-        var action = async () => await _userRepository.SingleOrDefault(specification);
+        var action = async () => await userRepository.SingleOrDefault(specification);
         // Repository wraps the InvalidOperationException in a RepositoryException
         var exception = await action.Should().ThrowAsync<Exception>();
         exception.Which.Should().BeOfType<RepositoryException<TestUser>>();
@@ -167,14 +182,16 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     public async Task Count_WithFilters_ShouldReturnCorrectCount()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         var users = TestDataBuilder.CreateUsersForFiltering();
-        await _userRepository.AddRange(users);
+        await userRepository.AddRange(users);
 
         var specification = SpecificationExtensions.Where<TestUser>(u => u.Age >= 30);
 
         // Act
-        var result = await _userRepository.Count(specification);
+        var result = await userRepository.Count(specification);
 
         // Assert
         result.Should().Be(3); // John (30), Bob (35), Charlie (42)
@@ -184,14 +201,16 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     public async Task Count_WithNoMatches_ShouldReturnZero()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         var users = TestDataBuilder.CreateUsersForFiltering();
-        await _userRepository.AddRange(users);
+        await userRepository.AddRange(users);
 
         var specification = SpecificationExtensions.Where<TestUser>(u => u.Age > 100);
 
         // Act
-        var result = await _userRepository.Count(specification);
+        var result = await userRepository.Count(specification);
 
         // Assert
         result.Should().Be(0);
@@ -201,14 +220,16 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     public async Task Any_WithMatches_ShouldReturnTrue()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         var users = TestDataBuilder.CreateUsersForFiltering();
-        await _userRepository.AddRange(users);
+        await userRepository.AddRange(users);
 
         var specification = SpecificationExtensions.Where<TestUser>(u => u.Age > 40);
 
         // Act
-        var result = await _userRepository.Any(specification);
+        var result = await userRepository.Any(specification);
 
         // Assert
         result.Should().BeTrue();
@@ -218,14 +239,16 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     public async Task Any_WithNoMatches_ShouldReturnFalse()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         var users = TestDataBuilder.CreateUsersForFiltering();
-        await _userRepository.AddRange(users);
+        await userRepository.AddRange(users);
 
         var specification = SpecificationExtensions.Where<TestUser>(u => u.Age > 100);
 
         // Act
-        var result = await _userRepository.Any(specification);
+        var result = await userRepository.Any(specification);
 
         // Assert
         result.Should().BeFalse();
@@ -239,15 +262,17 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     public async Task Query_WithOrderBy_ShouldReturnOrderedResults()
     {
         // Arrange
-        await _fixture.CleanDatabase();
-        var users = TestDataBuilder.CreateUsersForSorting();
-        await _userRepository.AddRange(users);
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
 
-        var querySpec = _userRepository.Query().OrderBy(u => u.Name);
+        var users = TestDataBuilder.CreateUsersForSorting();
+        await userRepository.AddRange(users);
+
+        var querySpec = userRepository.Query().OrderBy(u => u.Name);
         var specification = querySpec.ToSpecification();
 
         // Act
-        var result = await _userRepository.Query(specification);
+        var result = await userRepository.Query(specification);
 
         // Assert
         result.ShouldBeOrderedByName();
@@ -257,15 +282,17 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     public async Task Query_WithOrderByDescending_ShouldReturnDescendingResults()
     {
         // Arrange
-        await _fixture.CleanDatabase();
-        var users = TestDataBuilder.CreateUsersForSorting();
-        await _userRepository.AddRange(users);
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
 
-        var querySpec = _userRepository.Query().OrderByDescending(u => u.Age);
+        var users = TestDataBuilder.CreateUsersForSorting();
+        await userRepository.AddRange(users);
+
+        var querySpec = userRepository.Query().OrderByDescending(u => u.Age);
         var specification = querySpec.ToSpecification();
 
         // Act
-        var result = await _userRepository.Query(specification);
+        var result = await userRepository.Query(specification);
 
         // Assert
         result.ShouldBeOrderedByAgeDescending();
@@ -275,22 +302,24 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     public async Task Query_WithOrderByThenBy_ShouldApplySecondarySort()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         var users = new List<TestUser>
         {
             TestDataBuilder.CreateTestUser("Alice", "alice1@example.com", 25),
             TestDataBuilder.CreateTestUser("Alice", "alice2@example.com", 30),
             TestDataBuilder.CreateTestUser("Bob", "bob@example.com", 25)
         };
-        await _userRepository.AddRange(users);
+        await userRepository.AddRange(users);
 
-        var querySpec = _userRepository.Query()
+        var querySpec = userRepository.Query()
             .OrderBy(u => u.Name)
             .ThenBy(u => u.Age);
         var specification = querySpec.ToSpecification();
 
         // Act
-        var result = await _userRepository.Query(specification);
+        var result = await userRepository.Query(specification);
 
         // Assert
         var resultList = result.ToList();
@@ -305,22 +334,24 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     public async Task Query_WithOrderByDescendingThenByDescending_ShouldApplyBothDescending()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         var users = new List<TestUser>
         {
             TestDataBuilder.CreateTestUser("Alice", "alice1@example.com", 25),
             TestDataBuilder.CreateTestUser("Alice", "alice2@example.com", 30),
             TestDataBuilder.CreateTestUser("Bob", "bob@example.com", 35)
         };
-        await _userRepository.AddRange(users);
+        await userRepository.AddRange(users);
 
-        var querySpec = _userRepository.Query()
+        var querySpec = userRepository.Query()
             .OrderByDescending(u => u.Name)
             .ThenByDescending(u => u.Age);
         var specification = querySpec.ToSpecification();
 
         // Act
-        var result = await _userRepository.Query(specification);
+        var result = await userRepository.Query(specification);
 
         // Assert
         var resultList = result.ToList();
@@ -335,17 +366,19 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     public async Task Query_WithComplexOrdering_ShouldMaintainSortOrder()
     {
         // Arrange
-        await _fixture.CleanDatabase();
-        var users = TestDataBuilder.CreateUsersForSorting();
-        await _userRepository.AddRange(users);
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
 
-        var querySpec = _userRepository.Query()
+        var users = TestDataBuilder.CreateUsersForSorting();
+        await userRepository.AddRange(users);
+
+        var querySpec = userRepository.Query()
             .OrderBy(u => u.Age)
             .ThenByDescending(u => u.Name);
         var specification = querySpec.ToSpecification();
 
         // Act
-        var result = await _userRepository.Query(specification);
+        var result = await userRepository.Query(specification);
 
         // Assert
         var resultList = result.ToList();
@@ -362,18 +395,20 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     public async Task Query_WithOrderByOnDifferentDataTypes_ShouldWork()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = _fixture.CreateIsolatedScope();
+        var productRepository = scope.GetRepository<TestProduct>();
+
         var products = TestDataBuilder.CreateProductsForAggregation();
-        await _productRepository.AddRange(products);
+        await productRepository.AddRange(products);
 
         // SQLite doesn't support decimal ordering directly, so we'll order by CategoryId instead
-        var querySpec = _productRepository.Query()
+        var querySpec = productRepository.Query()
             .OrderBy(p => p.CategoryId)
             .ThenBy(p => p.IsActive);
         var specification = querySpec.ToSpecification();
 
         // Act
-        var result = await _productRepository.Query(specification);
+        var result = await productRepository.Query(specification);
 
         // Assert
         var resultList = result.ToList();
@@ -384,15 +419,17 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     public async Task Query_WithNullValues_ShouldHandleOrderingCorrectly()
     {
         // Arrange - This test would require nullable properties to be meaningful
-        await _fixture.CleanDatabase();
-        var users = TestDataBuilder.CreateUsersForSorting();
-        await _userRepository.AddRange(users);
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
 
-        var querySpec = _userRepository.Query().OrderBy(u => u.Email);
+        var users = TestDataBuilder.CreateUsersForSorting();
+        await userRepository.AddRange(users);
+
+        var querySpec = userRepository.Query().OrderBy(u => u.Email);
         var specification = querySpec.ToSpecification();
 
         // Act
-        var result = await _userRepository.Query(specification);
+        var result = await userRepository.Query(specification);
 
         // Assert
         result.Should().NotBeEmpty();
@@ -404,15 +441,17 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     public async Task Query_WithOrderByOnNavigationProperty_ShouldWork()
     {
         // Arrange - For this test, we'll order by a simple property since we don't have navigation properties
-        await _fixture.CleanDatabase();
-        var products = TestDataBuilder.CreateProductsForAggregation();
-        await _productRepository.AddRange(products);
+        using var scope = _fixture.CreateIsolatedScope();
+        var productRepository = scope.GetRepository<TestProduct>();
 
-        var querySpec = _productRepository.Query().OrderBy(p => p.CategoryId);
+        var products = TestDataBuilder.CreateProductsForAggregation();
+        await productRepository.AddRange(products);
+
+        var querySpec = productRepository.Query().OrderBy(p => p.CategoryId);
         var specification = querySpec.ToSpecification();
 
         // Act
-        var result = await _productRepository.Query(specification);
+        var result = await productRepository.Query(specification);
 
         // Assert
         var resultList = result.ToList();
@@ -427,17 +466,19 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     public async Task Query_WithSkip_ShouldSkipCorrectNumber()
     {
         // Arrange
-        await _fixture.CleanDatabase();
-        var users = TestDataBuilder.CreateTestUsers(10);
-        await _userRepository.AddRange(users);
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
 
-        var querySpec = _userRepository.Query()
+        var users = TestDataBuilder.CreateTestUsers(10);
+        await userRepository.AddRange(users);
+
+        var querySpec = userRepository.Query()
             .OrderBy(u => u.Name)
             .Skip(3);
         var specification = querySpec.ToSpecification();
 
         // Act
-        var result = await _userRepository.Query(specification);
+        var result = await userRepository.Query(specification);
 
         // Assert
         result.Should().HaveCount(7); // 10 - 3 = 7
@@ -447,17 +488,19 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     public async Task Query_WithTake_ShouldTakeCorrectNumber()
     {
         // Arrange
-        await _fixture.CleanDatabase();
-        var users = TestDataBuilder.CreateTestUsers(10);
-        await _userRepository.AddRange(users);
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
 
-        var querySpec = _userRepository.Query()
+        var users = TestDataBuilder.CreateTestUsers(10);
+        await userRepository.AddRange(users);
+
+        var querySpec = userRepository.Query()
             .OrderBy(u => u.Name)
             .Take(5);
         var specification = querySpec.ToSpecification();
 
         // Act
-        var result = await _userRepository.Query(specification);
+        var result = await userRepository.Query(specification);
 
         // Assert
         result.Should().HaveCount(5);
@@ -467,18 +510,20 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     public async Task Query_WithSkipAndTake_ShouldImplementPagination()
     {
         // Arrange
-        await _fixture.CleanDatabase();
-        var users = TestDataBuilder.CreateTestUsers(10);
-        await _userRepository.AddRange(users);
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
 
-        var querySpec = _userRepository.Query()
+        var users = TestDataBuilder.CreateTestUsers(10);
+        await userRepository.AddRange(users);
+
+        var querySpec = userRepository.Query()
             .OrderBy(u => u.Name)
             .Skip(3)
             .Take(4);
         var specification = querySpec.ToSpecification();
 
         // Act
-        var result = await _userRepository.Query(specification);
+        var result = await userRepository.Query(specification);
 
         // Assert
         result.Should().HaveCount(4);
@@ -488,17 +533,19 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     public async Task Query_WithSkipGreaterThanTotal_ShouldReturnEmpty()
     {
         // Arrange
-        await _fixture.CleanDatabase();
-        var users = TestDataBuilder.CreateTestUsers(5);
-        await _userRepository.AddRange(users);
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
 
-        var querySpec = _userRepository.Query()
+        var users = TestDataBuilder.CreateTestUsers(5);
+        await userRepository.AddRange(users);
+
+        var querySpec = userRepository.Query()
             .OrderBy(u => u.Name)
             .Skip(10);
         var specification = querySpec.ToSpecification();
 
         // Act
-        var result = await _userRepository.Query(specification);
+        var result = await userRepository.Query(specification);
 
         // Assert
         result.Should().BeEmpty();
@@ -508,18 +555,20 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     public async Task Query_WithTakeGreaterThanRemaining_ShouldReturnAvailable()
     {
         // Arrange
-        await _fixture.CleanDatabase();
-        var users = TestDataBuilder.CreateTestUsers(5);
-        await _userRepository.AddRange(users);
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
 
-        var querySpec = _userRepository.Query()
+        var users = TestDataBuilder.CreateTestUsers(5);
+        await userRepository.AddRange(users);
+
+        var querySpec = userRepository.Query()
             .OrderBy(u => u.Name)
             .Skip(3)
             .Take(10);
         var specification = querySpec.ToSpecification();
 
         // Act
-        var result = await _userRepository.Query(specification);
+        var result = await userRepository.Query(specification);
 
         // Assert
         result.Should().HaveCount(2); // Only 2 items remaining after skipping 3
@@ -529,14 +578,16 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     public async Task FindPaged_WithValidParams_ShouldReturnPagedResult()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         var users = TestDataBuilder.CreateTestUsers(10);
-        await _userRepository.AddRange(users);
+        await userRepository.AddRange(users);
 
         var specification = SpecificationExtensions.Where<TestUser>(u => u.Age > 0); // All users
 
         // Act
-        var result = await _userRepository.FindPaged(specification, page: 2, pageSize: 3);
+        var result = await userRepository.FindPaged(specification, page: 2, pageSize: 3);
 
         // Assert
         result.ShouldHavePage(2);
@@ -549,14 +600,16 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     public async Task FindPaged_WithPageBeyondResults_ShouldReturnEmptyPage()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         var users = TestDataBuilder.CreateTestUsers(5);
-        await _userRepository.AddRange(users);
+        await userRepository.AddRange(users);
 
         var specification = SpecificationExtensions.Where<TestUser>(u => u.Age > 0);
 
         // Act
-        var result = await _userRepository.FindPaged(specification, page: 10, pageSize: 3);
+        var result = await userRepository.FindPaged(specification, page: 10, pageSize: 3);
 
         // Assert
         result.ShouldHavePage(10);
@@ -569,14 +622,16 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     public async Task FindPaged_WithLargePageSize_ShouldReturnAllResults()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         var users = TestDataBuilder.CreateTestUsers(5);
-        await _userRepository.AddRange(users);
+        await userRepository.AddRange(users);
 
         var specification = SpecificationExtensions.Where<TestUser>(u => u.Age > 0);
 
         // Act
-        var result = await _userRepository.FindPaged(specification, page: 1, pageSize: 100);
+        var result = await userRepository.FindPaged(specification, page: 1, pageSize: 100);
 
         // Assert
         result.ShouldHavePage(1);
@@ -593,14 +648,16 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     public async Task Sum_WithValidSelector_ShouldReturnCorrectSum()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = _fixture.CreateIsolatedScope();
+        var productRepository = scope.GetRepository<TestProduct>();
+
         var products = TestDataBuilder.CreateProductsForAggregation();
-        await _productRepository.AddRange(products);
+        await productRepository.AddRange(products);
 
         var specification = SpecificationExtensions.Where<TestProduct>(p => p.IsActive);
 
         // Act
-        var result = await _productRepository.Sum(specification, p => p.Price);
+        var result = await productRepository.Sum(specification, p => p.Price);
 
         // Assert
         // Active products: Product A (10.50), Product B (25.00), Product C (15.75), Product E (5.25)
@@ -612,14 +669,16 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     public async Task Sum_WithNoMatches_ShouldReturnZero()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = _fixture.CreateIsolatedScope();
+        var productRepository = scope.GetRepository<TestProduct>();
+
         var products = TestDataBuilder.CreateProductsForAggregation();
-        await _productRepository.AddRange(products);
+        await productRepository.AddRange(products);
 
         var specification = SpecificationExtensions.Where<TestProduct>(p => p.Price > 1000);
 
         // Act
-        var result = await _productRepository.Sum(specification, p => p.Price);
+        var result = await productRepository.Sum(specification, p => p.Price);
 
         // Assert
         result.Should().Be(0);
@@ -629,15 +688,16 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     public async Task Sum_WithNullValues_ShouldIgnoreNulls()
     {
         // Arrange - Since our Price is not nullable, this test validates the sum calculation
-        await _fixture.CleanDatabase();
+        using var scope = _fixture.CreateIsolatedScope();
+        var productRepository = scope.GetRepository<TestProduct>();
+
         var products = TestDataBuilder.CreateProductsForAggregation();
-        await _productRepository.AddRange(products);
+        await productRepository.AddRange(products);
 
         var specification = SpecificationExtensions.Where<TestProduct>(p => p.CategoryId == 1);
 
-
         // Act
-        var result = await _productRepository.Sum(specification, p => p.Price);
+        var result = await productRepository.Sum(specification, p => p.Price);
 
         // Assert
         // Category 1 products: Product A (10.50), Product B (25.00)
@@ -649,14 +709,16 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     public async Task Count_WithLargeDataset_ShouldReturnCorrectCount()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         var users = TestDataBuilder.CreateTestUsers(1000);
-        await _userRepository.AddRange(users);
+        await userRepository.AddRange(users);
 
         var specification = SpecificationExtensions.Where<TestUser>(u => u.Age >= 30);
 
         // Act
-        var result = await _userRepository.Count(specification);
+        var result = await userRepository.Count(specification);
 
         // Assert
         result.Should().BeGreaterThan(0);
@@ -667,15 +729,17 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     public async Task Any_WithComplexPredicate_ShouldWork()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = _fixture.CreateIsolatedScope();
+        var productRepository = scope.GetRepository<TestProduct>();
+
         var products = TestDataBuilder.CreateProductsForAggregation();
-        await _productRepository.AddRange(products);
+        await productRepository.AddRange(products);
 
         var specification = SpecificationExtensions.Where<TestProduct>(p =>
             p.IsActive && p.Price > 20.00m && p.CategoryId == 1);
 
         // Act
-        var result = await _productRepository.Any(specification);
+        var result = await productRepository.Any(specification);
 
         // Assert
         result.Should().BeTrue(); // Product B matches: active, price 25.00, category 1
@@ -685,15 +749,17 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     public async Task Query_WithGroupBy_ShouldGroupCorrectly()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         var users = TestDataBuilder.CreateTestUsers(10);
-        await _userRepository.AddRange(users);
+        await userRepository.AddRange(users);
 
         // SQLite has issues with GroupBy in LINQ, so we'll test a simpler aggregation approach
         var specification = SpecificationExtensions.Where<TestUser>(u => u.Age >= 25);
 
         // Act
-        var result = await _userRepository.Query(specification);
+        var result = await userRepository.Query(specification);
 
         // Assert
         result.Should().NotBeNull();
@@ -709,20 +775,22 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     public async Task Query_WithDistinct_ShouldRemoveDuplicates()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         var users = new List<TestUser>
         {
             TestDataBuilder.CreateTestUser("John", "john@example.com", 30),
             TestDataBuilder.CreateTestUser("John", "john2@example.com", 30), // Different email
             TestDataBuilder.CreateTestUser("Jane", "jane@example.com", 25)
         };
-        await _userRepository.AddRange(users);
+        await userRepository.AddRange(users);
 
-        var querySpec = _userRepository.Query().Distinct();
+        var querySpec = userRepository.Query().Distinct();
         var specification = querySpec.ToSpecification();
 
         // Act
-        var result = await _userRepository.Query(specification);
+        var result = await userRepository.Query(specification);
 
         // Assert
         result.Should().HaveCount(3); // All are distinct due to different IDs
@@ -732,11 +800,13 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     public async Task Query_WithComplexSpecification_ShouldApplyAllOperations()
     {
         // Arrange
-        await _fixture.CleanDatabase();
-        var users = TestDataBuilder.CreateTestUsers(20);
-        await _userRepository.AddRange(users);
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
 
-        var querySpec = _userRepository.Query()
+        var users = TestDataBuilder.CreateTestUsers(20);
+        await userRepository.AddRange(users);
+
+        var querySpec = userRepository.Query()
             .Where(u => u.Age >= 25)
             .OrderBy(u => u.Name)
             .Skip(2)
@@ -744,7 +814,7 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
         var specification = querySpec.ToSpecification();
 
         // Act
-        var result = await _userRepository.Query(specification);
+        var result = await userRepository.Query(specification);
 
         // Assert
         var resultList = result.ToList();
@@ -757,16 +827,18 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     public async Task Query_WithNestedExpressions_ShouldWork()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         var users = TestDataBuilder.CreateUsersForFiltering();
-        await _userRepository.AddRange(users);
+        await userRepository.AddRange(users);
 
         // SQLite has issues with Contains(char), so we'll use Contains(string) instead
         var specification = SpecificationExtensions.Where<TestUser>(u =>
             (u.Age > 25 && u.Name.Contains("o")) || u.Email.Contains("alice"));
 
         // Act
-        var result = await _userRepository.Query(specification);
+        var result = await userRepository.Query(specification);
 
         // Assert
         result.Should().NotBeEmpty();
@@ -779,14 +851,16 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     public async Task Query_WithDateTimeComparisons_ShouldWork()
     {
         // Arrange - Since our entities don't have DateTime properties, we'll use Age comparison
-        await _fixture.CleanDatabase();
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         var users = TestDataBuilder.CreateUsersForFiltering();
-        await _userRepository.AddRange(users);
+        await userRepository.AddRange(users);
 
         var specification = SpecificationExtensions.Where<TestUser>(u => u.Age > 25 && u.Age < 40);
 
         // Act
-        var result = await _userRepository.Query(specification);
+        var result = await userRepository.Query(specification);
 
         // Assert
         result.Should().NotBeEmpty();
@@ -798,15 +872,17 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     public async Task Query_WithStringOperations_ShouldWork()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         var users = TestDataBuilder.CreateUsersForFiltering();
-        await _userRepository.AddRange(users);
+        await userRepository.AddRange(users);
 
         var specification = SpecificationExtensions.Where<TestUser>(u =>
             u.Name.StartsWith("J") || u.Email.EndsWith(".com"));
 
         // Act
-        var result = await _userRepository.Query(specification);
+        var result = await userRepository.Query(specification);
 
         // Assert
         result.Should().NotBeEmpty();
@@ -819,15 +895,17 @@ public class SpecificationQueryTests : IClassFixture<SqliteTestFixture>
     public async Task Query_WithNullChecks_ShouldHandleNullsCorrectly()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         var users = TestDataBuilder.CreateUsersForFiltering();
-        await _userRepository.AddRange(users);
+        await userRepository.AddRange(users);
 
         var specification = SpecificationExtensions.Where<TestUser>(u =>
             u.Name != null && u.Email != null);
 
         // Act
-        var result = await _userRepository.Query(specification);
+        var result = await userRepository.Query(specification);
 
         // Assert
         var resultList = result.ToList();

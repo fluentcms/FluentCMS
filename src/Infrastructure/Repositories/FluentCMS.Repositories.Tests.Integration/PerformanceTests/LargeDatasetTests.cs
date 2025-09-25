@@ -1,5 +1,4 @@
 using FluentAssertions;
-using FluentCMS.Repositories.Abstractions;
 using FluentCMS.Repositories.Tests.Integration.Helpers;
 using FluentCMS.Repositories.Tests.Integration.TestEntities;
 using FluentCMS.Repositories.Tests.Integration.TestFixtures;
@@ -8,18 +7,18 @@ using Xunit.Abstractions;
 
 namespace FluentCMS.Repositories.Tests.Integration.PerformanceTests;
 
-public class LargeDatasetTests : IClassFixture<SqliteTestFixture>
+/// <summary>
+/// Large dataset performance tests using isolated database instances for each test.
+/// Each test gets its own fresh database, ensuring complete test isolation.
+/// </summary>
+public class LargeDatasetTests : IClassFixture<IsolatedSqliteTestFixture>
 {
-    private readonly SqliteTestFixture _fixture;
-    private readonly IRepository<TestUser> _userRepository;
-    private readonly IRepository<TestProduct> _productRepository;
+    private readonly IsolatedSqliteTestFixture _fixture;
     private readonly ITestOutputHelper _output;
 
-    public LargeDatasetTests(SqliteTestFixture fixture, ITestOutputHelper output)
+    public LargeDatasetTests(IsolatedSqliteTestFixture fixture, ITestOutputHelper output)
     {
         _fixture = fixture;
-        _userRepository = _fixture.GetRepository<TestUser>();
-        _productRepository = _fixture.GetRepository<TestProduct>();
         _output = output;
     }
 
@@ -28,14 +27,16 @@ public class LargeDatasetTests : IClassFixture<SqliteTestFixture>
     [Fact]
     public async Task AddRange_LargeDataset_ShouldCompleteInReasonableTime()
     {
-        // Arrange
-        await _fixture.CleanDatabase();
+        // Arrange - Each test gets its own isolated database
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         const int entityCount = 1000;
         var users = TestDataBuilder.CreateTestUsers(entityCount);
         var stopwatch = Stopwatch.StartNew();
 
         // Act
-        var result = await _userRepository.AddRange(users);
+        var result = await userRepository.AddRange(users);
 
         // Assert
         stopwatch.Stop();
@@ -47,23 +48,25 @@ public class LargeDatasetTests : IClassFixture<SqliteTestFixture>
         elapsedMs.Should().BeLessThan(10000, "AddRange should complete within 10 seconds for 1000 entities");
 
         // Verify all entities were added
-        var allUsers = await _userRepository.GetAll();
+        var allUsers = await userRepository.GetAll();
         allUsers.Should().HaveCount(entityCount);
     }
 
     [Fact]
     public async Task GetAll_LargeDataset_ShouldCompleteInReasonableTime()
     {
-        // Arrange
-        await _fixture.CleanDatabase();
+        // Arrange - Fresh isolated database
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         const int entityCount = 2000;
         var users = TestDataBuilder.CreateTestUsers(entityCount);
-        await _userRepository.AddRange(users);
+        await userRepository.AddRange(users);
 
         var stopwatch = Stopwatch.StartNew();
 
         // Act
-        var result = await _userRepository.GetAll();
+        var result = await userRepository.GetAll();
 
         // Assert
         stopwatch.Stop();
@@ -78,17 +81,19 @@ public class LargeDatasetTests : IClassFixture<SqliteTestFixture>
     [Fact]
     public async Task Query_LargeDatasetWithFiltering_ShouldCompleteInReasonableTime()
     {
-        // Arrange
-        await _fixture.CleanDatabase();
+        // Arrange - Isolated test environment
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         const int entityCount = 1500;
         var users = TestDataBuilder.CreateTestUsers(entityCount);
-        await _userRepository.AddRange(users);
+        await userRepository.AddRange(users);
 
         var specification = SpecificationExtensions.Where<TestUser>(u => u.Age >= 30 && u.Age <= 50);
         var stopwatch = Stopwatch.StartNew();
 
         // Act
-        var result = await _userRepository.Query(specification);
+        var result = await userRepository.Query(specification);
 
         // Assert
         stopwatch.Stop();
@@ -105,16 +110,18 @@ public class LargeDatasetTests : IClassFixture<SqliteTestFixture>
     public async Task Count_LargeDataset_ShouldCompleteInReasonableTime()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         const int entityCount = 3000;
         var users = TestDataBuilder.CreateTestUsers(entityCount);
-        await _userRepository.AddRange(users);
+        await userRepository.AddRange(users);
 
         var specification = SpecificationExtensions.Where<TestUser>(u => u.Age > 25);
         var stopwatch = Stopwatch.StartNew();
 
         // Act
-        var result = await _userRepository.Count(specification);
+        var result = await userRepository.Count(specification);
 
         // Assert
         stopwatch.Stop();
@@ -131,19 +138,21 @@ public class LargeDatasetTests : IClassFixture<SqliteTestFixture>
     public async Task FindPaged_LargeDataset_ShouldCompleteInReasonableTime()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         const int entityCount = 2500;
         const int pageSize = 50;
         const int pageNumber = 10;
 
         var users = TestDataBuilder.CreateTestUsers(entityCount);
-        await _userRepository.AddRange(users);
+        await userRepository.AddRange(users);
 
         var specification = SpecificationExtensions.Where<TestUser>(u => u.Age > 0);
         var stopwatch = Stopwatch.StartNew();
 
         // Act
-        var result = await _userRepository.FindPaged(specification, pageNumber, pageSize);
+        var result = await userRepository.FindPaged(specification, pageNumber, pageSize);
 
         // Assert
         stopwatch.Stop();
@@ -162,16 +171,18 @@ public class LargeDatasetTests : IClassFixture<SqliteTestFixture>
     public async Task Sum_LargeDataset_ShouldCompleteInReasonableTime()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = _fixture.CreateIsolatedScope();
+        var productRepository = scope.GetRepository<TestProduct>();
+
         const int entityCount = 1000;
         var products = TestDataBuilder.CreateTestProducts(entityCount);
-        await _productRepository.AddRange(products);
+        await productRepository.AddRange(products);
 
         var specification = SpecificationExtensions.Where<TestProduct>(p => p.IsActive);
         var stopwatch = Stopwatch.StartNew();
 
         // Act
-        var result = await _productRepository.Sum(specification, p => p.Price);
+        var result = await productRepository.Sum(specification, p => p.Price);
 
         // Assert
         stopwatch.Stop();
@@ -347,8 +358,10 @@ public class LargeDatasetTests : IClassFixture<SqliteTestFixture>
     [Fact]
     public async Task Repository_CrudOperations_PerformanceBenchmark()
     {
-        // Arrange
-        await _fixture.CleanDatabase();
+        // Arrange - Isolated database for performance testing
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         const int entityCount = 1000;
         var users = TestDataBuilder.CreateTestUsers(entityCount);
 
@@ -356,12 +369,12 @@ public class LargeDatasetTests : IClassFixture<SqliteTestFixture>
 
         // Benchmark Add operations
         stopwatch.Restart();
-        await _userRepository.AddRange(users);
+        await userRepository.AddRange(users);
         var addTime = stopwatch.ElapsedMilliseconds;
 
         // Benchmark Read operations
         stopwatch.Restart();
-        var allUsers = await _userRepository.GetAll();
+        var allUsers = await userRepository.GetAll();
         var readTime = stopwatch.ElapsedMilliseconds;
 
         // Benchmark Update operations (update first 100)
@@ -374,7 +387,7 @@ public class LargeDatasetTests : IClassFixture<SqliteTestFixture>
         stopwatch.Restart();
         foreach (var user in usersToUpdate)
         {
-            await _userRepository.Update(user);
+            await userRepository.Update(user);
         }
         var updateTime = stopwatch.ElapsedMilliseconds;
 
@@ -383,7 +396,7 @@ public class LargeDatasetTests : IClassFixture<SqliteTestFixture>
         stopwatch.Restart();
         foreach (var user in usersToDelete)
         {
-            await _userRepository.Remove(user);
+            await userRepository.Remove(user);
         }
         var deleteTime = stopwatch.ElapsedMilliseconds;
 
@@ -404,38 +417,40 @@ public class LargeDatasetTests : IClassFixture<SqliteTestFixture>
     [Fact]
     public async Task Repository_ComplexQueries_PerformanceBenchmark()
     {
-        // Arrange
-        await _fixture.CleanDatabase();
+        // Arrange - Fresh isolated database for query benchmarking
+        using var scope = _fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         const int entityCount = 2000;
         var users = TestDataBuilder.CreateTestUsers(entityCount);
-        await _userRepository.AddRange(users);
+        await userRepository.AddRange(users);
 
         var stopwatch = new Stopwatch();
 
         // Benchmark simple filtering
         stopwatch.Restart();
-        var simpleFilter = await _userRepository.Query(
+        var simpleFilter = await userRepository.Query(
             SpecificationExtensions.Where<TestUser>(u => u.Age > 30)
         );
         var simpleFilterTime = stopwatch.ElapsedMilliseconds;
 
         // Benchmark complex filtering
         stopwatch.Restart();
-        var complexFilter = await _userRepository.Query(
+        var complexFilter = await userRepository.Query(
             SpecificationExtensions.Where<TestUser>(u => u.Age >= 25 && u.Age <= 45 && u.Name.Contains("User"))
         );
         var complexFilterTime = stopwatch.ElapsedMilliseconds;
 
         // Benchmark pagination
         stopwatch.Restart();
-        var pagedResult = await _userRepository.FindPaged(
+        var pagedResult = await userRepository.FindPaged(
             SpecificationExtensions.Where<TestUser>(u => u.Age > 0), 5, 50
         );
         var paginationTime = stopwatch.ElapsedMilliseconds;
 
         // Benchmark aggregation
         stopwatch.Restart();
-        var count = await _userRepository.Count(
+        var count = await userRepository.Count(
             SpecificationExtensions.Where<TestUser>(u => u.Age >= 30)
         );
         var countTime = stopwatch.ElapsedMilliseconds;

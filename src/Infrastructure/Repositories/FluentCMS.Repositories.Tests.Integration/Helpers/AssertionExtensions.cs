@@ -167,9 +167,9 @@ public static class AssertionExtensions
 
     #region Exception Assertions
 
-    public static void ShouldThrowArgumentNullException(this Func<Task> action, string parameterName)
+    public static async Task ShouldThrowArgumentNullException(this Func<Task> action, string parameterName)
     {
-        action.Should().ThrowAsync<ArgumentNullException>()
+        await action.Should().ThrowAsync<ArgumentNullException>()
             .WithMessage($"*{parameterName}*");
     }
 
