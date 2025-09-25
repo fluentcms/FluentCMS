@@ -17,7 +17,7 @@ public class SqliteTestFixture : IDisposable
         var services = new ServiceCollection();
         
         // Configure logging
-        services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Information));
+        services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Warning));
         
         // Configure SQLite in-memory database
         var connectionString = $"Data Source=:memory:;Cache=Shared;";
