@@ -10,7 +10,7 @@ public class QuerySpecification<T> : IQuerySpecification<T> where T : class
 
     public QuerySpecification()
     {
-        _operations = ImmutableList<Func<IQueryable<T>, IQueryable<T>>>.Empty;
+        _operations = [];
         _hasOrdering = false;
     }
 
@@ -52,7 +52,7 @@ public class QuerySpecification<T> : IQuerySpecification<T> where T : class
         {
             throw new InvalidOperationException("ThenBy can only be used after OrderBy or OrderByDescending has been called.");
         }
-        
+
         var newOperations = _operations.Add(query => ((IOrderedQueryable<T>)query).ThenBy(keySelector));
         return new QuerySpecification<T>(newOperations, hasOrdering: true);
     }
@@ -65,7 +65,7 @@ public class QuerySpecification<T> : IQuerySpecification<T> where T : class
         {
             throw new InvalidOperationException("ThenByDescending can only be used after OrderBy or OrderByDescending has been called.");
         }
-        
+
         var newOperations = _operations.Add(query => ((IOrderedQueryable<T>)query).ThenByDescending(keySelector));
         return new QuerySpecification<T>(newOperations, hasOrdering: true);
     }
@@ -73,11 +73,15 @@ public class QuerySpecification<T> : IQuerySpecification<T> where T : class
     // Adds a skip operation for pagination
     public IQuerySpecification<T> Skip(int count)
     {
+        if (!_hasOrdering)
+        {
+            throw new InvalidOperationException("Skip can only be used after OrderBy or OrderByDescending has been called.");
+        }
         if (count < 0)
         {
             throw new ArgumentOutOfRangeException(nameof(count), "Count cannot be negative.");
         }
-        
+
         var newOperations = _operations.Add(query => query.Skip(count));
         return new QuerySpecification<T>(newOperations, _hasOrdering);
     }
@@ -85,11 +89,15 @@ public class QuerySpecification<T> : IQuerySpecification<T> where T : class
     // Adds a take operation for pagination
     public IQuerySpecification<T> Take(int count)
     {
+        if (!_hasOrdering)
+        {
+            throw new InvalidOperationException("Take can only be used after OrderBy or OrderByDescending has been called.");
+        }
         if (count < 0)
         {
             throw new ArgumentOutOfRangeException(nameof(count), "Count cannot be negative.");
         }
-        
+
         var newOperations = _operations.Add(query => query.Take(count));
         return new QuerySpecification<T>(newOperations, _hasOrdering);
     }

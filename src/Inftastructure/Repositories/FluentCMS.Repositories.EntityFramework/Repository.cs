@@ -24,7 +24,7 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
             await SaveChangesAsync(cancellationToken);
 
             Logger.LogInformation("Entity {EntityType} with id {EntityId} added", typeof(TEntity).Name, entity.Id);
-            
+
             // Detach entity to prevent tracking issues in future operations
             Context.Entry(entity).State = EntityState.Detached;
 
@@ -43,7 +43,14 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
         ArgumentNullException.ThrowIfNull(entities);
 
         var entityList = entities.ToList();
-        
+
+        // Validate that no entity in the collection is null
+        for (int i = 0; i < entityList.Count; i++)
+        {
+            if (entityList[i] == null)
+                throw new ArgumentNullException($"entities[{i}]", "Entity at index " + i + " cannot be null");
+        }
+
         foreach (var entity in entityList)
         {
             if (entity.Id == Guid.Empty)
@@ -84,7 +91,7 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
 
             // Detach entity to prevent tracking issues in future operations
             Context.Entry(entity).State = EntityState.Detached;
-            
+
             return entity;
         }
         catch (Exception ex)
@@ -115,10 +122,10 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
             }
 
             Logger.LogInformation("Entity {EntityType} with id {EntityId} removed", typeof(TEntity).Name, entity.Id);
-            
+
             // Detach entity to prevent tracking issues in future operations
             Context.Entry(entity).State = EntityState.Detached;
-            
+
             return entity;
         }
         catch (Exception ex)
@@ -288,7 +295,7 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
     }
 
     #endregion
-        
+
     #region Aggregation
 
     public virtual async Task<decimal> Sum(ISpecification<TEntity> specification, Expression<Func<TEntity, decimal>> selector, CancellationToken cancellationToken = default)
@@ -326,6 +333,6 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
         return result;
     }
 
-   
+
     #endregion
 }

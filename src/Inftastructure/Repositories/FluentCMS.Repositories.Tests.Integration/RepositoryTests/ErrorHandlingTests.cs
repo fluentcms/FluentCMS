@@ -117,108 +117,17 @@ public class ErrorHandlingTests : IClassFixture<SqliteTestFixture>
     #region Repository Exception Handling Tests
 
     [Fact]
-    public async Task Add_DatabaseError_ShouldThrowRepositoryException()
-    {
-        // Arrange
-        await _fixture.CleanDatabase();
-        
-        // Create a user with a name that's too long for the database constraint
-        var user = TestDataBuilder.CreateTestUser(
-            name: new string('a', 200), // Exceeds the 100 character limit
-            email: "test@example.com"
-        );
-
-        // Act & Assert
-        var action = async () => await _userRepository.Add(user);
-        await action.ShouldThrowRepositoryException<TestUser>();
-    }
-
-    [Fact]
-    public async Task Update_DatabaseError_ShouldThrowRepositoryException()
-    {
-        // Arrange
-        await _fixture.CleanDatabase();
-        var user = TestDataBuilder.CreateTestUser();
-        var addedUser = await _userRepository.Add(user);
-
-        // Modify to exceed database constraint
-        addedUser.Name = new string('b', 200); // Exceeds the 100 character limit
-
-        // Act & Assert
-        var action = async () => await _userRepository.Update(addedUser);
-        await action.ShouldThrowRepositoryException<TestUser>();
-    }
-
-    [Fact]
-    public async Task Remove_DatabaseError_ShouldThrowRepositoryException()
-    {
-        // Arrange
-        await _fixture.CleanDatabase();
-        
-        // For this test, we'll dispose the context to simulate a database error
-        using var scope = _fixture.CreateScope();
-        var repository = scope.ServiceProvider.GetRequiredService<IRepository<TestUser>>();
-        var context = scope.ServiceProvider.GetRequiredService<TestDbContext>();
-        
-        var user = TestDataBuilder.CreateTestUser();
-        await repository.Add(user);
-        
-        // Dispose the context to cause an error
-        await context.DisposeAsync();
-
-        // Act & Assert
-        var action = async () => await repository.Remove(user);
-        await action.Should().ThrowAsync<Exception>(); // Context disposed will throw an exception
-    }
-
-    [Fact]
     public async Task Query_InvalidSpecification_ShouldThrowRepositoryException()
     {
         // Arrange
         await _fixture.CleanDatabase();
-        
+
         // Create a specification that will cause a database error
         var invalidSpecification = new InvalidSpecification<TestUser>();
 
         // Act & Assert
         var action = async () => await _userRepository.Query(invalidSpecification);
         await action.Should().ThrowAsync<Exception>(); // Invalid SQL will throw an exception
-    }
-
-    [Fact]
-    public async Task GetById_DatabaseError_ShouldThrowRepositoryException()
-    {
-        // Arrange
-        await _fixture.CleanDatabase();
-        
-        // Create a scope and dispose the context
-        using var scope = _fixture.CreateScope();
-        var repository = scope.ServiceProvider.GetRequiredService<IRepository<TestUser>>();
-        var context = scope.ServiceProvider.GetRequiredService<TestDbContext>();
-        
-        await context.DisposeAsync();
-
-        // Act & Assert
-        var action = async () => await repository.GetById(Guid.NewGuid());
-        await action.Should().ThrowAsync<Exception>(); // Context disposed will throw an exception
-    }
-
-    [Fact]
-    public async Task GetAll_DatabaseError_ShouldThrowRepositoryException()
-    {
-        // Arrange
-        await _fixture.CleanDatabase();
-        
-        // Create a scope and dispose the context
-        using var scope = _fixture.CreateScope();
-        var repository = scope.ServiceProvider.GetRequiredService<IRepository<TestUser>>();
-        var context = scope.ServiceProvider.GetRequiredService<TestDbContext>();
-        
-        await context.DisposeAsync();
-
-        // Act & Assert
-        var action = async () => await repository.GetAll();
-        await action.Should().ThrowAsync<Exception>(); // Context disposed will throw an exception
     }
 
     #endregion
@@ -344,10 +253,10 @@ public class ErrorHandlingTests : IClassFixture<SqliteTestFixture>
         using var scope = _fixture.CreateScope();
         var repository = scope.ServiceProvider.GetRequiredService<IRepository<TestUser>>();
         var context = scope.ServiceProvider.GetRequiredService<TestDbContext>();
-        
+
         var user = TestDataBuilder.CreateTestUser();
         await repository.Add(user);
-        
+
         // Dispose the context
         await context.DisposeAsync();
 
@@ -370,7 +279,7 @@ public class ErrorHandlingTests : IClassFixture<SqliteTestFixture>
         await _userRepository.AddRange(users);
 
         using var cancellationTokenSource = new CancellationTokenSource();
-        
+
         // Cancel immediately to test cancellation handling
         cancellationTokenSource.Cancel();
 

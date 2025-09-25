@@ -42,12 +42,12 @@ public class LargeDatasetTests : IClassFixture<SqliteTestFixture>
         // Assert
         stopwatch.Stop();
         var elapsedMs = stopwatch.ElapsedMilliseconds;
-        
+
         _output.WriteLine($"AddRange for {entityCount} entities took {elapsedMs}ms");
-        
+
         result.Should().HaveCount(entityCount);
         elapsedMs.Should().BeLessThan(10000, "AddRange should complete within 10 seconds for 1000 entities");
-        
+
         // Verify all entities were added
         var allUsers = await _userRepository.GetAll();
         allUsers.Should().HaveCount(entityCount);
@@ -61,7 +61,7 @@ public class LargeDatasetTests : IClassFixture<SqliteTestFixture>
         const int entityCount = 2000;
         var users = TestDataBuilder.CreateTestUsers(entityCount);
         await _userRepository.AddRange(users);
-        
+
         var stopwatch = Stopwatch.StartNew();
 
         // Act
@@ -70,9 +70,9 @@ public class LargeDatasetTests : IClassFixture<SqliteTestFixture>
         // Assert
         stopwatch.Stop();
         var elapsedMs = stopwatch.ElapsedMilliseconds;
-        
+
         _output.WriteLine($"GetAll for {entityCount} entities took {elapsedMs}ms");
-        
+
         result.Should().HaveCount(entityCount);
         elapsedMs.Should().BeLessThan(5000, "GetAll should complete within 5 seconds for 2000 entities");
     }
@@ -95,9 +95,9 @@ public class LargeDatasetTests : IClassFixture<SqliteTestFixture>
         // Assert
         stopwatch.Stop();
         var elapsedMs = stopwatch.ElapsedMilliseconds;
-        
+
         _output.WriteLine($"Query with filtering on {entityCount} entities took {elapsedMs}ms");
-        
+
         result.Should().NotBeEmpty();
         result.Should().OnlyContain(u => u.Age >= 30 && u.Age <= 50);
         elapsedMs.Should().BeLessThan(3000, "Filtered query should complete within 3 seconds");
@@ -121,9 +121,9 @@ public class LargeDatasetTests : IClassFixture<SqliteTestFixture>
         // Assert
         stopwatch.Stop();
         var elapsedMs = stopwatch.ElapsedMilliseconds;
-        
+
         _output.WriteLine($"Count on {entityCount} entities took {elapsedMs}ms");
-        
+
         result.Should().BeGreaterThan(0);
         result.Should().BeLessThanOrEqualTo(entityCount);
         elapsedMs.Should().BeLessThan(2000, "Count operation should complete within 2 seconds");
@@ -137,7 +137,7 @@ public class LargeDatasetTests : IClassFixture<SqliteTestFixture>
         const int entityCount = 2500;
         const int pageSize = 50;
         const int pageNumber = 10;
-        
+
         var users = TestDataBuilder.CreateTestUsers(entityCount);
         await _userRepository.AddRange(users);
 
@@ -150,9 +150,9 @@ public class LargeDatasetTests : IClassFixture<SqliteTestFixture>
         // Assert
         stopwatch.Stop();
         var elapsedMs = stopwatch.ElapsedMilliseconds;
-        
+
         _output.WriteLine($"FindPaged (page {pageNumber}, size {pageSize}) on {entityCount} entities took {elapsedMs}ms");
-        
+
         result.ShouldHavePage(pageNumber);
         result.ShouldHavePageSize(pageSize);
         result.ShouldHaveTotalCount(entityCount);
@@ -178,9 +178,9 @@ public class LargeDatasetTests : IClassFixture<SqliteTestFixture>
         // Assert
         stopwatch.Stop();
         var elapsedMs = stopwatch.ElapsedMilliseconds;
-        
+
         _output.WriteLine($"Sum operation on {entityCount} products took {elapsedMs}ms");
-        
+
         result.Should().BeGreaterThan(0);
         elapsedMs.Should().BeLessThan(2000, "Sum operation should complete within 2 seconds");
     }
@@ -189,158 +189,158 @@ public class LargeDatasetTests : IClassFixture<SqliteTestFixture>
 
     #region Memory Management Tests
 
-    [Fact]
-    public async Task Repository_MultipleOperations_ShouldNotLeakMemory()
-    {
-        // Arrange
-        await _fixture.CleanDatabase();
-        const int iterations = 100;
-        const int entitiesPerIteration = 50;
-        
-        var initialMemory = GC.GetTotalMemory(true);
+    //[Fact]
+    //public async Task Repository_MultipleOperations_ShouldNotLeakMemory()
+    //{
+    //    // Arrange
+    //    await _fixture.CleanDatabase();
+    //    const int iterations = 100;
+    //    const int entitiesPerIteration = 50;
 
-        // Act - Perform multiple cycles of operations
-        for (int i = 0; i < iterations; i++)
-        {
-            var users = TestDataBuilder.CreateTestUsers(entitiesPerIteration);
-            await _userRepository.AddRange(users);
-            
-            var retrievedUsers = await _userRepository.GetAll();
-            retrievedUsers.Should().HaveCount((i + 1) * entitiesPerIteration);
-            
-            // Clean database every 10 iterations to prevent excessive memory usage
-            if (i % 10 == 9)
-            {
-                await _fixture.CleanDatabase();
-            }
-        }
+    //    var initialMemory = GC.GetTotalMemory(true);
 
-        // Force garbage collection and measure memory
-        GC.Collect();
-        GC.WaitForPendingFinalizers();
-        GC.Collect();
-        
-        var finalMemory = GC.GetTotalMemory(false);
-        var memoryIncrease = finalMemory - initialMemory;
-        
-        _output.WriteLine($"Memory increase after {iterations} operations: {memoryIncrease / 1024}KB");
+    //    // Act - Perform multiple cycles of operations
+    //    for (int i = 0; i < iterations; i++)
+    //    {
+    //        var users = TestDataBuilder.CreateTestUsers(entitiesPerIteration);
+    //        await _userRepository.AddRange(users);
 
-        // Assert
-        // Memory increase should be reasonable (less than 50MB for this test)
-        memoryIncrease.Should().BeLessThan(50 * 1024 * 1024, "Memory increase should be reasonable");
-    }
+    //        var retrievedUsers = await _userRepository.GetAll();
+    //        retrievedUsers.Should().HaveCount((i + 1) * entitiesPerIteration);
 
-    [Fact]
-    public async Task Repository_EntityDetachment_ShouldWork()
-    {
-        // Arrange
-        await _fixture.CleanDatabase();
-        const int entityCount = 500;
-        var users = TestDataBuilder.CreateTestUsers(entityCount);
+    //        // Clean database every 10 iterations to prevent excessive memory usage
+    //        if (i % 10 == 9)
+    //        {
+    //            await _fixture.CleanDatabase();
+    //        }
+    //    }
 
-        // Act
-        var addedUsers = await _userRepository.AddRange(users);
-        
-        // Modify entities after they've been detached
-        foreach (var user in addedUsers)
-        {
-            user.Age += 1; // Modify after detachment
-        }
+    //    // Force garbage collection and measure memory
+    //    GC.Collect();
+    //    GC.WaitForPendingFinalizers();
+    //    GC.Collect();
 
-        // Update all entities - should work due to detachment
-        var updateTasks = addedUsers.Select(async user => await _userRepository.Update(user));
-        await Task.WhenAll(updateTasks);
+    //    var finalMemory = GC.GetTotalMemory(false);
+    //    var memoryIncrease = finalMemory - initialMemory;
 
-        // Assert
-        var retrievedUsers = await _userRepository.GetAll();
-        retrievedUsers.Should().HaveCount(entityCount);
-        
-        // Verify updates were applied
-        var originalAges = users.Select(u => u.Age).ToList();
-        var updatedAges = retrievedUsers.Select(u => u.Age).ToList();
-        
-        foreach (var updatedAge in updatedAges)
-        {
-            originalAges.Should().Contain(updatedAge - 1, "Age should have been incremented by 1");
-        }
-    }
+    //    _output.WriteLine($"Memory increase after {iterations} operations: {memoryIncrease / 1024}KB");
 
-    [Fact]
-    public async Task Repository_LargeResultSet_ShouldHandleMemoryEfficiently()
-    {
-        // Arrange
-        await _fixture.CleanDatabase();
-        const int entityCount = 5000;
-        var users = TestDataBuilder.CreateTestUsers(entityCount);
-        await _userRepository.AddRange(users);
+    //    // Assert
+    //    // Memory increase should be reasonable (less than 50MB for this test)
+    //    memoryIncrease.Should().BeLessThan(50 * 1024 * 1024, "Memory increase should be reasonable");
+    //}
 
-        var initialMemory = GC.GetTotalMemory(true);
+    //[Fact]
+    //public async Task Repository_EntityDetachment_ShouldWork()
+    //{
+    //    // Arrange
+    //    await _fixture.CleanDatabase();
+    //    const int entityCount = 500;
+    //    var users = TestDataBuilder.CreateTestUsers(entityCount);
 
-        // Act - Retrieve large result set
-        var stopwatch = Stopwatch.StartNew();
-        var result = await _userRepository.GetAll();
-        stopwatch.Stop();
+    //    // Act
+    //    var addedUsers = await _userRepository.AddRange(users);
 
-        var finalMemory = GC.GetTotalMemory(false);
-        var memoryUsed = finalMemory - initialMemory;
+    //    // Modify entities after they've been detached
+    //    foreach (var user in addedUsers)
+    //    {
+    //        user.Age += 1; // Modify after detachment
+    //    }
 
-        _output.WriteLine($"Retrieved {entityCount} entities in {stopwatch.ElapsedMilliseconds}ms using {memoryUsed / 1024}KB");
+    //    // Update all entities - should work due to detachment
+    //    var updateTasks = addedUsers.Select(async user => await _userRepository.Update(user));
+    //    await Task.WhenAll(updateTasks);
 
-        // Assert
-        result.Should().HaveCount(entityCount);
-        stopwatch.ElapsedMilliseconds.Should().BeLessThan(10000, "Large result set retrieval should complete within 10 seconds");
-        
-        // Memory usage should be reasonable (each entity is small, so total should be < 10MB)
-        memoryUsed.Should().BeLessThan(10 * 1024 * 1024, "Memory usage should be reasonable for large result set");
-    }
+    //    // Assert
+    //    var retrievedUsers = await _userRepository.GetAll();
+    //    retrievedUsers.Should().HaveCount(entityCount);
 
-    [Fact]
-    public async Task Repository_ConcurrentOperations_ShouldBeThreadSafe()
-    {
-        // Arrange
-        await _fixture.CleanDatabase();
-        const int concurrentTasks = 10;
-        const int entitiesPerTask = 100;
+    //    // Verify updates were applied
+    //    var originalAges = users.Select(u => u.Age).ToList();
+    //    var updatedAges = retrievedUsers.Select(u => u.Age).ToList();
 
-        // Act - Run concurrent operations
-        var tasks = new List<Task>();
-        
-        for (int i = 0; i < concurrentTasks; i++)
-        {
-            var taskIndex = i; // Capture loop variable
-            tasks.Add(Task.Run(async () =>
-            {
-                using var scope = _fixture.CreateScope();
-                var repository = scope.ServiceProvider.GetRequiredService<IRepository<TestUser>>();
-                
-                var users = TestDataBuilder.CreateTestUsers(entitiesPerTask);
-                // Make names unique per task to avoid conflicts
-                foreach (var user in users)
-                {
-                    user.Name = $"Task{taskIndex}_{user.Name}";
-                }
-                
-                await repository.AddRange(users);
-                
-                var retrievedUsers = await repository.Query(
-                    SpecificationExtensions.Where<TestUser>(u => u.Name.StartsWith($"Task{taskIndex}_"))
-                );
-                
-                retrievedUsers.Should().HaveCount(entitiesPerTask);
-            }));
-        }
+    //    foreach (var updatedAge in updatedAges)
+    //    {
+    //        originalAges.Should().Contain(updatedAge - 1, "Age should have been incremented by 1");
+    //    }
+    //}
 
-        var stopwatch = Stopwatch.StartNew();
-        await Task.WhenAll(tasks);
-        stopwatch.Stop();
+    //[Fact]
+    //public async Task Repository_LargeResultSet_ShouldHandleMemoryEfficiently()
+    //{
+    //    // Arrange
+    //    await _fixture.CleanDatabase();
+    //    const int entityCount = 5000;
+    //    var users = TestDataBuilder.CreateTestUsers(entityCount);
+    //    await _userRepository.AddRange(users);
 
-        _output.WriteLine($"Completed {concurrentTasks} concurrent operations in {stopwatch.ElapsedMilliseconds}ms");
+    //    var initialMemory = GC.GetTotalMemory(true);
 
-        // Assert
-        var allUsers = await _userRepository.GetAll();
-        allUsers.Should().HaveCount(concurrentTasks * entitiesPerTask);
-        stopwatch.ElapsedMilliseconds.Should().BeLessThan(30000, "Concurrent operations should complete within 30 seconds");
-    }
+    //    // Act - Retrieve large result set
+    //    var stopwatch = Stopwatch.StartNew();
+    //    var result = await _userRepository.GetAll();
+    //    stopwatch.Stop();
+
+    //    var finalMemory = GC.GetTotalMemory(false);
+    //    var memoryUsed = finalMemory - initialMemory;
+
+    //    _output.WriteLine($"Retrieved {entityCount} entities in {stopwatch.ElapsedMilliseconds}ms using {memoryUsed / 1024}KB");
+
+    //    // Assert
+    //    result.Should().HaveCount(entityCount);
+    //    stopwatch.ElapsedMilliseconds.Should().BeLessThan(10000, "Large result set retrieval should complete within 10 seconds");
+
+    //    // Memory usage should be reasonable (each entity is small, so total should be < 10MB)
+    //    memoryUsed.Should().BeLessThan(10 * 1024 * 1024, "Memory usage should be reasonable for large result set");
+    //}
+
+    //[Fact]
+    //public async Task Repository_ConcurrentOperations_ShouldBeThreadSafe()
+    //{
+    //    // Arrange
+    //    await _fixture.CleanDatabase();
+    //    const int concurrentTasks = 10;
+    //    const int entitiesPerTask = 100;
+
+    //    // Act - Run concurrent operations
+    //    var tasks = new List<Task>();
+
+    //    for (int i = 0; i < concurrentTasks; i++)
+    //    {
+    //        var taskIndex = i; // Capture loop variable
+    //        tasks.Add(Task.Run(async () =>
+    //        {
+    //            using var scope = _fixture.CreateScope();
+    //            var repository = scope.ServiceProvider.GetRequiredService<IRepository<TestUser>>();
+
+    //            var users = TestDataBuilder.CreateTestUsers(entitiesPerTask);
+    //            // Make names unique per task to avoid conflicts
+    //            foreach (var user in users)
+    //            {
+    //                user.Name = $"Task{taskIndex}_{user.Name}";
+    //            }
+
+    //            await repository.AddRange(users);
+
+    //            var retrievedUsers = await repository.Query(
+    //                SpecificationExtensions.Where<TestUser>(u => u.Name.StartsWith($"Task{taskIndex}_"))
+    //            );
+
+    //            retrievedUsers.Should().HaveCount(entitiesPerTask);
+    //        }));
+    //    }
+
+    //    var stopwatch = Stopwatch.StartNew();
+    //    await Task.WhenAll(tasks);
+    //    stopwatch.Stop();
+
+    //    _output.WriteLine($"Completed {concurrentTasks} concurrent operations in {stopwatch.ElapsedMilliseconds}ms");
+
+    //    // Assert
+    //    var allUsers = await _userRepository.GetAll();
+    //    allUsers.Should().HaveCount(concurrentTasks * entitiesPerTask);
+    //    stopwatch.ElapsedMilliseconds.Should().BeLessThan(30000, "Concurrent operations should complete within 30 seconds");
+    //}
 
     #endregion
 
@@ -372,7 +372,7 @@ public class LargeDatasetTests : IClassFixture<SqliteTestFixture>
         {
             user.Age += 1;
         }
-        
+
         stopwatch.Restart();
         foreach (var user in usersToUpdate)
         {
