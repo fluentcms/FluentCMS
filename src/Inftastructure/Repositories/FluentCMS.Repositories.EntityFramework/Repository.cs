@@ -86,7 +86,7 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
         {
             DbSet.Update(entity);
             await SaveChangesAsync(cancellationToken);
-
+            
             Logger.LogInformation("Entity {EntityType} with id {EntityId} updated", typeof(TEntity).Name, entity.Id);
 
             // Detach entity to prevent tracking issues in future operations
@@ -109,7 +109,7 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
         try
         {
             DbSet.Remove(entity);
-            var affectedRows = await SaveChangesWithAffectedRowsAsync(cancellationToken);
+            var affectedRows = await SaveChangesAsync(cancellationToken);
 
             if (affectedRows == 0)
             {
@@ -320,19 +320,12 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
 
     #region Protected Helper Methods
 
-    protected virtual async Task SaveChangesAsync(CancellationToken cancellationToken = default)
-    {
-        await Context.SaveChangesAsync(cancellationToken);
-        Logger.LogDebug("Changes saved for {EntityType}", typeof(TEntity).Name);
-    }
-
-    protected virtual async Task<int> SaveChangesWithAffectedRowsAsync(CancellationToken cancellationToken = default)
+    protected virtual async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         var result = await Context.SaveChangesAsync(cancellationToken);
-        Logger.LogDebug("Changes saved for {EntityType} with {AffectedRows} affected rows", typeof(TEntity).Name, result);
+        Logger.LogDebug("Changes saved for {EntityType}", typeof(TEntity).Name);
         return result;
     }
-
 
     #endregion
 }

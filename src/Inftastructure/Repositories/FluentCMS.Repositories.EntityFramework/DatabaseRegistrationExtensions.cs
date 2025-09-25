@@ -8,7 +8,7 @@ public static class DatabaseRegistrationExtensions
         return services;
     }
 
-    public static IServiceCollection AddEfDbContext<TContext>(this IServiceCollection services, Action<DbContextOptionsBuilder>? additionalConfiguration = null, ServiceLifetime contextLifetime = ServiceLifetime.Scoped) where TContext : DbContext
+    public static IServiceCollection AddEfDbContext<TContext>(this IServiceCollection services, Action<DbContextOptionsBuilder>? additionalConfiguration = null) where TContext : DbContext
     {
         services.TryAddScoped<AuditableEntityInterceptor>();
         
@@ -26,7 +26,7 @@ public static class DatabaseRegistrationExtensions
 
             // Then apply context-specific configuration if provided
             additionalConfiguration?.Invoke(options);
-        }, contextLifetime);
+        });
 
         return services;
     }

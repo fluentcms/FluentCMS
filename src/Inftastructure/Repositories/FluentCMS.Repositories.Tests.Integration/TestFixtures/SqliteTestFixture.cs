@@ -25,15 +25,12 @@ public class SqliteTestFixture : IDisposable
         var connectionString = $"Data Source=:memory:;Cache=Shared;";
         services.AddSqliteDatabase(connectionString);
 
+        // Register application services
         services.AddScoped<IApplicationExecutionContext, SystemExecutionContext>();
-        services.AddEfDbContext<TestDbContext>(options => { }, ServiceLifetime.Singleton);
+        services.AddEfDbContext<TestDbContext>();
         services.AddGenericRepository<TestUser, TestDbContext>();
         services.AddGenericRepository<TestProduct, TestDbContext>();
         services.AddGenericRepository<TestCategory, TestDbContext>();
-        // Register repositories
-        //services.AddScoped<IRepository<TestUser>, Repository<TestUser, TestDbContext>>();
-        //services.AddScoped<IRepository<TestProduct>, Repository<TestProduct, TestDbContext>>();
-        //services.AddScoped<IRepository<TestCategory>, Repository<TestCategory, TestDbContext>>();
 
         _serviceProvider = services.BuildServiceProvider();
 
@@ -103,38 +100,3 @@ public class SqliteTestFixture : IDisposable
     }
 }
 
-public class SqliteTestFixtureFactory
-{
-    public static SqliteTestFixture Create() => new();
-
-    public static IServiceProvider CreateServiceProvider()
-    {
-        var services = new ServiceCollection();
-
-        // Configure logging for tests
-        services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Warning));
-
-        // Create unique database name for each test run
-        var dbName = Guid.NewGuid().ToString();
-        var connectionString = $"Data Source={dbName};Mode=Memory;Cache=Shared;";
-
-        services.AddScoped<IApplicationExecutionContext, SystemExecutionContext>();
-
-        services.AddEfDbContext<TestDbContext>(options => { }, ServiceLifetime.Singleton);
-
-        // Register repositories without interceptors for clean testing
-        //services.AddScoped<IRepository<TestUser>, Repository<TestUser, TestDbContext>>();
-        //services.AddScoped<IRepository<TestProduct>, Repository<TestProduct, TestDbContext>>();
-        //services.AddScoped<IRepository<TestCategory>, Repository<TestCategory, TestDbContext>>();
-
-        var serviceProvider = services.BuildServiceProvider();
-
-        // Ensure database is created
-        using var scope = serviceProvider.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<TestDbContext>();
-        context.Database.OpenConnection();
-        context.Database.EnsureCreated();
-
-        return serviceProvider;
-    }
-}

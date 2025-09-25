@@ -1,5 +1,6 @@
 using FluentAssertions;
 using FluentCMS.Repositories.Abstractions;
+using FluentCMS.Repositories.EntityFramework;
 using FluentCMS.Repositories.Tests.Integration.Helpers;
 using FluentCMS.Repositories.Tests.Integration.TestEntities;
 using FluentCMS.Repositories.Tests.Integration.TestFixtures;
@@ -190,18 +191,17 @@ public class BasicCrudOperationsTests : IClassFixture<SqliteTestFixture>
         retrievedUser.Age.Should().Be(99);
     }
 
-    //[Fact]
-    //public async Task Update_NonExistingEntity_ShouldThrowException()
-    //{
-    //    // Arrange
-    //    await _fixture.CleanDatabase();
-    //    var user = TestDataBuilder.CreateTestUser();
+    [Fact]
+    public async Task Update_NonExistingEntity_ShouldThrowException()
+    {
+        // Arrange
+        await _fixture.CleanDatabase();
+        var user = TestDataBuilder.CreateTestUser();
 
-    //    // Act & Assert
-    //    var act = async () => await _userRepository.Update(user);
-    //    await act.Should().ThrowAsync();
-
-    //}
+        // Act & Assert
+        var act = async () => await _userRepository.Update(user);
+        await act.ShouldThrowRepositoryException<TestUser>();
+    }
 
     [Fact]
     public async Task Update_NullEntity_ShouldThrowArgumentNullException()
