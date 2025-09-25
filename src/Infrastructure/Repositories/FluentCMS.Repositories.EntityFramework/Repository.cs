@@ -24,7 +24,7 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
             await SaveChangesAsync(cancellationToken);
 
             Logger.LogInformation("Entity {EntityType} with id {EntityId} added", typeof(TEntity).Name, entity.Id);
-            
+
             // Detach entity to prevent tracking issues in future operations
             Context.Entry(entity).State = EntityState.Detached;
 
@@ -43,7 +43,14 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
         ArgumentNullException.ThrowIfNull(entities);
 
         var entityList = entities.ToList();
-        
+
+        // Validate that no entity in the collection is null
+        for (int i = 0; i < entityList.Count; i++)
+        {
+            if (entityList[i] == null)
+                throw new ArgumentNullException($"entities[{i}]", $"Entity at index {i} cannot be null");
+        }
+
         foreach (var entity in entityList)
         {
             if (entity.Id == Guid.Empty)
@@ -84,7 +91,7 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
 
             // Detach entity to prevent tracking issues in future operations
             Context.Entry(entity).State = EntityState.Detached;
-            
+
             return entity;
         }
         catch (Exception ex)
@@ -102,7 +109,7 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
         try
         {
             DbSet.Remove(entity);
-            var affectedRows = await SaveChangesWithAffectedRowsAsync(cancellationToken);
+            var affectedRows = await SaveChangesAsync(cancellationToken);
 
             if (affectedRows == 0)
             {
@@ -115,10 +122,10 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
             }
 
             Logger.LogInformation("Entity {EntityType} with id {EntityId} removed", typeof(TEntity).Name, entity.Id);
-            
+
             // Detach entity to prevent tracking issues in future operations
             Context.Entry(entity).State = EntityState.Detached;
-            
+
             return entity;
         }
         catch (Exception ex)
@@ -288,7 +295,7 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
     }
 
     #endregion
-        
+
     #region Aggregation
 
     public virtual async Task<decimal> Sum(ISpecification<TEntity> specification, Expression<Func<TEntity, decimal>> selector, CancellationToken cancellationToken = default)
@@ -313,19 +320,12 @@ public class Repository<TEntity, TContext>(TContext context, ILogger<Repository<
 
     #region Protected Helper Methods
 
-    protected virtual async Task SaveChangesAsync(CancellationToken cancellationToken = default)
-    {
-        await Context.SaveChangesAsync(cancellationToken);
-        Logger.LogDebug("Changes saved for {EntityType}", typeof(TEntity).Name);
-    }
-
-    protected virtual async Task<int> SaveChangesWithAffectedRowsAsync(CancellationToken cancellationToken = default)
+    protected virtual async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         var result = await Context.SaveChangesAsync(cancellationToken);
-        Logger.LogDebug("Changes saved for {EntityType} with {AffectedRows} affected rows", typeof(TEntity).Name, result);
+        Logger.LogDebug("Changes saved for {EntityType}", typeof(TEntity).Name);
         return result;
     }
 
-   
     #endregion
 }
