@@ -140,31 +140,6 @@ public class FileTestScope : IDisposable
     public IServiceProvider ServiceProvider => _scope.ServiceProvider;
 
     /// <summary>
-    /// Creates a new database context with a separate connection to the same database file.
-    /// This is useful for testing concurrent access scenarios.
-    /// </summary>
-    public TestDbContext CreateSeparateContext()
-    {
-        var services = new ServiceCollection();
-
-        // Configure logging
-        services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Warning));
-
-        // Configure SQLite database with the same file path
-        var connectionString = $"Data Source={_databaseFilePath};";
-        services.AddSqliteDatabase(connectionString);
-
-        // Register application services
-        services.AddScoped<IApplicationExecutionContext, SystemExecutionContext>();
-        services.AddEfDbContext<TestDbContext>();
-
-        var serviceProvider = services.BuildServiceProvider();
-        using var scope = serviceProvider.CreateScope();
-
-        return scope.ServiceProvider.GetRequiredService<TestDbContext>();
-    }
-
-    /// <summary>
     /// Verifies that the database file exists on disk.
     /// </summary>
     public bool DatabaseFileExists()
