@@ -1,33 +1,31 @@
 using FluentAssertions;
-using FluentCMS.Repositories.Abstractions;
 using FluentCMS.Repositories.Tests.Integration.Helpers;
 using FluentCMS.Repositories.Tests.Integration.TestEntities;
 using FluentCMS.Repositories.Tests.Integration.TestFixtures;
 
 namespace FluentCMS.Repositories.Tests.Integration.RepositoryTests;
 
-public class BasicCrudOperationsTests : IClassFixture<SqliteTestFixture>
+/// <summary>
+/// Improved version of BasicCrudOperationsTests that demonstrates proper test isolation.
+/// Each test gets its own isolated database instance, eliminating cross-test contamination.
+/// Compare this with the original BasicCrudOperationsTests to see the improvements.
+/// </summary>
+public class BasicCrudOperationsTests(IsolatedSqliteTestFixture fixture) : IClassFixture<IsolatedSqliteTestFixture>
 {
-    private readonly SqliteTestFixture _fixture;
-    private readonly IRepository<TestUser> _userRepository;
-
-    public BasicCrudOperationsTests(SqliteTestFixture fixture)
-    {
-        _fixture = fixture;
-        _userRepository = _fixture.GetRepository<TestUser>();
-    }
 
     #region Add Operations Tests
 
     [Fact]
     public async Task Add_ValidEntity_ShouldGenerateIdAndReturnEntity()
     {
-        // Arrange
-        await _fixture.CleanDatabase();
+        // Arrange - Each test gets its own isolated database
+        using var scope = fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         var user = TestDataBuilder.CreateTestUserWithEmptyId();
 
         // Act
-        var result = await _userRepository.Add(user);
+        var result = await userRepository.Add(user);
 
         // Assert
         result.Should().NotBeNull();
@@ -37,7 +35,7 @@ public class BasicCrudOperationsTests : IClassFixture<SqliteTestFixture>
         result.Age.Should().Be(user.Age);
 
         // Verify it's persisted
-        var retrievedUser = await _userRepository.GetById(result.Id);
+        var retrievedUser = await userRepository.GetById(result.Id);
         retrievedUser.Should().NotBeNull();
         retrievedUser!.ShouldBeEquivalentToTestUser(result);
     }
@@ -45,13 +43,15 @@ public class BasicCrudOperationsTests : IClassFixture<SqliteTestFixture>
     [Fact]
     public async Task Add_EntityWithEmptyId_ShouldGenerateNewId()
     {
-        // Arrange
-        await _fixture.CleanDatabase();
+        // Arrange - Fresh database for this test
+        using var scope = fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         var user = TestDataBuilder.CreateTestUserWithEmptyId();
         user.Id.Should().Be(Guid.Empty);
 
         // Act
-        var result = await _userRepository.Add(user);
+        var result = await userRepository.Add(user);
 
         // Assert
         result.ShouldHaveValidGeneratedId();
@@ -61,13 +61,15 @@ public class BasicCrudOperationsTests : IClassFixture<SqliteTestFixture>
     [Fact]
     public async Task Add_EntityWithExistingId_ShouldKeepExistingId()
     {
-        // Arrange
-        await _fixture.CleanDatabase();
+        // Arrange - Isolated test environment
+        using var scope = fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         var existingId = Guid.NewGuid();
         var user = TestDataBuilder.CreateTestUser(id: existingId);
 
         // Act
-        var result = await _userRepository.Add(user);
+        var result = await userRepository.Add(user);
 
         // Assert
         result.Should().NotBeNull();
@@ -78,22 +80,25 @@ public class BasicCrudOperationsTests : IClassFixture<SqliteTestFixture>
     public async Task Add_NullEntity_ShouldThrowArgumentNullException()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
 
         // Act & Assert
-        var action = async () => await _userRepository.Add(null!);
-        action.ShouldThrowArgumentNullException("entity");
+        var action = async () => await userRepository.Add(null!);
+        await action.ShouldThrowArgumentNullException("entity");
     }
 
     [Fact]
     public async Task AddRange_ValidEntities_ShouldAddAllAndReturnList()
     {
-        // Arrange
-        await _fixture.CleanDatabase();
+        // Arrange - Clean isolated database
+        using var scope = fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         var users = TestDataBuilder.CreateTestUsersWithEmptyIds(3);
 
         // Act
-        var result = await _userRepository.AddRange(users);
+        var result = await userRepository.AddRange(users);
 
         // Assert
         var resultList = result.ToList();
@@ -101,7 +106,7 @@ public class BasicCrudOperationsTests : IClassFixture<SqliteTestFixture>
         resultList.Should().AllSatisfy(u => u.Id.Should().NotBe(Guid.Empty));
 
         // Verify all are persisted
-        var allUsers = await _userRepository.GetAll();
+        var allUsers = await userRepository.GetAll();
         allUsers.Should().HaveCount(3);
     }
 
@@ -109,11 +114,13 @@ public class BasicCrudOperationsTests : IClassFixture<SqliteTestFixture>
     public async Task AddRange_EmptyList_ShouldReturnEmptyList()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         var emptyUsers = new List<TestUser>();
 
         // Act
-        var result = await _userRepository.AddRange(emptyUsers);
+        var result = await userRepository.AddRange(emptyUsers);
 
         // Assert
         result.Should().BeEmpty();
@@ -123,22 +130,24 @@ public class BasicCrudOperationsTests : IClassFixture<SqliteTestFixture>
     public async Task AddRange_NullList_ShouldThrowArgumentNullException()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
 
         // Act & Assert
-        Func<Task> act = () => _userRepository.AddRange(null!);
+        Func<Task> act = () => userRepository.AddRange(null!);
 
         await act.Should()
                  .ThrowAsync<ArgumentNullException>()
                  .WithParameterName("entities");
-
     }
 
     [Fact]
     public async Task AddRange_EntitiesWithMixedIds_ShouldGenerateIdsForEmptyOnes()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         var existingId = Guid.NewGuid();
         var users = new List<TestUser>
         {
@@ -148,7 +157,7 @@ public class BasicCrudOperationsTests : IClassFixture<SqliteTestFixture>
         };
 
         // Act
-        var result = await _userRepository.AddRange(users);
+        var result = await userRepository.AddRange(users);
 
         // Assert
         var resultList = result.ToList();
@@ -167,16 +176,18 @@ public class BasicCrudOperationsTests : IClassFixture<SqliteTestFixture>
     public async Task Update_ExistingEntity_ShouldUpdateAndReturnEntity()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         var user = TestDataBuilder.CreateTestUser();
-        var addedUser = await _userRepository.Add(user);
+        var addedUser = await userRepository.Add(user);
 
         // Modify the entity
         addedUser.Name = "Updated Name";
         addedUser.Age = 99;
 
         // Act
-        var result = await _userRepository.Update(addedUser);
+        var result = await userRepository.Update(addedUser);
 
         // Assert
         result.Should().NotBeNull();
@@ -184,7 +195,7 @@ public class BasicCrudOperationsTests : IClassFixture<SqliteTestFixture>
         result.Age.Should().Be(99);
 
         // Verify changes are persisted
-        var retrievedUser = await _userRepository.GetById(addedUser.Id);
+        var retrievedUser = await userRepository.GetById(addedUser.Id);
         retrievedUser.Should().NotBeNull();
         retrievedUser!.Name.Should().Be("Updated Name");
         retrievedUser.Age.Should().Be(99);
@@ -194,11 +205,13 @@ public class BasicCrudOperationsTests : IClassFixture<SqliteTestFixture>
     public async Task Update_NonExistingEntity_ShouldThrowException()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         var user = TestDataBuilder.CreateTestUser();
 
         // Act & Assert
-        var act = async () => await _userRepository.Update(user);
+        var act = async () => await userRepository.Update(user);
         await act.ShouldThrowRepositoryException<TestUser>();
     }
 
@@ -206,10 +219,11 @@ public class BasicCrudOperationsTests : IClassFixture<SqliteTestFixture>
     public async Task Update_NullEntity_ShouldThrowArgumentNullException()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
 
         // Act & Assert
-        Func<Task> act = () => _userRepository.Update(null!);
+        Func<Task> act = () => userRepository.Update(null!);
 
         await act.Should()
                  .ThrowAsync<ArgumentNullException>()
@@ -220,15 +234,17 @@ public class BasicCrudOperationsTests : IClassFixture<SqliteTestFixture>
     public async Task Update_EntityAfterDetachment_ShouldWork()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         var user = TestDataBuilder.CreateTestUser();
-        var addedUser = await _userRepository.Add(user);
+        var addedUser = await userRepository.Add(user);
 
         // The repository detaches entities, so this should work
         addedUser.Name = "Updated After Detachment";
 
         // Act
-        var result = await _userRepository.Update(addedUser);
+        var result = await userRepository.Update(addedUser);
 
         // Assert
         result.Should().NotBeNull();
@@ -243,19 +259,21 @@ public class BasicCrudOperationsTests : IClassFixture<SqliteTestFixture>
     public async Task Remove_ExistingEntityByObject_ShouldRemoveAndReturnEntity()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         var user = TestDataBuilder.CreateTestUser();
-        var addedUser = await _userRepository.Add(user);
+        var addedUser = await userRepository.Add(user);
 
         // Act
-        var result = await _userRepository.Remove(addedUser);
+        var result = await userRepository.Remove(addedUser);
 
         // Assert
         result.Should().NotBeNull();
         result!.ShouldBeEquivalentToTestUser(addedUser);
 
         // Verify it's removed from database
-        var retrievedUser = await _userRepository.GetById(addedUser.Id);
+        var retrievedUser = await userRepository.GetById(addedUser.Id);
         retrievedUser.Should().BeNull();
     }
 
@@ -263,19 +281,21 @@ public class BasicCrudOperationsTests : IClassFixture<SqliteTestFixture>
     public async Task Remove_ExistingEntityById_ShouldRemoveAndReturnEntity()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         var user = TestDataBuilder.CreateTestUser();
-        var addedUser = await _userRepository.Add(user);
+        var addedUser = await userRepository.Add(user);
 
         // Act
-        var result = await _userRepository.Remove(addedUser.Id);
+        var result = await userRepository.Remove(addedUser.Id);
 
         // Assert
         result.Should().NotBeNull();
         result!.ShouldBeEquivalentToTestUser(addedUser);
 
         // Verify it's removed from database
-        var retrievedUser = await _userRepository.GetById(addedUser.Id);
+        var retrievedUser = await userRepository.GetById(addedUser.Id);
         retrievedUser.Should().BeNull();
     }
 
@@ -283,38 +303,27 @@ public class BasicCrudOperationsTests : IClassFixture<SqliteTestFixture>
     public async Task Remove_NonExistingEntityById_ShouldReturnNull()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         var nonExistentId = Guid.NewGuid();
 
         // Act
-        var result = await _userRepository.Remove(nonExistentId);
+        var result = await userRepository.Remove(nonExistentId);
 
         // Assert
         result.Should().BeNull();
     }
 
-    //[Fact]
-    //public async Task Remove_NonExistingEntityByObject_ShouldReturnNull()
-    //{
-    //    // Arrange
-    //    await _fixture.CleanDatabase();
-    //    var user = TestDataBuilder.CreateTestUser();
-
-    //    // Act (entity doesn't exist in database)
-    //    var result = await _userRepository.Remove(user);
-
-    //    // Assert
-    //    result.Should().BeNull();
-    //}
-
     [Fact]
     public async Task Remove_NullEntity_ShouldThrowArgumentNullException()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
 
         // Act & Assert
-        Func<Task> act = () => _userRepository.Remove(null!);
+        Func<Task> act = () => userRepository.Remove(null!);
 
         await act.Should()
                  .ThrowAsync<ArgumentNullException>()
@@ -325,10 +334,11 @@ public class BasicCrudOperationsTests : IClassFixture<SqliteTestFixture>
     public async Task Remove_EmptyGuid_ShouldReturnNull()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
 
         // Act
-        var result = await _userRepository.Remove(Guid.Empty);
+        var result = await userRepository.Remove(Guid.Empty);
 
         // Assert
         result.Should().BeNull();
@@ -342,12 +352,14 @@ public class BasicCrudOperationsTests : IClassFixture<SqliteTestFixture>
     public async Task GetById_ExistingEntity_ShouldReturnEntity()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         var user = TestDataBuilder.CreateTestUser();
-        var addedUser = await _userRepository.Add(user);
+        var addedUser = await userRepository.Add(user);
 
         // Act
-        var result = await _userRepository.GetById(addedUser.Id);
+        var result = await userRepository.GetById(addedUser.Id);
 
         // Assert
         result.Should().NotBeNull();
@@ -358,11 +370,13 @@ public class BasicCrudOperationsTests : IClassFixture<SqliteTestFixture>
     public async Task GetById_NonExistingEntity_ShouldReturnNull()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         var nonExistentId = Guid.NewGuid();
 
         // Act
-        var result = await _userRepository.GetById(nonExistentId);
+        var result = await userRepository.GetById(nonExistentId);
 
         // Assert
         result.Should().BeNull();
@@ -372,10 +386,11 @@ public class BasicCrudOperationsTests : IClassFixture<SqliteTestFixture>
     public async Task GetById_EmptyGuid_ShouldReturnNull()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
 
         // Act
-        var result = await _userRepository.GetById(Guid.Empty);
+        var result = await userRepository.GetById(Guid.Empty);
 
         // Assert
         result.Should().BeNull();
@@ -385,17 +400,84 @@ public class BasicCrudOperationsTests : IClassFixture<SqliteTestFixture>
     public async Task GetAll_WithData_ShouldReturnAllEntities()
     {
         // Arrange
-        await _fixture.CleanDatabase();
+        using var scope = fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
         var users = TestDataBuilder.CreateTestUsers(5);
-        await _userRepository.AddRange(users);
+        await userRepository.AddRange(users);
 
         // Act
-        var result = await _userRepository.GetAll();
+        var result = await userRepository.GetAll();
 
         // Assert
         result.Should().HaveCount(5);
         var resultList = result.ToList();
         resultList.Should().AllSatisfy(u => u.Id.Should().NotBe(Guid.Empty));
+    }
+
+    [Fact]
+    public async Task GetAll_EmptyDatabase_ShouldReturnEmptyList()
+    {
+        // Arrange - Fresh empty database
+        using var scope = fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
+        // Act
+        var result = await userRepository.GetAll();
+
+        // Assert
+        result.Should().BeEmpty();
+    }
+
+    #endregion
+
+    #region Test Isolation Demonstration Tests
+
+    [Fact]
+    public async Task TestIsolation_FirstTest_ShouldStartWithEmptyDatabase()
+    {
+        // Arrange
+        using var scope = fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
+        // Act - Check that database is empty
+        var users = await userRepository.GetAll();
+
+        // Assert - Should always be empty regardless of other test execution
+        users.Should().BeEmpty("each test should start with a clean database");
+    }
+
+    [Fact]
+    public async Task TestIsolation_SecondTest_ShouldAlsoStartWithEmptyDatabase()
+    {
+        // Arrange
+        using var scope = fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
+        // Act - Check that database is empty
+        var users = await userRepository.GetAll();
+
+        // Assert - Should always be empty regardless of other test execution
+        users.Should().BeEmpty("each test should start with a clean database");
+
+        // Add some data to prove this test is isolated
+        await userRepository.Add(TestDataBuilder.CreateTestUser());
+        var usersAfterAdd = await userRepository.GetAll();
+        usersAfterAdd.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task TestIsolation_ThirdTest_ShouldNotSeeDataFromOtherTests()
+    {
+        // Arrange
+        using var scope = fixture.CreateIsolatedScope();
+        var userRepository = scope.GetRepository<TestUser>();
+
+        // Act - Check that database is empty
+        var users = await userRepository.GetAll();
+
+        // Assert - Should be empty even though other tests added data
+        users.Should().BeEmpty("test isolation ensures no cross-test contamination");
     }
 
     #endregion
