@@ -1,6 +1,7 @@
 ﻿using FluentCMS.Database.Abstractions;
 using FluentCMS.DataSeeding.Abstractions;
 using FluentCMS.Plugins.TodoManager.Repositories;
+using FluentCMS.Repositories.Abstractions;
 using Microsoft.EntityFrameworkCore;
 
 namespace FluentCMS.Plugins.TodoManager;

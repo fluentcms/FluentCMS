@@ -1,5 +1,6 @@
 ﻿using FluentCMS.Database.Abstractions;
 using FluentCMS.DataSeeding.Abstractions;
+using FluentCMS.Repositories.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 

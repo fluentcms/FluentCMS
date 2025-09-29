@@ -2,6 +2,7 @@
 using FluentCMS.DataSeeding.Abstractions;
 using FluentCMS.Providers.Repositories.Abstractions;
 using FluentCMS.Providers.Repositories.Configuration;
+using FluentCMS.Repositories.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Providers.Repositories.EntityFramework;

@@ -1,4 +1,5 @@
 ﻿using FluentCMS.Database.Abstractions;
+using FluentCMS.Repositories.Abstractions;
 
 namespace FluentCMS.Plugins.TodoManager;
 

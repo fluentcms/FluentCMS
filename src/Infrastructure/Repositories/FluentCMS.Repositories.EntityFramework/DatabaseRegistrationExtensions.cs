@@ -1,24 +1,28 @@
-﻿namespace FluentCMS.Repositories.EntityFramework;
+﻿using FluentCMS.Repositories.Abstractions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace FluentCMS.Repositories.EntityFramework;
 
 public static class DatabaseRegistrationExtensions
 {
     public static IServiceCollection AddGenericRepository<TEntity, TContext>(this IServiceCollection services) where TEntity : class, IEntity where TContext : DbContext
     {
-        services.AddScoped<IRepository<TEntity>, Repository<TEntity, TContext>>();
+        services.AddScoped<IRepository<TEntity>, EfRepository<TEntity, TContext>>();
         return services;
     }
 
     public static IServiceCollection AddEfDbContext<TContext>(this IServiceCollection services, Action<DbContextOptionsBuilder>? additionalConfiguration = null) where TContext : DbContext
     {
-        services.TryAddScoped<AuditableEntityInterceptor>();
+        //services.TryAddScoped<AuditableEntityInterceptor>();
 
         services.AddDbContext<TContext>((provider, options) =>
         {
             options.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking);
 
-            var auditableEntityInterceptor = provider.GetRequiredService<AuditableEntityInterceptor>();
+            //var auditableEntityInterceptor = provider.GetRequiredService<AuditableEntityInterceptor>();
 
-            options.AddInterceptors(auditableEntityInterceptor);
+            //options.AddInterceptors(auditableEntityInterceptor);
 
             // Apply global configuration first
             var dbConfig = provider.GetRequiredService<IDatabaseConfiguration>();

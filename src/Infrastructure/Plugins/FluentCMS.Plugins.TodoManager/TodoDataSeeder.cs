@@ -2,6 +2,7 @@
 using FluentCMS.DataSeeding.Abstractions;
 using FluentCMS.Plugins.TodoManagement.Models;
 using FluentCMS.Plugins.TodoManager.Repositories;
+using FluentCMS.Repositories.Abstractions;
 
 namespace FluentCMS.Plugins.TodoManager;
 
