@@ -1,4 +1,4 @@
-﻿using FluentCMS.Repositories.EntityFramework;
+﻿using FluentCMS.Repositories.EntityFramework.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Repositories.Sqlite;

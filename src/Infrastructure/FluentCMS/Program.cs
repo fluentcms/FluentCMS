@@ -35,8 +35,9 @@ builder.AddSqliteOptions(connectionString);
 services.AddDatabaseManager(options =>
 {
     // Default database for general services
-    options.SetDefault().UseSqlite(connectionString1);
+    options.Default().UseSqlite(connectionString1);
     options.For<ITodoDatabaseMarker>().UseSqlite(connectionString2);
+    options.For<ICutomerDatabaseMarker>().UseSqlServer(connectionString3);
 });
 
 builder.Host.UseSerilog();

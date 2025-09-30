@@ -1,10 +1,10 @@
-﻿using FluentCMS.Repositories.Abstractions;
-using Microsoft.EntityFrameworkCore;
+﻿//using FluentCMS.Repositories.Abstractions;
+//using Microsoft.EntityFrameworkCore;
 
-namespace FluentCMS.Repositories.EntityFramework;
+//namespace FluentCMS.Repositories.EntityFramework;
 
-public class DbContextOptions<TDbContext, TMarker> : DbContextOptions<TDbContext>
-    where TDbContext : DbContext
-    where TMarker : IDatabaseScopeMarker
-{
-}
+//public class DbContextOptions<TDbContext, TMarker> : DbContextOptions<TDbContext>
+//    where TDbContext : DbContext
+//    where TMarker : IDatabaseScopeMarker
+//{
+//}

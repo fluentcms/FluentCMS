@@ -1,4 +1,4 @@
-using FluentCMS.Repositories.EntityFramework;
+using FluentCMS.Repositories.EntityFramework.Extensions;
 using Microsoft.EntityFrameworkCore;
 
 namespace FluentCMS.Repositories.SqlServer;

@@ -4,6 +4,7 @@ using FluentCMS.Plugins.TodoManagement.Models;
 using FluentCMS.Plugins.TodoManager.Repositories;
 using FluentCMS.Plugins.TodoManager.Services;
 using FluentCMS.Repositories.EntityFramework;
+using FluentCMS.Repositories.EntityFramework.Extensions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;

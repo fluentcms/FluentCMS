@@ -182,9 +182,3 @@ public class EfRepository<TEntity, TContext>(TContext context, ILogger<EfReposit
 
     #endregion
 }
-
-public class EfRepository<TEntity, TContext, TMarker>(TContext context, ILogger<EfRepository<TEntity, TContext>> logger) : EfRepository<TEntity, TContext>(context,logger), IRepository<TEntity, TMarker>
-    where TEntity : class, IEntity
-    where TContext : DbContext
-    where TMarker : IDatabaseScopeMarker
-{ }

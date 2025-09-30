@@ -1,4 +1,5 @@
 ﻿using FluentCMS.DataSeeding;
+using FluentCMS.Repositories.EntityFramework.Extensions;
 
 namespace FluentCMS.Plugins.IdentityManager;
 
