@@ -6,7 +6,6 @@ namespace FluentCMS.Repositories.Abstractions;
 /// based on environment, configuration, or other runtime factors.
 /// </summary>
 public interface IInitializationCondition
-
 {
     /// <summary>
     /// Name of the condition for logging purposes

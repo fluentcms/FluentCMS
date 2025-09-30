@@ -27,3 +27,7 @@ public interface IDataSeeder
     /// <param name="cancellationToken">Cancellation token for async operations</param>
     Task SeedData(CancellationToken cancellationToken = default);
 }
+
+public interface IDataSeeder<TMarker> : IDataSeeder where TMarker : IDatabaseScopeMarker
+{
+}

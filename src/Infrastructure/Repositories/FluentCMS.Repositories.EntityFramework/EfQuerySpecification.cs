@@ -7,7 +7,8 @@ namespace FluentCMS.Repositories.EntityFramework;
 /// <summary>
 /// EF Core implementation of IQuerySpecification that wraps IQueryable
 /// </summary>
-public class EfQuerySpecification<T>(IQueryable<T> _queryable) : IQuerySpecification<T> where T : class
+public class EfQuerySpecification<T>(IQueryable<T> _queryable) : IQuerySpecification<T>
+    where T : class
 {
     protected IQueryable<T> Queryable => _queryable;
 
@@ -146,7 +147,7 @@ public class EfQuerySpecification<T>(IQueryable<T> _queryable) : IQuerySpecifica
     }
 
     // Execute query and return results as an enumerable
-    public async Task<IEnumerable<T>> ToEnumable(CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<T>> ToEnumerable(CancellationToken cancellationToken = default)
     {
         return await _queryable.ToListAsync(cancellationToken);
     }

@@ -5,6 +5,7 @@ using FluentCMS.Database.Sqlite;
 using FluentCMS.DataSeeding;
 using FluentCMS.DataSeeding.Conditions;
 using FluentCMS.Plugins;
+using FluentCMS.Plugins.TodoManager;
 using FluentCMS.Providers;
 using FluentCMS.Providers.EventBus.InMemory;
 using FluentCMS.Providers.Repositories.EntityFramework;
@@ -34,7 +35,8 @@ builder.AddSqliteOptions(connectionString);
 services.AddDatabaseManager(options =>
 {
     // Default database for general services
-    options.SetDefault().UseSqlite(connectionString);
+    options.SetDefault().UseSqlite(connectionString1);
+    options.For<ITodoDatabaseMarker>().UseSqlite(connectionString2);
 });
 
 builder.Host.UseSerilog();

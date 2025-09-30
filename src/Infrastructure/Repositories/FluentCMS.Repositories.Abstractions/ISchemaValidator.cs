@@ -27,3 +27,7 @@ public interface ISchemaValidator
     /// <param name="cancellationToken">Cancellation token for async operations</param>
     Task CreateSchema(CancellationToken cancellationToken = default);
 }
+
+public interface ISchemaValidator<TMarker> : ISchemaValidator where TMarker : IDatabaseScopeMarker
+{
+}
