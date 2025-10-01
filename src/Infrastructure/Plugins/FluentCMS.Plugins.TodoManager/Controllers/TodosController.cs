@@ -1,4 +1,4 @@
-using FluentCMS.Plugins.TodoManagement.Models;
+using FluentCMS.Plugins.TodoManager.Models;
 using FluentCMS.Plugins.TodoManager.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,8 +15,8 @@ public class TodosController(ITodoService service) : BaseController
             Description = todo.Description,
             IsCompleted = todo.IsCompleted,
             DueDate = todo.DueDate,
-            CreatedAt = todo.CreatedAt,
-            Version = todo.Version
+            //CreatedAt = todo.CreatedAt,
+            //Version = todo.Version
         };
     }
 

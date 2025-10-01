@@ -1,17 +1,17 @@
-﻿using FluentCMS.Database.Abstractions;
-using FluentCMS.DataSeeding.Abstractions;
-using FluentCMS.Plugins.TodoManagement.Models;
-using FluentCMS.Plugins.TodoManager.Repositories;
+﻿using FluentCMS.Plugins.TodoManager.Models;
 using FluentCMS.Repositories.Abstractions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
-namespace FluentCMS.Plugins.TodoManager;
+namespace FluentCMS.Plugins.TodoManager.Repositories;
 
-public class TodoDataSeeder(TodoDbContext dbContext, IDatabaseManager<ITodoDatabaseMarker> databaseManager) : IDataSeeder
+internal class TodoDataSeeder(TodoDbContext dbContext, ILogger<TodoDataSeeder> logger) : IDataSeeder
 {
     public int Priority => 10000;
 
     public async Task SeedData(CancellationToken cancellationToken = default)
     {
+        logger.LogInformation("Seeding initial todo items into the database...");
         await dbContext.Todos.AddRangeAsync([
             new Todo
             {
@@ -34,6 +34,7 @@ public class TodoDataSeeder(TodoDbContext dbContext, IDatabaseManager<ITodoDatab
 
     public async Task<bool> HasData(CancellationToken cancellationToken = default)
     {
-        return !await databaseManager.TablesEmpty(["Todos"], cancellationToken);
+        logger.LogInformation("Checking for existing todo items in the database...");
+        return await dbContext.Todos.AnyAsync(cancellationToken);
     }
 }

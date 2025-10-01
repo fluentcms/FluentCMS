@@ -2,3 +2,4 @@
 global using System.ComponentModel.DataAnnotations;
 global using System.Diagnostics;
 global using System.Text;
+global using FluentCMS.Repositories.Abstractions;

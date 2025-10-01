@@ -1,14 +1,16 @@
-﻿using FluentCMS.Plugins.TodoManagement.Models;
+﻿using FluentCMS.Plugins.TodoManager.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace FluentCMS.Plugins.TodoManager.Repositories;
 
-public class TodoDbContext(DbContextOptions<TodoDbContext> options) : DbContext(options)
+internal class TodoDbContext(DbContextOptions<TodoDbContext> options) : DbContext(options), ITodoDatabaseMarker
 {
-    public DbSet<Todo> Todos { get; set; } = null!;
+    public DbSet<Todo> Todos => Set<Todo>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        base.OnModelCreating(modelBuilder);
+
         // Configure the Todo entity
         modelBuilder.Entity<Todo>()
             .HasKey(t => t.Id);

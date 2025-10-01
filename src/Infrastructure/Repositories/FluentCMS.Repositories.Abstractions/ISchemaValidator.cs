@@ -28,6 +28,6 @@ public interface ISchemaValidator
     Task CreateSchema(CancellationToken cancellationToken = default);
 }
 
-public interface ISchemaValidator<TMarker> : ISchemaValidator where TMarker : IDatabaseScopeMarker
+public interface ISchemaValidator<TMarker> : ISchemaValidator
 {
 }

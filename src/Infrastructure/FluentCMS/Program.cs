@@ -1,14 +1,9 @@
 using FluentCMS.Api;
-using FluentCMS.Configuration.Sqlite;
-using FluentCMS.Database.Extensions;
-using FluentCMS.Database.Sqlite;
-using FluentCMS.DataSeeding;
-using FluentCMS.DataSeeding.Conditions;
 using FluentCMS.Plugins;
-using FluentCMS.Plugins.TodoManager;
-using FluentCMS.Providers;
-using FluentCMS.Providers.EventBus.InMemory;
-using FluentCMS.Providers.Repositories.EntityFramework;
+using FluentCMS.Plugins.TodoManager.Repositories;
+using FluentCMS.Plugins.TodoManager.Services;
+using FluentCMS.Repositories.Abstractions.Conditions;
+using FluentCMS.Repositories.EntityFramework.Extensions;
 using FluentCMS.Repositories.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
@@ -30,55 +25,61 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 
 var services = builder.Services;
 
-builder.AddSqliteOptions(connectionString);
-
-services.AddDatabaseManager(options =>
+builder.Services.AddDatabaseManager(options =>
 {
-    // Default database for general services
-    options.Default().UseSqlite(connectionString1);
-    options.For<ITodoDatabaseMarker>().UseSqlite(connectionString2);
-    options.For<ICutomerDatabaseMarker>().UseSqlServer(connectionString3);
+    // Default database for most libraries
+    options.Default()
+        .UseSqlite(connectionString)
+        .EnableDataSeeding(seedingOptions =>
+        {
+            seedingOptions.IgnoreExceptions = false; // Fail fast on errors
+            seedingOptions.Conditions.Add(new EnvironmentCondition(builder.Environment, e => e.IsDevelopment()));
+        })
+        .EnableSchemaValidator(schemaValidatorOptions =>
+        {
+            schemaValidatorOptions.IgnoreExceptions = false;
+            schemaValidatorOptions.Conditions.Add(new EnvironmentCondition(builder.Environment, e => e.IsDevelopment()));
+        });
+
+    // Specific database for ToDo library
+    options.For<ITodoDatabaseMarker>()
+        .UseSqlite("DataSource=app1.db;Cache=Shared")
+        .EnableDataSeeding(seedingOptions =>
+        {
+            seedingOptions.IgnoreExceptions = true; // Fail fast on errors
+            seedingOptions.Conditions.Add(new EnvironmentCondition(builder.Environment, e => e.IsDevelopment()));
+        })
+        .EnableSchemaValidator(schemaValidatorOptions =>
+        {
+            schemaValidatorOptions.IgnoreExceptions = true;
+            schemaValidatorOptions.Conditions.Add(new EnvironmentCondition(builder.Environment, e => e.IsDevelopment()));
+        });
+    ;
 });
 
 builder.Host.UseSerilog();
 
-services.AddProviders(options =>
-    {
-        options.AssemblyPrefixesToScan.Add("FluentCMS");
-        options.IgnoreExceptions = false; // Set to true to ignore exceptions during provider loading
-    }).UseEntityFramework();
+//services.AddProviders(options =>
+//    {
+//        options.AssemblyPrefixesToScan.Add("FluentCMS");
+//        options.IgnoreExceptions = false; // Set to true to ignore exceptions during provider loading
+//    }).UseEntityFramework();
 
 // Add plugin system
 builder.AddPlugins(["FluentCMS"]);
 
-// Set sqlite db to the repositories
-services.AddSqliteDatabase(connectionString);
-
 // Register providers
-services.AddEventPublisher();
+//services.AddEventPublisher();
 
 // Add services to the container.
 services.AddFluentCmsApi();
 
-// Configure seeding options
-services.AddDataSeeders(options =>
-{
-    options.IgnoreExceptions = false; // Fail fast on errors
-    options.Timeout = TimeSpan.FromMinutes(10); // Custom timeout
-
-    // Add conditions
-    options.Conditions.Add(new EnvironmentCondition(builder.Environment, e => e.IsDevelopment()));
-});
-
-services.AddSchemaValidators(options =>
-{
-    options.IgnoreExceptions = false;
-
-    // Only run schema validation in Development
-    options.Conditions.Add(new EnvironmentCondition(builder.Environment, e => e.IsDevelopment()));
-});
-
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var todoService = scope.ServiceProvider.GetRequiredService<ITodoService>();
+}
 
 app.UseFluentCmsApi();
 

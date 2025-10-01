@@ -15,7 +15,7 @@ public static class ProviderFeatureBuilderExtensions
         providerFeatureBuilder.Services.AddDataSeeder<ProviderDataSeeder>();
         providerFeatureBuilder.Services.AddSchemaValidator<ProviderSchemaValidator>();
 
-        providerFeatureBuilder.Services.AddEfDbContext<ProviderDbContext>();
+        providerFeatureBuilder.Services.<ProviderDbContext>();
         providerFeatureBuilder.Services.AddScoped<IProviderRepository, ProviderRepository>();
         return providerFeatureBuilder;
     }

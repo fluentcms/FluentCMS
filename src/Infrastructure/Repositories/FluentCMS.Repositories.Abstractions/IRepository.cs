@@ -13,9 +13,3 @@ public interface IRepository<TEntity>
     // Single entry point for all queries - provides fluent API
     IQuerySpecification<TEntity> Query();
 }
-
-public interface IRepository<TEntity, TMarket>
-    where TEntity : class, IEntity
-    where TMarket : IDatabaseScopeMarker
-{
-}

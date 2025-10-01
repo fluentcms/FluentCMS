@@ -5,7 +5,7 @@ namespace FluentCMS.Repositories.Abstractions;
 /// Conditions determine whether seeding/schema validation should proceed
 /// based on environment, configuration, or other runtime factors.
 /// </summary>
-public interface IInitializationCondition
+public interface IDbInitializationCondition
 {
     /// <summary>
     /// Name of the condition for logging purposes

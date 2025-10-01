@@ -28,6 +28,6 @@ public interface IDataSeeder
     Task SeedData(CancellationToken cancellationToken = default);
 }
 
-public interface IDataSeeder<TMarker> : IDataSeeder where TMarker : IDatabaseScopeMarker
+public interface IDataSeeder<TMarker> : IDataSeeder
 {
 }

@@ -1,9 +1,9 @@
-﻿namespace FluentCMS;
+﻿//namespace FluentCMS;
 
-public interface IEntity
-{
-    Guid Id { get; set; }
-}
+//public interface IEntity
+//{
+//    Guid Id { get; set; }
+//}
 
 public abstract class Entity : IEntity
 {

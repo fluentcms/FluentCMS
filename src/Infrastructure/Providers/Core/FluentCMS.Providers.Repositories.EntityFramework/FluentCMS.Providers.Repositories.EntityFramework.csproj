@@ -7,8 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\Database\FluentCMS.Database.Abstractions\FluentCMS.Database.Abstractions.csproj" />
-    <ProjectReference Include="..\..\..\DataSeeding\FluentCMS.DataSeeding\FluentCMS.DataSeeding.csproj" />
     <ProjectReference Include="..\..\..\Repositories\FluentCMS.Repositories.EntityFramework\FluentCMS.Repositories.EntityFramework.csproj" />
     <ProjectReference Include="..\FluentCMS.Providers\FluentCMS.Providers.csproj" />
   </ItemGroup>
