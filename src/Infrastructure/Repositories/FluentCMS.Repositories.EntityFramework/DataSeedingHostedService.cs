@@ -26,13 +26,18 @@ internal sealed class DataSeedingHostedService(IServiceProvider serviceProvider,
         using var scope = serviceProvider.CreateScope();
 
         // Resolve required services from the scoped service provider
-        var dbInitializer = scope.ServiceProvider.GetRequiredService<IDatabaseInitializer>();
+        var schemaValidator = scope.ServiceProvider.GetRequiredService<ISchemaValidatorService>();
+        var dataSeeder = scope.ServiceProvider.GetRequiredService<IDataSeederService>();
 
         try
         {
             logger.LogInformation("Starting database initialization process ...");
-            await dbInitializer.InitializeAll(cancellationToken);
+            await schemaValidator.Initialize(cancellationToken);
             logger.LogInformation("Database initialization process completed.");
+
+            logger.LogInformation("Starting data seeding process ...");
+            await dataSeeder.Initialize(cancellationToken);
+            logger.LogInformation("Data seeding process completed.");
         }
         catch (Exception ex)
         {

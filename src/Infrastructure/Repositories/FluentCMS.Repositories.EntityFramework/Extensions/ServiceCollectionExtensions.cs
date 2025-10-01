@@ -39,8 +39,9 @@ public static class ServiceCollectionExtensions
         // Register the options as a singleton so it can be retrieved if needed
         services.AddSingleton(options);
 
-        // Register the DatabaseInitializer to handle schema validation and data seeding
-        services.AddScoped<IDatabaseInitializer, DatabaseInitializer>();
+        // Register database initializer services
+        services.AddScoped<ISchemaValidatorService, SchemaValidatorService>();
+        services.AddScoped<IDataSeederService, DataSeederService>();
 
         // Register the hosted service to seed the database at startup
         // Avoid multiple registration for multiple calls of AddDbOptions
