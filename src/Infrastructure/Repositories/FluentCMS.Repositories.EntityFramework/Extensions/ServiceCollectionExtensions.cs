@@ -123,7 +123,7 @@ public static class ServiceCollectionExtensions
     /// <param name="builder">The database configuration builder</param>
     /// <param name="configure">Action to configure schema validation options</param>
     /// <returns>The configuration builder for chaining</returns>
-    public static IDatabaseConfigurationBuilder EnableSchemaValidator(this IDatabaseConfigurationBuilder builder, Action<SchemaValidatorOptions> configure)
+    public static IDatabaseConfigurationBuilder EnableSchemaValidation(this IDatabaseConfigurationBuilder builder, Action<SchemaValidatorOptions> configure)
     {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(configure);

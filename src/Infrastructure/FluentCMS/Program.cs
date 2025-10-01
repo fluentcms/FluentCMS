@@ -35,7 +35,7 @@ builder.Services.AddDatabaseManager(options =>
             seedingOptions.IgnoreExceptions = false; // Fail fast on errors
             seedingOptions.Conditions.Add(new EnvironmentCondition(builder.Environment, e => e.IsDevelopment()));
         })
-        .EnableSchemaValidator(schemaValidatorOptions =>
+        .EnableSchemaValidation(schemaValidatorOptions =>
         {
             schemaValidatorOptions.IgnoreExceptions = false;
             schemaValidatorOptions.Conditions.Add(new EnvironmentCondition(builder.Environment, e => e.IsDevelopment()));
@@ -49,7 +49,7 @@ builder.Services.AddDatabaseManager(options =>
             seedingOptions.IgnoreExceptions = true; // Fail fast on errors
             seedingOptions.Conditions.Add(new EnvironmentCondition(builder.Environment, e => e.IsDevelopment()));
         })
-        .EnableSchemaValidator(schemaValidatorOptions =>
+        .EnableSchemaValidation(schemaValidatorOptions =>
         {
             schemaValidatorOptions.IgnoreExceptions = true;
             schemaValidatorOptions.Conditions.Add(new EnvironmentCondition(builder.Environment, e => e.IsDevelopment()));
