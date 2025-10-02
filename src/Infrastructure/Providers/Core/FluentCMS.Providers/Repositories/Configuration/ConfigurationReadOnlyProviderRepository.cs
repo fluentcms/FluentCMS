@@ -1,4 +1,5 @@
 ﻿using FluentCMS.Providers.Repositories.Abstractions;
+using FluentCMS.Repositories.Abstractions;
 using Microsoft.Extensions.Configuration;
 using System.Text.Json;
 
@@ -6,7 +7,7 @@ namespace FluentCMS.Providers.Repositories.Configuration;
 
 public sealed class ConfigurationReadOnlyProviderRepository(IConfiguration configuration, IProviderManager providerManager) : IProviderRepository
 {
-    public async Task<IEnumerable<Provider>> GetAll(CancellationToken cancellationToken = default)
+    private async Task<IEnumerable<Provider>> GetAll(CancellationToken cancellationToken = default)
     {
         var providers = new List<Provider>();
         var providerAreas = configuration.GetSection("Providers").GetChildren();
@@ -43,19 +44,35 @@ public sealed class ConfigurationReadOnlyProviderRepository(IConfiguration confi
         return await Task.FromResult(providers);
     }
 
-    public Task Remove(Provider provider, CancellationToken cancellationToken = default)
+    public IQuerySpecification<Provider> Query()
+    {
+        var providers = Task.Run(() => GetAll()).GetAwaiter().GetResult();
+        return new InMemoryQuerySpecification<Provider>(providers);
+    }
+
+    public Task<Provider?> Remove(Provider provider, CancellationToken cancellationToken = default)
     {
         throw new Exception("In-memory repository does not support removing providers.");
     }
 
-    public Task Update(Provider provider, CancellationToken cancellationToken = default)
+    public Task<Provider> Update(Provider provider, CancellationToken cancellationToken = default)
     {
         throw new Exception("In-memory repository does not support updating providers.");
     }
 
-    public Task AddMany(IEnumerable<Provider> providers, CancellationToken cancellationToken = default)
+    public Task<Provider> Add(Provider entity, CancellationToken cancellationToken = default)
     {
         throw new Exception("In-memory repository does not support adding providers.");
+    }
+
+    public Task<IEnumerable<Provider>> AddRange(IEnumerable<Provider> entities, CancellationToken cancellationToken = default)
+    {
+        throw new Exception("In-memory repository does not support adding providers.");
+    }
+
+    public Task<Provider?> Remove(Guid id, CancellationToken cancellationToken = default)
+    {
+        throw new Exception("In-memory repository does not support removing providers.");
     }
 }
 
@@ -65,3 +82,5 @@ internal class ProviderAreaConfiguration
     public bool Active { get; set; }
     public string Module { get; set; } = default!;
 }
+
+

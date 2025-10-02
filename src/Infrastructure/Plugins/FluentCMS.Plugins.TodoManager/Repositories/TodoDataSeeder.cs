@@ -1,18 +1,17 @@
 ﻿using FluentCMS.Plugins.TodoManager.Models;
-using FluentCMS.Repositories.Abstractions;
-using Microsoft.EntityFrameworkCore;
+using FluentCMS.Repositories.EntityFramework;
 using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Plugins.TodoManager.Repositories;
 
-internal class TodoDataSeeder(TodoDbContext dbContext, ILogger<TodoDataSeeder> logger) : IDataSeeder
+internal class TodoDataSeeder(TodoDbContext dbContext, ILogger<TodoDataSeeder> logger) : EfDataSeeder<TodoDbContext>(dbContext, logger)
 {
-    public int Priority => 10000;
+    public override int Priority => 10000;
 
-    public async Task SeedData(CancellationToken cancellationToken = default)
+    public override async Task SeedData(CancellationToken cancellationToken = default)
     {
         logger.LogInformation("Seeding initial todo items into the database...");
-        await dbContext.Todos.AddRangeAsync([
+        await DbContext.Todos.AddRangeAsync([
             new Todo
             {
                 Title = "Complete EF Core tutorial",
@@ -29,12 +28,6 @@ internal class TodoDataSeeder(TodoDbContext dbContext, ILogger<TodoDataSeeder> l
             }
         ], cancellationToken);
 
-        await dbContext.SaveChangesAsync(cancellationToken);
-    }
-
-    public async Task<bool> HasData(CancellationToken cancellationToken = default)
-    {
-        logger.LogInformation("Checking for existing todo items in the database...");
-        return await dbContext.Todos.AnyAsync(cancellationToken);
+        await DbContext.SaveChangesAsync(cancellationToken);
     }
 }

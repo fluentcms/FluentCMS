@@ -28,7 +28,7 @@ internal sealed class ProviderManager(ProviderCatalogCache providerCatalogCache,
         if (providerCatalogCache.IsInitialized)
             return;
 
-        var providers = await repository.GetAll(cancellationToken);
+        var providers = await repository.Query().ToEnumerable(cancellationToken);
         IEnumerable<ProviderCatalog> providerCatalogs = [];
 
         foreach (var provider in providers)

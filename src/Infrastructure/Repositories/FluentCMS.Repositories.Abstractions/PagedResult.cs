@@ -1,6 +1,4 @@
-using FluentCMS.Repositories.Abstractions;
-
-namespace FluentCMS.Repositories.EntityFramework;
+namespace FluentCMS.Repositories.Abstractions;
 
 /// <summary>
 /// Implementation of pagination result wrapper

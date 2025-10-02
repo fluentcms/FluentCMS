@@ -1,6 +1,8 @@
 using FluentCMS.Api;
 using FluentCMS.Plugins;
 using FluentCMS.Plugins.TodoManager.Repositories;
+using FluentCMS.Providers.Repositories.EntityFramework;
+using FluentCMS.Providers;
 using FluentCMS.Plugins.TodoManager.Services;
 using FluentCMS.Repositories.Abstractions.Conditions;
 using FluentCMS.Repositories.EntityFramework.Extensions;
@@ -43,15 +45,29 @@ builder.Services.AddDatabaseManager(options =>
 
     // Specific database for ToDo library
     options.For<ITodoDatabaseMarker>()
-        .UseSqlite("DataSource=app1.db;Cache=Shared")
+        .UseSqlite("DataSource=todo.db;Cache=Shared")
         .EnableDataSeeding(seedingOptions =>
         {
-            seedingOptions.IgnoreExceptions = true; // Fail fast on errors
+            seedingOptions.IgnoreExceptions = false; // Fail fast on errors
             seedingOptions.Conditions.Add(new EnvironmentCondition(builder.Environment, e => e.IsDevelopment()));
         })
         .EnableSchemaValidation(schemaValidatorOptions =>
         {
-            schemaValidatorOptions.IgnoreExceptions = true;
+            schemaValidatorOptions.IgnoreExceptions = false;
+            schemaValidatorOptions.Conditions.Add(new EnvironmentCondition(builder.Environment, e => e.IsDevelopment()));
+        });
+
+    // Specific database for ToDo library
+    options.For<IProviderDatabaseMarker>()
+        .UseSqlite("DataSource=providers.db;Cache=Shared")
+        .EnableDataSeeding(seedingOptions =>
+        {
+            seedingOptions.IgnoreExceptions = false; // Fail fast on errors
+            seedingOptions.Conditions.Add(new EnvironmentCondition(builder.Environment, e => e.IsDevelopment()));
+        })
+        .EnableSchemaValidation(schemaValidatorOptions =>
+        {
+            schemaValidatorOptions.IgnoreExceptions = false;
             schemaValidatorOptions.Conditions.Add(new EnvironmentCondition(builder.Environment, e => e.IsDevelopment()));
         });
     ;
@@ -59,11 +75,11 @@ builder.Services.AddDatabaseManager(options =>
 
 builder.Host.UseSerilog();
 
-//services.AddProviders(options =>
-//    {
-//        options.AssemblyPrefixesToScan.Add("FluentCMS");
-//        options.IgnoreExceptions = false; // Set to true to ignore exceptions during provider loading
-//    }).UseEntityFramework();
+services.AddProviders(options =>
+    {
+        options.AssemblyPrefixesToScan.Add("FluentCMS");
+        options.IgnoreExceptions = false; // Set to true to ignore exceptions during provider loading
+    }).UseEntityFramework();
 
 // Add plugin system
 builder.AddPlugins(["FluentCMS"]);
@@ -75,11 +91,6 @@ builder.AddPlugins(["FluentCMS"]);
 services.AddFluentCmsApi();
 
 var app = builder.Build();
-
-using (var scope = app.Services.CreateScope())
-{
-    var todoService = scope.ServiceProvider.GetRequiredService<ITodoService>();
-}
 
 app.UseFluentCmsApi();
 

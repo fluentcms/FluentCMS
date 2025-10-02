@@ -1,33 +1,10 @@
-﻿using FluentCMS.Database.Abstractions;
-using FluentCMS.DataSeeding.Abstractions;
-using FluentCMS.Repositories.Abstractions;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
+﻿using FluentCMS.Repositories.EntityFramework;
+using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Providers.Repositories.EntityFramework;
 
-public class ProviderSchemaValidator(IServiceProvider sp) : ISchemaValidator
+public class ProviderSchemaValidator(ProviderDbContext providerDbContext, ILogger<EfSchemaValidator<ProviderDbContext>> logger) : EfSchemaValidator<ProviderDbContext>(providerDbContext, logger)
 {
-    private readonly ProviderDbContext? _dbContext = sp.GetService<ProviderDbContext>();
-    private readonly IDatabaseManager? _databaseManager = sp.GetService<IDatabaseManager<IProviderDatabaseMarker>>();
-    private readonly bool _isActive = sp.GetService<ProviderDbContext>() is not null;
+    public override int Priority => 1;
 
-    public int Priority => 1;
-
-    public async Task CreateSchema(CancellationToken cancellationToken = default)
-    {
-        await _databaseManager!.CreateDatabase(cancellationToken);
-        var sql = _dbContext!.Database.GenerateCreateScript();
-        await _dbContext.Database.ExecuteSqlRawAsync(sql, cancellationToken);
-    }
-
-    public async Task<bool> ValidateSchema(CancellationToken cancellationToken = default)
-    {
-        if (!_isActive)
-            return true;
-
-        if (!await _databaseManager!.DatabaseExists(cancellationToken))
-            return false;
-        return await _databaseManager.TablesExist(["Providers"], cancellationToken);
-    }
 }
