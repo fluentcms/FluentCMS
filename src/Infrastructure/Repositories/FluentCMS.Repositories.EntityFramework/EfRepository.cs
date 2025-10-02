@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Repositories.EntityFramework;
 
-public class EfRepository<TEntity, TContext>(TContext context, ILogger<EfRepository<TEntity, TContext>> logger) : IRepository<TEntity>
+public abstract class EfRepository<TEntity, TContext>(TContext context, ILogger<EfRepository<TEntity, TContext>> logger) : IRepository<TEntity>
     where TEntity : class, IEntity
     where TContext : DbContext
 {
@@ -163,7 +163,7 @@ public class EfRepository<TEntity, TContext>(TContext context, ILogger<EfReposit
     }
 
     // Create a query specification for fluent querying
-    public IQuerySpecification<TEntity> Query()
+    public virtual IQuerySpecification<TEntity> Query()
     {
         // Return a new query specification wrapping the DbSet as IQueryable
         return new EfQuerySpecification<TEntity>(DbSet.AsNoTracking().AsQueryable());
