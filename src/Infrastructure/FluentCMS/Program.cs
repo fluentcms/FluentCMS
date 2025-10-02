@@ -10,6 +10,7 @@ using FluentCMS.Repositories.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Serilog.Events;
+using FluentCMS.Plugins.IdentityManager;
 
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()
@@ -57,7 +58,21 @@ builder.Services.AddDatabaseManager(options =>
             schemaValidatorOptions.Conditions.Add(new EnvironmentCondition(builder.Environment, e => e.IsDevelopment()));
         });
 
-    // Specific database for ToDo library
+    // Specific database for Identity library
+    options.For<IIdentityDatabaseMarker>()
+        .UseSqlite("DataSource=identity.db;Cache=Shared")
+        .EnableDataSeeding(seedingOptions =>
+        {
+            seedingOptions.IgnoreExceptions = false; // Fail fast on errors
+            seedingOptions.Conditions.Add(new EnvironmentCondition(builder.Environment, e => e.IsDevelopment()));
+        })
+        .EnableSchemaValidation(schemaValidatorOptions =>
+        {
+            schemaValidatorOptions.IgnoreExceptions = false;
+            schemaValidatorOptions.Conditions.Add(new EnvironmentCondition(builder.Environment, e => e.IsDevelopment()));
+        });
+
+    // Specific database for Provider library
     options.For<IProviderDatabaseMarker>()
         .UseSqlite("DataSource=providers.db;Cache=Shared")
         .EnableDataSeeding(seedingOptions =>

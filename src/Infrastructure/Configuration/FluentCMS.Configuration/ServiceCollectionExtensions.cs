@@ -45,7 +45,7 @@ public static class ServiceCollectionExtensions
 
         // Register the hosted service to seed the database at startup
         // Avoid multiple registration for multiple calls of AddDbOptions
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, OptionsDbSeeder>());
+        //services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, OptionsDbSeeder>());
 
         return services;
     }

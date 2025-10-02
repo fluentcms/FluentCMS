@@ -22,7 +22,7 @@ public class ProviderDataSeeder(IProviderManager providerManager, ConfigurationR
             providerCatalogs.Add(providerCatalog);
         }
 
-        await dbContext.Providers.AddRangeAsync(providers, cancellationToken);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        await DbContext.Providers.AddRangeAsync(providers, cancellationToken);
+        await DbContext.SaveChangesAsync(cancellationToken);
     }
 }

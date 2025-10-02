@@ -1,4 +1,6 @@
-﻿namespace FluentCMS.Plugins.IdentityManager;
+﻿using FluentCMS.Plugins.IdentityManager.Models;
+
+namespace FluentCMS.Plugins.IdentityManager;
 
 public class MappingProfile : Profile
 {

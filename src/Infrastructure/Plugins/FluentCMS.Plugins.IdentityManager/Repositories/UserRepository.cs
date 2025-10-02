@@ -4,7 +4,7 @@ public interface IUserRepository : IRepository<User>
 {
 }
 
-public class UserRepository(ApplicationDbContext context, ILogger<UserRepository> logger) :
+internal class UserRepository(ApplicationDbContext context, ILogger<UserRepository> logger) :
     EfRepository<User, ApplicationDbContext>(context, logger),
     IUserRepository
 {

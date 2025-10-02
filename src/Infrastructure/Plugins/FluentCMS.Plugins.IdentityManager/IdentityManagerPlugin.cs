@@ -1,4 +1,4 @@
-﻿using FluentCMS.DataSeeding;
+﻿using FluentCMS.Plugins.IdentityManager.Models;
 using FluentCMS.Repositories.EntityFramework.Extensions;
 
 namespace FluentCMS.Plugins.IdentityManager;
@@ -11,8 +11,8 @@ public class IdentityManagerPlugin : IPlugin
 
         services.AddAutoMapper(cfg => { }, typeof(MappingProfile));
 
-        builder.Services.AddSchemaValidator<IdentitySchemaValidator>();
-        builder.Services.AddDataSeeder<IdentityDataSeeder>();
+        builder.Services.AddSchemaValidator<IdentitySchemaValidator, IIdentityDatabaseMarker>();
+        builder.Services.AddDataSeeder<IdentityDataSeeder, IIdentityDatabaseMarker>();
 
         // Services registration
         //services.AddScoped<IUserService, UserService>();
@@ -24,7 +24,7 @@ public class IdentityManagerPlugin : IPlugin
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<IUserRoleRepository, UserRoleRepository>();
 
-        services.AddEfDbContext<ApplicationDbContext>();
+        services.AddDatabaseContext<ApplicationDbContext>();
 
         services.AddIdentity<User, Role>()
             .AddEntityFrameworkStores<ApplicationDbContext>()
