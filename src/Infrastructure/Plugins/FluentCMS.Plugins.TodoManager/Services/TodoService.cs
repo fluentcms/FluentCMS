@@ -1,6 +1,5 @@
 ﻿using FluentCMS.Plugins.TodoManager.Models;
 using FluentCMS.Plugins.TodoManager.Repositories;
-using FluentCMS.Repositories.Abstractions;
 
 namespace FluentCMS.Plugins.TodoManager.Services;
 

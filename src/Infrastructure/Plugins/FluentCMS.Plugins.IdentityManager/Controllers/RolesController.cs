@@ -1,7 +1,4 @@
-﻿using FluentCMS.Exceptions;
-using FluentCMS.Plugins.IdentityManager.Models;
-
-namespace FluentCMS.Plugins.IdentityManager.Controllers;
+﻿namespace FluentCMS.Plugins.IdentityManager.Controllers;
 
 [ApiController]
 [Route("api/[controller]/[action]")]

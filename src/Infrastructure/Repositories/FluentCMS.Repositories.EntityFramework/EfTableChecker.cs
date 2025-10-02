@@ -32,7 +32,7 @@ internal class EfTableChecker(DbContext dbContext)
                 await HasAnyData(modelType, cancellationToken);
                 return true;
             }
-            catch 
+            catch
             {
                 // Intentionally suppressed - checking for table existence
             }

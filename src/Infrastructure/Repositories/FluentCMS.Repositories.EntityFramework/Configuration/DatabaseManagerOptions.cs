@@ -8,7 +8,7 @@ public class DatabaseManagerOptions
 {
     // Dictionary to store configurations keyed by marker type
     private readonly Dictionary<Type, DatabaseConfiguration> _configurations = [];
-    
+
     // Default configuration for DbContexts without a specific marker
     private DatabaseConfiguration? _defaultConfiguration;
 

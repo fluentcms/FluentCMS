@@ -1,16 +1,15 @@
 using FluentCMS.Api;
 using FluentCMS.Plugins;
+using FluentCMS.Plugins.IdentityManager;
 using FluentCMS.Plugins.TodoManager.Repositories;
-using FluentCMS.Providers.Repositories.EntityFramework;
 using FluentCMS.Providers;
-using FluentCMS.Plugins.TodoManager.Services;
+using FluentCMS.Providers.Repositories.EntityFramework;
 using FluentCMS.Repositories.Abstractions.Conditions;
 using FluentCMS.Repositories.EntityFramework.Extensions;
 using FluentCMS.Repositories.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Serilog.Events;
-using FluentCMS.Plugins.IdentityManager;
 
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()

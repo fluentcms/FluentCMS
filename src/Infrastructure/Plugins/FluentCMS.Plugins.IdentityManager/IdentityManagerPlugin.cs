@@ -1,5 +1,4 @@
-﻿using FluentCMS.Plugins.IdentityManager.Models;
-using FluentCMS.Repositories.EntityFramework.Extensions;
+﻿using FluentCMS.Repositories.EntityFramework.Extensions;
 
 namespace FluentCMS.Plugins.IdentityManager;
 
