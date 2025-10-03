@@ -196,6 +196,43 @@ builder.Services.AddDatabaseManager(options =>
 });
 ```
 
+### Interceptors (Database Context Middleware)
+
+Libraries can register DB-agnostic interceptors that work across EF and MongoDB:
+
+```csharp
+// In library (e.g., TodoLibrary)
+public class AuditInterceptor : IContextInterceptor
+{
+    private readonly ILogger<AuditInterceptor> _logger;
+
+    public AuditInterceptor(ILogger<AuditInterceptor> logger)
+    {
+        _logger = logger;
+    }
+
+    public async Task OnBeforeSaveChangesAsync(CancellationToken ct = default)
+    {
+        await _logger.LogInformation("Saving changes...");
+    }
+
+    public async Task OnAfterSaveChangesAsync(int count, CancellationToken ct = default)
+    {
+        await _logger.LogInformation($"Saved {count} changes");
+    }
+}
+
+// Register in TodoServiceCollectionExtensions
+services.AddDataContextInterceptor<ITodoDataContext, AuditInterceptor>();
+```
+
+**Features:**
+- Async interceptor hooks: `OnBeforeSaveChangesAsync`, `OnAfterSaveChangesAsync`
+- Registered per library using type-based DI
+- Execution order follows registration order
+- Works across EF and MongoDB databases
+- Supports dependency injection in interceptors
+
 ## 🏛️ Architecture Benefits
 
 ### ✅ Separation of Concerns
