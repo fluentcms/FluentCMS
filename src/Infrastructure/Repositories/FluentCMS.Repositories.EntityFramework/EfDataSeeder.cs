@@ -14,7 +14,7 @@ public abstract class EfDataSeeder<TDbContext>(TDbContext dbContext, ILogger<EfD
     public virtual async Task<bool> HasData(CancellationToken cancellationToken = default)
     {
         logger.LogInformation("Checking for existing data in {TDbContext}...", typeof(TDbContext).Name);
-        var tableChecker = new EfTableChecker(DbContext); ;
+        var tableChecker = new EfTableChecker(DbContext);
         var result = await tableChecker.AnyTablesHaveData(cancellationToken);
         logger.LogInformation("{TDbContext} existing data check result: {Result}", typeof(TDbContext).Name, result);
         return result;
