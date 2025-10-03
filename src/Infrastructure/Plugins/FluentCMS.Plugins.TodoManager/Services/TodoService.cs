@@ -33,8 +33,7 @@ internal class TodoService(ITodoRepository todoRepository) : ITodoService
 
     public Task<Todo?> GetById(Guid entityId, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
-        //return todoRepository.GetById(entityId, cancellationToken);
+        return todoRepository.GetById(entityId, cancellationToken);
     }
 
     public async Task<IEnumerable<Todo>> GetAll(CancellationToken cancellationToken = default)
