@@ -40,9 +40,6 @@ internal class EfTableChecker(DbContext dbContext)
         return false;
     }
 
-    private static bool ShouldSuppressLogging() => true;
-
-
     public async Task<bool> HasAnyData(Type modelType, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
