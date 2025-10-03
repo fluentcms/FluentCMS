@@ -1,5 +1,7 @@
+using Microsoft.EntityFrameworkCore;
 using FluentCMS.Repositories.Abstractions;
 using FluentCMS.Repositories.EntityFramework;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace FluentCMS.Repositories.SqlServer;
 
@@ -7,10 +9,15 @@ namespace FluentCMS.Repositories.SqlServer;
 public static class SqlServerServiceCollectionExtensions
 {
     // Add UseSqlServer method to the connection builder
-    public static void UseSqlServer(this IDatabaseConnectionBuilder builder, string connectionString)
+    public static void UseSqlServer(this IDatabaseConnectionBuilder builder, string connectionString, Action<SqlServerDbContextOptionsBuilder>? optionsAction = null)
     {
         // This extension is available when the SqlServer package is referenced
-        // It provides the implementation for UseSqlServer()
-        builder.SetFactory(() => new EfDataContext(EfDbContextConfiguration.CreateDbContextOptions("SqlServer", connectionString)));
+        builder.SetFactory(() =>
+        {
+            var contextOptionsBuilder = new DbContextOptionsBuilder();
+            var sqlServerBuilder = contextOptionsBuilder.UseSqlServer(connectionString, optionsAction);
+            optionsAction?.Invoke(new SqlServerDbContextOptionsBuilder(sqlServerBuilder));
+            return new EfDataContext(contextOptionsBuilder.Options);
+        });
     }
 }

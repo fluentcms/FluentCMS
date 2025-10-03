@@ -13,8 +13,8 @@
 - [x] Add IServiceCollection.AddDatabaseManager() extension
 
 ## Task 3: Create EntityFramework Package Structure
-- [x] Create class to configure DbContextOptions for EF providers
 - [x] Update EfDataContext and EfEntitySet to use new namespace FluentCMS.Repositories.EntityFramework
+	- [x] Removed EfDbContextConfiguration to avoid provider package dependencies
 
 ## Task 4: Create Sqlite Package Extensions
 - [x] Add IServiceCollection extension for UseSqlite() that sets Factory with EfDataContext + Sqlite
@@ -29,6 +29,10 @@
 ## Task 7: Update Examples for Usage
 - [x] Update TodoDataContext interface to use ITodoDatabaseMarker
 - [x] Add example registration of the area-specific DataContext
+
+## Task 9: Correct Provider Dependencies
+- [x] Remove EfDbContextConfiguration.cs from EntityFramework (avoids EF provider package dependencies)
+- [x] Move DbContextOptions creation to Sqlite/SQLServer packages (inline creation)
 
 ## Task 8: Test the Implementation
 - [x] Ensure the API works as expected (structure ready, runtime depends on packages split)
