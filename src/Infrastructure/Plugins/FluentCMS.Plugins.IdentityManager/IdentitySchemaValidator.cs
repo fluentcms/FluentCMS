@@ -1,21 +1,13 @@
 ﻿namespace FluentCMS.Plugins.IdentityManager;
 
-public class IdentitySchemaValidator(ApplicationDbContext dbContext, IDatabaseManager<IIdentityDatabaseMarker> databaseManager) : ISchemaValidator
+internal class IdentitySchemaValidator(ApplicationDbContext dbContext, ILogger<IdentitySchemaValidator> logger) : EfSchemaValidator<ApplicationDbContext>(dbContext, logger)
 {
-    public int Priority => 1000;
+    public override int Priority => 1000;
 
-    public async Task CreateSchema(CancellationToken cancellationToken = default)
+    public override async Task CreateSchema(CancellationToken cancellationToken = default)
     {
-        await databaseManager.CreateDatabase(cancellationToken);
-        var sql = dbContext.Database.GenerateCreateScript();
-        await dbContext.Database.ExecuteSqlRawAsync(sql, cancellationToken);
-    }
-
-    public async Task<bool> ValidateSchema(CancellationToken cancellationToken = default)
-    {
-        if (!await databaseManager.DatabaseExists(cancellationToken))
-            return false;
-        return await databaseManager.TablesExist(["Users", "Roles"], cancellationToken);
+        var sql = DbContext.Database.GenerateCreateScript();
+        await DbContext.Database.ExecuteSqlRawAsync(sql, cancellationToken);
     }
 }
 

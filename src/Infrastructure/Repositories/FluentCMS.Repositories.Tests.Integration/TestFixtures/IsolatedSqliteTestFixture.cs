@@ -1,6 +1,4 @@
 using FluentCMS.Repositories.Abstractions;
-using FluentCMS.Repositories.EntityFramework;
-using FluentCMS.Repositories.Sqlite;
 using FluentCMS.Repositories.Tests.Integration.TestEntities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;

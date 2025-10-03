@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Plugins.IdentityManager;
 
-public interface IIdentityDatabaseMarker : IDatabaseManagerMarker
+public interface IIdentityDatabaseMarker
 {
     // Marker interface for IdentityManager database
 }

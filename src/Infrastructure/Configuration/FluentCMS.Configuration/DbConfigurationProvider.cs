@@ -12,7 +12,7 @@ public sealed class DbConfigurationProvider : ConfigurationProvider, IDisposable
     private readonly Timer? _timer;
     private volatile bool _disposed;
     private volatile bool _databaseEnsured;
-    private readonly object _disposeLock = new();
+    private readonly Lock _disposeLock = new();
 
     public DbConfigurationProvider(DbConfigurationSource source)
     {

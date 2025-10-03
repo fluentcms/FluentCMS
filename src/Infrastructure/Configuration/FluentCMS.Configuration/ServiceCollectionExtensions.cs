@@ -1,7 +1,6 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Hosting;
 using System.Text.Json;
 
 namespace FluentCMS.Configuration;
@@ -45,7 +44,7 @@ public static class ServiceCollectionExtensions
 
         // Register the hosted service to seed the database at startup
         // Avoid multiple registration for multiple calls of AddDbOptions
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, OptionsDbSeeder>());
+        //services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, OptionsDbSeeder>());
 
         return services;
     }

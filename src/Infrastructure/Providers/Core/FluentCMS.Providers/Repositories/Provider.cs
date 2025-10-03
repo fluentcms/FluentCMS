@@ -1,3 +1,4 @@
+using FluentCMS.Repositories.Abstractions;
 using System.ComponentModel.DataAnnotations;
 
 namespace FluentCMS.Providers.Repositories;

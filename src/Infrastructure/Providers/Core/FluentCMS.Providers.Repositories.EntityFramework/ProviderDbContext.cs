@@ -5,7 +5,7 @@ namespace FluentCMS.Providers.Repositories.EntityFramework;
 /// <summary>
 /// Entity Framework database context for the provider system.
 /// </summary>
-public class ProviderDbContext(DbContextOptions<ProviderDbContext> options) : DbContext(options)
+public class ProviderDbContext(DbContextOptions<ProviderDbContext> options) : DbContext(options), IProviderDatabaseMarker
 {
     /// <summary>
     /// Provider instances stored in the database.

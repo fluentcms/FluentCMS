@@ -1,4 +1,6 @@
 using FluentAssertions;
+using FluentCMS.Repositories.Abstractions;
+using FluentCMS.Repositories.EntityFramework.Exceptions;
 using FluentCMS.Repositories.Tests.Integration.TestEntities;
 
 namespace FluentCMS.Repositories.Tests.Integration.Helpers;
@@ -139,25 +141,25 @@ public static class AssertionExtensions
 
     #region Pagination Assertions
 
-    public static void ShouldHavePage<T>(this PagedResult<T> pagedResult, int expectedPage)
+    public static void ShouldHavePage<T>(this IPagedResult<T> pagedResult, int expectedPage)
     {
         pagedResult.Should().NotBeNull();
         pagedResult.Page.Should().Be(expectedPage);
     }
 
-    public static void ShouldHavePageSize<T>(this PagedResult<T> pagedResult, int expectedPageSize)
+    public static void ShouldHavePageSize<T>(this IPagedResult<T> pagedResult, int expectedPageSize)
     {
         pagedResult.Should().NotBeNull();
         pagedResult.PageSize.Should().Be(expectedPageSize);
     }
 
-    public static void ShouldHaveTotalCount<T>(this PagedResult<T> pagedResult, long expectedTotalCount)
+    public static void ShouldHaveTotalCount<T>(this IPagedResult<T> pagedResult, long expectedTotalCount)
     {
         pagedResult.Should().NotBeNull();
         pagedResult.TotalCount.Should().Be(expectedTotalCount);
     }
 
-    public static void ShouldHaveItems<T>(this PagedResult<T> pagedResult, int expectedItemCount)
+    public static void ShouldHaveItems<T>(this IPagedResult<T> pagedResult, int expectedItemCount)
     {
         pagedResult.Should().NotBeNull();
         pagedResult.Items.Should().HaveCount(expectedItemCount);

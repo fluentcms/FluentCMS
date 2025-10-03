@@ -4,8 +4,8 @@ public interface IUserRoleRepository : IRepository<UserRole>
 {
 }
 
-public class UserRoleRepository(ApplicationDbContext context, ILogger<UserRoleRepository> logger) :
-    Repository<UserRole, ApplicationDbContext>(context, logger),
+internal class UserRoleRepository(ApplicationDbContext context, ILogger<UserRoleRepository> logger) :
+    EfRepository<UserRole, ApplicationDbContext>(context, logger),
     IUserRoleRepository
 {
 }

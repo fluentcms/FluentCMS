@@ -1,7 +1,8 @@
 ﻿namespace FluentCMS.Plugins.IdentityManager.Repositories;
 
-public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) :
-    IdentityDbContext<User, Role, Guid, UserClaim, UserRole, UserLogin, RoleClaim, UserToken>(options)
+internal class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) :
+    IdentityDbContext<User, Role, Guid, UserClaim, UserRole, UserLogin, RoleClaim, UserToken>(options),
+    IIdentityDatabaseMarker
 {
     protected override void OnModelCreating(ModelBuilder builder)
     {
