@@ -1,7 +1,7 @@
 using FluentCMS.Repositories.Abstractions;
 using Microsoft.EntityFrameworkCore;
 
-namespace FluentCMS.Repositories.EFCore;
+namespace FluentCMS.Repositories.EntityFramework;
 
 public class EfDataContext(DbContextOptions options) : DbContext(options), IDataContext
 {
