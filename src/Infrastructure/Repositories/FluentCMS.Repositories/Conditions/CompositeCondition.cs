@@ -1,4 +1,6 @@
-﻿namespace FluentCMS.Repositories.Abstractions.Conditions;
+﻿using FluentCMS.Repositories.Abstractions;
+
+namespace FluentCMS.Repositories.Conditions;
 
 /// <summary>
 /// Condition that combines multiple conditions with AND/OR logic.

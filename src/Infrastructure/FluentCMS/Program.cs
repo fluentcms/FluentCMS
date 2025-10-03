@@ -4,7 +4,7 @@ using FluentCMS.Plugins.IdentityManager;
 using FluentCMS.Plugins.TodoManager.Repositories;
 using FluentCMS.Providers;
 using FluentCMS.Providers.Repositories.EntityFramework;
-using FluentCMS.Repositories.Abstractions.Conditions;
+using FluentCMS.Repositories.Conditions;
 using FluentCMS.Repositories.EntityFramework.Extensions;
 using FluentCMS.Repositories.Sqlite;
 using Microsoft.EntityFrameworkCore;

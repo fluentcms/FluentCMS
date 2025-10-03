@@ -28,7 +28,8 @@ internal class TodoService(ITodoRepository todoRepository) : ITodoService
 
     public async Task Remove(Guid entityId, CancellationToken cancellationToken = default)
     {
-        await todoRepository.Remove(entityId, cancellationToken);
+        throw new NotImplementedException();
+        //await todoRepository.Remove(entityId, cancellationToken);
     }
 
     public Task<Todo?> GetById(Guid entityId, CancellationToken cancellationToken = default)
