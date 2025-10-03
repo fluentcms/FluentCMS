@@ -4,6 +4,6 @@ public interface ITodoRepository : IRepository<TodoItem>
 {
 }
 
-internal class TodoRepository(ITodoDataContext dataContext) : BaseRepository<TodoItem, ITodoDataContext>(dataContext), ITodoRepository
+internal class TodoRepository(ITodoDataContext dataContext) : Repository<TodoItem, ITodoDataContext>(dataContext), ITodoRepository
 {
 }

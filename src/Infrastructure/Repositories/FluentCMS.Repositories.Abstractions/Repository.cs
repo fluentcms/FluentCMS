@@ -2,7 +2,7 @@ using FluentCMS.Repositories.Abstractions;
 
 namespace FluentCMS.Repositories;
 
-public class BaseRepository<TEntity, TDataContext>(TDataContext dataContext) : IRepository<TEntity>
+public class Repository<TEntity, TDataContext>(TDataContext dataContext) : IRepository<TEntity>
     where TEntity : class
     where TDataContext : IDataContext
 {

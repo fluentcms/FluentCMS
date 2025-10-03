@@ -7,7 +7,7 @@ public interface ITodoAnotherService
     Task<TodoItem> Update(TodoItem todoItem);
 }
 
-internal class TodoAnotherService(BaseRepository<TodoItem, ITodoDataContext> repository) : ITodoAnotherService
+internal class TodoAnotherService(Repository<TodoItem, ITodoDataContext> repository) : ITodoAnotherService
 {
     public async Task<TodoItem> Create(string title, string description)
     {
