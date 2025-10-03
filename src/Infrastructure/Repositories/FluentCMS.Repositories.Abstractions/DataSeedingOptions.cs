@@ -1,11 +1,9 @@
-﻿using FluentCMS.Repositories.Abstractions;
-
-namespace FluentCMS.Repositories;
+﻿namespace FluentCMS.Repositories.Abstractions;
 
 /// <summary>
-/// Configuration options for the schema validation process
+/// Configuration options for the database seeding process
 /// </summary>
-public class SchemaValidatorOptions
+public class DataSeedingOptions
 {
     /// <summary>
     /// List of conditions that must be met before seeding occurs
