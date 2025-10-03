@@ -17,4 +17,11 @@ public class MongoDataContext(IMongoDatabase database) : IDataContext
         var collection = database.GetCollection<TEntity>(typeof(TEntity).Name);
         return new MongoEntitySet<TEntity>(collection);
     }
+
+    // Create query specification using MongoDB collection
+    IQuerySpecification<TEntity> IDataContext.CreateQuerySpecification<TEntity>() where TEntity : class
+    {
+        var collection = database.GetCollection<TEntity>(typeof(TEntity).Name);
+        return new QuerySpecification<TEntity>(collection.AsQueryable());
+    }
 }

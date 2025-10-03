@@ -7,6 +7,9 @@ public interface IDataContext
 
     // Get the entity set for a given entity type
     IEntitySet<TEntity> Set<TEntity>() where TEntity : class;
+
+    // Create a query specification for fluent querying
+    IQuerySpecification<TEntity> CreateQuerySpecification<TEntity>() where TEntity : class;
 }
 
 public interface IDataContext<TArea> : IDataContext

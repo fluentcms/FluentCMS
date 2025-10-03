@@ -18,4 +18,11 @@ public class EfDataContext(DbContextOptions options) : DbContext(options), IData
         var dbSet = base.Set<TEntity>();
         return new EfEntitySet<TEntity>(dbSet);
     }
+
+    // Create query specification using EF DbSet
+    IQuerySpecification<TEntity> IDataContext.CreateQuerySpecification<TEntity>() where TEntity : class
+    {
+        var dbSet = base.Set<TEntity>();
+        return new QuerySpecification<TEntity>(dbSet);
+    }
 }

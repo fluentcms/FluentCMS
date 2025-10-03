@@ -1,4 +1,6 @@
-namespace FluentCMS.Repositories.Abstractions;
+using FluentCMS.Repositories.Abstractions;
+
+namespace FluentCMS.Repositories;
 
 public class BaseRepository<TEntity, TDataContext>(TDataContext dataContext) : IRepository<TEntity>
     where TEntity : class
@@ -39,5 +41,11 @@ public class BaseRepository<TEntity, TDataContext>(TDataContext dataContext) : I
         var removedEntity = await entitySet.Remove(entity, cancellationToken);
         await dataContext.SaveChanges(cancellationToken);
         return removedEntity;
+    }
+
+    // Single entry point for all queries - provides fluent API
+    public IQuerySpecification<TEntity> Query()
+    {
+        return dataContext.CreateQuerySpecification<TEntity>();
     }
 }
