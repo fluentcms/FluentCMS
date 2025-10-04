@@ -72,6 +72,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Repositories.Test
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Repositories", "Repositories\FluentCMS.Repositories\FluentCMS.Repositories.csproj", "{C130DE44-6E73-4492-9AC4-59C7273E8536}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Repositories.Abstractions", "Repositories\FluentCMS.Repositories.Abstractions\FluentCMS.Repositories.Abstractions.csproj", "{EECC8BD2-DD0A-4867-9107-DD8222D42580}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -178,6 +180,10 @@ Global
 		{C130DE44-6E73-4492-9AC4-59C7273E8536}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C130DE44-6E73-4492-9AC4-59C7273E8536}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C130DE44-6E73-4492-9AC4-59C7273E8536}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EECC8BD2-DD0A-4867-9107-DD8222D42580}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EECC8BD2-DD0A-4867-9107-DD8222D42580}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EECC8BD2-DD0A-4867-9107-DD8222D42580}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EECC8BD2-DD0A-4867-9107-DD8222D42580}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -211,6 +217,7 @@ Global
 		{1C20670C-BFE4-697A-F1B9-2DCF31D75E11} = {46AC977A-2B99-C435-D847-A64914FC0FA5}
 		{065EBE6F-F001-4B64-5516-4374AF8835C2} = {C45387E7-A239-B248-5540-D77B4284F48B}
 		{C130DE44-6E73-4492-9AC4-59C7273E8536} = {C45387E7-A239-B248-5540-D77B4284F48B}
+		{EECC8BD2-DD0A-4867-9107-DD8222D42580} = {C45387E7-A239-B248-5540-D77B4284F48B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {F9649E9A-5619-4FAE-97BC-3E256E32491D}
