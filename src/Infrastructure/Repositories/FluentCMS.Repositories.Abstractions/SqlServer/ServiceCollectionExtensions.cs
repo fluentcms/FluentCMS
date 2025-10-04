@@ -16,7 +16,6 @@ public static class SqlServerServiceCollectionExtensions
         {
             var contextOptionsBuilder = new DbContextOptionsBuilder();
             var sqlServerBuilder = contextOptionsBuilder.UseSqlServer(connectionString, optionsAction);
-            optionsAction?.Invoke(new SqlServerDbContextOptionsBuilder(sqlServerBuilder));
             return new EfDataContext(contextOptionsBuilder.Options);
         });
     }
