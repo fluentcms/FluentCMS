@@ -11,6 +11,9 @@ namespace FluentCMS.Repositories.Abstractions;
 /// </summary>
 public static class ServiceCollectionExtensions
 {
+    // Static registry for database manager configurations
+    private static readonly Dictionary<Type, DatabaseAreaConfiguration> s_areaConfigurations = [];
+    private static DatabaseAreaConfiguration? s_defaultConfiguration;
     /// <summary>
     /// Adds centralized database management for multiple areas with provider-specific configurations.
     /// This replaces individual AddDataContextForArea calls with a declarative configuration approach.
@@ -47,7 +50,20 @@ public static class ServiceCollectionExtensions
         var options = new DatabaseManagerOptions();
         configureOptions(options);
 
-        // implement here 
+        // Store configurations in static registry
+        s_areaConfigurations.Clear();
+
+        // Store default configuration if set
+        s_defaultConfiguration = options.DefaultConfiguration;
+
+        // Store area-specific configurations
+        foreach (var kvp in options.AreaConfigurations)
+        {
+            s_areaConfigurations[kvp.Key] = kvp.Value;
+        }
+
+        // Register database initializer for manual seeding
+        services.AddScoped<IDataInitializer, DatabaseInitializer>();
 
         return services;
     }
@@ -57,10 +73,40 @@ public static class ServiceCollectionExtensions
         Action<DbContextOptionsBuilder<TContext>>? config = null)
         where TContext : DbContext
     {
-        // Register the DbContext with EF Core
-        services.AddDbContext<TContext>(config != null
-            ? options => config((DbContextOptionsBuilder<TContext>)options)
-            : null);
+        // Create combined configuration action that applies both user config and database manager config
+        Action<DbContextOptionsBuilder> combinedConfig = options =>
+        {
+            // Cast to typed options builder for user config
+            var typedOptions = (DbContextOptionsBuilder<TContext>)options;
+
+            // First apply user-provided configuration (if any)
+            if (config != null)
+            {
+                config(typedOptions);
+            }
+
+            // Then apply database manager configuration (which overrides user config)
+            var areaType = typeof(TArea);
+
+            // Check for area-specific configuration first
+            if (s_areaConfigurations.TryGetValue(areaType, out var areaConfig))
+            {
+                if (areaConfig.DatabaseProvider != null && areaConfig.ConnectionString != null)
+                {
+                    areaConfig.DatabaseProvider.Configure(options, areaConfig.ConnectionString);
+                }
+            }
+            // Otherwise check for default configuration
+            else if (s_defaultConfiguration != null &&
+                     s_defaultConfiguration.DatabaseProvider != null &&
+                     s_defaultConfiguration.ConnectionString != null)
+            {
+                s_defaultConfiguration.DatabaseProvider.Configure(options, s_defaultConfiguration.ConnectionString);
+            }
+        };
+
+        // Register the DbContext with EF Core using combined configuration
+        services.AddDbContext<TContext>(combinedConfig);
 
         // Register as the data context for the area (via generic type)
         services.AddScoped(typeof(TArea), sp => sp.GetRequiredService<TContext>());
