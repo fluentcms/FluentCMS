@@ -6,6 +6,7 @@ namespace FluentCMS.Repositories.Abstractions;
 public class DatabaseConnectionConfig
 {
     public Func<IDataContext> Factory { get; set; } = null!;
+    public DataSeedingOptions? SeedingOptions { get; set; }
 }
 
 // Interface for building database manager
@@ -20,12 +21,15 @@ public interface IDatabaseManagerBuilder
 public interface IDatabaseConnectionBuilder
 {
     void SetFactory(Func<IDataContext> factory);
+    void EnableDataSeeding(Action<DataSeedingOptions> configure);
 }
 
 // Interface for the database manager
 public interface IDatabaseManager
 {
     IDataContext CreateDataContextForArea<TArea>() where TArea : IDatabaseArea;
+    bool IsSeedingEnabledForArea<TArea>() where TArea : IDatabaseArea;
+    DataSeedingOptions? GetSeedingOptionsForArea<TArea>() where TArea : IDatabaseArea;
 }
 
 // Implementation of database manager
@@ -54,6 +58,32 @@ public class DatabaseManager(ConcurrentDictionary<Type, DatabaseConnectionConfig
 
         // Create concrete data context using the factory
         return config.Factory();
+    }
+
+    // Check if seeding is enabled for an area
+    public bool IsSeedingEnabledForArea<TArea>() where TArea : IDatabaseArea
+    {
+        var areaType = typeof(TArea);
+
+        DatabaseConnectionConfig? config;
+        if (areaConfigurations.TryGetValue(areaType, out config))
+        {
+            return config?.SeedingOptions != null;
+        }
+        return defaultConfiguration?.SeedingOptions != null;
+    }
+
+    // Get seeding options for an area
+    public DataSeedingOptions? GetSeedingOptionsForArea<TArea>() where TArea : IDatabaseArea
+    {
+        var areaType = typeof(TArea);
+
+        DatabaseConnectionConfig? config;
+        if (areaConfigurations.TryGetValue(areaType, out config))
+        {
+            return config?.SeedingOptions;
+        }
+        return defaultConfiguration?.SeedingOptions;
     }
 }
 
@@ -94,5 +124,15 @@ public class DatabaseManagerBuilder : IDatabaseManagerBuilder, IDatabaseConnecti
     {
         if (_currentConfig != null)
             _currentConfig.Factory = factory;
+    }
+
+    // Implement EnableDataSeeding
+    void IDatabaseConnectionBuilder.EnableDataSeeding(Action<DataSeedingOptions> configure)
+    {
+        if (_currentConfig != null)
+        {
+            _currentConfig.SeedingOptions = new DataSeedingOptions();
+            configure(_currentConfig.SeedingOptions);
+        }
     }
 }

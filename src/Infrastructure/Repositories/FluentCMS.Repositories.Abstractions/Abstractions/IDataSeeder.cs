@@ -1,11 +1,9 @@
 namespace FluentCMS.Repositories.Abstractions;
 
 /// <summary>
-/// Defines a contract for seeding data into a database.
-/// Implementations should provide priority-based execution and existence checking.
+/// Base interface for all data seeders.
 /// </summary>
-public interface IDataSeeder<TArea>
-    where TArea : IDatabaseArea
+public interface IDataSeeder
 {
     /// <summary>
     /// Execution priority for this seeder. Lower numbers execute first.
@@ -27,4 +25,13 @@ public interface IDataSeeder<TArea>
     /// </summary>
     /// <param name="cancellationToken">Cancellation token for async operations</param>
     Task SeedData(CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// Defines a contract for seeding data into a database.
+/// Implementations should provide priority-based execution and existence checking.
+/// </summary>
+public interface IDataSeeder<TArea> : IDataSeeder
+    where TArea : IDatabaseArea
+{
 }

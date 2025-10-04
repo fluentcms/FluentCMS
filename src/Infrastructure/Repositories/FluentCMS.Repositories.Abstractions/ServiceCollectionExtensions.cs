@@ -15,6 +15,9 @@ public static class ServiceCollectionExtensions
         // Register the manager
         services.AddSingleton(manager);
 
+        // Register the data initializer
+        services.AddScoped<IDataInitializer, DataInitializer>();
+
         // Register factory for IDataContext<TArea>
         // Libraries will register their own like this:
         // services.AddScoped<IDataContext<ITodoDatabase>>(sp => sp.GetRequiredService<IDatabaseManager>().CreateDataContextForArea<ITodoDatabase>());
@@ -27,6 +30,16 @@ public static class ServiceCollectionExtensions
     {
         services.AddScoped(sp =>
             sp.GetRequiredService<IDatabaseManager>().CreateDataContextForArea<TArea>());
+        return services;
+    }
+
+    // Helper for libraries to register their data seeder (this is in Abstractions)
+    public static IServiceCollection AddDataSeeder<TDataSeeder, TArea>(this IServiceCollection services)
+        where TDataSeeder : class, IDataSeeder<TArea>
+        where TArea : IDatabaseArea
+    {
+        services.AddScoped<IDataSeeder<TArea>, TDataSeeder>();
+        services.AddScoped<IDataSeeder, TDataSeeder>();
         return services;
     }
 }
