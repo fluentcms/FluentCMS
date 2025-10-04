@@ -1,4 +1,6 @@
-namespace FluentCMS.Repositories.EntityFramework.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace FluentCMS.Repositories;
 
 /// <summary>
 /// Options class for configuring database connections for multiple DbContexts
@@ -12,17 +14,21 @@ public class DatabaseManagerOptions
     // Default configuration for DbContexts without a specific marker
     private DatabaseConfiguration? _defaultConfiguration;
 
+    private readonly IServiceCollection _serviceDescriptors;
+
+    internal DatabaseManagerOptions(IServiceCollection services)
+    {
+        _serviceDescriptors = services;
+    }
+
     /// <summary>
     /// Configures the default database to be used by DbContexts that don't have a specific marker interface
     /// </summary>
     /// <returns>A configuration builder for the default database</returns>
     public IDatabaseConfigurationBuilder Default()
     {
-        _defaultConfiguration = new DatabaseConfiguration();
-        var builder = new DatabaseConfigurationBuilder
-        {
-            Configuration = _defaultConfiguration
-        };
+        _defaultConfiguration = new DatabaseConfiguration(_serviceDescriptors);
+        var builder = new DatabaseConfigurationBuilder(_defaultConfiguration, _serviceDescriptors);
         return builder;
     }
 
@@ -33,13 +39,10 @@ public class DatabaseManagerOptions
     /// <returns>A configuration builder for the specific database</returns>
     public IDatabaseConfigurationBuilder For<TMarker>() where TMarker : class
     {
-        var config = new DatabaseConfiguration { MarkerType = typeof(TMarker) };
+        var config = new DatabaseConfiguration(_serviceDescriptors) { MarkerType = typeof(TMarker) };
         _configurations[typeof(TMarker)] = config;
 
-        var builder = new DatabaseConfigurationBuilder
-        {
-            Configuration = config
-        };
+        var builder = new DatabaseConfigurationBuilder(config, _serviceDescriptors);
         return builder;
     }
 

@@ -1,9 +1,16 @@
 using FluentCMS.Repositories.Abstractions;
-using FluentCMS.Repositories.EntityFramework.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace FluentCMS.Repositories.EntityFramework.Services;
+namespace FluentCMS.Repositories;
+
+public interface IDataSeederService
+{
+    /// <summary>
+    /// Seeds the database with initial data if necessary.
+    ///  </summary>
+    Task Initialize(CancellationToken cancellationToken = default);
+}
 
 /// <summary>
 /// Implements data seeding by executing data seeders

@@ -1,9 +1,8 @@
-﻿using FluentCMS.Repositories.EntityFramework.Services;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace FluentCMS.DataSeeding;
+namespace FluentCMS.Repositories;
 
 /// <summary>
 /// Hosted service responsible for performing database schema validation and data seeding operations
@@ -26,15 +25,10 @@ internal sealed class DataSeedingHostedService(IServiceProvider serviceProvider,
         using var scope = serviceProvider.CreateScope();
 
         // Resolve required services from the scoped service provider
-        var schemaValidator = scope.ServiceProvider.GetRequiredService<ISchemaValidatorService>();
         var dataSeeder = scope.ServiceProvider.GetRequiredService<IDataSeederService>();
 
         try
         {
-            logger.LogInformation("Starting database initialization process ...");
-            await schemaValidator.Initialize(cancellationToken);
-            logger.LogInformation("Database initialization process completed.");
-
             logger.LogInformation("Starting data seeding process ...");
             await dataSeeder.Initialize(cancellationToken);
             logger.LogInformation("Data seeding process completed.");

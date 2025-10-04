@@ -1,10 +1,10 @@
 ﻿using FluentCMS.Providers.Repositories.Configuration;
-using FluentCMS.Repositories.EntityFramework;
+using FluentCMS.Repositories;
 using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Providers.Repositories.EntityFramework;
 
-public class ProviderDataSeeder(IProviderManager providerManager, ConfigurationReadOnlyProviderRepository readOnlyProviderRepository, ProviderDbContext dbContext, ILogger<ProviderDataSeeder> logger) : EfDataSeeder<ProviderDbContext>(dbContext, logger)
+public class ProviderDataSeeder(IProviderManager providerManager, ConfigurationReadOnlyProviderRepository readOnlyProviderRepository, ProviderDbContext dbContext, ILogger<ProviderDataSeeder> logger) : DataSeeder<ProviderDbContext>(dbContext, logger)
 {
     public override int Priority => 1;
 

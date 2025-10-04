@@ -1,9 +1,8 @@
-using FluentCMS.Repositories.Abstractions;
+﻿using FluentCMS.Repositories.Abstractions;
 using Microsoft.EntityFrameworkCore;
 
 namespace FluentCMS.Repositories;
 
-// Generic repository for entities with direct DbContext usage
 public class Repository<TEntity, TDataContext>(TDataContext dataContext) : IRepository<TEntity>
     where TEntity : class
     where TDataContext : DbContext
@@ -44,17 +43,6 @@ public class Repository<TEntity, TDataContext>(TDataContext dataContext) : IRepo
     // Single entry point for all queries - provides fluent API
     public IQuerySpecification<TEntity> Query()
     {
-        return dataContext.CreateQuerySpecification<TEntity>();
-    }
-}
-
-public static class RepositoryExtensions
-{
-    // Create a query specification for fluent querying
-    public static IQuerySpecification<TEntity> CreateQuerySpecification<TEntity>(this DbContext dbContext)
-        where TEntity : class
-    {
-        var dbSet = dbContext.Set<TEntity>();
-        return new QuerySpecification<TEntity>(dbSet);
+        return new QuerySpecification<TEntity>(dataContext.Set<TEntity>().AsNoTracking().AsQueryable());
     }
 }

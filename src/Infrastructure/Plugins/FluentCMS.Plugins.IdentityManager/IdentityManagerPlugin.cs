@@ -1,6 +1,4 @@
-﻿using FluentCMS.Repositories.EntityFramework.Extensions;
-
-namespace FluentCMS.Plugins.IdentityManager;
+﻿namespace FluentCMS.Plugins.IdentityManager;
 
 public class IdentityManagerPlugin : IPlugin
 {
@@ -10,8 +8,8 @@ public class IdentityManagerPlugin : IPlugin
 
         services.AddAutoMapper(cfg => { }, typeof(MappingProfile));
 
-        builder.Services.AddSchemaValidator<IdentitySchemaValidator, IIdentityDatabaseMarker>();
-        builder.Services.AddDataSeeder<IdentityDataSeeder, IIdentityDatabaseMarker>();
+        //builder.Services.AddSchemaValidator<IdentitySchemaValidator, IIdentityDatabaseMarker>();
+        //builder.Services.AddDataSeeder<IdentityDataSeeder, IIdentityDatabaseMarker>();
 
         // Services registration
         //services.AddScoped<IUserService, UserService>();

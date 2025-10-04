@@ -1,13 +1,10 @@
-using FluentCMS.DataSeeding;
 using FluentCMS.Repositories.Abstractions;
-using FluentCMS.Repositories.EntityFramework.Configuration;
-using FluentCMS.Repositories.EntityFramework.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 
-namespace FluentCMS.Repositories.EntityFramework.Extensions;
+namespace FluentCMS.Repositories;
 
 /// <summary>
 /// Extension methods for IServiceCollection to configure the DatabaseManager
@@ -30,7 +27,7 @@ public static class ServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(configure);
 
         // Create and configure options
-        var options = new DatabaseManagerOptions();
+        var options = new DatabaseManagerOptions(services);
         configure(options);
 
         // Store options statically for use during DbContext registration
@@ -39,13 +36,7 @@ public static class ServiceCollectionExtensions
         // Register the options as a singleton so it can be retrieved if needed
         services.AddSingleton(options);
 
-        // Register database initializer services
-        services.AddScoped<ISchemaValidatorService, SchemaValidatorService>();
         services.AddScoped<IDataSeederService, DataSeederService>();
-
-        // Register the hosted service to seed the database at startup
-        // Avoid multiple registration for multiple calls of AddDbOptions
-        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, DataSeedingHostedService>());
 
         return services;
     }
@@ -110,29 +101,14 @@ public static class ServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(configure);
 
+        // Register the hosted service to seed the database at startup
+        // Avoid multiple registration for multiple calls of AddDbOptions
+        builder.ServiceDescriptors.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, DataSeedingHostedService>());
+
         var options = new DataSeedingOptions();
         configure(options);
 
         builder.Configuration.SeedingOptions = options;
-
-        return builder;
-    }
-
-    /// <summary>
-    /// Enables and configures database schema validation
-    /// </summary>
-    /// <param name="builder">The database configuration builder</param>
-    /// <param name="configure">Action to configure schema validation options</param>
-    /// <returns>The configuration builder for chaining</returns>
-    public static IDatabaseConfigurationBuilder EnableSchemaValidation(this IDatabaseConfigurationBuilder builder, Action<SchemaValidatorOptions> configure)
-    {
-        ArgumentNullException.ThrowIfNull(builder);
-        ArgumentNullException.ThrowIfNull(configure);
-
-        var options = new SchemaValidatorOptions();
-        configure(options);
-
-        builder.Configuration.SchemaValidatorOptions = options;
 
         return builder;
     }
@@ -146,65 +122,12 @@ public static class ServiceCollectionExtensions
     /// <returns>The service collection for chaining</returns>
     public static IServiceCollection AddDataSeeder<TSeeder, TMarker>(this IServiceCollection services)
         where TSeeder : class, IDataSeeder
-        where TMarker : class
+        where TMarker : IDatabaseArea
     {
         ArgumentNullException.ThrowIfNull(services);
 
         // Register the seeder with the marker type as the key
         services.AddKeyedScoped<IDataSeeder, TSeeder>(typeof(TMarker));
-
-        return services;
-    }
-
-    /// <summary>
-    /// Registers a data seeder for the default database
-    /// </summary>
-    /// <typeparam name="TSeeder">The data seeder implementation type</typeparam>
-    /// <param name="services">The service collection</param>
-    /// <returns>The service collection for chaining</returns>
-    public static IServiceCollection AddDataSeeder<TSeeder>(this IServiceCollection services)
-        where TSeeder : class, IDataSeeder
-    {
-        ArgumentNullException.ThrowIfNull(services);
-
-        // Register the seeder with "Default" as the key
-        services.AddKeyedScoped<IDataSeeder, TSeeder>("Default");
-
-        return services;
-    }
-
-    /// <summary>
-    /// Registers a schema validator for a specific database marker
-    /// </summary>
-    /// <typeparam name="TValidator">The schema validator implementation type</typeparam>
-    /// <typeparam name="TMarker">The database marker interface type</typeparam>
-    /// <param name="services">The service collection</param>
-    /// <returns>The service collection for chaining</returns>
-    public static IServiceCollection AddSchemaValidator<TValidator, TMarker>(this IServiceCollection services)
-        where TValidator : class, ISchemaValidator
-        where TMarker : class
-    {
-        ArgumentNullException.ThrowIfNull(services);
-
-        // Register the validator with the marker type as the key
-        services.AddKeyedScoped<ISchemaValidator, TValidator>(typeof(TMarker));
-
-        return services;
-    }
-
-    /// <summary>
-    /// Registers a schema validator for the default database
-    /// </summary>
-    /// <typeparam name="TValidator">The schema validator implementation type</typeparam>
-    /// <param name="services">The service collection</param>
-    /// <returns>The service collection for chaining</returns>
-    public static IServiceCollection AddSchemaValidator<TValidator>(this IServiceCollection services)
-        where TValidator : class, ISchemaValidator
-    {
-        ArgumentNullException.ThrowIfNull(services);
-
-        // Register the validator with "Default" as the key
-        services.AddKeyedScoped<ISchemaValidator, TValidator>("Default");
 
         return services;
     }

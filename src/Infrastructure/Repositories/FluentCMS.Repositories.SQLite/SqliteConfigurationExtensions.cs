@@ -1,5 +1,4 @@
-﻿using FluentCMS.Repositories.EntityFramework.Configuration;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace FluentCMS.Repositories.Sqlite;
@@ -14,15 +13,9 @@ public static class SqliteConfigurationExtensions
     /// <param name="builder">The database configuration builder</param>
     /// <param name="connectionString">The SQLite connection string</param>
     /// <param name="sqliteOptionsAction">Optional action to configure SQLite-specific options</param>
-    /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The configuration builder for chaining</returns>
-    public static IDatabaseConfigurationBuilder UseSqlite(
-        this IDatabaseConfigurationBuilder builder,
-        string connectionString,
-        Action<SqliteDbContextOptionsBuilder>? sqliteOptionsAction = null,
-        CancellationToken cancellationToken = default)
+    public static IDatabaseConfigurationBuilder UseSqlite(this IDatabaseConfigurationBuilder builder, string connectionString, Action<SqliteDbContextOptionsBuilder>? sqliteOptionsAction = null)
     {
-        cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
 

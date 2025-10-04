@@ -1,7 +1,7 @@
 using FluentCMS.Plugins.Abstractions;
 using FluentCMS.Plugins.TodoManager.Repositories;
 using FluentCMS.Plugins.TodoManager.Services;
-using FluentCMS.Repositories.EntityFramework.Extensions;
+using FluentCMS.Repositories;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -14,7 +14,6 @@ public class TodoPlugin : IPlugin
     {
         builder.Services.AddDatabaseContext<TodoDbContext>();
         builder.Services.AddDataSeeder<TodoDataSeeder, ITodoDatabaseMarker>();
-        builder.Services.AddSchemaValidator<TodoSchemaValidator, ITodoDatabaseMarker>();
         builder.Services.AddScoped<ITodoService, TodoService>();
         builder.Services.AddScoped<ITodoRepository, TodoRepository>();
     }

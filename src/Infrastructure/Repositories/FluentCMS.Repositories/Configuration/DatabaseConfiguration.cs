@@ -1,7 +1,8 @@
 using FluentCMS.Repositories.Abstractions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
-namespace FluentCMS.Repositories.EntityFramework.Configuration;
+namespace FluentCMS.Repositories;
 
 /// <summary>
 /// Represents the configuration for a database connection including provider and connection settings
@@ -20,12 +21,6 @@ public class DatabaseConfiguration
     public DataSeedingOptions? SeedingOptions { get; set; }
 
     /// <summary>
-    /// Databse schema validation configuration for this database
-    /// Null if schema validation is not configured (schema validation will not run)
-    /// </summary>
-    public SchemaValidatorOptions? SchemaValidatorOptions { get; set; }
-
-    /// <summary>
     /// The connection string for the database
     /// </summary>
     public string? ConnectionString { get; set; }
@@ -34,6 +29,13 @@ public class DatabaseConfiguration
     /// The marker type used to identify this configuration (null for default configuration)
     /// </summary>
     public Type? MarkerType { get; set; }
+
+    public IServiceCollection ServiceDescriptors { get; }
+
+    internal DatabaseConfiguration(IServiceCollection services)
+    {
+        ServiceDescriptors = services;
+    }
 
     /// <summary>
     /// Applies the configuration to a DbContextOptionsBuilder
