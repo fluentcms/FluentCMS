@@ -8,7 +8,7 @@ namespace FluentCMS.Repositories.Abstractions;
 /// </summary>
 internal static class DatabaseConfigurationRegistry
 {
-    private static readonly Dictionary<Type, DatabaseAreaConfiguration> _areaConfigurations = new();
+    private static readonly Dictionary<Type, DatabaseAreaConfiguration> _areaConfigurations = [];
     private static DatabaseAreaConfiguration? _defaultConfiguration;
 
     /// <summary>
