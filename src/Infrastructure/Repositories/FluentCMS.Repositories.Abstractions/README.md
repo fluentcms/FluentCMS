@@ -24,14 +24,14 @@ A flexible, extensible repository abstraction layer that supports multiple datab
                         │
 ┌───────────────────────▼────────────────────────────────────┐
 │            Provider Packages Layer                         │
-│  ├─ ≤ FluentCMS.Repositories.EntityFramework > ──┐         │
+│  ├─ FluentCMS.Repositories.EntityFramework ─────┐         │
 │  │  └─ EfDataContext                           │      │
 │  │    └─ EfEntitySet                            │      │
-│  ├─ ≤ FluentCMS.Repositories.Sqlite > ──────────┼─────┐│
+│  ├─ FluentCMS.Repositories.Sqlite ──────────────┼─────┐│
 │  │  └─ UseSqlite() → EfDataContext with Sqlite   │     ││
-│  ├─ ≤ FluentCMS.Repositories.SqlServer > ────────┼─────┐│
+│  ├─ FluentCMS.Repositories.SqlServer ───────────┼─────┐│
 │  │  └─ UseSqlServer() → EfDataContext with SQL    │     ││
-│  └─ ≤ FluentCMS.Repositories.MongoDB > ──────────┘─────┘├─┘
+│  └─ FluentCMS.Repositories.MongoDB ─────────────┘─────┘├─┘
 │     └─ UseMongoDB() → MongoDataContext           └─────┘
 └─────────────────────────────────────────────────────────────┘
 ```
