@@ -4,7 +4,7 @@ namespace FluentCMS.Repositories.Abstractions.Examples;
 /// Example data seeder for Todo items.
 /// Demonstrates how to seed initial TodoItem data.
 /// </summary>
-public class TodoDataSeeder(ITodoDatabaseMarker context) : IDataSeeder<ITodoDatabaseMarker>
+public class TodoDataSeeder(TodoDbContext dbContext) : IDataSeeder
 {
     /// <summary>
     /// Execution priority for this seeder. Lower numbers execute first.
@@ -20,7 +20,6 @@ public class TodoDataSeeder(ITodoDatabaseMarker context) : IDataSeeder<ITodoData
     public async Task<bool> HasData(CancellationToken cancellationToken = default)
     {
         // Check if any TodoItems exist in the database
-        var dbContext = (TodoDbContext)context;
         return await dbContext.CreateQuerySpecification<TodoItem>().Any(cancellationToken);
     }
 
@@ -31,7 +30,6 @@ public class TodoDataSeeder(ITodoDatabaseMarker context) : IDataSeeder<ITodoData
     /// <param name="cancellationToken">Cancellation token for async operations</param>
     public async Task SeedData(CancellationToken cancellationToken = default)
     {
-        var dbContext = (TodoDbContext)context;
         var now = DateTime.UtcNow;
 
         // Seed sample TodoItems

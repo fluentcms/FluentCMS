@@ -47,3 +47,14 @@ public class Repository<TEntity, TDataContext>(TDataContext dataContext) : IRepo
         return dataContext.CreateQuerySpecification<TEntity>();
     }
 }
+
+public static class RepositoryExtensions
+{
+    // Create a query specification for fluent querying
+    public static IQuerySpecification<TEntity> CreateQuerySpecification<TEntity>(this DbContext dbContext)
+        where TEntity : class
+    {
+        var dbSet = dbContext.Set<TEntity>();
+        return new QuerySpecification<TEntity>(dbSet);
+    }
+}

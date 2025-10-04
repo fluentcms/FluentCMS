@@ -26,12 +26,3 @@ public interface IDataSeeder
     /// <param name="cancellationToken">Cancellation token for async operations</param>
     Task SeedData(CancellationToken cancellationToken = default);
 }
-
-/// <summary>
-/// Defines a contract for seeding data into a database.
-/// Implementations should provide priority-based execution and existence checking.
-/// </summary>
-public interface IDataSeeder<TArea> : IDataSeeder
-    where TArea : IDatabaseArea
-{
-}
