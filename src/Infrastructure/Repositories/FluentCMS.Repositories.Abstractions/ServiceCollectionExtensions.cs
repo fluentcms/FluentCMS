@@ -1,11 +1,56 @@
+// IServiceCollection extensions for database management and data contexts
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using FluentCMS.Repositories.Abstractions.Configuration;
+using FluentCMS.Repositories.Abstractions.Services;
 
 namespace FluentCMS.Repositories.Abstractions;
 
-// IServiceCollection extension
+/// <summary>
+/// Extension methods for configuring database management and data contexts.
+/// </summary>
 public static class ServiceCollectionExtensions
 {
+    /// <summary>
+    /// Adds centralized database management for multiple areas with provider-specific configurations.
+    /// This replaces individual AddDataContextForArea calls with a declarative configuration approach.
+    /// </summary>
+    /// <param name="services">The service collection to configure</param>
+    /// <param name="configureOptions">Configuration action for database manager options</param>
+    /// <returns>The service collection for chaining</returns>
+    /// <example>
+    /// <code>
+    /// builder.Services.AddDatabaseManager(options =>
+    /// {
+    ///     // Default database for most libraries
+    ///     options.Default()
+    ///         .UseSqlite(connectionString)
+    ///         .EnableDataSeeding(seedingOptions =>
+    ///         {
+    ///             seedingOptions.IgnoreExceptions = false;
+    ///             seedingOptions.Conditions.Add(new EnvironmentCondition(builder.Environment, e => e.IsDevelopment()));
+    ///         });
+    ///
+    ///     // Specific database for ToDo library
+    ///     options.For<ITodoDatabaseMarker>()
+    ///         .UseSqlServer("DataSource=todo.db;Cache=Shared")
+    ///         .EnableDataSeeding(seedingOptions =>
+    ///         {
+    ///             seedingOptions.IgnoreExceptions = false;
+    ///             seedingOptions.Conditions.Add(new EnvironmentCondition(builder.Environment, e => e.IsDevelopment()));
+    ///         });
+    /// });
+    /// </code>
+    /// </example>
+    public static IServiceCollection AddDatabaseManager(this IServiceCollection services, Action<DatabaseManagerOptions> configureOptions)
+    {
+        var options = new DatabaseManagerOptions();
+        configureOptions(options);
+
+        // implement here 
+
+        return services;
+    }
     // Register a custom DbContext for an area with configuration options
     public static IServiceCollection AddDataContextForArea<TArea, TContext>(
         this IServiceCollection services,
