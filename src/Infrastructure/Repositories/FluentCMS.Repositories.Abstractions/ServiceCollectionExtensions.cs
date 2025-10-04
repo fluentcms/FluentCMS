@@ -1,4 +1,3 @@
-// IServiceCollection extensions for database management and data contexts
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using FluentCMS.Repositories.Abstractions.Configuration;
@@ -47,7 +46,11 @@ public static class ServiceCollectionExtensions
         var options = new DatabaseManagerOptions();
         configureOptions(options);
 
-        // implement here 
+        // Store configurations in registry
+        DatabaseConfigurationRegistry.RegisterConfigurations(options);
+
+        // Register database initializer for manual seeding
+        services.AddScoped<IDataInitializer, DatabaseInitializer>();
 
         return services;
     }
@@ -57,10 +60,25 @@ public static class ServiceCollectionExtensions
         Action<DbContextOptionsBuilder<TContext>>? config = null)
         where TContext : DbContext
     {
-        // Register the DbContext with EF Core
-        services.AddDbContext<TContext>(config != null
-            ? options => config((DbContextOptionsBuilder<TContext>)options)
-            : null);
+        // Create combined configuration action that applies both user config and database manager config
+        void combinedConfig(DbContextOptionsBuilder options)
+        {
+            // Cast to typed options builder for user config
+            var typedOptions = (DbContextOptionsBuilder<TContext>)options;
+
+            // First apply user-provided configuration (if any)
+            config?.Invoke(typedOptions);
+
+            // Then apply database manager configuration (which overrides user config)
+            var configuration = DatabaseConfigurationRegistry.GetConfiguration(typeof(TArea));
+            if (configuration != null && configuration.DatabaseProvider != null && configuration.ConnectionString != null)
+            {
+                configuration.DatabaseProvider.Configure(options, configuration.ConnectionString);
+            }
+        }
+
+        // Register the DbContext with EF Core using combined configuration
+        services.AddDbContext<TContext>(combinedConfig);
 
         // Register as the data context for the area (via generic type)
         services.AddScoped(typeof(TArea), sp => sp.GetRequiredService<TContext>());
