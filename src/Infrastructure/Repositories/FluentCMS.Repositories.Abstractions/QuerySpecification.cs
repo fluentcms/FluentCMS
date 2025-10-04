@@ -101,10 +101,6 @@ public class QuerySpecification<TEntity> : IQuerySpecification<TEntity>
     public async Task<bool> Any(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default) =>
         await _queryable.AnyAsync(predicate, cancellationToken);
 
-    // GroupBy implementation
-    public IQuerySpecification<IGrouping<TKey, TEntity>> GroupBy<TKey>(Expression<Func<TEntity, TKey>> keySelector) =>
-        new QuerySpecification<IGrouping<TKey, TEntity>>(_queryable.GroupBy(keySelector), _isOrdered);
-
     // First/Last operations - require ordering for deterministic results
     private void ValidateOrderingForFirstLast(string operation)
     {
