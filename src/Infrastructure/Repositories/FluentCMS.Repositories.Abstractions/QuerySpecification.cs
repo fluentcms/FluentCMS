@@ -102,8 +102,8 @@ public class QuerySpecification<TEntity> : IQuerySpecification<TEntity>
         await _queryable.AnyAsync(predicate, cancellationToken);
 
     // GroupBy implementation
-    public IQuerySpecification<TEntity> GroupBy<TKey>(Expression<Func<TEntity, TKey>> keySelector) =>
-        new QuerySpecification<TEntity>(_queryable.GroupBy(keySelector).SelectMany(g => g), _isOrdered);
+    public IQuerySpecification<IGrouping<TKey, TEntity>> GroupBy<TKey>(Expression<Func<TEntity, TKey>> keySelector) =>
+        new QuerySpecification<IGrouping<TKey, TEntity>>(_queryable.GroupBy(keySelector), _isOrdered);
 
     // First/Last operations - require ordering for deterministic results
     private void ValidateOrderingForFirstLast(string operation)
