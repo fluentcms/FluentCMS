@@ -54,10 +54,7 @@ FluentCMS.Repositories/
 │   └── ServiceCollectionExtensions.cs
 ├── SqlServer/                    # SQL Server provider extensions
 │   └── ServiceCollectionExtensions.cs
-└── MongoDB/                      # MongoDB provider extensions
-    ├── MongoDataContext.cs
-    ├── MongoEntitySet.cs
-    └── ServiceCollectionExtensions.cs
+
 ```
 
 ## 📋 Key Concepts
@@ -103,9 +100,6 @@ builder.Services.AddDatabaseManager(options =>
         .UseSqlServer("Server=localhost;Database=TodoDb;Trusted_Connection=True;", sqlOpts =>
             sqlOpts.EnableRetryOnFailure(maxRetryCount: 3)));
 
-    // Custom MongoDB for Log library
-    options.For<ILogDatabaseMarker>()
-        .UseMongoDB("mongodb://localhost:27017", "LogsDb");
 });
 ```
 
@@ -181,18 +175,6 @@ builder.Services.AddDatabaseManager(options =>
                 sqlOpts.UseQuerySplittingBehavior(QuerySplittingBehavior.SingleQuery);
                 sqlOpts.UseTransactionIsolationLevel(IsolationLevel.ReadCommitted);
             });
-});
-```
-
-### MongoDB Configuration
-
-```csharp
-builder.Services.AddDatabaseManager(options =>
-{
-    options.For<ILogDatabaseMarker>()
-        .UseMongoDB(
-            "mongodb://username:password@cluster.mongodb.net/?retryWrites=true&w=majority",
-            "logs_database");
 });
 ```
 
