@@ -1,4 +1,3 @@
-// IServiceCollection extensions for database management and data contexts
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using FluentCMS.Repositories.Abstractions.Configuration;
@@ -11,9 +10,6 @@ namespace FluentCMS.Repositories.Abstractions;
 /// </summary>
 public static class ServiceCollectionExtensions
 {
-    // Static registry for database manager configurations
-    private static readonly Dictionary<Type, DatabaseAreaConfiguration> s_areaConfigurations = [];
-    private static DatabaseAreaConfiguration? s_defaultConfiguration;
     /// <summary>
     /// Adds centralized database management for multiple areas with provider-specific configurations.
     /// This replaces individual AddDataContextForArea calls with a declarative configuration approach.
@@ -50,17 +46,8 @@ public static class ServiceCollectionExtensions
         var options = new DatabaseManagerOptions();
         configureOptions(options);
 
-        // Store configurations in static registry
-        s_areaConfigurations.Clear();
-
-        // Store default configuration if set
-        s_defaultConfiguration = options.DefaultConfiguration;
-
-        // Store area-specific configurations
-        foreach (var kvp in options.AreaConfigurations)
-        {
-            s_areaConfigurations[kvp.Key] = kvp.Value;
-        }
+        // Store configurations in registry
+        DatabaseConfigurationRegistry.RegisterConfigurations(options);
 
         // Register database initializer for manual seeding
         services.AddScoped<IDataInitializer, DatabaseInitializer>();
@@ -80,28 +67,13 @@ public static class ServiceCollectionExtensions
             var typedOptions = (DbContextOptionsBuilder<TContext>)options;
 
             // First apply user-provided configuration (if any)
-            if (config != null)
-            {
-                config(typedOptions);
-            }
+            config?.Invoke(typedOptions);
 
             // Then apply database manager configuration (which overrides user config)
-            var areaType = typeof(TArea);
-
-            // Check for area-specific configuration first
-            if (s_areaConfigurations.TryGetValue(areaType, out var areaConfig))
+            var configuration = DatabaseConfigurationRegistry.GetConfiguration(typeof(TArea));
+            if (configuration != null && configuration.DatabaseProvider != null && configuration.ConnectionString != null)
             {
-                if (areaConfig.DatabaseProvider != null && areaConfig.ConnectionString != null)
-                {
-                    areaConfig.DatabaseProvider.Configure(options, areaConfig.ConnectionString);
-                }
-            }
-            // Otherwise check for default configuration
-            else if (s_defaultConfiguration != null &&
-                     s_defaultConfiguration.DatabaseProvider != null &&
-                     s_defaultConfiguration.ConnectionString != null)
-            {
-                s_defaultConfiguration.DatabaseProvider.Configure(options, s_defaultConfiguration.ConnectionString);
+                configuration.DatabaseProvider.Configure(options, configuration.ConnectionString);
             }
         };
 
