@@ -61,7 +61,7 @@ public static class ServiceCollectionExtensions
         where TContext : DbContext
     {
         // Create combined configuration action that applies both user config and database manager config
-        Action<DbContextOptionsBuilder> combinedConfig = options =>
+        void combinedConfig(DbContextOptionsBuilder options)
         {
             // Cast to typed options builder for user config
             var typedOptions = (DbContextOptionsBuilder<TContext>)options;
@@ -75,7 +75,7 @@ public static class ServiceCollectionExtensions
             {
                 configuration.DatabaseProvider.Configure(options, configuration.ConnectionString);
             }
-        };
+        }
 
         // Register the DbContext with EF Core using combined configuration
         services.AddDbContext<TContext>(combinedConfig);
