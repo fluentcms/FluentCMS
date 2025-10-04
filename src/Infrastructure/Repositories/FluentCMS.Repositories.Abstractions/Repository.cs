@@ -1,46 +1,44 @@
 using FluentCMS.Repositories.Abstractions;
+using Microsoft.EntityFrameworkCore;
 
 namespace FluentCMS.Repositories;
 
+// Generic repository for entities with direct DbContext usage
 public class Repository<TEntity, TDataContext>(TDataContext dataContext) : IRepository<TEntity>
     where TEntity : class
-    where TDataContext : IDataContext
+    where TDataContext : DbContext
 {
 
     // Add single entity and persist changes
     public async Task<TEntity> Add(TEntity entity, CancellationToken cancellationToken = default)
     {
-        var entitySet = dataContext.Set<TEntity>();
-        var addedEntity = await entitySet.Add(entity, cancellationToken);
-        await dataContext.SaveChanges(cancellationToken);
-        return addedEntity;
+        var entry = await dataContext.AddAsync(entity, cancellationToken);
+        await dataContext.SaveChangesAsync(cancellationToken);
+        return entry.Entity;
     }
 
     // Add range of entities and persist changes
     public async Task<IEnumerable<TEntity>> AddRange(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default)
     {
-        var entitySet = dataContext.Set<TEntity>();
-        var addedEntities = await entitySet.AddRange(entities, cancellationToken);
-        await dataContext.SaveChanges(cancellationToken);
-        return addedEntities;
+        await dataContext.AddRangeAsync(entities, cancellationToken);
+        await dataContext.SaveChangesAsync(cancellationToken);
+        return entities;
     }
 
     // Update entity and persist changes
     public async Task<TEntity> Update(TEntity entity, CancellationToken cancellationToken = default)
     {
-        var entitySet = dataContext.Set<TEntity>();
-        var updatedEntity = await entitySet.Update(entity, cancellationToken);
-        await dataContext.SaveChanges(cancellationToken);
-        return updatedEntity;
+        var entry = dataContext.Update(entity);
+        await dataContext.SaveChangesAsync(cancellationToken);
+        return entry.Entity;
     }
 
     // Remove entity and persist changes
     public async Task<TEntity> Remove(TEntity entity, CancellationToken cancellationToken = default)
     {
-        var entitySet = dataContext.Set<TEntity>();
-        var removedEntity = await entitySet.Remove(entity, cancellationToken);
-        await dataContext.SaveChanges(cancellationToken);
-        return removedEntity;
+        var entry = dataContext.Remove(entity);
+        await dataContext.SaveChangesAsync(cancellationToken);
+        return entry.Entity;
     }
 
     // Single entry point for all queries - provides fluent API

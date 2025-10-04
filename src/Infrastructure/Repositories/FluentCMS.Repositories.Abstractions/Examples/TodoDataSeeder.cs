@@ -4,7 +4,7 @@ namespace FluentCMS.Repositories.Abstractions.Examples;
 /// Example data seeder for Todo items.
 /// Demonstrates how to seed initial TodoItem data.
 /// </summary>
-public class TodoDataSeeder(IDataContext<ITodoDatabaseMarker> context) : IDataSeeder<ITodoDatabaseMarker>
+public class TodoDataSeeder(ITodoDatabaseMarker context) : IDataSeeder<ITodoDatabaseMarker>
 {
     /// <summary>
     /// Execution priority for this seeder. Lower numbers execute first.
@@ -20,7 +20,8 @@ public class TodoDataSeeder(IDataContext<ITodoDatabaseMarker> context) : IDataSe
     public async Task<bool> HasData(CancellationToken cancellationToken = default)
     {
         // Check if any TodoItems exist in the database
-        return await context.CreateQuerySpecification<TodoItem>().Any(cancellationToken);
+        var dbContext = (TodoDbContext)context;
+        return await dbContext.CreateQuerySpecification<TodoItem>().Any(cancellationToken);
     }
 
     /// <summary>
@@ -30,6 +31,7 @@ public class TodoDataSeeder(IDataContext<ITodoDatabaseMarker> context) : IDataSe
     /// <param name="cancellationToken">Cancellation token for async operations</param>
     public async Task SeedData(CancellationToken cancellationToken = default)
     {
+        var dbContext = (TodoDbContext)context;
         var now = DateTime.UtcNow;
 
         // Seed sample TodoItems
@@ -62,12 +64,9 @@ public class TodoDataSeeder(IDataContext<ITodoDatabaseMarker> context) : IDataSe
         };
 
         // Add all sample todos to the context
-        foreach (var todo in sampleTodos)
-        {
-            await context.Set<TodoItem>().Add(todo, cancellationToken);
-        }
+        await dbContext.AddRangeAsync(sampleTodos, cancellationToken);
 
         // Save changes to persist the data
-        await context.SaveChanges(cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
     }
 }
