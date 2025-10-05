@@ -6,7 +6,7 @@ namespace FluentCMS.Plugins.TodoManager.Services;
 public interface ITodoService
 {
     Task<Todo> Add(Todo entity, CancellationToken cancellationToken = default);
-    Task<IList<Todo>> GetAll(CancellationToken cancellationToken = default);
+    Task<List<Todo>> GetAll(CancellationToken cancellationToken = default);
     Task<Todo?> GetById(Guid entityId, CancellationToken cancellationToken = default);
     Task Remove(Guid entityId, CancellationToken cancellationToken = default);
     Task<Todo> Update(Todo entity, CancellationToken cancellationToken = default);
