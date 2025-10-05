@@ -85,9 +85,6 @@ public class QuerySpecification<TEntity> : IQuerySpecification<TEntity>
     public async Task<TEntity[]> ToArray(CancellationToken cancellationToken = default) =>
         await _queryable.ToArrayAsync(cancellationToken);
 
-    public async Task<IEnumerable<TEntity>> ToEnumerable(CancellationToken cancellationToken = default) =>
-        await _queryable.ToListAsync(cancellationToken);
-
     // Aggregate operations
     public async Task<int> Count(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default) =>
         await _queryable.CountAsync(predicate, cancellationToken);
