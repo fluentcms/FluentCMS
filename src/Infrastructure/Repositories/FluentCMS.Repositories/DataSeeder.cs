@@ -8,8 +8,16 @@ public abstract class DataSeeder<TDbContext>(TDbContext dbContext, ILogger<DataS
     where TDbContext : DbContext
 {
     protected readonly TDbContext DbContext = dbContext;
-    public abstract int Priority { get; }
-    public abstract Task SeedData(CancellationToken cancellationToken = default);
-    public abstract Task<bool> ShouldSeed(CancellationToken cancellationToken = default);
-}
 
+    public abstract int Priority { get; }
+
+    public virtual async Task<bool> ShouldSeed(CancellationToken cancellationToken = default)
+    {
+        logger.LogInformation("Checking for existing data in {TDbContext}...", typeof(TDbContext).Name);
+        var hasData = await DbContext.AnyTablesHaveData(cancellationToken);
+        logger.LogInformation("{TDbContext} existing data check result: {Result}", typeof(TDbContext).Name, hasData);
+        return !hasData;
+    }
+
+    public abstract Task SeedData(CancellationToken cancellationToken = default);
+}

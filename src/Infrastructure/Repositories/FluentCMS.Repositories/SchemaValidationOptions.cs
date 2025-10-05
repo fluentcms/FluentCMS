@@ -2,15 +2,18 @@
 
 namespace FluentCMS.Repositories;
 
-public class DataMigrationOptions
+/// <summary>
+/// Configuration options for the schema validation process
+/// </summary>
+public class SchemaValidationOptions
 {
     /// <summary>
-    /// List of conditions that must be met before migrations are applied
+    /// List of conditions that must be met before seeding occurs
     /// </summary>
     public List<IDbInitializationCondition> Conditions { get; set; } = [];
 
     /// <summary>
-    /// Whether to ignore exceptions during the migration process
+    /// Whether to ignore exceptions during the seeding process
     /// </summary>
     public bool IgnoreExceptions { get; set; } = false;
 }

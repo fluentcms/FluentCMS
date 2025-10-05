@@ -28,8 +28,10 @@ internal class TodoService(ITodoRepository todoRepository) : ITodoService
 
     public async Task Remove(Guid entityId, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
-        //await todoRepository.Remove(entityId, cancellationToken);
+        var entity = await todoRepository.Query().Where(x => x.Id == entityId).FirstOrDefault(cancellationToken)
+            ?? throw new KeyNotFoundException($"Todo with ID {entityId} not found.");
+
+        await todoRepository.Remove(entity, cancellationToken);
     }
 
     public Task<Todo?> GetById(Guid entityId, CancellationToken cancellationToken = default)

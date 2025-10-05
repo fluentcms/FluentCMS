@@ -31,7 +31,8 @@ public class TodosController(ITodoService service) : BaseController
     [HttpGet("{id:guid}")]
     public async Task<ApiResult<TodoResponseDto>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
-        var todo = await service.GetById(id, cancellationToken);
+        var todo = await service.GetById(id, cancellationToken) ??
+            throw new KeyNotFoundException($"Todo with ID {id} not found.");
         return Ok(MapToResponseDto(todo));
     }
 
@@ -55,7 +56,8 @@ public class TodosController(ITodoService service) : BaseController
     [HttpPut("{id:guid}")]
     public async Task<ApiResult<TodoResponseDto>> Update(Guid id, TodoUpdateDto todoDto, CancellationToken cancellationToken = default)
     {
-        var existingTodo = await service.GetById(id, cancellationToken);
+        var existingTodo = await service.GetById(id, cancellationToken) ??
+            throw new KeyNotFoundException($"Todo with ID {id} not found.");
 
         existingTodo.Title = todoDto.Title;
         existingTodo.Description = todoDto.Description;

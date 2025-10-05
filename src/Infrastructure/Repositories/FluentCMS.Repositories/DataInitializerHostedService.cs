@@ -26,20 +26,11 @@ internal sealed class DataInitializerHostedService(IServiceProvider serviceProvi
 
         try
         {
-            var migrationService = scope.ServiceProvider.GetRequiredService<IDataMigrationService>();
-            logger.LogInformation("Starting migration process ...");
-            await migrationService.Initialize(cancellationToken);
-            logger.LogInformation("Migration process completed.");
-        }
-        catch (Exception ex)
-        {
-            // Log the error and re-throw to prevent application startup with incomplete migration
-            logger.LogError(ex, "An error occurred during database migration process.");
-            throw;
-        }
+            var schemaValidator = scope.ServiceProvider.GetRequiredService<ISchemaValidatorService>();
+            logger.LogInformation("Starting database initialization process ...");
+            await schemaValidator.Initialize(cancellationToken);
+            logger.LogInformation("Database initialization process completed.");
 
-        try
-        {
             var dataSeeder = scope.ServiceProvider.GetRequiredService<IDataSeederService>();
             logger.LogInformation("Starting data seeding process ...");
             await dataSeeder.Initialize(cancellationToken);

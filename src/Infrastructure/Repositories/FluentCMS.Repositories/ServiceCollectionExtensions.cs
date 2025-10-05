@@ -36,9 +36,6 @@ public static class ServiceCollectionExtensions
         // Register the options as a singleton so it can be retrieved if needed
         services.AddSingleton(options);
 
-        services.AddScoped<IDataSeederService, DataSeederService>();
-        services.AddScoped<IDataMigrationService, DataMigrationService>();
-
         return services;
     }
 
@@ -103,7 +100,8 @@ public static class ServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(configure);
 
         // Register the hosted service to seed the database at startup
-        // Avoid multiple registration for multiple calls of AddDbOptions
+        // Avoid multiple registration for multiple calls
+        builder.ServiceDescriptors.TryAddScoped<IDataSeederService, DataSeederService>();
         builder.ServiceDescriptors.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, DataInitializerHostedService>());
 
         var options = new DataSeedingOptions();
@@ -114,21 +112,47 @@ public static class ServiceCollectionExtensions
         return builder;
     }
 
-    public static IDatabaseConfigurationBuilder EnableMigration(this IDatabaseConfigurationBuilder builder, Action<DataMigrationOptions> configure)
+    /// <summary>
+    /// Enables and configures database schema validation
+    /// </summary>
+    /// <param name="builder">The database configuration builder</param>
+    /// <param name="configure">Action to configure schema validation options</param>
+    /// <returns>The configuration builder for chaining</returns>
+    public static IDatabaseConfigurationBuilder EnableSchemaValidation(this IDatabaseConfigurationBuilder builder, Action<SchemaValidationOptions> configure)
     {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(configure);
 
-        // Register the hosted service to seed the database at startup
-        // Avoid multiple registration for multiple calls of AddDbOptions
+        // Register the hosted service to validate schema at startup
+        // Avoid multiple registration for multiple calls
+        builder.ServiceDescriptors.TryAddScoped<ISchemaValidatorService, SchemaValidatorService>();
         builder.ServiceDescriptors.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, DataInitializerHostedService>());
 
-        var options = new DataMigrationOptions();
+        var options = new SchemaValidationOptions();
         configure(options);
 
-        builder.Configuration.MigrationOptions = options;
+        builder.Configuration.SchemaValidationOptions = options;
 
         return builder;
+    }
+
+    /// <summary>
+    /// Registers a schema validator for a specific database marker
+    /// </summary>
+    /// <typeparam name="TValidator">The schema validator implementation type</typeparam>
+    /// <typeparam name="TMarker">The database marker interface type</typeparam>
+    /// <param name="services">The service collection</param>
+    /// <returns>The service collection for chaining</returns>
+    public static IServiceCollection AddSchemaValidator<TValidator, TMarker>(this IServiceCollection services)
+        where TValidator : class, ISchemaValidator
+        where TMarker : class
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        // Register the validator with the marker type as the key
+        services.AddKeyedScoped<ISchemaValidator, TValidator>(typeof(TMarker));
+
+        return services;
     }
 
     /// <summary>
@@ -140,28 +164,13 @@ public static class ServiceCollectionExtensions
     /// <returns>The service collection for chaining</returns>
     public static IServiceCollection AddDataSeeder<TSeeder, TMarker>(this IServiceCollection services)
         where TSeeder : class, IDataSeeder
-        where TMarker : IDatabaseArea
+        where TMarker : class
     {
         ArgumentNullException.ThrowIfNull(services);
 
         // Register the seeder with the marker type as the key
         services.AddKeyedScoped<IDataSeeder, TSeeder>(typeof(TMarker));
-        services.AddKeyedScoped<IDataSeeder, TSeeder>("Default");
 
         return services;
     }
-
-    public static IServiceCollection AddDataMigration<TDataMigration, TMarker>(this IServiceCollection services)
-       where TDataMigration : class, IDataMigration
-       where TMarker : IDatabaseArea
-    {
-        ArgumentNullException.ThrowIfNull(services);
-
-        // Register the migration with the marker type as the key
-        services.AddKeyedScoped<IDataMigration, TDataMigration>(typeof(TMarker));
-        services.AddKeyedScoped<IDataMigration, TDataMigration>("Default");
-
-        return services;
-    }
-
 }

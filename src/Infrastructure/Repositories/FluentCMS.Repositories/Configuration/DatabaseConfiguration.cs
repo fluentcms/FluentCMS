@@ -20,12 +20,11 @@ public class DatabaseConfiguration
     /// </summary>
     public DataSeedingOptions? SeedingOptions { get; set; }
 
-
     /// <summary>
-    /// Migration configuration for this database
-    /// Null if migrations are not configured (migrations will not run)
+    /// Schema validation options configuration
+    /// Null if schema validation is not configured (schema creation will not run)
     /// </summary>
-    public DataMigrationOptions? MigrationOptions { get; set; }
+    public SchemaValidationOptions? SchemaValidationOptions { get; set; }
 
     /// <summary>
     /// The connection string for the database
