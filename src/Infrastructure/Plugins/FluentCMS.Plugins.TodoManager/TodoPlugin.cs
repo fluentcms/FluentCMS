@@ -14,6 +14,7 @@ public class TodoPlugin : IPlugin
     {
         builder.Services.AddDatabaseContext<TodoDbContext>();
         builder.Services.AddDataSeeder<TodoDataSeeder, ITodoDatabaseMarker>();
+        builder.Services.AddDataMigration<TodoDataMigration, TodoDbContext>();
         builder.Services.AddScoped<ITodoService, TodoService>();
         builder.Services.AddScoped<ITodoRepository, TodoRepository>();
     }

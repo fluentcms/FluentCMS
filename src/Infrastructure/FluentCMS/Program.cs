@@ -32,16 +32,26 @@ builder.Services.AddDatabaseManager(options =>
         {
             seedingOptions.IgnoreExceptions = false; // Fail fast on errors
             seedingOptions.Conditions.Add(new EnvironmentCondition(builder.Environment, e => e.IsDevelopment()));
+        })
+        .EnableMigration(migrationOptions =>
+        {
+            migrationOptions.IgnoreExceptions = false; // Fail fast on errors
+            migrationOptions.Conditions.Add(new EnvironmentCondition(builder.Environment, e => e.IsDevelopment()));
         });
 
-    // Specific database for ToDo library
-    options.For<ITodoDatabaseMarker>()
-        .UseSqlite("DataSource=todo.db;Cache=Shared")
-        .EnableDataSeeding(seedingOptions =>
-        {
-            seedingOptions.IgnoreExceptions = false; // Fail fast on errors
-            seedingOptions.Conditions.Add(new EnvironmentCondition(builder.Environment, e => e.IsDevelopment()));
-        });
+    //// Specific database for ToDo library
+    //options.For<ITodoDatabaseMarker>()
+    //    .UseSqlite("DataSource=todo.db;Cache=Shared")
+    //    .EnableDataSeeding(seedingOptions =>
+    //    {
+    //        seedingOptions.IgnoreExceptions = false; // Fail fast on errors
+    //        seedingOptions.Conditions.Add(new EnvironmentCondition(builder.Environment, e => e.IsDevelopment()));
+    //    })
+    //    .EnableMigration(migrationOptions =>
+    //    {
+    //        migrationOptions.IgnoreExceptions = false; // Fail fast on errors
+    //        migrationOptions.Conditions.Add(new EnvironmentCondition(builder.Environment, e => e.IsDevelopment()));
+    //    });
 });
 
 builder.Host.UseSerilog();

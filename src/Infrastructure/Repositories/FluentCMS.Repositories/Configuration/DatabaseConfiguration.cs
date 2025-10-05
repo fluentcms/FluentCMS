@@ -20,6 +20,13 @@ public class DatabaseConfiguration
     /// </summary>
     public DataSeedingOptions? SeedingOptions { get; set; }
 
+
+    /// <summary>
+    /// Migration configuration for this database
+    /// Null if migrations are not configured (migrations will not run)
+    /// </summary>
+    public DataMigrationOptions? MigrationOptions { get; set; }
+
     /// <summary>
     /// The connection string for the database
     /// </summary>

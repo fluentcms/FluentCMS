@@ -37,6 +37,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(options);
 
         services.AddScoped<IDataSeederService, DataSeederService>();
+        services.AddScoped<IMigrationService, MigrationService>();
 
         return services;
     }
@@ -103,12 +104,29 @@ public static class ServiceCollectionExtensions
 
         // Register the hosted service to seed the database at startup
         // Avoid multiple registration for multiple calls of AddDbOptions
-        builder.ServiceDescriptors.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, DataSeedingHostedService>());
+        builder.ServiceDescriptors.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, DataInitializerHostedService>());
 
         var options = new DataSeedingOptions();
         configure(options);
 
         builder.Configuration.SeedingOptions = options;
+
+        return builder;
+    }
+
+    public static IDatabaseConfigurationBuilder EnableMigration(this IDatabaseConfigurationBuilder builder, Action<DataMigrationOptions> configure)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentNullException.ThrowIfNull(configure);
+
+        // Register the hosted service to seed the database at startup
+        // Avoid multiple registration for multiple calls of AddDbOptions
+        builder.ServiceDescriptors.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, DataInitializerHostedService>());
+
+        var options = new DataMigrationOptions();
+        configure(options);
+
+        builder.Configuration.MigrationOptions = options;
 
         return builder;
     }
@@ -128,6 +146,18 @@ public static class ServiceCollectionExtensions
 
         // Register the seeder with the marker type as the key
         services.AddKeyedScoped<IDataSeeder, TSeeder>(typeof(TMarker));
+
+        return services;
+    }
+
+    public static IServiceCollection AddDataMigration<TDataMigration, TMarker>(this IServiceCollection services)
+       where TDataMigration : class, IDataMigration
+       where TMarker : IDatabaseArea
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        // Register the migration with the marker type as the key
+        services.AddKeyedScoped<IDataMigration, TDataMigration>(typeof(TMarker));
 
         return services;
     }

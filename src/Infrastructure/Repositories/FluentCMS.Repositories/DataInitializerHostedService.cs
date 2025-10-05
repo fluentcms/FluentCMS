@@ -11,7 +11,7 @@ namespace FluentCMS.Repositories;
 /// </summary>
 /// <param name="serviceProvider">Service provider for creating scoped dependencies</param>
 /// <param name="logger">Logger instance for tracking seeding operations and errors</param>
-internal sealed class DataSeedingHostedService(IServiceProvider serviceProvider, ILogger<DataSeedingHostedService> logger) : IHostedService
+internal sealed class DataInitializerHostedService(IServiceProvider serviceProvider, ILogger<DataInitializerHostedService> logger) : IHostedService
 {
     /// <summary>
     /// Starts the data seeding process, including schema validation and seed data insertion.
@@ -26,6 +26,20 @@ internal sealed class DataSeedingHostedService(IServiceProvider serviceProvider,
 
         // Resolve required services from the scoped service provider
         var dataSeeder = scope.ServiceProvider.GetRequiredService<IDataSeederService>();
+        var migrationService = scope.ServiceProvider.GetRequiredService<IMigrationService>();
+
+        try
+        {
+            logger.LogInformation("Starting migration process ...");
+            await migrationService.Initialize(cancellationToken);
+            logger.LogInformation("Migration process completed.");
+        }
+        catch (Exception ex)
+        {
+            // Log the error and re-throw to prevent application startup with incomplete migration
+            logger.LogError(ex, "An error occurred during database migration process.");
+            throw;
+        }
 
         try
         {
@@ -53,3 +67,5 @@ internal sealed class DataSeedingHostedService(IServiceProvider serviceProvider,
         return Task.CompletedTask;
     }
 }
+
+
