@@ -225,6 +225,11 @@ public static class ServiceCollectionExtensions
 
         // Register the validator with the marker type as the key
         services.AddKeyedScoped<ISchemaValidator, TValidator>(typeof(TMarker));
+
+        // Also register the validator as the "Default" keyed instance.
+        // This allows the same validator to be resolved both by marker type and as the default,
+        // providing flexibility for consumers who may not specify a marker.
+        // See CodeQL nitpick: registering the same validator twice is intentional for this pattern.
         services.AddSchemaValidator<TValidator>();
 
         return services;
