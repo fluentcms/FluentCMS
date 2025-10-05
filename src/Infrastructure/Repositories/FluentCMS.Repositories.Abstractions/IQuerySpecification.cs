@@ -3,7 +3,6 @@
 namespace FluentCMS.Repositories.Abstractions;
 
 // Comprehensive query interface for repository operations
-// Provides LINQ-style querying capabilities with MongoDB and EF Core compatibility
 public interface IQuerySpecification<TEntity>
     where TEntity : class
 {
