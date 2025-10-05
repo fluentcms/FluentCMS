@@ -6,7 +6,7 @@ namespace FluentCMS.Plugins.TodoManager.Services;
 public interface ITodoService
 {
     Task<Todo> Add(Todo entity, CancellationToken cancellationToken = default);
-    Task<IEnumerable<Todo>> GetAll(CancellationToken cancellationToken = default);
+    Task<IList<Todo>> GetAll(CancellationToken cancellationToken = default);
     Task<Todo?> GetById(Guid entityId, CancellationToken cancellationToken = default);
     Task Remove(Guid entityId, CancellationToken cancellationToken = default);
     Task<Todo> Update(Todo entity, CancellationToken cancellationToken = default);
@@ -40,7 +40,7 @@ internal class TodoService(ITodoRepository todoRepository) : ITodoService
         //return todoRepository.GetById(entityId, cancellationToken);
     }
 
-    public async Task<IEnumerable<Todo>> GetAll(CancellationToken cancellationToken = default)
+    public async Task<IList<Todo>> GetAll(CancellationToken cancellationToken = default)
     {
         return await todoRepository.Query().ToList(cancellationToken);
     }
