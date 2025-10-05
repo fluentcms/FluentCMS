@@ -37,7 +37,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(options);
 
         services.AddScoped<IDataSeederService, DataSeederService>();
-        services.AddScoped<IMigrationService, MigrationService>();
+        services.AddScoped<IDataMigrationService, DataMigrationService>();
 
         return services;
     }
@@ -146,6 +146,7 @@ public static class ServiceCollectionExtensions
 
         // Register the seeder with the marker type as the key
         services.AddKeyedScoped<IDataSeeder, TSeeder>(typeof(TMarker));
+        services.AddKeyedScoped<IDataSeeder, TSeeder>("Default");
 
         return services;
     }
@@ -158,6 +159,7 @@ public static class ServiceCollectionExtensions
 
         // Register the migration with the marker type as the key
         services.AddKeyedScoped<IDataMigration, TDataMigration>(typeof(TMarker));
+        services.AddKeyedScoped<IDataMigration, TDataMigration>("Default");
 
         return services;
     }

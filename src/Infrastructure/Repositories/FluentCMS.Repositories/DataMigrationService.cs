@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Repositories;
 
-public interface IMigrationService
+public interface IDataMigrationService
 {
     /// <summary>
     /// Ensures that the database schema is up to date by applying any pending migrations.
@@ -12,7 +12,7 @@ public interface IMigrationService
     Task Initialize(CancellationToken cancellationToken = default);
 }
 
-internal class MigrationService(IServiceProvider serviceProvider, DatabaseManagerOptions options, ILogger<DataSeederService> logger) : IMigrationService
+internal class DataMigrationService(IServiceProvider serviceProvider, DatabaseManagerOptions options, ILogger<DataSeederService> logger) : IDataMigrationService
 {
     public async Task Initialize(CancellationToken cancellationToken = default)
     {

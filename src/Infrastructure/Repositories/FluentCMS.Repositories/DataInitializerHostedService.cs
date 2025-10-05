@@ -24,12 +24,9 @@ internal sealed class DataInitializerHostedService(IServiceProvider serviceProvi
         // Create a new service scope to resolve dependencies with proper lifetime management
         using var scope = serviceProvider.CreateScope();
 
-        // Resolve required services from the scoped service provider
-        var dataSeeder = scope.ServiceProvider.GetRequiredService<IDataSeederService>();
-        var migrationService = scope.ServiceProvider.GetRequiredService<IMigrationService>();
-
         try
         {
+            var migrationService = scope.ServiceProvider.GetRequiredService<IDataMigrationService>();
             logger.LogInformation("Starting migration process ...");
             await migrationService.Initialize(cancellationToken);
             logger.LogInformation("Migration process completed.");
@@ -43,6 +40,7 @@ internal sealed class DataInitializerHostedService(IServiceProvider serviceProvi
 
         try
         {
+            var dataSeeder = scope.ServiceProvider.GetRequiredService<IDataSeederService>();
             logger.LogInformation("Starting data seeding process ...");
             await dataSeeder.Initialize(cancellationToken);
             logger.LogInformation("Data seeding process completed.");
