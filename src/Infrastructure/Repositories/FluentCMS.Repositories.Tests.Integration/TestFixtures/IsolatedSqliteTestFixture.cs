@@ -1,5 +1,4 @@
 using FluentCMS.Repositories.Abstractions;
-using FluentCMS.Repositories.DataInitialization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -17,7 +16,7 @@ public class IsolatedSqliteTestFixture : IDisposable
     {
         var services = new ServiceCollection();
         var connectionString = "Data Source=:memory:;Mode=Memory;Cache=Shared;";
-        services.RegisterTestServices(connectionString);
+        services.AddTestServices(connectionString);
         _serviceProvider = services.BuildServiceProvider();
     }
 
@@ -27,6 +26,10 @@ public class IsolatedSqliteTestFixture : IDisposable
     /// </summary>
     public IsolatedTestScope CreateIsolatedScope()
     {
+        using var scope = _serviceProvider.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<TestDbContext>();
+        context.Database.OpenConnection(); // Keep connection open for in-memory SQLite
+        context.Database.EnsureCreated();
         return new IsolatedTestScope();
     }
 
@@ -67,8 +70,8 @@ public class IsolatedTestScope : IDisposable
 
         // Create and ensure database is created
         _context = _scope.ServiceProvider.GetRequiredService<TestDbContext>();
-        //_context.Database.OpenConnection(); // Keep connection open for in-memory SQLite
-        //_context.Database.EnsureCreated();
+        _context.Database.OpenConnection(); // Keep connection open for in-memory SQLite
+        _context.Database.EnsureCreated();
     }
 
     /// <summary>

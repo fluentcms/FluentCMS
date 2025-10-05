@@ -13,4 +13,13 @@ public static class IRepositoryExtensions
 
         return repository.Query().Single(e => e.Id.Equals(id), cancellationToken);
     }
+
+    public static async Task<IEnumerable<TEntity>> GetAll<TEntity>(this IRepository<TEntity> repository, CancellationToken cancellationToken = default)
+       where TEntity : class
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        ArgumentNullException.ThrowIfNull(repository);
+
+        return await repository.Query().ToArray(cancellationToken);
+    }
 }

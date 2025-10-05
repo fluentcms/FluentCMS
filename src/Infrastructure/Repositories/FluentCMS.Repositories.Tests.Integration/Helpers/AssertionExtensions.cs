@@ -174,11 +174,6 @@ public static class AssertionExtensions
             .WithMessage($"*{parameterName}*");
     }
 
-    public static async Task ShouldThrowRepositoryException<T>(this Func<Task> action) where T : class, IEntity
-    {
-        await action.Should().ThrowAsync<RepositoryException<T>>();
-    }
-
     public static async Task ShouldThrowOperationCancelledException(this Func<Task> action)
     {
         await action.Should().ThrowAsync<OperationCanceledException>();

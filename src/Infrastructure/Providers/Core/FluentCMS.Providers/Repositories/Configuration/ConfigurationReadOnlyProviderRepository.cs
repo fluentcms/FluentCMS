@@ -50,7 +50,7 @@ public sealed class ConfigurationReadOnlyProviderRepository(IConfiguration confi
         return new InMemoryQuerySpecification<Provider>(providers);
     }
 
-    public Task<Provider?> Remove(Provider provider, CancellationToken cancellationToken = default)
+    public Task<Provider> Remove(Provider provider, CancellationToken cancellationToken = default)
     {
         throw new Exception("In-memory repository does not support removing providers.");
     }

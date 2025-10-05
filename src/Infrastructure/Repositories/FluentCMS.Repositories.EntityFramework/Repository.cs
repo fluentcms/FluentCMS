@@ -11,6 +11,8 @@ public class Repository<TEntity, TDataContext>(TDataContext dataContext) : IRepo
     // Add single entity and persist changes
     public async Task<TEntity> Add(TEntity entity, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        ArgumentNullException.ThrowIfNull(entity);
         var entry = await dataContext.AddAsync(entity, cancellationToken);
         await dataContext.SaveChangesAsync(cancellationToken);
         return entry.Entity;
@@ -19,6 +21,8 @@ public class Repository<TEntity, TDataContext>(TDataContext dataContext) : IRepo
     // Add range of entities and persist changes
     public async Task<IEnumerable<TEntity>> AddRange(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        ArgumentNullException.ThrowIfNull(entities);
         await dataContext.AddRangeAsync(entities, cancellationToken);
         await dataContext.SaveChangesAsync(cancellationToken);
         return entities;
@@ -27,6 +31,8 @@ public class Repository<TEntity, TDataContext>(TDataContext dataContext) : IRepo
     // Update entity and persist changes
     public async Task<TEntity> Update(TEntity entity, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        ArgumentNullException.ThrowIfNull(entity);
         var entry = dataContext.Update(entity);
         await dataContext.SaveChangesAsync(cancellationToken);
         return entry.Entity;
@@ -35,6 +41,8 @@ public class Repository<TEntity, TDataContext>(TDataContext dataContext) : IRepo
     // Remove entity and persist changes
     public async Task<TEntity> Remove(TEntity entity, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        ArgumentNullException.ThrowIfNull(entity);
         var entry = dataContext.Remove(entity);
         await dataContext.SaveChangesAsync(cancellationToken);
         return entry.Entity;

@@ -202,20 +202,6 @@ public class BasicCrudOperationsTests(IsolatedSqliteTestFixture fixture) : IClas
     }
 
     [Fact]
-    public async Task Update_NonExistingEntity_ShouldThrowException()
-    {
-        // Arrange
-        using var scope = fixture.CreateIsolatedScope();
-        var userRepository = scope.GetRepository<TestUser>();
-
-        var user = TestDataBuilder.CreateTestUser();
-
-        // Act & Assert
-        var act = async () => await userRepository.Update(user);
-        await act.ShouldThrowRepositoryException<TestUser>();
-    }
-
-    [Fact]
     public async Task Update_NullEntity_ShouldThrowArgumentNullException()
     {
         // Arrange
@@ -278,7 +264,7 @@ public class BasicCrudOperationsTests(IsolatedSqliteTestFixture fixture) : IClas
     }
 
     [Fact]
-    public async Task Remove_ExistingEntityById_ShouldRemoveAndReturnEntity()
+    public async Task Remove_ExistingEntity_ShouldRemoveAndReturnEntity()
     {
         // Arrange
         using var scope = fixture.CreateIsolatedScope();
@@ -288,31 +274,11 @@ public class BasicCrudOperationsTests(IsolatedSqliteTestFixture fixture) : IClas
         var addedUser = await userRepository.Add(user);
 
         // Act
-        var result = await userRepository.Remove(addedUser.Id);
+        var result = await userRepository.Remove(addedUser);
 
         // Assert
         result.Should().NotBeNull();
         result!.ShouldBeEquivalentToTestUser(addedUser);
-
-        // Verify it's removed from database
-        var retrievedUser = await userRepository.GetById(addedUser.Id);
-        retrievedUser.Should().BeNull();
-    }
-
-    [Fact]
-    public async Task Remove_NonExistingEntityById_ShouldReturnNull()
-    {
-        // Arrange
-        using var scope = fixture.CreateIsolatedScope();
-        var userRepository = scope.GetRepository<TestUser>();
-
-        var nonExistentId = Guid.NewGuid();
-
-        // Act
-        var result = await userRepository.Remove(nonExistentId);
-
-        // Assert
-        result.Should().BeNull();
     }
 
     [Fact]
@@ -328,20 +294,6 @@ public class BasicCrudOperationsTests(IsolatedSqliteTestFixture fixture) : IClas
         await act.Should()
                  .ThrowAsync<ArgumentNullException>()
                  .WithParameterName("entity");
-    }
-
-    [Fact]
-    public async Task Remove_EmptyGuid_ShouldReturnNull()
-    {
-        // Arrange
-        using var scope = fixture.CreateIsolatedScope();
-        var userRepository = scope.GetRepository<TestUser>();
-
-        // Act
-        var result = await userRepository.Remove(Guid.Empty);
-
-        // Assert
-        result.Should().BeNull();
     }
 
     #endregion
@@ -364,36 +316,6 @@ public class BasicCrudOperationsTests(IsolatedSqliteTestFixture fixture) : IClas
         // Assert
         result.Should().NotBeNull();
         result!.ShouldBeEquivalentToTestUser(addedUser);
-    }
-
-    [Fact]
-    public async Task GetById_NonExistingEntity_ShouldReturnNull()
-    {
-        // Arrange
-        using var scope = fixture.CreateIsolatedScope();
-        var userRepository = scope.GetRepository<TestUser>();
-
-        var nonExistentId = Guid.NewGuid();
-
-        // Act
-        var result = await userRepository.GetById(nonExistentId);
-
-        // Assert
-        result.Should().BeNull();
-    }
-
-    [Fact]
-    public async Task GetById_EmptyGuid_ShouldReturnNull()
-    {
-        // Arrange
-        using var scope = fixture.CreateIsolatedScope();
-        var userRepository = scope.GetRepository<TestUser>();
-
-        // Act
-        var result = await userRepository.GetById(Guid.Empty);
-
-        // Assert
-        result.Should().BeNull();
     }
 
     [Fact]

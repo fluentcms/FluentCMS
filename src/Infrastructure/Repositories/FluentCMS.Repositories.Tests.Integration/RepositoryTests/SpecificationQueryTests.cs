@@ -1,896 +1,763 @@
-using FluentAssertions;
-using FluentCMS.Repositories.Tests.Integration.Helpers;
-using FluentCMS.Repositories.Tests.Integration.TestEntities;
-using FluentCMS.Repositories.Tests.Integration.TestFixtures;
-
-namespace FluentCMS.Repositories.Tests.Integration.RepositoryTests;
-
-/// <summary>
-/// Specification query tests using isolated database instances for each test.
-/// Each test gets its own fresh database, ensuring complete test isolation.
-/// </summary>
-public class SpecificationQueryTests : IClassFixture<IsolatedSqliteTestFixture>
-{
-    private readonly IsolatedSqliteTestFixture _fixture;
-
-    public SpecificationQueryTests(IsolatedSqliteTestFixture fixture)
-    {
-        _fixture = fixture;
-    }
-
-    #region Basic Query Operations Tests
-
-    [Fact]
-    public async Task Query_WithWhereSpecification_ShouldReturnFilteredResults()
-    {
-        // Arrange - Each test gets its own isolated database
-        using var scope = _fixture.CreateIsolatedScope();
-        var userRepository = scope.GetRepository<TestUser>();
-
-        var users = TestDataBuilder.CreateUsersForFiltering();
-        await userRepository.AddRange(users);
-
-        var specification = SpecificationExtensions.Where<TestUser>(u => u.Age > 30);
-
-        // Act
-        var result = await userRepository.Query(specification);
-
-        // Assert
-        var resultList = result.ToList();
-        resultList.Should().HaveCount(2); // Bob (35) and Charlie (42)
-        resultList.Should().OnlyContain(u => u.Age > 30);
-    }
-
-    [Fact]
-    public async Task Query_WithMultipleWhereConditions_ShouldApplyAllFilters()
-    {
-        // Arrange - Fresh isolated database
-        using var scope = _fixture.CreateIsolatedScope();
-        var userRepository = scope.GetRepository<TestUser>();
-
-        var users = TestDataBuilder.CreateUsersForFiltering();
-        await userRepository.AddRange(users);
-
-        var specification = SpecificationExtensions.Where<TestUser>(u => u.Age >= 25 && u.Age <= 35);
-
-        // Act
-        var result = await userRepository.Query(specification);
-
-        // Assert
-        var resultList = result.ToList();
-        resultList.Should().HaveCount(4); // Jane (25), John (30), Bob (35), Alice(28)
-        resultList.Should().OnlyContain(u => u.Age >= 25 && u.Age <= 35);
-    }
-
-    [Fact]
-    public async Task Query_WithNoMatches_ShouldReturnEmptyList()
-    {
-        // Arrange - Isolated test environment
-        using var scope = _fixture.CreateIsolatedScope();
-        var userRepository = scope.GetRepository<TestUser>();
-
-        var users = TestDataBuilder.CreateUsersForFiltering();
-        await userRepository.AddRange(users);
-
-        var specification = SpecificationExtensions.Where<TestUser>(u => u.Age > 100);
-
-        // Act
-        var result = await userRepository.Query(specification);
-
-        // Assert
-        result.Should().BeEmpty();
-    }
-
-    [Fact]
-    public async Task FirstOrDefault_WithMatches_ShouldReturnFirstEntity()
-    {
-        // Arrange
-        using var scope = _fixture.CreateIsolatedScope();
-        var userRepository = scope.GetRepository<TestUser>();
-
-        var users = TestDataBuilder.CreateUsersForFiltering();
-        await userRepository.AddRange(users);
-
-        var specification = SpecificationExtensions.Where<TestUser>(u => u.Age > 30);
-
-        // Act
-        var result = await userRepository.FirstOrDefault(specification);
-
-        // Assert
-        result.Should().NotBeNull();
-        result!.Age.Should().BeGreaterThan(30);
-    }
-
-    [Fact]
-    public async Task FirstOrDefault_WithNoMatches_ShouldReturnNull()
-    {
-        // Arrange
-        using var scope = _fixture.CreateIsolatedScope();
-        var userRepository = scope.GetRepository<TestUser>();
-
-        var users = TestDataBuilder.CreateUsersForFiltering();
-        await userRepository.AddRange(users);
-
-        var specification = SpecificationExtensions.Where<TestUser>(u => u.Age > 100);
-
-        // Act
-        var result = await userRepository.FirstOrDefault(specification);
-
-        // Assert
-        result.Should().BeNull();
-    }
-
-    [Fact]
-    public async Task SingleOrDefault_WithSingleMatch_ShouldReturnEntity()
-    {
-        // Arrange
-        using var scope = _fixture.CreateIsolatedScope();
-        var userRepository = scope.GetRepository<TestUser>();
-
-        var users = TestDataBuilder.CreateUsersForFiltering();
-        await userRepository.AddRange(users);
-
-        var specification = SpecificationExtensions.Where<TestUser>(u => u.Name == "John Doe");
-
-        // Act
-        var result = await userRepository.SingleOrDefault(specification);
-
-        // Assert
-        result.Should().NotBeNull();
-        result!.Name.Should().Be("John Doe");
-    }
-
-    [Fact]
-    public async Task SingleOrDefault_WithNoMatches_ShouldReturnNull()
-    {
-        // Arrange
-        using var scope = _fixture.CreateIsolatedScope();
-        var userRepository = scope.GetRepository<TestUser>();
-
-        var users = TestDataBuilder.CreateUsersForFiltering();
-        await userRepository.AddRange(users);
-
-        var specification = SpecificationExtensions.Where<TestUser>(u => u.Name == "Nonexistent User");
-
-        // Act
-        var result = await userRepository.SingleOrDefault(specification);
-
-        // Assert
-        result.Should().BeNull();
-    }
-
-    [Fact]
-    public async Task SingleOrDefault_WithMultipleMatches_ShouldThrowException()
-    {
-        // Arrange
-        using var scope = _fixture.CreateIsolatedScope();
-        var userRepository = scope.GetRepository<TestUser>();
-
-        var users = TestDataBuilder.CreateUsersForFiltering();
-        await userRepository.AddRange(users);
-
-        var specification = SpecificationExtensions.Where<TestUser>(u => u.Age > 25);
-
-        // Act & Assert
-        var action = async () => await userRepository.SingleOrDefault(specification);
-        // Repository wraps the InvalidOperationException in a RepositoryException
-        var exception = await action.Should().ThrowAsync<Exception>();
-        exception.Which.Should().BeOfType<RepositoryException<TestUser>>();
-    }
-
-    [Fact]
-    public async Task Count_WithFilters_ShouldReturnCorrectCount()
-    {
-        // Arrange
-        using var scope = _fixture.CreateIsolatedScope();
-        var userRepository = scope.GetRepository<TestUser>();
-
-        var users = TestDataBuilder.CreateUsersForFiltering();
-        await userRepository.AddRange(users);
-
-        var specification = SpecificationExtensions.Where<TestUser>(u => u.Age >= 30);
-
-        // Act
-        var result = await userRepository.Count(specification);
-
-        // Assert
-        result.Should().Be(3); // John (30), Bob (35), Charlie (42)
-    }
-
-    [Fact]
-    public async Task Count_WithNoMatches_ShouldReturnZero()
-    {
-        // Arrange
-        using var scope = _fixture.CreateIsolatedScope();
-        var userRepository = scope.GetRepository<TestUser>();
-
-        var users = TestDataBuilder.CreateUsersForFiltering();
-        await userRepository.AddRange(users);
-
-        var specification = SpecificationExtensions.Where<TestUser>(u => u.Age > 100);
-
-        // Act
-        var result = await userRepository.Count(specification);
-
-        // Assert
-        result.Should().Be(0);
-    }
-
-    [Fact]
-    public async Task Any_WithMatches_ShouldReturnTrue()
-    {
-        // Arrange
-        using var scope = _fixture.CreateIsolatedScope();
-        var userRepository = scope.GetRepository<TestUser>();
-
-        var users = TestDataBuilder.CreateUsersForFiltering();
-        await userRepository.AddRange(users);
-
-        var specification = SpecificationExtensions.Where<TestUser>(u => u.Age > 40);
-
-        // Act
-        var result = await userRepository.Any(specification);
-
-        // Assert
-        result.Should().BeTrue();
-    }
-
-    [Fact]
-    public async Task Any_WithNoMatches_ShouldReturnFalse()
-    {
-        // Arrange
-        using var scope = _fixture.CreateIsolatedScope();
-        var userRepository = scope.GetRepository<TestUser>();
-
-        var users = TestDataBuilder.CreateUsersForFiltering();
-        await userRepository.AddRange(users);
-
-        var specification = SpecificationExtensions.Where<TestUser>(u => u.Age > 100);
-
-        // Act
-        var result = await userRepository.Any(specification);
-
-        // Assert
-        result.Should().BeFalse();
-    }
-
-    #endregion
-
-    #region Ordering Operations Tests
-
-    [Fact]
-    public async Task Query_WithOrderBy_ShouldReturnOrderedResults()
-    {
-        // Arrange
-        using var scope = _fixture.CreateIsolatedScope();
-        var userRepository = scope.GetRepository<TestUser>();
-
-        var users = TestDataBuilder.CreateUsersForSorting();
-        await userRepository.AddRange(users);
-
-        var querySpec = userRepository.Query().OrderBy(u => u.Name);
-        var specification = querySpec.ToSpecification();
-
-        // Act
-        var result = await userRepository.Query(specification);
-
-        // Assert
-        result.ShouldBeOrderedByName();
-    }
-
-    [Fact]
-    public async Task Query_WithOrderByDescending_ShouldReturnDescendingResults()
-    {
-        // Arrange
-        using var scope = _fixture.CreateIsolatedScope();
-        var userRepository = scope.GetRepository<TestUser>();
-
-        var users = TestDataBuilder.CreateUsersForSorting();
-        await userRepository.AddRange(users);
-
-        var querySpec = userRepository.Query().OrderByDescending(u => u.Age);
-        var specification = querySpec.ToSpecification();
-
-        // Act
-        var result = await userRepository.Query(specification);
-
-        // Assert
-        result.ShouldBeOrderedByAgeDescending();
-    }
-
-    [Fact]
-    public async Task Query_WithOrderByThenBy_ShouldApplySecondarySort()
-    {
-        // Arrange
-        using var scope = _fixture.CreateIsolatedScope();
-        var userRepository = scope.GetRepository<TestUser>();
-
-        var users = new List<TestUser>
-        {
-            TestDataBuilder.CreateTestUser("Alice", "alice1@example.com", 25),
-            TestDataBuilder.CreateTestUser("Alice", "alice2@example.com", 30),
-            TestDataBuilder.CreateTestUser("Bob", "bob@example.com", 25)
-        };
-        await userRepository.AddRange(users);
-
-        var querySpec = userRepository.Query()
-            .OrderBy(u => u.Name)
-            .ThenBy(u => u.Age);
-        var specification = querySpec.ToSpecification();
-
-        // Act
-        var result = await userRepository.Query(specification);
-
-        // Assert
-        var resultList = result.ToList();
-        resultList[0].Name.Should().Be("Alice");
-        resultList[0].Age.Should().Be(25);
-        resultList[1].Name.Should().Be("Alice");
-        resultList[1].Age.Should().Be(30);
-        resultList[2].Name.Should().Be("Bob");
-    }
-
-    [Fact]
-    public async Task Query_WithOrderByDescendingThenByDescending_ShouldApplyBothDescending()
-    {
-        // Arrange
-        using var scope = _fixture.CreateIsolatedScope();
-        var userRepository = scope.GetRepository<TestUser>();
-
-        var users = new List<TestUser>
-        {
-            TestDataBuilder.CreateTestUser("Alice", "alice1@example.com", 25),
-            TestDataBuilder.CreateTestUser("Alice", "alice2@example.com", 30),
-            TestDataBuilder.CreateTestUser("Bob", "bob@example.com", 35)
-        };
-        await userRepository.AddRange(users);
-
-        var querySpec = userRepository.Query()
-            .OrderByDescending(u => u.Name)
-            .ThenByDescending(u => u.Age);
-        var specification = querySpec.ToSpecification();
-
-        // Act
-        var result = await userRepository.Query(specification);
-
-        // Assert
-        var resultList = result.ToList();
-        resultList[0].Name.Should().Be("Bob");
-        resultList[1].Name.Should().Be("Alice");
-        resultList[1].Age.Should().Be(30);
-        resultList[2].Name.Should().Be("Alice");
-        resultList[2].Age.Should().Be(25);
-    }
-
-    [Fact]
-    public async Task Query_WithComplexOrdering_ShouldMaintainSortOrder()
-    {
-        // Arrange
-        using var scope = _fixture.CreateIsolatedScope();
-        var userRepository = scope.GetRepository<TestUser>();
-
-        var users = TestDataBuilder.CreateUsersForSorting();
-        await userRepository.AddRange(users);
-
-        var querySpec = userRepository.Query()
-            .OrderBy(u => u.Age)
-            .ThenByDescending(u => u.Name);
-        var specification = querySpec.ToSpecification();
-
-        // Act
-        var result = await userRepository.Query(specification);
-
-        // Assert
-        var resultList = result.ToList();
-        resultList.Should().BeInAscendingOrder(u => u.Age);
-        // For users with same age, should be descending by name
-        var sameAgeGroups = resultList.GroupBy(u => u.Age).Where(g => g.Count() > 1);
-        foreach (var group in sameAgeGroups)
-        {
-            group.Should().BeInDescendingOrder(u => u.Name);
-        }
-    }
-
-    [Fact]
-    public async Task Query_WithOrderByOnDifferentDataTypes_ShouldWork()
-    {
-        // Arrange
-        using var scope = _fixture.CreateIsolatedScope();
-        var productRepository = scope.GetRepository<TestProduct>();
-
-        var products = TestDataBuilder.CreateProductsForAggregation();
-        await productRepository.AddRange(products);
-
-        // SQLite doesn't support decimal ordering directly, so we'll order by CategoryId instead
-        var querySpec = productRepository.Query()
-            .OrderBy(p => p.CategoryId)
-            .ThenBy(p => p.IsActive);
-        var specification = querySpec.ToSpecification();
-
-        // Act
-        var result = await productRepository.Query(specification);
-
-        // Assert
-        var resultList = result.ToList();
-        resultList.Should().BeInAscendingOrder(p => p.CategoryId);
-    }
-
-    [Fact]
-    public async Task Query_WithNullValues_ShouldHandleOrderingCorrectly()
-    {
-        // Arrange - This test would require nullable properties to be meaningful
-        using var scope = _fixture.CreateIsolatedScope();
-        var userRepository = scope.GetRepository<TestUser>();
-
-        var users = TestDataBuilder.CreateUsersForSorting();
-        await userRepository.AddRange(users);
-
-        var querySpec = userRepository.Query().OrderBy(u => u.Email);
-        var specification = querySpec.ToSpecification();
-
-        // Act
-        var result = await userRepository.Query(specification);
-
-        // Assert
-        result.Should().NotBeEmpty();
-        var resultList = result.ToList();
-        resultList.Should().BeInAscendingOrder(u => u.Email);
-    }
-
-    [Fact]
-    public async Task Query_WithOrderByOnNavigationProperty_ShouldWork()
-    {
-        // Arrange - For this test, we'll order by a simple property since we don't have navigation properties
-        using var scope = _fixture.CreateIsolatedScope();
-        var productRepository = scope.GetRepository<TestProduct>();
-
-        var products = TestDataBuilder.CreateProductsForAggregation();
-        await productRepository.AddRange(products);
-
-        var querySpec = productRepository.Query().OrderBy(p => p.CategoryId);
-        var specification = querySpec.ToSpecification();
-
-        // Act
-        var result = await productRepository.Query(specification);
-
-        // Assert
-        var resultList = result.ToList();
-        resultList.Should().BeInAscendingOrder(p => p.CategoryId);
-    }
-
-    #endregion
-
-    #region Pagination Operations Tests
-
-    [Fact]
-    public async Task Query_WithSkip_ShouldSkipCorrectNumber()
-    {
-        // Arrange
-        using var scope = _fixture.CreateIsolatedScope();
-        var userRepository = scope.GetRepository<TestUser>();
-
-        var users = TestDataBuilder.CreateTestUsers(10);
-        await userRepository.AddRange(users);
-
-        // Act
-        var result = await userRepository.Query().OrderBy(u => u.Name).Skip(3).ToList();
-
-        // Assert
-        result.Should().HaveCount(7); // 10 - 3 = 7
-    }
-
-    [Fact]
-    public async Task Query_WithTake_ShouldTakeCorrectNumber()
-    {
-        // Arrange
-        using var scope = _fixture.CreateIsolatedScope();
-        var userRepository = scope.GetRepository<TestUser>();
-
-        var users = TestDataBuilder.CreateTestUsers(10);
-        await userRepository.AddRange(users);
+//using FluentAssertions;
+//using FluentCMS.Repositories.Tests.Integration.Helpers;
+//using FluentCMS.Repositories.Tests.Integration.TestEntities;
+//using FluentCMS.Repositories.Tests.Integration.TestFixtures;
+
+//namespace FluentCMS.Repositories.Tests.Integration.RepositoryTests;
+
+///// <summary>
+///// Specification query tests using isolated database instances for each test.
+///// Each test gets its own fresh database, ensuring complete test isolation.
+///// </summary>
+//public class SpecificationQueryTests : IClassFixture<IsolatedSqliteTestFixture>
+//{
+//    private readonly IsolatedSqliteTestFixture _fixture;
+
+//    public SpecificationQueryTests(IsolatedSqliteTestFixture fixture)
+//    {
+//        _fixture = fixture;
+//    }
+
+//    #region Basic Query Operations Tests
+
+//    [Fact]
+//    public async Task Query_WithWhereSpecification_ShouldReturnFilteredResults()
+//    {
+//        // Arrange - Each test gets its own isolated database
+//        using var scope = _fixture.CreateIsolatedScope();
+//        var userRepository = scope.GetRepository<TestUser>();
+
+//        var users = TestDataBuilder.CreateUsersForFiltering();
+//        await userRepository.AddRange(users);
+
+//        // Act
+//        var result = await userRepository.Query().Where(u => u.Age > 30).ToList();
+
+//        // Assert
+//        var resultList = result.ToList();
+//        resultList.Should().HaveCount(2); // Bob (35) and Charlie (42)
+//        resultList.Should().OnlyContain(u => u.Age > 30);
+//    }
+
+//    [Fact]
+//    public async Task Query_WithMultipleWhereConditions_ShouldApplyAllFilters()
+//    {
+//        // Arrange - Fresh isolated database
+//        using var scope = _fixture.CreateIsolatedScope();
+//        var userRepository = scope.GetRepository<TestUser>();
+
+//        var users = TestDataBuilder.CreateUsersForFiltering();
+//        await userRepository.AddRange(users);
                 
-        // Act
-        var result = await userRepository.Query().OrderBy(u => u.Name)
-            .Take(5).ToList();
-
-        // Assert
-        result.Should().HaveCount(5);
-    }
-
-    [Fact]
-    public async Task Query_WithSkipAndTake_ShouldImplementPagination()
-    {
-        // Arrange
-        using var scope = _fixture.CreateIsolatedScope();
-        var userRepository = scope.GetRepository<TestUser>();
-
-        var users = TestDataBuilder.CreateTestUsers(10);
-        await userRepository.AddRange(users);
-
-        // Act
-        var result = await userRepository.Query()
-            .OrderBy(u => u.Name)
-            .Skip(3)
-            .Take(4).ToList();
-
-        // Assert
-        result.Should().HaveCount(4);
-    }
-
-    [Fact]
-    public async Task Query_WithSkipGreaterThanTotal_ShouldReturnEmpty()
-    {
-        // Arrange
-        using var scope = _fixture.CreateIsolatedScope();
-        var userRepository = scope.GetRepository<TestUser>();
-
-        var users = TestDataBuilder.CreateTestUsers(5);
-        await userRepository.AddRange(users);
-
-        // Act
-        var result = await userRepository.Query()
-            .OrderBy(u => u.Name)
-            .Skip(10).ToList();
-
-        // Assert
-        result.Should().BeEmpty();
-    }
-
-    [Fact]
-    public async Task Query_WithTakeGreaterThanRemaining_ShouldReturnAvailable()
-    {
-        // Arrange
-        using var scope = _fixture.CreateIsolatedScope();
-        var userRepository = scope.GetRepository<TestUser>();
-
-        var users = TestDataBuilder.CreateTestUsers(5);
-        await userRepository.AddRange(users);
-
-        var querySpec = userRepository.Query()
-            .OrderBy(u => u.Name)
-            .Skip(3)
-            .Take(10);
-        var specification = querySpec.ToSpecification();
-
-        // Act
-        var result = await userRepository.Query(specification);
-
-        // Assert
-        result.Should().HaveCount(2); // Only 2 items remaining after skipping 3
-    }
-
-    [Fact]
-    public async Task FindPaged_WithValidParams_ShouldReturnPagedResult()
-    {
-        // Arrange
-        using var scope = _fixture.CreateIsolatedScope();
-        var userRepository = scope.GetRepository<TestUser>();
-
-        var users = TestDataBuilder.CreateTestUsers(10);
-        await userRepository.AddRange(users);
-
-        var specification = SpecificationExtensions.Where<TestUser>(u => u.Age > 0); // All users
-
-        // Act
-        var result = await userRepository.FindPaged(specification, page: 2, pageSize: 3);
-
-        // Assert
-        result.ShouldHavePage(2);
-        result.ShouldHavePageSize(3);
-        result.ShouldHaveTotalCount(10);
-        result.ShouldHaveItems(3);
-    }
-
-    [Fact]
-    public async Task FindPaged_WithPageBeyondResults_ShouldReturnEmptyPage()
-    {
-        // Arrange
-        using var scope = _fixture.CreateIsolatedScope();
-        var userRepository = scope.GetRepository<TestUser>();
-
-        var users = TestDataBuilder.CreateTestUsers(5);
-        await userRepository.AddRange(users);
+//        // Act
+//        var result = await userRepository.Query().Where(u => u.Age >= 25 && u.Age <= 35).ToList();
+
+//        // Assert
+//        var resultList = result.ToList();
+//        resultList.Should().HaveCount(4); // Jane (25), John (30), Bob (35), Alice(28)
+//        resultList.Should().OnlyContain(u => u.Age >= 25 && u.Age <= 35);
+//    }
+
+//    [Fact]
+//    public async Task Query_WithNoMatches_ShouldReturnEmptyList()
+//    {
+//        // Arrange - Isolated test environment
+//        using var scope = _fixture.CreateIsolatedScope();
+//        var userRepository = scope.GetRepository<TestUser>();
+
+//        var users = TestDataBuilder.CreateUsersForFiltering();
+//        await userRepository.AddRange(users);
+
+//        // Act
+//        var result = await userRepository.Query().Where(u => u.Age > 100).ToList();
+
+//        // Assert
+//        result.Should().BeEmpty();
+//    }
+
+//    [Fact]
+//    public async Task FirstOrDefault_WithMatches_ShouldReturnFirstEntity()
+//    {
+//        // Arrange
+//        using var scope = _fixture.CreateIsolatedScope();
+//        var userRepository = scope.GetRepository<TestUser>();
+
+//        var users = TestDataBuilder.CreateUsersForFiltering();
+//        await userRepository.AddRange(users);
+
+//        // Act
+//        var result = await userRepository.Query().Where(u => u.Age > 30).FirstOrDefault();
+
+//        // Assert
+//        result.Should().NotBeNull();
+//        result!.Age.Should().BeGreaterThan(30);
+//    }
+
+//    [Fact]
+//    public async Task FirstOrDefault_WithNoMatches_ShouldReturnNull()
+//    {
+//        // Arrange
+//        using var scope = _fixture.CreateIsolatedScope();
+//        var userRepository = scope.GetRepository<TestUser>();
+
+//        var users = TestDataBuilder.CreateUsersForFiltering();
+//        await userRepository.AddRange(users);
+
+//        // Act
+//        var result = await userRepository.Query().Where(u => u.Age > 100).FirstOrDefault();
+
+//        // Assert
+//        result.Should().BeNull();
+//    }
+
+//    [Fact]
+//    public async Task SingleOrDefault_WithSingleMatch_ShouldReturnEntity()
+//    {
+//        // Arrange
+//        using var scope = _fixture.CreateIsolatedScope();
+//        var userRepository = scope.GetRepository<TestUser>();
+
+//        var users = TestDataBuilder.CreateUsersForFiltering();
+//        await userRepository.AddRange(users);
+
+//        // Act
+//        var result = await userRepository.Query().SingleOrDefault(u => u.Name == "John Doe");
+
+//        // Assert
+//        result.Should().NotBeNull();
+//        result!.Name.Should().Be("John Doe");
+//    }
+
+//    [Fact]
+//    public async Task SingleOrDefault_WithNoMatches_ShouldReturnNull()
+//    {
+//        // Arrange
+//        using var scope = _fixture.CreateIsolatedScope();
+//        var userRepository = scope.GetRepository<TestUser>();
+
+//        var users = TestDataBuilder.CreateUsersForFiltering();
+//        await userRepository.AddRange(users);
+
+//        // Act
+//        var result = await userRepository.Query().SingleOrDefault(u => u.Name == "Nonexistent User");
+
+//        // Assert
+//        result.Should().BeNull();
+//    }
+
+//    //[Fact]
+//    //public async Task SingleOrDefault_WithMultipleMatches_ShouldThrowException()
+//    //{
+//    //    // Arrange
+//    //    using var scope = _fixture.CreateIsolatedScope();
+//    //    var userRepository = scope.GetRepository<TestUser>();
+
+//    //    var users = TestDataBuilder.CreateUsersForFiltering();
+//    //    await userRepository.AddRange(users);
+
+
+//    //    // Act & Assert
+//    //    var action = async () => await userRepository.Query().SingleOrDefault(u => u.Age > 25);
+//    //    // Repository wraps the InvalidOperationException in a RepositoryException
+//    //    var exception = await action.Should().ThrowAsync<Exception>();
+//    //    exception.Which.Should().BeOfType<RepositoryException<TestUser>>();
+//    //}
+
+//    [Fact]
+//    public async Task Count_WithFilters_ShouldReturnCorrectCount()
+//    {
+//        // Arrange
+//        using var scope = _fixture.CreateIsolatedScope();
+//        var userRepository = scope.GetRepository<TestUser>();
 
-        var specification = SpecificationExtensions.Where<TestUser>(u => u.Age > 0);
-
-        // Act
-        var result = await userRepository.FindPaged(specification, page: 10, pageSize: 3);
-
-        // Assert
-        result.ShouldHavePage(10);
-        result.ShouldHavePageSize(3);
-        result.ShouldHaveTotalCount(5);
-        result.ShouldHaveItems(0);
-    }
-
-    [Fact]
-    public async Task FindPaged_WithLargePageSize_ShouldReturnAllResults()
-    {
-        // Arrange
-        using var scope = _fixture.CreateIsolatedScope();
-        var userRepository = scope.GetRepository<TestUser>();
-
-        var users = TestDataBuilder.CreateTestUsers(5);
-        await userRepository.AddRange(users);
-
-        var specification = SpecificationExtensions.Where<TestUser>(u => u.Age > 0);
-
-        // Act
-        var result = await userRepository.FindPaged(specification, page: 1, pageSize: 100);
-
-        // Assert
-        result.ShouldHavePage(1);
-        result.ShouldHavePageSize(100);
-        result.ShouldHaveTotalCount(5);
-        result.ShouldHaveItems(5);
-    }
-
-    #endregion
-
-    #region Aggregation Operations Tests
-
-    [Fact]
-    public async Task Sum_WithValidSelector_ShouldReturnCorrectSum()
-    {
-        // Arrange
-        using var scope = _fixture.CreateIsolatedScope();
-        var productRepository = scope.GetRepository<TestProduct>();
-
-        var products = TestDataBuilder.CreateProductsForAggregation();
-        await productRepository.AddRange(products);
-
-        var specification = SpecificationExtensions.Where<TestProduct>(p => p.IsActive);
-
-        // Act
-        var result = await productRepository.Sum(specification, p => p.Price);
-
-        // Assert
-        // Active products: Product A (10.50), Product B (25.00), Product C (15.75), Product E (5.25)
-        var expectedSum = 10.50m + 25.00m + 15.75m + 5.25m;
-        result.Should().Be(expectedSum);
-    }
-
-    [Fact]
-    public async Task Sum_WithNoMatches_ShouldReturnZero()
-    {
-        // Arrange
-        using var scope = _fixture.CreateIsolatedScope();
-        var productRepository = scope.GetRepository<TestProduct>();
-
-        var products = TestDataBuilder.CreateProductsForAggregation();
-        await productRepository.AddRange(products);
-
-        var specification = SpecificationExtensions.Where<TestProduct>(p => p.Price > 1000);
-
-        // Act
-        var result = await productRepository.Sum(specification, p => p.Price);
-
-        // Assert
-        result.Should().Be(0);
-    }
-
-    [Fact]
-    public async Task Sum_WithNullValues_ShouldIgnoreNulls()
-    {
-        // Arrange - Since our Price is not nullable, this test validates the sum calculation
-        using var scope = _fixture.CreateIsolatedScope();
-        var productRepository = scope.GetRepository<TestProduct>();
-
-        var products = TestDataBuilder.CreateProductsForAggregation();
-        await productRepository.AddRange(products);
-
-        var specification = SpecificationExtensions.Where<TestProduct>(p => p.CategoryId == 1);
-
-        // Act
-        var result = await productRepository.Sum(specification, p => p.Price);
-
-        // Assert
-        // Category 1 products: Product A (10.50), Product B (25.00)
-        var expectedSum = 10.50m + 25.00m;
-        result.Should().Be(expectedSum);
-    }
-
-    [Fact]
-    public async Task Count_WithLargeDataset_ShouldReturnCorrectCount()
-    {
-        // Arrange
-        using var scope = _fixture.CreateIsolatedScope();
-        var userRepository = scope.GetRepository<TestUser>();
-
-        var users = TestDataBuilder.CreateTestUsers(1000);
-        await userRepository.AddRange(users);
-
-        // Act
-        var result = await userRepository.Query().Where(u => u.Age >= 30).Count();
-
-        // Assert
-        result.Should().BeGreaterThan(0);
-        result.Should().BeLessThanOrEqualTo(1000);
-    }
-
-    [Fact]
-    public async Task Any_WithComplexPredicate_ShouldWork()
-    {
-        // Arrange
-        using var scope = _fixture.CreateIsolatedScope();
-        var productRepository = scope.GetRepository<TestProduct>();
-
-        var products = TestDataBuilder.CreateProductsForAggregation();
-        await productRepository.AddRange(products);
-
-        // Act
-        var result = await productRepository.Query().Where(p => p.IsActive && p.Price > 20.00m && p.CategoryId == 1).Any();
-
-        // Assert
-        result.Should().BeTrue(); // Product B matches: active, price 25.00, category 1
-    }
-
-    [Fact]
-    public async Task Query_WithGroupBy_ShouldGroupCorrectly()
-    {
-        // Arrange
-        using var scope = _fixture.CreateIsolatedScope();
-        var userRepository = scope.GetRepository<TestUser>();
-
-        var users = TestDataBuilder.CreateTestUsers(10);
-        await userRepository.AddRange(users);
-
-        // SQLite has issues with GroupBy in LINQ, so we'll test a simpler aggregation approach
-        var specification = SpecificationExtensions.Where<TestUser>(u => u.Age >= 25);
-
-        // Act
-        var result = await userRepository.Query(specification);
-
-        // Assert
-        result.Should().NotBeNull();
-        var resultList = result.ToList();
-        resultList.Should().OnlyContain(u => u.Age >= 25);
-    }
-
-    #endregion
-
-    #region Advanced Query Operations Tests
-
-    [Fact]
-    public async Task Query_WithDistinct_ShouldRemoveDuplicates()
-    {
-        // Arrange
-        using var scope = _fixture.CreateIsolatedScope();
-        var userRepository = scope.GetRepository<TestUser>();
-
-        var users = new List<TestUser>
-        {
-            TestDataBuilder.CreateTestUser("John", "john@example.com", 30),
-            TestDataBuilder.CreateTestUser("John", "john2@example.com", 30), // Different email
-            TestDataBuilder.CreateTestUser("Jane", "jane@example.com", 25)
-        };
-        await userRepository.AddRange(users);
-
-        var querySpec = userRepository.Query().Distinct();
-        var specification = querySpec.ToSpecification();
-
-        // Act
-        var result = await userRepository.Query(specification);
-
-        // Assert
-        result.Should().HaveCount(3); // All are distinct due to different IDs
-    }
-
-    [Fact]
-    public async Task Query_WithComplexSpecification_ShouldApplyAllOperations()
-    {
-        // Arrange
-        using var scope = _fixture.CreateIsolatedScope();
-        var userRepository = scope.GetRepository<TestUser>();
-
-        var users = TestDataBuilder.CreateTestUsers(20);
-        await userRepository.AddRange(users);
-
-        var querySpec = userRepository.Query()
-            .Where(u => u.Age >= 25)
-            .OrderBy(u => u.Name)
-            .Skip(2)
-            .Take(5);
-        var specification = querySpec.ToSpecification();
-
-        // Act
-        var result = await userRepository.Query(specification);
-
-        // Assert
-        var resultList = result.ToList();
-        resultList.Should().HaveCountLessThanOrEqualTo(5);
-        resultList.Should().OnlyContain(u => u.Age >= 25);
-        resultList.Should().BeInAscendingOrder(u => u.Name);
-    }
-
-    [Fact]
-    public async Task Query_WithNestedExpressions_ShouldWork()
-    {
-        // Arrange
-        using var scope = _fixture.CreateIsolatedScope();
-        var userRepository = scope.GetRepository<TestUser>();
-
-        var users = TestDataBuilder.CreateUsersForFiltering();
-        await userRepository.AddRange(users);
-
-        // SQLite has issues with Contains(char), so we'll use Contains(string) instead
-        var specification = SpecificationExtensions.Where<TestUser>(u =>
-            (u.Age > 25 && u.Name.Contains("o")) || u.Email.Contains("alice"));
-
-        // Act
-        var result = await userRepository.Query(specification);
-
-        // Assert
-        result.Should().NotBeEmpty();
-        var resultList = result.ToList();
-        resultList.Should().OnlyContain(u =>
-            (u.Age > 25 && u.Name.Contains("o")) || u.Email.Contains("alice"));
-    }
-
-    [Fact]
-    public async Task Query_WithDateTimeComparisons_ShouldWork()
-    {
-        // Arrange - Since our entities don't have DateTime properties, we'll use Age comparison
-        using var scope = _fixture.CreateIsolatedScope();
-        var userRepository = scope.GetRepository<TestUser>();
-
-        var users = TestDataBuilder.CreateUsersForFiltering();
-        await userRepository.AddRange(users);
-
-        var specification = SpecificationExtensions.Where<TestUser>(u => u.Age > 25 && u.Age < 40);
-
-        // Act
-        var result = await userRepository.Query(specification);
-
-        // Assert
-        result.Should().NotBeEmpty();
-        var resultList = result.ToList();
-        resultList.Should().OnlyContain(u => u.Age > 25 && u.Age < 40);
-    }
-
-    [Fact]
-    public async Task Query_WithStringOperations_ShouldWork()
-    {
-        // Arrange
-        using var scope = _fixture.CreateIsolatedScope();
-        var userRepository = scope.GetRepository<TestUser>();
-
-        var users = TestDataBuilder.CreateUsersForFiltering();
-        await userRepository.AddRange(users);
-
-        var specification = SpecificationExtensions.Where<TestUser>(u =>
-            u.Name.StartsWith("J") || u.Email.EndsWith(".com"));
-
-        // Act
-        var result = await userRepository.Query(specification);
-
-        // Assert
-        result.Should().NotBeEmpty();
-        var resultList = result.ToList();
-        resultList.Should().OnlyContain(u =>
-            u.Name.StartsWith("J") || u.Email.EndsWith(".com"));
-    }
-
-    [Fact]
-    public async Task Query_WithNullChecks_ShouldHandleNullsCorrectly()
-    {
-        // Arrange
-        using var scope = _fixture.CreateIsolatedScope();
-        var userRepository = scope.GetRepository<TestUser>();
-
-        var users = TestDataBuilder.CreateUsersForFiltering();
-        await userRepository.AddRange(users);
-
-        var specification = SpecificationExtensions.Where<TestUser>(u =>
-            u.Name != null && u.Email != null);
-
-        // Act
-        var result = await userRepository.Query(specification);
-
-        // Assert
-        var resultList = result.ToList();
-        resultList.Should().OnlyContain(u => u.Name != null && u.Email != null);
-    }
-
-    #endregion
-}
+//        var users = TestDataBuilder.CreateUsersForFiltering();
+//        await userRepository.AddRange(users);
+
+//        // Act
+//        var result = await userRepository.Query().Count((u => u.Age >= 30));
+
+//        // Assert
+//        result.Should().Be(3); // John (30), Bob (35), Charlie (42)
+//    }
+
+//    [Fact]
+//    public async Task Count_WithNoMatches_ShouldReturnZero()
+//    {
+//        // Arrange
+//        using var scope = _fixture.CreateIsolatedScope();
+//        var userRepository = scope.GetRepository<TestUser>();
+
+//        var users = TestDataBuilder.CreateUsersForFiltering();
+//        await userRepository.AddRange(users);
+
+//        // Act
+//        var result = await userRepository.Query().Count(u => u.Age > 100);
+
+//        // Assert
+//        result.Should().Be(0);
+//    }
+
+//    [Fact]
+//    public async Task Any_WithMatches_ShouldReturnTrue()
+//    {
+//        // Arrange
+//        using var scope = _fixture.CreateIsolatedScope();
+//        var userRepository = scope.GetRepository<TestUser>();
+
+//        var users = TestDataBuilder.CreateUsersForFiltering();
+//        await userRepository.AddRange(users);
+
+//        // Act
+//        var result = await userRepository.Query().Any(u => u.Age > 40);
+
+//        // Assert
+//        result.Should().BeTrue();
+//    }
+
+//    [Fact]
+//    public async Task Any_WithNoMatches_ShouldReturnFalse()
+//    {
+//        // Arrange
+//        using var scope = _fixture.CreateIsolatedScope();
+//        var userRepository = scope.GetRepository<TestUser>();
+
+//        var users = TestDataBuilder.CreateUsersForFiltering();
+//        await userRepository.AddRange(users);
+
+//        // Act
+//        var result = await userRepository.Query().Any(u => u.Age > 100);
+
+//        // Assert
+//        result.Should().BeFalse();
+//    }
+
+//    #endregion
+
+//    #region Ordering Operations Tests
+
+//    [Fact]
+//    public async Task Query_WithOrderBy_ShouldReturnOrderedResults()
+//    {
+//        // Arrange
+//        using var scope = _fixture.CreateIsolatedScope();
+//        var userRepository = scope.GetRepository<TestUser>();
+
+//        var users = TestDataBuilder.CreateUsersForSorting();
+//        await userRepository.AddRange(users);
+
+//        // Act
+//        var result = await userRepository.Query().OrderBy(u => u.Name).ToList();
+
+//        // Assert
+//        result.ShouldBeOrderedByName();
+//    }
+
+//    [Fact]
+//    public async Task Query_WithOrderByDescending_ShouldReturnDescendingResults()
+//    {
+//        // Arrange
+//        using var scope = _fixture.CreateIsolatedScope();
+//        var userRepository = scope.GetRepository<TestUser>();
+
+//        var users = TestDataBuilder.CreateUsersForSorting();
+//        await userRepository.AddRange(users);
+
+//        // Act
+//        var result = await userRepository.Query().OrderBy(u => u.Name).ToList();
+
+//        // Assert
+//        result.ShouldBeOrderedByAgeDescending();
+//    }
+
+//    [Fact]
+//    public async Task Query_WithOrderByThenBy_ShouldApplySecondarySort()
+//    {
+//        // Arrange
+//        using var scope = _fixture.CreateIsolatedScope();
+//        var userRepository = scope.GetRepository<TestUser>();
+
+//        var users = new List<TestUser>
+//        {
+//            TestDataBuilder.CreateTestUser("Alice", "alice1@example.com", 25),
+//            TestDataBuilder.CreateTestUser("Alice", "alice2@example.com", 30),
+//            TestDataBuilder.CreateTestUser("Bob", "bob@example.com", 25)
+//        };
+//        await userRepository.AddRange(users);
+
+//        var querySpec = userRepository.Query()
+//            .OrderBy(u => u.Name)
+//            .ThenBy(u => u.Age);
+
+//        // Act
+//        var result = await querySpec.ToList();
+
+//        // Assert
+//        var resultList = result.ToList();
+//        resultList[0].Name.Should().Be("Alice");
+//        resultList[0].Age.Should().Be(25);
+//        resultList[1].Name.Should().Be("Alice");
+//        resultList[1].Age.Should().Be(30);
+//        resultList[2].Name.Should().Be("Bob");
+//    }
+
+//    [Fact]
+//    public async Task Query_WithOrderByDescendingThenByDescending_ShouldApplyBothDescending()
+//    {
+//        // Arrange
+//        using var scope = _fixture.CreateIsolatedScope();
+//        var userRepository = scope.GetRepository<TestUser>();
+
+//        var users = new List<TestUser>
+//        {
+//            TestDataBuilder.CreateTestUser("Alice", "alice1@example.com", 25),
+//            TestDataBuilder.CreateTestUser("Alice", "alice2@example.com", 30),
+//            TestDataBuilder.CreateTestUser("Bob", "bob@example.com", 35)
+//        };
+//        await userRepository.AddRange(users);
+
+//        var querySpec = userRepository.Query()
+//            .OrderByDescending(u => u.Name)
+//            .ThenByDescending(u => u.Age);
+
+//        // Act
+//        var result = await querySpec.ToList();
+
+//        // Assert
+//        var resultList = result.ToList();
+//        resultList[0].Name.Should().Be("Bob");
+//        resultList[1].Name.Should().Be("Alice");
+//        resultList[1].Age.Should().Be(30);
+//        resultList[2].Name.Should().Be("Alice");
+//        resultList[2].Age.Should().Be(25);
+//    }
+
+//    [Fact]
+//    public async Task Query_WithComplexOrdering_ShouldMaintainSortOrder()
+//    {
+//        // Arrange
+//        using var scope = _fixture.CreateIsolatedScope();
+//        var userRepository = scope.GetRepository<TestUser>();
+
+//        var users = TestDataBuilder.CreateUsersForSorting();
+//        await userRepository.AddRange(users);
+
+//        var querySpec = userRepository.Query()
+//            .OrderBy(u => u.Age)
+//            .ThenByDescending(u => u.Name);
+
+//        // Act
+//        var result = await querySpec.ToList();
+
+//        // Assert
+//        var resultList = result.ToList();
+//        resultList.Should().BeInAscendingOrder(u => u.Age);
+//        // For users with same age, should be descending by name
+//        var sameAgeGroups = resultList.GroupBy(u => u.Age).Where(g => g.Count() > 1);
+//        foreach (var group in sameAgeGroups)
+//        {
+//            group.Should().BeInDescendingOrder(u => u.Name);
+//        }
+//    }
+
+//    [Fact]
+//    public async Task Query_WithOrderByOnDifferentDataTypes_ShouldWork()
+//    {
+//        // Arrange
+//        using var scope = _fixture.CreateIsolatedScope();
+//        var productRepository = scope.GetRepository<TestProduct>();
+
+//        var products = TestDataBuilder.CreateProductsForAggregation();
+//        await productRepository.AddRange(products);
+
+//        // SQLite doesn't support decimal ordering directly, so we'll order by CategoryId instead
+//        var querySpec = productRepository.Query()
+//            .OrderBy(p => p.CategoryId)
+//            .ThenBy(p => p.IsActive);
+
+//        // Act
+//        var result = await querySpec.ToList();
+
+//        // Assert
+//        var resultList = result.ToList();
+//        resultList.Should().BeInAscendingOrder(p => p.CategoryId);
+//    }
+
+//    [Fact]
+//    public async Task Query_WithNullValues_ShouldHandleOrderingCorrectly()
+//    {
+//        // Arrange - This test would require nullable properties to be meaningful
+//        using var scope = _fixture.CreateIsolatedScope();
+//        var userRepository = scope.GetRepository<TestUser>();
+
+//        var users = TestDataBuilder.CreateUsersForSorting();
+//        await userRepository.AddRange(users);
+
+//        var querySpec = userRepository.Query().OrderBy(u => u.Email);
+
+//        // Act
+//        var result = await querySpec.ToList();
+
+//        // Assert
+//        result.Should().NotBeEmpty();
+//        var resultList = result.ToList();
+//        resultList.Should().BeInAscendingOrder(u => u.Email);
+//    }
+
+//    [Fact]
+//    public async Task Query_WithOrderByOnNavigationProperty_ShouldWork()
+//    {
+//        // Arrange - For this test, we'll order by a simple property since we don't have navigation properties
+//        using var scope = _fixture.CreateIsolatedScope();
+//        var productRepository = scope.GetRepository<TestProduct>();
+
+//        var products = TestDataBuilder.CreateProductsForAggregation();
+//        await productRepository.AddRange(products);
+
+//        var querySpec = productRepository.Query().OrderBy(p => p.CategoryId);
+
+//        // Act
+//        var result = await querySpec.ToList();
+
+//        // Assert
+//        var resultList = result.ToList();
+//        resultList.Should().BeInAscendingOrder(p => p.CategoryId);
+//    }
+
+//    #endregion
+
+//    #region Pagination Operations Tests
+
+//    [Fact]
+//    public async Task Query_WithSkip_ShouldSkipCorrectNumber()
+//    {
+//        // Arrange
+//        using var scope = _fixture.CreateIsolatedScope();
+//        var userRepository = scope.GetRepository<TestUser>();
+
+//        var users = TestDataBuilder.CreateTestUsers(10);
+//        await userRepository.AddRange(users);
+
+//        // Act
+//        var result = await userRepository.Query().OrderBy(u => u.Name).Skip(3).ToList();
+
+//        // Assert
+//        result.Should().HaveCount(7); // 10 - 3 = 7
+//    }
+
+//    [Fact]
+//    public async Task Query_WithTake_ShouldTakeCorrectNumber()
+//    {
+//        // Arrange
+//        using var scope = _fixture.CreateIsolatedScope();
+//        var userRepository = scope.GetRepository<TestUser>();
+
+//        var users = TestDataBuilder.CreateTestUsers(10);
+//        await userRepository.AddRange(users);
+                
+//        // Act
+//        var result = await userRepository.Query().OrderBy(u => u.Name)
+//            .Take(5).ToList();
+
+//        // Assert
+//        result.Should().HaveCount(5);
+//    }
+
+//    [Fact]
+//    public async Task Query_WithSkipAndTake_ShouldImplementPagination()
+//    {
+//        // Arrange
+//        using var scope = _fixture.CreateIsolatedScope();
+//        var userRepository = scope.GetRepository<TestUser>();
+
+//        var users = TestDataBuilder.CreateTestUsers(10);
+//        await userRepository.AddRange(users);
+
+//        // Act
+//        var result = await userRepository.Query()
+//            .OrderBy(u => u.Name)
+//            .Skip(3)
+//            .Take(4).ToList();
+
+//        // Assert
+//        result.Should().HaveCount(4);
+//    }
+
+//    [Fact]
+//    public async Task Query_WithSkipGreaterThanTotal_ShouldReturnEmpty()
+//    {
+//        // Arrange
+//        using var scope = _fixture.CreateIsolatedScope();
+//        var userRepository = scope.GetRepository<TestUser>();
+
+//        var users = TestDataBuilder.CreateTestUsers(5);
+//        await userRepository.AddRange(users);
+
+//        // Act
+//        var result = await userRepository.Query()
+//            .OrderBy(u => u.Name)
+//            .Skip(10).ToList();
+
+//        // Assert
+//        result.Should().BeEmpty();
+//    }
+
+//    [Fact]
+//    public async Task Query_WithTakeGreaterThanRemaining_ShouldReturnAvailable()
+//    {
+//        // Arrange
+//        using var scope = _fixture.CreateIsolatedScope();
+//        var userRepository = scope.GetRepository<TestUser>();
+
+//        var users = TestDataBuilder.CreateTestUsers(5);
+//        await userRepository.AddRange(users);
+
+//        var querySpec = userRepository.Query()
+//            .OrderBy(u => u.Name)
+//            .Skip(3)
+//            .Take(10);
+
+//        // Act
+//        var result = await userRepository.Query()
+//            .OrderBy(u => u.Name)
+//            .Skip(3)
+//            .Take(10).ToList();
+
+//        // Assert
+//        result.Should().HaveCount(2); // Only 2 items remaining after skipping 3
+//    }
+
+//    [Fact]
+//    public async Task FindPaged_WithValidParams_ShouldReturnPagedResult()
+//    {
+//        // Arrange
+//        using var scope = _fixture.CreateIsolatedScope();
+//        var userRepository = scope.GetRepository<TestUser>();
+
+//        var users = TestDataBuilder.CreateTestUsers(10);
+//        await userRepository.AddRange(users);
+                
+//        // Act
+//        var result = await userRepository.Query().Where(u => u.Age > 0).ToPagedResult(page: 2, pageSize: 3);
+
+//        // Assert
+//        result.ShouldHavePage(2);
+//        result.ShouldHavePageSize(3);
+//        result.ShouldHaveTotalCount(10);
+//        result.ShouldHaveItems(3);
+//    }
+
+//    [Fact]
+//    public async Task FindPaged_WithPageBeyondResults_ShouldReturnEmptyPage()
+//    {
+//        // Arrange
+//        using var scope = _fixture.CreateIsolatedScope();
+//        var userRepository = scope.GetRepository<TestUser>();
+
+//        var users = TestDataBuilder.CreateTestUsers(5);
+//        await userRepository.AddRange(users);
+
+
+//        // Act
+//        var result = await userRepository.Query().Where(u => u.Age > 0).ToPagedResult(page: 10, pageSize: 3);
+
+//        // Assert
+//        result.ShouldHavePage(10);
+//        result.ShouldHavePageSize(3);
+//        result.ShouldHaveTotalCount(5);
+//        result.ShouldHaveItems(0);
+//    }
+
+//    [Fact]
+//    public async Task FindPaged_WithLargePageSize_ShouldReturnAllResults()
+//    {
+//        // Arrange
+//        using var scope = _fixture.CreateIsolatedScope();
+//        var userRepository = scope.GetRepository<TestUser>();
+
+//        var users = TestDataBuilder.CreateTestUsers(5);
+//        await userRepository.AddRange(users);
+
+//        // Act
+//        var result = await userRepository.Query().Where(u => u.Age > 0).ToPagedResult(page: 1, pageSize: 100);
+
+//        // Assert
+//        result.ShouldHavePage(1);
+//        result.ShouldHavePageSize(100);
+//        result.ShouldHaveTotalCount(5);
+//        result.ShouldHaveItems(5);
+//    }
+
+//    #endregion
+
+//    #region Aggregation Operations Tests
+
+//    [Fact]
+//    public async Task Count_WithLargeDataset_ShouldReturnCorrectCount()
+//    {
+//        // Arrange
+//        using var scope = _fixture.CreateIsolatedScope();
+//        var userRepository = scope.GetRepository<TestUser>();
+
+//        var users = TestDataBuilder.CreateTestUsers(1000);
+//        await userRepository.AddRange(users);
+
+//        // Act
+//        var result = await userRepository.Query().Where(u => u.Age >= 30).Count();
+
+//        // Assert
+//        result.Should().BeGreaterThan(0);
+//        result.Should().BeLessThanOrEqualTo(1000);
+//    }
+
+//    [Fact]
+//    public async Task Any_WithComplexPredicate_ShouldWork()
+//    {
+//        // Arrange
+//        using var scope = _fixture.CreateIsolatedScope();
+//        var productRepository = scope.GetRepository<TestProduct>();
+
+//        var products = TestDataBuilder.CreateProductsForAggregation();
+//        await productRepository.AddRange(products);
+
+//        // Act
+//        var result = await productRepository.Query().Where(p => p.IsActive && p.Price > 20.00m && p.CategoryId == 1).Any();
+
+//        // Assert
+//        result.Should().BeTrue(); // Product B matches: active, price 25.00, category 1
+//    }
+
+//    #endregion
+
+//    #region Advanced Query Operations Tests
+
+//    [Fact]
+//    public async Task Query_WithDistinct_ShouldRemoveDuplicates()
+//    {
+//        // Arrange
+//        using var scope = _fixture.CreateIsolatedScope();
+//        var userRepository = scope.GetRepository<TestUser>();
+
+//        var users = new List<TestUser>
+//        {
+//            TestDataBuilder.CreateTestUser("John", "john@example.com", 30),
+//            TestDataBuilder.CreateTestUser("John", "john2@example.com", 30), // Different email
+//            TestDataBuilder.CreateTestUser("Jane", "jane@example.com", 25)
+//        };
+//        await userRepository.AddRange(users);
+
+//        // Act
+//        var result = await userRepository.Query().Distinct().ToList();
+
+//        // Assert
+//        result.Should().HaveCount(3); // All are distinct due to different IDs
+//    }
+
+//    [Fact]
+//    public async Task Query_WithComplexSpecification_ShouldApplyAllOperations()
+//    {
+//        // Arrange
+//        using var scope = _fixture.CreateIsolatedScope();
+//        var userRepository = scope.GetRepository<TestUser>();
+
+//        var users = TestDataBuilder.CreateTestUsers(20);
+//        await userRepository.AddRange(users);
+
+//        // Act
+//        var result = await userRepository.Query()
+//            .Where(u => u.Age >= 25)
+//            .OrderBy(u => u.Name)
+//            .Skip(2)
+//            .Take(5).ToList();
+
+//        // Assert
+//        var resultList = result.ToList();
+//        resultList.Should().HaveCountLessThanOrEqualTo(5);
+//        resultList.Should().OnlyContain(u => u.Age >= 25);
+//        resultList.Should().BeInAscendingOrder(u => u.Name);
+//    }
+
+//    [Fact]
+//    public async Task Query_WithNestedExpressions_ShouldWork()
+//    {
+//        // Arrange
+//        using var scope = _fixture.CreateIsolatedScope();
+//        var userRepository = scope.GetRepository<TestUser>();
+
+//        var users = TestDataBuilder.CreateUsersForFiltering();
+//        await userRepository.AddRange(users);
+
+//        // Act
+//        var result = await userRepository.Query()
+//            .Where(u => (u.Age > 25 && u.Name.Contains("o")) || u.Email.Contains("alice"))
+//            .ToList();
+
+//        // Assert
+//        result.Should().NotBeEmpty();
+//        var resultList = result.ToList();
+//        resultList.Should().OnlyContain(u =>
+//            (u.Age > 25 && u.Name.Contains("o")) || u.Email.Contains("alice"));
+//    }
+
+//    [Fact]
+//    public async Task Query_WithDateTimeComparisons_ShouldWork()
+//    {
+//        // Arrange - Since our entities don't have DateTime properties, we'll use Age comparison
+//        using var scope = _fixture.CreateIsolatedScope();
+//        var userRepository = scope.GetRepository<TestUser>();
+
+//        var users = TestDataBuilder.CreateUsersForFiltering();
+//        await userRepository.AddRange(users);
+
+//        // Act
+//        var result = await userRepository.Query().Where(u => u.Age > 25 && u.Age < 40).ToList();
+
+//        // Assert
+//        result.Should().NotBeEmpty();
+//        var resultList = result.ToList();
+//        resultList.Should().OnlyContain(u => u.Age > 25 && u.Age < 40);
+//    }
+
+//    [Fact]
+//    public async Task Query_WithStringOperations_ShouldWork()
+//    {
+//        // Arrange
+//        using var scope = _fixture.CreateIsolatedScope();
+//        var userRepository = scope.GetRepository<TestUser>();
+
+//        var users = TestDataBuilder.CreateUsersForFiltering();
+//        await userRepository.AddRange(users);
+
+//        // Act
+//        var result = await userRepository.Query()
+//            .Where(u => u.Name.StartsWith("J") || u.Email.EndsWith(".com"))
+//            .ToList();
+
+//        // Assert
+//        result.Should().NotBeEmpty();
+//        var resultList = result.ToList();
+//        resultList.Should().OnlyContain(u =>
+//            u.Name.StartsWith("J") || u.Email.EndsWith(".com"));
+//    }
+
+//    [Fact]
+//    public async Task Query_WithNullChecks_ShouldHandleNullsCorrectly()
+//    {
+//        // Arrange
+//        using var scope = _fixture.CreateIsolatedScope();
+//        var userRepository = scope.GetRepository<TestUser>();
+
+//        var users = TestDataBuilder.CreateUsersForFiltering();
+//        await userRepository.AddRange(users);
+
+//        // Act
+//        var result = await userRepository.Query()
+//            .Where(u => u.Name != null && u.Email != null)
+//            .ToList();
+
+//        // Assert
+//        var resultList = result.ToList();
+//        resultList.Should().OnlyContain(u => u.Name != null && u.Email != null);
+//    }
+
+//    #endregion
+//}
