@@ -3,6 +3,7 @@ using FluentCMS.Repositories.DataInitialization.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using FluentCMS.Repositories.EntityFramework;
 
 namespace FluentCMS.Repositories.EntityFramework.Configuration;
 
@@ -37,6 +38,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(options);
 
         services.AddScoped<ISchemaValidatorService, SchemaValidatorService>();
+        services.AddScoped<AuditableEntitySaveChangesInterceptor>();
         services.AddScoped<IDataSeederService, DataSeederService>();
         services.AddSingleton<IHostedService, DataInitializerHostedService>();
 
@@ -68,6 +70,8 @@ public static class ServiceCollectionExtensions
         services.AddDbContext<TContext>(
             (serviceProvider, builder) =>
             {
+                var interceptor = serviceProvider.GetRequiredService<AuditableEntitySaveChangesInterceptor>();
+                builder.AddInterceptors(interceptor);
                 // Apply the database provider configuration (e.g., UseSqlite, UseSqlServer)
                 config.Apply(builder);
             },
@@ -100,6 +104,8 @@ public static class ServiceCollectionExtensions
         services.AddDbContext<TContext>(
             (serviceProvider, builder) =>
             {
+                var interceptor = serviceProvider.GetRequiredService<AuditableEntitySaveChangesInterceptor>();
+                builder.AddInterceptors(interceptor);
                 // Apply the database provider configuration (e.g., UseSqlite, UseSqlServer)
                 config.Apply(builder);
             },
