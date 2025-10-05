@@ -163,6 +163,8 @@ public static class ServiceCollectionExtensions
 
         // Register the seeder with the marker type as the key
         services.AddKeyedScoped<IDataSeeder, TSeeder>(typeof(TMarker));
+        // Also register the seeder with the "Default" key to allow resolution in both contexts.
+        // This is intentional to support scenarios where the seeder may be resolved by either key.
         services.AddDataSeeder<TSeeder>();
 
         return services;
