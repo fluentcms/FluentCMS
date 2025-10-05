@@ -84,7 +84,7 @@ internal class SchemaValidatorService(IServiceProvider serviceProvider, Database
                     logger.LogDebug("Schema is valid, skipping {ValidatorName} for {markerName}", validatorName, markerName);
                 }
             }
-            catch (Exception ex) when (configuration.SeedingOptions!.IgnoreExceptions)
+            catch (Exception ex) when (configuration.SchemaValidationOptions!.IgnoreExceptions)
             {
                 logger.LogError(ex, "Schema validation failed for {ValidatorName} in {markerName}, but continuing due to IgnoreExceptions setting", validatorName, markerName);
             }
