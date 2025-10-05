@@ -9,7 +9,7 @@ public abstract class DataSeeder<TDbContext>(TDbContext dbContext, ILogger<DataS
 {
     protected readonly TDbContext DbContext = dbContext;
     public abstract int Priority { get; }
-    public abstract Task<bool> HasData(CancellationToken cancellationToken = default);
     public abstract Task SeedData(CancellationToken cancellationToken = default);
+    public abstract Task<bool> ShouldSeed(CancellationToken cancellationToken = default);
 }
 

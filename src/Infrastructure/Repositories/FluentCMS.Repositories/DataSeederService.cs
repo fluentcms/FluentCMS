@@ -71,7 +71,7 @@ internal class DataSeederService(IServiceProvider serviceProvider, DatabaseManag
                 logger.LogDebug("Checking if data exists for {SeederName} in {DatabaseName} (Priority: {Priority})",
                     seederName, databaseName, seeder.Priority);
 
-                if (!await seeder.HasData(cancellationToken))
+                if (await seeder.ShouldSeed(cancellationToken))
                 {
                     logger.LogInformation("Data does not exist, seeding using {SeederName} for {DatabaseName}",
                         seederName, databaseName);
