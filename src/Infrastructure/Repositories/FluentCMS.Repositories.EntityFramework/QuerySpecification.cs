@@ -143,4 +143,9 @@ public class QuerySpecification<TEntity> : IQuerySpecification<TEntity>
 
         return new PagedResult<TEntity>(items, totalCount, page, pageSize);
     }
+
+    public IAsyncEnumerable<TEntity> AsAsyncEnumerable(CancellationToken cancellationToken = default)
+    {
+        return _queryable.AsAsyncEnumerable();
+    }
 }

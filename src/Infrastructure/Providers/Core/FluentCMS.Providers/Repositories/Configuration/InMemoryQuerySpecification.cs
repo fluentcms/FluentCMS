@@ -19,6 +19,22 @@ public class InMemoryQuerySpecification<T>(IEnumerable<T> items) : IQuerySpecifi
         return Task.FromResult(items.Any(predicate.Compile()));
     }
 
+    public IAsyncEnumerable<T> AsAsyncEnumerable(CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        return GetAsyncEnumerable(items, cancellationToken);
+    }
+
+    private static async IAsyncEnumerable<T> GetAsyncEnumerable(IEnumerable<T> source, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        foreach (var item in source)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            yield return item;
+            await Task.Yield();
+        }
+    }
+
     public Task<int> Count(Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -130,11 +146,6 @@ public class InMemoryQuerySpecification<T>(IEnumerable<T> items) : IQuerySpecifi
         return Task.FromResult(items.ToArray());
     }
 
-    public Task<IEnumerable<T>> ToEnumerable(CancellationToken cancellationToken = default)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(items);
-    }
 
     public Task<List<T>> ToList(CancellationToken cancellationToken = default)
     {

@@ -22,6 +22,7 @@ public interface IQuerySpecification<TEntity>
     Task<TEntity> Single(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
     Task<List<TEntity>> ToList(CancellationToken cancellationToken = default);
     Task<TEntity[]> ToArray(CancellationToken cancellationToken = default);
+    IAsyncEnumerable<TEntity> AsAsyncEnumerable(CancellationToken cancellationToken = default);
 
     // Aggregate operations
     Task<int> Count(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
