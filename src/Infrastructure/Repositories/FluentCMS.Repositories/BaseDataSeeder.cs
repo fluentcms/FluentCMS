@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Repositories;
 
-public abstract class DataSeeder<TDbContext>(TDbContext dbContext, ILogger<DataSeeder<TDbContext>> logger) : IDataSeeder
+public abstract class BaseDataSeeder<TDbContext>(TDbContext dbContext, ILogger<BaseDataSeeder<TDbContext>> logger) : IDataSeeder
     where TDbContext : DbContext
 {
     protected readonly TDbContext DbContext = dbContext;

@@ -36,6 +36,43 @@ public static class ServiceCollectionExtensions
         // Register the options as a singleton so it can be retrieved if needed
         services.AddSingleton(options);
 
+        services.AddScoped<ISchemaValidatorService, SchemaValidatorService>();
+        services.AddScoped<IDataSeederService, DataSeederService>();
+        services.AddSingleton<IHostedService, DataInitializerHostedService>();
+
+        return services;
+    }
+
+    /// <summary>
+    /// Registers a DbContext with the appropriate database configuration
+    /// The configuration is determined by checking if the DbContext implements any marker interfaces
+    /// Falls back to the default configuration if no marker is found
+    /// </summary>
+    /// <typeparam name="TContext">The DbContext type to register</typeparam>
+    /// <param name="services">The service collection</param>
+    /// <param name="lifetime">The service lifetime (default is Scoped)</param>
+    /// <returns>The service collection for chaining</returns>
+    /// <exception cref="InvalidOperationException">Thrown when DatabaseManager hasn't been configured</exception>
+    public static IServiceCollection AddDatabaseContext<TContext, TMarker>(this IServiceCollection services, ServiceLifetime lifetime = ServiceLifetime.Scoped)
+        where TContext : DbContext
+        where TMarker : IDatabaseArea
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        CheckStaticOptions();
+
+        // Get the appropriate configuration for this DbContext type
+        var config = _staticOptions!.GetConfigurationForMarker(typeof(TMarker));
+
+        // Register the DbContext with the configuration
+        services.AddDbContext<TContext>(
+            (serviceProvider, builder) =>
+            {
+                // Apply the database provider configuration (e.g., UseSqlite, UseSqlServer)
+                config.Apply(builder);
+            },
+            lifetime);
+
         return services;
     }
 
@@ -54,29 +91,12 @@ public static class ServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        // Try to get options from the static instance first (available during startup)
-        var options = _staticOptions;
+        CheckStaticOptions();
 
-        // If static options aren't available, try to build service provider and get from DI
-        // This handles the case where AddDatabaseContext is called after the service provider is built
-        // TODO: is this correct approach?
-        if (options == null)
-        {
-            var serviceProvider = services.BuildServiceProvider();
-            options = serviceProvider.GetService<DatabaseManagerOptions>();
-        }
+        // Get the default configuration for this DbContext type
+        var config = _staticOptions!.GetDefaultConfiguration();
 
-        // If we still don't have options, throw an exception
-        if (options == null)
-        {
-            throw new InvalidOperationException(
-                "DatabaseManager has not been configured. Call AddDatabaseManager before registering DbContexts.");
-        }
-
-        // Get the appropriate configuration for this DbContext type
-        var config = options.GetConfigurationForContext(typeof(TContext));
-
-        // Register the DbContext with the configuration
+        // Register the DbContext with the default configuration
         services.AddDbContext<TContext>(
             (serviceProvider, builder) =>
             {
@@ -99,11 +119,6 @@ public static class ServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(configure);
 
-        // Register the hosted service to seed the database at startup
-        // Avoid multiple registration for multiple calls
-        builder.ServiceDescriptors.TryAddScoped<IDataSeederService, DataSeederService>();
-        builder.ServiceDescriptors.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, DataInitializerHostedService>());
-
         var options = new DataSeedingOptions();
         configure(options);
 
@@ -123,36 +138,12 @@ public static class ServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(configure);
 
-        // Register the hosted service to validate schema at startup
-        // Avoid multiple registration for multiple calls
-        builder.ServiceDescriptors.TryAddScoped<ISchemaValidatorService, SchemaValidatorService>();
-        builder.ServiceDescriptors.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, DataInitializerHostedService>());
-
         var options = new SchemaValidationOptions();
         configure(options);
 
         builder.Configuration.SchemaValidationOptions = options;
 
         return builder;
-    }
-
-    /// <summary>
-    /// Registers a schema validator for a specific database marker
-    /// </summary>
-    /// <typeparam name="TValidator">The schema validator implementation type</typeparam>
-    /// <typeparam name="TMarker">The database marker interface type</typeparam>
-    /// <param name="services">The service collection</param>
-    /// <returns>The service collection for chaining</returns>
-    public static IServiceCollection AddSchemaValidator<TValidator, TMarker>(this IServiceCollection services)
-        where TValidator : class, ISchemaValidator
-        where TMarker : class
-    {
-        ArgumentNullException.ThrowIfNull(services);
-
-        // Register the validator with the marker type as the key
-        services.AddKeyedScoped<ISchemaValidator, TValidator>(typeof(TMarker));
-
-        return services;
     }
 
     /// <summary>
@@ -168,9 +159,82 @@ public static class ServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
+        CheckStaticOptions();
+
         // Register the seeder with the marker type as the key
         services.AddKeyedScoped<IDataSeeder, TSeeder>(typeof(TMarker));
+        services.AddDataSeeder<TSeeder>();
 
         return services;
+    }
+
+    /// <summary>
+    /// Registers a data seeder for the default database
+    /// </summary>
+    /// <typeparam name="TSeeder">The data seeder implementation type</typeparam>
+    /// <param name="services">The service collection</param>
+    /// <returns>The service collection for chaining</returns>
+    public static IServiceCollection AddDataSeeder<TSeeder>(this IServiceCollection services)
+        where TSeeder : class, IDataSeeder
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        CheckStaticOptions();
+
+        // Register the seeder with "Default" as the key
+        services.AddKeyedScoped<IDataSeeder, TSeeder>("Default");
+
+        return services;
+    }
+
+    /// <summary>
+    /// Registers a schema validator for the default database
+    /// </summary>
+    /// <typeparam name="TValidator">The schema validator implementation type</typeparam>
+    /// <param name="services">The service collection</param>
+    /// <returns>The service collection for chaining</returns>
+    public static IServiceCollection AddSchemaValidator<TValidator>(this IServiceCollection services)
+        where TValidator : class, ISchemaValidator
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        CheckStaticOptions();
+
+        // Register the validator with "Default" as the key
+        services.AddKeyedScoped<ISchemaValidator, TValidator>("Default");
+
+        return services;
+    }
+
+    /// <summary>
+    /// Registers a schema validator for a specific database marker
+    /// </summary>
+    /// <typeparam name="TValidator">The schema validator implementation type</typeparam>
+    /// <typeparam name="TMarker">The database marker interface type</typeparam>
+    /// <param name="services">The service collection</param>
+    /// <returns>The service collection for chaining</returns>
+    public static IServiceCollection AddSchemaValidator<TValidator, TMarker>(this IServiceCollection services)
+        where TValidator : class, ISchemaValidator
+        where TMarker : class
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        CheckStaticOptions();
+
+        // Register the validator with the marker type as the key
+        services.AddKeyedScoped<ISchemaValidator, TValidator>(typeof(TMarker));
+        services.AddSchemaValidator<TValidator>();
+
+        return services;
+    }
+
+    private static void CheckStaticOptions()
+    {
+        // If we still don't have options, throw an exception
+        if (_staticOptions == null)
+        {
+            throw new InvalidOperationException(
+                "DatabaseManager has not been configured. Call AddDatabaseManager before registering DbContexts.");
+        }
     }
 }

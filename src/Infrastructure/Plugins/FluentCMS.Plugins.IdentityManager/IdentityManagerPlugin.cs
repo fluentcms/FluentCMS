@@ -8,8 +8,9 @@ public class IdentityManagerPlugin : IPlugin
 
         services.AddAutoMapper(cfg => { }, typeof(MappingProfile));
 
-        //builder.Services.AddSchemaValidator<IdentitySchemaValidator, IIdentityDatabaseMarker>();
-        //builder.Services.AddDataSeeder<IdentityDataSeeder, IIdentityDatabaseMarker>();
+        services.AddSchemaValidator<IdentitySchemaValidator, IIdentityDatabaseMarker>();
+        services.AddDataSeeder<IdentityDataSeeder, IIdentityDatabaseMarker>();
+        services.AddDatabaseContext<ApplicationDbContext, IIdentityDatabaseMarker>();
 
         // Services registration
         //services.AddScoped<IUserService, UserService>();
@@ -20,8 +21,6 @@ public class IdentityManagerPlugin : IPlugin
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<IUserRoleRepository, UserRoleRepository>();
-
-        services.AddDatabaseContext<ApplicationDbContext>();
 
         services.AddIdentity<User, Role>()
             .AddEntityFrameworkStores<ApplicationDbContext>()

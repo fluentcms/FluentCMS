@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Repositories;
 
-public abstract class SchemaValidator<TDbContext>(TDbContext dbContext, ILogger<SchemaValidator<TDbContext>> logger) : ISchemaValidator
+public abstract class BaseSchemaValidator<TDbContext>(TDbContext dbContext, ILogger<BaseSchemaValidator<TDbContext>> logger) : ISchemaValidator
     where TDbContext : DbContext
 {
     protected readonly TDbContext DbContext = dbContext;

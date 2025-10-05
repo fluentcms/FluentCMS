@@ -12,7 +12,7 @@ public class TodoPlugin : IPlugin
 {
     public void ConfigureServices(IHostApplicationBuilder builder)
     {
-        builder.Services.AddDatabaseContext<TodoDbContext>();
+        builder.Services.AddDatabaseContext<TodoDbContext, ITodoDatabaseMarker>();
         builder.Services.AddDataSeeder<TodoDataSeeder, ITodoDatabaseMarker>();
         builder.Services.AddSchemaValidator<TodoSchemaValidator, ITodoDatabaseMarker>();
         builder.Services.AddScoped<ITodoService, TodoService>();

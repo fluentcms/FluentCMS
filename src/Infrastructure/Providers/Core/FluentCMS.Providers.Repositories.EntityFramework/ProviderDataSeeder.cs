@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Providers.Repositories.EntityFramework;
 
-public class ProviderDataSeeder(IProviderManager providerManager, ConfigurationReadOnlyProviderRepository readOnlyProviderRepository, ProviderDbContext dbContext, ILogger<ProviderDataSeeder> logger) : DataSeeder<ProviderDbContext>(dbContext, logger)
+public class ProviderDataSeeder(IProviderManager providerManager, ConfigurationReadOnlyProviderRepository readOnlyProviderRepository, ProviderDbContext dbContext, ILogger<ProviderDataSeeder> logger) : BaseDataSeeder<ProviderDbContext>(dbContext, logger)
 {
     public override int Priority => 1;
 

@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Plugins.TodoManager.Repositories;
 
-internal class TodoDataSeeder(TodoDbContext dbContext, ILogger<TodoDataSeeder> logger) : DataSeeder<TodoDbContext>(dbContext, logger)
+internal class TodoDataSeeder(TodoDbContext dbContext, ILogger<TodoDataSeeder> logger) : BaseDataSeeder<TodoDbContext>(dbContext, logger)
 {
     public override int Priority => 10000;
 

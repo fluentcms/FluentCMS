@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Plugins.IdentityManager;
+﻿namespace FluentCMS.Plugins.IdentityManager.Repositories;
 
 public interface IIdentityDatabaseMarker : IDatabaseArea
 {

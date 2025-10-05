@@ -36,6 +36,9 @@ public class DatabaseConfiguration
     /// </summary>
     public Type? MarkerType { get; set; }
 
+    /// <summary>
+    /// The service collection to register any required services (e.g., logging, interceptors)
+    /// </summary>
     public IServiceCollection ServiceDescriptors { get; }
 
     internal DatabaseConfiguration(IServiceCollection services)

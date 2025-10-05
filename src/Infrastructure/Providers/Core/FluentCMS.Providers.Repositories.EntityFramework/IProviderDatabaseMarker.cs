@@ -1,6 +1,8 @@
-﻿namespace FluentCMS.Providers.Repositories.EntityFramework;
+﻿using FluentCMS.Repositories.Abstractions;
 
-public interface IProviderDatabaseMarker
+namespace FluentCMS.Providers.Repositories.EntityFramework;
+
+public interface IProviderDatabaseMarker:IDatabaseArea
 {
 
 }

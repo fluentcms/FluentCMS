@@ -47,45 +47,13 @@ public class DatabaseManagerOptions
     }
 
     /// <summary>
-    /// Gets the appropriate configuration for a given DbContext type
-    /// First checks if the context implements any registered marker interface
-    /// Falls back to the default configuration if no marker is found
-    /// </summary>
-    /// <param name="contextType">The DbContext type to get configuration for</param>
-    /// <returns>The database configuration to use</returns>
-    /// <exception cref="InvalidOperationException">Thrown when no configuration is found and no default is set</exception>
-    internal DatabaseConfiguration GetConfigurationForContext(Type contextType)
-    {
-        ArgumentNullException.ThrowIfNull(contextType);
-
-        // Check if the DbContext type implements any of the registered marker interfaces
-        var markerType = _configurations.Keys
-            .FirstOrDefault(marker => marker.IsAssignableFrom(contextType));
-
-        // If a marker is found, return its specific configuration
-        if (markerType != null)
-        {
-            return _configurations[markerType];
-        }
-
-        // Fall back to default configuration
-        if (_defaultConfiguration == null)
-        {
-            throw new InvalidOperationException(
-                $"No database configuration found for DbContext '{contextType.Name}' and no default configuration is set. " +
-                "Please configure a default database using options.Default() or add a marker interface and configure it with options.For<TMarker>()");
-        }
-
-        return _defaultConfiguration;
-    }
-
-    /// <summary>
     /// Gets the default database configuration
     /// </summary>
-    /// <returns>The default configuration, or null if not configured</returns>
-    internal DatabaseConfiguration? GetDefaultConfiguration()
+    /// <returns>The default configuration</returns>
+    internal DatabaseConfiguration GetDefaultConfiguration()
     {
-        return _defaultConfiguration;
+        return _defaultConfiguration ??
+            throw new InvalidOperationException("No default database configuration found. Use Default() to define the default database configuration");
     }
 
     /// <summary>
@@ -93,19 +61,14 @@ public class DatabaseManagerOptions
     /// </summary>
     /// <param name="markerType">The marker type to get configuration for</param>
     /// <returns>The database configuration for the marker</returns>
-    /// <exception cref="InvalidOperationException">Thrown when no configuration is found for the marker</exception>
     internal DatabaseConfiguration GetConfigurationForMarker(Type markerType)
     {
         ArgumentNullException.ThrowIfNull(markerType);
 
         if (_configurations.TryGetValue(markerType, out var config))
-        {
             return config;
-        }
 
-        throw new InvalidOperationException(
-            $"No database configuration found for marker type '{markerType.Name}'. " +
-            "Please configure it using options.For<{markerType.Name}>()");
+        return GetDefaultConfiguration();
     }
 
     /// <summary>

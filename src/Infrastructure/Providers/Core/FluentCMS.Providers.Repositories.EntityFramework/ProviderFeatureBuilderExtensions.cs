@@ -13,7 +13,7 @@ public static class ProviderFeatureBuilderExtensions
         providerFeatureBuilder.Services.AddDataSeeder<ProviderDataSeeder, IProviderDatabaseMarker>();
         providerFeatureBuilder.Services.AddSchemaValidator<ProviderSchemaValidator, IProviderDatabaseMarker>();
 
-        providerFeatureBuilder.Services.AddDatabaseContext<ProviderDbContext>();
+        providerFeatureBuilder.Services.AddDatabaseContext<ProviderDbContext, IProviderDatabaseMarker>();
         providerFeatureBuilder.Services.AddScoped<IProviderRepository, ProviderRepository>();
         return providerFeatureBuilder;
     }

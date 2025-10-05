@@ -1,6 +1,8 @@
 using FluentCMS.Api;
 using FluentCMS.Plugins;
 using FluentCMS.Plugins.TodoManager.Repositories;
+using FluentCMS.Providers;
+using FluentCMS.Providers.Repositories.EntityFramework;
 using FluentCMS.Repositories;
 using FluentCMS.Repositories.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -56,11 +58,11 @@ builder.Services.AddDatabaseManager(options =>
 
 builder.Host.UseSerilog();
 
-//services.AddProviders(options =>
-//    {
-//        options.AssemblyPrefixesToScan.Add("FluentCMS");
-//        options.IgnoreExceptions = false; // Set to true to ignore exceptions during provider loading
-//    }).UseEntityFramework();
+services.AddProviders(options =>
+    {
+        options.AssemblyPrefixesToScan.Add("FluentCMS");
+        options.IgnoreExceptions = false; // Set to true to ignore exceptions during provider loading
+    }).UseEntityFramework();
 
 // Add plugin system
 builder.AddPlugins(["FluentCMS"]);

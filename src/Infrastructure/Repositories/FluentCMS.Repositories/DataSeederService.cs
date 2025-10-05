@@ -31,23 +31,27 @@ internal class DataSeederService(IServiceProvider serviceProvider, DatabaseManag
     /// </summary>
     private async Task RunAllDataSeedersGlobally(CancellationToken cancellationToken = default)
     {
-        var allSeeders = new List<(IDataSeeder Seeder, object DatabaseKey, string DatabaseName, DataSeedingOptions Options)>();
+        var allSeeders = new List<(IDataSeeder Seeder, DatabaseConfiguration Configuration)>();
 
-        // Collect seeders from default database
-        var defaultConfig = options.GetDefaultConfiguration();
-        if (defaultConfig?.SeedingOptions != null)
-        {
-            await CollectDataSeeders("Default", "Default", defaultConfig.SeedingOptions, allSeeders, cancellationToken);
-        }
-
-        // Collect seeders from each marker-based database
+        // Adding seeders for registered markers if conditions are valid
         foreach (var markerType in options.GetRegisteredMarkers())
         {
             var config = options.GetConfigurationForMarker(markerType);
-            if (config.SeedingOptions != null)
+            if (!await IsConditionsValid(config.SeedingOptions, markerType.Name, cancellationToken))
             {
-                await CollectDataSeeders(markerType, markerType.Name, config.SeedingOptions, allSeeders, cancellationToken);
+                continue;
             }
+            allSeeders.AddRange(serviceProvider.GetKeyedServices<IDataSeeder>(markerType).Select(s => (s, config)));
+        }
+
+        // Adding seeders for default configuration if conditions are valid
+        var defaultConfig = options.GetDefaultConfiguration();
+        if (await IsConditionsValid(defaultConfig.SeedingOptions, "Default", cancellationToken))
+        {
+            // Some seeder might not be registered with a marker, so also include default ones
+            var defaultSeeders = serviceProvider.GetKeyedServices<IDataSeeder>("Default");
+            var validSeeders = defaultSeeders.Where(s => !allSeeders.Any(existing => existing.Seeder.GetType() == s.GetType()));
+            allSeeders.AddRange(validSeeders.Select(s => (s, defaultConfig)));
         }
 
         // Sort all seeders globally by priority
@@ -62,36 +66,32 @@ internal class DataSeederService(IServiceProvider serviceProvider, DatabaseManag
         logger.LogInformation("Executing {Count} data seeder(s) globally in priority order", sortedSeeders.Count);
 
         // Execute seeders in global priority order
-        foreach (var (seeder, databaseKey, databaseName, options) in sortedSeeders)
+        foreach (var (seeder, configuration) in sortedSeeders)
         {
             var seederName = seeder.GetType().Name;
-
+            var markerName = configuration.MarkerType?.Name ?? "Default";
             try
             {
-                logger.LogDebug("Checking if data exists for {SeederName} in {DatabaseName} (Priority: {Priority})",
-                    seederName, databaseName, seeder.Priority);
+                logger.LogDebug("Checking if data exists for {SeederName} in {markerName} (Priority: {Priority})", seederName, markerName, seeder.Priority);
 
                 if (await seeder.ShouldSeed(cancellationToken))
                 {
-                    logger.LogInformation("Data does not exist, seeding using {SeederName} for {DatabaseName}",
-                        seederName, databaseName);
+                    logger.LogInformation("Data does not exist, seeding using {SeederName} for {markerName}", seederName, markerName);
                     await seeder.SeedData(cancellationToken);
-                    logger.LogInformation("Data seeded successfully using {SeederName} for {DatabaseName}",
-                        seederName, databaseName);
+                    logger.LogInformation("Data seeded successfully using {SeederName} for {markerName}", seederName, markerName);
                 }
                 else
                 {
-                    logger.LogDebug("Data already exists, skipping {SeederName} for {DatabaseName}",
-                        seederName, databaseName);
+                    logger.LogDebug("Data already exists, skipping {SeederName} for {markerName}", seederName, markerName);
                 }
             }
-            catch (Exception ex) when (options.IgnoreExceptions)
+            catch (Exception ex) when (configuration.SeedingOptions!.IgnoreExceptions)
             {
-                logger.LogError(ex, "Data seeding failed for {SeederName} in {DatabaseName}, but continuing due to IgnoreExceptions setting", seederName, databaseName);
+                logger.LogError(ex, "Data seeding failed for {SeederName} in {markerName}, but continuing due to IgnoreExceptions setting", seederName, markerName);
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Data seeding failed for {SeederName} in {DatabaseName}", seederName, databaseName);
+                logger.LogError(ex, "Data seeding failed for {SeederName} in {markerName}", seederName, markerName);
                 throw;
             }
         }
@@ -99,16 +99,19 @@ internal class DataSeederService(IServiceProvider serviceProvider, DatabaseManag
         logger.LogInformation("All data seeders executed successfully");
     }
 
-    /// <summary>
-    /// Collects data seeders from a specific database if conditions are satisfied
-    /// </summary>
-    private async Task CollectDataSeeders(object databaseKey, string databaseName, DataSeedingOptions options, List<(IDataSeeder, object, string, DataSeedingOptions)> collection, CancellationToken cancellationToken = default)
+    private async Task<bool> IsConditionsValid(DataSeedingOptions? options, string markerType, CancellationToken cancellationToken = default)
     {
+        if (options == null)
+        {
+            logger.LogInformation("DataSeedingOptions for {markerType} is null, data seeding will be skipped", markerType);
+            return false;
+        }
+
         // If there is not any condition registered , skip
         if (options.Conditions.Count == 0)
         {
-            logger.LogWarning("No conditions registered for data seeding in {DatabaseName}, skipping", databaseName);
-            return;
+            logger.LogWarning("No conditions registered for data seeding in {markerType}, skipping", markerType);
+            return false;
         }
 
         var conditionResults = await Task.WhenAll(
@@ -117,33 +120,19 @@ internal class DataSeederService(IServiceProvider serviceProvider, DatabaseManag
                     var result = await condition.ShouldExecute(cancellationToken);
                     if (!result)
                     {
-                        logger.LogInformation("Data seeding in {DatabaseName}, condition '{Name}' not met. Skipping data seeding process.", databaseName, condition.Name);
+                        logger.LogInformation("Data seeding in {markerType}, condition '{Name}' not met. Skipping data seeding process.", markerType, condition.Name);
                     }
                     return result;
                 }));
+
         // If any condition failed, skip data seeding
         if (conditionResults.Any(result => !result))
         {
-            logger.LogInformation("Data seeding skipped for {DatabaseName} due to unsatisfied conditions", databaseName);
-            return;
+            logger.LogInformation("Data seeding skipped for {markerType} due to unsatisfied conditions", markerType);
+            return false;
         }
 
-        // Get seeders registered with this key
-        var seeders = serviceProvider.GetKeyedServices<IDataSeeder>(databaseKey).ToList();
-
-        if (seeders.Count == 0)
-        {
-            logger.LogDebug("No data seeders registered for {DatabaseName}", databaseName);
-            return;
-        }
-
-        logger.LogDebug("Collected {Count} data seeder(s) from {DatabaseName}", seeders.Count, databaseName);
-
-        // Add to collection with metadata
-        foreach (var seeder in seeders)
-        {
-            collection.Add((seeder, databaseKey, databaseName, options));
-        }
+        return true;
     }
 
 }
