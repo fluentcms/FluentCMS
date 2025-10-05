@@ -3,7 +3,7 @@ using FluentCMS.Plugins;
 using FluentCMS.Plugins.TodoManager.Repositories;
 using FluentCMS.Providers;
 using FluentCMS.Providers.Repositories.EntityFramework;
-using FluentCMS.Repositories.Abstractions.DataInitialization;
+using FluentCMS.Repositories.DataInitialization;
 using FluentCMS.Repositories.EntityFramework.Configuration;
 using FluentCMS.Repositories.Sqlite;
 using Microsoft.EntityFrameworkCore;

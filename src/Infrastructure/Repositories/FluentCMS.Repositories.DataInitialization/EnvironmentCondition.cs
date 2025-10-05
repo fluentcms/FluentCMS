@@ -1,6 +1,7 @@
-﻿using Microsoft.Extensions.Hosting;
+﻿using FluentCMS.Repositories.DataInitialization.Abstractions;
+using Microsoft.Extensions.Hosting;
 
-namespace FluentCMS.Repositories.Abstractions.DataInitialization;
+namespace FluentCMS.Repositories.DataInitialization;
 
 /// <summary>
 /// Condition that checks the current hosting environment against a custom predicate.

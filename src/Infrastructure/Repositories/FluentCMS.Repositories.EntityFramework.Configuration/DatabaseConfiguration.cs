@@ -1,4 +1,4 @@
-using FluentCMS.Repositories.Abstractions.DataInitialization;
+using FluentCMS.Repositories.DataInitialization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 

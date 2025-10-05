@@ -1,4 +1,5 @@
-﻿using FluentCMS.Repositories.Abstractions.DataInitialization;
+﻿using FluentCMS.Repositories.DataInitialization;
+using FluentCMS.Repositories.DataInitialization.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 

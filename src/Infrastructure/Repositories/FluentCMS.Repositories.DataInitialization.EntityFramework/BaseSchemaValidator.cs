@@ -1,8 +1,9 @@
-﻿using FluentCMS.Repositories.Abstractions.DataInitialization;
+﻿using FluentCMS.Repositories.DataInitialization.Abstractions;
+using FluentCMS.Repositories.EntityFramework;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-namespace FluentCMS.Repositories.EntityFramework.DataInitialization;
+namespace FluentCMS.Repositories.DataInitialization.EntityFramework;
 
 public abstract class BaseSchemaValidator<TDbContext>(TDbContext dbContext, ILogger<BaseSchemaValidator<TDbContext>> logger) : ISchemaValidator
     where TDbContext : DbContext

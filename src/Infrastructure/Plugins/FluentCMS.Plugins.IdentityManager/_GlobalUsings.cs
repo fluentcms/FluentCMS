@@ -8,6 +8,7 @@ global using FluentCMS.Plugins.IdentityManager.Options;
 global using FluentCMS.Plugins.IdentityManager.Repositories;
 global using FluentCMS.Plugins.IdentityManager.Services;
 global using FluentCMS.Repositories.Abstractions;
+global using FluentCMS.Repositories.DataInitialization.EntityFramework;
 global using Microsoft.AspNetCore.Authentication.JwtBearer;
 global using Microsoft.AspNetCore.Builder;
 global using Microsoft.AspNetCore.Identity;

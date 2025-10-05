@@ -105,78 +105,6 @@ public interface IPagedResult<T>
 }
 ```
 
-## Database Areas
-
-Database areas provide type-safe database scope definitions:
-
-```csharp
-// Marker interface for database scope
-public interface IDatabaseArea
-{
-    // Marker interface - no methods required
-}
-
-// Example implementation
-public interface IBlogDatabaseArea : IDatabaseArea { }
-public interface IAdminDatabaseArea : IDatabaseArea { }
-```
-
-Use database areas to group entities by their target database, enabling cleaner dependency injection and type safety.
-
-## Data Initialization Framework
-
-The library includes a comprehensive data initialization system for schema validation and data seeding.
-
-### Schema Validation
-
-```csharp
-public interface ISchemaValidator
-{
-    int Priority { get; }
-    Task<bool> ValidateSchema(CancellationToken cancellationToken = default);
-    Task CreateSchema(CancellationToken cancellationToken = default);
-}
-
-public class SchemaValidationOptions
-{
-    public List<IDbInitializationCondition> Conditions { get; set; } = [];
-    public bool IgnoreExceptions { get; set; } = false;
-}
-```
-
-### Data Seeding
-
-```csharp
-public interface IDataSeeder
-{
-    int Priority { get; }
-    Task<bool> ShouldSeed(CancellationToken cancellationToken = default);
-    Task SeedData(CancellationToken cancellationToken = default);
-}
-
-public class DataSeedingOptions
-{
-    public List<IDbInitializationCondition> Conditions { get; set; } = [];
-    public bool IgnoreExceptions { get; set; } = false;
-}
-```
-
-### Initialization Conditions
-
-Conditions determine when initialization operations run:
-
-```csharp
-public interface IDbInitializationCondition
-{
-    string Name { get; }
-    Task<bool> ShouldExecute(CancellationToken cancellationToken = default);
-}
-
-// Built-in condition types
-public class ConfigurationCondition : IDbInitializationCondition { }
-public class EnvironmentCondition : IDbInitializationCondition { }
-public class CompositeCondition : IDbInitializationCondition { }
-```
 
 ## Usage Examples
 
@@ -287,12 +215,6 @@ The abstractions are designed to work with concrete implementations for:
 - Use the query specification pattern for complex queries
 - Prefer async operations with proper cancellation tokens
 - Keep business logic in application services, repositories for data access
-
-### Data Initialization
-- Use priority ordering for schema validators
-- Use priority ordering for data seeders
-- Always check `ShouldSeed()` before calling `SeedData()`
-- Use appropriate conditions to avoid seeding in production unintentionally
 
 ## Contributing
 

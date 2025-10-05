@@ -1,8 +1,9 @@
-﻿using FluentCMS.Repositories.Abstractions.DataInitialization;
+﻿using FluentCMS.Repositories.DataInitialization.Abstractions;
+using FluentCMS.Repositories.EntityFramework;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-namespace FluentCMS.Repositories.EntityFramework.DataInitialization;
+namespace FluentCMS.Repositories.DataInitialization.EntityFramework;
 
 public abstract class BaseDataSeeder<TDbContext>(TDbContext dbContext, ILogger<BaseDataSeeder<TDbContext>> logger) : IDataSeeder
     where TDbContext : DbContext

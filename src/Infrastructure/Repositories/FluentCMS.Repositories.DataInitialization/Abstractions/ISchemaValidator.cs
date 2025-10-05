@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Repositories.Abstractions.DataInitialization;
+﻿namespace FluentCMS.Repositories.DataInitialization.Abstractions;
 
 /// <summary>
 /// Defines a contract for validating and creating database schemas.

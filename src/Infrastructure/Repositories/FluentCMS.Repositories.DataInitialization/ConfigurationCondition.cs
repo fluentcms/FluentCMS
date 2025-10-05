@@ -1,6 +1,7 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using FluentCMS.Repositories.DataInitialization.Abstractions;
+using Microsoft.Extensions.Configuration;
 
-namespace FluentCMS.Repositories.Abstractions.DataInitialization;
+namespace FluentCMS.Repositories.DataInitialization;
 
 /// <summary>
 /// Condition that checks configuration settings to determine if seeding should execute.

@@ -1,4 +1,4 @@
-﻿using FluentCMS.Repositories.EntityFramework.DataInitialization;
+﻿using FluentCMS.Repositories.DataInitialization.EntityFramework;
 using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Providers.Repositories.EntityFramework;

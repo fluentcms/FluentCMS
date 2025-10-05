@@ -1,6 +1,4 @@
-﻿using FluentCMS.Repositories.EntityFramework.DataInitialization;
-
-namespace FluentCMS.Plugins.IdentityManager.Repositories;
+﻿namespace FluentCMS.Plugins.IdentityManager.Repositories;
 
 internal class IdentitySchemaValidator(ApplicationDbContext dbContext, ILogger<IdentitySchemaValidator> logger) : BaseSchemaValidator<ApplicationDbContext>(dbContext, logger)
 {
