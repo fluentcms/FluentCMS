@@ -42,6 +42,6 @@ internal class TodoService(ITodoRepository todoRepository) : ITodoService
 
     public async Task<IEnumerable<Todo>> GetAll(CancellationToken cancellationToken = default)
     {
-        return await todoRepository.Query().ToEnumerable(cancellationToken);
+        return await todoRepository.Query().ToList(cancellationToken);
     }
 }

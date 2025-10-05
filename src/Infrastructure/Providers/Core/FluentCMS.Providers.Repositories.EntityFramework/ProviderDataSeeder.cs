@@ -11,7 +11,7 @@ public class ProviderDataSeeder(IProviderManager providerManager, ConfigurationR
     public override async Task SeedData(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var providers = await readOnlyProviderRepository.Query().ToEnumerable(cancellationToken);
+        var providers = await readOnlyProviderRepository.Query().ToList(cancellationToken);
         var providerCatalogs = new List<ProviderCatalog>();
         foreach (var provider in providers)
         {
