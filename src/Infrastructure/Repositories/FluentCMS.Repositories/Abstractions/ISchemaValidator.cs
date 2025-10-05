@@ -1,4 +1,4 @@
-namespace FluentCMS.Repositories.Abstractions;
+﻿namespace FluentCMS.Repositories.Abstractions;
 
 /// <summary>
 /// Defines a contract for validating and creating database schemas.
@@ -26,8 +26,4 @@ public interface ISchemaValidator
     /// </summary>
     /// <param name="cancellationToken">Cancellation token for async operations</param>
     Task CreateSchema(CancellationToken cancellationToken = default);
-}
-
-public interface ISchemaValidator<TMarker> : ISchemaValidator
-{
 }

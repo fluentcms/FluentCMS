@@ -17,8 +17,8 @@ public interface IDataSeeder
     /// This enables idempotent seeding operations.
     /// </summary>
     /// <param name="cancellationToken">Cancellation token for async operations</param>
-    /// <returns>True if data exists and seeding should be skipped, false otherwise</returns>
-    Task<bool> HasData(CancellationToken cancellationToken = default);
+    /// <returns>False if data exists and seeding should start, true otherwise</returns>
+    Task<bool> ShouldSeed(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Seeds the data into the database. This method should only be called
@@ -26,8 +26,4 @@ public interface IDataSeeder
     /// </summary>
     /// <param name="cancellationToken">Cancellation token for async operations</param>
     Task SeedData(CancellationToken cancellationToken = default);
-}
-
-public interface IDataSeeder<TMarker> : IDataSeeder
-{
 }

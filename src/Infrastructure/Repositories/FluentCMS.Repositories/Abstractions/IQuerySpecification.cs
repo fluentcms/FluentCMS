@@ -31,8 +31,6 @@ public interface IQuerySpecification<TEntity>
     Task<bool> Any(CancellationToken cancellationToken = default);
     Task<bool> Any(Expression<Func<TEntity, bool>> predicate, CancellationToken cancellationToken = default);
 
-    IQuerySpecification<TEntity> GroupBy<TKey>(Expression<Func<TEntity, TKey>> keySelector);
-
     // Additional ordering operations
     IQuerySpecification<TEntity> ThenBy<TKey>(Expression<Func<TEntity, TKey>> keySelector);
     IQuerySpecification<TEntity> ThenByDescending<TKey>(Expression<Func<TEntity, TKey>> keySelector);

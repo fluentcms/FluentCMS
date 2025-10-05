@@ -1,6 +1,6 @@
 ﻿using FluentCMS.Providers.Repositories.Abstractions;
 using FluentCMS.Providers.Repositories.Configuration;
-using FluentCMS.Repositories.EntityFramework.Extensions;
+using FluentCMS.Repositories;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Providers.Repositories.EntityFramework;
@@ -13,7 +13,7 @@ public static class ProviderFeatureBuilderExtensions
         providerFeatureBuilder.Services.AddDataSeeder<ProviderDataSeeder, IProviderDatabaseMarker>();
         providerFeatureBuilder.Services.AddSchemaValidator<ProviderSchemaValidator, IProviderDatabaseMarker>();
 
-        providerFeatureBuilder.Services.AddDatabaseContext<ProviderDbContext>();
+        providerFeatureBuilder.Services.AddDatabaseContext<ProviderDbContext, IProviderDatabaseMarker>();
         providerFeatureBuilder.Services.AddScoped<IProviderRepository, ProviderRepository>();
         return providerFeatureBuilder;
     }

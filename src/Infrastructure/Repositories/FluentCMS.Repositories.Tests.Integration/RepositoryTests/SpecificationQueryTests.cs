@@ -1,5 +1,4 @@
 using FluentAssertions;
-using FluentCMS.Repositories.EntityFramework.Exceptions;
 using FluentCMS.Repositories.Tests.Integration.Helpers;
 using FluentCMS.Repositories.Tests.Integration.TestEntities;
 using FluentCMS.Repositories.Tests.Integration.TestFixtures;

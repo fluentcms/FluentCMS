@@ -1,11 +1,9 @@
 using FluentCMS.Api;
 using FluentCMS.Plugins;
-using FluentCMS.Plugins.IdentityManager;
 using FluentCMS.Plugins.TodoManager.Repositories;
 using FluentCMS.Providers;
 using FluentCMS.Providers.Repositories.EntityFramework;
-using FluentCMS.Repositories.Conditions;
-using FluentCMS.Repositories.EntityFramework.Extensions;
+using FluentCMS.Repositories;
 using FluentCMS.Repositories.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
@@ -37,10 +35,10 @@ builder.Services.AddDatabaseManager(options =>
             seedingOptions.IgnoreExceptions = false; // Fail fast on errors
             seedingOptions.Conditions.Add(new EnvironmentCondition(builder.Environment, e => e.IsDevelopment()));
         })
-        .EnableSchemaValidation(schemaValidatorOptions =>
+        .EnableSchemaValidation(validationOptions =>
         {
-            schemaValidatorOptions.IgnoreExceptions = false;
-            schemaValidatorOptions.Conditions.Add(new EnvironmentCondition(builder.Environment, e => e.IsDevelopment()));
+            validationOptions.IgnoreExceptions = false; // Fail fast on errors
+            validationOptions.Conditions.Add(new EnvironmentCondition(builder.Environment, e => e.IsDevelopment()));
         });
 
     // Specific database for ToDo library
@@ -51,40 +49,11 @@ builder.Services.AddDatabaseManager(options =>
             seedingOptions.IgnoreExceptions = false; // Fail fast on errors
             seedingOptions.Conditions.Add(new EnvironmentCondition(builder.Environment, e => e.IsDevelopment()));
         })
-        .EnableSchemaValidation(schemaValidatorOptions =>
+        .EnableSchemaValidation(validationOptions =>
         {
-            schemaValidatorOptions.IgnoreExceptions = false;
-            schemaValidatorOptions.Conditions.Add(new EnvironmentCondition(builder.Environment, e => e.IsDevelopment()));
+            validationOptions.IgnoreExceptions = false; // Fail fast on errors
+            validationOptions.Conditions.Add(new EnvironmentCondition(builder.Environment, e => e.IsDevelopment()));
         });
-
-    // Specific database for Identity library
-    options.For<IIdentityDatabaseMarker>()
-        .UseSqlite("DataSource=identity.db;Cache=Shared")
-        .EnableDataSeeding(seedingOptions =>
-        {
-            seedingOptions.IgnoreExceptions = false; // Fail fast on errors
-            seedingOptions.Conditions.Add(new EnvironmentCondition(builder.Environment, e => e.IsDevelopment()));
-        })
-        .EnableSchemaValidation(schemaValidatorOptions =>
-        {
-            schemaValidatorOptions.IgnoreExceptions = false;
-            schemaValidatorOptions.Conditions.Add(new EnvironmentCondition(builder.Environment, e => e.IsDevelopment()));
-        });
-
-    // Specific database for Provider library
-    options.For<IProviderDatabaseMarker>()
-        .UseSqlite("DataSource=providers.db;Cache=Shared")
-        .EnableDataSeeding(seedingOptions =>
-        {
-            seedingOptions.IgnoreExceptions = false; // Fail fast on errors
-            seedingOptions.Conditions.Add(new EnvironmentCondition(builder.Environment, e => e.IsDevelopment()));
-        })
-        .EnableSchemaValidation(schemaValidatorOptions =>
-        {
-            schemaValidatorOptions.IgnoreExceptions = false;
-            schemaValidatorOptions.Conditions.Add(new EnvironmentCondition(builder.Environment, e => e.IsDevelopment()));
-        });
-    ;
 });
 
 builder.Host.UseSerilog();

@@ -1,6 +1,5 @@
 using FluentAssertions;
 using FluentCMS.Repositories.Abstractions;
-using FluentCMS.Repositories.EntityFramework.Exceptions;
 using FluentCMS.Repositories.Tests.Integration.TestEntities;
 
 namespace FluentCMS.Repositories.Tests.Integration.Helpers;

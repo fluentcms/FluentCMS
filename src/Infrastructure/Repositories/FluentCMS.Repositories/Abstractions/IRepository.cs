@@ -7,7 +7,7 @@ public interface IRepository<TEntity>
     Task<TEntity> Add(TEntity entity, CancellationToken cancellationToken = default);
     Task<IEnumerable<TEntity>> AddRange(IEnumerable<TEntity> entities, CancellationToken cancellationToken = default);
     Task<TEntity> Update(TEntity entity, CancellationToken cancellationToken = default);
-    Task<TEntity?> Remove(TEntity entity, CancellationToken cancellationToken = default);
+    Task<TEntity> Remove(TEntity entity, CancellationToken cancellationToken = default);
 
     // Single entry point for all queries - provides fluent API
     IQuerySpecification<TEntity> Query();

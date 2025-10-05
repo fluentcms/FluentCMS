@@ -7,7 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\Repositories\FluentCMS.Repositories.EntityFramework\FluentCMS.Repositories.EntityFramework.csproj" />
     <ProjectReference Include="..\FluentCMS.Providers\FluentCMS.Providers.csproj" />
   </ItemGroup>
 

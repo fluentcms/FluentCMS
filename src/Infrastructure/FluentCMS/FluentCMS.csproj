@@ -12,7 +12,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Api\FluentCMS.Api\FluentCMS.Api.csproj" />
-    <ProjectReference Include="..\Configuration\FluentCMS.Configuration.Sqlite\FluentCMS.Configuration.Sqlite.csproj" />
     <ProjectReference Include="..\Plugins\Core\FluentCMS.Plugins\FluentCMS.Plugins.csproj" />
     <ProjectReference Include="..\Plugins\FluentCMS.Plugins.IdentityManager\FluentCMS.Plugins.IdentityManager.csproj" />
     <ProjectReference Include="..\Plugins\FluentCMS.Plugins.TodoManager\FluentCMS.Plugins.TodoManager.csproj" />
@@ -20,7 +19,6 @@
     <ProjectReference Include="..\Providers\Core\FluentCMS.Providers.Repositories.EntityFramework\FluentCMS.Providers.Repositories.EntityFramework.csproj" />
     <ProjectReference Include="..\Providers\Email\FluentCMS.Providers.Email.Null\FluentCMS.Providers.Email.Null.csproj" />
     <ProjectReference Include="..\Providers\Email\FluentCMS.Providers.Email.Smtp\FluentCMS.Providers.Email.Smtp.csproj" />
-    <ProjectReference Include="..\Repositories\FluentCMS.Repositories.EntityFramework\FluentCMS.Repositories.EntityFramework.csproj" />
     <ProjectReference Include="..\Repositories\FluentCMS.Repositories.SQLite\FluentCMS.Repositories.Sqlite.csproj" />
   </ItemGroup>
 

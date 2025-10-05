@@ -1,10 +1,10 @@
 ﻿using FluentCMS.Plugins.TodoManager.Models;
-using FluentCMS.Repositories.EntityFramework;
+using FluentCMS.Repositories;
 using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Plugins.TodoManager.Repositories;
 
-internal class TodoDataSeeder(TodoDbContext dbContext, ILogger<TodoDataSeeder> logger) : EfDataSeeder<TodoDbContext>(dbContext, logger)
+internal class TodoDataSeeder(TodoDbContext dbContext, ILogger<TodoDataSeeder> logger) : BaseDataSeeder<TodoDbContext>(dbContext, logger)
 {
     public override int Priority => 10000;
 
