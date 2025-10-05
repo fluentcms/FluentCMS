@@ -2,7 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 
-namespace FluentCMS.Repositories;
+namespace FluentCMS.Repositories.EntityFramework;
 
 public class QuerySpecification<TEntity> : IQuerySpecification<TEntity>
     where TEntity : class

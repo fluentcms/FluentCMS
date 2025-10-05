@@ -1,6 +1,6 @@
 ﻿using FluentCMS.Plugins.TodoManager.Models;
-using FluentCMS.Repositories;
 using FluentCMS.Repositories.Abstractions;
+using FluentCMS.Repositories.EntityFramework;
 
 namespace FluentCMS.Plugins.TodoManager.Repositories;
 

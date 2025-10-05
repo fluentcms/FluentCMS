@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Repositories.Abstractions;
+﻿namespace FluentCMS.Repositories.Abstractions.DataInitialization;
 
 /// <summary>
 /// Configuration options for the database seeding process

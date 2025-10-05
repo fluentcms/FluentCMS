@@ -1,7 +1,7 @@
 ﻿using FluentCMS.Repositories.Abstractions;
 using System.ComponentModel.DataAnnotations;
 
-namespace FluentCMS.Repositories;
+namespace FluentCMS.Repositories.EntityFramework;
 
 public abstract class AuditableEntity : Entity, IAuditableEntity
 {

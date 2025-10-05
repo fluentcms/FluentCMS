@@ -1,8 +1,8 @@
-﻿using FluentCMS.Repositories.Abstractions;
+﻿using FluentCMS.Repositories.Abstractions.DataInitialization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace FluentCMS.Repositories;
+namespace FluentCMS.Repositories.EntityFramework.Configuration;
 
 /// <summary>
 /// Validates the database schema to ensure it matches the expected structure.

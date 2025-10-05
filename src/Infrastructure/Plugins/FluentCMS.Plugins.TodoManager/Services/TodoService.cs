@@ -40,7 +40,7 @@ internal class TodoService(ITodoRepository todoRepository) : ITodoService
         //return todoRepository.GetById(entityId, cancellationToken);
     }
 
-    public async Task<IList<Todo>> GetAll(CancellationToken cancellationToken = default)
+    public async Task<List<Todo>> GetAll(CancellationToken cancellationToken = default)
     {
         return await todoRepository.Query().ToList(cancellationToken);
     }

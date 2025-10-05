@@ -1,7 +1,7 @@
 ﻿using FluentCMS.Repositories.Abstractions;
 using Microsoft.EntityFrameworkCore;
 
-namespace FluentCMS.Repositories;
+namespace FluentCMS.Repositories.EntityFramework;
 
 public class Repository<TEntity, TDataContext>(TDataContext dataContext) : IRepository<TEntity>
     where TEntity : class

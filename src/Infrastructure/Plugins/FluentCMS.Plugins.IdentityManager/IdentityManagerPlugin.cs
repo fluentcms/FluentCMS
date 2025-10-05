@@ -1,4 +1,6 @@
-﻿namespace FluentCMS.Plugins.IdentityManager;
+﻿using FluentCMS.Repositories.EntityFramework.Configuration;
+
+namespace FluentCMS.Plugins.IdentityManager;
 
 public class IdentityManagerPlugin : IPlugin
 {

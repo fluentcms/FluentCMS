@@ -1,4 +1,6 @@
-﻿namespace FluentCMS.Plugins.IdentityManager.Repositories;
+﻿using FluentCMS.Repositories.EntityFramework.DataInitialization;
+
+namespace FluentCMS.Plugins.IdentityManager.Repositories;
 
 internal class IdentityDataSeeder(ApplicationDbContext dbContext, ILogger<IdentityDataSeeder> logger) : BaseDataSeeder<ApplicationDbContext>(dbContext, logger)
 {

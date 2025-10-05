@@ -1,13 +1,13 @@
-using FluentCMS.Repositories.Abstractions;
+using FluentCMS.Repositories.Abstractions.DataInitialization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace FluentCMS.Repositories;
+namespace FluentCMS.Repositories.EntityFramework.Configuration;
 
 /// <summary>
 /// Represents the configuration for a database connection including provider and connection settings
 /// </summary>
-public class DatabaseConfiguration
+public class DatabaseConfiguration(IServiceCollection services, Type? markerType = null)
 {
     /// <summary>
     /// Action to configure DbContextOptions with the appropriate database provider and settings
@@ -34,17 +34,12 @@ public class DatabaseConfiguration
     /// <summary>
     /// The marker type used to identify this configuration (null for default configuration)
     /// </summary>
-    public Type? MarkerType { get; set; }
+    public Type? MarkerType { get; } = markerType;
 
     /// <summary>
     /// The service collection to register any required services (e.g., logging, interceptors)
     /// </summary>
-    public IServiceCollection ServiceDescriptors { get; }
-
-    internal DatabaseConfiguration(IServiceCollection services)
-    {
-        ServiceDescriptors = services;
-    }
+    public IServiceCollection ServiceDescriptors { get; } = services;
 
     /// <summary>
     /// Applies the configuration to a DbContextOptionsBuilder

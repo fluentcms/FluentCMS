@@ -1,11 +1,11 @@
-﻿namespace FluentCMS.Plugins.IdentityManager.Repositories;
+﻿using FluentCMS.Repositories.EntityFramework;
+
+namespace FluentCMS.Plugins.IdentityManager.Repositories;
 
 public interface IUserRoleRepository : IRepository<UserRole>
 {
 }
 
-internal class UserRoleRepository(ApplicationDbContext context) :
-    Repository<UserRole, ApplicationDbContext>(context),
-    IUserRoleRepository
+internal class UserRoleRepository(ApplicationDbContext context) : Repository<UserRole, ApplicationDbContext>(context), IUserRoleRepository
 {
 }

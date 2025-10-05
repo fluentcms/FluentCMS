@@ -1,7 +1,7 @@
 using FluentCMS.Plugins.Abstractions;
 using FluentCMS.Plugins.TodoManager.Repositories;
 using FluentCMS.Plugins.TodoManager.Services;
-using FluentCMS.Repositories;
+using FluentCMS.Repositories.EntityFramework.Configuration;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;

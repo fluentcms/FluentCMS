@@ -1,6 +1,7 @@
+using FluentCMS.Repositories.Abstractions;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace FluentCMS.Repositories;
+namespace FluentCMS.Repositories.EntityFramework.Configuration;
 
 /// <summary>
 /// Options class for configuring database connections for multiple DbContexts
@@ -25,7 +26,7 @@ public class DatabaseManagerOptions
     /// Configures the default database to be used by DbContexts that don't have a specific marker interface
     /// </summary>
     /// <returns>A configuration builder for the default database</returns>
-    public IDatabaseConfigurationBuilder Default()
+    public DatabaseConfigurationBuilder Default()
     {
         _defaultConfiguration = new DatabaseConfiguration(_serviceDescriptors);
         var builder = new DatabaseConfigurationBuilder(_defaultConfiguration, _serviceDescriptors);
@@ -37,9 +38,9 @@ public class DatabaseManagerOptions
     /// </summary>
     /// <typeparam name="TMarker">The marker interface type used to identify which DbContexts should use this configuration</typeparam>
     /// <returns>A configuration builder for the specific database</returns>
-    public IDatabaseConfigurationBuilder For<TMarker>() where TMarker : class
+    public DatabaseConfigurationBuilder For<TMarker>() where TMarker : IDatabaseArea
     {
-        var config = new DatabaseConfiguration(_serviceDescriptors) { MarkerType = typeof(TMarker) };
+        var config = new DatabaseConfiguration(_serviceDescriptors, typeof(TMarker));
         _configurations[typeof(TMarker)] = config;
 
         var builder = new DatabaseConfigurationBuilder(config, _serviceDescriptors);
@@ -50,7 +51,7 @@ public class DatabaseManagerOptions
     /// Gets the default database configuration
     /// </summary>
     /// <returns>The default configuration</returns>
-    internal DatabaseConfiguration GetDefaultConfiguration()
+    public DatabaseConfiguration GetDefaultConfiguration()
     {
         return _defaultConfiguration ??
             throw new InvalidOperationException("No default database configuration found. Use Default() to define the default database configuration");
@@ -61,7 +62,7 @@ public class DatabaseManagerOptions
     /// </summary>
     /// <param name="markerType">The marker type to get configuration for</param>
     /// <returns>The database configuration for the marker</returns>
-    internal DatabaseConfiguration GetConfigurationForMarker(Type markerType)
+    public DatabaseConfiguration GetConfigurationForMarker(Type markerType)
     {
         ArgumentNullException.ThrowIfNull(markerType);
 
@@ -75,7 +76,7 @@ public class DatabaseManagerOptions
     /// Gets all registered marker types that have specific database configurations
     /// </summary>
     /// <returns>Collection of marker types</returns>
-    internal IEnumerable<Type> GetRegisteredMarkers()
+    public IEnumerable<Type> GetRegisteredMarkers()
     {
         return _configurations.Keys;
     }

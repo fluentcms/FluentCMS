@@ -1,10 +1,10 @@
 using FluentCMS.Repositories.Abstractions;
+using FluentCMS.Repositories.Abstractions.DataInitialization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 
-namespace FluentCMS.Repositories;
+namespace FluentCMS.Repositories.EntityFramework.Configuration;
 
 /// <summary>
 /// Extension methods for IServiceCollection to configure the DatabaseManager
@@ -114,7 +114,7 @@ public static class ServiceCollectionExtensions
     /// <param name="builder">The database configuration builder</param>
     /// <param name="configure">Action to configure seeding options</param>
     /// <returns>The configuration builder for chaining</returns>
-    public static IDatabaseConfigurationBuilder EnableDataSeeding(this IDatabaseConfigurationBuilder builder, Action<DataSeedingOptions> configure)
+    public static DatabaseConfigurationBuilder EnableDataSeeding(this DatabaseConfigurationBuilder builder, Action<DataSeedingOptions> configure)
     {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(configure);
@@ -133,7 +133,7 @@ public static class ServiceCollectionExtensions
     /// <param name="builder">The database configuration builder</param>
     /// <param name="configure">Action to configure schema validation options</param>
     /// <returns>The configuration builder for chaining</returns>
-    public static IDatabaseConfigurationBuilder EnableSchemaValidation(this IDatabaseConfigurationBuilder builder, Action<SchemaValidationOptions> configure)
+    public static DatabaseConfigurationBuilder EnableSchemaValidation(this DatabaseConfigurationBuilder builder, Action<SchemaValidationOptions> configure)
     {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(configure);

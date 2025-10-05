@@ -2,7 +2,7 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace FluentCMS.Repositories;
+namespace FluentCMS.Repositories.EntityFramework.Configuration;
 
 /// <summary>
 /// Hosted service responsible for performing database schema validation and data seeding operations

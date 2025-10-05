@@ -7,8 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.9" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.9" />
+    <ProjectReference Include="..\FluentCMS.Repositories.EntityFramework\FluentCMS.Repositories.EntityFramework.csproj" />
   </ItemGroup>
 
 </Project>

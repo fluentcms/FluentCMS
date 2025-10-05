@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 
-namespace FluentCMS.Repositories;
+namespace FluentCMS.Repositories.EntityFramework;
 
 public static class DbContextExtensions
 {
@@ -11,7 +11,7 @@ public static class DbContextExtensions
         // any table has data
         foreach (var modelType in modelTypes)
         {
-            if (await HasAnyData(dbContext, modelType, cancellationToken))
+            if (await dbContext.HasAnyData(modelType, cancellationToken))
             {
                 return true;
             }
@@ -29,7 +29,7 @@ public static class DbContextExtensions
         {
             try
             {
-                await HasAnyData(dbContext, modelType, cancellationToken);
+                await dbContext.HasAnyData(modelType, cancellationToken);
                 return true;
             }
             catch

@@ -1,6 +1,4 @@
-﻿using FluentCMS.Repositories.Abstractions;
-
-namespace FluentCMS.Repositories;
+﻿namespace FluentCMS.Repositories.Abstractions.DataInitialization;
 
 /// <summary>
 /// Configuration options for the schema validation process

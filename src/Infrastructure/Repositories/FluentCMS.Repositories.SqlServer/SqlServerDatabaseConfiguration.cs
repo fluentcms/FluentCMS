@@ -1,7 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using FluentCMS.Repositories.EntityFramework.Configuration;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 
-namespace FluentCMS.Repositories.Sqlite;
+namespace FluentCMS.Repositories.SqlServer;
 
 /// <summary>
 /// Extension methods for configuring SQL Server database provider
@@ -15,7 +16,7 @@ public static class SqlServerDatabaseConfiguration
     /// <param name="connectionString">The SQL Server connection string</param>
     /// <param name="sqlServerOptionsAction">Optional action to configure SQL Server-specific options</param>
     /// <returns>The configuration builder for chaining</returns>
-    public static IDatabaseConfigurationBuilder UseSqlServer(this IDatabaseConfigurationBuilder builder, string connectionString, Action<SqlServerDbContextOptionsBuilder>? sqlServerOptionsAction = null)
+    public static DatabaseConfigurationBuilder UseSqlServer(this DatabaseConfigurationBuilder builder, string connectionString, Action<SqlServerDbContextOptionsBuilder>? sqlServerOptionsAction = null)
     {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);

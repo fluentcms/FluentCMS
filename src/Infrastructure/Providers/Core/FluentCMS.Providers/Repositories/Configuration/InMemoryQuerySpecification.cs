@@ -1,5 +1,5 @@
-﻿using FluentCMS.Repositories;
-using FluentCMS.Repositories.Abstractions;
+﻿using FluentCMS.Repositories.Abstractions;
+using FluentCMS.Repositories.EntityFramework;
 using System.Linq.Expressions;
 
 namespace FluentCMS.Providers.Repositories.Configuration;
