@@ -1,3 +1,5 @@
+using FluentCMS.Repositories.Abstractions;
+
 namespace FluentCMS.Repositories.Tests.Integration.TestEntities;
 
 public class TestCategory : IEntity

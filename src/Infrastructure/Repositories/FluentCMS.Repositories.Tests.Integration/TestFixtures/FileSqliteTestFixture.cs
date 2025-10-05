@@ -94,14 +94,7 @@ public class FileTestScope : IDisposable
 
         // Configure file-based SQLite database for this test scope
         var connectionString = $"Data Source={_databaseFilePath};";
-        services.AddSqliteDatabase(connectionString);
-
-        // Register application services
-        services.AddScoped<IApplicationExecutionContext, SystemExecutionContext>();
-        services.AddEfDbContext<TestDbContext>();
-        services.AddGenericRepository<TestUser, TestDbContext>();
-        services.AddGenericRepository<TestProduct, TestDbContext>();
-        services.AddGenericRepository<TestCategory, TestDbContext>();
+        services.AddTestServices(connectionString);
 
         var serviceProvider = services.BuildServiceProvider();
         _scope = serviceProvider.CreateScope();

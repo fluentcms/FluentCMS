@@ -94,7 +94,7 @@ public class FileSqliteIntegrationTests : IClassFixture<FileSqliteTestFixture>
         var addedUser = await userRepository1.Add(user);
 
         // Delete in first connection
-        await userRepository1.Remove(addedUser.Id);
+        await userRepository1.Remove(addedUser);
 
         scope1.Dispose();
 
@@ -134,7 +134,7 @@ public class FileSqliteIntegrationTests : IClassFixture<FileSqliteTestFixture>
             {
                 using var separateScope = _fixture.CreateFileScope();
                 var separateRepository = separateScope.GetRepository<TestUser>();
-                return await separateRepository.GetAll();
+                return await separateRepository.Query();
             }));
         }
 
@@ -176,7 +176,7 @@ public class FileSqliteIntegrationTests : IClassFixture<FileSqliteTestFixture>
 
         // Assert - Verify all users were added
         var userRepository = scope.GetRepository<TestUser>();
-        var allUsers = await userRepository.GetAll();
+        var allUsers = await userRepository.Query().ToList();
         allUsers.Should().HaveCount(5);
 
         for (int i = 0; i < 5; i++)

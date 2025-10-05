@@ -1,4 +1,3 @@
-using FluentCMS.Repositories.Abstractions;
 using FluentCMS.Repositories.DataInitialization;
 using FluentCMS.Repositories.DataInitialization.Abstractions;
 using Microsoft.EntityFrameworkCore;

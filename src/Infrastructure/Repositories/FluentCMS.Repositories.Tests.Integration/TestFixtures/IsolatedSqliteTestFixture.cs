@@ -1,8 +1,7 @@
 using FluentCMS.Repositories.Abstractions;
-using FluentCMS.Repositories.Tests.Integration.TestEntities;
+using FluentCMS.Repositories.DataInitialization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Repositories.Tests.Integration.TestFixtures;
 
@@ -17,6 +16,8 @@ public class IsolatedSqliteTestFixture : IDisposable
     public IsolatedSqliteTestFixture()
     {
         var services = new ServiceCollection();
+        var connectionString = "Data Source=:memory:;Mode=Memory;Cache=Shared;";
+        services.RegisterTestServices(connectionString);
         _serviceProvider = services.BuildServiceProvider();
     }
 
@@ -54,35 +55,20 @@ public class IsolatedTestScope : IDisposable
         // Generate unique database identifier for this test
         _databaseId = Guid.NewGuid().ToString("N");
 
-        // Create isolated service collection for this test
-        var services = new ServiceCollection();
-
-        // Copy base services from the parent service provider
-        var baseServices = new ServiceCollection();
-        baseServices.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Warning));
-        baseServices.AddScoped<IApplicationExecutionContext, SystemExecutionContext>();
-
-        // Configure logging
-        services.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Warning));
-
         // Configure unique in-memory SQLite database for this test scope
         var connectionString = $"Data Source=test_db_{_databaseId};Mode=Memory;Cache=Shared;";
-        services.AddSqliteDatabase(connectionString);
 
-        // Register application services
-        services.AddScoped<IApplicationExecutionContext, SystemExecutionContext>();
-        services.AddEfDbContext<TestDbContext>();
-        services.AddGenericRepository<TestUser, TestDbContext>();
-        services.AddGenericRepository<TestProduct, TestDbContext>();
-        services.AddGenericRepository<TestCategory, TestDbContext>();
+        // Create isolated service collection for this test
+        var services = new ServiceCollection();
+        services.AddTestServices(connectionString);
 
         var serviceProvider = services.BuildServiceProvider();
         _scope = serviceProvider.CreateScope();
 
         // Create and ensure database is created
         _context = _scope.ServiceProvider.GetRequiredService<TestDbContext>();
-        _context.Database.OpenConnection(); // Keep connection open for in-memory SQLite
-        _context.Database.EnsureCreated();
+        //_context.Database.OpenConnection(); // Keep connection open for in-memory SQLite
+        //_context.Database.EnsureCreated();
     }
 
     /// <summary>

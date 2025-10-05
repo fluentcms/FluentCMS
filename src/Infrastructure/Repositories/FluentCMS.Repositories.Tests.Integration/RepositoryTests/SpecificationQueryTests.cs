@@ -472,13 +472,8 @@ public class SpecificationQueryTests : IClassFixture<IsolatedSqliteTestFixture>
         var users = TestDataBuilder.CreateTestUsers(10);
         await userRepository.AddRange(users);
 
-        var querySpec = userRepository.Query()
-            .OrderBy(u => u.Name)
-            .Skip(3);
-        var specification = querySpec.ToSpecification();
-
         // Act
-        var result = await userRepository.Query(specification);
+        var result = await userRepository.Query().OrderBy(u => u.Name).Skip(3).ToList();
 
         // Assert
         result.Should().HaveCount(7); // 10 - 3 = 7
@@ -493,14 +488,10 @@ public class SpecificationQueryTests : IClassFixture<IsolatedSqliteTestFixture>
 
         var users = TestDataBuilder.CreateTestUsers(10);
         await userRepository.AddRange(users);
-
-        var querySpec = userRepository.Query()
-            .OrderBy(u => u.Name)
-            .Take(5);
-        var specification = querySpec.ToSpecification();
-
+                
         // Act
-        var result = await userRepository.Query(specification);
+        var result = await userRepository.Query().OrderBy(u => u.Name)
+            .Take(5).ToList();
 
         // Assert
         result.Should().HaveCount(5);
@@ -516,14 +507,11 @@ public class SpecificationQueryTests : IClassFixture<IsolatedSqliteTestFixture>
         var users = TestDataBuilder.CreateTestUsers(10);
         await userRepository.AddRange(users);
 
-        var querySpec = userRepository.Query()
+        // Act
+        var result = await userRepository.Query()
             .OrderBy(u => u.Name)
             .Skip(3)
-            .Take(4);
-        var specification = querySpec.ToSpecification();
-
-        // Act
-        var result = await userRepository.Query(specification);
+            .Take(4).ToList();
 
         // Assert
         result.Should().HaveCount(4);
@@ -539,13 +527,10 @@ public class SpecificationQueryTests : IClassFixture<IsolatedSqliteTestFixture>
         var users = TestDataBuilder.CreateTestUsers(5);
         await userRepository.AddRange(users);
 
-        var querySpec = userRepository.Query()
-            .OrderBy(u => u.Name)
-            .Skip(10);
-        var specification = querySpec.ToSpecification();
-
         // Act
-        var result = await userRepository.Query(specification);
+        var result = await userRepository.Query()
+            .OrderBy(u => u.Name)
+            .Skip(10).ToList();
 
         // Assert
         result.Should().BeEmpty();
@@ -715,10 +700,8 @@ public class SpecificationQueryTests : IClassFixture<IsolatedSqliteTestFixture>
         var users = TestDataBuilder.CreateTestUsers(1000);
         await userRepository.AddRange(users);
 
-        var specification = SpecificationExtensions.Where<TestUser>(u => u.Age >= 30);
-
         // Act
-        var result = await userRepository.Count(specification);
+        var result = await userRepository.Query().Where(u => u.Age >= 30).Count();
 
         // Assert
         result.Should().BeGreaterThan(0);
@@ -735,11 +718,8 @@ public class SpecificationQueryTests : IClassFixture<IsolatedSqliteTestFixture>
         var products = TestDataBuilder.CreateProductsForAggregation();
         await productRepository.AddRange(products);
 
-        var specification = SpecificationExtensions.Where<TestProduct>(p =>
-            p.IsActive && p.Price > 20.00m && p.CategoryId == 1);
-
         // Act
-        var result = await productRepository.Any(specification);
+        var result = await productRepository.Query().Where(p => p.IsActive && p.Price > 20.00m && p.CategoryId == 1).Any();
 
         // Assert
         result.Should().BeTrue(); // Product B matches: active, price 25.00, category 1

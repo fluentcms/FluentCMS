@@ -1,5 +1,6 @@
 using FluentAssertions;
 using FluentCMS.Repositories.Abstractions;
+using FluentCMS.Repositories.EntityFramework;
 using FluentCMS.Repositories.Tests.Integration.Helpers;
 using FluentCMS.Repositories.Tests.Integration.TestEntities;
 using FluentCMS.Repositories.Tests.Integration.TestFixtures;
@@ -66,7 +67,7 @@ public class ErrorHandlingTests : IClassFixture<IsolatedSqliteTestFixture>
         var userRepository = scope.GetRepository<TestUser>();
 
         // Act & Assert
-        var action = async () => await userRepository.Query(null!);
+        var action = async () => await userRepository.Query().Where(null!);
         await action.ShouldThrowArgumentNullException("specification");
     }
 
@@ -318,7 +319,7 @@ public class ErrorHandlingTests : IClassFixture<IsolatedSqliteTestFixture>
 }
 
 // Helper class for testing invalid specifications
-internal class InvalidSpecification<T> : ISpecification<T> where T : class
+internal class InvalidSpecification<T> : QuerySpecification<T> where T : class
 {
     public IQueryable<T> Apply(IQueryable<T> query)
     {

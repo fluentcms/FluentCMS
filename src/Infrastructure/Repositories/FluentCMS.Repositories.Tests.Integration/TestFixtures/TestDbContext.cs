@@ -1,14 +1,11 @@
+using FluentCMS.Repositories.EntityFramework.Configuration;
 using FluentCMS.Repositories.Tests.Integration.TestEntities;
 using Microsoft.EntityFrameworkCore;
 
 namespace FluentCMS.Repositories.Tests.Integration.TestFixtures;
 
-public class TestDbContext : DbContext
+public class TestDbContext(DbContextOptions<TestDbContext> options) : DbContext(options)
 {
-    public TestDbContext(DbContextOptions<TestDbContext> options) : base(options)
-    {
-    }
-
     public DbSet<TestUser> TestUsers => Set<TestUser>();
     public DbSet<TestProduct> TestProducts => Set<TestProduct>();
     public DbSet<TestCategory> TestCategories => Set<TestCategory>();
@@ -44,4 +41,8 @@ public class TestDbContext : DbContext
             entity.Property(e => e.Description).HasMaxLength(500);
         });
     }
+}
+
+public interface ITestDatabaseMarker : IDatabaseArea
+{
 }
