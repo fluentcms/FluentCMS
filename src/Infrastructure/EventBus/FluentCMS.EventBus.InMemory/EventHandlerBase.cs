@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Providers.EventBus.InMemory;
+﻿namespace FluentCMS.EventBus.InMemory;
 
 // IMPORTANT: This class is typically registered as Singleton.
 // Ensure thread-safety for any mutable state accessed in HandleAsync.

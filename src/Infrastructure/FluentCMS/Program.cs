@@ -1,8 +1,8 @@
 using FluentCMS.Api;
+using FluentCMS.EventBus.InMemory;
 using FluentCMS.Plugins;
 using FluentCMS.Plugins.TodoManager.Repositories;
 using FluentCMS.Providers;
-using FluentCMS.Providers.EventBus.InMemory;
 using FluentCMS.Providers.Repositories.EntityFramework;
 using FluentCMS.Repositories.DataInitialization;
 using FluentCMS.Repositories.EntityFramework.Configuration;

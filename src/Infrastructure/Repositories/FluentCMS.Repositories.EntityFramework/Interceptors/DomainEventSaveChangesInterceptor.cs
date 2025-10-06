@@ -1,4 +1,4 @@
-﻿using FluentCMS.Providers.EventBus.Abstractions;
+﻿using FluentCMS.EventBus.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 

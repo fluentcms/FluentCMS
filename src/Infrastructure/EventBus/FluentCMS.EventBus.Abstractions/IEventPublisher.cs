@@ -1,4 +1,4 @@
-namespace FluentCMS.Providers.EventBus.Abstractions;
+namespace FluentCMS.EventBus.Abstractions;
 
 /// <summary>
 /// Event publisher interface for publishing domain events

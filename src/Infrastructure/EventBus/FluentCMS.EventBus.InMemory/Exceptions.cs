@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Providers.EventBus.InMemory;
+﻿namespace FluentCMS.EventBus.InMemory;
 
 [Serializable]
 public class EventPublisherAggregatedException<TEvent> : AggregateException where TEvent : class, IEvent

@@ -1,4 +1,4 @@
-using FluentCMS.Providers.EventBus.Abstractions;
+using FluentCMS.EventBus.Abstractions;
 
 namespace FluentCMS.Repositories.EntityFramework;
 
