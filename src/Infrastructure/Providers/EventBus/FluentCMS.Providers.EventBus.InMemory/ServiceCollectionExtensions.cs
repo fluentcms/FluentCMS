@@ -2,9 +2,12 @@ namespace FluentCMS.Providers.EventBus.InMemory;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddEventPublisher(this IServiceCollection services)
+    public static IServiceCollection AddEventPublisher(this IServiceCollection services, Action<EventPublisherOptions>? configure = null)
     {
         ArgumentNullException.ThrowIfNull(services);
+
+        // Configure options with default or provided configuration
+        services.Configure(configure ?? (_ => { }));
 
         // Register the generic event publisher
         services.TryAddSingleton<IEventPublisher, EventPublisher>();

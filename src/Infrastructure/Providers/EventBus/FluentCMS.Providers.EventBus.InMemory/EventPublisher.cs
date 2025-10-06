@@ -6,6 +6,9 @@ public class EventPublisher(IServiceProvider serviceProvider) : IEventPublisher
     private static readonly MethodInfo _publishGenericMethod =
         typeof(EventPublisher).GetMethod(nameof(Publish))!;
 
+    private readonly EventPublisherOptions _options = serviceProvider.GetService<IOptions<EventPublisherOptions>>()?.Value ??
+        throw new ArgumentNullException(nameof(EventPublisherOptions));
+
     protected readonly IServiceProvider ServiceProvider = serviceProvider ??
         throw new ArgumentNullException(nameof(serviceProvider));
 
@@ -28,36 +31,57 @@ public class EventPublisher(IServiceProvider serviceProvider) : IEventPublisher
         }
 
 
-        // Create a list to hold any exceptions that occur during handler execution
-        var exceptions = new List<Exception>();
-
-        // Execute all handlers
-        var tasks = subscribers.Select(async subscriber =>
+        if (_options.Mode == EventPublisherOptions.ErrorHandlingMode.FailFast)
         {
-            try
+            // Execute handlers sequentially and stop on first exception
+            foreach (var subscriber in subscribers)
             {
-                await subscriber.Handle(data, cancellationToken);
+                try
+                {
+                    await subscriber.Handle(data, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "An error occurred while handling the event.");
+                    throw;
+                }
             }
-            catch (Exception ex)
-            {
-                // Collect exceptions but don't stop other handlers from executing
-                exceptions.Add(ex);
-            }
-        });
-
-        // Wait for all handlers to complete
-        await Task.WhenAll(tasks);
-
-        // If any handlers threw exceptions, throw an aggregate exception
-        if (exceptions.Count != 0)
+        }
+        else
         {
-            // Log the exceptions here if needed
-            foreach (var exception in exceptions)
-            {
-                _logger.LogError(exception, "An error occurred while handling the event.");
-            }
+            // Execute all handlers concurrently and collect exceptions
+            var exceptions = new List<Exception>();
 
-            throw new EventPublisherAggregatedException<TEvent>(exceptions);
+            var tasks = subscribers.Select(async subscriber =>
+            {
+                try
+                {
+                    await subscriber.Handle(data, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    // Collect exceptions but don't stop other handlers from executing
+                    lock (exceptions)
+                    {
+                        exceptions.Add(ex);
+                    }
+                }
+            });
+
+            // Wait for all handlers to complete
+            await Task.WhenAll(tasks);
+
+            // If any handlers threw exceptions, throw an aggregate exception
+            if (exceptions.Count != 0)
+            {
+                // Log the exceptions here if needed
+                foreach (var exception in exceptions)
+                {
+                    _logger.LogError(exception, "An error occurred while handling the event.");
+                }
+
+                throw new EventPublisherAggregatedException<TEvent>(exceptions);
+            }
         }
     }
 
