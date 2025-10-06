@@ -5,14 +5,8 @@
 /// </summary>
 public abstract class EventBase : IEvent
 {
-    protected EventBase()
-    {
-        EventId = Guid.NewGuid();
-        OccurredAt = DateTime.UtcNow;
-    }
-
-    public DateTime OccurredAt { get; }
-    public Guid EventId { get; }
+    public DateTimeOffset OccurredAt => DateTimeOffset.UtcNow;
+    public Guid EventId => Guid.NewGuid();
 }
 
 public abstract class EventBase<TEntity>(TEntity entity) : EventBase

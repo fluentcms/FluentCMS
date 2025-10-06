@@ -2,6 +2,10 @@ namespace FluentCMS.Providers.EventBus.InMemory;
 
 public class EventPublisher(IServiceProvider serviceProvider) : IEventPublisher
 {
+    // Cache the generic publish method to avoid reflection lookup on each call
+    private static readonly MethodInfo _publishGenericMethod =
+        typeof(EventPublisher).GetMethod(nameof(Publish))!;
+
     protected readonly IServiceProvider ServiceProvider = serviceProvider ??
         throw new ArgumentNullException(nameof(serviceProvider));
 
@@ -71,15 +75,11 @@ public class EventPublisher(IServiceProvider serviceProvider) : IEventPublisher
         // Get the actual event type at runtime
         var eventType = eventData.GetType();
 
-        // Use reflection to call the generic Publish method
-        var publishMethod = (typeof(EventPublisher)
-            .GetMethod(nameof(Publish), bindingAttr: System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
-            ?.MakeGenericMethod(eventType)) ??
-            throw new InvalidOperationException($"Could not find publish method for event type {eventType.Name}");
+        // Use cached generic method to make invocation more efficient
+        var publishMethod = _publishGenericMethod.MakeGenericMethod(eventType);
 
         // Invoke: Publish<ActualEventType>(eventData, cancellationToken)
         return (Task)publishMethod.Invoke(this, [eventData, cancellationToken])!;
 
     }
 }
-

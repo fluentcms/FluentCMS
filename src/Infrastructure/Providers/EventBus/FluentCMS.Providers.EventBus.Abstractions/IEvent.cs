@@ -8,7 +8,7 @@ public interface IEvent
     /// <summary>
     /// When the event occurred
     /// </summary>
-    DateTime OccurredAt { get; }
+    DateTimeOffset OccurredAt { get; }
 
     /// <summary>
     /// Unique event identifier
