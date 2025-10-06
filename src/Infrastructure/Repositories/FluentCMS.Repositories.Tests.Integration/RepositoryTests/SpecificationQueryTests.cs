@@ -48,7 +48,7 @@
 
 //        var users = TestDataBuilder.CreateUsersForFiltering();
 //        await userRepository.AddRange(users);
-                
+
 //        // Act
 //        var result = await userRepository.Query().Where(u => u.Age >= 25 && u.Age <= 35).ToList();
 
@@ -453,7 +453,7 @@
 
 //        var users = TestDataBuilder.CreateTestUsers(10);
 //        await userRepository.AddRange(users);
-                
+
 //        // Act
 //        var result = await userRepository.Query().OrderBy(u => u.Name)
 //            .Take(5).ToList();
@@ -535,7 +535,7 @@
 
 //        var users = TestDataBuilder.CreateTestUsers(10);
 //        await userRepository.AddRange(users);
-                
+
 //        // Act
 //        var result = await userRepository.Query().Where(u => u.Age > 0).ToPagedResult(page: 2, pageSize: 3);
 

@@ -1,6 +1,17 @@
 namespace FluentCMS.Providers.EventBus.Abstractions;
 
-// Base event interface
+/// <summary>
+/// Marker interface for all domain events
+/// </summary>
 public interface IEvent
 {
+    /// <summary>
+    /// When the event occurred
+    /// </summary>
+    DateTime OccurredAt { get; }
+
+    /// <summary>
+    /// Unique event identifier
+    /// </summary>
+    Guid EventId { get; }
 }

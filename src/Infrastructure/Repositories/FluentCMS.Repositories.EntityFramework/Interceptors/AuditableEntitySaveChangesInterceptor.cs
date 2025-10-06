@@ -1,23 +1,17 @@
 using FluentCMS.Repositories.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
-namespace FluentCMS.Repositories.EntityFramework;
+namespace FluentCMS.Repositories.EntityFramework.Interceptors;
 
 /// <summary>
 /// Intercepts Entity Framework save operations to automatically populate audit fields
 /// for entities implementing IAuditableEntity.
 /// </summary>
-public class AuditableEntitySaveChangesInterceptor : ISaveChangesInterceptor
+public class AuditableEntitySaveChangesInterceptor(IServiceProvider serviceProvider, ILogger<AuditableEntitySaveChangesInterceptor> logger) : ISaveChangesInterceptor
 {
-    private readonly IApplicationExecutionContext _executionContext;
-
-    public AuditableEntitySaveChangesInterceptor(IApplicationExecutionContext executionContext)
-    {
-        ArgumentNullException.ThrowIfNull(executionContext);
-        _executionContext = executionContext;
-    }
-
     public InterceptionResult<int> SavingChanges(DbContextEventData eventData, InterceptionResult<int> result)
     {
         UpdateAuditFields(eventData.Context);
@@ -35,8 +29,12 @@ public class AuditableEntitySaveChangesInterceptor : ISaveChangesInterceptor
         if (context == null)
             return;
 
+        var executionContext = serviceProvider.GetService<IApplicationExecutionContext>();
+        if (executionContext == null)
+            logger.LogWarning("IApplicationExecutionContext service is not registered. Audit fields will use empty username.");
+
         var now = DateTime.UtcNow;
-        var username = _executionContext.Username ?? string.Empty;
+        var username = executionContext?.Username ?? string.Empty;
 
         foreach (var entry in context.ChangeTracker.Entries())
         {

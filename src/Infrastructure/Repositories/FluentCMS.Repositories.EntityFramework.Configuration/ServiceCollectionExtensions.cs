@@ -1,9 +1,9 @@
 using FluentCMS.Repositories.DataInitialization;
 using FluentCMS.Repositories.DataInitialization.Abstractions;
+using FluentCMS.Repositories.EntityFramework.Interceptors;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using FluentCMS.Repositories.EntityFramework;
 
 namespace FluentCMS.Repositories.EntityFramework.Configuration;
 
@@ -39,6 +39,7 @@ public static class ServiceCollectionExtensions
 
         services.AddScoped<ISchemaValidatorService, SchemaValidatorService>();
         services.AddScoped<AuditableEntitySaveChangesInterceptor>();
+        services.AddScoped<DomainEventSaveChangesInterceptor>();
         services.AddScoped<IDataSeederService, DataSeederService>();
         services.AddSingleton<IHostedService, DataInitializerHostedService>();
 
@@ -52,10 +53,9 @@ public static class ServiceCollectionExtensions
     /// </summary>
     /// <typeparam name="TContext">The DbContext type to register</typeparam>
     /// <param name="services">The service collection</param>
-    /// <param name="lifetime">The service lifetime (default is Scoped)</param>
     /// <returns>The service collection for chaining</returns>
     /// <exception cref="InvalidOperationException">Thrown when DatabaseManager hasn't been configured</exception>
-    public static IServiceCollection AddDatabaseContext<TContext, TMarker>(this IServiceCollection services, ServiceLifetime lifetime = ServiceLifetime.Scoped)
+    public static IServiceCollection AddDatabaseContext<TContext, TMarker>(this IServiceCollection services)
         where TContext : DbContext
         where TMarker : IDatabaseArea
     {
@@ -70,12 +70,12 @@ public static class ServiceCollectionExtensions
         services.AddDbContext<TContext>(
             (serviceProvider, builder) =>
             {
-                var interceptor = serviceProvider.GetRequiredService<AuditableEntitySaveChangesInterceptor>();
-                builder.AddInterceptors(interceptor);
+                var auditInterceptor = serviceProvider.GetRequiredService<AuditableEntitySaveChangesInterceptor>();
+                var domainEventInterceptor = serviceProvider.GetRequiredService<DomainEventSaveChangesInterceptor>();
+                builder.AddInterceptors(auditInterceptor, domainEventInterceptor);
                 // Apply the database provider configuration (e.g., UseSqlite, UseSqlServer)
                 config.Apply(builder);
-            },
-            lifetime);
+            });
 
         return services;
     }
@@ -87,10 +87,9 @@ public static class ServiceCollectionExtensions
     /// </summary>
     /// <typeparam name="TContext">The DbContext type to register</typeparam>
     /// <param name="services">The service collection</param>
-    /// <param name="lifetime">The service lifetime (default is Scoped)</param>
     /// <returns>The service collection for chaining</returns>
     /// <exception cref="InvalidOperationException">Thrown when DatabaseManager hasn't been configured</exception>
-    public static IServiceCollection AddDatabaseContext<TContext>(this IServiceCollection services, ServiceLifetime lifetime = ServiceLifetime.Scoped)
+    public static IServiceCollection AddDatabaseContext<TContext>(this IServiceCollection services)
         where TContext : DbContext
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -104,12 +103,12 @@ public static class ServiceCollectionExtensions
         services.AddDbContext<TContext>(
             (serviceProvider, builder) =>
             {
-                var interceptor = serviceProvider.GetRequiredService<AuditableEntitySaveChangesInterceptor>();
-                builder.AddInterceptors(interceptor);
+                var auditInterceptor = serviceProvider.GetRequiredService<AuditableEntitySaveChangesInterceptor>();
+                var domainEventInterceptor = serviceProvider.GetRequiredService<DomainEventSaveChangesInterceptor>();
+                builder.AddInterceptors(auditInterceptor, domainEventInterceptor);
                 // Apply the database provider configuration (e.g., UseSqlite, UseSqlServer)
                 config.Apply(builder);
-            },
-            lifetime);
+            });
 
         return services;
     }

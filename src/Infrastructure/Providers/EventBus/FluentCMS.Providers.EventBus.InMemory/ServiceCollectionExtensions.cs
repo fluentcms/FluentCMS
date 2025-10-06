@@ -7,7 +7,7 @@ public static class ServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
 
         // Register the generic event publisher
-        services.TryAddScoped<IEventPublisher, EventPublisher>();
+        services.TryAddSingleton<IEventPublisher, EventPublisher>();
 
         return services;
     }

@@ -56,5 +56,30 @@ public class EventPublisher(IServiceProvider serviceProvider) : IEventPublisher
             throw new EventPublisherAggregatedException<TEvent>(exceptions);
         }
     }
+
+    public Task Publish(object eventData, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(eventData);
+
+        // Ensure the event implements IEvent
+        if (eventData is not IEvent eventObj)
+        {
+            _logger.LogError("Event data must implement {InterfaceName}", nameof(IEvent));
+            throw new ArgumentException($"Event data must implement {nameof(IEvent)}", nameof(eventData));
+        }
+
+        // Get the actual event type at runtime
+        var eventType = eventData.GetType();
+
+        // Use reflection to call the generic Publish method
+        var publishMethod = (typeof(EventPublisher)
+            .GetMethod(nameof(Publish), bindingAttr: System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+            ?.MakeGenericMethod(eventType)) ??
+            throw new InvalidOperationException($"Could not find publish method for event type {eventType.Name}");
+
+        // Invoke: Publish<ActualEventType>(eventData, cancellationToken)
+        return (Task)publishMethod.Invoke(this, [eventData, cancellationToken])!;
+
+    }
 }
 

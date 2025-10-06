@@ -1,6 +1,7 @@
 using FluentCMS.Api;
 using FluentCMS.Plugins;
 using FluentCMS.Plugins.TodoManager.Repositories;
+using FluentCMS.Providers.EventBus.InMemory;
 using FluentCMS.Providers;
 using FluentCMS.Providers.Repositories.EntityFramework;
 using FluentCMS.Repositories.DataInitialization;
@@ -25,7 +26,7 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
     throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
 var services = builder.Services;
-
+services.AddEventPublisher();
 builder.Services.AddDatabaseManager(options =>
 {
     // Default database for most libraries

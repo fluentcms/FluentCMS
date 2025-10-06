@@ -1,5 +1,4 @@
 using FluentCMS.Repositories.Abstractions;
-using FluentCMS.Repositories.Tests.Integration.TestEntities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
