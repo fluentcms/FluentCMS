@@ -26,7 +26,10 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
     throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
 var services = builder.Services;
-services.AddEventPublisher();
+
+// Register Event Publisher
+//services.AddEventPublisher();
+
 builder.Services.AddDatabaseManager(options =>
 {
     // Default database for most libraries
@@ -70,7 +73,7 @@ services.AddProviders(options =>
 builder.AddPlugins(["FluentCMS"]);
 
 // Register providers
-//services.AddEventPublisher();
+services.AddEventPublisher();
 
 // Add services to the container.
 services.AddFluentCmsApi();

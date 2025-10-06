@@ -6,13 +6,13 @@ namespace FluentCMS.Providers;
 internal sealed class ProviderModuleCatalogCache
 {
     // Area -> (TypeName -> IProviderModule)
-    private readonly ConcurrentDictionary<string, Dictionary<string, IProviderModule>> registeredModules = new();
+    private readonly ConcurrentDictionary<string, Dictionary<string, IProviderModule>> _registeredModules = new();
 
     // Area -> InterfaceType
-    private readonly ConcurrentDictionary<string, Type> registeredInterfaces = new();
+    private readonly ConcurrentDictionary<string, Type> _registeredInterfaces = new();
 
     // Cache for faster module lookups
-    private readonly ConcurrentDictionary<string, IProviderModule> modulesByFullKey = new();
+    private readonly ConcurrentDictionary<string, IProviderModule> _modulesByFullKey = new();
 
     public ProviderModuleCatalogCache(IEnumerable<IProviderModule> modules)
     {
@@ -27,7 +27,7 @@ internal sealed class ProviderModuleCatalogCache
         }
     }
 
-    private void ValidateModules(IEnumerable<IProviderModule> modules)
+    private static void ValidateModules(IEnumerable<IProviderModule> modules)
     {
         var duplicateModules = modules
             .GroupBy(m => new { m.Area, ModuleType = m.GetType().FullName })
@@ -35,7 +35,7 @@ internal sealed class ProviderModuleCatalogCache
             .Select(g => g.Key)
             .ToList();
 
-        if (duplicateModules.Any())
+        if (duplicateModules.Count != 0)
         {
             var duplicateList = string.Join(", ", duplicateModules.Select(d => $"{d.Area}:{d.ModuleType}"));
             throw new InvalidOperationException(
@@ -110,7 +110,7 @@ internal sealed class ProviderModuleCatalogCache
         var moduleTypeName = module.GetType().FullName!;
 
         // Register interface type for the area
-        registeredInterfaces.AddOrUpdate(module.Area,
+        _registeredInterfaces.AddOrUpdate(module.Area,
             module.InterfaceType,
             (area, existingType) =>
             {
@@ -124,7 +124,7 @@ internal sealed class ProviderModuleCatalogCache
             });
 
         // Register module by area and type name
-        registeredModules.AddOrUpdate(module.Area,
+        _registeredModules.AddOrUpdate(module.Area,
             new Dictionary<string, IProviderModule>(StringComparer.OrdinalIgnoreCase) { [moduleTypeName] = module },
             (area, existingModules) =>
             {
@@ -139,17 +139,17 @@ internal sealed class ProviderModuleCatalogCache
 
         // Add to cache for faster lookups
         var fullKey = $"{module.Area}:{moduleTypeName}";
-        modulesByFullKey[fullKey] = module;
+        _modulesByFullKey[fullKey] = module;
     }
 
     public IEnumerable<IProviderModule> GetRegisteredModules()
     {
-        return modulesByFullKey.Values;
+        return _modulesByFullKey.Values;
     }
 
     public IReadOnlyDictionary<string, Type> GetRegisteredInterfaceTypes()
     {
-        return registeredInterfaces.AsReadOnly();
+        return _registeredInterfaces.AsReadOnly();
     }
 
     public IProviderModule? GetRegisteredModule(string area, string typeName)
@@ -158,14 +158,14 @@ internal sealed class ProviderModuleCatalogCache
         ArgumentException.ThrowIfNullOrWhiteSpace(typeName);
 
         var fullKey = $"{area}:{typeName}";
-        return modulesByFullKey.TryGetValue(fullKey, out var module) ? module : null;
+        return _modulesByFullKey.TryGetValue(fullKey, out var module) ? module : null;
     }
 
     public IEnumerable<IProviderModule> GetModulesByArea(string area)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(area);
 
-        return registeredModules.TryGetValue(area, out var areaModules)
+        return _registeredModules.TryGetValue(area, out var areaModules)
             ? areaModules.Values
             : [];
     }
@@ -173,11 +173,11 @@ internal sealed class ProviderModuleCatalogCache
     public bool HasModulesInArea(string area)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(area);
-        return registeredModules.ContainsKey(area);
+        return _registeredModules.ContainsKey(area);
     }
 
     public IEnumerable<string> GetRegisteredAreas()
     {
-        return registeredModules.Keys;
+        return _registeredModules.Keys;
     }
 }
