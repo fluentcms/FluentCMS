@@ -42,7 +42,10 @@ public class EventPublisher(IServiceProvider serviceProvider) : IEventPublisher
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "An error occurred while handling the event.");
+                    _logger.LogError(ex, "An error occurred while handling event of type {EventType} in subscriber {SubscriberType}. Event data: {@EventData}",
+                        typeof(TEvent).Name,
+                        subscriber.GetType().Name,
+                        data);
                     throw;
                 }
             }
@@ -50,7 +53,7 @@ public class EventPublisher(IServiceProvider serviceProvider) : IEventPublisher
         else
         {
             // Execute all handlers concurrently and collect exceptions
-            var exceptions = new List<Exception>();
+            var exceptions = new ConcurrentBag<Exception>();
 
             var tasks = subscribers.Select(async subscriber =>
             {
@@ -60,11 +63,14 @@ public class EventPublisher(IServiceProvider serviceProvider) : IEventPublisher
                 }
                 catch (Exception ex)
                 {
+                    // Log detailed error information for each handler failure
+                    _logger.LogError(ex, "An error occurred while handling event of type {EventType} in subscriber {SubscriberType}. Event data: {@EventData}",
+                        typeof(TEvent).Name,
+                        subscriber.GetType().Name,
+                        data);
+
                     // Collect exceptions but don't stop other handlers from executing
-                    lock (exceptions)
-                    {
-                        exceptions.Add(ex);
-                    }
+                    exceptions.Add(ex);
                 }
             });
 
@@ -72,14 +78,8 @@ public class EventPublisher(IServiceProvider serviceProvider) : IEventPublisher
             await Task.WhenAll(tasks);
 
             // If any handlers threw exceptions, throw an aggregate exception
-            if (exceptions.Count != 0)
+            if (!exceptions.IsEmpty)
             {
-                // Log the exceptions here if needed
-                foreach (var exception in exceptions)
-                {
-                    _logger.LogError(exception, "An error occurred while handling the event.");
-                }
-
                 throw new EventPublisherAggregatedException<TEvent>(exceptions);
             }
         }
