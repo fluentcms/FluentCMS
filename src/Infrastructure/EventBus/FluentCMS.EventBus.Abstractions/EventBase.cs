@@ -5,8 +5,8 @@
 /// </summary>
 public abstract class EventBase : IEvent
 {
-    public DateTimeOffset OccurredAt { get; }
-    public Guid EventId { get; }
+    public DateTimeOffset OccurredAt { get; init; }
+    public Guid EventId { get; init; }
 
     protected EventBase()
     {

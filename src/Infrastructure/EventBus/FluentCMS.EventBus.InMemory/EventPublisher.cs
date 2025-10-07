@@ -9,10 +9,6 @@ namespace FluentCMS.EventBus.InMemory;
 /// </summary>
 internal class EventPublisher(IServiceScopeFactory scopeFactory, IOptions<EventPublisherOptions> options, ILogger<EventPublisher> logger) : IEventPublisher
 {
-    // Cache the generic publish method to avoid reflection lookup on each call
-    private static readonly MethodInfo _publishGenericMethod =
-        typeof(EventPublisher).GetMethod(nameof(Publish))!;
-
     public async Task Publish<TEvent>(TEvent data, CancellationToken cancellationToken = default) where TEvent : class, IEvent
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -21,9 +17,9 @@ internal class EventPublisher(IServiceScopeFactory scopeFactory, IOptions<EventP
         // Check for subscribers in the root provider first
         // TODO: we always create scope, find a solution to use root scoped provider if possible
         await using var scope = scopeFactory.CreateAsyncScope();
-        var subscribers = scope.ServiceProvider.GetServices<IEventSubscriber<TEvent>>().ToList();
+        var subscribers = scope.ServiceProvider.GetServices<IEventSubscriber<TEvent>>();
 
-        if (subscribers.Count == 0)
+        if (!subscribers.Any())
         {
             // No subscribers found, log a warning and return
             logger.LogWarning("No subscribers found for event type {EventType}.", typeof(TEvent).Name);

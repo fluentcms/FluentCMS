@@ -8,6 +8,8 @@ public static class ServiceCollectionExtensions
         where TEvent : class, IEvent
         where THandler : class, IEventSubscriber<TEvent>
     {
+        ArgumentNullException.ThrowIfNull(services);
+
         // Register the handler with specified lifetime
         services.AddTransient<IEventSubscriber<TEvent>, THandler>();
 
