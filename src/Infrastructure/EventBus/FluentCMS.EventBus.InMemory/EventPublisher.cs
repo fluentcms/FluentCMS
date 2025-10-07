@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Http;
+
 namespace FluentCMS.EventBus.InMemory;
 
 /// <summary>
@@ -7,17 +9,33 @@ namespace FluentCMS.EventBus.InMemory;
 /// the number of event handlers is manageable.
 /// It is registered as a singleton service to ensure a single instance
 /// </summary>
-internal class EventPublisher(IServiceScopeFactory scopeFactory, IOptions<EventPublisherOptions> options, ILogger<EventPublisher> logger) : IEventPublisher
+internal class EventPublisher(IServiceScopeFactory scopeFactory, IOptions<EventPublisherOptions> options, ILogger<EventPublisher> logger, IHttpContextAccessor? httpContextAccessor = null) : IEventPublisher
 {
     public async Task Publish<TEvent>(TEvent data, CancellationToken cancellationToken = default) where TEvent : class, IEvent
     {
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(data);
 
-        // Check for subscribers in the root provider first
-        // TODO: we always create scope, find a solution to use root scoped provider if possible
-        await using var scope = scopeFactory.CreateAsyncScope();
-        var subscribers = scope.ServiceProvider.GetServices<IEventSubscriber<TEvent>>();
+        var httpContext = httpContextAccessor?.HttpContext;
+        IServiceProvider provider;
+        AsyncServiceScope? scopeToDispose = null;
+
+        if (httpContext != null)
+        {
+            // We're in an HTTP request - use the request's service provider
+            provider = httpContext.RequestServices;
+            logger.LogDebug("Using HTTP request scope for event {EventType}", typeof(TEvent).Name);
+        }
+        else
+        {
+            // No HTTP context - create new scope
+            var scope = scopeFactory.CreateAsyncScope();
+            provider = scope.ServiceProvider;
+            scopeToDispose = scope;
+            logger.LogDebug("Created new scope for event {EventType}", typeof(TEvent).Name);
+        }
+
+        var subscribers = provider.GetServices<IEventSubscriber<TEvent>>();
 
         if (!subscribers.Any())
         {
@@ -26,57 +44,68 @@ internal class EventPublisher(IServiceScopeFactory scopeFactory, IOptions<EventP
             return;
         }
 
-
-        if (options.Value.Mode == EventPublisherOptions.ErrorHandlingMode.FailFast)
+        try
         {
-            // Execute handlers sequentially and stop on first exception
-            foreach (var subscriber in subscribers)
+            if (options.Value.Mode == EventPublisherOptions.ErrorHandlingMode.FailFast)
             {
-                try
+                // Execute handlers sequentially and stop on first exception
+                foreach (var subscriber in subscribers)
                 {
-                    await subscriber.Handle(data, cancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "An error occurred while handling event of type {EventType} in subscriber {SubscriberType}. Event data: {@EventData}",
-                        typeof(TEvent).Name,
-                        subscriber.GetType().Name,
-                        data);
-                    throw;
+                    try
+                    {
+                        await subscriber.Handle(data, cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogError(ex, "An error occurred while handling event of type {EventType} in subscriber {SubscriberType}. Event data: {@EventData}",
+                            typeof(TEvent).Name,
+                            subscriber.GetType().Name,
+                            data);
+                        throw;
+                    }
                 }
             }
+            else
+            {
+                // Execute all handlers concurrently and collect exceptions
+                var exceptions = new ConcurrentBag<Exception>();
+
+                var tasks = subscribers.Select(async subscriber =>
+                {
+                    try
+                    {
+                        await subscriber.Handle(data, cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log detailed error information for each handler failure
+                        logger.LogError(ex, "An error occurred while handling event of type {EventType} in subscriber {SubscriberType}. Event data: {@EventData}",
+                            typeof(TEvent).Name,
+                            subscriber.GetType().Name,
+                            data);
+
+                        // Collect exceptions but don't stop other handlers from executing
+                        exceptions.Add(ex);
+                    }
+                });
+
+                // Wait for all handlers to complete
+                await Task.WhenAll(tasks);
+
+                // If any handlers threw exceptions, throw an aggregate exception
+                if (!exceptions.IsEmpty)
+                {
+                    throw new EventPublisherAggregatedException<TEvent>(exceptions);
+                }
+            }
+
         }
-        else
+        finally
         {
-            // Execute all handlers concurrently and collect exceptions
-            var exceptions = new ConcurrentBag<Exception>();
-
-            var tasks = subscribers.Select(async subscriber =>
+            if (scopeToDispose != null)
             {
-                try
-                {
-                    await subscriber.Handle(data, cancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    // Log detailed error information for each handler failure
-                    logger.LogError(ex, "An error occurred while handling event of type {EventType} in subscriber {SubscriberType}. Event data: {@EventData}",
-                        typeof(TEvent).Name,
-                        subscriber.GetType().Name,
-                        data);
-
-                    // Collect exceptions but don't stop other handlers from executing
-                    exceptions.Add(ex);
-                }
-            });
-
-            // Wait for all handlers to complete
-            await Task.WhenAll(tasks);
-
-            // If any handlers threw exceptions, throw an aggregate exception
-            if (!exceptions.IsEmpty)
-            {
-                throw new EventPublisherAggregatedException<TEvent>(exceptions);
+                await scopeToDispose.Value.DisposeAsync();
+                logger.LogDebug("Disposed scope for event {EventType}", typeof(TEvent).Name);
             }
         }
     }
