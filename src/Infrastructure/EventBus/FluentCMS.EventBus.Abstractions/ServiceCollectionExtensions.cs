@@ -11,7 +11,7 @@ public static class ServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
 
         // Register the handler with specified lifetime
-        services.AddTransient<IEventSubscriber<TEvent>, THandler>();
+        services.AddScoped<IEventSubscriber<TEvent>, THandler>();
 
         return services;
     }
