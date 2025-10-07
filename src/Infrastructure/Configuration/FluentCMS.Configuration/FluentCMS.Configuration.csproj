@@ -7,10 +7,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\FluentCMS.Configuration.Abstractions\FluentCMS.Configuration.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.9" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.9" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.9" />
-    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="9.0.9" />
-    <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" Version="9.0.9" />
+      <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.9" />
   </ItemGroup>
 
 </Project>

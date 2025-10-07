@@ -1,5 +1,4 @@
 ﻿global using AutoMapper;
-global using FluentCMS.Configuration;
 global using FluentCMS.Exceptions;
 global using FluentCMS.Plugins.Abstractions;
 global using FluentCMS.Plugins.IdentityManager.Controllers;
