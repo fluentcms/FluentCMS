@@ -14,7 +14,7 @@ public class AuditTrailHandler(IAuditTrailService auditTrailService, ILogger<Aud
     IEventSubscriber<RepositoryEntityDeletedEvent>
 
 {
-    private async Task HandleInternal(RepostoryEntityEvent domainEvent, CancellationToken cancellationToken = default)
+    private async Task HandleInternal(RepositoryEntityEvent domainEvent, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(domainEvent);
