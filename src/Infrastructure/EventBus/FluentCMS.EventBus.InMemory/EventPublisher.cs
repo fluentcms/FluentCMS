@@ -19,6 +19,7 @@ internal class EventPublisher(IServiceScopeFactory scopeFactory, IOptions<EventP
         ArgumentNullException.ThrowIfNull(data);
 
         // Check for subscribers in the root provider first
+        // TODO: we always create scope, find a solution to use root scoped provider if possible
         await using var scope = scopeFactory.CreateAsyncScope();
         var subscribers = scope.ServiceProvider.GetServices<IEventSubscriber<TEvent>>().ToList();
 
