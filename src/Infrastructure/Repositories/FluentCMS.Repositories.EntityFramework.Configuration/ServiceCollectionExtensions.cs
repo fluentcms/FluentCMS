@@ -53,9 +53,10 @@ public static class ServiceCollectionExtensions
     /// </summary>
     /// <typeparam name="TContext">The DbContext type to register</typeparam>
     /// <param name="services">The service collection</param>
+    /// <param name="action">Optional action to configure additional DbContext options</param>
     /// <returns>The service collection for chaining</returns>
     /// <exception cref="InvalidOperationException">Thrown when DatabaseManager hasn't been configured</exception>
-    public static IServiceCollection AddDatabaseContext<TContext, TMarker>(this IServiceCollection services)
+    public static IServiceCollection AddDatabaseContext<TContext, TMarker>(this IServiceCollection services, Action<DbContextOptionsBuilder>? action = null)
         where TContext : DbContext
         where TMarker : IDatabaseArea
     {
@@ -75,6 +76,7 @@ public static class ServiceCollectionExtensions
                 builder.AddInterceptors(auditInterceptor, domainEventInterceptor);
                 // Apply the database provider configuration (e.g., UseSqlite, UseSqlServer)
                 config.Apply(builder);
+                action?.Invoke(builder);
             });
 
         return services;

@@ -6,4 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\EventBus\FluentCMS.EventBus.Abstractions\FluentCMS.EventBus.Abstractions.csproj" />
+  </ItemGroup>
+
 </Project>

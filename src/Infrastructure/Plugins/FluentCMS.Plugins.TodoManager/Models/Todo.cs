@@ -1,10 +1,9 @@
-using FluentCMS.Repositories.Abstractions;
+using FluentCMS.Repositories.EntityFramework;
 
 namespace FluentCMS.Plugins.TodoManager.Models;
 
-public class Todo : IEntity
+public class Todo : AuditableEntity
 {
-    public Guid Id { get; set; }
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public bool IsCompleted { get; set; }

@@ -76,7 +76,7 @@ builder.AddPlugins(options =>
 });
 
 // Register providers
-services.AddEventPublisher();
+services.AddInMemoryEventBus();
 
 // Add services to the container.
 services.AddFluentCmsApi();
