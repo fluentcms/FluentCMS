@@ -26,7 +26,6 @@ builder.Host.UseSerilog();
 
 var loggerFactory = new SerilogLoggerFactory(Log.Logger);
 
-
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ??
     throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
@@ -70,7 +69,11 @@ services.AddProviders(options =>
     }).UseEntityFramework();
 
 // Add plugin system
-builder.AddPlugins(["FluentCMS"], loggerFactory);
+builder.AddPlugins(options =>
+{
+    options.PluginPrefixes = ["FluentCMS"];
+    options.LoggerFactory = loggerFactory;
+});
 
 // Register providers
 services.AddEventPublisher();

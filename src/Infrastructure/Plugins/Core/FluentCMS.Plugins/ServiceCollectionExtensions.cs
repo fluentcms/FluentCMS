@@ -4,10 +4,18 @@ namespace FluentCMS.Plugins;
 
 public static class ServiceCollectionExtensions
 {
-    public static void AddPlugins(this IHostApplicationBuilder builder, string[] pluginPrefixes, ILoggerFactory loggerFactory)
+    public static void AddPlugins(this IHostApplicationBuilder builder, Action<PluginOptions> config)
     {
-        var logger = loggerFactory.CreateLogger<PluginManager>();
-        var pluginManager = new PluginManager(pluginPrefixes, logger);
+        ArgumentNullException.ThrowIfNull(config);
+
+        var options = new PluginOptions();
+        config(options);
+
+        ArgumentNullException.ThrowIfNull(options.PluginPrefixes);
+        ArgumentNullException.ThrowIfNull(options.LoggerFactory);
+
+        var logger = options.LoggerFactory.CreateLogger<PluginManager>();
+        var pluginManager = new PluginManager(options.PluginPrefixes, logger);
         builder.Services.AddSingleton<IPluginManager>(pluginManager);
         pluginManager.ConfigureServices(builder);
     }
@@ -18,4 +26,11 @@ public static class ServiceCollectionExtensions
         pluginLoader.Configure(app);
         return app;
     }
+
+}
+
+public class PluginOptions
+{
+    public string[] PluginPrefixes { get; set; } = [];
+    public ILoggerFactory LoggerFactory { get; set; } = default!;
 }
