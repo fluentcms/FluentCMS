@@ -1,4 +1,5 @@
 ﻿using FluentCMS.EventBus.Abstractions;
+using FluentCMS.Repositories.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 
@@ -8,16 +9,8 @@ namespace FluentCMS.Repositories.EntityFramework.Interceptors;
 /// Intercepts Entity Framework save operations to publish domain events
 /// Should be registered after the AuditableEntitySaveChangesInterceptor.
 /// </summary>
-public class DomainEventSaveChangesInterceptor : ISaveChangesInterceptor
+public class DomainEventSaveChangesInterceptor(IEventPublisher eventPublisher) : ISaveChangesInterceptor
 {
-    private readonly IEventPublisher _eventPublisher;
-
-    public DomainEventSaveChangesInterceptor(IEventPublisher eventPublisher)
-    {
-        ArgumentNullException.ThrowIfNull(eventPublisher);
-        _eventPublisher = eventPublisher;
-    }
-
     public InterceptionResult<int> SavingChanges(DbContextEventData eventData, InterceptionResult<int> result)
     {
         if (eventData.Context == null)
@@ -42,25 +35,23 @@ public class DomainEventSaveChangesInterceptor : ISaveChangesInterceptor
     {
         foreach (var entry in context.ChangeTracker.Entries())
         {
-            // Use reflection to create and publish the appropriate event type
-            IEvent? domainEvent = null;
             switch (entry.State)
             {
                 case EntityState.Deleted:
-                    domainEvent = CreateEntityEvent(typeof(EntityDeletedEvent<>), entry.Entity);
+                    var deleteEvent = new RepositoryEntityDeletedEvent(entry.Entity);
+                    eventPublisher.Publish(deleteEvent).GetAwaiter().GetResult();
                     break;
                 case EntityState.Modified:
-                    domainEvent = CreateEntityEvent(typeof(EntityUpdatedEvent<>), entry.Entity);
+                    var updateEvent = new RepositoryEntityUpdatedEvent(entry.Entity);
+                    eventPublisher.Publish(updateEvent).GetAwaiter().GetResult();
                     break;
                 case EntityState.Added:
-                    domainEvent = CreateEntityEvent(typeof(EntityCreatedEvent<>), entry.Entity);
+                    var createEvent = new RepositoryEntityCreatedEvent(entry.Entity);
+                    eventPublisher.Publish(createEvent).GetAwaiter().GetResult();
                     break;
                 default:
                     break;
             }
-
-            if (domainEvent != null)
-                _eventPublisher.Publish(domainEvent).GetAwaiter().GetResult();
         }
     }
 
@@ -68,42 +59,24 @@ public class DomainEventSaveChangesInterceptor : ISaveChangesInterceptor
     {
         foreach (var entry in context.ChangeTracker.Entries())
         {
-            // Use reflection to create and publish the appropriate event type
-            IEvent? domainEvent = null;
             switch (entry.State)
             {
                 case EntityState.Deleted:
-                    domainEvent = CreateEntityEvent(typeof(EntityDeletedEvent<>), entry.Entity);
+                    var deleteEvent = new RepositoryEntityDeletedEvent(entry.Entity);
+                    await eventPublisher.Publish(deleteEvent, cancellationToken);
                     break;
                 case EntityState.Modified:
-                    domainEvent = CreateEntityEvent(typeof(EntityUpdatedEvent<>), entry.Entity);
+                    var updateEvent = new RepositoryEntityUpdatedEvent(entry.Entity);
+                    await eventPublisher.Publish(updateEvent, cancellationToken);
                     break;
                 case EntityState.Added:
-                    domainEvent = CreateEntityEvent(typeof(EntityCreatedEvent<>), entry.Entity);
+                    var createEvent = new RepositoryEntityCreatedEvent(entry.Entity);
+                    await eventPublisher.Publish(createEvent, cancellationToken);
                     break;
                 default:
                     break;
             }
-
-            if (domainEvent != null)
-                await _eventPublisher.Publish(domainEvent, cancellationToken);
         }
-    }
-
-    private static EventBase CreateEntityEvent(Type eventType, object entity)
-    {
-        ArgumentNullException.ThrowIfNull(entity);
-
-        // Get the runtime type of the entity
-        var entityType = entity.GetType();
-
-        // Create the generic EntityDeletedEvent<TEntity> type
-        var eventTypeGeneric = eventType.MakeGenericType(entityType);
-
-        // Create an instance: new EntityDeletedEvent<entityType>(entity)
-        var domainEvent = (EventBase)Activator.CreateInstance(eventTypeGeneric, entity)!;
-
-        return domainEvent;
     }
 }
 

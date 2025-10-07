@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 
-namespace FluentCMS.Repositories.EntityFramework;
+namespace FluentCMS.Repositories.DataInitialization.EntityFramework;
 
 public static class DbContextExtensions
 {
@@ -23,7 +23,6 @@ public static class DbContextExtensions
     {
         cancellationToken.ThrowIfCancellationRequested();
         var modelTypes = dbContext.Model.GetEntityTypes().Select(x => x.ClrType).Where(t => t != null).Distinct();
-
         // any table has data
         foreach (var modelType in modelTypes)
         {
@@ -34,7 +33,7 @@ public static class DbContextExtensions
             }
             catch
             {
-                // Intentionally suppressed - checking for table existence
+                // ignore
             }
         }
         return false;

@@ -7,7 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\EventBus\FluentCMS.EventBus.Abstractions\FluentCMS.EventBus.Abstractions.csproj" />
     <ProjectReference Include="..\..\FluentCMS.Shared\FluentCMS.Shared.csproj" />
     <ProjectReference Include="..\FluentCMS.Repositories.Abstractions\FluentCMS.Repositories.Abstractions.csproj" />
   </ItemGroup>

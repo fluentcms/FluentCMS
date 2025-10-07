@@ -14,6 +14,7 @@
     <ProjectReference Include="..\Api\FluentCMS.Api\FluentCMS.Api.csproj" />
     <ProjectReference Include="..\EventBus\FluentCMS.EventBus.InMemory\FluentCMS.EventBus.InMemory.csproj" />
     <ProjectReference Include="..\Plugins\Core\FluentCMS.Plugins\FluentCMS.Plugins.csproj" />
+    <ProjectReference Include="..\Plugins\FluentCMS.Plugins.AuditTrailManager\FluentCMS.Plugins.AuditTrailManager.csproj" />
     <ProjectReference Include="..\Plugins\FluentCMS.Plugins.IdentityManager\FluentCMS.Plugins.IdentityManager.csproj" />
     <ProjectReference Include="..\Plugins\FluentCMS.Plugins.TodoManager\FluentCMS.Plugins.TodoManager.csproj" />
     <ProjectReference Include="..\Providers\Caching\FluentCMS.Providers.Caching.InMemory\FluentCMS.Providers.Caching.InMemory.csproj" />

@@ -1,37 +1,36 @@
 namespace FluentCMS.EventBus.InMemory;
 
-public class EventPublisher(IServiceProvider serviceProvider) : IEventPublisher
+/// <summary>
+/// In-memory event publisher implementation
+/// This is a simple implementation that invokes event handlers directly.
+/// It is suitable for scenarios where low latency is required and
+/// the number of event handlers is manageable.
+/// It is registered as a singleton service to ensure a single instance
+/// </summary>
+internal class EventPublisher(IServiceScopeFactory scopeFactory, IOptions<EventPublisherOptions> options, ILogger<EventPublisher> logger) : IEventPublisher
 {
     // Cache the generic publish method to avoid reflection lookup on each call
     private static readonly MethodInfo _publishGenericMethod =
         typeof(EventPublisher).GetMethod(nameof(Publish))!;
-
-    private readonly EventPublisherOptions _options = serviceProvider.GetService<IOptions<EventPublisherOptions>>()?.Value ??
-        throw new ArgumentNullException(nameof(EventPublisherOptions));
-
-    protected readonly IServiceProvider ServiceProvider = serviceProvider ??
-        throw new ArgumentNullException(nameof(serviceProvider));
-
-    private readonly ILogger<EventPublisher> _logger = serviceProvider.GetService<ILogger<EventPublisher>>() ??
-        throw new ArgumentNullException(nameof(_logger));
 
     public async Task Publish<TEvent>(TEvent data, CancellationToken cancellationToken = default) where TEvent : class, IEvent
     {
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(data);
 
-        // Get all registered subscribers for this event type
-        var subscribers = ServiceProvider.GetServices<IEventSubscriber<TEvent>>().ToList();
+        // Check for subscribers in the root provider first
+        await using var scope = scopeFactory.CreateAsyncScope();
+        var subscribers = scope.ServiceProvider.GetServices<IEventSubscriber<TEvent>>().ToList();
 
         if (subscribers.Count == 0)
         {
             // No subscribers found, log a warning and return
-            _logger.LogWarning("No subscribers found for event type {EventType}.", typeof(TEvent).Name);
+            logger.LogWarning("No subscribers found for event type {EventType}.", typeof(TEvent).Name);
             return;
         }
 
 
-        if (_options.Mode == EventPublisherOptions.ErrorHandlingMode.FailFast)
+        if (options.Value.Mode == EventPublisherOptions.ErrorHandlingMode.FailFast)
         {
             // Execute handlers sequentially and stop on first exception
             foreach (var subscriber in subscribers)
@@ -42,7 +41,7 @@ public class EventPublisher(IServiceProvider serviceProvider) : IEventPublisher
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "An error occurred while handling event of type {EventType} in subscriber {SubscriberType}. Event data: {@EventData}",
+                    logger.LogError(ex, "An error occurred while handling event of type {EventType} in subscriber {SubscriberType}. Event data: {@EventData}",
                         typeof(TEvent).Name,
                         subscriber.GetType().Name,
                         data);
@@ -64,7 +63,7 @@ public class EventPublisher(IServiceProvider serviceProvider) : IEventPublisher
                 catch (Exception ex)
                 {
                     // Log detailed error information for each handler failure
-                    _logger.LogError(ex, "An error occurred while handling event of type {EventType} in subscriber {SubscriberType}. Event data: {@EventData}",
+                    logger.LogError(ex, "An error occurred while handling event of type {EventType} in subscriber {SubscriberType}. Event data: {@EventData}",
                         typeof(TEvent).Name,
                         subscriber.GetType().Name,
                         data);
@@ -92,7 +91,7 @@ public class EventPublisher(IServiceProvider serviceProvider) : IEventPublisher
         // Ensure the event implements IEvent
         if (eventData is not IEvent eventObj)
         {
-            _logger.LogError("Event data must implement {InterfaceName}", nameof(IEvent));
+            logger.LogError("Event data must implement {InterfaceName}", nameof(IEvent));
             throw new ArgumentException($"Event data must implement {nameof(IEvent)}", nameof(eventData));
         }
 

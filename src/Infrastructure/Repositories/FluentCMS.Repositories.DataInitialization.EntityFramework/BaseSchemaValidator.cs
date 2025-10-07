@@ -1,5 +1,4 @@
 ﻿using FluentCMS.Repositories.DataInitialization.Abstractions;
-using FluentCMS.Repositories.EntityFramework;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
