@@ -4,7 +4,7 @@
 
 ## Overview
 
-`FluentCMS.EventBus.InMemory` provides a simple, high-performance, in-memory event bus for .NET applications. It is designed for scenarios where low latency and simplicity are required, such as development, testing, or single-instance deployments.
+`FluentCMS.EventBus.InMemory` is a lightweight, high-performance event bus for .NET applications. It enables decoupled communication between components using the publish/subscribe pattern, making it ideal for development, testing, and single-instance production scenarios.
 
 - **Publish/Subscribe** pattern for domain events
 - **Dependency Injection**-friendly
@@ -12,14 +12,29 @@
 - **Automatic scope management** for event handlers
 - **Detailed logging** for diagnostics
 
+## Table of Contents
+- [Getting Started](#getting-started)
+  - [Installation](#installation)
+- [Registration](#registration)
+- [Usage](#usage)
+  - [Define an Event](#define-an-event)
+  - [Create a Subscriber](#create-a-subscriber)
+  - [Register a Subscriber](#register-a-subscriber)
+  - [Publish an Event](#publish-an-event)
+- [Configuration](#configuration)
+- [Logging](#logging)
+- [Best Practices](#best-practices)
+- [Extending](#extending)
+- [Contributing](#contributing)
+- [License](#license)
+
 ## Getting Started
 
 ### Prerequisites
-
 - [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
 - Reference to `FluentCMS.EventBus.Abstractions`
 
-### Installation
+## Installation
 
 Add the project or NuGet package to your solution:
 
@@ -27,7 +42,7 @@ Add the project or NuGet package to your solution:
 dotnet add package FluentCMS.EventBus.InMemory
 ```
 
-### Registration
+## Registration
 
 Register the in-memory event bus in your DI container (typically in `Startup.cs` or your service configuration):
 
@@ -40,9 +55,9 @@ builder.Services.AddInMemoryEventBus(options =>
 });
 ```
 
-### Usage
+## Usage
 
-#### Define an Event
+### Define an Event
 
 ```csharp
 public class UserRegisteredEvent : IEvent
@@ -51,7 +66,7 @@ public class UserRegisteredEvent : IEvent
 }
 ```
 
-#### Create a Subscriber
+### Create a Subscriber
 
 ```csharp
 public class SendWelcomeEmailSubscriber : IEventSubscriber<UserRegisteredEvent>
@@ -65,13 +80,13 @@ public class SendWelcomeEmailSubscriber : IEventSubscriber<UserRegisteredEvent>
 }
 ```
 
-Register your subscriber with DI:
+### Register a Subscriber
 
 ```csharp
 services.AddScoped<IEventSubscriber<UserRegisteredEvent>, SendWelcomeEmailSubscriber>();
 ```
 
-#### Publish an Event
+### Publish an Event
 
 ```csharp
 public class UserService
@@ -117,6 +132,8 @@ services.AddInMemoryEventBus(options =>
 - Use the in-memory event bus for development, testing, or single-instance production scenarios.
 - For distributed or multi-instance deployments, consider a persistent or message-queue-based event bus.
 - Register event subscribers with appropriate lifetimes (scoped, transient, or singleton as needed).
+- Use meaningful event and subscriber names for clarity and maintainability.
+- Handle exceptions in subscribers responsibly; avoid long-running or blocking operations in event handlers.
 
 ## Extending
 
