@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 
-namespace FluentCMS.Configuration.Tests.Providers;
+namespace FluentCMS.Configuration;
 
 /// <summary>
 /// Simple in-memory cache for configuration values

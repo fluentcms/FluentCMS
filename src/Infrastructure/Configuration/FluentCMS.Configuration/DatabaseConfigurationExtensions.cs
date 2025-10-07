@@ -1,6 +1,7 @@
 using FluentCMS.Configuration.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Configuration;
 
@@ -55,5 +56,31 @@ public static class DatabaseConfigurationExtensions
             .Options;
 
         return builder.AddDatabaseConfiguration(dbOptions, reloadInterval);
+    }
+
+    /// <summary>
+    /// Registers the DatabaseConfigurationProvider as a service for direct access after configuration is built.
+    /// This allows services to access the provider for runtime configuration updates.
+    /// Call this after AddDatabaseConfiguration.
+    /// </summary>
+    /// <param name="services">Service collection</param>
+    /// <param name="configuration">Built configuration containing the database provider</param>
+    public static IServiceCollection AddDatabaseConfigurationServices(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        // Find the database configuration provider from the built configuration
+        var configRoot = configuration as IConfigurationRoot;
+        var dbProvider = configRoot?.Providers
+            .OfType<DatabaseConfigurationProvider>()
+            .FirstOrDefault();
+
+        if (dbProvider != null)
+        {
+            // Register the existing provider instance as a singleton
+            services.AddSingleton(dbProvider);
+        }
+
+        return services;
     }
 }

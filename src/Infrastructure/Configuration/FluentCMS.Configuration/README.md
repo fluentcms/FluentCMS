@@ -16,6 +16,7 @@ FluentCMS.Configuration extends the standard .NET configuration system by provid
 - **Caching**: In-memory caching for improved performance
 - **JSON Serialization**: Complex objects stored as JSON in the database
 - **Registry System**: Automatic discovery of configuration sections through registration
+- **Service Integration**: Access the configuration provider through dependency injection
 
 ## Installation
 
@@ -47,9 +48,9 @@ public class LoggingSettings
 }
 ```
 
-### 2. Register Configuration Sections
+### 2. Register Configuration Sections and Provider
 
-In your `Program.cs` or `Startup.cs`:
+In your `Program.cs`:
 
 ```csharp
 using FluentCMS.Configuration;
@@ -57,20 +58,25 @@ using FluentCMS.Configuration.Abstractions;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Register configuration sections for database storage
+// Step 1: Register configuration sections for database storage
 builder.Services.AddDatabaseOptions<EmailSettings>("EmailSettings", builder.Configuration);
 builder.Services.AddDatabaseOptions<LoggingSettings>("LoggingSettings", builder.Configuration);
 
-// Add database configuration provider
+// Step 2: Add database configuration provider to configuration builder
 builder.Configuration.AddDatabaseConfiguration(
     connectionString: "Data Source=config.db",
     reloadInterval: TimeSpan.FromMinutes(5) // Optional: auto-reload every 5 minutes
 );
 
+// Step 3: Register the provider as a service for dependency injection
+builder.Services.AddDatabaseConfigurationServices(builder.Configuration);
+
 var app = builder.Build();
 ```
 
 ### 3. Use Configuration in Your Services
+
+#### Option A: Using IOptions Pattern (Recommended)
 
 ```csharp
 [ApiController]
@@ -78,20 +84,38 @@ var app = builder.Build();
 public class ConfigController : ControllerBase
 {
     private readonly IOptions<EmailSettings> _emailSettings;
-    private readonly DatabaseConfigurationProvider _configProvider;
-
-    public ConfigController(
-        IOptions<EmailSettings> emailSettings,
-        IServiceProvider serviceProvider)
+    
+    public ConfigController(IOptions<EmailSettings> emailSettings)
     {
         _emailSettings = emailSettings;
-        _configProvider = serviceProvider.GetRequiredService<DatabaseConfigurationProvider>();
     }
 
     [HttpGet("email")]
     public EmailSettings GetEmailSettings()
     {
         return _emailSettings.Value;
+    }
+}
+```
+
+#### Option B: Direct Provider Access for Runtime Updates
+
+```csharp
+[ApiController]
+[Route("api/[controller]")]
+public class ConfigController : ControllerBase
+{
+    private readonly DatabaseConfigurationProvider _configProvider;
+
+    public ConfigController(DatabaseConfigurationProvider configProvider)
+    {
+        _configProvider = configProvider;
+    }
+
+    [HttpGet("email")]
+    public async Task<EmailSettings?> GetEmailSettings()
+    {
+        return await _configProvider.GetConfigurationAsync<EmailSettings>("EmailSettings");
     }
 
     [HttpPost("email")]
@@ -127,12 +151,18 @@ builder.Services.AddDatabaseOptions<EmailSettings>("EmailSettings", builder.Conf
     .Validate(settings => !string.IsNullOrEmpty(settings.SmtpServer), "SMTP Server is required");
 ```
 
-### Manual Configuration Access
+### Service Integration for Configuration Management
 
-Access configuration values programmatically:
+Create a dedicated service for configuration management:
 
 ```csharp
-public class ConfigurationService
+public interface IConfigurationService
+{
+    Task<T?> GetConfigurationAsync<T>(string section) where T : class;
+    Task UpdateConfigurationAsync<T>(string section, T configuration) where T : class;
+}
+
+public class ConfigurationService : IConfigurationService
 {
     private readonly DatabaseConfigurationProvider _provider;
 
@@ -141,17 +171,28 @@ public class ConfigurationService
         _provider = provider;
     }
 
-    public async Task<EmailSettings?> GetEmailSettingsAsync()
+    public async Task<T?> GetConfigurationAsync<T>(string section) where T : class
     {
-        return await _provider.GetConfigurationAsync<EmailSettings>("EmailSettings");
+        return await _provider.GetConfigurationAsync<T>(section);
     }
 
-    public async Task UpdateEmailSettingsAsync(EmailSettings settings)
+    public async Task UpdateConfigurationAsync<T>(string section, T configuration) where T : class
     {
-        await _provider.UpdateConfigurationAsync("EmailSettings", settings);
+        await _provider.UpdateConfigurationAsync(section, configuration);
     }
 }
+
+// Register the service
+builder.Services.AddScoped<IConfigurationService, ConfigurationService>();
 ```
+
+## Why Manual Instantiation in Build()?\
+
+The `DatabaseConfigurationSource.Build()` method manually instantiates the `DatabaseConfigurationProvider`, which is the **correct and standard pattern** for .NET configuration providers. Here's why:
+
+1. **Bootstrap Timing**: Configuration providers are instantiated during the early bootstrap phase, before the DI container is available
+2. **Standard Pattern**: All built-in .NET configuration providers (JSON, XML, Environment Variables) use this same approach
+3. **Service Access**: The `AddDatabaseConfigurationServices()` extension method registers the provider instance for dependency injection after configuration is built
 
 ## Configuration Structure
 
@@ -170,18 +211,23 @@ The system stores configuration in a simple database table:
 
 1. **Registration**: Configuration sections are registered via `AddDatabaseOptions<T>()`
 2. **Discovery**: The database provider automatically discovers all registered sections
-3. **Seeding**: On first run, values from `appsettings.json` are automatically seeded to the database
-4. **Loading**: Configuration values are loaded from the database and integrated into the .NET configuration system
-5. **Caching**: Values are cached in memory for performance
-6. **Updates**: Runtime updates automatically refresh the configuration and notify consumers
+3. **Provider Creation**: The configuration source manually creates the provider instance (standard .NET pattern)
+4. **Seeding**: On first run, values from `appsettings.json` are automatically seeded to the database
+5. **Loading**: Configuration values are loaded from the database and integrated into the .NET configuration system
+6. **Service Registration**: The provider instance is registered with DI for runtime access
+7. **Caching**: Values are cached in memory for performance
+8. **Updates**: Runtime updates automatically refresh the configuration and notify consumers
 
 ## Best Practices
 
 - **Use strongly-typed configuration classes** for type safety and IntelliSense support
 - **Register sections early** in your application startup before adding the database configuration provider
+- **Call AddDatabaseConfigurationServices()** after adding the database configuration provider to enable DI access
 - **Consider reload intervals** based on your application's needs (frequent changes vs. performance)
 - **Use validation** to ensure configuration integrity
 - **Handle configuration errors gracefully** in case of database connectivity issues
+- **Use IOptions pattern** for most configuration access scenarios
+- **Use direct provider access** only when you need to update configuration at runtime
 
 ## Dependencies
 

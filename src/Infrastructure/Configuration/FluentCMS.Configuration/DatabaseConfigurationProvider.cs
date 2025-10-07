@@ -1,4 +1,3 @@
-using FluentCMS.Configuration.Tests.Providers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using System.Text.Json;
@@ -89,7 +88,7 @@ public class DatabaseConfigurationProvider(
         if (children.Count == 0)
         {
             // Leaf value
-            return new Dictionary<string, object?>();
+            return [];
         }
 
         foreach (var child in children)
@@ -289,6 +288,7 @@ public class DatabaseConfigurationProvider(
         {
             _reloadTimer?.Dispose();
             _disposed = true;
+            GC.SuppressFinalize(this);
         }
     }
 }
