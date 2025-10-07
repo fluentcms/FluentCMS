@@ -99,6 +99,8 @@ internal class EventPublisher(IServiceScopeFactory scopeFactory, IOptions<EventP
                 }
             }
 
+            // Log successful event publishing
+            logger.LogInformation("Event of type {EventType} published successfully to {SubscriberCount} subscriber(s).", typeof(TEvent).Name, subscribers.Count());
         }
         finally
         {
