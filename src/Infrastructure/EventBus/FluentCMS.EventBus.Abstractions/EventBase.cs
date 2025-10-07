@@ -5,6 +5,12 @@
 /// </summary>
 public abstract class EventBase : IEvent
 {
-    public DateTimeOffset OccurredAt => DateTimeOffset.UtcNow;
-    public Guid EventId => Guid.NewGuid();
+    public DateTimeOffset OccurredAt { get; }
+    public Guid EventId { get; }
+
+    protected EventBase()
+    {
+        OccurredAt = DateTimeOffset.UtcNow;
+        EventId = Guid.NewGuid();
+    }
 }

@@ -9,7 +9,4 @@ public interface IEventPublisher
     /// Publish a domain event to all subscribers
     /// </summary>
     Task Publish<TEvent>(TEvent data, CancellationToken cancellationToken = default) where TEvent : class, IEvent;
-
-    // Non-generic overload for runtime dispatch
-    Task Publish(object eventData, CancellationToken cancellationToken = default);
 }

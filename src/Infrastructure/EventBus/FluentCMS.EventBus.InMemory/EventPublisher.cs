@@ -84,26 +84,4 @@ internal class EventPublisher(IServiceScopeFactory scopeFactory, IOptions<EventP
             }
         }
     }
-
-    public Task Publish(object eventData, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(eventData);
-
-        // Ensure the event implements IEvent
-        if (eventData is not IEvent eventObj)
-        {
-            logger.LogError("Event data must implement {InterfaceName}", nameof(IEvent));
-            throw new ArgumentException($"Event data must implement {nameof(IEvent)}", nameof(eventData));
-        }
-
-        // Get the actual event type at runtime
-        var eventType = eventData.GetType();
-
-        // Use cached generic method to make invocation more efficient
-        var publishMethod = _publishGenericMethod.MakeGenericMethod(eventType);
-
-        // Invoke: Publish<ActualEventType>(eventData, cancellationToken)
-        return (Task)publishMethod.Invoke(this, [eventData, cancellationToken])!;
-
-    }
 }
