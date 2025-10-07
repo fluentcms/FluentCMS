@@ -10,6 +10,7 @@ using FluentCMS.Repositories.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Serilog.Events;
+using Serilog.Extensions.Logging;
 
 // Configure Serilog
 Log.Logger = new LoggerConfiguration()
@@ -21,14 +22,15 @@ Log.Logger = new LoggerConfiguration()
     .CreateLogger();
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Host.UseSerilog();
+
+var loggerFactory = new SerilogLoggerFactory(Log.Logger);
+
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ??
     throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
 var services = builder.Services;
-
-// Register Event Publisher
-//services.AddEventPublisher();
 
 builder.Services.AddDatabaseManager(options =>
 {
@@ -61,8 +63,6 @@ builder.Services.AddDatabaseManager(options =>
         });
 });
 
-builder.Host.UseSerilog();
-
 services.AddProviders(options =>
     {
         options.AssemblyPrefixesToScan.Add("FluentCMS");
@@ -70,7 +70,7 @@ services.AddProviders(options =>
     }).UseEntityFramework();
 
 // Add plugin system
-builder.AddPlugins(["FluentCMS"]);
+builder.AddPlugins(["FluentCMS"], loggerFactory);
 
 // Register providers
 services.AddEventPublisher();

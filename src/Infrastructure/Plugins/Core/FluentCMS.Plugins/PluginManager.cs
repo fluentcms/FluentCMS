@@ -1,12 +1,17 @@
-﻿namespace FluentCMS.Plugins;
+﻿using Microsoft.Extensions.Logging;
+
+namespace FluentCMS.Plugins;
 
 internal sealed class PluginManager : IPluginManager
 {
     private readonly IEnumerable<IPluginMetadata> _pluginsMetaData;
     private readonly List<IPlugin> _pluginInstances = [];
+    private readonly ILogger _logger;
 
-    public PluginManager(string[] pluginPrefixes)
+    public PluginManager(string[] pluginPrefixes, ILogger<PluginManager> logger)
     {
+        _logger = logger;
+
         var executablePath = Assembly.GetExecutingAssembly().Location;
 
         var executanbleFolder = Path.GetDirectoryName(executablePath) ??
@@ -36,12 +41,12 @@ internal sealed class PluginManager : IPluginManager
                 // Call the ConfigureServices method on the plugin
                 plugin.ConfigureServices(builder);
 
-                //_logger.LogInformation("Successfully configured services for plugin: {PluginName}", pluginMetaData.Name);
+                _logger.LogInformation("Successfully configured services for plugin: {PluginName}", pluginMetaData.Name);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 // Log the exception with detailed information
-                //_logger.LogError(ex, "Failed to configure services for plugin {PluginName} ({PluginFileName}): {ErrorMessage}", pluginMetaData.Name, pluginMetaData.FileName, ex.Message);
+                _logger.LogError(ex, "Failed to configure services for plugin {PluginName} ({PluginFileName}): {ErrorMessage}", pluginMetaData.Name, pluginMetaData.FileName, ex.Message);
             }
         }
     }
@@ -52,16 +57,16 @@ internal sealed class PluginManager : IPluginManager
         {
             try
             {
-                //_logger.LogInformation("Configuring plugin: {PluginType}", pluginInstance.GetType().FullName);
+                _logger.LogInformation("Configuring plugin: {PluginType}", pluginInstance.GetType().FullName);
 
                 // Call the Configure method on the plugin
                 pluginInstance.Configure(app);
 
-                //_logger.LogInformation("Successfully configured plugin: {PluginType}", pluginInstance.GetType().FullName);
+                _logger.LogInformation("Successfully configured plugin: {PluginType}", pluginInstance.GetType().FullName);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                //_logger.LogError(ex, "Failed to configure plugin {PluginType}: {ErrorMessage}", pluginInstance.GetType().FullName, ex.Message);
+                _logger.LogError(ex, "Failed to configure plugin {PluginType}: {ErrorMessage}", pluginInstance.GetType().FullName, ex.Message);
             }
         }
     }
@@ -76,7 +81,7 @@ internal sealed class PluginManager : IPluginManager
         return _pluginsMetaData;
     }
 
-    private static IEnumerable<IPluginMetadata> ScanAssemblies(string folderPath, string[] pluginPrefixes)
+    private IEnumerable<IPluginMetadata> ScanAssemblies(string folderPath, string[] pluginPrefixes)
     {
         // Get all DLL files in the specified directory
         var allDllFiles = Directory.GetFiles(folderPath, "*.dll", SearchOption.TopDirectoryOnly);
@@ -85,7 +90,7 @@ internal sealed class PluginManager : IPluginManager
             .Where(dllFilePath => pluginPrefixes.Any(prefix => Path.GetFileName(dllFilePath).StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
             .ToArray();
 
-        //_logger.LogInformation("Found {DllCount} potential plugin DLL files", dllFiles.Length);
+        _logger.LogInformation("Found {DllCount} potential plugin DLL files", dllFiles.Length);
 
         // Use a thread-safe collection for parallel processing
         var pluginsMetaData = new ConcurrentBag<IPluginMetadata>();
@@ -109,7 +114,7 @@ internal sealed class PluginManager : IPluginManager
                 }
                 catch (ReflectionTypeLoadException ex)
                 {
-                    //_logger.LogWarning(ex, "ReflectionTypeLoadException while loading types from {DllPath}. Using available types.", dllPath);
+                    _logger.LogWarning(ex, "ReflectionTypeLoadException while loading types from {DllPath}. Using available types.", dllPath);
 
                     // Log the specific loader exceptions for better diagnostics
                     if (ex.LoaderExceptions != null)
@@ -118,7 +123,7 @@ internal sealed class PluginManager : IPluginManager
                         {
                             if (loaderEx != null)
                             {
-                                //_logger.LogWarning(loaderEx, "Loader exception details for {DllPath}", dllPath);
+                                _logger.LogError(loaderEx, "Loader exception details for {DllPath}", dllPath);
                             }
                         }
                     }
@@ -133,7 +138,7 @@ internal sealed class PluginManager : IPluginManager
                     {
                         var descriptionAttribute = assembly.GetCustomAttribute<AssemblyDescriptionAttribute>();
 
-                        //_logger.LogInformation("Found plugin: {PluginName} in assembly {AssemblyName}", type.FullName, assemblyName?.Name);
+                        _logger.LogInformation("Found plugin: {PluginName} in assembly {AssemblyName}", type.FullName, assemblyName?.Name);
 
                         var pluginMetaData = new PluginMetadata
                         {
@@ -154,15 +159,15 @@ internal sealed class PluginManager : IPluginManager
                 ex is FileLoadException ||
                 ex is FileNotFoundException)
             {
-                //_logger.LogWarning(ex, "Failed to load assembly: {DllPath}", dllPath);
+                _logger.LogWarning(ex, "Failed to load assembly: {DllPath}", dllPath);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                //_logger.LogError(ex, "Unexpected error loading assembly: {DllPath}", dllPath);
+                _logger.LogError(ex, "Unexpected error loading assembly: {DllPath}", dllPath);
             }
         });
 
-        //_logger.LogInformation("Successfully identified {PluginCount} plugins", pluginsMetaData.Count);
+        _logger.LogInformation("Successfully identified {PluginCount} plugins", pluginsMetaData.Count);
         return pluginsMetaData.AsEnumerable();
     }
 }
