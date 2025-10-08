@@ -10,33 +10,19 @@ namespace FluentCMS.Configuration;
 /// <summary>
 /// Hosted service responsible for seeding configuration data from appsettings.json to database
 /// </summary>
-public class ConfigurationSeedingHostedService : IHostedService
+public class ConfigurationSeedingHostedService(IServiceProvider serviceProvider, ILogger<ConfigurationSeedingHostedService> logger, ConfigurationSeedingOptions options) : IHostedService
 {
-    private readonly IServiceProvider _serviceProvider;
-    private readonly ILogger<ConfigurationSeedingHostedService> _logger;
-    private readonly ConfigurationSeedingOptions _options;
-
-    public ConfigurationSeedingHostedService(
-        IServiceProvider serviceProvider,
-        ILogger<ConfigurationSeedingHostedService> logger,
-        ConfigurationSeedingOptions options)
-    {
-        _serviceProvider = serviceProvider;
-        _logger = logger;
-        _options = options;
-    }
-
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        if (_options.SeedConfiguration == null || _options.DynamicSections.Count == 0)
+        if (options.SeedConfiguration == null || options.DynamicSections.Count == 0)
         {
-            _logger.LogInformation("Configuration seeding skipped: No seed configuration or dynamic sections provided");
+            logger.LogInformation("Configuration seeding skipped: No seed configuration or dynamic sections provided");
             return;
         }
 
         try
         {
-            using var scope = _serviceProvider.CreateScope();
+            using var scope = serviceProvider.CreateScope();
             using var context = scope.ServiceProvider.GetRequiredService<ConfigurationDbContext>();
 
             // Ensure database is created
@@ -44,11 +30,11 @@ public class ConfigurationSeedingHostedService : IHostedService
 
             await SeedDynamicSections(context, cancellationToken);
 
-            _logger.LogInformation("Configuration seeding completed successfully");
+            logger.LogInformation("Configuration seeding completed successfully");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error occurred during configuration seeding");
+            logger.LogError(ex, "Error occurred during configuration seeding");
             // Don't throw here to avoid crashing the application startup
         }
     }
@@ -62,20 +48,20 @@ public class ConfigurationSeedingHostedService : IHostedService
     {
         var sectionsSeeded = 0;
 
-        foreach (var section in _options.DynamicSections)
+        foreach (var section in options.DynamicSections)
         {
             // Check if section already exists in database
             if (await context.Configurations.AnyAsync(c => c.Section == section, cancellationToken))
             {
-                _logger.LogDebug("Configuration section '{Section}' already exists, skipping", section);
+                logger.LogDebug("Configuration section '{Section}' already exists, skipping", section);
                 continue;
             }
 
             // Get the section from appsettings.json
-            var configSection = _options.SeedConfiguration!.GetSection(section);
+            var configSection = options.SeedConfiguration!.GetSection(section);
             if (!configSection.Exists())
             {
-                _logger.LogWarning("Configuration section '{Section}' not found in seed configuration", section);
+                logger.LogWarning("Configuration section '{Section}' not found in seed configuration", section);
                 continue;
             }
 
@@ -83,7 +69,7 @@ public class ConfigurationSeedingHostedService : IHostedService
             var sectionData = GetSectionAsDictionary(configSection);
             if (sectionData.Count == 0)
             {
-                _logger.LogWarning("Configuration section '{Section}' is empty", section);
+                logger.LogWarning("Configuration section '{Section}' is empty", section);
                 continue;
             }
 
@@ -99,18 +85,18 @@ public class ConfigurationSeedingHostedService : IHostedService
             });
 
             sectionsSeeded++;
-            _logger.LogDebug("Prepared section '{Section}' for seeding", section);
+            logger.LogDebug("Prepared section '{Section}' for seeding", section);
         }
 
         if (sectionsSeeded > 0)
         {
             // Save all seeded sections
             await context.SaveChangesAsync(cancellationToken);
-            _logger.LogInformation("Seeded {Count} configuration sections to database", sectionsSeeded);
+            logger.LogInformation("Seeded {Count} configuration sections to database", sectionsSeeded);
         }
         else
         {
-            _logger.LogInformation("No new configuration sections to seed");
+            logger.LogInformation("No new configuration sections to seed");
         }
     }
 

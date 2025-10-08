@@ -8,9 +8,7 @@ namespace FluentCMS.Configuration;
 /// <summary>
 /// Custom configuration provider that reads from database using EF Core
 /// </summary>
-public class DatabaseConfigurationProvider(
-    DbContextOptions<ConfigurationDbContext> dbOptions,
-    TimeSpan reloadInterval) : ConfigurationProvider, IDisposable
+public class DatabaseConfigurationProvider(DbContextOptions<ConfigurationDbContext> dbOptions, TimeSpan reloadInterval) : ConfigurationProvider, IDisposable
 {
     private readonly InMemoryCache _cache = new();
     private Timer? _reloadTimer;
