@@ -1,5 +1,6 @@
 using FluentCMS.Configuration.Abstractions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -22,20 +23,10 @@ public static class DatabaseConfigurationExtensions
         DbContextOptions<ConfigurationDbContext> dbOptions,
         TimeSpan? reloadInterval = null)
     {
-        // Build current configuration to access appsettings.json
-        var tempConfig = builder.Build();
-
-        // Get all registered sections
-        var registeredSections = DatabaseConfigurationRegistry.GetRegisteredSections()
-            .Select(kvp => kvp.Key)
-            .ToList();
-
         return builder.Add(new DatabaseConfigurationSource
         {
             DbOptions = dbOptions,
-            ReloadInterval = reloadInterval ?? TimeSpan.Zero,
-            SeedConfiguration = tempConfig,
-            DynamicSections = registeredSections
+            ReloadInterval = reloadInterval ?? TimeSpan.Zero
         });
     }
 
@@ -80,6 +71,43 @@ public static class DatabaseConfigurationExtensions
             // Register the existing provider instance as a singleton
             services.AddSingleton(dbProvider);
         }
+
+        return services;
+    }
+
+    /// <summary>
+    /// Adds database configuration seeding hosted service
+    /// </summary>
+    /// <param name="services">Service collection</param>
+    /// <param name="dbOptions">Database context options</param>
+    /// <param name="seedConfiguration">Configuration source for seeding</param>
+    /// <param name="dynamicSections">Sections to seed and manage in database</param>
+    /// <returns>Service collection for chaining</returns>
+    public static IServiceCollection AddDatabaseConfigurationSeeding(
+        this IServiceCollection services,
+        DbContextOptions<ConfigurationDbContext> dbOptions,
+        IConfiguration? seedConfiguration = null,
+        List<string>? dynamicSections = null)
+    {
+        // Register the DbContext for the seeding service
+        services.AddDbContext<ConfigurationDbContext>(options =>
+        {
+            // Copy configuration from the provided options
+            foreach (var extension in dbOptions.Extensions)
+            {
+                ((IDbContextOptionsBuilderInfrastructure)options).AddOrUpdateExtension(extension);
+            }
+        });
+
+        // Register the seeding options
+        services.AddSingleton(new ConfigurationSeedingOptions
+        {
+            SeedConfiguration = seedConfiguration,
+            DynamicSections = dynamicSections ?? DatabaseConfigurationRegistry.GetRegisteredSections().Select(kvp => kvp.Key).ToList()
+        });
+
+        // Register the hosted service for seeding
+        services.AddHostedService<ConfigurationSeedingHostedService>();
 
         return services;
     }

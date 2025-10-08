@@ -10,12 +10,9 @@ namespace FluentCMS.Configuration;
 /// </summary>
 public class DatabaseConfigurationProvider(
     DbContextOptions<ConfigurationDbContext> dbOptions,
-    TimeSpan reloadInterval,
-    IConfiguration? seedConfiguration = null,
-    List<string>? dynamicSections = null) : ConfigurationProvider, IDisposable
+    TimeSpan reloadInterval) : ConfigurationProvider, IDisposable
 {
     private readonly InMemoryCache _cache = new();
-    private readonly List<string> _dynamicSections = dynamicSections ?? [];
     private Timer? _reloadTimer;
     private bool _disposed;
 
@@ -25,9 +22,6 @@ public class DatabaseConfigurationProvider(
 
         // Ensure database is created
         context.Database.EnsureCreated();
-
-        // Seed dynamic sections from appsettings.json if they don't exist
-        SeedDynamicSections(context);
 
         LoadConfigurationsFromDatabase(context);
 
@@ -40,83 +34,6 @@ public class DatabaseConfigurationProvider(
                 reloadInterval,
                 reloadInterval);
         }
-    }
-
-    private void SeedDynamicSections(ConfigurationDbContext context)
-    {
-        if (seedConfiguration == null || _dynamicSections.Count == 0)
-            return;
-
-        foreach (var section in _dynamicSections)
-        {
-            // Check if section already exists in database
-            if (context.Configurations.Any(c => c.Section == section))
-                continue;
-
-            // Get the section from appsettings.json
-            var configSection = seedConfiguration.GetSection(section);
-            if (!configSection.Exists())
-                continue;
-
-            // Convert section to dictionary
-            var sectionData = GetSectionAsDictionary(configSection);
-            if (sectionData.Count == 0)
-                continue;
-
-            // Serialize to JSON
-            var json = JsonSerializer.Serialize(sectionData);
-
-            // Add to database
-            context.Configurations.Add(new ConfigurationEntity
-            {
-                Section = section,
-                Value = json,
-                Type = "System.Object"
-            });
-        }
-
-        // Save all seeded sections
-        context.SaveChanges();
-    }
-
-    private static Dictionary<string, object?> GetSectionAsDictionary(IConfigurationSection section)
-    {
-        var result = new Dictionary<string, object?>();
-
-        var children = section.GetChildren().ToList();
-
-        if (children.Count == 0)
-        {
-            // Leaf value
-            return [];
-        }
-
-        foreach (var child in children)
-        {
-            var childChildren = child.GetChildren().ToList();
-
-            if (childChildren.Count == 0)
-            {
-                // Simple value
-                result[child.Key] = child.Value;
-            }
-            else
-            {
-                // Nested object or array
-                if (int.TryParse(child.Key, out _))
-                {
-                    // This is an array element - handle specially
-                    result[child.Key] = GetSectionAsDictionary(child);
-                }
-                else
-                {
-                    // Nested object
-                    result[child.Key] = GetSectionAsDictionary(child);
-                }
-            }
-        }
-
-        return result;
     }
 
     private void LoadConfigurationsFromDatabase(ConfigurationDbContext context)
