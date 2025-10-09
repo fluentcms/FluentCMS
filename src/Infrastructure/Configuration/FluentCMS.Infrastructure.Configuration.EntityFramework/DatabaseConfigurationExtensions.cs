@@ -21,7 +21,7 @@ public static class DatabaseConfigurationExtensions
         });
     }
 
-    public static IServiceCollection AddDbConfigurationServices(this IServiceCollection services)
+    public static IServiceCollection AddDbConfiguration(this IServiceCollection services)
     {
         services.AddDatabaseContext<ConfigurationDbContext, IConfigurationDatabaseMarker>();
         services.AddDataSeeder<ConfigurationDataSeeder, IConfigurationDatabaseMarker>();

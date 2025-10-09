@@ -54,7 +54,7 @@ services.AddDatabaseManager(options =>
         });
 });
 
-services.AddDbConfigurationServices();
+services.AddDbConfiguration();
 
 services.AddProviders(options =>
     {
