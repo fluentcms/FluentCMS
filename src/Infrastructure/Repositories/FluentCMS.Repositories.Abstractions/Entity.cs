@@ -1,6 +1,6 @@
 ﻿using FluentCMS.Repositories.Abstractions;
 
-namespace FluentCMS.Repositories.EntityFramework;
+namespace FluentCMS.Repositories;
 
 public class Entity : IEntity
 {
