@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\FluentCMS.Shared\FluentCMS.Shared.csproj" />
+    <ProjectReference Include="..\..\FluentCMS.Infrastructure\FluentCMS.Infrastructure.csproj" />
     <ProjectReference Include="..\FluentCMS.Repositories.Abstractions\FluentCMS.Repositories.Abstractions.csproj" />
   </ItemGroup>
 

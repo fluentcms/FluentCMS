@@ -1,3 +1,4 @@
+using FluentCMS.Infrastructure;
 using FluentCMS.Repositories.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;

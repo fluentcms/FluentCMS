@@ -1,7 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc.Abstractions;
-using Microsoft.AspNetCore.Mvc.Controllers;
-
-namespace FluentCMS.Api.Filters;
+﻿namespace FluentCMS.Api.Filters;
 
 public static class Helper
 {

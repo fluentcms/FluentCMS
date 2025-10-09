@@ -1,4 +1,6 @@
-﻿namespace FluentCMS.Plugins.IdentityManager.Controllers;
+﻿using FluentCMS.Infrastructure;
+
+namespace FluentCMS.Plugins.IdentityManager.Controllers;
 
 [ApiController]
 [Route("api/[controller]/[action]")]

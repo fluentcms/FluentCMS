@@ -1,4 +1,4 @@
-﻿namespace FluentCMS;
+﻿namespace FluentCMS.Infrastructure;
 
 public class ApiError
 {

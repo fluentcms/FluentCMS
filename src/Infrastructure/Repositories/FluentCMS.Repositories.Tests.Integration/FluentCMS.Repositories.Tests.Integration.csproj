@@ -26,7 +26,6 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\FluentCMS.Shared\FluentCMS.Shared.csproj" />
         <ProjectReference Include="..\FluentCMS.Repositories.SQLite\FluentCMS.Repositories.Sqlite.csproj" />
     </ItemGroup>
 

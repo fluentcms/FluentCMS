@@ -1,4 +1,4 @@
-﻿namespace FluentCMS;
+﻿namespace FluentCMS.Infrastructure;
 
 /// <summary>
 /// ApiExecutionContext encapsulates various contextual information 

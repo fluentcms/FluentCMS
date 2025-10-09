@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Exceptions;
+﻿namespace FluentCMS.Infrastructure.Exceptions;
 
 [Serializable]
 public class EnhancedException : Exception

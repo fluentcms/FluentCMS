@@ -1,4 +1,6 @@
-﻿namespace FluentCMS.Plugins.IdentityManager;
+﻿using FluentCMS.Infrastructure;
+
+namespace FluentCMS.Plugins.IdentityManager;
 
 public static class MapperExtensions
 {

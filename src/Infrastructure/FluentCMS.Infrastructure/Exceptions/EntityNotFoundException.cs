@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Exceptions;
+﻿namespace FluentCMS.Infrastructure.Exceptions;
 
 [Serializable]
 public class EntityNotFoundException<T>(string id) : EnhancedException("NotFound", $"Entity {typeof(T).Name} with id {id} not found")

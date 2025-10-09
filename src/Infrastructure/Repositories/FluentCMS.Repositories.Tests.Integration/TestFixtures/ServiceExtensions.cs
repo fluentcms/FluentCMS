@@ -1,3 +1,4 @@
+using FluentCMS.Infrastructure;
 using FluentCMS.Repositories.Abstractions;
 using FluentCMS.Repositories.EntityFramework;
 using FluentCMS.Repositories.EntityFramework.Configuration;

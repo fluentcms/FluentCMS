@@ -12,3 +12,6 @@ global using Swashbuckle.AspNetCore.SwaggerUI;
 global using System.Security.Claims;
 global using System.Text.Json.Serialization;
 global using System.Web;
+global using FluentCMS.Infrastructure;
+global using Microsoft.AspNetCore.Mvc.Abstractions;
+global using Microsoft.AspNetCore.Mvc.Controllers;

@@ -1,4 +1,6 @@
-﻿namespace FluentCMS.Plugins.AuditTrailManager.Services;
+﻿using FluentCMS.Infrastructure;
+
+namespace FluentCMS.Plugins.AuditTrailManager.Services;
 
 public interface IAuditTrailService
 {
