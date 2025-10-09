@@ -1,10 +1,8 @@
-﻿// Namespace for configuration abstractions
-namespace FluentCMS.Configuration.Abstractions;
-
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
+
+namespace FluentCMS.Configuration.Abstractions;
 
 // Static extension methods for adding database-backed configuration options
 // These methods integrate with the ASP.NET Core Options pattern and register sections
@@ -38,7 +36,7 @@ public static class DatabaseConfigurationExtensions
     private static DatabaseConfigurationRegistry GetOrCreateRegistry(IServiceCollection services)
     {
         // Check if registry is already registered in the service collection
-        var registryDescriptor = services.FirstOrDefault(d => 
+        var registryDescriptor = services.FirstOrDefault(d =>
             d.ServiceType == typeof(DatabaseConfigurationRegistry));
 
         if (registryDescriptor?.ImplementationInstance is DatabaseConfigurationRegistry existingRegistry)
@@ -50,14 +48,14 @@ public static class DatabaseConfigurationExtensions
         // Create a new registry instance and register it as singleton
         var newRegistry = new DatabaseConfigurationRegistry();
         services.AddSingleton(newRegistry);
-        
+
         return newRegistry;
     }
 
     // Registers options class for database storage without binding to configuration
     // Use this when you want to manually configure options or use other configuration sources
     // Returns OptionsBuilder to allow fluent chaining of additional configuration (e.g., validation)
-    public static OptionsBuilder<TOptions> AddDatabaseOptions<TOptions>(this IServiceCollection services, string sectionName)
+    public static OptionsBuilder<TOptions> AddDbOptions<TOptions>(this IServiceCollection services, string sectionName)
         where TOptions : class
     {
         // Register the section name and options type with the registry
@@ -71,7 +69,7 @@ public static class DatabaseConfigurationExtensions
     // Registers options class for database storage and binds to IConfiguration section
     // This is the most common usage pattern - combines registration and configuration binding
     // Returns OptionsBuilder to allow fluent chaining of additional configuration
-    public static OptionsBuilder<TOptions> AddDatabaseOptions<TOptions>(this IServiceCollection services, string sectionName, IConfiguration configuration)
+    public static OptionsBuilder<TOptions> AddDbOptions<TOptions>(this IServiceCollection services, string sectionName, IConfiguration configuration)
         where TOptions : class
     {
         ArgumentNullException.ThrowIfNull(configuration);
@@ -89,7 +87,7 @@ public static class DatabaseConfigurationExtensions
     // Use this when you need to customize how configuration binds to the options class
     // configureBinder allows control over binding behavior (e.g., error handling, binding flags)
     // Returns OptionsBuilder to allow fluent chaining of additional configuration
-    public static OptionsBuilder<TOptions> AddDatabaseOptions<TOptions>(this IServiceCollection services, string sectionName, IConfiguration configuration, Action<BinderOptions>? configureBinder)
+    public static OptionsBuilder<TOptions> AddDbOptions<TOptions>(this IServiceCollection services, string sectionName, IConfiguration configuration, Action<BinderOptions>? configureBinder)
         where TOptions : class
     {
         ArgumentNullException.ThrowIfNull(configuration);

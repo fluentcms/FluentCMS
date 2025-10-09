@@ -38,7 +38,7 @@ public class DatabaseConfigurationTests : IDisposable
             .Build();
 
         // Act
-        services.AddDatabaseOptions<EmailSettings>("EmailSettings", configuration);
+        services.AddDbOptions<EmailSettings>("EmailSettings", configuration);
 
         // Assert
         Assert.True(_registry.IsRegistered("EmailSettings"));
@@ -63,7 +63,7 @@ public class DatabaseConfigurationTests : IDisposable
             .Build();
 
         // Act
-        var optionsBuilder = services.AddDatabaseOptions<EmailSettings>("EmailSettings", configuration);
+        var optionsBuilder = services.AddDbOptions<EmailSettings>("EmailSettings", configuration);
 
         // Assert
         Assert.NotNull(optionsBuilder);
@@ -85,7 +85,7 @@ public class DatabaseConfigurationTests : IDisposable
             .Build();
 
         // Act
-        services.AddDatabaseOptions<EmailSettings>("EmailSettings", configuration)
+        services.AddDbOptions<EmailSettings>("EmailSettings", configuration)
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
@@ -105,8 +105,8 @@ public class DatabaseConfigurationTests : IDisposable
         var services = new ServiceCollection();
 
         // Register sections via AddDatabaseOptions
-        services.AddDatabaseOptions<EmailSettings>("EmailSettings");
-        services.AddDatabaseOptions<FeatureFlags>("FeatureFlags");
+        services.AddDbOptions<EmailSettings>("EmailSettings");
+        services.AddDbOptions<FeatureFlags>("FeatureFlags");
 
         var configBuilder = new ConfigurationBuilder();
         configBuilder.AddInMemoryCollection(new Dictionary<string, string?>
@@ -194,9 +194,9 @@ public class DatabaseConfigurationTests : IDisposable
             .Build();
 
         // Act - Simulate multiple libraries registering their options
-        services.AddDatabaseOptions<EmailSettings>("EmailSettings", configuration);
-        services.AddDatabaseOptions<FeatureFlags>("FeatureFlags", configuration);
-        services.AddDatabaseOptions<ApiSettings>("ApiSettings", configuration);
+        services.AddDbOptions<EmailSettings>("EmailSettings", configuration);
+        services.AddDbOptions<FeatureFlags>("FeatureFlags", configuration);
+        services.AddDbOptions<ApiSettings>("ApiSettings", configuration);
 
         // Manually seed the database for testing
         using (var setupContext = new ConfigurationDbContext(_dbOptions))
@@ -278,7 +278,7 @@ public class DatabaseConfigurationTests : IDisposable
             })
             .Build();
 
-        services.AddDatabaseOptions<EmailSettings>("EmailSettings", configuration)
+        services.AddDbOptions<EmailSettings>("EmailSettings", configuration)
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
@@ -305,7 +305,7 @@ public class DatabaseConfigurationTests : IDisposable
             })
             .Build();
 
-        services.AddDatabaseOptions<EmailSettings>("EmailSettings", configuration)
+        services.AddDbOptions<EmailSettings>("EmailSettings", configuration)
             .PostConfigure(settings =>
             {
                 if (string.IsNullOrEmpty(settings.FromName))
@@ -330,7 +330,7 @@ public class DatabaseConfigurationTests : IDisposable
         var services = new ServiceCollection();
 
         // Act - Register without binding
-        services.AddDatabaseOptions<EmailSettings>("EmailSettings");
+        services.AddDbOptions<EmailSettings>("EmailSettings");
 
         // Assert
         Assert.True(_registry.IsRegistered("EmailSettings"));
@@ -349,7 +349,7 @@ public class DatabaseConfigurationTests : IDisposable
             })
             .Build();
 
-        services.AddDatabaseOptions<ApiSettings>("ApiSettings", configuration)
+        services.AddDbOptions<ApiSettings>("ApiSettings", configuration)
             .Validate(settings =>
             {
                 return settings.TimeoutSeconds > 0;
@@ -463,7 +463,7 @@ public static class EmailLibraryExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.AddDatabaseOptions<EmailSettings>("EmailSettings", configuration)
+        services.AddDbOptions<EmailSettings>("EmailSettings", configuration)
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
