@@ -1,5 +1,5 @@
-﻿global using Microsoft.Extensions.Configuration;
-global using FluentCMS.Repositories.Abstractions;
+﻿global using FluentCMS.Repositories.Abstractions;
+global using Microsoft.Extensions.Configuration;
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.Options;
 global using System.Collections.Concurrent;

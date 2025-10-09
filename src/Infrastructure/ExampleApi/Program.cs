@@ -1,7 +1,7 @@
 using FluentCMS.Api;
-using FluentCMS.Infrastructure.Configuration.EntityFramework.Sqlite;
-using FluentCMS.Infrastructure.Configuration.EntityFramework;
 using FluentCMS.EventBus.InMemory;
+using FluentCMS.Infrastructure.Configuration.EntityFramework;
+using FluentCMS.Infrastructure.Configuration.EntityFramework.Sqlite;
 using FluentCMS.Plugins;
 using FluentCMS.Plugins.TodoManager.Repositories;
 using FluentCMS.Providers;

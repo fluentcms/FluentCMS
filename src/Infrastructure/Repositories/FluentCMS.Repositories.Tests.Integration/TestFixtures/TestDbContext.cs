@@ -1,4 +1,3 @@
-using FluentCMS.Repositories.Abstractions;
 using FluentCMS.Repositories.Tests.Integration.TestEntities;
 using Microsoft.EntityFrameworkCore;
 
