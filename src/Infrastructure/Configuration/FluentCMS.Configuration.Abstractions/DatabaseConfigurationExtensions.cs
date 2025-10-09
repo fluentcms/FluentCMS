@@ -9,6 +9,10 @@ namespace FluentCMS.Configuration.Abstractions;
 // for database storage through the DatabaseConfigurationRegistry
 public static class DatabaseConfigurationExtensions
 {
+    // Lock object to ensure thread-safe registry creation
+    // Prevents race conditions when multiple threads access GetOrCreateRegistry simultaneously
+    private static readonly Lock _registryLock = new();
+
     // Private helper method to perform common registration logic
     // Gets or creates a registry instance specific to this IServiceCollection
     // This ensures each service collection has its own isolated registry (no static state)
@@ -32,24 +36,29 @@ public static class DatabaseConfigurationExtensions
 
     // Gets the registry from the service collection or creates and registers a new one
     // This ensures each service collection has exactly one registry instance
-    // Thread-safe: Multiple concurrent calls will safely result in one registry
+    // Thread-safe: Uses lock to prevent race conditions during concurrent access
     private static DatabaseConfigurationRegistry GetOrCreateRegistry(IServiceCollection services)
     {
-        // Check if registry is already registered in the service collection
-        var registryDescriptor = services.FirstOrDefault(d =>
-            d.ServiceType == typeof(DatabaseConfigurationRegistry));
-
-        if (registryDescriptor?.ImplementationInstance is DatabaseConfigurationRegistry existingRegistry)
+        // Use lock to ensure atomic check-and-create operation
+        // This prevents multiple threads from creating duplicate registry instances
+        lock (_registryLock)
         {
-            // Registry already exists, return it
-            return existingRegistry;
+            // Check if registry is already registered in the service collection
+            var registryDescriptor = services.FirstOrDefault(d =>
+                d.ServiceType == typeof(DatabaseConfigurationRegistry));
+
+            if (registryDescriptor?.ImplementationInstance is DatabaseConfigurationRegistry existingRegistry)
+            {
+                // Registry already exists, return it
+                return existingRegistry;
+            }
+
+            // Create a new registry instance and register it as singleton
+            var newRegistry = new DatabaseConfigurationRegistry();
+            services.AddSingleton(newRegistry);
+
+            return newRegistry;
         }
-
-        // Create a new registry instance and register it as singleton
-        var newRegistry = new DatabaseConfigurationRegistry();
-        services.AddSingleton(newRegistry);
-
-        return newRegistry;
     }
 
     // Registers options class for database storage without binding to configuration

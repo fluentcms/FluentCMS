@@ -22,12 +22,16 @@ public class DatabaseConfigurationRegistry
 
         ArgumentNullException.ThrowIfNull(optionsType);
 
+        // Validate the section name for security and compatibility
+        ValidateSectionName(sectionName);
+
         // Validate that the type is suitable for use as an options class
         ValidateOptionsType(optionsType);
 
         // Attempt to add or update the registration
         // If section exists with different type, throw exception
-        var added = _registeredSections.AddOrUpdate(
+        // Return value is intentionally not used as AddOrUpdate handles both add and update cases
+        _registeredSections.AddOrUpdate(
             sectionName,
             optionsType,
             (key, existingType) =>
@@ -41,6 +45,48 @@ public class DatabaseConfigurationRegistry
                     $"Section '{sectionName}' is already registered with type '{existingType.FullName}'. " +
                     $"Cannot register with different type '{optionsType.FullName}'.");
             });
+    }
+
+    // Validates section name for security and compatibility
+    // Ensures section names follow best practices and avoid potential issues
+    private static void ValidateSectionName(string sectionName)
+    {
+        // Check maximum length to prevent potential issues with storage systems
+        const int maxSectionNameLength = 255;
+        if (sectionName.Length > maxSectionNameLength)
+        {
+            throw new ArgumentException(
+                $"Section name '{sectionName}' exceeds maximum length of {maxSectionNameLength} characters.",
+                nameof(sectionName));
+        }
+
+        // Check for invalid characters that could cause issues with configuration systems
+        // Configuration section names should be simple identifiers or colon-separated paths
+        var invalidChars = new[] { '\\', '/', '*', '?', '"', '<', '>', '|', '\0' };
+        if (sectionName.IndexOfAny(invalidChars) >= 0)
+        {
+            throw new ArgumentException(
+                $"Section name '{sectionName}' contains invalid characters. " +
+                $"Avoid characters: \\ / * ? \" < > | and null characters.",
+                nameof(sectionName));
+        }
+
+        // Warn against leading/trailing colons which indicate malformed paths
+        if (sectionName.StartsWith(':') || sectionName.EndsWith(':'))
+        {
+            throw new ArgumentException(
+                $"Section name '{sectionName}' cannot start or end with a colon. " +
+                $"Use colons only to separate nested section paths (e.g., 'Parent:Child').",
+                nameof(sectionName));
+        }
+
+        // Check for consecutive colons which indicate empty section names
+        if (sectionName.Contains("::"))
+        {
+            throw new ArgumentException(
+                $"Section name '{sectionName}' contains consecutive colons, which creates empty section segments.",
+                nameof(sectionName));
+        }
     }
 
     // Validates that a type is suitable for use as an options class
@@ -91,13 +137,19 @@ public class DatabaseConfigurationRegistry
         }
     }
 
-    // Retrieves read-only dictionary of all registered sections
+    // Retrieves a defensive copy of all registered sections as a read-only dictionary
+    // Returns a snapshot of current registrations to prevent external modification
+    // Thread-safe: Returns a point-in-time snapshot of the registry
     public IReadOnlyDictionary<string, Type> GetRegisteredSections()
     {
-        return _registeredSections;
+        // Create a defensive copy to prevent callers from casting back to ConcurrentDictionary
+        // This ensures encapsulation and prevents external modification of internal state
+        return new Dictionary<string, Type>(_registeredSections, StringComparer.OrdinalIgnoreCase);
     }
 
     // Checks if a section is registered
+    // Returns false if section name is null, empty, or whitespace
+    // Thread-safe: Safe to call concurrently with RegisterSection
     public bool IsRegistered(string sectionName)
     {
         if (string.IsNullOrWhiteSpace(sectionName))
@@ -106,9 +158,16 @@ public class DatabaseConfigurationRegistry
         return _registeredSections.ContainsKey(sectionName);
     }
 
-    // Clears all registered sections (useful for testing or reconfiguration)
+    // Clears all registered sections
+    // WARNING: This method is intended for testing scenarios only
+    // In production, registries should not be cleared as it may cause configuration inconsistencies
+    // Thread-safe: Safe to call, but may cause enumeration issues if called during GetRegisteredSections
+    [System.ComponentModel.EditorBrowsable(System.ComponentModel.EditorBrowsableState.Never)]
     public void Clear()
     {
+        // Clear all registrations
+        // Note: If another thread is enumerating via GetRegisteredSections(), it will work with a snapshot
+        // so the Clear operation won't affect it (defensive copy protects against this)
         _registeredSections.Clear();
     }
 }
