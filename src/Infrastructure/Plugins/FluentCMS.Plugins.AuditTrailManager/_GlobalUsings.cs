@@ -1,6 +1,7 @@
 ﻿global using AutoMapper;
-global using FluentCMS.EventBus.Abstractions;
 global using FluentCMS.Infrastructure;
+global using FluentCMS.Infrastructure.EventBus;
+global using FluentCMS.Infrastructure.EventBus.Abstractions;
 global using FluentCMS.Infrastructure.Repositories;
 global using FluentCMS.Infrastructure.Repositories.Abstractions;
 global using FluentCMS.Infrastructure.Repositories.EntityFramework;

@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.EventBus.InMemory;
+﻿namespace FluentCMS.Infrastructure.EventBus.InMemory;
 
 public class EventPublisherAggregatedException<TEvent>(IEnumerable<Exception> innerExceptions) :
     AggregateException($"One or more {typeof(TEvent).Name} event handlers threw an exception.", innerExceptions)

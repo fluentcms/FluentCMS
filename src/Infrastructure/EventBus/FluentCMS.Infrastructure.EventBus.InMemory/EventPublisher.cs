@@ -1,6 +1,4 @@
-using Microsoft.AspNetCore.Http;
-
-namespace FluentCMS.EventBus.InMemory;
+namespace FluentCMS.Infrastructure.EventBus.InMemory;
 
 /// <summary>
 /// In-memory event publisher implementation

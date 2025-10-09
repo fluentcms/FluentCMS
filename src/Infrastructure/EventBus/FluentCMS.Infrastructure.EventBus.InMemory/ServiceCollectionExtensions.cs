@@ -1,4 +1,4 @@
-namespace FluentCMS.EventBus.InMemory;
+namespace FluentCMS.Infrastructure.EventBus.InMemory;
 
 public static class ServiceCollectionExtensions
 {

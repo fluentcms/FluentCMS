@@ -1,4 +1,4 @@
-namespace FluentCMS.EventBus.InMemory;
+namespace FluentCMS.Infrastructure.EventBus.InMemory;
 
 /// <summary>
 /// Options for configuring the event publisher.

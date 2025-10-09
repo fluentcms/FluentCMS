@@ -1,6 +1,4 @@
-using Microsoft.Extensions.DependencyInjection;
-
-namespace FluentCMS.EventBus.Abstractions;
+namespace FluentCMS.Infrastructure.EventBus;
 
 public static class ServiceCollectionExtensions
 {

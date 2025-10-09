@@ -1,4 +1,4 @@
-﻿global using FluentCMS.EventBus.Abstractions;
+﻿global using FluentCMS.Infrastructure.EventBus.Abstractions;
 global using FluentCMS.Infrastructure.Repositories.Abstractions;
 global using FluentCMS.Infrastructure.Repositories.EntityFramework.Interceptors;
 global using Microsoft.EntityFrameworkCore;

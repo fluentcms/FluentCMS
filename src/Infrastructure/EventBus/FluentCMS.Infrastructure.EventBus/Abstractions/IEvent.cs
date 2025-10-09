@@ -1,4 +1,4 @@
-namespace FluentCMS.EventBus.Abstractions;
+namespace FluentCMS.Infrastructure.EventBus.Abstractions;
 
 /// <summary>
 /// Marker interface for all domain events

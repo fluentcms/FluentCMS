@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.EventBus.Abstractions;
+﻿namespace FluentCMS.Infrastructure.EventBus;
 
 /// <summary>
 /// Base class for domain events with common properties
