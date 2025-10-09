@@ -13,6 +13,8 @@ public interface IDataSeederService
 /// </summary>
 internal class DataSeederService(IServiceProvider serviceProvider, DatabaseManagerOptions options, ILogger<DataSeederService> logger) : IDataSeederService
 {
+    public static readonly string _defaultMarkerTypeName = typeof(IDefaultDatabaseArea).Name;
+
     public async Task Initialize(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -42,10 +44,10 @@ internal class DataSeederService(IServiceProvider serviceProvider, DatabaseManag
 
         // Adding seeders for default configuration if conditions are valid
         var defaultConfig = options.GetDefaultConfiguration();
-        if (await IsConditionsValid(defaultConfig.SeedingOptions, "Default", cancellationToken))
+        if (await IsConditionsValid(defaultConfig.SeedingOptions, _defaultMarkerTypeName, cancellationToken))
         {
             // Some seeder might not be registered with a marker, so also include default ones
-            var defaultSeeders = serviceProvider.GetKeyedServices<IDataSeeder>("Default");
+            var defaultSeeders = serviceProvider.GetKeyedServices<IDataSeeder>(typeof(IDefaultDatabaseArea));
             var validSeeders = defaultSeeders.Where(s => !allSeeders.Any(existing => existing.Seeder.GetType() == s.GetType()));
             allSeeders.AddRange(validSeeders.Select(s => (s, defaultConfig)));
         }
@@ -65,7 +67,7 @@ internal class DataSeederService(IServiceProvider serviceProvider, DatabaseManag
         foreach (var (seeder, configuration) in sortedSeeders)
         {
             var seederName = seeder.GetType().Name;
-            var markerName = configuration.MarkerType?.Name ?? "Default";
+            var markerName = configuration.MarkerType?.Name ?? _defaultMarkerTypeName;
             try
             {
                 logger.LogDebug("Checking if data exists for {SeederName} in {markerName} (Priority: {Priority})", seederName, markerName, seeder.Priority);

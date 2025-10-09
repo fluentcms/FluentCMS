@@ -76,39 +76,6 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Registers a DbContext with the appropriate database configuration
-    /// The configuration is determined by checking if the DbContext implements any marker interfaces
-    /// Falls back to the default configuration if no marker is found
-    /// </summary>
-    /// <typeparam name="TContext">The DbContext type to register</typeparam>
-    /// <param name="services">The service collection</param>
-    /// <returns>The service collection for chaining</returns>
-    /// <exception cref="InvalidOperationException">Thrown when DatabaseManager hasn't been configured</exception>
-    public static IServiceCollection AddDatabaseContext<TContext>(this IServiceCollection services)
-        where TContext : DbContext
-    {
-        ArgumentNullException.ThrowIfNull(services);
-
-        CheckStaticOptions();
-
-        // Get the default configuration for this DbContext type
-        var config = _staticOptions!.GetDefaultConfiguration();
-
-        // Register the DbContext with the default configuration
-        services.AddDbContext<TContext>(
-            (serviceProvider, builder) =>
-            {
-                var auditInterceptor = serviceProvider.GetRequiredService<AuditableEntitySaveChangesInterceptor>();
-                var domainEventInterceptor = serviceProvider.GetRequiredService<DomainEventSaveChangesInterceptor>();
-                builder.AddInterceptors(auditInterceptor, domainEventInterceptor);
-                // Apply the database provider configuration (e.g., UseSqlite, UseSqlServer)
-                config.Apply(builder);
-            });
-
-        return services;
-    }
-
-    /// <summary>
     /// Enables and configures data seeding for the database
     /// </summary>
     /// <param name="builder">The database configuration builder</param>
@@ -163,7 +130,7 @@ public static class ServiceCollectionExtensions
 
         // Register the seeder with the marker type as the key
         services.AddKeyedScoped<IDataSeeder, TSeeder>(typeof(TMarker));
-        // Also register the seeder with the "Default" key to allow resolution in both contexts.
+
         // This is intentional to support scenarios where the seeder may be resolved by either key.
         services.AddDataSeeder<TSeeder>();
 
@@ -183,8 +150,8 @@ public static class ServiceCollectionExtensions
 
         CheckStaticOptions();
 
-        // Register the seeder with "Default" as the key
-        services.AddKeyedScoped<IDataSeeder, TSeeder>("Default");
+        // Register the seeder with IDefaultDatabaseArea as the key
+        services.AddKeyedScoped<IDataSeeder, TSeeder>(typeof(IDefaultDatabaseArea));
 
         return services;
     }
@@ -200,10 +167,8 @@ public static class ServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        CheckStaticOptions();
-
-        // Register the validator with "Default" as the key
-        services.AddKeyedScoped<ISchemaValidator, TValidator>("Default");
+        // Register the validator with IDefaultDatabaseArea as the key
+        services.AddKeyedScoped<ISchemaValidator, TValidator>(typeof(IDefaultDatabaseArea));
 
         return services;
     }
@@ -226,10 +191,7 @@ public static class ServiceCollectionExtensions
         // Register the validator with the marker type as the key
         services.AddKeyedScoped<ISchemaValidator, TValidator>(typeof(TMarker));
 
-        // Also register the validator as the "Default" keyed instance.
-        // This allows the same validator to be resolved both by marker type and as the default,
-        // providing flexibility for consumers who may not specify a marker.
-        // See CodeQL nitpick: registering the same validator twice is intentional for this pattern.
+        // Also register the validator as the IDefaultDatabaseArea keyed instance.
         services.AddSchemaValidator<TValidator>();
 
         return services;

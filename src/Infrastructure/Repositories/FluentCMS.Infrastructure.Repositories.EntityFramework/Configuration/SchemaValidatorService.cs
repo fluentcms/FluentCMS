@@ -13,6 +13,9 @@ internal interface ISchemaValidatorService
 /// </summary>
 internal class SchemaValidatorService(IServiceProvider serviceProvider, DatabaseManagerOptions options, ILogger<SchemaValidatorService> logger) : ISchemaValidatorService
 {
+
+    public static readonly string _defaultMarkerTypeName = typeof(IDefaultDatabaseArea).Name;
+
     public async Task Initialize(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -41,10 +44,10 @@ internal class SchemaValidatorService(IServiceProvider serviceProvider, Database
 
         // Adding validators for default configuration if conditions are valid
         var defaultConfig = options.GetDefaultConfiguration();
-        if (await IsConditionsValid(defaultConfig.SchemaValidationOptions, "Default", cancellationToken))
+        if (await IsConditionsValid(defaultConfig.SchemaValidationOptions, _defaultMarkerTypeName, cancellationToken))
         {
             // Some validator might not be registered with a marker, so also include default ones
-            var defaultValidators = serviceProvider.GetKeyedServices<ISchemaValidator>("Default");
+            var defaultValidators = serviceProvider.GetKeyedServices<ISchemaValidator>(typeof(IDefaultDatabaseArea));
             var validValidators = defaultValidators.Where(s => !allValidators.Any(existing => existing.Validator.GetType() == s.GetType()));
             allValidators.AddRange(validValidators.Select(s => (s, defaultConfig)));
         }
@@ -64,7 +67,7 @@ internal class SchemaValidatorService(IServiceProvider serviceProvider, Database
         foreach (var (validator, configuration) in sortedValidators)
         {
             var validatorName = validator.GetType().Name;
-            var markerName = configuration.MarkerType?.Name ?? "Default";
+            var markerName = configuration.MarkerType?.Name ?? _defaultMarkerTypeName;
             try
             {
                 logger.LogDebug("Checking if schema is valid for {ValidatorName} in {markerName} (Priority: {Priority})", validatorName, markerName, validator.Priority);
