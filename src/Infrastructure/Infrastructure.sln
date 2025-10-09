@@ -2,8 +2,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS", "FluentCMS\FluentCMS.csproj", "{19DE3B14-CFC0-4F49-B3F8-6AC78960B27D}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Shared", "FluentCMS.Shared\FluentCMS.Shared.csproj", "{BA02E82A-673E-1429-C5F8-EDB505177C20}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Api", "Api", "{D82C56D6-B2CD-F611-9E31-04638F7EC30E}"
@@ -82,16 +80,14 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Infrastructure.Co
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Infrastructure.Configuration", "Configuration\FluentCMS.Infrastructure.Configuration\FluentCMS.Infrastructure.Configuration.csproj", "{6DDC612A-C1F2-4C9C-802C-D28FAC47D0C6}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExampleApi", "ExampleApi\ExampleApi.csproj", "{8E5334B2-5C25-54EF-8CDF-86AE33F8E6C9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{19DE3B14-CFC0-4F49-B3F8-6AC78960B27D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{19DE3B14-CFC0-4F49-B3F8-6AC78960B27D}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{19DE3B14-CFC0-4F49-B3F8-6AC78960B27D}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{19DE3B14-CFC0-4F49-B3F8-6AC78960B27D}.Release|Any CPU.Build.0 = Release|Any CPU
 		{BA02E82A-673E-1429-C5F8-EDB505177C20}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{BA02E82A-673E-1429-C5F8-EDB505177C20}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BA02E82A-673E-1429-C5F8-EDB505177C20}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -208,6 +204,10 @@ Global
 		{6DDC612A-C1F2-4C9C-802C-D28FAC47D0C6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6DDC612A-C1F2-4C9C-802C-D28FAC47D0C6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6DDC612A-C1F2-4C9C-802C-D28FAC47D0C6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8E5334B2-5C25-54EF-8CDF-86AE33F8E6C9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8E5334B2-5C25-54EF-8CDF-86AE33F8E6C9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8E5334B2-5C25-54EF-8CDF-86AE33F8E6C9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8E5334B2-5C25-54EF-8CDF-86AE33F8E6C9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
