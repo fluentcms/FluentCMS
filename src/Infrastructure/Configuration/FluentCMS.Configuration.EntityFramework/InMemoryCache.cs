@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 
-namespace FluentCMS.Configuration;
+namespace FluentCMS.Configuration.EntityFramework;
 
 /// <summary>
 /// Simple in-memory cache for configuration values

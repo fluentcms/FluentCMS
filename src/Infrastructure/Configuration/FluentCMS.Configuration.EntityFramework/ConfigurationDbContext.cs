@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
-namespace FluentCMS.Configuration;
+namespace FluentCMS.Configuration.EntityFramework;
 
 /// <summary>
 /// DbContext for storing configuration data
@@ -19,7 +19,7 @@ public class ConfigurationDbContext(DbContextOptions<ConfigurationDbContext> opt
 
             entity.Property(e => e.Section)
                 .IsRequired()
-                .HasMaxLength(450);
+                .HasMaxLength(1000);
 
             entity.HasIndex(e => e.Section)
                 .IsUnique();
@@ -29,12 +29,12 @@ public class ConfigurationDbContext(DbContextOptions<ConfigurationDbContext> opt
 
             entity.Property(e => e.Type)
                 .IsRequired()
-                .HasMaxLength(500);
+                .HasMaxLength(1000);
 
             entity.Property(e => e.CreatedAt)
                 .IsRequired();
 
-            entity.Property(e => e.UpdatedAt)
+            entity.Property(e => e.Version)
                 .IsRequired();
         });
     }

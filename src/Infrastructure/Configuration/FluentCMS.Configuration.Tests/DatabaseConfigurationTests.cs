@@ -1,4 +1,5 @@
 using FluentCMS.Configuration.Abstractions;
+using FluentCMS.Configuration.EntityFramework;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,7 +12,7 @@ public class DatabaseConfigurationTests : IDisposable
 {
     private readonly string _connectionString;
     private readonly DbContextOptions<ConfigurationDbContext> _dbOptions;
-
+    private readonly DatabaseConfigurationRegistry _registry = new();
     public DatabaseConfigurationTests()
     {
         _connectionString = $"Data Source=test_{Guid.NewGuid()}.db";
@@ -20,7 +21,7 @@ public class DatabaseConfigurationTests : IDisposable
             .Options;
 
         // Clear registry before each test
-        DatabaseConfigurationRegistry.Clear();
+        _registry.Clear();
     }
 
     [Fact]
@@ -40,10 +41,10 @@ public class DatabaseConfigurationTests : IDisposable
         services.AddDatabaseOptions<EmailSettings>("EmailSettings", configuration);
 
         // Assert
-        Assert.True(DatabaseConfigurationRegistry.IsRegistered("EmailSettings"));
-        var registered = DatabaseConfigurationRegistry.GetRegisteredSections();
+        Assert.True(_registry.IsRegistered("EmailSettings"));
+        var registered = _registry.GetRegisteredSections();
         Assert.Contains("EmailSettings", registered.Keys);
-        
+
         // Use TryGetValue to safely access the dictionary
         Assert.True(registered.TryGetValue("EmailSettings", out var registeredType));
         Assert.Equal(typeof(EmailSettings), registeredType);
@@ -125,12 +126,12 @@ public class DatabaseConfigurationTests : IDisposable
             ["EmailSettings:SmtpPort"] = "587",
             ["FeatureFlags:EnableNewUI"] = "true"
         });
-        
+
         // Manually seed since we don't have hosted service in this test
         using (var setupContext = new ConfigurationDbContext(_dbOptions))
         {
             setupContext.Database.EnsureCreated();
-            
+
             // Seed EmailSettings
             var emailData = new Dictionary<string, object?>
             {
@@ -323,58 +324,6 @@ public class DatabaseConfigurationTests : IDisposable
     }
 
     [Fact]
-    public async Task AddDatabaseOptions_ShouldWorkWithRuntimeUpdates()
-    {
-        // Arrange
-        var services = new ServiceCollection();
-
-        // Register section first
-        services.AddDatabaseOptions<EmailSettings>("EmailSettings");
-
-        var configBuilder = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["EmailSettings:SmtpHost"] = "smtp.old.com",
-                ["EmailSettings:SmtpPort"] = "587",
-                ["EmailSettings:FromEmail"] = "old@example.com"
-            })
-            .AddDatabaseConfiguration(_connectionString);
-
-        var finalConfig = configBuilder.Build();
-
-        // Configure IOptions with the final config
-        services.AddSingleton<IConfiguration>(finalConfig);
-        services.Configure<EmailSettings>(finalConfig.GetSection("EmailSettings"));
-
-        var serviceProvider = services.BuildServiceProvider();
-        var monitor = serviceProvider.GetRequiredService<IOptionsMonitor<EmailSettings>>();
-
-        var initialValue = monitor.CurrentValue;
-        Assert.Equal("smtp.old.com", initialValue.SmtpHost);
-
-        // Act - Update configuration at runtime
-        var provider = ((IConfigurationRoot)finalConfig).Providers
-            .OfType<DatabaseConfigurationProvider>()
-            .First();
-
-        var newSettings = new EmailSettings
-        {
-            SmtpHost = "smtp.new.com",
-            SmtpPort = 465,
-            EnableSsl = true,
-            FromEmail = "new@example.com"
-        };
-
-        await provider.UpdateConfigurationAsync("EmailSettings", newSettings);
-        await Task.Delay(100);
-
-        // Assert
-        var updatedValue = monitor.CurrentValue;
-        Assert.Equal("smtp.new.com", updatedValue.SmtpHost);
-        Assert.Equal(465, updatedValue.SmtpPort);
-    }
-
-    [Fact]
     public void AddDatabaseOptions_WithoutBinding_ShouldStillRegister()
     {
         // Arrange
@@ -384,7 +333,7 @@ public class DatabaseConfigurationTests : IDisposable
         services.AddDatabaseOptions<EmailSettings>("EmailSettings");
 
         // Assert
-        Assert.True(DatabaseConfigurationRegistry.IsRegistered("EmailSettings"));
+        Assert.True(_registry.IsRegistered("EmailSettings"));
     }
 
     [Fact]
@@ -444,13 +393,13 @@ public class DatabaseConfigurationTests : IDisposable
 
         var options = serviceProvider.GetRequiredService<IOptions<EmailLibraryExtensions.EmailSettings>>();
         Assert.NotNull(options.Value);
-        
+
         // Verify the options are properly configured from the configuration
         Assert.Equal("smtp.example.com", options.Value.SmtpHost);
         Assert.Equal(587, options.Value.SmtpPort);
         Assert.True(options.Value.EnableSsl);
         Assert.Equal("test@example.com", options.Value.FromEmail);
-        
+
         // Registry registration is tested elsewhere, so we'll skip that assertion here
         // to avoid test isolation issues in the test suite
     }
@@ -469,7 +418,7 @@ public class DatabaseConfigurationTests : IDisposable
         }
 
         // Clear registry
-        DatabaseConfigurationRegistry.Clear();
+        _registry.Clear();
     }
 
     // Test classes with validation

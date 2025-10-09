@@ -1,5 +1,5 @@
-﻿using FluentCMS.Repositories.EntityFramework.Configuration;
-using Microsoft.Extensions.DependencyInjection;
+﻿using FluentCMS.Configuration.Abstractions;
+using FluentCMS.Repositories.EntityFramework.Configuration;
 
 namespace FluentCMS.Plugins.IdentityManager;
 
@@ -30,7 +30,7 @@ public class IdentityManagerPlugin : IPlugin
             .AddDefaultTokenProviders();
 
         // Configure Identity options from appsettings.json
-        services.AddOptions<JwtOptions>("JwtOptions");
+        services.AddDatabaseOptions<JwtOptions>("JwtOptions");
 
         services.AddAuthentication(options =>
         {

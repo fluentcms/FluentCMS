@@ -32,7 +32,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\FluentCMS.Configuration\FluentCMS.Configuration.csproj" />
+    <ProjectReference Include="..\FluentCMS.Configuration.EntityFramework.Sqlite\FluentCMS.Configuration.EntityFramework.Sqlite.csproj" />
   </ItemGroup>
 
   <ItemGroup>

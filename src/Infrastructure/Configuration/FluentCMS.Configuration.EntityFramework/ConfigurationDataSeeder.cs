@@ -1,64 +1,44 @@
+﻿using FluentCMS.Configuration.Abstractions;
+using FluentCMS.Repositories.DataInitialization.EntityFramework;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
-namespace FluentCMS.Configuration;
+namespace FluentCMS.Configuration.EntityFramework;
 
-/// <summary>
-/// Hosted service responsible for seeding configuration data from appsettings.json to database
-/// </summary>
-public class ConfigurationSeedingHostedService(IServiceProvider serviceProvider, ILogger<ConfigurationSeedingHostedService> logger, ConfigurationSeedingOptions options) : IHostedService
+internal class ConfigurationDataSeeder(ConfigurationDbContext dbContext, ILogger<ConfigurationDataSeeder> logger, DatabaseConfigurationRegistry configurationRegistry, IConfiguration configuration) : BaseDataSeeder<ConfigurationDbContext>(dbContext, logger)
 {
-    public async Task StartAsync(CancellationToken cancellationToken)
+    // The configuration data seeder has the lowest priority to ensure it runs last
+    public override int Priority => 0;
+
+    public override Task<bool> ShouldSeed(CancellationToken cancellationToken = default)
     {
-        if (options.SeedConfiguration == null || options.DynamicSections.Count == 0)
-        {
-            logger.LogInformation("Configuration seeding skipped: No seed configuration or dynamic sections provided");
-            return;
-        }
-
-        try
-        {
-            using var scope = serviceProvider.CreateScope();
-            using var context = scope.ServiceProvider.GetRequiredService<ConfigurationDbContext>();
-
-            // Ensure database is created
-            await context.Database.EnsureCreatedAsync(cancellationToken);
-
-            await SeedDynamicSections(context, cancellationToken);
-
-            logger.LogInformation("Configuration seeding completed successfully");
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error occurred during configuration seeding");
-            // Don't throw here to avoid crashing the application startup
-        }
+        // We should check for all existing records with registered sections
+        // We should always attempt to seed
+        return Task.FromResult(true);
     }
 
-    public Task StopAsync(CancellationToken cancellationToken)
+    public override async Task SeedData(CancellationToken cancellationToken = default)
     {
-        return Task.CompletedTask;
+        await SeedDynamicSections(cancellationToken);
     }
 
-    private async Task SeedDynamicSections(ConfigurationDbContext context, CancellationToken cancellationToken)
+    private async Task SeedDynamicSections(CancellationToken cancellationToken)
     {
         var sectionsSeeded = 0;
 
-        foreach (var section in options.DynamicSections)
+        foreach (var (section, type) in configurationRegistry.GetRegisteredSections())
         {
             // Check if section already exists in database
-            if (await context.Configurations.AnyAsync(c => c.Section == section, cancellationToken))
+            if (await DbContext.Configurations.AnyAsync(c => c.Section == section, cancellationToken))
             {
                 logger.LogDebug("Configuration section '{Section}' already exists, skipping", section);
                 continue;
             }
 
             // Get the section from appsettings.json
-            var configSection = options.SeedConfiguration!.GetSection(section);
+            var configSection = configuration.GetSection(section);
             if (!configSection.Exists())
             {
                 logger.LogWarning("Configuration section '{Section}' not found in seed configuration", section);
@@ -77,11 +57,11 @@ public class ConfigurationSeedingHostedService(IServiceProvider serviceProvider,
             var json = JsonSerializer.Serialize(sectionData);
 
             // Add to database
-            context.Configurations.Add(new ConfigurationEntity
+            DbContext.Configurations.Add(new ConfigurationEntity
             {
                 Section = section,
                 Value = json,
-                Type = "System.Object"
+                Type = type.FullName!
             });
 
             sectionsSeeded++;
@@ -91,7 +71,7 @@ public class ConfigurationSeedingHostedService(IServiceProvider serviceProvider,
         if (sectionsSeeded > 0)
         {
             // Save all seeded sections
-            await context.SaveChangesAsync(cancellationToken);
+            await DbContext.SaveChangesAsync(cancellationToken);
             logger.LogInformation("Seeded {Count} configuration sections to database", sectionsSeeded);
         }
         else
@@ -139,20 +119,4 @@ public class ConfigurationSeedingHostedService(IServiceProvider serviceProvider,
 
         return result;
     }
-}
-
-/// <summary>
-/// Options for configuration seeding hosted service
-/// </summary>
-public class ConfigurationSeedingOptions
-{
-    /// <summary>
-    /// Configuration source to seed from (typically appsettings.json)
-    /// </summary>
-    public IConfiguration? SeedConfiguration { get; set; }
-
-    /// <summary>
-    /// List of configuration sections to seed to database
-    /// </summary>
-    public List<string> DynamicSections { get; set; } = [];
 }

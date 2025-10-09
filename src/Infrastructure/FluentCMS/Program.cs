@@ -1,4 +1,6 @@
 using FluentCMS.Api;
+using FluentCMS.Configuration.EntityFramework;
+using FluentCMS.Configuration.EntityFramework.Sqlite;
 using FluentCMS.EventBus.InMemory;
 using FluentCMS.Plugins;
 using FluentCMS.Plugins.TodoManager.Repositories;
@@ -21,17 +23,20 @@ Log.Logger = new LoggerConfiguration()
     .WriteTo.File("logs/myapp-.log", rollingInterval: RollingInterval.Day)
     .CreateLogger();
 
-var builder = WebApplication.CreateBuilder(args);
-builder.Host.UseSerilog();
-
 var loggerFactory = new SerilogLoggerFactory(Log.Logger);
+
+// Now create the web application builder
+var builder = WebApplication.CreateBuilder(args);
+builder.Configuration.AddSqliteConfiguration("DefaultConnection", TimeSpan.FromMinutes(5));
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ??
     throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
+builder.Host.UseSerilog();
+
 var services = builder.Services;
 
-builder.Services.AddDatabaseManager(options =>
+services.AddDatabaseManager(options =>
 {
     // Default database for most libraries
     options.Default()
@@ -61,6 +66,8 @@ builder.Services.AddDatabaseManager(options =>
             validationOptions.Conditions.Add(new EnvironmentCondition(builder.Environment, e => e.IsDevelopment()));
         });
 });
+
+services.AddDbConfigurationServices();
 
 services.AddProviders(options =>
     {
