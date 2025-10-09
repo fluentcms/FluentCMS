@@ -1,7 +1,4 @@
-﻿using FluentCMS.Providers.Abstractions;
-using System.Collections.Concurrent;
-
-namespace FluentCMS.Providers;
+﻿namespace FluentCMS.Providers;
 
 internal sealed class ProviderModuleCatalogCache
 {

@@ -1,8 +1,4 @@
-﻿using FluentCMS.Providers.Repositories.Configuration;
-using FluentCMS.Repositories.DataInitialization.EntityFramework;
-using Microsoft.Extensions.Logging;
-
-namespace FluentCMS.Providers.Repositories.EntityFramework;
+﻿namespace FluentCMS.Providers.Repositories.EntityFramework;
 
 public class ProviderDataSeeder(IProviderManager providerManager, ConfigurationReadOnlyProviderRepository readOnlyProviderRepository, ProviderDbContext dbContext, ILogger<ProviderDataSeeder> logger) : BaseDataSeeder<ProviderDbContext>(dbContext, logger)
 {

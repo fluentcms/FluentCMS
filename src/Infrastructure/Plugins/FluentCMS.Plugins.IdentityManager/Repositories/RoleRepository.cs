@@ -1,6 +1,4 @@
-﻿using FluentCMS.Repositories.EntityFramework;
-
-namespace FluentCMS.Plugins.IdentityManager.Repositories;
+﻿namespace FluentCMS.Plugins.IdentityManager.Repositories;
 
 public interface IRoleRepository : IRepository<Role>
 {

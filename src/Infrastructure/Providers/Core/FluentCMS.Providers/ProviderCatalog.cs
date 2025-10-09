@@ -1,6 +1,4 @@
-﻿using FluentCMS.Providers.Abstractions;
-
-namespace FluentCMS.Providers;
+﻿namespace FluentCMS.Providers;
 
 public class ProviderCatalog(IProviderModule module, string providerName, bool active, object? options = null)
 {

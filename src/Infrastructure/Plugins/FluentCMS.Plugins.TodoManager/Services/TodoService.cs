@@ -1,7 +1,4 @@
-﻿using FluentCMS.Plugins.TodoManager.Models;
-using FluentCMS.Plugins.TodoManager.Repositories;
-
-namespace FluentCMS.Plugins.TodoManager.Services;
+﻿namespace FluentCMS.Plugins.TodoManager.Services;
 
 public interface ITodoService
 {

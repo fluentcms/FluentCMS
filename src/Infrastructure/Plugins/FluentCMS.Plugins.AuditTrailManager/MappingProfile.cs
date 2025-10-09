@@ -1,6 +1,4 @@
-﻿using FluentCMS.Infrastructure;
-
-namespace FluentCMS.Plugins.AuditTrailManager;
+﻿namespace FluentCMS.Plugins.AuditTrailManager;
 
 public class MappingProfile : Profile
 {

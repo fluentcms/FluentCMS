@@ -1,7 +1,4 @@
-﻿using FluentCMS.Plugins.TodoManager.Models;
-using Microsoft.EntityFrameworkCore;
-
-namespace FluentCMS.Plugins.TodoManager.Repositories;
+﻿namespace FluentCMS.Plugins.TodoManager.Repositories;
 
 internal class TodoDbContext(DbContextOptions<TodoDbContext> options) : DbContext(options), ITodoDatabaseMarker
 {

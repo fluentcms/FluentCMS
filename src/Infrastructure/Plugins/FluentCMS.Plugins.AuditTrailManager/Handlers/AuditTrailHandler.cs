@@ -1,4 +1,6 @@
 using FluentCMS.EventBus.Abstractions;
+using FluentCMS.Infrastructure.Repositories;
+using FluentCMS.Infrastructure.Repositories.Abstractions;
 
 namespace FluentCMS.Plugins.AuditTrailManager.Handlers;
 

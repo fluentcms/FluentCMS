@@ -1,4 +1,5 @@
-﻿global using FluentCMS.Repositories.Abstractions;
+﻿global using FluentCMS.Infrastructure.Repositories;
+global using FluentCMS.Infrastructure.Repositories.Abstractions;
 global using Microsoft.Extensions.Configuration;
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.Options;

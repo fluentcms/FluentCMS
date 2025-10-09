@@ -1,8 +1,4 @@
-﻿using FluentCMS.Providers.Abstractions;
-using FluentCMS.Providers.Repositories.Abstractions;
-using System.Text.Json;
-
-namespace FluentCMS.Providers;
+﻿namespace FluentCMS.Providers;
 
 public interface IProviderManager
 {

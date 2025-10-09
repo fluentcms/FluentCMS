@@ -1,9 +1,4 @@
-﻿using FluentCMS.Providers.Repositories.Abstractions;
-using FluentCMS.Providers.Repositories.Configuration;
-using FluentCMS.Repositories.EntityFramework.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-
-namespace FluentCMS.Providers.Repositories.EntityFramework;
+﻿namespace FluentCMS.Providers.Repositories.EntityFramework;
 
 public static class ProviderFeatureBuilderExtensions
 {

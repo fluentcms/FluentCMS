@@ -1,6 +1,4 @@
-using FluentCMS.Infrastructure;
-
-namespace FluentCMS.Repositories;
+namespace FluentCMS.Plugins.AuditTrailManager;
 
 public class AuditTrail
 {

@@ -1,8 +1,4 @@
-﻿using FluentCMS.Repositories.Abstractions;
-using FluentCMS.Repositories.EntityFramework;
-using System.Linq.Expressions;
-
-namespace FluentCMS.Providers.Repositories.Configuration;
+﻿namespace FluentCMS.Providers.Repositories.Configuration;
 
 public class InMemoryQuerySpecification<T>(IEnumerable<T> items) : IQuerySpecification<T>
     where T : class

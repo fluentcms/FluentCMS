@@ -15,7 +15,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Configuration\FluentCMS.Infrastructure.Configuration\FluentCMS.Infrastructure.Configuration.csproj" />
     <ProjectReference Include="..\..\FluentCMS.Infrastructure\FluentCMS.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\Repositories\FluentCMS.Repositories.EntityFramework.Configuration\FluentCMS.Repositories.EntityFramework.Configuration.csproj" />
+    <ProjectReference Include="..\..\Repositories\FluentCMS.Infrastructure.Repositories.EntityFramework\FluentCMS.Infrastructure.Repositories.EntityFramework.csproj" />
     <ProjectReference Include="..\Core\FluentCMS.Plugins.Abstractions\FluentCMS.Plugins.Abstractions.csproj" />
   </ItemGroup>
 

@@ -22,7 +22,7 @@
     <ProjectReference Include="..\Providers\Core\FluentCMS.Providers.Repositories.EntityFramework\FluentCMS.Providers.Repositories.EntityFramework.csproj" />
     <ProjectReference Include="..\Providers\Email\FluentCMS.Providers.Email.Null\FluentCMS.Providers.Email.Null.csproj" />
     <ProjectReference Include="..\Providers\Email\FluentCMS.Providers.Email.Smtp\FluentCMS.Providers.Email.Smtp.csproj" />
-    <ProjectReference Include="..\Repositories\FluentCMS.Repositories.SQLite\FluentCMS.Repositories.Sqlite.csproj" />
+    <ProjectReference Include="..\Repositories\FluentCMS.Infrastructure.Repositories.EntityFramework.Sqlite\FluentCMS.Infrastructure.Repositories.EntityFramework.Sqlite.csproj" />
   </ItemGroup>
 
 </Project>

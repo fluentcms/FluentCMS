@@ -1,6 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-
-namespace FluentCMS.Providers;
+﻿namespace FluentCMS.Providers;
 
 public sealed class ProviderFeatureBuilder
 {

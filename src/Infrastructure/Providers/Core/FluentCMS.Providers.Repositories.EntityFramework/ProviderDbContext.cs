@@ -1,5 +1,3 @@
-using Microsoft.EntityFrameworkCore;
-
 namespace FluentCMS.Providers.Repositories.EntityFramework;
 
 /// <summary>

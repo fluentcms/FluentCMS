@@ -1,7 +1,4 @@
-﻿using FluentCMS.Repositories.DataInitialization.EntityFramework;
-using Microsoft.Extensions.Logging;
-
-namespace FluentCMS.Providers.Repositories.EntityFramework;
+﻿namespace FluentCMS.Providers.Repositories.EntityFramework;
 
 public class ProviderSchemaValidator(ProviderDbContext providerDbContext, ILogger<ProviderSchemaValidator> logger) : BaseSchemaValidator<ProviderDbContext>(providerDbContext, logger)
 {

@@ -1,7 +1,4 @@
-﻿using System.Collections.Concurrent;
-using System.Collections.Immutable;
-
-namespace FluentCMS.Providers;
+﻿namespace FluentCMS.Providers;
 
 internal sealed class ProviderCatalogCache
 {

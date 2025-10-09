@@ -1,5 +1,3 @@
-using FluentCMS.Repositories;
-
 namespace FluentCMS.Infrastructure.Configuration;
 
 /// <summary>

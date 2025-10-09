@@ -1,4 +1,3 @@
-using FluentCMS.Repositories;
 using System.ComponentModel.DataAnnotations;
 
 namespace FluentCMS.Providers.Repositories;

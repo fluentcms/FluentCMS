@@ -1,5 +1,3 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace FluentCMS.Plugins.TodoManager.Models;
 
 public class TodoCreateDto

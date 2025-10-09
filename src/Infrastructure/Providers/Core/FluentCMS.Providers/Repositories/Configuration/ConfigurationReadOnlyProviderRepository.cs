@@ -1,9 +1,4 @@
-﻿using FluentCMS.Providers.Repositories.Abstractions;
-using FluentCMS.Repositories.Abstractions;
-using Microsoft.Extensions.Configuration;
-using System.Text.Json;
-
-namespace FluentCMS.Providers.Repositories.Configuration;
+﻿namespace FluentCMS.Providers.Repositories.Configuration;
 
 public sealed class ConfigurationReadOnlyProviderRepository(IConfiguration configuration, IProviderManager providerManager) : IProviderRepository
 {

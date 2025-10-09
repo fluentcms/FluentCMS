@@ -1,6 +1,4 @@
-﻿using FluentCMS.Repositories.Abstractions;
-
-namespace FluentCMS.Plugins.TodoManager.Repositories;
+﻿namespace FluentCMS.Plugins.TodoManager.Repositories;
 
 public interface ITodoDatabaseMarker : IDatabaseArea
 {

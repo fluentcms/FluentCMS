@@ -1,8 +1,4 @@
-﻿using FluentCMS.Providers.Abstractions;
-using System.Collections.Concurrent;
-using System.Reflection;
-
-namespace FluentCMS.Providers;
+﻿namespace FluentCMS.Providers;
 
 internal class ProviderDiscovery(ProviderDiscoveryOptions options)
 {

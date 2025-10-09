@@ -1,7 +1,6 @@
 ﻿global using FluentCMS.Infrastructure.Configuration.Abstractions;
-global using FluentCMS.Repositories.DataInitialization.EntityFramework;
-global using FluentCMS.Repositories.EntityFramework;
-global using FluentCMS.Repositories.EntityFramework.Configuration;
+global using FluentCMS.Infrastructure.Repositories.EntityFramework;
+global using FluentCMS.Infrastructure.Repositories.EntityFramework.Configuration;
 global using Microsoft.EntityFrameworkCore;
 global using Microsoft.Extensions.Configuration;
 global using Microsoft.Extensions.DependencyInjection;

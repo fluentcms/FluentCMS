@@ -1,8 +1,4 @@
-﻿using FluentCMS.Plugins.TodoManager.Models;
-using FluentCMS.Repositories.Abstractions;
-using FluentCMS.Repositories.EntityFramework;
-
-namespace FluentCMS.Plugins.TodoManager.Repositories;
+﻿namespace FluentCMS.Plugins.TodoManager.Repositories;
 
 public interface ITodoRepository : IRepository<Todo>
 {
