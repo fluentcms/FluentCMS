@@ -1,78 +1,70 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿// Namespace for configuration abstractions
+namespace FluentCMS.Configuration.Abstractions;
+
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 
-namespace FluentCMS.Configuration.Abstractions;
-
-/// <summary>
-/// Extension methods for adding database configuration
-/// </summary>
+// Static extension methods for adding database-backed configuration options
 public static class DatabaseConfigurationExtensions
 {
+    // Central registry to track sections that should be stored in database (static to allow access before DI container build)
     private static readonly DatabaseConfigurationRegistry _registry = new();
 
-    /// <summary>
-    /// Registers a configuration section to be stored in database and configures IOptions binding.
-    /// Returns OptionsBuilder for fluent configuration (validation, post-configuration, etc.)
-    /// </summary>
-    /// <typeparam name="TOptions">The options type to configure</typeparam>
-    /// <param name="services">The service collection</param>
-    /// <param name="sectionName">Configuration section name (e.g., "EmailSettings")</param>
-    /// <returns>OptionsBuilder for fluent configuration</returns>
-    public static OptionsBuilder<TOptions> AddDatabaseOptions<TOptions>(this IServiceCollection services, string sectionName)
+    // Private helper method to perform common registration logic
+    private static void RegisterSectionWithServices<TOptions>(IServiceCollection services, string sectionName)
         where TOptions : class
     {
+        ArgumentNullException.ThrowIfNull(services);
+
+        if (string.IsNullOrWhiteSpace(sectionName))
+            throw new ArgumentException("Section name cannot be null or empty", nameof(sectionName));
+
         // Register this section for database storage
         _registry.RegisterSection(sectionName, typeof(TOptions));
 
         services.TryAddSingleton(_registry);
+    }
+
+    // Basic registration method without binding
+    public static OptionsBuilder<TOptions> AddDatabaseOptions<TOptions>(this IServiceCollection services, string sectionName)
+        where TOptions : class
+    {
+        // Perform common registration logic
+        RegisterSectionWithServices<TOptions>(services, sectionName);
 
         // Return OptionsBuilder for fluent configuration (validation, etc.)
         return services.AddOptions<TOptions>();
     }
 
-    /// <summary>
-    /// Registers a configuration section to be stored in database and binds it to IOptions.
-    /// Convenience method that also performs the binding.
-    /// </summary>
-    /// <typeparam name="TOptions">The options type to configure</typeparam>
-    /// <param name="services">The service collection</param>
-    /// <param name="sectionName">Configuration section name</param>
-    /// <param name="configuration">Configuration to bind from</param>
-    /// <returns>OptionsBuilder for fluent configuration</returns>
+    // Convenience method that performs registration and binding from IConfiguration
     public static OptionsBuilder<TOptions> AddDatabaseOptions<TOptions>(this IServiceCollection services, string sectionName, IConfiguration configuration)
         where TOptions : class
     {
-        // Register this section for database storage
-        _registry.RegisterSection(sectionName, typeof(TOptions));
+        ArgumentNullException.ThrowIfNull(configuration);
 
-        services.TryAddSingleton(_registry);
+        // Perform common registration logic
+        RegisterSectionWithServices<TOptions>(services, sectionName);
 
         // Return OptionsBuilder with binding already configured
         return services.AddOptions<TOptions>()
             .Bind(configuration.GetSection(sectionName));
     }
 
-    /// <summary>
-    /// Registers a configuration section to be stored in database and binds it with custom configuration.
-    /// </summary>
-    /// <typeparam name="TOptions">The options type to configure</typeparam>
-    /// <param name="services">The service collection</param>
-    /// <param name="sectionName">Configuration section name</param>
-    /// <param name="configuration">Configuration to bind from</param>
-    /// <param name="configureBinder">Action to configure the binder</param>
-    /// <returns>OptionsBuilder for fluent configuration</returns>
+    // Advanced method for custom binder configuration
     public static OptionsBuilder<TOptions> AddDatabaseOptions<TOptions>(this IServiceCollection services, string sectionName, IConfiguration configuration, Action<BinderOptions>? configureBinder)
         where TOptions : class
     {
-        // Register this section for database storage
-        _registry.RegisterSection(sectionName, typeof(TOptions));
+        ArgumentNullException.ThrowIfNull(configuration);
 
-        services.TryAddSingleton(_registry);
+        // Perform common registration logic
+        RegisterSectionWithServices<TOptions>(services, sectionName);
 
         // Return OptionsBuilder with binding and custom binder options
         return services.AddOptions<TOptions>()
             .Bind(configuration.GetSection(sectionName), configureBinder);
     }
 }
+
+
