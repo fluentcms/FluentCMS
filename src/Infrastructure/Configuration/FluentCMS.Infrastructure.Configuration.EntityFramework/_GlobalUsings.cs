@@ -1,0 +1,11 @@
+﻿global using System.Collections.Concurrent;
+global using FluentCMS.Repositories.EntityFramework;
+global using FluentCMS.Repositories.DataInitialization.EntityFramework;
+global using Microsoft.EntityFrameworkCore;
+global using Microsoft.Extensions.Configuration;
+global using Microsoft.Extensions.Logging;
+global using System.Text.Json;
+global using FluentCMS.Infrastructure.Configuration.Abstractions;
+global using Microsoft.Extensions.DependencyInjection;
+global using System.Text.Json.Nodes;
+global using FluentCMS.Repositories.EntityFramework.Configuration;

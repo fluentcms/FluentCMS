@@ -133,7 +133,7 @@ public static class ServiceCollectionExtensions
             };
 
             // Retrieve the user claims principal from the context
-            var user = accessor.HttpContext?.User;
+            var user = accessor?.HttpContext?.User;
 
             if (user != null)
             {

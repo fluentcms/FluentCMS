@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\FluentCMS.Repositories.EntityFramework.Configuration\FluentCMS.Repositories.EntityFramework.Configuration.csproj" />
+    <ProjectReference Include="..\FluentCMS.Repositories.SqlServer\FluentCMS.Repositories.SqlServer.csproj" />
   </ItemGroup>
 
 </Project>

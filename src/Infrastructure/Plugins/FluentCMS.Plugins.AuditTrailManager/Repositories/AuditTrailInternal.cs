@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Plugins.AuditTrailManager.Models;
+﻿namespace FluentCMS.Plugins.AuditTrailManager.Repositories;
 
 public class AuditTrailInternal : Entity
 {

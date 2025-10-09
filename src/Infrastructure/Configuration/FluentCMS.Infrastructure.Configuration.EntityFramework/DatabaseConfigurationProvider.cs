@@ -1,9 +1,4 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using System.Text.Json;
-using System.Text.Json.Nodes;
-
-namespace FluentCMS.Configuration;
+namespace FluentCMS.Infrastructure.Configuration.EntityFramework;
 
 /// <summary>
 /// Custom configuration provider that reads from database using EF Core
@@ -132,69 +127,6 @@ public class DatabaseConfigurationProvider(DbContextOptions<ConfigurationDbConte
                     break;
             }
         }
-    }
-
-    /// <summary>
-    /// Updates a configuration in the database and triggers reload
-    /// </summary>
-    public async Task UpdateConfigurationAsync(string section, object value, CancellationToken cancellationToken = default)
-    {
-        using var context = new ConfigurationDbContext(dbOptions);
-
-        var json = JsonSerializer.Serialize(value);
-        var typeName = value.GetType().FullName ?? value.GetType().Name;
-
-        var existing = await context.Configurations
-            .FirstOrDefaultAsync(c => c.Section == section, cancellationToken);
-
-        if (existing != null)
-        {
-            existing.Value = json;
-            existing.Type = typeName;
-            existing.UpdatedAt = DateTime.UtcNow;
-        }
-        else
-        {
-            context.Configurations.Add(new ConfigurationEntity
-            {
-                Section = section,
-                Value = json,
-                Type = typeName
-            });
-        }
-
-        await context.SaveChangesAsync(cancellationToken);
-
-        // Update cache
-        var entity = existing ?? context.Configurations.Local.First(c => c.Section == section);
-        _cache.Set(section, entity);
-
-        // Reload configuration to update IConfiguration
-        Load();
-        OnReload();
-    }
-
-    /// <summary>
-    /// Gets a configuration from cache or database
-    /// </summary>
-    public async Task<T?> GetConfigurationAsync<T>(string section, CancellationToken cancellationToken = default) where T : class
-    {
-        // Try cache first
-        if (_cache.TryGet<ConfigurationEntity>(section, out var cached))
-        {
-            return JsonSerializer.Deserialize<T>(cached.Value);
-        }
-
-        // Load from database
-        using var context = new ConfigurationDbContext(dbOptions);
-        var entity = await context.Configurations
-            .FirstOrDefaultAsync(c => c.Section == section, cancellationToken);
-
-        if (entity == null)
-            return null;
-
-        _cache.Set(section, entity);
-        return JsonSerializer.Deserialize<T>(entity.Value);
     }
 
     public void Dispose()
