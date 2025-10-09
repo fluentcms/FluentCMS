@@ -74,6 +74,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Infrastructure.Re
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Infrastructure.Repositories.EntityFramework.SqlServer", "Repositories\FluentCMS.Infrastructure.Repositories.EntityFramework.SqlServer\FluentCMS.Infrastructure.Repositories.EntityFramework.SqlServer.csproj", "{1649EF6F-7051-46C1-AF21-F2FA7DDFB19E}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Logging", "Logging", "{31E5E557-E9D4-40F6-975E-1E0CD14F8AA7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Infrastructure.Logging", "Logging\FluentCMS.Infrastructure.Logging\FluentCMS.Infrastructure.Logging.csproj", "{1580AADA-D9D2-4AA3-B1C5-BE378CA98B2B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -184,6 +188,10 @@ Global
 		{1649EF6F-7051-46C1-AF21-F2FA7DDFB19E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1649EF6F-7051-46C1-AF21-F2FA7DDFB19E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1649EF6F-7051-46C1-AF21-F2FA7DDFB19E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1580AADA-D9D2-4AA3-B1C5-BE378CA98B2B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1580AADA-D9D2-4AA3-B1C5-BE378CA98B2B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1580AADA-D9D2-4AA3-B1C5-BE378CA98B2B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1580AADA-D9D2-4AA3-B1C5-BE378CA98B2B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -217,6 +225,7 @@ Global
 		{440C73E8-79BD-4FC7-AC25-0CB5D7EB9FEA} = {C45387E7-A239-B248-5540-D77B4284F48B}
 		{18C549AD-030D-E3BF-05B9-E5619538BD1B} = {C45387E7-A239-B248-5540-D77B4284F48B}
 		{1649EF6F-7051-46C1-AF21-F2FA7DDFB19E} = {C45387E7-A239-B248-5540-D77B4284F48B}
+		{1580AADA-D9D2-4AA3-B1C5-BE378CA98B2B} = {31E5E557-E9D4-40F6-975E-1E0CD14F8AA7}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {F9649E9A-5619-4FAE-97BC-3E256E32491D}

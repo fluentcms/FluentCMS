@@ -7,13 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\Api\FluentCMS.Api\FluentCMS.Api.csproj" />
     <ProjectReference Include="..\Configuration\FluentCMS.Infrastructure.Configuration.EntityFramework.Sqlite\FluentCMS.Infrastructure.Configuration.EntityFramework.Sqlite.csproj" />
     <ProjectReference Include="..\EventBus\FluentCMS.EventBus.InMemory\FluentCMS.EventBus.InMemory.csproj" />
+    <ProjectReference Include="..\Logging\FluentCMS.Infrastructure.Logging\FluentCMS.Infrastructure.Logging.csproj" />
     <ProjectReference Include="..\Plugins\Core\FluentCMS.Plugins\FluentCMS.Plugins.csproj" />
     <ProjectReference Include="..\Plugins\FluentCMS.Plugins.AuditTrailManager\FluentCMS.Plugins.AuditTrailManager.csproj" />
     <ProjectReference Include="..\Plugins\FluentCMS.Plugins.IdentityManager\FluentCMS.Plugins.IdentityManager.csproj" />

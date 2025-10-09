@@ -2,37 +2,24 @@ using FluentCMS.Api;
 using FluentCMS.EventBus.InMemory;
 using FluentCMS.Infrastructure.Configuration.EntityFramework;
 using FluentCMS.Infrastructure.Configuration.EntityFramework.Sqlite;
+using FluentCMS.Infrastructure.Logging;
+using FluentCMS.Infrastructure.Repositories;
+using FluentCMS.Infrastructure.Repositories.EntityFramework.Configuration;
+using FluentCMS.Infrastructure.Repositories.EntityFramework.Sqlite;
 using FluentCMS.Plugins;
 using FluentCMS.Plugins.TodoManager.Repositories;
 using FluentCMS.Providers;
 using FluentCMS.Providers.Repositories.EntityFramework;
-using FluentCMS.Infrastructure.Repositories.EntityFramework.Configuration;
-using FluentCMS.Infrastructure.Repositories.EntityFramework.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
-using Serilog.Events;
-using Serilog.Extensions.Logging;
-using FluentCMS.Infrastructure.Repositories;
 
-// Configure Serilog
-Log.Logger = new LoggerConfiguration()
-    .MinimumLevel.Debug()
-    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
-    .Enrich.FromLogContext()
-    .WriteTo.Console()
-    .WriteTo.File("logs/myapp-.log", rollingInterval: RollingInterval.Day)
-    .CreateLogger();
-
-var loggerFactory = new SerilogLoggerFactory(Log.Logger);
-
-// Now create the web application builder
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddSqliteConfiguration("DefaultConnection", TimeSpan.FromMinutes(5));
 
+var loggerFactory = builder.Host.InitiLogFactory();
+
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ??
     throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
-
-builder.Host.UseSerilog();
 
 var services = builder.Services;
 
