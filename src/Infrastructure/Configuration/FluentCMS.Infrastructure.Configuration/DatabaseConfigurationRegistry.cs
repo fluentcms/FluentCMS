@@ -1,7 +1,5 @@
-using System.Collections.Concurrent;
-
 // Namespace for configuration abstractions
-namespace FluentCMS.Configuration.Abstractions;
+namespace FluentCMS.Infrastructure.Configuration;
 
 // Registry class to track configuration sections that should be stored in database
 // This class should be registered as a singleton in the DI container

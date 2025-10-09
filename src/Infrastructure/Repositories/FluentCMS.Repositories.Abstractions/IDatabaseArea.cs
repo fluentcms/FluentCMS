@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Repositories.EntityFramework.Configuration;
+﻿namespace FluentCMS.Repositories.Abstractions;
 
 // Marker interface to define database scope/context for repository configuration
 // Implementations of this interface are used to group entities to specific databases

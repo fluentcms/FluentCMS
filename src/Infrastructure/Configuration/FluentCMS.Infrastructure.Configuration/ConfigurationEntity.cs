@@ -1,6 +1,6 @@
-using FluentCMS.Repositories.EntityFramework;
+using FluentCMS.Repositories;
 
-namespace FluentCMS.Configuration.EntityFramework;
+namespace FluentCMS.Infrastructure.Configuration;
 
 /// <summary>
 /// Represents a configuration entry stored in the database

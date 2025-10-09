@@ -1,7 +1,4 @@
-﻿using FluentCMS.Configuration.Abstractions;
-using FluentCMS.Repositories.EntityFramework.Configuration;
-
-namespace FluentCMS.Plugins.IdentityManager;
+﻿namespace FluentCMS.Plugins.IdentityManager;
 
 public class IdentityManagerPlugin : IPlugin
 {

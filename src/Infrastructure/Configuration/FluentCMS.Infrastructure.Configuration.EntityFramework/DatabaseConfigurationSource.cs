@@ -1,7 +1,4 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-
-namespace FluentCMS.Configuration.EntityFramework;
+namespace FluentCMS.Infrastructure.Configuration.EntityFramework;
 
 /// <summary>
 /// Configuration source for database-backed configurations

@@ -5,13 +5,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\FluentCMS.Configuration.EntityFramework\FluentCMS.Configuration.EntityFramework.csproj" />
-  </ItemGroup>
-
+    
     <ItemGroup>
         <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.9" />
     </ItemGroup>
-    
+
+    <ItemGroup>
+      <ProjectReference Include="..\FluentCMS.Infrastructure.Configuration.EntityFramework\FluentCMS.Infrastructure.Configuration.EntityFramework.csproj" />
+    </ItemGroup>
+
 </Project>

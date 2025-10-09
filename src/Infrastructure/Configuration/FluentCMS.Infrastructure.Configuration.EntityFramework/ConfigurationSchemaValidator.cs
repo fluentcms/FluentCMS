@@ -1,7 +1,4 @@
-﻿using FluentCMS.Repositories.DataInitialization.EntityFramework;
-using Microsoft.Extensions.Logging;
-
-namespace FluentCMS.Configuration.EntityFramework;
+﻿namespace FluentCMS.Infrastructure.Configuration.EntityFramework;
 
 internal class ConfigurationSchemaValidator(ConfigurationDbContext dbContext, ILogger<ConfigurationSchemaValidator> logger) : BaseSchemaValidator<ConfigurationDbContext>(dbContext, logger)
 {

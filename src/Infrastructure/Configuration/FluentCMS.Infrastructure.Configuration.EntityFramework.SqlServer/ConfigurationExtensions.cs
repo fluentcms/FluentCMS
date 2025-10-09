@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using FluentCMS.Infrastructure.Configuration.EntityFramework;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
 namespace FluentCMS.Configuration.EntityFramework.SqlServer;
@@ -17,6 +18,10 @@ public static class ConfigurationExtensions
     /// <param name="reloadInterval">Optional reload interval for automatic updates</param>
     public static IConfigurationBuilder AddSqlServerConfiguration(this IConfigurationBuilder builder, string connectionString, TimeSpan? reloadInterval = null)
     {
+
+        // This creates ONLY configuration, no DI container
+        var tempConfig = DatabaseConfigurationExtensions.CreateTemporaryConfigurationManager();
+
         var dbOptions = new DbContextOptionsBuilder<ConfigurationDbContext>()
             .UseSqlServer(connectionString)
             .Options;

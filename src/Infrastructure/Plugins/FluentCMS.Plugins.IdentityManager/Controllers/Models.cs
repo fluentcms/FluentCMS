@@ -1,6 +1,4 @@
-﻿using FluentCMS.Repositories.EntityFramework;
-
-namespace FluentCMS.Plugins.IdentityManager.Controllers;
+﻿namespace FluentCMS.Plugins.IdentityManager.Controllers;
 
 public class RegisterRequest
 {

@@ -1,4 +1,4 @@
-﻿using FluentCMS.Repositories.EntityFramework.Configuration;
+﻿using FluentCMS.Repositories.Abstractions;
 
 namespace FluentCMS.Plugins.TodoManager.Repositories;
 

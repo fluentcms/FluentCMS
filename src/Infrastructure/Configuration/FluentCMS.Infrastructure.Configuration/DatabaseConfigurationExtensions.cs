@@ -1,8 +1,4 @@
-﻿using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
-
-namespace FluentCMS.Configuration.Abstractions;
+﻿namespace FluentCMS.Infrastructure.Configuration;
 
 // Static extension methods for adding database-backed configuration options
 // These methods integrate with the ASP.NET Core Options pattern and register sections

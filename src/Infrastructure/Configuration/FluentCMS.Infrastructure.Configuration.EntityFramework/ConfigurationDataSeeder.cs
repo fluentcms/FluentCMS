@@ -1,11 +1,4 @@
-﻿using FluentCMS.Configuration.Abstractions;
-using FluentCMS.Repositories.DataInitialization.EntityFramework;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
-using System.Text.Json;
-
-namespace FluentCMS.Configuration.EntityFramework;
+﻿namespace FluentCMS.Infrastructure.Configuration.EntityFramework;
 
 internal class ConfigurationDataSeeder(ConfigurationDbContext dbContext, ILogger<ConfigurationDataSeeder> logger, DatabaseConfigurationRegistry configurationRegistry, IConfiguration configuration) : BaseDataSeeder<ConfigurationDbContext>(dbContext, logger)
 {

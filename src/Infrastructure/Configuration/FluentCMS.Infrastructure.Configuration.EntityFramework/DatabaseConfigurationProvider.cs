@@ -1,9 +1,4 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using System.Text.Json;
-using System.Text.Json.Nodes;
-
-namespace FluentCMS.Configuration.EntityFramework;
+namespace FluentCMS.Infrastructure.Configuration.EntityFramework;
 
 /// <summary>
 /// Custom configuration provider that reads from database using EF Core

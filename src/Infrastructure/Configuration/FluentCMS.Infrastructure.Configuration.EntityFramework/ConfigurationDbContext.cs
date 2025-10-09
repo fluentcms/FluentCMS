@@ -1,6 +1,4 @@
-using Microsoft.EntityFrameworkCore;
-
-namespace FluentCMS.Configuration.EntityFramework;
+namespace FluentCMS.Infrastructure.Configuration.EntityFramework;
 
 /// <summary>
 /// DbContext for storing configuration data

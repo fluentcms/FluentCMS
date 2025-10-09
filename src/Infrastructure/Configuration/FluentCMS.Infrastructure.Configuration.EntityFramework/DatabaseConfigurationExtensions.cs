@@ -1,9 +1,4 @@
-﻿using FluentCMS.Repositories.EntityFramework.Configuration;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-
-namespace FluentCMS.Configuration.EntityFramework;
+﻿namespace FluentCMS.Infrastructure.Configuration.EntityFramework;
 
 /// <summary>
 /// Extension methods for adding database configuration
@@ -33,5 +28,17 @@ public static class DatabaseConfigurationExtensions
         services.AddSchemaValidator<ConfigurationSchemaValidator, IConfigurationDatabaseMarker>();
         services.AddScoped<IConfigurationRepository, ConfigurationRepository>();
         return services;
+    }
+
+    public static ConfigurationManager CreateTemporaryConfigurationManager()
+    {
+        // This creates ONLY configuration, no DI container
+        var tempConfig = new ConfigurationManager();
+        tempConfig.SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.json", optional: true)
+            .AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"}.json", optional: true)
+            .AddEnvironmentVariables();
+
+        return tempConfig;
     }
 }

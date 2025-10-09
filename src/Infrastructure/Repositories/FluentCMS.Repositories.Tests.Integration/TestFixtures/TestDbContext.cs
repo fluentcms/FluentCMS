@@ -1,4 +1,4 @@
-using FluentCMS.Repositories.EntityFramework.Configuration;
+using FluentCMS.Repositories.Abstractions;
 using FluentCMS.Repositories.Tests.Integration.TestEntities;
 using Microsoft.EntityFrameworkCore;
 
@@ -43,6 +43,3 @@ public class TestDbContext(DbContextOptions<TestDbContext> options) : DbContext(
     }
 }
 
-public interface ITestDatabaseMarker : IDatabaseArea
-{
-}

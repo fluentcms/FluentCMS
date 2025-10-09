@@ -18,3 +18,6 @@ global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.Hosting;
 global using Microsoft.Extensions.Logging;
 global using System.ComponentModel.DataAnnotations;
+global using FluentCMS.Repositories;
+global using FluentCMS.Infrastructure.Configuration;
+global using FluentCMS.Repositories.EntityFramework.Configuration;

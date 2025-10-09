@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
-namespace FluentCMS.Configuration.EntityFramework.Sqlite;
+namespace FluentCMS.Infrastructure.Configuration.EntityFramework.Sqlite;
 
 /// <summary>
 /// Extension methods for adding database configuration with SQLite
@@ -18,11 +18,7 @@ public static class ConfigurationExtensions
     public static IConfigurationBuilder AddSqliteConfiguration(this IConfigurationBuilder builder, string connectionStringName, TimeSpan? reloadInterval = null)
     {
         // This creates ONLY configuration, no DI container
-        var tempConfig = new ConfigurationManager();
-        tempConfig.SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.json", optional: true)
-            .AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"}.json", optional: true)
-            .AddEnvironmentVariables();
+        var tempConfig = DatabaseConfigurationExtensions.CreateTemporaryConfigurationManager();
 
         // Retrieve the connection string from the temporary configuration
         var connectionString = tempConfig.GetConnectionString(connectionStringName) ??
