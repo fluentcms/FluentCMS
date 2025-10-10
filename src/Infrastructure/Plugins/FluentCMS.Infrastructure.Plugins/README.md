@@ -201,10 +201,13 @@ Response:
 
 ## 🔮 Future Enhancements
 
-- **Environment-Based Plugin Loading**: Enable/disable plugins per environment
-- **Plugin Communication Tracing**: Correlation tracking across plugin boundaries
-- **Hot Reload**: Development-mode plugin reloading
-- **Admin Dashboard**: UI for plugin management and monitoring
+- **Automated Event Catalog**: Automatically generate the event catalog from source code to ensure accuracy and reduce manual effort.
+- **Formalized DB Migration Strategy**: Provide a clear and automated strategy for managing database schema migrations across multiple plugins.
+- **NuGet Distribution & Advanced Dependency Resolution**: Support for loading plugins from NuGet packages with advanced dependency resolution.
+- **Plugin Sandboxing**: Isolate plugins into separate contexts or processes to enhance stability and security, preventing a faulty plugin from affecting the host.
+- **Environment-Based Plugin Loading**: Enable/disable plugins per environment.
+- **Hot Reload**: Development-mode plugin reloading.
+- **Admin Dashboard**: UI for plugin management and monitoring.
 
 ## 📝 License
 

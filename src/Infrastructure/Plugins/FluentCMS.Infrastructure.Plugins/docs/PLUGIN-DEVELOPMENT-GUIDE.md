@@ -126,14 +126,13 @@ public class TextWidgetStartup : IPluginStartup
     public override int ConfigureServicesPriority => 100; // Default
     public override int ConfigurePriority => 100; // Default
     
-    public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
+public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
     {
         // Register your services
         services.AddScoped<ITextWidgetService, TextWidgetService>();
         
-        // Register configuration
-        services.Configure<TextWidgetSettings>(
-            configuration.GetSection("Plugins:TextWidget"));
+        // Register configuration. The provided 'configuration' is already scoped to this plugin.
+        services.Configure<TextWidgetSettings>(configuration);
     }
     
     public void Configure(IApplicationBuilder app, IServiceProvider provider)
@@ -191,10 +190,12 @@ public class TextWidgetSettings
 
 ### Step 4: Configure in appsettings.json
 
+The host application's `appsettings.json` should contain a `Plugins` section where each plugin has its own configuration key.
+
 ```json
 {
   "Plugins": {
-    "TextWidget": {
+    "TextWidgetStartup": { // Key should match the plugin's assembly name or overriden Name
       "MaxLength": 2000,
       "AllowHtml": true,
       "DefaultCssClass": "custom-widget"
@@ -288,9 +289,9 @@ public void ConfigureServices(IServiceCollection services, IConfiguration config
 ```csharp
 public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
 {
-    // Bind configuration section
-    services.Configure<MyPluginSettings>(
-        configuration.GetSection("Plugins:MyPlugin"));
+    // The 'configuration' object is pre-scoped to "Plugins:YourPluginName".
+    // Bind the entire section to your settings object.
+    services.Configure<MyPluginSettings>(configuration);
     
     // Use with IOptions<T>, IOptionsSnapshot<T>, or IOptionsMonitor<T>
     services.AddScoped<IMyService, MyService>();
@@ -346,10 +347,13 @@ public class CustomerService
 
 ### Plugin-Specific Configuration Section
 
+Each plugin receives an `IConfiguration` instance that is already scoped to its own section within the main `appsettings.json`. The key for the section should match the plugin's assembly name (or its overridden `Name` property).
+
+**`appsettings.json` in Host:**
 ```json
 {
   "Plugins": {
-    "CRM": {
+    "FluentCMS.Plugins.CRM": { // Or whatever the plugin assembly name is
       "ConnectionString": "Server=.;Database=CRM;Trusted_Connection=true;",
       "Features": {
         "EnableNotifications": true,
@@ -360,6 +364,7 @@ public class CustomerService
 }
 ```
 
+**Plugin Code:**
 ```csharp
 public class CRMSettings
 {
@@ -374,8 +379,11 @@ public class CRMFeatures
 }
 
 // In ConfigureServices
-services.Configure<CRMSettings>(
-    configuration.GetSection("Plugins:CRM"));
+public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
+{
+    // The 'configuration' is already scoped, so we bind to it directly.
+    services.Configure<CRMSettings>(configuration);
+}
 ```
 
 ### Accessing Configuration Directly
@@ -383,8 +391,8 @@ services.Configure<CRMSettings>(
 ```csharp
 public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
 {
-    var pluginConfig = configuration.GetSection("Plugins:MyPlugin");
-    var enableFeature = pluginConfig.GetValue<bool>("EnableFeature");
+    // 'configuration' is already scoped, so you can read values directly.
+    var enableFeature = configuration.GetValue<bool>("EnableFeature");
     
     if (enableFeature)
     {
@@ -916,10 +924,10 @@ var customers = await _context.Customers
 **Symptoms**: Settings have default values
 
 **Solutions**:
-1. Verify JSON path: `Plugins:YourPluginName`
-2. Check configuration binding in `ConfigureServices()`
-3. Ensure appsettings.json is copied to output
-4. Validate JSON syntax
+1. Verify the key in `appsettings.json` under the `Plugins` section matches your plugin's assembly name (e.g., `"FluentCMS.Plugins.MyPlugin"`) or the overridden `Name` in your startup class.
+2. Ensure you are binding directly to the `IConfiguration` object passed to `ConfigureServices` (e.g., `services.Configure<Settings>(configuration)`).
+3. Ensure the host's `appsettings.json` is correctly formatted and copied to the output directory.
+4. Validate JSON syntax.
 
 ### Event Not Received
 

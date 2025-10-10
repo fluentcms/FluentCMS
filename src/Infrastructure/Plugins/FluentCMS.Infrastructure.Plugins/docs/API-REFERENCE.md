@@ -42,7 +42,8 @@ public interface IPluginStartup
     int ConfigurePriority { get; }
 
     /// <summary>
-    /// Configure services in the DI container
+    /// Configure services in the DI container.
+    /// The provided configuration is scoped to the plugin's "Plugins:PluginName" section.
     /// </summary>
     void ConfigureServices(
         IServiceCollection services, 

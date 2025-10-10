@@ -434,7 +434,7 @@ Plugins access host features through abstraction interfaces:
 ```
 Host Provides:
 ├── IEventPublisher          (publish domain events)
-├── IConfiguration           (plugin configuration)
+├── IConfiguration           (plugin-scoped configuration)
 ├── ILogger<T>               (structured logging)
 ├── IPluginRegistry          (query loaded plugins)
 ├── IHttpClientFactory       (HTTP calls)
@@ -544,7 +544,8 @@ All host features accessed through controlled interfaces:
 ```
 Plugin Code:
 ├── ✅ Can: Inject IEventPublisher, ILogger, IEmailSender
-├── ✅ Can: Access plugin's configuration section
+├── ✅ Can: Access plugin's configuration section (scoped by the system)
+├── ❌ Cannot: Access other plugin's configuration
 ├── ❌ Cannot: Access other plugin's services (unless explicitly shared)
 ├── ❌ Cannot: Access internal host implementation details
 └── ❌ Cannot: Bypass security boundaries
@@ -617,12 +618,14 @@ This is achieved by adding a `TraceContext` to events. The event bus or a decora
 
 The architecture supports future enhancements:
 
-1. **Environment-Based Loading**: Filter plugins by environment
-2. **Communication Tracing**: Add correlation tracking
-3. **Hot Reload**: Scoped service factory pattern
-4. **Plugin Marketplace**: Load plugins from NuGet/external sources
-5. **Versioning**: Side-by-side plugin versions
-6. **Sandboxing**: AssemblyLoadContext isolation for untrusted plugins
+1.  **Automated Event Catalog**: Automatically generate the `EVENT_CATALOG.md` from source code to ensure it is always accurate and reduce manual developer effort.
+2.  **Formalized DB Migration Strategy**: Provide a clear, documented, and automated strategy for managing database schema migrations across multiple plugins.
+3.  **NuGet Distribution & Advanced Dependency Resolution**: Enhance the dependency resolver to support plugins distributed via NuGet packages, including complex dependency chains.
+4.  **True Plugin Isolation (Sandboxing)**: Explore loading plugins into isolated `AssemblyLoadContext`s or separate processes to prevent a single faulty plugin from crashing the entire host application. This is critical for supporting third-party plugins.
+5.  **Environment-Based Plugin Loading**: Enable/disable plugins per environment.
+6.  **Hot Reload**: Development-mode plugin reloading.
+7.  **Admin Dashboard**: UI for plugin management and monitoring.
+8.  **Versioning**: Side-by-side plugin versions.
 
 ---
 
