@@ -145,7 +145,7 @@ public class PluginLoader(IPluginScanner pluginScanner, PluginValidator pluginVa
                 $"Plugin discovery failed: {ex.Message}",
                 ex));
 
-            return Array.Empty<IPluginStartup>();
+            return [];
         }
     }
 
