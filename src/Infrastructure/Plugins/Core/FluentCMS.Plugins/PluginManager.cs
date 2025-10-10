@@ -14,10 +14,10 @@ internal sealed class PluginManager : IPluginManager
 
         var executablePath = Assembly.GetExecutingAssembly().Location;
 
-        var executanbleFolder = Path.GetDirectoryName(executablePath) ??
+        var executableFolder = Path.GetDirectoryName(executablePath) ??
             throw new InvalidOperationException("Could not determine the executable folder path.");
 
-        _pluginsMetaData = ScanAssemblies(executanbleFolder, pluginPrefixes);
+        _pluginsMetaData = ScanAssemblies(executableFolder, pluginPrefixes);
     }
 
     public void ConfigureServices(IHostApplicationBuilder builder)
