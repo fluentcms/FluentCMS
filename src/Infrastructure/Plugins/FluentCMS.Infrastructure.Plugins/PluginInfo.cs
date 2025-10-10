@@ -13,11 +13,7 @@ public sealed class PluginInfo
     /// <param name="status">The current status of the plugin.</param>
     /// <param name="loadedAt">When the plugin was loaded.</param>
     /// <param name="errorMessage">Optional error message if the plugin failed to load.</param>
-    public PluginInfo(
-        IPluginStartup startup,
-        PluginStatus status,
-        DateTimeOffset loadedAt,
-        string? errorMessage = null)
+    public PluginInfo(IPluginStartup startup, PluginStatus status, DateTimeOffset loadedAt, string? errorMessage = null)
     {
         ArgumentNullException.ThrowIfNull(startup);
 

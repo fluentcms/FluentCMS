@@ -1,14 +1,16 @@
 namespace FluentCMS.Infrastructure.Plugins.Lifecycle;
 
 /// <summary>
-/// Event fired when the application is stopping.
+/// Event raised when the application is stopping.
 /// </summary>
-public sealed class ApplicationStoppingEvent : EventBase
+/// <remarks>
+/// Initializes a new instance of the ApplicationStoppingEvent class.
+/// </remarks>
+/// <param name="stopReason">The reason for stopping.</param>
+public sealed class ApplicationStoppingEvent(string? stopReason = null) : EventBase
 {
     /// <summary>
-    /// Initializes a new instance of the <see cref="ApplicationStoppingEvent"/> class.
+    /// Gets the reason for stopping, if known.
     /// </summary>
-    public ApplicationStoppingEvent()
-    {
-    }
+    public string? StopReason { get; } = stopReason;
 }

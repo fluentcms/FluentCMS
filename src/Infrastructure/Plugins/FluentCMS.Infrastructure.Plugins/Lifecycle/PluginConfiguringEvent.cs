@@ -13,5 +13,5 @@ public sealed class PluginConfiguringEvent(string pluginName) : EventBase
     /// <summary>
     /// Gets the name of the plugin being configured.
     /// </summary>
-    public string PluginName { get; } = pluginName ?? throw new ArgumentNullException(nameof(pluginName));
+    public string PluginName { get; } = NullArgumentException.RequireNonEmptyOrNullString(pluginName);
 }

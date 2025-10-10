@@ -1,4 +1,4 @@
-namespace FluentCMS.Infrastructure.Plugins.Abstractions;
+namespace FluentCMS.Infrastructure.Plugins;
 
 /// <summary>
 /// Central interface for all plugins in the FluentCMS plugin system.
@@ -34,7 +34,7 @@ public interface IPluginStartup
     /// </summary>
     /// <param name="services">The service collection to register services with.</param>
     /// <param name="configuration">Plugin-specific configuration, scoped to "Plugins:{PluginName}".</param>
-    void ConfigureServices(IServiceCollection services, IConfiguration configuration);
+    void ConfigureServices(IServiceCollection services, IConfiguration? configuration);
 
     /// <summary>
     /// Configures the application pipeline for this plugin. This is called during the middleware configuration phase.

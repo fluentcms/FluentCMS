@@ -19,7 +19,7 @@ public sealed class PluginMetrics(string pluginName, double memoryUsageMB, doubl
     /// <summary>
     /// Gets the name of the plugin.
     /// </summary>
-    public string PluginName { get; } = pluginName ?? throw new ArgumentNullException(nameof(pluginName));
+    public string PluginName { get; } = NullArgumentException.RequireNonEmptyOrNullString(pluginName);
 
     /// <summary>
     /// Gets the current memory usage in MB.

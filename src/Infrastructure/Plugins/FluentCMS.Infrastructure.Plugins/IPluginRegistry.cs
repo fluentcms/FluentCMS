@@ -1,4 +1,4 @@
-namespace FluentCMS.Infrastructure.Plugins.Abstractions;
+namespace FluentCMS.Infrastructure.Plugins;
 
 /// <summary>
 /// Interface for managing and querying loaded plugins in the system.

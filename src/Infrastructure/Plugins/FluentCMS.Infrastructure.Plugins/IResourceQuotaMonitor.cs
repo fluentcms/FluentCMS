@@ -1,4 +1,4 @@
-namespace FluentCMS.Infrastructure.Plugins.Abstractions;
+namespace FluentCMS.Infrastructure.Plugins;
 
 /// <summary>
 /// Interface for monitoring and enforcing resource quotas for plugins.
@@ -29,10 +29,7 @@ public interface IResourceQuotaMonitor
     /// <param name="metricName">The name of the metric.</param>
     /// <param name="timeRange">The time range to retrieve metrics for.</param>
     /// <returns>A list of timestamped metric values.</returns>
-    IReadOnlyList<(DateTimeOffset Timestamp, double Value)> GetMetricHistory(
-        string pluginName,
-        string metricName,
-        TimeSpan timeRange);
+    IReadOnlyList<(DateTimeOffset Timestamp, double Value)> GetMetricHistory(string pluginName, string metricName, TimeSpan timeRange);
 
     /// <summary>
     /// Checks if a plugin is exceeding its resource quotas.
