@@ -6,6 +6,11 @@ namespace FluentCMS.Infrastructure.Plugins;
 public enum PluginStatus
 {
     /// <summary>
+    /// Plugin status is unknown or not yet determined.
+    /// </summary>
+    Unknown,
+
+    /// <summary>
     /// Plugin has been discovered but not yet loaded.
     /// </summary>
     Discovered,

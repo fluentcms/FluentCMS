@@ -11,6 +11,11 @@ public enum QuotaViolationSeverity
     Warning,
 
     /// <summary>
+    /// Moderate level - may impact performance, consider action.
+    /// </summary>
+    Moderate,
+
+    /// <summary>
     /// Critical level - requires attention and potential throttling.
     /// </summary>
     Critical,
