@@ -78,7 +78,7 @@ public class TextWidgetStartup : IPluginStartup
         services.AddScoped<ITextWidget, TextWidget>();
     }
     
-    public void Configure(IApplicationBuilder app, IServiceProvider provider)
+    public void Configure(IApplicationBuilder app)
     {
         // No middleware needed
     }
@@ -223,9 +223,8 @@ Load Order: Identity, CRM, Accounting
                │
                ▼
 ┌──────────────────────────────────────┐
-│  3. Build IServiceProvider           │
-│     • All services registered        │
-│     • DI container ready             │
+│  3. For Each Plugin (in order)       │
+│     • Call Configure()               │
 └──────────────────────────────────────┘
 ```
 

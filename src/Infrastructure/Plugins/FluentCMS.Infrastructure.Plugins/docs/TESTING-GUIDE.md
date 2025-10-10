@@ -152,7 +152,7 @@ public class TestPlugin : IPluginStartup
         // Test implementation
     }
 
-    public void Configure(IApplicationBuilder app, IServiceProvider provider)
+    public void Configure(IApplicationBuilder app)
     {
         // Test implementation
     }

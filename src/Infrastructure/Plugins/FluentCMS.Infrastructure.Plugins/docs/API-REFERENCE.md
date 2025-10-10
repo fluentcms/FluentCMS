@@ -53,8 +53,7 @@ public interface IPluginStartup
     /// Configure the application pipeline and finalization
     /// </summary>
     void Configure(
-        IApplicationBuilder app, 
-        IServiceProvider provider);
+        IApplicationBuilder app);
 }
 ```
 
@@ -69,7 +68,7 @@ public abstract class PluginStartupBase : IPluginStartup
     public virtual int ConfigurePriority => 100;
 
     public abstract void ConfigureServices(IServiceCollection services, IConfiguration configuration);
-    public virtual void Configure(IApplicationBuilder app, IServiceProvider provider) { }
+    public virtual void Configure(IApplicationBuilder app) { }
 }
 ```
 

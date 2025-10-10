@@ -102,7 +102,7 @@ public class MyFeatureStartup : IPluginStartup
         services.AddScoped<IMyFeature, MyFeatureService>();
     }
     
-    public void Configure(IApplicationBuilder app, IServiceProvider provider)
+    public void Configure(IApplicationBuilder app)
     {
         // Optional: Add middleware or endpoints
     }

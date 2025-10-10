@@ -54,7 +54,6 @@
 ### 1C.2: Pipeline Configurator
 - [x] Implement `IPipelineConfigurator` for middleware pipeline management
 - [x] Add priority-based sorting for `Configure` calls
-- [x] Provide isolated `IServiceProvider` to plugin configure methods
 - [x] Handle middleware registration errors gracefully
 - [x] Support ordering specification for critical middleware
 

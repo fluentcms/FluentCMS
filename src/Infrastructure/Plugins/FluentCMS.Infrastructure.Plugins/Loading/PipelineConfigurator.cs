@@ -39,13 +39,11 @@ public class PipelineConfigurator(ILogger<PipelineConfigurator> logger) : IPipel
                 // Configure for this plugin
                 await Task.Run(() => plugin.Configure(app), cancellationToken);
 
-                _logger.LogDebug("Successfully configured middleware for plugin '{PluginName}' (priority: {Priority})",
-                    plugin.Name, plugin.ConfigurePriority);
+                _logger.LogDebug("Successfully configured middleware for plugin '{PluginName}' (priority: {Priority})", plugin.Name, plugin.ConfigurePriority);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to configure middleware for plugin '{PluginName}': {Message}",
-                    plugin.Name, ex.Message);
+                _logger.LogError(ex, "Failed to configure middleware for plugin '{PluginName}': {Message}", plugin.Name, ex.Message);
 
                 // Rethrow to fail fast - middleware configuration failures are critical
                 throw new PluginPipelineConfigurationException(

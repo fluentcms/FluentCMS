@@ -82,7 +82,7 @@ public class TextWidgetStartup : IPluginStartup
         services.AddScoped<ITextWidgetService, TextWidgetService>();
     }
 
-    public void Configure(IApplicationBuilder app, IServiceProvider provider)
+    public void Configure(IApplicationBuilder app)
     {
         // Optional: Register middleware if needed
     }

@@ -35,7 +35,6 @@ Configure(webApplication, plugins);
 **Steps:**
 1. Sort plugins by `ConfigureServicesPriority` (lowest first)
 2. Call `ConfigureServices()` for each plugin
-3. Build final `IServiceProvider`
 
 **Pattern Used:** Priority-based ordering with DI container population
 
