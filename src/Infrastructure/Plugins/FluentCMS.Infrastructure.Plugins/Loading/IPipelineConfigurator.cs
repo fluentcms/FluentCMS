@@ -15,7 +15,7 @@ public interface IPipelineConfigurator
     /// <param name="serviceProvider">The main service provider built from DI container.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
     /// <exception cref="ArgumentNullException">Thrown when app, plugins, or serviceProvider is null.</exception>
-    Task ConfigurePluginPipeline(IApplicationBuilder app, IReadOnlyList<IPluginStartup> plugins, IServiceProvider serviceProvider);
+    Task ConfigurePluginPipeline(IApplicationBuilder app, IReadOnlyList<IPluginStartup> plugins, IServiceProvider serviceProvider, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Configures middleware for a specific plugin.
@@ -25,5 +25,5 @@ public interface IPipelineConfigurator
     /// <param name="plugin">The plugin to configure middleware for.</param>
     /// <param name="serviceProvider">The service provider for dependency resolution.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    Task ConfigurePluginMiddleware(IApplicationBuilder app, IPluginStartup plugin, IServiceProvider serviceProvider);
+    Task ConfigurePluginMiddleware(IApplicationBuilder app, IPluginStartup plugin, IServiceProvider serviceProvider, CancellationToken cancellationToken = default);
 }

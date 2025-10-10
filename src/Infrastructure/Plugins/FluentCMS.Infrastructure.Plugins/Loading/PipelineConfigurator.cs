@@ -21,7 +21,7 @@ public class PipelineConfigurator(ILogger<PipelineConfigurator> logger) : IPipel
     /// <param name="serviceProvider">The main service provider built from DI container.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
     /// <exception cref="ArgumentNullException">Thrown when app, plugins, or serviceProvider is null.</exception>
-    public async Task ConfigurePluginPipeline(IApplicationBuilder app, IReadOnlyList<IPluginStartup> plugins, IServiceProvider serviceProvider)
+    public async Task ConfigurePluginPipeline(IApplicationBuilder app, IReadOnlyList<IPluginStartup> plugins, IServiceProvider serviceProvider, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(app);
         ArgumentNullException.ThrowIfNull(plugins);
@@ -39,7 +39,7 @@ public class PipelineConfigurator(ILogger<PipelineConfigurator> logger) : IPipel
             try
             {
                 // Configure middleware for this plugin
-                await ConfigurePluginMiddleware(app, plugin, serviceProvider);
+                await ConfigurePluginMiddleware(app, plugin, serviceProvider, cancellationToken);
 
                 _logger.LogDebug("Successfully configured middleware for plugin '{PluginName}' (priority: {Priority})",
                     plugin.Name, plugin.ConfigurePriority);
@@ -66,7 +66,7 @@ public class PipelineConfigurator(ILogger<PipelineConfigurator> logger) : IPipel
     /// <param name="plugin">The plugin to configure middleware for.</param>
     /// <param name="serviceProvider">The service provider for dependency resolution.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    public async Task ConfigurePluginMiddleware(IApplicationBuilder app, IPluginStartup plugin, IServiceProvider serviceProvider)
+    public async Task ConfigurePluginMiddleware(IApplicationBuilder app, IPluginStartup plugin, IServiceProvider serviceProvider, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(app);
         ArgumentNullException.ThrowIfNull(plugin);
@@ -77,7 +77,7 @@ public class PipelineConfigurator(ILogger<PipelineConfigurator> logger) : IPipel
         try
         {
             // Call the plugin's Configure method
-            await Task.Run(() => plugin.Configure(app, serviceProvider));
+            await Task.Run(() => plugin.Configure(app, serviceProvider), cancellationToken);
 
             _logger.LogDebug("Plugin '{PluginName}' configured middleware successfully", plugin.Name);
         }
