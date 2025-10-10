@@ -98,6 +98,8 @@ public class TextWidgetStartup : IPluginStartup
 - **[Testing Guide](./docs/TESTING-GUIDE.md)** - Testing strategy and examples
 - **[Out of Scope Features](./docs/OUT-OF-SCOPE.md)** - Excluded features and rationale
 - **[Examples](./docs/EXAMPLES.md)** - Sample plugins and use cases
+- **[Event Catalog](./docs/EVENT_CATALOG.md)** - A central registry for all shared domain events.
+- **[Plugin Pull Request Checklist](./docs/PLUGIN_PULL_REQUEST_CHECKLIST.md)** - A checklist to ensure plugin quality and stability.
 
 ## 🔧 Core Concepts
 

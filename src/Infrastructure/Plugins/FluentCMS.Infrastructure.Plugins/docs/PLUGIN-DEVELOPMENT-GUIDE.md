@@ -631,6 +631,60 @@ public void ConfigureServices(IServiceCollection services, IConfiguration config
 }
 ```
 
+## Plugin Governance
+
+To ensure the stability and maintainability of the entire system, all plugins must adhere to a set of governance principles.
+
+### Pull Request Checklist
+
+Before merging any changes to a plugin, the pull request must satisfy the requirements outlined in the **[Plugin Pull Request Checklist](./PLUGIN_PULL_REQUEST_CHECKLIST.md)**. This checklist enforces best practices related to performance, resource management, security, and testing.
+
+### Event Catalog
+
+When creating or modifying events that will be consumed by other plugins, you must document them in the **[Event Catalog](./EVENT_CATALOG.md)**. This central registry is critical for managing the implicit dependencies that an event-driven architecture creates.
+
+### Event Versioning
+
+Events, once consumed by other plugins, are considered public contracts. You should not make breaking changes to an existing event. Instead, create a new version of the event (e.g., `CustomerUpdatedEventV2`) and deprecate the old one.
+
+## Observability & Debugging
+
+A modular system requires robust observability to be debuggable. All plugins are expected to integrate with the system's tracing and logging standards.
+
+### Structured Logging
+
+Use structured logging for all log output. This allows for easier filtering and querying in log aggregation systems.
+
+```csharp
+_logger.LogInformation(
+    "Processing customer {CustomerId} in plugin {PluginName}",
+    customerId,
+    "CRM Plugin");
+```
+
+### Communication Tracing
+
+The system supports communication tracing to track a logical operation as it crosses plugin boundaries via events. This is accomplished via a `TraceContext` that is automatically propagated with events.
+
+When logging within an event handler, always include the correlation data from the event's `TraceInfo` property:
+
+```csharp
+public async Task Handle(CustomerCreatedEvent domainEvent, CancellationToken cancellationToken = default)
+{
+    // It's recommended to start the log scope with the tracing info
+    using (_logger.BeginScope("CorrelationId: {CorrelationId}", domainEvent.TraceInfo?.CorrelationId))
+    {
+        _logger.LogInformation(
+            "Handling CustomerCreatedEvent for Customer {CustomerId}",
+            domainEvent.CustomerId);
+        
+        // ... handler logic ...
+    }
+}
+```
+
+This ensures that the entire lifecycle of a business process can be traced in your logging system using a single `CorrelationId`.
+
 ## Best Practices
 
 ### 1. Single Responsibility

@@ -281,7 +281,19 @@ public class MyPluginStartup : IPluginStartup
 
 ## Lifecycle Events
 
-All lifecycle events implement `IEvent` from the event bus.
+All plugin lifecycle events implement `IPluginLifecycleEvent`, which provides a clear distinction from general domain events.
+
+```csharp
+namespace FluentCMS.Infrastructure.Plugins.Abstractions.Lifecycle;
+
+/// <summary>
+/// Marker interface for all plugin lifecycle events.
+/// Inherits from the core IEvent interface.
+/// </summary>
+public interface IPluginLifecycleEvent : IEvent
+{
+}
+```
 
 ### PluginLoadingEvent
 
@@ -290,7 +302,7 @@ Published when a plugin is about to be loaded.
 ```csharp
 namespace FluentCMS.Infrastructure.Plugins.Abstractions.Lifecycle;
 
-public class PluginLoadingEvent : IEvent
+public class PluginLoadingEvent : IPluginLifecycleEvent
 {
     public string PluginName { get; init; } = string.Empty;
     public string AssemblyName { get; init; } = string.Empty;
@@ -306,7 +318,7 @@ Published after a plugin's `ConfigureServices` method completes.
 ```csharp
 namespace FluentCMS.Infrastructure.Plugins.Abstractions.Lifecycle;
 
-public class PluginServicesConfiguredEvent : IEvent
+public class PluginServicesConfiguredEvent : IPluginLifecycleEvent
 {
     public string PluginName { get; init; } = string.Empty;
     public Guid EventId { get; init; }
@@ -321,7 +333,7 @@ Published before a plugin's `Configure` method is called.
 ```csharp
 namespace FluentCMS.Infrastructure.Plugins.Abstractions.Lifecycle;
 
-public class PluginConfiguringEvent : IEvent
+public class PluginConfiguringEvent : IPluginLifecycleEvent
 {
     public string PluginName { get; init; } = string.Empty;
     public Guid EventId { get; init; }
@@ -336,7 +348,7 @@ Published after a plugin's `Configure` method completes.
 ```csharp
 namespace FluentCMS.Infrastructure.Plugins.Abstractions.Lifecycle;
 
-public class PluginConfiguredEvent : IEvent
+public class PluginConfiguredEvent : IPluginLifecycleEvent
 {
     public string PluginName { get; init; } = string.Empty;
     public Guid EventId { get; init; }
@@ -351,7 +363,7 @@ Published after all plugins are configured and application is ready.
 ```csharp
 namespace FluentCMS.Infrastructure.Plugins.Abstractions.Lifecycle;
 
-public class ApplicationStartedEvent : IEvent
+public class ApplicationStartedEvent : IPluginLifecycleEvent
 {
     public int TotalPluginsLoaded { get; init; }
     public Guid EventId { get; init; }
@@ -366,7 +378,7 @@ Published when the application is shutting down.
 ```csharp
 namespace FluentCMS.Infrastructure.Plugins.Abstractions.Lifecycle;
 
-public class ApplicationStoppingEvent : IEvent
+public class ApplicationStoppingEvent : IPluginLifecycleEvent
 {
     public Guid EventId { get; init; }
     public DateTimeOffset OccurredAt { get; init; }
@@ -765,6 +777,52 @@ public class PluginMonitoringService
             }
         }
     }
+}
+```
+
+## Communication Tracing
+
+To support observability and debugging across plugin boundaries, a `TraceContext` object can be used to correlate events within a single logical operation.
+
+### TraceContext
+
+Carries correlation information across a chain of events.
+
+```csharp
+namespace FluentCMS.Infrastructure.Plugins.Abstractions.Tracing;
+
+public class TraceContext
+{
+    /// <summary>
+    /// A unique ID for the entire logical operation/request.
+    /// It remains constant across all subsequent events in the chain.
+    /// </summary>
+    public Guid CorrelationId { get; init; }
+
+    /// <summary>
+    /// The ID of the event that caused this event to be published.
+    /// This allows you to build a direct causal chain (A caused B, B caused C).
+    /// </summary>
+    public Guid? CausationId { get; init; }
+
+    /// <summary>
+    /// The name of the plugin that initiated the operation.
+    /// </summary>
+    public string InitiatingPlugin { get; init; } = string.Empty;
+}
+```
+
+### Enhancing Events with Trace Context
+
+The core `IEvent` interface can be extended to include this context, allowing the event bus to automatically propagate it.
+
+```csharp
+// Example of an enhanced IEvent from a shared contracts library
+public interface IEvent
+{
+    Guid EventId { get; }
+    DateTimeOffset OccurredAt { get; }
+    TraceContext? TraceInfo { get; set; }
 }
 ```
 

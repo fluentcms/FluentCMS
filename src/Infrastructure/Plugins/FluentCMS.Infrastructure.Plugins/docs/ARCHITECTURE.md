@@ -410,6 +410,8 @@ foreach (var plugin in plugins)
 
 ### Event Contract Sharing
 
+To manage implicit dependencies created by the event bus, all shared events should be documented in the `EVENT_CATALOG.md`. This practice is critical for system maintainability.
+
 ```
 Project Structure:
 
@@ -554,7 +556,7 @@ Plugins share the main application context:
 
 - **Benefit**: Tight integration, no serialization overhead
 - **Risk**: Misbehaving plugin can affect host
-- **Mitigation**: Code reviews, testing, monitoring
+- **Mitigation**: Rigorous code reviews, comprehensive testing, and adherence to the formal `PLUGIN_PULL_REQUEST_CHECKLIST.md`.
 
 ### Resource Quotas
 
@@ -573,6 +575,23 @@ Alerts:
 - Log excessive resource usage
 - Health check reports degraded status
 ```
+
+## Observability and Communication Tracing
+
+To ensure the system is manageable and debuggable in production, a robust observability strategy is essential, especially for an event-driven architecture.
+
+### Structured Logging
+
+All plugins should use structured logging to provide machine-readable log data. This allows for easier filtering and querying in log aggregation systems.
+
+### Communication Tracing
+
+To understand the flow of a logical operation across multiple plugins, communication tracing should be implemented. This pattern typically involves:
+
+1.  **Correlation ID**: A unique identifier that is assigned at the beginning of an operation (e.g., an incoming API request) and passed along through all subsequent events published during that operation.
+2.  **Causation ID**: An identifier that links a child event to its direct parent event, allowing for the construction of a complete causal chain.
+
+This is achieved by adding a `TraceContext` to events. The event bus or a decorator can be responsible for automatically propagating these IDs. By logging these identifiers, it becomes possible to trace an entire business process from start to finish across all involved plugins.
 
 ## Performance Considerations
 
