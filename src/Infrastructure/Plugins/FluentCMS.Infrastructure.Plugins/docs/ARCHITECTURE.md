@@ -33,7 +33,7 @@ The FluentCMS Plugin System is designed as an enterprise-grade, modular architec
 │           Host Application              │
 │  • Database Configuration               │
 │  • Logging Infrastructure               │
-│  • Event Bus (MediatR)                  │
+│  • Event Bus                            │
 │  • Plugin System                        │
 └─────────────────────────────────────────┘
                     ▲
@@ -294,7 +294,7 @@ public class AuthenticationStartup : IPluginStartup
 {
     public override int ConfigurePriority => 10; // Must run early
     
-    public void Configure(IApplicationBuilder app, IServiceProvider provider)
+    public void Configure(IApplicationBuilder app)
     {
         app.UseAuthentication();
     }
@@ -305,7 +305,7 @@ public class AuthorizationStartup : IPluginStartup
 {
     public override int ConfigurePriority => 20; // After authentication
     
-    public void Configure(IApplicationBuilder app, IServiceProvider provider)
+    public void Configure(IApplicationBuilder app)
     {
         app.UseAuthorization();
     }
@@ -316,7 +316,7 @@ public class APIStartup : IPluginStartup
 {
     public override int ConfigurePriority => 100; // After auth/authz
     
-    public void Configure(IApplicationBuilder app, IServiceProvider provider)
+    public void Configure(IApplicationBuilder app)
     {
         app.MapControllers();
     }
@@ -397,7 +397,6 @@ foreach (var plugin in plugins)
        ▼
 ┌──────────────────┐
 │   Event Bus      │
-│   (MediatR)      │
 └──────┬───────┬───┘
        │       │
        ▼       ▼
@@ -606,7 +605,7 @@ This is achieved by adding a `TraceContext` to events. The event bus or a decora
 
 - **Async by default**: All event handlers are async
 - **No blocking**: Publishers don't wait for subscribers
-- **Performance**: MediatR handles pipeline efficiently
+- **Performance**: Eventbus handles pipeline efficiently
 
 ### DI Resolution
 

@@ -18,15 +18,15 @@ public interface IPluginStartup
 
     /// <summary>
     /// Gets the priority for service registration. Lower values are processed first.
-    /// Default value is 100.
+    /// Default value is 1000.
     /// </summary>
-    public virtual int ConfigureServicesPriority => 100;
+    public virtual int ConfigureServicesPriority => 1000;
 
     /// <summary>
     /// Gets the priority for middleware configuration. Lower values are processed first.
-    /// Default value is 100.
+    /// Default value is 1000.
     /// </summary>
-    public virtual int ConfigurePriority => 100;
+    public virtual int ConfigurePriority => 1000;
 
     /// <summary>
     /// Configures the services for this plugin. This is called during the service registration phase.
@@ -40,7 +40,6 @@ public interface IPluginStartup
     /// Configures the application pipeline for this plugin. This is called during the middleware configuration phase.
     /// Use this to register middleware, endpoints, or other application features.
     /// </summary>
-    /// <param name="app">The application builder to configure middleware with.</param>
-    /// <param name="provider">The service provider for resolving services.</param>
-    void Configure(IApplicationBuilder app, IServiceProvider provider);
+    /// <param name="app">The application builder to configure.</param>
+    void Configure(IApplicationBuilder app);
 }

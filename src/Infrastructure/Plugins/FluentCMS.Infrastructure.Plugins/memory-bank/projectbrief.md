@@ -12,7 +12,7 @@ To create a scalable, maintainable plugin system that enables clean separation b
 ## Core Objectives
 1. **Modular Architecture**: Enable business logic distribution across independent plugins
 2. **Dependency Management**: Automatic plugin dependency resolution via compile-time references
-3. **Event-Driven Communication**: Loose coupling through MediatR-based event bus
+3. **Event-Driven Communication**: Loose coupling through event bus
 4. **Production Ready**: Comprehensive error handling, health checks, and monitoring
 5. **Developer Experience**: Convention over configuration with sensible defaults
 6. **Enterprise Standards**: Production-quality with proper logging, configuration, and documentation
@@ -21,7 +21,7 @@ To create a scalable, maintainable plugin system that enables clean separation b
 - 🔍 **Assembly Scanning**: Automatic plugin discovery via `[Plugin]` attribute
 - 🏗️ **Three-Phase Initialization**: Discovery → ConfigureServices → Configure
 - 🔗 **Dependency Resolution**: Compile-time dependency graph building with topological sorting
-- 📡 **Event Communication**: MediatR-based event bus for plugin interactions
+- 📡 **Event Communication**: Event bus for plugin interactions
 - 💊 **Health Monitoring**: Built-in health checks and resource quota monitoring
 - ⚡ **Performance Aware**: Optimized scanning and initialization with caching
 - 🛡️ **Error Resilient**: Graceful degradation with comprehensive error handling
@@ -39,7 +39,7 @@ To create a scalable, maintainable plugin system that enables clean separation b
 - Plugins are developed by the same team (no third-party/untrusted plugins)
 - Single-tenant deployment model (each customer gets custom deployment)
 - .NET 9+ runtime environment mandatory
-- Existing MediatR event bus integration required
+- Existing event bus integration required
 - Compile-time safety preferred over runtime flexibility
 
 ## Project Scale

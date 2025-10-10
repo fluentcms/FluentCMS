@@ -25,7 +25,7 @@
 **Phase 1 Core Infrastructure Successfully Implemented:**
 - ✅ **Phase 1B: Discovery & Validation** - Complete assembly scanning, validation, dependency resolution
 - ✅ **Phase 1C: Service Registration** - Complete DI integration with priority ordering
-- ✅ **Phase 1D.1: Lifecycle Events** - Complete MediatR-based event publishing system
+- ✅ **Phase 1D.1: Lifecycle Events** - Complete event publishing system
 - ✅ **Core Runtime System** - Three-phase loading orchestrator fully implemented
 - ✅ **Enterprise-Grade Architecture** - Error handling, configuration scoping, event correlation
 
@@ -43,7 +43,7 @@
 
 #### Key System Understandings Established
 1. **Three-Phase Plugin Loading**: Discovery → ConfigureServices → Configure
-2. **Event-Driven Architecture**: MediatR-based communication between plugins
+2. **Event-Driven Architecture**: Event bus communication between plugins
 3. **Compile-Time Dependencies**: Build-time validation via project references
 4. **Convention Over Configuration**: Auto-discovery and sensible defaults
 5. **Enterprise-Grade**: Production-ready with monitoring and error handling

@@ -10,7 +10,7 @@ The FluentCMS Plugin System enables you to build highly modular applications whe
 
 - ✅ **Assembly Scanning**: Automatic plugin discovery via `[Plugin]` attribute
 - ✅ **Dependency Injection**: Seamless integration with Microsoft.Extensions.DependencyInjection
-- ✅ **Event-Driven Communication**: MediatR-based event bus for plugin communication
+- ✅ **Event-Driven Communication**: Event bus for plugin communication
 - ✅ **Three-Phase Initialization**: Discovery → ConfigureServices → Configure
 - ✅ **Smart Dependency Resolution**: Automatic dependency detection via project references
 - ✅ **Priority-Based Ordering**: Control service registration and middleware pipeline order
@@ -111,7 +111,7 @@ public class TextWidgetStartup : IPluginStartup
 
 ### Plugin Communication
 
-Plugins communicate through events using the existing MediatR-based event bus:
+Plugins communicate through events using the existing event bus:
 
 ```csharp
 // Publishing an event

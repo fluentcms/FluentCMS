@@ -20,7 +20,7 @@
 
 ### ✅ System Architecture Knowledge
 - **Three-Phase Loading**: Discovery → ConfigureServices → Configure pattern understood
-- **Event-Driven Communication**: MediatR-based plugin interaction mechanisms
+- **Event-Driven Communication**: Event bus plugin interaction mechanisms
 - **Dependency Resolution**: Compile-time validation via project references
 - **Convention Over Configuration**: Auto-discovery patterns and sensible defaults
 - **Enterprise Features**: Health checks, monitoring, resource management concepts
@@ -44,7 +44,7 @@
 ### 🔄 Infrastructure Components
 - **Dependency Injection**: Plugin service registration system not built
 - **Middleware Pipeline**: Plugin-ordered middleware configuration absent
-- **Event Bus**: MediatR integration for plugin communication missing
+- **Event Bus**: Event bus integration for plugin communication missing
 - **Health Checks**: Plugin health monitoring and aggregation not implemented
 - **Resource Monitoring**: Quota and usage tracking not available
 
@@ -88,7 +88,7 @@
 ## Known Issues (Pre-Implementation)
 
 ### 📋 Critical Path Dependencies
-1. **MediatR Integration**: Must be configured correctly in host applications
+1. **Event Bus Integration**: Must be configured correctly in host applications
 2. **Assembly Loading**: Plugin discovery relies on .NET assembly reflection
 3. **Dependency Injection**: Container immutability constrains runtime registration
 4. **Middleware Ordering**: Must control execution order precisely

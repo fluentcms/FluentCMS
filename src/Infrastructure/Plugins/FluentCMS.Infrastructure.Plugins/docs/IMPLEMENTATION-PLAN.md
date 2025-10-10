@@ -751,11 +751,11 @@ examples/FluentCMS.Plugins.EventSubscriber/
 - Cache plugin metadata
 - Provide startup progress indication
 
-#### 3. Breaking Changes in MediatR Integration
-**Risk:** Existing MediatR setup may conflict with plugin system.
+#### 3. Breaking Changes in Eventbus Integration
+**Risk:** Existing Eventbus setup may conflict with plugin system.
 
 **Mitigation:**
-- Carefully review existing MediatR configuration
+- Carefully review existing Eventbus configuration
 - Ensure plugin event handlers don't interfere
 - Test integration thoroughly
 

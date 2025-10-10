@@ -69,7 +69,7 @@ Configure(webApplication, plugins);
 - **Rationale:** Early error detection, type safety, performance
 
 #### 4. Event-Driven Communication
-- MediatR-based publisher/subscriber pattern
+- Event bus publisher/subscriber pattern
 - Shared event contracts via separate projects
 - **Rationale:** Loose coupling, scalable communication, testability
 
@@ -252,7 +252,7 @@ flowchart TD
     end
     
     subgraph "Event Bus"
-        EB[(MediatR)]
+        EB[Event Bus]
     end
     
     subgraph "Plugin B"
@@ -335,7 +335,7 @@ Plugin Services (CRMService: CRMSettings)
 1. Business operation triggers event
 2. Plugin creates event instance with data
 3. EventPublisher.Publish(event)
-4. MediatR routes to registered handlers
+4. Event bus routes to registered handlers
 5. Handlers process asynchronously
 6. Optional: Event context/tracing correlation
 7. Results logged and monitored

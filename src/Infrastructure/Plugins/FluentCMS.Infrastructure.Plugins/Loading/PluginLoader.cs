@@ -21,10 +21,11 @@ public class PluginLoader(IPluginScanner pluginScanner, PluginValidator pluginVa
     private readonly ILogger<PluginLoader> _logger = NullArgumentException.RequireNonNull(logger);
 
     /// <inheritdoc/>
-    public async Task<PluginLoadingResult> LoadPlugins(PluginSystemOptions options, IConfiguration hostConfiguration, CancellationToken cancellationToken = default)
+    public async Task<PluginLoadingResult> LoadPlugins(PluginSystemOptions options, IApplicationBuilder app, IConfiguration hostConfiguration, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(hostConfiguration);
+        ArgumentNullException.ThrowIfNull(app);
 
         var startTime = DateTimeOffset.Now;
         var errors = new List<PluginLoadingError>();
@@ -59,14 +60,8 @@ public class PluginLoader(IPluginScanner pluginScanner, PluginValidator pluginVa
                 return CreateResult(loadedPlugins, errors, startTime);
             }
 
-            // Phase 4: Configure IServiceProviderFactories
+            await ExecutePipelineConfigurationPhase(app, sortedPlugins, errors, cancellationToken);
 
-            // Build the service provider
-            var serviceProvider = serviceCollection.BuildServiceProvider();
-
-            // Phase 5: Pipeline Configuration
-            var appBuilder = new ApplicationBuilder(serviceProvider);
-            await ExecutePipelineConfigurationPhase(appBuilder, sortedPlugins, serviceProvider, errors, cancellationToken);
             if (errors.Count != 0 && !options.IgnoreErrors)
             {
                 return CreateResult(loadedPlugins, errors, startTime);
@@ -157,7 +152,7 @@ public class PluginLoader(IPluginScanner pluginScanner, PluginValidator pluginVa
     /// <param name="errors">The list to add errors to.</param>
     /// <param name="cancellationToken">Token to cancel the operation.</param>
     /// <returns>The dependency graph if validation succeeded, null otherwise.</returns>
-    private async Task<DependencyGraph?> ExecuteValidationPhase(IReadOnlyList<IPluginStartup> plugins, List<PluginLoadingError> errors, CancellationToken cancellationToken=default)
+    private async Task<DependencyGraph?> ExecuteValidationPhase(IReadOnlyList<IPluginStartup> plugins, List<PluginLoadingError> errors, CancellationToken cancellationToken = default)
     {
         if (plugins.Count == 0)
         {
@@ -239,13 +234,13 @@ public class PluginLoader(IPluginScanner pluginScanner, PluginValidator pluginVa
     /// <param name="serviceProvider">The service provider for dependency resolution.</param>
     /// <param name="errors">The list to add errors to.</param>
     /// <param name="cancellationToken">Token to cancel the operation.</param>
-    private async Task ExecutePipelineConfigurationPhase(IApplicationBuilder app, IReadOnlyList<IPluginStartup> plugins, IServiceProvider serviceProvider, List<PluginLoadingError> errors, CancellationToken cancellationToken=default)
+    private async Task ExecutePipelineConfigurationPhase(IApplicationBuilder app, IReadOnlyList<IPluginStartup> plugins, List<PluginLoadingError> errors, CancellationToken cancellationToken = default)
     {
         try
         {
             _logger.LogDebug("Executing pipeline configuration phase for {PluginCount} plugins", plugins.Count);
 
-            await _pipelineConfigurator.ConfigurePluginPipeline(app, plugins, serviceProvider, cancellationToken);
+            await _pipelineConfigurator.ConfigurePluginPipeline(app, plugins, cancellationToken);
 
             _logger.LogDebug("Pipeline configuration phase completed successfully");
         }

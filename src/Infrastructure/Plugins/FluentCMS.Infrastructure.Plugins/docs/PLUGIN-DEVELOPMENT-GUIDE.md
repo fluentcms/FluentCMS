@@ -135,7 +135,7 @@ public void ConfigureServices(IServiceCollection services, IConfiguration config
         services.Configure<TextWidgetSettings>(configuration);
     }
     
-    public void Configure(IApplicationBuilder app, IServiceProvider provider)
+    public void Configure(IApplicationBuilder app)
     {
         // Optional: Register middleware, endpoints, etc.
     }
@@ -477,7 +477,7 @@ public class CustomerCreatedEventHandler : IEventSubscriber<CustomerCreatedEvent
 ```csharp
 public void ConfigureServices(IServiceCollection services, IConfiguration configuration)
 {
-    // MediatR automatically registers handlers
+    // Event bus automatically registers handlers
     services.AddScoped<IEventSubscriber<CustomerCreatedEvent>, CustomerCreatedEventHandler>();
 }
 ```
@@ -516,7 +516,7 @@ public class LoggingMiddlewareStartup : IPluginStartup
         services.AddScoped<IRequestLogger, RequestLogger>();
     }
     
-    public void Configure(IApplicationBuilder app, IServiceProvider provider)
+    public void Configure(IApplicationBuilder app)
     {
         // Register middleware
         app.UseMiddleware<RequestLoggingMiddleware>();
@@ -936,7 +936,7 @@ var customers = await _context.Customers
 **Solutions**:
 1. Verify handler registered in DI
 2. Check event type matches exactly
-3. Ensure MediatR pipeline configured
+3. Ensure event bus pipeline configured
 4. Review event publishing code
 
 ---

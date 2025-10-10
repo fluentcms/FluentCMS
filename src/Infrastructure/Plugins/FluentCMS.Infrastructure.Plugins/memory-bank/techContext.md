@@ -33,7 +33,6 @@
   - Health checks framework
 
 #### Event Bus
-- **MediatR** (latest stable)
   - In-process messaging
   - Request/response and notification patterns  
   - Handler discovery and registration
@@ -97,7 +96,6 @@ FluentCMS.sln
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="MediatR" Version="12.2.0" />
     <PackageReference Include="Microsoft.AspNetCore.App" Version="9.0.0" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="9.0.0" />
   </ItemGroup>
@@ -248,8 +246,6 @@ ENTRYPOINT ["dotnet", "watch", "run", "--project", "FluentCMS.Host"]
 #### Required for Host Applications
 ```xml
 <PackageReference Include="FluentCMS.Infrastructure.Plugins" Version="1.0.0" />
-<PackageReference Include="MediatR" Version="12.2.0" />
-<PackageReference Include="MediatR.Extensions.Microsoft.DependencyInjection" Version="11.1.0" />
 ```
 
 #### Required for Plugin Development
@@ -280,7 +276,7 @@ ENTRYPOINT ["dotnet", "watch", "run", "--project", "FluentCMS.Host"]
 #### Event Bus Integration
 **Required Setup:**
 ```csharp
-builder.Services.AddMediatR(config =>
+builder.Services.AddEventBus(config =>
 {
     config.RegisterServicesFromAssemblies(
         typeof(Program).Assembly,

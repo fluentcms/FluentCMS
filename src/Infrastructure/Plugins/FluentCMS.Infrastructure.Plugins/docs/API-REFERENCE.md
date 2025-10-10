@@ -87,7 +87,7 @@ public class MyPluginStartup : IPluginStartup
         services.AddScoped<IMyService, MyService>();
     }
 
-    public void Configure(IApplicationBuilder app, IServiceProvider provider)
+    public void Configure(IApplicationBuilder app)
     {
         app.UseMiddleware<MyMiddleware>();
     }

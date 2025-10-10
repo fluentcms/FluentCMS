@@ -11,8 +11,9 @@ public interface IPluginLoader
     /// Discovers plugins, validates them, registers services, and configures the pipeline.
     /// </summary>
     /// <param name="options">The plugin system options.</param>
+    /// <param name="app">The application builder to configure.</param>
     /// <param name="hostConfiguration">The host application configuration.</param>
     /// <param name="cancellationToken">Token to cancel the operation.</param>
     /// <returns>A task representing the asynchronous operation that returns the loading result.</returns>
-    Task<PluginLoadingResult> LoadPlugins(PluginSystemOptions options, IConfiguration hostConfiguration, CancellationToken cancellationToken = default);
+    Task<PluginLoadingResult> LoadPlugins(PluginSystemOptions options, IApplicationBuilder app, IConfiguration hostConfiguration, CancellationToken cancellationToken = default);
 }
