@@ -16,7 +16,7 @@ public class PluginScanner : IPluginScanner
     /// <returns>A read-only list of discovered plugin startup instances.</returns>
     /// <exception cref="OperationCanceledException">Thrown when the operation is cancelled.</exception>
     /// <exception cref="PluginDiscoveryException">Thrown when plugin discovery fails.</exception>
-    public async Task<IReadOnlyList<IPluginStartup>> ScanForPlugins(PluginSystemOptions options, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<IPluginStartup>> Scan(PluginSystemOptions options, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 

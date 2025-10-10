@@ -12,5 +12,5 @@ public interface IPluginScanner
     /// <param name="options">The plugin system options containing scanning configuration.</param>
     /// <param name="cancellationToken">Token to cancel the scanning operation.</param>
     /// <returns>A read-only list of discovered plugin startup instances.</returns>
-    Task<IReadOnlyList<IPluginStartup>> ScanForPlugins(PluginSystemOptions options, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<IPluginStartup>> Scan(PluginSystemOptions options, CancellationToken cancellationToken = default);
 }

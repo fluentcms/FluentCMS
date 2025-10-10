@@ -28,38 +28,4 @@ public class PluginSystemOptions
     /// Default: 30 seconds
     /// </summary>
     public TimeSpan PluginLoadTimeout { get; set; } = TimeSpan.FromSeconds(30);
-
-    /// <summary>
-    /// Gets or sets a value indicating whether to enable resource monitoring.
-    /// When enabled, plugins will have their resource usage tracked.
-    /// Default: true
-    /// </summary>
-    public bool EnableResourceMonitoring { get; set; } = true;
-
-    /// <summary>
-    /// Gets or sets the interval for resource monitoring checks.
-    /// Default: 30 seconds
-    /// </summary>
-    public TimeSpan ResourceMonitoringInterval { get; set; } = TimeSpan.FromSeconds(30);
-
-    /// <summary>
-    /// Gets or sets a value indicating whether to publish detailed lifecycle events.
-    /// When enabled, all plugin lifecycle events are published to the event bus.
-    /// Default: true
-    /// </summary>
-    public bool EnableLifecycleEvents { get; set; } = true;
-
-    /// <summary>
-    /// Gets or sets a value indicating whether plugins can access the host's configuration.
-    /// When enabled, plugins receive scoped configuration sections.
-    /// When disabled, plugins operate without access to host configuration.
-    /// Default: true
-    /// </summary>
-    public bool EnableConfigurationAccess { get; set; } = true;
-
-    /// <summary>
-    /// Gets or sets the maximum number of plugins to load concurrently.
-    /// Default: 5
-    /// </summary>
-    public int MaxConcurrentPluginLoads { get; set; } = 5;
 }
