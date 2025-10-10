@@ -12,10 +12,9 @@ namespace FluentCMS.Infrastructure.Plugins.Loading;
 /// <param name="serviceRegistrar">The service registrar for DI registration.</param>
 /// <param name="pipelineConfigurator">The pipeline configurator for middleware setup.</param>
 /// <param name="logger">The logger for recording loading activities.</param>
-public class PluginLoader(IPluginScanner pluginScanner, PluginValidator pluginValidator, IServiceRegistrar serviceRegistrar, IPipelineConfigurator pipelineConfigurator, ILogger<PluginLoader> logger) : IPluginLoader
+public class PluginLoader(IPluginScanner pluginScanner,  IServiceRegistrar serviceRegistrar, IPipelineConfigurator pipelineConfigurator, ILogger<PluginLoader> logger) : IPluginLoader
 {
     private readonly IPluginScanner _pluginScanner = NullArgumentException.RequireNonNull(pluginScanner);
-    private readonly PluginValidator _pluginValidator = NullArgumentException.RequireNonNull(pluginValidator);
     private readonly IServiceRegistrar _serviceRegistrar = NullArgumentException.RequireNonNull(serviceRegistrar);
     private readonly IPipelineConfigurator _pipelineConfigurator = NullArgumentException.RequireNonNull(pipelineConfigurator);
     private readonly ILogger<PluginLoader> _logger = NullArgumentException.RequireNonNull(logger);
@@ -37,13 +36,6 @@ public class PluginLoader(IPluginScanner pluginScanner, PluginValidator pluginVa
         {
             // Phase 1: Discovery
             var discoveredPlugins = await ExecuteDiscoveryPhase(options, errors, cancellationToken);
-            if (errors.Count != 0 && !options.IgnoreErrors)
-            {
-                return CreateResult(loadedPlugins, errors, startTime);
-            }
-
-            // Phase 2: Validation
-            var dependencyGraph = await ExecuteValidationPhase(discoveredPlugins, errors, cancellationToken);
             if (errors.Count != 0 && !options.IgnoreErrors)
             {
                 return CreateResult(loadedPlugins, errors, startTime);
@@ -115,7 +107,7 @@ public class PluginLoader(IPluginScanner pluginScanner, PluginValidator pluginVa
                 timeoutCts.CancelAfter(options.PluginLoadTimeout);
             }
 
-            var discoveredPlugins = await _pluginScanner.ScanForPlugins(options, timeoutCts.Token);
+            var discoveredPlugins = await _pluginScanner.Scan(options, timeoutCts.Token);
 
             _logger.LogDebug("Discovery phase completed with {PluginCount} plugins found", discoveredPlugins.Count);
 
@@ -141,57 +133,6 @@ public class PluginLoader(IPluginScanner pluginScanner, PluginValidator pluginVa
                 ex));
 
             return [];
-        }
-    }
-
-    /// <summary>
-    /// Executes the validation phase of plugin loading.
-    /// Validates plugin dependencies and configurations.
-    /// </summary>
-    /// <param name="plugins">The plugins to validate.</param>
-    /// <param name="errors">The list to add errors to.</param>
-    /// <param name="cancellationToken">Token to cancel the operation.</param>
-    /// <returns>The dependency graph if validation succeeded, null otherwise.</returns>
-    private async Task<DependencyGraph?> ExecuteValidationPhase(IReadOnlyList<IPluginStartup> plugins, List<PluginLoadingError> errors, CancellationToken cancellationToken = default)
-    {
-        if (plugins.Count == 0)
-        {
-            return new DependencyGraph([], new Dictionary<string, IReadOnlyList<string>>(), []);
-        }
-
-        try
-        {
-            _logger.LogDebug("Executing validation phase for {PluginCount} plugins", plugins.Count);
-
-            var validationResult = await Task.Run(() =>
-                _pluginValidator.ValidatePlugins(plugins), cancellationToken);
-
-            if (!validationResult.IsValid)
-            {
-                foreach (var error in validationResult.Errors)
-                {
-                    errors.Add(new PluginLoadingError(
-                        PluginLoadingErrorType.ValidationFailure,
-                        error.PluginName,
-                        PluginLoadingPhase.Validation,
-                        error.Message));
-                }
-            }
-
-            _logger.LogDebug("Validation phase completed with {ErrorCount} errors", validationResult.Errors.Count);
-
-            return validationResult.DependencyGraph;
-        }
-        catch (Exception ex)
-        {
-            errors.Add(new PluginLoadingError(
-                PluginLoadingErrorType.ValidationFailure,
-                null,
-                PluginLoadingPhase.Validation,
-                $"Plugin validation failed: {ex.Message}",
-                ex));
-
-            return null;
         }
     }
 

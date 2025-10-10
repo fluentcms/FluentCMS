@@ -1,37 +1,154 @@
+using Microsoft.Extensions.Options;
 using System.Reflection;
 
-namespace FluentCMS.Infrastructure.Plugins.Discovery;
+namespace FluentCMS.Infrastructure.Plugins;
 
 /// <summary>
 /// Implementation of IPluginScanner that uses reflection to discover plugin types.
 /// Scans loaded assemblies for classes marked with [Plugin] attribute and instantiates them.
 /// </summary>
-public class PluginScanner : IPluginScanner
+internal abstract class PluginScanner(ILogger<PluginScanner> logger, IOptions<PluginSystemOptions> pluginSystemOptions) : IPluginScanner
 {
-    /// <summary>
-    /// Scans assemblies for plugin implementations based on the provided options.
-    /// </summary>
-    /// <param name="options">The plugin system options containing scanning configuration.</param>
-    /// <param name="cancellationToken">Token to cancel the scanning operation.</param>
-    /// <returns>A read-only list of discovered plugin startup instances.</returns>
-    /// <exception cref="OperationCanceledException">Thrown when the operation is cancelled.</exception>
-    /// <exception cref="PluginDiscoveryException">Thrown when plugin discovery fails.</exception>
-    public async Task<IReadOnlyList<IPluginStartup>> Scan(PluginSystemOptions options, CancellationToken cancellationToken = default)
+    private readonly ILogger<PluginScanner> _logger = NullArgumentException.RequireNonNull(logger);
+    private readonly PluginSystemOptions _pluginSystemOptions = NullArgumentException.RequireNonNull(pluginSystemOptions.Value);
+    // Attribute identification (stable across load contexts)
+    private readonly string _attrFullName = typeof(PluginAttribute).FullName!;                    // e.g. "FluentCMS.Abstractions.PluginAttribute"
+    private readonly string _attrAsmSimple = typeof(PluginAttribute).Assembly.GetName().Name!;    // e.g. "FluentCMS.Abstractions"
+
+    public IEnumerable<Type> GetPluginTypes(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
+        var matchedFiles = new List<string>();
+
         try
         {
-            var pluginTypes = await FindPluginTypes(options, cancellationToken);
-            var plugins = await InstantiatePlugins(pluginTypes, cancellationToken);
+            var executablePath = Assembly.GetExecutingAssembly().Location;
+            var executableFolder = Path.GetDirectoryName(executablePath) ??
+                throw new PluginDiscoveryException("Could not determine the executable folder path.");
 
-            return plugins.AsReadOnly();
+            // Get all DLL files in the executable folder
+            var allDllFiles = Directory.GetFiles(executableFolder, "*.dll", SearchOption.TopDirectoryOnly);
+            var scanPatterns = _pluginSystemOptions.ScanAssemblyPatterns;
+
+            foreach (var file in allDllFiles)
+            {
+                cancellationToken.ThrowIfCancellationRequested();  // Add this for per-iteration checks
+                var fileNameWithoutExt = Path.GetFileNameWithoutExtension(file);
+                if (scanPatterns.Any(pattern =>
+                    fileNameWithoutExt.Contains(pattern.Trim('*'), StringComparison.OrdinalIgnoreCase)))
+                {
+                    // Pattern matches: include this assembly
+                    _logger.LogDebug("Scanning assembly {AssemblyPath} for plugins", file);
+                    matchedFiles.Add(file);
+                }
+            }
+
+            return LoadFast(matchedFiles, cancellationToken);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception)
         {
-            throw new PluginDiscoveryException("Failed to scan for plugins", ex);
+
+            throw;
+        }
+
+        
+    }
+
+    private IEnumerable<Type> LoadFast(IEnumerable<string> assemblyPaths, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        // Create a set of file names from assembly paths for efficient lookup
+        var pathFileNames = new HashSet<string>(assemblyPaths.Select(p => Path.GetFileNameWithoutExtension(p)), StringComparer.OrdinalIgnoreCase);
+
+        // Get all loaded assemblies
+        var loadedAssemblies = AppDomain.CurrentDomain.GetAssemblies();
+
+        // First, yield already loaded assemblies that match the paths
+        foreach (var asm in loadedAssemblies)
+        {
+            var name = asm.GetName().Name;
+            if (!string.IsNullOrEmpty(name) && pathFileNames.Contains(name))
+            {
+                // Find the types refercing PluginAttribute or referencing its assembly
+
+                foreach (var type in FindPluginTypes(asm, cancellationToken))
+                {
+                    yield return type;
+                }
+                pathFileNames.Remove(name); // Remove to avoid loading again
+            }
+        }
+
+        // Then, load and yield assemblies for remaining paths
+        foreach (var assemblyPath in assemblyPaths)
+        {
+            if (MetadataOnlyHasAttribute(assemblyPath, cancellationToken))
+            {
+                // Attribute found: load fully into a collectible PluginLoadContext
+                var alc = new PluginLoadContext(assemblyPath);
+                var asm = alc.LoadFromAssemblyPath(assemblyPath);
+                foreach (var type in FindPluginTypes(asm, cancellationToken))
+                {
+                    yield return type;
+                }
+            }
         }
     }
+
+    private bool MetadataOnlyHasAttribute(string assemblyPath, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        // Build a resolver with the runtime core + the target assembly directory so references can be resolved
+        var coreDir = Path.GetDirectoryName(typeof(object).Assembly.Location)!;
+        var coreDlls = Directory.GetFiles(coreDir, "*.dll");
+
+        // include the candidate assembly + its directory contents to help resolve its deps
+        var pluginDir = Path.GetDirectoryName(Path.GetFullPath(assemblyPath))!;
+        var pluginDlls = Directory.GetFiles(pluginDir, "*.dll");
+
+        var resolver = new PathAssemblyResolver(coreDlls
+            .Concat(pluginDlls)
+            .Append(assemblyPath));
+
+        using var mlc = new MetadataLoadContext(resolver);
+        var asm = mlc.LoadFromAssemblyPath(assemblyPath);
+
+        foreach (var t in asm.DefinedTypes)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            // Similar to runtime path: compare by name/assembly
+            foreach (var cad in t.GetCustomAttributesData())
+            {
+                var at = cad.AttributeType;
+                var aAsm = at.Assembly.GetName().Name;
+                if (at.FullName == _attrFullName && aAsm == _attrAsmSimple)
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    private static IEnumerable<Type> FindPluginTypes(Assembly assembly, CancellationToken cancellationToken = default)
+    {
+        if (assembly.GetReferencedAssemblies().Any(a => a.Name == typeof(PluginAttribute).Assembly.GetName().Name))
+        {
+            foreach (var type in assembly.GetTypes())
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (type.IsDefined(typeof(PluginAttribute), inherit: false) &&
+                    typeof(IPluginStartup).IsAssignableFrom(type) &&
+                    type.IsClass && !type.IsAbstract &&
+                    type.GetConstructor(Type.EmptyTypes) != null)
+                {
+                    yield return type;
+                }
+            }
+        }
+    }
+
 
     /// <summary>
     /// Finds plugin types by scanning assemblies that match the configured patterns.
@@ -39,7 +156,7 @@ public class PluginScanner : IPluginScanner
     /// <param name="options">The plugin system options.</param>
     /// <param name="cancellationToken">Token to cancel the operation.</param>
     /// <returns>A list of plugin types found.</returns>
-    private static async Task<List<Type>> FindPluginTypes(PluginSystemOptions options, CancellationToken cancellationToken)
+    private static async Task<List<Type>> FindPluginTypes(CancellationToken cancellationToken)
     {
         var pluginTypes = new List<Type>();
 
