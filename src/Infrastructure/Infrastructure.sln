@@ -84,6 +84,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Infrastructure.Pl
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "AI", "AI", "{B987B6B6-F2A3-42C8-B5D1-6733206C54A9}"
 	ProjectSection(SolutionItems) = preProject
+		AI\01-CODE-REVIEW-NAMING.MD = AI\01-CODE-REVIEW-NAMING.MD
 		AI\CODE-REVIEW-1.MD = AI\CODE-REVIEW-1.MD
 	EndProjectSection
 EndProject
