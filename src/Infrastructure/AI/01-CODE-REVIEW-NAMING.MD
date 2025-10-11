@@ -133,35 +133,37 @@ To minimize breakage:
 
 ### 2) Task Breakdown (Markdown)
 
-Create a new markdown document in `/tasks/` with name:  
-`01-NAMING-{{PROJECT_NAME}}-{{DATE}}.md`  
-containing the following:
+#### Conventions to Enforce
+- Follow Microsoft C# naming conventions.
+- Prefer full, descriptive words (avoid abbreviations).
+- Align folders and namespaces.
+- Use `_camelCase` for private fields.
+
+#### Work Items
+> Group by folder. Keep tasks atomic.
+
+#### Tasks
+Create a new markdown document in `/tasks/` with name: `01-NAMING-{{PROJECT_NAME}}-{{DATE}}.md` containing the following:
 
 ```markdown
 # Refactor Plan — {{PROJECT_NAME}} - {{DATE}}
+
+## Overall Context
+Write a brief summary of the proposed changes, risk level, and estimated effort.
 
 ## Summary
 - Scope: spelling, naming, folder/namespace alignment, naming clarity
 - Risk level: {Low|Medium|High}
 - Estimated effort: {S|M|L}
 
-## Conventions to Enforce
-- Follow Microsoft C# naming conventions.
-- Prefer full, descriptive words (avoid abbreviations).
-- Align folders and namespaces.
-- Use `_camelCase` for private fields.
-
-## Work Items
-> Group by folder. Keep tasks atomic.
-
 ### Tasks
-| ID | Priority | Type | Path / Symbol | Action | Before → After | Notes |
-|---:|:--------:|:----:|:--------------|:------|:----------------|:------|
-| T1 | P0 | Naming | `src/.../UserMngr.cs` (class) | Rename | `UserMngr` → `UserManager` | Public API: add `[Obsolete]` shim |
-| T2 | P1 | Spelling | `Publishr.cs` (method) | Rename | `Publsih` → `Publish` | Update references |
-| T3 | P1 | Naming | `PluginLoding.cs` (class) | Rename | `PluginLoding` → `PluginLoader` | Improves clarity |
-| T4 | P1 | Structure | `src/Core/Svc` | Move | `Svc` → `Services` | Align folder/namespace |
-| T5 | P2 | Fields | multiple | Prefix | `logger` → `_logger` | Private fields only |
+|    ID    | Priority | Type | Path / Symbol | Action | Before → After | Notes |
+|---------:|:--------:|:----:|:--------------|:------|:----------------|:------|
+| - [ ] T1 | P0 | Naming | `src/.../UserMngr.cs` (class) | Rename | `UserMngr` → `UserManager` | Public API: add `[Obsolete]` shim |
+| - [ ] T2 | P1 | Spelling | `Publishr.cs` (method) | Rename | `Publsih` → `Publish` | Update references |
+| - [ ] T3 | P1 | Naming | `PluginLoding.cs` (class) | Rename | `PluginLoding` → `PluginLoader` | Improves clarity |
+| - [ ] T4 | P1 | Structure | `src/Core/Svc` | Move | `Svc` → `Services` | Align folder/namespace |
+| - [ ] T5 | P2 | Fields | multiple | Prefix | `logger` → `_logger` | Private fields only |
 
 ```
 
@@ -204,3 +206,4 @@ containing the following:
 
 After completing the review, provide the findings and create the markdown task breakdown as specified in section 2.
 Just focus on the mentioned aspects (naming conventions, spelling, folder/namespace alignment, and clarity enhancements) without introducing unrelated changes (like finding bus, issues, etc.).
+Find the required actions as atomic task breakdown and write in the Task Breakdown (Markdown) file.
