@@ -1,7 +1,5 @@
 using FluentCMS.Infrastructure.Plugins;
-using FluentCMS.Infrastructure.Plugins.Discovery;
 using FluentCMS.Infrastructure.Plugins.Lifecycle;
-using FluentCMS.Infrastructure.Plugins.Loading;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 /// <summary>

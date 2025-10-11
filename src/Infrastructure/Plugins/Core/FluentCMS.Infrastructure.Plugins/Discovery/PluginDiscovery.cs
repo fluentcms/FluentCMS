@@ -5,10 +5,10 @@ internal interface IPluginDiscovery
     List<string> Scan(CancellationToken cancellationToken = default);
 }
 
-internal class PluginDiscovery(ILogger<PluginDiscovery> logger, IOptions<PluginSystemOptions> pluginSystemOptions) : IPluginDiscovery
+internal class PluginDiscovery(ILogger<PluginDiscovery> logger, PluginSystemOptions pluginSystemOptions) : IPluginDiscovery
 {
     private readonly ILogger<PluginDiscovery> _logger = NullArgumentException.RequireNonNull(logger);
-    private readonly PluginSystemOptions _pluginSystemOptions = NullArgumentException.RequireNonNull(pluginSystemOptions.Value);
+    private readonly PluginSystemOptions _pluginSystemOptions = NullArgumentException.RequireNonNull(pluginSystemOptions);
     private string _pluginAssemblyPath = default!;
     private string _pluginAttributeFullName = default!;
     private string _pluginStartupInterfaceFullName = default!;

@@ -5,10 +5,10 @@ internal interface IPluginInitializer
     PluginMetadata Initialize(Type pluginType);
 }
 
-internal class PluginInitializer(ILogger<PluginInitializer> logger, IOptions<PluginSystemOptions> pluginSystemOptions) : IPluginInitializer
+internal class PluginInitializer(ILogger<PluginInitializer> logger, PluginSystemOptions pluginSystemOptions) : IPluginInitializer
 {
     private readonly ILogger<PluginInitializer> _logger = NullArgumentException.RequireNonNull(logger);
-    private readonly PluginSystemOptions _pluginSystemOptions = NullArgumentException.RequireNonNull(pluginSystemOptions.Value);
+    private readonly PluginSystemOptions _pluginSystemOptions = NullArgumentException.RequireNonNull(pluginSystemOptions);
 
     public PluginMetadata Initialize(Type pluginType)
     {

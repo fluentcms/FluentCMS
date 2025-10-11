@@ -12,7 +12,7 @@ namespace FluentCMS.Infrastructure.Plugins.Loading;
 /// <param name="serviceRegistrar">The service registrar for DI registration.</param>
 /// <param name="pipelineConfigurator">The pipeline configurator for middleware setup.</param>
 /// <param name="logger">The logger for recording loading activities.</param>
-public class PluginLoader(IPluginScanner pluginScanner,  IServiceRegistrar serviceRegistrar, IPipelineConfigurator pipelineConfigurator, ILogger<PluginLoader> logger) : IPluginLoader
+public class PluginLoader(IPluginScanner pluginScanner, IServiceRegistrar serviceRegistrar, IPipelineConfigurator pipelineConfigurator, ILogger<PluginLoader> logger) : IPluginLoader
 {
     private readonly IPluginScanner _pluginScanner = NullArgumentException.RequireNonNull(pluginScanner);
     private readonly IServiceRegistrar _serviceRegistrar = NullArgumentException.RequireNonNull(serviceRegistrar);

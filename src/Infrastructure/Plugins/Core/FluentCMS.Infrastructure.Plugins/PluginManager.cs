@@ -6,10 +6,10 @@ internal interface IPluginManager
     void Start(IApplicationBuilder app, CancellationToken cancellationToken);
 }
 
-internal class PluginManager(IPluginDiscovery pluginDiscovery, IPluginInitializer pluginInitializer, IPluginLoader pluginLoader, ILogger<PluginManager> logger, IOptions<PluginSystemOptions> pluginSystemOptions) : IPluginManager
+internal class PluginManager(IPluginDiscovery pluginDiscovery, IPluginInitializer pluginInitializer, IPluginLoader pluginLoader, ILogger<PluginManager> logger, PluginSystemOptions pluginSystemOptions) : IPluginManager
 {
     private readonly ILogger<PluginManager> _logger = NullArgumentException.RequireNonNull(logger);
-    private readonly PluginSystemOptions _pluginSystemOptions = NullArgumentException.RequireNonNull(pluginSystemOptions.Value);
+    private readonly PluginSystemOptions _pluginSystemOptions = NullArgumentException.RequireNonNull(pluginSystemOptions);
     private readonly List<PluginMetadata> _pluginMetadataList = [];
 
     private void Init(CancellationToken cancellationToken)

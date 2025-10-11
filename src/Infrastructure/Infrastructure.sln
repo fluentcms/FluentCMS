@@ -82,6 +82,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Infrastructure.Pl
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Infrastructure.Plugins", "Plugins\Core\FluentCMS.Infrastructure.Plugins\FluentCMS.Infrastructure.Plugins.csproj", "{993F988D-8935-4B40-A5E4-4005D184B568}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "AI", "AI", "{B987B6B6-F2A3-42C8-B5D1-6733206C54A9}"
+	ProjectSection(SolutionItems) = preProject
+		AI\CODE-REVIEW-1.MD = AI\CODE-REVIEW-1.MD
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

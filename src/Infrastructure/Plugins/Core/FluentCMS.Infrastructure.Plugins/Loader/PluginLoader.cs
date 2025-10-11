@@ -5,10 +5,10 @@ internal interface IPluginLoader
     List<Type> LoadPluginTypes(IEnumerable<string> assemblyFiles, CancellationToken cancellationToken = default);
 }
 
-internal class PluginLoader(ILogger<PluginLoader> logger, IOptions<PluginSystemOptions> pluginSystemOptions) : IPluginLoader
+internal class PluginLoader(ILogger<PluginLoader> logger, PluginSystemOptions pluginSystemOptions) : IPluginLoader
 {
     private readonly ILogger<PluginLoader> _logger = NullArgumentException.RequireNonNull(logger);
-    private readonly PluginSystemOptions _pluginSystemOptions = NullArgumentException.RequireNonNull(pluginSystemOptions.Value);
+    private readonly PluginSystemOptions _pluginSystemOptions = NullArgumentException.RequireNonNull(pluginSystemOptions);
 
     public List<Type> LoadPluginTypes(IEnumerable<string> assemblyFiles, CancellationToken cancellationToken = default)
     {

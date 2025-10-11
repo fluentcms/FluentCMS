@@ -25,7 +25,7 @@ public class PluginLoadingResult(IReadOnlyList<PluginInfo> loadedPlugins, IReadO
     /// <summary>
     /// Gets the list of validation or loading errors that occurred.
     /// </summary>
-    public IReadOnlyList<PluginLoadingError> Errors { get; }  = NullArgumentException.RequireNonNull(errors);
+    public IReadOnlyList<PluginLoadingError> Errors { get; } = NullArgumentException.RequireNonNull(errors);
 
     /// <summary>
     /// Gets the duration of the loading process.

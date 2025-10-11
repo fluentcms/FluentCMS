@@ -52,7 +52,7 @@ internal abstract class PluginScanner(ILogger<PluginScanner> logger, IOptions<Pl
             throw;
         }
 
-        
+
     }
 
     private IEnumerable<Type> LoadFast(IEnumerable<string> assemblyPaths, CancellationToken cancellationToken = default)

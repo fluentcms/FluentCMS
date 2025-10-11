@@ -28,4 +28,7 @@ public class PluginSystemOptions
     /// Default: 30 seconds
     /// </summary>
     public TimeSpan PluginLoadTimeout { get; set; } = TimeSpan.FromSeconds(30);
+
+
+    public ILoggerFactory LoggerFactory { get; set; } = default!;
 }
