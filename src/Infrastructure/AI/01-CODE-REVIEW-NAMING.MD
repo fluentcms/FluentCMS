@@ -163,25 +163,6 @@ containing the following:
 | T4 | P1 | Structure | `src/Core/Svc` | Move | `Svc` → `Services` | Align folder/namespace |
 | T5 | P2 | Fields | multiple | Prefix | `logger` → `_logger` | Private fields only |
 
-### Compatibility & Migration
-- Add obsolete redirects or type forwards.  
-- Update serialization (`JsonPropertyName`, `DataMember`).  
-- Update EF Core mappings (`ToTable`, `HasColumnName`).  
-- Ensure reflection/DI registration compatibility.
-
-### Search & Replace Checklist
-- Use **symbol-aware** rename tools (e.g., Roslyn-based refactoring).  
-- Update documentation & tests.  
-- Update DI registrations and snapshots.
-
-### Example Diff
-```diff
-- public class PluginLoding
-+ public class PluginLoader
-{
--   private ILogger logger;
-+   private readonly ILogger _logger;
-}
 ```
 
 ## Process & Constraints
@@ -219,3 +200,6 @@ containing the following:
 
 ### Namespace Alignment
 * `Company.Product.Core.Svc` → `Company.Product.Core.Services`
+
+
+After completing the review, provide the findings and create the markdown task breakdown as specified in section 2.
