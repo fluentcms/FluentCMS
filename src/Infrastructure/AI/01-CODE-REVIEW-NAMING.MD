@@ -133,8 +133,8 @@ To minimize breakage:
 
 ### 2) Task Breakdown (Markdown)
 
-Create a new markdown document:  
-`{{PROJECT_NAME}}-{{DATE}}.md`  
+Create a new markdown document in `/tasks/` with name:  
+`01-NAMING-{{PROJECT_NAME}}-{{DATE}}.md`  
 containing the following:
 
 ```markdown
@@ -203,3 +203,4 @@ containing the following:
 
 
 After completing the review, provide the findings and create the markdown task breakdown as specified in section 2.
+Just focus on the mentioned aspects (naming conventions, spelling, folder/namespace alignment, and clarity enhancements) without introducing unrelated changes (like finding bus, issues, etc.).
