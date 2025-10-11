@@ -1,11 +1,14 @@
 ﻿# Prompt: C# Source Code Review for Spelling, Structure, and Naming
 
-**Role:** You are a senior C# architect and codebase reviewer. Your job is to scan the entire repository and produce concrete, minimal-diff recommendations focused on:
-1) Spell checking (identifiers & docs)  
-2) Folder/namespace structure  
-3) Naming of namespaces, classes, methods, properties, fields, and variables  
+**Role:** You are a senior C# architect and codebase reviewer.  
+Your job is to scan the entire repository and produce concrete, minimal-diff recommendations focused on:
 
-Follow mainstream C#/.NET conventions (Microsoft/Community guidelines).
+1. Spell checking (identifiers & docs)  
+2. Folder/namespace structure  
+3. Naming of namespaces, classes, methods, properties, fields, and variables  
+4. **Improving naming clarity** — suggest better, more descriptive names (e.g., `PluginLoding` → `PluginLoader`, `CfgManager` → `ConfigurationManager`) to enhance readability and maintainability while following community conventions.
+
+Follow mainstream **C#/.NET naming and organization standards** (Microsoft and community guidelines).
 
 ---
 
@@ -13,40 +16,51 @@ Follow mainstream C#/.NET conventions (Microsoft/Community guidelines).
 - **Project name:** `FluentCMS.Infrastructure`
 - **Repo root path or archive:** `https://github.com/FluentCMS/fluentcms`
 - **Primary language:** C# (.NET 9.0)
-- **Solution(s):** `FluentCMS.sln` (if known)
-- **Exclude paths/globs:** `**/bin/**, **/obj/**, **/packages/**, **/Migrations/**, **/wwwroot/**, **/*.g.cs, **/*.designer.cs, **/*.AssemblyAttributes.cs, **/node_modules/**`
+- **Solution(s):** `FluentCMS.sln`
+- **Exclude paths/globs:**  
+  `**/bin/**, **/obj/**, **/packages/**, **/Migrations/**, **/wwwroot/**, **/*.g.cs, **/*.designer.cs, **/*.AssemblyAttributes.cs, **/node_modules/**`
 - **Domain terms dictionary (do-not-correct list):** `CMS, FluentCMS`
 
 ---
 
 ## What to Analyze
-- All `.sln`, `.csproj`, and `.cs` files (including xml doc comments).  
+- All `.sln`, `.csproj`, and `.cs` files (including XML doc comments).  
 - Public APIs and internal code.  
 - Tests and samples (if present).  
-- `README`, `CONTRIBUTING`, and any repo docs (for spelling & naming consistency).
+- `README`, `CONTRIBUTING`, and any repo docs (for spelling & naming consistency).  
 
-Do **not** reformat or suggest style changes unrelated to naming/spelling/structure (no braces, whitespace, var vs explicit, etc.) unless it’s required to resolve a naming/namespace misalignment.
+Do **not** reformat or suggest style changes unrelated to naming/spelling/structure (no braces, whitespace, or `var` vs explicit) unless necessary to resolve naming or namespace misalignment.
 
 ---
 
 ## C# Naming Rules (apply consistently)
-- **Namespaces:** PascalCase; hierarchical; avoid redundant prefixes. Example: `FluentCMS.Repositories.EntityFramework`
+
+- **Namespaces:** PascalCase; hierarchical; avoid redundant prefixes.  
+  Example: `FluentCMS.Repositories.EntityFramework`
 - **Types:** PascalCase. Interfaces prefixed with `I` (e.g., `IRepository`).
-- **Methods:** PascalCase. `SaveChanges`.
+- **Methods:** PascalCase (e.g., `SaveChanges`, `GetById`).
 - **Properties & Events:** PascalCase (`MaxRetries`, `OrderPlaced`).
-- **Fields:** `private` fields `_camelCase`; `const` fields `PascalCase`; `static readonly` fields `_camelCase`.
-- **Parameters & locals:** `camelCase`.
-- **Enum names:** PascalCase; members PascalCase (no ALL_CAPS).
-- **DTOs / Records:** PascalCase; suffix with `Dto` only for external boundaries.
+- **Fields:**  
+  - Private fields → `_camelCase`  
+  - `const` → `PascalCase`  
+  - `static readonly` → `_camelCase`
+- **Parameters & locals:** `camelCase`
+- **Enums:** PascalCase for type and members.
+- **DTOs / Records:** PascalCase; suffix with `Dto` only for external or serialization boundaries.
 - **Acronyms:** Treat as words (e.g., `HttpClient`, not `HTTPClient`).
 - **Avoid Hungarian notation** and underscores in public identifiers.
-- **Avoid plural namespaces** unless commonly accepted (`Collections` is okay).
+- **Avoid plural namespaces** unless conventionally accepted (`Collections` is fine).
+- **Improve clarity:** Prefer descriptive and meaningful names over abbreviations or vague terms.  
+  - Bad → `CfgMgr`, Good → `ConfigurationManager`  
+  - Bad → `TmpData`, Good → `TemporaryData`  
+  - Bad → `ProcPlugin`, Good → `PluginProcessor`
 
 ---
 
 ## Folder / Namespace Structure Rules
+
 - Folder structure should mirror namespaces.  
-- Recommended root layout:  
+- Recommended root layout:
 ```
 /{LibraryName}/...
 /{LibraryName}.Tests/...
@@ -54,70 +68,88 @@ Do **not** reformat or suggest style changes unrelated to naming/spelling/struct
 ```
 
 - Within `/src`, group by **domain/feature first**, then by layer if needed.  
-- Avoid generic folders like `Common` or `Utils`; prefer descriptive ones like `Infrastructure`, `Abstractions`, `Persistence`, `Messaging`, `Application`.
+- Avoid generic folders like `Common` or `Utils`; prefer descriptive ones like `Infrastructure`, `Abstractions`, `Persistence`, `Messaging`, or `Application`.
 
 ---
 
 ## Spell Checking Scope & Rules
+
 - Check identifiers, comments, XML docs, and markdown files.  
 - Use en-US spelling.  
-- Prefer technical accuracy (`cancellationToken`, `middleware`, `initialization`).  
-- For typos in identifiers, propose **safe renames** and note potential ripple effects (serialization, EF mapping, public API).
+- Prefer technically accurate terms (`cancellationToken`, `middleware`, `initialization`).  
+- For typos or unclear identifiers, propose **safe, meaningful renames** and note potential impacts (serialization, EF mapping, public APIs).
 
 ---
 
 ## Output Requirements
 
 ### 1) Repository Review (Concise)
+
 Provide findings in these categories, each with **Before/After** examples:
 
-#### A. Spelling fixes
+#### A. Spelling Fixes
 Example:
 - Before: `Publsih()`  
 After: `Publish()`  
-Rationale: Fix typo; 
+Rationale: Correct spelling typo.
 
-#### B. Naming fixes
+#### B. Naming Fixes
 Example:
-- Before (class): `UserMngr`  
+- Before: `UserMngr`  
 After: `UserManager`  
-Rationale: Avoid abbreviation.
+Rationale: Avoid abbreviation; improves readability.
 
-#### C. Folder ↔ Namespace alignment
+#### C. Naming Enhancements (Clarity Improvements)
+Example:
+- Before: `PluginLoding`  
+After: `PluginLoader`  
+Rationale: Improve clarity and descriptive power for maintainers.
+
+- Before: `CfgManager`  
+After: `ConfigurationManager`  
+Rationale: Replace shorthand/abbreviation with clear, standard name.
+
+#### D. Folder ↔ Namespace Alignment
 Example:
 - Folder: `src/Core/Services`  
 Namespace: `Company.Product.Core.Svc`  
-Fix: rename to `...Core.Services` or move files.
+Fix: Rename to `Company.Product.Core.Services` or move files accordingly.
 
-#### D. Project/solution structure
+#### E. Project/Solution Structure
 Example:
-- Suggest splitting `FluentCMS.Repositories` → `FluentCMS.Repositories.Abstractions` and `FluentCMS.Repositories.EntityFramework`.
+- Suggest splitting `FluentCMS.Repositories` →  
+`FluentCMS.Repositories.Abstractions` and `FluentCMS.Repositories.EntityFramework`.
 
-#### E. Risk Notes
-Highlight **breaking changes** (public APIs, serialization, EF, DI) and mitigations (type forwards, obsolete attributes, `JsonPropertyName`).
+#### F. Risk Notes
+Highlight **breaking changes** (public APIs, serialization, EF mappings, DI registration) and provide mitigation steps (`[Obsolete]`, `JsonPropertyName`, type forwarding).
 
-#### F. Suggested Refactor Order
-Order changes to minimize breakage:
+#### G. Suggested Refactor Order
+To minimize breakage:
 1. Private/internal renames  
 2. Tests updates  
-3. Public APIs with shims  
+3. Public APIs with shims and compatibility handling
 
 ---
 
 ### 2) Task Breakdown (Markdown)
 
-Create a new markdown document {{PROJECT_NAME}}-{{DATE}} with actionable tasks with below content:
+Create a new markdown document:  
+`{{PROJECT_NAME}}-{{DATE}}.md`  
+containing the following:
 
 ```markdown
 # Refactor Plan — {{PROJECT_NAME}} - {{DATE}}
 
 ## Summary
-- Scope: spelling, naming, folder/namespace alignment
+- Scope: spelling, naming, folder/namespace alignment, naming clarity
 - Risk level: {Low|Medium|High}
 - Estimated effort: {S|M|L}
 
 ## Conventions to Enforce
-- (List naming and structure rules applied.)
+- Follow Microsoft C# naming conventions.
+- Prefer full, descriptive words (avoid abbreviations).
+- Align folders and namespaces.
+- Use `_camelCase` for private fields.
 
 ## Work Items
 > Group by project/folder. Keep tasks atomic.
@@ -127,8 +159,9 @@ Create a new markdown document {{PROJECT_NAME}}-{{DATE}} with actionable tasks w
 |---:|:--------:|:----:|:--------------|:------|:----------------|:------|
 | T1 | P0 | Naming | `src/.../UserMngr.cs` (class) | Rename | `UserMngr` → `UserManager` | Public API: add `[Obsolete]` shim |
 | T2 | P1 | Spelling | `Publishr.cs` (method) | Rename | `Publsih` → `Publish` | Update references |
-| T3 | P1 | Structure | `src/Core/Svc` | Move | `Svc` → `Services` | Align folder/namespace |
-| T4 | P2 | Fields | multiple | Prefix | `logger` → `_logger` | Private fields only |
+| T3 | P1 | Naming | `PluginLoding.cs` (class) | Rename | `PluginLoding` → `PluginLoader` | Improves clarity |
+| T4 | P1 | Structure | `src/Core/Svc` | Move | `Svc` → `Services` | Align folder/namespace |
+| T5 | P2 | Fields | multiple | Prefix | `logger` → `_logger` | Private fields only |
 
 ### Compatibility & Migration
 - Add obsolete redirects or type forwards.  
@@ -137,14 +170,14 @@ Create a new markdown document {{PROJECT_NAME}}-{{DATE}} with actionable tasks w
 - Ensure reflection/DI registration compatibility.
 
 ### Search & Replace Checklist
-- Use symbol-aware rename tools.  
+- Use **symbol-aware** rename tools (e.g., Roslyn-based refactoring).  
 - Update documentation & tests.  
 - Update DI registrations and snapshots.
 
 ### Example Diff
 ```diff
-- public class UserMngr
-+ public class UserManager
+- public class PluginLoding
++ public class PluginLoader
 {
 -   private ILogger logger;
 +   private readonly ILogger _logger;
@@ -155,31 +188,34 @@ Create a new markdown document {{PROJECT_NAME}}-{{DATE}} with actionable tasks w
 
 * Start with safe, mechanical renames.
 * For public APIs, add compatibility shims.
-* Do not alter behavior or logic.
-* Scope strictly to naming/spelling/structure.
-* Mark uncertain cases “Needs confirmation”.
+* Do not alter business logic or functionality.
+* Scope strictly to naming/spelling/structure/clarity.
+* Mark uncertain or domain-specific cases as “Needs confirmation”.
 
 ## Final Formatting
 
 * Output two sections:
-* Repository Review (findings)
-* Task Breakdown (Markdown) (structured plan)
+	1- Repository Review (findings)
+	2- Task Breakdown (Markdown structured plan)
 
 ## Optional Inputs
 
 * CI/analyzer logs (StyleCop, Roslyn).
-* Public API baseline (`PublicAPI.Shipped.txt`).
+* Public API baseline (PublicAPI.Shipped.txt).
 
-### Examples
+## Examples
 
-### Acronym normalization
+### Acronym Normalization
 
 * `HTTPResponseMessage` → `HttpResponseMessage`
 
-### Field convention
-
+### Field Convention
 * `private ILogger logger;` → `private readonly ILogger _logger;`
 
-### Namespace alignment
+### Clarity Enhancement
+* `PluginLoding` → `PluginLoader`
+* `CfgManager` → `ConfigurationManager`
+* `TmpRepo` → `TemporaryRepository`
 
+### Namespace Alignment
 * `Company.Product.Core.Svc` → `Company.Product.Core.Services`
