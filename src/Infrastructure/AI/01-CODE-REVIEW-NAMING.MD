@@ -157,13 +157,13 @@ Write a brief summary of the proposed changes, risk level, and estimated effort.
 - Estimated effort: {S|M|L}
 
 ### Tasks
-|    ID    | Priority | Type | Path / Symbol | Action | Before → After | Notes |
-|---------:|:--------:|:----:|:--------------|:------|:----------------|:------|
-| - [ ] T1 | P0 | Naming | `src/.../UserMngr.cs` (class) | Rename | `UserMngr` → `UserManager` | Public API: add `[Obsolete]` shim |
-| - [ ] T2 | P1 | Spelling | `Publishr.cs` (method) | Rename | `Publsih` → `Publish` | Update references |
-| - [ ] T3 | P1 | Naming | `PluginLoding.cs` (class) | Rename | `PluginLoding` → `PluginLoader` | Improves clarity |
-| - [ ] T4 | P1 | Structure | `src/Core/Svc` | Move | `Svc` → `Services` | Align folder/namespace |
-| - [ ] T5 | P2 | Fields | multiple | Prefix | `logger` → `_logger` | Private fields only |
+|Status |    ID    | Priority | Type | Path / Symbol | Action | Before → After | Notes |
+|-------|---------:|:--------:|:----:|:--------------|:------|:----------------|:------|
+|&#9744;| T1 | P0 | Naming | `src/.../UserMngr.cs` (class) | Rename | `UserMngr` → `UserManager` | Public API: add `[Obsolete]` shim |
+|&#9744;| T2 | P1 | Spelling | `Publishr.cs` (method) | Rename | `Publsih` → `Publish` | Update references |
+|&#9744;| T3 | P1 | Naming | `PluginLoding.cs` (class) | Rename | `PluginLoding` → `PluginLoader` | Improves clarity |
+|&#9744;| T4 | P1 | Structure | `src/Core/Svc` | Move | `Svc` → `Services` | Align folder/namespace |
+|&#9744;| T5 | P2 | Fields | multiple | Prefix | `logger` → `_logger` | Private fields only |
 
 ```
 
@@ -207,3 +207,4 @@ Write a brief summary of the proposed changes, risk level, and estimated effort.
 After completing the review, provide the findings and create the markdown task breakdown as specified in section 2.
 Just focus on the mentioned aspects (naming conventions, spelling, folder/namespace alignment, and clarity enhancements) without introducing unrelated changes (like finding bus, issues, etc.).
 Find the required actions as atomic task breakdown and write in the Task Breakdown (Markdown) file.
+Do not suggest for writing inline comments or XML documentation if missed or incomplete. Just do the spelling check if any typo found.
