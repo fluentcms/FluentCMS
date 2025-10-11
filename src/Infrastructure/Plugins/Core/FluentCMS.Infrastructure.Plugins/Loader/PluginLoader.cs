@@ -89,7 +89,7 @@ internal class PluginLoader(ILogger<PluginLoader> logger, PluginSystemOptions pl
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            logger.LogError(ex, "Error finding loaded assembly {Assembly}", assemblyPath);
+            _logger.LogError(ex, "Error finding loaded assembly {Assembly}", assemblyPath);
             if (_pluginSystemOptions.IgnoreErrors)
             {
                 _logger.LogWarning(ex, "Ignoring error finding loaded assembly {Assembly} due to configuration", assemblyPath);

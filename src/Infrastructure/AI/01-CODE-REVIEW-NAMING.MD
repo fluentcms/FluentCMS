@@ -208,3 +208,13 @@ After completing the review, provide the findings and create the markdown task b
 Just focus on the mentioned aspects (naming conventions, spelling, folder/namespace alignment, and clarity enhancements) without introducing unrelated changes (like finding bus, issues, etc.).
 Find the required actions as atomic task breakdown and write in the Task Breakdown (Markdown) file.
 Do not suggest for writing inline comments or XML documentation if missed or incomplete. Just do the spelling check if any typo found.
+
+
+After creating the markdown file, ask me if I want to start the refactoring process based on the tasks listed.
+If I confirm, proceed with the refactoring with following steps:
+1- Review the markdown first to ensure all tasks are clear and actionable.
+2- Pick one task at a time, starting in ordered task list.
+3- Make the necessary changes in the codebase.
+4- Compile the project to ensure no errors. If errors, apply fixes as needed until successful compilation.
+5- Change the task status from "&#9744;" to "&#9745;" in the markdown file.
+6- Ask me to confirm before moving to the next task.
