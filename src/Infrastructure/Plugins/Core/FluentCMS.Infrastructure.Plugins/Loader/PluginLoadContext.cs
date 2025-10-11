@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Infrastructure.Plugins.Discovery;
+﻿namespace FluentCMS.Infrastructure.Plugins.Loader;
 
 /// <summary>
 /// Collectible ALC that resolves dependencies relative to the plugin’s main assembly.
@@ -13,9 +13,9 @@ internal sealed class PluginLoadContext(string mainAssemblyPath) : AssemblyLoadC
         return path is not null ? LoadFromAssemblyPath(path) : null;
     }
 
-    protected override IntPtr LoadUnmanagedDll(string unmanagedDllName)
+    protected override nint LoadUnmanagedDll(string unmanagedDllName)
     {
         var path = _resolver.ResolveUnmanagedDllToPath(unmanagedDllName);
-        return path is not null ? LoadUnmanagedDllFromPath(path) : IntPtr.Zero;
+        return path is not null ? LoadUnmanagedDllFromPath(path) : nint.Zero;
     }
 }

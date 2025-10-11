@@ -33,7 +33,7 @@ internal class PluginDiscovery(ILogger<PluginDiscovery> logger, IOptions<PluginS
                 _logger.LogWarning("Ignoring initialization error due to configuration.");
                 return result; // Return empty list on init failure if ignoring errors
             }
-            throw;
+            throw new PluginDiscoveryException("Failed to initialize plugin discovery.", ex);
         }
 
         _logger.LogInformation("Starting plugin type discovery in folder {Folder}", _pluginAssemblyPath);
@@ -67,7 +67,7 @@ internal class PluginDiscovery(ILogger<PluginDiscovery> logger, IOptions<PluginS
             }
             else
             {
-                throw;
+                throw new PluginDiscoveryException("Error during assembly scanning.", ex);
             }
         }
 
@@ -95,7 +95,7 @@ internal class PluginDiscovery(ILogger<PluginDiscovery> logger, IOptions<PluginS
                 }
                 else
                 {
-                    throw;
+                    throw new PluginDiscoveryException($"Error processing assembly {assemblyPath}", ex);
                 }
             }
         }

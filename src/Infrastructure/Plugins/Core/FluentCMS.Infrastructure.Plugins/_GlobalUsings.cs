@@ -7,3 +7,6 @@ global using System.Runtime.Loader;
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.AspNetCore.Builder;
 global using Microsoft.Extensions.Configuration;
+global using FluentCMS.Infrastructure.Plugins.Discovery;
+global using FluentCMS.Infrastructure.Plugins.Loader;
+global using FluentCMS.Infrastructure.Plugins.Initializer;

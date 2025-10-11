@@ -1,6 +1,4 @@
-﻿using FluentCMS.Infrastructure.Plugins.Discovery;
-using System;
-namespace FluentCMS.Infrastructure.Plugins;
+﻿namespace FluentCMS.Infrastructure.Plugins;
 
 public static class ServiceCollectionExtensions
 {
@@ -25,6 +23,8 @@ public static class ServiceCollectionExtensions
         }
         // Register core plugin services
         services.AddTransient<IPluginDiscovery, PluginDiscovery>();
+        services.AddTransient<IPluginLoader, PluginLoader>();
+        services.AddTransient<IPluginInitializer, PluginInitializer>();
         return services;
     }
 }
