@@ -152,9 +152,9 @@ containing the following:
 - Use `_camelCase` for private fields.
 
 ## Work Items
-> Group by project/folder. Keep tasks atomic.
+> Group by folder. Keep tasks atomic.
 
-### {{ProjectOrFolder}}
+### Tasks
 | ID | Priority | Type | Path / Symbol | Action | Before → After | Notes |
 |---:|:--------:|:----:|:--------------|:------|:----------------|:------|
 | T1 | P0 | Naming | `src/.../UserMngr.cs` (class) | Rename | `UserMngr` → `UserManager` | Public API: add `[Obsolete]` shim |
