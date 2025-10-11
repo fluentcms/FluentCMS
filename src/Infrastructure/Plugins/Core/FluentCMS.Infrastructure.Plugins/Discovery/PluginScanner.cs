@@ -1,10 +1,25 @@
 namespace FluentCMS.Infrastructure.Plugins.Discovery;
 
 /// <summary>
+/// Defines the contract for scanning and discovering plugin types.
+/// </summary>
+public interface IPluginScanner
+{
+    /// <summary>
+    /// Retrieves a list of plugin types from assemblies in the executable folder.
+    /// </summary>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>A list of discovered plugin types.</returns>
+    List<Type> GetPluginTypes(CancellationToken cancellationToken = default);
+}
+
+/// <summary>
 /// Implementation of IPluginScanner that uses reflection to discover plugin types.
 /// Scans loaded assemblies for classes marked with [Plugin] attribute and instantiates them.
 /// </summary>
-public abstract class PluginScanner(ILogger<PluginScanner> logger, IOptions<PluginSystemOptions> pluginSystemOptions)
+/// <param name="logger">The logger instance for logging operations.</param>
+/// <param name="pluginSystemOptions">The options for the plugin system configuration.</param>
+internal abstract class PluginScanner(ILogger<PluginScanner> logger, IOptions<PluginSystemOptions> pluginSystemOptions) : IPluginScanner
 {
     private readonly ILogger<PluginScanner> _logger = NullArgumentException.RequireNonNull(logger);
     private readonly PluginSystemOptions _pluginSystemOptions = NullArgumentException.RequireNonNull(pluginSystemOptions.Value);
@@ -88,6 +103,11 @@ public abstract class PluginScanner(ILogger<PluginScanner> logger, IOptions<Plug
         return types;
     }
 
+    /// <summary>
+    /// Checks if the assembly file name matches the configured scan patterns.
+    /// </summary>
+    /// <param name="assemblyFileName">The full path to the assembly file.</param>
+    /// <returns>True if the file name matches all patterns; otherwise, false.</returns>
     private bool IsNameMatched(string assemblyFileName)
     {
         var scanPatterns = _pluginSystemOptions.ScanAssemblyPatterns;
@@ -101,6 +121,12 @@ public abstract class PluginScanner(ILogger<PluginScanner> logger, IOptions<Plug
         return true;
     }
 
+    /// <summary>
+    /// Attempts to find an already loaded assembly matching the given path.
+    /// </summary>
+    /// <param name="assemblyPath">The full path to the assembly file.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>The loaded assembly if found; otherwise, null.</returns>
     private Assembly? FindLoaded(string assemblyPath, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -126,6 +152,12 @@ public abstract class PluginScanner(ILogger<PluginScanner> logger, IOptions<Plug
         }
     }
 
+    /// <summary>
+    /// Finds plugin types in the given assembly that are marked with the PluginAttribute and implement IPluginStartup.
+    /// </summary>
+    /// <param name="assembly">The assembly to scan for plugin types.</param>
+    /// <param name="cancellationToken">A token to cancel the operation.</param>
+    /// <returns>An enumerable of plugin types found in the assembly.</returns>
     private static IEnumerable<Type> FindPluginTypes(Assembly assembly, CancellationToken cancellationToken = default)
     {
         if (assembly.GetReferencedAssemblies().Any(a => a.Name == typeof(PluginAttribute).Assembly.GetName().Name))
