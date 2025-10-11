@@ -4,59 +4,88 @@ namespace FluentCMS.Infrastructure.Plugins.Discovery;
 /// Implementation of IPluginScanner that uses reflection to discover plugin types.
 /// Scans loaded assemblies for classes marked with [Plugin] attribute and instantiates them.
 /// </summary>
-internal abstract class PluginScanner(ILogger<PluginScanner> logger, IOptions<PluginSystemOptions> pluginSystemOptions)
+public abstract class PluginScanner(ILogger<PluginScanner> logger, IOptions<PluginSystemOptions> pluginSystemOptions)
 {
     private readonly ILogger<PluginScanner> _logger = NullArgumentException.RequireNonNull(logger);
     private readonly PluginSystemOptions _pluginSystemOptions = NullArgumentException.RequireNonNull(pluginSystemOptions.Value);
 
-    public IEnumerable<Type> GetPluginTypes(CancellationToken cancellationToken = default)
+    public List<Type> GetPluginTypes(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var executablePath = Assembly.GetExecutingAssembly().Location;
-        var executableFolder = Path.GetDirectoryName(executablePath) ??
-            throw new PluginDiscoveryException("Could not determine the executable folder path.");
+        var types = new List<Type>();
 
-        // Get all DLL files in the executable folder
-        var allDllFiles = Directory.GetFiles(executableFolder, "*.dll", SearchOption.TopDirectoryOnly);
-
-
-        foreach (var assemblyFilePath in allDllFiles)
+        try
         {
-            cancellationToken.ThrowIfCancellationRequested();  // Add this for per-iteration checks
-            if (!IsNameMatched(assemblyFilePath))
-                continue; // Skip non-matching assemblies
+            var executablePath = Assembly.GetExecutingAssembly().Location;
+            var executableFolder = Path.GetDirectoryName(executablePath) ??
+                throw new PluginDiscoveryException("Could not determine the executable folder path.");
 
-            var preloadedAssembly = FindLoaded(assemblyFilePath, cancellationToken);
+            _logger.LogInformation("Starting plugin type discovery in folder {Folder}", executableFolder);
 
-            if (preloadedAssembly != null)
+            // Get all DLL files in the executable folder
+            var allDllFiles = Directory.GetFiles(executableFolder, "*.dll", SearchOption.TopDirectoryOnly);
+
+            foreach (var assemblyFilePath in allDllFiles)
             {
-                foreach (var type in FindPluginTypes(preloadedAssembly, cancellationToken))
+                cancellationToken.ThrowIfCancellationRequested();  // Add this for per-iteration checks
+                try
                 {
-                    yield return type;
-                }
-            }
-            else
-            {
-                // Not loaded: load into a collectible context
-                var alc = new PluginLoadContext(assemblyFilePath);
-                var newlyLoadedAssembly = alc.LoadFromAssemblyPath(assemblyFilePath);
+                    if (!IsNameMatched(assemblyFilePath))
+                    {
+                        _logger.LogDebug("Skipping assembly {Assembly} as it does not match scan patterns", assemblyFilePath);
+                        continue; // Skip non-matching assemblies
+                    }
 
-                var pluginTypes = FindPluginTypes(newlyLoadedAssembly, cancellationToken).ToArray();
-                if (pluginTypes.Length == 0)
+                    var preloadedAssembly = FindLoaded(assemblyFilePath, cancellationToken);
+
+                    if (preloadedAssembly != null)
+                    {
+                        _logger.LogDebug("Using preloaded assembly {Assembly}", assemblyFilePath);
+                        types.AddRange(FindPluginTypes(preloadedAssembly, cancellationToken));
+                    }
+                    else
+                    {
+                        // Not loaded: load into a collectible context
+                        _logger.LogDebug("Loading assembly {Assembly} into collectible context", assemblyFilePath);
+                        var alc = new PluginLoadContext(assemblyFilePath);
+                        var newlyLoadedAssembly = alc.LoadFromAssemblyPath(assemblyFilePath);
+
+                        var pluginTypes = FindPluginTypes(newlyLoadedAssembly, cancellationToken).ToArray();
+                        if (pluginTypes.Length > 0)
+                        {
+                            types.AddRange(pluginTypes);
+                        }
+                        else
+                        {
+                            // No plugins -> unload immediately
+                            _logger.LogDebug("No plugin types found in {Assembly}, unloading", assemblyFilePath);
+                            alc.Unload();
+                            GC.Collect();
+                            GC.WaitForPendingFinalizers(); GC.Collect();
+                            continue; // move to next assembly
+                        }
+                    }
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
                 {
-                    // No plugins -> unload immediately
-                    alc.Unload();
-                    GC.Collect();
-                    GC.WaitForPendingFinalizers(); GC.Collect();
-                    continue; // move to next assembly
+                    _logger.LogError(ex, "Error processing assembly {Assembly}", assemblyFilePath);
+                    if (_pluginSystemOptions.IgnoreErrors)
+                    {
+                        _logger.LogWarning("Ignoring error in assembly {Assembly} due to configuration", assemblyFilePath);
+                        continue; // Skip this assembly and continue
+                    }
+                    throw new PluginDiscoveryException($"Failed to process assembly {assemblyFilePath}", ex);
                 }
-
-                foreach (var t in pluginTypes)
-                    yield return t;
-
             }
         }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogError(ex, "Error during plugin type discovery");
+            throw new PluginDiscoveryException("Plugin discovery failed", ex);
+        }
+        _logger.LogInformation("Discovered {Count} plugin types", types.Count);
+        return types;
     }
 
     private bool IsNameMatched(string assemblyFileName)
@@ -72,16 +101,29 @@ internal abstract class PluginScanner(ILogger<PluginScanner> logger, IOptions<Pl
         return true;
     }
 
-    private static Assembly? FindLoaded(string assemblyPath, CancellationToken cancellationToken = default)
+    private Assembly? FindLoaded(string assemblyPath, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        // Check if already loaded
-        var asmName = AssemblyName.GetAssemblyName(assemblyPath);
-        var loadedAsm = AppDomain.CurrentDomain.GetAssemblies()
-            .FirstOrDefault(a => AssemblyName.ReferenceMatchesDefinition(a.GetName(), asmName));
+        try
+        {
+            // Check if already loaded
+            var asmName = AssemblyName.GetAssemblyName(assemblyPath);
+            var loadedAsm = AppDomain.CurrentDomain.GetAssemblies()
+                .FirstOrDefault(a => AssemblyName.ReferenceMatchesDefinition(a.GetName(), asmName));
 
-        return loadedAsm;
+            return loadedAsm;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogError(ex, "Error finding loaded assembly {Assembly}", assemblyPath);
+            if (_pluginSystemOptions.IgnoreErrors)
+            {
+                _logger.LogWarning(ex, "Ignoring error finding loaded assembly {Assembly} due to configuration", assemblyPath);
+                return null;
+            }
+            throw new PluginDiscoveryException($"Failed to find loaded assembly {assemblyPath}", ex);
+        }
     }
 
     private static IEnumerable<Type> FindPluginTypes(Assembly assembly, CancellationToken cancellationToken = default)
