@@ -4,3 +4,6 @@ global using System.Runtime.CompilerServices;
 global using Microsoft.Extensions.Options;
 global using System.Reflection;
 global using System.Runtime.Loader;
+global using Microsoft.Extensions.DependencyInjection;
+global using Microsoft.AspNetCore.Builder;
+global using Microsoft.Extensions.Configuration;
