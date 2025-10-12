@@ -1,17 +1,18 @@
 namespace FluentCMS.Plugins.TodoManager;
 
-public class TodoPlugin : IPlugin
+[Plugin]
+public class TodoPlugin : IPluginStartup
 {
-    public void ConfigureServices(IHostApplicationBuilder builder)
-    {
-        builder.Services.AddDatabaseContext<TodoDbContext, ITodoDatabaseMarker>();
-        builder.Services.AddDataSeeder<TodoDataSeeder, ITodoDatabaseMarker>();
-        builder.Services.AddSchemaValidator<TodoSchemaValidator, ITodoDatabaseMarker>();
-        builder.Services.AddScoped<ITodoService, TodoService>();
-        builder.Services.AddScoped<ITodoRepository, TodoRepository>();
-    }
-
     public void Configure(IApplicationBuilder app)
     {
+    }
+
+    public void ConfigureServices(IServiceCollection services, IConfiguration? configuration)
+    {
+        services.AddDatabaseContext<TodoDbContext, ITodoDatabaseMarker>();
+        services.AddDataSeeder<TodoDataSeeder, ITodoDatabaseMarker>();
+        services.AddSchemaValidator<TodoSchemaValidator, ITodoDatabaseMarker>();
+        services.AddScoped<ITodoService, TodoService>();
+        services.AddScoped<ITodoRepository, TodoRepository>();
     }
 }

@@ -1,7 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using System.Runtime.CompilerServices;
-
-namespace FluentCMS.Infrastructure.Plugins;
+﻿namespace FluentCMS.Infrastructure.Plugins;
 
 public class NullArgumentException(string? paramName) : ArgumentException("Argument cannot be null or empty.", paramName)
 {

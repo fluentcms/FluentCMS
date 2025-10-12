@@ -11,7 +11,7 @@
     <ProjectReference Include="..\Configuration\FluentCMS.Infrastructure.Configuration.EntityFramework.Sqlite\FluentCMS.Infrastructure.Configuration.EntityFramework.Sqlite.csproj" />
     <ProjectReference Include="..\EventBus\FluentCMS.Infrastructure.EventBus.InMemory\FluentCMS.Infrastructure.EventBus.InMemory.csproj" />
     <ProjectReference Include="..\Logging\FluentCMS.Infrastructure.Logging\FluentCMS.Infrastructure.Logging.csproj" />
-    <ProjectReference Include="..\Plugins\Core\FluentCMS.Plugins\FluentCMS.Plugins.csproj" />
+    <ProjectReference Include="..\Plugins\FluentCMS.Infrastructure.Plugins\FluentCMS.Infrastructure.Plugins.csproj" />
     <ProjectReference Include="..\Plugins\FluentCMS.Plugins.AuditTrailManager\FluentCMS.Plugins.AuditTrailManager.csproj" />
     <ProjectReference Include="..\Plugins\FluentCMS.Plugins.IdentityManager\FluentCMS.Plugins.IdentityManager.csproj" />
     <ProjectReference Include="..\Plugins\FluentCMS.Plugins.TodoManager\FluentCMS.Plugins.TodoManager.csproj" />

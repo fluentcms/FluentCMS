@@ -6,7 +6,7 @@ using FluentCMS.Infrastructure.Logging;
 using FluentCMS.Infrastructure.Repositories;
 using FluentCMS.Infrastructure.Repositories.EntityFramework.Configuration;
 using FluentCMS.Infrastructure.Repositories.EntityFramework.Sqlite;
-using FluentCMS.Plugins;
+using FluentCMS.Infrastructure.Plugins;
 using FluentCMS.Plugins.TodoManager.Repositories;
 using FluentCMS.Providers;
 using FluentCMS.Providers.Repositories.EntityFramework;
@@ -63,9 +63,9 @@ services.AddProviders(options =>
     }).UseEntityFramework();
 
 // Add plugin system
-builder.AddPlugins(options =>
+services.AddPluginSystem(builder.Configuration, options =>
 {
-    options.PluginPrefixes = ["FluentCMS"];
+    options.ScanAssemblyPatterns = ["FluentCMS.Plugins.*"];
     options.LoggerFactory = loggerFactory;
 });
 
@@ -80,7 +80,7 @@ var app = builder.Build();
 app.UseFluentCmsApi();
 
 // Use plugin system
-app.UsePlugins();
+app.UsePluginSystem();
 
 try
 {

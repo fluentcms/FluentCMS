@@ -1,4 +1,8 @@
-namespace FluentCMS.Infrastructure.Plugins;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace FluentCMS.Infrastructure.Plugins.Abstractions;
 
 /// <summary>
 /// Central interface for all plugins in the FluentCMS plugin system.

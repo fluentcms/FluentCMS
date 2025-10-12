@@ -1,11 +1,10 @@
 ﻿namespace FluentCMS.Plugins.AuditTrailManager;
 
-public class AuditTrailManagerPlugin : IPlugin
+[Plugin]
+public class AuditTrailManagerPlugin : IPluginStartup
 {
-    public void ConfigureServices(IHostApplicationBuilder builder)
+    public void ConfigureServices(IServiceCollection services, IConfiguration? configuration)
     {
-        var services = builder.Services;
-
         services.AddSchemaValidator<AuditTrailSchemaValidator, IAuditTrailDatabaseMarker>();
         // TODO: remove interception for eventbus and audit entity
         services.AddDatabaseContext<AuditTrailDbContext, IAuditTrailDatabaseMarker>();

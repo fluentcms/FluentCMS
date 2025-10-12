@@ -1,4 +1,4 @@
-namespace FluentCMS.Infrastructure.Plugins;
+namespace FluentCMS.Infrastructure.Plugins.Abstractions;
 
 /// <summary>
 /// Attribute that marks a class as a plugin startup class.
