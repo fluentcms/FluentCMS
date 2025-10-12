@@ -1,11 +1,10 @@
 ﻿namespace FluentCMS.Plugins.IdentityManager;
 
-public class IdentityManagerPlugin : IPlugin
+[Plugin]
+public class IdentityManagerPlugin : IPluginStartup
 {
-    public void ConfigureServices(IHostApplicationBuilder builder)
+    public void ConfigureServices(IServiceCollection services, IConfiguration? configuration)
     {
-        var services = builder.Services;
-
         services.AddAutoMapper(cfg => { }, typeof(MappingProfile));
 
         services.AddSchemaValidator<IdentitySchemaValidator, IIdentityDatabaseMarker>();
@@ -54,11 +53,10 @@ public class IdentityManagerPlugin : IPlugin
         //        IssuerSigningKey = new SymmetricSecurityKey(SHA512.HashData(Encoding.UTF8.GetBytes(jwtOptions.Secret)))
         //    };
         //});
-
     }
+
 
     public void Configure(IApplicationBuilder app)
     {
     }
-
 }

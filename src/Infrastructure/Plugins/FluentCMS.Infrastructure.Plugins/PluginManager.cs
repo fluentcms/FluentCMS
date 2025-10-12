@@ -32,7 +32,7 @@ internal class PluginManager(IPluginDiscovery pluginDiscovery, IPluginInitialize
         Init(cancellationToken);
 
         // run configure services for each plugin in order
-        foreach (var pluginMetadata in _pluginMetadataList.Where(p => p.Status == PluginStatus.Initialized))
+        foreach (var pluginMetadata in _pluginMetadataList.Where(p => p.Status == PluginStatus.Initialized).OrderBy(p => p.Instance!.ConfigureServicesPriority))
         {
             try
             {
@@ -60,7 +60,7 @@ internal class PluginManager(IPluginDiscovery pluginDiscovery, IPluginInitialize
     public void Start(IApplicationBuilder app, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Starting plugin startup process...");
-        foreach (var pluginMetadata in _pluginMetadataList.Where(p => p.Status == PluginStatus.Started))
+        foreach (var pluginMetadata in _pluginMetadataList.Where(p => p.Status == PluginStatus.Started).OrderBy(p => p.Instance!.ConfigurePriority))
         {
             try
             {

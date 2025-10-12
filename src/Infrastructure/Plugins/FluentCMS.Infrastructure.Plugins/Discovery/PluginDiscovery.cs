@@ -129,7 +129,7 @@ internal class PluginDiscovery(ILogger<PluginDiscovery> logger, PluginSystemOpti
 
         // Target assembly directory
         var pluginDir = Path.GetDirectoryName(_pluginAssemblyPath)!;
-        foreach (var dll in Directory.EnumerateFiles(pluginDir, "*.dll"))
+        foreach (var dll in Directory.EnumerateFiles(_pluginAssemblyPath, "*.dll"))
             probeFiles.Add(dll);
 
         // Ensure the target assembly itself is resolvable
@@ -147,9 +147,8 @@ internal class PluginDiscovery(ILogger<PluginDiscovery> logger, PluginSystemOpti
     {
         var scanPatterns = _pluginSystemOptions.ScanAssemblyPatterns;
 
-        var fileNameWithoutExt = Path.GetFileNameWithoutExtension(assemblyFileName);
-        if (!scanPatterns.All(pattern =>
-            fileNameWithoutExt.Contains(pattern.Trim('*'), StringComparison.OrdinalIgnoreCase)))
+        if (!scanPatterns.Any(pattern =>
+            assemblyFileName.Contains(pattern.Trim('*'), StringComparison.OrdinalIgnoreCase)))
         {
             return false; // Skip non-matching assemblies
         }
