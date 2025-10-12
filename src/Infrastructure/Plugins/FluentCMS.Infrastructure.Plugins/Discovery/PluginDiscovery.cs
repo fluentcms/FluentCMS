@@ -128,7 +128,6 @@ internal class PluginDiscovery(ILogger<PluginDiscovery> logger, PluginSystemOpti
             probeFiles.Add(dll);
 
         // Target assembly directory
-        var pluginDir = Path.GetDirectoryName(_pluginAssemblyPath)!;
         foreach (var dll in Directory.EnumerateFiles(_pluginAssemblyPath, "*.dll"))
             probeFiles.Add(dll);
 
