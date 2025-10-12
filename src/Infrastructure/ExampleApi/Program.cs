@@ -77,10 +77,10 @@ services.AddFluentCmsApi();
 
 var app = builder.Build();
 
+app.UseFluentCmsApi();
+
 // Use plugin system
 app.UsePluginSystem();
-
-app.UseFluentCmsApi();
 
 try
 {
