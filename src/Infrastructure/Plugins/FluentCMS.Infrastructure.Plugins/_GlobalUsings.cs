@@ -1,0 +1,12 @@
+﻿global using FluentCMS.Infrastructure.Plugins.Abstractions;
+global using FluentCMS.Infrastructure.Plugins.Discovery;
+global using FluentCMS.Infrastructure.Plugins.Initializer;
+global using FluentCMS.Infrastructure.Plugins.Loader;
+global using Microsoft.AspNetCore.Builder;
+global using Microsoft.Extensions.Configuration;
+global using Microsoft.Extensions.DependencyInjection;
+global using Microsoft.Extensions.Logging;
+global using System.Diagnostics.CodeAnalysis;
+global using System.Reflection;
+global using System.Runtime.CompilerServices;
+global using System.Runtime.Loader;
