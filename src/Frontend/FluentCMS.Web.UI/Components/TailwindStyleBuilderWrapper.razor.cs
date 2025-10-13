@@ -1,5 +1,3 @@
-using Microsoft.JSInterop;
-
 namespace FluentCMS.Web.UI;
 
 public partial class TailwindStyleBuilderWrapper

@@ -1,17 +1,17 @@
-using FluentCMS.Infrastructure.Providers;
+using FluentCMS.Api;
+using FluentCMS.Api.Plugins.TodoManagement.Repositories;
 using FluentCMS.Infrastructure.Configuration.EntityFramework;
 using FluentCMS.Infrastructure.Configuration.EntityFramework.Sqlite;
 using FluentCMS.Infrastructure.EventBus.InMemory;
 using FluentCMS.Infrastructure.Logging;
+using FluentCMS.Infrastructure.Plugins;
+using FluentCMS.Infrastructure.Providers;
+using FluentCMS.Infrastructure.Providers.Repositories.EntityFramework;
 using FluentCMS.Infrastructure.Repositories;
 using FluentCMS.Infrastructure.Repositories.EntityFramework.Configuration;
 using FluentCMS.Infrastructure.Repositories.EntityFramework.Sqlite;
-using FluentCMS.Infrastructure.Plugins;
-using FluentCMS.Infrastructure.Providers.Repositories.EntityFramework;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
-using FluentCMS.Api.Plugins.TodoManagement.Repositories;
-using FluentCMS.Api;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddSqliteConfiguration("DefaultConnection", TimeSpan.FromMinutes(5));

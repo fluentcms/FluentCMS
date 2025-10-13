@@ -84,8 +84,8 @@ public partial class SiteBuilderPreviewScript : IAsyncDisposable
             }
 
             DotNetRef?.Dispose();
-        } 
-        catch(Exception ex)
+        }
+        catch (Exception ex)
         {
             // 
         }

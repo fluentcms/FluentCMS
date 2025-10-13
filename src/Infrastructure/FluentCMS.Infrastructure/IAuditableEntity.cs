@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Infrastructure.Repositories.Abstractions;
+﻿namespace FluentCMS.Infrastructure;
 
 public interface IAuditableEntity : IEntity
 {

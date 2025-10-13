@@ -327,7 +327,7 @@ public partial class FormRichTextEditor : IAsyncDisposable
             }
             DotNetRef?.Dispose();
         }
-        catch(Exception ex)
+        catch (Exception ex)
         {
             //
         }

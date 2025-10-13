@@ -77,7 +77,7 @@ public partial class FormAutocomplete<TItem, TValue> : IAsyncDisposable
             }
             DotNetRef?.Dispose();
         }
-        catch(Exception ex)
+        catch (Exception ex)
         {
             //
         }

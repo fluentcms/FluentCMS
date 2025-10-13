@@ -53,7 +53,7 @@ public partial class Accordion : IAsyncDisposable
             }
             DotNetRef?.Dispose();
         }
-        catch(Exception ex)
+        catch (Exception ex)
         {
             //
         }

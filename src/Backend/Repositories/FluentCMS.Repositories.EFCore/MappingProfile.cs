@@ -63,7 +63,7 @@ public class MappingProfile : Profile
 
         CreateMap<PermissionModel, Permission>().ReverseMap();
 
-          // Map from PluginDefinitionModel to PluginDefinition
+        // Map from PluginDefinitionModel to PluginDefinition
         CreateMap<PluginDefinitionModel, PluginDefinition>()
             .ForMember(dest => dest.Stylesheets, opt => opt.MapFrom(src =>
                 string.IsNullOrWhiteSpace(src.Stylesheets)

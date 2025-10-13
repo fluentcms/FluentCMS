@@ -44,7 +44,7 @@ public partial class FormMarkdownEditor : IAsyncDisposable
             }
             DotNetRef?.Dispose();
         }
-        catch(Exception ex)
+        catch (Exception ex)
         {
             //
         }

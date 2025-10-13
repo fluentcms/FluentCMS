@@ -42,11 +42,11 @@ public partial class SiteBuilder : IAsyncDisposable
 
             if (DotNetRef != null)
                 DotNetRef.Dispose();
-        } 
-        catch(Exception ex)
+        }
+        catch (Exception ex)
         {
             // 
-        }  
+        }
     }
 
 }

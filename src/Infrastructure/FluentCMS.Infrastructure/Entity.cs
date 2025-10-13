@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Infrastructure.Repositories;
+﻿namespace FluentCMS.Infrastructure;
 
 public class Entity : IEntity
 {

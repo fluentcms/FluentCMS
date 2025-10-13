@@ -53,7 +53,7 @@ public partial class FormTreeSelector : IAsyncDisposable
             }
             DotNetRef?.Dispose();
         }
-        catch(Exception ex)
+        catch (Exception ex)
         {
             //
         }

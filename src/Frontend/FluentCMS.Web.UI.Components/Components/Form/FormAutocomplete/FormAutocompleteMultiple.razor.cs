@@ -82,7 +82,7 @@ public partial class FormAutocompleteMultiple<TItem, TValue> : IAsyncDisposable
             }
             DotNetRef?.Dispose();
         }
-        catch(Exception ex)
+        catch (Exception ex)
         {
             //
         }

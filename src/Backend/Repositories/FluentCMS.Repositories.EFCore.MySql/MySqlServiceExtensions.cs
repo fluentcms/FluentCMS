@@ -14,7 +14,8 @@ public static class MySqlServiceExtensions
 
         services.AddEFCoreRepositories();
 
-        services.AddDbContext<FluentCmsDbContext>((sp, options) => {
+        services.AddDbContext<FluentCmsDbContext>((sp, options) =>
+        {
             var connStr = sp.GetConnectionString("DefaultConnection");
             options.UseMySql(connStr, ServerVersion.AutoDetect(connStr));
         });

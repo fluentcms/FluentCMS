@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Api.Plugins.IdentityManagement.Models;
+﻿namespace FluentCMS.Api.Plugins.Models.Identity;
 
 public class User : User<UserClaim, UserLogin, UserToken>
 {

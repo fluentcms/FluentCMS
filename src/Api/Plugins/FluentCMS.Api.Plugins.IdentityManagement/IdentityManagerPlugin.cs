@@ -1,6 +1,4 @@
-﻿using FluentCMS.Api.Plugins.IdentityManagement.Services;
-
-namespace FluentCMS.Api.Plugins.IdentityManagement;
+﻿namespace FluentCMS.Api.Plugins.IdentityManagement;
 
 [Plugin]
 public class IdentityManagerPlugin : IPluginStartup

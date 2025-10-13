@@ -1,6 +1,4 @@
-﻿using FluentCMS.Api.Plugins.IdentityManagement.Models;
-
-namespace FluentCMS.Api.Plugins.IdentityManagement.Controllers;
+﻿namespace FluentCMS.Api.Plugins.IdentityManagement.Controllers;
 
 public class RegisterRequest
 {

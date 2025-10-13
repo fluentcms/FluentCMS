@@ -46,9 +46,9 @@ public class PluginMessageHandler(IPluginService pluginService, IPluginContentSe
 
             var pluginContentBasePath = System.IO.Path.Combine(ServiceConstants.SetupTemplatesFolder, pageTemplate.Template, ServiceConstants.SetupPagesFolder);
 
-            if (pluginTemplate.Settings != null && pluginTemplate.Settings.Count != 0) 
+            if (pluginTemplate.Settings != null && pluginTemplate.Settings.Count != 0)
             {
-                if(pluginTemplate.Settings.TryGetValue("Template", out var template))
+                if (pluginTemplate.Settings.TryGetValue("Template", out var template))
                 {
                     if (template.EndsWith(".sbn", StringComparison.OrdinalIgnoreCase))
                     {
@@ -70,7 +70,7 @@ public class PluginMessageHandler(IPluginService pluginService, IPluginContentSe
                 if (System.IO.File.Exists(filePath))
                 {
                     var fileContent = await System.IO.File.ReadAllTextAsync(filePath, cancellationToken);
-                    
+
                     var pluginContent = new PluginContent
                     {
                         SiteId = pageTemplate.SiteId,
@@ -84,7 +84,7 @@ public class PluginMessageHandler(IPluginService pluginService, IPluginContentSe
                     await pluginContentService.Create(pluginContent, cancellationToken);
                 }
             }
-            
+
             if (pluginTemplate.Content != null)
             {
                 foreach (var pluginContentTemplate in pluginTemplate.Content)

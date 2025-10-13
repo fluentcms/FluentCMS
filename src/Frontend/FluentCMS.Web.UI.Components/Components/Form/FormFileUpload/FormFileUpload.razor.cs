@@ -72,7 +72,7 @@ public partial class FormFileUpload : IAsyncDisposable
             }
             DotNetRef?.Dispose();
         }
-        catch(Exception ex)
+        catch (Exception ex)
         {
             //
         }
