@@ -7,23 +7,7 @@ public class IdentityManagerPlugin : IPluginStartup
     {
         services.AddAutoMapper(cfg => { }, typeof(MappingProfile));
 
-        services.AddSchemaValidator<IdentitySchemaValidator, IIdentityDatabaseMarker>();
-        services.AddDataSeeder<IdentityDataSeeder, IIdentityDatabaseMarker>();
-        services.AddDatabaseContext<ApplicationDbContext, IIdentityDatabaseMarker>();
-
-        // Services registration
-        //services.AddScoped<IUserService, UserService>();
-        services.AddScoped<IRoleService, RoleService>();
-        //services.AddScoped<IUserRoleService, UserRoleService>();
-
-        // Repositories registration
-        services.AddScoped<IUserRepository, UserRepository>();
-        services.AddScoped<IRoleRepository, RoleRepository>();
-        services.AddScoped<IUserRoleRepository, UserRoleRepository>();
-
-        services.AddIdentity<User, Role>()
-            .AddEntityFrameworkStores<ApplicationDbContext>()
-            .AddDefaultTokenProviders();
+        services.AddEntityFrameworkIdentity<User, Role>();
 
         // Configure Identity options from appsettings.json
         services.AddDbOptions<JwtOptions>("JwtOptions");
@@ -33,7 +17,8 @@ public class IdentityManagerPlugin : IPluginStartup
             options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
             options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
         })
-        .AddJwtBearer();
+      .AddJwtBearer();
+
 
         // TODO: implement here the token validation parameters configuration
         //builder.Services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, (jwtBearerOptions, sp) =>

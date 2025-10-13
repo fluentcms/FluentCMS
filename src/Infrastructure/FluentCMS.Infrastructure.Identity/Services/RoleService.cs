@@ -1,17 +1,21 @@
-﻿namespace FluentCMS.Api.Plugins.IdentityManagement.Services;
+﻿namespace FluentCMS.Infrastructure.Identity.Services;
 
-public interface IRoleService
+public interface IRoleService<TUser, TRole>
+    where TUser : UserBase
+    where TRole : RoleBase
 {
-    Task<Role> Add(Role role, CancellationToken cancellationToken = default);
+    Task<TRole> Add(TRole role, CancellationToken cancellationToken = default);
     Task Remove(Guid id, CancellationToken cancellationToken = default);
-    Task<Role> Update(Role role, CancellationToken cancellationToken = default);
-    Task<IEnumerable<Role>> GetAll(CancellationToken cancellationToken = default);
-    Task<Role> GetById(Guid id, CancellationToken cancellationToken = default);
+    Task<TRole> Update(TRole role, CancellationToken cancellationToken = default);
+    Task<IEnumerable<TRole>> GetAll(CancellationToken cancellationToken = default);
+    Task<TRole> GetById(Guid id, CancellationToken cancellationToken = default);
 }
 
-public class RoleService(RoleManager<Role> roleManager) : IRoleService
+public class RoleService<TUser, TRole>(RoleManager<TRole> roleManager) : IRoleService<TUser, TRole>
+    where TUser : UserBase
+    where TRole : RoleBase
 {
-    public async Task<Role> Add(Role role, CancellationToken cancellationToken = default)
+    public async Task<TRole> Add(TRole role, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(role, nameof(role));
@@ -28,20 +32,20 @@ public class RoleService(RoleManager<Role> roleManager) : IRoleService
         cancellationToken.ThrowIfCancellationRequested();
 
         var role = await roleManager.FindByIdAsync(id.ToString()) ??
-        throw new EntityNotFoundException<Role>(id);
+        throw new EntityNotFoundException<TRole>(id);
 
         var result = await roleManager.DeleteAsync(role);
 
         result.ThrowIfInvalid();
     }
 
-    public async Task<Role> Update(Role role, CancellationToken cancellationToken = default)
+    public async Task<TRole> Update(TRole role, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(role, nameof(role));
 
         var existingRole = await roleManager.FindByIdAsync(role.Id.ToString()) ??
-            throw new EntityNotFoundException<Role>(role.Id);
+            throw new EntityNotFoundException<TRole>(role.Id);
 
         existingRole.Name = role.Name;
         var result = await roleManager.UpdateAsync(existingRole);
@@ -51,17 +55,17 @@ public class RoleService(RoleManager<Role> roleManager) : IRoleService
         return existingRole;
     }
 
-    public async Task<Role> GetById(Guid id, CancellationToken cancellationToken = default)
+    public async Task<TRole> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         var role = await roleManager.FindByIdAsync(id.ToString()) ??
-            throw new EntityNotFoundException<Role>(id);
+            throw new EntityNotFoundException<TRole>(id);
 
         return role;
     }
 
-    public async Task<IEnumerable<Role>> GetAll(CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<TRole>> GetAll(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var roles = await roleManager.Roles.ToListAsync(cancellationToken);

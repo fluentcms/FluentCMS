@@ -2,7 +2,7 @@
 
 [ApiController]
 [Route("api/[controller]/[action]")]
-public class RolesController(IRoleService roleService, IMapper mapper)
+public class RolesController(IRoleService<User, Role> roleService, IMapper mapper)
 {
     [HttpGet]
     public async Task<ApiPagedResult<RoleResponse>> GetAll(CancellationToken cancellationToken = default)

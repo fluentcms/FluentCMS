@@ -1,17 +1,17 @@
-﻿namespace FluentCMS.Api.Plugins.Models.Identity;
+﻿namespace FluentCMS.Infrastructure.Identity.Models;
 
-public class Role : Role<RoleClaim>
+public abstract class RoleBase : RoleBase<RoleClaim>
 {
-    public Role()
+    public RoleBase()
     {
     }
-    public Role(string roleName) : this()
+    public RoleBase(string roleName) : this()
     {
         Name = roleName;
     }
 }
 
-public class Role<TRoleClaim> : IdentityRole<Guid>, IAuditableEntity where TRoleClaim : RoleClaim, new()
+public class RoleBase<TRoleClaim> : IdentityRole<Guid>, IAuditableEntity where TRoleClaim : RoleClaim, new()
 {
     public string Description { get; set; } = string.Empty;
     public RoleTypes Type { get; set; } = RoleTypes.UserDefined;
@@ -22,12 +22,13 @@ public class Role<TRoleClaim> : IdentityRole<Guid>, IAuditableEntity where TRole
     public string? UpdatedBy { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public int Version { get; set; }
+    public Guid SiteId { get; set; }
 
-    public Role()
+    public RoleBase()
     {
     }
 
-    public Role(string roleName) : this()
+    public RoleBase(string roleName) : this()
     {
         Name = roleName;
     }

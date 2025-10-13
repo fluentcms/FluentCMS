@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Api.Plugins.Models.Identity;
+﻿namespace FluentCMS.Infrastructure.Identity.Models;
 
 public enum RoleTypes
 {

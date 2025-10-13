@@ -8,12 +8,11 @@
   
   <ItemGroup>
     <PackageReference Include="AutoMapper" Version="15.0.1" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.9" />
-    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.9" />
   </ItemGroup>
   
   <ItemGroup>
     <ProjectReference Include="..\..\..\Infrastructure\Configuration\FluentCMS.Infrastructure.Configuration\FluentCMS.Infrastructure.Configuration.csproj" />
+    <ProjectReference Include="..\..\..\Infrastructure\FluentCMS.Infrastructure.Identity\FluentCMS.Infrastructure.Identity.csproj" />
     <ProjectReference Include="..\..\..\Infrastructure\FluentCMS.Infrastructure\FluentCMS.Infrastructure.csproj" />
     <ProjectReference Include="..\..\..\Infrastructure\Plugins\FluentCMS.Infrastructure.Plugins.Abstractions\FluentCMS.Infrastructure.Plugins.Abstractions.csproj" />
     <ProjectReference Include="..\..\..\Infrastructure\Repositories\FluentCMS.Infrastructure.Repositories.EntityFramework\FluentCMS.Infrastructure.Repositories.EntityFramework.csproj" />

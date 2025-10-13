@@ -1,20 +1,20 @@
-﻿namespace FluentCMS.Api.Plugins.IdentityManagement.Repositories;
+﻿namespace FluentCMS.Infrastructure.Identity.Repositories.EntityFramework;
 
-internal class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) :
-    IdentityDbContext<User, Role, Guid, UserClaim, UserRole, UserLogin, RoleClaim, UserToken>(options),
-    IIdentityDatabaseMarker
+internal class ApplicationDbContext<TUser, TRole>(DbContextOptions<ApplicationDbContext<TUser, TRole>> options) :
+    IdentityDbContext<TUser, TRole, Guid, UserClaim, UserRole, UserLogin, RoleClaim, UserToken>(options)
+    where TUser : UserBase where TRole : RoleBase
 {
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
 
         // Change Identity table names
-        builder.Entity<User>(entity =>
+        builder.Entity<TUser>(entity =>
         {
             entity.ToTable("Users");
         });
 
-        builder.Entity<Role>(entity =>
+        builder.Entity<TRole>(entity =>
         {
             entity.ToTable("Roles");
         });

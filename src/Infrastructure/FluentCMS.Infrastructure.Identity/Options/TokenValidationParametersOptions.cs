@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Api.Plugins.IdentityManagement.Options;
+﻿namespace FluentCMS.Infrastructure.Identity.Options;
 
 public class TokenValidationParametersOptions
 {

@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Api.Plugins.IdentityManagement;
+﻿namespace FluentCMS.Infrastructure.Identity;
 
 /// <summary>
 /// Extension methods for IdentityResult to handle validation errors.

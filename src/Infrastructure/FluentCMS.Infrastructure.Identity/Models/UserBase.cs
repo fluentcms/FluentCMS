@@ -1,10 +1,10 @@
-﻿namespace FluentCMS.Api.Plugins.Models.Identity;
+﻿namespace FluentCMS.Infrastructure.Identity.Models;
 
-public class User : User<UserClaim, UserLogin, UserToken>
+public abstract class UserBase : UserBase<UserClaim, UserLogin, UserToken>
 {
 }
 
-public class User<TUserClaim, TUserLogin, TUserToken> : IdentityUser<Guid>, IAuditableEntity
+public class UserBase<TUserClaim, TUserLogin, TUserToken> : IdentityUser<Guid>, IAuditableEntity
     where TUserClaim : UserClaim, new()
     where TUserLogin : UserLogin, new()
     where TUserToken : UserToken, new()
@@ -25,11 +25,11 @@ public class User<TUserClaim, TUserLogin, TUserToken> : IdentityUser<Guid>, IAud
     public string? AuthenticatorKey { get; set; }
     public string Description { get; set; } = string.Empty;
 
-    public User()
+    public UserBase()
     {
     }
 
-    public User(string userName) : base(userName)
+    public UserBase(string userName) : base(userName)
     {
     }
 }

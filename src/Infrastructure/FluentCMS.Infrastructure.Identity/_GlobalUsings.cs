@@ -1,0 +1,13 @@
+﻿global using FluentCMS.Infrastructure.Exceptions;
+global using FluentCMS.Infrastructure.Identity.Models;
+global using FluentCMS.Infrastructure.Identity.Repositories;
+global using FluentCMS.Infrastructure.Identity.Repositories.EntityFramework;
+global using FluentCMS.Infrastructure.Identity.Services;
+global using FluentCMS.Infrastructure.Repositories.Abstractions;
+global using FluentCMS.Infrastructure.Repositories.EntityFramework;
+global using FluentCMS.Infrastructure.Repositories.EntityFramework.Configuration;
+global using Microsoft.AspNetCore.Identity;
+global using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+global using Microsoft.EntityFrameworkCore;
+global using Microsoft.Extensions.DependencyInjection;
+global using System.ComponentModel.DataAnnotations;
