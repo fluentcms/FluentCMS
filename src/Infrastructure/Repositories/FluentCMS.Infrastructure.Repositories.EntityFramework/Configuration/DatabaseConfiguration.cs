@@ -3,7 +3,7 @@ namespace FluentCMS.Infrastructure.Repositories.EntityFramework.Configuration;
 /// <summary>
 /// Represents the configuration for a database connection including provider and connection settings
 /// </summary>
-public class DatabaseConfiguration(IServiceCollection services, Type? markerType = null)
+public class DatabaseConfiguration(IServiceCollection services, Type markerType)
 {
     /// <summary>
     /// Action to configure DbContextOptions with the appropriate database provider and settings
@@ -30,7 +30,7 @@ public class DatabaseConfiguration(IServiceCollection services, Type? markerType
     /// <summary>
     /// The marker type used to identify this configuration (null for default configuration)
     /// </summary>
-    public Type? MarkerType { get; } = markerType;
+    public Type MarkerType { get; } = markerType;
 
     /// <summary>
     /// The service collection to register any required services (e.g., logging, interceptors)

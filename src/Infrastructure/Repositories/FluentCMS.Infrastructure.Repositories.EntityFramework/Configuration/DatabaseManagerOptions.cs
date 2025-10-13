@@ -25,7 +25,7 @@ public class DatabaseManagerOptions
     /// <returns>A configuration builder for the default database</returns>
     public DatabaseConfigurationBuilder Default()
     {
-        _defaultConfiguration = new DatabaseConfiguration(_serviceDescriptors);
+        _defaultConfiguration = new DatabaseConfiguration(_serviceDescriptors, typeof(IDefaultDatabaseArea));
         var builder = new DatabaseConfigurationBuilder(_defaultConfiguration, _serviceDescriptors);
         return builder;
     }

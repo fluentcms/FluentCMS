@@ -105,35 +105,47 @@ internal class PluginDiscovery(ILogger<PluginDiscovery> logger, PluginSystemOpti
 
     private void Init()
     {
-
         var executablePath = Assembly.GetExecutingAssembly().Location;
-        _pluginAssemblyPath = Path.GetDirectoryName(executablePath) ??
-            throw new PluginDiscoveryException("Could not determine the executable folder path.");
+        _pluginAssemblyPath = Path.GetDirectoryName(executablePath)
+            ?? throw new PluginDiscoveryException("Could not determine the executable folder path.");
 
-        _pluginAttributeFullName = typeof(PluginAttribute).FullName ??
-            throw new PluginDiscoveryException("Could not determine the full name of PluginAttribute.");
+        _pluginAttributeFullName = typeof(PluginAttribute).FullName
+            ?? throw new PluginDiscoveryException("Could not determine the full name of PluginAttribute.");
 
-        _pluginStartupInterfaceFullName = typeof(IPluginStartup).FullName ??
-            throw new PluginDiscoveryException("Could not determine the full name of IPluginStartup.");
+        _pluginStartupInterfaceFullName = typeof(IPluginStartup).FullName
+            ?? throw new PluginDiscoveryException("Could not determine the full name of IPluginStartup.");
 
-        // Build a resolver set:
-        // - Core runtime assemblies (System.Private.CoreLib, System.Runtime, etc.)
-        // - All DLLs in the target assembly's folder (typical plugin deps live here)
-        // - Any extra directories the caller provided (for shared abstractions)
         var probeFiles = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        // Core runtime directory
+        // (1) Already loaded assemblies in the host (best-effort, skip dynamic/in-memory)
+        foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            var loc = SafeGetLocation(asm);
+            if (!string.IsNullOrEmpty(loc) && File.Exists(loc))
+                probeFiles.Add(loc);
+        }
+
+        // (2) Core runtime directory (System.Private.CoreLib, System.Runtime, etc.)
         var runtimeDir = Path.GetDirectoryName(typeof(object).Assembly.Location)!;
-        foreach (var dll in Directory.EnumerateFiles(runtimeDir, "*.dll"))
-            probeFiles.Add(dll);
+        AddAllDlls(runtimeDir, probeFiles);
 
-        // Target assembly directory
-        foreach (var dll in Directory.EnumerateFiles(_pluginAssemblyPath, "*.dll"))
-            probeFiles.Add(dll);
+        // (3) Host base directory (bin/{Configuration}/{TFM})
+        var baseDir = AppContext.BaseDirectory;
+        AddAllDlls(baseDir, probeFiles);
 
-        // Ensure the target assembly itself is resolvable
-        probeFiles.Add(_pluginAssemblyPath);
+        // (4) Plugin folder (where your plugins live)
+        AddAllDlls(_pluginAssemblyPath, probeFiles);
 
+        // (5) Shared frameworks: Microsoft.NETCore.App + Microsoft.AspNetCore.App
+        // Try to discover via known types (works even in non-SDK hosts)
+        //TryAddContainingDir(typeof(Microsoft.AspNetCore.Builder.WebApplication), probeFiles);  // AspNetCore.App
+        TryAddContainingDir(typeof(ILogger), probeFiles);        // Extensions
+        TryAddContainingDir(typeof(Enumerable), probeFiles);                                   // NETCore.App
+
+        // Fallback: DOTNET_ROOT/shared paths (in case Locations are empty, e.g., single-file)
+        TryAddDotnetShared(probeFiles);
+
+        // IMPORTANT: PathAssemblyResolver wants file paths, not directories.
         _resolver = new PathAssemblyResolver(probeFiles);
     }
 
@@ -163,32 +175,72 @@ internal class PluginDiscovery(ILogger<PluginDiscovery> logger, PluginSystemOpti
         if (!File.Exists(assemblyPath))
             throw new PluginDiscoveryException($"Assembly file not found: {assemblyPath}");
 
-        using var mlc = new MetadataLoadContext(_resolver);
-
-        // Load the target assembly inside this MLC
-        var asm = mlc.LoadFromAssemblyPath(assemblyPath);
-
-        foreach (var type in asm.GetTypes())
+        try
         {
-            if (!type.IsClass || type.IsAbstract) continue;
+            using var mlc = new MetadataLoadContext(_resolver);
+            var asm = mlc.LoadFromAssemblyPath(assemblyPath);
 
-            // 1) Has [PluginAttribute] (match by full name)
-            bool hasPluginAttribute = type
-                .GetCustomAttributesData()
-                .Any(cad => string.Equals(cad.AttributeType.FullName, _pluginAttributeFullName, StringComparison.Ordinal));
+            foreach (var type in asm.GetTypes())
+            {
+                if (!type.IsClass || type.IsAbstract) continue;
 
-            if (!hasPluginAttribute) continue;
+                var hasPluginAttribute = type.GetCustomAttributesData()
+                    .Any(cad => string.Equals(cad.AttributeType.FullName, _pluginAttributeFullName, StringComparison.Ordinal));
 
-            // 2) Implements IPlugin (match by full name)
-            bool implementsIPlugin = type
-                .GetInterfaces()
-                .Any(i => string.Equals(i.FullName, _pluginStartupInterfaceFullName, StringComparison.Ordinal));
+                if (!hasPluginAttribute) continue;
 
-            if (implementsIPlugin)
-                return true;
+                var implementsStartup = type.GetInterfaces()
+                    .Any(i => string.Equals(i.FullName, _pluginStartupInterfaceFullName, StringComparison.Ordinal));
+
+                if (implementsStartup) return true;
+            }
+            return false;
         }
+        catch (FileNotFoundException fnf)
+        {
+            _logger.LogError(fnf, "MLC could not resolve dependency while scanning {Assembly}. Missing: {Missing}", assemblyPath, fnf.FileName);
+            if (_pluginSystemOptions.IgnoreErrors) return false;
+            throw new PluginDiscoveryException($"Failed to resolve '{fnf.FileName}' while scanning '{assemblyPath}'", fnf);
+        }
+    }
 
-        return false;
+    static void AddAllDlls(string dir, HashSet<string> set)
+    {
+        if (string.IsNullOrWhiteSpace(dir) || !Directory.Exists(dir)) return;
+        foreach (var dll in Directory.EnumerateFiles(dir, "*.dll"))
+            set.Add(dll);
+    }
+
+    static void TryAddContainingDir(Type t, HashSet<string> set)
+    {
+        var loc = SafeGetLocation(t.Assembly);
+        if (string.IsNullOrEmpty(loc)) return;
+        var dir = Path.GetDirectoryName(loc);
+        AddAllDlls(dir!, set);
+    }
+
+    static void TryAddDotnetShared(HashSet<string> set)
+    {
+        var dotnetRoot =
+            Environment.GetEnvironmentVariable("DOTNET_ROOT") ??
+            Path.GetDirectoryName(Environment.ProcessPath ?? string.Empty) ?? string.Empty;
+
+        var shared = Path.Combine(dotnetRoot, "shared");
+        // Add Microsoft.NETCore.App and Microsoft.AspNetCore.App under /shared/*
+        foreach (var product in new[] { "Microsoft.NETCore.App", "Microsoft.AspNetCore.App" })
+        {
+            var productDir = Path.Combine(shared, product);
+            if (!Directory.Exists(productDir)) continue;
+
+            foreach (var verDir in Directory.EnumerateDirectories(productDir))
+                AddAllDlls(verDir, set);
+        }
+    }
+
+    static string? SafeGetLocation(Assembly asm)
+    {
+        try { return asm.Location; }
+        catch { return null; } // dynamic/single-file may throw or be empty
     }
 
 }

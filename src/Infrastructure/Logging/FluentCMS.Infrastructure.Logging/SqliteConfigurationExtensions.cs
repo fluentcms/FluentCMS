@@ -8,7 +8,7 @@ namespace FluentCMS.Infrastructure.Logging;
 
 public static class SqliteConfigurationExtensions
 {
-    public static ILoggerFactory InitiLogFactory(this IHostBuilder host)
+    public static ILoggerFactory InitLogFactory(this IHostBuilder host)
     {
         Log.Logger = new LoggerConfiguration()
             .MinimumLevel.Debug()

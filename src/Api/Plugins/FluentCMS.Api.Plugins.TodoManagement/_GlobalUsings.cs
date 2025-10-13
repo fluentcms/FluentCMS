@@ -1,0 +1,16 @@
+﻿global using FluentCMS.Infrastructure;
+global using FluentCMS.Infrastructure.Repositories;
+global using FluentCMS.Infrastructure.Repositories.Abstractions;
+global using FluentCMS.Infrastructure.Repositories.EntityFramework;
+global using FluentCMS.Infrastructure.Repositories.EntityFramework.Configuration;
+global using FluentCMS.Api.Plugins.TodoManagement.Models;
+global using FluentCMS.Api.Plugins.TodoManagement.Repositories;
+global using FluentCMS.Api.Plugins.TodoManagement.Services;
+global using Microsoft.AspNetCore.Builder;
+global using Microsoft.AspNetCore.Mvc;
+global using Microsoft.EntityFrameworkCore;
+global using Microsoft.Extensions.DependencyInjection;
+global using Microsoft.Extensions.Logging;
+global using System.ComponentModel.DataAnnotations;
+global using FluentCMS.Infrastructure.Plugins.Abstractions;
+global using Microsoft.Extensions.Configuration;

@@ -1,0 +1,12 @@
+﻿namespace FluentCMS.Api.Plugins.AuditTrailManagement.Repositories;
+
+public class AuditTrailDbContext(DbContextOptions<AuditTrailDbContext> options) : DbContext(options)
+{
+    public DbSet<AuditTrailInternal> AuditTrails { get; set; } = null!;
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<AuditTrailInternal>()
+            .HasKey(t => t.Id);
+    }
+}

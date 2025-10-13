@@ -131,44 +131,8 @@ public static class ServiceCollectionExtensions
         // Register the seeder with the marker type as the key
         services.AddKeyedScoped<IDataSeeder, TSeeder>(typeof(TMarker));
 
-        // This is intentional to support scenarios where the seeder may be resolved by either key.
-        services.AddDataSeeder<TSeeder>();
-
-        return services;
-    }
-
-    /// <summary>
-    /// Registers a data seeder for the default database
-    /// </summary>
-    /// <typeparam name="TSeeder">The data seeder implementation type</typeparam>
-    /// <param name="services">The service collection</param>
-    /// <returns>The service collection for chaining</returns>
-    public static IServiceCollection AddDataSeeder<TSeeder>(this IServiceCollection services)
-        where TSeeder : class, IDataSeeder
-    {
-        ArgumentNullException.ThrowIfNull(services);
-
-        CheckStaticOptions();
-
         // Register the seeder with IDefaultDatabaseArea as the key
         services.AddKeyedScoped<IDataSeeder, TSeeder>(typeof(IDefaultDatabaseArea));
-
-        return services;
-    }
-
-    /// <summary>
-    /// Registers a schema validator for the default database
-    /// </summary>
-    /// <typeparam name="TValidator">The schema validator implementation type</typeparam>
-    /// <param name="services">The service collection</param>
-    /// <returns>The service collection for chaining</returns>
-    public static IServiceCollection AddSchemaValidator<TValidator>(this IServiceCollection services)
-        where TValidator : class, ISchemaValidator
-    {
-        ArgumentNullException.ThrowIfNull(services);
-
-        // Register the validator with IDefaultDatabaseArea as the key
-        services.AddKeyedScoped<ISchemaValidator, TValidator>(typeof(IDefaultDatabaseArea));
 
         return services;
     }
@@ -191,8 +155,8 @@ public static class ServiceCollectionExtensions
         // Register the validator with the marker type as the key
         services.AddKeyedScoped<ISchemaValidator, TValidator>(typeof(TMarker));
 
-        // Also register the validator as the IDefaultDatabaseArea keyed instance.
-        services.AddSchemaValidator<TValidator>();
+        // Register the validator with IDefaultDatabaseArea as the key
+        services.AddKeyedScoped<ISchemaValidator, TValidator>(typeof(IDefaultDatabaseArea));
 
         return services;
     }
