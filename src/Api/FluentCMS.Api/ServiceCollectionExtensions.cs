@@ -16,6 +16,8 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddFluentCmsApi(this IServiceCollection services)
     {
+        services.AddScoped<IApiTokenValidator, ApiTokenValidator>();
+
         services.AddEndpointsApiExplorer();
 
         services.AddAuthorization();

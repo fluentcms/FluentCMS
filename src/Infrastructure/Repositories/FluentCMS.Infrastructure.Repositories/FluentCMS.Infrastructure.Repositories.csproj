@@ -12,6 +12,7 @@
 
     <ItemGroup>
       <ProjectReference Include="..\..\EventBus\FluentCMS.Infrastructure.EventBus\FluentCMS.Infrastructure.EventBus.csproj" />
+      <ProjectReference Include="..\..\Exceptions\FluentCMS.Infrastructure.Exceptions\FluentCMS.Infrastructure.Exceptions.csproj" />
       <ProjectReference Include="..\..\FluentCMS.Infrastructure\FluentCMS.Infrastructure.csproj" />
     </ItemGroup>
 </Project>

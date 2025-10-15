@@ -47,27 +47,32 @@ public sealed class ConfigurationReadOnlyProviderRepository(IConfiguration confi
 
     public Task<Provider> Remove(Provider provider, CancellationToken cancellationToken = default)
     {
-        throw new Exception("In-memory repository does not support removing providers.");
+        throw new NotImplementedException("In-memory repository does not support removing providers.");
     }
 
     public Task<Provider> Update(Provider provider, CancellationToken cancellationToken = default)
     {
-        throw new Exception("In-memory repository does not support updating providers.");
+        throw new NotImplementedException("In-memory repository does not support updating providers.");
     }
 
     public Task<Provider> Add(Provider entity, CancellationToken cancellationToken = default)
     {
-        throw new Exception("In-memory repository does not support adding providers.");
+        throw new NotImplementedException("In-memory repository does not support adding providers.");
     }
 
     public Task<IEnumerable<Provider>> AddRange(IEnumerable<Provider> entities, CancellationToken cancellationToken = default)
     {
-        throw new Exception("In-memory repository does not support adding providers.");
+        throw new NotImplementedException("In-memory repository does not support adding providers.");
     }
 
-    public Task<Provider?> Remove(Guid id, CancellationToken cancellationToken = default)
+    public Task<Provider> Remove(Guid id, CancellationToken cancellationToken = default)
     {
-        throw new Exception("In-memory repository does not support removing providers.");
+        throw new NotImplementedException("In-memory repository does not support removing providers.");
+    }
+
+    public Task<IEnumerable<Provider>> RemoveRange(IEnumerable<Provider> entities, CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException("In-memory repository does not support removing providers.");
     }
 }
 
