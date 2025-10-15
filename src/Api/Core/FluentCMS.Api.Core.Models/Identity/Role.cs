@@ -3,6 +3,7 @@
 public class Role : IdentityRole<Guid>, ISiteAssociatedEntity 
 {
     public string Description { get; set; } = string.Empty;
+
     public RoleTypes Type { get; set; } = RoleTypes.UserDefined;
 
     // IAuditableEntity implementations

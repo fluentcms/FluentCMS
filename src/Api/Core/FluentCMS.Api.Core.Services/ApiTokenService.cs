@@ -114,8 +114,7 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository, IPermission
     {
         await permissionManager.CheckSuperAdminPermission(cancellationToken);
 
-        var apiToken = await apiTokenRepository.GetById(id, cancellationToken) ??
-            throw new EnhancedException(ExceptionCodes.ApiTokenNotFound);
+        var apiToken = await apiTokenRepository.GetById(id, cancellationToken);
 
         apiToken.Secret = GenerateSecret(apiToken.Key);
 

@@ -1,8 +1,6 @@
-﻿using FluentCMS.Api.Core.Services.InternalTemp;
+﻿namespace FluentCMS.Api.Core.Services;
 
-namespace FluentCMS.Api.Core.Services;
-
-public interface IRoleService 
+public interface IRoleService
 {
     Task<IEnumerable<Role>> GetAllForSite(Guid siteId, CancellationToken cancellationToken = default);
     Task<Role> Add(Role role, CancellationToken cancellationToken = default);
@@ -11,39 +9,40 @@ public interface IRoleService
     Task<Role> GetById(Guid roleId, CancellationToken cancellationToken = default);
 }
 
-public class RoleService(IRoleRepository roleRepository, IEventPublisher messagePublisher, IPermissionManager permissionManager) : IRoleService
+public class RoleService(IRoleRepository roleRepository, IEventPublisher eventPublisher, IPermissionManager permissionManager) : IRoleService
 {
     public async Task<IEnumerable<Role>> GetAllForSite(Guid siteId, CancellationToken cancellationToken = default)
     {
-        // no need to check for permission 
+        await permissionManager.CheckSiteContributorPermission(siteId, cancellationToken);
+
         return await roleRepository.GetAllForSite(siteId, cancellationToken);
     }
 
     public async Task<Role> Add(Role role, CancellationToken cancellationToken)
     {
-        if (!await permissionManager.HasAccess(role.SiteId, SitePermissionAction.SiteAdmin, cancellationToken))
-            throw new EnhancedException(ExceptionCodes.PermissionDenied);
+        await permissionManager.CheckSiteAdminPermission(role.SiteId, cancellationToken);
 
         // check for duplicated role name
         var allRoles = await roleRepository.GetAllForSite(role.SiteId, cancellationToken);
-        if (allRoles.Where(r => r.Name.Equals(role.Name, StringComparison.CurrentCultureIgnoreCase)).Any())
+        if (allRoles.Where(r => r.Name!.Equals(role.Name, StringComparison.CurrentCultureIgnoreCase)).Any())
             throw new EnhancedException(ExceptionCodes.RoleNameShouldBeUnique);
 
-        var newRole = await roleRepository.Add(role, cancellationToken) ??
-           throw new EnhancedException(ExceptionCodes.RoleUnableToCreate);
+        await roleRepository.Add(role, cancellationToken);
 
-        await messagePublisher.Publish(new Message<Role>(ActionNames.RoleCreated, newRole), cancellationToken);
+        await eventPublisher.Publish(new Message<Role>(ActionNames.RoleCreated, role), cancellationToken);
 
-        return newRole;
+        return role;
     }
 
     public async Task<Role> Update(Role role, CancellationToken cancellationToken)
     {
-        var existingRole = await roleRepository.GetById(role.Id, cancellationToken) ??
-            throw new EnhancedException(ExceptionCodes.RoleNotFound);
+        await permissionManager.CheckSiteAdminPermission(role.SiteId, cancellationToken);
+
+        var existingRole = await roleRepository.GetById(role.Id, cancellationToken);
 
         // role type can't be changed after creation
-        role.Type = existingRole.Type;
+        if (role.Type != existingRole.Type)
+            throw new EnhancedException(ExceptionCodes.RoleTypeCanNotBeChanged);
 
         var siteId = existingRole.SiteId;
 
@@ -59,38 +58,36 @@ public class RoleService(IRoleRepository roleRepository, IEventPublisher message
                 throw new EnhancedException(ExceptionCodes.RoleNameShouldBeUnique);
         }
 
-        var updatedRole = await roleRepository.Update(role, cancellationToken) ??
-            throw new EnhancedException(ExceptionCodes.RoleUnableToUpdate);
+        await roleRepository.Update(role, cancellationToken);
 
-        await messagePublisher.Publish(new Message<Role>(ActionNames.RoleUpdated, updatedRole), cancellationToken);
+        await eventPublisher.Publish(new Message<Role>(ActionNames.RoleUpdated, role), cancellationToken);
 
-        return updatedRole;
+        return role;
     }
 
     public async Task<Role> Remove(Guid roleId, CancellationToken cancellationToken = default)
     {
-        var existingRole = await roleRepository.GetById(roleId, cancellationToken) ??
-            throw new EnhancedException(ExceptionCodes.RoleNotFound);
+        var role = await roleRepository.GetById(roleId, cancellationToken);
 
-        if (!await permissionManager.HasAccess(existingRole.SiteId, SitePermissionAction.SiteAdmin, cancellationToken))
-            throw new EnhancedException(ExceptionCodes.PermissionDenied);
+        await permissionManager.CheckSiteAdminPermission(role.SiteId, cancellationToken);
 
         // Only user defined roles can be deleted
-        if (existingRole.Type != RoleTypes.UserDefined)
-            throw new EnhancedException(ExceptionCodes.RoleCanNotBeDeleted);
+        if (role.Type != RoleTypes.UserDefined)
+            throw new EnhancedException(ExceptionCodes.RoleDefaultCanNotBeDeleted);
 
-        var deletedRole = await roleRepository.Remove(roleId, cancellationToken) ??
-            throw new EnhancedException(ExceptionCodes.RoleUnableToDelete);
+        await roleRepository.Remove(roleId, cancellationToken);
 
-        await messagePublisher.Publish(new Message<Role>(ActionNames.RoleDeleted, deletedRole), cancellationToken);
+        await eventPublisher.Publish(new Message<Role>(ActionNames.RoleDeleted, role), cancellationToken);
 
-        return deletedRole;
+        return role;
     }
 
     public async Task<Role> GetById(Guid roleId, CancellationToken cancellationToken = default)
     {
-        // no need to check for permission
-        return await roleRepository.GetById(roleId, cancellationToken) ??
-            throw new EnhancedException(ExceptionCodes.RoleNotFound);
+        var role = await roleRepository.GetById(roleId, cancellationToken);
+
+        await permissionManager.CheckSiteContributorPermission(role.SiteId, cancellationToken);
+
+        return role;
     }
 }

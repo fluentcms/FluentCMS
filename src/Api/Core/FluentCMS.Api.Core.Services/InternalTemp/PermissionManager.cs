@@ -94,6 +94,24 @@ public static class PermissionManagerExtensions
             throw new PermissionDeniedException();
         }
     }
+
+    public static async Task CheckSiteAdminPermission(this IPermissionManager permissionManager, Guid siteId, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!await permissionManager.HasAccess(siteId, SitePermissionAction.SiteAdmin, cancellationToken))
+        {
+            throw new PermissionDeniedException();
+        }
+    }
+
+    public static async Task CheckSiteContributorPermission(this IPermissionManager permissionManager, Guid siteId, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!await permissionManager.HasAccess(siteId, SitePermissionAction.SiteContributor, cancellationToken))
+        {
+            throw new PermissionDeniedException();
+        }
+    }
 }
 
 

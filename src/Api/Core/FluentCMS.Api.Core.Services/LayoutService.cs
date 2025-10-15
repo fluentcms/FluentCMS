@@ -7,94 +7,74 @@ public interface ILayoutService
     Task<Layout> Update(Layout layout, CancellationToken cancellationToken);
     Task<IEnumerable<Layout>> RemoveBySiteId(Guid siteId, CancellationToken cancellationToken = default);
     Task<IEnumerable<Layout>> GetAllForSite(Guid siteId, CancellationToken cancellationToken = default);
-    Task<IEnumerable<Layout>> GetAll(CancellationToken cancellationToken = default);
     Task<Layout> GetById(Guid id, CancellationToken cancellationToken = default);
 }
 
-public class LayoutService(ILayoutRepository layoutRepository, ISiteRepository siteRepository, IEventPublisher messagePublisher, IPermissionManager permissionManager) : ILayoutService
+public class LayoutService(ILayoutRepository layoutRepository, ISiteRepository siteRepository, IEventPublisher eventPublisher, IPermissionManager permissionManager) : ILayoutService
 {
     public async Task<Layout> Add(Layout layout, CancellationToken cancellationToken = default)
     {
-        if (!await permissionManager.HasAccess(layout.SiteId, SitePermissionAction.SiteAdmin, cancellationToken))
-            throw new EnhancedException(ExceptionCodes.PermissionDenied);
+        await permissionManager.CheckSiteContributorPermission(layout.SiteId, cancellationToken);
 
-        var created = await layoutRepository.Add(layout, cancellationToken) ??
-            throw new EnhancedException(ExceptionCodes.LayoutUnableToCreate);
+        await layoutRepository.Add(layout, cancellationToken);
 
-        await messagePublisher.Publish(new LayoutAddedEvent(created), cancellationToken);
+        await eventPublisher.Publish(new LayoutAddedEvent(layout), cancellationToken);
 
-        return created;
+        return layout;
     }
 
     public async Task<Layout> Remove(Guid id, CancellationToken cancellationToken = default)
     {
-        var existing = await layoutRepository.GetById(id, cancellationToken) ??
-            throw new EnhancedException(ExceptionCodes.LayoutNotFound);
 
-        var siteId = existing.SiteId;
+        var layout = await layoutRepository.GetById(id, cancellationToken);
 
-        if (!await permissionManager.HasAccess(siteId, SitePermissionAction.SiteAdmin, cancellationToken))
-            throw new EnhancedException(ExceptionCodes.PermissionDenied);
+        await permissionManager.CheckSiteContributorPermission(layout.SiteId, cancellationToken);
 
         // check if the layout is one of site's default layout, if so, throw an exception
-        var site = await siteRepository.GetById(siteId, cancellationToken) ??
-            throw new EnhancedException(ExceptionCodes.SiteNotFound);
+        var site = await siteRepository.GetById(layout.SiteId, cancellationToken);
 
         if (site.LayoutId == id || site.EditLayoutId == id || site.DetailLayoutId == id)
             throw new EnhancedException(ExceptionCodes.LayoutUnableToDeleteDefaultLayout);
 
-        var deleted = await layoutRepository.Remove(id, cancellationToken) ??
-            throw new EnhancedException(ExceptionCodes.LayoutUnableToDelete);
+        await layoutRepository.Remove(layout, cancellationToken);
 
-        await messagePublisher.Publish(new LayoutRemovedEvent(deleted), cancellationToken);
+        await eventPublisher.Publish(new LayoutRemovedEvent(layout), cancellationToken);
 
-        return deleted;
+        return layout;
     }
 
     public async Task<Layout> Update(Layout layout, CancellationToken cancellationToken)
     {
-        var existing = await layoutRepository.GetById(layout.Id, cancellationToken) ??
-            throw new EnhancedException(ExceptionCodes.LayoutNotFound);
+        await permissionManager.CheckSiteContributorPermission(layout.SiteId, cancellationToken);
 
-        if (!await permissionManager.HasAccess(existing.SiteId, SitePermissionAction.SiteAdmin, cancellationToken))
-            throw new EnhancedException(ExceptionCodes.PermissionDenied);
+        await layoutRepository.Update(layout, cancellationToken);
 
-        var updated = await layoutRepository.Update(layout, cancellationToken) ??
-            throw new EnhancedException(ExceptionCodes.LayoutUnableToUpdate);
+        await eventPublisher.Publish(new LayoutUpdatedEvent(layout), cancellationToken);
 
-        await messagePublisher.Publish(new LayoutUpdatedEvent(updated), cancellationToken);
-
-        return updated;
+        return layout;
     }
 
     public async Task<IEnumerable<Layout>> RemoveBySiteId(Guid siteId, CancellationToken cancellationToken = default)
     {
-        if (!await permissionManager.HasAccess(siteId, SitePermissionAction.SiteAdmin, cancellationToken))
-            throw new EnhancedException(ExceptionCodes.PermissionDenied);
+        await permissionManager.CheckSiteAdminPermission(siteId, cancellationToken);
 
         var layouts = await layoutRepository.GetAllForSite(siteId, cancellationToken);
 
-        var deleted = await layoutRepository.RemoveRange(layouts, cancellationToken);
+        await layoutRepository.RemoveRange(layouts, cancellationToken);
 
-        await messagePublisher.Publish(new LayoutsRemovedBySiteEvent(deleted), cancellationToken);
+        await eventPublisher.Publish(new LayoutsRemovedBySiteEvent(layouts), cancellationToken);
 
         return layouts;
     }
 
     public async Task<Layout> GetById(Guid id, CancellationToken cancellationToken = default)
     {
-        var layout = await layoutRepository.GetById(id, cancellationToken);
-
-        return layout ?? throw new EnhancedException(ExceptionCodes.LayoutNotFound);
+        return await layoutRepository.GetById(id, cancellationToken);
     }
 
-    public async Task<IEnumerable<Layout>> GetAll(CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<Layout>> GetAllForSite(Guid siteId, CancellationToken cancellationToken = default)
     {
-        return await layoutRepository.GetAll(cancellationToken);
-    }
-
-    public Task<IEnumerable<Layout>> GetAllForSite(Guid siteId, CancellationToken cancellationToken = default)
-    {
-        return layoutRepository.GetAllForSite(siteId, cancellationToken);
+        await permissionManager.CheckSiteContributorPermission(siteId, cancellationToken);
+        return await layoutRepository.GetAllForSite(siteId, cancellationToken);
     }
 }

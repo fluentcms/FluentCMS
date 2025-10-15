@@ -27,7 +27,7 @@ public class FileService(IFileRepository fileRepository, IFolderRepository folde
         var existingFile = await fileRepository.GetByName(folder.SiteId, folder.Id, file.NormalizedName, cancellationToken);
         if (existingFile != null)
         {
-            // add a suffix to the new file's name to avoid conflicts with preiously uploaded files
+            // add a suffix to the new file's name to avoid conflicts with previously uploaded files
             var fileNameWithoutExtension = Path.GetFileNameWithoutExtension(file.Name);
             var fileExtension = Path.GetExtension(file.Name);
             var suffix = 1;

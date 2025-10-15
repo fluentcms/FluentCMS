@@ -14,7 +14,6 @@ public static class ExceptionCodes
 
     #region User
 
-    public const string UserNotFound = "User.NotFound";
     public const string UserLoginFailed = "User.LoginFailed";
     public const string UserChangePasswordFailed = "User.ChangePasswordFailed";
     public const string UserTokenGenerationFailed = "User.TokenGenerationFailed";
@@ -45,7 +44,6 @@ public static class ExceptionCodes
 
     #region GlobalSettings
 
-    public const string GlobalSettingsUnableToUpdate = "GlobalSettings.UnableToUpdate";
     public const string GlobalSettingsNotFound = "GlobalSettings.NotFound";
     public const string GlobalSettingsSuperAdminCanNotBeDeleted = "GlobalSettings.SuperAdminCanNotBeDeleted";
     public const string GlobalSettingsSuperAdminAtLeastOne = "GlobalSettings.SuperAdminAtLeastOne";
@@ -64,12 +62,9 @@ public static class ExceptionCodes
 
     #region Role
 
-    public const string RoleUnableToCreate = "Role.UnableToCreate";
-    public const string RoleUnableToUpdate = "Role.UnableToUpdate";
-    public const string RoleUnableToDelete = "Role.UnableToDelete";
-    public const string RoleCanNotBeDeleted = "Role.CanNotBeDeleted";
-    public const string RoleNotFound = "Role.NotFound";
     public const string RoleNameShouldBeUnique = "Role.NameShouldBeUnique";
+    public const string RoleTypeCanNotBeChanged = "Role.TypeCanNotBeChanged";
+    public const string RoleDefaultCanNotBeDeleted = "Role.DefaultCanNotBeDeleted";
 
     #endregion
 
@@ -111,10 +106,6 @@ public static class ExceptionCodes
 
     #region Layout
 
-    public const string LayoutUnableToCreate = "Layout.UnableToCreate";
-    public const string LayoutUnableToUpdate = "Layout.UnableToUpdate";
-    public const string LayoutUnableToDelete = "Layout.UnableToDelete";
-    public const string LayoutNotFound = "Layout.NotFound";
     public const string LayoutUnableToDeleteDefaultLayout = "Layout.UnableToDeleteDefaultLayout";
 
     #endregion

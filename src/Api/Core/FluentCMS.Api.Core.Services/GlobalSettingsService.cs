@@ -6,10 +6,13 @@ public interface IGlobalSettingsService
     Task<GlobalSettings> Get(CancellationToken cancellationToken = default);
 }
 
-public class GlobalSettingsService(IGlobalSettingsRepository repository, IApplicationExecutionContext executionContext, IEventPublisher  eventPublisher) : IGlobalSettingsService
+public class GlobalSettingsService(IGlobalSettingsRepository repository, IApplicationExecutionContext executionContext, IPermissionManager permissionManager, IEventPublisher eventPublisher) : IGlobalSettingsService
 {
     public async Task<GlobalSettings> Update(GlobalSettings settings, CancellationToken cancellationToken = default)
     {
+
+        await permissionManager.CheckSuperAdminPermission(cancellationToken);
+
         settings.SuperAdmins = [.. settings.SuperAdmins.Where(x => !string.IsNullOrEmpty(x)).Distinct()];
 
         // at least one super admin should exist
@@ -24,12 +27,11 @@ public class GlobalSettingsService(IGlobalSettingsRepository repository, IApplic
 
         existSetting.SuperAdmins = settings.SuperAdmins;
 
-        var updated = await repository.Update(existSetting, cancellationToken)
-            ?? throw new EnhancedException(ExceptionCodes.GlobalSettingsUnableToUpdate);
+        await repository.Update(existSetting, cancellationToken);
 
-        await eventPublisher.Publish(new GlobalSettingsUpdatedEvent(updated), cancellationToken);
+        await eventPublisher.Publish(new GlobalSettingsUpdatedEvent(existSetting), cancellationToken);
 
-        return updated;
+        return existSetting;
     }
 
     public async Task<GlobalSettings> Get(CancellationToken cancellationToken = default)
