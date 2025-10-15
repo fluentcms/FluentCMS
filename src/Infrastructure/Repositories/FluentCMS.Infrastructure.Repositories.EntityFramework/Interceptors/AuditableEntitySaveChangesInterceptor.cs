@@ -4,7 +4,7 @@ namespace FluentCMS.Infrastructure.Repositories.EntityFramework.Interceptors;
 /// Intercepts Entity Framework save operations to automatically populate audit fields
 /// for entities implementing IAuditableEntity.
 /// </summary>
-public class AuditableEntitySaveChangesInterceptor(IServiceProvider serviceProvider, ILogger<AuditableEntitySaveChangesInterceptor> logger) : ISaveChangesInterceptor
+public class AuditableEntitySaveChangesInterceptor(IApplicationExecutionContext executionContext) : ISaveChangesInterceptor
 {
     public InterceptionResult<int> SavingChanges(DbContextEventData eventData, InterceptionResult<int> result)
     {
@@ -23,12 +23,7 @@ public class AuditableEntitySaveChangesInterceptor(IServiceProvider serviceProvi
         if (context == null)
             return;
 
-        var executionContext = serviceProvider.GetService<IApplicationExecutionContext>();
-        if (executionContext == null)
-            logger.LogWarning("IApplicationExecutionContext service is not registered. Audit fields will use empty username.");
-
         var now = DateTime.UtcNow;
-        var username = executionContext?.Username ?? string.Empty;
 
         foreach (var entry in context.ChangeTracker.Entries())
         {
@@ -39,13 +34,13 @@ public class AuditableEntitySaveChangesInterceptor(IServiceProvider serviceProvi
                     case EntityState.Added:
                         // Set creation audit fields for new entities
                         auditableEntity.CreatedAt = now;
-                        auditableEntity.CreatedBy = username;
+                        auditableEntity.CreatedBy = executionContext.Username;
                         auditableEntity.Version = 1;
                         break;
 
                     case EntityState.Modified:
                         auditableEntity.UpdatedAt = now;
-                        auditableEntity.UpdatedBy = username;
+                        auditableEntity.UpdatedBy = executionContext.Username;
                         auditableEntity.Version += 1;
                         break;
                 }

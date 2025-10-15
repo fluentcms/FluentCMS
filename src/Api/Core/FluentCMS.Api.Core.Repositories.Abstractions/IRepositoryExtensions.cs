@@ -1,6 +1,4 @@
-﻿using FluentCMS.Infrastructure.Exceptions;
-
-namespace FluentCMS.Infrastructure.Repositories.Abstractions;
+﻿namespace FluentCMS.Infrastructure.Repositories.Abstractions;
 
 public static class IRepositoryExtensions
 {

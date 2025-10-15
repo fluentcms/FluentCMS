@@ -11,7 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\Infrastructure\FluentCMS.Infrastructure\FluentCMS.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\Infrastructure\Common\FluentCMS.Infrastructure.Common\FluentCMS.Infrastructure.Common.csproj" />
   </ItemGroup>
 
 </Project>

@@ -2,11 +2,11 @@
 
 public interface ISiteAssociatedEntity : IAuditableEntity
 {
+    [ConcurrencyCheck]
     Guid SiteId { get; set; }
 }
 
 public abstract class SiteAssociatedEntity : AuditableEntity, ISiteAssociatedEntity
 {
-    [ConcurrencyCheck]
     public Guid SiteId { get; set; }
 }

@@ -2,12 +2,15 @@
 
 public interface IUserService
 {
-    Task<User> Update(User user, CancellationToken cancellationToken = default);
     Task<User> Add(User user, string password, CancellationToken cancellationToken = default);
-    Task<User> Remove(Guid id, CancellationToken cancellationToken = default);
-    Task<User> ChangePassword(Guid userId, string newPassword, CancellationToken cancellationToken = default);
+    Task<User> Update(User user, CancellationToken cancellationToken = default);
+    Task Remove(Guid id, CancellationToken cancellationToken = default);
+    Task ChangePassword(Guid userId, string newPassword, CancellationToken cancellationToken = default);
     Task<IEnumerable<User>> GetAll(CancellationToken cancellationToken = default);
     Task<User> GetById(Guid id, CancellationToken cancellationToken = default);
+    Task<IEnumerable<Role>> GetAllRoles(Guid userId, CancellationToken cancellationToken = default);
+    Task<IEnumerable<Role>> GetRoles(Guid userId, Guid siteId, CancellationToken cancellationToken = default);
+    Task<IEnumerable<Role>> AssignRole(Guid userId, Guid roleId, CancellationToken cancellationToken = default);
 }
 
 public class UserService(IGlobalSettingsRepository globalSettingsRepository, UserManager<User> userManager, IPermissionManager permissionManager, IEventPublisher eventPublisher, IUserRepository userRepository) : IUserService
