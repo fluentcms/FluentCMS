@@ -4,7 +4,7 @@ using FluentCMS.Providers.CacheProviders;
 
 namespace FluentCMS.Api.Core.Services;
 
-public interface IPageInternalService : IAutoRegisterService
+public interface IPageInternalService 
 {
     Task<IEnumerable<PageModel>> GetHierarchyBySiteId(Guid siteId, CancellationToken cancellationToken = default);
     Task<Dictionary<Guid, PageModel>> GetAllBySiteId(Guid siteId, CancellationToken cancellationToken = default);

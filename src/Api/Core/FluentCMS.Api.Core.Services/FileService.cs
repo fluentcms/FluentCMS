@@ -19,11 +19,7 @@ public class FileService(IFileRepository fileRepository, IFolderRepository folde
 {
     public async Task<File> Add(File file, Stream fileContent, CancellationToken cancellationToken = default)
     {
-        var folder = await folderRepository.GetById(file.FolderId, cancellationToken) ??
-            throw new EnhancedException(ExceptionCodes.FolderNotFound);
-
-        if (folder.SiteId != file.SiteId)
-            throw new EnhancedException(ExceptionCodes.FolderNotFound);
+        var folder = await folderRepository.GetById(file.FolderId, cancellationToken);
 
         file.NormalizedName = GetNormalizedFileName(file.Name);
 

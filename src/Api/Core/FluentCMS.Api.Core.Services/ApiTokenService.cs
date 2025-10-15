@@ -33,14 +33,13 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository, IPermission
         await eventPublisher.Publish(new ApiTokenAddedEvent(apiToken), cancellationToken);
 
         return apiToken;
-    }    
+    }
 
     public async Task<ApiToken> Update(ApiToken apiToken, CancellationToken cancellationToken = default)
     {
         await permissionManager.CheckSuperAdminPermission(cancellationToken);
 
-        var existingApiToken = await apiTokenRepository.GetById(apiToken.Id, cancellationToken) ??
-            throw new EnhancedException(ExceptionCodes.ApiTokenNotFound);
+        var existingApiToken = await apiTokenRepository.GetById(apiToken.Id, cancellationToken);
 
         var isSameApiTokenExist = await apiTokenRepository.GetByName(apiToken.Name, cancellationToken);
         if (isSameApiTokenExist != null && apiToken.Id != isSameApiTokenExist.Id)
@@ -53,12 +52,11 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository, IPermission
         apiToken.Secret = existingApiToken.Secret;
         apiToken.Key = existingApiToken.Key;
 
-        var updated = await apiTokenRepository.Update(apiToken, cancellationToken) ??
-            throw new EnhancedException(ExceptionCodes.ApiTokenFailedToUpdate);
+        await apiTokenRepository.Update(apiToken, cancellationToken);
 
-        await eventPublisher.Publish(new ApiTokenUpdatedEvent(updated), cancellationToken);
+        await eventPublisher.Publish(new ApiTokenUpdatedEvent(apiToken), cancellationToken);
 
-        return updated;
+        return apiToken;
     }
 
     public async Task<ApiToken> Remove(Guid tokenId, CancellationToken cancellationToken = default)
@@ -80,7 +78,7 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository, IPermission
         // there is not need to check permissions here
         // as this method is used for API authentication
         var apiToken = await apiTokenRepository.GetByKey(apiKey, cancellationToken) ??
-            throw new EnhancedException(ExceptionCodes.ApiTokenNotFound);
+            throw new EntityNotFoundException();
 
         // check if token expired or not
         if (apiToken.ExpireAt.HasValue && apiToken.ExpireAt < DateTime.UtcNow)
@@ -169,6 +167,3 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository, IPermission
 
     }
 }
-
-
-

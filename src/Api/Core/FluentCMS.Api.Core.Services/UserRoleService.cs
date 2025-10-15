@@ -2,7 +2,7 @@
 
 namespace FluentCMS.Api.Core.Services;
 
-public interface IUserRoleService : IAutoRegisterService
+public interface IUserRoleService
 {
     Task<IEnumerable<Guid>> GetUserRoleIds(Guid userId, Guid siteId, CancellationToken cancellationToken = default);
     Task<IEnumerable<UserRole>> Update(Guid userId, Guid siteId, IEnumerable<Guid> roleIds, CancellationToken cancellationToken = default);

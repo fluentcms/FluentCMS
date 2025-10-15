@@ -4,14 +4,10 @@ public static class ExceptionCodes
 {
     #region API Token
 
-    public const string ApiTokenFailedToAdd = "ApiToken.FailedToAdd";
-    public const string ApiTokenNotFound = "ApiToken.NotFound";
     public const string ApiTokenExpired = "ApiToken.Expired";
     public const string ApiTokenInactive = "ApiToken.Inactive";
     public const string ApiTokenInvalid = "ApiToken.Invalid";
     public const string ApiTokenInvalidSecret = "ApiToken.InvalidSecret";
-    public const string ApiTokenFailedToUpdate = "ApiToken.FailedToUpdate";
-    public const string ApiTokenFailedToRemove = "ApiToken.FailedToRemove";
     public const string ApiTokenNameIsDuplicated = "ApiToken.NameIsDuplicated";
 
     #endregion

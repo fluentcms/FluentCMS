@@ -4,7 +4,7 @@ using System.Text.Json;
 
 namespace FluentCMS.Api.Core.Services;
 
-public interface ISetupService : IAutoRegisterService
+public interface ISetupService 
 {
     Task<IEnumerable<string>> GetTemplates(CancellationToken cancellationToken = default);
     Task<bool> Start(SetupTemplate setupTemplate, CancellationToken cancellationToken = default);

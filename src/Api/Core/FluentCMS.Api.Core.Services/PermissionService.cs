@@ -2,7 +2,7 @@
 
 namespace FluentCMS.Api.Core.Services;
 
-public interface IPermissionService : IAutoRegisterService
+public interface IPermissionService 
 {
     Task<IEnumerable<Permission>> Set(Guid siteId, SitePermissionAction action, IEnumerable<Guid> roleIds, CancellationToken cancellationToken = default);
     Task<IEnumerable<Permission>> Set(Guid siteId, Guid pageId, PagePermissionAction action, IEnumerable<Guid> roleIds, CancellationToken cancellationToken = default);

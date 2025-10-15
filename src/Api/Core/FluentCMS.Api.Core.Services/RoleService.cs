@@ -2,7 +2,7 @@
 
 namespace FluentCMS.Api.Core.Services;
 
-public interface IRoleService : IAutoRegisterService
+public interface IRoleService 
 {
     Task<IEnumerable<Role>> GetAllForSite(Guid siteId, CancellationToken cancellationToken = default);
     Task<Role> Add(Role role, CancellationToken cancellationToken = default);

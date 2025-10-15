@@ -5,13 +5,14 @@ namespace FluentCMS.Infrastructure.Repositories.Abstractions;
 public static class IRepositoryExtensions
 {
     // Extension method for simplified retrieval by ID
-    public static Task<TEntity?> GetById<TEntity>(this IRepository<TEntity> repository, Guid id, CancellationToken cancellationToken = default)
+    public static async Task<TEntity> GetById<TEntity>(this IRepository<TEntity> repository, Guid id, CancellationToken cancellationToken = default)
         where TEntity : class, IEntity
     {
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(repository);
 
-        return repository.Query().SingleOrDefault(e => e.Id.Equals(id), cancellationToken);
+        return await repository.Query().SingleOrDefault(e => e.Id.Equals(id), cancellationToken) ??
+            throw new EntityNotFoundException();
     }
 
     public static async Task<List<TEntity>> GetAll<TEntity>(this IRepository<TEntity> repository, CancellationToken cancellationToken = default)

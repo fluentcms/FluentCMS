@@ -3,7 +3,7 @@ using System.Text.RegularExpressions;
 
 namespace FluentCMS.Api.Core.Services;
 
-public interface IPageService : IAutoRegisterService
+public interface IPageService 
 {
     Task<IEnumerable<PageModel>> GetBySiteId(Guid siteId, CancellationToken cancellationToken = default);
     Task<IEnumerable<PageModel>> GetHierarchyBySiteId(Guid siteId, CancellationToken cancellationToken = default);

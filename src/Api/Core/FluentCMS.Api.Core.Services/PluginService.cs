@@ -2,7 +2,7 @@
 
 namespace FluentCMS.Api.Core.Services;
 
-public interface IPluginService : IAutoRegisterService
+public interface IPluginService 
 {
     Task<IEnumerable<Plugin>> GetByPageId(Guid pageId, CancellationToken cancellationToken = default);
     Task<Plugin> GetById(Guid id, CancellationToken cancellationToken = default);
