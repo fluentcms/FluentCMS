@@ -1,6 +1,6 @@
-﻿namespace FluentCMS.Infrastructure;
+﻿namespace FluentCMS.Api.Core.Api;
 
-public class ApiExecutionContext : IApplicationExecutionContext
+internal class ApiSecurityContext : ISecurityContext
 {
     public string TraceId { get; init; } = default!;
     public string UniqueId { get; init; } = default!;
@@ -11,9 +11,16 @@ public class ApiExecutionContext : IApplicationExecutionContext
     public Guid? UserId { get; init; }
     public string Username { get; init; } = default!;
     public bool IsAuthenticated { get; init; }
+    public string ClientIp { get; init; } = default!;
+    public ApiToken? Token { get; init; }
+    public User? User { get; init; }
+    public List<Role> Roles { get; init; } = [];
+    public Site? Site { get; init; }
+    public List<Role> SiteRoles { get; init; } = [];
+    public bool IsSuperAdmin { get; init; }
 }
 
-public class SystemExecutionContext : IApplicationExecutionContext
+internal class SystemSecurityContext : ISecurityContext
 {
     public string TraceId { get; } = string.Empty;
     public string UniqueId { get; } = string.Empty;
@@ -24,4 +31,11 @@ public class SystemExecutionContext : IApplicationExecutionContext
     public Guid? UserId { get; }
     public string Username { get; } = string.Empty;
     public bool IsAuthenticated { get; } = false;
+    public string ClientIp { get; } = string.Empty;
+    public ApiToken? Token { get; }
+    public User? User { get; }
+    public List<Role> Roles { get; } = [];
+    public Site? Site { get; }
+    public List<Role> SiteRoles { get; } = [];
+    public bool IsSuperAdmin { get; } = false;
 }

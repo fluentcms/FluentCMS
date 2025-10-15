@@ -78,7 +78,7 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository, IPermission
         // there is not need to check permissions here
         // as this method is used for API authentication
         var apiToken = await apiTokenRepository.GetByKey(apiKey, cancellationToken) ??
-            throw new EntityNotFoundException();
+            throw new EntityNotFoundException<ApiToken>();
 
         // check if token expired or not
         if (apiToken.ExpireAt.HasValue && apiToken.ExpireAt < DateTime.UtcNow)
