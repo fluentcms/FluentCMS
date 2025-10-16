@@ -4,7 +4,7 @@ namespace FluentCMS.Api.Plugins.IdentityManagement;
 public class IdentityManagementPlugin : IPluginStartup
 {
     public int ConfigureServicesPriority => 0;  // Ensure this runs early to set up identity
-    public int ConfigurePriority => 0;          // Ensure this runs early to set up identity
+    public int ConfigurePriority => 1;          // Ensure this runs early to set up identity
 
     public void ConfigureServices(IServiceCollection services, IConfiguration? configuration)
     {
