@@ -1,6 +1,7 @@
 ﻿global using AutoMapper;
 global using FluentCMS.Api.Core.Models;
 global using FluentCMS.Api.Plugins.AuditTrailManagement.Handlers;
+global using FluentCMS.Api.Plugins.AuditTrailManagement.Models;
 global using FluentCMS.Api.Plugins.AuditTrailManagement.Repositories;
 global using FluentCMS.Api.Plugins.AuditTrailManagement.Services;
 global using FluentCMS.Infrastructure;

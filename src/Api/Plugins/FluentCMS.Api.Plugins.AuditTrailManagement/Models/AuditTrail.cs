@@ -1,4 +1,4 @@
-namespace FluentCMS.Api.Plugins.AuditTrailManagement;
+namespace FluentCMS.Api.Plugins.AuditTrailManagement.Models;
 
 public class AuditTrail : Entity
 {
