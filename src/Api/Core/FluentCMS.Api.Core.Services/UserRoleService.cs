@@ -1,15 +1,14 @@
-﻿//namespace FluentCMS.Api.Core.Services;
+﻿namespace FluentCMS.Api.Core.Services;
 
-//public interface IUserRoleService
-//{
-//    Task<IEnumerable<Guid>> GetUserRoleIds(Guid userId, Guid siteId, CancellationToken cancellationToken = default);
-//    Task<IEnumerable<UserRole>> Update(Guid userId, Guid siteId, IEnumerable<Guid> roleIds, CancellationToken cancellationToken = default);
-//    Task<IEnumerable<UserRole>> GetAllForSite(Guid siteId, CancellationToken cancellationToken = default);
-//    Task<IEnumerable<UserRole>> RemoveRoleForUsers(Guid roleId, CancellationToken cancellationToken = default);
-//    Task<IEnumerable<UserRole>> RemoveUserRoles(Guid userId, CancellationToken cancellationToken = default);
-//}
+public interface IUserRoleService
+{
+    Task AssignUserToRole(Guid userId, Guid roleId, Guid siteId, CancellationToken cancellationToken = default);
+    Task RemoveUserFromRole(Guid userId, Guid roleId, Guid siteId, CancellationToken cancellationToken = default);
+    Task<List<Role>> GetUserRoles(Guid userId, Guid siteId, CancellationToken cancellationToken = default);
+    Task<List<User>> GetUsersInRole(Guid roleId, Guid siteId, CancellationToken cancellationToken = default);
+}
 
-//public class UserRoleService(IUserRoleRepository userRoleRepository, IRoleRepository roleRepository, IApplicationExecutionContext executionContext, IEventPublisher eventPublisher, IPermissionManager permissionManager) : IUserRoleService
+//internal class UserRoleService(IUserRoleRepository userRoleRepository, IRoleRepository roleRepository, IApplicationExecutionContext executionContext, IEventPublisher eventPublisher, IPermissionManager permissionManager) : IUserRoleService
 //{
 //    public async Task<IEnumerable<UserRole>> RemoveRoleForUsers(Guid roleId, CancellationToken cancellationToken = default)
 //    {

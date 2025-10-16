@@ -54,4 +54,16 @@ public static class IRepositoryExtensions
             throw new EntityNotFoundException<TEntity>(id) :
             await repository.Remove(existing, cancellationToken);
     }
+
+    public static async Task<List<TEntity>> GetByIds<TEntity>(this IRepository<TEntity> repository, IEnumerable<Guid> ids, CancellationToken cancellationToken = default)
+        where TEntity : class, IEntity
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        ArgumentNullException.ThrowIfNull(repository);
+        ArgumentNullException.ThrowIfNull(ids);
+        var idList = ids.ToList();
+        if (idList.Count == 0)
+            return [];
+        return await repository.Query().Where(e => idList.Contains(e.Id)).ToList(cancellationToken);
+    }
 }

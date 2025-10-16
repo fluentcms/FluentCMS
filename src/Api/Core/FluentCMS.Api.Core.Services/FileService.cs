@@ -15,7 +15,7 @@ public interface IFileService
     Task<File> GetByName(Guid folderId, string fileName, CancellationToken cancellationToken = default);
 }
 
-public class FileService(IFileRepository fileRepository, IFolderRepository folderRepository, IFolderService folderService, IFileStorageProvider fileStorageProvider, IEventPublisher eventPublisher) : IFileService
+internal class FileService(IFileRepository fileRepository, IFolderRepository folderRepository, IFolderService folderService, IFileStorageProvider fileStorageProvider, IEventPublisher eventPublisher) : IFileService
 {
     public async Task<File> Add(File file, Stream fileContent, CancellationToken cancellationToken = default)
     {

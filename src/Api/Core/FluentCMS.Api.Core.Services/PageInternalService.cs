@@ -13,7 +13,7 @@ public interface IPageInternalService
     void Invalidate(Guid siteId);
 }
 
-public class PageInternalService(IPageRepository pageRepository, IMapper mapper, ICacheProvider cacheProvider) : IPageInternalService
+internal class PageInternalService(IPageRepository pageRepository, IMapper mapper, ICacheProvider cacheProvider) : IPageInternalService
 {
     public async Task<Dictionary<Guid, PageModel>> GetAllBySiteId(Guid siteId, CancellationToken cancellationToken = default)
     {

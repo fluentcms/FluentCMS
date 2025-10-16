@@ -10,7 +10,7 @@ public interface IPermissionService
     Task<IEnumerable<Permission>> Get(Guid siteId, Guid pageId, PagePermissionAction action, CancellationToken cancellationToken = default);
 }
 
-public class PermissionService(IPermissionRepository permissionRepository) : IPermissionService
+internal class PermissionService(IPermissionRepository permissionRepository) : IPermissionService
 {
     public async Task<IEnumerable<Permission>> Set(Guid siteId, SitePermissionAction action, IEnumerable<Guid> roleIds, CancellationToken cancellationToken = default)
     {

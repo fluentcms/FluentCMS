@@ -9,7 +9,7 @@ public class SmtpEmailProvider(IOptions<SmtpEmailProviderOptions> smtpOptionsAcc
 {
     public readonly SmtpEmailProviderOptions SmtpEmailProviderOptions = smtpEmailProviderOptions;
 
-    public async Task Send(string recipient, string subject, string body, IDictionary<string, string>? headers = null)
+    public async Task Send(string recipient, string subject, string body, IDictionary<string, string>? headers = null, CancellationToken cancellationToken = default)
     {
         var options = smtpOptionsAccessor.Value;
         using var smtpClient = new SmtpClient(options.Host, options.Port)

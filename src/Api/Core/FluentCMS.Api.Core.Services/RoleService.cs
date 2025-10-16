@@ -9,7 +9,7 @@ public interface IRoleService
     Task<Role> GetById(Guid roleId, CancellationToken cancellationToken = default);
 }
 
-public class RoleService(IRoleRepository roleRepository, IEventPublisher eventPublisher, RoleManager<Role> roleManager) : IRoleService
+internal class RoleService(IRoleRepository roleRepository, IEventPublisher eventPublisher, RoleManager<Role> roleManager) : IRoleService
 {
     public async Task<IEnumerable<Role>> GetAllForSite(Guid siteId, CancellationToken cancellationToken = default)
     {

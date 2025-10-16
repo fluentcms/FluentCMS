@@ -10,12 +10,10 @@ public interface ILayoutService
     Task<Layout> GetById(Guid id, CancellationToken cancellationToken = default);
 }
 
-public class LayoutService(ILayoutRepository layoutRepository, ISiteRepository siteRepository, IEventPublisher eventPublisher, IPermissionManager permissionManager) : ILayoutService
+internal class LayoutService(ILayoutRepository layoutRepository, ISiteRepository siteRepository, IEventPublisher eventPublisher) : ILayoutService
 {
     public async Task<Layout> Add(Layout layout, CancellationToken cancellationToken = default)
     {
-        await permissionManager.CheckSiteContributorPermission(layout.SiteId, cancellationToken);
-
         await layoutRepository.Add(layout, cancellationToken);
 
         await eventPublisher.Publish(new LayoutAddedEvent(layout), cancellationToken);
@@ -25,10 +23,7 @@ public class LayoutService(ILayoutRepository layoutRepository, ISiteRepository s
 
     public async Task<Layout> Remove(Guid id, CancellationToken cancellationToken = default)
     {
-
         var layout = await layoutRepository.GetById(id, cancellationToken);
-
-        await permissionManager.CheckSiteContributorPermission(layout.SiteId, cancellationToken);
 
         // check if the layout is one of site's default layout, if so, throw an exception
         var site = await siteRepository.GetById(layout.SiteId, cancellationToken);
@@ -45,8 +40,6 @@ public class LayoutService(ILayoutRepository layoutRepository, ISiteRepository s
 
     public async Task<Layout> Update(Layout layout, CancellationToken cancellationToken)
     {
-        await permissionManager.CheckSiteContributorPermission(layout.SiteId, cancellationToken);
-
         await layoutRepository.Update(layout, cancellationToken);
 
         await eventPublisher.Publish(new LayoutUpdatedEvent(layout), cancellationToken);
@@ -56,8 +49,6 @@ public class LayoutService(ILayoutRepository layoutRepository, ISiteRepository s
 
     public async Task<IEnumerable<Layout>> RemoveBySiteId(Guid siteId, CancellationToken cancellationToken = default)
     {
-        await permissionManager.CheckSiteAdminPermission(siteId, cancellationToken);
-
         var layouts = await layoutRepository.GetAllForSite(siteId, cancellationToken);
 
         await layoutRepository.RemoveRange(layouts, cancellationToken);
@@ -74,7 +65,6 @@ public class LayoutService(ILayoutRepository layoutRepository, ISiteRepository s
 
     public async Task<IEnumerable<Layout>> GetAllForSite(Guid siteId, CancellationToken cancellationToken = default)
     {
-        await permissionManager.CheckSiteContributorPermission(siteId, cancellationToken);
         return await layoutRepository.GetAllForSite(siteId, cancellationToken);
     }
 }

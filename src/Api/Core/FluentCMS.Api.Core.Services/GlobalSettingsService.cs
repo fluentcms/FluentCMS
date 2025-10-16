@@ -6,7 +6,7 @@ public interface IGlobalSettingsService
     Task<GlobalSettings> Get(CancellationToken cancellationToken = default);
 }
 
-public class GlobalSettingsService(IGlobalSettingsRepository repository, IApplicationExecutionContext executionContext, IPermissionManager permissionManager, IEventPublisher eventPublisher) : IGlobalSettingsService
+internal class GlobalSettingsService(IGlobalSettingsRepository repository, ISecurityContext securityContext, IPermissionManager permissionManager, IEventPublisher eventPublisher) : IGlobalSettingsService
 {
     public async Task<GlobalSettings> Update(GlobalSettings settings, CancellationToken cancellationToken = default)
     {
@@ -22,7 +22,7 @@ public class GlobalSettingsService(IGlobalSettingsRepository repository, IApplic
         var existSetting = await repository.Get(cancellationToken) ?? new();
 
         // if the current user is a super admin and is trying to remove himself from the super admin list, throw an exception
-        if (existSetting.SuperAdmins.Contains(executionContext.Username) && !settings.SuperAdmins.Contains(executionContext.Username))
+        if (existSetting.SuperAdmins.Contains(securityContext.Username) && !settings.SuperAdmins.Contains(securityContext.Username))
             throw new EnhancedException(ExceptionCodes.GlobalSettingsSuperAdminCanNotBeDeleted);
 
         existSetting.SuperAdmins = settings.SuperAdmins;

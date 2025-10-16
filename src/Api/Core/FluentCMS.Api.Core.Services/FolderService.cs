@@ -13,7 +13,7 @@ public interface IFolderService
     Task<Folder> Remove(Guid id, CancellationToken cancellationToken = default);
 }
 
-public partial class FolderService(IFolderRepository folderRepository, IFileRepository fileRepository, IEventPublisher eventPublisher) : IFolderService
+internal partial class FolderService(IFolderRepository folderRepository, IFileRepository fileRepository, IEventPublisher eventPublisher) : IFolderService
 {
 
     public async Task<Folder> Add(Folder folder, CancellationToken cancellationToken = default)

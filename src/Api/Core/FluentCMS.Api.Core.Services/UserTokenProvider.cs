@@ -10,7 +10,7 @@ public interface IUserTokenProvider
     Task<Guid> ValidateExpiredToken(string accessToken);
 }
 
-public class JwtUserTokenProvider(IOptions<JwtOptions> options) : IUserTokenProvider
+internal class JwtUserTokenProvider(IOptions<JwtOptions> options) : IUserTokenProvider
 {
     private readonly JwtOptions _options = options.Value;
 

@@ -11,7 +11,7 @@ public interface ISetupService
     Task<bool> IsInitialized(CancellationToken cancellationToken = default);
 }
 
-public class SetupService(IMessagePublisher messagePublisher, ISetupRepository setupRepository, IPermissionManager permissionManager) : ISetupService
+internal class SetupService(IMessagePublisher messagePublisher, ISetupRepository setupRepository, IPermissionManager permissionManager) : ISetupService
 {
     public Task<IEnumerable<string>> GetTemplates(CancellationToken cancellationToken = default)
     {

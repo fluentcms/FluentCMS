@@ -112,7 +112,6 @@ public static class ExceptionCodes
 
     #region Site
 
-    public const string SiteNotFound = "Site.NotFound";
     public const string SiteUrlIsEmpty = "Site.UrlIsEmpty";
     public const string SiteUrlIsInvalid = "Site.UrlIsInvalid";
     public const string SiteUrlMustBeUnique = "Site.UrlMustBeUnique";

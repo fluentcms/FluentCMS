@@ -11,14 +11,12 @@ public interface IApiTokenService
     Task<ApiToken?> Validate(string apiKey, string apiSecret, CancellationToken cancellationToken = default);
 }
 
-public class ApiTokenService(IApiTokenRepository apiTokenRepository, IPermissionManager permissionManager, IEventPublisher eventPublisher, IOptions<ApiTokenOptions> options) : IApiTokenService
+internal class ApiTokenService(IApiTokenRepository apiTokenRepository, IEventPublisher eventPublisher, IOptions<ApiTokenOptions> options) : IApiTokenService
 {
     private readonly ApiTokenOptions _options = options.Value;
 
     public async Task<ApiToken> Add(ApiToken apiToken, CancellationToken cancellationToken = default)
     {
-        await permissionManager.CheckSuperAdminPermission(cancellationToken);
-
         // remove policies with empty actions
         apiToken.Policies = [.. apiToken.Policies.Where(x => x.Actions.Count != 0)];
 
@@ -37,8 +35,6 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository, IPermission
 
     public async Task<ApiToken> Update(ApiToken apiToken, CancellationToken cancellationToken = default)
     {
-        await permissionManager.CheckSuperAdminPermission(cancellationToken);
-
         var existingApiToken = await apiTokenRepository.GetById(apiToken.Id, cancellationToken);
 
         var isSameApiTokenExist = await apiTokenRepository.GetByName(apiToken.Name, cancellationToken);
@@ -61,8 +57,6 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository, IPermission
 
     public async Task<ApiToken> Remove(Guid tokenId, CancellationToken cancellationToken = default)
     {
-        await permissionManager.CheckSuperAdminPermission(cancellationToken);
-
         var deleted = await apiTokenRepository.Remove(tokenId, cancellationToken);
 
         await eventPublisher.Publish(new ApiTokenRemovedEvent(deleted), cancellationToken);
@@ -97,8 +91,6 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository, IPermission
 
     public async Task<IEnumerable<ApiToken>> GetAll(CancellationToken cancellationToken = default)
     {
-        await permissionManager.CheckSuperAdminPermission(cancellationToken);
-
         return await apiTokenRepository.GetAll(cancellationToken);
     }
 
@@ -112,8 +104,6 @@ public class ApiTokenService(IApiTokenRepository apiTokenRepository, IPermission
 
     public async Task<ApiToken> RegenerateSecret(Guid id, CancellationToken cancellationToken = default)
     {
-        await permissionManager.CheckSuperAdminPermission(cancellationToken);
-
         var apiToken = await apiTokenRepository.GetById(id, cancellationToken);
 
         apiToken.Secret = GenerateSecret(apiToken.Key);

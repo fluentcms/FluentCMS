@@ -15,7 +15,7 @@ public interface IPluginService
 }
 
 
-public class PluginService(IPluginRepository pluginRepository, IPageRepository pageRepository, IMessagePublisher messagePublisher) : IPluginService
+internal class PluginService(IPluginRepository pluginRepository, IPageRepository pageRepository, IMessagePublisher messagePublisher) : IPluginService
 {
     public async Task<Plugin> Create(Plugin plugin, CancellationToken cancellationToken = default)
     {

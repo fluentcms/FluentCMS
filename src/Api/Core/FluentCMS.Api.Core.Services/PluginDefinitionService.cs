@@ -12,7 +12,7 @@ public interface IPluginDefinitionService
 }
 
 
-public class PluginDefinitionService(IPluginDefinitionRepository pluginDefinitionRepository, IMessagePublisher messagePublisher) : IPluginDefinitionService
+internal class PluginDefinitionService(IPluginDefinitionRepository pluginDefinitionRepository, IMessagePublisher messagePublisher) : IPluginDefinitionService
 {
     public async Task<PluginDefinition> Create(PluginDefinition pluginDefinition, CancellationToken cancellationToken = default)
     {

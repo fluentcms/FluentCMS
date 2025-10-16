@@ -14,7 +14,7 @@ public interface IPageService
     Task<Page> Delete(Guid id, CancellationToken cancellationToken = default);
 }
 
-public class PageService(IPageRepository pageRepository, IPageInternalService internalService, IMessagePublisher messagePublisher, IPermissionManager permissionManager) : IPageService
+internal class PageService(IPageRepository pageRepository, IPageInternalService internalService, IMessagePublisher messagePublisher, IPermissionManager permissionManager) : IPageService
 {
     public async Task<PageModel> Create(Page page, CancellationToken cancellationToken = default)
     {
