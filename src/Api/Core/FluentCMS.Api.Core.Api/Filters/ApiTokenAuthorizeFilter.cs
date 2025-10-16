@@ -1,8 +1,8 @@
-﻿using FluentCMS.Api.Attributes;
+﻿using FluentCMS.Api.Core.Api.Attributes;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 
-namespace FluentCMS.Api.Filters;
+namespace FluentCMS.Api.Core.Api.Filters;
 
 public class ApiTokenAuthorizeFilter : IAsyncAuthorizationFilter
 {

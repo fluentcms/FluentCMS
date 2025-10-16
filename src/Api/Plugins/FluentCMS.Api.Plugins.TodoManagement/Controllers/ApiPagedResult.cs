@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Infrastructure;
+﻿namespace FluentCMS.Api.Plugins.TodoManagement.Controllers;
 
 public interface IApiPagedResult
 {

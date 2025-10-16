@@ -1,8 +1,7 @@
-﻿using FluentCMS.Infrastructure;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 
-namespace FluentCMS.Api.Filters;
+namespace FluentCMS.Api.Core.Api.Filters;
 
 public class ApiResultActionFilter : IAsyncActionFilter
 {
@@ -20,7 +19,7 @@ public class ApiResultActionFilter : IAsyncActionFilter
             if (value == null)
                 return;
 
-            var executionContext = context.HttpContext.RequestServices.GetService<IApplicationExecutionContext>() ??
+            var executionContext = context.HttpContext.RequestServices.GetService<ISecurityContext>() ??
                 throw new InvalidOperationException("ApplicationExecutionContext is not registered in the service collection.");
 
             var apiResult = (IApiResult)value;

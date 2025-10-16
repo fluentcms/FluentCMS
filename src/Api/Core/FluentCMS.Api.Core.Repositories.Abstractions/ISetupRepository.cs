@@ -3,5 +3,4 @@
 public interface ISetupRepository
 {
     Task<bool> IsInitialized(CancellationToken cancellationToken = default);
-    Task<bool> SetInitialized(CancellationToken cancellationToken = default);
 }

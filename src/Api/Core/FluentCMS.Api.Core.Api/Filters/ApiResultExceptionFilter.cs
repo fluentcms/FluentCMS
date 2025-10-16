@@ -2,7 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 
-namespace FluentCMS.Api.Filters;
+namespace FluentCMS.Api.Core.Api.Filters;
 
 public class ApiResultExceptionFilter : IExceptionFilter
 {
@@ -11,17 +11,16 @@ public class ApiResultExceptionFilter : IExceptionFilter
         if (!context.ActionDescriptor.IsApiResultType())
             return;
 
-        var executionContext = context.HttpContext.RequestServices.GetService<IApplicationExecutionContext>() ??
-            throw new InvalidOperationException("ApiExecutionContext is not registered in the service collection.");
+        var securityContext = context.HttpContext.RequestServices.GetRequiredService<ISecurityContext>();
 
         var exception = context.Exception;
 
         var apiResult = new ApiResult
         {
-            Duration = (DateTime.UtcNow - executionContext.StartDate).TotalMilliseconds,
-            SessionId = executionContext.SessionId,
-            TraceId = executionContext.TraceId,
-            UniqueId = executionContext.UniqueId,
+            Duration = (DateTime.UtcNow - securityContext.StartDate).TotalMilliseconds,
+            SessionId = securityContext.SessionId,
+            TraceId = securityContext.TraceId,
+            UniqueId = securityContext.UniqueId,
             Status = 500,
             IsSuccess = false,
             ExceptionDetails = context.Exception.ToString()

@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 
-namespace FluentCMS.Api.Middlewares;
+namespace FluentCMS.Api.Core.Api.Middlewares;
 
 public class JwtAuthorizationMiddleware
 {

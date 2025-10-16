@@ -6,8 +6,7 @@ public class SetupTemplate
     public string Email { get; set; } = default!;
     public string Password { get; set; } = default!;
     public string Url { get; set; } = default!;
-    public string Template { get; set; } = default!;
+    public string TemplateName { get; set; } = default!;
     public SiteTemplate Site { get; set; } = default!;
-    public List<PluginDefinition> PluginDefinitions { get; set; } = [];
 }
 

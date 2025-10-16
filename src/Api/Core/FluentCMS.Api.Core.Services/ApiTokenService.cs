@@ -96,10 +96,7 @@ internal class ApiTokenService(IApiTokenRepository apiTokenRepository, IEventPub
 
     public async Task<ApiToken> GetById(Guid tokenId, CancellationToken cancellationToken = default)
     {
-        await permissionManager.CheckSuperAdminPermission(cancellationToken);
-
-        return await apiTokenRepository.GetById(tokenId, cancellationToken) ??
-            throw new EnhancedException(ExceptionCodes.ApiTokenNotFound);
+        return await apiTokenRepository.GetById(tokenId, cancellationToken);
     }
 
     public async Task<ApiToken> RegenerateSecret(Guid id, CancellationToken cancellationToken = default)

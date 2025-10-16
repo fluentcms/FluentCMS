@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Api.Core.Services;
+﻿namespace FluentCMS.Api.Core.Models;
 
 /// <summary>
 /// ISecurityContext encapsulates various contextual information 

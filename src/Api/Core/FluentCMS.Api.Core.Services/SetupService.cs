@@ -7,7 +7,7 @@ public interface ISetupService
     Task<bool> IsInitialized(CancellationToken cancellationToken = default);
 }
 
-internal class SetupService(IMessagePublisher messagePublisher, ISetupRepository setupRepository, IPermissionManager permissionManager) : ISetupService
+internal class SetupService(IEventPublisher eventPublisher, ISetupRepository setupRepository) : ISetupService
 {
     public Task<IEnumerable<string>> GetTemplates(CancellationToken cancellationToken = default)
     {
@@ -17,53 +17,43 @@ internal class SetupService(IMessagePublisher messagePublisher, ISetupRepository
 
     public Task<bool> IsInitialized(CancellationToken cancellationToken = default)
     {
-        return setupRepository.Initialized(cancellationToken);
+        return setupRepository.IsInitialized(cancellationToken);
     }
 
     public async Task<bool> Start(SetupTemplate setupTemplate, CancellationToken cancellationToken = default)
     {
-        if (await setupRepository.Initialized(cancellationToken))
+        if (await setupRepository.IsInitialized(cancellationToken))
             throw new EnhancedException(ExceptionCodes.SetupAlreadyInitialized);
 
-        // initialize db if it's not initialized
-        await setupRepository.InitializeDb(cancellationToken);
+        //var manifestFilePath = Path.Combine(ServiceConstants.SetupTemplatesFolder, setupTemplate.Template, ServiceConstants.SetupManifestFile);
 
-        if (!await permissionManager.HasAccess(GlobalPermissionAction.SuperAdmin, cancellationToken))
-            throw new EnhancedException(ExceptionCodes.PermissionDenied);
+        //if (!System.IO.File.Exists(manifestFilePath))
+        //    throw new EnhancedException($"{ServiceConstants.SetupManifestFile} doesn't exist!");
 
-        var manifestFilePath = Path.Combine(ServiceConstants.SetupTemplatesFolder, setupTemplate.Template, ServiceConstants.SetupManifestFile);
+        //var jsonSerializerOptions = new JsonSerializerOptions();
+        //jsonSerializerOptions.Converters.Add(new DictionaryJsonConverter());
 
-        if (!System.IO.File.Exists(manifestFilePath))
-            throw new EnhancedException($"{ServiceConstants.SetupManifestFile} doesn't exist!");
+        //var jsonSetupTemplate = await JsonSerializer.DeserializeAsync<SetupTemplate>(System.IO.File.OpenRead(manifestFilePath), jsonSerializerOptions) ??
+        //       throw new EnhancedException($"Failed to read/deserialize {ServiceConstants.SetupManifestFile}");
 
-        var jsonSerializerOptions = new JsonSerializerOptions();
-        jsonSerializerOptions.Converters.Add(new DictionaryJsonConverter());
+        //setupTemplate.Site = new SiteTemplate
+        //{
+        //    Url = setupTemplate.Url,
+        //    Template = setupTemplate.Template
+        //};
 
-        var jsonSetupTemplate = await JsonSerializer.DeserializeAsync<SetupTemplate>(System.IO.File.OpenRead(manifestFilePath), jsonSerializerOptions) ??
-               throw new EnhancedException($"Failed to read/deserialize {ServiceConstants.SetupManifestFile}");
+        //// since we need ids for the child object relations,
+        //// we should set ids for all entities manually
+        //SetIds(setupTemplate);
 
-        setupTemplate.PluginDefinitions = jsonSetupTemplate.PluginDefinitions;
-
-        setupTemplate.Site = new SiteTemplate
-        {
-            Url = setupTemplate.Url,
-            Template = setupTemplate.Template
-        };
-
-        // since we need ids for the child object relations,
-        // we should set ids for all entities manually
-        SetIds(setupTemplate);
-
-        await messagePublisher.Publish(new Message<SetupTemplate>(ActionNames.SetupStarted, setupTemplate), cancellationToken);
-        await messagePublisher.Publish(new Message<SiteTemplate>(ActionNames.SetupInitializeSite, setupTemplate.Site), cancellationToken);
-        await messagePublisher.Publish(new Message<SetupTemplate>(ActionNames.SetupCompleted, setupTemplate), cancellationToken);
+        //await eventPublisher.Publish(new SetupStartedEvent(setupTemplate), cancellationToken);
 
         return true;
     }
 
-    private static void SetIds(SetupTemplate setupTemplate)
-    {
-        foreach (var pluginDefinition in setupTemplate.PluginDefinitions)
-            pluginDefinition.Id = Guid.NewGuid();
-    }
+    //private static void SetIds(SetupTemplate setupTemplate)
+    //{
+    //    foreach (var pluginDefinition in setupTemplate.PluginDefinitions)
+    //        pluginDefinition.Id = Guid.NewGuid();
+    //}
 }

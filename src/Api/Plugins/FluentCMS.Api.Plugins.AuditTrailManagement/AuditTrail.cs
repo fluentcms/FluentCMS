@@ -5,5 +5,5 @@ public class AuditTrail : Entity
     public object Entity { get; set; } = default!;
     public string EventType { get; set; } = default!;
     public DateTime Timestamp { get; set; }
-    public IApplicationExecutionContext? Context { get; set; }
+    public ISecurityContext? Context { get; set; }
 }

@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Api;
+﻿namespace FluentCMS.Api.Core.Api;
 
 public class JwtOptions
 {

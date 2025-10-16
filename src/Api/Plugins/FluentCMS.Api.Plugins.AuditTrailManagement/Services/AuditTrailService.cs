@@ -5,7 +5,7 @@ public interface IAuditTrailService
     Task Add(object entity, string eventType, CancellationToken cancellationToken = default);
 }
 
-public class AuditTrailService(IAuditTrailRepository repository, IApplicationExecutionContext executionContext) : IAuditTrailService
+public class AuditTrailService(IAuditTrailRepository repository, ISecurityContext securityContext) : IAuditTrailService
 {
     public async Task Add(object entity, string eventType, CancellationToken cancellationToken = default)
     {
@@ -16,7 +16,7 @@ public class AuditTrailService(IAuditTrailRepository repository, IApplicationExe
                 EventType = eventType,
                 Timestamp = DateTime.UtcNow,
                 Entity = auditableEntity,
-                Context = executionContext,
+                Context = securityContext,
             };
             await repository.Add(auditTrail, cancellationToken);
         }

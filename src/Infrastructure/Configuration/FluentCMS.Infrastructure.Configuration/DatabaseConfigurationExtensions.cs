@@ -57,6 +57,13 @@ public static class DatabaseConfigurationExtensions
         }
     }
 
+    public static IServiceCollection AddDatabaseConfigurationRegistry(this IServiceCollection services)
+    {
+        // Ensure the registry is created and registered
+        GetOrCreateRegistry(services);
+        return services;
+    }
+
     // Registers options class for database storage without binding to configuration
     // Use this when you want to manually configure options or use other configuration sources
     // Returns OptionsBuilder to allow fluent chaining of additional configuration (e.g., validation)

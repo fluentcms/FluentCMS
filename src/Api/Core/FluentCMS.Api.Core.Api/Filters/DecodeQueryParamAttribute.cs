@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc.Filters;
 using System.Web;
 
-namespace FluentCMS.Api.Filters;
+namespace FluentCMS.Api.Core.Api.Filters;
 
 public class DecodeQueryParamAttribute : ActionFilterAttribute
 {

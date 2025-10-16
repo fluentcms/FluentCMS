@@ -23,6 +23,7 @@ public static class DatabaseConfigurationExtensions
 
     public static IServiceCollection AddDbConfiguration(this IServiceCollection services)
     {
+        services.AddDatabaseConfigurationRegistry();
         services.AddDatabaseContext<ConfigurationDbContext, IConfigurationDatabaseMarker>();
         services.AddDataSeeder<ConfigurationDataSeeder, IConfigurationDatabaseMarker>();
         services.AddSchemaValidator<ConfigurationSchemaValidator, IConfigurationDatabaseMarker>();

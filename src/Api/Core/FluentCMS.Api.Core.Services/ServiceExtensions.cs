@@ -1,53 +1,53 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿//using Microsoft.Extensions.DependencyInjection;
 
-namespace FluentCMS.Api.Core.Services;
+//namespace FluentCMS.Api.Core.Services;
 
-public static class ServiceExtensions
-{
-    public static IServiceCollection AddApplicationServices(this IServiceCollection services)
-    {
-        services.AddAutoMapper(typeof(MappingProfile));
+//public static class ServiceExtensions
+//{
+//    public static IServiceCollection AddApplicationServices(this IServiceCollection services)
+//    {
+//        services.AddAutoMapper(typeof(MappingProfile));
 
-        services.AddScoped<IPermissionManager, PermissionManager>();
+//        services.AddScoped<IPermissionManager, PermissionManager>();
 
-        services.AddScoped<IUserTokenProvider, JwtUserTokenProvider>();
+//        services.AddScoped<IUserTokenProvider, JwtUserTokenProvider>();
 
-        AddIdentity(services);
+//        AddIdentity(services);
 
-        RegisterServices(services);
+//        RegisterServices(services);
 
-        return services;
-    }
+//        return services;
+//    }
 
-    private static IdentityBuilder AddIdentity(IServiceCollection services)
-    {
-        services.AddOptions<JwtOptions>()
-            .BindConfiguration("JwtOptions");
+//    private static IdentityBuilder AddIdentity(IServiceCollection services)
+//    {
+//        services.AddOptions<JwtOptions>()
+//            .BindConfiguration("JwtOptions");
 
-        var builder = services.AddIdentityCore<User>();
+//        var builder = services.AddIdentityCore<User>();
 
-        builder
-            .AddUserStore<UserStore>()
-            .AddUserManager<UserManager<User>>()
-            .AddDefaultTokenProviders()
-            .AddTokenProvider<DataProtectorTokenProvider<User>>(ServiceConstants.PASSWORD_RESET_TOKEN_PROVIDER);
+//        builder
+//            .AddUserStore<UserStore>()
+//            .AddUserManager<UserManager<User>>()
+//            .AddDefaultTokenProviders()
+//            .AddTokenProvider<DataProtectorTokenProvider<User>>(ServiceConstants.PASSWORD_RESET_TOKEN_PROVIDER);
 
-        return builder;
-    }
+//        return builder;
+//    }
 
-    private static void RegisterServices(IServiceCollection services)
-    {
-        var serviceTypes = typeof(ServiceExtensions).Assembly.GetTypes()
-            .Where(t => t.IsClass && !t.IsAbstract && t.Name.EndsWith("Service") && t.GetInterfaces().Contains(typeof(IAutoRegisterService)))
-            .ToList();
+//    private static void RegisterServices(IServiceCollection services)
+//    {
+//        var serviceTypes = typeof(ServiceExtensions).Assembly.GetTypes()
+//            .Where(t => t.IsClass && !t.IsAbstract && t.Name.EndsWith("Service") && t.GetInterfaces().Contains(typeof(IAutoRegisterService)))
+//            .ToList();
 
-        foreach (var serviceType in serviceTypes)
-        {
-            var interfaceType = serviceType.GetInterfaces().FirstOrDefault(i => i.Name.EndsWith(serviceType.Name))
-                ?? throw new InvalidOperationException($"Interface for service '{serviceType.Name}' not found.");
+//        foreach (var serviceType in serviceTypes)
+//        {
+//            var interfaceType = serviceType.GetInterfaces().FirstOrDefault(i => i.Name.EndsWith(serviceType.Name))
+//                ?? throw new InvalidOperationException($"Interface for service '{serviceType.Name}' not found.");
 
-            services.AddScoped(interfaceType, serviceType);
-        }
-    }
+//            services.AddScoped(interfaceType, serviceType);
+//        }
+//    }
 
-}
+//}

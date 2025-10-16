@@ -2,7 +2,7 @@
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddCoreRpositories(this IServiceCollection services)
+    public static IServiceCollection AddEntityFrameworkRpositories(this IServiceCollection services)
     {
         services.AddScoped<IApiTokenRepository, ApiTokenRepository>();
         services.AddScoped<IFileRepository, FileRepository>();

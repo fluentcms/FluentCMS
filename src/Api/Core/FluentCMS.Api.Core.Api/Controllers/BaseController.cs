@@ -1,7 +1,7 @@
-﻿using FluentCMS.Api.Filters;
+﻿using FluentCMS.Api.Core.Api.Filters;
 using Microsoft.AspNetCore.Mvc;
 
-namespace FluentCMS.Api.Controllers;
+namespace FluentCMS.Api.Core.Api.Controllers;
 
 [ApiController]
 [Produces("application/json")]
