@@ -1,4 +1,5 @@
 ﻿global using AutoMapper;
+global using FluentCMS.Api.Core.Models;
 global using FluentCMS.Api.Plugins.AuditTrailManagement.Handlers;
 global using FluentCMS.Api.Plugins.AuditTrailManagement.Repositories;
 global using FluentCMS.Api.Plugins.AuditTrailManagement.Services;
@@ -16,4 +17,3 @@ global using Microsoft.Extensions.Configuration;
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.Logging;
 global using System.Text.Json;
-global using FluentCMS.Api.Core.Models;

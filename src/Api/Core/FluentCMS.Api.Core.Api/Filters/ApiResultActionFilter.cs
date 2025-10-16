@@ -1,7 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Filters;
-
-namespace FluentCMS.Api.Core.Api.Filters;
+﻿namespace FluentCMS.Api.Core.Api.Filters;
 
 public class ApiResultActionFilter : IAsyncActionFilter
 {

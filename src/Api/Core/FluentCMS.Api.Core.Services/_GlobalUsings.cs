@@ -1,4 +1,5 @@
-﻿global using FluentCMS.Api.Core.Models;
+﻿global using FluentCMS.Api.Core.Events;
+global using FluentCMS.Api.Core.Models;
 global using FluentCMS.Api.Core.Models.Identity;
 global using FluentCMS.Api.Core.Repositories.Abstractions;
 global using FluentCMS.Api.Core.Services.Options;
@@ -10,4 +11,3 @@ global using System.IdentityModel.Tokens.Jwt;
 global using System.Security.Cryptography;
 global using System.Text;
 global using System.Text.RegularExpressions;
-global using FluentCMS.Api.Core.Events;

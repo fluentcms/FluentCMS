@@ -1,6 +1,4 @@
 ﻿using FluentCMS.Api.Core.Api.Attributes;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Filters;
 
 namespace FluentCMS.Api.Core.Api.Filters;
 

@@ -1,10 +1,4 @@
 ﻿global using FluentCMS.Api.Core.Models;
-global using FluentCMS.Api.Core.Models.Identity;
-global using FluentCMS.Api.Core.Repositories.Abstractions;
-global using FluentCMS.Api.Core.Services;
-global using FluentCMS.Infrastructure;
-global using Microsoft.AspNetCore.Http;
-global using Microsoft.AspNetCore.Identity;
+global using Microsoft.AspNetCore.Mvc;
+global using Microsoft.AspNetCore.Mvc.Filters;
 global using Microsoft.Extensions.DependencyInjection;
-global using Microsoft.Extensions.Logging;
-global using System.Security.Claims;
