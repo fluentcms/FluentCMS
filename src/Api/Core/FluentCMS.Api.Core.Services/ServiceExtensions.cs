@@ -1,7 +1,4 @@
-﻿using FluentCMS.Api.Core.Services.InternalTemp;
-using FluentCMS.Identity;
-using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Api.Core.Services;
 

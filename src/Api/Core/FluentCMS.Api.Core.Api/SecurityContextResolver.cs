@@ -1,8 +1,6 @@
-﻿using FluentCMS.Api.Core.Repositories.Abstractions;
+﻿namespace FluentCMS.Api.Core.Api;
 
-namespace FluentCMS.Api.Core.Api;
-
-internal class SecurityContextResolver(IHttpContextAccessor httpContextAccessor, ISiteRepository siteRepository, IGlobalSettingsRepository repository, IRoleRepository roleRepository, IUserRepository userRepository) 
+internal class SecurityContextResolver(IHttpContextAccessor httpContextAccessor, ISiteRepository siteRepository, IGlobalSettingsRepository repository, IRoleRepository roleRepository, IUserRepository userRepository)
 {
     public ISecurityContext Resolve()
     {

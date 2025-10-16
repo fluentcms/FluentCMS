@@ -1,10 +1,6 @@
-﻿using AutoMapper;
-using FluentCMS.Api.Core.Services.InternalTemp;
-using FluentCMS.Providers.CacheProviders;
+﻿namespace FluentCMS.Api.Core.Services;
 
-namespace FluentCMS.Api.Core.Services;
-
-public interface IPageInternalService 
+public interface IPageInternalService
 {
     Task<IEnumerable<PageModel>> GetHierarchyBySiteId(Guid siteId, CancellationToken cancellationToken = default);
     Task<Dictionary<Guid, PageModel>> GetAllBySiteId(Guid siteId, CancellationToken cancellationToken = default);

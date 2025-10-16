@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Api.Core.Services;
 
-public interface IFolderService 
+public interface IFolderService
 {
     Task<Folder> Add(Folder folder, CancellationToken cancellationToken = default);
     Task<Folder> AddRoot(Guid siteId, CancellationToken cancellationToken = default);

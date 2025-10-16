@@ -1,6 +1,4 @@
-﻿using AutoMapper;
-
-namespace FluentCMS.Api.Core.Services.InternalTemp;
+﻿namespace FluentCMS.Api.Core.Services.InternalTemp;
 
 public class MappingProfile : Profile
 {

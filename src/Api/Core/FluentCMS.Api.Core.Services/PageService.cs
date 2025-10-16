@@ -1,9 +1,6 @@
-﻿using FluentCMS.Api.Core.Services.InternalTemp;
-using System.Text.RegularExpressions;
+﻿namespace FluentCMS.Api.Core.Services;
 
-namespace FluentCMS.Api.Core.Services;
-
-public interface IPageService 
+public interface IPageService
 {
     Task<IEnumerable<PageModel>> GetBySiteId(Guid siteId, CancellationToken cancellationToken = default);
     Task<IEnumerable<PageModel>> GetHierarchyBySiteId(Guid siteId, CancellationToken cancellationToken = default);

@@ -1,10 +1,6 @@
-﻿using FluentCMS.Api.Core.Services.InternalTemp;
-using System.IO;
-using System.Text.Json;
+﻿namespace FluentCMS.Api.Core.Services;
 
-namespace FluentCMS.Api.Core.Services;
-
-public interface ISetupService 
+public interface ISetupService
 {
     Task<IEnumerable<string>> GetTemplates(CancellationToken cancellationToken = default);
     Task<bool> Start(SetupTemplate setupTemplate, CancellationToken cancellationToken = default);

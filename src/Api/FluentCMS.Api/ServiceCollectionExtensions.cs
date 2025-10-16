@@ -1,6 +1,5 @@
 ﻿using FluentCMS.Api.Filters;
 using FluentCMS.Api.Middlewares;
-using FluentCMS.Infrastructure;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerUI;
 using System.Security.Claims;

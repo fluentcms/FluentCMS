@@ -1,11 +1,10 @@
-﻿global using FluentCMS.Infrastructure;
-global using FluentCMS.Api.Core.Models;
-global using FluentCMS.Infrastructure.Repositories.EntityFramework;
+﻿global using FluentCMS.Api.Core.Models;
+global using FluentCMS.Api.Core.Models.Identity;
 global using FluentCMS.Api.Core.Repositories.Abstractions;
+global using FluentCMS.Infrastructure;
+global using FluentCMS.Infrastructure.Repositories.EntityFramework;
+global using FluentCMS.Infrastructure.Repositories.EntityFramework.Configuration;
 global using Microsoft.AspNetCore.Identity;
+global using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 global using Microsoft.EntityFrameworkCore;
 global using Microsoft.Extensions.DependencyInjection;
-global using FluentCMS.Api.Core.Models.Identity;
-global using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
-global using System.Security.Claims;
-global using FluentCMS.Infrastructure.Repositories.EntityFramework.Configuration;
