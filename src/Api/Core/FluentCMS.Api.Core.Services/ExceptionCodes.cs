@@ -12,17 +12,6 @@ public static class ExceptionCodes
 
     #endregion
 
-    #region User
-
-    public const string UserLoginFailed = "User.LoginFailed";
-    public const string UserChangePasswordFailed = "User.ChangePasswordFailed";
-    public const string UserTokenGenerationFailed = "User.TokenGenerationFailed";
-    public const string UserSuperAdminCanNotBeDeleted = "User.SuperAdminCanNotBeDeleted";
-    public const string UserInvalidPassword = "User.InvalidPassword";
-    public const string UserInvalidUsername = "User.InvalidUsername";
-
-    #endregion
-
     #region File
 
     public const string FileNotFound = "File.NotFound";
@@ -34,22 +23,6 @@ public static class ExceptionCodes
 
     #endregion
 
-
-
-    #region Setup
-
-    public const string SetupAlreadyInitialized = "Setup.AlreadyInitialized";
-
-    #endregion
-
-    #region GlobalSettings
-
-    public const string GlobalSettingsNotFound = "GlobalSettings.NotFound";
-    public const string GlobalSettingsSuperAdminCanNotBeDeleted = "GlobalSettings.SuperAdminCanNotBeDeleted";
-    public const string GlobalSettingsSuperAdminAtLeastOne = "GlobalSettings.SuperAdminAtLeastOne";
-
-    #endregion
-
     #region App
 
     public const string AppNotFound = "App.NotFound";
@@ -57,14 +30,6 @@ public static class ExceptionCodes
     public const string AppUnableToCreate = "App.UnableToCreate";
     public const string AppUnableToUpdate = "App.UnableToUpdate";
     public const string AppUnableToDelete = "App.UnableToDelete";
-
-    #endregion
-
-    #region Role
-
-    public const string RoleNameShouldBeUnique = "Role.NameShouldBeUnique";
-    public const string RoleTypeCanNotBeChanged = "Role.TypeCanNotBeChanged";
-    public const string RoleDefaultCanNotBeDeleted = "Role.DefaultCanNotBeDeleted";
 
     #endregion
 

@@ -22,7 +22,6 @@ public class CmsCoreDbContext(DbContextOptions<CmsCoreDbContext> options) : Iden
     public DbSet<Policy> Policies { get; set; } = default!;
     public DbSet<File> Files { get; set; } = default!;
     public DbSet<Folder> Folders { get; set; } = default!;
-    public DbSet<GlobalSettings> GlobalSettings { get; set; } = default!;
     public DbSet<Layout> Layouts { get; set; } = default!;
     public DbSet<Page> Pages { get; set; } = default!;
     public DbSet<Permission> Permissions { get; set; } = default!;
@@ -35,18 +34,6 @@ public class CmsCoreDbContext(DbContextOptions<CmsCoreDbContext> options) : Iden
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
-
-        //// Put Identity into a dedicated schema (optional but recommended)
-        //const string schema = "auth";
-
-        //// Rename tables (optional: keeps DB tidy & predictable)
-        //builder.Entity<User>().ToTable("Users", schema);
-        //builder.Entity<Role>().ToTable("Roles", schema);
-        //builder.Entity<IdentityUserRole<Guid>>().ToTable("UserRoles", schema);
-        //builder.Entity<IdentityUserClaim<Guid>>().ToTable("UserClaims", schema);
-        //builder.Entity<IdentityUserLogin<Guid>>().ToTable("UserLogins", schema);
-        //builder.Entity<IdentityRoleClaim<Guid>>().ToTable("RoleClaims", schema);
-        //builder.Entity<IdentityUserToken<Guid>>().ToTable("UserTokens", schema);
     }
 }
 

@@ -12,9 +12,9 @@ public class ApiTokenAuthorizeFilter : IAsyncAuthorizationFilter
 
     public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
     {
-        var setupService = context.HttpContext.RequestServices.GetRequiredService<ISetupService>();
-        if (!await setupService.IsInitialized())
-            return;
+        //var setupService = context.HttpContext.RequestServices.GetRequiredService<ISetupService>();
+        //if (!await setupService.IsInitialized())
+        //    return;
 
         // get all PolicyAttributes for the current method
         var actionPolicies = context.ActionDescriptor.EndpointMetadata.OfType<PolicyAttribute>();

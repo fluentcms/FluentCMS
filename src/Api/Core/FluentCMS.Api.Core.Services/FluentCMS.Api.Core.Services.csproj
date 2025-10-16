@@ -11,9 +11,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\Infrastructure\Exceptions\FluentCMS.Infrastructure.Exceptions\FluentCMS.Infrastructure.Exceptions.csproj" />
-    <ProjectReference Include="..\..\Providers\Email\FluentCMS.Api.Providers.Email.Abstractions\FluentCMS.Api.Providers.Email.Abstractions.csproj" />
     <ProjectReference Include="..\..\Providers\FileStorage\FluentCMS.Api.Providers.FileStorage.Abstractions\FluentCMS.Api.Providers.FileStorage.Abstractions.csproj" />
+    <ProjectReference Include="..\FluentCMS.Api.Core.Events\FluentCMS.Api.Core.Events.csproj" />
     <ProjectReference Include="..\FluentCMS.Api.Core.Repositories.Abstractions\FluentCMS.Api.Core.Repositories.Abstractions.csproj" />
   </ItemGroup>
 

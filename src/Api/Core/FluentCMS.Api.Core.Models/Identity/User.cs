@@ -10,12 +10,13 @@ public class User : IdentityUser<Guid>, IAuditableEntity
     public int Version { get; set; }
 
     // Additional properties
+
+    public bool IsSuperAdmin { get; set; } = false;
     public DateTime? LastLogin { get; set; }
     public int LoginCount { get; set; }
     public DateTime? PasswordChangedAt { get; set; }
     public string? PasswordChangedBy { get; set; }
     public bool Enabled { get; set; } = true;
-    public string? AuthenticatorKey { get; set; }
     public string Description { get; set; } = string.Empty;
 
     public User()

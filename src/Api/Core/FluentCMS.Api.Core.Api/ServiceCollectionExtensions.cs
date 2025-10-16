@@ -1,6 +1,4 @@
-﻿using FluentCMS.Api.Core.Api;
-using FluentCMS.Api.Core.Api.Filters;
-using FluentCMS.Api.Core.Api.Middlewares;
+﻿using FluentCMS.Api.Core.Api.Filters;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerUI;
@@ -10,35 +8,12 @@ namespace FluentCMS.Api.Core.Api;
 
 public static class ServiceCollectionExtensions
 {
-    public const string SESSION_ID_HEADER_KEY = "X_Session_Id";
-    public const string UNIQUE_USER_ID_HEADER_KEY = "X-Unique-Id";
-    public const string DEFAULT_LANGUAGE = "en-US";
-    public const string USER_IP_FORWARDED_HEADER_KEY = "X-Forwarded-For";
-
-    public static IServiceCollection AddSecurityContext(this IServiceCollection services)
-    {
-        // Replace the default role validator with our site-scoped one
-        services.AddScoped<IRoleValidator<Role>, EnhancedSiteScopedRoleValidator>();
-        services.AddScoped<SecurityContextResolver>();
-        services.AddHttpContextAccessor();
-        services.AddScoped<IUserContext>(sp => sp.GetRequiredService<ISecurityContext>());
-        services.AddScoped(sp => sp.GetRequiredService<SecurityContextResolver>().Resolve());
-        return services;
-    }
 
     public static IServiceCollection AddFluentCmsApi(this IServiceCollection services)
     {
-        services.AddSecurityContext();
-
         services.AddScoped<IApiTokenValidator, ApiTokenValidator>();
 
         services.AddEndpointsApiExplorer();
-
-        services.AddAuthorization();
-
-        //services.AddApplicationServices();
-        services.AddOptions<JwtOptions>()
-            .BindConfiguration("JwtOptions");
 
         services
             .AddControllers(config =>
@@ -67,16 +42,6 @@ public static class ServiceCollectionExtensions
     public static WebApplication UseFluentCmsApi(this WebApplication app)
     {
         app.UseApiDocumentation();
-
-        app.UseAuthentication();
-
-        app.UseWhen(context => context.Request.Path.StartsWithSegments("/api"), app =>
-        {
-            // this will be executed only when the path starts with "/api"
-            app.UseMiddleware<JwtAuthorizationMiddleware>();
-        });
-
-        app.UseAuthorization();
 
         app.MapControllers();
 
