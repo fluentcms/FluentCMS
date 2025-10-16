@@ -54,13 +54,15 @@ internal class PluginManager(IPluginDiscovery pluginDiscovery, IPluginInitialize
             }
         }
         _logger.LogInformation("Plugin configuration process completed. {Count} plugins loaded.", _pluginMetadataList.Count(p => p.Status == PluginStatus.Configured));
-        _logger.LogWarning("Plugins configuration process with errors: {Count}", _pluginMetadataList.Count(p => p.Status == PluginStatus.ConfigurationFailed || p.Status == PluginStatus.InitializeFailed || p.Status == PluginStatus.NotInitialized));
+        var failedCount = _pluginMetadataList.Count(p => p.Status == PluginStatus.ConfigurationFailed || p.Status == PluginStatus.InitializeFailed || p.Status == PluginStatus.NotInitialized);
+        if (failedCount > 0)
+            _logger.LogWarning("Plugins configuration process with errors: {Count}", failedCount);
     }
 
     public void Start(IApplicationBuilder app, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Starting plugin startup process...");
-        foreach (var pluginMetadata in _pluginMetadataList.Where(p => p.Status == PluginStatus.Started).OrderBy(p => p.Instance!.ConfigurePriority))
+        foreach (var pluginMetadata in _pluginMetadataList.Where(p => p.Status == PluginStatus.Configured).OrderBy(p => p.Instance!.ConfigurePriority))
         {
             try
             {
@@ -83,6 +85,8 @@ internal class PluginManager(IPluginDiscovery pluginDiscovery, IPluginInitialize
             }
         }
         _logger.LogInformation("Plugin startup process completed. {Count} plugins started.", _pluginMetadataList.Count(p => p.Status == PluginStatus.Started));
-        _logger.LogWarning("Plugins startup process with errors: {Count}", _pluginMetadataList.Count(p => p.Status != PluginStatus.Started));
+        var failedCount = _pluginMetadataList.Count(p => p.Status != PluginStatus.Started);
+        if (failedCount > 0)
+            _logger.LogWarning("Plugins startup process with errors: {Count}", failedCount);
     }
 }

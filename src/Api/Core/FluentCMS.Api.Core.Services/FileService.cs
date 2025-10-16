@@ -2,6 +2,12 @@
 
 //namespace FluentCMS.Api.Core.Services;
 
+//public class FileUploadConfig
+//{
+//    public long MaxSize { get; set; } = default!;
+//    public int MaxCount { get; set; } = default!;
+//    public string AllowedExtensions { get; set; } = default!;
+//}
 //public interface IFileService
 //{
 //    Task<File> Add(File file, Stream fileContent, CancellationToken cancellationToken = default);

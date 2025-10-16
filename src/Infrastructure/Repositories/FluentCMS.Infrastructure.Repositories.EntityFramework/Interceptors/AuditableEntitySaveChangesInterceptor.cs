@@ -4,7 +4,7 @@ namespace FluentCMS.Infrastructure.Repositories.EntityFramework.Interceptors;
 /// Intercepts Entity Framework save operations to automatically populate audit fields
 /// for entities implementing IAuditableEntity.
 /// </summary>
-public class AuditableEntitySaveChangesInterceptor(IUserContext userContext) : ISaveChangesInterceptor
+public class AuditableEntitySaveChangesInterceptor(IServiceProvider serviceProvider) : ISaveChangesInterceptor
 {
     public InterceptionResult<int> SavingChanges(DbContextEventData eventData, InterceptionResult<int> result)
     {
@@ -24,6 +24,11 @@ public class AuditableEntitySaveChangesInterceptor(IUserContext userContext) : I
             return;
 
         var now = DateTime.UtcNow;
+        string? username = null;
+
+        var userContext = serviceProvider.GetService<IUserContext>();
+        if (userContext != null)
+            username = userContext.Username;
 
         foreach (var entry in context.ChangeTracker.Entries())
         {
@@ -34,13 +39,13 @@ public class AuditableEntitySaveChangesInterceptor(IUserContext userContext) : I
                     case EntityState.Added:
                         // Set creation audit fields for new entities
                         auditableEntity.CreatedAt = now;
-                        auditableEntity.CreatedBy = userContext.Username;
+                        auditableEntity.CreatedBy = username;
                         auditableEntity.Version = 1;
                         break;
 
                     case EntityState.Modified:
                         auditableEntity.UpdatedAt = now;
-                        auditableEntity.UpdatedBy = userContext.Username;
+                        auditableEntity.UpdatedBy = username;
                         auditableEntity.Version += 1;
                         break;
                 }

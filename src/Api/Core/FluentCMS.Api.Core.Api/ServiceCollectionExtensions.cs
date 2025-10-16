@@ -18,8 +18,8 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddSecurityContext(this IServiceCollection services)
     {
         // Replace the default role validator with our site-scoped one
-        services.AddTransient<IRoleValidator<Role>, EnhancedSiteScopedRoleValidator>();
-        services.AddTransient<SecurityContextResolver>();
+        services.AddScoped<IRoleValidator<Role>, EnhancedSiteScopedRoleValidator>();
+        services.AddScoped<SecurityContextResolver>();
         services.AddHttpContextAccessor();
         services.AddScoped<IUserContext>(sp => sp.GetRequiredService<ISecurityContext>());
         services.AddScoped(sp => sp.GetRequiredService<SecurityContextResolver>().Resolve());
