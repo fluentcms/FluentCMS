@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\FluentCMS.Api.Core.Models\FluentCMS.Api.Core.Models.csproj" />
+    <ProjectReference Include="..\FluentCMS.Api.Core.Services\FluentCMS.Api.Core.Services.csproj" />
   </ItemGroup>
 
 </Project>
