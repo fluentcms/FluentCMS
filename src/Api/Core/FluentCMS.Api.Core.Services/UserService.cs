@@ -4,19 +4,16 @@ public interface IUserService
 {
     Task<User> Add(User user, string password, CancellationToken cancellationToken = default);
     Task<User> Update(User user, CancellationToken cancellationToken = default);
-    Task Remove(Guid id, CancellationToken cancellationToken = default);
-    Task ChangePassword(Guid userId, string newPassword, CancellationToken cancellationToken = default);
+    Task<User> Remove(Guid id, CancellationToken cancellationToken = default);
+    Task<User> ChangePassword(Guid userId, string newPassword, CancellationToken cancellationToken = default);
     Task<IEnumerable<User>> GetAll(CancellationToken cancellationToken = default);
     Task<User> GetById(Guid id, CancellationToken cancellationToken = default);
 }
 
-internal class UserService(IGlobalSettingsRepository globalSettingsRepository, UserManager<User> userManager, IPermissionManager permissionManager, IEventPublisher eventPublisher, IUserRepository userRepository) : IUserService
+internal class UserService(IGlobalSettingsRepository globalSettingsRepository, UserManager<User> userManager, IEventPublisher eventPublisher, IUserRepository userRepository) : IUserService
 {
     public async Task<User> Add(User user, string password, CancellationToken cancellationToken = default)
     {
-        // Only super admins can create users
-        await permissionManager.CheckSuperAdminPermission(cancellationToken);
-
         var identityResult = await userManager.CreateAsync(user, password);
         identityResult.ThrowIfInvalid();
 
@@ -27,8 +24,6 @@ internal class UserService(IGlobalSettingsRepository globalSettingsRepository, U
 
     public async Task<User> ChangePassword(Guid userId, string newPassword, CancellationToken cancellationToken = default)
     {
-        await permissionManager.CheckSuperAdminPermission(cancellationToken);
-
         var user = await userRepository.GetById(userId, cancellationToken);
 
         var token = await userManager.GeneratePasswordResetTokenAsync(user);
@@ -43,9 +38,6 @@ internal class UserService(IGlobalSettingsRepository globalSettingsRepository, U
 
     public async Task<User> Update(User user, CancellationToken cancellationToken = default)
     {
-        // Only super admins can update users
-        await permissionManager.CheckSuperAdminPermission(cancellationToken);
-
         var result = await userManager.UpdateAsync(user);
         result.ThrowIfInvalid();
 
@@ -56,8 +48,6 @@ internal class UserService(IGlobalSettingsRepository globalSettingsRepository, U
 
     public async Task<User> Remove(Guid id, CancellationToken cancellationToken = default)
     {
-        await permissionManager.CheckSuperAdminPermission(cancellationToken);
-
         var user = await userRepository.GetById(id, cancellationToken);
 
         var globalSettings = await globalSettingsRepository.Get(cancellationToken);
@@ -75,15 +65,11 @@ internal class UserService(IGlobalSettingsRepository globalSettingsRepository, U
 
     public async Task<IEnumerable<User>> GetAll(CancellationToken cancellationToken = default)
     {
-        await permissionManager.CheckSuperAdminPermission(cancellationToken);
-
         return [.. await userRepository.GetAll(cancellationToken)];
     }
 
     public async Task<User> GetById(Guid id, CancellationToken cancellationToken = default)
     {
-        await permissionManager.CheckSuperAdminPermission(cancellationToken);
-
         return await userRepository.GetById(id, cancellationToken);
     }
 }
