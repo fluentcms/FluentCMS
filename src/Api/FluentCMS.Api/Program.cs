@@ -1,4 +1,5 @@
 using FluentCMS.Api.Core.Api;
+using FluentCMS.Api.Core.Api.Filters;
 using FluentCMS.Api.Core.Repositories.EntityFramework;
 using FluentCMS.Api.Plugins.TodoManagement.Repositories;
 using FluentCMS.Infrastructure.Configuration.EntityFramework;
@@ -13,6 +14,7 @@ using FluentCMS.Infrastructure.Repositories.EntityFramework.Configuration;
 using FluentCMS.Infrastructure.Repositories.EntityFramework.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddSqliteConfiguration("DefaultConnection", TimeSpan.FromMinutes(5));
@@ -68,9 +70,6 @@ services.AddProviders(options =>
 // Register providers
 services.AddInMemoryEventBus();
 
-// Add services to the container.
-services.AddFluentCmsApi();
-
 // Add plugin system
 services.AddPluginSystem(builder.Configuration, options =>
 {
@@ -78,12 +77,31 @@ services.AddPluginSystem(builder.Configuration, options =>
     options.LoggerFactory = loggerFactory;
 });
 
-var app = builder.Build();
 
-app.UseFluentCmsApi();
+services
+    .AddControllers(config =>
+    {
+        config.Filters.Add<ApiResultValidateModelFilter>();
+        config.Filters.Add<ApiResultExceptionFilter>();
+        config.Filters.Add<ApiResultActionFilter>();
+    })
+    .AddJsonOptions(options =>
+    {
+        //options.JsonSerializerOptions.Converters.Add(new DictionaryJsonConverter());
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    })
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        // This is already enabled by default with [ApiController]
+        options.SuppressModelStateInvalidFilter = true;
+    });
+
+var app = builder.Build();
 
 // Use plugin system
 app.UsePluginSystem();
+
+app.MapControllers();
 
 try
 {

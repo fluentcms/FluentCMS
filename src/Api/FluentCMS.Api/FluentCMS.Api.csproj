@@ -18,6 +18,7 @@
     <ProjectReference Include="..\Core\FluentCMS.Api.Core.Repositories.EntityFramework\FluentCMS.Api.Core.Repositories.EntityFramework.csproj" />
     <ProjectReference Include="..\Plugins\FluentCMS.Api.Plugins.AuditTrailManagement\FluentCMS.Api.Plugins.AuditTrailManagement.csproj" />
     <ProjectReference Include="..\Plugins\FluentCMS.Api.Plugins.IdentityManagement\FluentCMS.Api.Plugins.IdentityManagement.csproj" />
+    <ProjectReference Include="..\Plugins\FluentCMS.Api.Plugins.OpenApiDocumentation\FluentCMS.Api.Plugins.OpenApiDocumentation.csproj" />
     <ProjectReference Include="..\Plugins\FluentCMS.Api.Plugins.TodoManagement\FluentCMS.Api.Plugins.TodoManagement.csproj" />
     <ProjectReference Include="..\Providers\Caching\FluentCMS.Api.Providers.Caching.InMemory\FluentCMS.Api.Providers.Caching.InMemory.csproj" />
     <ProjectReference Include="..\Providers\Email\FluentCMS.Api.Providers.Email.Null\FluentCMS.Api.Providers.Email.Null.csproj" />
