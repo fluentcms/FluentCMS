@@ -21,7 +21,7 @@ public class AssignRolesDto
 {
     [Required]
     [MinLength(1, ErrorMessage = "At least one role ID is required")]
-    public List<Guid> RoleIds { get; set; } = new();
+    public List<Guid> RoleIds { get; set; } = [];
 }
 
 /// <summary>
@@ -30,7 +30,7 @@ public class AssignRolesDto
 public class ReplaceUserRolesDto
 {
     [Required]
-    public List<Guid> RoleIds { get; set; } = new();
+    public List<Guid> RoleIds { get; set; } = [];
 }
 
 /// <summary>
