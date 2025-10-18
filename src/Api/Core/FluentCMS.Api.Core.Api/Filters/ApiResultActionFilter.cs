@@ -19,7 +19,7 @@ public class ApiResultActionFilter : IAsyncActionFilter
             var executionContext = context.HttpContext.RequestServices.GetService<ISecurityContext>() ??
                 throw new InvalidOperationException("ApplicationExecutionContext is not registered in the service collection.");
 
-            var apiResult = (IApiResponse)value;
+            var apiResult = (ApiResponse)value;
             apiResult.Duration = (DateTime.UtcNow - executionContext.StartDate).TotalMilliseconds;
             apiResult.SessionId = executionContext.SessionId;
             apiResult.TraceId = executionContext.TraceId;

@@ -2,7 +2,7 @@
 
 [ApiController]
 [Produces("application/json")]
-[Route("api/[controller]/[action]")]
+[Route("api/[controller]")]
 public abstract class BaseController : ControllerBase
 {
     protected IServiceProvider ServiceProvider => ControllerContext.HttpContext.RequestServices;
@@ -35,20 +35,6 @@ public abstract class BaseController : ControllerBase
             Duration = (DateTime.UtcNow - SecurityContext.StartDate).TotalMilliseconds,
             Success = true,
             Data = data,
-            Timestamp = DateTime.UtcNow,
-            TraceId = SecurityContext.TraceId
-        };
-    }
-
-    protected new ApiResponse NoContent()
-    {
-        return new ApiResponse
-        {
-            SessionId = SecurityContext.SessionId,
-            UniqueId = SecurityContext.UniqueId,
-            StatusCode = 204,
-            Duration = (DateTime.UtcNow - SecurityContext.StartDate).TotalMilliseconds,
-            Success = true,
             Timestamp = DateTime.UtcNow,
             TraceId = SecurityContext.TraceId
         };

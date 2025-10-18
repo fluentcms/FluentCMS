@@ -1,19 +1,6 @@
 ﻿namespace FluentCMS.Api.Core.Api;
 
-public interface IApiResponse
-{
-    double Duration { get; set; }
-    List<ApiError> Errors { get; set; }
-    string Message { get; set; }
-    string SessionId { get; set; }
-    int StatusCode { get; set; }
-    bool Success { get; set; }
-    DateTime Timestamp { get; set; }
-    string TraceId { get; set; }
-    string UniqueId { get; set; }
-}
-
-public class ApiResponse : IApiResponse
+public class ApiResponse
 {
     public bool Success { get; set; }
     public string Message { get; set; } = string.Empty;
@@ -26,12 +13,7 @@ public class ApiResponse : IApiResponse
     public double Duration { get; set; }
 }
 
-public interface IApiResponse<T>
-{
-    T Data { get; set; }
-}
-
-public class ApiResponse<T> : ApiResponse, IApiResponse<T>
+public class ApiResponse<T> : ApiResponse
 {
     public T Data { get; set; } = default!;
 }
@@ -41,9 +23,9 @@ public class ApiError(string code, string description)
     public string Code { get; set; } = code;
     public string Description { get; set; } = description;
 
-    public ApiError(): this(string.Empty, string.Empty)
+    public ApiError() : this(string.Empty, string.Empty)
     {
-        
+
     }
 
     public ApiError(string code) : this(code, string.Empty)
@@ -57,13 +39,7 @@ public class ApiError(string code, string description)
     }
 }
 
-public interface IApiListResponse<T>
-{
-    IEnumerable<T> Data { get; set; }
-    PaginationInfo Pagination { get; set; }
-}
-
-public class ApiListResponse<T> : ApiResponse, IApiListResponse<T>
+public class ApiListResponse<T> : ApiResponse
 {
     public IEnumerable<T> Data { get; set; } = default!;   // Always enumerable
     public PaginationInfo Pagination { get; set; } = default!;  // Always has pagination
