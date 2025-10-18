@@ -17,24 +17,24 @@ public class TodosController(ITodoService service) : BaseController
     }
 
     [HttpGet]
-    public async Task<ApiPagedResult<TodoResponseDto>> GetAll(CancellationToken cancellationToken = default)
+    public async Task<ApiListResponse<TodoResponseDto>> GetAll(CancellationToken cancellationToken = default)
     {
         var todos = await service.GetAll(cancellationToken);
         var todoResponses = todos.Select(MapToResponseDto).ToList();
-        return OkPaged(todoResponses);
+        return SuccessList(todoResponses, 1, todoResponses.Count, todoResponses.Count);
     }
 
     [HttpGet("{id:guid}")]
-    public async Task<ApiResult<TodoResponseDto>> GetById(Guid id, CancellationToken cancellationToken = default)
+    public async Task<ApiResponse<TodoResponseDto>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var todo = await service.GetById(id, cancellationToken) ??
             throw new KeyNotFoundException($"Todo with ID {id} not found.");
-        return Ok(MapToResponseDto(todo));
+        return Success(MapToResponseDto(todo));
     }
 
     // POST: api/todos
     [HttpPost]
-    public async Task<ApiResult<TodoResponseDto>> Create(TodoCreateDto todoDto, CancellationToken cancellationToken = default)
+    public async Task<ApiResponse<TodoResponseDto>> Create(TodoCreateDto todoDto, CancellationToken cancellationToken = default)
     {
         var todo = new Todo
         {
@@ -45,12 +45,12 @@ public class TodosController(ITodoService service) : BaseController
         };
 
         var created = await service.Add(todo, cancellationToken);
-        return Ok(MapToResponseDto(created));
+        return Success(MapToResponseDto(created));
     }
 
     // PUT: api/todos/5
     [HttpPut("{id:guid}")]
-    public async Task<ApiResult<TodoResponseDto>> Update(Guid id, TodoUpdateDto todoDto, CancellationToken cancellationToken = default)
+    public async Task<ApiResponse<TodoResponseDto>> Update(Guid id, TodoUpdateDto todoDto, CancellationToken cancellationToken = default)
     {
         var existingTodo = await service.GetById(id, cancellationToken) ??
             throw new KeyNotFoundException($"Todo with ID {id} not found.");
@@ -62,14 +62,14 @@ public class TodosController(ITodoService service) : BaseController
         //existingTodo.Version++;
 
         var updated = await service.Update(existingTodo, cancellationToken);
-        return Ok(MapToResponseDto(updated));
+        return Success(MapToResponseDto(updated));
     }
 
     // DELETE: api/todos/5
     [HttpDelete("{id:guid}")]
-    public async Task<ApiResult> Delete(Guid id, CancellationToken cancellationToken = default)
+    public async Task<ApiResponse> Delete(Guid id, CancellationToken cancellationToken = default)
     {
         await service.Remove(id, cancellationToken);
-        return Ok();
+        return Success();
     }
 }

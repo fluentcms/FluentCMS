@@ -1,10 +1,4 @@
-﻿using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Cryptography;
-using System.Text;
-
-namespace FluentCMS.Api.Core.Api.Filters;
+﻿namespace FluentCMS.Api.Core.Api.Filters;
 
 internal interface IApiTokenValidator
 {

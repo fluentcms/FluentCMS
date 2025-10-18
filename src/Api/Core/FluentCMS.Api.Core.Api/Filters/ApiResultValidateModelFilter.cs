@@ -11,14 +11,14 @@ public class ApiResultValidateModelFilter : ActionFilterAttribute
             {
                 var securityContext = context.HttpContext.RequestServices.GetRequiredService<ISecurityContext>();
 
-                var apiResult = new ApiResult
+                var apiResult = new ApiResponse
                 {
                     Duration = (DateTime.UtcNow - securityContext.StartDate).TotalMilliseconds,
                     SessionId = securityContext.SessionId,
                     TraceId = securityContext.TraceId,
                     UniqueId = securityContext.UniqueId,
-                    Status = 400,
-                    IsSuccess = false,
+                    StatusCode = 400,
+                    Success = false,
                 };
                 foreach (var item in context.ModelState)
                 {

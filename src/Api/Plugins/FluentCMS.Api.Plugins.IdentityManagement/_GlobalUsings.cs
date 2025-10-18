@@ -1,4 +1,5 @@
-﻿global using FluentCMS.Api.Core.Events;
+﻿global using AutoMapper;
+global using FluentCMS.Api.Core.Events;
 global using FluentCMS.Api.Core.Models;
 global using FluentCMS.Api.Core.Models.Identity;
 global using FluentCMS.Api.Core.Repositories.Abstractions;
@@ -26,3 +27,8 @@ global using Microsoft.Extensions.Configuration;
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.Logging;
 global using System.Security.Claims;
+global using System.ComponentModel.DataAnnotations;
+global using Microsoft.AspNetCore.Mvc;
+global using FluentCMS.Api.Plugins.IdentityManagement.Dtos;
+global using FluentCMS.Api.Core.Api;
+global using FluentCMS.Api.Core.Api.Controllers;

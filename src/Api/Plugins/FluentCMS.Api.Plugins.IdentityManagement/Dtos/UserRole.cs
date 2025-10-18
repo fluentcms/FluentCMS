@@ -1,6 +1,4 @@
-using System.ComponentModel.DataAnnotations;
-
-namespace FluentCMS.Api.Plugins.IdentityManagement.Controllers.DTOs;
+namespace FluentCMS.Api.Plugins.IdentityManagement.Dtos;
 
 /// <summary>
 /// DTO for User response (simplified)

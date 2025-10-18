@@ -24,7 +24,7 @@ public static class Helper
         }
 
         // Check if returnType implements IApiResult or IApiResult<>
-        return typeof(IApiResult).IsAssignableFrom(returnType) ||
-               returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof(IApiResult<>);
+        return typeof(IApiResponse).IsAssignableFrom(returnType) ||
+               returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof(IApiResponse<>);
     }
 }

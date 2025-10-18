@@ -11,22 +11,22 @@ public class ApiResultExceptionFilter : IExceptionFilter
 
         var exception = context.Exception;
 
-        var apiResult = new ApiResult
+        var apiResult = new ApiResponse
         {
             Duration = (DateTime.UtcNow - securityContext.StartDate).TotalMilliseconds,
             SessionId = securityContext.SessionId,
             TraceId = securityContext.TraceId,
             UniqueId = securityContext.UniqueId,
-            Status = 500,
-            IsSuccess = false,
-            ExceptionDetails = context.Exception.ToString()
+            StatusCode = 500,
+            Success = false,
+            Message = context.Exception.ToString()
         };
 
         apiResult.Errors.Add(new ApiError { Code = "Unknown", Description = exception.Message });
 
         context.Result = new ObjectResult(apiResult)
         {
-            StatusCode = apiResult.Status
+            StatusCode = apiResult.StatusCode
         };
     }
 }

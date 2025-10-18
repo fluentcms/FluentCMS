@@ -7,12 +7,12 @@
   </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="AutoMapper" Version="15.0.1" />
         <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.9" />
     </ItemGroup>
 
     <ItemGroup>
       <ProjectReference Include="..\..\..\Infrastructure\Plugins\FluentCMS.Infrastructure.Plugins.Abstractions\FluentCMS.Infrastructure.Plugins.Abstractions.csproj" />
+      <ProjectReference Include="..\..\Core\FluentCMS.Api.Core.Api\FluentCMS.Api.Core.Api.csproj" />
       <ProjectReference Include="..\..\Core\FluentCMS.Api.Core.Events\FluentCMS.Api.Core.Events.csproj" />
       <ProjectReference Include="..\..\Core\FluentCMS.Api.Core.Repositories.EntityFramework\FluentCMS.Api.Core.Repositories.EntityFramework.csproj" />
       <ProjectReference Include="..\..\Providers\Email\FluentCMS.Api.Providers.Email.Abstractions\FluentCMS.Api.Providers.Email.Abstractions.csproj" />

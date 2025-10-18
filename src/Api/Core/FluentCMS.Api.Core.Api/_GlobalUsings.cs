@@ -1,4 +1,10 @@
-﻿global using FluentCMS.Api.Core.Models;
+﻿global using AutoMapper;
 global using Microsoft.AspNetCore.Mvc;
 global using Microsoft.AspNetCore.Mvc.Filters;
 global using Microsoft.Extensions.DependencyInjection;
+global using Microsoft.Extensions.Options;
+global using Microsoft.IdentityModel.Tokens;
+global using System.IdentityModel.Tokens.Jwt;
+global using System.Security.Cryptography;
+global using System.Text;
+global using FluentCMS.Api.Core.Models;

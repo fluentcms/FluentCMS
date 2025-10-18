@@ -8,6 +8,12 @@ public class IdentityManagementPlugin : IPluginStartup
 
     public void ConfigureServices(IServiceCollection services, IConfiguration? configuration)
     {
+        // Register auto-mapper profiles
+        services.AddAutoMapper(cfg =>
+        {
+            cfg.AddProfile<MappingProfile>();
+        });
+
         // Register repositories
         services.AddScoped<IRoleRepository, RoleRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
