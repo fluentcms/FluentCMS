@@ -16,7 +16,7 @@ public class User : IdentityUser<Guid>, IAuditableEntity
     public int LoginCount { get; set; }
     public DateTime? PasswordChangedAt { get; set; }
     public string? PasswordChangedBy { get; set; }
-    public bool Enabled { get; set; } = true;
+    public bool Suspended { get; set; }
     public string Description { get; set; } = string.Empty;
 
     public User()
