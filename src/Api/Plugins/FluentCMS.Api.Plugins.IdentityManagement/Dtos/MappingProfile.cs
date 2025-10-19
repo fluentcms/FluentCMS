@@ -17,8 +17,8 @@ public class MappingProfile : Profile
 
         #region Role
 
-        CreateMap<RoleAddDto, Role>();
-        CreateMap<RoleUpdateDto, Role>();
+        CreateMap<RoleAddRequest, Role>();
+        CreateMap<RoleUpdateRequest, Role>();
         CreateMap<Role, RoleDto>();
 
         #endregion

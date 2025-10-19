@@ -8,8 +8,6 @@ public static class MessageCodes
     public const string UserChangePasswordFailed = "User.ChangePasswordFailed";
     public const string UserTokenGenerationFailed = "User.TokenGenerationFailed";
     public const string UserSuperAdminCanNotBeDeleted = "User.SuperAdminCanNotBeDeleted";
-    public const string UserInvalidPassword = "User.InvalidPassword";
-    public const string UserInvalidUsername = "User.InvalidUsername";
 
     #endregion
 
@@ -18,6 +16,8 @@ public static class MessageCodes
     public const string RoleNameShouldBeUnique = "Role.NameShouldBeUnique";
     public const string RoleTypeCanNotBeChanged = "Role.TypeCanNotBeChanged";
     public const string RoleDefaultCanNotBeDeleted = "Role.DefaultCanNotBeDeleted";
+    public const string RoleInvalidTypeForCreation = "Role.InvalidTypeForCreation";
+    public const string RoleSiteIdMismatch = "Role.SiteIdMismatch";
 
     #endregion
 

@@ -11,7 +11,7 @@ public class UsersController(IUserService userService) : BaseController
     }
 
     [HttpGet("{id:guid}")]
-    public async Task<ApiResponse<UserDto>> GetUser(Guid id, CancellationToken cancellationToken = default)
+    public async Task<ApiResponse<UserDto>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         var user = await userService.GetById(id, cancellationToken);
         return Success(Mapper.Map<UserDto>(user));

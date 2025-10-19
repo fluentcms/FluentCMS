@@ -22,7 +22,6 @@ public class IdentityManagementPlugin : IPluginStartup
         // Register services
         services.AddScoped<IRoleService, RoleService>();
         services.AddScoped<IUserService, UserService>();
-        services.AddScoped<IUserRoleService, UserRoleService>();
 
         // Register data seeder and schema validator
         services.AddDataSeeder<IdentityDataSeeder, IIdentityDatabaseArea>();
