@@ -12,7 +12,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPermissionRepository, PermissionRepository>();
         services.AddScoped<IPluginDefinitionRepository, PluginDefinitionRepository>();
         services.AddScoped<IPluginRepository, PluginRepository>();
-        services.AddScoped<ISiteRepository, SiteRepository>();
 
         services.AddDatabaseContext<CmsCoreDbContext, ICoreDatabaseArea>();
 

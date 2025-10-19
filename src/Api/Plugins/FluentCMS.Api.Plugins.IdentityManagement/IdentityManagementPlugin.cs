@@ -22,15 +22,16 @@ public class IdentityManagementPlugin : IPluginStartup
         services.AddScoped<IUserRoleRepository, UserRoleRepository>();
 
         // Register services
+        services.AddScoped<IAccountService, AccountService>();
         services.AddScoped<IRoleService, RoleService>();
         services.AddScoped<IUserService, UserService>();
+        services.AddScoped<ITokenGenerator, TokenGenerator>();
+        services.AddScoped<IEmailSender, EmailSender>();
 
         // Register data seeder and schema validator
         services.AddDataSeeder<IdentityDataSeeder, IIdentityDatabaseArea>();
         services.AddSchemaValidator<IdentitySchemaValidator, IIdentityDatabaseArea>();
 
-        // Replace the default role validator with our site-scoped one
-        services.AddScoped<IRoleValidator<Role>, SiteScopedRoleValidator>();
         services.AddScoped<SecurityContextResolver>();
         services.AddHttpContextAccessor();
         services.AddScoped<IUserContext>(sp => sp.GetRequiredService<ISecurityContext>());
@@ -38,7 +39,6 @@ public class IdentityManagementPlugin : IPluginStartup
 
         // Register database context
         services.AddDatabaseContext<AppIdentityDbContext, IIdentityDatabaseArea>();
-
 
         services.AddOptions<IdentityOptions>()
             .BindConfiguration("IdentityOptions");

@@ -12,7 +12,7 @@ public interface IAccountService
     Task ChangePassword(string username, string oldPassword, string newPassword, CancellationToken cancellationToken = default);
 }
 
-internal class AccountService(UserManager<User> userManager, ISecurityContext securityContext, Logger<AccountService> logger, IEmailSender emailSender, SignInManager<User> signInManager, ITokenGenerator tokenGenerator) : IAccountService
+internal class AccountService(UserManager<User> userManager, ISecurityContext securityContext, ILogger<AccountService> logger, IEmailSender emailSender, SignInManager<User> signInManager, ITokenGenerator tokenGenerator) : IAccountService
 {
     public async Task Register(string username, string email, string password, CancellationToken cancellationToken = default)
     {

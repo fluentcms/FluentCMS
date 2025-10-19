@@ -207,6 +207,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Api.Plugins.OpenA
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Api.Core", "Api\Core\FluentCMS.Api.Core\FluentCMS.Api.Core.csproj", "{2198C4C2-7E6D-4936-BB37-FF90AD626CCF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Api.Plugins.CmsCoreManagement", "Api\Plugins\FluentCMS.Api.Plugins.CmsCoreManagement\FluentCMS.Api.Plugins.CmsCoreManagement.csproj", "{F1016288-2279-471B-90F0-5F584883FD2A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -513,6 +515,10 @@ Global
 		{2198C4C2-7E6D-4936-BB37-FF90AD626CCF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2198C4C2-7E6D-4936-BB37-FF90AD626CCF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2198C4C2-7E6D-4936-BB37-FF90AD626CCF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F1016288-2279-471B-90F0-5F584883FD2A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F1016288-2279-471B-90F0-5F584883FD2A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F1016288-2279-471B-90F0-5F584883FD2A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F1016288-2279-471B-90F0-5F584883FD2A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -613,6 +619,7 @@ Global
 		{8057D823-AF47-475D-9EE3-008FE1830A3E} = {C508492D-AFD0-4F05-BF5F-22302EAF3E1F}
 		{A46F4BCC-C24A-4B7A-AB14-E6815F53B5DB} = {BA962DC1-64AB-4F30-A69C-DABFE345845B}
 		{2198C4C2-7E6D-4936-BB37-FF90AD626CCF} = {C508492D-AFD0-4F05-BF5F-22302EAF3E1F}
+		{F1016288-2279-471B-90F0-5F584883FD2A} = {BA962DC1-64AB-4F30-A69C-DABFE345845B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {2E9F4217-7A58-48A4-9850-84CD0CDA31DA}

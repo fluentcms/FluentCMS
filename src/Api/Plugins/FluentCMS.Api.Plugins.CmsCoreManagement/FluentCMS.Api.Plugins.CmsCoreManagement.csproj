@@ -1,0 +1,17 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\..\Infrastructure\Plugins\FluentCMS.Infrastructure.Plugins.Abstractions\FluentCMS.Infrastructure.Plugins.Abstractions.csproj" />
+        <ProjectReference Include="..\..\Core\FluentCMS.Api.Core.Events\FluentCMS.Api.Core.Events.csproj" />
+        <ProjectReference Include="..\..\Core\FluentCMS.Api.Core.Repositories.EntityFramework\FluentCMS.Api.Core.Repositories.EntityFramework.csproj" />
+        <ProjectReference Include="..\..\Core\FluentCMS.Api.Core\FluentCMS.Api.Core.csproj" />
+    </ItemGroup>
+    
+</Project>

@@ -6,7 +6,7 @@ public interface ITokenGenerator
     bool ValidateToken(string token);
 }
 
-public class TokenGenerator(IOptions<JwtOptions> jwtOptions) : ITokenGenerator
+internal class TokenGenerator(IOptions<JwtOptions> jwtOptions) : ITokenGenerator
 {
     private readonly JwtOptions _jwtOptions = jwtOptions.Value;
 
