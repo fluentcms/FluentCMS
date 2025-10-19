@@ -8,7 +8,7 @@ public interface IRoleService
     Task<Role> Remove(Guid roleId, CancellationToken cancellationToken = default);
     Task<Role> GetById(Guid roleId, CancellationToken cancellationToken = default);
     Task<IEnumerable<Role>> GetUserRoles(Guid userId, CancellationToken cancellationToken = default);
-    Task UpdateUserRoles(Guid userId,IEnumerable<Guid> roleIds, CancellationToken cancellationToken = default);
+    Task UpdateUserRoles(Guid userId, IEnumerable<Guid> roleIds, CancellationToken cancellationToken = default);
 }
 
 internal class RoleService(ISecurityContext securityContext, IRoleRepository roleRepository, IUserRoleRepository userRoleRepository, IEventPublisher eventPublisher, RoleManager<Role> roleManager) : IRoleService
@@ -40,8 +40,8 @@ internal class RoleService(ISecurityContext securityContext, IRoleRepository rol
 
         ValidateSiteContext(role);
 
-       var existing = await roleManager.FindByIdAsync(role.Id.ToString()) ??
-            throw new EntityNotFoundException<Role>(role.Id);
+        var existing = await roleManager.FindByIdAsync(role.Id.ToString()) ??
+             throw new EntityNotFoundException<Role>(role.Id);
 
         ValidateSiteContext(existing);
 
@@ -72,7 +72,7 @@ internal class RoleService(ISecurityContext securityContext, IRoleRepository rol
 
     public async Task<Role> GetById(Guid roleId, CancellationToken cancellationToken = default)
     {
-        var role =  await roleRepository.GetById(roleId, cancellationToken);
+        var role = await roleRepository.GetById(roleId, cancellationToken);
         ValidateSiteContext(role);
         return role;
     }

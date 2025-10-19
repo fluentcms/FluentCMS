@@ -1,4 +1,6 @@
-﻿global using FluentCMS.Api.Plugins.TodoManagement.Models;
+﻿global using FluentCMS.Api.Core;
+global using FluentCMS.Api.Core.Controllers;
+global using FluentCMS.Api.Plugins.TodoManagement.Models;
 global using FluentCMS.Api.Plugins.TodoManagement.Repositories;
 global using FluentCMS.Api.Plugins.TodoManagement.Services;
 global using FluentCMS.Infrastructure;
@@ -13,6 +15,4 @@ global using Microsoft.Extensions.Configuration;
 global using Microsoft.Extensions.DependencyInjection;
 global using Microsoft.Extensions.Logging;
 global using System.ComponentModel.DataAnnotations;
-global using FluentCMS.Api.Core;
-global using FluentCMS.Api.Core.Controllers;
 
