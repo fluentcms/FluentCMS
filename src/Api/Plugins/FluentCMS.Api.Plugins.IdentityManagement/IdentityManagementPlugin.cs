@@ -8,6 +8,8 @@ public class IdentityManagementPlugin : IPluginStartup
 
     public void ConfigureServices(IServiceCollection services, IConfiguration? configuration)
     {
+        AddJwtAuthentication(services, configuration);
+
         // Register auto-mapper profiles
         services.AddAutoMapper(cfg =>
         {
@@ -37,23 +39,25 @@ public class IdentityManagementPlugin : IPluginStartup
         // Register database context
         services.AddDatabaseContext<AppIdentityDbContext, IIdentityDatabaseArea>();
 
-        services.AddOptions<JwtOptions>()
-            .BindConfiguration("JwtOptions");
+
+        services.AddOptions<IdentityOptions>()
+            .BindConfiguration("IdentityOptions");
 
         services.AddAuthorization();
 
         services.AddIdentity<User, Role>(options =>
         {
-            options.User.RequireUniqueEmail = true;
-            options.Password.RequireDigit = true;
-            options.Password.RequiredLength = 8;
-            options.Password.RequireNonAlphanumeric = false;
-            options.Password.RequireUppercase = true;
-            options.Password.RequireLowercase = true;
-            options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
-            options.Lockout.MaxFailedAccessAttempts = 5;
-            options.Lockout.AllowedForNewUsers = true;
-            options.SignIn.RequireConfirmedEmail = false;
+            var identityOptions = configuration?.GetSection("IdentityOptions").Get<IdentityOptions>();
+            if (identityOptions == null)
+                return;
+
+            options.Password = identityOptions.Password;
+            options.Lockout = identityOptions.Lockout;
+            options.User = identityOptions.User;
+            options.SignIn = identityOptions.SignIn;
+            options.Tokens = identityOptions.Tokens;
+            options.Stores = identityOptions.Stores;
+            options.ClaimsIdentity = identityOptions.ClaimsIdentity;
         })
             .AddEntityFrameworkStores<AppIdentityDbContext>()
             .AddDefaultTokenProviders();
@@ -71,4 +75,53 @@ public class IdentityManagementPlugin : IPluginStartup
 
         app.UseAuthorization();
     }
+
+    private static void AddJwtAuthentication(IServiceCollection services, IConfiguration? configuration)
+    {
+        // Configure JWT settings
+        services.AddOptions<JwtOptions>()
+            .BindConfiguration("JwtOptions");
+
+        var jwtSettings = (configuration?.GetSection("JwtOptions").Get<JwtOptions>()) ??
+            throw new InvalidOperationException("JWTOptions configuration section is missing or invalid.");
+
+        var key = Encoding.UTF8.GetBytes(jwtSettings.Secret);
+
+        services.AddAuthentication(options =>
+        {
+            options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+            options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+        })
+        .AddJwtBearer(options =>
+        {
+            options.RequireHttpsMetadata = false; // For development, set to true in production
+            options.SaveToken = true;
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = new SymmetricSecurityKey(key),
+                ValidateIssuer = true,
+                ValidIssuer = jwtSettings.Issuer,
+                ValidateAudience = true,
+                ValidAudience = jwtSettings.Audience,
+                ValidateLifetime = true,
+                ClockSkew = TimeSpan.Zero
+            };
+
+            // Custom token extraction from X-User-Token header
+            options.Events = new JwtBearerEvents
+            {
+                OnMessageReceived = context =>
+                {
+                    var token = context.Request.Headers["X-User-Token"].FirstOrDefault();
+                    if (!string.IsNullOrEmpty(token))
+                    {
+                        context.Token = token;
+                    }
+                    return Task.CompletedTask;
+                }
+            };
+        });
+    }
+
 }
