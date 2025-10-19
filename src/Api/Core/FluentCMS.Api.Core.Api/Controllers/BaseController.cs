@@ -2,7 +2,7 @@
 
 [ApiController]
 [Produces("application/json")]
-[Route("api/[controller]")]
+[Route("api/[controller]/[action]")]
 public abstract class BaseController : ControllerBase
 {
     protected IServiceProvider ServiceProvider => ControllerContext.HttpContext.RequestServices;
@@ -11,7 +11,7 @@ public abstract class BaseController : ControllerBase
 
     protected IMapper Mapper => ServiceProvider.GetRequiredService<IMapper>();
 
-    protected ApiResponse Success()
+    protected ApiResponse Success(string? messageCode = null)
     {
         return new ApiResponse
         {
@@ -21,11 +21,12 @@ public abstract class BaseController : ControllerBase
             Duration = (DateTime.UtcNow - SecurityContext.StartDate).TotalMilliseconds,
             Success = true,
             Timestamp = DateTime.UtcNow,
-            TraceId = SecurityContext.TraceId
+            TraceId = SecurityContext.TraceId,
+            MessageCode = messageCode ?? string.Empty
         };
     }
 
-    protected ApiResponse<T> Success<T>(T data)
+    protected ApiResponse<T> Success<T>(T data, string? messageCode = null)
     {
         return new ApiResponse<T>
         {
@@ -36,7 +37,8 @@ public abstract class BaseController : ControllerBase
             Success = true,
             Data = data,
             Timestamp = DateTime.UtcNow,
-            TraceId = SecurityContext.TraceId
+            TraceId = SecurityContext.TraceId,
+            MessageCode = messageCode ?? string.Empty
         };
     }
 
@@ -57,6 +59,22 @@ public abstract class BaseController : ControllerBase
         return SuccessList(items, pagination);
     }
 
+    protected ApiListResponse<T> SuccessList<T>(IEnumerable<T> data)
+    {
+        var items = data.ToList();
+        var pagination = new PaginationInfo
+        {
+            Page = 1,
+            PageSize = items.Count,
+            TotalPages = 1,
+            TotalCount = items.Count,
+            HasNextPage = false,
+            HasPreviousPage = false
+        };
+
+        return SuccessList(items, pagination);
+    }
+
     protected ApiListResponse<T> SuccessList<T>(IEnumerable<T> items, PaginationInfo pagination)
     {
         return new ApiListResponse<T>
@@ -72,6 +90,83 @@ public abstract class BaseController : ControllerBase
             Pagination = pagination,
         };
     }
+
+    protected ApiResponse BadRequest(string errorMessage, string? messageCode = null)
+    {
+        return new ApiResponse
+        {
+            SessionId = SecurityContext.SessionId,
+            UniqueId = SecurityContext.UniqueId,
+            StatusCode = 400,
+            Duration = (DateTime.UtcNow - SecurityContext.StartDate).TotalMilliseconds,
+            Success = false,
+            Message = errorMessage,
+            Timestamp = DateTime.UtcNow,
+            MessageCode = messageCode ?? string.Empty,
+            TraceId = SecurityContext.TraceId
+        };
+    }
+
+    protected ApiResponse UnhandledException(Exception exception)
+    {
+        return new ApiResponse
+        {
+            SessionId = SecurityContext.SessionId,
+            UniqueId = SecurityContext.UniqueId,
+            StatusCode = 500,
+            Duration = (DateTime.UtcNow - SecurityContext.StartDate).TotalMilliseconds,
+            Success = false,
+            Message = exception.Message,
+            Timestamp = DateTime.UtcNow,
+            TraceId = SecurityContext.TraceId
+        };
+    }
+
+    protected ApiResponse<T> UnhandledException<T>(Exception exception)
+    {
+        return new ApiResponse<T>
+        {
+            SessionId = SecurityContext.SessionId,
+            UniqueId = SecurityContext.UniqueId,
+            StatusCode = 500,
+            Duration = (DateTime.UtcNow - SecurityContext.StartDate).TotalMilliseconds,
+            Success = false,
+            Message = exception.Message,
+            Timestamp = DateTime.UtcNow,
+            TraceId = SecurityContext.TraceId
+        };
+    }
+
+    protected ApiResponse Unauthorized(string errorMessage)
+    {
+        return new ApiResponse
+        {
+            SessionId = SecurityContext.SessionId,
+            UniqueId = SecurityContext.UniqueId,
+            StatusCode = 401,
+            Duration = (DateTime.UtcNow - SecurityContext.StartDate).TotalMilliseconds,
+            Success = false,
+            Message = errorMessage,
+            Timestamp = DateTime.UtcNow,
+            TraceId = SecurityContext.TraceId
+        };
+    }
+
+    protected ApiResponse<T> Unauthorized<T>(string errorMessage)
+    {
+        return new ApiResponse<T>
+        {
+            SessionId = SecurityContext.SessionId,
+            UniqueId = SecurityContext.UniqueId,
+            StatusCode = 401,
+            Duration = (DateTime.UtcNow - SecurityContext.StartDate).TotalMilliseconds,
+            Success = false,
+            Message = errorMessage,
+            Timestamp = DateTime.UtcNow,
+            TraceId = SecurityContext.TraceId
+        };
+    }
+
 }
 
 [Route("api/admin/[controller]/[action]")]

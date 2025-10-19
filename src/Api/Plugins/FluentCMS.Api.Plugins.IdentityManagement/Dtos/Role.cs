@@ -9,15 +9,12 @@ public class RoleDto
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public Guid SiteId { get; set; }
-    public string Type { get; set; } = string.Empty;
+    public RoleTypes Type { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 }
 
-/// <summary>
-/// DTO for creating a new role
-/// </summary>
-public class RoleAddDto
+public class RoleAddRequest
 {
     [Required]
     [StringLength(256, MinimumLength = 1)]
@@ -30,10 +27,7 @@ public class RoleAddDto
     public Guid SiteId { get; set; }
 }
 
-/// <summary>
-/// DTO for updating an existing role
-/// </summary>
-public class RoleUpdateDto
+public class RoleUpdateRequest
 {
     [Required]
     [StringLength(256, MinimumLength = 1)]
@@ -41,4 +35,22 @@ public class RoleUpdateDto
 
     [StringLength(1000)]
     public string Description { get; set; } = string.Empty;
+}
+
+public class UserRolesUpdateRequest
+{
+    [Required]
+    [MinLength(1, ErrorMessage = "At least one role ID is required")]
+    public List<Guid> RoleIds { get; set; } = [];
+
+    [Required]
+    public Guid UserId { get; set; }
+}
+
+public class UserRoleDto
+{
+    public Guid UserId { get; set; }
+    public Guid RoleId { get; set; }
+    public string RoleName { get; set; } = string.Empty;
+    public Guid SiteId { get; set; }
 }

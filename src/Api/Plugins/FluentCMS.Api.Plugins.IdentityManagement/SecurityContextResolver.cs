@@ -54,3 +54,11 @@ internal class SecurityContextResolver(IHttpContextAccessor httpContextAccessor)
         return instance;
     }
 }
+
+public static class SecurityContextExtensions
+{
+    public static Guid GetSiteId(this ISecurityContext securityContext)
+    {
+        return securityContext.Site?.Id ?? throw new InvalidOperationException("Site context is required");
+    }
+}
