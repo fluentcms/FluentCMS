@@ -199,8 +199,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Common", "Common", "{597BB0
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Infrastructure.Common", "Infrastructure\Common\FluentCMS.Infrastructure.Common\FluentCMS.Infrastructure.Common.csproj", "{30CBC268-DB26-4DF8-ADC0-F957BBCED77B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Api.Core.Api", "Api\Core\FluentCMS.Api.Core.Api\FluentCMS.Api.Core.Api.csproj", "{65833BA1-EE24-409D-ABAD-42AF570B84A8}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Api.Plugins.IdentityManagement", "Api\Plugins\FluentCMS.Api.Plugins.IdentityManagement\FluentCMS.Api.Plugins.IdentityManagement.csproj", "{10056CD7-13C8-4B12-9951-D0C7F87F5FBD}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Api.Core.Events", "Api\Core\FluentCMS.Api.Core.Events\FluentCMS.Api.Core.Events.csproj", "{8057D823-AF47-475D-9EE3-008FE1830A3E}"
@@ -208,6 +206,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Api.Plugins.OpenApiDocumentation", "Api\Plugins\FluentCMS.Api.Plugins.OpenApiDocumentation\FluentCMS.Api.Plugins.OpenApiDocumentation.csproj", "{A46F4BCC-C24A-4B7A-AB14-E6815F53B5DB}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdentityExample", "IdentityExample\IdentityExample.csproj", "{F3A6B7C7-5F38-4B35-AE59-018A83ACAC0C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FluentCMS.Api.Core", "Api\Core\FluentCMS.Api.Core\FluentCMS.Api.Core.csproj", "{2198C4C2-7E6D-4936-BB37-FF90AD626CCF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -499,10 +499,6 @@ Global
 		{30CBC268-DB26-4DF8-ADC0-F957BBCED77B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{30CBC268-DB26-4DF8-ADC0-F957BBCED77B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{30CBC268-DB26-4DF8-ADC0-F957BBCED77B}.Release|Any CPU.Build.0 = Release|Any CPU
-		{65833BA1-EE24-409D-ABAD-42AF570B84A8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{65833BA1-EE24-409D-ABAD-42AF570B84A8}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{65833BA1-EE24-409D-ABAD-42AF570B84A8}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{65833BA1-EE24-409D-ABAD-42AF570B84A8}.Release|Any CPU.Build.0 = Release|Any CPU
 		{10056CD7-13C8-4B12-9951-D0C7F87F5FBD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{10056CD7-13C8-4B12-9951-D0C7F87F5FBD}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{10056CD7-13C8-4B12-9951-D0C7F87F5FBD}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -519,6 +515,10 @@ Global
 		{F3A6B7C7-5F38-4B35-AE59-018A83ACAC0C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F3A6B7C7-5F38-4B35-AE59-018A83ACAC0C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F3A6B7C7-5F38-4B35-AE59-018A83ACAC0C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2198C4C2-7E6D-4936-BB37-FF90AD626CCF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2198C4C2-7E6D-4936-BB37-FF90AD626CCF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2198C4C2-7E6D-4936-BB37-FF90AD626CCF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2198C4C2-7E6D-4936-BB37-FF90AD626CCF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -615,10 +615,10 @@ Global
 		{565088BE-70DA-4535-9CBC-A3E184F60D30} = {3750CB2C-EFFC-4FE6-A0A6-95BD0B76ACB2}
 		{597BB087-4F64-4762-AAB4-F4138E9A25D7} = {B0A6723E-1174-4910-80EB-21115987F7FA}
 		{30CBC268-DB26-4DF8-ADC0-F957BBCED77B} = {597BB087-4F64-4762-AAB4-F4138E9A25D7}
-		{65833BA1-EE24-409D-ABAD-42AF570B84A8} = {C508492D-AFD0-4F05-BF5F-22302EAF3E1F}
 		{10056CD7-13C8-4B12-9951-D0C7F87F5FBD} = {BA962DC1-64AB-4F30-A69C-DABFE345845B}
 		{8057D823-AF47-475D-9EE3-008FE1830A3E} = {C508492D-AFD0-4F05-BF5F-22302EAF3E1F}
 		{A46F4BCC-C24A-4B7A-AB14-E6815F53B5DB} = {BA962DC1-64AB-4F30-A69C-DABFE345845B}
+		{2198C4C2-7E6D-4936-BB37-FF90AD626CCF} = {C508492D-AFD0-4F05-BF5F-22302EAF3E1F}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {2E9F4217-7A58-48A4-9850-84CD0CDA31DA}

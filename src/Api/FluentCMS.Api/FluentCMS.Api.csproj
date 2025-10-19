@@ -14,7 +14,6 @@
     <ProjectReference Include="..\..\Infrastructure\Providers\FluentCMS.Infrastructure.Providers.Repositories.EntityFramework\FluentCMS.Infrastructure.Providers.Repositories.EntityFramework.csproj" />
     <ProjectReference Include="..\..\Infrastructure\Providers\FluentCMS.Infrastructure.Providers\FluentCMS.Infrastructure.Providers.csproj" />
     <ProjectReference Include="..\..\Infrastructure\Repositories\FluentCMS.Infrastructure.Repositories.EntityFramework.Sqlite\FluentCMS.Infrastructure.Repositories.EntityFramework.Sqlite.csproj" />
-    <ProjectReference Include="..\Core\FluentCMS.Api.Core.Api\FluentCMS.Api.Core.Api.csproj" />
     <ProjectReference Include="..\Core\FluentCMS.Api.Core.Repositories.EntityFramework\FluentCMS.Api.Core.Repositories.EntityFramework.csproj" />
     <ProjectReference Include="..\Plugins\FluentCMS.Api.Plugins.AuditTrailManagement\FluentCMS.Api.Plugins.AuditTrailManagement.csproj" />
     <ProjectReference Include="..\Plugins\FluentCMS.Api.Plugins.IdentityManagement\FluentCMS.Api.Plugins.IdentityManagement.csproj" />

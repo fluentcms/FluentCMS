@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Api.Core.Api.Filters;
+﻿namespace FluentCMS.Api.Core.Filters;
 
 public class ApiResultActionFilter : IAsyncActionFilter
 {

@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Api.Core.Api.Attributes;
+﻿namespace FluentCMS.Api.Core.Attributes;
 
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = true, Inherited = true)]
 public class PolicyAttribute(string area, string action) : Attribute

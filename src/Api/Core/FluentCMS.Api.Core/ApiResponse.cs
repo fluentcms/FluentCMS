@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Api.Core.Api;
+﻿namespace FluentCMS.Api.Core;
 
 public class ApiResponse
 {

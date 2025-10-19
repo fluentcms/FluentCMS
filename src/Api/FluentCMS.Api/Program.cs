@@ -1,5 +1,5 @@
-using FluentCMS.Api.Core.Api;
-using FluentCMS.Api.Core.Api.Filters;
+using FluentCMS.Api.Core;
+using FluentCMS.Api.Core.Filters;
 using FluentCMS.Api.Core.Repositories.EntityFramework;
 using FluentCMS.Api.Plugins.TodoManagement.Repositories;
 using FluentCMS.Infrastructure.Configuration.EntityFramework;

@@ -1,6 +1,6 @@
 ﻿using System.Web;
 
-namespace FluentCMS.Api.Core.Api.Filters;
+namespace FluentCMS.Api.Core.Filters;
 
 public class DecodeQueryParamAttribute : ActionFilterAttribute
 {

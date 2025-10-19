@@ -1,4 +1,4 @@
-﻿namespace FluentCMS.Api.Core.Api.Controllers;
+﻿namespace FluentCMS.Api.Core.Controllers;
 
 [ApiController]
 [Produces("application/json")]
