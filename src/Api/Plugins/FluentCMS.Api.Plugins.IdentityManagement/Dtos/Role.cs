@@ -9,7 +9,7 @@ public class RoleDto
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public Guid SiteId { get; set; }
-    public string Type { get; set; } = string.Empty;
+    public RoleTypes Type { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
 }
