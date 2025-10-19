@@ -8,35 +8,15 @@ namespace IdentityExample.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class AuthController : ControllerBase
+public class AuthController(UserManager<User> userManager, SignInManager<User> signInManager, ITokenService tokenService, IEmailService emailService, ILogger<AuthController> logger) : ControllerBase
 {
-    private readonly UserManager<User> _userManager;
-    private readonly SignInManager<User> _signInManager;
-    private readonly ITokenService _tokenService;
-    private readonly IEmailService _emailService;
-    private readonly ILogger<AuthController> _logger;
-
-    public AuthController(
-        UserManager<User> userManager,
-        SignInManager<User> signInManager,
-        ITokenService tokenService,
-        IEmailService emailService,
-        ILogger<AuthController> logger)
-    {
-        _userManager = userManager;
-        _signInManager = signInManager;
-        _tokenService = tokenService;
-        _emailService = emailService;
-        _logger = logger;
-    }
-
     [HttpPost("register")]
     public async Task<ActionResult<ApiResponse<object>>> Register(RegisterRequest request)
     {
         try
         {
             // Check if user already exists
-            var existingUser = await _userManager.FindByEmailAsync(request.Email);
+            var existingUser = await userManager.FindByEmailAsync(request.Email);
             if (existingUser != null)
             {
                 return BadRequest(new ApiResponse
@@ -58,7 +38,7 @@ public class AuthController : ControllerBase
                 IsSuperAdmin = false // New users are not super admins by default
             };
 
-            var result = await _userManager.CreateAsync(user, request.Password);
+            var result = await userManager.CreateAsync(user, request.Password);
             if (!result.Succeeded)
             {
                 return BadRequest(new ApiResponse
@@ -73,12 +53,12 @@ public class AuthController : ControllerBase
             }
 
             // Generate email confirmation token
-            var confirmationToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-            
-            // Send confirmation email
-            await _emailService.SendEmailConfirmationAsync(user.Email!, user.UserName!, confirmationToken);
+            var confirmationToken = await userManager.GenerateEmailConfirmationTokenAsync(user);
 
-            _logger.LogInformation("User {UserName} registered successfully", user.UserName);
+            // Send confirmation email
+            await emailService.SendEmailConfirmationAsync(user.Email!, user.UserName!, confirmationToken);
+
+            logger.LogInformation("User {UserName} registered successfully", user.UserName);
 
             return Ok(new ApiResponse<object>
             {
@@ -92,7 +72,7 @@ public class AuthController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error occurred during user registration");
+            logger.LogError(ex, "Error occurred during user registration");
             return StatusCode(500, new ApiResponse
             {
                 Success = false,
@@ -109,7 +89,7 @@ public class AuthController : ControllerBase
     {
         try
         {
-            var user = await _userManager.FindByNameAsync(request.UserName);
+            var user = await userManager.FindByNameAsync(request.UserName);
             if (user == null)
             {
                 return Unauthorized(new ApiResponse
@@ -135,8 +115,8 @@ public class AuthController : ControllerBase
                 });
             }
 
-            var result = await _signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
-            
+            var result = await signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
+
             if (result.IsLockedOut)
             {
                 return Unauthorized(new ApiResponse
@@ -176,21 +156,21 @@ public class AuthController : ControllerBase
 
             // Generate JWT token
             var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-            var token = await _tokenService.GenerateTokenAsync(user, ipAddress, request.DeviceInfo);
+            var token = await tokenService.GenerateTokenAsync(user, ipAddress, request.DeviceInfo);
 
             // Update user login info
             user.LastLogin = DateTime.UtcNow;
             user.LoginCount++;
-            await _userManager.UpdateAsync(user);
+            await userManager.UpdateAsync(user);
 
-            _logger.LogInformation("User {UserName} logged in successfully", user.UserName);
+            logger.LogInformation("User {UserName} logged in successfully", user.UserName);
 
             return Ok(new ApiResponse<object>
             {
                 Success = true,
                 Message = "Login successful",
-                Data = new 
-                { 
+                Data = new
+                {
                     Token = token,
                     User = new
                     {
@@ -209,7 +189,7 @@ public class AuthController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error occurred during login");
+            logger.LogError(ex, "Error occurred during login");
             return StatusCode(500, new ApiResponse
             {
                 Success = false,
@@ -226,7 +206,7 @@ public class AuthController : ControllerBase
     {
         try
         {
-            var user = await _userManager.FindByIdAsync(userId);
+            var user = await userManager.FindByIdAsync(userId);
             if (user == null)
             {
                 return BadRequest(new ApiResponse
@@ -239,7 +219,7 @@ public class AuthController : ControllerBase
                 });
             }
 
-            var result = await _userManager.ConfirmEmailAsync(user, token);
+            var result = await userManager.ConfirmEmailAsync(user, token);
             if (!result.Succeeded)
             {
                 return BadRequest(new ApiResponse
@@ -254,9 +234,9 @@ public class AuthController : ControllerBase
             }
 
             // Send welcome email
-            await _emailService.SendWelcomeEmailAsync(user.Email!, user.UserName!);
+            await emailService.SendWelcomeEmailAsync(user.Email!, user.UserName!);
 
-            _logger.LogInformation("Email confirmed for user {UserName}", user.UserName);
+            logger.LogInformation("Email confirmed for user {UserName}", user.UserName);
 
             return Ok(new ApiResponse
             {
@@ -269,7 +249,7 @@ public class AuthController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error occurred during email confirmation");
+            logger.LogError(ex, "Error occurred during email confirmation");
             return StatusCode(500, new ApiResponse
             {
                 Success = false,
@@ -286,7 +266,7 @@ public class AuthController : ControllerBase
     {
         try
         {
-            var user = await _userManager.FindByEmailAsync(email);
+            var user = await userManager.FindByEmailAsync(email);
             if (user == null)
             {
                 // Don't reveal if user exists or not for security
@@ -312,8 +292,8 @@ public class AuthController : ControllerBase
                 });
             }
 
-            var confirmationToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-            await _emailService.SendEmailConfirmationAsync(user.Email!, user.UserName!, confirmationToken);
+            var confirmationToken = await userManager.GenerateEmailConfirmationTokenAsync(user);
+            await emailService.SendEmailConfirmationAsync(user.Email!, user.UserName!, confirmationToken);
 
             return Ok(new ApiResponse
             {
@@ -326,7 +306,7 @@ public class AuthController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error occurred while resending confirmation email");
+            logger.LogError(ex, "Error occurred while resending confirmation email");
             return StatusCode(500, new ApiResponse
             {
                 Success = false,
@@ -343,7 +323,7 @@ public class AuthController : ControllerBase
     {
         try
         {
-            var user = await _userManager.FindByEmailAsync(email);
+            var user = await userManager.FindByEmailAsync(email);
             if (user == null)
             {
                 // Don't reveal if user exists or not for security
@@ -357,8 +337,8 @@ public class AuthController : ControllerBase
                 });
             }
 
-            var resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
-            await _emailService.SendPasswordResetAsync(user.Email!, user.UserName!, resetToken);
+            var resetToken = await userManager.GeneratePasswordResetTokenAsync(user);
+            await emailService.SendPasswordResetAsync(user.Email!, user.UserName!, resetToken);
 
             return Ok(new ApiResponse
             {
@@ -371,7 +351,7 @@ public class AuthController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error occurred during password reset request");
+            logger.LogError(ex, "Error occurred during password reset request");
             return StatusCode(500, new ApiResponse
             {
                 Success = false,
@@ -388,7 +368,7 @@ public class AuthController : ControllerBase
     {
         try
         {
-            var user = await _userManager.FindByEmailAsync(email);
+            var user = await userManager.FindByEmailAsync(email);
             if (user == null)
             {
                 return BadRequest(new ApiResponse
@@ -401,7 +381,7 @@ public class AuthController : ControllerBase
                 });
             }
 
-            var result = await _userManager.ResetPasswordAsync(user, token, newPassword);
+            var result = await userManager.ResetPasswordAsync(user, token, newPassword);
             if (!result.Succeeded)
             {
                 return BadRequest(new ApiResponse
@@ -418,9 +398,9 @@ public class AuthController : ControllerBase
             // Update password change tracking
             user.PasswordChangedAt = DateTime.UtcNow;
             user.PasswordChangedBy = "Self";
-            await _userManager.UpdateAsync(user);
+            await userManager.UpdateAsync(user);
 
-            _logger.LogInformation("Password reset successfully for user {UserName}", user.UserName);
+            logger.LogInformation("Password reset successfully for user {UserName}", user.UserName);
 
             return Ok(new ApiResponse
             {
@@ -433,7 +413,7 @@ public class AuthController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error occurred during password reset");
+            logger.LogError(ex, "Error occurred during password reset");
             return StatusCode(500, new ApiResponse
             {
                 Success = false,

@@ -44,7 +44,7 @@ internal class RoleService(IRoleRepository roleRepository, IEventPublisher event
             throw new EntityNotFoundException<Role>(roleId);
 
         if (role.Type != RoleTypes.UserDefined)
-            throw new EnhancedException(ExceptionCodes.RoleDefaultCanNotBeDeleted);
+            throw new EnhancedException(MessageCodes.RoleDefaultCanNotBeDeleted);
 
         var identityResult = await roleManager.DeleteAsync(role);
         identityResult.ThrowIfInvalid();

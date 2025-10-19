@@ -1,18 +1,6 @@
 namespace FluentCMS.Api.Plugins.IdentityManagement.Dtos;
 
 /// <summary>
-/// DTO for User response (simplified)
-/// </summary>
-public class UserDto
-{
-    public Guid Id { get; set; }
-    public string UserName { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public string? FirstName { get; set; }
-    public string? LastName { get; set; }
-}
-
-/// <summary>
 /// DTO for assigning roles to a user
 /// </summary>
 public class AssignRolesDto

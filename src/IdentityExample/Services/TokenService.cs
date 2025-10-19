@@ -9,16 +9,9 @@ using System.Text;
 
 namespace IdentityExample.Services;
 
-public class TokenService : ITokenService
+public class TokenService(AppIdentityDbContext context, IOptions<JwtSettings> jwtSettings) : ITokenService
 {
-    private readonly AppIdentityDbContext _context;
-    private readonly JwtSettings _jwtSettings;
-
-    public TokenService(AppIdentityDbContext context, IOptions<JwtSettings> jwtSettings)
-    {
-        _context = context;
-        _jwtSettings = jwtSettings.Value;
-    }
+    private readonly JwtSettings _jwtSettings = jwtSettings.Value;
 
     public async Task<string> GenerateTokenAsync(User user, string ipAddress, string deviceInfo)
     {
@@ -62,8 +55,8 @@ public class TokenService : ITokenService
             IsRevoked = false
         };
 
-        _context.JwtTokens.Add(jwtToken);
-        await _context.SaveChangesAsync();
+        context.JwtTokens.Add(jwtToken);
+        await context.SaveChangesAsync();
 
         return tokenString;
     }
@@ -92,7 +85,7 @@ public class TokenService : ITokenService
             var tokenId = Guid.Parse(jwtToken.Claims.First(x => x.Type == JwtRegisteredClaimNames.Jti).Value);
 
             // Check if token exists in database and is not revoked
-            var dbToken = await _context.JwtTokens
+            var dbToken = await context.JwtTokens
                 .FirstOrDefaultAsync(t => t.Id == tokenId && !t.IsRevoked);
 
             return dbToken != null;
@@ -105,17 +98,17 @@ public class TokenService : ITokenService
 
     public async Task RevokeTokenAsync(Guid tokenId)
     {
-        var token = await _context.JwtTokens.FindAsync(tokenId);
+        var token = await context.JwtTokens.FindAsync(tokenId);
         if (token != null)
         {
             token.IsRevoked = true;
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
         }
     }
 
     public async Task RevokeAllUserTokensAsync(Guid userId)
     {
-        var tokens = await _context.JwtTokens
+        var tokens = await context.JwtTokens
             .Where(t => t.UserId == userId && !t.IsRevoked)
             .ToListAsync();
 
@@ -124,12 +117,12 @@ public class TokenService : ITokenService
             token.IsRevoked = true;
         }
 
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
     }
 
     public async Task<IEnumerable<JwtToken>> GetActiveTokensAsync()
     {
-        return await _context.JwtTokens
+        return await context.JwtTokens
             .Include(t => t.User)
             .Where(t => !t.IsRevoked && t.ExpiresAt > DateTime.UtcNow)
             .OrderByDescending(t => t.IssuedAt)
@@ -138,7 +131,7 @@ public class TokenService : ITokenService
 
     public async Task<IEnumerable<JwtToken>> GetUserActiveTokensAsync(Guid userId)
     {
-        return await _context.JwtTokens
+        return await context.JwtTokens
             .Where(t => t.UserId == userId && !t.IsRevoked && t.ExpiresAt > DateTime.UtcNow)
             .OrderByDescending(t => t.IssuedAt)
             .ToListAsync();
@@ -147,11 +140,11 @@ public class TokenService : ITokenService
     public async Task CleanupExpiredTokensAsync()
     {
         var cutoffDate = DateTime.UtcNow;
-        var expiredTokens = await _context.JwtTokens
+        var expiredTokens = await context.JwtTokens
             .Where(t => t.ExpiresAt <= cutoffDate)
             .ToListAsync();
 
-        _context.JwtTokens.RemoveRange(expiredTokens);
-        await _context.SaveChangesAsync();
+        context.JwtTokens.RemoveRange(expiredTokens);
+        await context.SaveChangesAsync();
     }
 }

@@ -292,9 +292,9 @@ IdentityExample/
 
 ### Phase 4: Controllers & Endpoints
 - [x] Implement AuthController (6 endpoints)
-- [ ] Implement UsersController
-- [ ] Implement AdminController
-- [ ] Implement RolesController
+- [x] Implement UsersController (4 endpoints)
+- [x] Implement AdminController (15 endpoints)
+- [x] Implement RolesController (8 endpoints)
 
 ### Phase 5: Middleware & Error Handling
 - [x] Global exception handling middleware
