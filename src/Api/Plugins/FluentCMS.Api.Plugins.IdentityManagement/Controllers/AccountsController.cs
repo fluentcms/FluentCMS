@@ -24,35 +24,35 @@ public class AccountsController(IAccountService accountService) : BaseController
     }
 
     [HttpPost]
-    public async Task<ActionResult<ApiResponse>> ConfirmEmail([Required] AccountConfirmEmailRequest confirmEmailRequest, CancellationToken cancellationToken = default)
+    public async Task<ActionResult<ApiResponse>> ConfirmEmail(AccountConfirmEmailRequest confirmEmailRequest, CancellationToken cancellationToken = default)
     {
         await accountService.ConfirmEmail(confirmEmailRequest.UserName, confirmEmailRequest.Email, confirmEmailRequest.Token, cancellationToken);
         return Success(MessageCodes.AccountEmailConfirmedSuccessfully);
     }
 
     [HttpPost]
-    public async Task<ActionResult<ApiResponse>> ResendConfirmation([Required] AccountResendConfirmationRequest resendConfirmationRequest, CancellationToken cancellationToken = default!)
+    public async Task<ActionResult<ApiResponse>> ResendConfirmation(AccountResendConfirmationRequest resendConfirmationRequest, CancellationToken cancellationToken = default!)
     {
         await accountService.ResendConfirmation(resendConfirmationRequest.Email, cancellationToken);
         return Success(MessageCodes.AccountConfirmationEmailSent);
     }
 
     [HttpPost]
-    public async Task<ActionResult<ApiResponse>> ForgotPassword([Required] AccountForgotPasswordRequest forgotPasswordRequest, CancellationToken cancellationToken = default!)
+    public async Task<ActionResult<ApiResponse>> ForgotPassword(AccountForgotPasswordRequest forgotPasswordRequest, CancellationToken cancellationToken = default!)
     {
         await accountService.ForgotPassword(forgotPasswordRequest.Email, cancellationToken);
         return Success(MessageCodes.AccountPasswordResetEmailSent);
     }
 
     [HttpPost]
-    public async Task<ActionResult<ApiResponse>> ResetPassword([Required] AccountResetPasswordRequest resetPasswordRequest, CancellationToken cancellationToken = default!)
+    public async Task<ActionResult<ApiResponse>> ResetPassword(AccountResetPasswordRequest resetPasswordRequest, CancellationToken cancellationToken = default!)
     {
         await accountService.ResetPassword(resetPasswordRequest.Email, resetPasswordRequest.Token, resetPasswordRequest.NewPassword, cancellationToken);
         return Success(MessageCodes.AccountPasswordResetSuccessfully);
     }
 
     [HttpPost]
-    public async Task<ActionResult<ApiResponse>> ChangePassword([Required] AccountChangePasswordRequest changePasswordRequest, CancellationToken cancellationToken = default!)
+    public async Task<ActionResult<ApiResponse>> ChangePassword(AccountChangePasswordRequest changePasswordRequest, CancellationToken cancellationToken = default!)
     {
         await accountService.ChangePassword(changePasswordRequest.UserName, changePasswordRequest.OldPassword, changePasswordRequest.NewPassword, cancellationToken);
         return Success(MessageCodes.AccountPasswordChangedSuccessfully);
