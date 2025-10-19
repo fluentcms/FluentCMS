@@ -32,3 +32,7 @@ global using Microsoft.AspNetCore.Mvc;
 global using FluentCMS.Api.Plugins.IdentityManagement.Dtos;
 global using FluentCMS.Api.Core.Api;
 global using FluentCMS.Api.Core.Api.Controllers;
+global using Microsoft.Extensions.Options;
+global using Microsoft.IdentityModel.Tokens;
+global using System.IdentityModel.Tokens.Jwt;
+global using System.Text;

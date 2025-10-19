@@ -2,54 +2,160 @@
 
 public interface IAccountService
 {
-    Task<User> Register(User user, string password, CancellationToken cancellationToken = default);
-    Task<User> Authenticate(string username, string password, CancellationToken cancellationToken = default);
-    Task<User> ChangePassword(Guid id, string oldPassword, string newPassword, CancellationToken cancellationToken = default);
-    Task<bool> ChangePasswordByResetToken(string email, string token, string newPassword, CancellationToken cancellationToken = default);
-    Task<bool> SendResetPasswordToken(string email, CancellationToken cancellationToken = default);
+    Task Register(string username, string email, string password, CancellationToken cancellationToken = default);
+    Task<string> Login(string username, string password, CancellationToken cancellationToken = default);
+    Task Logout(CancellationToken cancellationToken = default);
+    Task ConfirmEmail(string username, string email, string emailToken, CancellationToken cancellationToken = default);
+    Task ResendConfirmation(string email, CancellationToken cancellationToken = default);
+    Task ForgotPassword(string email, CancellationToken cancellationToken = default);
+    Task ResetPassword(string email, string token, string newPassword, CancellationToken cancellationToken = default);
+    Task ChangePassword(string username, string oldPassword, string newPassword, CancellationToken cancellationToken = default);
 }
 
-internal class AccountService(UserManager<User> userManager, IEmailProvider emailProvider, IConfiguration configuration, ISecurityContext securityContext, IEventPublisher eventPublisher) : IAccountService
+internal class AccountService(UserManager<User> userManager, ISecurityContext securityContext, Logger<AccountService> logger, IEmailSender emailSender, SignInManager<User> signInManager, ITokenGenerator tokenGenerator) : IAccountService
 {
-    public const string PASSWORD_RESET_PURPOSE = "passwordReset";
-    public const string PASSWORD_RESET_TOKEN_PROVIDER = "passwordResetProvider";
-
-    public async Task<User> Register(User user, string password, CancellationToken cancellationToken = default)
+    public async Task Register(string username, string email, string password, CancellationToken cancellationToken = default)
     {
+        // Check if user already exists
+        var existingUser = await userManager.FindByEmailAsync(email);
+        if (existingUser != null)
+            throw new EnhancedException(MessageCodes.AccountEmailAlreadyExists);
+
+        var user = new User
+        {
+            UserName = username,
+            Email = email,
+            EmailConfirmed = false,
+            IsSuperAdmin = false,
+            Suspended = false
+        };
+
         var identityResult = await userManager.CreateAsync(user, password);
         identityResult.ThrowIfInvalid();
 
-        await eventPublisher.Publish(new AccountRegisteredEvent(user), cancellationToken);
+        // Generate email confirmation token
+        var confirmationToken = await userManager.GenerateEmailConfirmationTokenAsync(user);
 
-        return user;
+        // Send confirmation email
+        await emailSender.SendConfirmation(user.Email!, user.UserName!, confirmationToken, cancellationToken);
+
+        logger.LogInformation("User {UserName} registered successfully", user.UserName);
     }
 
-    public async Task<User> Authenticate(string username, string password, CancellationToken cancellationToken = default)
+    public async Task<string> Login(string username, string password, CancellationToken cancellationToken = default)
     {
         var user = await userManager.FindByNameAsync(username);
 
         // Validate user password
-        if (user is null || !user.Enabled || !await userManager.CheckPasswordAsync(user, password))
-            throw new EnhancedException(ExceptionCodes.UserLoginFailed);
+        if (user is null || user.Suspended)
+            throw new EnhancedException(MessageCodes.AccountLoginFailed);
 
-        // Update user properties related to login
-        user.LastLogin = DateTime.Now;
-        user.LoginCount++;
-        var identityResult = await userManager.UpdateAsync(user);
-        identityResult.ThrowIfInvalid();
+        var identityResult = await signInManager.CheckPasswordSignInAsync(user, password, true);
+        if (identityResult.Succeeded)
+        {
+            // Update user properties related to login
+            user.LastLogin = DateTime.Now;
+            user.LoginCount++;
+            var updateResult = await userManager.UpdateAsync(user);
+            updateResult.ThrowIfInvalid();
 
-        await eventPublisher.Publish(new AccountAuthenticatedEvent(user), cancellationToken);
-
-        return user;
+            // Generate JWT token
+            var token = tokenGenerator.GenerateToken(user);
+            await userManager.SetAuthenticationTokenAsync(user, "Default", "JWT", token);
+            logger.LogInformation("User {UserName} authenticated successfully", user.UserName);
+            return token;
+        }
+        else
+        {
+            throw new EnhancedException(MessageCodes.AccountLoginFailed);
+        }
     }
 
-    public async Task<User> ChangePassword(Guid id, string oldPassword, string newPassword, CancellationToken cancellationToken = default)
+    public async Task Logout(CancellationToken cancellationToken = default)
     {
-        var user = await userManager.FindByIdAsync(id.ToString()) ??
-            throw new EntityNotFoundException<User>(id);
+        var user = await userManager.FindByNameAsync(securityContext.Username);
+        if (user != null)
+        {
+            await userManager.RemoveAuthenticationTokenAsync(user, "Default", "JWT");
+            logger.LogInformation("User {UserName} logged out successfully", user.UserName);
+        }
+    }
+
+    public async Task ConfirmEmail(string username, string email, string emailToken, CancellationToken cancellationToken = default)
+    {
+        var user = await userManager.FindByNameAsync(username) ??
+            throw new EnhancedException(MessageCodes.AccountEmailConfirmedFailed);
+
+        var result = await userManager.ConfirmEmailAsync(user, emailToken);
+        result.ThrowIfInvalid();
+
+        // Send welcome email
+        await emailSender.SendWelcomeEmail(user.Email!, user.UserName!, cancellationToken);
+        logger.LogInformation("User {UserName} confirmed email successfully", user.UserName);
+    }
+
+    public async Task ResendConfirmation(string email, CancellationToken cancellationToken = default)
+    {
+        var user = await userManager.FindByEmailAsync(email);
+        if (user == null)
+        {
+            // Don't reveal if user exists or not for security
+            return;
+        }
+
+        if (user.EmailConfirmed)
+        {
+            // Email already confirmed
+            return;
+        }
+
+        var confirmationToken = await userManager.GenerateEmailConfirmationTokenAsync(user);
+        await emailSender.SendConfirmation(user.Email!, user.UserName!, confirmationToken, cancellationToken);
+    }
+
+    public async Task ForgotPassword(string email, CancellationToken cancellationToken = default)
+    {
+        var user = await userManager.FindByEmailAsync(email);
+        if (user == null)
+        {
+            // Don't reveal if user exists or not for security
+            return;
+        }
+
+        var resetToken = await userManager.GeneratePasswordResetTokenAsync(user);
+        await emailSender.SendPasswordReset(user.Email!, user.UserName!, resetToken, cancellationToken);
+
+        logger.LogInformation("Password reset token sent to user {UserName}", user.UserName);
+
+    }
+
+    public async Task ResetPassword(string email, string token, string newPassword, CancellationToken cancellationToken = default)
+    {
+        var user = await userManager.FindByEmailAsync(email) ??
+            throw new EnhancedException(MessageCodes.AccountResetPasswordFailed);
+
+        var result = await userManager.VerifyUserTokenAsync(user, "Default", "JWT", token);
+        if (result)
+        {
+            var resetResult = await userManager.ResetPasswordAsync(user, token, newPassword);
+            resetResult.ThrowIfInvalid();
+
+            // Update user properties related to password changing
+            user.PasswordChangedAt = DateTime.Now;
+            user.PasswordChangedBy = securityContext.Username;
+            await userManager.UpdateAsync(user);
+            logger.LogInformation("User {UserName} reset password successfully", user.UserName);
+        }
+        return;
+    }
+
+    public async Task ChangePassword(string username, string oldPassword, string newPassword, CancellationToken cancellationToken = default)
+    {
+        var user = await userManager.FindByNameAsync(username) ??
+            throw new EnhancedException(MessageCodes.AccountChangePasswordFailed);
 
         if (!await userManager.CheckPasswordAsync(user, oldPassword))
-            throw new EnhancedException(ExceptionCodes.UserChangePasswordFailed);
+            throw new EnhancedException(MessageCodes.AccountChangePasswordFailed);
 
         var idResult = await userManager.ChangePasswordAsync(user, oldPassword, newPassword);
 
@@ -60,47 +166,7 @@ internal class AccountService(UserManager<User> userManager, IEmailProvider emai
         user.PasswordChangedBy = securityContext.Username;
         var identityResult = await userManager.UpdateAsync(user);
         identityResult.ThrowIfInvalid();
-
-        await eventPublisher.Publish(new AccountChangedPasswordEvent(user), cancellationToken);
-
-        return user;
-    }
-
-    public async Task<bool> ChangePasswordByResetToken(string email, string token, string newPassword, CancellationToken cancellationToken = default)
-    {
-        var user = await userManager.FindByEmailAsync(email) ??
-            throw new EntityNotFoundException<User>();
-
-        var result = await userManager.VerifyUserTokenAsync(user, PASSWORD_RESET_TOKEN_PROVIDER, PASSWORD_RESET_PURPOSE, token);
-        if (result)
-        {
-            var resetResult = await userManager.ResetPasswordAsync(user, token, newPassword);
-            resetResult.ThrowIfInvalid();
-
-            // Update user properties related to password changing
-            user.PasswordChangedAt = DateTime.Now;
-            user.PasswordChangedBy = securityContext.Username;
-            await userManager.UpdateAsync(user);
-
-            await eventPublisher.Publish(new AccountChangedPasswordByResetTokenEvent(user), cancellationToken);
-        }
-        return result;
-    }
-
-    public async Task<bool> SendResetPasswordToken(string email, CancellationToken cancellationToken = default)
-    {
-        var user = await userManager.FindByEmailAsync(email) ??
-            throw new EntityNotFoundException<User>();
-
-        var token = await userManager.GenerateUserTokenAsync(user, PASSWORD_RESET_TOKEN_PROVIDER, PASSWORD_RESET_PURPOSE);
-
-        // TODO: Use a proper email template
-        // TODO: Auto-detect frontend URL based on the request context
-        await emailProvider.Send(email, "Reset Password", $"{configuration["urls"]}/auth/reset-password?token={token}&email={email}", null, cancellationToken);
-
-        await eventPublisher.Publish(new AccountSendResetPasswordTokenEvent(user), cancellationToken);
-
-        return true;
+        logger.LogInformation("User {UserName} changed password successfully", user.UserName);
     }
 }
 

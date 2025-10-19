@@ -4,6 +4,7 @@ public class ApiResponse
 {
     public bool Success { get; set; }
     public string Message { get; set; } = string.Empty;
+    public string MessageCode { get; set; } = string.Empty;
     public List<ApiError> Errors { get; set; } = [];
     public DateTime Timestamp { get; set; }
     public string TraceId { get; set; } = string.Empty;

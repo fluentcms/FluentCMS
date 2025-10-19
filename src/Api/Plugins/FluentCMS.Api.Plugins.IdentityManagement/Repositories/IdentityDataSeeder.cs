@@ -13,7 +13,7 @@ internal class IdentityDataSeeder(AppIdentityDbContext dbContext, UserManager<Us
             Email = "admin@example.com",
             IsSuperAdmin = true,
             EmailConfirmed = true,
-            Enabled = true,
+            Suspended = false,
             Description = "Default super admin user with full access, change password after first login."
         };
 
