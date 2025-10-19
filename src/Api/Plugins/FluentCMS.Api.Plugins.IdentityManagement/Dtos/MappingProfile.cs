@@ -7,11 +7,9 @@ public class MappingProfile : Profile
 
         #region User
 
-        //CreateMap<UserCreateRequest, User>();
-        //CreateMap<UserUpdateRequest, User>();
-        //CreateMap<AccountUpdateRequest, User>();
-        //CreateMap<UserRegisterRequest, User>();
-        //CreateMap<User, UserDetailResponse>();
+        CreateMap<UserAddRequest, User>();
+        CreateMap<UserUpdateRequest, User>();
+        CreateMap<User, UserDto>();
 
         #endregion
 
