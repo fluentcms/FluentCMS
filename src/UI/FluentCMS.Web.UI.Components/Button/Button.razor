@@ -2,7 +2,7 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-<button @attributes="AdditionalAttributes" class="@CssClass" disabled="@Disabled" type="@Type.ToString().ToLower()">
+<button @onclick="OnClick" @attributes="AdditionalAttributes" class="@GetClasses()" disabled="@Disabled" type="@Type.ToString().ToLower()">
     @ChildContent
 </button>
 
@@ -24,9 +24,6 @@
     public bool Ghost { get; set; }
 
     [Parameter]
-    public string? Href { get; set; }
-
-    [Parameter]
     [CssProperty]
     public bool Link { get; set; }
 
@@ -40,4 +37,7 @@
 
     [Parameter]
     public ButtonType Type { get; set; } = ButtonType.Button;
+
+    [Parameter]
+    public EventCallback<MouseEventArgs> OnClick { get; set; }
 }
