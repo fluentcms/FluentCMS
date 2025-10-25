@@ -7,10 +7,3 @@ public enum ButtonSize
     Medium,
     Large
 }
-
-public enum ButtonType
-{
-    Button,
-    Submit,
-    Reset
-}

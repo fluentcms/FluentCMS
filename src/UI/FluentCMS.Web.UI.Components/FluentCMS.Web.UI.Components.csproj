@@ -15,11 +15,5 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="9.0.9" />
   </ItemGroup>
 
-  <ItemGroup>
-    <EmbeddedResource Update="Icon\IconResource.resx">
-      <SubType>Designer</SubType>
-    </EmbeddedResource>
-  </ItemGroup>
-
 
 </Project>
