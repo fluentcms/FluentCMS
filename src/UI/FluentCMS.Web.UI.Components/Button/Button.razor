@@ -1,10 +1,10 @@
-@inherits BaseComponent
+@inherits BaseComponentWithContent
 
 @namespace FluentCMS.Web.UI.Components
 
 @if (Visible)
 {
-    <button @attributes="AdditionalAttributes" class="@CssClass" disabled="@Disabled" type="@Type.ToString()">
+    <button @attributes="AdditionalAttributes" class="@CssClass" disabled="@Disabled" type="@Type.ToString().ToLower()">
         @ChildContent
     </button>
 }

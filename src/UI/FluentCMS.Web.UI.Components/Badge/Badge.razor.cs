@@ -1,11 +1,8 @@
 ﻿namespace FluentCMS.Web.UI.Components;
 
-public partial class Badge
+public partial class Badge : BaseComponentWithContent
 {
     [Parameter]
-    [CSSProperty]
+    [CssProperty]
     public Color Color { get; set; } = Color.Default;
-
-    [Parameter]
-    public RenderFragment ChildContent { get; set; } = default!;
 }

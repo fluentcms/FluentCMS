@@ -37,3 +37,9 @@ public abstract class BaseComponent : ComponentBase, IBaseComponent
             return type.Name.FromPascalCaseToKebabCase();
     }
 }
+
+public abstract class BaseComponentWithContent : BaseComponent
+{
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

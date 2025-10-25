@@ -1,41 +1,38 @@
 namespace FluentCMS.Web.UI.Components;
 
-public partial class Button
+public partial class Button : BaseComponentWithContent
 {
     [Parameter]
-    [CSSProperty]
+    [CssProperty]
     public bool Block { get; set; }
 
     [Parameter]
-    [CSSProperty]
+    [CssProperty]
     public Color Color { get; set; } = Color.Default;
 
     [Parameter]
-    [CSSProperty]
+    [CssProperty]
     public bool Disabled { get; set; }
 
     [Parameter]
-    [CSSProperty]
+    [CssProperty]
     public bool Ghost { get; set; }
 
     [Parameter]
     public string? Href { get; set; }
 
     [Parameter]
-    [CSSProperty]
+    [CssProperty]
     public bool Link { get; set; }
 
     [Parameter]
-    [CSSProperty]
+    [CssProperty]
     public bool Outline { get; set; }
 
     [Parameter]
-    [CSSProperty]
+    [CssProperty]
     public ButtonSize Size { get; set; } = ButtonSize.Medium;
 
     [Parameter]
     public ButtonType Type { get; set; } = ButtonType.Button;
-
-    [Parameter]
-    public RenderFragment ChildContent { get; set; } = default!;
 }

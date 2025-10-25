@@ -10,7 +10,7 @@ public static class BaseComponentHelper
     {
         return [.. componentType
             .GetProperties()
-            .Where(p => p.CustomAttributes.Any(x => x.AttributeType == typeof(CSSPropertyAttribute)))
+            .Where(p => p.CustomAttributes.Any(x => x.AttributeType == typeof(CssPropertyAttribute)))
             .Select(property =>
             {
                 var componentParameter = Expression.Parameter(typeof(IBaseComponent), "component");
