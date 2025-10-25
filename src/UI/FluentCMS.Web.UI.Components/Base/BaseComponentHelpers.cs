@@ -1,7 +1,11 @@
+using System.Collections.Concurrent;
+using System.Reflection;
+
 namespace FluentCMS.Web.UI.Components;
 
 public static class BaseComponentHelper
 {
+    private static readonly ConcurrentDictionary<Type, PropertyInfo[]> CssPropertyCache = new();
 
     // css prefix for auto-generated classes
     public const string CSS_PREFIX = "f";
@@ -20,9 +24,11 @@ public static class BaseComponentHelper
         var classes = new List<string>();
 
         // get properties with CSSProperty Attribute
-        var properties = baseComponent.GetType().
+        var componentType = baseComponent.GetType();
+        var properties = CssPropertyCache.GetOrAdd(componentType, type => type.
             GetProperties().
-            Where(p => p.CustomAttributes.Any(x => x.AttributeType == typeof(CSSPropertyAttribute)));
+            Where(p => p.CustomAttributes.Any(x => x.AttributeType == typeof(CSSPropertyAttribute))).
+            ToArray());
 
         var cssName = baseComponent.CssName?.FromPascalCaseToKebabCase() ?? baseComponent.GetDefaultCssName();
 
