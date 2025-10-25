@@ -1,0 +1,31 @@
+﻿namespace FluentCMS.Web.UI.Components;
+
+public abstract partial class BaseComponent : ComponentBase, IBaseComponent
+{
+    protected abstract RenderFragment BuildContent { get; }
+
+    [Parameter]
+    public bool Visible { get; set; } = true;
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; } = default!;
+
+    [Parameter]
+    public string? CssName { get; set; }
+
+    protected string CssClass => this.GetClasses();
+
+    protected IReadOnlyList<string> CssClassList => this.ClassNames();
+
+    public virtual string GetDefaultCssName()
+    {
+        var type = GetType();
+        if (type.IsGenericType)
+            return type.Name.Split("`").First().FromPascalCaseToKebabCase();
+        else
+            return type.Name.FromPascalCaseToKebabCase();
+    }
+}
