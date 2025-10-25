@@ -1,11 +1,27 @@
-using System.Collections.Concurrent;
-using System.Reflection;
-
 namespace FluentCMS.Web.UI.Components;
 
 public static class BaseComponentHelper
 {
-    private static readonly ConcurrentDictionary<Type, PropertyInfo[]> CssPropertyCache = new();
+    private static readonly ConcurrentDictionary<Type, CssPropertyMetadata[]> _cssPropertyCache = new();
+
+    private sealed record CssPropertyMetadata(PropertyInfo Property, Func<IBaseComponent, object?> ValueAccessor);
+
+    private static CssPropertyMetadata[] ResolveCssPropertyMetadata(Type componentType)
+    {
+        return [.. componentType
+            .GetProperties()
+            .Where(p => p.CustomAttributes.Any(x => x.AttributeType == typeof(CSSPropertyAttribute)))
+            .Select(property =>
+            {
+                var componentParameter = Expression.Parameter(typeof(IBaseComponent), "component");
+                var castComponent = Expression.Convert(componentParameter, property.DeclaringType ?? componentType);
+                var propertyAccess = Expression.Property(castComponent, property);
+                var convertResult = Expression.Convert(propertyAccess, typeof(object));
+                var lambda = Expression.Lambda<Func<IBaseComponent, object?>>(convertResult, componentParameter).Compile();
+
+                return new CssPropertyMetadata(property, lambda);
+            })];
+    }
 
     // css prefix for auto-generated classes
     public const string CSS_PREFIX = "f";
@@ -25,20 +41,17 @@ public static class BaseComponentHelper
 
         // get properties with CSSProperty Attribute
         var componentType = baseComponent.GetType();
-        var properties = CssPropertyCache.GetOrAdd(componentType, type => type.
-            GetProperties().
-            Where(p => p.CustomAttributes.Any(x => x.AttributeType == typeof(CSSPropertyAttribute))).
-            ToArray());
+        var properties = _cssPropertyCache.GetOrAdd(componentType, ResolveCssPropertyMetadata);
 
         var cssName = baseComponent.CssName?.FromPascalCaseToKebabCase() ?? baseComponent.GetDefaultCssName();
 
         foreach (var property in properties)
         {
-            if (property.GetValue(baseComponent, null) is not { } value)
+            if (property.ValueAccessor(baseComponent) is not { } value)
                 continue;
 
             var propertyValue = value.ToString()?.FromPascalCaseToKebabCase() ?? string.Empty;
-            classes.Add(string.Join(SEPARATOR, [CSS_PREFIX, cssName, property.Name.FromPascalCaseToKebabCase(), propertyValue]));
+            classes.Add(string.Join(SEPARATOR, [CSS_PREFIX, cssName, property.Property.Name.FromPascalCaseToKebabCase(), propertyValue]));
         }
 
         return classes;

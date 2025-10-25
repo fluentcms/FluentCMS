@@ -24,6 +24,10 @@ public abstract class BaseComponent : ComponentBase, IBaseComponent
     [Parameter]
     public string? CssName { get; set; }
 
+    protected string CssClass => BaseComponentHelper.GetClasses(this);
+
+    protected IReadOnlyList<string> CssClassList => BaseComponentHelper.ClassNames(this);
+
     public virtual string GetDefaultCssName()
     {
         var type = GetType();
