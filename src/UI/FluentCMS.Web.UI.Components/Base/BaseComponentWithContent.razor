@@ -1,0 +1,11 @@
+@namespace FluentCMS.Web.UI.Components
+
+@inherits BaseComponent
+
+@code {
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    protected override RenderFragment BuildContent => ChildContent ?? (__builder => { });
+
+}

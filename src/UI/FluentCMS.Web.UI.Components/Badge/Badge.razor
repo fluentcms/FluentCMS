@@ -2,9 +2,13 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-@if (Visible)
-{
-    <span @attributes="AdditionalAttributes" class="@CssClass">
-        @ChildContent
-    </span>
+<span @attributes="AdditionalAttributes" class="@CssClass">
+    @ChildContent
+</span>
+
+@code {
+
+    [Parameter]
+    [CssProperty]
+    public Color Color { get; set; } = Color.Default;
 }
