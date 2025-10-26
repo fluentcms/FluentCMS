@@ -6,5 +6,5 @@ public interface IBaseComponent
     string? Class { get; set; }
     string? CssName { get; set; }
     IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
-    string GetDefaultCssName();
+    //string GetDefaultCssName();
 }

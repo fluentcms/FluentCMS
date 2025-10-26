@@ -21,7 +21,7 @@ public abstract partial class BaseComponent : ComponentBase, IBaseComponent
     [Parameter]
     public string? CssName { get; set; }
 
-    public virtual string GetDefaultCssName()
+    private string GetDefaultCssName()
     {
         var type = GetType();
         if (type.IsGenericType)
