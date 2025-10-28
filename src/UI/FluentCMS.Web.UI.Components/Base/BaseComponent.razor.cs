@@ -4,7 +4,6 @@ public abstract partial class BaseComponent : ComponentBase, IBaseComponent
 {
     // css prefix for auto-generated classes
     public const string CSS_PREFIX = "f";
-
     public const string SEPARATOR = "-";
 
     protected abstract RenderFragment BuildContent { get; }
@@ -25,9 +24,9 @@ public abstract partial class BaseComponent : ComponentBase, IBaseComponent
     {
         var type = GetType();
         if (type.IsGenericType)
-            return type.Name.Split("`").First().FromPascalCaseToKebabCase();
+            return FromPascalCaseToKebabCase(type.Name.Split("`").First());
         else
-            return type.Name.FromPascalCaseToKebabCase();
+            return FromPascalCaseToKebabCase(type.Name);
     }
 
     private static readonly ConcurrentDictionary<Type, CssPropertyMetadata[]> _cssPropertyCache = new();
@@ -59,15 +58,16 @@ public abstract partial class BaseComponent : ComponentBase, IBaseComponent
         var componentType = GetType();
         var properties = _cssPropertyCache.GetOrAdd(componentType, ResolveCssPropertyMetadata);
 
-        var cssName = CssName?.FromPascalCaseToKebabCase() ?? GetDefaultCssName();
+        var cssName = string.IsNullOrEmpty(CssName) ? GetDefaultCssName() : FromPascalCaseToKebabCase(CssName);
 
         foreach (var property in properties)
         {
             if (property.ValueAccessor(this) is not { } value)
                 continue;
 
-            var propertyValue = value.ToString()?.FromPascalCaseToKebabCase() ?? string.Empty;
-            classes.Add(string.Join(SEPARATOR, [CSS_PREFIX, cssName, property.Property.Name.FromPascalCaseToKebabCase(), propertyValue]));
+            var propertyValueString = value.ToString() ?? string.Empty;
+            var propertyValue = FromPascalCaseToKebabCase(propertyValueString) ?? string.Empty;
+            classes.Add(string.Join(SEPARATOR, [CSS_PREFIX, cssName, FromPascalCaseToKebabCase(property.Property.Name), propertyValue]));
         }
 
         return classes;
@@ -75,7 +75,7 @@ public abstract partial class BaseComponent : ComponentBase, IBaseComponent
 
     public virtual string GetClasses()
     {
-        var cssName = CssName?.FromPascalCaseToKebabCase() ?? GetDefaultCssName();
+        var cssName = string.IsNullOrEmpty(CssName) ? GetDefaultCssName() : FromPascalCaseToKebabCase(CssName);
 
         // component's class name from its name (f-button, f-badge, etc.)
         var componentCss = string.Join(SEPARATOR, [CSS_PREFIX, cssName]);
@@ -88,5 +88,11 @@ public abstract partial class BaseComponent : ComponentBase, IBaseComponent
             classes = [.. classes, Class];
 
         return string.Join(" ", classes);
+    }
+
+    // from PascalCase to kebab-case
+    protected static string FromPascalCaseToKebabCase(string value)
+    {
+        return string.Concat(value.Select((x, i) => i > 0 && char.IsUpper(x) ? "-" + x : x.ToString())).ToLower();
     }
 }
