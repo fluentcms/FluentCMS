@@ -1,10 +1,10 @@
-﻿namespace FluentCMS.Web.UI.Components;
+namespace FluentCMS.Web.UI.Components;
 
-public abstract partial class BaseComponent : ComponentBase, IBaseComponent
+public abstract class BaseComponent : ComponentBase
 {
     // css prefix for auto-generated classes
-    public const string CSS_PREFIX = "f";
-    public const string SEPARATOR = "-";
+    protected const string CSS_PREFIX = "f";
+    protected const string SEPARATOR = "-";
 
     protected abstract RenderFragment BuildContent { get; }
 
@@ -20,8 +20,19 @@ public abstract partial class BaseComponent : ComponentBase, IBaseComponent
     [Parameter]
     public string? CssName { get; set; }
 
+    protected override void BuildRenderTree(RenderTreeBuilder builder)
+    {
+        if (Visible)
+        {
+            builder.AddContent(0, BuildContent);
+        }
+    }
+
     private string GetDefaultCssName()
     {
+        if (!string.IsNullOrEmpty(CssName))
+            return FromPascalCaseToKebabCase(CssName);
+
         var type = GetType();
         if (type.IsGenericType)
             return FromPascalCaseToKebabCase(type.Name.Split("`").First());
@@ -31,7 +42,7 @@ public abstract partial class BaseComponent : ComponentBase, IBaseComponent
 
     private static readonly ConcurrentDictionary<Type, CssPropertyMetadata[]> _cssPropertyCache = new();
 
-    private sealed record CssPropertyMetadata(PropertyInfo Property, Func<IBaseComponent, object?> ValueAccessor);
+    private sealed record CssPropertyMetadata(PropertyInfo Property, Func<BaseComponent, object?> ValueAccessor);
 
     private static CssPropertyMetadata[] ResolveCssPropertyMetadata(Type componentType)
     {
@@ -40,11 +51,11 @@ public abstract partial class BaseComponent : ComponentBase, IBaseComponent
             .Where(p => p.CustomAttributes.Any(x => x.AttributeType == typeof(CssPropertyAttribute)))
             .Select(property =>
             {
-                var componentParameter = Expression.Parameter(typeof(IBaseComponent), "component");
+                var componentParameter = Expression.Parameter(typeof(BaseComponent), "component");
                 var castComponent = Expression.Convert(componentParameter, property.DeclaringType ?? componentType);
                 var propertyAccess = Expression.Property(castComponent, property);
                 var convertResult = Expression.Convert(propertyAccess, typeof(object));
-                var lambda = Expression.Lambda<Func<IBaseComponent, object?>>(convertResult, componentParameter).Compile();
+                var lambda = Expression.Lambda<Func<BaseComponent, object?>>(convertResult, componentParameter).Compile();
 
                 return new CssPropertyMetadata(property, lambda);
             })];
@@ -58,7 +69,7 @@ public abstract partial class BaseComponent : ComponentBase, IBaseComponent
         var componentType = GetType();
         var properties = _cssPropertyCache.GetOrAdd(componentType, ResolveCssPropertyMetadata);
 
-        var cssName = string.IsNullOrEmpty(CssName) ? GetDefaultCssName() : FromPascalCaseToKebabCase(CssName);
+        var cssName = GetDefaultCssName();
 
         foreach (var property in properties)
         {
@@ -75,7 +86,7 @@ public abstract partial class BaseComponent : ComponentBase, IBaseComponent
 
     public virtual string GetClasses()
     {
-        var cssName = string.IsNullOrEmpty(CssName) ? GetDefaultCssName() : FromPascalCaseToKebabCase(CssName);
+        var cssName = GetDefaultCssName();
 
         // component's class name from its name (f-button, f-badge, etc.)
         var componentCss = string.Join(SEPARATOR, [CSS_PREFIX, cssName]);

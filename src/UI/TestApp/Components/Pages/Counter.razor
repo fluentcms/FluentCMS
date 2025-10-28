@@ -7,6 +7,8 @@
 
 <p role="status">Current count: @currentCount</p>
 <Button Color="Color.Secondary" @onclick="IncrementCount">Click me</Button>
+<Button Color="Color.Primary" @onclick="IncrementCount">Click me</Button>
+<Button @onclick="IncrementCount">Click me</Button>
 
 @code {
     private int currentCount = 0;
