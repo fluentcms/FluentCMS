@@ -1,6 +1,6 @@
 namespace FluentCMS.Web.UI.Components;
 
-public class BaseComponentWithContent : BaseComponent
+public abstract class BaseComponentWithContent : BaseComponent
 {
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
