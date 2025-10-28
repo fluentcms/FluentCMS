@@ -1,0 +1,9 @@
+﻿// prefix for FluentCMS components classes 
+$prefix: "f-";
+
+/* Optional variable overrides BEFORE Tabler (since Tabler uses !default) */
+// $primary: #0ea5e9;
+
+@import "@tabler/core/scss/tabler"; // compiler can now see Tabler’s selectors
+
+@import './Button.scss';

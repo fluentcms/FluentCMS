@@ -6,6 +6,8 @@
 # Client packages (bootstrap, etc.)
 lib/
 
+package-lock.json
+
 # Compiled css
 /FluentCMS.Web.UI/wwwroot/css/*.css.map
 

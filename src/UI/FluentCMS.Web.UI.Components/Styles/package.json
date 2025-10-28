@@ -1,0 +1,14 @@
+{
+    "name": "fluentcms.web.ui.components",
+    "scripts": {
+        "build": "sass  --load-path=node_modules ./tabler/App.scss:../wwwroot/css/app.min.css",
+        "watch": "sass --load-path=node_modules --watch ./tabler/App.scss:../wwwroot/css --style=expanded",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "devDependencies": {
+        "sass": "^1.93.2"
+    },
+    "dependencies": {
+        "@tabler/core": "^1.4.0"
+    }
+}

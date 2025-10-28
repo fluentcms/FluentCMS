@@ -1,0 +1,15 @@
+$button: $prefix + "button";
+
+.#{$button} {
+    @extend .btn;
+
+    &-block-true {
+        @extend .w-100;
+    }
+}
+
+@each $key, $value in $theme-colors {
+    .#{$button}-color-#{$key}{
+        @extend .btn-#{$key};
+    }
+}
