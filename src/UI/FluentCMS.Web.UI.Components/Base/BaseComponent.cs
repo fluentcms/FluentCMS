@@ -73,7 +73,9 @@ public abstract class BaseComponent : ComponentBase
 
         foreach (var property in properties)
         {
-            if (property.ValueAccessor(this) is not { } value)
+            var value = property.ValueAccessor(this);
+            if (value is null ||
+                (value is bool boolValue && boolValue == false))
                 continue;
 
             var propertyValueString = value.ToString() ?? string.Empty;
