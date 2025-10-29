@@ -1,0 +1,33 @@
+$button: $prefix + "button";
+
+.#{$button} {
+    @extend .btn;
+
+    &-block-true {
+        @extend .w-100;
+    }
+
+    &-ghost-true {
+        @extend .btn-ghost;
+    }
+
+    &-outline-true {
+        @extend .btn-outline;
+    }
+
+    &-size {
+        &-small {
+            @extend .btn-sm;
+        }
+
+        &-large {
+            @extend .btn-lg;
+        }
+    }
+}
+
+@each $key, $value in $fluent-colors {
+    .#{$button}-color-#{$key} {
+        @extend .btn-#{$key};
+    }
+}

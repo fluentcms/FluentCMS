@@ -15,8 +15,4 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="9.0.9" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="wwwroot\" />
-  </ItemGroup>
-
 </Project>

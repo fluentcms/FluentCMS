@@ -7,33 +7,35 @@
 </button>
 
 @code {
+
     [Parameter]
     [CssProperty]
     public bool Block { get; set; }
 
     [Parameter]
     [CssProperty]
-    public Color? Color { get; set; }
+    public Color? Color { get; set; } 
 
     [Parameter]
     [CssProperty]
-    public bool Disabled { get; set; } = false;
+    public bool Disabled { get; set; }
 
     [Parameter]
     [CssProperty]
-    public bool Ghost { get; set; } = false;
+    public bool Ghost { get; set; }
 
     [Parameter]
     [CssProperty]
-    public bool Outline { get; set; } = false;
+    public bool Outline { get; set; }
 
     [Parameter]
     [CssProperty]
-    public ButtonSize? Size { get; set; }
+    public ButtonSize? Size { get; set; } 
 
     [Parameter]
     public ButtonType Type { get; set; } = ButtonType.Button;
 
     [Parameter]
     public EventCallback<MouseEventArgs> OnClick { get; set; }
+
 }
