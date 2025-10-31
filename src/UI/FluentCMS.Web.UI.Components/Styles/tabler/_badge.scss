@@ -1,0 +1,21 @@
+$badge: $prefix + 'badge';
+
+.#{$badge} {
+    @extend .badge;
+
+    @each $key, $value in $theme-colors {
+        &-color-#{$key} {
+            @extend .bg-#{$key} !optional;
+            @extend .text-#{$key}-fg !optional;
+        }
+
+        &-light-true.#{$badge}-color-#{$key} {
+            @extend .bg-#{$key}-lt !optional;
+            @extend .text-#{$key}-lt-fg !optional;
+        }
+    }
+
+    &-pill-true {
+        @extend .badge-pill;
+    }
+}

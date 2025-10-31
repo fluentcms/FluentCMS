@@ -1,0 +1,19 @@
+$form-field: $prefix + "form-field";
+
+.#{$form-field} {
+    @extend .mb-3;
+
+    &-label {
+        @extend .form-label;
+    }
+
+    &-hint {
+        color: $gray-700;
+    }
+}
+
+@include color-mode(dark) {
+    .#{$form-field}-hint {
+        color: $gray-400;
+    }
+}

@@ -2,7 +2,7 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-<button @onclick="OnClick" @attributes="AdditionalAttributes" class="@GetClasses()" disabled="@Disabled" type="@Type.ToString().ToLower()">
+<button @attributes="AdditionalAttributes" class="@GetClasses()" disabled="@Disabled" type="@Type.ToString().ToLower()">
     @ChildContent
 </button>
 
@@ -10,7 +10,7 @@
 
     [Parameter]
     [CssProperty]
-    public bool Block { get; set; }
+    public bool? Block { get; set; }
 
     [Parameter]
     [CssProperty]
@@ -18,15 +18,15 @@
 
     [Parameter]
     [CssProperty]
-    public bool Disabled { get; set; }
+    public bool? Disabled { get; set; }
 
     [Parameter]
     [CssProperty]
-    public bool Ghost { get; set; }
+    public bool? Ghost { get; set; }
 
     [Parameter]
     [CssProperty]
-    public bool Outline { get; set; }
+    public bool? Outline { get; set; }
 
     [Parameter]
     [CssProperty]
@@ -34,8 +34,4 @@
 
     [Parameter]
     public ButtonType Type { get; set; } = ButtonType.Button;
-
-    [Parameter]
-    public EventCallback<MouseEventArgs> OnClick { get; set; }
-
 }

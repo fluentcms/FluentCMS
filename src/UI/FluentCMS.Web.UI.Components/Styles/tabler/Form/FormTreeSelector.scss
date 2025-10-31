@@ -1,0 +1,181 @@
+$tree-selector: $prefix + 'form-tree-selector';
+
+.#{$tree-selector} {
+    &-wrapper {
+        @extend .position-relative;
+        @extend .d-inline-block;
+        @extend .w-100;
+    }
+
+    &-input {
+        @extend .form-control; // base input style
+        cursor: pointer;
+    }
+
+    &-menu {
+        @extend .dropdown-menu;
+        @extend .w-100;
+        max-height: 16rem; // 256px scrollable
+        overflow-y: auto;
+
+        &-open {
+            display: block !important;
+        }
+
+        &-inner {
+            @extend .ps-4; // indent nested levels
+            display: none;
+        }
+
+        &-inner-open {
+            @extend .d-flex;
+            @extend .flex-column;
+        }
+    }
+
+    &-option {
+        @extend .d-flex;
+        @extend .flex-column;
+
+        &-content {
+            @extend .dropdown-item;
+            @extend .d-flex;
+            @extend .align-items-center;
+            @extend .gap-2;
+            border-radius: $border-radius-sm;
+            transition: background-color 0.2s ease;
+        }
+
+        &-icon {
+            @extend .me-2;
+        }
+
+        &-header {
+            @extend .d-flex;
+            @extend .align-items-center;
+            @extend .px-2;
+            @extend .py-1;
+        }
+
+        &-toggler {
+            @extend .btn;
+            @extend .btn-sm;
+            @extend .btn-light;
+            @extend .d-flex;
+            @extend .align-items-center;
+            @extend .justify-content-center;
+            @extend .me-2;
+            width: 2rem;
+            height: 2rem;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+
+        &-toggler-icon::before {
+            content: '+';
+        }
+
+        &-toggler-open &-toggler-icon::before {
+            content: '–';
+        }
+
+        &-toggler-hidden {
+            visibility: hidden;
+        }
+    }
+}
+
+// Active / selected states
+.#{$tree-selector}-option-active > .#{$tree-selector}-option-header > .#{$tree-selector}-option-content {
+    background-color: $blue-100;
+    color: $blue-800;
+}
+
+.#{$tree-selector}-option:has(.#{$tree-selector}-option-active) > .#{$tree-selector}-option-header > .#{$tree-selector}-option-content {
+    background-color: $blue-50;
+}
+
+
+// Active / selected states
+[data-bs-theme="dark"] .#{$tree-selector}-option-active > .#{$tree-selector}-option-header > .#{$tree-selector}-option-content {
+    background-color: rgba($blue-100, 0.5);
+    color: $blue-200;
+}
+
+[data-bs-theme="dark"] .#{$tree-selector}-option:has(.#{$tree-selector}-option-active) > .#{$tree-selector}-option-header > .#{$tree-selector}-option-content {
+    background-color: rgba($blue-50, 0.5);
+}
+
+// $tree-selector: $prefix + 'tree-selector';
+
+// .#{$tree-selector} {
+//     &-wrapper {
+//         @apply relative;
+//     }
+
+//     &-input {
+//         @apply bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500
+//     }
+
+//     &-menu {
+//         @apply w-full p-1 absolute hidden border border-gray-300 dark:border-gray-700 z-10 bg-white rounded-lg shadow dark:bg-gray-700;
+
+//         &-open {
+//             @apply block;
+//         }
+
+//         &-inner {
+//             @apply ps-10 hidden;
+//         }
+
+//         &-inner-open {
+//             @apply flex flex-col;
+//         }
+//     }
+
+//     &-option {
+//         @apply flex flex-col gap-1;
+
+//         &-content {
+//             @apply flex-1 cursor-pointer rounded-md flex p-1 items-center gap-2 transition-all;
+//         }
+
+//         &-content:hover {
+//             @apply bg-gray-100 dark:bg-gray-700;
+//         }
+
+//         &-icon {
+//             @apply gap-2;
+//         }
+
+//         &-header {
+//             @apply flex items-center p-1;
+//         }
+
+//         &-toggler {
+//             @apply rounded-md text-xl cursor-pointer flex items-center justify-center w-8 h-8 transition-all;
+//         }
+
+//         &-toggler-icon::before {
+//             @apply text-lg;
+//             content: '+';
+//         }
+
+//         &-toggler-hidden {
+//             visibility: hidden;
+
+//         }
+
+//         &-toggler:hover {
+//             @apply bg-gray-100 dark:bg-gray-700;
+//         }
+//     }
+// }
+
+// .#{$tree-selector}-option:has(.#{$tree-selector}-option-active)>.#{$tree-selector}-option-header>.#{$tree-selector}-option-content {
+//     @apply bg-blue-50/50 dark:bg-gray-600/50;
+// }
+
+// .#{$tree-selector}-option-active>.#{$tree-selector}-option-header>.#{$tree-selector}-option-content {
+//     @apply bg-blue-100 dark:bg-gray-600;
+// }

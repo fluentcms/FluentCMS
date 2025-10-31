@@ -1,0 +1,130 @@
+$form-markdown-editor: $prefix + "form-markdown-editor";
+
+.#{$form-markdown-editor} {
+    .EasyMDEContainer {
+        @extend .w-100;
+        @extend .mb-4;
+        @extend .border;
+        border-color: var(--f-gray-200);
+        border-radius: $border-radius-lg;
+        background-color: var(--f-gray-50);
+
+    }
+
+    .editor-toolbar {
+        border-top: none;
+        border-left: none;
+        border-right: none;
+        border-bottom: 1px solid $white;
+        @extend .d-flex;
+        @extend .flex-wrap;
+        @extend .align-items-center;
+        @extend .justify-content-start;
+        @extend .px-3;
+        @extend .py-2;
+        border-color: var(--f-gray-200);
+
+        &>button {
+            @extend .d-flex;
+            @extend .align-items-center;
+            @extend .p-2;
+            width: max-content;
+            color: var(--f-gray-500);
+            border-radius: $border-radius;
+            cursor: pointer;
+
+            &:hover {
+                color: var(--f-gray-900);
+                background-color: var(--f-gray-100);
+            }
+
+        }
+
+        &>button.active {
+            background-color: var(--f-gray-100);
+
+        }
+
+        &>i.separator {
+            border-color: var(--f-gray-500);
+        }
+    }
+
+    .CodeMirror,
+    .editor-preview {
+        border-top: none;
+        border-left: none;
+        border-right: none;
+        border-bottom: 1px solid $white;
+        border-color: var(--f-gray-200);
+
+
+        @extend .px-4;
+        @extend .py-2;
+        background-color: $white;
+
+    }
+
+    .CodeMirror-cursor {
+        border-color: var(--f-gray-100);
+
+    }
+
+    span.CodeMirror-selectedtext *::selection {
+        background-color: var(--f-gray-700);
+    }
+
+    .editor-preview-active-side {
+        border-left: 1px solid var(--f-gray-200);
+
+    }
+}
+
+@include color-mode(dark) {
+
+    .#{$form-markdown-editor} {
+        .EasyMDEContainer {
+            background-color: var(--f-gray-700);
+            border-color: var(--f-gray-600);
+        }
+
+        .editor-toolbar {
+            border-color: var(--f-gray-600);
+
+            &>button {
+                color: var(--f-gray-400);
+
+                &:hover {
+                    color: $white;
+                    background-color: var(--f-gray-600);
+                }
+            }
+
+            &>button.active {
+                background-color: var(--f-gray-600);
+                color: var(--f-gray-300);
+                border-color: var(--f-gray-500);
+            }
+
+        }
+
+        .CodeMirror,
+        .editor-preview {
+            border-color: var(--f-gray-600);
+            background-color: var(--f-gray-800);
+            color: $white;
+        }
+
+        .CodeMirror-cursor {
+            border-color: var(--f-gray-100);
+        }
+
+        span.CodeMirror-selectedtext *::selection {
+            background-color: var(--f-gray-700);
+        }
+
+        .editor-preview-active-side {
+            border-color: var(--f-gray-600);
+        }
+    }
+}
