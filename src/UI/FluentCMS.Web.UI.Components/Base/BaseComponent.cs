@@ -20,6 +20,11 @@ public abstract class BaseComponent : ComponentBase
     [Parameter]
     public string? CssName { get; set; }
 
+    protected string ClassName(string Name)
+    {
+        return string.Join(SEPARATOR, [CSS_PREFIX, FromPascalCaseToKebabCase(Name)]);
+    }
+
     protected override void BuildRenderTree(RenderTreeBuilder builder)
     {
         if (Visible)

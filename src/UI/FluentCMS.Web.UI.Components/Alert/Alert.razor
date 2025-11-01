@@ -1,0 +1,37 @@
+@inherits BaseComponentWithContent
+
+@namespace FluentCMS.Web.UI.Components
+
+@if (Visible)
+{
+    <div @attributes="AdditionalAttributes" class="@this.GetClasses()">
+        @* @if (IconName) 
+        {
+            TODO: Icon for alert
+        } *@
+        <div>
+            @ChildContent
+        </div>
+        @if (Dismissible)
+        {
+            <button class="@this.ClassName("AlertClose")" @onclick="Close" />
+        }
+    </div>
+}
+
+
+@code {
+    [Parameter]
+    [CssProperty]
+    public bool Dismissible { get; set; }
+
+    [Parameter]
+    [CssProperty]
+    public AlertType? Type { get; set; }
+
+    private Task Close()
+    {
+        Visible = false;
+        return Task.CompletedTask;
+    }
+}

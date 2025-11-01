@@ -1,0 +1,26 @@
+$alert: $prefix + "alert";
+
+$alert-types: ( 
+    "info", 
+    "danger", 
+    "warning", 
+    "success", 
+);
+
+.#{$alert} {
+    @extend .alert;
+
+    &-close {
+        @extend .btn-close;
+    }
+
+    &-dismissible-true {
+        @extend .alert-dismissible;
+    }
+
+    @each $type in $alert-types {
+        &-type-#{$type} {
+            @extend .alert-#{$type};
+        }
+    }
+}
