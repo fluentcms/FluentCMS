@@ -1,0 +1,69 @@
+﻿@page "/alert"
+@using FluentCMS.Web.UI.Components
+
+@rendermode RenderMode.InteractiveServer
+
+<PageTitle>Alert</PageTitle>
+
+
+<h2>Default</h2>
+<Alert>
+    <h4 class="alert-heading">Wow! Everything worked!</h4>
+    <div class="alert-description">
+        Your account has been saved!
+    </div>
+</Alert>
+<br/>
+
+<h2>Colors</h2>
+
+<Alert Type="AlertType.Success">
+    <h4 class="alert-heading">Wow! Everything worked!</h4>
+    <div class="alert-description">
+        Your account has been saved!
+    </div>
+</Alert>
+
+
+<Alert Type="AlertType.Info">
+    <h4 class="alert-heading">Did you know?
+    </h4>
+    <div class="alert-description">
+        Here is something that you might like to know.
+    </div>
+</Alert>
+
+<Alert Type="AlertType.Warning">
+    <h4 class="alert-heading">Uh oh, something went wrong
+
+    </h4>
+    <div class="alert-description">
+        Sorry! There was a problem with your request.
+
+    </div>
+</Alert>
+
+
+
+
+<Alert Type="AlertType.Danger">
+    <h4 class="alert-heading">I'm so sorry…
+    </h4>
+    <div class="alert-description">
+        Your account has been deleted and can't be restored.
+
+    </div>
+</Alert>
+
+<br/>
+<h2>Dismissible</h2>
+
+
+<Alert Type="AlertType.Danger" Dismissible="true">
+    <h4 class="alert-heading">I'm so sorry…
+    </h4>
+    <div class="alert-description">
+        Your account has been deleted and can't be restored.
+
+    </div>
+</Alert>
