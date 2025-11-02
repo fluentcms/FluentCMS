@@ -19,11 +19,11 @@ $confirm: $prefix + "confirm";
         align-items: center;
         gap: 1rem;
 
-        & > .#{$prefix + "icon"} {
+        & > .#{$prefix}icon {
             width: 3rem;
             height: 3rem;
             display: block;
-            @extend .text-secondary;
+            @extend .text-danger;
         }
     }
 
@@ -38,8 +38,16 @@ $confirm: $prefix + "confirm";
 
     }
 
+    &-size-small > .#{$confirm}-wrapper{
+        @extend .modal-sm;
+    }
+    
+    &-size-large > .#{$confirm}-wrapper {
+        @extend .modal-xl;
+    }
+
     &-message {
-        font-size: 16px;
+        @extend .text-secondary;
     }
 
     &-wrapper {
@@ -47,15 +55,8 @@ $confirm: $prefix + "confirm";
     }
 
     &-button-stack {
+        display: flex;
+        gap: 0.5rem;
         justify-content: center;
-    }
-}
-
-@include color-mode(dark) {
-    .#{$confirm} {
-        --f-modal-bg: var(--#{$prefix}gray-800);
-        --f-modal-border-color: var(--#{$prefix}gray-700);
-        --f-modal-header-border-color: var(--#{$prefix}gray-700);
-        --f-modal-footer-border-color: var(--#{$prefix}gray-700);
     }
 }

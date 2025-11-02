@@ -1,0 +1,68 @@
+@page "/confirm"
+@rendermode RenderMode.InteractiveServer
+@using FluentCMS.Web.UI.Components
+
+<PageTitle>Confirm</PageTitle>
+
+<h1>Confirm</h1>
+
+<br/>
+<h2>Default</h2>
+<Button @onclick="OpenDeleteConfirm" Color="Color.Danger">Delete</Button>
+<Confirm Visible="@DeleteConfirmModalOpen" OnConfirm="@OnDeleteConfirm" OnCancel="@OnDeleteCancel">
+    Are you sure to remove this item?
+</Confirm>
+
+<br/>
+<h2>Size (large)</h2>
+<Button @onclick="OpenDeleteConfirmLarge" Color="Color.Danger">Delete</Button>
+<Confirm Visible="@DeleteConfirmLargeModalOpen" Size="ConfirmSize.Large" OnConfirm="@OnDeleteConfirm" OnCancel="@OnDeleteCancel">
+    Are you sure to remove this item?
+</Confirm>
+
+<br/>
+<br/>
+<br/>
+@if (Deleted == true)
+{
+    <Alert Type="AlertType.Success">Item deleted successfully!</Alert>
+}
+else if(Deleted == false)
+{
+    <Alert Type="AlertType.Info">Item not deleted!</Alert>
+}
+
+
+@code {
+
+    bool DeleteConfirmLargeModalOpen { set; get; } = false;
+    bool DeleteConfirmModalOpen { set; get; } = false;
+    bool? Deleted { set; get; }
+
+    void OpenDeleteConfirm() 
+    {
+        DeleteConfirmModalOpen = true;
+    }
+
+    void OpenDeleteConfirmLarge() 
+    {
+        DeleteConfirmLargeModalOpen = true;
+    }
+
+    void OnDeleteCancel()
+    {
+        DeleteConfirmModalOpen = false;
+        DeleteConfirmLargeModalOpen = false;
+        Deleted = false;
+
+    }
+
+    void OnDeleteConfirm() 
+    {
+        DeleteConfirmModalOpen = false;
+        DeleteConfirmLargeModalOpen = false;
+        Deleted = true;
+    }
+
+
+}
