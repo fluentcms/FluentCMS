@@ -39,7 +39,7 @@ public class ContentMessageHandler(IContentService contentService) : IMessageHan
                         {
                             SiteId = site.Id,
                             TypeId = contentTypeTemplate.Id,
-                            Data = processedData
+                            //Data = processedData
                         };
                         await contentService.Create(content, cancellationToken);
                     }
