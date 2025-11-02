@@ -14,7 +14,7 @@ $alert-types: (
         @extend .btn-close;
     }
 
-    &-dismissible-true {
+    &-dismissible {
         @extend .alert-dismissible;
     }
 

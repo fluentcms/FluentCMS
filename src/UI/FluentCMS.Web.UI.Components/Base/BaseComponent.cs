@@ -79,12 +79,19 @@ public abstract class BaseComponent : ComponentBase
         foreach (var property in properties)
         {
             var value = property.ValueAccessor(this);
-            if (value is null)
+            if (value is null || value is false)
                 continue;
 
-            var propertyValueString = value.ToString() ?? string.Empty;
-            var propertyValue = FromPascalCaseToKebabCase(propertyValueString) ?? string.Empty;
-            classes.Add(string.Join(SEPARATOR, [CSS_PREFIX, cssName, FromPascalCaseToKebabCase(property.Property.Name), propertyValue]));
+            if (value is true)
+            {
+                classes.Add(string.Join(SEPARATOR, [CSS_PREFIX, cssName, FromPascalCaseToKebabCase(property.Property.Name)]));
+            }
+            else
+            {
+                var propertyValueString = value.ToString() ?? string.Empty;
+                var propertyValue = FromPascalCaseToKebabCase(propertyValueString) ?? string.Empty;
+                classes.Add(string.Join(SEPARATOR, [CSS_PREFIX, cssName, FromPascalCaseToKebabCase(property.Property.Name), propertyValue]));
+            }
         }
 
         return classes;

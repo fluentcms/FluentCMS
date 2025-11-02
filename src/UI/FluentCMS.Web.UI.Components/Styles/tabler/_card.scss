@@ -1,0 +1,22 @@
+$card: $prefix + 'card';
+
+.#{$card} {
+    @extend .card;
+    height: 100%; // same height when multiple cards are in a row
+    
+    &-body {
+        @extend .card-body;
+    }
+
+    &-header {
+        @extend .card-header;
+    }
+
+    &-footer {
+        @extend .card-footer;
+    }
+
+    &-title {
+        @extend .card-title;
+    }
+}

@@ -2,28 +2,26 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-@if (Visible)
-{
-    <div @attributes="AdditionalAttributes" class="@this.GetClasses()">
-        @* @if (IconName) 
-        {
-            TODO: Icon for alert
-        } *@
-        <div>
-            @ChildContent
-        </div>
-        @if (Dismissible)
-        {
-            <button class="@this.ClassName("AlertClose")" @onclick="Close" />
-        }
+<div @attributes="AdditionalAttributes" class="@this.GetClasses()">
+    @* @if (IconName) 
+    {
+        TODO: Icon for alert
+    } *@
+    <div>
+        @ChildContent
     </div>
-}
+    @if (Dismissible)
+    {
+        <button class="@this.ClassName("AlertClose")" @onclick="Close" />
+    }
+</div>
+
 
 
 @code {
     [Parameter]
     [CssProperty]
-    public bool Dismissible { get; set; }
+    public bool Dismissible { get; set; } = false;
 
     [Parameter]
     [CssProperty]
