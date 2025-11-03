@@ -1,0 +1,62 @@
+@page "/data-table"
+@using FluentCMS.Web.UI.Components
+
+<h3>DataTable Test Page</h3>
+
+<Card>
+    <DataTable TItem="Person" Items="@people" OnRowClick="RowClicked">
+        <DataTableItem TItem="Person" Label="ID">
+            @context.Id
+        </DataTableItem>
+        <DataTableItem TItem="Person" Label="Name">
+            @context.Name
+        </DataTableItem>
+        <DataTableItem TItem="Person" Label="Email">
+            @context.Email
+        </DataTableItem>
+        <DataTableItem TItem="Person" Label="Status">
+            @if (@context.IsActive)
+            {
+                <Badge Color="Color.Success">Active</Badge>
+            }
+            else
+            {
+                <Badge Color="Color.Danger">Disabled</Badge>
+            }
+        </DataTableItem>
+        <DataTableItem TItem="Person" Label="Actoins">
+            <Button Outline>Edit</Button>
+        </DataTableItem>
+    </DataTable>
+</Card>
+
+@if (selectedPerson != null)
+{
+    <p>Selected: @selectedPerson.Name (@selectedPerson.Email) - Status: @(selectedPerson.IsActive ? "Active" : "Disabled")</p>
+}
+
+@code {
+    private List<Person> people = new List<Person>
+    {
+        new Person { Id = 1, Name = "Alice Johnson", Email = "alice@example.com", IsActive = true },
+        new Person { Id = 2, Name = "Bob Smith", Email = "bob@example.com", IsActive = false },
+        new Person { Id = 3, Name = "Charlie Davis", Email = "charlie@example.com", IsActive = true },
+        new Person { Id = 4, Name = "Diana Evans", Email = "diana@example.com", IsActive = false },
+    };
+
+    private Person? selectedPerson;
+
+    private Task RowClicked(Person person)
+    {
+        selectedPerson = person;
+        return Task.CompletedTask;
+    }
+
+    public class Person
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = default!;
+        public string Email { get; set; } = default!;
+        public bool IsActive { get; set; }
+    }
+}
