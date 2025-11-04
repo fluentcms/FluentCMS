@@ -39,6 +39,9 @@
     [Parameter]
     public EventCallback OnCancel { get; set; }
 
+    [Parameter]
+    public bool Visible { get; set; } = true;
+
     public async Task CancelClicked()
     {
         Visible = false;

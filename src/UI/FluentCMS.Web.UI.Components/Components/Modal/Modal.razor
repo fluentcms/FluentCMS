@@ -25,6 +25,9 @@
     [Parameter]
     public EventCallback OnClose { get; set; }
 
+    [Parameter]
+    public bool Visible { get; set; } = true;
+
     public async Task CloseClicked()
     {
         await Close();

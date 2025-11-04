@@ -9,9 +9,6 @@ public abstract class BaseComponent : ComponentBase
     protected abstract RenderFragment BuildContent { get; }
 
     [Parameter]
-    public bool Visible { get; set; } = true;
-
-    [Parameter]
     public string? Class { get; set; }
 
     [Parameter(CaptureUnmatchedValues = true)]
@@ -23,14 +20,6 @@ public abstract class BaseComponent : ComponentBase
     protected string ClassName(string Name)
     {
         return string.Join(SEPARATOR, [CSS_PREFIX, FromPascalCaseToKebabCase(Name)]);
-    }
-
-    protected override void BuildRenderTree(RenderTreeBuilder builder)
-    {
-        if (Visible)
-        {
-            builder.AddContent(0, BuildContent);
-        }
     }
 
     private string GetDefaultCssName()
