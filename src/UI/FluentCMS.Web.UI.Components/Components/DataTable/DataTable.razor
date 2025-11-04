@@ -36,7 +36,7 @@
     public EventCallback<TItem> OnRowClick { get; set; }
 
     [Parameter, EditorRequired]
-    public IReadOnlyList<TItem> Items { get; set; }
+    public IReadOnlyList<TItem> Items { get; set; } = default!;
 
     [Parameter]
     [CssProperty]

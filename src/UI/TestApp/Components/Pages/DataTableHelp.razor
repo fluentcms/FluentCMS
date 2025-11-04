@@ -24,7 +24,7 @@
                 <Badge Color="Color.Danger">Disabled</Badge>
             }
         </DataTableItem>
-        <DataTableItem TItem="Person" Label="Actoins">
+        <DataTableItem TItem="Person" Label="Actions">
             <Button Outline>Edit</Button>
         </DataTableItem>
     </DataTable>
@@ -36,7 +36,7 @@
 }
 
 @code {
-    private List<Person> people = new List<Person>
+    private readonly List<Person> people = new List<Person>
     {
         new Person { Id = 1, Name = "Alice Johnson", Email = "alice@example.com", IsActive = true },
         new Person { Id = 2, Name = "Bob Smith", Email = "bob@example.com", IsActive = false },
