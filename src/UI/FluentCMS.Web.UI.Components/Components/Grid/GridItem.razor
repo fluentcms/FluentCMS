@@ -9,5 +9,13 @@
 @code {
     [Parameter]
     [CssProperty]
-    public DividerPlacement? Placement { get; set; }
+    public GridItemColumn? Small { get; set; }
+
+    [Parameter]
+    [CssProperty]
+    public GridItemColumn? Medium { get; set; }
+
+    [Parameter]
+    [CssProperty]
+    public GridItemColumn? Large { get; set; }
 }

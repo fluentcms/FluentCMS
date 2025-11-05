@@ -1,0 +1,77 @@
+@use "sass:math";
+
+$grid: $prefix + "grid";
+
+$grid-column-width: math.div(100%, 12);
+
+$grid-breakpoints: ( small: 'sm', medium: 'md', large: 'lg' );
+
+$grid-items: (start, end, center, baseline, stretch);
+
+$grid-gutter: ( none: 0, small: 1, medium: 2, large: 3 );
+
+$grid-justify: ( start, end, center, between, around, evenly);
+
+$grid-item-column: ( one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12 );
+
+.#{$grid} {
+    & > div {
+        @extend .row;
+        height: 100%;
+    }
+
+    @each $gutter, $value in $grid-gutter {
+        &-gutter-#{$gutter} > div {
+            @extend .g-#{$value};
+        }    
+    }
+
+    // GutterX & GutterY
+    @each $gutter, $value in $grid-gutter {
+        @each $key in (x, y) {
+            &-gutter-#{$key}-#{$gutter} > div {
+                @extend .g#{$key}-#{$value};
+            }
+        }
+    }
+
+    @each $breakpoint, $breakpoint-value in $grid-breakpoints {
+        @each $key in $grid-items {
+            &.#{$grid}-items-#{$breakpoint}-#{$key} > div {
+                @extend .align-items-#{$breakpoint-value}-#{$key};
+            }
+        }
+
+        @each $key in $grid-justify {
+            &.#{$grid}-justify-#{$breakpoint}-#{$key} > div {
+                @extend .justify-content-#{$breakpoint-value}-#{$key};
+            }
+        }
+    }
+
+    &-no-wrap-true > div {
+        @extend .flex-nowrap;
+    }
+}
+
+.#{$grid}-item {
+    &-small-auto {
+        @extend .col-auto;
+    }
+
+    &-medium-auto {
+        @extend .col-md-auto;
+    }
+
+    &-large-auto {
+        @extend .col-lg-auto;
+    }
+   
+    @each $breakpoint, $breakpoint-value in $grid-breakpoints {
+        @each $key, $value in $grid-item-column {
+            &.#{$grid}-item-#{$breakpoint}-#{$key} {
+                @extend .col-#{$breakpoint-value}-#{$value};
+            }
+        }
+    }
+}
