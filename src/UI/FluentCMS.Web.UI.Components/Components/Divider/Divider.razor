@@ -1,0 +1,13 @@
+@inherits BaseComponentWithContent
+
+@namespace FluentCMS.Web.UI.Components
+
+<div class="@this.GetClasses()">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter]
+    [CssProperty]
+    public DividerPlacement? Placement { get; set; }
+}
