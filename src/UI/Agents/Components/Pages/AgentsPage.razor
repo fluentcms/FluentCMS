@@ -1,0 +1,63 @@
+@page "/agents"
+
+@using FluentCMS.Web.UI.Components
+
+
+<PageTitle>Agents</PageTitle>
+
+<PageHeader Title="Agents">
+    <Button Color="Color.Primary">Create new agent</Button>
+</PageHeader>
+
+<PageBody>
+    <Card>
+        <DataTable TItem="Agent" Items="@agents">
+            <DataTableItem TItem="Agent" Label="ID">
+                @context.Id
+            </DataTableItem>
+            <DataTableItem TItem="Agent" Label="Name">
+                @context.Name
+            </DataTableItem>
+            <DataTableItem TItem="Agent" Label="Description">
+                @context.Description
+            </DataTableItem>
+            <DataTableItem TItem="Agent" Label="Status">
+                @if (@context.IsActive)
+                {
+                    <Badge Color="Color.Success">Active</Badge>
+                }
+                else
+                {
+                    <Badge Color="Color.Danger">Disabled</Badge>
+                }
+            </DataTableItem>
+            <DataTableItem TItem="Agent" Label="Actions">
+                <Button Ghost Color="Color.Primary">Edit</Button>
+                <Button Ghost Color="Color.Danger">Delete</Button>
+            </DataTableItem>
+        </DataTable>
+    </Card>
+</PageBody>
+
+
+
+
+@code {
+      private readonly List<Agent> agents = new List<Agent>
+    {
+        new Agent { Id = 1, Name = "Alice Johnson", Description = "Description of agent", IsActive = true },
+        new Agent { Id = 2, Name = "Bob Smith", Description = "Description of agent", IsActive = false },
+        new Agent { Id = 3, Name = "Charlie Davis", Description = "Description of agent", IsActive = true },
+        new Agent { Id = 4, Name = "Diana Evans", Description = "Description of agent", IsActive = false },
+    };
+
+    private Agent? selectedAgent;
+
+    public class Agent
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = default!;
+        public string Description { get; set; } = default!;
+        public bool IsActive { get; set; }
+    }
+}
