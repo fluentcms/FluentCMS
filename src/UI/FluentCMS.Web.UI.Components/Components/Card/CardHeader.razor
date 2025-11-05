@@ -1,0 +1,18 @@
+@inherits BaseComponentWithContent
+
+@namespace FluentCMS.Web.UI.Components
+
+<div @attributes="AdditionalAttributes" class="@this.GetClasses()">
+    @if (!string.IsNullOrEmpty(Title))
+    {
+        <CardTitle>
+            @Title
+        </CardTitle>
+    }
+    @ChildContent
+</div>
+
+@code {
+    [Parameter]
+    public string? Title { get; set; }
+}

@@ -3,15 +3,15 @@ $button: $prefix + "button";
 .#{$button} {
     @extend .btn;
 
-    &-block-true {
+    &-block {
         @extend .w-100;
     }
 
-    &-ghost-true {
+    &-ghost {
         @extend .btn-ghost;
     }
 
-    &-outline-true {
+    &-outline {
         @extend .btn-outline;
     }
 

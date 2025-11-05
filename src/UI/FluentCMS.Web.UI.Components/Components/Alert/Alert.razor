@@ -14,23 +14,26 @@
         </div>
         @if (Dismissible)
         {
-            <button type="button" class="@this.ClassName("AlertClose")" @onclick="Close" aria-label="Close" />
+            <button class="@this.ClassName("AlertClose")" @onclick="Close" />
         }
     </div>
 }
 
-
 @code {
     [Parameter]
     [CssProperty]
-    public bool Dismissible { get; set; }
+    public bool Dismissible { get; set; } = false;
 
     [Parameter]
     [CssProperty]
     public AlertType? Type { get; set; }
 
-    private void Close()
+    [Parameter]
+    public bool Visible { get; set; } = true;
+
+    private Task Close()
     {
         Visible = false;
+        return Task.CompletedTask;
     }
 }

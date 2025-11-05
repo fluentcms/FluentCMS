@@ -1,0 +1,49 @@
+@inherits BaseComponentWithContent
+@typeparam TItem
+@attribute [CascadingTypeParameter(nameof(TItem))]
+
+@namespace FluentCMS.Web.UI.Components
+
+<div class="@this.ClassName("DataTableWrapper")">
+    <table class="@this.GetClasses()" @attributes="AdditionalAttributes">
+        <thead class="@this.ClassName("DataTableHead")">
+            <tr class="@this.ClassName("DataTableRow")">
+                <CascadingValue Value="true" Name="DataTableColumnHeader" IsFixed="true">
+                    @ChildContent
+                </CascadingValue>
+            </tr>
+        </thead>
+        <tbody class="@this.ClassName("DataTableBody")">
+            @if (Items != null)
+            {
+                foreach (var item in Items)
+                {
+                    <tr @onclick="() => HandleRowClick(item)" class="@this.ClassName("DataTableRow")" @key="item">
+                        <CascadingValue Value="@item" IsFixed="true">
+                            <CascadingValue Value="false" Name="DataTableColumnHeader">
+                                @ChildContent
+                            </CascadingValue>
+                        </CascadingValue>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    [Parameter]
+    public EventCallback<TItem> OnRowClick { get; set; }
+
+    [Parameter, EditorRequired]
+    public IReadOnlyList<TItem> Items { get; set; } = default!;
+
+    [Parameter]
+    [CssProperty]
+    public bool Hoverable { get; set; } = true;
+
+    private async Task HandleRowClick(TItem item)
+    {
+        await OnRowClick.InvokeAsync(item);
+    }
+}

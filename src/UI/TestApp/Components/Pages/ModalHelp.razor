@@ -1,0 +1,98 @@
+@page "/modal"
+@rendermode RenderMode.InteractiveServer
+@using FluentCMS.Web.UI.Components
+@using Microsoft.AspNetCore.Components.Forms
+
+<PageTitle>Modal Examples</PageTitle>
+
+<h1>Modal Examples</h1>
+
+<h2>Information Modal</h2>
+<Button Color="Color.Primary" @onclick="OpenInfoModal">Show Info</Button>
+
+<Modal Visible="@InfoModalVisible" OnClose="OnModalClosed">
+    <ModalHeader>
+        <ModalTitle>System Update</ModalTitle>
+    </ModalHeader>
+    <ModalBody>
+        <p>A new update is available. Please restart the application to apply changes.</p>
+    </ModalBody>
+    <ModalFooter>
+        <Button Color="Color.Primary" @onclick="CloseModals">OK</Button>
+    </ModalFooter>
+</Modal>
+
+<h2 class="mt-5">Confirmation Modal</h2>
+<Button Color="Color.Warning" @onclick="OpenConfirmModal">Proceed</Button>
+
+<Modal Visible="@ConfirmModalVisible" OnClose="OnModalClosed">
+    <ModalHeader>
+        <ModalTitle>Confirm Action</ModalTitle>
+    </ModalHeader>
+    <ModalBody>
+        <p>Do you want to continue with this operation?</p>
+    </ModalBody>
+    <ModalFooter>
+        <Button Color="Color.Success" @onclick="ConfirmAction">Yes</Button>
+        <Button Color="Color.Secondary" @onclick="CloseModals">No</Button>
+    </ModalFooter>
+</Modal>
+
+<h2 class="mt-5">Form Modal (Large)</h2>
+<Button Color="Color.Success" @onclick="OpenFormModal">Open Form</Button>
+
+<Modal Visible="@FormModalVisible" Size="ModalSize.Large" OnClose="OnModalClosed">
+    <ModalHeader>
+        <ModalTitle>Submit Feedback</ModalTitle>
+    </ModalHeader>
+    <ModalBody>
+        <p>Please fill in your feedback below.</p>
+        <InputText @bind-Value="FeedbackText" class="form-control mb-3" placeholder="Enter your feedback..." />
+    </ModalBody>
+    <ModalFooter>
+        <Button Color="Color.Success" @onclick="SubmitFeedback">Submit</Button>
+        <Button Color="Color.Secondary" @onclick="CloseModals">Cancel</Button>
+    </ModalFooter>
+</Modal>
+
+@if (ActionMessage is not null)
+{
+    <Alert Type="AlertType.Success" class="mt-5">@ActionMessage</Alert>
+}
+
+@code {
+    bool InfoModalVisible { get; set; }
+    bool ConfirmModalVisible { get; set; }
+    bool FormModalVisible { get; set; }
+
+    string? FeedbackText { get; set; }
+    string? ActionMessage { get; set; }
+
+    void OpenInfoModal() => InfoModalVisible = true;
+    void OpenConfirmModal() => ConfirmModalVisible = true;
+    void OpenFormModal() => FormModalVisible = true;
+
+    void CloseModals()
+    {
+        InfoModalVisible = false;
+        ConfirmModalVisible = false;
+        FormModalVisible = false;
+    }
+
+    void OnModalClosed() => CloseModals();
+
+    void ConfirmAction()
+    {
+        CloseModals();
+        ActionMessage = "✅ Action confirmed.";
+    }
+
+    void SubmitFeedback()
+    {
+        if (!string.IsNullOrWhiteSpace(FeedbackText))
+            ActionMessage = $"✅ Feedback submitted: {FeedbackText}";
+        else
+            ActionMessage = "⚠️ Feedback cannot be empty.";
+        CloseModals();
+    }
+}

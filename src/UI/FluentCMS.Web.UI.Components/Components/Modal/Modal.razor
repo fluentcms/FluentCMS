@@ -1,0 +1,41 @@
+@inherits BaseComponentWithContent
+
+@namespace FluentCMS.Web.UI.Components
+
+@if (Visible)
+{
+    <div @attributes="AdditionalAttributes" class="@this.GetClasses()" tabindex="-1">
+        <div class="@this.ClassName("ModalWrapper")" role="document">
+            <div class="@this.ClassName("ModalContent")">
+                <CascadingValue Value="this">
+                    @ChildContent
+                </CascadingValue>
+            </div>
+        </div>
+    </div>
+    <div class="@this.ClassName("ModalBackdrop")"></div>
+}
+
+
+@code {
+    [Parameter]
+    [CssProperty]
+    public ModalSize? Size { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    [Parameter]
+    public bool Visible { get; set; } = true;
+
+    public async Task CloseClicked()
+    {
+        await Close();
+    }
+
+    public async Task Close()
+    {
+        Visible = false;
+        await OnClose.InvokeAsync();
+    }
+}

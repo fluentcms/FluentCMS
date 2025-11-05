@@ -1,0 +1,33 @@
+@inherits BaseComponent
+@typeparam TItem
+@namespace FluentCMS.Web.UI.Components
+
+@if (Header)
+{
+    <th class="@this.ClassName("DataTableCell")">
+        @(Label ?? string.Empty)
+    </th>
+}
+else
+{
+    <td class="@this.ClassName("DataTableCell")">
+        @ChildContent(Item)
+    </td>
+}
+
+
+@code {
+    [Parameter]
+    public string Label { get; set; } = default!;
+
+    [Parameter, EditorRequired]
+    public RenderFragment<TItem> ChildContent { get; set; } = default!;
+
+    [CascadingParameter]
+    public TItem Item { get; set; } = default!;
+
+    [CascadingParameter(Name = "DataTableColumnHeader")]
+    public bool Header { get; set; }
+
+    protected override RenderFragment BuildContent => (__builder => { });
+}

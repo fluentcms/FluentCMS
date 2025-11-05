@@ -9,9 +9,6 @@ public abstract class BaseComponent : ComponentBase
     protected abstract RenderFragment BuildContent { get; }
 
     [Parameter]
-    public bool Visible { get; set; } = true;
-
-    [Parameter]
     public string? Class { get; set; }
 
     [Parameter(CaptureUnmatchedValues = true)]
@@ -23,14 +20,6 @@ public abstract class BaseComponent : ComponentBase
     protected string ClassName(string Name)
     {
         return string.Join(SEPARATOR, [CSS_PREFIX, FromPascalCaseToKebabCase(Name)]);
-    }
-
-    protected override void BuildRenderTree(RenderTreeBuilder builder)
-    {
-        if (Visible)
-        {
-            builder.AddContent(0, BuildContent);
-        }
     }
 
     private string GetDefaultCssName()
@@ -79,12 +68,19 @@ public abstract class BaseComponent : ComponentBase
         foreach (var property in properties)
         {
             var value = property.ValueAccessor(this);
-            if (value is null)
+            if (value is null || value is false)
                 continue;
 
-            var propertyValueString = value.ToString() ?? string.Empty;
-            var propertyValue = FromPascalCaseToKebabCase(propertyValueString) ?? string.Empty;
-            classes.Add(string.Join(SEPARATOR, [CSS_PREFIX, cssName, FromPascalCaseToKebabCase(property.Property.Name), propertyValue]));
+            if (value is true)
+            {
+                classes.Add(string.Join(SEPARATOR, [CSS_PREFIX, cssName, FromPascalCaseToKebabCase(property.Property.Name)]));
+            }
+            else
+            {
+                var propertyValueString = value.ToString() ?? string.Empty;
+                var propertyValue = FromPascalCaseToKebabCase(propertyValueString) ?? string.Empty;
+                classes.Add(string.Join(SEPARATOR, [CSS_PREFIX, cssName, FromPascalCaseToKebabCase(property.Property.Name), propertyValue]));
+            }
         }
 
         return classes;

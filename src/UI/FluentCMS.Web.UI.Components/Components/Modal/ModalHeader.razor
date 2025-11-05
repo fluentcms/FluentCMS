@@ -1,0 +1,34 @@
+﻿@inherits BaseComponentWithContent
+
+@namespace FluentCMS.Web.UI.Components
+
+<div @attributes="AdditionalAttributes" class="@this.GetClasses()">
+    @if (ChildContent == null)
+    {
+        @if (!string.IsNullOrEmpty(Title))
+        {
+            <ModalTitle>
+                @Title
+            </ModalTitle>
+        }
+    }
+    else
+    {
+        @ChildContent
+    }
+    @if (Closable)
+    {
+        <CloseButton @onclick="Modal.Close" />
+    }
+</div>
+
+@code {
+    [Parameter]
+    public bool Closable { get; set; } = true;
+
+    [CascadingParameter]
+    public Modal Modal { get; set; } = default!;
+
+    [Parameter]
+    public string? Title { get; set; }
+}
