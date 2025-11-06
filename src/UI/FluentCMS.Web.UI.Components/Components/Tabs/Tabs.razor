@@ -1,0 +1,37 @@
+@inherits BaseComponentWithContent
+
+@namespace FluentCMS.Web.UI.Components
+
+<div @attributes="AdditionalAttributes" class="@this.GetClasses()">
+    <CascadingValue Value="this">
+        @ChildContent
+    </CascadingValue>
+</div>
+
+@code {
+    [Parameter]
+    public string Active { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback<string> ActiveChanged { get; set; }
+
+    [Parameter]
+    [CssProperty]
+    public bool Card { get; set; } = false;
+
+    public string Value { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Value = Active;
+        await base.OnInitializedAsync();
+    }
+
+    public async Task Activate(string name)
+    {
+        Value = name;
+        StateHasChanged();
+        await ActiveChanged.InvokeAsync(Value);
+    }
+
+}

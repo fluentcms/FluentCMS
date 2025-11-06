@@ -1,0 +1,29 @@
+@inherits BaseComponentWithContent
+
+@namespace FluentCMS.Web.UI.Components
+
+<div @attributes="AdditionalAttributes" class="@this.GetClasses()">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter]
+    [CssProperty]
+    public StackGutter? Gutter { get; set; }
+
+    [Parameter]
+    [CssProperty]
+    public StackItems? Items { get; set; } = StackItems.Center;
+
+    [Parameter]
+    [CssProperty]
+    public StackJustify? Justify { get; set; }
+
+    [Parameter]
+    [CssProperty]
+    public bool Wrap { get; set; } = false;
+
+    [Parameter]
+    [CssProperty]
+    public bool Vertical { get; set; } = false;
+}

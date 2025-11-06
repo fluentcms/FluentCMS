@@ -1,0 +1,70 @@
+@page "/tabs"
+@using FluentCMS.Web.UI.Components
+
+@rendermode RenderMode.InteractiveServer
+
+<PageTitle>Tabs</PageTitle>
+
+<h2>Default</h2>
+<Tabs Active="tab1">
+    <TabHeader>
+        <TabList>
+            <TabItem Name="tab1">Home</TabItem>
+            <TabItem Name="tab2">Profile</TabItem>
+            <TabItem Name="tab3">Settings</TabItem>
+        </TabList>
+    </TabHeader>
+    <TabContent>
+        <TabPanel Name="tab1">
+            <div class="p-3 bg-light border rounded">🏠 Home tab content</div>
+        </TabPanel>
+        <TabPanel Name="tab2">
+            <div class="p-3 bg-light border rounded">👤 Profile tab content</div>
+        </TabPanel>
+        <TabPanel Name="tab3">
+            <div class="p-3 bg-light border rounded">⚙️ Settings tab content</div>
+        </TabPanel>
+    </TabContent>
+</Tabs>
+
+<br />
+<h2>With Card</h2>
+<Tabs Card @bind-Active="@activeTab">
+    <TabHeader>
+        <TabList>
+            <TabItem Name="overview">Overview</TabItem>
+            <TabItem Name="analytics">Analytics</TabItem>
+            <TabItem Name="activity">Activity</TabItem>
+        </TabList>
+    </TabHeader>
+    <TabContent>
+        <TabPanel Name="overview">
+            <h3>Company Overview</h3>
+            <p>Our company was founded in 2010 with the mission to provide sustainable solutions for modern businesses.
+                We operate across multiple countries and serve thousands of customers worldwide.</p>
+            <ul>
+                <li>Global presence</li>
+                <li>500+ employees</li>
+                <li>1000+ clients</li>
+            </ul>
+        </TabPanel>
+        <TabPanel Name="analytics">
+            <h3>Website Analytics</h3>
+            <p>This section shows your website traffic and user behavior metrics for the past month.</p>
+            <ul>
+                <li>Pageviews: 120,000</li>
+                <li>Unique visitors: 35,000</li>
+                <li>Conversion rate: 4.5%</li>
+            </ul>
+        </TabPanel>
+        <TabPanel Name="activity">
+            <h3>Recent Activity</h3>
+            <p>Track the latest actions taken by your team members and system updates.</p>
+            <ol>
+                <li>John uploaded a report on Oct 4</li>
+                <li>Anna approved the new design draft</li>
+                <li>System backup completed on Oct 5</li>
+            </ol>
+        </TabPanel>
+    </TabContent>
+</Tabs>
