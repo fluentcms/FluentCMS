@@ -72,7 +72,7 @@ services.AddInMemoryEventBus();
 // Add plugin system
 services.AddPluginSystem(builder.Configuration, options =>
 {
-    options.ScanAssemblyPatterns = ["FluentCMS.*"];
+    options.ScanAssemblyPatterns = ["FluentCMS.Api.Plugins.*"];
     options.LoggerFactory = loggerFactory;
 });
 
