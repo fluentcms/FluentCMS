@@ -3,10 +3,6 @@ $badge: $prefix + 'badge';
 .#{$badge} {
     @extend .badge;
 
-    // QUESTION: Should we use a default color??
-    @extend .bg-primary;
-    @extend .text-primary-fg;
-
     @each $key, $value in $fluent-colors {
         &-color-#{$key} {
             @extend .bg-#{$key} !optional;
