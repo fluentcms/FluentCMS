@@ -8,12 +8,6 @@ $form-field: $prefix + "form-field";
     }
 
     &-hint {
-        color: $gray-700;
-    }
-}
-
-@include color-mode(dark) {
-    .#{$form-field}-hint {
-        color: $gray-400;
+        @extend .form-hint;
     }
 }

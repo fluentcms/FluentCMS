@@ -1,0 +1,15 @@
+@inherits BaseComponentWithContent
+@namespace FluentCMS.Web.UI.Components
+
+<label @attributes="AdditionalAttributes" for="@Id" class="@this.GetClasses()">
+    @ChildContent
+    @(Required ? "\u00A0*" : "")
+</label>
+
+@code {
+    [Parameter]
+    public string? Id { get; set; }
+
+    [Parameter]
+    public bool Required { get; set; }
+}

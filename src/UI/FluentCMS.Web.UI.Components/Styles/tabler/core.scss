@@ -23,3 +23,14 @@ $fluent-colors: ( "primary": $primary, "secondary": $secondary, "success": $succ
 @import './_spacer.scss';
 @import './_stack.scss';
 @import './_tabs.scss';
+
+@import './form/form-checkbox.scss';
+@import './form/form-checkbox-group.scss';
+@import './form/form-field.scss';
+@import './form/form-date-input.scss';
+@import './form/form-input.scss';
+@import './form/form-label.scss';
+@import './form/form-number-input.scss';
+@import './form/form-radio-group.scss';
+@import './form/form-select.scss';
+@import './form/form-textarea.scss';

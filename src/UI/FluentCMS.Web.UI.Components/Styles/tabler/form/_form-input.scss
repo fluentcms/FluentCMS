@@ -1,0 +1,5 @@
+$form-input: $prefix + 'form-input';
+
+.#{$form-input} {
+    @extend .form-control;
+}

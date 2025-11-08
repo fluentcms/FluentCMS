@@ -4,8 +4,11 @@ $form-radio-group: $prefix + 'form-radio-group';
         @extend .form-check-input;
     }
 
-    &-vertical-false .#{$form-radio-group}-input-wrapper {
+    &-input-wrapper {
         @extend .form-check; 
+    }
+    
+    &:not(.#{$form-radio-group}-vertical) .#{$form-radio-group}-input-wrapper {
         @extend .form-check-inline;
     }
 
