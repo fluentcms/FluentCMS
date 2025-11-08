@@ -1,0 +1,103 @@
+@page "/grid"
+@using FluentCMS.Web.UI.Components
+
+<PageTitle>Grid</PageTitle>
+
+<h2>Default</h2>
+<Grid>
+    <GridItem Small="GridItemColumn.Three"><div class="p-2 bg-light border">3 cols</div></GridItem>
+    <GridItem Small="GridItemColumn.Four"><div class="p-2 bg-light border">4 cols</div></GridItem>
+    <GridItem Small="GridItemColumn.Five"><div class="p-2 bg-light border">5 cols</div></GridItem>
+</Grid>
+
+<br />
+<h2>Gutter Sizes</h2>
+<Grid Gutter="GridGutter.None">
+    <GridItem Small="GridItemColumn.Six"><div class="p-2 bg-danger text-white">None</div></GridItem>
+    <GridItem Small="GridItemColumn.Six"><div class="p-2 bg-danger text-white">None</div></GridItem>
+    <GridItem Small="GridItemColumn.Six"><div class="p-2 bg-danger text-white">None</div></GridItem>
+    <GridItem Small="GridItemColumn.Six"><div class="p-2 bg-danger text-white">None</div></GridItem>
+</Grid>
+<br/>
+<Grid Gutter="GridGutter.Small">
+    <GridItem Small="GridItemColumn.Six"><div class="p-2 bg-primary text-white">Small</div></GridItem>
+    <GridItem Small="GridItemColumn.Six"><div class="p-2 bg-primary text-white">Small</div></GridItem>
+    <GridItem Small="GridItemColumn.Six"><div class="p-2 bg-primary text-white">Small</div></GridItem>
+    <GridItem Small="GridItemColumn.Six"><div class="p-2 bg-primary text-white">Small</div></GridItem>
+</Grid>
+<br/>
+
+<Grid Gutter="GridGutter.Medium" class="mt-3">
+    <GridItem Small="GridItemColumn.Six"><div class="p-2 bg-success text-white">Medium</div></GridItem>
+    <GridItem Small="GridItemColumn.Six"><div class="p-2 bg-success text-white">Medium</div></GridItem>
+    <GridItem Small="GridItemColumn.Six"><div class="p-2 bg-success text-white">Medium</div></GridItem>
+    <GridItem Small="GridItemColumn.Six"><div class="p-2 bg-success text-white">Medium</div></GridItem>
+</Grid>
+<br/>
+
+<Grid Gutter="GridGutter.Large" class="mt-3">
+    <GridItem Small="GridItemColumn.Six"><div class="p-2 bg-warning text-dark">Large</div></GridItem>
+    <GridItem Small="GridItemColumn.Six"><div class="p-2 bg-warning text-dark">Large</div></GridItem>
+    <GridItem Small="GridItemColumn.Six"><div class="p-2 bg-warning text-dark">Large</div></GridItem>
+    <GridItem Small="GridItemColumn.Six"><div class="p-2 bg-warning text-dark">Large</div></GridItem>
+</Grid>
+<br/>
+
+<br />
+<h2>Alignment</h2>
+
+<Grid style="height: 300px; border: 1px solid black" ItemsSmall="GridItems.Stretch">
+    <GridItem Small="GridItemColumn.Three"><div class="p-2 h-100 bg-info text-white">Stretch</div></GridItem>
+    <GridItem Small="GridItemColumn.Three"><div class="p-2 h-100 bg-info text-white">Stretch</div></GridItem>
+</Grid>
+<Grid style="height: 300px; border: 1px solid black" ItemsSmall="GridItems.Start" class="mt-3">
+    <GridItem Small="GridItemColumn.Three"><div class="p-2 h-100 bg-secondary text-white">Start</div></GridItem>
+    <GridItem Small="GridItemColumn.Three"><div class="p-2 h-100 bg-secondary text-white">Start</div></GridItem>
+</Grid>
+<Grid style="height: 300px; border: 1px solid black" ItemsSmall="GridItems.Center">
+    <GridItem Small="GridItemColumn.Three"><div class="p-2 h-100 bg-info text-white">Center</div></GridItem>
+    <GridItem Small="GridItemColumn.Three"><div class="p-2 h-100 bg-info text-white">Center</div></GridItem>
+</Grid>
+<Grid style="height: 300px; border: 1px solid black" ItemsSmall="GridItems.End" class="mt-3">
+    <GridItem Small="GridItemColumn.Three"><div class="p-2 h-100 bg-danger text-white">End</div></GridItem>
+    <GridItem Small="GridItemColumn.Three"><div class="p-2 h-100 bg-danger text-white">End</div></GridItem>
+</Grid>
+
+<br />
+<h2>Justify</h2>
+<Grid JustifySmall="GridJustify.Center">
+    <GridItem Small="GridItemColumn.Three"><div class="p-2 bg-light border">Center</div></GridItem>
+    <GridItem Small="GridItemColumn.Three"><div class="p-2 bg-light border">Center</div></GridItem>
+</Grid>
+
+<Grid JustifySmall="GridJustify.Between" class="mt-3">
+    <GridItem Small="GridItemColumn.Three"><div class="p-2 bg-light border">Between</div></GridItem>
+    <GridItem Small="GridItemColumn.Three"><div class="p-2 bg-light border">Between</div></GridItem>
+</Grid>
+
+<Grid JustifySmall="GridJustify.Around" class="mt-3">
+    <GridItem Small="GridItemColumn.Three"><div class="p-2 bg-light border">Around</div></GridItem>
+    <GridItem Small="GridItemColumn.Three"><div class="p-2 bg-light border">Around</div></GridItem>
+</Grid>
+
+<br />
+<h2>No Wrap</h2>
+<Grid NoWrap="true">
+    <GridItem Small="GridItemColumn.Five"><div class="p-2 bg-light border" style="min-width: 300px;">Item 1</div></GridItem>
+    <GridItem Small="GridItemColumn.Five"><div class="p-2 bg-light border" style="min-width: 300px;">Item 2</div></GridItem>
+    <GridItem Small="GridItemColumn.Five"><div class="p-2 bg-light border" style="min-width: 300px;">Item 3</div></GridItem>
+</Grid>
+
+<br />
+<h2>Responsive Columns</h2>
+<Grid>
+    <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Six" Large="GridItemColumn.Four">
+        <div class="p-2 bg-primary text-white">1</div>
+    </GridItem>
+    <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Six" Large="GridItemColumn.Four">
+        <div class="p-2 bg-primary text-white">2</div>
+    </GridItem>
+    <GridItem Small="GridItemColumn.Twelve" Medium="GridItemColumn.Six" Large="GridItemColumn.Four">
+        <div class="p-2 bg-primary text-white">3</div>
+    </GridItem>
+</Grid>

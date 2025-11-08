@@ -1,0 +1,58 @@
+$tabs: $prefix + 'tabs';
+$tab: $prefix + 'tab';
+
+
+.#{$tab} {
+    &-list {
+        @extend .nav; 
+        @extend .nav-tabs;
+        // border: none;
+        // border-bottom: 1px solid $nav-tabs-border-color; 
+        // margin-bottom: 1rem;
+    }
+
+    &-content {
+        @extend .tab-content;
+    }
+
+    &-panel {
+
+        @extend .tab-pane;
+
+        &-active {
+            @extend .active;
+        }
+    }
+
+    &-item {
+        @extend .nav-item;
+        button {
+            @extend .nav-link;
+            // border-bottom-width: 2px !important;
+            // border-top-width: 0 !important;
+            // border-left-width: 0 !important;
+            // border-right-width: 0 !important;
+
+        }
+
+
+        &.#{$tab}-item-active button {
+            @extend .active;
+        }
+    }
+}
+.#{$tabs}-card {
+    @extend .card;
+}
+
+.#{$tabs}-card .#{$tab}-content {
+    @extend .card-body;
+}
+
+.#{$tabs}-card .#{$tab}-header {
+	@extend .card-header;
+}
+
+.#{$tabs}-card .#{$tab}-list {
+	@extend .card-header-tabs;
+}

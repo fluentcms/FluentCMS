@@ -6,7 +6,6 @@ $stack-justify: ( start, end, center, between, around, evenly);
 
 .#{$stack} {
     @extend .d-flex;
-    @extend .align-items-center;
 
     &-gutter-small, &-gutter-default {
         @extend .gap-2;
@@ -20,8 +19,12 @@ $stack-justify: ( start, end, center, between, around, evenly);
         @extend .gap-4;
     }
 
-    &-vertical-true {
+    &-vertical {
         @extend .flex-column;
+    }
+
+    &-wrap {
+        @extend .flex-wrap;
     }
 
     @each $key in $stack-items {

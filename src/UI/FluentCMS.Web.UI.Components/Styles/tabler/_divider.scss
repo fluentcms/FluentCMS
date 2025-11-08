@@ -1,0 +1,13 @@
+$divider: $prefix + 'divider';
+
+.#{$divider} {
+    @extend .hr-text;
+
+    &-placement-start {
+        @extend .hr-text-start;
+    }
+
+    &-placement-end {
+        @extend .hr-text-end;
+    }
+}

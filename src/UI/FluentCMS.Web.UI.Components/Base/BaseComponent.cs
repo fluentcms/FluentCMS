@@ -68,7 +68,7 @@ public abstract class BaseComponent : ComponentBase
         foreach (var property in properties)
         {
             var value = property.ValueAccessor(this);
-            if (value is null || value is false)
+            if (value is null || value is bool b && b == false)
                 continue;
 
             if (value is true)

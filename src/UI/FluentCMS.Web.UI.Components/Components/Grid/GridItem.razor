@@ -1,0 +1,21 @@
+@inherits BaseComponentWithContent
+
+@namespace FluentCMS.Web.UI.Components
+
+<div @attributes="AdditionalAttributes" class="@this.GetClasses()">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter]
+    [CssProperty]
+    public GridItemColumn? Small { get; set; }
+
+    [Parameter]
+    [CssProperty]
+    public GridItemColumn? Medium { get; set; }
+
+    [Parameter]
+    [CssProperty]
+    public GridItemColumn? Large { get; set; }
+}

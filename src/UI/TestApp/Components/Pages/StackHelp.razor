@@ -1,0 +1,81 @@
+@page "/stack"
+@using FluentCMS.Web.UI.Components
+
+<PageTitle>Stack</PageTitle>
+
+<h2>Default</h2>
+<Stack>
+    <div class="bg-primary text-white p-2">Item 1</div>
+    <div class="bg-secondary text-white p-2">Item 2</div>
+    <div class="bg-success text-white p-2">Item 3</div>
+</Stack>
+
+<br />
+<h2>Gutter</h2>
+<h3>Small</h3>
+<Stack Gutter="StackGutter.Small">
+    <div class="bg-light border p-2">A</div>
+    <div class="bg-light border p-2">B</div>
+    <div class="bg-light border p-2">C</div>
+</Stack>
+
+<h3>Medium</h3>
+<Stack Gutter="StackGutter.Medium">
+    <div class="bg-light border p-2">A</div>
+    <div class="bg-light border p-2">B</div>
+    <div class="bg-light border p-2">C</div>
+</Stack>
+
+<h3>Large</h3>
+<Stack Gutter="StackGutter.Large">
+    <div class="bg-light border p-2">A</div>
+    <div class="bg-light border p-2">B</div>
+    <div class="bg-light border p-2">C</div>
+</Stack>
+
+<br />
+<h2>Alignment (Items)</h2>
+<Stack Items="StackItems.Start" class="border p-2 mb-2" style="height: 200px;">
+    <div class="bg-primary text-white p-2">Start</div>
+    <div class="bg-secondary text-white p-2">Start</div>
+</Stack>
+<Stack Items="StackItems.Center" class="border p-2 mb-2" style="height: 200px;">
+    <div class="bg-primary text-white p-2">Center</div>
+    <div class="bg-secondary text-white p-2">Center</div>
+</Stack>
+<Stack Items="StackItems.End" class="border p-2 mb-2" style="height: 200px;">
+    <div class="bg-primary text-white p-2">End</div>
+    <div class="bg-secondary text-white p-2">End</div>
+</Stack>
+
+<br />
+<h2>Justify</h2>
+<Stack Justify="StackJustify.Between" class="border p-2 mb-2">
+    <div class="bg-primary text-white p-2">Between 1</div>
+    <div class="bg-secondary text-white p-2">Between 2</div>
+</Stack>
+<Stack Justify="StackJustify.Around" class="border p-2 mb-2">
+    <div class="bg-primary text-white p-2">Around 1</div>
+    <div class="bg-secondary text-white p-2">Around 2</div>
+</Stack>
+<Stack Justify="StackJustify.Evenly" class="border p-2 mb-2">
+    <div class="bg-primary text-white p-2">Evenly 1</div>
+    <div class="bg-secondary text-white p-2">Evenly 2</div>
+</Stack>
+
+<br />
+<h2>Wrap</h2>
+<Stack Wrap class="border p-2" Gutter="StackGutter.Small">
+    @for (int i = 1; i <= 10; i++)
+    {
+        <div class="bg-info text-white py-2 m-1 px-5">Item @i</div>
+    }
+</Stack>
+
+<br />
+<h2>Vertical</h2>
+<Stack Vertical Gutter="StackGutter.Medium" class="border p-2">
+    <div class="bg-danger text-white p-2">Top</div>
+    <div class="bg-warning text-dark p-2">Middle</div>
+    <div class="bg-success text-white p-2">Bottom</div>
+</Stack>
