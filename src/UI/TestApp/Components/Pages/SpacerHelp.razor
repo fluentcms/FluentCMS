@@ -1,0 +1,29 @@
+﻿@page "/spacer"
+@using FluentCMS.Web.UI.Components
+
+<PageTitle>Spacer</PageTitle>
+
+<h2>Default</h2>
+<div class="bg-primary text-white p-2">Top</div>
+<Spacer />
+<div class="bg-secondary text-white p-2">Bottom</div>
+
+<br />
+<h2>Sizes</h2>
+<div class="bg-light border p-2">Before Small Spacer</div>
+<Spacer Size="SpacerSize.Small" />
+<div class="bg-light border p-2">After Small Spacer</div>
+
+<Spacer Size="SpacerSize.Medium" />
+<div class="bg-light border p-2">After Medium Spacer</div>
+
+<Spacer Size="SpacerSize.Large" />
+<div class="bg-light border p-2">After Large Spacer</div>
+
+<br />
+<h2>Example Layout</h2>
+<div class="bg-success text-white p-2">Header</div>
+<Spacer Size="SpacerSize.Small" />
+<div class="bg-info text-white p-2">Content Section</div>
+<Spacer Size="SpacerSize.Medium" />
+<div class="bg-warning text-dark p-2">Footer</div>

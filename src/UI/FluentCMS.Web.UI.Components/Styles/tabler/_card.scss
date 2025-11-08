@@ -2,7 +2,8 @@ $card: $prefix + 'card';
 
 .#{$card} {
     @extend .card;
-    height: 100%; // same height when multiple cards are in a row
+    // Doesn't work when we use tab with card
+    // height: 100%; // same height when multiple cards are in a row
     
     &-body {
         @extend .card-body;

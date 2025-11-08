@@ -1,0 +1,11 @@
+$indicator: $prefix + 'indicator';
+
+.#{$indicator} {
+    @extend .status;
+
+    @each $key, $value in $fluent-colors {
+        &-color-#{$key} {
+            @extend .status-#{$key};
+        }
+    }
+}
