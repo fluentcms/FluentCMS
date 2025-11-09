@@ -59,8 +59,31 @@
         if(response.IsSuccessStatusCode)
         {
             Navigation.NavigateTo("/agents");
+            var content = await response.Content.ReadFromJsonAsync<ApiModels.AgentRunResponseApiResponse>();
+            Console.WriteLine("Agent created successfully!" + content.Data.AgentId);
+          
+            @* "data": {
+    "messages": [
+    ],
+    "agentId": "46218636be724c4892ceb257a994552d",
+    "responseId": "gen-1762692330-N4WEkeSnNshye7bcFtgT",
+    "continuationToken": null,
+    "createdAt": "2025-11-09T12:45:30+00:00",
+    "usage": {
+      "inputTokenCount": 940,
+      "outputTokenCount": 104,
+      "totalTokenCount": 1044,
+      "additionalCounts": {
+        "OutputTokenDetails.ReasoningTokenCount": 0,
+        "OutputTokenDetails.AudioTokenCount": 0,
+        "OutputTokenDetails.AcceptedPredictionTokenCount": 0,
+        "OutputTokenDetails.RejectedPredictionTokenCount": 0
+      }
+    },
+    "additionalProperties": null
+  }, *@
+            
                 // Success, maybe redirect or show a success message
-                Console.WriteLine("Agent created successfully!");
         }
         else
         {
@@ -93,6 +116,11 @@
             Errors = [ex.Message];
             StateHasChanged();
         }
+
+        foreach(var error in Errors)
+        {
+            Console.WriteLine(error);
+        }
     }
 
     public class AgentCreateModel {
@@ -102,8 +130,9 @@
         public string SystemPrompt { get; set; }
     }
 
-        public class ApiErrorResponse
+    public class ApiErrorResponse
     {
         public List<string> Errors { get; set; }
     }
+
 }
