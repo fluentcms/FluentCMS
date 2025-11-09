@@ -7,6 +7,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddUIComponents();
+builder.Services.AddHttpClient();
 
 var app = builder.Build();
 

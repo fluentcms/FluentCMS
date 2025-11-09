@@ -2,7 +2,7 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-<GridItem class="@this.GetClasses()" Small="GridItemColumn.Twelve" Medium="(GridItemColumn)(Cols + 1)">
+<GridItem class="@this.GetClasses()" Small="GridItemColumn.Twelve" Medium="(GridItemColumn)((int)Cols + 1)">
     @if (!string.IsNullOrEmpty(Label) || LabelFragment != null)
     {
         <FormLabel Id="@Id" Required="@Required">
@@ -29,7 +29,7 @@
 
 @code {
     [Parameter]
-    public int? Cols { get; set; }
+    public int? Cols { get; set; } = 12;
 
     [Parameter]
     public bool Dense { get; set; } = false;
