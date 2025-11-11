@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+    fluentcms-db:
+        image: postgres:latest
+        container_name: fluentcms-db
+        environment:
+            POSTGRES_USER: fluentcms_user
+            POSTGRES_PASSWORD: fluentcms_password
+            POSTGRES_DB: fluentcms_db
+        volumes:
+            - fluentcms_db_data:/var/lib/postgresql/data
+        ports:
+            - "5432:5432"
+
+volumes:
+    fluentcms_db_data:
