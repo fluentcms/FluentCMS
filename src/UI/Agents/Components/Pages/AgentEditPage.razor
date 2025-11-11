@@ -1,10 +1,10 @@
-@page "/agents/create"
+@page "/agents/edit/{id}"
 @rendermode RenderMode.InteractiveServer
 @inject HttpClient Http
 @inject NavigationManager Navigation
 
 
-<PageHeader Title="Create new agent">
+<PageHeader Title="Edit agent">
     <LinkButton Outline Href="/agents">Back</LinkButton>
 </PageHeader>
 
@@ -13,7 +13,7 @@
 <CardBody>
         @if (Model != null)
         {
-            <EditForm Model="@Model" OnSubmit="HandleSubmit" FormName="AgentCreateForm" Enhance>
+            <EditForm Model="@Model" OnSubmit="HandleSubmit" FormName="AgentUpdateForm" Enhance>
                 <DataAnnotationsValidator />
                 <Spacer />
                 <Grid GutterX="GridGutter.Large">
@@ -24,7 +24,7 @@
                     <FormField>
                         <Stack Gutter="StackGutter.Medium" Justify="StackJustify.End">
                             <Button Type="ButtonType.Button">Cancel</Button>
-                            <Button Color="Color.Primary" Type="ButtonType.Submit">Create</Button>
+                            <Button Color="Color.Primary" Type="ButtonType.Submit">Save</Button>
                         </Stack>
                     </FormField>
                 </Grid>
@@ -46,21 +46,49 @@
 </PageBody>
 
 @code {
+    [Parameter]
+    public string Id { get; set; }
+    
     private List<string> Errors { get; set; } = [];
     
-    private AgentCreateModel Model { get; set; } = new();
+    private AgentUpdateModel Model { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+          try
+        {
+            // Directly deserialize the response into your API wrapper
+            var response = await Http.GetFromJsonAsync<ApiModels.AgentApiResponse>("http://localhost:5093/api/Agents/GetById/" + Id);
+
+            if (response != null)
+            {
+                Model = new AgentUpdateModel {
+                    Id = Guid.Parse(Id),
+                    Name = response.Data.Name,
+                    Description = response.Data.Description,
+                    Model = response.Data.Model,
+                    SystemPrompt = response.Data.SystemPrompt,
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Error fetching agents: " + ex.Message);
+        }
+
+    }
 
     public async Task HandleSubmit() {
 
         Errors.Clear();
 
-        var response = await Http.PostAsJsonAsync("http://localhost:5093/api/Agents/Create", Model);
+        var response = await Http.PutAsJsonAsync("http://localhost:5093/api/Agents/Update/", Model);
 
         if(response.IsSuccessStatusCode)
         {
             Navigation.NavigateTo("/agents");
             var content = await response.Content.ReadFromJsonAsync<ApiModels.AgentApiResponse>();
-            Console.WriteLine("Agent created successfully! " + content.Data.Id);
+            Console.WriteLine("Agent updated successfully! " + content.Data.Id);
           
         }
         else
@@ -78,11 +106,6 @@
         {
             await HandleSubmit();
         }
-        @* catch (ApiClientException ex)
-        {
-            Errors = ex.ApiResult?.Errors?.Select(x => $"{x.Code ?? string.Empty}: {x.Description ?? string.Empty}").ToList() ?? [ex.Message];
-            StateHasChanged();
-        } *@
         catch (Exception ex)
         {
             Errors = [ex.Message];
@@ -95,7 +118,8 @@
         }
     }
 
-    public class AgentCreateModel {
+    public class AgentUpdateModel {
+        public Guid Id { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
         public string Model { get; set; }

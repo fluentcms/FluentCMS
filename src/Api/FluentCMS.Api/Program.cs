@@ -1,6 +1,7 @@
 using FluentCMS.Api.Core.Filters;
 using FluentCMS.Api.Core.Repositories.EntityFramework;
 using FluentCMS.Api.Plugins.TodoManagement.Repositories;
+using FluentCMS.Api.Plugins.AIAgentManagement.Repositories;
 using FluentCMS.Infrastructure.Configuration.EntityFramework;
 using FluentCMS.Infrastructure.Configuration.EntityFramework.Sqlite;
 using FluentCMS.Infrastructure.EventBus.InMemory;
@@ -44,6 +45,20 @@ services.AddDatabaseManager(options =>
     // Specific database for ToDo library
     options.For<ITodoDatabaseMarker>()
         .UseSqlite("DataSource=todo.db;Cache=Shared")
+        .EnableDataSeeding(seedingOptions =>
+        {
+            seedingOptions.IgnoreExceptions = false; // Fail fast on errors
+            seedingOptions.Conditions.Add(new EnvironmentCondition(builder.Environment, e => e.IsDevelopment()));
+        })
+        .EnableSchemaValidation(validationOptions =>
+        {
+            validationOptions.IgnoreExceptions = false; // Fail fast on errors
+            validationOptions.Conditions.Add(new EnvironmentCondition(builder.Environment, e => e.IsDevelopment()));
+        });
+
+     // Specific database for Agent library
+    options.For<IAIAgentDatabaseMarker>()
+        .UseSqlite("DataSource=agent.db;Cache=Shared")
         .EnableDataSeeding(seedingOptions =>
         {
             seedingOptions.IgnoreExceptions = false; // Fail fast on errors

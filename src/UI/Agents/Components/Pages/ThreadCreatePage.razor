@@ -1,11 +1,11 @@
-@page "/agents/create"
+@page "/threads/create"
 @rendermode RenderMode.InteractiveServer
 @inject HttpClient Http
 @inject NavigationManager Navigation
 
 
-<PageHeader Title="Create new agent">
-    <LinkButton Outline Href="/agents">Back</LinkButton>
+<PageHeader Title="Create new thread">
+    <LinkButton Outline Href="/threads">Back</LinkButton>
 </PageHeader>
 
 <PageBody>
@@ -13,7 +13,7 @@
 <CardBody>
         @if (Model != null)
         {
-            <EditForm Model="@Model" OnSubmit="HandleSubmit" FormName="AgentCreateForm" Enhance>
+            <EditForm Model="@Model" OnSubmit="HandleSubmit" FormName="ThreadCreateForm" Enhance>
                 <DataAnnotationsValidator />
                 <Spacer />
                 <Grid GutterX="GridGutter.Large">
@@ -48,19 +48,19 @@
 @code {
     private List<string> Errors { get; set; } = [];
     
-    private AgentCreateModel Model { get; set; } = new();
+    private ThreadCreateModel Model { get; set; } = new();
 
     public async Task HandleSubmit() {
 
         Errors.Clear();
 
-        var response = await Http.PostAsJsonAsync("http://localhost:5093/api/Agents/Create", Model);
+        var response = await Http.PostAsJsonAsync("http://localhost:5093/api/ThreadsManagement/Create", Model);
 
         if(response.IsSuccessStatusCode)
         {
             Navigation.NavigateTo("/agents");
-            var content = await response.Content.ReadFromJsonAsync<ApiModels.AgentApiResponse>();
-            Console.WriteLine("Agent created successfully! " + content.Data.Id);
+            var content = await response.Content.ReadFromJsonAsync<ApiModels.ThreadApiResponse>();
+            Console.WriteLine("Thread created successfully! " + content.Data.Id);
           
         }
         else
@@ -95,7 +95,7 @@
         }
     }
 
-    public class AgentCreateModel {
+    public class ThreadCreateModel {
         public string Name { get; set; }
         public string Description { get; set; }
         public string Model { get; set; }

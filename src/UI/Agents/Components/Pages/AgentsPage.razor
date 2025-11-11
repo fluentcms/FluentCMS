@@ -1,7 +1,10 @@
 @page "/agents"
-
 @using FluentCMS.Web.UI.Components
+@rendermode RenderMode.InteractiveServer
 
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IJSRuntime Js
 
 <PageTitle>Agents</PageTitle>
 
@@ -11,53 +14,75 @@
 
 <PageBody>
     <Card>
-        <DataTable TItem="Agent" Items="@agents">
-            <DataTableItem TItem="Agent" Label="ID">
-                @context.Id
-            </DataTableItem>
-            <DataTableItem TItem="Agent" Label="Name">
-                @context.Name
-            </DataTableItem>
-            <DataTableItem TItem="Agent" Label="Description">
-                @context.Description
-            </DataTableItem>
-            <DataTableItem TItem="Agent" Label="Status">
-                @if (@context.IsActive)
-                {
-                    <Badge Color="Color.Success">Active</Badge>
-                }
-                else
-                {
-                    <Badge Color="Color.Danger">Disabled</Badge>
-                }
-            </DataTableItem>
-            <DataTableItem TItem="Agent" Label="Actions">
-                <Button Ghost Color="Color.Primary">Edit</Button>
-                <Button Ghost Color="Color.Danger">Delete</Button>
-            </DataTableItem>
-        </DataTable>
+        @if (agents == null)
+        {
+            <p>Loading...</p>
+        }
+        else if (!agents.Any())
+        {
+            <p>No agents found.</p>
+        }
+        else
+        {
+            <DataTable TItem="ApiModels.Agent" Items="@agents">
+                <DataTableItem TItem="ApiModels.Agent" Label="ID">@context.Id</DataTableItem>
+                <DataTableItem TItem="ApiModels.Agent" Label="Name">@context.Name</DataTableItem>
+                <DataTableItem TItem="ApiModels.Agent" Label="Description">@context.Description</DataTableItem>
+                <DataTableItem TItem="ApiModels.Agent" Label="Model">@context.Model</DataTableItem>
+                <DataTableItem TItem="ApiModels.Agent" Label="Actions">
+                    <Button Ghost Color="Color.Primary" @onclick="() => EditAgent(context.Id)">Edit</Button>
+                    <Button Ghost Color="Color.Danger" @onclick="() => DeleteAgent(context.Id)">Delete</Button>
+                </DataTableItem>
+            </DataTable>
+        }
     </Card>
 </PageBody>
 
-
-
-
 @code {
-      private readonly List<Agent> agents = new List<Agent>
-    {
-        new Agent { Id = 1, Name = "Alice Johnson", Description = "Description of agent", IsActive = true },
-        new Agent { Id = 2, Name = "Bob Smith", Description = "Description of agent", IsActive = false },
-        new Agent { Id = 3, Name = "Charlie Davis", Description = "Description of agent", IsActive = true },
-        new Agent { Id = 4, Name = "Diana Evans", Description = "Description of agent", IsActive = false },
-    };
+    private List<ApiModels.Agent>? agents;
 
-    private Agent? selectedAgent;
-
-    public class Agent
+    protected override async Task OnInitializedAsync()
     {
-        public int Id { get; set; }
-        public string Name { get; set; } = default!;
-        public string Description { get; set; } = default!;
-        public bool IsActive { get; set; }
+        try
+        {
+            // Directly deserialize the response into your API wrapper
+            var response = await Http.GetFromJsonAsync<ApiModels.AgentsApiResponse>("http://localhost:5093/api/Agents/GetAll");
+
+            if (response != null)
+            {
+                agents = response.Data.ToList();
+            }
+            else
+            {
+                agents = new List<ApiModels.Agent>();
+                Console.WriteLine("No agents returned from API.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Error fetching agents: " + ex.Message);
+            agents = new List<ApiModels.Agent>();
+        }
+    }
+
+    private void EditAgent(string id)
+    {
+        Navigation.NavigateTo($"/agents/edit/{id}");
+    }
+
+    private async Task DeleteAgent(string id)
+    {
+        if (!await Js.InvokeAsync<bool>("confirm", $"Are you sure you want to delete agent {id}?"))
+            return;
+
+        var response = await Http.DeleteAsync($"http://localhost:5093/api/Agents/Remove/{id}");
+        if (response.IsSuccessStatusCode)
+        {
+            agents = agents!.Where(a => a.Id != id).ToList();
+        }
+        else
+        {
+            Console.WriteLine($"Failed to delete agent {id}");
+        }
     }
 }

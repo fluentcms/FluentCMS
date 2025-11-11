@@ -4,6 +4,93 @@ using System.Text.Json.Serialization;
 
 namespace ApiModels;
 
+
+
+public class ApiResponseBase
+{
+    public bool Success { get; set; }
+    public string? Message { get; set; }
+    public string? MessageCode { get; set; }
+    public List<ApiError>? Errors { get; set; }
+    public DateTime Timestamp { get; set; }
+    public string? TraceId { get; set; }
+    public int StatusCode { get; set; }
+    public string? SessionId { get; set; }
+    public string? UniqueId { get; set; }
+    public double Duration { get; set; }
+}
+
+
+public class ApiResponse<T> : ApiResponseBase
+{
+    public T? Data { get; set; }
+}
+
+public class ListApiResponse<T> : ApiResponseBase
+{
+    public List<T>? Data { get; set; }
+    public PaginationInfo? Pagination { get; set; }
+}
+
+public class PaginationInfo
+{
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+    public int TotalPages { get; set; }
+    public int TotalCount { get; set; }
+    public bool HasNextPage { get; set; }
+    public bool HasPreviousPage { get; set; }
+}
+public class AIThread
+{
+    public string Id { get; set; } = default!;
+    public string Name { get; set; } = default!;
+    public string Description { get; set; } = default!;
+    public string Model { get; set; } = default!;
+    public string SystemPrompt { get; set; } = default!;
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public string CreatedBy { get; set; } = default!;
+    public string? UpdatedBy { get; set; }
+    public int Version { get; set; }
+
+}
+
+public class Agent
+{
+    public string Id { get; set; } = default!;
+    public string Name { get; set; } = default!;
+    public string Description { get; set; } = default!;
+    public string Model { get; set; } = default!;
+    public string SystemPrompt { get; set; } = default!;
+    public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public string CreatedBy { get; set; } = default!;
+    public string? UpdatedBy { get; set; }
+    public int Version { get; set; }
+
+}
+
+public class AgentsApiResponse : ListApiResponse<Agent>
+{
+
+}
+
+public class AgentApiResponse : ApiResponse<Agent>
+{
+}
+
+
+public class ThreadsApiResponse : ListApiResponse<AIThread>
+{
+
+}
+
+public class ThreadApiResponse : ApiResponse<AIThread>
+{
+}
+
+
 public class AIAnnotation
 {
     public List<AnnotatedRegion>? AnnotatedRegions { get; set; }
@@ -77,19 +164,8 @@ public class AgentRunResponse
     public Dictionary<string, object>? AdditionalProperties { get; set; }
 }
 
-public class AgentRunResponseApiResponse
+public class AgentRunResponseApiResponse : ApiResponse<AgentRunResponse>
 {
-    public bool Success { get; set; }
-    public string? Message { get; set; }
-    public string? MessageCode { get; set; }
-    public List<ApiError>? Errors { get; set; }
-    public DateTime Timestamp { get; set; }
-    public string? TraceId { get; set; }
-    public int StatusCode { get; set; }
-    public string? SessionId { get; set; }
-    public string? UniqueId { get; set; }
-    public double Duration { get; set; }
-    public AgentRunResponse? Data { get; set; }
 }
 
 public class AnnotatedRegion { }
@@ -98,20 +174,6 @@ public class ApiError
 {
     public string? Code { get; set; }
     public string? Description { get; set; }
-}
-
-public class ApiResponse
-{
-    public bool Success { get; set; }
-    public string? Message { get; set; }
-    public string? MessageCode { get; set; }
-    public List<ApiError>? Errors { get; set; }
-    public DateTime Timestamp { get; set; }
-    public string? TraceId { get; set; }
-    public int StatusCode { get; set; }
-    public string? SessionId { get; set; }
-    public string? UniqueId { get; set; }
-    public double Duration { get; set; }
 }
 
 public class ChatMessage
@@ -129,29 +191,8 @@ public class LoginDto
     public string? Token { get; set; }
 }
 
-public class LoginDtoApiResponse
+public class LoginDtoApiResponse : ApiResponse<LoginDto>
 {
-    public bool Success { get; set; }
-    public string? Message { get; set; }
-    public string? MessageCode { get; set; }
-    public List<ApiError>? Errors { get; set; }
-    public DateTime Timestamp { get; set; }
-    public string? TraceId { get; set; }
-    public int StatusCode { get; set; }
-    public string? SessionId { get; set; }
-    public string? UniqueId { get; set; }
-    public double Duration { get; set; }
-    public LoginDto? Data { get; set; }
-}
-
-public class PaginationInfo
-{
-    public int Page { get; set; }
-    public int PageSize { get; set; }
-    public int TotalPages { get; set; }
-    public int TotalCount { get; set; }
-    public bool HasNextPage { get; set; }
-    public bool HasPreviousPage { get; set; }
 }
 
 public class RoleAddRequest
@@ -172,35 +213,12 @@ public class RoleDto
     public DateTime? UpdatedAt { get; set; }
 }
 
-public class RoleDtoApiListResponse
+public class RoleDtoApiListResponse : ListApiResponse<RoleDto>
 {
-    public bool Success { get; set; }
-    public string? Message { get; set; }
-    public string? MessageCode { get; set; }
-    public List<ApiError>? Errors { get; set; }
-    public DateTime Timestamp { get; set; }
-    public string? TraceId { get; set; }
-    public int StatusCode { get; set; }
-    public string? SessionId { get; set; }
-    public string? UniqueId { get; set; }
-    public double Duration { get; set; }
-    public List<RoleDto>? Data { get; set; }
-    public PaginationInfo? Pagination { get; set; }
 }
 
-public class RoleDtoApiResponse
+public class RoleDtoApiResponse : ApiResponse<RoleDto>
 {
-    public bool Success { get; set; }
-    public string? Message { get; set; }
-    public string? MessageCode { get; set; }
-    public List<ApiError>? Errors { get; set; }
-    public DateTime Timestamp { get; set; }
-    public string? TraceId { get; set; }
-    public int StatusCode { get; set; }
-    public string? SessionId { get; set; }
-    public string? UniqueId { get; set; }
-    public double Duration { get; set; }
-    public RoleDto? Data { get; set; }
 }
 
 [JsonConverter(typeof(JsonStringEnumConverter))]
@@ -234,42 +252,9 @@ public class SiteDto
     public List<string>? Urls { get; set; }
 }
 
-public class SiteDtoApiListResponse
+public class SiteDtoApiListResponse : ListApiResponse<SiteDto>
 {
-    public bool Success { get; set; }
-    public string? Message { get; set; }
-    public string? MessageCode { get; set; }
-    public List<ApiError>? Errors { get; set; }
-    public DateTime Timestamp { get; set; }
-    public string? TraceId { get; set; }
-    public int StatusCode { get; set; }
-    public string? SessionId { get; set; }
-    public string? UniqueId { get; set; }
-    public double Duration { get; set; }
-    public List<SiteDto>? Data { get; set; }
-    public PaginationInfo? Pagination { get; set; }
-}
 
-public class SiteDtoApiResponse
-{
-    public bool Success { get; set; }
-    public string? Message { get; set; }
-    public string? MessageCode { get; set; }
-    public List<ApiError>? Errors { get; set; }
-    public DateTime Timestamp { get; set; }
-    public string? TraceId { get; set; }
-    public int StatusCode { get; set; }
-    public string? SessionId { get; set; }
-    public string? UniqueId { get; set; }
-    public double Duration { get; set; }
-    public SiteDto? Data { get; set; }
-}
-
-public class SiteUpdateRequest
-{
-    public string Name { get; set; } = null!;
-    public string? Description { get; set; }
-    public List<string> Urls { get; set; } = new List<string>();
 }
 
 public class TodoCreateDto
@@ -291,35 +276,12 @@ public class TodoResponseDto
     public int Version { get; set; }
 }
 
-public class TodoResponseDtoApiListResponse
+public class TodoResponseDtoApiListResponse : ListApiResponse<TodoResponseDto>
 {
-    public bool Success { get; set; }
-    public string? Message { get; set; }
-    public string? MessageCode { get; set; }
-    public List<ApiError>? Errors { get; set; }
-    public DateTime Timestamp { get; set; }
-    public string? TraceId { get; set; }
-    public int StatusCode { get; set; }
-    public string? SessionId { get; set; }
-    public string? UniqueId { get; set; }
-    public double Duration { get; set; }
-    public List<TodoResponseDto>? Data { get; set; }
-    public PaginationInfo? Pagination { get; set; }
 }
 
-public class TodoResponseDtoApiResponse
+public class TodoResponseDtoApiResponse : ApiResponse<TodoResponseDto>
 {
-    public bool Success { get; set; }
-    public string? Message { get; set; }
-    public string? MessageCode { get; set; }
-    public List<ApiError>? Errors { get; set; }
-    public DateTime Timestamp { get; set; }
-    public string? TraceId { get; set; }
-    public int StatusCode { get; set; }
-    public string? SessionId { get; set; }
-    public string? UniqueId { get; set; }
-    public double Duration { get; set; }
-    public TodoResponseDto? Data { get; set; }
 }
 
 public class TodoUpdateDto
@@ -369,35 +331,12 @@ public class UserDto
     public int AccessFailedCount { get; set; }
 }
 
-public class UserDtoApiListResponse
+public class UserDtoApiListResponse : ListApiResponse<UserDto>
 {
-    public bool Success { get; set; }
-    public string? Message { get; set; }
-    public string? MessageCode { get; set; }
-    public List<ApiError>? Errors { get; set; }
-    public DateTime Timestamp { get; set; }
-    public string? TraceId { get; set; }
-    public int StatusCode { get; set; }
-    public string? SessionId { get; set; }
-    public string? UniqueId { get; set; }
-    public double Duration { get; set; }
-    public List<UserDto>? Data { get; set; }
-    public PaginationInfo? Pagination { get; set; }
 }
 
-public class UserDtoApiResponse
+public class UserDtoApiResponse : ApiResponse<UserDto>
 {
-    public bool Success { get; set; }
-    public string? Message { get; set; }
-    public string? MessageCode { get; set; }
-    public List<ApiError>? Errors { get; set; }
-    public DateTime Timestamp { get; set; }
-    public string? TraceId { get; set; }
-    public int StatusCode { get; set; }
-    public string? SessionId { get; set; }
-    public string? UniqueId { get; set; }
-    public double Duration { get; set; }
-    public UserDto? Data { get; set; }
 }
 
 public class UserRolesUpdateRequest

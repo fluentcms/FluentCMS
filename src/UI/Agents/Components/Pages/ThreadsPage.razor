@@ -1,0 +1,94 @@
+@page "/threads"
+@using FluentCMS.Web.UI.Components
+@rendermode RenderMode.InteractiveServer
+
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IJSRuntime Js
+
+<PageTitle>Threads</PageTitle>
+
+<PageHeader Title="Threads">
+    <LinkButton Href="/threads/create" Color="Color.Primary">Create new thread</LinkButton>
+</PageHeader>
+
+<PageBody>
+    <Card>
+        @if (Threads == null)
+        {
+            <p>Loading...</p>
+        }
+        else if (!Threads.Any())
+        {
+            <p>No threads found.</p>
+        }
+        else
+        {
+            <DataTable TItem="ApiModels.AIThread" Items="@Threads">
+                <DataTableItem TItem="ApiModels.AIThread" Label="ID">@context.Id</DataTableItem>
+                <DataTableItem TItem="ApiModels.AIThread" Label="Name">@context.Name</DataTableItem>
+                <DataTableItem TItem="ApiModels.AIThread" Label="Description">@context.Description</DataTableItem>
+                <DataTableItem TItem="ApiModels.AIThread" Label="Model">@context.Model</DataTableItem>
+                <DataTableItem TItem="ApiModels.AIThread" Label="Actions">
+                    <Button Ghost Color="Color.Primary" @onclick="() => OpenThreadChat(context.Id)">Chat</Button>
+                    <Button Ghost Color="Color.Primary" @onclick="() => EditThread(context.Id)">Edit</Button>
+                    <Button Ghost Color="Color.Danger" @onclick="() => DeleteThread(context.Id)">Delete</Button>
+                </DataTableItem>
+            </DataTable>
+        }
+    </Card>
+</PageBody>
+
+@code {
+    private List<ApiModels.AIThread>? Threads;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Directly deserialize the response into your API wrapper
+            var response = await Http.GetFromJsonAsync<ApiModels.ThreadsApiResponse>("http://localhost:5093/api/ThreadsManagement/GetAll");
+
+            if (response != null)
+            {
+                Threads = response.Data.ToList();
+            }
+            else
+            {
+                Threads = new List<ApiModels.AIThread>();
+                Console.WriteLine("No threads returned from API.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Error fetching threads: " + ex.Message);
+            Threads = new List<ApiModels.AIThread>();
+        }
+    }
+
+    private void EditThread(string id)
+    {
+        Navigation.NavigateTo($"/threads/edit/{id}");
+    }
+
+    private void OpenThreadChat(string id)
+    {
+        Navigation.NavigateTo($"/threads/chat/{id}");
+    }
+
+    private async Task DeleteThread(string id)
+    {
+        if (!await Js.InvokeAsync<bool>("confirm", $"Are you sure you want to delete thread {id}?"))
+            return;
+
+        var response = await Http.DeleteAsync($"http://localhost:5093/api/ThreadsManagement/Remove/{id}");
+        if (response.IsSuccessStatusCode)
+        {
+            Threads = Threads!.Where(a => a.Id != id).ToList();
+        }
+        else
+        {
+            Console.WriteLine($"Failed to delete thread {id}");
+        }
+    }
+}

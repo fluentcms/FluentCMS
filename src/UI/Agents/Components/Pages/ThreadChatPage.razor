@@ -1,4 +1,4 @@
-@page "/threads/test"
+@page "/threads/chat/{id}"
 @rendermode RenderMode.InteractiveServer
 @inject HttpClient Http
 @inject NavigationManager Navigation
@@ -35,8 +35,16 @@
 </PageBody>
 
 @code {
+    [Parameter]
+    public string Id { get; set; }
     private string UserInput { get; set; } = "";
     private List<ChatMessage> ChatHistory { get; set; } = new();
+
+    protected override async Task OnInitializedAsync() {
+        var idGuid = Guid.Parse(Id);
+
+        @* Get History of the thread *@
+    }
 
     public class ChatMessage
     {
