@@ -1,0 +1,229 @@
+@page "/admin/users/edit/{id}"
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PluginFormPage Title="Edit user"
+                FormName="EditUserForm"
+                Path="/admin/users"
+                Model="@Model"
+                Errors="@Errors"
+                OnSubmit="@HandleSubmit">
+
+    <FormInput @bind-Value="@Model.Username" Label="Username" />
+    <FormInput @bind-Value="@Model.Email" Label="Email" />
+    <FormTextarea @bind-Value="@Model.Description" Label="Description" />
+
+    <FormCheckbox Cols="6" @bind-Value="@Model.Suspended" Text="Suspended" />
+    <FormCheckbox Cols="6" @bind-Value="@Model.IsSuperAdmin" Text="Super Admin" />
+    <FormCheckbox Cols="6" @bind-Value="@Model.EmailConfirmed" Text="Email Confirmed" />
+    <FormCheckbox Cols="6" @bind-Value="@Model.Locked" Text="Locked" />
+
+    <FormField>
+        <Stack Gutter="StackGutter.Medium" Justify="StackJustify.End">
+            <Button Type="ButtonType.Button" Href="/admin/users">Cancel</Button>
+            <Button Color="Color.Primary" Type="ButtonType.Submit">Save</Button>
+        </Stack>
+    </FormField>
+
+</PluginFormPage>
+
+@code {
+    [Parameter] 
+    public string Id { get; set; }
+
+
+    [SupplyParameterFromForm(FormName = "UserEditForm")]
+    private ApiModels.UserAddRequest Model { get; set; } = new();
+    private List<string> Errors { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Errors.Clear();
+
+        if (!Guid.TryParse(Id, out var guid))
+        {
+            Errors.Add("Invalid user ID");
+            return;
+        }
+
+        var response = await Http.GetAsync($"http://localhost:5093/api/Users/GetById/{guid}");
+
+        if (!response.IsSuccessStatusCode)
+        {
+            Errors.Add($"Server returned {response.StatusCode}");
+            return;
+        }
+
+        var content = await response.Content.ReadFromJsonAsync<ApiModels.ApiResponse<ApiModels.UserDto>>();
+
+        if (content?.Data == null)
+        {
+            Errors.Add("User not found");
+            return;
+        }
+
+        Model = new ApiModels.UserAddRequest
+        {
+            Username = content.Data.Username,
+            Email = content.Data.Email,
+            Description = content.Data.Description,
+            Suspended = content.Data.Suspended,
+            IsSuperAdmin = content.Data.IsSuperAdmin,
+            EmailConfirmed = content.Data.EmailConfirmed,
+            Locked = content.Data.LockoutEnabled
+        };
+    }
+
+    private async Task HandleSubmit()
+    {
+        Errors.Clear();
+
+        var response = await Http.PutAsJsonAsync(
+            $"http://localhost:5093/api/Users/Update/{Id}",
+            Model
+        );
+
+        if (response.IsSuccessStatusCode)
+        {
+            Navigation.NavigateTo("/admin/users", false);
+            return;
+        }
+
+        Errors.Add($"Server returned {response.StatusCode}");
+    }
+}
+
+@* 
+@rendermode RenderMode.InteractiveServer
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+
+<PageHeader Title="Edit agent">
+    <LinkButton Outline Href="/agents">Back</LinkButton>
+</PageHeader>
+
+<PageBody>
+<Card>
+<CardBody>
+        @if (Model != null)
+        {
+            <EditForm Model="@Model" OnSubmit="HandleSubmit" FormName="AgentUpdateForm" Enhance>
+                <DataAnnotationsValidator />
+                <Spacer />
+                <Grid GutterX="GridGutter.Large">
+                    <FormInput @bind-Value="@Model.Name" Label="Name"/>
+                    <FormTextarea @bind-Value="@Model.Description" Label="Description"/>
+                    <FormInput @bind-Value="@Model.Model" Label="Model"/>
+                    <FormTextarea @bind-Value="@Model.SystemPrompt" Label="SystemPrompt"/>
+                    <FormField>
+                        <Stack Gutter="StackGutter.Medium" Justify="StackJustify.End">
+                            <Button Type="ButtonType.Button">Cancel</Button>
+                            <Button Color="Color.Primary" Type="ButtonType.Submit">Save</Button>
+                        </Stack>
+                    </FormField>
+                </Grid>
+                <Spacer />
+                @if (Errors.Count > 0)
+                {
+                    <Alert Type="AlertType.Danger">
+                        @foreach (var error in Errors)
+                        {
+                            <p>@error</p>
+                        }
+                    </Alert>
+                }
+            </EditForm>
+        }
+    </CardBody>
+</Card>
+
+</PageBody>
+
+@code {
+    [Parameter]
+    public string Id { get; set; }
+    
+    private List<string> Errors { get; set; } = [];
+    
+    private AgentUpdateModel Model { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+          try
+        {
+            // Directly deserialize the response into your API wrapper
+            var response = await Http.GetFromJsonAsync<ApiModels.ApiResponse<UserDto>>("http://localhost:5093/api/Users/GetById/" + Id);
+
+            if (response != null)
+            {
+                Model = new AgentUpdateModel {
+                    Id = Guid.Parse(Id),
+                    Name = response.Data.Name,
+                    Description = response.Data.Description,
+                    Model = response.Data.Model,
+                    SystemPrompt = response.Data.SystemPrompt,
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Error fetching agents: " + ex.Message);
+        }
+
+    }
+
+    public async Task HandleSubmit() {
+
+        Errors.Clear();
+
+        var response = await Http.PutAsJsonAsync("http://localhost:5093/api/Agents/Update/", Model);
+
+        if(response.IsSuccessStatusCode)
+        {
+            Navigation.NavigateTo("/agents");
+            var content = await response.Content.ReadFromJsonAsync<ApiModels.AgentApiResponse>();
+            Console.WriteLine("Agent updated successfully! " + content.Data.Id);
+          
+        }
+        else
+        {
+             var errorResponse = await response.Content.ReadFromJsonAsync<ApiErrorResponse>();
+                if (errorResponse?.Errors != null)
+                    Errors = errorResponse.Errors;
+                else
+                    Errors.Add($"Server returned {response.StatusCode}");
+        }
+    }
+
+    public async Task OnSubmit() {
+        try
+        {
+            await HandleSubmit();
+        }
+        catch (Exception ex)
+        {
+            Errors = [ex.Message];
+            StateHasChanged();
+        }
+
+        foreach(var error in Errors)
+        {
+            Console.WriteLine(error);
+        }
+    }
+
+    public class AgentUpdateModel {
+        public Guid Id { get; set; }
+        public string Name { get; set; }
+        public string Description { get; set; }
+        public string Model { get; set; }
+        public string SystemPrompt { get; set; }
+    }
+
+    public class ApiErrorResponse
+    {
+        public List<string> Errors { get; set; }
+    }
+
+} *@

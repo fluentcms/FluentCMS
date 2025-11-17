@@ -1,0 +1,111 @@
+@page "/admin/users"
+
+@using FluentCMS.Web.UI.Components
+
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IJSRuntime Js
+
+<PageTitle>Users</PageTitle>
+
+<PageHeader Title="Users">
+    <LinkButton Href="/admin/users/create" Color="Color.Primary">Create new user</LinkButton>
+</PageHeader>
+
+<PageBody>
+    <Card>
+        @if (Users == null)
+        {
+            <p>Loading...</p>
+        }
+        else if (!Users.Any())
+        {
+            <p>No Users found.</p>
+        }
+        else
+        {
+            <DataTable TItem="ApiModels.UserDto" Items="@Users">
+                <DataTableItem TItem="ApiModels.UserDto" Label="ID">@context.Id</DataTableItem>
+                <DataTableItem TItem="ApiModels.UserDto" Label="Username">@context.Username</DataTableItem>
+                <DataTableItem TItem="ApiModels.UserDto" Label="Email">@context.Email</DataTableItem>
+                <DataTableItem TItem="ApiModels.UserDto" Label="Description">@context.Description</DataTableItem>
+                <DataTableItem TItem="ApiModels.UserDto" Label="SuperAdmin">
+                    @if (context.IsSuperAdmin)
+                    {
+                        <Indicator Color="Color.Success">Yes</Indicator>
+                    } else {
+                        <Indicator Color="Color.Danger">No</Indicator>
+                    }
+                </DataTableItem>
+                <DataTableItem TItem="ApiModels.UserDto" Label="Suspended">
+                    @if (context.Suspended)
+                    {
+                        <Indicator Color="Color.Danger">Yes</Indicator>
+                    } else {
+                        <Indicator Color="Color.Success">No</Indicator>
+                    }
+                </DataTableItem>
+                @* <DataTableItem TItem="ApiModels.UserDto" Label="Model">@context.Model</DataTableItem> *@
+                <DataTableItem TItem="ApiModels.UserDto" Label="Actions">
+                    <LinkButton Ghost Color="Color.Primary" Href=@("/admin/users/edit/" + context.Id)>Edit</LinkButton>
+                    <Button Ghost Color="Color.Danger" onclick=@("() => deleteUser(" + context.Id + ")")>Delete</Button>
+                </DataTableItem>
+            </DataTable>
+        }
+    </Card>
+</PageBody>
+
+<script>
+
+function deleteUser(id) {
+    console.log("Should delete user with id  ", id)
+}
+</script>
+@code {
+    private List<ApiModels.UserDto>? Users;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Directly deserialize the response into your API wrapper
+            var response = await Http.GetFromJsonAsync<ApiModels.ListApiResponse<ApiModels.UserDto>>("http://localhost:5093/api/Users/GetAll");
+
+            if (response != null)
+            {
+                Users = response.Data.ToList();
+            }
+            else
+            {
+                Users = new List<ApiModels.UserDto>();
+                Console.WriteLine("No users returned from API.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Error fetching agents: " + ex.Message);
+            Users = new List<ApiModels.UserDto>();
+        }
+    }
+
+    private void EditUser(string id)
+    {
+        Navigation.NavigateTo($"/admin/users/edit/{id}");
+    }
+
+    @* private async Task DeleteAgent(Guid id)
+    {
+        if (!await Js.InvokeAsync<bool>("confirm", $"Are you sure you want to delete user {id}?"))
+            return;
+
+        var response = await Http.DeleteAsync($"http://localhost:5093/api/Users/Remove/{id}");
+        if (response.IsSuccessStatusCode)
+        {
+            Users = Users!.Where(a => a.Id != id).ToList();
+        }
+        else
+        {
+            Console.WriteLine($"Failed to delete user {id}");
+        }
+    } *@
+}
