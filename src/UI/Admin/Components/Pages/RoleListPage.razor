@@ -1,0 +1,89 @@
+@page "/admin/roles"
+
+@using FluentCMS.Web.UI.Components
+
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>Roles</PageTitle>
+
+<PageHeader Title="Roles">
+    <LinkButton Href="/admin/roles/create" Color="Color.Primary">Create new role</LinkButton>
+</PageHeader>
+
+<PageBody>
+    <Card>
+        @if (Roles == null)
+        {
+            <CardBody>
+                <p>Loading...</p>
+            </CardBody>
+        }
+        else if (!Roles.Any())
+        {
+            <CardBody>
+                <p>No Roles found.</p>
+            </CardBody>
+        }
+        else
+        {
+            <DataTable TItem="ApiModels.RoleDto" Items="@Roles">
+                <DataTableItem Label="ID">@context.Id</DataTableItem>
+                <DataTableItem Label="Name">@context.Name</DataTableItem>
+                <DataTableItem Label="Description">@context.Description</DataTableItem>
+                
+                @* <DataTableItem Label="Model">@context.Model</DataTableItem> *@
+                <DataTableItem Label="Actions">
+                    <LinkButton Ghost Color="Color.Primary" Href=@("/admin/roles/edit/" + context.Id)>Edit</LinkButton>
+                    <Button Ghost Color="Color.Danger" onclick=@($"deleteRole('{context.Id}')")>Delete</Button>
+                </DataTableItem>
+            </DataTable>
+        }
+    </Card>
+</PageBody>
+
+<Confirm data-name="DeleteRoleConfirm">
+    Are you sure to delete this role?
+</Confirm>
+
+<script>
+    async function deleteRole(id) {
+        const res = await confirms.get('DeleteRoleConfirm').open();
+
+        if(res) {
+            console.log("Should delete role with id  ", id, res)
+            await fetch('/api/Roles/Remove/' + id, {
+                method: "DELETE",
+            }).then(res => res.json()).then(res => {
+                location.reload()
+            })
+        }
+    }
+</script>
+
+@code {
+    private List<ApiModels.RoleDto>? Roles;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var response = await Http.GetFromJsonAsync<ApiModels.ListApiResponse<ApiModels.RoleDto>>("http://localhost:5093/api/Roles/GetAll");
+
+            if (response != null)
+            {
+                Roles = response.Data.ToList();
+            }
+            else
+            {
+                Roles = new List<ApiModels.RoleDto>();
+                Console.WriteLine("No roles returned from API.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Error fetching roles: " + ex.Message);
+            Roles = new List<ApiModels.RoleDto>();
+        }
+    }
+}

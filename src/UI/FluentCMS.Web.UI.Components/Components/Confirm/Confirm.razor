@@ -2,31 +2,27 @@
 
 @namespace FluentCMS.Web.UI.Components
 
-@if (Visible)
-{
-    <div @attributes="AdditionalAttributes" class="@this.GetClasses()" tabindex="-1" data-modal-backdrop="static">
-        <div class="@this.ClassName("ConfirmWrapper")" role="document">
-            <div class="@this.ClassName("ConfirmContent")">
-                <CloseButton @onclick="CancelClicked" />
-                <div class="@this.ClassName("ConfirmBody")">
-                    <Icon Name="IconName.ExclamationCircle" Size="IconSize.Large" />
-                    <h3 class="@this.ClassName("ConfirmMessage")">
-                        @ChildContent
-                    </h3>
-                    <div class="@this.ClassName("ConfirmButtonStack")">
-                        <Button Color="Color.Danger" @onclick="ConfirmClicked">
-                            Yes, I'm sure
-                        </Button>
-                        <Button @onclick="CancelClicked">
-                            No, cancel
-                        </Button>
-                    </div>
+<div @attributes="AdditionalAttributes" class="@this.GetClasses()" tabindex="-1" data-modal-backdrop="static">
+    <div class="@this.ClassName("ConfirmWrapper")" role="document">
+        <div class="@this.ClassName("ConfirmContent")">
+            <CloseButton @onclick="CancelClicked" />
+            <div class="@this.ClassName("ConfirmBody")">
+                <Icon Name="IconName.ExclamationCircle" Size="IconSize.Large" />
+                <h3 class="@this.ClassName("ConfirmMessage")">
+                    @ChildContent
+                </h3>
+                <div class="@this.ClassName("ConfirmButtonStack")">
+                    <Button Color="Color.Danger" class="@this.ClassName("ConfirmButtonYes")">
+                        Yes, I'm sure
+                    </Button>
+                    <Button class="@this.ClassName("ConfirmButtonNo")">
+                        No, cancel
+                    </Button>
                 </div>
             </div>
         </div>
     </div>
-    <div class="@this.ClassName("ConfirmBackdrop")"></div>
-}
+</div>
 
 @code {
     [Parameter]
@@ -40,7 +36,8 @@
     public EventCallback OnCancel { get; set; }
 
     [Parameter]
-    public bool Visible { get; set; } = true;
+    [CssProperty]
+    public bool Visible { get; set; } = false;
 
     public async Task CancelClicked()
     {

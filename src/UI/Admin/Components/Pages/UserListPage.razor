@@ -4,7 +4,6 @@
 
 @inject HttpClient Http
 @inject NavigationManager Navigation
-@inject IJSRuntime Js
 
 <PageTitle>Users</PageTitle>
 
@@ -16,20 +15,24 @@
     <Card>
         @if (Users == null)
         {
-            <p>Loading...</p>
+            <CardBody>
+                <p>Loading...</p>
+            </CardBody>
         }
         else if (!Users.Any())
         {
-            <p>No Users found.</p>
+            <CardBody>
+                <p>No Users found.</p>
+            </CardBody>
         }
         else
         {
             <DataTable TItem="ApiModels.UserDto" Items="@Users">
-                <DataTableItem TItem="ApiModels.UserDto" Label="ID">@context.Id</DataTableItem>
-                <DataTableItem TItem="ApiModels.UserDto" Label="Username">@context.Username</DataTableItem>
-                <DataTableItem TItem="ApiModels.UserDto" Label="Email">@context.Email</DataTableItem>
-                <DataTableItem TItem="ApiModels.UserDto" Label="Description">@context.Description</DataTableItem>
-                <DataTableItem TItem="ApiModels.UserDto" Label="SuperAdmin">
+                <DataTableItem Label="ID">@context.Id</DataTableItem>
+                <DataTableItem Label="Username">@context.Username</DataTableItem>
+                <DataTableItem Label="Email">@context.Email</DataTableItem>
+                <DataTableItem Label="Description">@context.Description</DataTableItem>
+                <DataTableItem Label="SuperAdmin">
                     @if (context.IsSuperAdmin)
                     {
                         <Indicator Color="Color.Success">Yes</Indicator>
@@ -37,7 +40,7 @@
                         <Indicator Color="Color.Danger">No</Indicator>
                     }
                 </DataTableItem>
-                <DataTableItem TItem="ApiModels.UserDto" Label="Suspended">
+                <DataTableItem Label="Suspended">
                     @if (context.Suspended)
                     {
                         <Indicator Color="Color.Danger">Yes</Indicator>
@@ -45,22 +48,35 @@
                         <Indicator Color="Color.Success">No</Indicator>
                     }
                 </DataTableItem>
-                @* <DataTableItem TItem="ApiModels.UserDto" Label="Model">@context.Model</DataTableItem> *@
-                <DataTableItem TItem="ApiModels.UserDto" Label="Actions">
+                @* <DataTableItem Label="Model">@context.Model</DataTableItem> *@
+                <DataTableItem Label="Actions">
                     <LinkButton Ghost Color="Color.Primary" Href=@("/admin/users/edit/" + context.Id)>Edit</LinkButton>
-                    <Button Ghost Color="Color.Danger" onclick=@("() => deleteUser(" + context.Id + ")")>Delete</Button>
+                    <Button Ghost Color="Color.Danger" onclick=@($"deleteUser('{context.Id}')")>Delete</Button>
                 </DataTableItem>
             </DataTable>
         }
     </Card>
 </PageBody>
 
-<script>
+<Confirm data-name="DeleteUserConfirm">
+    Are you sure to delete this user?
+</Confirm>
 
-function deleteUser(id) {
-    console.log("Should delete user with id  ", id)
-}
+<script>
+    async function deleteUser(id) {
+        const res = await confirms.get('DeleteUserConfirm').open();
+
+        if(res) {
+            console.log("Should delete user with id  ", id, res)
+            await fetch('/api/Users/Remove/' + id, {
+                method: "DELETE",
+            }).then(res => res.json()).then(res => {
+                location.reload()
+            })
+        }
+    }
 </script>
+
 @code {
     private List<ApiModels.UserDto>? Users;
 
@@ -68,7 +84,6 @@ function deleteUser(id) {
     {
         try
         {
-            // Directly deserialize the response into your API wrapper
             var response = await Http.GetFromJsonAsync<ApiModels.ListApiResponse<ApiModels.UserDto>>("http://localhost:5093/api/Users/GetAll");
 
             if (response != null)
@@ -87,25 +102,4 @@ function deleteUser(id) {
             Users = new List<ApiModels.UserDto>();
         }
     }
-
-    private void EditUser(string id)
-    {
-        Navigation.NavigateTo($"/admin/users/edit/{id}");
-    }
-
-    @* private async Task DeleteAgent(Guid id)
-    {
-        if (!await Js.InvokeAsync<bool>("confirm", $"Are you sure you want to delete user {id}?"))
-            return;
-
-        var response = await Http.DeleteAsync($"http://localhost:5093/api/Users/Remove/{id}");
-        if (response.IsSuccessStatusCode)
-        {
-            Users = Users!.Where(a => a.Id != id).ToList();
-        }
-        else
-        {
-            Console.WriteLine($"Failed to delete user {id}");
-        }
-    } *@
 }

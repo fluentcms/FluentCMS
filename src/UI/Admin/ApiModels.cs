@@ -246,14 +246,6 @@ public class RoleDto
     public DateTime? UpdatedAt { get; set; }
 }
 
-public class RoleDtoApiListResponse : ListApiResponse<RoleDto>
-{
-}
-
-public class RoleDtoApiResponse : ApiResponse<RoleDto>
-{
-}
-
 [JsonConverter(typeof(JsonStringEnumConverter))]
 public enum RoleTypes
 {

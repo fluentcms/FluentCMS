@@ -1,14 +1,58 @@
 ﻿@page "/"
+@layout EmptyLayout
 
 <PageTitle>Home</PageTitle>
 
-<PageHeader Title="Admin Panel Dashboard">
-</PageHeader>
+<div class="container py-4">
+    <div class="mb-4">
+        <h1 class="display-5 fw-bold">Welcome 👋</h1>
+        <hr />
+    </div>
 
-<PageBody>
-    <ul>
-        <li>Getting started guide</li>
-        <li>Usage dashboard</li>
-        <li>Test agents</li>
-    </ul>
-</PageBody>
+    <div class="mb-5">
+        <h2 class="h4 fw-semibold mb-2">Overview</h2>
+        <p class="text-muted">
+            This is your default home page. Explore features, track activity, and manage resources from one place.
+        </p>
+
+        <div class="p-5 d-flex gap-3 align-items-center justify-content-center">
+            <LinkButton Href="/auth/login">Login</LinkButton>
+            <LinkButton Href="/admin" Color="Color.Primary">Admin Panel</LinkButton>
+        </div>
+
+    </div>
+
+    <div class="mb-5">
+        <h2 class="h4 fw-semibold mb-3">Features</h2>
+        <ul class="list-group">
+            <li class="list-group-item d-flex align-items-center gap-2">
+                📘 <span>Documentation</span>
+            </li>
+            <li class="list-group-item d-flex align-items-center gap-2">
+                📊 <span>Analytics</span>
+            </li>
+            <li class="list-group-item d-flex align-items-center gap-2">
+                ⚙️ <span>System Settings</span>
+            </li>
+            <li class="list-group-item d-flex align-items-center gap-2">
+                🧪 <span>Testing Sandbox</span>
+            </li>
+            <li class="list-group-item d-flex align-items-center gap-2">
+                🧩 <span>Components Library</span>
+            </li>
+            <li class="list-group-item d-flex align-items-center gap-2">
+                🚀 <span>Release Notes</span>
+            </li>
+            <li class="list-group-item d-flex align-items-center gap-2">
+                👥 <span>User Management</span>
+            </li>
+        </ul>
+    </div>
+
+    <div class="mb-4">
+        <h2 class="h4 fw-semibold mb-2">Status</h2>
+        <div class="alert alert-success mb-0">
+            All systems operational. No active alerts.
+        </div>
+    </div>
+</div>
