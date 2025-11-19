@@ -1,6 +1,6 @@
 @page "/admin/roles/edit/{id}"
 @inject HttpClient Http
-@inject NavigationManager Navigation
+@inject IHttpContextAccessor HttpContextAccessor
 
 <PluginFormPage Title="Edit role"
                 FormName="EditRoleForm"
@@ -74,7 +74,7 @@
 
         if (response.IsSuccessStatusCode)
         {
-            Navigation.NavigateTo("/admin/roles", false);
+            HttpContextAccessor.HttpContext.Response.Redirect("/admin/roles");
             return;
         }
 

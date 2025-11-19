@@ -1,6 +1,6 @@
 @page "/admin/users/create"
 @inject HttpClient Http
-@inject NavigationManager Navigation
+@inject IHttpContextAccessor HttpContextAccessor
 
 
 <PluginFormPage OnInitialized="@OnInitialized" FormName="UserCreateForm" Model="@Model" OnSubmit="@OnSubmit" Title="Create new user" Path="/admin/users">
@@ -42,7 +42,7 @@
         if (response.IsSuccessStatusCode)
         {
             var content = await response.Content.ReadFromJsonAsync<ApiModels.ApiResponse<ApiModels.UserDto>>();
-            Navigation.NavigateTo("/admin/users", forceLoad: false);
+            HttpContextAccessor.HttpContext.Response.Redirect("/admin/users");
         }
         else
         {

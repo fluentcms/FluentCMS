@@ -11,7 +11,7 @@
         <CardBody>
             @if (Model != null)
             {
-                <EditForm Model="@Model" OnValidSubmit="HandleSubmit" FormName="@FormName">
+                <EditForm Model="@Model" OnValidSubmit="HandleSubmit" FormName="@FormName" onsubmit:preventDefault>
                     <DataAnnotationsValidator />
                     <Spacer />
                     <Grid GutterX="GridGutter.Large">

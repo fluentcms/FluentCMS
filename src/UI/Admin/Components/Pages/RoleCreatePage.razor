@@ -1,7 +1,7 @@
 @page "/admin/roles/create"
 @inject HttpClient Http
-@inject NavigationManager Navigation
 
+@inject IHttpContextAccessor HttpContextAccessor
 
 <PluginFormPage OnInitialized="@OnInitialized" FormName="RoleCreateForm" Model="@Model" OnSubmit="@OnSubmit" Title="Create new role" Path="/admin/roles">
     <FormInput @bind-Value="@Model.Name" Placeholder="Enter role name" Label="Name" Required />
@@ -36,12 +36,11 @@
         if (response.IsSuccessStatusCode)
         {
             var content = await response.Content.ReadFromJsonAsync<ApiModels.ApiResponse<ApiModels.RoleDto>>();
-            Navigation.NavigateTo("/admin/roles", forceLoad: false);
+            HttpContextAccessor.HttpContext.Response.Redirect("/admin/roles");
         }
         else
         {
             Errors.Add($"Server returned {response.StatusCode}");
         }
     }
-
 }

@@ -16,6 +16,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddUIComponents();
 builder.Services.AddControllers();
 builder.Services.AddHttpContextAccessor();
+
 builder.Services.AddHttpClient("BackendApi", client =>
 {
     client.BaseAddress = new Uri("http://localhost:5093/");
