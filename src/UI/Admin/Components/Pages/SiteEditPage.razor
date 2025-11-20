@@ -1,0 +1,78 @@
+@page "/admin/sites/edit/{id}"
+@inject HttpClient Http
+@inject IHttpContextAccessor HttpContextAccessor
+@inject ApiClientFactory Api
+
+<PluginFormPage Title="Edit site" FormName="SiteEditForm" Path="/admin/sites" Model="@Model" Errors="@Errors"
+    OnSubmit="@HandleSubmit">
+
+    <FormInput @bind-Value="@Model.Name" Label="Name" />
+    <FormTextarea @bind-Value="@Model.Description" Label="Description" />
+    <FormInput @bind-Value="@Model.Urls" Label="Urls (Comma separated)" />
+
+
+    <FormField>
+        <Stack Gutter="StackGutter.Medium" Justify="StackJustify.End">
+            <Button Type="ButtonType.Button" Href="/admin/sites">Cancel</Button>
+            <Button Color="Color.Primary" Type="ButtonType.Submit">Save</Button>
+        </Stack>
+    </FormField>
+
+</PluginFormPage>
+
+@code {
+    [Parameter]
+    public string Id { get; set; }
+
+
+    [SupplyParameterFromForm(FormName = "SiteEditForm")]
+    private SiteUpdateModel Model { get; set; }
+    private List<string> Errors { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if(Model is null) {
+            Errors.Clear();
+
+            if (!Guid.TryParse(Id, out var guid))
+            {
+                Errors.Add("Invalid site ID");
+                return;
+            }
+
+            var site = await Api.Sites.GetByIdAsync(guid);
+
+            if (site.Data == null)
+            {
+                Errors.Add("Site not found");
+                return;
+            }
+
+            Model = new SiteUpdateModel
+            {
+                Name = site.Data.Name,
+                Description = site.Data.Description,
+                Urls = string.Join(",", site.Data.Urls ?? []),
+            };
+        }
+
+    }
+
+    private async Task HandleSubmit()
+    {
+        var response = await Api.Sites.UpdateAsync(Id, new SiteAddRequest {
+            Name = Model.Name,
+            Description = Model.Description,
+            Urls = [.. Model.Urls.Split(",")],
+        });
+
+        HttpContextAccessor.HttpContext.Response.Redirect("/admin/sites");
+    }
+
+    private class SiteUpdateModel {
+        public Guid? Id { get; set; }
+        public string? Name { get; set; }
+        public string? Description { get; set; }
+        public string? Urls { get; set; }
+    }
+}

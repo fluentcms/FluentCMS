@@ -84,12 +84,36 @@ public class SiteService
     private readonly ApiClient _api;
     public SiteService(ApiClient api) => _api = api;
 
-    public async Task<List<SiteDto>> GetAllAsync()
+        public async Task<ListApiResponse<SiteDto>> GetAllAsync()
     {
         var res = await _api.GetListAsync<SiteDto>(
             "/api/Site/GetAll"
         );
-        return res.Data.ToList();
+        return res;
+    }
+
+    public async Task<ApiResponse<SiteDto>> GetByIdAsync(Guid id)
+    {
+        var res = await _api.GetAsync<SiteDto>($"/api/Site/GetById/{id}");
+        return res;
+    }
+
+    public async Task<ApiResponse<SiteDto>> UpdateAsync(string id, SiteAddRequest model)
+    {
+        var res = await _api.PutAsync<SiteAddRequest, SiteDto>($"/api/Site/Update/{id}", model);
+        return res;
+    }
+
+    public async Task<ApiResponse<SiteDto>> CreateAsync(SiteAddRequest model)
+    {
+        var res = await _api.PostAsync<SiteAddRequest, SiteDto>($"/api/Site/Add", model);
+        return res;
+    }
+
+    public async Task<ApiResponse<bool>> DeleteAsync(Guid id)
+    {
+        var res = await _api.DeleteAsync<bool>($"/api/Site/Remove/{id}");
+        return res;
     }
 }
 

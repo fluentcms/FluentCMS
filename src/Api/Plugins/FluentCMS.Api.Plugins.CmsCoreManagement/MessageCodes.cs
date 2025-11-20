@@ -12,4 +12,15 @@ public static class MessageCodes
     public const string SiteFailedToRemove = "Site.FailedToRemove";
 
     #endregion
+
+    #region Page
+
+    public const string PageUrlCannotBeEmpty = "Page.UrlCannotBeEmpty";
+    public const string PageUrlIsInvalid = "Page.UrlIsInvalid";
+    public const string PageUrlMustBeUnique = "Page.UrlMustBeUnique";
+    public const string PageFailedToAdd = "Page.FailedToAdd";
+    public const string PageFailedToUpdate = "Page.FailedToUpdate";
+    public const string PageFailedToRemove = "Page.FailedToRemove";
+
+    #endregion
 }

@@ -7,5 +7,10 @@ public class MappingProfile : Profile
         CreateMap<Site, SiteDto>();
         CreateMap<SiteAddRequest, Site>();
         CreateMap<SiteUpdateRequest, Site>();
+
+
+        CreateMap<Page, PageDto>();
+        CreateMap<PageAddRequest, Page>();
+        CreateMap<PageUpdateRequest, Page>();
     }
 }

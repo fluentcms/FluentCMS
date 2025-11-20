@@ -26,29 +26,34 @@
         else
         {
             <DataTable TItem="SiteDto" Items="@Sites">
-                 <DataTableItem Label="Name">@context.Name</DataTableItem>
-            <DataTableItem Label="Description">@context.Description</DataTableItem>
-            <DataTableItem Label="Url">
-                <Stack Visible="@(context?.Urls != null)">
-                    @foreach (var url in context!.Urls!)
+                <DataTableItem Label="Name">@context.Name</DataTableItem>
+                <DataTableItem Label="Description">@context.Description</DataTableItem>
+                <DataTableItem Label="Url">
+                    @if (context.Urls != null)
                     {
-                        <Badge Color="Color.Primary">@url</Badge>
+                        <Stack Gutter="StackGutter.Medium">
+
+                            @foreach (var url in context!.Urls!)
+                            {
+                                <Badge Light Color="Color.Primary">@url</Badge>
+                            }
+                        </Stack>
                     }
-                </Stack>
-            </DataTableItem>
-            <DataTableItem Label="Layout">
-                @* @Layouts.Find(x => x.Id == context.LayoutId)?.Name *@
-            </DataTableItem>
-            <DataTableItem Label="Detail Layout">
-                @* @Layouts.Find(x => x.Id == context.DetailLayoutId)?.Name *@
-            </DataTableItem>
-            <DataTableItem Label="Edit Layout">
-                @* @Layouts.Find(x => x.Id == context.EditLayoutId)?.Name *@
-            </DataTableItem>
-                @* <DataTableItem Label="Model">@context.Model</DataTableItem> *@
+                </DataTableItem>
+                @* <DataTableItem Label="Layout">
+                    @Layouts.Find(x => x.Id == context.LayoutId)?.Name
+                </DataTableItem>
+                <DataTableItem Label="Detail Layout">
+                    @Layouts.Find(x => x.Id == context.DetailLayoutId)?.Name
+                </DataTableItem>
+                <DataTableItem Label="Edit Layout">
+                    @Layouts.Find(x => x.Id == context.EditLayoutId)?.Name
+                </DataTableItem>
+                <DataTableItem Label="Model">@context.Model</DataTableItem> *@
                 <DataTableItem Label="Actions">
                     <LinkButton Ghost Color="Color.Primary" Href=@("/admin/sites/edit/" + context.Id)>Edit</LinkButton>
-                    <Button Ghost Color="Color.Danger" onclick=@($"deleteSite('{context.Id}', '{context.Name}')")>Delete</Button>
+                    <Button Ghost Color="Color.Danger"
+                        onclick=@($"deleteSite('{context.Id}','{context.Name}')")>Delete</Button>
                 </DataTableItem>
             </DataTable>
         }
@@ -61,16 +66,16 @@
 
 <script>
     async function deleteSite(id, name) {
-        const {open, element} = await confirms.get('DeleteSiteConfirm');
+        const { open, element } = await confirms.get('DeleteSiteConfirm');
 
         element.querySelector('#name').textContent = name
 
         const res = await open();
 
-        if(res) {
+        if (res) {
             await fetch('/api/Sites/Remove/' + id, {
                 method: "DELETE",
-            }).then(res => res.json()).then(res => {
+            }).then(res => {
                 location.reload()
             })
         }
@@ -84,12 +89,27 @@
 
     protected override async Task OnInitializedAsync()
     {
-        Sites = await Api.Sites.GetAllAsync();
+        var resp = await Api.Sites.GetAllAsync();
 
-        Layouts = new List<LayoutDto>{
-            new LayoutDto {
-                Id = Guid.NewGuid()
-            },
-        };
+        if (resp?.Data != null)
+        {
+            Sites = resp.Data.ToList();
+            Console.WriteLine(Sites);
+
+            foreach(var site in Sites)
+            {
+                Console.WriteLine($"Site: {site.Name} ({site.Description})");
+                foreach(var url in site.Urls)
+                {
+                Console.WriteLine($"    Url: {url}");
+                }
+            }
+        }
+
+        Layouts = new List<LayoutDto> {
+new LayoutDto {
+Id = Guid.NewGuid()
+},
+};
     }
 }

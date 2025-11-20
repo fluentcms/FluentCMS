@@ -18,6 +18,7 @@ public class CmsCoreManagementPlugin : IPluginStartup
         services.AddScoped<ISiteRepository, SiteRepository>();
 
         services.AddScoped<ISiteService, SiteService>();
+        services.AddScoped<IPageService, PageService>();
     }
 
     public void Configure(IApplicationBuilder app)
