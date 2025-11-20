@@ -1,16 +1,13 @@
 @page "/admin/roles/edit/{id}"
 @inject HttpClient Http
 @inject IHttpContextAccessor HttpContextAccessor
+@inject ApiClientFactory Api
 
-<PluginFormPage Title="Edit role"
-                FormName="EditRoleForm"
-                Path="/admin/roles"
-                Model="@Model"
-                Errors="@Errors"
-                OnSubmit="@HandleSubmit">
+<PluginFormPage Title="Edit role" FormName="RoleEditForm" Path="/admin/roles" Model="@Model" Errors="@Errors"
+    OnSubmit="@HandleSubmit">
 
-        <FormInput @bind-Value="@Model.Name" Label="Name" />
-        <FormTextarea @bind-Value="@Model.Description" Label="Description" />
+    <FormInput @bind-Value="@Model.Name" Label="Name" />
+    <FormTextarea @bind-Value="@Model.Description" Label="Description" />
 
     <FormField>
         <Stack Gutter="StackGutter.Medium" Justify="StackJustify.End">
@@ -22,62 +19,47 @@
 </PluginFormPage>
 
 @code {
-    [Parameter] 
+    [Parameter]
     public string Id { get; set; }
 
 
     [SupplyParameterFromForm(FormName = "RoleEditForm")]
-    private ApiModels.RoleAddRequest Model { get; set; } = new();
+    private RoleAddRequest Model { get; set; }
     private List<string> Errors { get; set; } = new();
 
     protected override async Task OnInitializedAsync()
     {
-        Errors.Clear();
-
-        if (!Guid.TryParse(Id, out var guid))
+        if (Model is null)
         {
-            Errors.Add("Invalid role ID");
-            return;
+
+            Errors.Clear();
+
+            if (!Guid.TryParse(Id, out var guid))
+            {
+                Errors.Add("Invalid role ID");
+                return;
+            }
+
+            var response = await Api.Roles.GetByIdAsync(guid);
+
+            if (response?.Data == null)
+            {
+                Errors.Add("Role not found");
+                return;
+            }
+
+            Model = new RoleAddRequest
+            {
+                Name = response.Data.Name,
+                Description = response.Data.Description,
+            };
         }
 
-        var response = await Http.GetAsync($"http://localhost:5093/api/Roles/GetById/{guid}");
-
-        if (!response.IsSuccessStatusCode)
-        {
-            Errors.Add($"Server returned {response.StatusCode}");
-            return;
-        }
-
-        var content = await response.Content.ReadFromJsonAsync<ApiModels.ApiResponse<ApiModels.RoleDto>>();
-
-        if (content?.Data == null)
-        {
-            Errors.Add("Role not found");
-            return;
-        }
-
-        Model = new ApiModels.RoleAddRequest
-        {
-            Name = content.Data.Name,
-            Description = content.Data.Description,
-        };
     }
 
     private async Task HandleSubmit()
     {
-        Errors.Clear();
-
-        var response = await Http.PutAsJsonAsync(
-            $"http://localhost:5093/api/Roles/Update/{Id}",
-            Model
-        );
-
-        if (response.IsSuccessStatusCode)
-        {
-            HttpContextAccessor.HttpContext.Response.Redirect("/admin/roles");
-            return;
-        }
-
-        Errors.Add($"Server returned {response.StatusCode}");
+        var response = await Api.Roles.UpdateAsync(Id, Model);
+        HttpContextAccessor.HttpContext.Response.Redirect("/admin/roles");
     }
 }

@@ -1,15 +1,12 @@
 @page "/admin/users/edit/{id}"
 @inject HttpClient Http
 @inject IHttpContextAccessor HttpContextAccessor
+@inject ApiClientFactory Api
 
-<PluginFormPage Title="Edit user"
-                FormName="EditUserForm"
-                Path="/admin/users"
-                Model="@Model"
-                Errors="@Errors"
-                OnSubmit="@HandleSubmit">
+<PluginFormPage Title="Edit user" FormName="UserEditForm" Path="/admin/users" Model="@Model" Errors="@Errors"
+    OnSubmit="@HandleSubmit">
 
-    <FormInput @bind-Value="@Model.Username" Label="Username" />
+    <FormInput Disabled @bind-Value="@Model.Username" Label="Username" />
     <FormInput @bind-Value="@Model.Email" Label="Email" />
     <FormTextarea @bind-Value="@Model.Description" Label="Description" />
 
@@ -28,67 +25,50 @@
 </PluginFormPage>
 
 @code {
-    [Parameter] 
+    [Parameter]
     public string Id { get; set; }
 
 
     [SupplyParameterFromForm(FormName = "UserEditForm")]
-    private ApiModels.UserAddRequest Model { get; set; } = new();
+    private UserAddRequest Model { get; set; }
     private List<string> Errors { get; set; } = new();
 
     protected override async Task OnInitializedAsync()
     {
-        Errors.Clear();
+        if(Model is null) {
+            Errors.Clear();
 
-        if (!Guid.TryParse(Id, out var guid))
-        {
-            Errors.Add("Invalid user ID");
-            return;
+            if (!Guid.TryParse(Id, out var guid))
+            {
+                Errors.Add("Invalid user ID");
+                return;
+            }
+
+            var user = await Api.Users.GetByIdAsync(guid);
+
+            if (user.Data == null)
+            {
+                Errors.Add("User not found");
+                return;
+            }
+
+            Model = new UserAddRequest
+            {
+                Username = user.Data.Username,
+                Email = user.Data.Email,
+                Description = user.Data.Description,
+                Suspended = user.Data.Suspended,
+                IsSuperAdmin = user.Data.IsSuperAdmin,
+                EmailConfirmed = user.Data.EmailConfirmed,
+                Locked = user.Data.LockoutEnabled
+            };
         }
 
-        var response = await Http.GetAsync($"http://localhost:5093/api/Users/GetById/{guid}");
-
-        if (!response.IsSuccessStatusCode)
-        {
-            Errors.Add($"Server returned {response.StatusCode}");
-            return;
-        }
-
-        var content = await response.Content.ReadFromJsonAsync<ApiModels.ApiResponse<ApiModels.UserDto>>();
-
-        if (content?.Data == null)
-        {
-            Errors.Add("User not found");
-            return;
-        }
-
-        Model = new ApiModels.UserAddRequest
-        {
-            Username = content.Data.Username,
-            Email = content.Data.Email,
-            Description = content.Data.Description,
-            Suspended = content.Data.Suspended,
-            IsSuperAdmin = content.Data.IsSuperAdmin,
-            EmailConfirmed = content.Data.EmailConfirmed,
-            Locked = content.Data.LockoutEnabled
-        };
     }
 
     private async Task HandleSubmit()
     {
-        Errors.Clear();
-
-        var response = await Http.PutAsJsonAsync(
-            $"http://localhost:5093/api/Users/Update/{Id}",
-            Model
-        );
-
-        if (response.IsSuccessStatusCode)
-        {
-            HttpContextAccessor.HttpContext.Response.Redirect("/admin/users");
-            return;
-        }
-
-        Errors.Add($"Server returned {response.StatusCode}");
+        var response = await Api.Users.UpdateAsync(Id, Model);
+        HttpContextAccessor.HttpContext.Response.Redirect("/admin/users");
     }
 }

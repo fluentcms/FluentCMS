@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-namespace ApiModels;
+namespace Admin.Api.ApiModels;
 
 
 
@@ -74,69 +74,9 @@ public class UserAddRequest
     public string Description { get; set; }
 }
 
-public class AIThread
+public class LayoutDto
 {
-    public string Id { get; set; } = default!;
-    public string Name { get; set; } = default!;
-    public string Description { get; set; } = default!;
-    public string Model { get; set; } = default!;
-    public string SystemPrompt { get; set; } = default!;
-    public DateTime CreatedAt { get; set; }
-    public DateTime? UpdatedAt { get; set; }
-    public string CreatedBy { get; set; } = default!;
-    public string? UpdatedBy { get; set; }
-    public int Version { get; set; }
-
-}
-
-public class Agent
-{
-    public string Id { get; set; } = default!;
-    public string Name { get; set; } = default!;
-    public string Description { get; set; } = default!;
-    public string Model { get; set; } = default!;
-    public string SystemPrompt { get; set; } = default!;
-    public DateTime CreatedAt { get; set; }
-    public DateTime? UpdatedAt { get; set; }
-    public string CreatedBy { get; set; } = default!;
-    public string? UpdatedBy { get; set; }
-    public int Version { get; set; }
-
-}
-
-public class AgentsApiResponse : ListApiResponse<Agent>
-{
-
-}
-
-public class AgentApiResponse : ApiResponse<Agent>
-{
-}
-
-
-public class ThreadsApiResponse : ListApiResponse<AIThread>
-{
-
-}
-
-public class ThreadApiResponse : ApiResponse<AIThread>
-{
-}
-
-
-public class AIAnnotation
-{
-    public List<AnnotatedRegion>? AnnotatedRegions { get; set; }
-    public Dictionary<string, object>? AdditionalProperties { get; set; }
-}
-
-public class AIContent
-{
-    [JsonPropertyName("$type")]
-    public string? Type { get; set; }
-    public string? Text { get; set; }
-    public List<AIAnnotation>? Annotations { get; set; }
-    public Dictionary<string, object>? AdditionalProperties { get; set; }
+    public Guid? Id { get; set; } = null!;
 }
 
 public class AccountChangePasswordRequest
@@ -186,46 +126,15 @@ public class AccountResetPasswordRequest
     public string ConfirmPassword { get; set; } = null!;
 }
 
-public class AgentRunResponse
-{
-    public List<ChatMessage>? Messages { get; set; }
-    public string? AgentId { get; set; }
-    public string? ResponseId { get; set; }
-    public string? ContinuationToken { get; set; }
-    public DateTime? CreatedAt { get; set; }
-    public UsageDetails? Usage { get; set; }
-    public Dictionary<string, object>? AdditionalProperties { get; set; }
-}
-
-public class AgentRunResponseApiResponse : ApiResponse<AgentRunResponse>
-{
-}
-
-public class AnnotatedRegion { }
-
 public class ApiError
 {
     public string? Code { get; set; }
     public string? Description { get; set; }
 }
 
-public class ChatMessage
-{
-    public string? AuthorName { get; set; }
-    public DateTime? CreatedAt { get; set; }
-    public string? Role { get; set; }
-    public List<AIContent>? Contents { get; set; }
-    public string? MessageId { get; set; }
-    public Dictionary<string, object>? AdditionalProperties { get; set; }
-}
-
 public class LoginDto
 {
     public string? Token { get; set; }
-}
-
-public class LoginDtoApiResponse : ApiResponse<LoginDto>
-{
 }
 
 public class RoleAddRequest
@@ -240,7 +149,6 @@ public class RoleDto
     public Guid Id { get; set; }
     public string? Name { get; set; }
     public string? Description { get; set; }
-    public Guid SiteId { get; set; }
     public RoleTypes? Type { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
@@ -275,11 +183,6 @@ public class SiteDto
     public string? Name { get; set; }
     public string? Description { get; set; }
     public List<string>? Urls { get; set; }
-}
-
-public class SiteDtoApiListResponse : ListApiResponse<SiteDto>
-{
-
 }
 
 public class TodoCreateDto

@@ -3,7 +3,7 @@
 @using FluentCMS.Web.UI.Components
 
 @inject HttpClient Http
-@inject NavigationManager Navigation
+@inject ApiClientFactory Api
 
 <PageTitle>Users</PageTitle>
 
@@ -27,7 +27,7 @@
         }
         else
         {
-            <DataTable TItem="ApiModels.UserDto" Items="@Users">
+            <DataTable TItem="UserDto" Items="@Users">
                 <DataTableItem Label="ID">@context.Id</DataTableItem>
                 <DataTableItem Label="Username">@context.Username</DataTableItem>
                 <DataTableItem Label="Email">@context.Email</DataTableItem>
@@ -70,7 +70,7 @@
             console.log("Should delete user with id  ", id, res)
             await fetch('/api/Users/Remove/' + id, {
                 method: "DELETE",
-            }).then(res => res.json()).then(res => {
+            }).then(res => {
                 location.reload()
             })
         }
@@ -78,28 +78,25 @@
 </script>
 
 @code {
-    private List<ApiModels.UserDto>? Users;
+    private List<UserDto>? Users;
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            var response = await Http.GetFromJsonAsync<ApiModels.ListApiResponse<ApiModels.UserDto>>("http://localhost:5093/api/Users/GetAll");
+            var response = await Api.Users.GetAllAsync();
 
             if (response != null)
             {
                 Users = response.Data.ToList();
             }
-            else
-            {
-                Users = new List<ApiModels.UserDto>();
-                Console.WriteLine("No users returned from API.");
-            }
         }
-        catch (Exception ex)
+        catch (ApiException ex)
         {
-            Console.WriteLine("Error fetching agents: " + ex.Message);
-            Users = new List<ApiModels.UserDto>();
+            foreach (var error in ex.Errors)
+            {
+                Console.WriteLine("Error fetching user: " + error);
+            }
         }
     }
 }

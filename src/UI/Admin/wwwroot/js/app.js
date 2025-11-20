@@ -57,5 +57,5 @@ for (const confirmEl of confirmEls) {
         });
     }
 
-    confirms.set(confirmEl.dataset.name, { open });
+    confirms.set(confirmEl.dataset.name, { open, element: confirmEl });
 }

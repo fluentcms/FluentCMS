@@ -1,6 +1,7 @@
 @page "/admin/users/create"
 @inject HttpClient Http
 @inject IHttpContextAccessor HttpContextAccessor
+@inject ApiClientFactory Api
 
 
 <PluginFormPage OnInitialized="@OnInitialized" FormName="UserCreateForm" Model="@Model" OnSubmit="@OnSubmit" Title="Create new user" Path="/admin/users">
@@ -26,7 +27,7 @@
     private List<string> Errors { get; set; } = [];
 
     [SupplyParameterFromForm(FormName="UserCreateForm")]
-    private ApiModels.UserAddRequest Model { get; set; } = new();
+    private UserAddRequest Model { get; set; } = new();
 
     public async Task OnInitialized()
     {
@@ -36,18 +37,7 @@
     public async Task OnSubmit()
     {
         Errors.Clear();
-
-        var response = await Http.PostAsJsonAsync("http://localhost:5093/api/Users/Add", Model);
-
-        if (response.IsSuccessStatusCode)
-        {
-            var content = await response.Content.ReadFromJsonAsync<ApiModels.ApiResponse<ApiModels.UserDto>>();
-            HttpContextAccessor.HttpContext.Response.Redirect("/admin/users");
-        }
-        else
-        {
-            Errors.Add($"Server returned {response.StatusCode}");
-        }
+        var response = await Api.Users.CreateAsync(Model);
+        HttpContextAccessor.HttpContext.Response.Redirect("/admin/users");
     }
-
 }

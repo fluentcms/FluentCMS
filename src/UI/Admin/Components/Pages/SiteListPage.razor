@@ -1,0 +1,95 @@
+@page "/admin/sites"
+
+@inject HttpClient Http
+@inject ApiClientFactory Api
+
+<PageTitle>Sites</PageTitle>
+
+<PageHeader Title="Sites">
+    <LinkButton Href="/admin/sites/create" Color="Color.Primary">Add Site</LinkButton>
+</PageHeader>
+
+<PageBody>
+    <Card>
+        @if (Sites == null)
+        {
+            <CardBody>
+                <p>Loading...</p>
+            </CardBody>
+        }
+        else if (!Sites.Any())
+        {
+            <CardBody>
+                <p>No Sites found.</p>
+            </CardBody>
+        }
+        else
+        {
+            <DataTable TItem="SiteDto" Items="@Sites">
+                 <DataTableItem Label="Name">@context.Name</DataTableItem>
+            <DataTableItem Label="Description">@context.Description</DataTableItem>
+            <DataTableItem Label="Url">
+                <Stack Visible="@(context?.Urls != null)">
+                    @foreach (var url in context!.Urls!)
+                    {
+                        <Badge Color="Color.Primary">@url</Badge>
+                    }
+                </Stack>
+            </DataTableItem>
+            <DataTableItem Label="Layout">
+                @* @Layouts.Find(x => x.Id == context.LayoutId)?.Name *@
+            </DataTableItem>
+            <DataTableItem Label="Detail Layout">
+                @* @Layouts.Find(x => x.Id == context.DetailLayoutId)?.Name *@
+            </DataTableItem>
+            <DataTableItem Label="Edit Layout">
+                @* @Layouts.Find(x => x.Id == context.EditLayoutId)?.Name *@
+            </DataTableItem>
+                @* <DataTableItem Label="Model">@context.Model</DataTableItem> *@
+                <DataTableItem Label="Actions">
+                    <LinkButton Ghost Color="Color.Primary" Href=@("/admin/sites/edit/" + context.Id)>Edit</LinkButton>
+                    <Button Ghost Color="Color.Danger" onclick=@($"deleteSite('{context.Id}', '{context.Name}')")>Delete</Button>
+                </DataTableItem>
+            </DataTable>
+        }
+    </Card>
+</PageBody>
+
+<Confirm data-name="DeleteSiteConfirm">
+    Are you sure to delete "<span id="name"></span>" site?
+</Confirm>
+
+<script>
+    async function deleteSite(id, name) {
+        const {open, element} = await confirms.get('DeleteSiteConfirm');
+
+        element.querySelector('#name').textContent = name
+
+        const res = await open();
+
+        if(res) {
+            await fetch('/api/Sites/Remove/' + id, {
+                method: "DELETE",
+            }).then(res => res.json()).then(res => {
+                location.reload()
+            })
+        }
+    }
+</script>
+
+@code {
+    private List<LayoutDto> Layouts { get; set; }
+    private List<SiteDto>? Sites { get; set; }
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        Sites = await Api.Sites.GetAllAsync();
+
+        Layouts = new List<LayoutDto>{
+            new LayoutDto {
+                Id = Guid.NewGuid()
+            },
+        };
+    }
+}

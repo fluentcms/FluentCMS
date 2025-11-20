@@ -2,6 +2,7 @@
 @inject HttpClient Http
 
 @inject IHttpContextAccessor HttpContextAccessor
+@inject ApiClientFactory Api
 
 <PluginFormPage OnInitialized="@OnInitialized" FormName="RoleCreateForm" Model="@Model" OnSubmit="@OnSubmit" Title="Create new role" Path="/admin/roles">
     <FormInput @bind-Value="@Model.Name" Placeholder="Enter role name" Label="Name" Required />
@@ -19,28 +20,16 @@
     private List<string> Errors { get; set; } = [];
 
     [SupplyParameterFromForm(FormName="RoleCreateForm")]
-    private ApiModels.RoleAddRequest Model { get; set; } = new();
+    private RoleAddRequest Model { get; set; } = new();
 
     public async Task OnInitialized()
     {
         Console.WriteLine("Initialized");
-        Model.SiteId = Guid.NewGuid();
     }
 
     public async Task OnSubmit()
     {
-        Errors.Clear();
-
-        var response = await Http.PostAsJsonAsync("http://localhost:5093/api/Roles/Add", Model);
-
-        if (response.IsSuccessStatusCode)
-        {
-            var content = await response.Content.ReadFromJsonAsync<ApiModels.ApiResponse<ApiModels.RoleDto>>();
-            HttpContextAccessor.HttpContext.Response.Redirect("/admin/roles");
-        }
-        else
-        {
-            Errors.Add($"Server returned {response.StatusCode}");
-        }
+        await Api.Roles.CreateAsync(Model);
+        HttpContextAccessor.HttpContext.Response.Redirect("/admin/roles");
     }
 }

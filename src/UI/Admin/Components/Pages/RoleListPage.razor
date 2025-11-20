@@ -3,7 +3,7 @@
 @using FluentCMS.Web.UI.Components
 
 @inject HttpClient Http
-@inject NavigationManager Navigation
+@inject ApiClientFactory Api
 
 <PageTitle>Roles</PageTitle>
 
@@ -27,7 +27,7 @@
         }
         else
         {
-            <DataTable TItem="ApiModels.RoleDto" Items="@Roles">
+            <DataTable TItem="RoleDto" Items="@Roles">
                 <DataTableItem Label="ID">@context.Id</DataTableItem>
                 <DataTableItem Label="Name">@context.Name</DataTableItem>
                 <DataTableItem Label="Description">@context.Description</DataTableItem>
@@ -54,7 +54,7 @@
             console.log("Should delete role with id  ", id, res)
             await fetch('/api/Roles/Remove/' + id, {
                 method: "DELETE",
-            }).then(res => res.json()).then(res => {
+            }).then(res => {
                 location.reload()
             })
         }
@@ -62,28 +62,24 @@
 </script>
 
 @code {
-    private List<ApiModels.RoleDto>? Roles;
+    private List<RoleDto>? Roles = new();
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            var response = await Http.GetFromJsonAsync<ApiModels.ListApiResponse<ApiModels.RoleDto>>("http://localhost:5093/api/Roles/GetAll");
+            var response = await Api.Roles.GetAllAsync();
+                Console.WriteLine("Here1");
 
-            if (response != null)
+            if (response?.Data != null)
             {
+                Console.WriteLine("Here");
                 Roles = response.Data.ToList();
-            }
-            else
-            {
-                Roles = new List<ApiModels.RoleDto>();
-                Console.WriteLine("No roles returned from API.");
             }
         }
         catch (Exception ex)
         {
             Console.WriteLine("Error fetching roles: " + ex.Message);
-            Roles = new List<ApiModels.RoleDto>();
         }
     }
 }

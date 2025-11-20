@@ -1,4 +1,5 @@
-using Admin.Components;using Admin.Components;
+using Admin.Components;
+using Admin.Api;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -16,12 +17,9 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddUIComponents();
 builder.Services.AddControllers();
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddHttpClient();
 
-builder.Services.AddHttpClient("BackendApi", client =>
-{
-    client.BaseAddress = new Uri("http://localhost:5093/");
-});
-
+builder.Services.AddScoped<ApiClientFactory>();
 
 var app = builder.Build();
 

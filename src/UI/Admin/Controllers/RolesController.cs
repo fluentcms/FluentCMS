@@ -5,12 +5,12 @@ using System.Net.Http;
 using System.Threading.Tasks;
 
 [ApiController]
-[Route("api/Users")]
-public class UsersController : ControllerBase
+[Route("api/Roles")]
+public class RolesController : ControllerBase
 {
     private readonly ApiClientFactory _api;
 
-    public UsersController(ApiClientFactory api)
+    public RolesController(ApiClientFactory api)
     {
         _api = api;
     }
@@ -18,7 +18,7 @@ public class UsersController : ControllerBase
     [HttpDelete("Remove/{id}")]
     public async Task<IActionResult> Remove(Guid id)
     {
-        var result = await _api.Users.DeleteAsync(id);
+        var result = await _api.Roles.DeleteAsync(id);
 
         return StatusCode(200);
     }

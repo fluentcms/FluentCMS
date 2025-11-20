@@ -32,13 +32,13 @@
 
 @code {
     [SupplyParameterFromForm(FormName = "LoginForm")]
-    private ApiModels.AccountLoginRequest Model { get; set; } = new();
+    private AccountLoginRequest Model { get; set; } = new();
     private async Task HandleSubmit()
     {
           Console.WriteLine("Form submitted");
 
     var responseMessage = await Http.PostAsJsonAsync("http://localhost:5093/api/Accounts/Login", Model);
-    var response = await responseMessage.Content.ReadFromJsonAsync<ApiModels.ApiResponse<ApiModels.LoginDto>>();
+    var response = await responseMessage.Content.ReadFromJsonAsync<ApiResponse<LoginDto>>();
 
     if (response?.Data != null)
     {

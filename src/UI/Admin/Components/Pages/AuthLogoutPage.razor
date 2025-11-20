@@ -5,7 +5,7 @@
 @code {
     protected override async Task OnInitializedAsync()
     {
-        var response = await Http.GetFromJsonAsync<ApiModels.ApiResponse<bool>>("http://localhost:5093/api/Accounts/Logout");
+        var response = await Http.GetFromJsonAsync<ApiResponse<bool>>("http://localhost:5093/api/Accounts/Logout");
         Navigation.NavigateTo("/", false); 
     }
 }

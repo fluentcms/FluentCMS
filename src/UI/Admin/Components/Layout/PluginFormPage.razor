@@ -79,10 +79,14 @@
         {
             await OnSubmit.InvokeAsync();
         }
-        catch (Exception ex)
+        catch (ApiException ex)
+        {
+            Errors.Clear();
+            Errors.AddRange(ex.Errors);
+        }
+        catch(Exception ex)
         {
             Errors = [ex.Message];
-            StateHasChanged();
         }
     }
 }
