@@ -60,7 +60,7 @@
 
     private async Task HandleSubmit()
     {
-        var response = await Api.Sites.UpdateAsync(Id, new SiteAddRequest {
+        var response = await Api.Sites.UpdateAsync(Id, new SiteUpdateRequest {
             Name = Model.Name,
             Description = Model.Description,
             Urls = [.. Model.Urls.Split(",")],

@@ -1,0 +1,83 @@
+@page "/admin/layouts"
+
+@using FluentCMS.Web.UI.Components
+
+@inject HttpClient Http
+@inject ApiClientFactory Api
+
+<PageTitle>Layouts</PageTitle>
+
+<PageHeader Title="Layouts">
+    <LinkButton Href="/admin/layouts/create" Color="Color.Primary">Create new layout</LinkButton>
+</PageHeader>
+
+<PageBody>
+    <Card>
+        @if (Layouts == null)
+        {
+            <CardBody>
+                <p>Loading...</p>
+            </CardBody>
+        }
+        else if (!Layouts.Any())
+        {
+            <CardBody>
+                <p>No Layouts found.</p>
+            </CardBody>
+        }
+        else
+        {
+            <DataTable TItem="LayoutDto" Items="@Layouts">
+                <DataTableItem Label="ID">@context.Id</DataTableItem>
+                <DataTableItem Label="Name">@context.Name</DataTableItem>
+
+                <DataTableItem Label="Actions">
+                    <LinkButton Ghost Color="Color.Primary" Href=@("/admin/layouts/edit/" + context.Id)>Edit</LinkButton>
+                    <Button Ghost Color="Color.Danger" onclick=@($"deleteLayout('{context.Id}')")>Delete</Button>
+                </DataTableItem>
+            </DataTable>
+        }
+    </Card>
+</PageBody>
+
+<Confirm data-name="DeleteLayoutConfirm">
+    Are you sure to delete this layout?
+</Confirm>
+
+<script>
+    async function deleteLayout(id) {
+        const res = await confirms.get('DeleteLayoutConfirm').open();
+
+        if (res) {
+            console.log("Should delete layout with id  ", id, res)
+            await fetch('/api/Layouts/Remove/' + id, {
+                method: "DELETE",
+            }).then(res => {
+                location.reload()
+            })
+        }
+    }
+</script>
+
+@code {
+    private List<LayoutDto> Layouts;
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var response = await Api.Layouts.GetAllAsync();
+
+            if (response != null)
+            {
+                Layouts = response.Data.ToList();
+            }
+        }
+        catch (ApiException ex)
+        {
+            foreach (var error in ex.Errors)
+            {
+                Console.WriteLine("Error fetching layout: " + error);
+            }
+        }
+    }
+}

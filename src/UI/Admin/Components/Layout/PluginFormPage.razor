@@ -66,9 +66,10 @@
 
     protected async Task OnInitializedAsync()
     {
+        Console.WriteLine("HERE oNinitialized");
         if (OnInitialized != null)
         {
-            OnInitialized.Invoke();
+            await OnInitialized.Invoke();
         }
     }
 

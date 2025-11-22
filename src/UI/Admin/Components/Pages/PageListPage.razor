@@ -1,0 +1,110 @@
+@page "/admin/pages"
+
+@using FluentCMS.Web.UI.Components
+
+@inject HttpClient Http
+@inject ApiClientFactory Api
+
+<PageTitle>Pages</PageTitle>
+
+<PageHeader Title="Pages">
+    <LinkButton Href="/admin/pages/create" Color="Color.Primary">Create new page</LinkButton>
+</PageHeader>
+
+<PageBody>
+    <Card>
+        @if (Pages == null)
+        {
+            <CardBody>
+                <p>Loading...</p>
+            </CardBody>
+        }
+        else if (!Pages.Any())
+        {
+            <CardBody>
+                <p>No Pages found.</p>
+            </CardBody>
+        }
+        else
+        {
+            <DataTable TItem="PageDto" Items="@Pages">
+                <DataTableItem Label="ID">@context.Id</DataTableItem>
+                <DataTableItem Label="Title">@context.Title</DataTableItem>
+                <DataTableItem Label="Slug">@context.Slug</DataTableItem>
+                <DataTableItem Label="Parent Page">
+                @(Pages.FirstOrDefault(x => x.Id == context.ParentId)?.Title ?? "(root)")
+                </DataTableItem>
+
+                <DataTableItem Label="Layout">
+                    @(Layouts.FirstOrDefault(x => x.Id == context.LayoutId)?.Name ?? "(default)")
+                </DataTableItem>
+
+                <DataTableItem Label="Edit Layout">
+                    @(Layouts.FirstOrDefault(x => x.Id == context.EditLayoutId)?.Name ?? "(default)")
+                </DataTableItem>
+
+                <DataTableItem Label="Detail Layout">
+                    @(Layouts.FirstOrDefault(x => x.Id == context.DetailLayoutId)?.Name ?? "(default)")
+                </DataTableItem>
+
+                @* <DataTableItem Label="Model">@context.Model</DataTableItem> *@
+                <DataTableItem Label="Actions">
+                    <LinkButton Ghost Color="Color.Primary" Href=@("/admin/pages/edit/" + context.Id)>Edit</LinkButton>
+                    <Button Ghost Color="Color.Danger" onclick=@($"deletePage('{context.Id}')")>Delete</Button>
+                </DataTableItem>
+            </DataTable>
+        }
+    </Card>
+</PageBody>
+
+<Confirm data-name="DeletePageConfirm">
+    Are you sure to delete this page?
+</Confirm>
+
+<script>
+    async function deletePage(id) {
+        const res = await confirms.get('DeletePageConfirm').open();
+
+        if (res) {
+            console.log("Should delete page with id  ", id, res)
+            await fetch('/api/Pages/Remove/' + id, {
+                method: "DELETE",
+            }).then(res => {
+                location.reload()
+            })
+        }
+    }
+</script>
+
+@code {
+    private List<PageDto>? Pages;
+
+    private List<LayoutDto> Layouts;
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var response = await Api.Pages.GetAllAsync();
+
+            if (response != null)
+            {
+                Pages = response.Data.ToList();
+            }
+
+            var layoutsResponse = await Api.Layouts.GetAllAsync();
+
+            if (layoutsResponse.Data != null)
+            {
+                Layouts = layoutsResponse.Data.ToList();
+                Console.WriteLine("Layout count: " + Layouts.Count);
+            }
+        }
+        catch (ApiException ex)
+        {
+            foreach (var error in ex.Errors)
+            {
+                Console.WriteLine("Error fetching page: " + error);
+            }
+        }
+    }
+}

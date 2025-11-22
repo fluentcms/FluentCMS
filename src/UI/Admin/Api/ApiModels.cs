@@ -74,10 +74,94 @@ public class UserAddRequest
     public string Description { get; set; }
 }
 
+
+
+public class PageDto
+{
+    public Guid Id { get; set; }
+    public Guid? ParentId { get; set; }
+    public string Title { get; set; } = default!;
+    public string Slug { get; set; }
+    public int Order { get; set; }
+
+    public Guid? LayoutId { get; set; }
+    public Guid? EditLayoutId { get; set; }
+    public Guid? DetailLayoutId { get; set; }
+
+    public string? MetaTitle { get; set; }
+    public string? MetaDescription { get; set; }
+    public bool RobotsIndex { get; set; }
+    public bool RobotsFollow { get; set; }
+    public string? OgType { get; set; }
+
+    public string? Head { get; set; }
+}
+
+public class PageAddRequest
+{
+    public string Title { get; set; } = default!;
+    public string? Slug { get; set; }
+    public int Order { get; set; }
+
+    public Guid? ParentId { get; set; }
+    public Guid? LayoutId { get; set; }
+    public Guid? EditLayoutId { get; set; }
+    public Guid? DetailLayoutId { get; set; }
+
+    public string? MetaTitle { get; set; }
+    public string? MetaDescription { get; set; }
+    public bool RobotsIndex { get; set; }
+    public bool RobotsFollow { get; set; }
+    public string? OgType { get; set; }
+
+    public string? Head { get; set; }
+}
+
+public class PageUpdateRequest
+{
+    public string Title { get; set; } = default!;
+    public string? Slug { get; set; }
+    public int Order { get; set; }
+
+    public Guid? ParentId { get; set; }
+    public Guid? LayoutId { get; set; }
+    public Guid? EditLayoutId { get; set; }
+    public Guid? DetailLayoutId { get; set; }
+
+    public string? MetaTitle { get; set; }
+    public string? MetaDescription { get; set; }
+    public bool RobotsIndex { get; set; }
+    public bool RobotsFollow { get; set; }
+    public string? OgType { get; set; }
+
+    public string? Head { get; set; }
+}
+
+
 public class LayoutDto
 {
-    public Guid? Id { get; set; } = null!;
+    public Guid Id { get; set; }
+    public string Name { get; set; }
+    public string Head { get; set; }
+    public string Body { get; set; }
 }
+
+public class LayoutAddRequest
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; }
+    public string Head { get; set; }
+    public string Body { get; set; }
+}
+
+public class LayoutUpdateRequest
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; }
+    public string Head { get; set; }
+    public string Body { get; set; }
+}
+
 
 public class AccountChangePasswordRequest
 {
@@ -170,19 +254,63 @@ public class RoleUpdateRequest
     public string? Description { get; set; }
 }
 
-public class SiteAddRequest
-{
-    public string Name { get; set; } = null!;
-    public string? Description { get; set; }
-    public List<string> Urls { get; set; } = new List<string>();
-}
-
 public class SiteDto
 {
     public Guid Id { get; set; }
-    public string? Name { get; set; }
+    public string Name { get; set; } = default!;
     public string? Description { get; set; }
-    public List<string>? Urls { get; set; }
+    public List<string> Urls { get; set; } = [];
+
+    public Guid LayoutId { get; set; }
+    public Guid DetailLayoutId { get; set; }
+    public Guid EditLayoutId { get; set; }
+    public string? MetaTitle { get; set; }
+    public string? MetaDescription { get; set; }
+    public bool RobotsIndex { get; set; }
+    public bool RobotsFollow { get; set; }
+    public string? RobotsTxt { get; set; }
+    public string? GoogleTagsIs { get; set; }
+    public string? OgType { get; set; }
+    public string? Head { get; set; }    
+}
+
+public class SiteAddRequest
+{
+    public string Name { get; set; } = default!;
+    public string? Description { get; set; }
+    public List<string> Urls { get; set; } = [];
+    public Guid LayoutId { get; set; }
+    public Guid DetailLayoutId { get; set; }
+    public Guid EditLayoutId { get; set; }
+    public string? MetaTitle { get; set; }
+    public string? MetaDescription { get; set; }
+    public bool RobotsIndex { get; set; }
+    public bool RobotsFollow { get; set; }
+    public string? RobotsTxt { get; set; }
+    public string? GoogleTagsIs { get; set; }
+    public string? OgType { get; set; }
+    public string? Head { get; set; }    
+}
+
+public class SiteUpdateRequest
+{
+    public string Name { get; set; } = default!;
+
+    public string? Description { get; set; }
+
+    public List<string> Urls { get; set; } = [];
+
+    public Guid LayoutId { get; set; }
+    public Guid DetailLayoutId { get; set; }
+    public Guid EditLayoutId { get; set; }
+    public string? MetaTitle { get; set; }
+    public string? MetaDescription { get; set; }
+    public bool RobotsIndex { get; set; }
+    public bool RobotsFollow { get; set; }
+    public string? RobotsTxt { get; set; }
+    public string? GoogleTagsIs { get; set; }
+    public string? OgType { get; set; }
+    public string? Head { get; set; }    
 }
 
 public class TodoCreateDto
@@ -218,14 +346,6 @@ public class TodoUpdateDto
     public string? Description { get; set; }
     public bool IsCompleted { get; set; }
     public DateTime? DueDate { get; set; }
-}
-
-public class UsageDetails
-{
-    public long? InputTokenCount { get; set; }
-    public long? OutputTokenCount { get; set; }
-    public long? TotalTokenCount { get; set; }
-    public Dictionary<string, long>? AdditionalCounts { get; set; }
 }
 
 public class UserRolesUpdateRequest

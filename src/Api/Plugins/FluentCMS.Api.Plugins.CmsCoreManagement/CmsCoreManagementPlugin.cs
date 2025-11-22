@@ -16,9 +16,12 @@ public class CmsCoreManagementPlugin : IPluginStartup
         services.AddSchemaValidator<CmsCoreSchemaValidator, ICmsCoreDatabaseMarker>();
 
         services.AddScoped<ISiteRepository, SiteRepository>();
+        services.AddScoped<IPageRepository, PageRepository>();
+        services.AddScoped<ILayoutRepository, LayoutRepository>();
 
         services.AddScoped<ISiteService, SiteService>();
         services.AddScoped<IPageService, PageService>();
+        services.AddScoped<ILayoutService, LayoutService>();
     }
 
     public void Configure(IApplicationBuilder app)

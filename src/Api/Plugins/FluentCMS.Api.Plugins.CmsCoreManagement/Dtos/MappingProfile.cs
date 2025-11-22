@@ -12,5 +12,9 @@ public class MappingProfile : Profile
         CreateMap<Page, PageDto>();
         CreateMap<PageAddRequest, Page>();
         CreateMap<PageUpdateRequest, Page>();
+
+        CreateMap<Layout, LayoutDto>();
+        CreateMap<LayoutAddRequest, Layout>();
+        CreateMap<LayoutUpdateRequest, Layout>();
     }
 }

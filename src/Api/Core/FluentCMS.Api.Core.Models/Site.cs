@@ -8,4 +8,12 @@ public class Site : AuditableEntity
     public Guid LayoutId { get; set; }
     public Guid DetailLayoutId { get; set; }
     public Guid EditLayoutId { get; set; }
+    public string? MetaTitle { get; set; }
+    public string? MetaDescription { get; set; }
+    public bool? RobotsIndex { get; set; }
+    public bool? RobotsFollow { get; set; }
+    public string? RobotsTxt { get; set; }
+    public string? GoogleTagsIs { get; set; }
+    public string? OgType { get; set; }
+    public string? Head { get; set; }    
 }

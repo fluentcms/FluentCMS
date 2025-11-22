@@ -48,25 +48,23 @@
 
     private bool IsSelected(TItem item)
     {
-        return Value?.ToString() == GetValue(item)?.ToString();
+        var itemValue = GetValue(item);
+        return Value != null && EqualityComparer<TValue>.Default.Equals(Value, itemValue);
     }
 
     private string? GetText(TItem item)
     {
-        if (string.IsNullOrEmpty(TextField))
-        {
-            return item!.ToString();
-        }
-        return (string?)item!.GetType().GetProperty(TextField)?.GetValue(item);
+        if (string.IsNullOrEmpty(TextField)) return item?.ToString();
+        var prop = item?.GetType().GetProperty(TextField);
+        return prop?.GetValue(item)?.ToString();
     }
 
     private TValue? GetValue(TItem item)
     {
-        if (string.IsNullOrEmpty(ValueField))
-        {
-            return (TValue?)(object)item!;
-        }
-        return (TValue?)item!.GetType().GetProperty(ValueField)?.GetValue(item);
+        if (item == null) return default;
+        if (string.IsNullOrEmpty(ValueField)) return (TValue?)(object)item!;
+        var prop = item.GetType().GetProperty(ValueField);
+        return prop != null ? (TValue?)prop.GetValue(item) : default;
     }
 
     protected override bool TryParseValueFromString(string? value, [MaybeNullWhen(false)] out TValue result,

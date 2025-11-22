@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Api.Plugins.CmsCoreManagement.Controllers;
 
-public class SiteController(ISiteService siteService) : BaseController
+public class SitesController(ISiteService siteService) : BaseController
 {
     [HttpGet]
     public async Task<ApiListResponse<SiteDto>> GetAll(CancellationToken cancellationToken = default)

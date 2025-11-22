@@ -1,0 +1,132 @@
+@page "/admin/pages/create"
+@inject HttpClient Http
+@inject IHttpContextAccessor HttpContextAccessor
+@inject ApiClientFactory Api
+
+
+<PluginFormPage FormName="PageCreateForm" Model="@Model" OnSubmit="@OnSubmit" Title="Create new page" Path="/admin/pages">
+    <FormInput @bind-Value="@Model.Title" Label="Title" Cols="6" />
+    <FormInput @bind-Value="@Model.Slug" Label="Slug" Cols="6" />
+    <FormNumberInput @bind-Value="@Model.Order" Label="Order" Cols="6" />
+    <FormSelect Data="OgTypeOptions" @bind-Value="Model!.OgType" TextField="Title" ValueField="Value" Label="Og Type" Placeholder="Choose page type" Cols="6" />
+
+    <FormSelect @bind-Value="Model!.ParentId" Cols="6" Data="PageOptions" TextField="Title" ValueField="Id" Label="Parent Page" Placeholder="Choose Parent Page"/>
+    <FormSelect @bind-Value="Model!.LayoutId" Cols="6" Data="LayoutOptions" ValueField="Id" TextField="Title" Label="Layout" Placeholder="Choose Layout" />
+    <FormSelect @bind-Value="Model!.EditLayoutId" Cols="6" Data="LayoutOptions" ValueField="Id" TextField="Title" Label="Edit Layout" Placeholder="Choose Edit Layout" />
+    <FormSelect @bind-Value="Model!.DetailLayoutId" Cols="6" Data="LayoutOptions" ValueField="Id" TextField="Title" Label="Detail Layout" Placeholder="Choose Detail Layout" />
+    
+
+    <FormTextarea @bind-Value="Model!.Head" Label="Head" Placeholder="Enter Head content" />
+    <FormInput @bind-Value="Model!.MetaTitle" Cols="12" Label="Meta Title" Placeholder="Enter Meta Title" />
+    <FormTextarea @bind-Value="Model.MetaDescription" Label="Meta Description" Placeholder="Enter Meta Description" />
+    <FormCheckbox Text="Add this page to sitemap" Label="Index" @bind-Value="@Model.RobotsIndex" Cols="6"/>
+    <FormCheckbox Text="Search engines will follow links of this page" Label="Follow" @bind-Value="@Model.RobotsFollow" Cols="6"/>
+                       
+    <FormField>
+        <Stack Gutter="StackGutter.Medium" Justify="StackJustify.End">
+            <LinkButton href="/admin/pages">Cancel</LinkButton>
+            <Button Color="Color.Primary" Type="ButtonType.Submit">Create</Button>
+        </Stack>
+    </FormField>
+</PluginFormPage>
+
+@code {
+    private List<string> Errors { get; set; } = [];
+
+    private List<SelectOption> PageOptions { get; set; }
+    private List<SelectOption> LayoutOptions { get; set; }
+
+    [SupplyParameterFromForm(FormName="PageCreateForm")]
+    private PageAddRequest Model { get; set; } = new();
+
+  private List<SelectOptionString> OgTypeOptions =
+    [
+        new SelectOptionString
+        {
+            Title = "(default)",
+            Value = string.Empty
+        },
+        new SelectOptionString
+        {
+            Title = "Website",
+            Value = "website"
+        },
+        new SelectOptionString
+        {
+            Title = "Article",
+            Value = "article"
+        },
+        new SelectOptionString
+        {
+            Title = "Product",
+            Value = "product"
+        },
+        new SelectOptionString
+        {
+            Title = "Video",
+            Value = "video"
+        }
+    ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var pagesResponse = await Api.Pages.GetAllAsync();
+        if (pagesResponse.Data != null)
+        {
+            PageOptions = new List<SelectOption>() { new() { Title = "(root)", Value = null } };
+            PageOptions.AddRange(pagesResponse.Data.Select(p => new SelectOption { Title = p.Title, Value = p.Id }));
+            Console.WriteLine("Page count: " + PageOptions.Count);
+        }
+
+        var layoutsResponse = await Api.Layouts.GetAllAsync();
+        if (layoutsResponse.Data != null)
+        {
+            LayoutOptions = new List<SelectOption>() { new() { Title = "(default)", Value = null } };
+            LayoutOptions.AddRange(layoutsResponse.Data.Select(l => new SelectOption { Title = l.Name, Value = l.Id }));
+            Console.WriteLine("Layout count: " + LayoutOptions.Count);
+        }
+    }
+
+    public async Task OnSubmit()
+    {
+
+        Errors.Clear();
+
+        // Log all model fields
+        Console.WriteLine("Submitting Page model:");
+        Console.WriteLine($"Title: {Model.Title}");
+        Console.WriteLine($"Slug: {Model.Slug}");
+        Console.WriteLine($"Order: {Model.Order}");
+        Console.WriteLine($"ParentId: {Model.ParentId}");
+        Console.WriteLine($"LayoutId: {Model.LayoutId}");
+        Console.WriteLine($"EditLayoutId: {Model.EditLayoutId}");
+        Console.WriteLine($"DetailLayoutId: {Model.DetailLayoutId}");
+        Console.WriteLine($"MetaTitle: {Model.MetaTitle}");
+        Console.WriteLine($"MetaDescription: {Model.MetaDescription}");
+        Console.WriteLine($"RobotsIndex: {Model.RobotsIndex}");
+        Console.WriteLine($"RobotsFollow: {Model.RobotsFollow}");
+        Console.WriteLine($"OgType: {Model.OgType}");
+        Console.WriteLine($"Head: {Model.Head}");
+
+        Model.ParentId = Model.ParentId == Guid.Empty ? null : Model.ParentId;
+        Model.LayoutId = Model.LayoutId == Guid.Empty ? null : Model.LayoutId;
+        Model.EditLayoutId = Model.EditLayoutId == Guid.Empty ? null : Model.EditLayoutId;
+        Model.DetailLayoutId = Model.DetailLayoutId == Guid.Empty ? null : Model.DetailLayoutId;
+   
+
+        var response = await Api.Pages.CreateAsync(Model);
+        HttpContextAccessor.HttpContext.Response.Redirect("/admin/pages");
+    }
+
+    
+    class SelectOption
+    {
+        public string Title { get; set; } = string.Empty;
+        public Guid? Value { get; set; }
+    }
+    class SelectOptionString
+    {
+        public string Title { get; set; } = string.Empty;
+        public string Value { get; set; }
+    }
+}

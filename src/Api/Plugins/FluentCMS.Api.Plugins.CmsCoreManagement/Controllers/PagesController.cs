@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Api.Plugins.CmsCoreManagement.Controllers;
 
-public class PageController(IPageService pageService) : BaseController
+public class PagesController(IPageService pageService) : BaseController
 {
     [HttpGet]
     public async Task<ApiListResponse<PageDto>> GetAll(CancellationToken cancellationToken = default)
