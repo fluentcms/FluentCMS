@@ -4,7 +4,7 @@
 @inject ApiClientFactory Api
 
 
-<PluginFormPage OnInitialized="@OnInitialized" FormName="UserCreateForm" Model="@Model" OnSubmit="@OnSubmit" Title="Create new user" Path="/admin/users">
+<PluginFormPage OnInitialized="@OnInitialized" FormName="UserCreateForm" Model="@Model" OnSubmit="@OnSubmit" Title="Create new user" BackUrl="/admin/users">
     <FormInput @bind-Value="@Model.Username" Label="Username" />
     <FormInput @bind-Value="@Model.Password" Label="Password" Type="password" />
     <FormInput @bind-Value="@Model.Email" Label="Email" />

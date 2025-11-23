@@ -3,7 +3,7 @@
 @inject IHttpContextAccessor HttpContextAccessor
 @inject ApiClientFactory Api
 
-<PluginFormPage Title="Edit user" FormName="UserEditForm" Path="/admin/users" Model="@Model" Errors="@Errors"
+<PluginFormPage Title="Edit user" FormName="UserEditForm" BackUrl="/admin/users" Model="@Model" Errors="@Errors"
     OnSubmit="@HandleSubmit">
 
     <FormInput Disabled @bind-Value="@Model.Username" Label="Username" />

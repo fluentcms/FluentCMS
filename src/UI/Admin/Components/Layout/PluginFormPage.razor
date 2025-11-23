@@ -3,7 +3,10 @@
 
 
 <PageHeader Title="@Title">
-    <LinkButton Outline Href="@Path">Back</LinkButton>
+    @if(!string.IsNullOrEmpty(BackUrl))
+    {
+        <LinkButton Outline Href="@BackUrl">Back</LinkButton>
+    }
 </PageHeader>
 
 <PageBody>
@@ -15,25 +18,30 @@
                     <DataAnnotationsValidator />
                     <Spacer />
                     <Grid GutterX="GridGutter.Large">
-
-
                         @ChildContent
-                        </Grid>
-                        <Spacer />
-            @if (Errors.Count > 0)
-            {
-                <Alert Type="AlertType.Danger">
-                    @foreach (var error in Errors)
+                        <FormField>
+                            <Stack Gutter="StackGutter.Medium" Justify="StackJustify.Start">
+                                <Button Color="Color.Primary" Type="ButtonType.Submit">@SubmitLabel</Button>
+                                @if (!string.IsNullOrEmpty(BackUrl))
+                                {
+                                    <LinkButton href="@BackUrl">Cancel</LinkButton>
+                                }
+                            </Stack>
+                        </FormField>
+                    </Grid>
+                    @if (Errors.Count > 0)
                     {
-                        <p>@error</p>
+                        <Alert Type="AlertType.Danger">
+                            @foreach (var error in Errors)
+                            {
+                                <p>@error</p>
+                            }
+                        </Alert>
                     }
-                </Alert>
-            }
                 </EditForm>
             }
         </CardBody>
     </Card>
-
 </PageBody>
 
 @code {
@@ -44,7 +52,9 @@
     public string FormName { get; set; }
 
     [Parameter]
-    public string Path { get; set; }
+    public string BackUrl { get; set; }
+    [Parameter]
+    public string SubmitLabel { get; set; } = "Subimt";
 
     [Parameter]
     public RenderFragment ChildContent { get; set; }

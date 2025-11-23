@@ -3,7 +3,7 @@
 @inject IHttpContextAccessor HttpContextAccessor
 @inject ApiClientFactory Api
 
-<PluginFormPage Title="Edit role" FormName="RoleEditForm" Path="/admin/roles" Model="@Model" Errors="@Errors"
+<PluginFormPage Title="Edit role" FormName="RoleEditForm" BackUrl="/admin/roles" Model="@Model" Errors="@Errors"
     OnSubmit="@HandleSubmit">
 
     <FormInput @bind-Value="@Model.Name" Label="Name" />

@@ -1,0 +1,25 @@
+@page "/admin/layouts/create"
+@inject HttpClient Http
+@inject IHttpContextAccessor HttpContextAccessor
+@inject ApiClientFactory Api
+
+
+<LayoutForm Model="@Model" SubmitLabel="Create" FormName="LayoutCreateForm" OnSubmit="@HandleSubmit" Title="Create new layout" BackUrl="/admin/layouts"/>
+
+@code {
+    private List<string> Errors { get; set; } = [];
+
+    [SupplyParameterFromForm(FormName="LayoutCreateForm")]
+    private LayoutFormModel Model { get; set; } = new();
+
+    private async Task HandleSubmit()
+    {
+        Errors.Clear();
+        var response = await Api.Layouts.CreateAsync(new LayoutAddRequest {
+            Name = Model.Name,
+            Head = Model.Head,
+            Body = Model.Body,
+        });
+        HttpContextAccessor.HttpContext.Response.Redirect("/admin/layouts");
+    }
+}

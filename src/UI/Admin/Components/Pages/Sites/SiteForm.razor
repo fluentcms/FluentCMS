@@ -1,0 +1,58 @@
+
+@if(LayoutOptions != null)
+{
+    <PluginFormPage @attributes="AdditionalAttributes" OnSubmit="@OnSubmit" Model="@Model">
+        <FormInput Cols="6" Placeholder="Enter Name" @bind-Value="Model!.Name" Label="Name" Required />
+        <FormInput Cols="6" Placeholder="www.example.com,example-site.com" @bind-Value="Model.Urls"
+            Label="Urls (Comma separated)" />
+        <FormTextarea @bind-Value="Model.Description" Label="Description" Placeholder="Enter Description" />
+        <FormTextarea @bind-Value="Model.Head" Label="Head" Placeholder="Enter Head content for all pages" />
+        
+        <FormSelect @bind-Value="Model.LayoutId" Cols="6" Data="LayoutOptions" ValueField="Value" TextField="Title" Label="Layout" Placeholder="Choose default layout" />
+        <FormSelect @bind-Value="Model.EditLayoutId" Cols="6" Data="LayoutOptions" ValueField="Value" TextField="Title" Label="Edit Layout" Placeholder="Choose default edit layout" />
+        <FormSelect @bind-Value="Model.DetailLayoutId" Cols="6" Data="LayoutOptions" ValueField="Value" TextField="Title" Label="Detail Layout" Placeholder="Choose default detail layout" />
+        
+        <FormInput @bind-Value="Model.MetaTitle" Cols="12" Label="Meta Title" Placeholder="Enter Meta Title"
+            Hint="Page's MetaTitle will replace this value." />
+        <FormTextarea @bind-Value="Model.MetaDescription" Label="Meta Description" Placeholder="Enter Meta Description"
+            Hint="Page's MetaDescription will replace this value." />
+        <FormInput Cols="6" @bind-Value="Model.GoogleTagsId" Label="Google Tags id" Placeholder="Enter Google Tags Id" />
+        <FormSelect Cols="6" Data="OgTypeOptions" @bind-Value="Model.OgType" TextField="Title" ValueField="Value"
+            Label="Og Type" Placeholder="Choose default page type" />
+        <FormTextarea @bind-Value="Model.RobotsTxt" Label="Content of robots.txt"
+            Placeholder="Enter content for robots.txt file" />
+        <FormCheckbox Text="Add new pages to sitemap by default" Label="Index" @bind-Value="Model.RobotsIndex" Cols="6" />
+        <FormCheckbox Text="Search engines will follow links of the pages by default" Label="Follow"
+            @bind-Value="Model.RobotsFollow" Cols="6" />
+        
+    </PluginFormPage>
+}
+
+@code {
+    private List<SelectOptionString> OgTypeOptions =
+    [
+        new() { Title = "(default)", Value = "" },
+        new() { Title = "Website", Value = "website" },
+        new() { Title = "Article", Value = "article" },
+        new() { Title = "Product", Value = "product" },
+        new() { Title = "Video", Value = "video" }
+    ];
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; } = default!;
+
+    [Parameter]
+    public SiteFormModel Model { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback OnSubmit { get; set; } = default!;
+
+    [Parameter]
+    public List<SelectOption?> LayoutOptions { get; set; } = default!;
+
+    class SelectOptionString
+    {
+        public string Title { get; set; } = string.Empty;
+        public string? Value { get; set; }
+    }
+}

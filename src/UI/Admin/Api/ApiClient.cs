@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Admin.Api.ApiModels;
@@ -18,25 +19,41 @@ public class ApiClient
     {
         var content = await response.Content.ReadAsStringAsync();
 
-        if (!response.IsSuccessStatusCode)
-        {
-            throw new ApiException(response.StatusCode, new List<string> { content });
-        }
+        // Try reading the JSON even in error cases
+        T? apiResp = null;
 
-        var apiResp = JsonSerializer.Deserialize<T>(content, new JsonSerializerOptions
+        try
         {
-            PropertyNameCaseInsensitive = true
-        });
+            apiResp = JsonSerializer.Deserialize<T>(content, new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true
+            });
+        }
+        catch
+        {
+            // If even parsing fails, throw generic error
+            throw new ApiException(response.StatusCode, new List<string> { "Invalid API response" });
+        }
 
         if (apiResp == null)
             throw new ApiException(response.StatusCode, new List<string> { "Invalid API response" });
 
+        // If HTTP status failed → trust API JSON errors first
+        if (!response.IsSuccessStatusCode)
+        {
+            var errors = apiResp.Errors?.Select(e => e.Description).ToList()
+                         ?? new List<string> { content };
+
+            throw new ApiException(response.StatusCode, errors);
+        }
+
+        // If HTTP succeeded but API says the operation failed
         if (!apiResp.Success)
         {
             var errors = apiResp.Errors?.Select(e => e.Description).ToList()
                          ?? new List<string> { "Unknown API error" };
 
-            throw new ApiException((System.Net.HttpStatusCode)apiResp.StatusCode, errors);
+            throw new ApiException((HttpStatusCode)apiResp.StatusCode, errors);
         }
 
         return apiResp;
@@ -47,7 +64,7 @@ public class ApiClient
         var response = await _http.GetAsync(url);
         return await HandleResponse<ListApiResponse<T>>(response);
     }
-     public async Task<ApiResponse<T>> GetAsync<T>(string url)
+    public async Task<ApiResponse<T>> GetAsync<T>(string url)
     {
         var response = await _http.GetAsync(url);
         return await HandleResponse<ApiResponse<T>>(response);

@@ -237,26 +237,6 @@ public class RoleUpdateRequest
     public string? Description { get; set; }
 }
 
-public class SiteAddRequest
-{
-    public string Name { get; set; } = null!;
-    public string? Description { get; set; }
-    public List<string> Urls { get; set; } = new List<string>();
-}
-
-public class SiteDto
-{
-    public Guid Id { get; set; }
-    public string? Name { get; set; }
-    public string? Description { get; set; }
-    public List<string>? Urls { get; set; }
-}
-
-public class SiteDtoApiListResponse : ListApiResponse<SiteDto>
-{
-
-}
-
 public class TodoCreateDto
 {
     public string Title { get; set; } = null!;

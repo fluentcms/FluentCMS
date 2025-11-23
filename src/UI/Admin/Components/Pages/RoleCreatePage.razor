@@ -4,7 +4,7 @@
 @inject IHttpContextAccessor HttpContextAccessor
 @inject ApiClientFactory Api
 
-<PluginFormPage OnInitialized="@OnInitialized" FormName="RoleCreateForm" Model="@Model" OnSubmit="@OnSubmit" Title="Create new role" Path="/admin/roles">
+<PluginFormPage OnInitialized="@OnInitialized" FormName="RoleCreateForm" Model="@Model" OnSubmit="@OnSubmit" Title="Create new role" BackUrl="/admin/roles">
     <FormInput @bind-Value="@Model.Name" Placeholder="Enter role name" Label="Name" Required />
     <FormTextarea @bind-Value="@Model.Description" Placeholder="Enter role description" Label="Description" />
 

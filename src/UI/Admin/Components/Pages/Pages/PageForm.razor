@@ -1,0 +1,44 @@
+<PluginFormPage @attributes="AdditionalAttributes" Model="@Model" OnSubmit="@OnSubmit">
+    <FormInput @bind-Value="@Model.Title" Label="Title" Cols="6" Placeholder="Enter page title"/>
+    <FormInput @bind-Value="@Model.Slug" Label="Slug" Cols="6" Placeholder="Enter page slug"/>
+    <FormNumberInput @bind-Value="@Model.Order" Label="Order" Cols="6" />
+    <FormSelect Data="OgTypeOptions" @bind-Value="Model!.OgType" TextField="Title" ValueField="Value" Label="Og Type" Placeholder="Choose page type" Cols="6" />
+
+    <FormSelect @bind-Value="Model!.ParentId" Cols="6" Data="PageOptions" TextField="Title" ValueField="Value" Label="Parent Page" Placeholder="Choose Parent Page"/>
+    <FormSelect @bind-Value="Model!.LayoutId" Cols="6" Data="LayoutOptions" ValueField="Value" TextField="Title" Label="Layout" Placeholder="Choose Layout" />
+    <FormSelect @bind-Value="Model!.EditLayoutId" Cols="6" Data="LayoutOptions" ValueField="Value" TextField="Title" Label="Edit Layout" Placeholder="Choose Edit Layout" />
+    <FormSelect @bind-Value="Model!.DetailLayoutId" Cols="6" Data="LayoutOptions" ValueField="Value" TextField="Title" Label="Detail Layout" Placeholder="Choose Detail Layout" />
+    
+
+    <FormTextarea @bind-Value="Model!.Head" Label="Head" Placeholder="Enter Head content" />
+    <FormInput @bind-Value="Model!.MetaTitle" Cols="12" Label="Meta Title" Placeholder="Enter Meta Title" />
+    <FormTextarea @bind-Value="Model.MetaDescription" Label="Meta Description" Placeholder="Enter Meta Description" />
+    <FormCheckbox Text="Add this page to sitemap" Label="Index" @bind-Value="@Model.RobotsIndex" Cols="6"/>
+    <FormCheckbox Text="Search engines will follow links of this page" Label="Follow" @bind-Value="@Model.RobotsFollow" Cols="6"/>
+</PluginFormPage>
+
+@code {
+    private List<SelectOptionString> OgTypeOptions =
+    [
+        new SelectOptionString { Title = "(default)", Value = string.Empty },
+        new SelectOptionString { Title = "Website", Value = "website" },
+        new SelectOptionString { Title = "Article", Value = "article" },
+        new SelectOptionString { Title = "Product", Value = "product" },
+        new SelectOptionString { Title = "Video", Value = "video" }
+    ];
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; } = default!;
+
+    [Parameter]
+    public EventCallback OnSubmit { get; set; }
+
+    [Parameter]
+    public PageFormModel Model { get; set; }
+    
+    [Parameter]
+    public List<SelectOption> LayoutOptions { get; set; }
+
+    [Parameter]
+    public List<SelectOption> PageOptions { get; set; }
+}

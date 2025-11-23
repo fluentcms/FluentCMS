@@ -1,0 +1,76 @@
+@page "/admin/sites/create"
+
+@using System.Text.Json;
+@using System.Text.Json.Serialization;
+
+@inject HttpClient Http
+@inject IHttpContextAccessor HttpContextAccessor
+@inject ApiClientFactory Api
+
+<SiteForm Model="@Model" LayoutOptions="@LayoutOptions" OnSubmit="OnSubmit" Title="Create New Site" SubmitLabel="Create" FormName="SiteCreateForm"
+    BackUrl="/admin/sites" />
+
+@code {
+    private List<string> Errors { get; set; } = [];
+
+    [SupplyParameterFromForm(FormName = "SiteCreateForm")]
+    private SiteFormModel Model { get; set; } = new();
+
+    private List<SelectOption?> LayoutOptions { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Console.WriteLine("Initialized");
+        var resp = await Api.Layouts.GetAllAsync();
+
+        if(resp?.Data != null)
+        {
+            LayoutOptions = new List<SelectOption?> {
+                new() {
+                    Title = "(none)",
+                    Value = null
+                }
+            };
+            LayoutOptions.AddRange(
+                resp.Data.Select(x => new SelectOption
+                {
+                    Title = x.Name,
+                    Value = x.Id
+                })
+            );
+        }
+    }
+
+    public async Task OnSubmit()
+    {
+        Errors.Clear();
+     
+        var request = new SiteAddRequest
+        {
+            Name = Model.Name,
+            Description = Model.Description,
+            Urls = [.. Model.Urls.Split(",")],
+            MetaTitle = Model.MetaTitle,
+            MetaDescription = Model.MetaDescription,
+            LayoutId = Model.LayoutId,
+            EditLayoutId = Model.EditLayoutId,
+            DetailLayoutId = Model.DetailLayoutId,
+            GoogleTagsId = Model.GoogleTagsId,
+            Head = Model.Head,
+            OgType = Model.OgType,
+            RobotsTxt = Model.RobotsTxt,
+            RobotsFollow = Model.RobotsFollow,
+            RobotsIndex = Model.RobotsIndex,
+        };
+
+        Console.WriteLine(JsonSerializer.Serialize(request, new JsonSerializerOptions
+        {
+            WriteIndented = true,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        }));
+
+        var response = await Api.Sites.CreateAsync(request);
+
+        HttpContextAccessor.HttpContext.Response.Redirect("/admin/sites");
+    }
+}
