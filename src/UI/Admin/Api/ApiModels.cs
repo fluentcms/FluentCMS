@@ -163,6 +163,73 @@ public class LayoutUpdateRequest
 }
 
 
+#region Folder
+
+public class FolderDto
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; }
+    public string NormalizedName { get; set; }
+    public List<FileDto> Files { get; set; } = [];
+    public List<FolderDto> Folders { get; set; } = [];
+    public FolderDto? ParentFolder { get; set; }
+}
+
+public class FolderAddRequest
+{
+    public string Name { get; set; }
+    public Guid ParentId { get; set; }
+}
+
+public class FolderRenameRequest
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; }
+}
+
+public class FolderMoveRequest
+{
+    public Guid Id { get; set; }
+    public Guid ParentId { get; set; }
+}
+
+
+#endregion
+
+#region File
+
+public class FileDto
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; }
+    public string NormalizedName { get; set; } = default!;
+    public Guid FolderId { get; set; }
+    public string Extension { get; set; } = default!;
+    public string ContentType { get; set; } = default!;
+    public long Size { get; set; }
+}
+
+// TODO: upload..
+public class FileAddRequest
+{
+    public string Name { get; set; }
+}
+
+public class FileMoveRequest
+{
+    public Guid Id { get; set; }
+    public Guid FolderId { get; set; }
+}
+
+public class FileRenameRequest
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; }
+}
+
+
+#endregion
+
 public class AccountChangePasswordRequest
 {
     public string UserName { get; set; } = null!;

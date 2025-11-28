@@ -23,4 +23,21 @@ public static class MessageCodes
     public const string PageFailedToRemove = "Page.FailedToRemove";
 
     #endregion
+
+    #region Folder
+    public const string FolderInvalidName = "Folder.InvalidName";
+    public const string FolderAlreadyExists = "Folder.AlreadyExists";    
+    public const string FolderUnableToCreate = "Folder.UnableToCreate";
+    public const string FolderParentNotFound = "Folder.ParentNotFound";
+    public const string FolderNotFound = "Folder.NotFound";
+
+    public const string FolderCannotRenameRootFolder = "Folder.CannotRenameRootFolder";
+    public const string FolderUnableToUpdate = "Folder.UnableToUpdate";
+
+    public const string FolderCannotMoveToItself = "Folder.CannotMoveToItself";
+    public const string FolderCannotMoveRootFolder = "Folder.CannotMoveRootFolder";
+    public const string FolderCannotMoveToChild = "Folder.CannotMoveToChild";
+
+
+    #endregion
 }

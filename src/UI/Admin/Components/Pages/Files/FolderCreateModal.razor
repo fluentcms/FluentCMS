@@ -1,0 +1,31 @@
+@namespace Admin.Components
+
+<form id="folderCreateForm">
+    <Modal data-name="FolderCreateModal" Size="ModalSize.Large">
+        <ModalHeader Closable>
+            <ModalTitle>
+                Create New Folder
+            </ModalTitle>
+        </ModalHeader>
+        <ModalBody>
+            <Grid>
+                <FormInput @bind-Value="@Model.Name" Label="Name" Placeholder="Enter Folder Name" Required />
+            </Grid>
+        </ModalBody>
+        <ModalFooter>
+            <Stack Gutter="StackGutter.Small">
+                <Button Color="Color.Primary" Type="ButtonType.Submit">
+                    Submit
+                </Button>
+                <Button id="folderCreateCancelButton">
+                    Cancel
+                </Button>
+            </Stack>
+        </ModalFooter>
+    </Modal>
+</form>
+
+
+@code {
+    private FolderAddRequest Model { get; set; } = new();
+}

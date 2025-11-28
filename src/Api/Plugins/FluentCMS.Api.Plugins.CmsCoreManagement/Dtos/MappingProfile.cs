@@ -16,5 +16,16 @@ public class MappingProfile : Profile
         CreateMap<Layout, LayoutDto>();
         CreateMap<LayoutAddRequest, Layout>();
         CreateMap<LayoutUpdateRequest, Layout>();
+
+        CreateMap<Core.Models.File, FileDto>();
+        CreateMap<FileAddRequest, Core.Models.File>();
+        CreateMap<FileMoveRequest, Core.Models.File>();
+        CreateMap<FileRenameRequest, Core.Models.File>();
+
+
+        CreateMap<Folder, FolderDto>();
+        CreateMap<FolderAddRequest, Folder>();
+        CreateMap<FolderRenameRequest, Folder>();
+        CreateMap<FolderMoveRequest, Folder>();
     }
 }

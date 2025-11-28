@@ -4,6 +4,8 @@ namespace FluentCMS.Api.Plugins.CmsCoreManagement.Repositories;
 
 internal class CmsCoreDbContext(DbContextOptions<CmsCoreDbContext> options) : DbContext(options), ICmsCoreDatabaseMarker
 {
+    public DbSet<Folder> Folders => Set<Folder>();
+    public DbSet<Core.Models.File> Files => Set<Core.Models.File>();
     public DbSet<Site> Sites => Set<Site>();
     public DbSet<Page> Pages => Set<Page>();
     public DbSet<Layout> Layouts => Set<Layout>();
@@ -94,6 +96,57 @@ internal class CmsCoreDbContext(DbContextOptions<CmsCoreDbContext> options) : Db
             // Make ParentId nullable
             e.HasOne<Page>()
                 .WithMany()
+                .HasForeignKey(x => x.ParentId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<Core.Models.File>(e =>
+        {
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.Name)
+                .IsRequired()
+                .HasMaxLength(255);
+
+            e.Property(x => x.NormalizedName)
+                .IsRequired()
+                .HasMaxLength(500);
+
+            e.Property(x => x.Size)
+                .IsRequired();
+
+            e.Property(x => x.Extension)
+                .IsRequired()
+                .HasMaxLength(50);
+
+            e.Property(x => x.ContentType)
+                .IsRequired()
+                .HasMaxLength(200);
+
+            e.HasOne<Folder>()
+                .WithMany(x => x.Files)
+                .HasForeignKey(x => x.FolderId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Folder>(e =>
+        {
+            e.HasKey(x => x.Id);
+
+            e.Property(x => x.Name)
+                .IsRequired()
+                .HasMaxLength(255);
+
+            e.Property(x => x.NormalizedName)
+                .IsRequired()
+                .HasMaxLength(500);
+
+            e.Property(x => x.Size)
+                .IsRequired();
+
+            e.HasOne<Folder>()
+                .WithMany(x => x.Folders)
                 .HasForeignKey(x => x.ParentId)
                 .IsRequired(false)
                 .OnDelete(DeleteBehavior.Restrict);

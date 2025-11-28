@@ -2,6 +2,9 @@ const prefix = "f-";
 const confirmEls = document.querySelectorAll("." + prefix + "confirm");
 const confirms = new Map();
 
+const modalEls = document.querySelectorAll("." + prefix + "modal");
+const modals = new Map();
+
 for (const confirmEl of confirmEls) {
     const wrapper = confirmEl.querySelector("." + prefix + "confirm-wrapper");
     const confirmBtn = confirmEl.querySelector("button.f-confirm-button-yes");
@@ -13,7 +16,9 @@ for (const confirmEl of confirmEls) {
 
         confirmEl.classList.add(prefix + "confirm-visible");
 
-        let backdrop = document.querySelector("." + prefix + "confirm-backdrop");
+        let backdrop = document.querySelector(
+            "." + prefix + "confirm-backdrop"
+        );
         if (!backdrop) {
             backdrop = document.createElement("div");
             backdrop.classList.add(prefix + "confirm-backdrop");
@@ -59,3 +64,57 @@ for (const confirmEl of confirmEls) {
 
     confirms.set(confirmEl.dataset.name, { open, element: confirmEl });
 }
+
+for (const modalEl of modalEls) {
+    const wrapper = modalEl.querySelector("." + prefix + "modal-wrapper");
+    const modalBtn = modalEl.querySelector("button.f-modal-button-yes");
+    const cancelBtn = modalEl.querySelector("button.f-modal-button-no");
+    const closeBtn = modalEl.querySelector("button.f-close-button");
+
+    function bind() {
+        modalEl.addEventListener("click", close, { once: true }); // backdrop click
+        closeBtn.addEventListener("click", close, { once: true });
+        wrapper.addEventListener("click", stopPropagation);
+    }
+
+    async function open() {
+        bind();
+        if (modalEl.classList.contains(prefix + "modal-visible")) return;
+
+        modalEl.classList.add(prefix + "modal-visible");
+
+        let backdrop = document.querySelector("." + prefix + "modal-backdrop");
+        if (!backdrop) {
+            backdrop = document.createElement("div");
+            backdrop.classList.add(prefix + "modal-backdrop");
+            modalEl.insertAdjacentElement("afterend", backdrop);
+        }
+    }
+
+    async function close() {
+        unbind();
+        if (!modalEl.classList.contains(prefix + "modal-visible")) return;
+        modalEl.classList.remove(prefix + "modal-visible");
+
+        let backdrop = document.querySelector("." + prefix + "modal-backdrop");
+        if (backdrop) {
+            backdrop.remove();
+            // backdrop = document.createElement("div");
+            // backdrop.classList.add(prefix + "modal-backdrop");
+            // modalEl.insertAdjacentElement("afterend", backdrop);
+        }
+    }
+
+    function stopPropagation(e) {
+        e.stopPropagation();
+    }
+
+    function unbind() {
+        modalEl.removeEventListener("click", close);
+        closeBtn.removeEventListener("click", close);
+        wrapper.removeEventListener("click", stopPropagation);
+    }
+    
+    modals.set(modalEl.dataset.name, { open, close, element: modalEl });
+}
+

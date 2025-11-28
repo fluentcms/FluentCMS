@@ -11,6 +11,7 @@ public class ApiClientFactory
         Roles = new RoleService(_api);
         Pages = new PageService(_api);
         Layouts = new LayoutService(_api);
+        Folders = new FolderService(_api);
     }
 
     public UserService Users { get; }
@@ -18,6 +19,7 @@ public class ApiClientFactory
     public RoleService Roles { get; }
     public PageService Pages { get; }
     public LayoutService Layouts { get; }
+    public FolderService Folders { get; }
 }
 
 

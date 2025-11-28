@@ -1,0 +1,75 @@
+@namespace Admin
+
+<Modal data-name="FolderSelectorModal" Placement="ModalPlacement.Top" Size="ModalSize.Large">
+    <ModalHeader>
+        <ModalTitle>
+            Choose Folder
+        </ModalTitle>
+    </ModalHeader>
+    <div style="max-height: 60vh; overflow: auto;">
+            @* <Breadcrumb style="height: 40px; padding-left: 24px;">
+            @foreach (var breadcrumbItem in ParentFolders)
+            {
+                @if (breadcrumbItem.Id == Model)
+                {
+                    <BreadcrumbItem>
+                        @breadcrumbItem.Name
+                    </BreadcrumbItem>
+                }
+                else if(breadcrumbItem.Id == RootFolder?.Id)
+                {
+                    <BreadcrumbItem Link @onclick="() => NavigateFolder(breadcrumbItem.Id)" IconName="IconName.Folder">
+                        @breadcrumbItem.Name
+                    </BreadcrumbItem>
+                }
+                else
+                {
+                    <BreadcrumbItem Link @onclick="() => NavigateFolder(breadcrumbItem.Id)">
+                        @breadcrumbItem.Name
+                    </BreadcrumbItem>
+                }
+            }
+        </Breadcrumb> *@
+        TODO: List of folders
+        @* <FilesTable @key="@Model" HideFiles DisabledFolder="@DisabledFolder" @bind-FolderId="@Model" @bind-RootFolder="@RootFolder" @bind-ParentFolders="ParentFolders">
+            <ActionsFragment>
+                <ActionButtonOpen Visible="context.IsFolder && context.Id != DisabledFolder" @onclick="() => NavigateFolder(context.Id)" />
+            </ActionsFragment>
+        </FilesTable> *@
+    </div>
+    <ModalBody>
+        <Grid>
+            <GridItem Small="GridItemColumn.Twelve">
+                <Stack Gutter="StackGutter.Small">
+                    <Button id="folderSelectorSelectButton" Color="@Color.Primary">Move Here</Button>
+                    <Button id="folderSelectorCancelButton">Cancel</Button>
+                </Stack>
+            </GridItem>
+        </Grid>
+    </ModalBody>
+</Modal>
+
+@code {
+    [Parameter]
+    public Guid? DisabledFolder { get; set; }
+
+    [Parameter]
+    public Guid? Model { get; set; } = default!;
+
+    private List<FolderDto> ParentFolders { get; set; } = [];
+    private FolderDto RootFolder { get; set; }
+
+    private async Task NavigateFolder(Guid folderId)
+    {
+        Model = folderId;
+        StateHasChanged();
+        await Task.CompletedTask;
+    }
+
+    @* private async Task OnChooseFolder()
+    {
+        if (Model is null) return;
+        await OnSubmit.InvokeAsync(Model.Value);
+    } *@
+
+}

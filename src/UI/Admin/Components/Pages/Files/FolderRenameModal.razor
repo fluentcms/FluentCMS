@@ -1,0 +1,31 @@
+
+<form id="folderRenameForm">
+    <Modal data-name="FolderRenameModal" Size="ModalSize.Large">
+        <ModalHeader Closable>
+            <ModalTitle>
+                Rename Folder
+            </ModalTitle>
+        </ModalHeader>
+        <ModalBody>
+            <Grid>
+                <FormInput @bind-Value="Model.Name" Label="Name" Placeholder="Enter Folder Name" Required />
+            </Grid>
+        </ModalBody>
+        <ModalFooter>
+            <FormActions>
+                <Button Color="Color.Primary" id="renameFolderSubmitButton" Type="ButtonType.Submit">
+                    Submit
+                </Button>
+
+                <Button id="folderRenameCancelButton">
+                    Cancel
+                </Button>
+            </FormActions>
+        </ModalFooter>
+    </Modal>
+</form>
+
+
+@code {
+    private FolderRenameRequest Model { get; set; } = new();   
+}

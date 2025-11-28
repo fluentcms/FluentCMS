@@ -1,0 +1,224 @@
+@page "/admin/files/{id?}"
+
+@inject ApiClientFactory Api;
+
+<PageTitle>File Management</PageTitle>
+
+
+<PageHeader Title="File Management">
+    @if (!string.IsNullOrEmpty(BackUrl))
+    {
+        <LinkButton Href="@BackUrl">Back</LinkButton>
+    }
+    <Button Color="Color.Primary" onclick="@($"handleCreateFolder('{Id}')")">Create Folder</Button>
+</PageHeader>
+
+<PageBody>
+    <Card>
+        <DataTable TItem="AssetDto" Items="@Assets">
+            <DataTableItem Label="Name">
+                <Stack Gutter="StackGutter.Small">
+                    <Icon Color="Color.Primary" Size="IconSize.Large" Name="IconName.Folder" />
+                    <a style="padding-inline-end: 4rem;" href="/admin/files/@context.Id">@context.Name</a>
+                </Stack>
+            </DataTableItem>
+            <DataTableItem Label="Type">@(context.IsFolder ? "Folder" : context.ContentType!)</DataTableItem>
+            <DataTableItem Label="">
+                @if (!context.IsParentFolder)
+                {
+                    <Button Ghost Color="Color.Primary" Size="ButtonSize.Small" onclick="@($"handleMove('{context.Id}')")">
+                        <Icon Size="IconSize.Large" Name="IconName.FolderMove" />
+                    </Button>
+                    <Button Ghost Color="Color.Info" Size="ButtonSize.Small"
+                        onclick="@($"handleRename('{context.Id}', '{context.Name}')")">
+                        <Icon Size="IconSize.Large" Name="IconName.Edit" />
+                    </Button>
+                    <Button Ghost Color="Color.Danger" Size="ButtonSize.Small" onclick="@($"handleDelete('{context.Id}')")">
+                        <Icon Size="IconSize.Large" Name="IconName.Delete" />
+                    </Button>
+                }
+            </DataTableItem>
+        </DataTable>
+    </Card>
+</PageBody>
+
+
+<Confirm data-name="DeleteFolderConfirm">
+    Are you sure to delete this folder?
+</Confirm>
+
+<FolderCreateModal />
+<FolderRenameModal />
+<FolderSelectorModal />
+
+<script>
+
+    async function handleCreateFolder(parentId) {
+        const { open, close } = await modals.get('FolderCreateModal')
+
+        open();
+        const cancelButton = document.getElementById('folderCreateCancelButton')
+        const selectButton = document.getElementById('folderCreateSubmitButton')
+
+        const form = document.getElementById('folderCreateForm')
+        const input = form.querySelector('[name="Model.Name"]')
+        
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault()
+            const name = input.value
+            
+            
+            await fetch('/api/Folders/Create', {
+                method: "POST",
+                headers: {
+                    'content-type': 'application/json'
+                },
+                body: JSON.stringify({
+                    parentId,
+                    name
+                })
+            }).then(res => {
+                location.reload()
+            })
+
+        })
+
+
+    }
+
+    async function handleMove(id) {
+        const { open, close } = await modals.get('FolderSelectorModal')
+
+        open();
+
+        const cancelButton = document.getElementById('folderSelectorCancelButton')
+        const selectButton = document.getElementById('folderSelectorSelectButton')
+
+        cancelButton.addEventListener('click', () => {
+            close()
+        })
+
+        selectButton.addEventListener('click', () => {
+            console.log("Move here")
+            close()
+        })
+
+    }
+    async function handleDelete(id) {
+        const res = await confirms.get('DeleteFolderConfirm').open();
+
+        if (res) {
+            await fetch('/api/Folders/Remove/' + id, {
+                method: "DELETE",
+            }).then(res => {
+                location.reload()
+            })
+        }
+    }
+
+    async function handleRename(id, name) {
+        const form = document.getElementById('folderRenameForm')
+        @* const modal = document.getElementById('folderRenameModal') *@
+            @* console.log({form, modal}) *@
+            console.log("Should rename foder with id: ", id)
+
+        const { open, close } = modals.get('FolderRenameModal')
+        const input = form.querySelector('[name="Model.Name"]')
+
+        input.value = name
+        open();
+        input.focus()
+
+        const cancelButton = document.getElementById('folderRenameCancelButton')
+
+        cancelButton.addEventListener('click', () => {
+            close()
+        })
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const newName = input.value
+            console.log({ newName })
+
+            await fetch('/api/Folders/Rename', {
+                method: "PUT",
+                headers: {
+                    'content-type': 'application/json'
+                },
+                body: JSON.stringify({
+                    id,
+                    name: newName
+                })
+            }).then(res => {
+                location.reload()
+            })
+        })
+    }
+
+</script>
+
+
+@code {
+    private string BackUrl { get; set; } = "/admin/files";
+
+    private List<AssetDto> Assets { get; set; }
+
+    [Parameter]
+    public string? Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!string.IsNullOrEmpty(Id))
+        {
+            if (!Guid.TryParse(Id, out var guid))
+            {
+                Console.WriteLine("Invalid folder ID");
+                return;
+            }
+
+            var folderResponse = await Api.Folders.GetByIdAsync(guid);
+            if (folderResponse?.Data != null)
+            {
+                Assets = folderResponse.Data.Folders.Select(x => new AssetDto
+                {
+                    Id = x.Id,
+                    Name = x.Name,
+                    NormalizedName = x.NormalizedName,
+                    IsFolder = true
+                }).ToList();
+
+                if (folderResponse.Data.ParentFolder != null)
+                {
+                    BackUrl = "/admin/files/" + folderResponse.Data.ParentFolder.Id.ToString();
+                    Assets.Insert(0, new AssetDto
+                    {
+                        Id = folderResponse.Data.ParentFolder.Id,
+                        Name = "..",
+                        NormalizedName = "..",
+                        IsFolder = true,
+                        IsParentFolder = true,
+                    });
+                }
+                else
+                {
+                    BackUrl = null;
+                }
+            }
+        }
+        else
+        {
+            var rootResponse = await Api.Folders.GetRootAsync();
+
+            if (rootResponse?.Data != null)
+            {
+                Assets = rootResponse.Data.Folders.Select(x => new AssetDto
+                {
+                    Id = x.Id,
+                    Name = x.Name,
+                    NormalizedName = x.NormalizedName,
+                    IsFolder = true
+                }).ToList();
+            }
+        }
+    }
+}

@@ -194,3 +194,55 @@ public class LayoutService
     }
 }
 
+
+
+public class FolderService
+{
+    private readonly ApiClient _api;
+    public FolderService(ApiClient api) => _api = api;
+
+    public async Task<ListApiResponse<FolderDto>> GetAllAsync()
+    {
+        var res = await _api.GetListAsync<FolderDto>(
+            "/api/Folders/GetAll"
+        );
+        return res;
+    }
+
+    public async Task<ApiResponse<FolderDto>> GetByIdAsync(Guid id)
+    {
+        var res = await _api.GetAsync<FolderDto>($"/api/Folders/GetById/{id}");
+        return res;
+    }
+
+
+    public async Task<ApiResponse<FolderDto>> GetRootAsync()
+    {
+        var res = await _api.GetAsync<FolderDto>($"/api/Folders/GetRoot");
+        return res;
+    }
+
+    public async Task<ApiResponse<FolderDto>> MoveAsync(FolderMoveRequest model)
+    {
+        var res = await _api.PutAsync<FolderMoveRequest, FolderDto>($"/api/Folders/Move", model);
+        return res;
+    }
+
+    public async Task<ApiResponse<FolderDto>> RenameAsync(FolderRenameRequest model)
+    {
+        var res = await _api.PutAsync<FolderRenameRequest, FolderDto>($"/api/Folders/Rename", model);
+        return res;
+    }
+
+    public async Task<ApiResponse<FolderDto>> CreateAsync(FolderAddRequest model)
+    {
+        var res = await _api.PostAsync<FolderAddRequest, FolderDto>($"/api/Folders/Create", model);
+        return res;
+    }
+
+    public async Task<ApiResponse<bool>> DeleteAsync(Guid id)
+    {
+        var res = await _api.DeleteAsync<bool>($"/api/Folders/Remove/{id}");
+        return res;
+    }
+}
