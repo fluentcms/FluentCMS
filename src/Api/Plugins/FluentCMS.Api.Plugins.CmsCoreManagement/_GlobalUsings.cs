@@ -11,6 +11,7 @@ global using AutoMapper;
 global using FluentCMS.Api.Core.Controllers;
 global using FluentCMS.Api.Plugins.CmsCoreManagement.Services;
 global using FluentCMS.Api.Core;
+global using Microsoft.AspNetCore.Http;
 global using Microsoft.AspNetCore.Mvc;
 global using FluentCMS.Api.Plugins.CmsCoreManagement.Dtos;
 global using FluentCMS.Infrastructure.Plugins.Abstractions;

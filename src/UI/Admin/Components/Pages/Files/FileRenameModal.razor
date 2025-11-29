@@ -1,0 +1,31 @@
+
+<form id="fileRenameForm">
+    <Modal data-name="FileRenameModal" Size="ModalSize.Large">
+        <ModalHeader Closable>
+            <ModalTitle>
+                Rename File
+            </ModalTitle>
+        </ModalHeader>
+        <ModalBody>
+            <Grid>
+                <FormInput @bind-Value="Model.Name" Label="Name" Placeholder="Enter File Name" Required />
+            </Grid>
+        </ModalBody>
+        <ModalFooter>
+            <FormActions>
+                <Button Color="Color.Primary" id="renameFileSubmitButton" Type="ButtonType.Submit">
+                    Submit
+                </Button>
+
+                <Button id="fileRenameCancelButton">
+                    Cancel
+                </Button>
+            </FormActions>
+        </ModalFooter>
+    </Modal>
+</form>
+
+
+@code {
+    private FileRenameRequest Model { get; set; } = new();   
+}

@@ -1,6 +1,8 @@
+using FluentCMS.Api.Plugins.CmsCoreManagement.Dtos;
+
 namespace FluentCMS.Api.Plugins.CmsCoreManagement.Controllers;
 
-public class FileController(IFileService fileService, IFolderService folderService, ISiteService siteService, IMapper mapper) : BaseController
+public class FilesController(IFileService fileService, IFolderService folderService, ISiteService siteService, IMapper mapper) : BaseController
 {
     // [HttpGet("{id}")]
     // public async Task<IApiResult<FileDetailResponse>> GetById([FromRoute] Guid id, CancellationToken cancellationToken = default)
@@ -11,34 +13,34 @@ public class FileController(IFileService fileService, IFolderService folderServi
     //     return Ok(fileResponse);
     // }
 
-    // [HttpPost]
-    // public async Task<IApiPagingResult<FileDetailResponse>> Upload([FromQuery] Guid folderId, [FromForm] IEnumerable<IFormFile> files, CancellationToken cancellationToken = default)
-    // {
-    //     var filesResponse = new List<FileDetailResponse>();
+    [HttpPost]
+    public async Task<ApiListResponse<FileDto>> Upload([FromQuery] Guid folderId, [FromForm] IEnumerable<IFormFile> files, CancellationToken cancellationToken = default)
+    {
+        var filesResponse = new List<FileDto>();
 
-    //     var folder = await folderService.GetById(folderId, cancellationToken);
+        var folder = await folderService.GetById(folderId, cancellationToken);
 
-    //     foreach (var formFile in files.Where(x => x.Length > 0))
-    //     {
-    //         var file = new File
-    //         {
-    //             FolderId = folderId,
-    //             SiteId = folder.SiteId,
-    //             Name = formFile.FileName,
-    //             Size = formFile.Length,
-    //             ContentType = formFile.ContentType,
-    //             Extension = System.IO.Path.GetExtension(formFile.FileName),
-    //         };
+        foreach (var formFile in files.Where(x => x.Length > 0))
+        {
+            var file = new Core.Models.File
+            {
+                FolderId = folderId,
+                SiteId = folder.SiteId,
+                Name = formFile.FileName,
+                Size = formFile.Length,
+                ContentType = formFile.ContentType,
+                Extension = System.IO.Path.GetExtension(formFile.FileName),
+            };
 
-    //         await fileService.Create(file, formFile.OpenReadStream(), cancellationToken);
+            await fileService.Create(file, formFile.OpenReadStream(), cancellationToken);
 
-    //         var fileResponse = mapper.Map<FileDetailResponse>(file);
-    //         fileResponse.Path = await fileService.GetFilePath(file);
-    //         filesResponse.Add(fileResponse);
-    //     }
+            var fileResponse = mapper.Map<FileDto>(file);
+            // fileResponse.Path = await fileService.GetFilePath(file);
+            filesResponse.Add(fileResponse);
+        }
 
-    //     return OkPaged(filesResponse);
-    // }
+        return SuccessList(filesResponse);
+    }
 
     // [HttpGet("{id}")]
     // public async Task<IResult> Download([FromRoute] Guid id, CancellationToken cancellationToken = default)
@@ -81,26 +83,26 @@ public class FileController(IFileService fileService, IFolderService folderServi
     //     return Results.File(fileStream, contentType: file.ContentType, fileDownloadName: file.Name, lastModified: file.ModifiedAt ?? file.CreatedAt);
     // }
 
-    // [HttpDelete("{id}")]
-    // public async Task<IApiResult<bool>> Delete([FromRoute] Guid id, CancellationToken cancellationToken = default)
-    // {
-    //     await fileService.Delete(id, cancellationToken);
-    //     return Ok(true);
-    // }
+    [HttpDelete("{id}")]
+    public async Task<ApiResponse<bool>> Remove([FromRoute] Guid id, CancellationToken cancellationToken = default)
+    {
+        await fileService.Remove(id, cancellationToken);
+        return Success(true);
+    }
 
-    // [HttpPut]
-    // public async Task<IApiResult<FileDetailResponse>> Rename([FromBody] FileRenameRequest request, CancellationToken cancellationToken = default)
-    // {
-    //     var file = await fileService.Rename(request.Id, request.Name, cancellationToken);
-    //     var fileResponse = mapper.Map<FileDetailResponse>(file);
-    //     return Ok(fileResponse);
-    // }
+    [HttpPut]
+    public async Task<ApiResponse<FileDto>> Rename([FromBody] FileRenameRequest request, CancellationToken cancellationToken = default)
+    {
+        var file = await fileService.Rename(request.Id, request.Name, cancellationToken);
+        var fileResponse = mapper.Map<FileDto>(file);
+        return Success(fileResponse);
+    }
 
-    // [HttpPut]
-    // public async Task<IApiResult<FileDetailResponse>> Move([FromBody] FileMoveRequest request, CancellationToken cancellationToken = default)
-    // {
-    //     var file = await fileService.Move(request.Id, request.FolderId, cancellationToken);
-    //     var fileResponse = mapper.Map<FileDetailResponse>(file);
-    //     return Ok(fileResponse);
-    // }
+    [HttpPut]
+    public async Task<ApiResponse<FileDto>> Move([FromBody] FileMoveRequest request, CancellationToken cancellationToken = default)
+    {
+        var file = await fileService.Move(request.Id, request.FolderId, cancellationToken);
+        var fileResponse = mapper.Map<FileDto>(file);
+        return Success(fileResponse);
+    }
 }

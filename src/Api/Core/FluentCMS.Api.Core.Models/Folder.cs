@@ -1,4 +1,6 @@
-﻿namespace FluentCMS.Api.Core.Models;
+﻿using System.Text.Json.Serialization;
+
+namespace FluentCMS.Api.Core.Models;
 
 public class Folder : SiteAssociatedEntity
 {
@@ -10,5 +12,7 @@ public class Folder : SiteAssociatedEntity
     public ICollection<File> Files { get; set; } = new List<File>();
     public ICollection<Folder> Folders { get; set; } = new List<Folder>();
 
-    public Folder ParentFolder { get; set; } = default!;
+
+    [JsonIgnore]
+    public Folder? ParentFolder { get; set; } = default!;
 }

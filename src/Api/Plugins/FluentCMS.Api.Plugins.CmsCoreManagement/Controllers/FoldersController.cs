@@ -18,7 +18,7 @@ public class FoldersController(IFolderService folderService, IFileService fileSe
 
         if(folder.ParentId != null)
         {
-            var parentFolder = await folderService.GetById(folder.ParentId!, cancellationToken);
+            var parentFolder = await folderService.GetById(folder.ParentId.Value, cancellationToken);
             folderDto.ParentFolder = mapper.Map<FolderDto>(parentFolder);
         }
 

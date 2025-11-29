@@ -12,6 +12,7 @@ public class ApiClientFactory
         Pages = new PageService(_api);
         Layouts = new LayoutService(_api);
         Folders = new FolderService(_api);
+        Files = new FileService(_api);
     }
 
     public UserService Users { get; }
@@ -20,6 +21,7 @@ public class ApiClientFactory
     public PageService Pages { get; }
     public LayoutService Layouts { get; }
     public FolderService Folders { get; }
+    public FileService Files { get; }
 }
 
 

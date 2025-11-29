@@ -246,3 +246,54 @@ public class FolderService
         return res;
     }
 }
+
+
+public class FileService
+{
+    private readonly ApiClient _api;
+    public FileService(ApiClient api) => _api = api;
+
+    public async Task<ListApiResponse<FileDto>> GetAllAsync()
+    {
+        var res = await _api.GetListAsync<FileDto>(
+            "/api/Folders/GetAll"
+        );
+        return res;
+    }
+
+    public async Task<ApiResponse<FileDto>> GetByIdAsync(Guid id)
+    {
+        var res = await _api.GetAsync<FileDto>($"/api/Folders/GetById/{id}");
+        return res;
+    }
+
+    public async Task<ApiResponse<List<FileDto>>> UploadAsync(Guid folderId, List<FileParameter> files)
+    {
+        var res = await _api.PostFilesAsync(folderId, files);
+        return res;
+    }
+
+    public async Task<ApiResponse<FileDto>> MoveAsync(FileMoveRequest model)
+    {
+        var res = await _api.PutAsync<FileMoveRequest, FileDto>($"/api/Files/Move", model);
+        return res;
+    }
+
+    public async Task<ApiResponse<FileDto>> RenameAsync(FileRenameRequest model)
+    {
+        var res = await _api.PutAsync<FileRenameRequest, FileDto>($"/api/Files/Rename", model);
+        return res;
+    }
+
+    public async Task<ApiResponse<FileDto>> CreateAsync(FileAddRequest model)
+    {
+        var res = await _api.PostAsync<FileAddRequest, FileDto>($"/api/Files/Create", model);
+        return res;
+    }
+
+    public async Task<ApiResponse<bool>> DeleteAsync(Guid id)
+    {
+        var res = await _api.DeleteAsync<bool>($"/api/Files/Remove/{id}");
+        return res;
+    }
+}

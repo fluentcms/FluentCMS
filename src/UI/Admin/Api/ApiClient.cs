@@ -29,8 +29,9 @@ public class ApiClient
                 PropertyNameCaseInsensitive = true
             });
         }
-        catch
+        catch (Exception ex)
         {
+            Console.WriteLine(ex.Message);
             // If even parsing fails, throw generic error
             throw new ApiException(response.StatusCode, new List<string> { "Invalid API response" });
         }
@@ -70,7 +71,22 @@ public class ApiClient
         return await HandleResponse<ApiResponse<T>>(response);
     }
 
+    public async Task<ApiResponse<List<FileDto>>> PostFilesAsync(Guid folderId, List<FileParameter> files)
+    {
+        using var content = new MultipartFormDataContent();
 
+        foreach (var file in files)
+        {
+            var streamContent = new StreamContent(file.Data);
+            if (!string.IsNullOrEmpty(file.ContentType))
+                streamContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+
+            content.Add(streamContent, "files", file.FileName);
+        }
+
+        var response = await _http.PostAsync($"/api/Files/Upload?folderId={folderId}", content);
+        return await HandleResponse<ApiResponse<List<FileDto>>>(response);
+    }
     public async Task<ApiResponse<TResponse>> PostAsync<TRequest, TResponse>(string url, TRequest body)
     {
         var response = await _http.PostAsJsonAsync(url, body);

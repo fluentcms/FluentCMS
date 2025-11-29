@@ -10,7 +10,8 @@
     {
         <LinkButton Href="@BackUrl">Back</LinkButton>
     }
-    <Button Color="Color.Primary" onclick="@($"handleCreateFolder('{Id}')")">Create Folder</Button>
+    <Button onclick="@($"handleFolderCreate('{Id}')")">Create Folder</Button>
+    <Button Color="Color.Primary" onclick="@($"handleFileUpload('{Id}')")">Upload File</Button>
 </PageHeader>
 
 <PageBody>
@@ -18,7 +19,14 @@
         <DataTable TItem="AssetDto" Items="@Assets">
             <DataTableItem Label="Name">
                 <Stack Gutter="StackGutter.Small">
-                    <Icon Color="Color.Primary" Size="IconSize.Large" Name="IconName.Folder" />
+                    @if (context.IsFolder)
+                    {
+                        <Icon Color="Color.Primary" Size="IconSize.Large" Name="IconName.Folder" />
+                    }
+                    else
+                    {
+                        <Icon Size="IconSize.Large" Name="IconName.File" />
+                    }
                     <a style="padding-inline-end: 4rem;" href="/admin/files/@context.Id">@context.Name</a>
                 </Stack>
             </DataTableItem>
@@ -26,16 +34,33 @@
             <DataTableItem Label="">
                 @if (!context.IsParentFolder)
                 {
-                    <Button Ghost Color="Color.Primary" Size="ButtonSize.Small" onclick="@($"handleMove('{context.Id}')")">
-                        <Icon Size="IconSize.Large" Name="IconName.FolderMove" />
-                    </Button>
-                    <Button Ghost Color="Color.Info" Size="ButtonSize.Small"
-                        onclick="@($"handleRename('{context.Id}', '{context.Name}')")">
-                        <Icon Size="IconSize.Large" Name="IconName.Edit" />
-                    </Button>
-                    <Button Ghost Color="Color.Danger" Size="ButtonSize.Small" onclick="@($"handleDelete('{context.Id}')")">
-                        <Icon Size="IconSize.Large" Name="IconName.Delete" />
-                    </Button>
+                    @if (context.IsFolder)
+                    {
+                        <Button Ghost Color="Color.Primary" Size="ButtonSize.Small" onclick="@($"handleFolderMove('{context.Id}')")">
+                            <Icon Size="IconSize.Large" Name="IconName.FolderMove" />
+                        </Button>
+                        <Button Ghost Color="Color.Info" Size="ButtonSize.Small"
+                            onclick="@($"handleFolderRename('{context.Id}', '{context.Name}')")">
+                            <Icon Size="IconSize.Large" Name="IconName.Edit" />
+                        </Button>
+                        <Button Ghost Color="Color.Danger" Size="ButtonSize.Small" onclick="@($"handleFolderDelete('{context.Id}')")">
+                            <Icon Size="IconSize.Large" Name="IconName.Delete" />
+                        </Button>
+                    }
+                    else
+                    {
+                        <Button Ghost Color="Color.Primary" Size="ButtonSize.Small" onclick="@($"handleFileMove('{context.Id}')")">
+                            <Icon Size="IconSize.Large" Name="IconName.FileMove" />
+                        </Button>
+
+                        <Button Ghost Color="Color.Info" Size="ButtonSize.Small"
+                            onclick="@($"handleFileRename('{context.Id}', '{context.Name}')")">
+                            <Icon Size="IconSize.Large" Name="IconName.Edit" />
+                        </Button>
+                        <Button Ghost Color="Color.Danger" Size="ButtonSize.Small" onclick="@($"handleFileDelete('{context.Id}')")">
+                            <Icon Size="IconSize.Large" Name="IconName.Delete" />
+                        </Button>
+                    }
                 }
             </DataTableItem>
         </DataTable>
@@ -47,13 +72,51 @@
     Are you sure to delete this folder?
 </Confirm>
 
+<Confirm data-name="DeleteFileConfirm">
+    Are you sure to delete this file?
+</Confirm>
+
+<FileUploadModal />
 <FolderCreateModal />
 <FolderRenameModal />
+<FileRenameModal />
 <FolderSelectorModal />
 
 <script>
 
-    async function handleCreateFolder(parentId) {
+    async function handleFileUpload(parentId) {
+        const { open, close } = await modals.get('FileUploadModal')
+
+        open();
+        const cancelButton = document.getElementById('fileUploadCancelButton')
+        const form = document.getElementById('fileUploadForm')
+        const input = document.getElementById('fileUploadFilesInput')
+
+        input.addEventListener('change', async (e) => {
+            console.log("Files changed");
+            console.log(e)
+        })
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault()
+            const files = input.files
+
+            const formData = new FormData();
+            for (let file of files) {
+                formData.append('files', file)
+            }
+
+            await fetch('/api/Files/Upload?folderId=' + parentId, {
+                method: "POST",
+                body: formData
+            }).then(res => {
+                location.reload()
+            })
+
+        })
+    }
+
+    async function handleFolderCreate(parentId) {
         const { open, close } = await modals.get('FolderCreateModal')
 
         open();
@@ -62,12 +125,12 @@
 
         const form = document.getElementById('folderCreateForm')
         const input = form.querySelector('[name="Model.Name"]')
-        
+
         form.addEventListener('submit', async (e) => {
             e.preventDefault()
             const name = input.value
-            
-            
+
+
             await fetch('/api/Folders/Create', {
                 method: "POST",
                 headers: {
@@ -86,7 +149,7 @@
 
     }
 
-    async function handleMove(id) {
+    async function handleFolderMove(id) {
         const { open, close } = await modals.get('FolderSelectorModal')
 
         open();
@@ -104,7 +167,27 @@
         })
 
     }
-    async function handleDelete(id) {
+    
+    async function handleFileMove(id) {
+        const { open, close } = await modals.get('FolderSelectorModal')
+
+        open();
+
+        const cancelButton = document.getElementById('folderSelectorCancelButton')
+        const selectButton = document.getElementById('folderSelectorSelectButton')
+
+        cancelButton.addEventListener('click', () => {
+            close()
+        })
+
+        selectButton.addEventListener('click', () => {
+            console.log("Move here")
+            close()
+        })
+
+    }
+
+    async function handleFolderDelete(id) {
         const res = await confirms.get('DeleteFolderConfirm').open();
 
         if (res) {
@@ -116,11 +199,23 @@
         }
     }
 
-    async function handleRename(id, name) {
+    async function handleFileDelete(id) {
+        const res = await confirms.get('DeleteFileConfirm').open();
+
+        if (res) {
+            await fetch('/api/Files/Remove/' + id, {
+                method: "DELETE",
+            }).then(res => {
+                location.reload()
+            })
+        }
+    }
+
+    async function handleFolderRename(id, name) {
         const form = document.getElementById('folderRenameForm')
         @* const modal = document.getElementById('folderRenameModal') *@
             @* console.log({form, modal}) *@
-            console.log("Should rename foder with id: ", id)
+            console.log("Should rename folder with id: ", id)
 
         const { open, close } = modals.get('FolderRenameModal')
         const input = form.querySelector('[name="Model.Name"]')
@@ -155,8 +250,46 @@
         })
     }
 
-</script>
+    async function handleFileRename(id, name) {
+        const form = document.getElementById('fileRenameForm')
+        @* const modal = document.getElementById('fileRenameModal') *@
+            @* console.log({form, modal}) *@
+            console.log("Should rename file with id: ", id)
 
+        const { open, close } = modals.get('FileRenameModal')
+        const input = form.querySelector('[name="Model.Name"]')
+
+        input.value = name
+        open();
+        input.focus()
+
+        const cancelButton = document.getElementById('fileRenameCancelButton')
+
+        cancelButton.addEventListener('click', () => {
+            close()
+        })
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const newName = input.value
+            console.log({ newName })
+
+            await fetch('/api/Files/Rename', {
+                method: "PUT",
+                headers: {
+                    'content-type': 'application/json'
+                },
+                body: JSON.stringify({
+                    id,
+                    name: newName
+                })
+            }).then(res => {
+                location.reload()
+            })
+        })
+    }
+
+</script>
 
 @code {
     private string BackUrl { get; set; } = "/admin/files";
@@ -186,6 +319,17 @@
                     NormalizedName = x.NormalizedName,
                     IsFolder = true
                 }).ToList();
+
+                Assets.AddRange(folderResponse.Data.Files.Select(f => new AssetDto
+                {
+                    Id = f.Id,
+                    Name = f.Name,
+                    NormalizedName = f.NormalizedName,
+                    IsFolder = false,
+                    Extension = f.Extension,
+                    ContentType = f.ContentType,
+                    Size = f.Size
+                }));
 
                 if (folderResponse.Data.ParentFolder != null)
                 {
@@ -218,6 +362,19 @@
                     NormalizedName = x.NormalizedName,
                     IsFolder = true
                 }).ToList();
+
+                Assets.AddRange(rootResponse.Data.Files.Select(f => new AssetDto
+                {
+                    Id = f.Id,
+                    Name = f.Name,
+                    NormalizedName = f.NormalizedName,
+                    IsFolder = false,
+                    Extension = f.Extension,
+                    ContentType = f.ContentType,
+                    Size = f.Size
+                }));
+
+                Id = rootResponse.Data.Id.ToString();
             }
         }
     }

@@ -8,4 +8,6 @@ public class AssetDto
     public bool IsFolder { get; set; }
     public bool IsParentFolder { get; set; } = false;
     public string? ContentType { get; set; }
+    public string? Extension { get; set; }
+    public long? Size { get; set; }
 }

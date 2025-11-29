@@ -1,0 +1,55 @@
+
+<form id="fileUploadForm">
+    <Modal data-name="FileUploadModal" Size="ModalSize.Large">
+        <ModalHeader Closable>
+            <ModalTitle>
+                Upload File
+            </ModalTitle>
+        </ModalHeader>
+        <ModalBody>
+            <Grid>
+            <FormField Required Id="fileUploadFilesInput" Label="Files">
+                <InputFile required id="fileUploadFilesInput" Accept="*" />
+            </FormField>
+                @* <FormFileUpload Id="fileUploadFilesInput" Dense Accept="*" Required /> *@
+            </Grid>
+        </ModalBody>
+        <ModalFooter>
+            <Stack Gutter="StackGutter.Small">
+                <Button Color="Color.Primary" Type="ButtonType.Submit">
+                    Submit
+                </Button>
+                <Button id="fileUploadCancelButton">
+                    Cancel
+                </Button>
+            </Stack>
+        </ModalFooter>
+    </Modal>
+</form>
+
+@code {
+    private string Model { get; set; } = string.Empty;
+
+    private List<FileParameter> Files { get; set; } = [];
+
+    @* private async Task OnFilesChanged(InputFileChangeEventArgs e)
+    {
+        Files = [];
+        foreach (var file in e.GetMultipleFiles(Config.MaxCount))
+        {
+            var Data = file.OpenReadStream(Config.MaxSize);
+            Files.Add(new FileParameter(Data, file.Name, file.ContentType));
+        }
+        await OnSubmit.InvokeAsync(Files);
+    } *@
+
+    @* private async Task HandleCancel()
+    {
+        await OnCancel.InvokeAsync();
+    }
+
+    private async Task HandleSubmit()
+    {
+        await OnSubmit.InvokeAsync(Files);
+    } *@
+}

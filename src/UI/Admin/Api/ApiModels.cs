@@ -209,6 +209,14 @@ public class FileDto
     public long Size { get; set; }
 }
 
+public class FileParameter
+{
+    public System.IO.Stream Data { get; set; }
+    public string? FileName { get; set; }
+    public string? ContentType { get; set; }
+}
+
+
 // TODO: upload..
 public class FileAddRequest
 {
@@ -338,7 +346,7 @@ public class SiteDto
     public string? RobotsTxt { get; set; }
     public string? GoogleTagsId { get; set; }
     public string? OgType { get; set; }
-    public string? Head { get; set; }    
+    public string? Head { get; set; }
 }
 
 public class SiteAddRequest
@@ -356,7 +364,7 @@ public class SiteAddRequest
     public string? RobotsTxt { get; set; }
     public string? GoogleTagsId { get; set; }
     public string? OgType { get; set; }
-    public string? Head { get; set; }    
+    public string? Head { get; set; }
 }
 
 public class SiteUpdateRequest
@@ -377,7 +385,7 @@ public class SiteUpdateRequest
     public string? RobotsTxt { get; set; }
     public string? GoogleTagsId { get; set; }
     public string? OgType { get; set; }
-    public string? Head { get; set; }    
+    public string? Head { get; set; }
 }
 
 public class TodoCreateDto

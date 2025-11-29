@@ -145,11 +145,13 @@ internal class CmsCoreDbContext(DbContextOptions<CmsCoreDbContext> options) : Db
             e.Property(x => x.Size)
                 .IsRequired();
 
-            e.HasOne<Folder>()
-                .WithMany(x => x.Folders)
-                .HasForeignKey(x => x.ParentId)
+            
+            e.HasOne(f => f.ParentFolder)
+                .WithMany(f => f.Folders)
+                .HasForeignKey(f => f.ParentId)
                 .IsRequired(false)
                 .OnDelete(DeleteBehavior.Restrict);
         });
+
     }
 }
