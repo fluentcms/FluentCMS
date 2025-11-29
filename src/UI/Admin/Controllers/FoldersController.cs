@@ -23,6 +23,31 @@ public class FoldersController : ControllerBase
 
         return StatusCode(200);
     }
+    
+    [HttpGet("GetRoot")]
+    public async Task<IActionResult> GetRoot()
+    {
+        var result = await _api.Folders.GetRootAsync();
+
+        if (result == null)
+            return NotFound();
+
+        return Ok(result.Data);
+    }
+
+    [HttpGet("GetById/{id}")]
+    public async Task<IActionResult> GetById(Guid id)
+    {
+        if (id == Guid.Empty)
+            return BadRequest("Invalid folder ID");
+
+        var result = await _api.Folders.GetByIdAsync(id);
+
+        if (result?.Data == null)
+            return NotFound();
+
+        return Ok(result.Data);
+    }
 
     [HttpPost("Create")]
     public async Task<IActionResult> Create(FolderAddRequest request)
