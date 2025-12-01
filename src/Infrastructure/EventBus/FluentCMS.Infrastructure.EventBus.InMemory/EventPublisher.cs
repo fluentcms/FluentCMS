@@ -18,35 +18,39 @@ internal class EventPublisher(IServiceScopeFactory scopeFactory, IOptions<EventP
         IServiceProvider provider;
         AsyncServiceScope? scopeToDispose = null;
 
-        if (httpContext != null)
-        {
-            // We're in an HTTP request - use the request's service provider
-            provider = httpContext.RequestServices;
-            logger.LogDebug("Using HTTP request scope for event {EventType}", typeof(TEvent).Name);
-        }
-        else
-        {
-            // No HTTP context - create new scope
-            var scope = scopeFactory.CreateAsyncScope();
-            provider = scope.ServiceProvider;
-            scopeToDispose = scope;
-            logger.LogDebug("Created new scope for event {EventType}", typeof(TEvent).Name);
-        }
-
-        var subscribers = provider.GetServices<IEventSubscriber<TEvent>>();
-
-        if (!subscribers.Any())
-        {
-            // No subscribers found, log a warning and return
-            logger.LogWarning("No subscribers found for event type {EventType}.", typeof(TEvent).Name);
-            return;
-        }
-
+        // Safe scope creation and assignment - both happen inside try block to ensure proper disposal
         try
         {
+            if (httpContext != null)
+            {
+                // We're in an HTTP request - use the request's service provider
+                provider = httpContext.RequestServices;
+                logger.LogDebug("Using HTTP request scope for event {EventType}", typeof(TEvent).Name);
+            }
+            else
+            {
+                // No HTTP context - create new scope
+                // Assignment happens in try block to ensure disposal on exception
+                scopeToDispose = scopeFactory.CreateAsyncScope();
+                provider = scopeToDispose.Value.ServiceProvider;
+                logger.LogDebug("Created new scope for event {EventType}", typeof(TEvent).Name);
+            }
+
+            var subscribers = provider.GetServices<IEventSubscriber<TEvent>>();
+
+            if (!subscribers.Any())
+            {
+                // No subscribers found, log a warning and return
+                logger.LogWarning("No subscribers found for event type {EventType}.", typeof(TEvent).Name);
+                return;
+            }
+
             if (options.Value.Mode == EventPublisherOptions.ErrorHandlingMode.FailFast)
             {
-                // Execute handlers sequentially and stop on first exception
+                cancellationToken.ThrowIfCancellationRequested();
+
+                // SEQUENTIAL execution: handlers run one at a time in registration order
+                // Stops on first exception
                 foreach (var subscriber in subscribers)
                 {
                     try
@@ -65,13 +69,15 @@ internal class EventPublisher(IServiceScopeFactory scopeFactory, IOptions<EventP
             }
             else
             {
-                // Execute all handlers concurrently and collect exceptions
+                // CONCURRENT execution: all handlers run in parallel via Task.WhenAll
+                // Collects all exceptions and throws aggregate at the end
                 var exceptions = new ConcurrentBag<Exception>();
 
                 var tasks = subscribers.Select(async subscriber =>
                 {
                     try
                     {
+                        cancellationToken.ThrowIfCancellationRequested();
                         await subscriber.Handle(data, cancellationToken);
                     }
                     catch (Exception ex)
@@ -87,6 +93,7 @@ internal class EventPublisher(IServiceScopeFactory scopeFactory, IOptions<EventP
                     }
                 });
 
+                cancellationToken.ThrowIfCancellationRequested();
                 // Wait for all handlers to complete
                 await Task.WhenAll(tasks);
 
@@ -102,7 +109,8 @@ internal class EventPublisher(IServiceScopeFactory scopeFactory, IOptions<EventP
         }
         finally
         {
-            if (scopeToDispose != null)
+            // Safe disposal - only disposes if scope was successfully created and assigned
+            if (scopeToDispose.HasValue)
             {
                 await scopeToDispose.Value.DisposeAsync();
                 logger.LogDebug("Disposed scope for event {EventType}", typeof(TEvent).Name);
