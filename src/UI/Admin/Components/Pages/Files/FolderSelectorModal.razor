@@ -1,13 +1,15 @@
 @namespace Admin
 
+@inject ApiClientFactory Api
+
 <Modal data-name="FolderSelectorModal" Placement="ModalPlacement.Top" Size="ModalSize.Large">
     <ModalHeader>
         <ModalTitle>
             Choose Folder
         </ModalTitle>
     </ModalHeader>
-    <div style="max-height: 60vh; overflow: auto;">
-            @* <Breadcrumb style="height: 40px; padding-left: 24px;">
+    <div style="max-height: 60vh; padding: 1.5rem; overflow: auto;">
+        @* <Breadcrumb style="height: 40px; padding-left: 24px;">
             @foreach (var breadcrumbItem in ParentFolders)
             {
                 @if (breadcrumbItem.Id == Model)
@@ -30,7 +32,8 @@
                 }
             }
         </Breadcrumb> *@
-        TODO: List of folders
+        <div id="folderSelectorInput" placeholder="Choose folder"></div>
+        <div style="height: 16rem;"></div>
         @* <FilesTable @key="@Model" HideFiles DisabledFolder="@DisabledFolder" @bind-FolderId="@Model" @bind-RootFolder="@RootFolder" @bind-ParentFolders="ParentFolders">
             <ActionsFragment>
                 <ActionButtonOpen Visible="context.IsFolder && context.Id != DisabledFolder" @onclick="() => NavigateFolder(context.Id)" />
@@ -49,21 +52,103 @@
     </ModalBody>
 </Modal>
 
+<script type="module">
+    import { TreeSelector } from '/js/tree-selector.js'
+
+    const element = document.getElementById("folderSelectorInput");
+    const folderIcon = '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-folder"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 4h4l3 3h7a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-11a2 2 0 0 1 2 -2" /></svg>'
+
+    let currentFolderId = null
+
+    let rootFolder = await fetch('/api/Folders/GetRoot').then(res => res.json())
+
+
+    async function getFolderItems(id) {
+
+        let folderResponse = await fetch('/api/Folders/GetById/' + id).then(res => res.json())
+        let options = []
+
+        for (let folder of folderResponse.folders) {
+
+            options.push({
+                key: folder.id,
+                text: folder.name,
+                icon: folderIcon,
+                items: await getFolderItems(folder.id)
+            });
+        }
+        return options
+    }
+
+    let options = [
+    {
+        key: rootFolder.id,
+        text: 'Root',
+        icon: folderIcon,
+        items: []
+    }]
+
+    for (let folder of rootFolder.folders) {
+        options[0].items.push({
+            key: folder.id,
+            text: folder.name,
+            icon: folderIcon,
+            items: await getFolderItems(folder.id)
+        })
+    }
+
+    let instance = new TreeSelector(element, {
+        cssPrefix: 'f-form-tree-selector',
+        options,
+        onChange: (id) => {
+            @* console.log('selected: ', id) *@
+            @* document.getElementById('folderSelectorValueInput').value = id *@
+        },
+        value: document.getElementById('folderSelectorInput').value
+    })
+
+</script>
+
 @code {
     [Parameter]
     public Guid? DisabledFolder { get; set; }
+
+    [Parameter]
+    public string? CurrentFolderId { get; set; }
 
     [Parameter]
     public Guid? Model { get; set; } = default!;
 
     private List<FolderDto> ParentFolders { get; set; } = [];
     private FolderDto RootFolder { get; set; }
+    private FolderDto CurrentFolder { get; set; }
 
     private async Task NavigateFolder(Guid folderId)
     {
         Model = folderId;
         StateHasChanged();
         await Task.CompletedTask;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        @* load root folder *@
+        var rootResponse = await Api.Folders.GetRootAsync();
+        if (rootResponse?.Data != null)
+        {
+            RootFolder = rootResponse.Data;
+        }
+
+
+        if (!string.IsNullOrEmpty(CurrentFolderId))
+        {
+            Guid.TryParse(CurrentFolderId, out var guid);
+            var folderResponse = await Api.Folders.GetByIdAsync(guid);
+            if (folderResponse?.Data != null)
+            {
+                CurrentFolder = folderResponse.Data;
+            }
+        }
     }
 
     @* private async Task OnChooseFolder()

@@ -36,20 +36,23 @@
                 {
                     @if (context.IsFolder)
                     {
-                        <Button Ghost Color="Color.Primary" Size="ButtonSize.Small" onclick="@($"handleFolderMove('{context.Id}')")">
+                        <Button Ghost Color="Color.Primary" Size="ButtonSize.Small"
+                            onclick="@($"handleFolderMove('{context.Id}')")">
                             <Icon Size="IconSize.Large" Name="IconName.FolderMove" />
                         </Button>
                         <Button Ghost Color="Color.Info" Size="ButtonSize.Small"
                             onclick="@($"handleFolderRename('{context.Id}', '{context.Name}')")">
                             <Icon Size="IconSize.Large" Name="IconName.Edit" />
                         </Button>
-                        <Button Ghost Color="Color.Danger" Size="ButtonSize.Small" onclick="@($"handleFolderDelete('{context.Id}')")">
+                        <Button Ghost Color="Color.Danger" Size="ButtonSize.Small"
+                            onclick="@($"handleFolderDelete('{context.Id}')")">
                             <Icon Size="IconSize.Large" Name="IconName.Delete" />
                         </Button>
                     }
                     else
                     {
-                        <Button Ghost Color="Color.Primary" Size="ButtonSize.Small" onclick="@($"handleFileMove('{context.Id}')")">
+                        <Button Ghost Color="Color.Primary" Size="ButtonSize.Small"
+                            onclick="@($"handleFileMove('{context.Id}')")">
                             <Icon Size="IconSize.Large" Name="IconName.FileMove" />
                         </Button>
 
@@ -57,7 +60,8 @@
                             onclick="@($"handleFileRename('{context.Id}', '{context.Name}')")">
                             <Icon Size="IconSize.Large" Name="IconName.Edit" />
                         </Button>
-                        <Button Ghost Color="Color.Danger" Size="ButtonSize.Small" onclick="@($"handleFileDelete('{context.Id}')")">
+                        <Button Ghost Color="Color.Danger" Size="ButtonSize.Small"
+                            onclick="@($"handleFileDelete('{context.Id}')")">
                             <Icon Size="IconSize.Large" Name="IconName.Delete" />
                         </Button>
                     }
@@ -80,7 +84,7 @@
 <FolderCreateModal />
 <FolderRenameModal />
 <FileRenameModal />
-<FolderSelectorModal />
+<FolderSelectorModal CurrentFolderId="@Id" />
 
 <script>
 
@@ -152,6 +156,10 @@
     async function handleFolderMove(id) {
         const { open, close } = await modals.get('FolderSelectorModal')
 
+        const input = document.getElementById('folderSelectorInput')
+
+        input.dataset.value = id
+
         open();
 
         const cancelButton = document.getElementById('folderSelectorCancelButton')
@@ -161,16 +169,30 @@
             close()
         })
 
-        selectButton.addEventListener('click', () => {
+        selectButton.addEventListener('click', async () => {
             console.log("Move here")
+            await fetch('/api/Folders/Move', {
+                method: "PUT",
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    id,
+                    parentId: input.dataset.value
+                })
+            }).then(res => res.json())
             close()
-        })
+            location.reload()
 
+        })
     }
-    
     async function handleFileMove(id) {
         const { open, close } = await modals.get('FolderSelectorModal')
 
+        const input = document.getElementById('folderSelectorInput')
+
+        input.dataset.value = id
+
         open();
 
         const cancelButton = document.getElementById('folderSelectorCancelButton')
@@ -180,11 +202,21 @@
             close()
         })
 
-        selectButton.addEventListener('click', () => {
+        selectButton.addEventListener('click', async () => {
             console.log("Move here")
+            await fetch('/api/Files/Move', {
+                method: "PUT",
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    id,
+                    folderId: input.dataset.value
+                })
+            }).then(res => res.json())
             close()
+            location.reload()
         })
-
     }
 
     async function handleFolderDelete(id) {

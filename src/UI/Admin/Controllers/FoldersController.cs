@@ -62,7 +62,7 @@ public class FoldersController : ControllerBase
     {
         var result = await _api.Folders.MoveAsync(request);
 
-        return StatusCode(200);
+        return Ok(result.Data);
     }
 
     [HttpPut("Rename")]
@@ -70,6 +70,6 @@ public class FoldersController : ControllerBase
     {
         var result = await _api.Folders.RenameAsync(request);
 
-        return StatusCode(200);
+        return Ok(result.Data);
     }
 }
