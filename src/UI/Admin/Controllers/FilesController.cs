@@ -32,20 +32,20 @@ public class FilesController : ControllerBase
     public async Task<IActionResult> Remove(Guid id)
     {
         var result = await _api.Files.DeleteAsync(id);
-        return StatusCode(200);
+        return Ok(result.Data);
     }
 
-    // [HttpPut("Move")]
-    // public async Task<IActionResult> Move(FileMoveRequest request)
-    // {
-    //     var result = await _api.Files.MoveAsync(request);
-    //     return StatusCode(200);
-    // }
+    [HttpPut("Move")]
+    public async Task<IActionResult> Move(FileMoveRequest request)
+    {
+        var result = await _api.Files.MoveAsync(request);
+        return Ok(result.Data);
+    }
 
     [HttpPut("Rename")]
     public async Task<IActionResult> Rename(FileRenameRequest request)
     {
         var result = await _api.Files.RenameAsync(request);
-        return StatusCode(200);
+        return Ok(result.Data);
     }
 }
