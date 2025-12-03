@@ -5,6 +5,7 @@ public class Page : SiteAssociatedEntity
     public string Title { get; set; } = string.Empty;
     public string Slug { get; set; } = string.Empty;
     public int Order { get; set; }
+    public Guid SiteId { get; set; }
     public Guid? ParentId { get; set; }
     public Guid? LayoutId { get; set; }
     public Guid? EditLayoutId { get; set; }

@@ -17,6 +17,14 @@ public class SitesController(ISiteService siteService) : BaseController
         return Success(Mapper.Map<SiteDto>(site));
     }
 
+
+    [HttpGet]
+    public async Task<ApiResponse<SiteDto>> GetByUrl([FromQuery] string url, CancellationToken cancellationToken = default)
+    {
+        var site = await siteService.GetByUrl(url, cancellationToken);
+        return Success(Mapper.Map<SiteDto>(site));
+    }
+
     [HttpPost]
     public async Task<ApiResponse<SiteDto>> Add(SiteAddRequest request, CancellationToken cancellationToken = default)
     {

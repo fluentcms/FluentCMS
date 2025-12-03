@@ -1,11 +1,15 @@
 // using System.Text.RegularExpressions;
 
+using System.Data;
+using System.Globalization;
+using System.Runtime.CompilerServices;
+
 namespace FluentCMS.Api.Plugins.CmsCoreManagement.Services;
 
 public interface IFolderService
 {
     Task<Folder> Create(Folder folder, CancellationToken cancellationToken = default);
-    Task<Folder> GetRoot(CancellationToken cancellationToken = default);
+    Task<Folder> GetRoot(Guid siteId, CancellationToken cancellationToken = default);
     Task<Folder> GetById(Guid id, CancellationToken cancellationToken = default);
     //     Task<Folder> GetByPath(Guid siteId, string folderPath, CancellationToken cancellationToken = default);
     Task<List<Folder>> GetByFolderId(Guid folderId, CancellationToken cancellationToken = default);
@@ -36,7 +40,7 @@ internal class FolderService(IFolderRepository folderRepository, IFileRepository
                 throw new EnhancedException(MessageCodes.FolderParentNotFound);
 
         //         // check if folder with the same name already exists
-        var existingFolder = await folderRepository.GetByName(folder.ParentId, folder.NormalizedName, cancellationToken);
+        var existingFolder = await folderRepository.GetByName(folder.SiteId, folder.ParentId, folder.NormalizedName, cancellationToken);
         if (existingFolder != null)
             throw new EnhancedException(MessageCodes.FolderAlreadyExists);
 
@@ -45,10 +49,11 @@ internal class FolderService(IFolderRepository folderRepository, IFileRepository
         //     throw new EnhancedException(MessageCodes.FolderUnableToCreate);
     }
 
-    public async Task<Folder> GetRoot(CancellationToken cancellationToken = default)
+    public async Task<Folder> GetRoot(Guid siteId, CancellationToken cancellationToken = default)
     {
-        var result = await folderRepository.GetByName(default, "files", cancellationToken);
-
+        var result = await folderRepository.GetByName(siteId, default, "files", cancellationToken);
+        Console.WriteLine("Getroot: " + siteId.ToString());
+        Console.WriteLine("Getroot: " + result.Id);
         return result;
     }
 
@@ -123,7 +128,7 @@ internal class FolderService(IFolderRepository folderRepository, IFileRepository
             throw new EnhancedException(MessageCodes.FolderNotFound);
 
         // check if folder with the same name already exists
-        var existingFolderSameName = await folderRepository.GetByName(existingFolder.ParentId, normalizedName, cancellationToken);
+        var existingFolderSameName = await folderRepository.GetByName(existingFolder.SiteId, existingFolder.ParentId, normalizedName, cancellationToken);
 
         // check if the folder is not root folder
         if (existingFolder.ParentId == null)

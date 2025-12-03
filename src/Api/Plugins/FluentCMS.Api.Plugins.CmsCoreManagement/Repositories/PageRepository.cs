@@ -1,10 +1,11 @@
-﻿namespace FluentCMS.Api.Plugins.CmsCoreManagement.Repositories;
+﻿using FluentCMS.Api.Core.Repositories.EntityFramework;
 
-// Should be SiteAssociatedRepository
-public interface IPageRepository : IRepository<Page>
+namespace FluentCMS.Api.Plugins.CmsCoreManagement.Repositories;
+
+public interface IPageRepository : ISiteAssociatedRepository<Page>
 {
 }
 
-internal class PageRepository(CmsCoreDbContext dbContext) : Repository<Page, CmsCoreDbContext>(dbContext), IPageRepository
+internal class PageRepository(CmsCoreDbContext dbContext) : SiteAssociatedRepository<Page, CmsCoreDbContext>(dbContext), IPageRepository
 {
 }

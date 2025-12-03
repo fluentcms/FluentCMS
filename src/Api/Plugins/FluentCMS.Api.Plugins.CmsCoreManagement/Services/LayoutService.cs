@@ -3,6 +3,7 @@
 public interface ILayoutService
 {
     Task<IEnumerable<Layout>> GetAll(CancellationToken cancellationToken = default);
+    Task<IEnumerable<Layout>> GetBySiteId(Guid siteId, CancellationToken cancellationToken = default);
     Task<Layout> GetById(Guid id, CancellationToken cancellationToken = default);
     Task<Layout> Add(Layout layout, CancellationToken cancellationToken = default);
     Task<Layout> Update(Layout layout, CancellationToken cancellationToken = default);
@@ -14,6 +15,11 @@ internal class LayoutService(ILayoutRepository layoutRepository, IEventPublisher
     public async Task<IEnumerable<Layout>> GetAll(CancellationToken cancellationToken = default)
     {
         return await layoutRepository.GetAll(cancellationToken);
+    }
+
+    public async Task<IEnumerable<Layout>> GetBySiteId(Guid siteId, CancellationToken cancellationToken = default)
+    {
+        return await layoutRepository.GetAllForSite(siteId, cancellationToken);
     }
 
     public async Task<Layout> GetById(Guid id, CancellationToken cancellationToken = default)

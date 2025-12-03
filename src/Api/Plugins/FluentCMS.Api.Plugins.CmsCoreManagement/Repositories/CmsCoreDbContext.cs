@@ -61,6 +61,12 @@ internal class CmsCoreDbContext(DbContextOptions<CmsCoreDbContext> options) : Db
             e.Property(x => x.Name).IsRequired().HasMaxLength(200);
             e.Property(x => x.Head);
             e.Property(x => x.Body);
+
+            e.Property<Guid>("SiteId");
+            e.HasOne<Site>()
+                .WithMany()
+                .HasForeignKey("SiteId")
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Page>(e =>
@@ -99,6 +105,13 @@ internal class CmsCoreDbContext(DbContextOptions<CmsCoreDbContext> options) : Db
                 .HasForeignKey(x => x.ParentId)
                 .IsRequired(false)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            e.Property<Guid>("SiteId");
+            e.HasOne<Site>()
+                .WithMany()
+                .HasForeignKey("SiteId")
+                .OnDelete(DeleteBehavior.Cascade);
+
         });
 
         modelBuilder.Entity<Core.Models.File>(e =>
@@ -128,6 +141,13 @@ internal class CmsCoreDbContext(DbContextOptions<CmsCoreDbContext> options) : Db
                 .WithMany(x => x.Files)
                 .HasForeignKey(x => x.FolderId)
                 .OnDelete(DeleteBehavior.Cascade);
+            
+            e.Property<Guid>("SiteId");
+            e.HasOne<Site>()
+                .WithMany()
+                .HasForeignKey("SiteId")
+                .OnDelete(DeleteBehavior.Cascade);
+
         });
 
         modelBuilder.Entity<Folder>(e =>
@@ -145,12 +165,19 @@ internal class CmsCoreDbContext(DbContextOptions<CmsCoreDbContext> options) : Db
             e.Property(x => x.Size)
                 .IsRequired();
 
-            
+
             e.HasOne(f => f.ParentFolder)
                 .WithMany(f => f.Folders)
                 .HasForeignKey(f => f.ParentId)
                 .IsRequired(false)
                 .OnDelete(DeleteBehavior.Restrict);
+            
+            e.Property<Guid>("SiteId");
+            e.HasOne<Site>()
+                .WithMany()
+                .HasForeignKey("SiteId")
+                .OnDelete(DeleteBehavior.Cascade);
+
         });
 
     }

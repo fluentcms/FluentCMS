@@ -2,6 +2,15 @@
 
 public class LayoutsController(ILayoutService layoutService) : BaseController
 {
+    
+    [HttpGet]
+    public async Task<ApiListResponse<LayoutDto>> GetBySiteId([FromQuery] Guid siteId, CancellationToken cancellationToken = default)
+    {
+        var layouts = await layoutService.GetBySiteId(siteId, cancellationToken);
+        var layoutsDto = Mapper.Map<List<LayoutDto>>(layouts);
+        return SuccessList(layoutsDto);
+    }
+
     [HttpGet]
     public async Task<ApiListResponse<LayoutDto>> GetAll(CancellationToken cancellationToken = default)
     {

@@ -98,6 +98,12 @@ public class SiteService
         return res;
     }
 
+    public async Task<ApiResponse<SiteDto>> GetByUrlAsync(string url)
+    {
+        var res = await _api.GetAsync<SiteDto>($"/api/Sites/GetByUrl?url={url}");
+        return res;
+    }
+
     public async Task<ApiResponse<SiteDto>> UpdateAsync(string id, SiteUpdateRequest model)
     {
         var res = await _api.PutAsync<SiteUpdateRequest, SiteDto>($"/api/Sites/Update/{id}", model);
@@ -127,6 +133,14 @@ public class PageService
     {
         var res = await _api.GetListAsync<PageDto>(
             "/api/Pages/GetAll"
+        );
+        return res;
+    }
+
+    public async Task<ListApiResponse<PageDto>> GetBySiteIdAsync(Guid siteId)
+    {
+        var res = await _api.GetListAsync<PageDto>(
+            "/api/Pages/GetBySiteId?siteId=" + siteId
         );
         return res;
     }
@@ -161,10 +175,18 @@ public class LayoutService
     private readonly ApiClient _api;
     public LayoutService(ApiClient api) => _api = api;
 
-        public async Task<ListApiResponse<LayoutDto>> GetAllAsync()
+    public async Task<ListApiResponse<LayoutDto>> GetAllAsync()
     {
         var res = await _api.GetListAsync<LayoutDto>(
             "/api/Layouts/GetAll"
+        );
+        return res;
+    }
+
+    public async Task<ListApiResponse<LayoutDto>> GetBySiteIdAsync(Guid siteId)
+    {
+        var res = await _api.GetListAsync<LayoutDto>(
+            "/api/Layouts/GetBySiteId?siteId=" + siteId
         );
         return res;
     }
@@ -216,9 +238,13 @@ public class FolderService
     }
 
 
-    public async Task<ApiResponse<FolderDto>> GetRootAsync()
+    public async Task<ApiResponse<FolderDto>> GetRootAsync(Guid siteId)
     {
-        var res = await _api.GetAsync<FolderDto>($"/api/Folders/GetRoot");
+        var url = $"/api/Folders/GetRoot?siteId=" + siteId.ToString();
+        Console.WriteLine("Api service: GetRootAsync: " + siteId.ToString());
+        Console.WriteLine("Api service: URL: " + url);
+
+        var res = await _api.GetAsync<FolderDto>(url);
         return res;
     }
 
@@ -282,12 +308,6 @@ public class FileService
     public async Task<ApiResponse<FileDto>> RenameAsync(FileRenameRequest model)
     {
         var res = await _api.PutAsync<FileRenameRequest, FileDto>($"/api/Files/Rename", model);
-        return res;
-    }
-
-    public async Task<ApiResponse<FileDto>> CreateAsync(FileAddRequest model)
-    {
-        var res = await _api.PostAsync<FileAddRequest, FileDto>($"/api/Files/Create", model);
         return res;
     }
 

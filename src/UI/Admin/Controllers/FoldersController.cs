@@ -25,9 +25,10 @@ public class FoldersController : ControllerBase
     }
     
     [HttpGet("GetRoot")]
-    public async Task<IActionResult> GetRoot()
+    public async Task<IActionResult> GetRoot([FromQuery] Guid siteId)
     {
-        var result = await _api.Folders.GetRootAsync();
+        Console.WriteLine("Controller: GetRoot: " + siteId.ToString());
+        var result = await _api.Folders.GetRootAsync(siteId);
 
         if (result == null)
             return NotFound();

@@ -1,9 +1,12 @@
-﻿namespace FluentCMS.Api.Plugins.CmsCoreManagement.Services;
+﻿using FluentCMS.Api.Core.Models;
+
+namespace FluentCMS.Api.Plugins.CmsCoreManagement.Services;
 
 public interface IPageService
 {
     Task<IEnumerable<Page>> GetAll(CancellationToken cancellationToken = default);
     Task<Page> GetById(Guid id, CancellationToken cancellationToken = default);
+    Task<IEnumerable<Page>> GetBySiteId(Guid siteId, CancellationToken cancellationToken = default);
     // Task<Page> GetByUrl(string url, CancellationToken cancellationToken = default);
     Task<Page> Add(Page page, CancellationToken cancellationToken = default);
     Task<Page> Update(Page page, CancellationToken cancellationToken = default);
@@ -22,6 +25,11 @@ internal class PageService(IPageRepository pageRepository, IEventPublisher event
     public async Task<Page> GetById(Guid id, CancellationToken cancellationToken = default)
     {
         return await pageRepository.GetById(id, cancellationToken);
+    }
+
+    public async Task<IEnumerable<Page>> GetBySiteId(Guid siteId, CancellationToken cancellationToken = default)
+    {
+        return await pageRepository.GetAllForSite(siteId, cancellationToken);
     }
 
     // public async Task<Page> GetByUrl(string url, CancellationToken cancellationToken = default)

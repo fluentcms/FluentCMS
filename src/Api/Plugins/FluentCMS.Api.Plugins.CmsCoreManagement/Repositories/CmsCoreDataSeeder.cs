@@ -1,6 +1,6 @@
 namespace FluentCMS.Api.Plugins.CmsCoreManagement.Repositories;
 
-internal class CmsCoreDataSeeder(CmsCoreDbContext dbContext, ILogger<CmsCoreDataSeeder> logger) 
+internal class CmsCoreDataSeeder(CmsCoreDbContext dbContext, ILogger<CmsCoreDataSeeder> logger)
     : BaseDataSeeder<CmsCoreDbContext>(dbContext, logger)
 {
     public override int Priority => 10000;
@@ -9,94 +9,182 @@ internal class CmsCoreDataSeeder(CmsCoreDbContext dbContext, ILogger<CmsCoreData
     {
         logger.LogInformation("Seeding initial site entities into the database...");
 
-        var defaultLayout = new Layout
+        var sites = new[]
         {
-            Name = "DefaultLayout",
-            Head = "<title>Default layout head</title>",
-            Body = "<h1>Default layout body</h1>"
+            new
+            {
+                Name = "Default Site",
+                Url = "localhost:5022",
+                Title = "Default CMS Site",
+                Emoji = "🌐",
+                Pages = new[]
+                {
+                    ("Home", ""),
+                    ("About Us", "about"),
+                    ("Contact", "contact"),
+                    ("Blog", "blog")
+                },
+                Folders = new[]
+                {
+                    "Images",
+                    "Documents",
+                    "Videos",
+                    "Temp",
+                    "Archive"
+                }
+            },
+            new
+            {
+                Name = "Marketing Hub",
+                Url = "127.0.0.1:5022",
+                Title = "Marketing Hub",
+                Emoji = "📣",
+                Pages = new[]
+                {
+                    ("Home", ""),
+                    ("Campaigns", "campaigns"),
+                    ("Landing Pages", "landing-pages"),
+                    ("Case Studies", "case-studies"),
+                    ("Team", "team")
+                },
+                Folders = new[]
+                {
+                    "Images",
+                    "Brand",
+                    "Ads",
+                    "EmailTemplates",
+                    "Analytics"
+                }
+            },
+            new
+            {
+                Name = "Docs Portal",
+                Url = "0.0.0.0:5022",
+                Title = "Documentation Portal",
+                Emoji = "📄",
+                Pages = new[]
+                {
+                    ("Home", ""),
+                    ("Getting Started", "getting-started"),
+                    ("API Reference", "api"),
+                    ("Guides", "guides"),
+                    ("Changelog", "changelog"),
+                    ("FAQ", "faq")
+                },
+                Folders = new[]
+                {
+                    "Guides",
+                    "ApiSamples",
+                    "Releases",
+                    "Images",
+                    "Internal"
+                }
+            }
         };
 
-        await DbContext.Layouts.AddAsync(defaultLayout, cancellationToken);
-        await DbContext.SaveChangesAsync(cancellationToken);
-
-        var site = new Site
+        foreach (var s in sites)
         {
-            Name = "Default Site",
-            Urls = ["http://localhost"],
-            Description = "Initial seeded website",
-            LayoutId = defaultLayout.Id,
-            EditLayoutId = defaultLayout.Id,
-            DetailLayoutId = defaultLayout.Id,
-            MetaTitle = "Default CMS Site",
-            MetaDescription = "Seeded default CMS instance",
-            RobotsIndex = true,
-            RobotsFollow = true,
-            RobotsTxt = "User-agent: *\nAllow: /",
-            GoogleTagsId = null,
-            OgType = "website",
-            Head = "<meta property=\"og:site_name\" content=\"Default CMS Site\" />"
-        };
+            var site = new Site
+            {
+                Name = s.Name,
+                Urls = [s.Url],
+                Description = $"{s.Name} seeded site {s.Emoji}",
+                MetaTitle = s.Title,
+                MetaDescription = $"{s.Name} instance",
+                RobotsIndex = true,
+                RobotsFollow = true,
+                RobotsTxt = "User-agent: *\nAllow: /",
+                OgType = "website",
+                Head = $"<meta property=\"og:site_name\" content=\"{s.Title}\" />"
+            };
 
-        await DbContext.Sites.AddAsync(site, cancellationToken);
-        await DbContext.SaveChangesAsync(cancellationToken);
+            await DbContext.Sites.AddAsync(site, cancellationToken);
+            await DbContext.SaveChangesAsync(cancellationToken);
 
-        var homePage = new Page
-        {
-            SiteId = site.Id,
-            Title = "Home",
-            Slug = "",
-            Order = 0,
-            LayoutId = defaultLayout.Id,
-            EditLayoutId = defaultLayout.Id,
-            DetailLayoutId = defaultLayout.Id,
-            MetaTitle = "Home",
-            RobotsIndex = true,
-            RobotsFollow = true,
-            OgType = "website"
-        };
+            var layout = new Layout
+            {
+                SiteId = site.Id,
+                Name = $"{s.Name} Layout",
+                Head = $"<title>{s.Title} {s.Emoji}</title>",
+                Body = $"<h1>{s.Name} Layout Body {s.Emoji}</h1>"
+            };
 
-        await DbContext.Pages.AddAsync(homePage, cancellationToken);
+            await DbContext.Layouts.AddAsync(layout, cancellationToken);
+            await DbContext.SaveChangesAsync(cancellationToken);
 
-        var rootFolder = new Folder
-        {
-            SiteId = site.Id,
-            Name = "Files",
-            NormalizedName = "files",
-            ParentId = null,
-            Size = 0
-        };
+            site.LayoutId = layout.Id;
+            site.EditLayoutId = layout.Id;
+            site.DetailLayoutId = layout.Id;
 
-         // First-level subfolders
-        var imagesFolder = new Folder { SiteId = site.Id, Name = "Images", NormalizedName = "images", ParentId = rootFolder.Id, Size = 0 };
-        var documentsFolder = new Folder { SiteId = site.Id, Name = "Documents", NormalizedName = "documents", ParentId = rootFolder.Id, Size = 0 };
-        var videosFolder = new Folder { SiteId = site.Id, Name = "Videos", NormalizedName = "videos", ParentId = rootFolder.Id, Size = 0 };
+            DbContext.Sites.Update(site);
+            await DbContext.SaveChangesAsync(cancellationToken);
 
-        await DbContext.Folders.AddRangeAsync(new[] { imagesFolder, documentsFolder, videosFolder }, cancellationToken);
 
-        // Second-level nested folders under Images
-        var logosFolder = new Folder { SiteId = site.Id, Name = "Logos", NormalizedName = "logos", ParentId = imagesFolder.Id, Size = 0 };
-        var bannersFolder = new Folder { SiteId = site.Id, Name = "Banners", NormalizedName = "banners", ParentId = imagesFolder.Id, Size = 0 };
+            var order = 0;
+            foreach (var p in s.Pages)
+            {
+                var page = new Page
+                {
+                    SiteId = site.Id,
+                    Title = p.Item1 + " " + s.Emoji,
+                    Slug = p.Item2,
+                    Order = order++,
+                    LayoutId = layout.Id,
+                    EditLayoutId = layout.Id,
+                    DetailLayoutId = layout.Id,
+                    MetaTitle = p.Item1,
+                    RobotsIndex = true,
+                    RobotsFollow = true,
+                    OgType = "website"
+                };
 
-        // Second-level nested folders under Documents
-        var contractsFolder = new Folder { SiteId = site.Id, Name = "Contracts", NormalizedName = "contracts", ParentId = documentsFolder.Id, Size = 0 };
-        var reportsFolder = new Folder { SiteId = site.Id, Name = "Reports", NormalizedName = "reports", ParentId = documentsFolder.Id, Size = 0 };
+                await DbContext.Pages.AddAsync(page, cancellationToken);
+            }
 
-        // Third-level nested folder under Reports
-        var annualReportsFolder = new Folder { SiteId = site.Id, Name = "Annual", NormalizedName = "annual", ParentId = reportsFolder.Id, Size = 0 };
-        var monthlyReportsFolder = new Folder { SiteId = site.Id, Name = "Monthly", NormalizedName = "monthly", ParentId = reportsFolder.Id, Size = 0 };
-        var weeklyReportsFolder = new Folder { SiteId = site.Id, Name = "Weekly", NormalizedName = "weekly", ParentId = reportsFolder.Id, Size = 0 };
+            var rootFolder = new Folder
+            {
+                SiteId = site.Id,
+                Name = "Files",
+                NormalizedName = "files",
+                ParentId = null,
+                Size = 0
+            };
 
-        await DbContext.Folders.AddRangeAsync(new[]
-        {
-            logosFolder, bannersFolder,
-            contractsFolder, reportsFolder,
-            annualReportsFolder,
-            monthlyReportsFolder,
-            weeklyReportsFolder,
-        }, cancellationToken);
+            await DbContext.Folders.AddAsync(rootFolder, cancellationToken);
 
-        await DbContext.Folders.AddAsync(rootFolder, cancellationToken);
+            var childFolders = new List<Folder>();
 
-        await DbContext.SaveChangesAsync(cancellationToken);
+            foreach (var f in s.Folders)
+            {
+                childFolders.Add(new Folder
+                {
+                    SiteId = site.Id,
+                    Name = f,
+                    NormalizedName = f.ToLower(),
+                    ParentId = rootFolder.Id,
+                    Size = 0
+                });
+            }
+
+            await DbContext.Folders.AddRangeAsync(childFolders, cancellationToken);
+
+            var nested = new List<Folder>();
+
+            foreach (var cf in childFolders.Take(2))
+            {
+                nested.Add(new Folder
+                {
+                    SiteId = site.Id,
+                    Name = $"{cf.Name} Sub",
+                    NormalizedName = $"{cf.NormalizedName}-sub",
+                    ParentId = cf.Id,
+                    Size = 0
+                });
+            }
+
+            await DbContext.Folders.AddRangeAsync(nested, cancellationToken);
+
+            await DbContext.SaveChangesAsync(cancellationToken);
+        }
     }
 }

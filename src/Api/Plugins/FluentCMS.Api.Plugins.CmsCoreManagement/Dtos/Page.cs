@@ -5,6 +5,7 @@ namespace FluentCMS.Api.Plugins.CmsCoreManagement.Dtos;
 public class PageDto
 {
     public Guid Id { get; set; }
+    public Guid SiteId { get; set; }
     public string Title { get; set; } = default!;
     public string Slug { get; set; }
     public int Order { get; set; }
@@ -24,6 +25,7 @@ public class PageAddRequest
 {
     [Required]
     public string Title { get; set; } = default!;
+    public Guid SiteId { get; set; }
     public string? Slug { get; set; }
     public int Order { get; set; }
     public Guid? ParentId { get; set; }

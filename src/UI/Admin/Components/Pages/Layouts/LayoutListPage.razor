@@ -3,6 +3,7 @@
 @using FluentCMS.Web.UI.Components
 
 @inject HttpClient Http
+@inject NavigationManager Navigation
 @inject ApiClientFactory Api
 
 <PageTitle>Layouts</PageTitle>
@@ -65,11 +66,18 @@
     {
         try
         {
-            var response = await Api.Layouts.GetAllAsync();
+            var baseUri = new Uri(Navigation.BaseUri);
+            var host = baseUri.Host.ToLowerInvariant();
+            var siteResponse = await Api.Sites.GetByUrlAsync(host);
 
-            if (response != null)
+            if (siteResponse.Data != null)
             {
-                Layouts = response.Data.ToList();
+                var response = await Api.Layouts.GetBySiteIdAsync(siteResponse.Data.Id);
+
+                if (response != null)
+                {
+                    Layouts = response.Data.ToList();
+                }
             }
         }
         catch (ApiException ex)

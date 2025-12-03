@@ -29,7 +29,7 @@ internal class FileService(IFileRepository fileRepository, IFolderRepository fol
         file.NormalizedName = GetNormalizedFileName(file.Name);
 
         // check if file with the same name already exists
-        var existingFile = await fileRepository.GetByName(folder.Id, file.NormalizedName, cancellationToken);
+        var existingFile = await fileRepository.GetByName(folder.SiteId, folder.Id, file.NormalizedName, cancellationToken);
         if (existingFile != null)
         {
             // add a suffix to the new file's name to avoid conflicts with preiously uploaded files
@@ -40,7 +40,7 @@ internal class FileService(IFileRepository fileRepository, IFolderRepository fol
             {
                 file.Name = $"{fileNameWithoutExtension} ({suffix}){fileExtension}";
                 file.NormalizedName = GetNormalizedFileName(file.Name);
-                existingFile = await fileRepository.GetByName(folder.Id, file.NormalizedName, cancellationToken);
+                existingFile = await fileRepository.GetByName(folder.SiteId, folder.Id, file.NormalizedName, cancellationToken);
                 suffix++;
             } while (existingFile != null);
         }
@@ -119,7 +119,7 @@ internal class FileService(IFileRepository fileRepository, IFolderRepository fol
             throw new EnhancedException(MessageCodes.FileInvalidName);
 
         // check if file with the same name already exists
-        var existingFile = await fileRepository.GetByName(file.FolderId, normalizedFileName, cancellationToken);
+        var existingFile = await fileRepository.GetByName(file.SiteId, file.FolderId, normalizedFileName, cancellationToken);
         if (existingFile != null)
             throw new EnhancedException(MessageCodes.FileAlreadyExists);
 
@@ -142,7 +142,7 @@ internal class FileService(IFileRepository fileRepository, IFolderRepository fol
             throw new EnhancedException(MessageCodes.FolderNotFound);
 
         // check if file with the same name already exists
-        var exisitingFile = await fileRepository.GetByName(folder.Id, file.NormalizedName, cancellationToken);
+        var exisitingFile = await fileRepository.GetByName(file.SiteId, folder.Id, file.NormalizedName, cancellationToken);
         if (exisitingFile != null)
             throw new EnhancedException(MessageCodes.FileAlreadyExists);
 

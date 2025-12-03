@@ -3,6 +3,7 @@
 @using FluentCMS.Web.UI.Components
 
 @inject HttpClient Http
+@inject NavigationManager Navigation
 @inject ApiClientFactory Api
 
 <PageTitle>Pages</PageTitle>
@@ -32,7 +33,7 @@
                 <DataTableItem Label="Title">@context.Title</DataTableItem>
                 <DataTableItem Label="Slug">@context.Slug</DataTableItem>
                 <DataTableItem Label="Parent Page">
-                @(Pages.FirstOrDefault(x => x.Id == context.ParentId)?.Title ?? "(root)")
+                    @(Pages.FirstOrDefault(x => x.Id == context.ParentId)?.Title ?? "(root)")
                 </DataTableItem>
 
                 <DataTableItem Label="Layout">
@@ -84,20 +85,28 @@
     {
         try
         {
-            var response = await Api.Pages.GetAllAsync();
+            var baseUri = new Uri(Navigation.BaseUri);
+            var host = baseUri.Host.ToLowerInvariant();
+            var siteResponse = await Api.Sites.GetByUrlAsync(host);
 
-            if (response != null)
+            if (siteResponse.Data != null)
             {
-                Pages = response.Data.ToList();
+                var response = await Api.Pages.GetBySiteIdAsync(siteResponse.Data.Id);
+
+                if (response != null)
+                {
+                    Pages = response.Data.ToList();
+                }
+
+                var layoutsResponse = await Api.Layouts.GetAllAsync();
+
+                if (layoutsResponse.Data != null)
+                {
+                    Layouts = layoutsResponse.Data.ToList();
+                    Console.WriteLine("Layout count: " + Layouts.Count);
+                }
             }
 
-            var layoutsResponse = await Api.Layouts.GetAllAsync();
-
-            if (layoutsResponse.Data != null)
-            {
-                Layouts = layoutsResponse.Data.ToList();
-                Console.WriteLine("Layout count: " + Layouts.Count);
-            }
         }
         catch (ApiException ex)
         {

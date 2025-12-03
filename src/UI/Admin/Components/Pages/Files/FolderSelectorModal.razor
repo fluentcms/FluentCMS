@@ -1,6 +1,7 @@
 @namespace Admin
 
 @inject ApiClientFactory Api
+@inject NavigationManager Navigation
 
 <Modal data-name="FolderSelectorModal" Placement="ModalPlacement.Top" Size="ModalSize.Large">
     <ModalHeader>
@@ -60,8 +61,14 @@
 
     let currentFolderId = null
 
-    let rootFolder = await fetch('/api/Folders/GetRoot').then(res => res.json())
+    console.log({siteId})
+    @* let rootFolder = await fetch('/api/Folders/GetRoot?siteId=@(SiteId)').then(res => res.json()) *@
 
+    let rootFolder = {
+        id: 'as',
+        name: 'files',
+        folders: []
+    }
 
     async function getFolderItems(id) {
 
@@ -119,6 +126,8 @@
     [Parameter]
     public Guid? Model { get; set; } = default!;
 
+    private Guid SiteId { get; set; }
+
     private List<FolderDto> ParentFolders { get; set; } = [];
     private FolderDto RootFolder { get; set; }
     private FolderDto CurrentFolder { get; set; }
@@ -132,8 +141,15 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var baseUri = new Uri(Navigation.BaseUri);
+        var host = baseUri.Host.ToLowerInvariant();
+        var siteResponse = await Api.Sites.GetByUrlAsync(host);
+
+        if(siteResponse?.Data != null) {
+            SiteId = siteResponse.Data.Id;
+        }
         @* load root folder *@
-        var rootResponse = await Api.Folders.GetRootAsync();
+        var rootResponse = await Api.Folders.GetRootAsync(SiteId);
         if (rootResponse?.Data != null)
         {
             RootFolder = rootResponse.Data;

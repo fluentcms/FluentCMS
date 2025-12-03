@@ -2,6 +2,15 @@
 
 public class PagesController(IPageService pageService) : BaseController
 {
+        
+    [HttpGet]
+    public async Task<ApiListResponse<PageDto>> GetBySiteId([FromQuery] Guid siteId, CancellationToken cancellationToken = default)
+    {
+        var pages = await pageService.GetBySiteId(siteId, cancellationToken);
+        var pagesDto = Mapper.Map<List<PageDto>>(pages);
+        return SuccessList(pagesDto);
+    }
+
     [HttpGet]
     public async Task<ApiListResponse<PageDto>> GetAll(CancellationToken cancellationToken = default)
     {

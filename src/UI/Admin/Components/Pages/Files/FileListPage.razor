@@ -1,6 +1,7 @@
 @page "/admin/files/{id?}"
 
 @inject ApiClientFactory Api;
+@inject NavigationManager Navigation;
 
 <PageTitle>File Management</PageTitle>
 
@@ -84,7 +85,10 @@
 <FolderCreateModal />
 <FolderRenameModal />
 <FileRenameModal />
-<FolderSelectorModal CurrentFolderId="@Id" />
+@if (SiteId != null)
+{
+    <FolderSelectorModal CurrentFolderId="@Id"/>
+}
 
 <script>
 
@@ -331,8 +335,18 @@
     [Parameter]
     public string? Id { get; set; }
 
+    private Guid SiteId { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
+        var baseUri = new Uri(Navigation.BaseUri);
+        var host = baseUri.Host.ToLowerInvariant();
+        var siteResponse = await Api.Sites.GetByUrlAsync(host);
+
+        if(siteResponse?.Data != null) {
+            SiteId = siteResponse.Data.Id;
+        }
+        
         if (!string.IsNullOrEmpty(Id))
         {
             if (!Guid.TryParse(Id, out var guid))
@@ -383,7 +397,8 @@
         }
         else
         {
-            var rootResponse = await Api.Folders.GetRootAsync();
+            Console.WriteLine("FileListPage: SiteId: " + SiteId);
+            var rootResponse = await Api.Folders.GetRootAsync(SiteId);
 
             if (rootResponse?.Data != null)
             {

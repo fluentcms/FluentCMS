@@ -1,6 +1,7 @@
 @page "/admin/pages/edit/{id}"
 @inject HttpClient Http
 @inject IHttpContextAccessor HttpContextAccessor
+@inject NavigationManager Navigation
 @inject ApiClientFactory Api
 
 <PageForm Model="@Model" PageOptions="@PageOptions" LayoutOptions="@LayoutOptions" FormName="PageEditForm"
@@ -19,60 +20,67 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var pagesResponse = await Api.Pages.GetAllAsync();
-        if (pagesResponse.Data != null)
+        var baseUri = new Uri(Navigation.BaseUri);
+        var host = baseUri.Host.ToLowerInvariant();
+        var siteResponse = await Api.Sites.GetByUrlAsync(host);
+
+        if (siteResponse.Data != null)
         {
-            PageOptions = new List<SelectOption>() { new() { Title = "(root)", Value = null } };
-            PageOptions.AddRange(pagesResponse.Data.Where(x => x.Id.ToString() != Id).Select(p => new SelectOption
+            var pagesResponse = await Api.Pages.GetBySiteIdAsync(siteResponse.Data.Id);
+            if (pagesResponse.Data != null)
             {
-                Title =
-            p.Title,
-                Value = p.Id
-            }));
-            Console.WriteLine("Page count: " + PageOptions.Count);
-        }
-
-        var layoutsResponse = await Api.Layouts.GetAllAsync();
-        if (layoutsResponse.Data != null)
-        {
-            LayoutOptions = new List<SelectOption>() { new() { Title = "(default)", Value = null } };
-            LayoutOptions.AddRange(layoutsResponse.Data.Select(l => new SelectOption { Title = l.Name, Value = l.Id }));
-            Console.WriteLine("Layout count: " + LayoutOptions.Count);
-        }
-
-        if (Model is null)
-        {
-            Errors.Clear();
-
-            if (!Guid.TryParse(Id, out var guid))
-            {
-                Errors.Add("Invalid page ID");
-                return;
+                PageOptions = new List<SelectOption>() { new() { Title = "(root)", Value = null } };
+                PageOptions.AddRange(pagesResponse.Data.Where(x => x.Id.ToString() != Id).Select(p => new SelectOption
+                {
+                    Title =
+                p.Title,
+                    Value = p.Id
+                }));
+                Console.WriteLine("Page count: " + PageOptions.Count);
             }
 
-            var page = await Api.Pages.GetByIdAsync(guid);
-
-            if (page.Data == null)
+            var layoutsResponse = await Api.Layouts.GetBySiteIdAsync(siteResponse.Data.Id);
+            if (layoutsResponse.Data != null)
             {
-                Errors.Add("Page not found");
-                return;
+                LayoutOptions = new List<SelectOption>() { new() { Title = "(default)", Value = null } };
+                LayoutOptions.AddRange(layoutsResponse.Data.Select(l => new SelectOption { Title = l.Name, Value = l.Id }));
+                Console.WriteLine("Layout count: " + LayoutOptions.Count);
             }
 
-            Model = new PageFormModel
+            if (Model is null)
             {
-                Title = page.Data.Title,
-                Slug = page.Data.Slug,
-                Order = page.Data.Order,
-                ParentId = page.Data.ParentId,
-                LayoutId = page.Data.LayoutId,
-                EditLayoutId = page.Data.EditLayoutId,
-                DetailLayoutId = page.Data.DetailLayoutId,
-                MetaTitle = page.Data.MetaTitle,
-                MetaDescription = page.Data.MetaDescription,
-                RobotsIndex = page.Data.RobotsIndex,
-                RobotsFollow = page.Data.RobotsFollow,
-                OgType = page.Data.OgType,
-            };
+                Errors.Clear();
+
+                if (!Guid.TryParse(Id, out var guid))
+                {
+                    Errors.Add("Invalid page ID");
+                    return;
+                }
+
+                var page = await Api.Pages.GetByIdAsync(guid);
+
+                if (page.Data == null)
+                {
+                    Errors.Add("Page not found");
+                    return;
+                }
+
+                Model = new PageFormModel
+                {
+                    Title = page.Data.Title,
+                    Slug = page.Data.Slug,
+                    Order = page.Data.Order,
+                    ParentId = page.Data.ParentId,
+                    LayoutId = page.Data.LayoutId,
+                    EditLayoutId = page.Data.EditLayoutId,
+                    DetailLayoutId = page.Data.DetailLayoutId,
+                    MetaTitle = page.Data.MetaTitle,
+                    MetaDescription = page.Data.MetaDescription,
+                    RobotsIndex = page.Data.RobotsIndex,
+                    RobotsFollow = page.Data.RobotsFollow,
+                    OgType = page.Data.OgType,
+                };
+            }
         }
     }
 

@@ -5,9 +5,9 @@ namespace FluentCMS.Api.Plugins.CmsCoreManagement.Controllers;
 public class FoldersController(IFolderService folderService, IFileService fileService, IMapper mapper) : BaseController
 {
     [HttpGet()]
-    public async Task<ApiResponse<FolderDto>> GetRoot(CancellationToken cancellationToken = default)
+    public async Task<ApiResponse<FolderDto>> GetRoot([FromQuery] Guid siteId, CancellationToken cancellationToken = default)
     {
-        var folder = await folderService.GetRoot(cancellationToken);
+        var folder = await folderService.GetRoot(siteId, cancellationToken);
  
         var files = await fileService.GetByFolderId(folder.Id, cancellationToken);
         var folders = await folderService.GetByFolderId(folder.Id, cancellationToken);

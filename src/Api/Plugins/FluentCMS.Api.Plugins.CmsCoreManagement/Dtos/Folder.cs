@@ -5,6 +5,7 @@ namespace FluentCMS.Api.Plugins.CmsCoreManagement.Dtos;
 public class FolderDto
 {
     public Guid Id { get; set; }
+    public Guid SiteId { get; set; }
     public string Name { get; set; }
     public string NormalizedName { get; set; }
     public List<FileDto> Files { get; set; } = [];
@@ -15,6 +16,7 @@ public class FolderDto
 public class FolderAddRequest
 {
     public string Name { get; set; }
+    public Guid SiteId { get; set; }
     public Guid ParentId { get; set; }
 }
 
