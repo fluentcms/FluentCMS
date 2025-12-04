@@ -34,14 +34,18 @@ public class EventPublisherTests
         var provider = services.BuildServiceProvider();
         var publisher = provider.GetRequiredService<IEventPublisher>();
 
-        var cts = new CancellationTokenSource();
-        cts.Cancel();
+        using (var cts = new CancellationTokenSource())
+        {
+            cts.Cancel();
 
-        var @event = new TestEvent { Message = "Test" };
+            var @event = new TestEvent { Message = "Test" };
 
-        // Act
-        var act = async () => await publisher.Publish(@event, cts.Token);
+            // Act
+            var act = async () => await publisher.Publish(@event, cts.Token);
 
+            // Assert
+            await act.Should().ThrowAsync<OperationCanceledException>();
+        }
         // Assert
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
