@@ -34,18 +34,16 @@ public class EventPublisherTests
         var provider = services.BuildServiceProvider();
         var publisher = provider.GetRequiredService<IEventPublisher>();
 
-        using (var cts = new CancellationTokenSource())
-        {
-            cts.Cancel();
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
 
-            var @event = new TestEvent { Message = "Test" };
+        var @event = new TestEvent { Message = "Test" };
 
-            // Act
-            var act = async () => await publisher.Publish(@event, cts.Token);
+        // Act
+        var act = async () => await publisher.Publish(@event, cts.Token);
 
-            // Assert
-            await act.Should().ThrowAsync<OperationCanceledException>();
-        }
+        // Assert
+        await act.Should().ThrowAsync<OperationCanceledException>();
         // Assert
         await act.Should().ThrowAsync<OperationCanceledException>();
     }
@@ -59,7 +57,7 @@ public class EventPublisherTests
         services.AddInMemoryEventBus();
         services.AddLogging();
         services.AddScoped<IEventSubscriber<TestEvent>>(_ => new TestEventHandler(() => handlerCalled = true));
-        
+
         var provider = services.BuildServiceProvider();
         var publisher = provider.GetRequiredService<IEventPublisher>();
 
@@ -83,7 +81,7 @@ public class EventPublisherTests
         services.AddLogging();
         services.AddScoped<IEventSubscriber<TestEvent>>(_ => new TestEventHandler(() => handler1Called = true));
         services.AddScoped<IEventSubscriber<TestEvent>>(_ => new TestEventHandler(() => handler2Called = true));
-        
+
         var provider = services.BuildServiceProvider();
         var publisher = provider.GetRequiredService<IEventPublisher>();
 
@@ -104,7 +102,7 @@ public class EventPublisherTests
         var handler1Called = false;
         var handler2Called = false;
         var services = new ServiceCollection();
-        services.AddInMemoryEventBus(options => 
+        services.AddInMemoryEventBus(options =>
         {
             options.Mode = EventPublisherOptions.ErrorHandlingMode.FailFast;
         });
@@ -115,7 +113,7 @@ public class EventPublisherTests
             throw new InvalidOperationException("Handler 1 failed");
         }));
         services.AddScoped<IEventSubscriber<TestEvent>>(_ => new TestEventHandler(() => handler2Called = true));
-        
+
         var provider = services.BuildServiceProvider();
         var publisher = provider.GetRequiredService<IEventPublisher>();
 
@@ -127,7 +125,7 @@ public class EventPublisherTests
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>()
             .WithMessage("Handler 1 failed");
-        
+
         handler1Called.Should().BeTrue();
         handler2Called.Should().BeFalse();
     }
@@ -139,7 +137,7 @@ public class EventPublisherTests
         var handler1Called = false;
         var handler2Called = false;
         var services = new ServiceCollection();
-        services.AddInMemoryEventBus(options => 
+        services.AddInMemoryEventBus(options =>
         {
             options.Mode = EventPublisherOptions.ErrorHandlingMode.Aggregate;
         });
@@ -154,7 +152,7 @@ public class EventPublisherTests
             handler2Called = true;
             throw new InvalidOperationException("Handler 2 failed");
         }));
-        
+
         var provider = services.BuildServiceProvider();
         var publisher = provider.GetRequiredService<IEventPublisher>();
 
@@ -168,7 +166,7 @@ public class EventPublisherTests
         aggregateException.Which.InnerExceptions.Should().HaveCount(2);
         aggregateException.Which.InnerExceptions.Should().Contain(e => e.Message == "Handler 1 failed");
         aggregateException.Which.InnerExceptions.Should().Contain(e => e.Message == "Handler 2 failed");
-        
+
         handler1Called.Should().BeTrue();
         handler2Called.Should().BeTrue();
     }
@@ -182,17 +180,17 @@ public class EventPublisherTests
         services.AddInMemoryEventBus();
         services.AddLogging();
         services.AddScoped<IEventSubscriber<TestEvent>>(_ => new TestEventHandler(() => handlerCalled = true));
-        
+
         // Create HTTP context with its own service provider
         var httpContext = new DefaultHttpContext();
         httpContext.RequestServices = services.BuildServiceProvider();
-        
+
         var httpContextAccessorMock = new Mock<IHttpContextAccessor>();
         httpContextAccessorMock.Setup(x => x.HttpContext).Returns(httpContext);
-        
+
         // Override the IHttpContextAccessor registration
         services.AddSingleton(httpContextAccessorMock.Object);
-        
+
         var provider = services.BuildServiceProvider();
         var publisher = provider.GetRequiredService<IEventPublisher>();
 
@@ -212,7 +210,7 @@ public class EventPublisherTests
         var executionOrder = new List<int>();
         var lockObject = new object();
         var services = new ServiceCollection();
-        services.AddInMemoryEventBus(options => 
+        services.AddInMemoryEventBus(options =>
         {
             options.Mode = EventPublisherOptions.ErrorHandlingMode.FailFast;
         });
@@ -220,13 +218,13 @@ public class EventPublisherTests
         services.AddScoped<IEventSubscriber<TestEvent>>(_ => new TestEventHandler(async () =>
         {
             await Task.Delay(50);
-            lock(lockObject) { executionOrder.Add(1); }
+            lock (lockObject) { executionOrder.Add(1); }
         }));
         services.AddScoped<IEventSubscriber<TestEvent>>(_ => new TestEventHandler(() =>
         {
-            lock(lockObject) { executionOrder.Add(2); }
+            lock (lockObject) { executionOrder.Add(2); }
         }));
-        
+
         var provider = services.BuildServiceProvider();
         var publisher = provider.GetRequiredService<IEventPublisher>();
 
@@ -246,7 +244,7 @@ public class EventPublisherTests
         var handler1Started = false;
         var handler2Started = false;
         var services = new ServiceCollection();
-        services.AddInMemoryEventBus(options => 
+        services.AddInMemoryEventBus(options =>
         {
             options.Mode = EventPublisherOptions.ErrorHandlingMode.Aggregate;
         });
@@ -261,7 +259,7 @@ public class EventPublisherTests
             handler2Started = true;
             await Task.Delay(50);
         }));
-        
+
         var provider = services.BuildServiceProvider();
         var publisher = provider.GetRequiredService<IEventPublisher>();
 
@@ -284,7 +282,7 @@ public class EventPublisherTests
         services.AddInMemoryEventBus();
         services.AddLogging();
         services.AddScoped<IEventSubscriber<TestEvent>>(_ => new TestEventHandler(e => receivedEvent = e));
-        
+
         var provider = services.BuildServiceProvider();
         var publisher = provider.GetRequiredService<IEventPublisher>();
 
@@ -309,7 +307,7 @@ public class EventPublisherTests
         services.AddInMemoryEventBus();
         services.AddLogging();
         services.AddScoped<IEventSubscriber<TestEvent>>(_ => new TestEventHandler((e, ct) => receivedToken = ct));
-        
+
         var provider = services.BuildServiceProvider();
         var publisher = provider.GetRequiredService<IEventPublisher>();
 
