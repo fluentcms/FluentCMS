@@ -1,5 +1,3 @@
-using System.Collections.Concurrent;
-
 namespace FluentCMS.Infrastructure.EventBus.Tests.InMemory;
 
 public class EventPublisherTests

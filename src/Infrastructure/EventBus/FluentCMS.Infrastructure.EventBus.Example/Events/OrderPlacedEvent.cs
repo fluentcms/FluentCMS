@@ -1,5 +1,3 @@
-using FluentCMS.Infrastructure.EventBus;
-
 namespace FluentCMS.Infrastructure.EventBus.Example.Events;
 
 /// <summary>
