@@ -60,10 +60,6 @@ public class EventBaseTests
         var eventId = Guid.NewGuid();
         var occurredAt = DateTimeOffset.UtcNow.AddHours(-1);
         
-        var @event = new TestEvent
-        {
-            Message = "Test"
-        };
 
         // Trying to explicitly set via init would work at construction time only
         var @event2 = new TestEvent
