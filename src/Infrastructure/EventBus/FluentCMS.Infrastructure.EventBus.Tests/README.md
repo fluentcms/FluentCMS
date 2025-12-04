@@ -12,7 +12,7 @@ Comprehensive test suite with **100% code coverage** for the FluentCMS EventBus 
 
 ### Core Tests (`EventBase` & Service Registration)
 
-#### EventBaseTests (7 tests)
+#### EventBaseTests (6 tests)
 - ✅ Constructor sets OccurredAt timestamp
 - ✅ Constructor sets unique EventId
 - ✅ Generates unique EventIds for each instance
