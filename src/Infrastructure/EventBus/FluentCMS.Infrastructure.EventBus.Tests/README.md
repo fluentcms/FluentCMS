@@ -50,13 +50,14 @@ Comprehensive test suite with **100% code coverage** for the FluentCMS EventBus 
 - ✅ FailFast has value 0
 - ✅ Aggregate has value 1
 
-#### EventPublisherAggregatedExceptionTests (6 tests)
+#### EventPublisherAggregatedExceptionTests (7 tests)
 - ✅ Sets inner exceptions correctly
 - ✅ Sets event type property
 - ✅ Sets message with event type name
 - ✅ Is assignable to AggregateException
 - ✅ Handles multiple exceptions
 - ✅ Works with empty exception collection
+- ✅ Preserves stack trace of inner exceptions
 
 #### ServiceCollectionExtensionsTests (10 tests)
 - ✅ Throws ArgumentNullException when services is null
