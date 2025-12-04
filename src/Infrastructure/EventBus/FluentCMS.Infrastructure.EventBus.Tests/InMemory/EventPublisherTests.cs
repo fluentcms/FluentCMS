@@ -314,7 +314,7 @@ public class EventPublisherTests
         var publisher = provider.GetRequiredService<IEventPublisher>();
 
         var @event = new TestEvent { Message = "Test" };
-        var cts = new CancellationTokenSource();
+        using var cts = new CancellationTokenSource();
 
         // Act
         await publisher.Publish(@event, cts.Token);
