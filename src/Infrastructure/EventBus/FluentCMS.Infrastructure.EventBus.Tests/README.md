@@ -29,7 +29,7 @@ Comprehensive test suite with **100% code coverage** for the FluentCMS EventBus 
 
 ### InMemory Implementation Tests
 
-#### EventPublisherTests (13 tests)
+#### EventPublisherTests (11 tests)
 - ✅ Throws ArgumentNullException when event is null
 - ✅ Throws OperationCanceledException when cancelled
 - ✅ Invokes single subscriber
