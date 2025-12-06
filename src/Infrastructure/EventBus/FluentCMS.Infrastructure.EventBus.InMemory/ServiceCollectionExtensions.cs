@@ -9,6 +9,9 @@ public static class ServiceCollectionExtensions
         // Configure options with default or provided configuration
         services.Configure(configure ?? (_ => { }));
 
+        // Register IHttpContextAccessor using the official extension method (needed for scope management in ASP.NET Core apps)
+        services.AddHttpContextAccessor();
+
         // Register the generic event publisher
         services.TryAddSingleton<IEventPublisher, EventPublisher>();
 

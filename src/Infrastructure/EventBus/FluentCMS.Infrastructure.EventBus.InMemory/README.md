@@ -120,6 +120,40 @@ services.AddInMemoryEventBus(options =>
 });
 ```
 
+## Error Handling & Execution Behavior
+
+### FailFast Mode
+- **Execution:** Handlers run **sequentially** in registration order
+- **On Error:** Stops immediately when first handler throws
+- **Use Case:** When you need guaranteed execution order and want to fail fast
+
+```csharp
+services.AddInMemoryEventBus(options =>
+{
+    options.Mode = EventPublisherOptions.ErrorHandlingMode.FailFast;
+});
+```
+
+### Aggregate Mode (Default)
+- **Execution:** Handlers run **concurrently** using Task.WhenAll
+- **On Error:** All handlers complete, then throws aggregate exception
+- **Use Case:** Best performance when handlers are independent
+
+```csharp
+services.AddInMemoryEventBus(options =>
+{
+    options.Mode = EventPublisherOptions.ErrorHandlingMode.Aggregate;
+});
+```
+
+### Thread Safety Considerations
+⚠️ **Important:** In Aggregate mode, handlers execute concurrently. Ensure your handlers:
+- Don't share mutable state
+- Are thread-safe if they access shared resources
+- Don't depend on execution order
+
+For ordered execution, use FailFast mode or implement coordination in handlers.
+
 ## Logging
 
 - **Information**: Successful event publishing, including event type and subscriber count.
