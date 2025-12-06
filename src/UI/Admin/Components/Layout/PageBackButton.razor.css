@@ -1,0 +1,10 @@
+
+.page-back-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    font-size: 10px;
+    line-height: 10px;
+    color: var(--f-secondary);
+}

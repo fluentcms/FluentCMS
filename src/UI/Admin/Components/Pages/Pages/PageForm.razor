@@ -1,4 +1,4 @@
-<PluginFormPage @attributes="AdditionalAttributes" Model="@Model" OnSubmit="@OnSubmit">
+<PluginFormPage BackUrl="@BackUrl" @attributes="AdditionalAttributes" Model="@Model" OnSubmit="@OnSubmit">
     <FormInput @bind-Value="@Model.Title" Label="Title" Cols="6" Placeholder="Enter page title"/>
     <FormInput @bind-Value="@Model.Slug" Label="Slug" Cols="6" Placeholder="Enter page slug"/>
     <FormNumberInput @bind-Value="@Model.Order" Label="Order" Cols="6" />
@@ -29,6 +29,9 @@
 
     [Parameter(CaptureUnmatchedValues = true)]
     public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; } = default!;
+
+    [Parameter]
+    public string BackUrl { get; set; }
 
     [Parameter]
     public EventCallback OnSubmit { get; set; }

@@ -7,12 +7,19 @@
 
 
 <PageHeader Title="File Management">
-    @if (!string.IsNullOrEmpty(BackUrl))
-    {
-        <LinkButton Href="@BackUrl">Back</LinkButton>
-    }
-    <Button onclick="@($"handleFolderCreate('{Id}')")">Create Folder</Button>
-    <Button Color="Color.Primary" onclick="@($"handleFileUpload('{Id}')")">Upload File</Button>
+    <BackFragment>
+        @if (!string.IsNullOrEmpty(BackUrl))
+        {
+            <PageBackButton Url="@BackUrl" />
+        }
+
+        Files
+    </BackFragment>
+    <ChildContent>
+
+        <Button onclick="@($"handleFolderCreate('{Id}')")">Create Folder</Button>
+        <Button Color="Color.Primary" onclick="@($"handleFileUpload('{Id}')")">Upload File</Button>
+    </ChildContent>
 </PageHeader>
 
 <PageBody>
@@ -87,7 +94,7 @@
 <FileRenameModal />
 @if (SiteId != null)
 {
-    <FolderSelectorModal CurrentFolderId="@Id"/>
+    <FolderSelectorModal CurrentFolderId="@Id" />
 }
 
 <script>
@@ -343,10 +350,11 @@
         var host = baseUri.Host.ToLowerInvariant();
         var siteResponse = await Api.Sites.GetByUrlAsync(host);
 
-        if(siteResponse?.Data != null) {
+        if (siteResponse?.Data != null)
+        {
             SiteId = siteResponse.Data.Id;
         }
-        
+
         if (!string.IsNullOrEmpty(Id))
         {
             if (!Guid.TryParse(Id, out var guid))

@@ -3,6 +3,7 @@ $link-button: $prefix + "link-button";
 
 .#{$button}, .#{$link-button} {
     @extend .btn;
+    @extend .gap-2;
 
     &-block {
         @extend .w-100;

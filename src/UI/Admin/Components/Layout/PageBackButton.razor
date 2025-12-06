@@ -1,0 +1,17 @@
+@if (string.IsNullOrEmpty(Url))
+{
+    <div class="page-back-button" style="visibility: hidden;">Back</div>
+}
+else
+{
+    <a href="@Url" class="page-back-button">
+        <Icon Name="IconName.ArrowLeft" Size="IconSize.Medium" />
+        Back
+    </a>
+}
+
+
+@code {
+    [Parameter]
+    public string Url { get; set; }
+}

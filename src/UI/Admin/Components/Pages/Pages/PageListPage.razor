@@ -9,7 +9,10 @@
 <PageTitle>Pages</PageTitle>
 
 <PageHeader Title="Pages">
-    <LinkButton Href="/admin/pages/create" Color="Color.Primary">Create new page</LinkButton>
+    <LinkButton Href="/admin/pages/create" Color="Color.Primary">
+        <Icon Name="IconName.Plus" Size="IconSize.Large"/>
+        Create new page
+    </LinkButton>
 </PageHeader>
 
 <PageBody>
@@ -50,8 +53,13 @@
 
                 @* <DataTableItem Label="Model">@context.Model</DataTableItem> *@
                 <DataTableItem Label="Actions">
-                    <LinkButton Ghost Color="Color.Primary" Href=@("/admin/pages/edit/" + context.Id)>Edit</LinkButton>
-                    <Button Ghost Color="Color.Danger" onclick=@($"deletePage('{context.Id}')")>Delete</Button>
+
+                    <LinkButton Ghost Color="Color.Primary" Size="ButtonSize.Small" Href=@("/admin/pages/edit/" + context.Id)">
+                        <Icon Size="IconSize.Large" Name="IconName.Edit" />
+                    </LinkButton>
+                    <Button Ghost Color="Color.Danger" Size="ButtonSize.Small" onclick=@($"deletePage('{context.Id}')")>
+                        <Icon Size="IconSize.Large" Name="IconName.Delete" />
+                    </Button>
                 </DataTableItem>
             </DataTable>
         }

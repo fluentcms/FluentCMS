@@ -2,12 +2,7 @@
 @inject NavigationManager Navigation
 
 
-<PageHeader Title="@Title">
-    @if(!string.IsNullOrEmpty(BackUrl))
-    {
-        <LinkButton Outline Href="@BackUrl">Back</LinkButton>
-    }
-</PageHeader>
+<PageHeader Title="@Title" BackUrl="@BackUrl" />
 
 <PageBody>
     <Card>
@@ -53,6 +48,7 @@
 
     [Parameter]
     public string BackUrl { get; set; }
+
     [Parameter]
     public string SubmitLabel { get; set; } = "Subimt";
 
