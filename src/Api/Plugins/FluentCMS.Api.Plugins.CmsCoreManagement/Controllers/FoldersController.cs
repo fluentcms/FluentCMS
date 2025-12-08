@@ -8,7 +8,7 @@ public class FoldersController(IFolderService folderService, IFileService fileSe
     public async Task<ApiResponse<FolderDto>> GetRoot([FromQuery] Guid siteId, CancellationToken cancellationToken = default)
     {
         var folder = await folderService.GetRoot(siteId, cancellationToken);
- 
+
         var files = await fileService.GetByFolderId(folder.Id, cancellationToken);
         var folders = await folderService.GetByFolderId(folder.Id, cancellationToken);
 
@@ -16,7 +16,7 @@ public class FoldersController(IFolderService folderService, IFileService fileSe
         folderDto.Files = mapper.Map<List<FileDto>>(files);
         folderDto.Folders = mapper.Map<List<FolderDto>>(folders);
 
-        if(folder.ParentId != null)
+        if (folder.ParentId != null)
         {
             var parentFolder = await folderService.GetById(folder.ParentId.Value, cancellationToken);
             folderDto.ParentFolder = mapper.Map<FolderDto>(parentFolder);
@@ -50,7 +50,7 @@ public class FoldersController(IFolderService folderService, IFileService fileSe
     {
         var folder = mapper.Map<Folder>(request);
         await folderService.Create(folder, cancellationToken);
-        
+
         var folderDto = mapper.Map<FolderDto>(folder);
         return Success(folderDto);
     }
@@ -75,8 +75,8 @@ public class FoldersController(IFolderService folderService, IFileService fileSe
         return Success(folderDto);
     }
 
-    [HttpGet("{id}")]
-    public async Task<ApiListResponse<FolderDto>> GetParentFolders([FromRoute] Guid id, CancellationToken cancellationToken = default)
+    [HttpGet]
+    public async Task<ApiListResponse<FolderDto>> GetParentFolders([FromQuery] Guid id, CancellationToken cancellationToken = default)
     {
         var folders = await folderService.GetParentFolders(id, cancellationToken);
 

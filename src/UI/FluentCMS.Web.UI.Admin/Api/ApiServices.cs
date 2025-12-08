@@ -230,6 +230,13 @@ public class FolderService
         );
         return res;
     }
+    public async Task<ListApiResponse<FolderDto>> GetParentFoldersAsync(Guid folderId)
+    {
+        var res = await _api.GetListAsync<FolderDto>(
+            "/api/Folders/GetParentFolders?folderId=" + folderId.ToString()
+        );
+        return res;
+    }
 
     public async Task<ApiResponse<FolderDto>> GetByIdAsync(Guid id)
     {

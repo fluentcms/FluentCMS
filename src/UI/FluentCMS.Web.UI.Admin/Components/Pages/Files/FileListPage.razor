@@ -8,12 +8,23 @@
 
 <PageHeader Title="File Management">
     <BackFragment>
-        @if (!string.IsNullOrEmpty(BackUrl))
+        @* @if (!string.IsNullOrEmpty(BackUrl))
         {
             <PageBackButton Url="@BackUrl" />
-        }
+        } *@
 
-        Files
+        <ol class="breadcrumb mb-2" style="font-size: 10px; line-height: 10px;" aria-label="breadcrumbs">
+        <li class="breadcrumb-item">
+            <a href="/admin/files">Files</a>
+        </li>
+        <li class="breadcrumb-item">
+            <a href="/admin/files?id=abc">Parent</a>
+        </li>
+        <li class="breadcrumb-item active" aria-current="page">
+            <a href="#">Current</a>
+        </li>
+        </ol>
+
     </BackFragment>
     <ChildContent>
 
@@ -335,9 +346,11 @@
 </script>
 
 @code {
-    private string BackUrl { get; set; } = "/admin/files";
+    private string? BackUrl { get; set; }
 
     private List<AssetDto> Assets { get; set; }
+
+    private List<FolderDto> ParentFolders { get; set; }
 
     [Parameter]
     public string? Id { get; set; }
@@ -432,5 +445,17 @@
                 Id = rootResponse.Data.Id.ToString();
             }
         }
+        Console.WriteLine(Id);
+        if (!Guid.TryParse(Id, out var idGuid))
+            throw new ArgumentException("Invalid Id");
+        
+        Console.WriteLine(idGuid.ToString());
+
+        var parentFoldersResponse = await Api.Folders.GetParentFoldersAsync(idGuid);
+        if (parentFoldersResponse?.Data != null)
+        {
+            ParentFolders = parentFoldersResponse.Data.ToList();
+        }
+
     }
 }
