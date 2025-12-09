@@ -76,9 +76,9 @@ public class FoldersController(IFolderService folderService, IFileService fileSe
     }
 
     [HttpGet]
-    public async Task<ApiListResponse<FolderDto>> GetParentFolders([FromQuery] Guid id, CancellationToken cancellationToken = default)
+    public async Task<ApiListResponse<FolderDto>> GetParentFolders([FromQuery] Guid folderId, CancellationToken cancellationToken = default)
     {
-        var folders = await folderService.GetParentFolders(id, cancellationToken);
+        var folders = await folderService.GetParentFolders(folderId, cancellationToken);
 
         var response = mapper.Map<List<FolderDto>>(folders);
         return SuccessList(response);

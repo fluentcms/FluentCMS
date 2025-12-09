@@ -1,4 +1,4 @@
-namespace Admin;
+namespace FluentCMS.Web.UI.Admin;
 
 public class PageFormModel
 {

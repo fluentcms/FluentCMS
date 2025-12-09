@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
-namespace Admin.Api.ApiModels;
+namespace FluentCMS.Web.UI.Admin.Api.ApiModels;
 
 
 #region Base
@@ -59,6 +59,8 @@ public class PageDto
     public Guid? ParentId { get; set; }
     public string Title { get; set; } = default!;
     public string Slug { get; set; }
+    public string? FullPath { get; set; }
+
     public int Order { get; set; }
 
     public Guid? LayoutId { get; set; }

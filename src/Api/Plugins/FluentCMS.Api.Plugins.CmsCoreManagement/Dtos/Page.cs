@@ -8,6 +8,7 @@ public class PageDto
     public Guid SiteId { get; set; }
     public string Title { get; set; } = default!;
     public string Slug { get; set; }
+    public string? FullPath { get; set; }
     public int Order { get; set; }
     public Guid ParentId { get; set; }
     public Guid LayoutId { get; set; }

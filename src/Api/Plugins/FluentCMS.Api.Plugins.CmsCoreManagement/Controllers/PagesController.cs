@@ -7,7 +7,9 @@ public class PagesController(IPageService pageService) : BaseController
     public async Task<ApiListResponse<PageDto>> GetBySiteId([FromQuery] Guid siteId, CancellationToken cancellationToken = default)
     {
         var pages = await pageService.GetBySiteId(siteId, cancellationToken);
+        
         var pagesDto = Mapper.Map<List<PageDto>>(pages);
+        // Add FullPath for each page
         return SuccessList(pagesDto);
     }
 

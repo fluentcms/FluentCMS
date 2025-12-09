@@ -6,7 +6,10 @@
 <PageTitle>Sites</PageTitle>
 
 <PageHeader Title="Sites">
-    <LinkButton Href="/admin/sites/create" Color="Color.Primary">Add Site</LinkButton>
+    <LinkButton Href="/admin/sites/create" Color="Color.Primary">
+        <Icon Name="IconName.Plus" Size="IconSize.Medium" />
+        Add Site
+    </LinkButton>
 </PageHeader>
 
 <PageBody>
@@ -50,10 +53,14 @@
                     @Layouts.Find(x => x.Id == context.EditLayoutId)?.Name
                 </DataTableItem>
                 <DataTableItem Label="Model">@context.Model</DataTableItem> *@
-                <DataTableItem Label="Actions">
-                    <LinkButton Ghost Color="Color.Primary" Href=@("/admin/sites/edit/" + context.Id)>Edit</LinkButton>
-                    <Button Ghost Color="Color.Danger"
-                        onclick=@($"deleteSite('{context.Id}','{context.Name}')")>Delete</Button>
+                <DataTableItem Label="">
+                    <LinkButton Ghost Color="Color.Primary"  Size="ButtonSize.Small" Href=@("/admin/sites/edit/" + context.Id)>
+                        <Icon Size="IconSize.Large" Name="IconName.Edit" />
+                    </LinkButton>
+                    <Button Ghost Color="Color.Danger" Size="ButtonSize.Small"
+                        onclick=@($"deleteSite('{context.Id}','{context.Name}')")>
+                        <Icon Size="IconSize.Large" Name="IconName.Delete" />
+                    </Button>
                 </DataTableItem>
             </DataTable>
         }

@@ -1,4 +1,4 @@
-using Admin.Api;
+using FluentCMS.Web.UI.Admin.Api;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Net.Http;

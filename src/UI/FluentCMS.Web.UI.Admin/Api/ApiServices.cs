@@ -1,6 +1,6 @@
-namespace Admin.Api;
+namespace FluentCMS.Web.UI.Admin.Api;
 
-using Admin.Api.ApiModels;
+using FluentCMS.Web.UI.Admin.Api.ApiModels;
 
 public class UserService
 {

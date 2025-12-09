@@ -11,6 +11,10 @@
         </div>
     </div>
 </div>
+@if (Visible)
+{
+    <div class="@this.ClassName("ModalBackdrop")"></div>
+}
 
 @code {
     [Parameter]

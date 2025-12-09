@@ -1,31 +1,52 @@
-@namespace Admin.Components
+@namespace FluentCMS.Web.UI.Admin.Components
 
-<form id="folderCreateForm">
-    <Modal data-name="FolderCreateModal" Size="ModalSize.Large">
-        <ModalHeader Closable>
-            <ModalTitle>
-                Create New Folder
-            </ModalTitle>
-        </ModalHeader>
-        <ModalBody>
-            <Grid>
-                <FormInput @bind-Value="@Model.Name" Label="Name" Placeholder="Enter Folder Name" Required />
-            </Grid>
-        </ModalBody>
-        <ModalFooter>
-            <Stack Gutter="StackGutter.Small">
-                <Button Color="Color.Primary" Type="ButtonType.Submit">
-                    Submit
-                </Button>
-                <Button id="folderCreateCancelButton">
-                    Cancel
-                </Button>
-            </Stack>
-        </ModalFooter>
-    </Modal>
-</form>
-
+<Modal Visible="@Visible" Size="ModalSize.Large">
+    @if (Model != null)
+    {
+        <EditForm OnValidSubmit="HandleSubmit" Model="@Model">
+            <ModalHeader Closable>
+                <ModalTitle>
+                    Create New Folder
+                </ModalTitle>
+            </ModalHeader>
+            <ModalBody>
+                <Grid>
+                    <FormInput @bind-Value="@Model.Name" Label="Name" Placeholder="Enter Folder Name" Required />
+                </Grid>
+            </ModalBody>
+            <ModalFooter>
+                <Stack Gutter="StackGutter.Small">
+                    <Button Color="Color.Primary" Type="ButtonType.Submit">
+                        Submit
+                    </Button>
+                    <Button @onclick="HandleCancel">
+                        Cancel
+                    </Button>
+                </Stack>
+            </ModalFooter>
+        </EditForm>
+    }
+</Modal>
 
 @code {
+    [Parameter]
+    public bool Visible { get; set; } = false;
+
+    [Parameter]
+    public EventCallback<FolderAddRequest> OnSubmit { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
     private FolderAddRequest Model { get; set; } = new();
+
+    private async Task HandleSubmit()
+    {
+        await OnSubmit.InvokeAsync(Model);
+    }
+
+    private async Task HandleCancel()
+    {
+        await OnCancel.InvokeAsync();
+    }
 }

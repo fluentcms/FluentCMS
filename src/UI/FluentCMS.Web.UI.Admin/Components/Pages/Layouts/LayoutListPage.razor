@@ -1,6 +1,7 @@
 @page "/admin/layouts"
 
 @using FluentCMS.Web.UI.Components
+@rendermode InteractiveServer
 
 @inject HttpClient Http
 @inject NavigationManager Navigation
@@ -32,33 +33,24 @@
                 <DataTableItem Label="ID">@context.Id</DataTableItem>
                 <DataTableItem Label="Name">@context.Name</DataTableItem>
 
-                <DataTableItem Label="Actions">
-                    <LinkButton Ghost Color="Color.Primary" Href=@("/admin/layouts/edit/" + context.Id)>Edit</LinkButton>
-                    <Button Ghost Color="Color.Danger" onclick=@($"deleteLayout('{context.Id}')")>Delete</Button>
+                <DataTableItem Label="">
+
+                    <LinkButton Ghost Color="Color.Primary" Size="ButtonSize.Small" Href=@("/admin/layouts/edit/" + context.Id)>
+                        <Icon Size="IconSize.Large" Name="IconName.Edit" />
+                    </LinkButton>
+
+                    <Button Ghost Color="Color.Danger" Size="ButtonSize.Small" @onclick="() => OpenDeleteConfirm(context.Id)">
+                        <Icon Size="IconSize.Large" Name="IconName.Delete" />
+                    </Button>
                 </DataTableItem>
             </DataTable>
         }
     </Card>
 </PageBody>
 
-<Confirm data-name="DeleteLayoutConfirm">
+<Confirm Visible="@DeleteConfirmOpen">
     Are you sure to delete this layout?
 </Confirm>
-
-<script>
-    async function deleteLayout(id) {
-        const res = await confirms.get('DeleteLayoutConfirm').open();
-
-        if (res) {
-            console.log("Should delete layout with id  ", id, res)
-            await fetch('/api/Layouts/Remove/' + id, {
-                method: "DELETE",
-            }).then(res => {
-                location.reload()
-            })
-        }
-    }
-</script>
 
 @code {
     private List<LayoutDto> Layouts;
@@ -86,6 +78,23 @@
             {
                 Console.WriteLine("Error fetching layout: " + error);
             }
+        }
+    }
+
+    private bool DeleteConfirmOpen { get; set; } = false;
+    private Guid? CurrentId { get; set; }
+    
+    private void OpenDeleteConfirm(Guid value)
+    {
+        Console.WriteLine("Open Delete confirm");
+        CurrentId = value;
+        DeleteConfirmOpen = true;
+    }
+
+    private async Task OnDeleteConfirm() {
+        if (CurrentId != null)
+        {
+            await Api.Layouts.DeleteAsync(CurrentId.Value);
         }
     }
 }

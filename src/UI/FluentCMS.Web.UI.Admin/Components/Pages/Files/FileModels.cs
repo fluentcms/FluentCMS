@@ -1,4 +1,4 @@
-namespace Admin.Api;
+namespace FluentCMS.Web.UI.Admin.Api;
 
 public class AssetDto
 {

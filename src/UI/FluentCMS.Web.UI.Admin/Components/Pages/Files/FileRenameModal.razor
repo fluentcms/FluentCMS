@@ -1,31 +1,52 @@
 
-<form id="fileRenameForm">
-    <Modal data-name="FileRenameModal" Size="ModalSize.Large">
-        <ModalHeader Closable>
-            <ModalTitle>
-                Rename File
-            </ModalTitle>
-        </ModalHeader>
-        <ModalBody>
-            <Grid>
-                <FormInput @bind-Value="Model.Name" Label="Name" Placeholder="Enter File Name" Required />
-            </Grid>
-        </ModalBody>
-        <ModalFooter>
-            <FormActions>
-                <Button Color="Color.Primary" id="renameFileSubmitButton" Type="ButtonType.Submit">
-                    Submit
-                </Button>
-
-                <Button id="fileRenameCancelButton">
-                    Cancel
-                </Button>
-            </FormActions>
-        </ModalFooter>
-    </Modal>
-</form>
-
+<Modal Visible="@Visible" Size="ModalSize.Large">
+    @if(Model != null)
+    {
+        <EditForm OnValidSubmit="HandleSubmit" Model="@Model">
+            <ModalHeader Closable>
+                <ModalTitle>
+                    Rename File
+                </ModalTitle>
+            </ModalHeader>
+            <ModalBody>
+                <Grid>
+                    <FormInput @bind-Value="Model.Name" Label="Name" Placeholder="Enter File Name" Required />
+                </Grid>
+            </ModalBody>
+            <ModalFooter>
+                <Stack Gutter="StackGutter.Medium">
+                    <Button Color="Color.Primary" id="renameFileSubmitButton" Type="ButtonType.Submit">
+                        Submit
+                    </Button>
+                    <Button @onclick="HandleCancel">
+                        Cancel
+                    </Button>
+                </Stack>
+            </ModalFooter>
+        </EditForm>
+    }
+</Modal>
 
 @code {
-    private FileRenameRequest Model { get; set; } = new();   
+    [Parameter]
+    public FileRenameRequest Model { get; set; }
+
+    [Parameter]
+    public bool Visible { get; set; } = false;
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    [Parameter]
+    public EventCallback<FileRenameRequest> OnSubmit { get; set; }
+
+    private async Task HandleCancel() 
+    {
+        await OnCancel.InvokeAsync();
+    }
+
+    private async Task HandleSubmit() 
+    {
+        await OnSubmit.InvokeAsync(Model);
+    }
 }

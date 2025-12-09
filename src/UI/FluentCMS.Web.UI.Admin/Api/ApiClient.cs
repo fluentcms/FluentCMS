@@ -1,9 +1,9 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using Admin.Api.ApiModels;
+using FluentCMS.Web.UI.Admin.Api.ApiModels;
 
-namespace Admin.Api;
+namespace FluentCMS.Web.UI.Admin.Api;
 
 public class ApiClient
 {

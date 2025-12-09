@@ -1,5 +1,5 @@
-using Admin.Components;
-using Admin.Api;
+using FluentCMS.Web.UI.Admin.Components;
+using FluentCMS.Web.UI.Admin.Api;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;

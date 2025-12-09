@@ -1,5 +1,5 @@
-using Admin.Api;
-using Admin.Api.ApiModels;
+using FluentCMS.Web.UI.Admin.Api;
+using FluentCMS.Web.UI.Admin.Api.ApiModels;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Net.Http;
