@@ -1,0 +1,29 @@
+@page "/admin/roles/create"
+@inject HttpClient Http
+
+@inject IHttpContextAccessor HttpContextAccessor
+@inject NavigationManager Navigation
+@inject ApiClientFactory Api
+
+<RoleForm FormName="RoleCreateForm" Model="@Model" OnSubmit="@HandleSubmit" Title="Create new role" BackUrl="/admin/roles"/>
+
+@code {
+    private List<string> Errors { get; set; } = [];
+
+    [SupplyParameterFromForm(FormName="RoleCreateForm")]
+    private RoleFormModel Model { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Console.WriteLine("Initialized");
+    }
+
+    public async Task HandleSubmit()
+    {
+        await Api.Roles.CreateAsync(new RoleAddRequest {
+            Name = Model.Name,
+            Description = Model.Description,
+        });
+        Navigation.NavigateTo("/admin/roles");
+    }
+}

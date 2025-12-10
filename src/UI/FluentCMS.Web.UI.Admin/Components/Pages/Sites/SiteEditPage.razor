@@ -1,5 +1,6 @@
 @page "/admin/sites/edit/{id}"
 @inject HttpClient Http
+@inject NavigationManager Navigation
 @inject IHttpContextAccessor HttpContextAccessor
 @inject ApiClientFactory Api
 
@@ -94,6 +95,6 @@
             RobotsIndex = Model.RobotsIndex,
         });
 
-        HttpContextAccessor.HttpContext.Response.Redirect("/admin/sites");
+        Navigation.NavigateTo("/admin/sites");
     }
 }

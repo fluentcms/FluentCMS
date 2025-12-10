@@ -23,7 +23,7 @@ public class FoldersController : ControllerBase
 
         return StatusCode(200);
     }
-    
+
     [HttpGet("GetRoot")]
     public async Task<IActionResult> GetRoot([FromQuery] Guid siteId)
     {

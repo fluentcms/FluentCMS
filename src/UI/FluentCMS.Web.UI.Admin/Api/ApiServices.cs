@@ -84,7 +84,7 @@ public class SiteService
     private readonly ApiClient _api;
     public SiteService(ApiClient api) => _api = api;
 
-        public async Task<ListApiResponse<SiteDto>> GetAllAsync()
+    public async Task<ListApiResponse<SiteDto>> GetAllAsync()
     {
         var res = await _api.GetListAsync<SiteDto>(
             "/api/Sites/GetAll"
@@ -129,7 +129,7 @@ public class PageService
     private readonly ApiClient _api;
     public PageService(ApiClient api) => _api = api;
 
-        public async Task<ListApiResponse<PageDto>> GetAllAsync()
+    public async Task<ListApiResponse<PageDto>> GetAllAsync()
     {
         var res = await _api.GetListAsync<PageDto>(
             "/api/Pages/GetAll"
@@ -217,6 +217,51 @@ public class LayoutService
 }
 
 
+public class BlockService
+{
+    private readonly ApiClient _api;
+    public BlockService(ApiClient api) => _api = api;
+
+    public async Task<ListApiResponse<BlockDto>> GetAllAsync()
+    {
+        var res = await _api.GetListAsync<BlockDto>(
+            "/api/Blocks/GetAll"
+        );
+        return res;
+    }
+
+    public async Task<ListApiResponse<BlockDto>> GetBySiteIdAsync(Guid siteId)
+    {
+        var res = await _api.GetListAsync<BlockDto>(
+            "/api/Blocks/GetBySiteId?siteId=" + siteId
+        );
+        return res;
+    }
+
+    public async Task<ApiResponse<BlockDto>> GetByIdAsync(Guid id)
+    {
+        var res = await _api.GetAsync<BlockDto>($"/api/Blocks/GetById/{id}");
+        return res;
+    }
+
+    public async Task<ApiResponse<BlockDto>> UpdateAsync(string id, BlockUpdateRequest model)
+    {
+        var res = await _api.PutAsync<BlockUpdateRequest, BlockDto>($"/api/Blocks/Update/{id}", model);
+        return res;
+    }
+
+    public async Task<ApiResponse<BlockDto>> CreateAsync(BlockAddRequest model)
+    {
+        var res = await _api.PostAsync<BlockAddRequest, BlockDto>($"/api/Blocks/Add", model);
+        return res;
+    }
+
+    public async Task<ApiResponse<bool>> DeleteAsync(Guid id)
+    {
+        var res = await _api.DeleteAsync<bool>($"/api/Blocks/Remove/{id}");
+        return res;
+    }
+}
 
 public class FolderService
 {

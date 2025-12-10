@@ -32,23 +32,15 @@
         else
         {
             <DataTable TItem="PageDto" Items="@Pages">
-                <DataTableItem Label="ID">@context.Id</DataTableItem>
                 <DataTableItem Label="Title">@context.Title</DataTableItem>
                 <DataTableItem Label="Slug">@context.Slug</DataTableItem>
+                <DataTableItem Label="Full Path">@context.FullPath</DataTableItem>
                 <DataTableItem Label="Parent Page">
                     @(Pages.FirstOrDefault(x => x.Id == context.ParentId)?.Title ?? "(root)")
                 </DataTableItem>
 
                 <DataTableItem Label="Layout">
                     @(Layouts.FirstOrDefault(x => x.Id == context.LayoutId)?.Name ?? "(default)")
-                </DataTableItem>
-
-                <DataTableItem Label="Edit Layout">
-                    @(Layouts.FirstOrDefault(x => x.Id == context.EditLayoutId)?.Name ?? "(default)")
-                </DataTableItem>
-
-                <DataTableItem Label="Detail Layout">
-                    @(Layouts.FirstOrDefault(x => x.Id == context.DetailLayoutId)?.Name ?? "(default)")
                 </DataTableItem>
 
                 <DataTableItem Label="">
@@ -79,6 +71,7 @@
     private List<PageDto>? Pages;
 
     private List<LayoutDto> Layouts;
+    private Guid? SiteId { get; set; }
     protected override async Task OnInitializedAsync()
     {
         try
@@ -89,19 +82,13 @@
 
             if (siteResponse.Data != null)
             {
-                var response = await Api.Pages.GetBySiteIdAsync(siteResponse.Data.Id);
-
-                if (response != null)
-                {
-                    Pages = response.Data.ToList();
-                }
-
+                SiteId = siteResponse.Data.Id;
+               
                 var layoutsResponse = await Api.Layouts.GetAllAsync();
-
                 if (layoutsResponse.Data != null)
                 {
                     Layouts = layoutsResponse.Data.ToList();
-                    Console.WriteLine("Layout count: " + Layouts.Count);
+                    await Load();
                 }
             }
 
@@ -115,6 +102,20 @@
         }
     }
 
+    private async Task Load()
+    {
+        if (SiteId != null)
+        {
+            var response = await Api.Pages.GetBySiteIdAsync(SiteId.Value);
+
+            if (response != null)
+            {
+                Pages = response.Data.ToList();
+            }
+        }
+
+    }
+
     private bool DeleteConfirmOpen { get; set; } = false;
     private Guid? CurrentId { get; set; }
     
@@ -124,10 +125,15 @@
         DeleteConfirmOpen = true;
     }
 
+    private async Task OnDeleteCancel() {
+        DeleteConfirmOpen = false;
+    }
     private async Task OnDeleteConfirm() {
         if(CurrentId != null)
         {
-            await Api.Layouts.DeleteAsync(CurrentId.Value);
+            await Api.Pages.DeleteAsync(CurrentId.Value);
+            await Load();
         }
+        DeleteConfirmOpen = false;
     }
 }

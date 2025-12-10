@@ -29,14 +29,14 @@
             var pagesResponse = await Api.Pages.GetBySiteIdAsync(SiteId);
             if (pagesResponse.Data != null)
             {
-                PageOptions = new List<SelectOption>() { new() { Title = "(root)", Value = null } };
+                PageOptions = new List<SelectOption>() { new() { Title = "(root)", Value = Guid.Empty } };
                 PageOptions.AddRange(pagesResponse.Data.Select(p => new SelectOption { Title = p.Title, Value = p.Id }));
             }
 
             var layoutsResponse = await Api.Layouts.GetBySiteIdAsync(SiteId);
             if (layoutsResponse.Data != null)
             {
-                LayoutOptions = new List<SelectOption>() { new() { Title = "(default)", Value = null } };
+                LayoutOptions = new List<SelectOption>() { new() { Title = "(default)", Value = Guid.Empty } };
                 LayoutOptions.AddRange(layoutsResponse.Data.Select(l => new SelectOption { Title = l.Name, Value = l.Id }));
             }
         }
@@ -80,6 +80,6 @@
         };
 
         var response = await Api.Pages.CreateAsync(request);
-        HttpContextAccessor.HttpContext.Response.Redirect("/admin/pages");
+        Navigation.NavigateTo("/admin/pages");
     }
 }

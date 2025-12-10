@@ -9,6 +9,7 @@ internal class CmsCoreDbContext(DbContextOptions<CmsCoreDbContext> options) : Db
     public DbSet<Site> Sites => Set<Site>();
     public DbSet<Page> Pages => Set<Page>();
     public DbSet<Layout> Layouts => Set<Layout>();
+    public DbSet<Block> Blocks => Set<Block>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -62,10 +63,26 @@ internal class CmsCoreDbContext(DbContextOptions<CmsCoreDbContext> options) : Db
             e.Property(x => x.Head);
             e.Property(x => x.Body);
 
-            e.Property<Guid>("SiteId");
             e.HasOne<Site>()
                 .WithMany()
                 .HasForeignKey("SiteId")
+                .IsRequired()
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+
+        modelBuilder.Entity<Block>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).IsRequired().HasMaxLength(200);
+            e.Property(x => x.Category).IsRequired().HasMaxLength(200);
+            e.Property(x => x.Description);
+            e.Property(x => x.Content);
+
+            e.HasOne<Site>()
+                .WithMany()
+                .HasForeignKey("SiteId")
+                .IsRequired()
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
@@ -106,10 +123,10 @@ internal class CmsCoreDbContext(DbContextOptions<CmsCoreDbContext> options) : Db
                 .IsRequired(false)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            e.Property<Guid>("SiteId");
             e.HasOne<Site>()
                 .WithMany()
                 .HasForeignKey("SiteId")
+                .IsRequired()
                 .OnDelete(DeleteBehavior.Cascade);
 
         });

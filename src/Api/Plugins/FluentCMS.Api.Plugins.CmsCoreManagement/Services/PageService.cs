@@ -8,6 +8,7 @@ public interface IPageService
     Task<Page> GetById(Guid id, CancellationToken cancellationToken = default);
     Task<IEnumerable<Page>> GetBySiteId(Guid siteId, CancellationToken cancellationToken = default);
     // Task<Page> GetByUrl(string url, CancellationToken cancellationToken = default);
+    Task<string> GetPageUrl(Guid id, CancellationToken cancellationToken = default);
     Task<Page> Add(Page page, CancellationToken cancellationToken = default);
     Task<Page> Update(Page page, CancellationToken cancellationToken = default);
     Task<Page> Remove(Guid id, CancellationToken cancellationToken = default);
@@ -30,6 +31,23 @@ internal class PageService(IPageRepository pageRepository, IEventPublisher event
     public async Task<IEnumerable<Page>> GetBySiteId(Guid siteId, CancellationToken cancellationToken = default)
     {
         return await pageRepository.GetAllForSite(siteId, cancellationToken);
+    }
+
+    public async Task<string> GetPageUrl(Guid id, CancellationToken cancellationToken = default)
+    {
+        var segments = new List<string>();
+        var current = await pageRepository.GetById(id, cancellationToken);
+
+        while (current != null)
+        {
+            segments.Add(current.Slug);
+            current = current.ParentId != null 
+                ? await pageRepository.GetById(current.ParentId.Value, cancellationToken) 
+                : null;
+        }
+
+        segments.Reverse();
+        return "/" + string.Join("/", segments);
     }
 
     // public async Task<Page> GetByUrl(string url, CancellationToken cancellationToken = default)

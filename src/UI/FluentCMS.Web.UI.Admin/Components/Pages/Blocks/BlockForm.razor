@@ -1,0 +1,17 @@
+<PluginFormPage @attributes="AdditionalAttributes" OnSubmit="@OnSubmit" Model="@Model">
+    <FormInput Cols="6" @bind-Value="@Model.Name" Label="Name" Placeholder="Enter block name" />
+    <FormInput Cols="6" @bind-Value="@Model.Category" Label="Category" Placeholder="Enter block category"/>
+    <FormTextarea @bind-Value="@Model.Description" Label="Description" Placeholder="Enter block description"/>
+    <FormTextarea @bind-Value="@Model.Content" Label="Content" Placeholder="Enter block html content"/>
+</PluginFormPage>
+
+@code {
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; } = default!;
+
+    [Parameter]
+    public BlockFormModel Model { get; set; }
+
+    [Parameter]
+    public EventCallback OnSubmit { get; set; }
+}

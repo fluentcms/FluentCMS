@@ -5,6 +5,7 @@
 
 @inject HttpClient Http
 @inject IHttpContextAccessor HttpContextAccessor
+@inject NavigationManager Navigation
 @inject ApiClientFactory Api
 
 <SiteForm Model="@Model" LayoutOptions="@LayoutOptions" OnSubmit="OnSubmit" Title="Create New Site" SubmitLabel="Create" FormName="SiteCreateForm"
@@ -71,6 +72,6 @@
 
         var response = await Api.Sites.CreateAsync(request);
 
-        HttpContextAccessor.HttpContext.Response.Redirect("/admin/sites");
+        Navigation.NavigateTo("/admin/sites");
     }
 }

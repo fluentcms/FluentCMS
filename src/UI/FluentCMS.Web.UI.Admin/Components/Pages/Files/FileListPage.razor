@@ -99,11 +99,11 @@
     </Card>
 </PageBody>
 
-<Confirm OnConfirm="OnDeleteFolderConfirm" Visible="@DeleteFolderConfirmOpen">
+<Confirm OnConfirm="OnDeleteFolderConfirm" OnCancel="OnDeleteFolderCancel" Visible="@DeleteFolderConfirmOpen">
     Are you sure to delete this folder?
 </Confirm>
 
-<Confirm OnConfirm="OnDeleteFileConfirm" Visible="@DeleteFileConfirmOpen">
+<Confirm OnConfirm="OnDeleteFileConfirm" OnCancel="OnDeleteFileCancel" Visible="@DeleteFileConfirmOpen">
     Are you sure to delete this file?
 </Confirm>
 
@@ -389,6 +389,10 @@
         DeleteFileConfirmOpen = true;
     }
 
+    private async Task OnDeleteFileCancel() {
+        DeleteFileConfirmOpen = false;
+    }
+
     private async Task OnDeleteFileConfirm() {
         if (CurrentId != null)
         {
@@ -396,6 +400,10 @@
             await Load();
         }
         DeleteFileConfirmOpen = false;
+    }
+
+    private async Task OnDeleteFolderCancel() {
+        DeleteFolderConfirmOpen = false;
     }
 
     private async Task OnDeleteFolderConfirm() {

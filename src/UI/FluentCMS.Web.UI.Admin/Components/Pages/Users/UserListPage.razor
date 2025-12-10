@@ -62,21 +62,6 @@
     Are you sure to delete this user?
 </Confirm>
 
-<script>
-    async function deleteUser(id) {
-        const res = await confirms.get('DeleteUserConfirm').open();
-
-        if(res) {
-            console.log("Should delete user with id  ", id, res)
-            await fetch('/api/Users/Remove/' + id, {
-                method: "DELETE",
-            }).then(res => {
-                location.reload()
-            })
-        }
-    }
-</script>
-
 @code {
     private List<UserDto>? Users;
 

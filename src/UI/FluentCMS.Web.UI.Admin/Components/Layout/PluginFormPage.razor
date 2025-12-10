@@ -55,30 +55,14 @@
     [Parameter]
     public RenderFragment ChildContent { get; set; }
 
-
-    [Parameter]
-    public Func<Task> OnInitialized { get; set; }
-
-
     [Parameter]
     public EventCallback OnSubmit { get; set; }
-
 
     [Parameter]
     public virtual object Model { get; set; }
 
     [Parameter]
     public List<string> Errors { get; set; } = [];
-
-    protected async Task OnInitializedAsync()
-    {
-        Console.WriteLine("HERE oNinitialized");
-        if (OnInitialized != null)
-        {
-            await OnInitialized.Invoke();
-        }
-    }
-
     
     public async Task HandleSubmit()
     {

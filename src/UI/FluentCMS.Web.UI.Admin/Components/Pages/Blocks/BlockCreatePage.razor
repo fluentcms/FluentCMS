@@ -1,0 +1,49 @@
+@page "/admin/blocks/create"
+@inject HttpClient Http
+@inject IHttpContextAccessor HttpContextAccessor
+@inject NavigationManager Navigation
+@inject ApiClientFactory Api
+
+
+<BlockForm Model="@Model" SubmitLabel="Create" FormName="BlockCreateForm" OnSubmit="@HandleSubmit"
+    Title="Create new block" BackUrl="/admin/blocks" />
+
+@code {
+    private List<string> Errors { get; set; } = [];
+
+    [SupplyParameterFromForm(FormName = "BlockCreateForm")]
+    private BlockFormModel Model { get; set; } = new();
+
+    private Guid SiteId { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var baseUri = new Uri(Navigation.BaseUri);
+        var host = baseUri.Host.ToLowerInvariant();
+        var siteResponse = await Api.Sites.GetByUrlAsync(host);
+
+        if (siteResponse.Data != null)
+        {
+            SiteId = siteResponse.Data.Id;
+        }
+    }
+    private async Task HandleSubmit()
+    {
+        Errors.Clear();
+        Console.WriteLine("Submitting Block model:");
+        Console.WriteLine($"Name: {Model.Name}");
+        Console.WriteLine($"Category: {Model.Category}");
+        Console.WriteLine($"Description: {Model.Description}");
+        Console.WriteLine($"Content: {Model.Content}");
+
+        var response = await Api.Blocks.CreateAsync(new BlockAddRequest
+        {
+            SiteId = SiteId,
+            Name = Model.Name,
+            Category = Model.Category,
+            Description = Model.Description,
+            Content = Model.Content,
+        });
+        Navigation.NavigateTo("/admin/blocks");
+    }
+}

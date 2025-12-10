@@ -29,7 +29,7 @@
             var pagesResponse = await Api.Pages.GetBySiteIdAsync(siteResponse.Data.Id);
             if (pagesResponse.Data != null)
             {
-                PageOptions = new List<SelectOption>() { new() { Title = "(root)", Value = null } };
+                PageOptions = new List<SelectOption>() { new() { Title = "(root)", Value = Guid.Empty } };
                 PageOptions.AddRange(pagesResponse.Data.Where(x => x.Id.ToString() != Id).Select(p => new SelectOption
                 {
                     Title =
@@ -42,7 +42,7 @@
             var layoutsResponse = await Api.Layouts.GetBySiteIdAsync(siteResponse.Data.Id);
             if (layoutsResponse.Data != null)
             {
-                LayoutOptions = new List<SelectOption>() { new() { Title = "(default)", Value = null } };
+                LayoutOptions = new List<SelectOption>() { new() { Title = "(default)", Value = Guid.Empty } };
                 LayoutOptions.AddRange(layoutsResponse.Data.Select(l => new SelectOption { Title = l.Name, Value = l.Id }));
                 Console.WriteLine("Layout count: " + LayoutOptions.Count);
             }
@@ -107,10 +107,10 @@
             Title = Model.Title,
             Slug = Model.Slug,
             Order = Model.Order,
-            ParentId = Model.ParentId,
-            LayoutId = Model.LayoutId,
-            EditLayoutId = Model.EditLayoutId,
-            DetailLayoutId = Model.DetailLayoutId,
+            ParentId = Model.ParentId == Guid.Empty ? null : Model.ParentId,
+            LayoutId = Model.LayoutId == Guid.Empty ? null : Model.LayoutId,
+            EditLayoutId = Model.EditLayoutId  == Guid.Empty ? null : Model.EditLayoutId,
+            DetailLayoutId = Model.DetailLayoutId  == Guid.Empty ? null : Model.DetailLayoutId,
             MetaTitle = Model.MetaTitle,
             MetaDescription = Model.MetaDescription,
             RobotsIndex = Model.RobotsIndex,
@@ -119,6 +119,6 @@
         };
 
         var response = await Api.Pages.UpdateAsync(Id, request);
-        HttpContextAccessor.HttpContext.Response.Redirect("/admin/pages");
+        Navigation.NavigateTo("/admin/pages");
     }
 }

@@ -1,10 +1,10 @@
 @page "/admin/layouts/edit/{id}"
 @inject HttpClient Http
+@inject NavigationManager Navigation
 @inject IHttpContextAccessor HttpContextAccessor
 @inject ApiClientFactory Api
 
 <LayoutForm Title="Edit layout" OnSubmit="@HandleSubmit" SubmitLabel="Save" FormName="LayoutEditForm" BackUrl="/admin/layouts" Model="@Model" Errors="@Errors" />
-
 
 @code {
     [Parameter]
@@ -49,6 +49,6 @@
             Head = Model.Head,
             Body = Model.Body,
         });
-        HttpContextAccessor.HttpContext.Response.Redirect("/admin/layouts");
+        Navigation.NavigateTo("/admin/layouts");
     }
 }

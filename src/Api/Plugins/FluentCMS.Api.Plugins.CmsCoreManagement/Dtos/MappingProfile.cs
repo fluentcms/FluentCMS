@@ -17,10 +17,13 @@ public class MappingProfile : Profile
         CreateMap<LayoutAddRequest, Layout>();
         CreateMap<LayoutUpdateRequest, Layout>();
 
+        CreateMap<Block, BlockDto>();
+        CreateMap<BlockAddRequest, Block>();
+        CreateMap<BlockUpdateRequest, Block>();
+
         CreateMap<Core.Models.File, FileDto>();
         CreateMap<FileMoveRequest, Core.Models.File>();
         CreateMap<FileRenameRequest, Core.Models.File>();
-
 
         CreateMap<Folder, FolderDto>();
         CreateMap<FolderAddRequest, Folder>();

@@ -18,5 +18,5 @@ public class PageFormModel
     public bool RobotsFollow { get; set; }
     public string? OgType { get; set; }
 
-    public string? Head { get; set; }   
+    public string? Head { get; set; }
 }

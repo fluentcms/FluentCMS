@@ -1,4 +1,4 @@
-@page "/admin/layouts"
+@page "/admin/blocks"
 
 @using FluentCMS.Web.UI.Components
 @rendermode InteractiveServer
@@ -7,34 +7,39 @@
 @inject NavigationManager Navigation
 @inject ApiClientFactory Api
 
-<PageTitle>Layouts</PageTitle>
+<PageTitle>Blocks</PageTitle>
 
-<PageHeader Title="Layouts">
-    <LinkButton Href="/admin/layouts/create" Color="Color.Primary">Create new layout</LinkButton>
+<PageHeader Title="Blocks">
+    <LinkButton Href="/admin/blocks/create" Color="Color.Primary">
+        <Icon Name="IconName.Plus" Size="IconSize.Medium" />
+        Create new block
+    </LinkButton>
 </PageHeader>
 
 <PageBody>
     <Card>
-        @if (Layouts == null)
+        @if (Blocks == null)
         {
             <CardBody>
                 <p>Loading...</p>
             </CardBody>
         }
-        else if (!Layouts.Any())
+        else if (!Blocks.Any())
         {
             <CardBody>
-                <p>No Layouts found.</p>
+                <p>No Blocks found.</p>
             </CardBody>
         }
         else
         {
-            <DataTable TItem="LayoutDto" Items="@Layouts">
+            <DataTable TItem="BlockDto" Items="@Blocks">
                 <DataTableItem Label="Name">@context.Name</DataTableItem>
+                <DataTableItem Label="Category">@context.Category</DataTableItem>
+                <DataTableItem Label="Description">@context.Description</DataTableItem>
 
                 <DataTableItem Label="">
 
-                    <LinkButton Ghost Color="Color.Primary" Size="ButtonSize.Small" Href=@("/admin/layouts/edit/" + context.Id)>
+                    <LinkButton Ghost Color="Color.Primary" Size="ButtonSize.Small" Href=@("/admin/blocks/edit/" + context.Id)>
                         <Icon Size="IconSize.Large" Name="IconName.Edit" />
                     </LinkButton>
 
@@ -48,13 +53,12 @@
 </PageBody>
 
 <Confirm Visible="@DeleteConfirmOpen" OnConfirm="OnDeleteConfirm" OnCancel="OnDeleteCancel">
-    Are you sure to delete this layout?
+    Are you sure to delete this block?
 </Confirm>
 
 @code {
-    private List<LayoutDto> Layouts;
+    private List<BlockDto> Blocks;
     private Guid SiteId { get; set; }
-
     protected override async Task OnInitializedAsync()
     {
         try
@@ -73,7 +77,7 @@
         {
             foreach (var error in ex.Errors)
             {
-                Console.WriteLine("Error fetching site: " + error);
+                Console.WriteLine("Error fetching block: " + error);
             }
         }
     }
@@ -82,19 +86,18 @@
     {
         try
         {
-            var response = await Api.Layouts.GetBySiteIdAsync(SiteId);
+            var response = await Api.Blocks.GetBySiteIdAsync(SiteId);
 
             if (response != null)
             {
-                Layouts = response.Data.ToList();
+                Blocks = response.Data.ToList();
             }
-            
         }
         catch (ApiException ex)
         {
             foreach (var error in ex.Errors)
             {
-                Console.WriteLine("Error fetching layouts: " + error);
+                Console.WriteLine("Error fetching block: " + error);
             }
         }
     }
@@ -108,7 +111,7 @@
         DeleteConfirmOpen = true;
     }
 
-    private async Task OnDeleteCancel() 
+    private void OnDeleteCancel()
     {
         DeleteConfirmOpen = false;
     }
@@ -116,7 +119,7 @@
     private async Task OnDeleteConfirm() {
         if (CurrentId != null)
         {
-            await Api.Layouts.DeleteAsync(CurrentId.Value);
+            await Api.Blocks.DeleteAsync(CurrentId.Value);
             await Load();
         }
         DeleteConfirmOpen = false;
