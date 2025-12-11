@@ -9,7 +9,7 @@
 
 @code {
     [Parameter]
-    public string Id { get; set; }
+    public Guid Id { get; set; }
 
     private List<SelectOption> PageOptions { get; set; }
     private List<SelectOption> LayoutOptions { get; set; }
@@ -30,7 +30,7 @@
             if (pagesResponse.Data != null)
             {
                 PageOptions = new List<SelectOption>() { new() { Title = "(root)", Value = Guid.Empty } };
-                PageOptions.AddRange(pagesResponse.Data.Where(x => x.Id.ToString() != Id).Select(p => new SelectOption
+                PageOptions.AddRange(pagesResponse.Data.Where(x => x.Id != Id).Select(p => new SelectOption
                 {
                     Title =
                 p.Title,
@@ -51,13 +51,8 @@
             {
                 Errors.Clear();
 
-                if (!Guid.TryParse(Id, out var guid))
-                {
-                    Errors.Add("Invalid page ID");
-                    return;
-                }
 
-                var page = await Api.Pages.GetByIdAsync(guid);
+                var page = await Api.Pages.GetByIdAsync(Id);
 
                 if (page.Data == null)
                 {

@@ -2,6 +2,7 @@ namespace FluentCMS.Web.UI.Admin;
 
 public class SiteFormModel
 {
+    public Guid? Id { get; set; }
     public string? Name { get; set; }
     public string? Description { get; set; }
     public string? Urls { get; set; }

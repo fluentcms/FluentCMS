@@ -28,7 +28,6 @@
         else
         {
             <DataTable TItem="UserDto" Items="@Users">
-                <DataTableItem Label="ID">@context.Id</DataTableItem>
                 <DataTableItem Label="Username">@context.Username</DataTableItem>
                 <DataTableItem Label="Email">@context.Email</DataTableItem>
                 <DataTableItem Label="Description">@context.Description</DataTableItem>
@@ -48,17 +47,20 @@
                         <Indicator Color="Color.Success">No</Indicator>
                     }
                 </DataTableItem>
-                @* <DataTableItem Label="Model">@context.Model</DataTableItem> *@
                 <DataTableItem Label="Actions">
-                    <LinkButton Ghost Color="Color.Primary" Href=@("/admin/users/edit/" + context.Id)>Edit</LinkButton>
-                    <Button Ghost Color="Color.Danger" onclick=@($"deleteUser('{context.Id}')")>Delete</Button>
+                    <LinkButton Ghost Color="Color.Primary" Size="ButtonSize.Small" Href=@("/admin/users/edit/" + context.Id)>
+                        <Icon Size="IconSize.Large" Name="IconName.Edit" />
+                    </LinkButton>
+                    <Button Ghost Color="Color.Danger" Size="ButtonSize.Small" @onclick="() => OpenDeleteConfirm(context.Id)">
+                        <Icon Size="IconSize.Large" Name="IconName.Delete" />
+                    </Button>
                 </DataTableItem>
             </DataTable>
         }
     </Card>
 </PageBody>
 
-<Confirm data-name="DeleteUserConfirm">
+<Confirm OnConfirm="@OnDeleteConfirm" Visible="@DeleteConfirmOpen">
     Are you sure to delete this user?
 </Confirm>
 
@@ -67,21 +69,44 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await Load();
+    }
+
+    private async Task Load()
+    {
         try
         {
             var response = await Api.Users.GetAllAsync();
-
             if (response != null)
             {
                 Users = response.Data.ToList();
             }
         }
-        catch (ApiException ex)
+        catch (ApiClientException ex)
         {
-            foreach (var error in ex.Errors)
-            {
-                Console.WriteLine("Error fetching user: " + error);
-            }
+            Console.WriteLine("Error fetching user: " + ex.Message);
         }
+    }
+
+
+    private bool DeleteConfirmOpen { get; set; } = false;
+    private Guid? CurrentId { get; set; }
+    
+    private void OpenDeleteConfirm(Guid value)
+    {
+        CurrentId = value;
+        DeleteConfirmOpen = true;
+    }
+
+    private async Task OnDeleteCancel() {
+        DeleteConfirmOpen = false;
+    }
+    private async Task OnDeleteConfirm() {
+        if(CurrentId != null)
+        {
+            await Api.Pages.RemoveAsync(CurrentId.Value);
+            await Load();
+        }
+        DeleteConfirmOpen = false;
     }
 }

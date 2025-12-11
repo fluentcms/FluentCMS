@@ -69,12 +69,9 @@
                 await Load();
             }
         }
-        catch (ApiException ex)
+        catch (ApiClientException ex)
         {
-            foreach (var error in ex.Errors)
-            {
-                Console.WriteLine("Error fetching site: " + error);
-            }
+            Console.WriteLine("Error fetching site: " + ex.Message);
         }
     }
 
@@ -90,12 +87,9 @@
             }
             
         }
-        catch (ApiException ex)
+        catch (ApiClientException ex)
         {
-            foreach (var error in ex.Errors)
-            {
-                Console.WriteLine("Error fetching layouts: " + error);
-            }
+            Console.WriteLine("Error fetching layouts: " + ex.Message);
         }
     }
 
@@ -116,7 +110,7 @@
     private async Task OnDeleteConfirm() {
         if (CurrentId != null)
         {
-            await Api.Layouts.DeleteAsync(CurrentId.Value);
+            await Api.Layouts.RemoveAsync(CurrentId.Value);
             await Load();
         }
         DeleteConfirmOpen = false;

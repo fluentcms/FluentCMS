@@ -93,12 +93,9 @@
             }
 
         }
-        catch (ApiException ex)
+        catch (ApiClientException ex)
         {
-            foreach (var error in ex.Errors)
-            {
-                Console.WriteLine("Error fetching page: " + error);
-            }
+            Console.WriteLine("Error fetching page: " + ex.Message);
         }
     }
 
@@ -131,7 +128,7 @@
     private async Task OnDeleteConfirm() {
         if(CurrentId != null)
         {
-            await Api.Pages.DeleteAsync(CurrentId.Value);
+            await Api.Pages.RemoveAsync(CurrentId.Value);
             await Load();
         }
         DeleteConfirmOpen = false;

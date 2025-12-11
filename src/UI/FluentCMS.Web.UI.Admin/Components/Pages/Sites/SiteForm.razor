@@ -8,9 +8,12 @@
         <FormTextarea @bind-Value="Model.Description" Label="Description" Placeholder="Enter Description" />
         <FormTextarea @bind-Value="Model.Head" Label="Head" Placeholder="Enter Head content for all pages" />
         
-        <FormSelect @bind-Value="Model.LayoutId" Cols="6" Data="LayoutOptions" ValueField="Value" TextField="Title" Label="Layout" Placeholder="Choose default layout" />
-        <FormSelect @bind-Value="Model.EditLayoutId" Cols="6" Data="LayoutOptions" ValueField="Value" TextField="Title" Label="Edit Layout" Placeholder="Choose default edit layout" />
-        <FormSelect @bind-Value="Model.DetailLayoutId" Cols="6" Data="LayoutOptions" ValueField="Value" TextField="Title" Label="Detail Layout" Placeholder="Choose default detail layout" />
+        @if (Model.Id != null)
+        {
+            <FormSelect @bind-Value="Model.LayoutId" Cols="6" Data="LayoutOptions" ValueField="Value" TextField="Title" Label="Layout" Placeholder="Choose default layout" />
+            <FormSelect @bind-Value="Model.EditLayoutId" Cols="6" Data="LayoutOptions" ValueField="Value" TextField="Title" Label="Edit Layout" Placeholder="Choose default edit layout" />
+            <FormSelect @bind-Value="Model.DetailLayoutId" Cols="6" Data="LayoutOptions" ValueField="Value" TextField="Title" Label="Detail Layout" Placeholder="Choose default detail layout" />
+        }
         
         <FormInput @bind-Value="Model.MetaTitle" Cols="12" Label="Meta Title" Placeholder="Enter Meta Title"
             Hint="Page's MetaTitle will replace this value." />

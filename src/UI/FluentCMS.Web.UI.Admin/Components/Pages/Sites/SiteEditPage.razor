@@ -8,7 +8,7 @@
 
 @code {
     [Parameter]
-    public string Id { get; set; }
+    public Guid Id { get; set; }
 
     [SupplyParameterFromForm(FormName = "SiteEditForm")]
     private SiteFormModel Model { get; set; }
@@ -18,7 +18,7 @@
     protected override async Task OnInitializedAsync()
     {
         // Load layouts
-        var resp = await Api.Layouts.GetAllAsync();
+        var resp = await Api.Layouts.GetBySiteIdAsync(Id);
 
         if(resp?.Data != null)
         {
@@ -40,13 +40,7 @@
         if(Model is null) {
             Errors.Clear();
 
-            if (!Guid.TryParse(Id, out var guid))
-            {
-                Errors.Add("Invalid site ID");
-                return;
-            }
-
-            var site = await Api.Sites.GetByIdAsync(guid);
+            var site = await Api.Sites.GetByIdAsync(Id);
 
             if (site.Data == null)
             {
@@ -56,6 +50,7 @@
 
             Model = new SiteFormModel
             {
+                Id = site.Data.Id,
                 Name = site.Data.Name,
                 Description = site.Data.Description,
                 Urls = string.Join(",", site.Data.Urls ?? []),
@@ -68,8 +63,8 @@
                 Head = site.Data.Head,
                 OgType = site.Data.OgType,
                 RobotsTxt = site.Data.RobotsTxt,
-                RobotsFollow = site.Data.RobotsFollow,
-                RobotsIndex = site.Data.RobotsIndex,
+                RobotsFollow = site.Data.RobotsFollow.Value,
+                RobotsIndex = site.Data.RobotsIndex.Value,
             };
         }
 

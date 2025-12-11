@@ -49,11 +49,7 @@
         foreach (var file in e.GetMultipleFiles(CONFIG_MAX_FILES))
         {
             var Data = file.OpenReadStream(CONFIG_MAX_FILE_SIZE);
-            Files.Add(new FileParameter { 
-                Data = Data, 
-                FileName = file.Name, 
-                ContentType = file.ContentType
-            });
+            Files.Add(new FileParameter(Data, file.Name, file.ContentType));
         }
         await OnSubmit.InvokeAsync(Files);
     }

@@ -20,7 +20,7 @@
 
     public async Task HandleSubmit()
     {
-        await Api.Roles.CreateAsync(new RoleAddRequest {
+        await Api.Roles.AddAsync(new RoleAddRequest {
             Name = Model.Name,
             Description = Model.Description,
         });

@@ -73,12 +73,9 @@
                 await Load();
             }
         }
-        catch (ApiException ex)
+        catch (ApiClientException ex)
         {
-            foreach (var error in ex.Errors)
-            {
-                Console.WriteLine("Error fetching block: " + error);
-            }
+            Console.WriteLine("Error fetching block: " + ex.Message);
         }
     }
 
@@ -93,12 +90,9 @@
                 Blocks = response.Data.ToList();
             }
         }
-        catch (ApiException ex)
+        catch (ApiClientException ex)
         {
-            foreach (var error in ex.Errors)
-            {
-                Console.WriteLine("Error fetching block: " + error);
-            }
+            Console.WriteLine("Error fetching block: " + ex.Message);
         }
     }
 
@@ -119,7 +113,7 @@
     private async Task OnDeleteConfirm() {
         if (CurrentId != null)
         {
-            await Api.Blocks.DeleteAsync(CurrentId.Value);
+            await Api.Blocks.RemoveAsync(CurrentId.Value);
             await Load();
         }
         DeleteConfirmOpen = false;

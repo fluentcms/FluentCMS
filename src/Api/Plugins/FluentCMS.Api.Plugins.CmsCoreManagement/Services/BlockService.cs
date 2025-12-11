@@ -32,7 +32,7 @@ internal class BlockService(IBlockRepository blockRepository, IEventPublisher ev
 
         await blockRepository.Add(block, cancellationToken);
 
-        // await eventPublisher.Publish(new BlockAddedEvent(block), cancellationToken);
+        await eventPublisher.Publish(new BlockAddedEvent(block), cancellationToken);
 
         return block;
     }
@@ -41,7 +41,7 @@ internal class BlockService(IBlockRepository blockRepository, IEventPublisher ev
     {
         await blockRepository.Update(block, cancellationToken);
 
-        // await eventPublisher.Publish(new BlockUpdatedEvent(block), cancellationToken);
+        await eventPublisher.Publish(new BlockUpdatedEvent(block), cancellationToken);
 
         return block;
     }
@@ -50,7 +50,7 @@ internal class BlockService(IBlockRepository blockRepository, IEventPublisher ev
     {
         var deletedBlock = await blockRepository.Remove(id, cancellationToken);
 
-        // await eventPublisher.Publish(new BlockRemovedEvent(deletedBlock), cancellationToken);
+        await eventPublisher.Publish(new BlockRemovedEvent(deletedBlock), cancellationToken);
 
         return deletedBlock;
     }

@@ -30,7 +30,7 @@
     private async Task HandleSubmit()
     {
         Errors.Clear();
-        var response = await Api.Layouts.CreateAsync(new LayoutAddRequest
+        var response = await Api.Layouts.AddAsync(new LayoutAddRequest
         {
             SiteId = SiteId,
             Name = Model.Name,

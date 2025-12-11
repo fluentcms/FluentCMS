@@ -1,5 +1,5 @@
 using FluentCMS.Web.UI.Admin.Components;
-using FluentCMS.Web.UI.Admin.Api;
+using FluentCMS.Web.ApiClients;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -16,6 +16,7 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddUIComponents();
 builder.Services.AddControllers();
+builder.Services.AddApiClients(builder.Configuration);
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient();
 

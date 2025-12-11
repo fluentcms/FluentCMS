@@ -38,7 +38,7 @@
           Console.WriteLine("Form submitted");
 
     var responseMessage = await Http.PostAsJsonAsync("http://localhost:5093/api/Accounts/Login", Model);
-    var response = await responseMessage.Content.ReadFromJsonAsync<ApiResponse<LoginDto>>();
+    var response = await responseMessage.Content.ReadFromJsonAsync<LoginDtoApiResponse>();
 
     if (response?.Data != null)
     {

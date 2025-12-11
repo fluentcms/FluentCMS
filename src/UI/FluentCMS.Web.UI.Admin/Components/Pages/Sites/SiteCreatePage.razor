@@ -70,7 +70,7 @@
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
         }));
 
-        var response = await Api.Sites.CreateAsync(request);
+        var response = await Api.Sites.AddAsync(request);
 
         Navigation.NavigateTo("/admin/sites");
     }

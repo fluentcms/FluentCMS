@@ -79,7 +79,7 @@
             Head = Model.Head
         };
 
-        var response = await Api.Pages.CreateAsync(request);
+        var response = await Api.Pages.AddAsync(request);
         Navigation.NavigateTo("/admin/pages");
     }
 }

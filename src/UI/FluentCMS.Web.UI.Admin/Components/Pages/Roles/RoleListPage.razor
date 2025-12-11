@@ -71,12 +71,9 @@
                 Roles = response.Data.ToList();
             }
         }
-        catch (ApiException ex)
+        catch (ApiClientException ex)
         {
-            foreach (var error in ex.Errors)
-            {
-                Console.WriteLine("Error fetching roles: " + error);
-            }
+            Console.WriteLine("Error fetching roles: " + ex.Message);
         }
     }
 
@@ -96,7 +93,7 @@
     private async Task OnDeleteConfirm() {
         if(CurrentId != null)
         {
-            await Api.Roles.DeleteAsync(CurrentId.Value);
+            await Api.Roles.RemoveAsync(CurrentId.Value);
             await Load();
         }
         DeleteConfirmOpen = false;

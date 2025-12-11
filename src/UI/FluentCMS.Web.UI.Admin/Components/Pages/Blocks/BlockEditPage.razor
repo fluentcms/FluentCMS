@@ -9,7 +9,7 @@
 
 @code {
     [Parameter]
-    public string Id { get; set; }
+    public Guid Id { get; set; }
  
     [SupplyParameterFromForm(FormName = "BlockEditForm")]
     private BlockFormModel Model { get; set; }
@@ -20,13 +20,7 @@
         if(Model is null) {
             Errors.Clear();
 
-            if (!Guid.TryParse(Id, out var guid))
-            {
-                Errors.Add("Invalid block ID");
-                return;
-            }
-
-            var block = await Api.Blocks.GetByIdAsync(guid);
+            var block = await Api.Blocks.GetByIdAsync(Id);
 
             if (block.Data == null)
             {

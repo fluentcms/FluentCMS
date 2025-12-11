@@ -70,10 +70,10 @@
         {
             await OnSubmit.InvokeAsync();
         }
-        catch (ApiException ex)
+        catch (ApiClientException ex)
         {
             Errors.Clear();
-            Errors.AddRange(ex.Errors);
+            Errors.Add(ex.Message);
         }
         catch(Exception ex)
         {

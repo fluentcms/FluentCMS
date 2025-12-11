@@ -36,7 +36,7 @@
         Console.WriteLine($"Description: {Model.Description}");
         Console.WriteLine($"Content: {Model.Content}");
 
-        var response = await Api.Blocks.CreateAsync(new BlockAddRequest
+        var response = await Api.Blocks.AddAsync(new BlockAddRequest
         {
             SiteId = SiteId,
             Name = Model.Name,

@@ -1,0 +1,25 @@
+<PluginFormPage BackUrl="@BackUrl" @attributes="AdditionalAttributes" Model="@Model" OnSubmit="@OnSubmit">
+
+    <FormInput Disabled=@(Model?.Id != null) @bind-Value="@Model.Username" Label="Username" />
+    <FormInput @bind-Value="@Model.Email" Label="Email" />
+    <FormTextarea @bind-Value="@Model.Description" Label="Description" />
+
+    <FormCheckbox Cols="6" @bind-Value="@Model.Suspended" Text="Suspended" />
+    <FormCheckbox Cols="6" @bind-Value="@Model.IsSuperAdmin" Text="Super Admin" />
+    <FormCheckbox Cols="6" @bind-Value="@Model.EmailConfirmed" Text="Email Confirmed" />
+    <FormCheckbox Cols="6" @bind-Value="@Model.Locked" Text="Locked" />
+</PluginFormPage>
+
+@code {
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; } = default!;
+
+    [Parameter]
+    public string BackUrl { get; set; }
+
+    [Parameter]
+    public EventCallback OnSubmit { get; set; }
+
+    [Parameter]
+    public UserFormModel Model { get; set; }
+}

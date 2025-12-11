@@ -13,7 +13,7 @@
 
 @code {
     [Parameter]
-    public string Id { get; set; }
+    public Guid Id { get; set; }
 
     [SupplyParameterFromForm(FormName = "RoleEditForm")]
     private RoleFormModel Model { get; set; }
@@ -26,13 +26,7 @@
 
             Errors.Clear();
 
-            if (!Guid.TryParse(Id, out var guid))
-            {
-                Errors.Add("Invalid role ID");
-                return;
-            }
-
-            var response = await Api.Roles.GetByIdAsync(guid);
+            var response = await Api.Roles.GetByIdAsync(Id);
 
             if (response?.Data == null)
             {
@@ -51,7 +45,7 @@
 
     private async Task HandleSubmit()
     {
-        var response = await Api.Roles.UpdateAsync(Id, new RoleAddRequest {
+        var response = await Api.Roles.UpdateAsync(Id, new RoleUpdateRequest {
             Name = Model.Name,
             Description = Model.Description,
         });

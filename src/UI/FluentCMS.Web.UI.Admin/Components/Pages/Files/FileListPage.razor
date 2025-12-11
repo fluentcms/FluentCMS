@@ -396,7 +396,7 @@
     private async Task OnDeleteFileConfirm() {
         if (CurrentId != null)
         {
-            await Api.Files.DeleteAsync(CurrentId.Value);
+            await Api.Files.RemoveAsync(CurrentId.Value);
             await Load();
         }
         DeleteFileConfirmOpen = false;
@@ -409,7 +409,7 @@
     private async Task OnDeleteFolderConfirm() {
         if (CurrentId != null)
         {
-            await Api.Folders.DeleteAsync(CurrentId.Value);
+            await Api.Folders.RemoveAsync(CurrentId.Value);
             await Load();
         }
         DeleteFolderConfirmOpen = false;
