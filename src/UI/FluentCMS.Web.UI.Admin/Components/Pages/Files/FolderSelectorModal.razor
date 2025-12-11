@@ -1,0 +1,220 @@
+@namespace FluentCMS.Web.UI.Admin
+
+@inject ApiClientFactory Api
+@inject NavigationManager Navigation
+
+<Modal OnClose="@HandleCancel" Visible="@Visible" Placement="ModalPlacement.Top" Size="ModalSize.Large">
+    <ModalHeader>
+        <ModalTitle>
+            Choose Folder
+        </ModalTitle>
+    </ModalHeader>
+    <div style="max-height: 60vh; padding: 1.5rem; overflow: auto;">
+        @if (ParentFolders != null)
+        {
+            <ol class="breadcrumb mb-2" style="font-size: 10px; line-height: 10px;" aria-label="breadcrumbs">
+                @foreach (var parentFolder in ParentFolders)
+                {
+                    @if (CurrentFolderId == parentFolder.Id)
+                    {
+                        <li class="breadcrumb-item active" aria-current="page">
+                            <a href="#">@parentFolder.Name</a>
+                        </li>
+                    }
+                    else
+                    {
+                        <li style="cursor: pointer;" class="breadcrumb-item">
+                            <a @onclick="() => NavigateFolder(parentFolder.Id)">@parentFolder.Name</a>
+                        </li>
+                    }
+                }
+            </ol>
+        }
+
+        @* <Breadcrumb style="height: 40px; padding-left: 24px;">
+            @foreach (var breadcrumbItem in ParentFolders)
+            {
+                @if (breadcrumbItem.Id == Model)
+                {
+                    <BreadcrumbItem>
+                        @breadcrumbItem.Name
+                    </BreadcrumbItem>
+                }
+                else if(breadcrumbItem.Id == RootFolder?.Id)
+                {
+                    <BreadcrumbItem Link @onclick="() => NavigateFolder(breadcrumbItem.Id)" IconName="IconName.Folder">
+                        @breadcrumbItem.Name
+                    </BreadcrumbItem>
+                }
+                else
+                {
+                    <BreadcrumbItem Link @onclick="() => NavigateFolder(breadcrumbItem.Id)">
+                        @breadcrumbItem.Name
+                    </BreadcrumbItem>
+                }
+            }
+        </Breadcrumb> *@
+        @* <FilesTable @key="@Model" HideFiles DisabledFolder="@DisabledFolder" @bind-FolderId="@Model" @bind-RootFolder="@RootFolder" @bind-ParentFolders="ParentFolders">
+            <ActionsFragment>
+                <ActionButtonOpen Visible="context.IsFolder && context.Id != DisabledFolder" @onclick="() => NavigateFolder(context.Id)" />
+            </ActionsFragment>
+        </FilesTable> *@
+
+        <DataTable TItem="AssetDto" Items="@Assets">
+            <DataTableItem Label="Name">
+                <Stack Gutter="StackGutter.Small">
+                    @if (context.IsFolder && DisabledFolder != context.Id)
+                    {
+                        <Icon Color="Color.Primary" Size="IconSize.Large" Name="IconName.Folder" />
+                        <a style="padding-inline-end: 4rem; cursor: pointer;" @onclick="() => NavigateFolder(context.Id)">@context.Name</a>
+                    }
+                    else
+                    {
+                        <Icon Size="IconSize.Large" Name="IconName.File" />
+                        <a style="opacity: 0.5; padding-inline-end: 4rem;">@context.Name</a>
+                    }
+                </Stack>
+            </DataTableItem>
+            <DataTableItem Label="Type">@(context.IsFolder ? "Folder" : context.ContentType!)</DataTableItem>
+            <DataTableItem Label="">
+                @if (!context.IsParentFolder)
+                {
+                    @if (context.IsFolder && context.Id != DisabledFolder)
+                    {
+                        <Button Color="Color.Primary" Size="ButtonSize.Small" @onclick="() => NavigateFolder(context.Id)">
+                            Select
+                        </Button>
+                    }
+                    
+                }
+            </DataTableItem>
+        </DataTable>
+    </div>
+    <ModalBody>
+        <Grid>
+            <GridItem Small="GridItemColumn.Twelve">
+                <Stack Gutter="StackGutter.Small">
+                    <Button @onclick="OnChooseFolder" Color="@Color.Primary">Move Here</Button>
+                    <Button @onclick="HandleCancel">Cancel</Button>
+                </Stack>
+            </GridItem>
+        </Grid>
+    </ModalBody>
+</Modal>
+
+@code {
+    [Parameter]
+    public Guid? DisabledFolder { get; set; }
+
+    [Parameter]
+    public Guid? CurrentFolderId { get; set; }
+
+    [Parameter]
+    public Guid? Model { get; set; } = default!;
+
+    [Parameter]
+    public bool Visible { get; set; } = false;
+
+    [Parameter]
+    public EventCallback<Guid> OnSubmit { get; set; }
+
+    [Parameter]
+    public EventCallback<Guid> OnCancel { get; set; }
+
+    private List<AssetDto> Assets { get; set; }
+
+    private List<FolderDto> ParentFolders { get; set; } = new List<FolderDto>();
+
+    private Guid SiteId { get; set; }
+
+    private FolderDto RootFolder { get; set; }
+    private FolderDto CurrentFolder { get; set; }
+
+    private async Task NavigateFolder(Guid folderId)
+    {
+        CurrentFolderId = folderId;
+        await Load();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var baseUri = new Uri(Navigation.BaseUri);
+        var host = baseUri.Host.ToLowerInvariant();
+        var siteResponse = await Api.Sites.GetByUrlAsync(host);
+
+        if (siteResponse?.Data != null)
+        {
+            SiteId = siteResponse.Data.Id;
+        }
+        
+        var rootResponse = await Api.Folders.GetRootAsync(SiteId);
+        if (rootResponse?.Data != null)
+        {
+            RootFolder = rootResponse.Data;
+        }
+        await Load();
+    }
+
+    private async Task Load()
+    {
+        if (CurrentFolderId == null)
+        {
+            CurrentFolderId = RootFolder.Id;
+        }
+    
+        var folderResponse = await Api.Folders.GetByIdAsync(CurrentFolderId.Value);
+        if (folderResponse?.Data != null)
+        {
+            CurrentFolder = folderResponse.Data;
+
+            Assets = CurrentFolder.Folders.Select(x => new AssetDto
+            {
+                Id = x.Id,
+                Name = x.Name,
+                NormalizedName = x.NormalizedName,
+                IsFolder = true
+            }).ToList();
+
+            Assets.AddRange(CurrentFolder.Files.Select(f => new AssetDto
+            {
+                Id = f.Id,
+                Name = f.Name,
+                NormalizedName = f.NormalizedName,
+                IsFolder = false,
+                Extension = f.Extension,
+                ContentType = f.ContentType,
+                Size = f.Size
+            }));
+
+            if (CurrentFolder.ParentFolder != null)
+            {
+                Assets.Insert(0, new AssetDto
+                {
+                    Id = CurrentFolder.ParentFolder.Id,
+                    Name = "(parent)",
+                    NormalizedName = "..",
+                    IsFolder = true,
+                    IsParentFolder = true,
+                });
+            }
+        }
+
+        var parentFoldersResponse = await Api.Folders.GetParentFoldersAsync(CurrentFolderId.Value);
+        if (parentFoldersResponse?.Data != null)
+        {
+            ParentFolders = parentFoldersResponse.Data.ToList();
+        }
+    }
+
+    private async Task HandleCancel()
+    {
+        await OnCancel.InvokeAsync();
+    }
+
+    private async Task OnChooseFolder()
+    {
+        if (CurrentFolderId is null) return;
+        await OnSubmit.InvokeAsync(CurrentFolderId.Value);
+    }
+
+}

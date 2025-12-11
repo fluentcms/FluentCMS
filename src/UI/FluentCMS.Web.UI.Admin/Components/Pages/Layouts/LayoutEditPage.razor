@@ -1,0 +1,48 @@
+@page "/admin/layouts/edit/{id}"
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IHttpContextAccessor HttpContextAccessor
+@inject ApiClientFactory Api
+
+<LayoutForm Title="Edit layout" OnSubmit="@HandleSubmit" SubmitLabel="Save" FormName="LayoutEditForm" BackUrl="/admin/layouts" Model="@Model" Errors="@Errors" />
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+ 
+    [SupplyParameterFromForm(FormName = "LayoutEditForm")]
+    private LayoutFormModel Model { get; set; }
+    private List<string> Errors { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if(Model is null) {
+            Errors.Clear();
+
+            var layout = await Api.Layouts.GetByIdAsync(Id);
+
+            if (layout.Data == null)
+            {
+                Errors.Add("Layout not found");
+                return;
+            }
+
+            Model = new LayoutFormModel
+            {
+                Name = layout.Data.Name,
+                Head = layout.Data.Head,
+                Body = layout.Data.Body,
+            };
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        var response = await Api.Layouts.UpdateAsync(Id, new LayoutUpdateRequest {
+            Name = Model.Name,
+            Head = Model.Head,
+            Body = Model.Body,
+        });
+        Navigation.NavigateTo("/admin/layouts");
+    }
+}

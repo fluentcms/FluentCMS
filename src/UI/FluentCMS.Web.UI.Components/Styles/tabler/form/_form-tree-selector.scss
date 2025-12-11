@@ -1,0 +1,112 @@
+$tree-selector: $prefix + 'form-tree-selector';
+
+.#{$tree-selector} {
+  &-wrapper {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+  }
+
+  &-input {
+    @extend .form-control;
+    cursor: pointer;
+  }
+
+  &-menu {
+    @extend .dropdown-menu;
+    width: 100%;
+    max-height: 16rem;
+    overflow-y: auto;
+
+    &-open {
+      display: block !important;
+    }
+
+    &-inner {
+      padding-left: 2rem;
+      display: none;
+    }
+
+    &-inner-open {
+      display: flex;
+      flex-direction: column;
+    }
+  }
+
+  &-option {
+    display: flex;
+    flex-direction: column;
+
+    &-header {
+      display: flex;
+      align-items: center;
+      padding: .25rem .5rem;
+    }
+
+    &-content {
+      @extend .dropdown-item;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      border-radius: .25rem;
+      transition: background-color .2s ease;
+      cursor: pointer;
+    }
+
+    &-icon {
+      cursor: pointer;
+    }
+
+    &-toggler {
+      @extend .btn;
+      @extend .btn-sm;
+      @extend .btn-light;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: .5rem;
+      width: 2rem;
+      height: 2rem;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+
+    &-toggler-icon::before {
+      content: '+';
+    }
+
+    &-toggler-open &-toggler-icon::before {
+      content: '–';
+    }
+
+    &-toggler-hidden {
+      visibility: hidden;
+    }
+  }
+}
+
+.#{$tree-selector}-option-active
+  > .#{$tree-selector}-option-header
+  > .#{$tree-selector}-option-content {
+  background-color: var(--#{$prefix}primary-lt);
+  color: var(--#{$prefix}primary);
+}
+
+.#{$tree-selector}-option:has(.#{$tree-selector}-option-active)
+  > .#{$tree-selector}-option-header
+  > .#{$tree-selector}-option-content {
+//   background-color: var(--#{$prefix}primary-lt) !important;
+}
+
+[data-bs-theme="dark"] .#{$tree-selector}-option-active
+  > .#{$tree-selector}-option-header
+  > .#{$tree-selector}-option-content {
+  background-color: rgba(var(--#{$prefix}primary-rgb), .3);
+  color: var(--#{$prefix}primary);
+}
+
+[data-bs-theme="dark"] .#{$tree-selector}-option:has(.#{$tree-selector}-option-active)
+  > .#{$tree-selector}-option-header
+  > .#{$tree-selector}-option-content {
+  background-color: rgba(var(--#{$prefix}primary-rgb), .15);
+}

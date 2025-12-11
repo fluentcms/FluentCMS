@@ -1,0 +1,17 @@
+<PluginFormPage @attributes="AdditionalAttributes" OnSubmit="@OnSubmit" Model="@Model">
+    <FormInput @bind-Value="@Model.Name" Label="Name" Placeholder="Enter layout name" />
+    <FormTextarea @bind-Value="@Model.Head" Label="Head" Placeholder="Enter layout head content"/>
+    <FormTextarea @bind-Value="@Model.Body" Label="Body" Placeholder="Enter layout body content"/>
+
+</PluginFormPage>
+
+@code {
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; } = default!;
+
+    [Parameter]
+    public LayoutFormModel Model { get; set; }
+
+    [Parameter]
+    public EventCallback OnSubmit { get; set; }
+}

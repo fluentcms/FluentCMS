@@ -1,0 +1,51 @@
+@inherits BaseComponentWithContent
+
+@namespace FluentCMS.Web.UI.Components
+
+<GridItem class="@this.GetClasses()" Small="GridItemColumn.Twelve" Medium="(GridItemColumn)((int)Cols + 1)">
+    @if (!string.IsNullOrEmpty(Label) || LabelFragment != null)
+    {
+        <FormLabel Id="@Id" Required="@Required">
+            @if (LabelFragment != null)
+            {
+                @LabelFragment
+            } 
+            else
+            {
+                @Label
+            }
+        </FormLabel>
+    }
+    @ChildContent
+    @if (!string.IsNullOrEmpty(Hint))
+    {
+        <small class="@this.ClassName("FormFieldHint")">@Hint</small>
+    }
+    @if (!Dense)
+    {
+        <Spacer Size="SpacerSize.Medium" />
+    }
+</GridItem>
+
+@code {
+    [Parameter]
+    public int? Cols { get; set; } = 12;
+
+    [Parameter]
+    public bool Dense { get; set; } = false;
+
+    [Parameter]
+    public string Id { get; set; } = Guid.Empty.ToString();
+
+    [Parameter]
+    public string? Hint { get; set; }
+
+    [Parameter]
+    public string? Label { get; set; }
+
+    [Parameter]
+    public RenderFragment? LabelFragment { get; set; }
+
+    [Parameter]
+    public bool Required { get; set; } = false;
+}

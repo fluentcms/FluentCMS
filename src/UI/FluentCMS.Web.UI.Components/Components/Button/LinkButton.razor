@@ -1,0 +1,37 @@
+@inherits BaseComponentWithContent
+
+@namespace FluentCMS.Web.UI.Components
+
+<a href="@Href" @attributes="AdditionalAttributes" class="@GetClasses()" disabled="@Disabled">
+    @ChildContent
+</a>
+
+@code {
+
+    [Parameter]
+    [CssProperty]
+    public bool Block { get; set; } = false;
+
+    [Parameter]
+    [CssProperty]
+    public Color? Color { get; set; } 
+
+    [Parameter]
+    [CssProperty]
+    public bool Disabled { get; set; } = false;
+
+    [Parameter]
+    [CssProperty]
+    public bool Ghost { get; set; } = false;
+
+    [Parameter]
+    public string? Href { get; set; } 
+
+    [Parameter]
+    [CssProperty]
+    public bool Outline { get; set; } = false;
+
+    [Parameter]
+    [CssProperty]
+    public ButtonSize? Size { get; set; }
+}

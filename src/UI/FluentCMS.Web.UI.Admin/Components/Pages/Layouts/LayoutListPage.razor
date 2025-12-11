@@ -1,0 +1,118 @@
+@page "/admin/layouts"
+
+@using FluentCMS.Web.UI.Components
+@rendermode InteractiveServer
+
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject ApiClientFactory Api
+
+<PageTitle>Layouts</PageTitle>
+
+<PageHeader Title="Layouts">
+    <LinkButton Href="/admin/layouts/create" Color="Color.Primary">Create new layout</LinkButton>
+</PageHeader>
+
+<PageBody>
+    <Card>
+        @if (Layouts == null)
+        {
+            <CardBody>
+                <p>Loading...</p>
+            </CardBody>
+        }
+        else if (!Layouts.Any())
+        {
+            <CardBody>
+                <p>No Layouts found.</p>
+            </CardBody>
+        }
+        else
+        {
+            <DataTable TItem="LayoutDto" Items="@Layouts">
+                <DataTableItem Label="Name">@context.Name</DataTableItem>
+
+                <DataTableItem Label="">
+
+                    <LinkButton Ghost Color="Color.Primary" Size="ButtonSize.Small" Href=@("/admin/layouts/edit/" + context.Id)>
+                        <Icon Size="IconSize.Large" Name="IconName.Edit" />
+                    </LinkButton>
+
+                    <Button Ghost Color="Color.Danger" Size="ButtonSize.Small" @onclick="() => OpenDeleteConfirm(context.Id)">
+                        <Icon Size="IconSize.Large" Name="IconName.Delete" />
+                    </Button>
+                </DataTableItem>
+            </DataTable>
+        }
+    </Card>
+</PageBody>
+
+<Confirm Visible="@DeleteConfirmOpen" OnConfirm="OnDeleteConfirm" OnCancel="OnDeleteCancel">
+    Are you sure to delete this layout?
+</Confirm>
+
+@code {
+    private List<LayoutDto> Layouts;
+    private Guid SiteId { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var baseUri = new Uri(Navigation.BaseUri);
+            var host = baseUri.Host.ToLowerInvariant();
+            var siteResponse = await Api.Sites.GetByUrlAsync(host);
+
+            if (siteResponse.Data != null)
+            {
+                SiteId = siteResponse.Data.Id;
+                await Load();
+            }
+        }
+        catch (ApiClientException ex)
+        {
+            Console.WriteLine("Error fetching site: " + ex.Message);
+        }
+    }
+
+    private async Task Load()
+    {
+        try
+        {
+            var response = await Api.Layouts.GetBySiteIdAsync(SiteId);
+
+            if (response != null)
+            {
+                Layouts = response.Data.ToList();
+            }
+            
+        }
+        catch (ApiClientException ex)
+        {
+            Console.WriteLine("Error fetching layouts: " + ex.Message);
+        }
+    }
+
+    private bool DeleteConfirmOpen { get; set; } = false;
+    private Guid? CurrentId { get; set; }
+    
+    private void OpenDeleteConfirm(Guid value)
+    {
+        CurrentId = value;
+        DeleteConfirmOpen = true;
+    }
+
+    private async Task OnDeleteCancel() 
+    {
+        DeleteConfirmOpen = false;
+    }
+
+    private async Task OnDeleteConfirm() {
+        if (CurrentId != null)
+        {
+            await Api.Layouts.RemoveAsync(CurrentId.Value);
+            await Load();
+        }
+        DeleteConfirmOpen = false;
+    }
+}

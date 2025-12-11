@@ -1,0 +1,34 @@
+<div class="page-header d-print-none" aria-label="Page header">
+    <div class="container-xl">
+        <div class="row align-items-center">
+            <div class="col">
+                @if (BackFragment != null)
+                {
+                    @BackFragment
+                } else {
+                    <PageBackButton Url="@BackUrl"/>
+                }
+                <h2 class="page-title">@Title</h2>
+            </div>
+            <div class="col-auto ms-auto d-print-none">
+                <div class="btn-list">
+                    @ChildContent
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public string Title { get; set; }
+
+    [Parameter]
+    public string BackUrl { get; set; }
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
+
+    [Parameter]
+    public RenderFragment? BackFragment { get; set; }
+}

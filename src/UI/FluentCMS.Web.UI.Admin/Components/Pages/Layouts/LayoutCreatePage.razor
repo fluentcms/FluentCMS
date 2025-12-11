@@ -1,0 +1,42 @@
+@page "/admin/layouts/create"
+@inject HttpClient Http
+@inject IHttpContextAccessor HttpContextAccessor
+@inject NavigationManager Navigation
+@inject ApiClientFactory Api
+
+
+<LayoutForm Model="@Model" SubmitLabel="Create" FormName="LayoutCreateForm" OnSubmit="@HandleSubmit"
+    Title="Create new layout" BackUrl="/admin/layouts" />
+
+@code {
+    private List<string> Errors { get; set; } = [];
+
+    [SupplyParameterFromForm(FormName = "LayoutCreateForm")]
+    private LayoutFormModel Model { get; set; } = new();
+
+    private Guid SiteId { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var baseUri = new Uri(Navigation.BaseUri);
+        var host = baseUri.Host.ToLowerInvariant();
+        var siteResponse = await Api.Sites.GetByUrlAsync(host);
+
+        if (siteResponse.Data != null)
+        {
+            SiteId = siteResponse.Data.Id;
+        }
+    }
+    private async Task HandleSubmit()
+    {
+        Errors.Clear();
+        var response = await Api.Layouts.AddAsync(new LayoutAddRequest
+        {
+            SiteId = SiteId,
+            Name = Model.Name,
+            Head = Model.Head,
+            Body = Model.Body,
+        });
+        Navigation.NavigateTo("/admin/layouts");
+    }
+}

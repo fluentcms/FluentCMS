@@ -1,7 +1,9 @@
 $button: $prefix + "button";
+$link-button: $prefix + "link-button";
 
-.#{$button} {
+.#{$button}, .#{$link-button} {
     @extend .btn;
+    @extend .gap-2;
 
     &-block {
         @extend .w-100;
@@ -27,7 +29,7 @@ $button: $prefix + "button";
 }
 
 @each $key, $value in $fluent-colors {
-    .#{$button}-color-#{$key} {
+    .#{$button}-color-#{$key}, .#{$link-button}-color-#{$key} {
         @extend .btn-#{$key};
     }
 }

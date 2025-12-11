@@ -3,7 +3,7 @@
 public interface IUserService
 {
     Task<User> Add(User user, string password, CancellationToken cancellationToken = default);
-    Task<User> Update(User user, CancellationToken cancellationToken = default);
+    Task<User> Update(Guid id, UserUpdateRequest user, CancellationToken cancellationToken = default);
     Task<User> Remove(Guid id, CancellationToken cancellationToken = default);
     Task<User> ChangePassword(Guid userId, string newPassword, CancellationToken cancellationToken = default);
     Task<IEnumerable<User>> GetAll(CancellationToken cancellationToken = default);
@@ -36,8 +36,22 @@ internal class UserService(UserManager<User> userManager, IEventPublisher eventP
         return user;
     }
 
-    public async Task<User> Update(User user, CancellationToken cancellationToken = default)
+    public async Task<User> Update(Guid id, UserUpdateRequest request, CancellationToken cancellationToken = default)
     {
+        // Get the tracked identity user (with SecurityStamp, ConcurrencyStamp, etc.)
+        var user = await userManager.FindByIdAsync(id.ToString());
+        if (user == null)
+            throw new Exception("User not found");
+
+        // Update only the fields you expose in the API
+        user.Email = request.Email;
+        user.Description = request.Description;
+        user.Suspended = request.Suspended;
+        user.IsSuperAdmin = request.IsSuperAdmin;
+        user.EmailConfirmed = request.EmailConfirmed;
+        user.LockoutEnabled = request.Locked;
+
+        // Identity will validate security stamp, concurrency stamp, etc.
         var result = await userManager.UpdateAsync(user);
         result.ThrowIfInvalid();
 

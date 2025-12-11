@@ -1,0 +1,85 @@
+@page "/admin/pages/create"
+@inject HttpClient Http
+@inject IHttpContextAccessor HttpContextAccessor
+@inject ApiClientFactory Api
+@inject NavigationManager Navigation
+
+<PageForm Model="@Model" SubmitLabel="Create" FormName="PageCreateForm" PageOptions="@PageOptions"
+    LayoutOptions="@LayoutOptions" OnSubmit="@HandleSubmit" Title="Create new page" BackUrl="/admin/pages" />
+
+@code {
+    private List<SelectOption> PageOptions { get; set; }
+    private List<SelectOption> LayoutOptions { get; set; }
+
+    private Guid SiteId { get; set; }
+
+    [SupplyParameterFromForm(FormName = "PageCreateForm")]
+    private PageFormModel Model { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var baseUri = new Uri(Navigation.BaseUri);
+        var host = baseUri.Host.ToLowerInvariant();
+        var siteResponse = await Api.Sites.GetByUrlAsync(host);
+
+        if (siteResponse.Data != null)
+        {
+            SiteId = siteResponse.Data.Id;
+
+            var pagesResponse = await Api.Pages.GetBySiteIdAsync(SiteId);
+            if (pagesResponse.Data != null)
+            {
+                PageOptions = new List<SelectOption>() { new() { Title = "(root)", Value = Guid.Empty } };
+                PageOptions.AddRange(pagesResponse.Data.Select(p => new SelectOption { Title = p.Title, Value = p.Id }));
+            }
+
+            var layoutsResponse = await Api.Layouts.GetBySiteIdAsync(SiteId);
+            if (layoutsResponse.Data != null)
+            {
+                LayoutOptions = new List<SelectOption>() { new() { Title = "(default)", Value = Guid.Empty } };
+                LayoutOptions.AddRange(layoutsResponse.Data.Select(l => new SelectOption { Title = l.Name, Value = l.Id }));
+            }
+        }
+
+    }
+
+    public async Task HandleSubmit()
+    {
+        // Log all model fields
+        Console.WriteLine("Submitting Page model:");
+        Console.WriteLine($"Title: {Model.Title}");
+        Console.WriteLine($"Slug: {Model.Slug}");
+        Console.WriteLine($"Order: {Model.Order}");
+        Console.WriteLine($"ParentId: {Model.ParentId}");
+        Console.WriteLine($"LayoutId: {Model.LayoutId}");
+        Console.WriteLine($"EditLayoutId: {Model.EditLayoutId}");
+        Console.WriteLine($"DetailLayoutId: {Model.DetailLayoutId}");
+        Console.WriteLine($"MetaTitle: {Model.MetaTitle}");
+        Console.WriteLine($"MetaDescription: {Model.MetaDescription}");
+        Console.WriteLine($"RobotsIndex: {Model.RobotsIndex}");
+        Console.WriteLine($"RobotsFollow: {Model.RobotsFollow}");
+        Console.WriteLine($"OgType: {Model.OgType}");
+        Console.WriteLine($"Head: {Model.Head}");
+
+        var request = new PageAddRequest
+        {
+            Title = Model.Title,
+            Slug = Model.Slug,
+            SiteId = SiteId,
+            Order = Model.Order,
+            ParentId = Model.ParentId == Guid.Empty ? null : Model.ParentId,
+            LayoutId = Model.LayoutId == Guid.Empty ? null : Model.LayoutId,
+            EditLayoutId = Model.EditLayoutId == Guid.Empty ? null : Model.EditLayoutId,
+            DetailLayoutId = Model.DetailLayoutId == Guid.Empty ? null : Model.DetailLayoutId,
+            MetaTitle = Model.MetaTitle,
+            MetaDescription = Model.MetaDescription,
+            RobotsIndex = Model.RobotsIndex,
+            RobotsFollow = Model.RobotsFollow,
+            OgType = Model.OgType,
+            Head = Model.Head
+        };
+
+        var response = await Api.Pages.AddAsync(request);
+        Navigation.NavigateTo("/admin/pages");
+    }
+}

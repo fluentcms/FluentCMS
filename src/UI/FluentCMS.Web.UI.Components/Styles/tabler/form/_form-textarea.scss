@@ -1,0 +1,5 @@
+$form-textarea: $prefix + 'form-textarea';
+
+.#{$form-textarea} {
+    @extend .form-control;
+}

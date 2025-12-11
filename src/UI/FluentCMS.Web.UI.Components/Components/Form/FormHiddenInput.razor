@@ -1,0 +1,36 @@
+@typeparam TValue
+
+@inherits BaseInput<TValue>
+
+@namespace FluentCMS.Web.UI.Components
+
+<input @attributes="AdditionalAttributes" type="hidden" name="@NameAttributeValue" value="@CurrentValueAsString" />
+
+@code
+{
+    protected override bool TryParseValueFromString(string? value, [MaybeNullWhen(false)] out TValue result, [NotNullWhen(false)] out string? validationErrorMessage)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            result = default!;
+            validationErrorMessage = null;
+            return true;
+        }
+
+        if (typeof(TValue) == typeof(string))
+        {
+            result = (TValue)(object)value;
+            validationErrorMessage = null;
+            return true;
+        }
+
+        if (typeof(TValue) == typeof(Guid))
+        {
+            result = (TValue)(object)Guid.Parse(value);
+            validationErrorMessage = null;
+            return true;
+        }
+
+        throw new InvalidOperationException($"The type '{typeof(TValue)}' is not a supported type.");
+    }
+}

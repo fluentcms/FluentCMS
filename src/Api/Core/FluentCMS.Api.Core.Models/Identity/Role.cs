@@ -1,6 +1,6 @@
 ﻿namespace FluentCMS.Api.Core.Models.Identity;
 
-public class Role : IdentityRole<Guid>, ISiteAssociatedEntity
+public class Role : IdentityRole<Guid>, IEntity
 {
     public string Description { get; set; } = string.Empty;
 
@@ -12,7 +12,6 @@ public class Role : IdentityRole<Guid>, ISiteAssociatedEntity
     public string? UpdatedBy { get; set; }
     public DateTime? UpdatedAt { get; set; }
     public int Version { get; set; }
-    public Guid SiteId { get; set; }
 
     public Role()
     {

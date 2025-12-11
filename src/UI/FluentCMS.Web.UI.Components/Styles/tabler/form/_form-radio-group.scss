@@ -1,0 +1,18 @@
+$form-radio-group: $prefix + 'form-radio-group';
+.#{$form-radio-group} {
+    &-input {
+        @extend .form-check-input;
+    }
+
+    &-input-wrapper {
+        @extend .form-check; 
+    }
+    
+    &:not(.#{$form-radio-group}-vertical) .#{$form-radio-group}-input-wrapper {
+        @extend .form-check-inline;
+    }
+
+    &-label {
+        @extend .form-check-label;
+    }
+}

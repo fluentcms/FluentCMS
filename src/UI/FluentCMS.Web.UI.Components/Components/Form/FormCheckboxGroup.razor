@@ -1,0 +1,96 @@
+
+@typeparam TItem
+
+@typeparam TValue
+
+@inherits BaseInputInline<ICollection<TValue>>
+
+@namespace FluentCMS.Web.UI.Components
+
+<FormField Cols="Cols" Dense="@Dense" Id="@Id" Hint="@Hint" Label="@Label" LabelFragment="@LabelFragment" Required="@Required">
+    @if (ChildContent == null)
+    {
+        if (Data != null && Data.Any())
+        {
+            <div class="@this.GetClasses()">
+                @foreach (var item in Data)
+                {
+                    <div class="@this.ClassName("FormCheckboxGroupInputWrapper")">
+                        <input @attributes="AdditionalAttributes" @onchange="(e) => HandleChange(e, GetValue(item))"
+                                checked="@IsChecked(item)" class="@this.ClassName("FormCheckboxGroupInput")" 
+                                id="@($"{Id}_{GetValue(item)}")" name="@NameAttributeValue" type="checkbox" value="@GetValue(item)">
+                        <label for="@($"{Id}_{GetValue(item)}")" class="@this.ClassName("FormCheckboxGroupLabel")">
+                            @GetText(item)
+                        </label>
+                    </div>
+                }
+            </div>
+        }
+    }
+    else
+    {
+        @ChildContent
+    }
+</FormField>
+
+@code {
+        [Parameter]
+    public int Cols { get; set; } = 12;
+
+    [Parameter]
+    public ICollection<TItem> Data { get; set; } = [];
+
+    [Parameter]
+    public string? TextField { get; set; }
+
+    [Parameter]
+    public string? ValueField { get; set; }
+
+    [Parameter]
+    [CssProperty]
+    public bool Vertical { get; set; }
+
+    [Parameter]
+    public EventCallback<ICollection<TValue>> OnChange { get; set; }
+
+    private bool IsChecked(TItem item)
+    {
+        return Value?.Contains(GetValue(item)) ?? false;
+    }
+
+    private string? GetText(TItem item)
+    {
+        if (string.IsNullOrEmpty(TextField))
+        {
+            return item!.ToString();
+        }
+        return (string?)item!.GetType().GetProperty(TextField)?.GetValue(item);
+    }
+
+    private TValue? GetValue(TItem item)
+    {
+        if (string.IsNullOrEmpty(ValueField))
+        {
+            return (TValue?)(object)item!;
+        }
+        return (TValue?)item!.GetType().GetProperty(ValueField)?.GetValue(item);
+    }
+
+    protected override bool TryParseValueFromString(string? value, out ICollection<TValue> result, [NotNullWhen(false)] out string? validationErrorMessage)
+    {
+        throw new NotSupportedException();
+    }
+
+    public Task HandleChange(ChangeEventArgs args, TValue? value)
+    {
+        Value ??= [];
+
+        if (Value.Contains(value))
+            Value.Remove(value);
+        else
+            Value.Add(value);
+
+        OnChange.InvokeAsync(Value);
+        return Task.CompletedTask;
+    }
+}

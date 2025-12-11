@@ -28,10 +28,8 @@ public class UsersController(IUserService userService) : BaseController
     [HttpPut("{id:guid}")]
     public async Task<ApiResponse<UserDto>> Update(Guid id, UserUpdateRequest request, CancellationToken cancellationToken = default)
     {
-        var user = await userService.GetById(id, cancellationToken);
-        Mapper.Map(request, user);
-        await userService.Update(user, cancellationToken);
-        return Success(Mapper.Map<UserDto>(user));
+        var updated = await userService.Update(id, request, cancellationToken);
+        return Success(Mapper.Map<UserDto>(updated));
     }
 
     [HttpDelete("{id:guid}")]

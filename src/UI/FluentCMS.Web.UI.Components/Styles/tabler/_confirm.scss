@@ -2,13 +2,17 @@ $confirm: $prefix + "confirm";
 
 .#{$confirm} {
     @extend .modal;
-    display: block;
+
+    &-visible {
+        display: block;
+    }
 
     &-backdrop {
         @extend .modal-backdrop;
         @extend .fade;
         @extend .show;
     }
+
 
     &-body {
         @extend .modal-body; 

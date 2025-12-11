@@ -7,5 +7,27 @@ public class MappingProfile : Profile
         CreateMap<Site, SiteDto>();
         CreateMap<SiteAddRequest, Site>();
         CreateMap<SiteUpdateRequest, Site>();
+
+
+        CreateMap<Page, PageDto>();
+        CreateMap<PageAddRequest, Page>();
+        CreateMap<PageUpdateRequest, Page>();
+
+        CreateMap<Layout, LayoutDto>();
+        CreateMap<LayoutAddRequest, Layout>();
+        CreateMap<LayoutUpdateRequest, Layout>();
+
+        CreateMap<Block, BlockDto>();
+        CreateMap<BlockAddRequest, Block>();
+        CreateMap<BlockUpdateRequest, Block>();
+
+        CreateMap<Core.Models.File, FileDto>();
+        CreateMap<FileMoveRequest, Core.Models.File>();
+        CreateMap<FileRenameRequest, Core.Models.File>();
+
+        CreateMap<Folder, FolderDto>();
+        CreateMap<FolderAddRequest, Folder>();
+        CreateMap<FolderRenameRequest, Folder>();
+        CreateMap<FolderMoveRequest, Folder>();
     }
 }

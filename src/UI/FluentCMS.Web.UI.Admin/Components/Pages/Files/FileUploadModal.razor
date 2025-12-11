@@ -1,0 +1,66 @@
+
+<Modal Visible="@Visible" Size="ModalSize.Large">
+    <EditForm OnValidSubmit="HandleSubmit" Model="@Files">
+        <ModalHeader Closable>
+            <ModalTitle>
+                Upload File
+            </ModalTitle>
+        </ModalHeader>
+        <ModalBody>
+            <Grid>
+                <FormField Required Id="fileUploadFilesInput" Label="Files">
+                    <InputFile OnChange="OnFilesChanged" class="form-control" required Accept="*" />
+                </FormField>
+                @* <FormFileUpload Id="fileUploadFilesInput" Dense Accept="*" Required /> *@
+            </Grid>
+        </ModalBody>
+        <ModalFooter>
+            <Stack Gutter="StackGutter.Small">
+                <Button Color="Color.Primary" Type="ButtonType.Submit">
+                    Submit
+                </Button>
+                <Button @onclick="@HandleCancel">
+                    Cancel
+                </Button>
+            </Stack>
+        </ModalFooter>
+    </EditForm>
+</Modal>
+
+@code {
+    [Parameter]
+    public bool Visible { get; set; } = false;
+
+    [Parameter]
+    public EventCallback<List<FileParameter>> OnSubmit { get; set; }
+
+    [Parameter]
+    public EventCallback OnCancel { get; set; }
+
+    int CONFIG_MAX_FILE_SIZE = 1024 * 1024 * 10;
+    int CONFIG_MAX_FILES = 5;
+
+    private List<FileParameter> Files { get; set; } = [];
+
+    private async Task OnFilesChanged(InputFileChangeEventArgs e)
+    {
+        Console.WriteLine("ONFILESCHANGED: ");
+        Files = [];
+        foreach (var file in e.GetMultipleFiles(CONFIG_MAX_FILES))
+        {
+            var Data = file.OpenReadStream(CONFIG_MAX_FILE_SIZE);
+            Files.Add(new FileParameter(Data, file.Name, file.ContentType));
+        }
+        await OnSubmit.InvokeAsync(Files);
+    }
+
+    private async Task HandleCancel()
+    {
+        await OnCancel.InvokeAsync();
+    }
+
+    private async Task HandleSubmit()
+    {
+        await OnSubmit.InvokeAsync(Files);
+    }
+}

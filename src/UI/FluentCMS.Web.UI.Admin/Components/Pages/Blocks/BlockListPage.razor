@@ -1,0 +1,121 @@
+@page "/admin/blocks"
+
+@using FluentCMS.Web.UI.Components
+@rendermode InteractiveServer
+
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject ApiClientFactory Api
+
+<PageTitle>Blocks</PageTitle>
+
+<PageHeader Title="Blocks">
+    <LinkButton Href="/admin/blocks/create" Color="Color.Primary">
+        <Icon Name="IconName.Plus" Size="IconSize.Medium" />
+        Create new block
+    </LinkButton>
+</PageHeader>
+
+<PageBody>
+    <Card>
+        @if (Blocks == null)
+        {
+            <CardBody>
+                <p>Loading...</p>
+            </CardBody>
+        }
+        else if (!Blocks.Any())
+        {
+            <CardBody>
+                <p>No Blocks found.</p>
+            </CardBody>
+        }
+        else
+        {
+            <DataTable TItem="BlockDto" Items="@Blocks">
+                <DataTableItem Label="Name">@context.Name</DataTableItem>
+                <DataTableItem Label="Category">@context.Category</DataTableItem>
+                <DataTableItem Label="Description">@context.Description</DataTableItem>
+
+                <DataTableItem Label="">
+
+                    <LinkButton Ghost Color="Color.Primary" Size="ButtonSize.Small" Href=@("/admin/blocks/edit/" + context.Id)>
+                        <Icon Size="IconSize.Large" Name="IconName.Edit" />
+                    </LinkButton>
+
+                    <Button Ghost Color="Color.Danger" Size="ButtonSize.Small" @onclick="() => OpenDeleteConfirm(context.Id)">
+                        <Icon Size="IconSize.Large" Name="IconName.Delete" />
+                    </Button>
+                </DataTableItem>
+            </DataTable>
+        }
+    </Card>
+</PageBody>
+
+<Confirm Visible="@DeleteConfirmOpen" OnConfirm="OnDeleteConfirm" OnCancel="OnDeleteCancel">
+    Are you sure to delete this block?
+</Confirm>
+
+@code {
+    private List<BlockDto> Blocks;
+    private Guid SiteId { get; set; }
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var baseUri = new Uri(Navigation.BaseUri);
+            var host = baseUri.Host.ToLowerInvariant();
+            var siteResponse = await Api.Sites.GetByUrlAsync(host);
+
+            if (siteResponse.Data != null)
+            {
+                SiteId = siteResponse.Data.Id;
+                await Load();
+            }
+        }
+        catch (ApiClientException ex)
+        {
+            Console.WriteLine("Error fetching block: " + ex.Message);
+        }
+    }
+
+    private async Task Load()
+    {
+        try
+        {
+            var response = await Api.Blocks.GetBySiteIdAsync(SiteId);
+
+            if (response != null)
+            {
+                Blocks = response.Data.ToList();
+            }
+        }
+        catch (ApiClientException ex)
+        {
+            Console.WriteLine("Error fetching block: " + ex.Message);
+        }
+    }
+
+    private bool DeleteConfirmOpen { get; set; } = false;
+    private Guid? CurrentId { get; set; }
+    
+    private void OpenDeleteConfirm(Guid value)
+    {
+        CurrentId = value;
+        DeleteConfirmOpen = true;
+    }
+
+    private void OnDeleteCancel()
+    {
+        DeleteConfirmOpen = false;
+    }
+
+    private async Task OnDeleteConfirm() {
+        if (CurrentId != null)
+        {
+            await Api.Blocks.RemoveAsync(CurrentId.Value);
+            await Load();
+        }
+        DeleteConfirmOpen = false;
+    }
+}

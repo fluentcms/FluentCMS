@@ -1,0 +1,58 @@
+@page "/auth/login"
+@layout AuthLayout
+
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IHttpContextAccessor HttpContextAccessor
+
+<Card>
+    <CardBody>
+            <CardTitle class="text-center">Login to your account</CardTitle>
+
+            <EditForm Model="@Model" OnValidSubmit="HandleSubmit" FormName="LoginForm">
+                <Grid>
+                    <FormInput Label="Username" Placeholder="yourusername" @bind-Value="Model.UserName" />
+                    <FormInput Label="Password" type="password" @bind-Value="Model.Password" />
+
+                    <FormField>
+                        <Button Block Color="Color.Primary" Type="ButtonType.Submit">Login</Button>
+                    </FormField>
+                </Grid>
+                </EditForm>
+    </CardBody>
+    <Divider>Or</Divider>
+    <CardBody>
+            <Stack Gutter="StackGutter.Medium">
+                <Button Block>Login with Github</Button>
+                <Button Block>Login with Google</Button>
+            </Stack>
+    </CardBody>
+
+</Card>
+
+@code {
+    [SupplyParameterFromForm(FormName = "LoginForm")]
+    private AccountLoginRequest Model { get; set; } = new();
+    private async Task HandleSubmit()
+    {
+          Console.WriteLine("Form submitted");
+
+    var responseMessage = await Http.PostAsJsonAsync("http://localhost:5093/api/Accounts/Login", Model);
+    var response = await responseMessage.Content.ReadFromJsonAsync<LoginDtoApiResponse>();
+
+    if (response?.Data != null)
+    {
+        var token = response.Data.Token;
+        Console.WriteLine(token);
+
+        HttpContextAccessor.HttpContext.Response.Cookies.Append("auth_token", token, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.Strict
+        });
+
+        Navigation.NavigateTo("/admin", false);
+    }
+    }
+}

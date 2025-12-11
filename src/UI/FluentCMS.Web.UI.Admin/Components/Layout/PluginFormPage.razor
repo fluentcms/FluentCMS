@@ -1,0 +1,83 @@
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+
+<PageHeader Title="@Title" BackUrl="@BackUrl" />
+
+<PageBody>
+    <Card>
+        <CardBody>
+            @if (Model != null)
+            {
+                <EditForm Model="@Model" OnValidSubmit="HandleSubmit" FormName="@FormName" onsubmit:preventDefault>
+                    <DataAnnotationsValidator />
+                    <Spacer />
+                    <Grid GutterX="GridGutter.Large">
+                        @ChildContent
+                        <FormField>
+                            <Stack Gutter="StackGutter.Medium" Justify="StackJustify.Start">
+                                <Button Color="Color.Primary" Type="ButtonType.Submit">@SubmitLabel</Button>
+                                @if (!string.IsNullOrEmpty(BackUrl))
+                                {
+                                    <LinkButton href="@BackUrl">Cancel</LinkButton>
+                                }
+                            </Stack>
+                        </FormField>
+                    </Grid>
+                    @if (Errors.Count > 0)
+                    {
+                        <Alert Type="AlertType.Danger">
+                            @foreach (var error in Errors)
+                            {
+                                <p>@error</p>
+                            }
+                        </Alert>
+                    }
+                </EditForm>
+            }
+        </CardBody>
+    </Card>
+</PageBody>
+
+@code {
+    [Parameter]
+    public string Title { get; set; }
+
+    [Parameter]
+    public string FormName { get; set; }
+
+    [Parameter]
+    public string BackUrl { get; set; }
+
+    [Parameter]
+    public string SubmitLabel { get; set; } = "Subimt";
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
+
+    [Parameter]
+    public EventCallback OnSubmit { get; set; }
+
+    [Parameter]
+    public virtual object Model { get; set; }
+
+    [Parameter]
+    public List<string> Errors { get; set; } = [];
+    
+    public async Task HandleSubmit()
+    {
+        try
+        {
+            await OnSubmit.InvokeAsync();
+        }
+        catch (ApiClientException ex)
+        {
+            Errors.Clear();
+            Errors.Add(ex.Message);
+        }
+        catch(Exception ex)
+        {
+            Errors = [ex.Message];
+        }
+    }
+}

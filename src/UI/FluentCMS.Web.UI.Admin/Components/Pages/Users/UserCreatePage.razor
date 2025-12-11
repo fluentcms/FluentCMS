@@ -1,0 +1,34 @@
+@page "/admin/users/create"
+@inject HttpClient Http
+@inject IHttpContextAccessor HttpContextAccessor
+@inject NavigationManager Navigation
+@inject ApiClientFactory Api
+
+<UserForm Title="Create new user" FormName="UserCreateForm" BackUrl="/admin/users" Model="@Model" Errors="@Errors" OnSubmit="@HandleSubmit"/>
+
+@code {
+    private List<string> Errors { get; set; } = [];
+
+    [SupplyParameterFromForm(FormName="UserCreateForm")]
+    private UserFormModel Model { get; set; } = new();
+
+    public async Task OnInitialized()
+    {
+        Console.WriteLine("Initialized");
+    }
+
+    public async Task HandleSubmit()
+    {
+        Errors.Clear();
+        var response = await Api.Users.AddAsync(new UserAddRequest {
+            Username = Model.Username,
+            Email = Model.Email,
+            Description = Model.Description,
+            Suspended = Model.Suspended,
+            IsSuperAdmin = Model.IsSuperAdmin,
+            EmailConfirmed = Model.EmailConfirmed,
+            Locked = Model.Locked
+        });
+        Navigation.NavigateTo("/admin/users");
+    }
+}

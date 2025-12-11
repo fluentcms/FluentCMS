@@ -1,0 +1,119 @@
+@page "/admin/pages/edit/{id}"
+@inject HttpClient Http
+@inject IHttpContextAccessor HttpContextAccessor
+@inject NavigationManager Navigation
+@inject ApiClientFactory Api
+
+<PageForm Model="@Model" PageOptions="@PageOptions" LayoutOptions="@LayoutOptions" FormName="PageEditForm"
+    OnSubmit="@HandleSubmit" Title="Edit page" BackUrl="/admin/pages" />
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private List<SelectOption> PageOptions { get; set; }
+    private List<SelectOption> LayoutOptions { get; set; }
+
+    [SupplyParameterFromForm(FormName = "PageEditForm")]
+    private PageFormModel Model { get; set; }
+    private List<string> Errors { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var baseUri = new Uri(Navigation.BaseUri);
+        var host = baseUri.Host.ToLowerInvariant();
+        var siteResponse = await Api.Sites.GetByUrlAsync(host);
+
+        if (siteResponse.Data != null)
+        {
+            var pagesResponse = await Api.Pages.GetBySiteIdAsync(siteResponse.Data.Id);
+            if (pagesResponse.Data != null)
+            {
+                PageOptions = new List<SelectOption>() { new() { Title = "(root)", Value = Guid.Empty } };
+                PageOptions.AddRange(pagesResponse.Data.Where(x => x.Id != Id).Select(p => new SelectOption
+                {
+                    Title =
+                p.Title,
+                    Value = p.Id
+                }));
+                Console.WriteLine("Page count: " + PageOptions.Count);
+            }
+
+            var layoutsResponse = await Api.Layouts.GetBySiteIdAsync(siteResponse.Data.Id);
+            if (layoutsResponse.Data != null)
+            {
+                LayoutOptions = new List<SelectOption>() { new() { Title = "(default)", Value = Guid.Empty } };
+                LayoutOptions.AddRange(layoutsResponse.Data.Select(l => new SelectOption { Title = l.Name, Value = l.Id }));
+                Console.WriteLine("Layout count: " + LayoutOptions.Count);
+            }
+
+            if (Model is null)
+            {
+                Errors.Clear();
+
+
+                var page = await Api.Pages.GetByIdAsync(Id);
+
+                if (page.Data == null)
+                {
+                    Errors.Add("Page not found");
+                    return;
+                }
+
+                Model = new PageFormModel
+                {
+                    Title = page.Data.Title,
+                    Slug = page.Data.Slug,
+                    Order = page.Data.Order,
+                    ParentId = page.Data.ParentId,
+                    LayoutId = page.Data.LayoutId,
+                    EditLayoutId = page.Data.EditLayoutId,
+                    DetailLayoutId = page.Data.DetailLayoutId,
+                    MetaTitle = page.Data.MetaTitle,
+                    MetaDescription = page.Data.MetaDescription,
+                    RobotsIndex = page.Data.RobotsIndex,
+                    RobotsFollow = page.Data.RobotsFollow,
+                    OgType = page.Data.OgType,
+                };
+            }
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        // Log all model fields
+        Console.WriteLine("Submitting Page model:");
+        Console.WriteLine($"Title: {Model.Title}");
+        Console.WriteLine($"Slug: {Model.Slug}");
+        Console.WriteLine($"Order: {Model.Order}");
+        Console.WriteLine($"ParentId: {Model.ParentId}");
+        Console.WriteLine($"LayoutId: {Model.LayoutId}");
+        Console.WriteLine($"EditLayoutId: {Model.EditLayoutId}");
+        Console.WriteLine($"DetailLayoutId: {Model.DetailLayoutId}");
+        Console.WriteLine($"MetaTitle: {Model.MetaTitle}");
+        Console.WriteLine($"MetaDescription: {Model.MetaDescription}");
+        Console.WriteLine($"RobotsIndex: {Model.RobotsIndex}");
+        Console.WriteLine($"RobotsFollow: {Model.RobotsFollow}");
+        Console.WriteLine($"OgType: {Model.OgType}");
+        Console.WriteLine($"Head: {Model.Head}");
+
+        var request = new PageUpdateRequest
+        {
+            Title = Model.Title,
+            Slug = Model.Slug,
+            Order = Model.Order,
+            ParentId = Model.ParentId == Guid.Empty ? null : Model.ParentId,
+            LayoutId = Model.LayoutId == Guid.Empty ? null : Model.LayoutId,
+            EditLayoutId = Model.EditLayoutId  == Guid.Empty ? null : Model.EditLayoutId,
+            DetailLayoutId = Model.DetailLayoutId  == Guid.Empty ? null : Model.DetailLayoutId,
+            MetaTitle = Model.MetaTitle,
+            MetaDescription = Model.MetaDescription,
+            RobotsIndex = Model.RobotsIndex,
+            RobotsFollow = Model.RobotsFollow,
+            OgType = Model.OgType,
+        };
+
+        var response = await Api.Pages.UpdateAsync(Id, request);
+        Navigation.NavigateTo("/admin/pages");
+    }
+}

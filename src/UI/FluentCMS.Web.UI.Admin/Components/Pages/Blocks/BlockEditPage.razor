@@ -1,0 +1,51 @@
+@page "/admin/blocks/edit/{id}"
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IHttpContextAccessor HttpContextAccessor
+@inject ApiClientFactory Api
+
+<BlockForm Title="Edit block" OnSubmit="@HandleSubmit" SubmitLabel="Save" FormName="BlockEditForm" BackUrl="/admin/blocks" Model="@Model" Errors="@Errors" />
+
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+ 
+    [SupplyParameterFromForm(FormName = "BlockEditForm")]
+    private BlockFormModel Model { get; set; }
+    private List<string> Errors { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if(Model is null) {
+            Errors.Clear();
+
+            var block = await Api.Blocks.GetByIdAsync(Id);
+
+            if (block.Data == null)
+            {
+                Errors.Add("Block not found");
+                return;
+            }
+
+            Model = new BlockFormModel
+            {
+                Name = block.Data.Name,
+                Category = block.Data.Category,
+                Description = block.Data.Description,
+                Content = block.Data.Content,
+            };
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        var response = await Api.Blocks.UpdateAsync(Id, new BlockUpdateRequest {
+            Name = Model.Name,
+            Category = Model.Category,
+            Description = Model.Description,
+            Content = Model.Content,
+        });
+        Navigation.NavigateTo("/admin/blocks");
+    }
+}

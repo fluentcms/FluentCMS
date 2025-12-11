@@ -1,0 +1,55 @@
+@page "/admin/roles/edit/{id}"
+@inject HttpClient Http
+@inject IHttpContextAccessor HttpContextAccessor
+@inject NavigationManager Navigation
+@inject ApiClientFactory Api
+
+<PageTitle>Edit Role</PageTitle>
+
+
+
+
+<RoleForm Model="@Model" OnSubmit="@HandleSubmit" Title="Edit role" FormName="RoleEditForm" BackUrl="/admin/roles"/>
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    [SupplyParameterFromForm(FormName = "RoleEditForm")]
+    private RoleFormModel Model { get; set; }
+    private List<string> Errors { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Model is null)
+        {
+
+            Errors.Clear();
+
+            var response = await Api.Roles.GetByIdAsync(Id);
+
+            if (response?.Data == null)
+            {
+                Errors.Add("Role not found");
+                return;
+            }
+
+            Model = new RoleFormModel
+            {
+                Name = response.Data.Name,
+                Description = response.Data.Description,
+            };
+        }
+
+    }
+
+    private async Task HandleSubmit()
+    {
+        var response = await Api.Roles.UpdateAsync(Id, new RoleUpdateRequest {
+            Name = Model.Name,
+            Description = Model.Description,
+        });
+
+        Navigation.NavigateTo("/admin/roles");
+    }
+}

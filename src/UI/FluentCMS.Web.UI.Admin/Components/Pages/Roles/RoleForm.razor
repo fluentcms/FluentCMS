@@ -1,0 +1,19 @@
+
+<PluginFormPage BackUrl="@BackUrl" @attributes="AdditionalAttributes" Model="@Model" OnSubmit="@OnSubmit">
+    <FormInput @bind-Value="@Model.Name" Placeholder="Enter role name" Label="Name" Required />
+    <FormTextarea @bind-Value="@Model.Description" Placeholder="Enter role description" Label="Description" />
+</PluginFormPage>
+
+@code {
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; } = default!;
+
+    [Parameter]
+    public string BackUrl { get; set; }
+
+    [Parameter]
+    public EventCallback OnSubmit { get; set; }
+
+    [Parameter]
+    public RoleFormModel Model { get; set; }
+}

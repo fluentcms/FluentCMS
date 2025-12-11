@@ -1,7 +1,7 @@
 ﻿namespace FluentCMS.Api.Plugins.IdentityManagement.Repositories;
 
-public interface IRoleRepository : ISiteAssociatedRepository<Role>
+public interface IRoleRepository : IRepository<Role>
 {
 }
 
-internal class RoleRepository(AppIdentityDbContext dbContext) : SiteAssociatedRepository<Role, AppIdentityDbContext>(dbContext), IRoleRepository;
+internal class RoleRepository(AppIdentityDbContext dbContext) : Repository<Role, AppIdentityDbContext>(dbContext), IRoleRepository;

@@ -1,0 +1,5 @@
+$form-label: $prefix + 'form-label';
+
+.#{$form-label} {
+    @extend .form-label;
+}

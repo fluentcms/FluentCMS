@@ -3,11 +3,18 @@
 public class Page : SiteAssociatedEntity
 {
     public string Title { get; set; } = string.Empty;
-    public Guid? ParentId { get; set; }
+    public string Slug { get; set; } = string.Empty;
     public int Order { get; set; }
-    public string Path { get; set; } = string.Empty; // URL path, only one segment without forward slash (/)
+    public Guid SiteId { get; set; }
+    public Guid? ParentId { get; set; }
     public Guid? LayoutId { get; set; }
     public Guid? EditLayoutId { get; set; }
     public Guid? DetailLayoutId { get; set; }
-    public bool Locked { get; set; } = false;
+    public string? MetaTitle { get; set; }
+    public string? MetaDescription { get; set; }
+    public bool? RobotsIndex { get; set; }
+    public bool? RobotsFollow { get; set; }
+    public string? OgType { get; set; }
+    public string? Head { get; set; }    
+    // public bool Locked { get; set; } = false;
 }

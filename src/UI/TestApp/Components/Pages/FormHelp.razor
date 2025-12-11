@@ -1,0 +1,146 @@
+@page "/form"
+@using FluentCMS.Web.UI.Components
+@rendermode RenderMode.InteractiveServer
+
+<PageTitle>Form</PageTitle>
+
+<h2>Input</h2>
+<FormInput Label="Hello" @bind-Value="@InputValue" />
+<FormInput Label="With initial value" @bind-Value="@InputValue2" />
+
+<h2>Select</h2>
+<FormSelect TItem="OptionItem" TValue="string"
+            Label="Select an option"
+            Placeholder="Choose one"
+            Data="@Options"
+            TextField="Text"
+            ValueField="Value"
+            @bind-Value="@SelectedOption" />
+
+<div>Selected: @SelectedOption</div>
+
+<h2>Textarea</h2>
+<FormTextarea Label="Description"
+              Placeholder="Enter your description here..."
+              Rows="6"
+              @bind-Value="@Description" />
+
+<h2>Checkbox</h2>
+<FormCheckbox Label="Accept Terms"
+              Text="I agree to the terms and conditions"
+              @bind-Value="@Accepted" />
+
+<div>Accepted: @(Accepted ? "Yes" : "No")</div>
+
+<h2>Radio Group</h2>
+<FormRadioGroup TItem="OptionItem" TValue="string"
+                Label="Choose one option"
+                Data="@Options"
+                TextField="Text"
+                ValueField="Value"
+                Vertical="true"
+                @bind-Value="@SelectedRadio" />
+
+<div>Selected Radio: @SelectedRadio</div>
+
+<h2>Numeric Input</h2>
+<FormNumberInput TValue="int"
+                 Label="Enter a number"
+                 Type="NumberInputType.Number"
+                 @bind-Value="@NumericValue" />
+
+<FormNumberInput TValue="double"
+                 Label="Range Input"
+                 Type="NumberInputType.Range"
+                 @bind-Value="@RangeValue" />
+
+<div>Numeric: @NumericValue | Range: @RangeValue</div>
+
+<h2>Date Inputs</h2>
+<FormDateInput TValue="DateTime"
+               Label="Select a date"
+               Type="InputDateType.Date"
+               @bind-Value="@SelectedDate" />
+
+<FormDateInput TValue="DateTime"
+               Label="Date and Time"
+               Type="InputDateType.DateTimeLocal"
+               @bind-Value="@SelectedDateTime" />
+
+<FormDateInput TValue="TimeOnly"
+               Label="Time Only"
+               Type="InputDateType.Time"
+               @bind-Value="@SelectedTime" />
+
+<div>Date: @SelectedDate | DateTime: @SelectedDateTime | Time: @SelectedTime</div>
+
+<hr />
+
+<h3>Live Data Summary</h3>
+
+<div>Input 1:</div>
+<pre>@InputValue</pre>
+
+<div>Input 2:</div>
+<pre>@InputValue2</pre>
+
+<div>Select:</div>
+<pre>@SelectedOption</pre>
+
+<div>Textarea:</div>
+<pre>@Description</pre>
+
+<div>Accepted Terms:</div>
+<pre>@Accepted</pre>
+
+<div>Radio Selection:</div>
+<pre>@SelectedRadio</pre>
+
+<div>Numeric Value:</div>
+<pre>@NumericValue</pre>
+
+<div>Range Value:</div>
+<pre>@RangeValue</pre>
+
+<div>Selected Date:</div>
+<pre>@SelectedDate</pre>
+
+<div>Selected DateTime:</div>
+<pre>@SelectedDateTime</pre>
+
+<div>Selected Time:</div>
+<pre>@SelectedTime</pre>
+
+@code {
+    string InputValue { get; set; } = "";
+    string InputValue2 { get; set; } = "initial";
+
+    string? SelectedOption { get; set; }
+    string? Description { get; set; }
+
+    bool Accepted { get; set; }
+
+    string? SelectedRadio { get; set; }
+
+    int NumericValue { get; set; }
+    double RangeValue { get; set; }
+
+    DateTime SelectedDate { get; set; } = DateTime.Today;
+    DateTime SelectedDateTime { get; set; } = DateTime.Now;
+    TimeOnly SelectedTime { get; set; } = TimeOnly.FromDateTime(DateTime.Now);
+
+    List<OptionItem> Options { get; set; } =
+    [
+        new() { Text = "Option 1", Value = "1" },
+        new() { Text = "Option 2", Value = "2" },
+        new() { Text = "Option 3", Value = "3" },
+        new() { Text = "Option 4", Value = "4" },
+        new() { Text = "Option 5", Value = "5" },
+    ];
+
+    class OptionItem
+    {
+        public string Text { get; set; } = "";
+        public string Value { get; set; } = "";
+    }
+}

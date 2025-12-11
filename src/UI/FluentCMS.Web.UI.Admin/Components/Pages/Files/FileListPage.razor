@@ -1,0 +1,417 @@
+@page "/admin/files/{id?}"
+
+@inject ApiClientFactory Api;
+@inject NavigationManager Navigation;
+
+<PageTitle>File Management</PageTitle>
+
+
+<PageHeader Title="File Management">
+    <BackFragment>
+        @* @if (!string.IsNullOrEmpty(BackUrl))
+        {
+            <PageBackButton Url="@BackUrl" />
+        } *@
+
+        @if (ParentFolders != null)
+        {
+            <ol class="breadcrumb mb-2" style="font-size: 10px; line-height: 10px;" aria-label="breadcrumbs">
+                @foreach (var parentFolder in ParentFolders)
+                {
+                    @if (CurrentFolderId == parentFolder.Id)
+                    {
+                        <li class="breadcrumb-item active" aria-current="page">
+                            <a href="#">@parentFolder.Name</a>
+                        </li>
+                    }
+                    else
+                    {
+                        <li style="cursor: pointer;" class="breadcrumb-item">
+                            <a @onclick="() => NavigateFolder(parentFolder.Id)">@parentFolder.Name</a>
+                        </li>
+                    }
+                }
+            </ol>
+        }
+
+    </BackFragment>
+    <ChildContent>
+        <Button @onclick="OpenCreateFolderModal">Create Folder</Button>
+        <Button Color="Color.Primary" onclick="@OpenFileUploadModal">Upload File</Button>
+    </ChildContent>
+</PageHeader>
+
+<PageBody>
+    <Card>
+        <DataTable TItem="AssetDto" Items="@Assets">
+            <DataTableItem Label="Name">
+                <Stack Gutter="StackGutter.Small">
+                    @if (context.IsFolder)
+                    {
+                        <Icon Color="Color.Primary" Size="IconSize.Large" Name="IconName.Folder" />
+                    }
+                    else
+                    {
+                        <Icon Size="IconSize.Large" Name="IconName.File" />
+                    }
+                    <a style="cursor: pointer; padding-inline-end: 4rem;" @onclick="() => NavigateFolder(context.Id)">@context.Name</a>
+                </Stack>
+            </DataTableItem>
+            <DataTableItem Label="Type">@(context.IsFolder ? "Folder" : context.ContentType!)</DataTableItem>
+            <DataTableItem Label="">
+                @if (!context.IsParentFolder)
+                {
+                    @if (context.IsFolder)
+                    {
+                        <Button Ghost Color="Color.Primary" Size="ButtonSize.Small"
+                            @onclick="() => HandleFolderMove(context.Id)">
+                            <Icon Size="IconSize.Large" Name="IconName.FolderMove" />
+                        </Button>
+                        <Button Ghost Color="Color.Info" Size="ButtonSize.Small"
+                            @onclick="() => OpenFolderRename(context)">
+                            <Icon Size="IconSize.Large" Name="IconName.Edit" />
+                        </Button>
+                        <Button Ghost Color="Color.Danger" Size="ButtonSize.Small"
+                            @onclick="() => HandleFolderDelete(context.Id)">
+                            <Icon Size="IconSize.Large" Name="IconName.Delete" />
+                        </Button>
+                    }
+                    else
+                    {
+                        <Button Ghost Color="Color.Primary" Size="ButtonSize.Small"
+                            @onclick="() => HandleFileMove(context.Id)">
+                            <Icon Size="IconSize.Large" Name="IconName.FileMove" />
+                        </Button>
+
+                        <Button Ghost Color="Color.Info" Size="ButtonSize.Small"
+                            @onclick="() => OpenFileRename(context)">
+                            <Icon Size="IconSize.Large" Name="IconName.Edit" />
+                        </Button>
+
+                        <Button Ghost Color="Color.Danger" Size="ButtonSize.Small"
+                            @onclick="() => HandleFileDelete(context.Id)">
+                            <Icon Size="IconSize.Large" Name="IconName.Delete" />
+                        </Button>
+                    }
+                }
+            </DataTableItem>
+        </DataTable>
+    </Card>
+</PageBody>
+
+<Confirm OnConfirm="OnDeleteFolderConfirm" OnCancel="OnDeleteFolderCancel" Visible="@DeleteFolderConfirmOpen">
+    Are you sure to delete this folder?
+</Confirm>
+
+<Confirm OnConfirm="OnDeleteFileConfirm" OnCancel="OnDeleteFileCancel" Visible="@DeleteFileConfirmOpen">
+    Are you sure to delete this file?
+</Confirm>
+
+<FolderCreateModal 
+    Visible="@CreateFolderModalOpen" 
+    OnCancel="@OnCreateFolderCancel" 
+    OnSubmit="@OnCreateFolder"/>
+<FileUploadModal 
+    Visible="@FileUploadModalOpen" 
+    OnCancel="@OnFileUploadCancel" 
+    OnSubmit="@OnFileUpload" />
+
+<FolderRenameModal 
+    Model="@CurrentRenamingFolder"
+    Visible="@FolderRenameModalOpen" 
+    OnCancel="@OnFolderRenameCancel" 
+    OnSubmit="@OnFolderRename"/>
+    
+<FileRenameModal 
+    Model="@CurrentRenamingFile"
+    Visible="@FileRenameModalOpen" 
+    OnCancel="@OnFileRenameCancel" 
+    OnSubmit="@OnFileRename"/>
+
+<FolderSelectorModal 
+    DisabledFolder="@CurrentId"
+    CurrentFolderId="@CurrentFolderId"
+    Visible="@FolderSelectorModalOpen" 
+    OnSubmit="@OnFolderSelected"
+    OnCancel="@OnFolderSelectorCancel"
+    />
+
+@code {
+    private string? BackUrl { get; set; }
+
+    private List<AssetDto> Assets { get; set; }
+
+    private List<FolderDto> ParentFolders { get; set; }
+
+    private bool CreateFolderModalOpen { get; set; } = false;
+    private bool FolderMoveModalOpen { get; set; } = false;
+    private bool FileMoveModalOpen { get; set; } = false;
+    private bool FileUploadModalOpen { get; set; } = false;
+
+    private bool FolderRenameModalOpen { get; set; } = false;
+    private bool FileRenameModalOpen { get; set; } = false;
+    private bool FolderSelectorModalOpen { get; set; } = false;
+    private bool IsMovingFolder { get; set; } = false;
+
+    [Parameter]
+    public string? Id { get; set; }
+
+    private Guid? CurrentFolderId { get; set; }
+    private Guid SiteId { get; set; }
+
+    private async Task OnFolderSelectorCancel()
+    {
+        FolderSelectorModalOpen = false;
+    }
+
+    private async Task OnFolderSelected(Guid folderId)
+    {
+        FolderSelectorModalOpen = false;
+
+        if(IsMovingFolder)
+        {
+            await Api.Folders.MoveAsync(new FolderMoveRequest { Id = CurrentId.Value, ParentId = folderId});
+        } else {
+            await Api.Files.MoveAsync(new FileMoveRequest { Id = CurrentId.Value, FolderId = folderId});
+        }
+        await Load();
+    }
+
+    private async Task OpenFileUploadModal() 
+    {
+        FileUploadModalOpen = true;
+    }
+
+    private async Task OnFileUploadCancel() 
+    {
+        FileUploadModalOpen = false;
+    }
+
+    private async Task OnFileUpload(List<FileParameter> Files) 
+    {
+        FileUploadModalOpen = false;
+        await Api.Files.UploadAsync(CurrentFolderId.Value, Files);
+        await Load();
+    }
+
+    private async Task OnFolderRename(FolderRenameRequest model)
+    {
+        FolderRenameModalOpen = false;
+        await Api.Folders.RenameAsync(model);
+        await Load();
+    }
+
+    private async Task OnFolderRenameCancel() 
+    {
+        FolderRenameModalOpen = false;
+    }
+
+    private async Task OpenFolderRename(AssetDto folder)
+    {
+        FolderRenameModalOpen = true;
+        CurrentRenamingFolder = new FolderRenameRequest {
+            Id = folder.Id,
+            Name = folder.Name    
+        };
+    }
+
+    private async Task OpenFileRename(AssetDto file)
+    {
+        FileRenameModalOpen = true;
+        CurrentRenamingFile = new FileRenameRequest {
+            Id = file.Id,
+            Name = file.Name    
+        };
+    }
+
+    private async Task OnFileRename(FileRenameRequest model)
+    {
+        FileRenameModalOpen = false;
+        await Api.Files.RenameAsync(model);
+        await Load();
+    }
+    
+    private async Task OnFileRenameCancel() 
+    {
+        FileRenameModalOpen = false;
+    }
+
+    private async Task HandleFileDelete(Guid fileId)
+    {
+        CurrentId = fileId;
+        DeleteFileConfirmOpen = true;
+    }
+
+    private async Task HandleFolderDelete(Guid folderId)
+    {
+        CurrentId = folderId;
+        DeleteFolderConfirmOpen = true;
+    }
+
+    private async Task HandleFileMove(Guid fileId)
+    {
+        IsMovingFolder = false;
+        FolderSelectorModalOpen = true;
+        CurrentId = fileId;
+    }
+
+    private async Task HandleFolderMove(Guid folderId)
+    {
+        IsMovingFolder = true;
+        FolderSelectorModalOpen = true;
+        CurrentId = folderId;
+    }
+
+    private async Task OpenCreateFolderModal()
+    {
+        CreateFolderModalOpen = true;
+    }
+
+    private async Task OnCreateFolder(FolderAddRequest Model)
+    {
+        CreateFolderModalOpen = false;
+        Model.ParentId = CurrentFolderId.Value;
+        Model.SiteId = SiteId;
+        await Api.Folders.CreateAsync(Model);
+        await Load(); 
+    }
+
+    private async Task OnCreateFolderCancel()
+    {
+        CreateFolderModalOpen = false;
+    }
+
+    private async Task Load()
+    {
+        if(CurrentFolderId == null)
+        {
+            var rootResponse = await Api.Folders.GetRootAsync(SiteId);
+            if(rootResponse?.Data != null)
+            {
+                CurrentFolderId = rootResponse.Data.Id;
+            }
+        }
+
+        var folderResponse = await Api.Folders.GetByIdAsync(CurrentFolderId.Value);
+        if (folderResponse?.Data != null)
+        {
+            Assets = folderResponse.Data.Folders.Select(x => new AssetDto
+            {
+                Id = x.Id,
+                Name = x.Name,
+                NormalizedName = x.NormalizedName,
+                IsFolder = true
+            }).ToList();
+
+            Assets.AddRange(folderResponse.Data.Files.Select(f => new AssetDto
+            {
+                Id = f.Id,
+                Name = f.Name,
+                NormalizedName = f.NormalizedName,
+                IsFolder = false,
+                Extension = f.Extension,
+                ContentType = f.ContentType,
+                Size = f.Size
+            }));
+
+            if (folderResponse.Data.ParentFolder != null)
+            {
+                BackUrl = "/admin/files/" + folderResponse.Data.ParentFolder.Id.ToString();
+                Assets.Insert(0, new AssetDto
+                {
+                    Id = folderResponse.Data.ParentFolder.Id,
+                    Name = "(parent)",
+                    NormalizedName = "..",
+                    IsFolder = true,
+                    IsParentFolder = true,
+                });
+            }
+            else
+            {
+                BackUrl = null;
+            }
+        }
+    
+    
+        var parentFoldersResponse = await Api.Folders.GetParentFoldersAsync(CurrentFolderId.Value);
+        if (parentFoldersResponse?.Data != null)
+        {
+            ParentFolders = parentFoldersResponse.Data.ToList();
+        }
+    }
+
+    private async Task NavigateFolder(Guid folderId)
+    {
+        Console.WriteLine("NavigateFolder" + folderId);
+        CurrentFolderId = folderId;
+        await Load();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var baseUri = new Uri(Navigation.BaseUri);
+        var host = baseUri.Host.ToLowerInvariant();
+        var siteResponse = await Api.Sites.GetByUrlAsync(host);
+
+        if (siteResponse?.Data != null)
+        {
+            SiteId = siteResponse.Data.Id;
+        }
+
+        if (Guid.TryParse(Id, out var guid))
+        {
+            CurrentFolderId = guid;
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        
+        await Load();
+    }
+
+    private bool DeleteFolderConfirmOpen { get; set; } = false;
+    private bool DeleteFileConfirmOpen { get; set; } = false;
+
+    private Guid? CurrentId { get; set; }
+    private FileRenameRequest? CurrentRenamingFile { get; set; }
+    private FolderRenameRequest? CurrentRenamingFolder { get; set; }
+    
+    private void OpenFileDeleteConfirm(Guid value)
+    {
+        CurrentId = value;
+        DeleteFileConfirmOpen = true;
+    }
+    
+    private void OpenFolderDeleteConfirm(Guid value)
+    {
+        CurrentId = value;
+        DeleteFileConfirmOpen = true;
+    }
+
+    private async Task OnDeleteFileCancel() {
+        DeleteFileConfirmOpen = false;
+    }
+
+    private async Task OnDeleteFileConfirm() {
+        if (CurrentId != null)
+        {
+            await Api.Files.RemoveAsync(CurrentId.Value);
+            await Load();
+        }
+        DeleteFileConfirmOpen = false;
+    }
+
+    private async Task OnDeleteFolderCancel() {
+        DeleteFolderConfirmOpen = false;
+    }
+
+    private async Task OnDeleteFolderConfirm() {
+        if (CurrentId != null)
+        {
+            await Api.Folders.RemoveAsync(CurrentId.Value);
+            await Load();
+        }
+        DeleteFolderConfirmOpen = false;
+    }
+}

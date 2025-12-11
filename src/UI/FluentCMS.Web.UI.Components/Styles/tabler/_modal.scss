@@ -2,7 +2,6 @@ $modal: $prefix + "modal";
 
 .#{$modal} {
     @extend .modal;
-    display: block;
 
     &-body {
         @extend .modal-body; 
@@ -12,6 +11,10 @@ $modal: $prefix + "modal";
 
     &-content {
         @extend .modal-content;
+    }
+
+    &-visible {
+        display: block;
     }
 
     &-footer {
@@ -41,6 +44,7 @@ $modal: $prefix + "modal";
 
     &-backdrop {
         @extend .modal-backdrop;
+        @extend .fade;
         @extend .show;
     }
 }

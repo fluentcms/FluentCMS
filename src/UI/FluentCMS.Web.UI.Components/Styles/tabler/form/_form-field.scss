@@ -1,0 +1,13 @@
+$form-field: $prefix + "form-field";
+
+.#{$form-field} {
+    @extend .mb-3;
+
+    &-label {
+        @extend .form-label;
+    }
+
+    &-hint {
+        @extend .form-hint;
+    }
+}

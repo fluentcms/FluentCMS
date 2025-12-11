@@ -73,25 +73,24 @@ public partial class FolderService(IFolderRepository folderRepository, IFileRepo
 
         return folder;
     }
-
     public async Task<List<Folder>> GetParentFolders(Guid folderId, CancellationToken cancellationToken = default)
     {
         var folders = new List<Folder>();
-        var currentFolder = await folderRepository.GetById(folderId, cancellationToken) ??
-            throw new AppException(ExceptionCodes.FolderNotFound);
+        var current = await folderRepository.GetById(folderId, cancellationToken)
+            ?? throw new AppException(ExceptionCodes.FolderNotFound);
 
-        folders.Add(currentFolder);
-
-        while (currentFolder != null && currentFolder.ParentId != null)
+        while (current != null)
         {
-            currentFolder = await folderRepository.GetById(currentFolder.ParentId.Value, cancellationToken) ??
-                throw new AppException(ExceptionCodes.FolderNotFound);
-            if (currentFolder != null)
-                folders.Add(currentFolder);
+            folders.Add(current);
+
+            if (current.ParentId == null)
+                break;
+
+            current = await folderRepository.GetById(current.ParentId.Value, cancellationToken)
+                ?? throw new AppException(ExceptionCodes.FolderNotFound);
         }
 
         folders.Reverse();
-
         return folders;
     }
 

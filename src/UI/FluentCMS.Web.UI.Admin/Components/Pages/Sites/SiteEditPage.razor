@@ -1,0 +1,95 @@
+@page "/admin/sites/edit/{id}"
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject IHttpContextAccessor HttpContextAccessor
+@inject ApiClientFactory Api
+
+<SiteForm Title="Edit site" OnSubmit="@HandleSubmit" LayoutOptions="@LayoutOptions" FormName="SiteEditForm" BackUrl="/admin/sites" Model="Model"/>
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    [SupplyParameterFromForm(FormName = "SiteEditForm")]
+    private SiteFormModel Model { get; set; }
+    private List<string> Errors { get; set; } = new();
+    private List<SelectOption?> LayoutOptions { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Load layouts
+        var resp = await Api.Layouts.GetBySiteIdAsync(Id);
+
+        if(resp?.Data != null)
+        {
+            LayoutOptions = new List<SelectOption?> {
+                new() {
+                    Title = "(none)",
+                    Value = null
+                }
+            };
+            LayoutOptions.AddRange(
+                resp.Data.Select(x => new SelectOption
+                {
+                    Title = x.Name,
+                    Value = x.Id
+                })
+            );
+        }
+
+        if(Model is null) {
+            Errors.Clear();
+
+            var site = await Api.Sites.GetByIdAsync(Id);
+
+            if (site.Data == null)
+            {
+                Errors.Add("Site not found");
+                return;
+            }
+
+            Model = new SiteFormModel
+            {
+                Id = site.Data.Id,
+                Name = site.Data.Name,
+                Description = site.Data.Description,
+                Urls = string.Join(",", site.Data.Urls ?? []),
+                MetaTitle = site.Data.MetaTitle,
+                MetaDescription = site.Data.MetaDescription,
+                GoogleTagsId = site.Data.GoogleTagsId,
+                LayoutId = site.Data.LayoutId,
+                DetailLayoutId = site.Data.DetailLayoutId,
+                EditLayoutId = site.Data.EditLayoutId,
+                Head = site.Data.Head,
+                OgType = site.Data.OgType,
+                RobotsTxt = site.Data.RobotsTxt,
+                RobotsFollow = site.Data.RobotsFollow.Value,
+                RobotsIndex = site.Data.RobotsIndex.Value,
+            };
+        }
+
+
+    }
+
+    private async Task HandleSubmit()
+    {
+        var response = await Api.Sites.UpdateAsync(Id, new SiteUpdateRequest {
+            Name = Model.Name,
+            Description = Model.Description,
+            Urls = [.. Model.Urls.Split(",")],
+            MetaTitle = Model.MetaTitle,
+            MetaDescription = Model.MetaDescription,
+            GoogleTagsId = Model.GoogleTagsId,
+            LayoutId = Model.LayoutId,
+            DetailLayoutId = Model.DetailLayoutId,
+            EditLayoutId = Model.EditLayoutId,
+            Head = Model.Head,
+            OgType = Model.OgType,
+            RobotsTxt = Model.RobotsTxt,
+            RobotsFollow = Model.RobotsFollow,
+            RobotsIndex = Model.RobotsIndex,
+        });
+
+        Navigation.NavigateTo("/admin/sites");
+    }
+}
