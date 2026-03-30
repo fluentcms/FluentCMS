@@ -1,5 +1,7 @@
 ﻿using FluentCMS.Providers.FileStorageProviders;
 using System.Text.RegularExpressions;
+using System.Xml;
+using System.Xml.Linq;
 
 namespace FluentCMS.Services;
 
@@ -27,6 +29,13 @@ public class FileService(IFileRepository fileRepository, IFolderRepository folde
             throw new AppException(ExceptionCodes.FolderNotFound);
 
         file.NormalizedName = GetNormalizedFileName(file.Name);
+
+        // Sanitize SVG content before persisting to remove potential XSS payloads
+        if (IsSvgFile(file))
+        {
+            fileContent = SanitizeSvg(fileContent);
+            file.Size = fileContent.Length;
+        }
 
         // check if file with the same name already exists
         var existingFile = await fileRepository.GetByName(folder.SiteId, folder.Id, file.NormalizedName, cancellationToken);
@@ -154,5 +163,90 @@ public class FileService(IFileRepository fileRepository, IFolderRepository folde
     {
         var normalized = fileName.Trim().ToLower();
         return normalized;
+    }
+
+    private static bool IsSvgFile(File file)
+    {
+        return string.Equals(file.Extension, ".svg", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(file.ContentType, "image/svg+xml", StringComparison.OrdinalIgnoreCase);
+    }
+
+    // Dangerous SVG element local names
+    private static readonly HashSet<string> _dangerousElements = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "script",
+        "foreignObject",
+    };
+
+    // URL-bearing attribute local names whose values must not use dangerous schemes
+    private static readonly HashSet<string> _urlAttributeLocalNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "href",
+        "action",
+        "src",
+    };
+
+    // Dangerous URI schemes (allowlist approach would be better but this covers the known vectors)
+    private static readonly string[] _dangerousSchemes = ["javascript:", "vbscript:", "data:"];
+
+    private static readonly XNamespace _xlinkNs = "http://www.w3.org/1999/xlink";
+
+    private static System.IO.MemoryStream SanitizeSvg(System.IO.Stream svgStream)
+    {
+        XDocument doc;
+        try
+        {
+            // Disable DTD processing to prevent XXE attacks
+            var readerSettings = new XmlReaderSettings
+            {
+                DtdProcessing = DtdProcessing.Prohibit,
+                XmlResolver = null,
+            };
+            using var reader = XmlReader.Create(svgStream, readerSettings);
+            doc = XDocument.Load(reader);
+        }
+        catch (XmlException)
+        {
+            // If the SVG cannot be parsed as XML return an empty SVG
+            var empty = System.Text.Encoding.UTF8.GetBytes("<svg xmlns=\"http://www.w3.org/2000/svg\"></svg>");
+            return new System.IO.MemoryStream(empty);
+        }
+
+        // Remove dangerous elements (e.g. <script>, <foreignObject>)
+        var elementsToRemove = doc.Descendants()
+            .Where(e => _dangerousElements.Contains(e.Name.LocalName))
+            .ToList();
+
+        foreach (var element in elementsToRemove)
+            element.Remove();
+
+        // Remove event-handler attributes (on*) and URL attributes with dangerous schemes
+        var attributesToRemove = doc.Descendants()
+            .SelectMany(e => e.Attributes())
+            .Where(a =>
+                a.Name.LocalName.StartsWith("on", StringComparison.OrdinalIgnoreCase) ||
+                IsUrlAttributeWithDangerousScheme(a))
+            .ToList();
+
+        foreach (var attribute in attributesToRemove)
+            attribute.Remove();
+
+        var ms = new System.IO.MemoryStream();
+        doc.Save(ms);
+        ms.Position = 0;
+        return ms;
+    }
+
+    private static bool IsUrlAttributeWithDangerousScheme(XAttribute attribute)
+    {
+        // Check both local href and xlink:href
+        bool isUrlAttr = _urlAttributeLocalNames.Contains(attribute.Name.LocalName) ||
+                         attribute.Name == _xlinkNs + "href";
+
+        if (!isUrlAttr)
+            return false;
+
+        var value = attribute.Value.TrimStart();
+        return _dangerousSchemes.Any(scheme => value.StartsWith(scheme, StringComparison.OrdinalIgnoreCase));
     }
 }
