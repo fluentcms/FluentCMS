@@ -1,3 +1,5 @@
+using Ganss.Xss;
+
 namespace FluentCMS.Web.UI;
 
 public partial class PageHead : IAsyncDisposable
@@ -6,6 +8,39 @@ public partial class PageHead : IAsyncDisposable
     private ViewState ViewState { get; set; } = default!;
 
     private List<string> Stylesheets { get; set; } = [];
+
+    private static readonly HtmlSanitizer _headSanitizer = CreateHeadSanitizer();
+
+    private static HtmlSanitizer CreateHeadSanitizer()
+    {
+        var sanitizer = new HtmlSanitizer();
+        sanitizer.AllowedTags.Clear();
+        sanitizer.AllowedTags.Add("meta");
+        sanitizer.AllowedTags.Add("link");
+        sanitizer.AllowedTags.Add("style");
+        sanitizer.AllowedTags.Add("noscript");
+        sanitizer.AllowedAttributes.Clear();
+        sanitizer.AllowedAttributes.Add("name");
+        sanitizer.AllowedAttributes.Add("content");
+        sanitizer.AllowedAttributes.Add("rel");
+        sanitizer.AllowedAttributes.Add("href");
+        sanitizer.AllowedAttributes.Add("type");
+        sanitizer.AllowedAttributes.Add("media");
+        sanitizer.AllowedAttributes.Add("charset");
+        sanitizer.AllowedAttributes.Add("property");
+        sanitizer.AllowedAttributes.Add("http-equiv");
+        sanitizer.AllowedAttributes.Add("sizes");
+        sanitizer.AllowedAttributes.Add("hreflang");
+        sanitizer.AllowedAttributes.Add("crossorigin");
+        sanitizer.AllowedAttributes.Add("integrity");
+        sanitizer.AllowedCssProperties.Clear();
+        return sanitizer;
+    }
+
+    private static string SanitizeHeadContent(string content)
+    {
+        return _headSanitizer.Sanitize(content);
+    }
 
     private string GetRobots()
     {
@@ -36,9 +71,16 @@ public partial class PageHead : IAsyncDisposable
         return pageValue ?? siteValue ?? string.Empty;
     }
 
+    private static readonly System.Text.RegularExpressions.Regex _googleTagsIdRegex =
+        new(@"^[A-Za-z0-9\-]+$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
     private string GetGoogleTagsScript()
     {
-        return $"<script async src=\"https://www.googletagmanager.com/gtag/js?id={GetSetting("GoogleTagsId")}\"></script>\n<script>\n\twindow.dataLayer = window.dataLayer || [];\n\tfunction gtag(){{\n\t\tdataLayer.push(arguments);\n\t}}\ngtag('js', new Date())\ngtag('config', '{GetSetting("GoogleTagsId")}');\n</script>";
+        var tagId = GetSetting("GoogleTagsId");
+        if (string.IsNullOrEmpty(tagId) || !_googleTagsIdRegex.IsMatch(tagId))
+            return string.Empty;
+
+        return $"<script async src=\"https://www.googletagmanager.com/gtag/js?id={tagId}\"></script>\n<script>\n\twindow.dataLayer = window.dataLayer || [];\n\tfunction gtag(){{\n\t\tdataLayer.push(arguments);\n\t}}\ngtag('js', new Date())\ngtag('config', '{tagId}');\n</script>";
     }
 
     private async void OnStateChanged(object? sender, EventArgs e)
