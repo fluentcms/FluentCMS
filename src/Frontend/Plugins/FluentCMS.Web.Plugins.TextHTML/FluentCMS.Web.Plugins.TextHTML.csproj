@@ -27,4 +27,8 @@
     <None Include="..\..\..\icon.png" Pack="true" PackagePath="icon.png" />
     <None Include="README.md" Pack="true" PackagePath="README.md" />
   </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="HtmlSanitizer" Version="8.1.870" />
+  </ItemGroup>
 </Project>
