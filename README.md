@@ -15,6 +15,7 @@
 </p>
 
 <h3 align="center">FluentCMS: ASP.NET Core Blazor-Based Content Management System (CMS)</h3>
+<p align="center">Created by <a href="https://momentaj.com/">Momentaj</a>, a Toronto AI engineering firm.</p>
 
 <p align="center">
   <img alt="GitHub last commit" src="https://img.shields.io/github/last-commit/FluentCMS/fluentcms">
