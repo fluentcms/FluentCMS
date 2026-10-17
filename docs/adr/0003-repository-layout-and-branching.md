@@ -15,7 +15,7 @@ Two experimental branches exist: `next` (125 commits ahead of `dev`) and `feat/a
 Branches:
 
 | Branch | Role |
-|---|---|
+| --- | --- |
 | `dev` | v1, maintenance only. v1 pull requests target it explicitly. |
 | `v2` | v2 integration branch, created from `dev` so history is preserved. Becomes the default branch once the bootstrap pull request is merged. All v2 work targets it. |
 | `main` | Untouched until M1 ships. Its role for v2 releases is decided then. |

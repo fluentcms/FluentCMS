@@ -1,7 +1,7 @@
 # FluentCMS v2 documentation
 
 | Folder | What it holds |
-|---|---|
+| --- | --- |
 | [`requirements/`](requirements/) | What v2 must do. Owned by the product side; changed through issues, not feature pull requests. |
 | [`adr/`](adr/README.md) | Why v2 is built the way it is. Architecture decision records, one file per decision. |
 

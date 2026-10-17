@@ -9,7 +9,7 @@ Include what you found, how to reproduce it, and which branch or version is affe
 ## Supported versions
 
 | Version | Branch | Status |
-|---|---|---|
+| --- | --- | --- |
 | v2 | `v2` | Pre-release. No security support until the first tagged release. Reports are still welcome. |
 | v1 | `dev` | Security fixes only. No new features. |
 

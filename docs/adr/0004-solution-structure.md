@@ -13,7 +13,7 @@ v1 grew to more than twenty projects: a repository project per database, a provi
 A modular monolith in one solution with seven projects:
 
 | Project | Holds | May reference |
-|---|---|---|
+| --- | --- | --- |
 | `FluentCMS.Core` | Domain model, application services (the use cases tools and screens call), extension interfaces (check types, tool providers, field types, storage, risk scorers, notification channels), and the built-in implementations of those interfaces | nothing in the solution |
 | `FluentCMS.Infrastructure` | EF Core persistence and migrations, local-disk media storage, search index, job queue, LLM provider wiring | Core |
 | `FluentCMS.Mcp` | MCP tools and resources mapped onto Core application services; transports | Core |

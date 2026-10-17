@@ -5,7 +5,7 @@ Thank you for your interest. v2 is early. The most useful contributions right no
 ## Where things are
 
 | Branch | Role |
-|---|---|
+| --- | --- |
 | `v2` | v2 development and the default branch. All v2 pull requests target it. |
 | `dev` | v1, security fixes only. v1 pull requests must target `dev` explicitly. |
 | `archive/*` | Old experiments, kept for reference, not maintained. |

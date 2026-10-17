@@ -3,7 +3,7 @@
 Technical decisions for FluentCMS v2. Product decisions live in `docs/requirements/00-decision-record.md`. The process is described in ADR-0001.
 
 | ADR | Title | Status |
-|---|---|---|
+| --- | --- | --- |
 | [0001](0001-record-architecture-decisions.md) | Record architecture decisions | proposed |
 | [0002](0002-target-dotnet-10-lts.md) | Target .NET 10 LTS | proposed |
 | [0003](0003-repository-layout-and-branching.md) | Repository layout and branching | proposed |

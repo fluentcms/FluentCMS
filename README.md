@@ -28,7 +28,7 @@ Delivery is headless: frontends read a delivery API. There is no built-in render
 ## Roadmap
 
 | Milestone | Scope |
-|---|---|
+| --- | --- |
 | [M1 Governance core](https://github.com/FluentCMS/fluentcms/milestone/2) | Content types, entities, change sets, rule book and checks, risk routing, review desk, MCP server, audit log, delivery API, generated forms, media, sign-in. Operated by external agents only. |
 | [M2 Built-in agent and full admin](https://github.com/FluentCMS/fluentcms/milestone/3) | Scheduled and triggered tasks on the owner's model key, full admin UI, roles, email and webhook notifications, OAuth for hosted assistants. |
 | [M3 Scale out](https://github.com/FluentCMS/fluentcms/milestone/4) | Multi-language, multi-site, public plugin SDK. |
