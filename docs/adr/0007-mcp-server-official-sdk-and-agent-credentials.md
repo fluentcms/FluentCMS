@@ -1,6 +1,6 @@
 # ADR-0007: MCP server on the official C# SDK with per-agent API keys
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-10-16
 - Related: MCP-01 to MCP-08, SEC-01, SEC-02, SEC-04, SEC-06, UX-03, D05, D18, P1, P8
 

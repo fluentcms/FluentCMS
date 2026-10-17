@@ -1,6 +1,6 @@
 # ADR-0010: In-database full-text search and a durable job queue
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-10-16
 - Related: SRC-01, CHK-03, PERF-02, MCP-08, API-05, OPS-02, AGT-02 (M2)
 

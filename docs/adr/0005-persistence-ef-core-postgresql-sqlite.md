@@ -1,6 +1,6 @@
 # ADR-0005: Persistence with EF Core on PostgreSQL and SQLite
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-10-16
 - Related: CNT-02, CNT-05, ENT-04, CHG-05, CHG-06, REL-01, REL-02, AUD-N1, AUD-N2, OPS-01, OPS-04, PERF-01, PERF-03, D26
 

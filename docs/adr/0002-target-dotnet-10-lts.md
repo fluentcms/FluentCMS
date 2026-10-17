@@ -1,6 +1,6 @@
 # ADR-0002: Target .NET 10 LTS
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-10-16
 - Related: OPS-01, OPS-02, LIC-01, P10
 
