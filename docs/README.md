@@ -4,6 +4,7 @@
 | --- | --- |
 | [`requirements/`](requirements/) | What v2 must do. Owned by the product side; changed through issues, not feature pull requests. |
 | [`adr/`](adr/README.md) | Why v2 is built the way it is. Architecture decision records, one file per decision. |
+| [`spikes/`](spikes/) | Time-boxed experiments that settled an open point in an ADR, with their evidence. |
 
 ## Requirements
 

@@ -43,10 +43,25 @@ public static class FluentCmsHost
         var app = builder.Build();
         app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
         app.UseAntiforgery();
-        app.MapStaticAssets();
+        MapStaticAssets(app);
         app.MapHealthChecks("/health");
         app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
         return app;
+    }
+
+    // The manifest is named after the entry assembly, which is the test host under xunit; without it the files are served unfingerprinted.
+    private static void MapStaticAssets(WebApplication app)
+    {
+        var manifest = Path.Combine(AppContext.BaseDirectory, "fluentcms.staticwebassets.endpoints.json");
+
+        if (File.Exists(manifest))
+        {
+            app.MapStaticAssets(manifest);
+        }
+        else
+        {
+            app.UseStaticFiles();
+        }
     }
 
     public static IHost BuildMcpHost(string[] args, Stream? standardInput = null, Action<HostApplicationBuilder>? configure = null)

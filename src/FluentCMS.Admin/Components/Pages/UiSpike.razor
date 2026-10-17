@@ -3,21 +3,18 @@
 @inject AdminOptions Options
 @inject NavigationManager Navigation
 @inject IStringLocalizer<UiSpike> L
-@using BlazorBlueprint.Primitives
-@using FluentCMS.Admin.Components.UiBlueprint
 
 <PageTitle>@L["UI spike"]</PageTitle>
 
 @if (!Options.ShowcaseEnabled)
 {
-    <NotFound />
     return;
 }
 
 <div class="flex flex-wrap items-center justify-between gap-4">
     <div>
         <h1 class="text-2xl font-semibold tracking-tight">@L["UI spike"]</h1>
-        <p class="text-sm text-muted-foreground">@L["Dialog, DropdownMenu and Command on our own primitives and on Blazor Blueprint, side by side (ADR-0011)."]</p>
+        <p class="text-sm text-muted-foreground">@L["Dialog, DropdownMenu and Command on the admin's own primitives (ADR-0011). The showcase grows from here."]</p>
     </div>
     <div class="flex items-center gap-2 text-sm">
         <a class="underline" href="@Navigation.GetUriWithQueryParameter("theme", Theme == "dark" ? null : "dark")">@(Theme == "dark" ? L["Light theme"] : L["Dark theme"])</a>
@@ -31,9 +28,9 @@
     <span class="text-muted-foreground">(@L["render"] @_renders)</span>
 </p>
 
-<div class="mt-6 grid gap-8 lg:grid-cols-2">
-    <section class="space-y-6" aria-labelledby="own-heading">
-        <h2 id="own-heading" class="text-lg font-semibold">@L["Own primitives"]</h2>
+<div class="mt-6 max-w-2xl">
+    <section class="space-y-6" aria-labelledby="primitives-heading">
+        <h2 id="primitives-heading" class="text-lg font-semibold">@L["Primitives"]</h2>
 
         <div class="space-y-2">
             <h3 class="text-sm font-medium text-muted-foreground">Dialog</h3>
@@ -99,69 +96,6 @@
         </div>
     </section>
 
-    <section class="space-y-6" aria-labelledby="blueprint-heading">
-        <h2 id="blueprint-heading" class="text-lg font-semibold">@L["Blazor Blueprint primitives"]</h2>
-        <BbPortalHost />
-
-        <div class="space-y-2">
-            <h3 class="text-sm font-medium text-muted-foreground">Dialog</h3>
-            <BpDialog OnOpenChange='open => { if (!open) Record("blueprint dialog closed"); }'>
-                <BpDialogTrigger Variant="outline" data-testid="bp-dialog-trigger">@L["Edit profile"]</BpDialogTrigger>
-                <BpDialogContent data-testid="bp-dialog">
-                    <DialogHeader>
-                        <BpDialogTitle>@L["Edit profile"]</BpDialogTitle>
-                        <BpDialogDescription>@L["Make changes to your profile here. Click save when you're done."]</BpDialogDescription>
-                    </DialogHeader>
-                    <div class="grid gap-3">
-                        <label class="text-sm font-medium" for="bp-name">@L["Name"]</label>
-                        <input id="bp-name" class="h-9 rounded-md border bg-transparent px-3 text-sm" value="Pedro Duarte" />
-                        <label class="text-sm font-medium" for="bp-username">@L["Username"]</label>
-                        <input id="bp-username" class="h-9 rounded-md border bg-transparent px-3 text-sm" value="@@peduarte" />
-                    </div>
-                    <DialogFooter>
-                        <BpDialogClose>@L["Cancel"]</BpDialogClose>
-                        <BpDialogClose Variant="default" OnClick='() => Record("blueprint dialog saved")'>@L["Save changes"]</BpDialogClose>
-                    </DialogFooter>
-                </BpDialogContent>
-            </BpDialog>
-        </div>
-
-        <div class="space-y-2">
-            <h3 class="text-sm font-medium text-muted-foreground">DropdownMenu</h3>
-            <BpDropdownMenu>
-                <BpDropdownMenuTrigger data-testid="bp-menu-trigger">@L["Open menu"]</BpDropdownMenuTrigger>
-                <BpDropdownMenuContent Class="w-56" data-testid="bp-menu">
-                    <DropdownMenuLabel>@L["My account"]</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuGroup>
-                        <BpDropdownMenuItem OnSelect='() => Record("blueprint menu: profile")'>@L["Profile"]<DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut></BpDropdownMenuItem>
-                        <BpDropdownMenuItem OnSelect='() => Record("blueprint menu: billing")'>@L["Billing"]<DropdownMenuShortcut>⌘B</DropdownMenuShortcut></BpDropdownMenuItem>
-                        <BpDropdownMenuItem OnSelect='() => Record("blueprint menu: settings")'>@L["Settings"]<DropdownMenuShortcut>⌘S</DropdownMenuShortcut></BpDropdownMenuItem>
-                        <BpDropdownMenuItem Disabled>@L["Keyboard shortcuts"]</BpDropdownMenuItem>
-                    </DropdownMenuGroup>
-                    <DropdownMenuSeparator />
-                    <BpDropdownMenuItem Variant="destructive" OnSelect='() => Record("blueprint menu: log out")'>@L["Log out"]<DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut></BpDropdownMenuItem>
-                </BpDropdownMenuContent>
-            </BpDropdownMenu>
-        </div>
-
-        <div class="space-y-2">
-            <h3 class="text-sm font-medium text-muted-foreground">Command</h3>
-            <BpCommand Class="max-w-md rounded-lg border shadow-md" Placeholder="@L["Type a command or search..."]" Label="@L["Commands"]" Empty="@L["No results found."]" data-testid="bp-command">
-                <BpCommandGroup Heading="@L["Suggestions"]">
-                    <BpCommandItem Value="calendar" OnSelect='() => Record("blueprint command: calendar")'>@L["Calendar"]</BpCommandItem>
-                    <BpCommandItem Value="search emoji" OnSelect='() => Record("blueprint command: emoji")'>@L["Search emoji"]</BpCommandItem>
-                    <BpCommandItem Value="calculator" Disabled>@L["Calculator"]</BpCommandItem>
-                </BpCommandGroup>
-                <CommandSeparator />
-                <BpCommandGroup Heading="@L["Settings"]">
-                    <BpCommandItem Value="profile" OnSelect='() => Record("blueprint command: profile")'>@L["Profile"]<CommandShortcut>⌘P</CommandShortcut></BpCommandItem>
-                    <BpCommandItem Value="billing" OnSelect='() => Record("blueprint command: billing")'>@L["Billing"]<CommandShortcut>⌘B</CommandShortcut></BpCommandItem>
-                    <BpCommandItem Value="settings" OnSelect='() => Record("blueprint command: settings")'>@L["Settings"]<CommandShortcut>⌘S</CommandShortcut></BpCommandItem>
-                </BpCommandGroup>
-            </BpCommand>
-        </div>
-    </section>
 </div>
 
 @code {
@@ -170,6 +104,15 @@
 
     private string Theme => Query("theme") ?? "light";
     private string Dir => Query("dir") ?? "ltr";
+
+    // Outside Development the route answers 404 through the shell's NotFound page.
+    protected override void OnInitialized()
+    {
+        if (!Options.ShowcaseEnabled)
+        {
+            Navigation.NotFound();
+        }
+    }
 
     protected override void OnAfterRender(bool firstRender) => _renders++;
 

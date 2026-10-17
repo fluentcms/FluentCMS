@@ -1,10 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\FluentCMS.Admin\FluentCMS.Admin.csproj" />
     <ProjectReference Include="..\..\src\FluentCMS.Core\FluentCMS.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="bunit" />
     <PackageReference Include="coverlet.collector" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />

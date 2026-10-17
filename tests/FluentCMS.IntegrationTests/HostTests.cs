@@ -38,6 +38,61 @@ public sealed class HostTests
     }
 
     [Fact]
+    public async Task Web_host_serves_the_admin_shell_and_the_showcase_only_in_development()
+    {
+        using var database = new TemporarySqliteDatabase();
+        var app = FluentCmsHost.BuildWebApplication(["--environment", "Development"], builder =>
+        {
+            builder.WebHost.UseUrls("http://127.0.0.1:0");
+            builder.Configuration.AddInMemoryCollection(database.Configuration);
+        });
+
+        await using (app)
+        {
+            await app.StartAsync();
+            using var client = new HttpClient { BaseAddress = new Uri(app.Urls.Single()) };
+
+            var home = await client.GetAsync("/");
+            var homeHtml = await home.Content.ReadAsStringAsync();
+            var rtl = await client.GetStringAsync("/?dir=rtl&theme=dark");
+            var showcase = await client.GetAsync("/ui-spike");
+
+            Assert.Equal(HttpStatusCode.OK, home.StatusCode);
+            Assert.Contains("<html lang=\"en\" dir=\"ltr\"", homeHtml);
+            Assert.Contains("_content/FluentCMS.Admin/css/app.generated", homeHtml);
+            Assert.Contains("_framework/blazor.web", homeHtml);
+            Assert.Contains("<html lang=\"en\" dir=\"rtl\" class=\"dark\"", rtl);
+            Assert.Equal(HttpStatusCode.OK, showcase.StatusCode);
+            Assert.Contains("role=\"menu\"", await showcase.Content.ReadAsStringAsync());
+
+            await app.StopAsync();
+        }
+    }
+
+    [Fact]
+    public async Task Showcase_is_not_found_outside_development()
+    {
+        using var database = new TemporarySqliteDatabase();
+        var app = FluentCmsHost.BuildWebApplication([], builder =>
+        {
+            builder.WebHost.UseUrls("http://127.0.0.1:0");
+            builder.Configuration.AddInMemoryCollection(database.Configuration);
+        });
+
+        await using (app)
+        {
+            await app.StartAsync();
+            using var client = new HttpClient { BaseAddress = new Uri(app.Urls.Single()) };
+
+            var showcase = await client.GetAsync("/ui-spike");
+
+            Assert.Equal(HttpStatusCode.NotFound, showcase.StatusCode);
+
+            await app.StopAsync();
+        }
+    }
+
+    [Fact]
     public async Task Mcp_host_has_no_web_server_and_stops_when_standard_input_closes()
     {
         using var database = new TemporarySqliteDatabase();
