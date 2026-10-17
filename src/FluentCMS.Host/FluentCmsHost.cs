@@ -1,6 +1,8 @@
 using FluentCMS.Admin;
 using FluentCMS.Api;
 using FluentCMS.Core;
+using FluentCMS.Core.Identity;
+using FluentCMS.Host.Identity;
 using FluentCMS.Host.Jobs;
 using FluentCMS.Infrastructure;
 using FluentCMS.Mcp;
@@ -30,6 +32,8 @@ public static class FluentCmsHost
 
         ConfigureLogging(builder.Logging, logToStandardError: false);
         AddFluentCms(builder.Services, builder.Configuration);
+        builder.Services.AddHttpContextAccessor();
+        builder.Services.AddScoped<ICurrentInitiator, HttpContextInitiator>();
         builder.Services.AddHealthChecks();
         configure?.Invoke(builder);
 
@@ -48,6 +52,7 @@ public static class FluentCmsHost
             ? StandardInputSource.Console
             : new StandardInputSource(() => standardInput));
         builder.Services.AddHostedService<StandardInputWatcher>();
+        builder.Services.AddScoped<ICurrentInitiator, NoInitiator>();
         configure?.Invoke(builder);
 
         return builder.Build();

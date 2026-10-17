@@ -52,6 +52,18 @@ Tests run against SQLite in-process. To run the PostgreSQL tests as well, set `F
 
 To run the host, `dotnet run --project src/FluentCMS.Host` starts the web host on `http://localhost:5000` with a SQLite database in `fluentcms.db`, and `dotnet run --project src/FluentCMS.Host -- mcp` starts the stdio mode. Configuration comes from environment variables such as `Database__ConnectionString`, `Database__Provider` (`sqlite` or `postgresql`, inferred from the connection string when omitted) and `JobQueue__WorkerCount`, and from an optional `appsettings.json` next to the binary.
 
+## Database migrations
+
+Each provider has its own `DbContext` subclass and migrations folder (ADR-0005). After changing the model, add a migration for both; no database needs to be running, the design-time factories build the model on their own.
+
+```bash
+dotnet tool restore
+dotnet ef migrations add <Name> --project src/FluentCMS.Infrastructure --context SqliteFluentCmsDbContext --output-dir Persistence/Migrations/Sqlite
+dotnet ef migrations add <Name> --project src/FluentCMS.Infrastructure --context PostgreSqlFluentCmsDbContext --output-dir Persistence/Migrations/PostgreSql
+```
+
+Migrations apply automatically when the host starts. Every migration needs a working `Down`, since upgrades must be reversible one version back (OPS-04).
+
 ## Extension points
 
 Every pluggable part of the product is an interface in `FluentCMS.Core` marked `[ExtensionPoint]`. Implementations register through dependency injection, either explicitly with `AddFluentCmsExtension<TContract, TImplementation>()` or by discovery with `AddFluentCmsExtensions(assembly)`, which picks up every concrete class implementing an extension-point interface in that assembly. Both paths produce the same `IExtensionCatalog` entry and the same `IEnumerable<TContract>` resolution, so built-ins under `FluentCMS.Core.Builtin` and future plugins look identical to the rest of the product. Each interface is documented where it is defined, together with the conformance tests an implementation must pass.

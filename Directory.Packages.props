@@ -6,6 +6,8 @@
   </PropertyGroup>
 
   <ItemGroup Label="Runtime">
+    <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.13" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.13" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.13" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.13" />

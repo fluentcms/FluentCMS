@@ -1,8 +1,10 @@
+using FluentCMS.Core.Identity;
+using FluentCMS.Infrastructure.Identity;
 using FluentCMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Options;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace FluentCMS.Infrastructure;
 
@@ -11,27 +13,40 @@ public static class InfrastructureServiceCollectionExtensions
     public static IServiceCollection AddFluentCmsInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<DatabaseOptions>(configuration.GetSection(DatabaseOptions.SectionName));
+        services.TryAddSingleton(TimeProvider.System);
 
-        services.AddDbContext<FluentCmsDbContext>((provider, options) =>
-        {
-            var database = provider.GetRequiredService<IOptions<DatabaseOptions>>().Value;
-
-            switch (database.ResolveProvider())
-            {
-                case DatabaseProviders.Sqlite:
-                    options.UseSqlite(database.ConnectionString);
-                    break;
-                case DatabaseProviders.PostgreSql:
-                    options.UseNpgsql(database.ConnectionString);
-                    break;
-                default:
-                    throw new InvalidOperationException(
-                        $"Unknown database provider '{database.Provider}'. Use '{DatabaseProviders.Sqlite}' or '{DatabaseProviders.PostgreSql}'.");
-            }
-        });
+        AddDatabase(services, configuration.GetSection(DatabaseOptions.SectionName).Get<DatabaseOptions>() ?? new DatabaseOptions());
+        AddIdentity(services);
 
         services.AddHostedService<DatabaseMigrator>();
 
         return services;
+    }
+
+    // The provider is chosen once at startup; each provider subclass carries its own migrations (ADR-0005).
+    private static void AddDatabase(IServiceCollection services, DatabaseOptions database)
+    {
+        switch (database.ResolveProvider())
+        {
+            case DatabaseProviders.Sqlite:
+                services.AddDbContext<FluentCmsDbContext, SqliteFluentCmsDbContext>(options => options.UseSqlite(database.ConnectionString));
+                break;
+            case DatabaseProviders.PostgreSql:
+                services.AddDbContext<FluentCmsDbContext, PostgreSqlFluentCmsDbContext>(options => options.UseNpgsql(database.ConnectionString));
+                break;
+            default:
+                throw new InvalidOperationException(
+                    $"Unknown database provider '{database.Provider}'. Use '{DatabaseProviders.Sqlite}' or '{DatabaseProviders.PostgreSql}'.");
+        }
+    }
+
+    private static void AddIdentity(IServiceCollection services)
+    {
+        services.AddIdentityCore<FluentCmsUser>(options => options.User.RequireUniqueEmail = true)
+            .AddRoles<FluentCmsRole>()
+            .AddEntityFrameworkStores<FluentCmsDbContext>();
+
+        services.AddScoped<IUserDirectory, UserDirectory>();
+        services.AddScoped<IFirstRunSetup, FirstRunSetup>();
     }
 }
