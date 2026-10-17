@@ -41,7 +41,16 @@ Product decisions live in `docs/requirements/00-decision-record.md`. Propose a c
 
 ## Building and testing
 
-Not yet. The solution skeleton is the next piece of work after the repository bootstrap. Once it exists, this section will cover `dotnet build`, `dotnet test` and the Tailwind standalone step. Building will need the .NET 10 SDK and nothing else; Node is not required.
+You need the .NET 10 SDK and nothing else; `global.json` pins the version and Node is not required.
+
+```bash
+dotnet build
+dotnet test
+```
+
+Tests run against SQLite in-process. To run the PostgreSQL tests as well, set `FLUENTCMS_TEST_POSTGRES` to a connection string for an empty database, for example `Host=localhost;Port=5432;Database=fluentcms_test;Username=postgres;Password=postgres`. CI does this with a service container. Without the variable those tests are skipped.
+
+To run the host, `dotnet run --project src/FluentCMS.Host` starts the web host on `http://localhost:5000` with a SQLite database in `fluentcms.db`, and `dotnet run --project src/FluentCMS.Host -- mcp` starts the stdio mode. Configuration comes from environment variables such as `Database__ConnectionString`, `Database__Provider` (`sqlite` or `postgresql`, inferred from the connection string when omitted) and `JobQueue__WorkerCount`, and from an optional `appsettings.json` next to the binary.
 
 ## Code style
 
