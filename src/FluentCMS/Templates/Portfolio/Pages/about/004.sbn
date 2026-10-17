@@ -1,7 +1,0 @@
-<div class="d-flex flex-wrap gap-2 mt-2 text-content-muted">
-    {{ for skill in Items }}
-        <span class="badge rounded-pill px-3 py-1 bg-primary-subtle text-primary">
-            {{ skill.skill_name }} - {{ skill.proficiency }}
-        </span>
-    {{ end }}
-</div>

@@ -1,0 +1,59 @@
+name: Feature
+description: Propose a capability for FluentCMS v2
+labels: ["v2", "type:feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Every change starts from an issue. Check the M1 milestone and `docs/requirements/` first; most capabilities already have an epic you can comment on instead.
+  - type: input
+    id: requirements
+    attributes:
+      label: Requirement IDs
+      description: IDs from `docs/requirements/04-functional-requirements.md` this covers, for example `CHG-05`. Write "none" for something not in the requirements.
+      placeholder: CHG-05, CHG-06
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What cannot be done today, and who needs it (agent, reviewer, rule author, fact owner, developer).
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: What should happen. If it has both a tool and a screen, describe the tool first.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance
+      description: How a reviewer knows it is done.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: The requirement group. A maintainer adds the matching `area:*` label.
+      options:
+        - schema
+        - content
+        - entities
+        - change-sets
+        - rules
+        - checks
+        - routing
+        - desk
+        - mcp
+        - audit
+        - api
+        - forms
+        - media
+        - users
+        - ext
+        - infra
+    validations:
+      required: true

@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: v2 announcement and roadmap
+    url: https://github.com/FluentCMS/fluentcms/issues?q=is%3Aissue+label%3Av2+label%3Atype%3Adocs
+    about: Read what v2 is and where it is going before proposing work.
+  - name: Discord
+    url: https://discord.gg/WyqYuC6YbY
+    about: Questions and discussion.
+  - name: Security vulnerabilities
+    url: https://github.com/FluentCMS/fluentcms/security/advisories/new
+    about: Report privately, never in a public issue.

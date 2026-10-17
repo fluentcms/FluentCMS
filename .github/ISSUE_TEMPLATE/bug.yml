@@ -1,0 +1,46 @@
+name: Bug
+description: Something does not work as documented
+labels: ["type:bug"]
+body:
+  - type: dropdown
+    id: line
+    attributes:
+      label: Version
+      description: Which line is affected. A maintainer adds the matching `v1` or `v2` label.
+      options:
+        - v2 (branch v2)
+        - v1 (branch dev)
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps, including the tool call or screen used.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual
+      description: What happened instead. Paste error text in a code block.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system, .NET SDK version, database, and for v2 the agent or client involved.
+      placeholder: Windows 11, .NET 10.0.x, PostgreSQL 17, desktop agent over streamable HTTP
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Relevant log lines with secrets removed.
+      render: text

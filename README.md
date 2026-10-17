@@ -1,156 +1,53 @@
 <p align="center">
-    <a href="https://fluentcms.com" target="_blank">
-    <picture width="120">
-        <source
-            srcset="docs/resources/logo-dark.svg"
-            media="(prefers-color-scheme: dark)"
-        />
-        <source
-            srcset="docs/resources/logo.svg"
-            media="(prefers-color-scheme: light), (prefers-color-scheme: no-preference)"
-        />
-        <img src="docs/resources/logo.svg" />
-    </picture>
-    </a>
+  <picture>
+    <source srcset="docs/resources/logo-dark.svg" media="(prefers-color-scheme: dark)">
+    <img src="docs/resources/logo.svg" alt="FluentCMS" width="120">
+  </picture>
 </p>
 
-<h3 align="center">FluentCMS: ASP.NET Core Blazor-Based Content Management System (CMS)</h3>
+<h3 align="center">FluentCMS v2: a headless CMS built for AI agents to operate and for a team to govern</h3>
 <p align="center">Created by <a href="https://momentaj.com/">Momentaj</a>, a Toronto AI engineering firm.</p>
 
-<p align="center">
-  <img alt="GitHub last commit" src="https://img.shields.io/github/last-commit/FluentCMS/fluentcms">
-  <img alt="GitHub commit activity" src="https://img.shields.io/github/commit-activity/y/FluentCMS/fluentcms">
-  <img alt="GitHub License" src="https://img.shields.io/github/license/FluentCMS/fluentcms">
-  <img alt="GitHub contributors" src="https://img.shields.io/github/contributors/FluentCMS/fluentcms">
-  <a href="https://discord.gg/WyqYuC6YbY"><img alt="Discord" src="https://img.shields.io/discord/1165300406902067280?label=discord"></a>
-</p>
+> **Status: pre-alpha.** v2 is a rewrite from scratch, in progress on this branch. Nothing runs yet.
+> The previous version lives on the [`dev` branch](https://github.com/FluentCMS/fluentcms/tree/dev) and receives security fixes only. There is no migration path from v1 to v2.
 
-![Demo Gif](./docs/resources/demo.gif)
+## What v2 is
 
-## Table of contents
+The agent does the work by default. People write the rules and review what matters before it goes live.
 
-- [Introduction](#introduction)
-- [Connect with us](#connect-with-us)
-- [Features](#features)
-- [Supported Databases](#supported-databases)
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-- [Component Library](#component-library)
-- [Documentation](#documentation)
-- [Contributing](#contributing)
-- [License](#license)
+- **Agents operate the CMS through [MCP](https://modelcontextprotocol.io).** Every capability is a tool before it is a screen. Forms are the fallback for people.
+- **The rule book is enforced.** Rules are written in plain language and compiled into checks that block violations. A rule that cannot be checked is labelled advisory and shown as such.
+- **Facts live once.** Prices, dates, names and limits are typed entities with a source and an owner. Content references them and never stores a copy.
+- **Every change is a change set.** Grouped edits with a diff, the agent's rationale and its sources. Routine sets pass on checks, risky sets wait for a person, large sets are sampled. A set is published and reverted atomically.
+- **Every published item carries provenance.** Was AI involved, who reviewed it, and where the facts came from.
 
-## Introduction
-FluentCMS is a modern Content Management System (CMS) built on the powerful ASP.NET Core and the innovative Blazor technology. FluentCMS assists content writers in crafting content more efficiently. Designed to be fast, flexible, and user-friendly, it not only serves as a traditional content-based CMS but also excels as a headless CMS, making it perfect for a diverse range of digital applications.
+Agents never approve or publish by judgment. Only checks can auto-publish, and only where a routing rule allows it.
 
-FluentCMS is an open-source project, and we welcome contributions from the community. If you're interested in helping us improve FluentCMS, please read our [CONTRIBUTING.md](./CONTRIBUTING.md) guide.
+Delivery is headless: frontends read a delivery API. There is no built-in renderer, theme or page builder.
 
-## Connect with us
+## Roadmap
 
-<a href="https://discord.gg/WyqYuC6YbY">
-<img width="48" height="48" src="/docs/resources/discord.svg" alt="discord">
-</a>
-<a href="https://reddit.com/r/FluentCMS">
-<img width="48" height="48" src="/docs/resources/reddit.svg" alt="reddit">
-</a>
-<a href="https://fluentcms.com">
-<img width="48" height="48" src="/docs/resources/website.svg" alt="website">
-</a>
-
-## Features
-
-- **Blazing Fast**: Built on top of Blazor components for client-side operations.
-- **Extensible**: Easily extend with custom plugins and themes.
-- **SEO Friendly**: Built-in SEO tools to optimize content for search engines.
-- **Responsive**: Mobile-friendly out of the box.
-- **Modern UI**: Sleek and intuitive dashboard for content management.
-- **Headless Capabilities**: API-first design for decoupled applications.
-- **Multi-Language Support**: Easily manage content in multiple languages.
-- **Role-Based Access Control**: Granular control over user permissions.
-- **Media Management**: Upload, organize, and manage media files.
-- **Content Type Definition**: Define custom content types with various fields.
-- **Content Management**: Create, edit, and manage content with ease.
-- **User Management**: Manage users and roles with ease.
-- **Role Management**: Create and manage roles with custom permissions.
-- **Application Settings**: Configure application settings with ease.
-- **Multiple Site Support**: Manage multiple sites from a single dashboard.
-- **Page Management**: Create and manage pages with custom layouts.
-- **Plugin Management**: Extend functionality with custom plugins.
-
-## Supported Databases
-
-- LiteDB
-- MongoDB
-- MySQL (coming soon)
-- SQL Server (coming soon)
-- SQLite (coming soon)
-- PostgreSQL (coming soon)
-
-## Getting Started
-
-### Prerequisites
-
-- .NET SDK 9.0 or later
-
-### Installation
-
-1. Clone the repository:
-
-   ```bash
-   git clone https://github.com/fluentcms/FluentCMS.git
-   ```
-
-2. Navigate to the project directory:
-
-   ```bash
-   cd FluentCMS/src/FluentCMS/
-   ```
-3. Configure the Database
-
-   FluentCMS supports multiple databases. Configure the desired database by following these steps:
-
-      * **Set the Database in `appsettings.json`:** 
-      Define your database type under `Database` section. For example, to use LiteDB:
-
-         ```json
-         "Database": "LiteDB"
-         ```
-      Available options are: `LiteDb`, `MongoDB`, `SQLite`, `SQLServer`, `MySQL`, `PostgreSQL`
-
-   * **Provide Connection Strings in `appsettings.json`:** 
-      Set your connection string under "ConnectionStrings" in appsettings.json for the desired database:
-
-      ```json
-      "ConnectionStrings": {
-         "DefaultConnection": "Filename=./fluentcms.db"
-      }
-      ```
-
-
-4. Run the application:
-
-   ```bash
-   dotnet run
-   ```
-
-5. Visit `http://localhost:5000` in your browser.
-
-## Component Library
-
-This project includes a custom, independent Blazor-based component library styled with flowbite's Design System. You can learn more in [Component Library's README file](/src/Frontend/FluentCMS.Web.UI.Components/).
+| Milestone | Scope |
+|---|---|
+| [M1 Governance core](https://github.com/FluentCMS/fluentcms/milestone/2) | Content types, entities, change sets, rule book and checks, risk routing, review desk, MCP server, audit log, delivery API, generated forms, media, sign-in. Operated by external agents only. |
+| [M2 Built-in agent and full admin](https://github.com/FluentCMS/fluentcms/milestone/3) | Scheduled and triggered tasks on the owner's model key, full admin UI, roles, email and webhook notifications, OAuth for hosted assistants. |
+| [M3 Scale out](https://github.com/FluentCMS/fluentcms/milestone/4) | Multi-language, multi-site, public plugin SDK. |
 
 ## Documentation
 
-For more information on how to use FluentCMS, please refer to our [documentation](./docs/README.md). We are actively working on expanding our documentation to provide more detailed information.
+- [Requirements](docs/requirements/): decision record, vision and principles, personas and scenarios, feature list, functional and non-functional requirements, glossary, out of scope.
+- [Architecture decision records](docs/adr/README.md): .NET 10, branching, solution structure, persistence, admin UI, MCP server, model access, identity, search and jobs, component set.
+- [Contributing](CONTRIBUTING.md) and [Security policy](SECURITY.md).
 
+## Stack
 
-## Contributing
+.NET 10, EF Core with PostgreSQL for production and SQLite for development, Blazor for the admin UI, the official C# MCP SDK, and Microsoft.Extensions.AI for model access. Self-hosted, MIT licensed, no required external service other than a model provider.
 
-We welcome contributions! If you're interested in improving FluentCMS, please read our [CONTRIBUTING.md](./CONTRIBUTING.md) guide.
+## Community
 
-![Alt](https://repobeats.axiom.co/api/embed/908c321e4de115a715f2a3ed981c6e00bfbcea62.svg "Repobeats analytics image")
+- [Discord](https://discord.gg/WyqYuC6YbY)
+- [Issues](https://github.com/FluentCMS/fluentcms/issues): the pinned announcement explains the move to v2 and how to get involved.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](./LICENSE) file for details.
+[MIT](LICENSE)

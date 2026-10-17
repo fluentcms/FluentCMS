@@ -1,0 +1,21 @@
+{
+  // Shared markdownlint settings for CI and editors.
+  "config": {
+    "default": true,
+    // Long lines are fine in prose and tables.
+    "MD013": false,
+    // Inline HTML is used for the README header.
+    "MD033": false,
+    // Files may start with a non-heading element (README) or an HTML comment.
+    "MD041": false
+  },
+  "ignores": [
+    "**/node_modules/**",
+    "**/bin/**",
+    "**/obj/**",
+    // Upstream Contributor Covenant text, kept verbatim.
+    "CODE_OF_CONDUCT.md",
+    // Product documents maintained outside the pull request flow.
+    "docs/requirements/**"
+  ]
+}

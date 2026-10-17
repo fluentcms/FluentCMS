@@ -1,6 +1,41 @@
-﻿################################################################################
-# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
-################################################################################
+# Build output
+bin/
+obj/
+out/
+artifacts/
 
-/.vs
-src/FluentCMS/temp
+# IDE and tooling state
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.swp
+*.DotSettings.user
+
+# Tests and coverage
+TestResults/
+*.trx
+coverage/
+*.coverage
+*.coveragexml
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+project.lock.json
+
+# Tailwind standalone binary cache and generated stylesheet
+.tailwind/
+**/wwwroot/css/app.generated.css
+
+# Local configuration and secrets
+.env
+.env.*
+*.pfx
+appsettings.*.local.json
+
+# Operating system
+.DS_Store
+Thumbs.db

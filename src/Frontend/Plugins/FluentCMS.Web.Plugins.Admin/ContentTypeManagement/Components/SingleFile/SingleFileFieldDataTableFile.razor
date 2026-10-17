@@ -1,7 +1,0 @@
-@inherits BaseFieldValueComponent<Guid?, SingleFileFieldModel>
-@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
-
-@if (FieldValue.Value != null)
-{
-    <Button Link target="_blank" Href="@FilePath">@FileName</Button>
-}

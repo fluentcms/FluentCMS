@@ -1,8 +1,0 @@
-@namespace FluentCMS.Web.Plugins
-
-@inherits ActionButton
-
-@if (Visible)
-{
-    <ActionButton IconName="IconName.Plus" Color="Color.Primary" Label="@(Label ?? "Create")" Href="@Href" @attributes="AdditionalAttributes" />
-}
