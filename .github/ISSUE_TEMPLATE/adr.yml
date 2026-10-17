@@ -1,0 +1,40 @@
+name: Architecture decision proposal
+description: Propose or challenge a technical decision
+labels: ["v2", "type:adr"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Technical decisions are recorded in `docs/adr/`. Read ADR-0001 for the process and check the index before proposing. Product decisions belong in `docs/requirements/00-decision-record.md` and are changed through a regular issue.
+  - type: input
+    id: related
+    attributes:
+      label: Related ADRs and requirement IDs
+      placeholder: ADR-0005, CNT-02, REL-01
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: The situation and constraints that make a decision necessary.
+    validations:
+      required: true
+  - type: textarea
+    id: decision
+    attributes:
+      label: Proposed decision
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Each with one line on why it loses.
+    validations:
+      required: true
+  - type: textarea
+    id: consequences
+    attributes:
+      label: Consequences
+      description: What becomes easier, what becomes harder, what it costs.
+    validations:
+      required: true

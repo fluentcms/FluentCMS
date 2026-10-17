@@ -1,8 +1,0 @@
-﻿@inherits BaseContentTypeFieldComponent
-
-@namespace FluentCMS.Web.Plugins.Admin.ContentTypeManagement
-
-@if (Visible)
-{
-    <DynamicComponent Type="FieldTypes.GetSettingType(ContentTypeField!.Type!)" Parameters="GetParameters()" />
-}

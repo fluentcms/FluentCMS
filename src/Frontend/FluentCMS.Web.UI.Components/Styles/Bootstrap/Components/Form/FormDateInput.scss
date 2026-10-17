@@ -1,5 +1,0 @@
-$prefix-form-date-input: $prefix + 'form-date-input';
-
-.#{$prefix-form-date-input} {
-    @extend .form-control;
-}
