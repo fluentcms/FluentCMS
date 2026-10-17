@@ -1,0 +1,14 @@
+@* The Invoker Commands API opens the native dialog modally without a round trip; admin.js fills in where a browser lacks it. *@
+<Button Variant="@Variant" Size="@Size" Class="@Class" commandfor="@Context.Id" command="show-modal" aria-haspopup="dialog" data-slot="dialog-trigger" @attributes="AdditionalAttributes">
+    @ChildContent
+</Button>
+
+@code {
+    [CascadingParameter] private DialogContext Context { get; set; } = null!;
+
+    [Parameter] public string Variant { get; set; } = "default";
+    [Parameter] public string Size { get; set; } = "default";
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+}

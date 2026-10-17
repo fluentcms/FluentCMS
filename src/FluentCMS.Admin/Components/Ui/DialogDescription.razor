@@ -1,0 +1,10 @@
+<p id="@Context.DescriptionId" data-slot="dialog-description" class="@ClassNames.Cn("text-sm text-muted-foreground", Class)">
+    @ChildContent
+</p>
+
+@code {
+    [CascadingParameter] private DialogContext Context { get; set; } = null!;
+
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

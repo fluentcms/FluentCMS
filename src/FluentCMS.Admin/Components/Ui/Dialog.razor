@@ -1,0 +1,10 @@
+@* Root of a dialog: supplies the ids that bind trigger, content, title and description together. *@
+<CascadingValue Value="_context" IsFixed="true">
+    @ChildContent
+</CascadingValue>
+
+@code {
+    private readonly DialogContext _context = new();
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

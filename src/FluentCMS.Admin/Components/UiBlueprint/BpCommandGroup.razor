@@ -1,0 +1,31 @@
+@if (Command.Visible.Any(item => item.Group == this))
+{
+    <div role="group" aria-labelledby="@(Heading is null ? null : _headingId)" data-slot="command-group" class="@ClassNames.Cn("overflow-hidden p-1 text-foreground", Class)">
+        @if (Heading is not null)
+        {
+            <div id="@_headingId" data-slot="command-group-heading" class="px-2 py-1.5 text-xs font-medium text-muted-foreground">@Heading</div>
+        }
+        <CascadingValue Value="this" IsFixed="true">
+            @ChildContent
+        </CascadingValue>
+    </div>
+}
+else
+{
+    @* Items must stay in the tree so they remain registered and keep filtering. *@
+    <div hidden>
+        <CascadingValue Value="this" IsFixed="true">
+            @ChildContent
+        </CascadingValue>
+    </div>
+}
+
+@code {
+    private readonly string _headingId = "bp-command-group-" + Guid.NewGuid().ToString("N")[..8];
+
+    [CascadingParameter] private BpCommand Command { get; set; } = null!;
+
+    [Parameter] public string? Heading { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

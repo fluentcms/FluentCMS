@@ -1,0 +1,8 @@
+<div data-slot="dialog-footer" class="@ClassNames.Cn("flex flex-col-reverse gap-2 sm:flex-row sm:justify-end", Class)">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

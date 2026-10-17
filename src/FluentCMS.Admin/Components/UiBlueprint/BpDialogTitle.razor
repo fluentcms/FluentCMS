@@ -1,0 +1,10 @@
+@using BlazorBlueprint.Primitives.Dialog
+
+<BbDialogTitle class="@ClassNames.Cn("text-lg leading-none font-semibold", Class)" data-slot="dialog-title">
+    @ChildContent
+</BbDialogTitle>
+
+@code {
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

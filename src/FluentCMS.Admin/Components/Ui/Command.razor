@@ -1,0 +1,14 @@
+@* A command palette in the cmdk shape: an input with role=combobox driving a listbox. Filtering and the active option stay in the browser (admin.js). *@
+<CascadingValue Value="_context" IsFixed="true">
+    <div data-ui="command" data-slot="command" class="@ClassNames.Cn("flex h-full w-full flex-col overflow-hidden rounded-md bg-popover text-popover-foreground", Class)" @attributes="AdditionalAttributes">
+        @ChildContent
+    </div>
+</CascadingValue>
+
+@code {
+    private readonly CommandContext _context = new();
+
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+}

@@ -1,0 +1,11 @@
+@using BlazorBlueprint.Primitives.Dialog
+
+@* Blueprint variant: BbDialog keeps the open state on the server and renders the content only while open. *@
+<BbDialog OnOpenChange="OnOpenChange">
+    @ChildContent
+</BbDialog>
+
+@code {
+    [Parameter] public EventCallback<bool> OnOpenChange { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

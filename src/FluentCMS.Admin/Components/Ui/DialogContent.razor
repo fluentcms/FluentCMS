@@ -1,0 +1,37 @@
+@inject IStringLocalizer<DialogContent> L
+
+@* A native modal dialog: the browser supplies the top layer, the backdrop, Escape and focus containment; admin.js wraps Tab and closes on a backdrop click. *@
+<dialog id="@Context.Id"
+        data-ui="dialog"
+        data-slot="dialog-content"
+        data-trap-focus
+        data-dismiss="@(CloseOnBackdropClick ? null : "false")"
+        aria-labelledby="@Context.TitleId"
+        aria-describedby="@Context.DescriptionId"
+        class="@ClassNames.Cn("relative m-auto open:grid w-full max-w-[calc(100%-2rem)] gap-4 rounded-lg border bg-background p-6 text-foreground shadow-lg outline-none sm:max-w-lg", Class)"
+        @onclose="OnClose"
+        @attributes="AdditionalAttributes">
+    @ChildContent
+    @if (ShowCloseButton)
+    {
+        <button type="button"
+                commandfor="@Context.Id"
+                command="close"
+                data-slot="dialog-close"
+                class="absolute top-4 end-4 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+            <span class="sr-only">@L["Close"]</span>
+        </button>
+    }
+</dialog>
+
+@code {
+    [CascadingParameter] private DialogContext Context { get; set; } = null!;
+
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public bool ShowCloseButton { get; set; } = true;
+    [Parameter] public bool CloseOnBackdropClick { get; set; } = true;
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+}

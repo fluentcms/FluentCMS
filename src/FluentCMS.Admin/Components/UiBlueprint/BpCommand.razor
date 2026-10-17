@@ -1,0 +1,135 @@
+@using BlazorBlueprint.Primitives.Services
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+@*
+    Blueprint's headless layer has no Command primitive, so this is the shape its styled BbCommand takes:
+    the query and the active option live on the server, every keystroke round-trips, and the library's JS
+    bundle is loaded through interop only to stop the arrow keys from scrolling the list.
+*@
+<CascadingValue Value="this" IsFixed="true">
+    <div data-slot="command" class="@ClassNames.Cn("flex h-full w-full flex-col overflow-hidden rounded-md bg-popover text-popover-foreground", Class)" @attributes="AdditionalAttributes">
+        <div data-slot="command-input-wrapper" class="flex h-9 items-center gap-2 border-b px-3">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4 shrink-0 opacity-50" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+            <input @ref="_input"
+                   type="text"
+                   role="combobox"
+                   aria-expanded="true"
+                   aria-controls="@ListId"
+                   aria-autocomplete="list"
+                   aria-activedescendant="@ActiveId"
+                   autocomplete="off"
+                   spellcheck="false"
+                   placeholder="@Placeholder"
+                   value="@Query"
+                   data-slot="command-input"
+                   class="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-hidden placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                   @oninput="HandleInput"
+                   @onkeydown="HandleKeyDown" />
+        </div>
+        <div id="@ListId" role="listbox" aria-label="@Label" data-slot="command-list" class="max-h-[300px] scroll-py-1 overflow-x-hidden overflow-y-auto">
+            @if (!Visible.Any())
+            {
+                <div data-slot="command-empty" class="py-6 text-center text-sm">@Empty</div>
+            }
+            @ChildContent
+        </div>
+    </div>
+</CascadingValue>
+
+@code {
+    private readonly List<BpCommandItem> _items = [];
+    private ElementReference _input;
+    private IJSObjectReference? _keyboardGuard;
+    private bool _renderQueued;
+
+    public string ListId { get; } = "bp-command-" + Guid.NewGuid().ToString("N")[..8];
+    public string Query { get; private set; } = string.Empty;
+    public int ActiveIndex { get; private set; }
+
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string? Empty { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    public IReadOnlyList<BpCommandItem> Visible => _items.Where(item => item.Matches(Query)).ToList();
+
+    public string? ActiveId => Visible.Where(item => !item.Disabled).ElementAtOrDefault(ActiveIndex)?.Id;
+
+    // Items register while the first render is in flight, so the list and the groups render once more to show them.
+    public void Register(BpCommandItem item)
+    {
+        _items.Add(item);
+        if (!_renderQueued)
+        {
+            _renderQueued = true;
+            _ = InvokeAsync(() =>
+            {
+                _renderQueued = false;
+                StateHasChanged();
+            });
+        }
+    }
+
+    public void Unregister(BpCommandItem item) => _items.Remove(item);
+
+    public bool IsActive(BpCommandItem item) => item.Id == ActiveId;
+
+    private void HandleInput(ChangeEventArgs args)
+    {
+        Query = args.Value?.ToString() ?? string.Empty;
+        ActiveIndex = 0;
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs args)
+    {
+        var enabled = Visible.Where(item => !item.Disabled).ToList();
+        if (enabled.Count == 0)
+        {
+            return;
+        }
+
+        switch (args.Key)
+        {
+            case "ArrowDown": ActiveIndex = (ActiveIndex + 1) % enabled.Count; break;
+            case "ArrowUp": ActiveIndex = (ActiveIndex - 1 + enabled.Count) % enabled.Count; break;
+            case "Home": ActiveIndex = 0; break;
+            case "End": ActiveIndex = enabled.Count - 1; break;
+            case "Enter": await enabled[Math.Min(ActiveIndex, enabled.Count - 1)].SelectAsync(); break;
+        }
+    }
+
+    public void Refresh() => StateHasChanged();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                var module = await PrimitiveModules.GetAsync(JS);
+                _keyboardGuard = await module.InvokeAsync<IJSObjectReference>("keyboardNav.setupKeyboardNav", _input, null);
+            }
+            catch (JSDisconnectedException)
+            {
+            }
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_keyboardGuard is not null)
+        {
+            try
+            {
+                await _keyboardGuard.InvokeVoidAsync("dispose");
+            }
+            catch (JSDisconnectedException)
+            {
+            }
+        }
+    }
+}

@@ -1,4 +1,5 @@
 using FluentCMS.Admin;
+using FluentCMS.Admin.Components;
 using FluentCMS.Api;
 using FluentCMS.Core;
 using FluentCMS.Core.Identity;
@@ -31,14 +32,20 @@ public static class FluentCmsHost
         var builder = WebApplication.CreateBuilder(args);
 
         ConfigureLogging(builder.Logging, logToStandardError: false);
-        AddFluentCms(builder.Services, builder.Configuration);
+        AddFluentCms(builder.Services, builder.Configuration, builder.Environment);
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddScoped<ICurrentInitiator, HttpContextInitiator>();
         builder.Services.AddHealthChecks();
+        builder.Services.AddLocalization();
+        builder.Services.AddRazorComponents().AddInteractiveServerComponents();
         configure?.Invoke(builder);
 
         var app = builder.Build();
+        app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
+        app.UseAntiforgery();
+        app.MapStaticAssets();
         app.MapHealthChecks("/health");
+        app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
         return app;
     }
 
@@ -47,7 +54,7 @@ public static class FluentCmsHost
         var builder = Microsoft.Extensions.Hosting.Host.CreateApplicationBuilder(args);
 
         ConfigureLogging(builder.Logging, logToStandardError: true);
-        AddFluentCms(builder.Services, builder.Configuration);
+        AddFluentCms(builder.Services, builder.Configuration, builder.Environment);
         builder.Services.AddSingleton(standardInput is null
             ? StandardInputSource.Console
             : new StandardInputSource(() => standardInput));
@@ -59,13 +66,13 @@ public static class FluentCmsHost
     }
 
     // One composition for both entry modes, so the stdio host opens the same database and runs the same services.
-    private static void AddFluentCms(IServiceCollection services, IConfiguration configuration)
+    private static void AddFluentCms(IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
     {
         services.AddFluentCmsCore();
         services.AddFluentCmsInfrastructure(configuration);
         services.AddFluentCmsMcp();
         services.AddFluentCmsApi();
-        services.AddFluentCmsAdmin();
+        services.AddFluentCmsAdmin(options => options.ShowcaseEnabled = environment.IsDevelopment());
 
         services.Configure<JobQueueOptions>(configuration.GetSection(JobQueueOptions.SectionName));
         services.AddHostedService<JobQueueWorker>();

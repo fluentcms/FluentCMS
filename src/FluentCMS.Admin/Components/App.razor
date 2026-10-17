@@ -1,0 +1,36 @@
+@inject NavigationManager Navigation
+
+<!DOCTYPE html>
+<html lang="en" dir="@Direction" class="@ThemeClass">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <link rel="stylesheet" href="@Assets["_content/FluentCMS.Admin/css/app.generated.css"]" />
+    @* Spike only (ADR-0011): the Blazor Blueprint variant on /ui-spike. Removed with the losing variant. *@
+    <link rel="stylesheet" href="@Assets["_content/BlazorBlueprint.Primitives/css/primitives.css"]" />
+    <HeadOutlet />
+</head>
+
+<body class="font-sans antialiased">
+    <Routes />
+    <script type="module" src="@Assets["_content/FluentCMS.Admin/js/admin.js"]"></script>
+    <script src="@Assets["_framework/blazor.web.js"]"></script>
+</body>
+
+</html>
+
+@code {
+    // The root element carries the direction and the theme. Until the shell stores a preference,
+    // both come from the query string so the spike and the showcase can switch them: ?dir=rtl&theme=dark.
+    private string Direction => Query("dir") == "rtl" ? "rtl" : "ltr";
+
+    private string ThemeClass => Query("theme") == "dark" ? "dark" : "";
+
+    private string? Query(string name)
+    {
+        var query = System.Web.HttpUtility.ParseQueryString(Navigation.ToAbsoluteUri(Navigation.Uri).Query);
+        return query[name];
+    }
+}

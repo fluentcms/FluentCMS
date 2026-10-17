@@ -1,0 +1,15 @@
+<div role="group" aria-labelledby="@(Heading is null ? null : _headingId)" data-ui="command-group" data-slot="command-group" class="@ClassNames.Cn("overflow-hidden p-1 text-foreground", Class)">
+    @if (Heading is not null)
+    {
+        <div id="@_headingId" data-slot="command-group-heading" class="px-2 py-1.5 text-xs font-medium text-muted-foreground">@Heading</div>
+    }
+    @ChildContent
+</div>
+
+@code {
+    private readonly string _headingId = "command-group-" + Guid.NewGuid().ToString("N")[..8];
+
+    [Parameter] public string? Heading { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

@@ -1,0 +1,20 @@
+@* A popover with role=menu: light dismiss and Escape are native; admin.js adds the roving tab index. *@
+<div id="@Context.Id"
+     popover="auto"
+     role="menu"
+     tabindex="-1"
+     aria-labelledby="@Context.TriggerId"
+     data-ui="menu"
+     data-slot="dropdown-menu-content"
+     class="@ClassNames.Cn("z-50 min-w-[8rem] overflow-x-hidden overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md", Class)"
+     @attributes="AdditionalAttributes">
+    @ChildContent
+</div>
+
+@code {
+    [CascadingParameter] private DropdownMenuContext Context { get; set; } = null!;
+
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+}

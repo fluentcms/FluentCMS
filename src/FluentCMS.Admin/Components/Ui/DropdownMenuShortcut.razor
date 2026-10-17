@@ -1,0 +1,8 @@
+<span data-slot="dropdown-menu-shortcut" class="@ClassNames.Cn("ms-auto text-xs tracking-widest text-muted-foreground", Class)">
+    @ChildContent
+</span>
+
+@code {
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

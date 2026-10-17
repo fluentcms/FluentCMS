@@ -1,0 +1,13 @@
+@using BlazorBlueprint.Primitives.DropdownMenu
+
+<BbDropdownMenuTrigger class="@ButtonVariants.Classes(Variant, Size, Class)" data-slot="dropdown-menu-trigger" @attributes="AdditionalAttributes">
+    @ChildContent
+</BbDropdownMenuTrigger>
+
+@code {
+    [Parameter] public string Variant { get; set; } = "outline";
+    [Parameter] public string Size { get; set; } = "default";
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+}

@@ -1,0 +1,19 @@
+@inherits LayoutComponentBase
+@inject IStringLocalizer<MainLayout> L
+
+<div class="flex min-h-screen flex-col">
+    <header class="border-b">
+        <nav class="mx-auto flex h-14 max-w-6xl items-center gap-6 px-4" aria-label="@L["Main"]">
+            <a href="" class="font-semibold">FluentCMS</a>
+        </nav>
+    </header>
+    <main class="mx-auto w-full max-w-6xl flex-1 px-4 py-6">
+        @Body
+    </main>
+</div>
+
+<div id="blazor-error-ui" class="fixed inset-x-0 bottom-0 z-50 hidden border-t bg-destructive p-4 text-white" data-nosnippet>
+    @L["An unhandled error has occurred."]
+    <a href="." class="reload underline">@L["Reload"]</a>
+    <button type="button" class="dismiss ms-4">@L["Dismiss"]</button>
+</div>
