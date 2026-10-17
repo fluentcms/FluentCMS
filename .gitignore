@@ -13,6 +13,11 @@ artifacts/
 *.swp
 *.DotSettings.user
 
+# Local SQLite databases
+*.db
+*.db-shm
+*.db-wal
+
 # Tests and coverage
 TestResults/
 *.trx

@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <AssemblyName>fluentcms</AssemblyName>
+    <RootNamespace>FluentCMS.Host</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FluentCMS.Admin\FluentCMS.Admin.csproj" />
+    <ProjectReference Include="..\FluentCMS.Api\FluentCMS.Api.csproj" />
+    <ProjectReference Include="..\FluentCMS.Core\FluentCMS.Core.csproj" />
+    <ProjectReference Include="..\FluentCMS.Infrastructure\FluentCMS.Infrastructure.csproj" />
+    <ProjectReference Include="..\FluentCMS.Mcp\FluentCMS.Mcp.csproj" />
+  </ItemGroup>
+
+</Project>
