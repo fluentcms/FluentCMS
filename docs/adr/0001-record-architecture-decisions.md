@@ -1,6 +1,6 @@
 # ADR-0001: Record architecture decisions
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-10-16
 - Related: `docs/requirements/00-decision-record.md` (product decisions D01 to D27)
 

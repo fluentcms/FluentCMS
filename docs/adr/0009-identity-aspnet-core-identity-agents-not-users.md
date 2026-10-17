@@ -1,6 +1,6 @@
 # ADR-0009: Human sign-in with ASP.NET Core Identity; agents are not users
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-10-16
 - Related: USR-01 to USR-03, SEC-01, SEC-07, D23, P8, P10
 

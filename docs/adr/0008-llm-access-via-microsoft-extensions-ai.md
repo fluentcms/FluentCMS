@@ -1,6 +1,6 @@
 # ADR-0008: Model access through Microsoft.Extensions.AI behind one internal gateway
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-10-16
 - Related: MDL-01 to MDL-04, SEC-03, SEC-04, SEC-05, CHK-05, AUD-04, RUL-04, RTE-02, P6
 

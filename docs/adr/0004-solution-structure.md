@@ -1,6 +1,6 @@
 # ADR-0004: Solution structure
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-10-16
 - Related: P1, P9, OPS-01, EXT-01, EXT-02, EXT-N1, MCP-04, UX-03
 

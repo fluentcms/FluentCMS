@@ -1,6 +1,6 @@
 # ADR-0003: Repository layout and branching
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-10-16
 - Related: D01, LIC-02
 

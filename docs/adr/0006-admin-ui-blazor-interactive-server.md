@@ -1,6 +1,6 @@
 # ADR-0006: Admin UI with Blazor interactive server rendering
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-10-16
 - Related: P1, D11, DSK-01 to DSK-05, FRM-01 to FRM-03, UX-02, UX-04, I18-N1, I18-N2, PERF-04
 

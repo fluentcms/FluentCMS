@@ -46,7 +46,7 @@ Delivery is headless: frontends read a delivery API. There is no built-in render
 ## Community
 
 - [Discord](https://discord.gg/WyqYuC6YbY)
-- [Issues](https://github.com/FluentCMS/fluentcms/issues): the pinned announcement explains the move to v2 and how to get involved.
+- [Announcement](https://github.com/FluentCMS/fluentcms/issues/2414): what v2 is, why the restart, and how to get involved.
 
 ## License
 
