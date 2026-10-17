@@ -64,6 +64,12 @@ dotnet ef migrations add <Name> --project src/FluentCMS.Infrastructure --context
 
 Migrations apply automatically when the host starts. Every migration needs a working `Down`, since upgrades must be reversible one version back (OPS-04).
 
+## Units of work and the audit log
+
+Every operation that changes data runs inside a unit of work and appends the audit event that describes it from inside the same scope, so the two commit together or not at all (AUD-N1, ADR-0005). `IUnitOfWork.BeginAsync()` returns a scope; `CommitAsync()` saves and commits, and disposing a scope without committing rolls everything back, including saves that Identity makes on its own inside it. Inner scopes join the outer transaction, and an inner scope disposed without committing makes the outer commit fail. `IAuditLog.AppendAsync(new NewAuditEvent("entry.updated") { ... })` stamps the current initiator and time itself, and throws outside a unit of work or when no initiator is known, so a change without provenance cannot exist.
+
+Nothing in the code updates or deletes an audit row. On PostgreSQL the `AuditEvents` migration also revokes `UPDATE`, `DELETE` and `TRUNCATE` from `PUBLIC` and from the role that applies it, which owns the table. A superuser bypasses privilege checks, so run the host, which applies migrations at startup, as an ordinary role that owns the database. SQLite has no roles; there the code is the guarantee.
+
 ## Extension points
 
 Every pluggable part of the product is an interface in `FluentCMS.Core` marked `[ExtensionPoint]`. Implementations register through dependency injection, either explicitly with `AddFluentCmsExtension<TContract, TImplementation>()` or by discovery with `AddFluentCmsExtensions(assembly)`, which picks up every concrete class implementing an extension-point interface in that assembly. Both paths produce the same `IExtensionCatalog` entry and the same `IEnumerable<TContract>` resolution, so built-ins under `FluentCMS.Core.Builtin` and future plugins look identical to the rest of the product. Each interface is documented where it is defined, together with the conformance tests an implementation must pass.
