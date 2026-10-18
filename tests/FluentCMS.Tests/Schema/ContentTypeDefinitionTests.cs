@@ -124,13 +124,13 @@ public sealed class ContentTypeDefinitionTests : IDisposable
         Assert.All(result.Errors, error => Assert.Equal(SchemaErrorCodes.DefinitionMalformed, error.Code));
         Assert.Equal(
         [
-            "$.version is not part of a definition; it has 'entity' and 'fields'.",
+            "$.version is not part of a definition; it has 'entity', 'description' and 'fields'.",
             "$.fields[0].type must be a string.",
             "$.fields[1].name is missing.",
             "$.fields[2] must be an object.",
             "$.fields[3].required must be true or false.",
             "$.fields[3].settings must be an object.",
-            "$.fields[3].label is not part of a field; a field has name, type, required and settings.",
+            "$.fields[3].label is not part of a field; a field has name, type, required, description and settings.",
             "$.fields[4].name must be a string.",
             "$.fields[4].type is missing.",
         ],
@@ -221,7 +221,7 @@ public sealed class ContentTypeDefinitionTests : IDisposable
         var result = ContentTypeDefinition.Parse("""{"entity": true, "fields": [{"name": "price", "type": "number", "fact": false}]}""");
 
         Assert.Equal(
-            "$.fields[0].fact is not part of a field; a field has name, type, required and settings.",
+            "$.fields[0].fact is not part of a field; a field has name, type, required, description and settings.",
             Assert.Single(result.Errors).Message);
     }
 
@@ -242,6 +242,50 @@ public sealed class ContentTypeDefinitionTests : IDisposable
                 new FieldReference("prices", new ReferenceTarget("product", "price")),
             ],
             definition.References(FieldTypes));
+    }
+
+    [Fact]
+    public void Descriptions_are_written_and_read_back()
+    {
+        var definition = new ContentTypeDefinition(
+            [new FieldDefinition("price", "number", description: "The list price, before discounts.")],
+            description: "A sellable item.");
+
+        var json = definition.ToJson();
+        var readBack = ContentTypeDefinition.Parse(json).Value;
+
+        Assert.Equal(
+            """{"entity":false,"description":"A sellable item.","fields":[{"name":"price","type":"number","required":false,"description":"The list price, before discounts.","settings":{}}]}""",
+            json);
+        Assert.Equal("A sellable item.", readBack.Description);
+        Assert.Equal("The list price, before discounts.", Assert.Single(readBack.Fields).Description);
+        Assert.Null(ContentTypeDefinition.Parse("""{"description": null, "fields": [{"name": "a", "type": "text", "description": null}]}""").Value.Description);
+    }
+
+    [Fact]
+    public void A_description_is_a_string()
+    {
+        var result = ContentTypeDefinition.Parse("""{"description": 5, "fields": [{"name": "a", "type": "text", "description": true}]}""");
+
+        Assert.Equal(["$.description must be a string.", "$.fields[0].description must be a string."], result.Errors.Select(error => error.Message));
+    }
+
+    [Fact]
+    public void A_blank_or_too_long_description_is_rejected()
+    {
+        var definition = new ContentTypeDefinition(
+            [new FieldDefinition("price", "number", description: new string('a', ContentTypeDefinition.MaxDescriptionLength + 1))],
+            description: "  ");
+
+        var result = definition.Validate(FieldTypes);
+
+        Assert.Equal(
+            [
+                "The type's description must not be blank and must be at most 1000 characters; leave it out instead.",
+                "Field 'price': the description must not be blank and must be at most 1000 characters; leave it out instead.",
+            ],
+            result.Errors.Select(error => error.Message));
+        Assert.All(result.Errors, error => Assert.Equal(SchemaErrorCodes.DescriptionInvalid, error.Code));
     }
 
     [Fact]

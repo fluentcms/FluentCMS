@@ -16,5 +16,6 @@ public sealed class FactMetadataTests
     public void A_source_is_a_url_a_file_a_person_or_a_system()
     {
         Assert.Equal(["url", "file", "person", "system"], FactMetadata.SourceKinds);
+        Assert.Equal(("kind", "reference"), (FactMetadata.SourceKind, FactMetadata.SourceReference));
     }
 }

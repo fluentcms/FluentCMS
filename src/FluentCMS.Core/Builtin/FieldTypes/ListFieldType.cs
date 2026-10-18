@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using FluentCMS.Core.Results;
 using FluentCMS.Core.Schema;
 
@@ -28,6 +29,19 @@ internal sealed class ListFieldType : IFieldType
         }
 
         return reader.Errors();
+    }
+
+    public FieldValueDescription DescribeValue(JsonElement settings, FieldTypeRegistry fieldTypes)
+    {
+        var itemSettings = settings.TryGetProperty("itemSettings", out var value) && value.ValueKind == JsonValueKind.Object
+            ? value
+            : FieldDefinition.EmptySettings;
+        var item = fieldTypes.DescribeValue(settings.GetProperty("itemType").GetString()!, itemSettings);
+
+        return new FieldValueDescription(
+            new JsonObject { ["type"] = "array", ["items"] = item.Schema },
+            new JsonArray(item.Example),
+            $"A list of values. Each one: {item.Description}");
     }
 
     public IReadOnlyList<ReferenceTarget> ReferenceTargets(JsonElement settings, FieldTypeRegistry fieldTypes)

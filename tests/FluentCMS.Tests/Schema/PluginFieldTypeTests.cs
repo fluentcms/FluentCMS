@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using FluentCMS.Core;
 using FluentCMS.Core.Extensions;
 using FluentCMS.Core.Results;
@@ -92,6 +93,16 @@ public sealed class RatingFieldType : IFieldType
 
         return reader.Errors();
     }
+
+    public FieldValueDescription DescribeValue(JsonElement settings, FieldTypeRegistry fieldTypes)
+    {
+        var stars = new FieldSettingsReader(Name, settings).PositiveInteger("stars") ?? 5;
+
+        return new FieldValueDescription(
+            new JsonObject { ["type"] = "integer", ["minimum"] = 1, ["maximum"] = stars },
+            stars,
+            $"A rating from 1 to {stars} stars.");
+    }
 }
 
 public sealed class LinkFieldTypeTests : FieldTypeConformanceTests
@@ -142,5 +153,13 @@ public sealed class LinkFieldType : IFieldType
     public IReadOnlyList<ReferenceTarget> ReferenceTargets(JsonElement settings, FieldTypeRegistry fieldTypes)
     {
         return [new ReferenceTarget(settings.GetProperty("to").GetString()!)];
+    }
+
+    public FieldValueDescription DescribeValue(JsonElement settings, FieldTypeRegistry fieldTypes)
+    {
+        return new FieldValueDescription(
+            new JsonObject { ["type"] = "string", ["format"] = "uuid" },
+            FieldValueDescription.ExampleId,
+            $"The id of an entry of '{settings.GetProperty("to").GetString()}' to see as well.");
     }
 }

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using FluentCMS.Core.Results;
 using FluentCMS.Core.Schema;
 
@@ -12,5 +13,10 @@ internal sealed class JsonFieldType : IFieldType
     public IReadOnlyList<Error> ValidateSettings(JsonElement settings, FieldTypeRegistry fieldTypes)
     {
         return new FieldSettingsReader(Name, settings).Errors();
+    }
+
+    public FieldValueDescription DescribeValue(JsonElement settings, FieldTypeRegistry fieldTypes)
+    {
+        return new FieldValueDescription(new JsonObject(), new JsonObject { ["key"] = "value" }, "Any JSON value.");
     }
 }

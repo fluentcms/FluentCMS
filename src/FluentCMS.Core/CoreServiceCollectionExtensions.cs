@@ -19,6 +19,9 @@ public static class CoreServiceCollectionExtensions
         // Reads through IAuditReader, which Infrastructure provides.
         services.AddScoped<IAuditExporter, AuditExporter>();
 
+        // Reads through IContentTypeDirectory, which Infrastructure provides.
+        services.AddScoped<ISchemaDocuments, SchemaDocuments>();
+
         return services;
     }
 }

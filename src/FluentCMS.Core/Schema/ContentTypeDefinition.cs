@@ -6,17 +6,20 @@ using FluentCMS.Core.Results;
 namespace FluentCMS.Core.Schema;
 
 // The fields of one content type version, stored as one JSON document (SCH-01, ADR-0005):
-// {"entity":true,"fields":[{"name":"price","type":"number","required":true,"settings":{"min":0}}]}
+// {"entity":true,"description":"...","fields":[{"name":"price","type":"number","required":true,"description":"...","settings":{"min":0}}]}
 public sealed class ContentTypeDefinition
 {
+    public const int MaxDescriptionLength = 1000;
+
     private static readonly JsonDocumentOptions ParseOptions = new() { AllowDuplicateProperties = false };
 
-    public ContentTypeDefinition(IEnumerable<FieldDefinition> fields, bool isEntity = false)
+    public ContentTypeDefinition(IEnumerable<FieldDefinition> fields, bool isEntity = false, string? description = null)
     {
         ArgumentNullException.ThrowIfNull(fields);
 
         Fields = fields.ToList();
         IsEntity = isEntity;
+        Description = description;
         if (Fields.Any(field => field is null))
         {
             throw new ArgumentException("A definition cannot contain a null field.", nameof(fields));
@@ -27,6 +30,9 @@ public sealed class ContentTypeDefinition
 
     // An entity type is a fact source: every one of its fields carries FactMetadata next to its value (SCH-03).
     public bool IsEntity { get; }
+
+    // What the type is for, in the author's words; the schema document shows it to agents (SCH-06).
+    public string? Description { get; }
 
     // Checks the shape of the document only; what the names, types and settings mean is checked by Validate.
     public static Result<ContentTypeDefinition> Parse(string json)
@@ -46,10 +52,10 @@ public sealed class ContentTypeDefinition
         using (document)
         {
             var errors = new List<Error>();
-            var (fields, isEntity) = ReadDocument(document.RootElement, errors);
+            var (fields, isEntity, description) = ReadDocument(document.RootElement, errors);
 
             return errors.Count == 0
-                ? Result<ContentTypeDefinition>.Success(new ContentTypeDefinition(fields, isEntity))
+                ? Result<ContentTypeDefinition>.Success(new ContentTypeDefinition(fields, isEntity, description))
                 : Result<ContentTypeDefinition>.Failure(errors);
         }
     }
@@ -61,6 +67,7 @@ public sealed class ContentTypeDefinition
         {
             writer.WriteStartObject();
             writer.WriteBoolean("entity", IsEntity);
+            WriteDescription(writer, Description);
             writer.WriteStartArray("fields");
 
             foreach (var field in Fields)
@@ -69,6 +76,7 @@ public sealed class ContentTypeDefinition
                 writer.WriteString("name", field.Name);
                 writer.WriteString("type", field.Type);
                 writer.WriteBoolean("required", field.Required);
+                WriteDescription(writer, field.Description);
                 writer.WritePropertyName("settings");
                 field.Settings.WriteTo(writer);
                 writer.WriteEndObject();
@@ -89,6 +97,11 @@ public sealed class ContentTypeDefinition
         var errors = new List<Error>();
         var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
+        if (!IsValidDescription(Description))
+        {
+            errors.Add(DescriptionInvalid("The type's description"));
+        }
+
         for (var index = 0; index < Fields.Count; index++)
         {
             var field = Fields[index];
@@ -107,6 +120,11 @@ public sealed class ContentTypeDefinition
                 errors.Add(new Error(
                     SchemaErrorCodes.FieldNameDuplicate,
                     $"{label}: another field already has this name; field names are compared ignoring case."));
+            }
+
+            if (!IsValidDescription(field.Description))
+            {
+                errors.Add(DescriptionInvalid($"{label}: the description"));
             }
 
             errors.AddRange(fieldTypes.ValidateSettings(field.Type, field.Settings)
@@ -133,15 +151,16 @@ public sealed class ContentTypeDefinition
     }
 
     // A document without 'entity' is a plain content type, as every definition stored before the flag existed.
-    private static (List<FieldDefinition> Fields, bool IsEntity) ReadDocument(JsonElement root, List<Error> errors)
+    private static (List<FieldDefinition> Fields, bool IsEntity, string? Description) ReadDocument(JsonElement root, List<Error> errors)
     {
         var fields = new List<FieldDefinition>();
         var isEntity = false;
+        string? description = null;
 
         if (root.ValueKind != JsonValueKind.Object)
         {
             errors.Add(Malformed("$ must be an object with a 'fields' array."));
-            return (fields, isEntity);
+            return (fields, isEntity, description);
         }
 
         foreach (var property in root.EnumerateObject())
@@ -156,8 +175,11 @@ public sealed class ContentTypeDefinition
                 case "entity":
                     errors.Add(Malformed("$.entity must be true or false."));
                     break;
+                case "description":
+                    description = ReadDescription(property.Value, "$.description", errors);
+                    break;
                 default:
-                    errors.Add(Malformed($"$.{property.Name} is not part of a definition; it has 'entity' and 'fields'."));
+                    errors.Add(Malformed($"$.{property.Name} is not part of a definition; it has 'entity', 'description' and 'fields'."));
                     break;
             }
         }
@@ -165,7 +187,7 @@ public sealed class ContentTypeDefinition
         if (!root.TryGetProperty("fields", out var array) || array.ValueKind != JsonValueKind.Array)
         {
             errors.Add(Malformed("$.fields must be an array."));
-            return (fields, isEntity);
+            return (fields, isEntity, description);
         }
 
         var index = 0;
@@ -177,7 +199,7 @@ public sealed class ContentTypeDefinition
             }
         }
 
-        return (fields, isEntity);
+        return (fields, isEntity, description);
     }
 
     private static FieldDefinition? ReadField(JsonElement element, string path, List<Error> errors)
@@ -192,6 +214,7 @@ public sealed class ContentTypeDefinition
         string? name = null;
         string? type = null;
         var required = false;
+        string? description = null;
         JsonElement? settings = null;
 
         foreach (var property in element.EnumerateObject())
@@ -211,6 +234,9 @@ public sealed class ContentTypeDefinition
                 case "settings" when value.ValueKind == JsonValueKind.Object:
                     settings = value;
                     break;
+                case "description":
+                    description = ReadDescription(value, $"{path}.description", errors);
+                    break;
                 case "name" or "type":
                     errors.Add(Malformed($"{path}.{property.Name} must be a string."));
                     break;
@@ -221,7 +247,7 @@ public sealed class ContentTypeDefinition
                     errors.Add(Malformed($"{path}.settings must be an object."));
                     break;
                 default:
-                    errors.Add(Malformed($"{path}.{property.Name} is not part of a field; a field has name, type, required and settings."));
+                    errors.Add(Malformed($"{path}.{property.Name} is not part of a field; a field has name, type, required, description and settings."));
                     break;
             }
         }
@@ -236,7 +262,42 @@ public sealed class ContentTypeDefinition
             errors.Add(Malformed($"{path}.type is missing."));
         }
 
-        return errors.Count == count ? new FieldDefinition(name!, type!, required, settings) : null;
+        return errors.Count == count ? new FieldDefinition(name!, type!, required, settings, description) : null;
+    }
+
+    // An explicit null reads as no description.
+    private static string? ReadDescription(JsonElement value, string path, List<Error> errors)
+    {
+        switch (value.ValueKind)
+        {
+            case JsonValueKind.String:
+                return value.GetString();
+            case JsonValueKind.Null:
+                return null;
+            default:
+                errors.Add(Malformed($"{path} must be a string."));
+                return null;
+        }
+    }
+
+    private static void WriteDescription(Utf8JsonWriter writer, string? description)
+    {
+        if (description is not null)
+        {
+            writer.WriteString("description", description);
+        }
+    }
+
+    private static bool IsValidDescription(string? description)
+    {
+        return description is null || (!string.IsNullOrWhiteSpace(description) && description.Length <= MaxDescriptionLength);
+    }
+
+    private static Error DescriptionInvalid(string subject)
+    {
+        return new Error(
+            SchemaErrorCodes.DescriptionInvalid,
+            $"{subject} must not be blank and must be at most {MaxDescriptionLength} characters; leave it out instead.");
     }
 
     private static Error Malformed(string message)
