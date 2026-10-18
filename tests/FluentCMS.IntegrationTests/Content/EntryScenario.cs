@@ -58,7 +58,7 @@ internal sealed class EntryScenario : IAsyncDisposable
     {
         return await Schema.QueryAsync(context => context.AuditEvents
             .AsNoTracking()
-            .Where(row => row.SubjectType == "entry")
+            .Where(row => row.SubjectType == "entry" || row.SubjectType == "entity")
             .OrderBy(row => row.Id)
             .ToListAsync());
     }

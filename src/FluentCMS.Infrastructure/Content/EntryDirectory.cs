@@ -22,8 +22,6 @@ internal sealed class EntryDirectory(
     TimeProvider clock,
     IOptions<ContentOptions> options) : IEntryDirectory
 {
-    private const string SubjectType = "entry";
-
     // Until multi-site (MST-01), every entry belongs to the one site (SCH-07).
     private static readonly Guid SiteId = Site.Default.Id;
 
@@ -136,7 +134,8 @@ internal sealed class EntryDirectory(
         });
         context.EntryVersions.Add(VersionRow(stored.Latest));
         context.EntryReferences.AddRange(ReferenceRows(stored.Latest, references));
-        await auditLog.AppendAsync(new NewAuditEvent("entry.created") { SubjectType = SubjectType, SubjectId = stored.Id }, cancellationToken);
+        var subject = Subject(type.Value.Definition);
+        await auditLog.AppendAsync(new NewAuditEvent($"{subject}.created") { SubjectType = subject, SubjectId = stored.Id }, cancellationToken);
 
         // A new id conflicts with nothing, so no unique index can turn this commit into an expected failure.
         await scope.CommitAsync(cancellationToken);
@@ -193,8 +192,9 @@ internal sealed class EntryDirectory(
 
         context.EntryVersions.Add(VersionRow(entry.Latest));
         context.EntryReferences.AddRange(ReferenceRows(entry.Latest, references));
+        var subject = Subject(type.Value.Definition);
         await auditLog.AppendAsync(
-            new NewAuditEvent("entry.updated") { SubjectType = SubjectType, SubjectId = id, PreviousVersionId = baseRow.Id },
+            new NewAuditEvent($"{subject}.updated") { SubjectType = subject, SubjectId = id, PreviousVersionId = baseRow.Id },
             cancellationToken);
 
         return await CommitAsync(scope, entry, VersionConflict(id, baseVersion), cancellationToken);
@@ -215,6 +215,7 @@ internal sealed class EntryDirectory(
 
         var latest = await VersionRowAsync(id, baseVersion, cancellationToken)
             ?? throw new InvalidOperationException($"Entry {id} points at version {baseVersion}, which is not stored.");
+        var subject = await SubjectAsync(stored.ContentType, cancellationToken);
 
         await using var scope = await unitOfWork.BeginAsync(cancellationToken);
 
@@ -229,7 +230,7 @@ internal sealed class EntryDirectory(
         }
 
         await auditLog.AppendAsync(
-            new NewAuditEvent("entry.deleted") { SubjectType = SubjectType, SubjectId = id, PreviousVersionId = latest.Id },
+            new NewAuditEvent($"{subject}.deleted") { SubjectType = subject, SubjectId = id, PreviousVersionId = latest.Id },
             cancellationToken);
         await scope.CommitAsync(cancellationToken);
 
@@ -259,6 +260,7 @@ internal sealed class EntryDirectory(
 
         var latest = await VersionRowAsync(id, stored.Row.LatestVersion, cancellationToken)
             ?? throw new InvalidOperationException($"Entry {id} points at version {stored.Row.LatestVersion}, which is not stored.");
+        var subject = await SubjectAsync(stored.ContentType, cancellationToken);
 
         await using var scope = await unitOfWork.BeginAsync(cancellationToken);
 
@@ -271,7 +273,7 @@ internal sealed class EntryDirectory(
             return Result<Entry>.Failure([EntryNotDeleted(id)]);
         }
 
-        await auditLog.AppendAsync(new NewAuditEvent("entry.restored") { SubjectType = SubjectType, SubjectId = id }, cancellationToken);
+        await auditLog.AppendAsync(new NewAuditEvent($"{subject}.restored") { SubjectType = subject, SubjectId = id }, cancellationToken);
         await scope.CommitAsync(cancellationToken);
 
         return Result<Entry>.Success(ToEntry(stored, latest));
@@ -343,6 +345,18 @@ internal sealed class EntryDirectory(
         }
 
         return errors;
+    }
+
+    // Types are never deleted, so the type of a stored entry is always there.
+    private async Task<string> SubjectAsync(string contentType, CancellationToken cancellationToken)
+    {
+        return Subject((await contentTypes.GetAsync(contentType, cancellationToken)).Value.Definition);
+    }
+
+    // An entity's events name it as an entity, as change set events do, so its history is one subject (AUD-01).
+    private static string Subject(ContentTypeDefinition definition)
+    {
+        return definition.IsEntity ? "entity" : "entry";
     }
 
     private Task<EntryVersionRow?> VersionRowAsync(Guid id, int version, CancellationToken cancellationToken)
