@@ -1,4 +1,6 @@
+using FluentCMS.Core.Audit;
 using FluentCMS.Core.Identity;
+using FluentCMS.Core.Persistence;
 using FluentCMS.Core.Results;
 using FluentCMS.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
@@ -9,10 +11,12 @@ namespace FluentCMS.Infrastructure.Identity;
 internal sealed class UserDirectory(
     UserManager<FluentCmsUser> users,
     RoleManager<FluentCmsRole> roles,
+    IUnitOfWork unitOfWork,
+    IAuditLog auditLog,
+    ICurrentInitiator currentInitiator,
     TimeProvider clock) : IUserDirectory
 {
-    // Identity has no "disabled" flag; a lockout with no end is the standard way to switch an account off.
-    private static readonly DateTimeOffset NoEnd = new(9999, 1, 1, 0, 0, 0, TimeSpan.Zero);
+    private const string SubjectType = "user";
 
     public async Task<IReadOnlyList<UserSummary>> ListAsync(CancellationToken cancellationToken = default)
     {
@@ -25,7 +29,7 @@ internal sealed class UserDirectory(
                 user.Id,
                 user.Email ?? string.Empty,
                 user.DisplayName,
-                IsDisabled(user),
+                Accounts.IsDisabled(user),
                 (await users.GetRolesAsync(user)).ToList()));
         }
 
@@ -34,57 +38,80 @@ internal sealed class UserDirectory(
 
     public async Task<Result<Guid>> CreateAsync(NewUser newUser, CancellationToken cancellationToken = default)
     {
-        var user = new FluentCmsUser
-        {
-            Id = Guid.NewGuid(),
-            UserName = newUser.Email,
-            Email = newUser.Email,
-            DisplayName = newUser.DisplayName,
-            CreatedAt = clock.GetUtcNow(),
-        };
+        await using var scope = await unitOfWork.BeginAsync(cancellationToken);
 
-        var created = await users.CreateAsync(user, newUser.Password);
-        if (!created.Succeeded)
+        var created = await Accounts.CreateAdministratorAsync(users, roles, clock, newUser);
+        if (!created.IsSuccess)
         {
-            return Result<Guid>.Failure(ToErrors(created));
+            return created;
         }
 
-        if (!await roles.RoleExistsAsync(FluentCmsRoles.Administrator))
-        {
-            await roles.CreateAsync(new FluentCmsRole { Id = Guid.NewGuid(), Name = FluentCmsRoles.Administrator });
-        }
-
-        var assigned = await users.AddToRoleAsync(user, FluentCmsRoles.Administrator);
-        return assigned.Succeeded
-            ? Result<Guid>.Success(user.Id)
-            : Result<Guid>.Failure(ToErrors(assigned));
+        await auditLog.AppendAsync(new NewAuditEvent("user.created") { SubjectType = SubjectType, SubjectId = created.Value }, cancellationToken);
+        await scope.CommitAsync(cancellationToken);
+        return created;
     }
 
     public async Task<Result> DisableAsync(Guid userId, CancellationToken cancellationToken = default)
     {
+        if (currentInitiator.Current is UserInitiator self && self.UserId == userId)
+        {
+            return Result.Failure(UserErrorCodes.CannotDisableSelf, "You cannot disable your own account.");
+        }
+
+        return await ChangeAsync(userId, "user.disabled", async user =>
+        {
+            var result = await users.SetLockoutEnabledAsync(user, true);
+            if (result.Succeeded)
+            {
+                result = await users.SetLockoutEndDateAsync(user, Accounts.NoEnd);
+            }
+
+            // A new security stamp invalidates the cookies already issued once they are next validated.
+            if (result.Succeeded)
+            {
+                result = await users.UpdateSecurityStampAsync(user);
+            }
+
+            return result;
+        }, cancellationToken);
+    }
+
+    public async Task<Result> EnableAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        return await ChangeAsync(userId, "user.enabled", async user =>
+        {
+            var result = await users.SetLockoutEndDateAsync(user, null);
+            if (result.Succeeded)
+            {
+                result = await users.ResetAccessFailedCountAsync(user);
+            }
+
+            return result;
+        }, cancellationToken);
+    }
+
+    private async Task<Result> ChangeAsync(
+        Guid userId,
+        string operation,
+        Func<FluentCmsUser, Task<IdentityResult>> change,
+        CancellationToken cancellationToken)
+    {
         var user = await users.FindByIdAsync(userId.ToString());
         if (user is null)
         {
-            return Result.Failure("user_not_found", $"No user has the id {userId}.");
+            return Result.Failure(UserErrorCodes.UserNotFound, $"No user has the id {userId}.");
         }
 
-        var enabled = await users.SetLockoutEnabledAsync(user, true);
-        if (!enabled.Succeeded)
+        await using var scope = await unitOfWork.BeginAsync(cancellationToken);
+
+        var changed = await change(user);
+        if (!changed.Succeeded)
         {
-            return Result.Failure(ToErrors(enabled));
+            return Result.Failure(Accounts.ToErrors(changed));
         }
 
-        var locked = await users.SetLockoutEndDateAsync(user, NoEnd);
-        return locked.Succeeded ? Result.Success() : Result.Failure(ToErrors(locked));
-    }
-
-    private bool IsDisabled(FluentCmsUser user)
-    {
-        return user.LockoutEnabled && user.LockoutEnd is { } end && end > clock.GetUtcNow();
-    }
-
-    private static IEnumerable<Error> ToErrors(IdentityResult result)
-    {
-        return result.Errors.Select(error => new Error(error.Code, error.Description));
+        await auditLog.AppendAsync(new NewAuditEvent(operation) { SubjectType = SubjectType, SubjectId = user.Id }, cancellationToken);
+        await scope.CommitAsync(cancellationToken);
+        return Result.Success();
     }
 }

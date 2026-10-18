@@ -1,0 +1,8 @@
+namespace FluentCMS.Core.Identity;
+
+public static class UserErrorCodes
+{
+    public const string AlreadySetUp = "already_set_up";
+    public const string UserNotFound = "user_not_found";
+    public const string CannotDisableSelf = "cannot_disable_self";
+}

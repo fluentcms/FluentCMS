@@ -118,13 +118,8 @@ public sealed class SignInTests
     {
         using var install = new TemporaryInstall();
         await using var host = await AdminHost.StartAsync(install);
-        await host.CreateFirstAdministratorAsync();
-        await using (var scope = host.App.Services.CreateAsyncScope())
-        {
-            var directory = scope.ServiceProvider.GetRequiredService<IUserDirectory>();
-            var editor = await directory.CreateAsync(Editor);
-            await directory.DisableAsync(editor.Value);
-        }
+        var ownerId = await host.CreateFirstAdministratorAsync();
+        await host.AsUserAsync(ownerId, async directory => await directory.DisableAsync((await directory.CreateAsync(Editor)).Value));
 
         var attempts = new[]
         {
