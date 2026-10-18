@@ -1,6 +1,6 @@
-// The admin's only JavaScript (ADR-0011). It installs delegated behaviour for the native overlays
-// once per document: no component makes an interop call to work, nothing has to be re-attached
-// after Blazor re-renders, and everything here keeps working while the circuit is disconnected.
+// The admin's only JavaScript (ADR-0011). It installs delegated behaviour for the native overlays, the theme
+// and the reconnect display once per document: no component makes an interop call to work, nothing has to be
+// re-attached after Blazor re-renders, and everything here keeps working while the circuit is disconnected.
 
 const supportsCommands = "command" in HTMLButtonElement.prototype;
 const supportsAnchors = CSS.supports("position-area: block-end");
@@ -118,7 +118,8 @@ function onMenuTriggerKeydown(event, trigger) {
     event.preventDefault();
     menu.dataset.openFocus = event.key === "ArrowUp" ? "last" : "first";
     if (menu.matches(":popover-open")) focusMenuItem(menu, event.key === "ArrowUp" ? -1 : 0);
-    else menu.showPopover();
+    // The source makes the trigger the menu's anchor, as opening through popovertarget does.
+    else menu.showPopover({ source: trigger });
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -147,7 +148,15 @@ function selectOption(input, list, index) {
     options[next].setAttribute("data-selected", "true");
     options[next].setAttribute("aria-selected", "true");
     input.setAttribute("aria-activedescendant", options[next].id);
-    options[next].scrollIntoView({ block: "nearest" });
+    revealOption(list, options[next]);
+}
+
+// Scrolls the list only: scrollIntoView would also scroll the page, which jumps to a palette further down on load.
+function revealOption(list, option) {
+    const bounds = list.getBoundingClientRect();
+    const rect = option.getBoundingClientRect();
+    if (rect.top < bounds.top) list.scrollTop -= bounds.top - rect.top;
+    else if (rect.bottom > bounds.bottom) list.scrollTop += rect.bottom - bounds.bottom;
 }
 
 function filterCommand(input) {
@@ -201,6 +210,70 @@ const observer = new MutationObserver((mutations) => {
 });
 
 // ---------------------------------------------------------------------------------------------
+// Theme: the root carries "light" or "dark", or neither to follow the system. The choice goes into
+// the cookie the host reads (ThemePreference.cs), so the next page arrives with the class already set.
+
+const themeCookie = "fluentcms-theme";
+
+function chooseTheme(theme) {
+    const stored = theme === "light" || theme === "dark";
+    document.documentElement.classList.remove("light", "dark");
+    if (stored) document.documentElement.classList.add(theme);
+    const secure = location.protocol === "https:" ? "; secure" : "";
+    document.cookie = `${themeCookie}=${stored ? theme : ""}; path=/; max-age=${stored ? 31536000 : 0}; samesite=lax${secure}`;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Reconnect: Blazor reports its state as a class on #components-reconnect-modal (ReconnectModal.razor)
+// and leaves the buttons, and the reload after a rejected circuit, to the page, as its default display does.
+
+const reconnectStates = ["show", "hide", "retrying", "failed", "rejected", "paused", "resume-failed"].map((state) => `components-reconnect-${state}`);
+
+function showReconnectState(state) {
+    const modal = document.getElementById("components-reconnect-modal");
+    modal?.classList.remove(...reconnectStates);
+    modal?.classList.add(`components-reconnect-${state}`);
+}
+
+async function retryConnection() {
+    document.removeEventListener("visibilitychange", retryWhenVisible);
+    showReconnectState("show");
+    try {
+        if (await Blazor.reconnect() || await Blazor.resumeCircuit()) showReconnectState("hide");
+        else location.reload();
+    } catch {
+        showReconnectState("failed");
+        document.addEventListener("visibilitychange", retryWhenVisible);
+    }
+}
+
+async function resumeConnection() {
+    try {
+        if (await Blazor.resumeCircuit()) showReconnectState("hide");
+        else location.reload();
+    } catch {
+        showReconnectState("resume-failed");
+    }
+}
+
+function retryWhenVisible() {
+    if (document.visibilityState === "visible") retryConnection();
+}
+
+function onReconnectStateChanged(event) {
+    if (event.detail?.state === "rejected") location.reload();
+    if (event.detail?.state === "failed") document.addEventListener("visibilitychange", retryWhenVisible);
+}
+
+function onReconnectClick(button) {
+    switch (button.dataset.reconnect) {
+        case "retry": retryConnection(); break;
+        case "resume": resumeConnection(); break;
+        case "reload": location.reload(); break;
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
 
 document.addEventListener("click", (event) => {
     const button = event.target.closest?.("button[commandfor]");
@@ -208,6 +281,12 @@ document.addEventListener("click", (event) => {
 
     const item = event.target.closest?.('[data-ui="menu-item"]');
     if (item && !item.hasAttribute("data-disabled")) item.closest('[data-ui="menu"]')?.hidePopover();
+
+    const theme = event.target.closest?.("[data-theme-choice]");
+    if (theme) chooseTheme(theme.dataset.themeChoice);
+
+    const reconnect = event.target.closest?.("[data-reconnect]");
+    if (reconnect) onReconnectClick(reconnect);
 
     closeOnBackdropClick(event);
 });
@@ -234,5 +313,6 @@ document.addEventListener("input", (event) => {
 
 document.addEventListener("pointermove", onCommandPointerMove);
 document.addEventListener("toggle", onMenuToggle, true);
+document.addEventListener("components-reconnect-state-changed", onReconnectStateChanged, true);
 document.querySelectorAll('[data-ui="command-input"]').forEach(filterCommand);
 observer.observe(document.body, { childList: true, subtree: true });

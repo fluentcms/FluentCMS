@@ -47,7 +47,7 @@ public sealed class ProjectReferenceRulesTests
         return Path.GetFileNameWithoutExtension(include.Replace('\\', '/'));
     }
 
-    private static string FindRepositoryRoot()
+    internal static string FindRepositoryRoot()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
 

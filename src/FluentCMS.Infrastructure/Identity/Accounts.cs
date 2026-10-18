@@ -5,8 +5,8 @@ using Microsoft.AspNetCore.Identity;
 
 namespace FluentCMS.Infrastructure.Identity;
 
-// What the first-run setup and the directory share: how an account is created and how a disabled one is recognised.
-internal static class Accounts
+// What the first-run setup, the directory and the host's password reset share: how an account is created and how a disabled one is recognised.
+public static class Accounts
 {
     // Identity has no "disabled" flag; a lockout with no end is the standard way to switch an account off.
     // A lockout after failed sign-ins ends within minutes, so it does not count as disabled.

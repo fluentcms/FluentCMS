@@ -1,0 +1,227 @@
+@page "/ui"
+@rendermode InteractiveServer
+@inject NavigationManager Navigation
+@inject IStringLocalizer<Showcase> L
+
+<PageTitle>@L["Components"]</PageTitle>
+
+@* Every component in Components/Ui with its keyboard hints (ADR-0011): the contributors' reference and the visual regression target.
+   A new component is added here in the same change; a test checks that none is missing. *@
+<div class="flex flex-wrap items-start justify-between gap-4">
+    <div class="space-y-1">
+        <h1 class="text-2xl font-semibold tracking-tight">@L["Components"]</h1>
+        <p class="text-sm text-muted-foreground">@L["The admin's own components and their keys. The header switches the theme; the link switches the direction."]</p>
+    </div>
+    <a class="text-sm font-medium underline underline-offset-4" href="@Navigation.GetUriWithQueryParameter("dir", IsRtl ? null : "rtl")" data-testid="direction">
+        @(IsRtl ? L["Left to right"] : L["Right to left"])
+    </a>
+</div>
+
+<p class="mt-4 rounded-md border bg-muted/50 px-3 py-2 text-sm" aria-live="polite">
+    <span class="font-medium">@L["Last action on the server:"]</span>
+    <span data-testid="last-action">@(_lastAction ?? L["none"])</span>
+</p>
+
+<div class="mt-8 grid gap-12">
+    <section class="grid gap-4" aria-labelledby="button-heading">
+        <h2 id="button-heading" class="text-lg font-semibold">@L["Button"]</h2>
+        <div class="flex flex-wrap items-center gap-2">
+            <Button OnClick='() => Record(L["Default"])'>@L["Default"]</Button>
+            <Button Variant="secondary" OnClick='() => Record(L["Secondary"])'>@L["Secondary"]</Button>
+            <Button Variant="outline" OnClick='() => Record(L["Outline"])'>@L["Outline"]</Button>
+            <Button Variant="ghost" OnClick='() => Record(L["Ghost"])'>@L["Ghost"]</Button>
+            <Button Variant="destructive" OnClick='() => Record(L["Destructive"])'>@L["Destructive"]</Button>
+            <Button Variant="link" OnClick='() => Record(L["Link"])'>@L["Link"]</Button>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+            <Button Size="xs" Variant="outline">@L["Extra small"]</Button>
+            <Button Size="sm" Variant="outline">@L["Small"]</Button>
+            <Button Variant="outline">@L["Default"]</Button>
+            <Button Size="lg" Variant="outline">@L["Large"]</Button>
+            <Button Disabled>@L["Disabled"]</Button>
+        </div>
+        @Hints(([L["Tab"]], L["Moves focus to the button."]), ([L["Enter"], L["Space"]], L["Activates it."]))
+    </section>
+
+    <section class="grid gap-4" aria-labelledby="badge-heading">
+        <h2 id="badge-heading" class="text-lg font-semibold">@L["Badge"]</h2>
+        <div class="flex flex-wrap items-center gap-2">
+            <Badge>@L["Default"]</Badge>
+            <Badge Variant="secondary">@L["Secondary"]</Badge>
+            <Badge Variant="destructive">@L["Destructive"]</Badge>
+            <Badge Variant="outline">@L["Outline"]</Badge>
+        </div>
+        @Hints(([L["Tab"]], L["Passes over it; a badge labels, it takes no focus."]))
+    </section>
+
+    <section class="grid gap-4" aria-labelledby="input-heading">
+        <h2 id="input-heading" class="text-lg font-semibold">@L["Input"]</h2>
+        <div class="grid max-w-sm gap-3">
+            <Input placeholder="@L["Email"]" aria-label="@L["Email"]" />
+            <Input Type="password" placeholder="@L["Password"]" aria-label="@L["Password"]" />
+            <Input placeholder="@L["Disabled"]" aria-label="@L["Disabled"]" disabled />
+        </div>
+        @Hints(([L["Tab"]], L["Moves focus to the field."]))
+    </section>
+
+    <section class="grid gap-4" aria-labelledby="form-field-heading">
+        <h2 id="form-field-heading" class="text-lg font-semibold">@L["FormField"]</h2>
+        <div class="grid max-w-sm gap-6">
+            <FormField Label="@L["Display name"]" Description="@L["Shown in the audit log next to your changes."]">
+                <Input value="Owner" />
+            </FormField>
+            <FormField Label="@L["Email"]" Error="@L["Enter an email address."]">
+                <Input Type="email" />
+            </FormField>
+        </div>
+        @Hints(([L["Tab"]], L["Moves focus to the field; its description and error are read with it."]))
+    </section>
+
+    <section class="grid gap-4" aria-labelledby="card-heading">
+        <h2 id="card-heading" class="text-lg font-semibold">@L["Card"]</h2>
+        <Card Class="max-w-sm">
+            <CardHeader>
+                <CardTitle>@L["Card title"]</CardTitle>
+                <CardDescription>@L["A short description of what the card holds."]</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <p class="text-sm">@L["Content goes here."]</p>
+            </CardContent>
+        </Card>
+        @Hints(([L["Tab"]], L["Passes through to the controls inside; the card itself takes no focus."]))
+    </section>
+
+    <section class="grid gap-4" aria-labelledby="table-heading">
+        <h2 id="table-heading" class="text-lg font-semibold">@L["Table"]</h2>
+        <Table Class="max-w-lg">
+            <TableHeader>
+                <TableRow>
+                    <TableHead>@L["Display name"]</TableHead>
+                    <TableHead>@L["Email"]</TableHead>
+                    <TableHead>@L["Status"]</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                <TableRow>
+                    <TableCell>Owner</TableCell>
+                    <TableCell>owner@@example.com</TableCell>
+                    <TableCell><Badge Variant="secondary">@L["Enabled"]</Badge></TableCell>
+                </TableRow>
+                <TableRow>
+                    <TableCell>Editor</TableCell>
+                    <TableCell>editor@@example.com</TableCell>
+                    <TableCell><Badge Variant="outline">@L["Disabled"]</Badge></TableCell>
+                </TableRow>
+            </TableBody>
+        </Table>
+        @Hints(([L["Tab"]], L["Passes through to the controls in the rows; the table itself takes no focus."]))
+    </section>
+
+    <section class="grid gap-4" aria-labelledby="dialog-heading">
+        <h2 id="dialog-heading" class="text-lg font-semibold">@L["Dialog"]</h2>
+        <Dialog>
+            <DialogTrigger Variant="outline" Class="w-fit" data-testid="dialog-trigger">@L["Edit profile"]</DialogTrigger>
+            <DialogContent OnClose='() => Record(L["Dialog closed"])'>
+                <DialogHeader>
+                    <DialogTitle>@L["Edit profile"]</DialogTitle>
+                    <DialogDescription>@L["Make changes to your profile here. Save when you're done."]</DialogDescription>
+                </DialogHeader>
+                <div class="grid gap-4">
+                    <FormField Label="@L["Name"]">
+                        <Input value="Pedro Duarte" />
+                    </FormField>
+                    <FormField Label="@L["Username"]">
+                        <Input value="peduarte" />
+                    </FormField>
+                </div>
+                <DialogFooter>
+                    <DialogClose>@L["Cancel"]</DialogClose>
+                    <DialogClose Variant="default" OnClick='() => Record(L["Dialog saved"])'>@L["Save changes"]</DialogClose>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+        @Hints(
+            ([L["Enter"], L["Space"]], L["Opens the dialog and moves focus into it."]),
+            ([L["Tab"], L["Shift"] + "+" + L["Tab"]], L["Moves between its controls and wraps around."]),
+            ([L["Esc"]], L["Closes it and returns focus to the trigger."]))
+    </section>
+
+    <section class="grid gap-4" aria-labelledby="dropdown-menu-heading">
+        <h2 id="dropdown-menu-heading" class="text-lg font-semibold">@L["DropdownMenu"]</h2>
+        <DropdownMenu>
+            <DropdownMenuTrigger Class="w-fit" data-testid="menu-trigger">@L["Open menu"]</DropdownMenuTrigger>
+            <DropdownMenuContent Class="w-56">
+                <DropdownMenuLabel>@L["My account"]</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
+                    <DropdownMenuItem OnSelect='() => Record(L["Profile"])'>@L["Profile"]<DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut></DropdownMenuItem>
+                    <DropdownMenuItem OnSelect='() => Record(L["Billing"])'>@L["Billing"]<DropdownMenuShortcut>⌘B</DropdownMenuShortcut></DropdownMenuItem>
+                    <DropdownMenuItem OnSelect='() => Record(L["Settings"])'>@L["Settings"]<DropdownMenuShortcut>⌘S</DropdownMenuShortcut></DropdownMenuItem>
+                    <DropdownMenuItem Disabled>@L["Keyboard shortcuts"]</DropdownMenuItem>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem Variant="destructive" OnSelect='() => Record(L["Log out"])'>@L["Log out"]<DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut></DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
+        @Hints(
+            ([L["Enter"], L["Space"], "↓"], L["Opens the menu on its first item."]),
+            (["↑"], L["Opens it on its last item."]),
+            (["↓", "↑", L["Home"], L["End"]], L["Move between items, skipping disabled ones."]),
+            ([L["A–Z"]], L["Moves to the next item starting with that letter."]),
+            ([L["Enter"]], L["Chooses the item and closes the menu."]),
+            ([L["Esc"], L["Tab"]], L["Close the menu; Esc returns focus to the trigger."]))
+    </section>
+
+    <section class="grid gap-4" aria-labelledby="command-heading">
+        <h2 id="command-heading" class="text-lg font-semibold">@L["Command"]</h2>
+        <Command Class="max-w-md rounded-lg border shadow-md">
+            <CommandInput Placeholder="@L["Type a command or search..."]" />
+            <CommandList Label="@L["Commands"]">
+                <CommandEmpty>@L["No results found."]</CommandEmpty>
+                <CommandGroup Heading="@L["Suggestions"]">
+                    <CommandItem Value="calendar" OnSelect='() => Record(L["Calendar"])'>@L["Calendar"]</CommandItem>
+                    <CommandItem Value="search emoji" OnSelect='() => Record(L["Search emoji"])'>@L["Search emoji"]</CommandItem>
+                    <CommandItem Value="calculator" Disabled>@L["Calculator"]</CommandItem>
+                </CommandGroup>
+                <CommandSeparator />
+                <CommandGroup Heading="@L["Settings"]">
+                    <CommandItem Value="profile" OnSelect='() => Record(L["Profile"])'>@L["Profile"]<CommandShortcut>⌘P</CommandShortcut></CommandItem>
+                    <CommandItem Value="billing" OnSelect='() => Record(L["Billing"])'>@L["Billing"]<CommandShortcut>⌘B</CommandShortcut></CommandItem>
+                    <CommandItem Value="settings" OnSelect='() => Record(L["Settings"])'>@L["Settings"]<CommandShortcut>⌘S</CommandShortcut></CommandItem>
+                </CommandGroup>
+            </CommandList>
+        </Command>
+        @Hints(
+            ([L["Type"]], L["Filters the options in the browser, with no round trip."]),
+            (["↓", "↑", L["Home"], L["End"]], L["Move the active option, skipping disabled ones."]),
+            ([L["Enter"]], L["Chooses the active option."]))
+    </section>
+</div>
+
+@code {
+    private string? _lastAction;
+
+    [SupplyParameterFromQuery(Name = "dir")]
+    private string? Dir { get; set; }
+
+    private bool IsRtl => Dir == "rtl";
+
+    private void Record(string action) => _lastAction = L["{0} at {1}", action, DateTime.Now.ToString("HH:mm:ss")];
+
+    // shadcn's Kbd classes on a plain element; the Kbd component arrives with the first screen that needs it.
+    private RenderFragment Hints(params (string[] Keys, string Action)[] hints) =>
+        @<dl class="grid gap-2 text-sm" data-testid="keyboard-hints">
+            @foreach (var (keys, action) in hints)
+            {
+                <div class="flex flex-wrap items-center gap-2">
+                    <dt class="flex items-center gap-1">
+                        @foreach (var key in keys)
+                        {
+                            <kbd class="pointer-events-none inline-flex h-5 min-w-5 items-center justify-center rounded-sm bg-muted px-1 font-sans text-xs font-medium text-muted-foreground select-none">@key</kbd>
+                        }
+                    </dt>
+                    <dd class="text-muted-foreground">@action</dd>
+                </div>
+            }
+        </dl>;
+}

@@ -6,7 +6,7 @@ public sealed class AdminRoutesTests
 {
     [Theory]
     [InlineData("/")]
-    [InlineData("/ui-spike")]
+    [InlineData("/ui")]
     [InlineData("/entries?type=page&page=2")]
     public void A_path_on_this_site_is_local(string url)
     {

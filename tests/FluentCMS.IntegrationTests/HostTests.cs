@@ -1,4 +1,5 @@
 using System.Net;
+using FluentCMS.Admin;
 using FluentCMS.Host;
 using FluentCMS.Host.Jobs;
 using Microsoft.AspNetCore.Hosting;
@@ -38,38 +39,71 @@ public sealed class HostTests
     }
 
     [Fact]
-    public async Task Web_host_serves_the_admin_shell_and_the_showcase_only_in_development()
-    {
-        using var install = new TemporaryInstall();
-        await using var host = await AdminHost.StartAsync(install, ["--environment", "Development"]);
-        await host.CreateFirstAdministratorAsync();
-        await host.SignInAsync(AdminHost.Owner);
-
-        var home = await host.Client.GetAsync("/");
-        var homeHtml = await home.Content.ReadAsStringAsync();
-        var rtl = await host.Client.GetStringAsync("/?dir=rtl&theme=dark");
-        var showcase = await host.Client.GetAsync("/ui-spike");
-
-        Assert.Equal(HttpStatusCode.OK, home.StatusCode);
-        Assert.Contains("<html lang=\"en\" dir=\"ltr\"", homeHtml);
-        Assert.Contains("_content/FluentCMS.Admin/css/app.generated", homeHtml);
-        Assert.Contains("_framework/blazor.web", homeHtml);
-        Assert.Contains("<html lang=\"en\" dir=\"rtl\" class=\"dark\"", rtl);
-        Assert.Equal(HttpStatusCode.OK, showcase.StatusCode);
-        Assert.Contains("role=\"menu\"", await showcase.Content.ReadAsStringAsync());
-    }
-
-    [Fact]
-    public async Task Showcase_is_not_found_outside_development()
+    public async Task Web_host_serves_the_admin_shell_with_the_theme_toggle_and_the_reconnect_display()
     {
         using var install = new TemporaryInstall();
         await using var host = await AdminHost.StartAsync(install);
         await host.CreateFirstAdministratorAsync();
         await host.SignInAsync(AdminHost.Owner);
 
-        var showcase = await host.Client.GetAsync("/ui-spike");
+        var home = await host.Client.GetAsync("/");
+        var homeHtml = await home.Content.ReadAsStringAsync();
+        var rtl = await host.Client.GetStringAsync("/?dir=rtl");
 
-        Assert.Equal(HttpStatusCode.NotFound, showcase.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, home.StatusCode);
+        Assert.Contains("<html lang=\"en\" dir=\"ltr\">", homeHtml);
+        Assert.Contains("_content/FluentCMS.Admin/css/app.generated", homeHtml);
+        Assert.Contains("_framework/blazor.web", homeHtml);
+        Assert.Contains("data-testid=\"theme-toggle\"", homeHtml);
+        Assert.Contains("data-theme-choice=\"system\"", homeHtml);
+        Assert.Contains("id=\"components-reconnect-modal\"", homeHtml);
+        Assert.Contains("<html lang=\"en\" dir=\"rtl\">", rtl);
+    }
+
+    [Theory]
+    [InlineData("dark", " class=\"dark\"")]
+    [InlineData("light", " class=\"light\"")]
+    [InlineData("blue", "")]
+    [InlineData(null, "")]
+    public async Task The_root_element_carries_the_stored_theme_and_otherwise_none_so_the_system_preference_applies(string? stored, string rootClass)
+    {
+        using var install = new TemporaryInstall();
+        await using var host = await AdminHost.StartAsync(install);
+        await host.CreateFirstAdministratorAsync();
+        await host.SignInAsync(AdminHost.Owner);
+        if (stored is not null)
+        {
+            host.Cookies.Add(host.Client.BaseAddress!, new Cookie(ThemeCookie.Name, stored));
+        }
+
+        var home = await host.Client.GetStringAsync("/");
+        var signIn = await host.Client.GetStringAsync("/sign-in");
+
+        Assert.Contains($"<html lang=\"en\" dir=\"ltr\"{rootClass}>", home);
+        Assert.Contains($"<html lang=\"en\" dir=\"ltr\"{rootClass}>", signIn);
+    }
+
+    [Fact]
+    public async Task The_showcase_is_for_signed_in_users_in_every_environment_and_replaces_the_spike_page()
+    {
+        using var install = new TemporaryInstall();
+        await using var host = await AdminHost.StartAsync(install);
+        await host.CreateFirstAdministratorAsync();
+
+        var anonymous = await host.Client.GetAsync("/ui");
+        await host.SignInAsync(AdminHost.Owner);
+        var showcase = await host.Client.GetAsync("/ui");
+        var html = await showcase.Content.ReadAsStringAsync();
+        var spike = await host.Client.GetAsync("/ui-spike");
+
+        Assert.Equal(HttpStatusCode.Redirect, anonymous.StatusCode);
+        Assert.Equal("/sign-in?ReturnUrl=%2Fui", host.LocationOf(anonymous));
+        Assert.Equal(HttpStatusCode.OK, showcase.StatusCode);
+        Assert.Contains("data-slot=\"dialog-content\"", html);
+        Assert.Contains("role=\"menu\"", html);
+        Assert.Contains("role=\"combobox\"", html);
+        Assert.Contains("<kbd", html);
+        Assert.Equal(HttpStatusCode.NotFound, spike.StatusCode);
     }
 
     [Fact]
