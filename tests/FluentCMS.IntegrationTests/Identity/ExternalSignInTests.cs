@@ -44,10 +44,10 @@ public sealed partial class ExternalSignInTests
         Assert.Contains("Sign in with Test provider", html);
         Assert.Contains($"form-action 'self' {provider.Authority};", Policy(signIn));
 
-        var signedIn = await SignInThroughProviderAsync(host, returnUrl: "/ui-spike");
+        var signedIn = await SignInThroughProviderAsync(host, returnUrl: "/ui");
 
         Assert.Equal(HttpStatusCode.Redirect, signedIn.StatusCode);
-        Assert.Equal("/ui-spike", host.LocationOf(signedIn));
+        Assert.Equal("/ui", host.LocationOf(signedIn));
         Assert.True(host.IsSignedIn);
         Assert.Contains(">Owner</span>", await host.Client.GetStringAsync("/"));
 

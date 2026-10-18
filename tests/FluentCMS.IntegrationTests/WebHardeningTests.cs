@@ -87,7 +87,32 @@ public sealed partial class WebHardeningTests
             Assert.Contains("script-src 'self'", policy);
             Assert.Contains("frame-ancestors 'none'", policy);
             Assert.Contains("object-src 'none'", policy);
+            Assert.Contains("style-src 'self'", policy);
+            Assert.DoesNotContain("unsafe-inline", policy);
+            Assert.DoesNotContain("unsafe-eval", policy);
             Assert.Equal("nosniff", Assert.Single(response.Headers.GetValues("X-Content-Type-Options")));
+        });
+    }
+
+    // The policy allows no inline script or style, so the shell's pages must not need any: the theme comes from a cookie
+    // the server reads, and the reconnect display is markup that the stylesheet shows per state.
+    [Fact]
+    public async Task Admin_pages_carry_no_inline_script_or_style()
+    {
+        using var install = new TemporaryInstall();
+        await using var host = await AdminHost.StartAsync(install);
+        await host.CreateFirstAdministratorAsync();
+        var signIn = await host.Client.GetStringAsync("/sign-in");
+        await host.SignInAsync(AdminHost.Owner);
+        host.Cookies.Add(host.Client.BaseAddress!, new Cookie(FluentCMS.Admin.ThemeCookie.Name, "dark"));
+
+        var pages = new[] { signIn, await host.Client.GetStringAsync("/"), await host.Client.GetStringAsync("/ui") };
+
+        Assert.All(pages, html =>
+        {
+            Assert.DoesNotMatch(InlineScript(), html);
+            Assert.DoesNotMatch(InlineStyle(), html);
+            Assert.Contains("id=\"components-reconnect-modal\"", html);
         });
     }
 
@@ -115,4 +140,11 @@ public sealed partial class WebHardeningTests
 
     [GeneratedRegex("(?:href|src)=\"(_(?:content|framework)/[^\"]+)\"")]
     private static partial Regex AssetReference();
+
+    // A script element without a source, or an event handler attribute.
+    [GeneratedRegex("<script(?![^>]*\\ssrc=)[^>]*>|\\son[a-z]+=", RegexOptions.IgnoreCase)]
+    private static partial Regex InlineScript();
+
+    [GeneratedRegex("<style[\\s>]|\\sstyle=", RegexOptions.IgnoreCase)]
+    private static partial Regex InlineStyle();
 }

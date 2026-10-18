@@ -44,6 +44,7 @@ public static class FluentCmsHost
         AddFluentCms(builder.Services, builder.Configuration, builder.Environment);
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddScoped<ICurrentInitiator, HttpContextInitiator>();
+        builder.Services.AddScoped<IThemePreference, CookieThemePreference>();
         var provider = AddCookieSignIn(builder.Services, builder.Configuration, builder.Environment);
         builder.Services.AddSignInRateLimit(builder.Configuration);
         builder.Services.AddHealthChecks();
@@ -146,7 +147,7 @@ public static class FluentCmsHost
         services.AddFluentCmsInfrastructure(configuration);
         services.AddFluentCmsMcp();
         services.AddFluentCmsApi();
-        services.AddFluentCmsAdmin(options => options.ShowcaseEnabled = environment.IsDevelopment());
+        services.AddFluentCmsAdmin();
 
         // Both modes share one key ring, so whatever the web host protects the stdio host can read.
         var keyRing = configuration.GetSection(KeyRingOptions.SectionName).Get<KeyRingOptions>() ?? new KeyRingOptions();

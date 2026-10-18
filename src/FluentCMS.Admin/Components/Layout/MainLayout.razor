@@ -17,6 +17,7 @@
                     <Button Type="submit" Variant="ghost" Size="sm">@L["Sign out"]</Button>
                 </form>
             }
+            <ThemeToggle Class="@(Initiator.Current is UserInitiator ? null : "ms-auto")" />
         </nav>
     </header>
     <main class="mx-auto w-full max-w-6xl flex-1 px-4 py-6">

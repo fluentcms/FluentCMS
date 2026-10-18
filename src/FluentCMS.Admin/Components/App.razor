@@ -1,7 +1,8 @@
 @inject NavigationManager Navigation
+@inject IThemePreference Theme
 
 <!DOCTYPE html>
-<html lang="en" dir="@Direction" class="@ThemeClass">
+<html lang="en" dir="@Direction" class="@Theme.Current">
 
 <head>
     <meta charset="utf-8" />
@@ -13,6 +14,7 @@
 
 <body class="font-sans antialiased">
     <Routes />
+    <ReconnectModal />
     <script type="module" src="@Assets["_content/FluentCMS.Admin/js/admin.js"]"></script>
     <script src="@Assets["_framework/blazor.web.js"]"></script>
 </body>
@@ -20,11 +22,9 @@
 </html>
 
 @code {
-    // The root element carries the direction and the theme. Until the shell stores a preference,
-    // both come from the query string so the spike and the showcase can switch them: ?dir=rtl&theme=dark.
+    // The root element carries the direction and the theme. Without a stored theme there is no class and the stylesheet
+    // follows the system preference. The direction comes from the query string until the UI culture sets it: ?dir=rtl.
     private string Direction => Query("dir") == "rtl" ? "rtl" : "ltr";
-
-    private string ThemeClass => Query("theme") == "dark" ? "dark" : "";
 
     private string? Query(string name)
     {
