@@ -27,7 +27,9 @@ public sealed class ExtensionRegistrationTests
 
         Assert.Equal(["hello", "hi"], provider.GetServices<IGreeting>().Select(greeting => greeting.Text).Order());
         Assert.Empty(provider.GetServices<IPlainService>());
-        Assert.All(provider.GetRequiredService<IExtensionCatalog>().All, descriptor => Assert.Equal(typeof(IGreeting), descriptor.Contract));
+        Assert.All(
+            provider.GetRequiredService<IExtensionCatalog>().All,
+            descriptor => Assert.True(descriptor.Contract.IsDefined(typeof(ExtensionPointAttribute), inherit: false)));
     }
 
     [Fact]
@@ -53,11 +55,13 @@ public sealed class ExtensionRegistrationTests
     }
 
     [Fact]
-    public void Core_provides_a_catalog_even_before_any_built_in_exists()
+    public void Core_registers_its_built_ins_through_the_catalog()
     {
         using var provider = new ServiceCollection().AddFluentCmsCore().BuildServiceProvider();
 
-        Assert.Empty(provider.GetRequiredService<IExtensionCatalog>().All);
+        var catalog = provider.GetRequiredService<IExtensionCatalog>().All;
+        Assert.NotEmpty(catalog);
+        Assert.All(catalog, descriptor => Assert.True(descriptor.IsBuiltIn));
     }
 }
 
