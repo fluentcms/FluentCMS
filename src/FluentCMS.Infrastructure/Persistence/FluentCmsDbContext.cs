@@ -26,6 +26,8 @@ public abstract class FluentCmsDbContext(DbContextOptions options) : IdentityDbC
 
     public DbSet<AgentCredentialRow> AgentCredentials => Set<AgentCredentialRow>();
 
+    public DbSet<ToolCallRow> ToolCalls => Set<ToolCallRow>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -37,6 +39,7 @@ public abstract class FluentCmsDbContext(DbContextOptions options) : IdentityDbC
         builder.ApplyConfiguration(new ChangeSetConfiguration());
         builder.ApplyConfiguration(new ChangeSetOperationConfiguration());
         builder.ApplyConfiguration(new AgentCredentialConfiguration());
+        builder.ApplyConfiguration(new ToolCallConfiguration());
 
         builder.Entity<FluentCmsUser>(user =>
         {
