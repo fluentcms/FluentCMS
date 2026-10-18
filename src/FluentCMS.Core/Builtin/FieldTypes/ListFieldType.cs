@@ -72,6 +72,17 @@ internal sealed class ListFieldType : IFieldType
         return fieldTypes.ReferenceTargets(ItemType(settings), ItemSettings(settings));
     }
 
+    public IReadOnlyList<ValueReference> References(JsonElement value, JsonElement settings, FieldTypeRegistry fieldTypes)
+    {
+        var itemType = ItemType(settings);
+        var itemSettings = ItemSettings(settings);
+
+        return value.EnumerateArray()
+            .SelectMany((item, index) => fieldTypes.References(itemType, itemSettings, item)
+                .Select(reference => reference with { Pointer = $"/{index}{reference.Pointer}" }))
+            .ToList();
+    }
+
     private static string ItemType(JsonElement settings)
     {
         return settings.GetProperty("itemType").GetString()!;

@@ -57,6 +57,11 @@ internal sealed class ReferenceFieldType : IFieldType
                 : $"The id of a '{target.Type}' entity; the field shows that entity's '{target.Field}' instead of a copy of it.");
     }
 
+    public IReadOnlyList<ValueReference> References(JsonElement value, JsonElement settings, FieldTypeRegistry fieldTypes)
+    {
+        return [new ValueReference(string.Empty, ReferenceKind.Entry, value.GetGuid(), ReferenceTargets(settings, fieldTypes)[0])];
+    }
+
     public IReadOnlyList<ReferenceTarget> ReferenceTargets(JsonElement settings, FieldTypeRegistry fieldTypes)
     {
         var field = settings.TryGetProperty("field", out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;

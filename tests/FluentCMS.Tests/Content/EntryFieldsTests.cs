@@ -192,4 +192,49 @@ public sealed class EntryFieldsTests
 
         Assert.StartsWith("Field 'name': The fact's source must be null or an object", error.Message);
     }
+
+    [Fact]
+    public void References_carry_pointers_from_the_document_root()
+    {
+        var (product, related, hero) = (Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7());
+        var definition = new ContentTypeDefinition(
+        [
+            Field("headline", "text"),
+            Field("product", "reference", """{"target": "product"}"""),
+            Field("price", "reference", """{"target": "product", "field": "price"}"""),
+            Field("related", "list", """{"itemType": "reference", "itemSettings": {"target": "product"}}"""),
+            Field("hero", "media"),
+            Field("missing", "reference", """{"target": "product"}"""),
+        ]);
+        var fields = Json($$"""
+            {"headline": "{{product}}", "product": "{{product}}", "price": "{{product}}", "related": ["{{related}}", "{{product}}"], "hero": "{{hero}}"}
+            """);
+
+        Assert.Equal(
+            [
+                new ValueReference("/product", ReferenceKind.Entry, product, new ReferenceTarget("product")),
+                new ValueReference("/price", ReferenceKind.Entry, product, new ReferenceTarget("product", "price")),
+                new ValueReference("/related/0", ReferenceKind.Entry, related, new ReferenceTarget("product")),
+                new ValueReference("/related/1", ReferenceKind.Entry, product, new ReferenceTarget("product")),
+                new ValueReference("/hero", ReferenceKind.Media, hero),
+            ],
+            EntryFields.References(fields, definition, Registry));
+    }
+
+    [Fact]
+    public void An_entitys_references_point_into_the_value_of_its_fact()
+    {
+        var category = Guid.CreateVersion7();
+        var definition = new ContentTypeDefinition([Field("name", "text"), Field("category", "reference", """{"target": "category"}""")], isEntity: true);
+        var fields = Json($$"""
+            {
+              "name": {"value": "Widget", "source": null, "owner": null, "validFrom": null, "validUntil": null, "lastVerified": null},
+              "category": {"value": "{{category}}", "source": null, "owner": null, "validFrom": null, "validUntil": null, "lastVerified": null}
+            }
+            """);
+
+        Assert.Equal(
+            [new ValueReference("/category/value", ReferenceKind.Entry, category, new ReferenceTarget("category"))],
+            EntryFields.References(fields, definition, Registry));
+    }
 }

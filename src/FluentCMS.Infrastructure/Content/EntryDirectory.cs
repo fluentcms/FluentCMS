@@ -115,6 +115,12 @@ internal sealed class EntryDirectory(
         }
 
         var stored = created.Value;
+        var references = EntryFields.References(stored.Latest.Fields, type.Value.Definition, fieldTypes);
+        var referenceErrors = await ReferenceErrorsAsync(references, cancellationToken);
+        if (referenceErrors.Count > 0)
+        {
+            return Result<Entry>.Failure(referenceErrors);
+        }
 
         await using var scope = await unitOfWork.BeginAsync(cancellationToken);
 
@@ -127,6 +133,7 @@ internal sealed class EntryDirectory(
             PublishedVersion = stored.PublishedVersion,
         });
         context.EntryVersions.Add(VersionRow(stored.Latest));
+        context.EntryReferences.AddRange(ReferenceRows(stored.Latest, references));
         await auditLog.AppendAsync(new NewAuditEvent("entry.created") { SubjectType = SubjectType, SubjectId = stored.Id }, cancellationToken);
 
         // A new id conflicts with nothing, so no unique index can turn this commit into an expected failure.
@@ -164,6 +171,12 @@ internal sealed class EntryDirectory(
         }
 
         var entry = revised.Value;
+        var references = EntryFields.References(entry.Latest.Fields, type.Value.Definition, fieldTypes);
+        var referenceErrors = await ReferenceErrorsAsync(references, cancellationToken);
+        if (referenceErrors.Count > 0)
+        {
+            return Result<Entry>.Failure(referenceErrors);
+        }
 
         await using var scope = await unitOfWork.BeginAsync(cancellationToken);
 
@@ -177,6 +190,7 @@ internal sealed class EntryDirectory(
         }
 
         context.EntryVersions.Add(VersionRow(entry.Latest));
+        context.EntryReferences.AddRange(ReferenceRows(entry.Latest, references));
         await auditLog.AppendAsync(
             new NewAuditEvent("entry.updated") { SubjectType = SubjectType, SubjectId = id, PreviousVersionId = baseRow.Id },
             cancellationToken);
@@ -192,6 +206,47 @@ internal sealed class EntryDirectory(
             where entry.Id == id && entry.SiteId == SiteId
             select new StoredEntry(entry, type.Slug))
             .SingleOrDefaultAsync(cancellationToken);
+    }
+
+    // Every entry a version points at must exist in the site and be of the type its field names (CNT-03). Media assets are checked
+    // once the library exists (F-MED).
+    private async Task<List<Error>> ReferenceErrorsAsync(IReadOnlyList<ValueReference> references, CancellationToken cancellationToken)
+    {
+        var entries = references.Where(reference => reference.Kind == ReferenceKind.Entry).ToList();
+        if (entries.Count == 0)
+        {
+            return [];
+        }
+
+        var ids = entries.Select(reference => reference.TargetId).Distinct().ToList();
+        var types = await (
+            from entry in context.Entries.AsNoTracking()
+            join type in context.ContentTypes.AsNoTracking() on entry.ContentTypeId equals type.Id
+            where entry.SiteId == SiteId && ids.Contains(entry.Id)
+            select new { entry.Id, type.Slug })
+            .ToDictionaryAsync(found => found.Id, found => found.Slug, cancellationToken);
+
+        var errors = new List<Error>();
+        foreach (var reference in entries)
+        {
+            var field = reference.Pointer.Split('/')[1];
+            var wanted = reference.Target!.Type;
+
+            if (!types.TryGetValue(reference.TargetId, out var slug))
+            {
+                errors.Add(new Error(
+                    ContentErrorCodes.ReferenceNotFound,
+                    $"Field '{field}': {reference.Pointer} points at {reference.TargetId}, which is not an entry in this site."));
+            }
+            else if (slug != wanted)
+            {
+                errors.Add(new Error(
+                    ContentErrorCodes.ReferenceTypeMismatch,
+                    $"Field '{field}': {reference.Pointer} points at {reference.TargetId}, which is a '{slug}', but the field references '{wanted}'."));
+            }
+        }
+
+        return errors;
     }
 
     private Task<EntryVersionRow?> VersionRowAsync(Guid id, int version, CancellationToken cancellationToken)
@@ -227,6 +282,20 @@ internal sealed class EntryDirectory(
             Fields = version.Fields.GetRawText(),
             CreatedAt = version.CreatedAt,
         };
+    }
+
+    private static IEnumerable<EntryReferenceRow> ReferenceRows(EntryVersion version, IReadOnlyList<ValueReference> references)
+    {
+        return references.Select(reference => new EntryReferenceRow
+        {
+            Id = Guid.CreateVersion7(version.CreatedAt),
+            EntryId = version.EntryId,
+            Version = version.Version,
+            Path = reference.Pointer,
+            TargetKind = reference.Kind,
+            TargetId = reference.TargetId,
+            TargetField = reference.Target?.Field,
+        });
     }
 
     private static Entry ToEntry(StoredEntry stored, EntryVersionRow latest)
