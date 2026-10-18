@@ -1,11 +1,12 @@
 namespace FluentCMS.Admin.Components.Ui;
 
-// Joins class fragments the way shadcn's cn() does. Conflict resolution (tailwind-merge) comes with the component set.
+// shadcn's cn(): joins class fragments, skipping empty ones, and merges them so a later class replaces an earlier one that
+// sets the same property (TailwindMerge). A component's Class parameter goes last, so it overrides the component's classes.
 public static class ClassNames
 {
     public static string Cn(params string?[] classes)
     {
-        return string.Join(' ', classes.Where(c => !string.IsNullOrWhiteSpace(c)));
+        return TailwindMerge.Merge(string.Join(' ', classes.Where(c => !string.IsNullOrWhiteSpace(c))));
     }
 }
 
