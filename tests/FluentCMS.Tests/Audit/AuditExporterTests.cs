@@ -24,7 +24,7 @@ public sealed class AuditExporterTests
         Operation = "entry.updated",
         SubjectType = "entry",
         SubjectId = Guid.Parse("95c1ae39-4c1f-4d76-b35e-4536359ea9ad"),
-        Model = "claude-sonnet-4-5",
+        Model = "example-model",
         PromptHash = "sha256:9f86d081",
         Sources = ["https://example.com/prices", "Dana"],
         ChangeSetId = Guid.Parse("7c3c47c6-9c06-4854-81aa-7aa6d2e54ba4"),
@@ -60,7 +60,7 @@ public sealed class AuditExporterTests
         Assert.Equal("7c9e6679-7425-40de-944b-e07fc1f90ae7", full.GetProperty("agentCredentialId").GetString());
         Assert.Equal("entry", full.GetProperty("subjectType").GetString());
         Assert.Equal("95c1ae39-4c1f-4d76-b35e-4536359ea9ad", full.GetProperty("subjectId").GetString());
-        Assert.Equal("claude-sonnet-4-5", full.GetProperty("model").GetString());
+        Assert.Equal("example-model", full.GetProperty("model").GetString());
         Assert.Equal("sha256:9f86d081", full.GetProperty("promptHash").GetString());
         Assert.Equal(["https://example.com/prices", "Dana"], full.GetProperty("sources").EnumerateArray().Select(source => source.GetString()));
         Assert.Equal("7c3c47c6-9c06-4854-81aa-7aa6d2e54ba4", full.GetProperty("changeSetId").GetString());
@@ -84,7 +84,7 @@ public sealed class AuditExporterTests
         Assert.Equal(
             Header
             + "01a0f4c2-c47b-743f-840b-3b6259891ca7,2026-10-17T12:00:00.5000000+00:00,entry.updated,agent,7c9e6679-7425-40de-944b-e07fc1f90ae7,"
-            + "catalog-sync,7c9e6679-7425-40de-944b-e07fc1f90ae7,entry,95c1ae39-4c1f-4d76-b35e-4536359ea9ad,claude-sonnet-4-5,sha256:9f86d081,"
+            + "catalog-sync,7c9e6679-7425-40de-944b-e07fc1f90ae7,entry,95c1ae39-4c1f-4d76-b35e-4536359ea9ad,example-model,sha256:9f86d081,"
             + "\"[\"\"https://example.com/prices\"\",\"\"Dana\"\"]\",7c3c47c6-9c06-4854-81aa-7aa6d2e54ba4,3f2504e0-4f89-41d3-9a0c-0305e82c3301\r\n"
             + "01a0f4c2-c7e8-7eda-98a9-9a8b198f5b07,2026-10-17T13:00:00.0000000+00:00,job.ran,user,0f8fad5b-d9cb-469f-a165-70867728950e,Amir,,,,,,[],,\r\n",
             csv);

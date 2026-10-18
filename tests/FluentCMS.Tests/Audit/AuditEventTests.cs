@@ -43,7 +43,7 @@ public sealed class AuditEventTests
         {
             SubjectType = "entry",
             SubjectId = subjectId,
-            Model = "claude-sonnet-4-5",
+            Model = "example-model",
             PromptHash = "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
             Sources = ["https://example.com/prices", "Dana, fact owner"],
             ChangeSetId = changeSetId,
@@ -52,7 +52,7 @@ public sealed class AuditEventTests
 
         Assert.Equal("entry", auditEvent.SubjectType);
         Assert.Equal(subjectId, auditEvent.SubjectId);
-        Assert.Equal("claude-sonnet-4-5", auditEvent.Model);
+        Assert.Equal("example-model", auditEvent.Model);
         Assert.StartsWith("sha256:", auditEvent.PromptHash);
         Assert.Equal(["https://example.com/prices", "Dana, fact owner"], auditEvent.Sources);
         Assert.Equal(changeSetId, auditEvent.ChangeSetId);
