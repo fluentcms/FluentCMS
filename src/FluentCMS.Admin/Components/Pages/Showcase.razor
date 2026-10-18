@@ -55,6 +55,35 @@
         @Hints(([L["Tab"]], L["Passes over it; a badge labels, it takes no focus."]))
     </section>
 
+    <section class="grid gap-4" aria-labelledby="kbd-heading">
+        <h2 id="kbd-heading" class="text-lg font-semibold">@L["Kbd"]</h2>
+        <div class="flex flex-wrap items-center gap-4 text-sm">
+            <span class="flex items-center gap-1"><Kbd>⌘</Kbd><Kbd>K</Kbd></span>
+            <span class="flex items-center gap-1"><Kbd>@L["Ctrl"]</Kbd><span>+</span><Kbd>B</Kbd></span>
+            <Kbd>@L["Esc"]</Kbd>
+        </div>
+        @Hints(([L["Tab"]], L["Passes over it; a key names a shortcut, it takes no focus."]))
+    </section>
+
+    <section class="grid gap-4" aria-labelledby="separator-heading">
+        <h2 id="separator-heading" class="text-lg font-semibold">@L["Separator"]</h2>
+        <div class="max-w-sm">
+            <div class="space-y-1">
+                <p class="text-sm leading-none font-medium">@L["Change sets"]</p>
+                <p class="text-sm text-muted-foreground">@L["Review what agents propose before it goes live."]</p>
+            </div>
+            <Separator Class="my-4" />
+            <div class="flex h-5 items-center gap-4 text-sm">
+                <span>@L["Desk"]</span>
+                <Separator Orientation="vertical" />
+                <span>@L["Rules"]</span>
+                <Separator Orientation="vertical" />
+                <span>@L["Audit log"]</span>
+            </div>
+        </div>
+        @Hints(([L["Tab"]], L["Passes over it; a separator divides, it takes no focus."]))
+    </section>
+
     <section class="grid gap-4" aria-labelledby="input-heading">
         <h2 id="input-heading" class="text-lg font-semibold">@L["Input"]</h2>
         <div class="grid max-w-sm gap-3">
@@ -65,6 +94,37 @@
         @Hints(([L["Tab"]], L["Moves focus to the field."]))
     </section>
 
+    <section class="grid gap-4" aria-labelledby="textarea-heading">
+        <h2 id="textarea-heading" class="text-lg font-semibold">@L["Textarea"]</h2>
+        <div class="grid max-w-sm gap-3">
+            <Textarea placeholder="@L["Type your message here."]" aria-label="@L["Message"]" />
+            <Textarea placeholder="@L["Disabled"]" aria-label="@L["Disabled"]" disabled />
+        </div>
+        @Hints(([L["Tab"]], L["Moves focus to the field."]), ([L["Enter"]], L["Starts a new line; the field grows with its text."]))
+    </section>
+
+    <section class="grid gap-4" aria-labelledby="select-heading">
+        <h2 id="select-heading" class="text-lg font-semibold">@L["Select"]</h2>
+        <div class="grid max-w-sm gap-6">
+            <FormField Label="@L["Status"]" Description="@L["The browser's own list, so it works the same on every device."]">
+                <Select value="in-progress" @onchange='(ChangeEventArgs e) => Record(L["Status {0}", e.Value ?? string.Empty])'>
+                    <option value="todo">@L["Todo"]</option>
+                    <option value="in-progress">@L["In progress"]</option>
+                    <option value="done">@L["Done"]</option>
+                    <option value="cancelled">@L["Cancelled"]</option>
+                </Select>
+            </FormField>
+            <Select aria-label="@L["Disabled"]" disabled>
+                <option>@L["Disabled"]</option>
+            </Select>
+        </div>
+        @Hints(
+            ([L["Tab"]], L["Moves focus to the list."]),
+            (["↓", "↑"], L["Change the option; on some systems they open the list first."]),
+            ([L["Space"], L["Alt"] + "+↓"], L["Open the list."]),
+            ([L["A–Z"]], L["Moves to the next option starting with that letter."]))
+    </section>
+
     <section class="grid gap-4" aria-labelledby="checkbox-heading">
         <h2 id="checkbox-heading" class="text-lg font-semibold">@L["Checkbox"]</h2>
         <div class="grid max-w-sm gap-3">
@@ -73,6 +133,31 @@
             <label class="flex items-center gap-2 text-sm text-muted-foreground"><Checkbox disabled /> @L["Disabled"]</label>
         </div>
         @Hints(([L["Tab"]], L["Moves focus to the box."]), ([L["Space"]], L["Checks or clears it."]))
+    </section>
+
+    <section class="grid gap-4" aria-labelledby="switch-heading">
+        <h2 id="switch-heading" class="text-lg font-semibold">@L["Switch"]</h2>
+        <div class="grid max-w-sm gap-3">
+            <label class="flex items-center gap-2 text-sm"><Switch checked /> @L["Airplane mode"]</label>
+            <label class="flex items-center gap-2 text-sm"><Switch @onchange='(ChangeEventArgs e) => Record(e.Value is true ? L["Notifications on"] : L["Notifications off"])' /> @L["Notifications"]</label>
+            <label class="flex items-center gap-2 text-sm text-muted-foreground"><Switch disabled /> @L["Disabled"]</label>
+        </div>
+        @Hints(([L["Tab"]], L["Moves focus to the switch."]), ([L["Space"]], L["Turns it on or off."]))
+    </section>
+
+    <section class="grid gap-4" aria-labelledby="radio-group-heading">
+        <h2 id="radio-group-heading" class="text-lg font-semibold">@L["RadioGroup"]</h2>
+        <FormField Label="@L["Density"]" Class="max-w-sm">
+            <RadioGroup Value="comfortable">
+                <label class="flex items-center gap-3 text-sm"><RadioGroupItem Value="default" /> @L["Default"]</label>
+                <label class="flex items-center gap-3 text-sm"><RadioGroupItem Value="comfortable" /> @L["Comfortable"]</label>
+                <label class="flex items-center gap-3 text-sm"><RadioGroupItem Value="compact" /> @L["Compact"]</label>
+                <label class="flex items-center gap-3 text-sm text-muted-foreground"><RadioGroupItem Value="spacious" disabled /> @L["Disabled"]</label>
+            </RadioGroup>
+        </FormField>
+        @Hints(
+            ([L["Tab"]], L["Moves into the group, onto the checked option, and out again."]),
+            (["↓", "↑", "←", "→"], L["Move to the next or previous option and check it, skipping disabled ones."]))
     </section>
 
     <section class="grid gap-4" aria-labelledby="form-field-heading">
@@ -239,7 +324,6 @@
         Record(_largeDiff is null ? L["Diff sample"] : L["Diff of 200 items"]);
     }
 
-    // shadcn's Kbd classes on a plain element; the Kbd component arrives with the first screen that needs it.
     private RenderFragment Hints(params (string[] Keys, string Action)[] hints) =>
         @<dl class="grid gap-2 text-sm" data-testid="keyboard-hints">
             @foreach (var (keys, action) in hints)
@@ -248,7 +332,7 @@
                     <dt class="flex items-center gap-1">
                         @foreach (var key in keys)
                         {
-                            <kbd class="pointer-events-none inline-flex h-5 min-w-5 items-center justify-center rounded-sm bg-muted px-1 font-sans text-xs font-medium text-muted-foreground select-none">@key</kbd>
+                            <Kbd>@key</Kbd>
                         }
                     </dt>
                     <dd class="text-muted-foreground">@action</dd>

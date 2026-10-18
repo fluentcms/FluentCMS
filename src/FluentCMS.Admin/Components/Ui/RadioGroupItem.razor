@@ -1,0 +1,23 @@
+@* The radio button is the input itself, drawn like shadcn's, with the dot drawn over it while it is checked. *@
+<span data-slot="radio-group-item" class="@ClassNames.Cn("relative inline-flex size-4 shrink-0", Class)">
+    <input type="radio"
+           name="@Group?.Name"
+           value="@Value"
+           checked="@(Value is not null && Value == Group?.Value)"
+           aria-invalid="@(Field?.HasError == true ? "true" : null)"
+           class="peer aspect-square size-4 shrink-0 appearance-none rounded-full border border-input text-primary shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:bg-input/30 dark:aria-invalid:ring-destructive/40"
+           @attributes="AdditionalAttributes" />
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+         aria-hidden="true" data-slot="radio-group-indicator" class="pointer-events-none absolute inset-0 m-auto hidden size-2 fill-primary text-primary peer-checked:block">
+        <circle cx="12" cy="12" r="10" />
+    </svg>
+</span>
+
+@code {
+    [CascadingParameter] private RadioGroupContext? Group { get; set; }
+    [CascadingParameter] private FormFieldContext? Field { get; set; }
+
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+}

@@ -34,12 +34,12 @@ public sealed class ShowcaseTests
 
         var sections = cut.FindAll("section");
 
-        Assert.Equal(11, sections.Count);
+        Assert.Equal(17, sections.Count);
         Assert.All(sections, section =>
         {
             var hints = section.QuerySelector("[data-testid=keyboard-hints]");
             Assert.NotNull(hints);
-            Assert.NotEmpty(hints.QuerySelectorAll("dt kbd"));
+            Assert.NotEmpty(hints.QuerySelectorAll("dt kbd[data-slot=kbd]"));
             Assert.NotEmpty(hints.QuerySelectorAll("dd"));
         });
     }
@@ -55,6 +55,20 @@ public sealed class ShowcaseTests
         await cut.Find("[data-slot=button][data-variant=secondary]").ClickAsync(new());
 
         Assert.StartsWith("Secondary at ", cut.Find("[data-testid=last-action]").TextContent);
+    }
+
+    [Fact]
+    public async Task A_change_in_a_select_or_a_switch_reports_on_the_server_status_line()
+    {
+        using var context = new AdminTestContext();
+
+        var cut = context.Render<Showcase>();
+
+        await cut.Find("[data-slot=select]").ChangeAsync(new ChangeEventArgs { Value = "done" });
+        Assert.StartsWith("Status done at ", cut.Find("[data-testid=last-action]").TextContent);
+
+        await cut.FindAll("input[role=switch]")[1].ChangeAsync(new ChangeEventArgs { Value = true });
+        Assert.StartsWith("Notifications on at ", cut.Find("[data-testid=last-action]").TextContent);
     }
 
     [Fact]
