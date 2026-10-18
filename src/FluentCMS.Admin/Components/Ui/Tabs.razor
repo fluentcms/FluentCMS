@@ -1,0 +1,18 @@
+@* shadcn's tabs. The active tab is kept in the browser: admin.js switches on a click or the arrow keys with no round trip,
+   so tabs keep working while the circuit is down. DefaultValue names the tab that starts active. *@
+<CascadingValue Value="_context" IsFixed="true">
+    <div data-ui="tabs" data-slot="tabs" data-orientation="horizontal" class="@ClassNames.Cn("flex flex-col gap-2", Class)" @attributes="AdditionalAttributes">
+        @ChildContent
+    </div>
+</CascadingValue>
+
+@code {
+    private readonly TabsContext _context = new();
+
+    [Parameter, EditorRequired] public string DefaultValue { get; set; } = string.Empty;
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    protected override void OnInitialized() => _context.DefaultValue = DefaultValue;
+}

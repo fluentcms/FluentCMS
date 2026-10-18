@@ -34,7 +34,7 @@ public sealed class ShowcaseTests
 
         var sections = cut.FindAll("section");
 
-        Assert.Equal(17, sections.Count);
+        Assert.Equal(22, sections.Count);
         Assert.All(sections, section =>
         {
             var hints = section.QuerySelector("[data-testid=keyboard-hints]");
@@ -69,6 +69,21 @@ public sealed class ShowcaseTests
 
         await cut.FindAll("input[role=switch]")[1].ChangeAsync(new ChangeEventArgs { Value = true });
         Assert.StartsWith("Notifications on at ", cut.Find("[data-testid=last-action]").TextContent);
+    }
+
+    [Fact]
+    public async Task The_toast_buttons_show_toasts_on_the_page()
+    {
+        using var context = new AdminTestContext();
+
+        var cut = context.Render<Showcase>();
+        Assert.Empty(cut.FindAll("[data-slot=toast]"));
+
+        await cut.Find("[data-testid=toast-show]").ClickAsync(new());
+        await cut.Find("[data-testid=toast-error]").ClickAsync(new());
+
+        cut.WaitForAssertion(() => Assert.Equal(["default", "destructive"], cut.FindAll("[data-slot=toast]").Select(toast => toast.GetAttribute("data-variant"))));
+        Assert.StartsWith("Error toast shown at ", cut.Find("[data-testid=last-action]").TextContent);
     }
 
     [Fact]
