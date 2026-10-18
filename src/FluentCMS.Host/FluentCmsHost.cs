@@ -40,6 +40,8 @@ public static class FluentCmsHost
         // First, so the settings a caller adds are there when the composition below reads them.
         configure?.Invoke(builder);
 
+        UseStaticWebAssets(builder);
+
         ConfigureLogging(builder.Logging, logToStandardError: false);
         AddFluentCms(builder.Services, builder.Configuration, builder.Environment);
         builder.Services.AddHttpContextAccessor();
@@ -109,6 +111,20 @@ public static class FluentCmsHost
 
             return next(context);
         });
+    }
+
+    // An unpublished build leaves the admin's files in its own wwwroot and lists them in this manifest, which the host defaults
+    // load in Development alone and look for under the entry assembly's name, the test host under xunit. Without it the admin
+    // is served without its stylesheet and script. A published build copies the files next to the binary and has no manifest.
+    private static void UseStaticWebAssets(WebApplicationBuilder builder)
+    {
+        var manifest = Path.Combine(AppContext.BaseDirectory, "fluentcms.staticwebassets.runtime.json");
+
+        if (File.Exists(manifest))
+        {
+            builder.WebHost.UseSetting(WebHostDefaults.StaticWebAssetsKey, manifest);
+            builder.WebHost.UseStaticWebAssets();
+        }
     }
 
     // The manifest is named after the entry assembly, which is the test host under xunit; without it the files are served unfingerprinted.
