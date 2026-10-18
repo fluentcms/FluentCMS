@@ -1,3 +1,4 @@
+using FluentCMS.Infrastructure.Agents;
 using FluentCMS.Infrastructure.Audit;
 using FluentCMS.Infrastructure.ChangeSets;
 using FluentCMS.Infrastructure.Schema;
@@ -23,6 +24,8 @@ public abstract class FluentCmsDbContext(DbContextOptions options) : IdentityDbC
 
     public DbSet<ChangeSetOperationRow> ChangeSetOperations => Set<ChangeSetOperationRow>();
 
+    public DbSet<AgentCredentialRow> AgentCredentials => Set<AgentCredentialRow>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -33,6 +36,7 @@ public abstract class FluentCmsDbContext(DbContextOptions options) : IdentityDbC
         builder.ApplyConfiguration(new ContentTypeVersionConfiguration());
         builder.ApplyConfiguration(new ChangeSetConfiguration());
         builder.ApplyConfiguration(new ChangeSetOperationConfiguration());
+        builder.ApplyConfiguration(new AgentCredentialConfiguration());
 
         builder.Entity<FluentCmsUser>(user =>
         {
