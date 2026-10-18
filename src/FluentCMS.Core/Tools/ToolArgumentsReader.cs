@@ -32,27 +32,6 @@ public sealed class ToolArgumentsReader
         return String(name, example, required: false);
     }
 
-    private string? String(string name, string example, bool required)
-    {
-        if (Read(name) is not { } value)
-        {
-            if (required)
-            {
-                Missing(name, $"a string such as '{example}'");
-            }
-
-            return null;
-        }
-
-        if (value.ValueKind == JsonValueKind.String && value.GetString() is { } text && !string.IsNullOrWhiteSpace(text))
-        {
-            return text;
-        }
-
-        Invalid(name, $"must be a non-empty string such as '{example}'");
-        return null;
-    }
-
     public Guid? RequiredGuid(string name)
     {
         if (Read(name) is not { } value)
@@ -103,6 +82,27 @@ public sealed class ToolArgumentsReader
         }
 
         return errors;
+    }
+
+    private string? String(string name, string example, bool required)
+    {
+        if (Read(name) is not { } value)
+        {
+            if (required)
+            {
+                Missing(name, $"a string such as '{example}'");
+            }
+
+            return null;
+        }
+
+        if (value.ValueKind == JsonValueKind.String && value.GetString() is { } text && !string.IsNullOrWhiteSpace(text))
+        {
+            return text;
+        }
+
+        Invalid(name, $"must be a non-empty string such as '{example}'");
+        return null;
     }
 
     private JsonElement? Read(string name)

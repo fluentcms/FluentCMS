@@ -25,9 +25,10 @@ internal sealed class CoreToolsSetup(IEnumerable<IToolProvider> tools, IEnumerab
         }
 
         options.ResourceCollection ??= [];
+        var names = new HashSet<string>(StringComparer.Ordinal);
         foreach (var resource in resources.SelectMany(provider => provider.Resources))
         {
-            if (!options.ResourceCollection.TryAdd(new CoreResource(resource)))
+            if (!names.Add(resource.Name) || !options.ResourceCollection.TryAdd(new CoreResource(resource)))
             {
                 throw new InvalidOperationException($"Two resources are named '{resource.Name}' or share the URI '{resource.UriTemplate}'.");
             }
@@ -106,7 +107,10 @@ internal sealed class CoreResource(AgentResource resource) : McpServerResource
         if (!read.IsSuccess)
         {
             // A resource read has no error result, so an expected failure is a protocol error that still says what to change.
-            throw new McpProtocolException(string.Join(" ", read.Errors.Select(error => error.Message)), McpErrorCode.ResourceNotFound);
+            var notFound = read.Errors.All(error => error.Code.EndsWith("_not_found", StringComparison.Ordinal));
+            throw new McpProtocolException(
+                string.Join(" ", read.Errors.Select(error => error.Message)),
+                notFound ? McpErrorCode.ResourceNotFound : McpErrorCode.InvalidParams);
         }
 
         return new ReadResourceResult
