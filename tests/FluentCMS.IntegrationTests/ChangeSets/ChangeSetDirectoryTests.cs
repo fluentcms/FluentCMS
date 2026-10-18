@@ -139,11 +139,11 @@ public sealed class ChangeSetDirectoryTests
     public async Task Every_transition_in_the_table_is_stored_with_its_event(string provider)
     {
         await using var scenario = await ChangeSetScenario.CreateAsync(provider);
-        var product = await scenario.ContentTypeAsync("product", revised: true);
 
-        foreach (var (from, to) in ChangeSetTransitions.All)
+        foreach (var ((from, to), index) in ChangeSetTransitions.All.Select((transition, index) => (transition, index)))
         {
-            var changeSet = await scenario.OpenAsync(Update(product));
+            // A new type each time, so a set that reaches published has no earlier publish of its item to be stale against.
+            var changeSet = await scenario.OpenAsync(Create(await scenario.ContentTypeAsync($"type-{index}")));
             foreach (var state in PathFromOpen[from])
             {
                 Assert.True((await MoveAsync(scenario, changeSet.Id, state)).IsSuccess);
@@ -348,8 +348,7 @@ public sealed class ChangeSetDirectoryTests
         await MoveAsync(scenario, changeSet.Id, ChangeSetState.ChecksRunning);
         scenario.Initiator = Amir;
 
-        var lost = await RaceAsync(
-            scenario,
+        var lost = await scenario.RaceAsync(
             directory => directory.TransitionAsync(changeSet.Id, ChangeSetState.AwaitingReview),
             directory => directory.TransitionAsync(changeSet.Id, ChangeSetState.ChecksFailed));
 
@@ -366,8 +365,7 @@ public sealed class ChangeSetDirectoryTests
         await using var scenario = await ChangeSetScenario.CreateAsync(provider);
         var category = await scenario.ContentTypeAsync("category");
 
-        var lost = await RaceAsync(
-            scenario,
+        var lost = await scenario.RaceAsync(
             directory => directory.AddToSessionAsync("example-session", CatalogSync, Create(category)),
             directory => directory.AddToSessionAsync("example-session", CatalogSync, Create(category)));
 
@@ -385,23 +383,5 @@ public sealed class ChangeSetDirectoryTests
             : directory.TransitionAsync(id, state);
 
         return state is ChangeSetState.ChecksRunning or ChangeSetState.Open ? scenario.RunAsync(move) : scenario.AsPersonAsync(move);
-    }
-
-    private static async Task<Result<ChangeSet>> RaceAsync(
-        ChangeSetScenario scenario,
-        Func<IChangeSetDirectory, Task<Result<ChangeSet>>> winner,
-        Func<IChangeSetDirectory, Task<Result<ChangeSet>>> loser)
-    {
-        await using var scope = scenario.Services.CreateAsyncScope();
-        var work = await scope.ServiceProvider.GetRequiredService<IUnitOfWork>().BeginAsync();
-
-        Assert.True((await winner(scope.ServiceProvider.GetRequiredService<IChangeSetDirectory>())).IsSuccess);
-
-        var second = Task.Run(() => scenario.RunAsync(loser));
-        await Task.Delay(TimeSpan.FromMilliseconds(500));
-        await work.CommitAsync();
-        await work.DisposeAsync();
-
-        return await second;
     }
 }
