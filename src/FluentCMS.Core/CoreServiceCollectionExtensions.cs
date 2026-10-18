@@ -1,3 +1,4 @@
+using FluentCMS.Core.Agents;
 using FluentCMS.Core.Audit;
 using FluentCMS.Core.Extensions;
 using FluentCMS.Core.Schema;
@@ -21,6 +22,9 @@ public static class CoreServiceCollectionExtensions
 
         // Reads through IContentTypeDirectory, which Infrastructure provides.
         services.AddScoped<ISchemaDocuments, SchemaDocuments>();
+
+        // Reads through IAgentCredentialDirectory and IAgentActivity, which Infrastructure provides.
+        services.AddScoped<IAgentPermissions, AgentPermissions>();
 
         return services;
     }
