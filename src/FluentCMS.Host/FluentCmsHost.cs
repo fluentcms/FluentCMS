@@ -47,6 +47,7 @@ public static class FluentCmsHost
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddScoped<ICurrentInitiator, HttpContextInitiator>();
         builder.Services.AddScoped<IThemePreference, CookieThemePreference>();
+        builder.Services.AddFluentCmsMcpHttp();
         var provider = AddCookieSignIn(builder.Services, builder.Configuration, builder.Environment);
         builder.Services.AddSignInRateLimit(builder.Configuration);
         builder.Services.AddHealthChecks();
@@ -63,6 +64,7 @@ public static class FluentCmsHost
         app.UseAntiforgery();
         MapStaticAssets(app);
         app.MapHealthChecks("/health");
+        app.MapFluentCmsMcp();
         app.MapExternalSignIn();
         app.MapAuditExport();
 
@@ -149,17 +151,18 @@ public static class FluentCmsHost
         }
     }
 
-    public static IHost BuildMcpHost(string[] args, Stream? standardInput = null, Action<HostApplicationBuilder>? configure = null)
+    public static IHost BuildMcpHost(
+        string[] args,
+        Stream? standardInput = null,
+        Stream? standardOutput = null,
+        Action<HostApplicationBuilder>? configure = null)
     {
         var builder = Microsoft.Extensions.Hosting.Host.CreateApplicationBuilder(args);
         configure?.Invoke(builder);
 
         ConfigureLogging(builder.Logging, logToStandardError: true);
         AddFluentCms(builder.Services, builder.Configuration, builder.Environment);
-        builder.Services.AddSingleton(standardInput is null
-            ? StandardInputSource.Console
-            : new StandardInputSource(() => standardInput));
-        builder.Services.AddHostedService<StandardInputWatcher>();
+        builder.Services.AddFluentCmsMcpStdio(standardInput, standardOutput);
         builder.Services.AddScoped<ICurrentInitiator, NoInitiator>();
 
         return builder.Build();
@@ -170,7 +173,6 @@ public static class FluentCmsHost
     {
         services.AddFluentCmsCore();
         services.AddFluentCmsInfrastructure(configuration);
-        services.AddFluentCmsMcp();
         services.AddFluentCmsApi();
         services.AddFluentCmsAdmin();
 
