@@ -9,11 +9,11 @@ namespace FluentCMS.Core.Agents;
 // security event (SEC-08); the refused write itself is left to the caller, which writes nothing.
 public interface IAgentPermissions
 {
-    // An agent submits its set and reopens it after failed checks; every other move is the checks', routing's or a person's.
-    Task<Result> CheckTransitionAsync(Guid changeSetId, ChangeSetState target, CancellationToken cancellationToken = default);
+    // An agent submits its own set and reopens it after failed checks; every other move is the checks', routing's or a person's.
+    Task<Result> CheckTransitionAsync(ChangeSet changeSet, ChangeSetState target, CancellationToken cancellationToken = default);
 
     Task<Result> CheckNewChangeSetAsync(CancellationToken cancellationToken = default);
 
-    // Called with the set as read for the write and the new operation added in memory, before anything is written.
+    // Called with the agent's own set as read for the write and the new operation added in memory, before anything is written.
     Task<Result> CheckChangeSetSizeAsync(ChangeSet changeSet, CancellationToken cancellationToken = default);
 }

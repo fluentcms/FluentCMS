@@ -21,17 +21,25 @@ internal sealed class AgentPermissions(
 
     private static readonly TimeSpan Day = TimeSpan.FromDays(1);
 
-    public async Task<Result> CheckTransitionAsync(Guid changeSetId, ChangeSetState target, CancellationToken cancellationToken = default)
+    public async Task<Result> CheckTransitionAsync(ChangeSet changeSet, ChangeSetState target, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(changeSet);
+
         var agent = await AgentAsync(cancellationToken);
         if (!agent.IsSuccess)
         {
             return Result.Failure(agent.Errors);
         }
 
-        if (agent.Value is not { } credential || AgentTargets.Contains(target))
+        if (agent.Value is not { } credential)
         {
             return Result.Success();
+        }
+
+        var changeSetId = changeSet.Id;
+        if (AgentTargets.Contains(target))
+        {
+            return Owns(credential, changeSet);
         }
 
         await RecordAsync(
@@ -89,6 +97,12 @@ internal sealed class AgentPermissions(
             return Result.Success();
         }
 
+        var owned = Owns(credential, changeSet);
+        if (!owned.IsSuccess)
+        {
+            return owned;
+        }
+
         var cap = credential.Caps.ItemsPerChangeSet;
         if (changeSet.Operations.Count <= cap)
         {
@@ -103,6 +117,17 @@ internal sealed class AgentPermissions(
             AgentPermissionErrorCodes.CapExceeded,
             $"Change set {changeSet.Id} already holds {changeSet.Operations.Count - 1} items, and the credential '{credential.DisplayName}' allows "
             + $"{cap} (items per change set). Submit this change set and add the rest to a new one.");
+    }
+
+    // An agent works on the change sets it opened; a person's set, or another agent's, is not its to submit or add to.
+    private static Result Owns(AgentCredential credential, ChangeSet changeSet)
+    {
+        return changeSet.Initiator is AgentInitiator owner && owner.CredentialId == credential.Id
+            ? Result.Success()
+            : Result.Failure(
+                AgentPermissionErrorCodes.NotOwner,
+                $"Change set {changeSet.Id} was opened by {changeSet.Initiator.DisplayName}, not by the credential '{credential.DisplayName}'; "
+                + "an agent submits, reopens and adds to its own change sets only. Open a change set of your own.");
     }
 
     // Null for anyone but an agent; the agent's credential while it is active and its scope includes the site.

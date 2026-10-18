@@ -1,4 +1,5 @@
 using FluentCMS.Core.Agents;
+using FluentCMS.Infrastructure.ChangeSets;
 using FluentCMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -14,7 +15,7 @@ internal sealed class AgentActivity(FluentCmsDbContext context) : IAgentActivity
         return context.AuditEvents
             .FromSql($"""
                 SELECT * FROM "AuditEvents"
-                WHERE "Operation" = 'change_set.opened' AND "AgentCredentialId" = {credentialId} AND "Timestamp" >= {since.ToUniversalTime()}
+                WHERE "Operation" = {ChangeSetDirectory.OpenedOperation} AND "AgentCredentialId" = {credentialId} AND "Timestamp" >= {since.ToUniversalTime()}
                 """)
             .CountAsync(cancellationToken);
     }

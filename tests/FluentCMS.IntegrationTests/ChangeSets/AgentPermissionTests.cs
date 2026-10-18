@@ -96,6 +96,33 @@ public sealed class AgentPermissionTests
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
     [PostgresData]
+    public async Task An_agent_submits_reopens_and_adds_to_its_own_change_sets_only(string provider)
+    {
+        await using var scenario = await ChangeSetScenario.CreateAsync(provider);
+        var category = await scenario.ContentTypeAsync("category");
+        var product = await scenario.ContentTypeAsync("product", revised: true);
+        var persons = (await scenario.AsPersonAsync(directory => directory.OpenAsync(CatalogSync))).Value;
+        persons = (await scenario.AsPersonAsync(directory => directory.AddOperationAsync(persons.Id, Update(product)))).Value;
+        var before = await scenario.ChangeSetRowAsync(persons.Id);
+
+        var submitted = await scenario.RunAsync(directory => directory.TransitionAsync(persons.Id, ChangeSetState.ChecksRunning));
+        var added = await scenario.RunAsync(directory => directory.AddOperationAsync(persons.Id, Create(category)));
+
+        foreach (var refused in new[] { submitted, added })
+        {
+            var error = Assert.Single(refused.Errors);
+            Assert.Equal(AgentPermissionErrorCodes.NotOwner, error.Code);
+            Assert.Contains(Amir.DisplayName, error.Message);
+        }
+
+        var after = await scenario.ChangeSetRowAsync(persons.Id);
+        Assert.Equal((ChangeSetState.Open, before.Revision), (after.State, after.Revision));
+        Assert.Single(await scenario.OperationRowsAsync(persons.Id));
+    }
+
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
     public async Task An_operation_past_the_agents_items_cap_is_refused_naming_the_cap(string provider)
     {
         await using var scenario = await ChangeSetScenario.CreateAsync(provider);

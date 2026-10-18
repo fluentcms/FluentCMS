@@ -20,6 +20,9 @@ internal sealed class ChangeSetDirectory(
     ICurrentInitiator currentInitiator,
     IAgentPermissions permissions) : IChangeSetDirectory
 {
+    // AgentActivity counts these events for the change-sets-per-day cap.
+    internal const string OpenedOperation = "change_set.opened";
+
     private const string SubjectType = "change_set";
 
     // Until multi-site (MST-01), every set belongs to the one site (SCH-07).
@@ -110,18 +113,19 @@ internal sealed class ChangeSetDirectory(
             return opened;
         }
 
-        var allowed = await permissions.CheckNewChangeSetAsync(cancellationToken);
-        if (!allowed.IsSuccess)
-        {
-            return Result<ChangeSet>.Failure(allowed.Errors);
-        }
-
         var set = opened.Value;
+
         var added = set.AddOperation(operation);
         var previousVersion = added.IsSuccess ? await ResolveAsync(operation, cancellationToken) : Result<Guid?>.Failure(added.Errors);
         if (!previousVersion.IsSuccess)
         {
             return Result<ChangeSet>.Failure(previousVersion.Errors);
+        }
+
+        var allowed = await permissions.CheckNewChangeSetAsync(cancellationToken);
+        if (!allowed.IsSuccess)
+        {
+            return Result<ChangeSet>.Failure(allowed.Errors);
         }
 
         await using var scope = await unitOfWork.BeginAsync(cancellationToken);
@@ -162,12 +166,6 @@ internal sealed class ChangeSetDirectory(
             return Result<ChangeSet>.Failure(added.Errors);
         }
 
-        // Checked against the read whose revision guards the write, so two concurrent operations cannot both pass the cap.
-        var allowed = await permissions.CheckChangeSetSizeAsync(set, cancellationToken);
-        if (!allowed.IsSuccess)
-        {
-            return Result<ChangeSet>.Failure(allowed.Errors);
-        }
 
         var sourcesAdded = set.AddSources(sources);
         if (!sourcesAdded.IsSuccess)
@@ -179,6 +177,13 @@ internal sealed class ChangeSetDirectory(
         if (!previousVersion.IsSuccess)
         {
             return Result<ChangeSet>.Failure(previousVersion.Errors);
+        }
+
+        // Checked against the read whose revision guards the write, so two concurrent operations cannot both pass the cap.
+        var allowed = await permissions.CheckChangeSetSizeAsync(set, cancellationToken);
+        if (!allowed.IsSuccess)
+        {
+            return Result<ChangeSet>.Failure(allowed.Errors);
         }
 
         await using var scope = await unitOfWork.BeginAsync(cancellationToken);
@@ -204,7 +209,7 @@ internal sealed class ChangeSetDirectory(
             return NotFound(changeSetId);
         }
 
-        var allowed = await permissions.CheckTransitionAsync(changeSetId, target, cancellationToken);
+        var allowed = await permissions.CheckTransitionAsync(stored.ChangeSet, target, cancellationToken);
         if (!allowed.IsSuccess)
         {
             return Result<ChangeSet>.Failure(allowed.Errors);
@@ -258,7 +263,7 @@ internal sealed class ChangeSetDirectory(
         });
 
         await auditLog.AppendAsync(
-            new NewAuditEvent("change_set.opened") { SubjectType = SubjectType, SubjectId = set.Id, ChangeSetId = set.Id, Sources = set.Sources },
+            new NewAuditEvent(OpenedOperation) { SubjectType = SubjectType, SubjectId = set.Id, ChangeSetId = set.Id, Sources = set.Sources },
             cancellationToken);
     }
 
