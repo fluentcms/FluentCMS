@@ -300,6 +300,9 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                         .HasMaxLength(128)
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("PublishedVersion")
+                        .HasColumnType("INTEGER");
+
                     b.Property<Guid>("SiteId")
                         .HasColumnType("TEXT");
 
@@ -318,6 +321,8 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
 
                     b.ToTable("ContentTypes", null, t =>
                         {
+                            t.HasCheckConstraint("CK_ContentTypes_PublishedVersion", "\"PublishedVersion\" IS NULL OR \"PublishedVersion\" >= 1");
+
                             t.HasCheckConstraint("CK_ContentTypes_Version", "\"Version\" >= 1");
                         });
                 });

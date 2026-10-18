@@ -22,4 +22,5 @@ public static class ChangeSetErrorCodes
     public const string ItemKindUnavailable = "item_kind_unavailable";
     public const string SessionHasOpenSet = "session_has_open_set";
     public const string Conflict = "change_set_conflict";
+    public const string BaseVersionStale = "base_version_stale";
 }
