@@ -79,6 +79,7 @@ public static class InfrastructureServiceCollectionExtensions
     {
         services.AddScoped<IAgentCredentialDirectory, AgentCredentialDirectory>();
         services.AddScoped<IAgentActivity, AgentActivity>();
+        services.AddSingleton<IToolCallLog, ToolCallLog>();
     }
 
     private static void AddContent(IServiceCollection services)
