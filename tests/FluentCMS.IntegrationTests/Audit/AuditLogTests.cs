@@ -31,7 +31,7 @@ public sealed class AuditLogTests
             {
                 SubjectType = "entry",
                 SubjectId = subjectId,
-                Model = "claude-sonnet-4-5",
+                Model = "example-model",
                 PromptHash = "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
                 Sources = ["https://example.com/prices", "Dana, fact owner"],
                 ChangeSetId = changeSetId,
@@ -53,7 +53,7 @@ public sealed class AuditLogTests
         Assert.Equal("entry.updated", row.Operation);
         Assert.Equal("entry", row.SubjectType);
         Assert.Equal(subjectId, row.SubjectId);
-        Assert.Equal("claude-sonnet-4-5", row.Model);
+        Assert.Equal("example-model", row.Model);
         Assert.StartsWith("sha256:", row.PromptHash);
         Assert.Equal(["https://example.com/prices", "Dana, fact owner"], row.Sources);
         Assert.Equal(changeSetId, row.ChangeSetId);
