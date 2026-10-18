@@ -1,24 +1,28 @@
 <span data-slot="badge"
       data-variant="@Variant"
-      class="@ClassNames.Cn(Base, VariantClasses(Variant), Class)"
+      class="@(BadgeVariants.Classes(new() { ["variant"] = Variant }, Class))"
       @attributes="AdditionalAttributes">
     @ChildContent
 </span>
 
 @code {
-    // The shadcn badge, so a documentation example translates with the same variant names.
-    private const string Base = "inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-md border px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&>svg]:pointer-events-none [&>svg]:size-3";
+    // shadcn's badgeVariants, so a documentation example translates with the same variant names.
+    private static readonly Variants BadgeVariants = new(
+        "inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-md border px-2 py-0.5 text-xs font-medium whitespace-nowrap transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&>svg]:pointer-events-none [&>svg]:size-3",
+        new()
+        {
+            ["variant"] = new()
+            {
+                ["default"] = "border-transparent bg-primary text-primary-foreground",
+                ["secondary"] = "border-transparent bg-secondary text-secondary-foreground",
+                ["destructive"] = "border-transparent bg-destructive text-white dark:bg-destructive/60",
+                ["outline"] = "text-foreground",
+            },
+        },
+        new() { ["variant"] = "default" });
 
     [Parameter] public string Variant { get; set; } = "default";
     [Parameter] public string? Class { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
     [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
-
-    private static string VariantClasses(string variant) => variant switch
-    {
-        "secondary" => "border-transparent bg-secondary text-secondary-foreground",
-        "destructive" => "border-transparent bg-destructive text-white dark:bg-destructive/60",
-        "outline" => "text-foreground",
-        _ => "border-transparent bg-primary text-primary-foreground",
-    };
 }
