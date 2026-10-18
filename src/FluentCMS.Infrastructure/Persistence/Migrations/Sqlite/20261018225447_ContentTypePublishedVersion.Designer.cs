@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
 {
     [DbContext(typeof(SqliteFluentCmsDbContext))]
-    [Migration("20261018224911_ContentTypePublishedVersion")]
+    [Migration("20261018225447_ContentTypePublishedVersion")]
     partial class ContentTypePublishedVersion
     {
         /// <inheritdoc />
@@ -349,6 +349,9 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                         .HasColumnType("TEXT");
 
                     b.Property<Guid>("ContentTypeId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("LatestVersion")

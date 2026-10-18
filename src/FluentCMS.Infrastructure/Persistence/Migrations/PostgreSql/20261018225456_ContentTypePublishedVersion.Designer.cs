@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
 {
     [DbContext(typeof(PostgreSqlFluentCmsDbContext))]
-    [Migration("20261018224920_ContentTypePublishedVersion")]
+    [Migration("20261018225456_ContentTypePublishedVersion")]
     partial class ContentTypePublishedVersion
     {
         /// <inheritdoc />
@@ -356,6 +356,9 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
 
                     b.Property<Guid>("ContentTypeId")
                         .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("LatestVersion")
                         .HasColumnType("integer");
