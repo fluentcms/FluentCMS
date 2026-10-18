@@ -15,6 +15,14 @@ internal sealed class MediaFieldType : IFieldType
         return new FieldSettingsReader(Name, settings).Errors();
     }
 
+    // Whether the asset exists is checked against the media library (F-MED).
+    public IReadOnlyList<Error> ValidateValue(JsonElement value, JsonElement settings, FieldTypeRegistry fieldTypes)
+    {
+        return Values.IsId(value)
+            ? []
+            : Values.Invalid($"The value must be the id of an asset in the media library, a UUID such as {FieldValueDescription.ExampleId}.");
+    }
+
     public FieldValueDescription DescribeValue(JsonElement settings, FieldTypeRegistry fieldTypes)
     {
         return new FieldValueDescription(

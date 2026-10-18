@@ -22,4 +22,5 @@ public static class SchemaErrorCodes
     public const string ReferenceFieldUnknown = "reference_field_unknown";
     public const string FieldReferenced = "field_referenced";
     public const string DescriptionInvalid = "description_invalid";
+    public const string ValueInvalid = "value_invalid";
 }

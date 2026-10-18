@@ -47,6 +47,15 @@ public sealed class FieldTypeRegistryTests
     }
 
     [Fact]
+    public void A_value_of_a_type_that_is_not_installed_is_refused_rather_than_stored_unchecked()
+    {
+        var error = Assert.Single(CoreRegistry().ValidateValue("money", FieldDefinition.EmptySettings, JsonSerializer.Deserialize<JsonElement>("5")));
+
+        Assert.Equal(SchemaErrorCodes.FieldTypeUnknown, error.Code);
+        Assert.Equal("The field type 'money' is not installed, so a value of it cannot be checked.", error.Message);
+    }
+
+    [Fact]
     public void An_unknown_type_is_reported_with_the_known_types()
     {
         var error = Assert.Single(CoreRegistry().ValidateSettings("money", FieldDefinition.EmptySettings));
@@ -105,6 +114,11 @@ public sealed class FieldTypeRegistryTests
         public string Name => name;
 
         public IReadOnlyList<Error> ValidateSettings(JsonElement settings, FieldTypeRegistry fieldTypes)
+        {
+            return [];
+        }
+
+        public IReadOnlyList<Error> ValidateValue(JsonElement value, JsonElement settings, FieldTypeRegistry fieldTypes)
         {
             return [];
         }
