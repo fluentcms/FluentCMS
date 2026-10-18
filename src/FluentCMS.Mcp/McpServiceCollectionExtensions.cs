@@ -1,3 +1,4 @@
+using FluentCMS.Core.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol.AspNetCore;
 using ModelContextProtocol.Protocol;
@@ -16,9 +17,11 @@ public static class McpServiceCollectionExtensions
     }
 
     // One session that ends when its input closes, and stops the host with it. Streams other than the console run it in-process.
-    public static IServiceCollection AddFluentCmsMcpStdio(this IServiceCollection services, Stream? input = null, Stream? output = null)
+    // Every message is answered only for the agent whose key the process was given, and runs as that agent.
+    public static IServiceCollection AddFluentCmsMcpStdio(this IServiceCollection services, string? agentKey, Stream? input = null, Stream? output = null)
     {
-        var server = AddServer(services);
+        var server = AddServer(services).WithMessageFilters(filters => filters.AddIncomingFilter(StdioAgentAuthentication.Filter(agentKey)));
+        services.AddScoped<ICurrentInitiator, McpMessageInitiator>();
 
         if (input is null && output is null)
         {

@@ -6,9 +6,3 @@ internal sealed class HttpContextInitiator(IHttpContextAccessor accessor) : ICur
 {
     public Initiator? Current => ClaimsInitiator.From(accessor.HttpContext?.User);
 }
-
-// The stdio host has no caller until F-MCP authenticates agent credentials.
-internal sealed class NoInitiator : ICurrentInitiator
-{
-    public Initiator? Current => null;
-}
