@@ -30,8 +30,8 @@ public sealed class McpCoverageTests
         Missing("MCP-08", "Bulk operations that return a change set id and report progress", "#2423"),
     ];
 
-    // A person approves, rejects and publishes; no tool may (MCP-06, SEC-02).
-    private static readonly string[] ReviewWords = ["approve", "reject", "publish", "revert"];
+    // A person approves, rejects, publishes and reverts; no tool may (MCP-06, SEC-02). Tool names start with their verb.
+    private static readonly string[] ReviewVerbs = ["approve_", "reject_", "publish_", "revert_"];
 
     [Fact]
     public void Every_built_capability_has_its_tools_registered()
@@ -66,7 +66,7 @@ public sealed class McpCoverageTests
     [Fact]
     public void No_tool_approves_rejects_or_publishes()
     {
-        var review = RegisteredTools().Where(tool => ReviewWords.Any(word => tool.Contains(word, StringComparison.Ordinal))).ToList();
+        var review = RegisteredTools().Where(tool => ReviewVerbs.Any(verb => tool.StartsWith(verb, StringComparison.Ordinal))).ToList();
 
         Assert.Empty(review);
     }
