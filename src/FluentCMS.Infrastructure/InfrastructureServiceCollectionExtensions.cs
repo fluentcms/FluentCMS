@@ -55,7 +55,8 @@ public static class InfrastructureServiceCollectionExtensions
     {
         services.AddIdentityCore<FluentCmsUser>(options => options.User.RequireUniqueEmail = true)
             .AddRoles<FluentCmsRole>()
-            .AddEntityFrameworkStores<FluentCmsDbContext>();
+            .AddEntityFrameworkStores<FluentCmsDbContext>()
+            .AddClaimsPrincipalFactory<FluentCmsClaimsPrincipalFactory>();
 
         services.AddScoped<IUserDirectory, UserDirectory>();
         services.AddScoped<IFirstRunSetup, FirstRunSetup>();
