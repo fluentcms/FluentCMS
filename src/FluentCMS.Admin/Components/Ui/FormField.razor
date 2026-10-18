@@ -1,0 +1,37 @@
+@* One labelled control with an optional description and error, wired together for assistive technology like shadcn's FormItem.
+   Not a fixed cascading value: an error that appears after a submit has to re-render the control as well. *@
+<CascadingValue Value="_context">
+    <div data-slot="form-item" class="@ClassNames.Cn("grid gap-2", Class)">
+        <label for="@_context.Id"
+               data-slot="form-label"
+               data-error="@(_context.HasError ? "true" : "false")"
+               class="flex items-center gap-2 text-sm leading-none font-medium select-none peer-disabled:cursor-not-allowed peer-disabled:opacity-50 data-[error=true]:text-destructive">
+            @Label
+        </label>
+        @ChildContent
+        @if (Description is not null)
+        {
+            <p id="@_context.DescriptionId" data-slot="form-description" class="text-sm text-muted-foreground">@Description</p>
+        }
+        @if (Error is not null)
+        {
+            <p id="@_context.ErrorId" data-slot="form-message" class="text-sm text-destructive">@Error</p>
+        }
+    </div>
+</CascadingValue>
+
+@code {
+    private readonly FormFieldContext _context = new();
+
+    [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
+    [Parameter] public string? Description { get; set; }
+    [Parameter] public string? Error { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        _context.HasDescription = Description is not null;
+        _context.HasError = Error is not null;
+    }
+}

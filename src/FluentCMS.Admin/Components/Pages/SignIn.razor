@@ -1,0 +1,73 @@
+@page "/sign-in"
+@layout AccountLayout
+@attribute [AllowAnonymous]
+@attribute [AcceptsCredentials]
+@inject IFirstRunSetup FirstRun
+@inject IUserSignIn UserSignIn
+@inject NavigationManager Navigation
+@inject IStringLocalizer<SignIn> L
+
+<PageTitle>@L["Sign in"]</PageTitle>
+
+<Card>
+    <CardHeader>
+        <CardTitle><h1>@L["Sign in"]</h1></CardTitle>
+        <CardDescription>@L["Enter your email and password to sign in to the admin."]</CardDescription>
+    </CardHeader>
+    <CardContent>
+        <form method="post" @onsubmit="SubmitAsync" @formname="sign-in" class="grid gap-6">
+            <AntiforgeryToken />
+            @if (_failed)
+            {
+                <p role="alert" class="text-sm text-destructive" data-testid="sign-in-error">@L["Sign-in failed. Check your email and password, or try again in a few minutes."]</p>
+            }
+            <FormField Label="@L["Email"]">
+                <Input Type="email" name="Form.Email" value="@Form.Email" autocomplete="username" required />
+            </FormField>
+            <FormField Label="@L["Password"]">
+                <Input Type="password" name="Form.Password" autocomplete="current-password" required />
+            </FormField>
+            <Button Type="submit" Class="w-full">@L["Sign in"]</Button>
+        </form>
+    </CardContent>
+</Card>
+
+@code {
+    private bool _failed;
+
+    [SupplyParameterFromForm(FormName = "sign-in")]
+    private SignInForm Form { get; set; } = default!;
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Form ??= new();
+
+        // Nobody can sign in before the first administrator exists, so a fresh install continues at setup.
+        if (await FirstRun.NeedsFirstAdministratorAsync())
+        {
+            Navigation.NavigateTo("setup");
+        }
+    }
+
+    private async Task SubmitAsync()
+    {
+        var result = await UserSignIn.SignInAsync(Form.Email?.Trim() ?? string.Empty, Form.Password ?? string.Empty);
+        if (!result.IsSuccess)
+        {
+            _failed = true;
+            return;
+        }
+
+        Navigation.NavigateTo(AdminRoutes.IsLocal(ReturnUrl) ? ReturnUrl! : "");
+    }
+
+    private sealed class SignInForm
+    {
+        public string? Email { get; set; }
+
+        public string? Password { get; set; }
+    }
+}

@@ -44,3 +44,6 @@ appsettings.*.local.json
 # Operating system
 .DS_Store
 Thumbs.db
+
+# Data Protection keys of a local run
+data-protection-keys/
