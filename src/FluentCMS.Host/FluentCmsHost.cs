@@ -85,12 +85,18 @@ public static class FluentCmsHost
             options.LoginPath = AdminRoutes.SignIn;
             options.LogoutPath = AdminRoutes.SignOut;
         });
-        new IdentityBuilder(typeof(FluentCmsUser), typeof(FluentCmsRole), services).AddSignInManager();
+        // The data protection token provider for reset links is in the shared framework, which Infrastructure does not reference.
+        new IdentityBuilder(typeof(FluentCmsUser), typeof(FluentCmsRole), services)
+            .AddSignInManager()
+            .AddTokenProvider<DataProtectorTokenProvider<FluentCmsUser>>(TokenOptions.DefaultProvider);
+        services.Configure<DataProtectionTokenProviderOptions>(options =>
+            options.TokenLifespan = configuration.GetValue(IdentityPasswordReset.LifespanSetting, TimeSpan.FromDays(1)));
 
         // Disabling a user changes their security stamp; checking it every minute instead of every thirty ends their session soon after.
         services.Configure<SecurityStampValidatorOptions>(options => options.ValidationInterval = TimeSpan.FromMinutes(1));
         services.AddAuthorization();
         services.AddScoped<IUserSignIn, CookieUserSignIn>();
+        services.AddScoped<IPasswordReset, IdentityPasswordReset>();
         return provider;
     }
 
