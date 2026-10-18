@@ -225,5 +225,64 @@ public sealed class ChangeSetTests
         Assert.Equal([operation], changeSet.Operations);
         Assert.Equal(ChangeSetState.Rejected, changeSet.State);
         Assert.Equal("The price has no source.", changeSet.RejectionReason);
+        Assert.Null(changeSet.RevertsChangeSetId);
+    }
+
+    [Fact]
+    public void A_revert_holds_the_inverse_of_every_operation_in_order_and_names_the_set_it_undoes()
+    {
+        var create = ChangeOperation.Create(OperationKind.Create, ItemKind.Schema, Guid.NewGuid(), null, 1).Value;
+        var update = ChangeOperation.Create(OperationKind.Update, ItemKind.Schema, Guid.NewGuid(), 1, 2).Value;
+        var original = ChangeSet.Restore(
+            Guid.NewGuid(),
+            Site,
+            "Sync prices.",
+            ["exports/catalog.csv"],
+            TestChangeSets.Agent,
+            null,
+            [create, update],
+            ChangeSetState.Published,
+            null);
+        var person = new UserInitiator(Guid.NewGuid(), "Amir");
+
+        var revert = original.Revert("  The sync used the wrong export. ", person).Value;
+
+        Assert.NotEqual(original.Id, revert.Id);
+        Assert.Equal(original.Id, revert.RevertsChangeSetId);
+        Assert.Equal(Site, revert.SiteId);
+        Assert.Equal("The sync used the wrong export.", revert.Rationale);
+        Assert.Empty(revert.Sources);
+        Assert.Same(person, revert.Initiator);
+        Assert.Equal(ChangeSetState.Open, revert.State);
+        Assert.Equal([create.Inverse(), update.Inverse()], revert.Operations);
+        Assert.Equal(ChangeSetState.Published, original.State);
+    }
+
+    [Theory]
+    [InlineData(ChangeSetState.Open)]
+    [InlineData(ChangeSetState.Approved)]
+    [InlineData(ChangeSetState.Rejected)]
+    [InlineData(ChangeSetState.Reverted)]
+    public void Only_a_published_set_can_be_reverted(ChangeSetState state)
+    {
+        var changeSet = TestChangeSets.InState(state);
+
+        var revert = changeSet.Revert("Undo it.", TestChangeSets.Agent);
+
+        Assert.Equal(ChangeSetErrorCodes.TransitionNotAllowed, Assert.Single(revert.Errors).Code);
+    }
+
+    [Fact]
+    public void A_revert_needs_a_rationale_and_takes_no_further_operations()
+    {
+        var published = TestChangeSets.InState(ChangeSetState.Published);
+
+        var blank = published.Revert(" ", TestChangeSets.Agent);
+        var revert = published.Revert("Undo it.", TestChangeSets.Agent).Value;
+        var added = revert.AddOperation(TestChangeSets.Update(ItemKind.Schema));
+
+        Assert.Equal(ChangeSetErrorCodes.RationaleMissing, Assert.Single(blank.Errors).Code);
+        Assert.Equal(ChangeSetErrorCodes.RevertFixed, Assert.Single(added.Errors).Code);
+        Assert.Single(revert.Operations);
     }
 }

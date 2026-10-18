@@ -265,6 +265,9 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                     b.Property<string>("RejectionReason")
                         .HasColumnType("TEXT");
 
+                    b.Property<Guid?>("RevertsChangeSetId")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("Revision")
                         .HasColumnType("INTEGER");
 
@@ -285,6 +288,8 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("RevertsChangeSetId");
 
                     b.HasIndex("SiteId");
 
@@ -714,6 +719,11 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
 
             modelBuilder.Entity("FluentCMS.Infrastructure.ChangeSets.ChangeSetRow", b =>
                 {
+                    b.HasOne("FluentCMS.Infrastructure.ChangeSets.ChangeSetRow", null)
+                        .WithMany()
+                        .HasForeignKey("RevertsChangeSetId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("FluentCMS.Infrastructure.Sites.SiteRow", null)
                         .WithMany()
                         .HasForeignKey("SiteId")

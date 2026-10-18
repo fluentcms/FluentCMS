@@ -103,6 +103,38 @@ public sealed class ChangeOperationTests
             result.Errors.Select(error => error.Code));
     }
 
+    [Theory]
+    [InlineData(OperationKind.Create, null, 1, OperationKind.Delete, 1, null)]
+    [InlineData(OperationKind.Update, 2, 5, OperationKind.Update, 5, 2)]
+    [InlineData(OperationKind.Delete, 3, null, OperationKind.Create, null, 3)]
+    public void The_inverse_puts_the_item_back_at_the_version_the_operation_was_based_on(
+        OperationKind kind,
+        int? baseVersion,
+        int? proposedVersion,
+        OperationKind inverseKind,
+        int? inverseBase,
+        int? inverseProposed)
+    {
+        var operation = ChangeOperation.Create(kind, ItemKind.Schema, Item, baseVersion, proposedVersion).Value;
+
+        var inverse = operation.Inverse();
+
+        Assert.Equal(inverseKind, inverse.Kind);
+        Assert.Equal(ItemKind.Schema, inverse.ItemKind);
+        Assert.Equal(Item, inverse.ItemId);
+        Assert.Equal(inverseBase, inverse.BaseVersion);
+        Assert.Equal(inverseProposed, inverse.ProposedVersion);
+        Assert.Equal(operation, inverse.Inverse());
+    }
+
+    [Fact]
+    public void An_update_back_to_an_earlier_version_exists_only_as_an_inverse()
+    {
+        var created = ChangeOperation.Create(OperationKind.Update, ItemKind.Schema, Item, 5, 2);
+
+        Assert.Equal(ChangeSetErrorCodes.ProposedVersionInvalid, Assert.Single(created.Errors).Code);
+    }
+
     [Fact]
     public void A_stored_operation_is_restored_without_being_checked_again()
     {

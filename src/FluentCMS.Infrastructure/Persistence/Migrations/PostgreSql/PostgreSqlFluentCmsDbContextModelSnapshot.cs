@@ -271,6 +271,9 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
                     b.Property<string>("RejectionReason")
                         .HasColumnType("text");
 
+                    b.Property<Guid?>("RevertsChangeSetId")
+                        .HasColumnType("uuid");
+
                     b.Property<int>("Revision")
                         .HasColumnType("integer");
 
@@ -291,6 +294,8 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
                         .HasColumnType("character varying(32)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("RevertsChangeSetId");
 
                     b.HasIndex("SiteId");
 
@@ -724,6 +729,11 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
 
             modelBuilder.Entity("FluentCMS.Infrastructure.ChangeSets.ChangeSetRow", b =>
                 {
+                    b.HasOne("FluentCMS.Infrastructure.ChangeSets.ChangeSetRow", null)
+                        .WithMany()
+                        .HasForeignKey("RevertsChangeSetId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("FluentCMS.Infrastructure.Sites.SiteRow", null)
                         .WithMany()
                         .HasForeignKey("SiteId")
