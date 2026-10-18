@@ -33,6 +33,8 @@ public abstract class FluentCmsDbContext(DbContextOptions options) : IdentityDbC
 
     public DbSet<EntryVersionRow> EntryVersions => Set<EntryVersionRow>();
 
+    public DbSet<EntryReferenceRow> EntryReferences => Set<EntryReferenceRow>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -47,6 +49,7 @@ public abstract class FluentCmsDbContext(DbContextOptions options) : IdentityDbC
         builder.ApplyConfiguration(new ToolCallConfiguration());
         builder.ApplyConfiguration(new EntryConfiguration());
         builder.ApplyConfiguration(new EntryVersionConfiguration());
+        builder.ApplyConfiguration(new EntryReferenceConfiguration());
 
         builder.Entity<FluentCmsUser>(user =>
         {
