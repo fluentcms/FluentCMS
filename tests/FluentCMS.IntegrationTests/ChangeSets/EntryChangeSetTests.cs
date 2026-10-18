@@ -1,4 +1,5 @@
 using System.Text.Json;
+using FluentCMS.Core.Agents;
 using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Persistence;
@@ -52,6 +53,23 @@ public sealed class EntryChangeSetTests
         await scenario.RunAsync(directory => directory.AddOperationAsync(other.Id, Operation(OperationKind.Update, ItemKind.Entry, page, 1, 2)));
         var update = Assert.Single(await scenario.ChangeSetEventsAsync(other.Id), row => row.Operation == "change_set.operation_added");
         Assert.Equal(await VersionRowIdAsync(scenario, page, 1), update.PreviousVersionId);
+    }
+
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task An_agent_puts_only_entries_of_types_in_its_scope_in_a_change_set(string provider)
+    {
+        await using var scenario = await ScenarioAsync(provider);
+        var (page, product) = await CatalogAsync(scenario);
+        await scenario.UpdateAgentAsync(row => row.Types = ["page"]);
+        scenario.Initiator = Agent;
+        var changeSet = await scenario.OpenAsync(Operation(OperationKind.Create, ItemKind.Entry, page, null, 1));
+
+        var outside = await scenario.RunAsync(directory => directory.AddOperationAsync(changeSet.Id, Operation(OperationKind.Create, ItemKind.Entity, product, null, 1)));
+
+        Assert.Equal(AgentPermissionErrorCodes.ScopeDenied, Assert.Single(outside.Errors).Code);
+        Assert.Single(await scenario.OperationRowsAsync(changeSet.Id));
     }
 
     [Theory]

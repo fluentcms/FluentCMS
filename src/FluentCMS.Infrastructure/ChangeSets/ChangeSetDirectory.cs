@@ -674,6 +674,13 @@ internal sealed class ChangeSetDirectory(
                     : $"Entry {operation.ItemId} is of the content type '{entry.Slug}', which is not an entity type, so an entry operation changes it.");
         }
 
+        // The write that stored the version was checked field by field; the operation is checked on the type (MCP-05).
+        var allowed = await permissions.CheckContentAsync(entry.Slug, AgentOperationOf(operation.Kind), cancellationToken: cancellationToken);
+        if (!allowed.IsSuccess)
+        {
+            return Result<Guid?>.Failure(allowed.Errors);
+        }
+
         var wanted = new[] { operation.BaseVersion, operation.ProposedVersion }.OfType<int>().ToList();
         var stored = await context.EntryVersions
             .AsNoTracking()
