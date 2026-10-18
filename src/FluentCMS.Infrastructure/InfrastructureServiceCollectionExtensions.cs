@@ -49,6 +49,7 @@ public static class InfrastructureServiceCollectionExtensions
     {
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IAuditLog, AuditLog>();
+        services.AddScoped<IAuditReader, AuditReader>();
     }
 
     private static void AddIdentity(IServiceCollection services)

@@ -1,3 +1,4 @@
+using FluentCMS.Core.Audit;
 using FluentCMS.Core.Extensions;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -10,6 +11,9 @@ public static class CoreServiceCollectionExtensions
     {
         // Built-ins under FluentCMS.Core.Builtin are discovered the same way a plugin assembly would be (EXT-02).
         services.AddFluentCmsExtensions(typeof(CoreServiceCollectionExtensions).Assembly);
+
+        // Reads through IAuditReader, which Infrastructure provides.
+        services.AddScoped<IAuditExporter, AuditExporter>();
 
         return services;
     }

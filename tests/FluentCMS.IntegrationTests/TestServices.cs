@@ -1,3 +1,4 @@
+using FluentCMS.Core;
 using FluentCMS.Infrastructure;
 using FluentCMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -16,6 +17,7 @@ internal static class TestServices
         services.AddLogging();
         // Test doubles go in first so a test clock wins over the TimeProvider Infrastructure adds with TryAdd.
         configure?.Invoke(services);
+        services.AddFluentCmsCore();
         services.AddFluentCmsInfrastructure(configuration);
 
         return services.BuildServiceProvider();

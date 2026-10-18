@@ -15,3 +15,13 @@ internal sealed class FixedClock(DateTimeOffset now) : TimeProvider
         return now;
     }
 }
+
+internal sealed class ManualClock(DateTimeOffset now) : TimeProvider
+{
+    public DateTimeOffset Now { get; set; } = now;
+
+    public override DateTimeOffset GetUtcNow()
+    {
+        return Now;
+    }
+}
