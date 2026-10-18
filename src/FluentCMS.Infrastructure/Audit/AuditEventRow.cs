@@ -36,12 +36,7 @@ public sealed class AuditEventRow
 
     internal static AuditEventRow From(AuditEvent auditEvent)
     {
-        var (kind, initiatorId) = auditEvent.Initiator switch
-        {
-            UserInitiator user => (InitiatorKinds.User, user.UserId),
-            AgentInitiator agent => (InitiatorKinds.Agent, agent.CredentialId),
-            _ => throw new NotSupportedException($"The audit log cannot store an initiator of type {auditEvent.Initiator.GetType().Name}."),
-        };
+        var (kind, initiatorId) = InitiatorKinds.Describe(auditEvent.Initiator);
 
         return new AuditEventRow
         {
@@ -61,10 +56,29 @@ public sealed class AuditEventRow
             PreviousVersionId = auditEvent.PreviousVersionId,
         };
     }
-}
 
-public static class InitiatorKinds
-{
-    public const string User = "user";
-    public const string Agent = "agent";
+    internal AuditEvent ToEvent()
+    {
+        Initiator initiator = InitiatorKind switch
+        {
+            InitiatorKinds.User => new UserInitiator(InitiatorId, InitiatorName),
+            InitiatorKinds.Agent => new AgentInitiator(InitiatorId, InitiatorName),
+            _ => throw new InvalidOperationException($"Audit event {Id} names an unknown initiator kind '{InitiatorKind}'."),
+        };
+
+        return new AuditEvent
+        {
+            Id = Id,
+            Timestamp = Timestamp,
+            Initiator = initiator,
+            Operation = Operation,
+            SubjectType = SubjectType,
+            SubjectId = SubjectId,
+            Model = Model,
+            PromptHash = PromptHash,
+            Sources = Sources,
+            ChangeSetId = ChangeSetId,
+            PreviousVersionId = PreviousVersionId,
+        };
+    }
 }

@@ -1,3 +1,4 @@
+using FluentCMS.Core.Audit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

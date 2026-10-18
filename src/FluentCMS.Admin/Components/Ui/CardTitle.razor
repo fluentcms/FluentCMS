@@ -1,0 +1,9 @@
+@* A div as in shadcn; a page puts its heading inside, so the heading level stays the page's choice. *@
+<div data-slot="card-title" class="@ClassNames.Cn("leading-none font-semibold", Class)">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}
