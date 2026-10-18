@@ -21,4 +21,9 @@ internal sealed class ReferenceFieldType : IFieldType
 
         return reader.Errors();
     }
+
+    public IReadOnlyList<string> ReferencedTypes(JsonElement settings, FieldTypeRegistry fieldTypes)
+    {
+        return [settings.GetProperty("target").GetString()!];
+    }
 }

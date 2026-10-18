@@ -1,9 +1,11 @@
 using FluentCMS.Core.Audit;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Persistence;
+using FluentCMS.Core.Schema;
 using FluentCMS.Infrastructure.Audit;
 using FluentCMS.Infrastructure.Identity;
 using FluentCMS.Infrastructure.Persistence;
+using FluentCMS.Infrastructure.Schema;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,6 +23,7 @@ public static class InfrastructureServiceCollectionExtensions
         AddDatabase(services, configuration.GetSection(DatabaseOptions.SectionName).Get<DatabaseOptions>() ?? new DatabaseOptions());
         AddIdentity(services);
         AddAudit(services);
+        AddSchema(services);
 
         services.AddHostedService<DatabaseMigrator>();
 
@@ -49,6 +52,12 @@ public static class InfrastructureServiceCollectionExtensions
     {
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IAuditLog, AuditLog>();
+    }
+
+    // FieldTypeRegistry comes from AddFluentCmsCore, so built-in and plugin field types reach the directory the same way.
+    private static void AddSchema(IServiceCollection services)
+    {
+        services.AddScoped<IContentTypeDirectory, ContentTypeDirectory>();
     }
 
     private static void AddIdentity(IServiceCollection services)

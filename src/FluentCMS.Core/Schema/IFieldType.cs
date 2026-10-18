@@ -16,4 +16,11 @@ public interface IFieldType
     // A setting the type does not know is an error with SchemaErrorCodes.SettingUnknown; FieldSettingsReader does that bookkeeping.
     // Nested types, such as the items of a list, are checked through the registry.
     IReadOnlyList<Error> ValidateSettings(JsonElement settings, FieldTypeRegistry fieldTypes);
+
+    // The slugs of the content types a field of this type points at, so the schema can check that they exist.
+    // Only called with settings that passed ValidateSettings.
+    IReadOnlyList<string> ReferencedTypes(JsonElement settings, FieldTypeRegistry fieldTypes)
+    {
+        return [];
+    }
 }

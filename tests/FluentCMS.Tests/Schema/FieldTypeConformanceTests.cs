@@ -86,6 +86,17 @@ public abstract class FieldTypeConformanceTests : IDisposable
         }
     }
 
+    [Fact]
+    public void Declares_only_slugs_as_referenced_types()
+    {
+        foreach (var json in AcceptedSettings)
+        {
+            var referenced = Registry.ReferencedTypes(FieldTypeName, Parse(json));
+
+            Assert.All(referenced, slug => Assert.True(SchemaNames.IsSlug(slug), $"{json} declared '{slug}', which is not a slug."));
+        }
+    }
+
     // A definition comes from an agent, so a setting can hold anything; the answer is an error, never an exception.
     [Fact]
     public void Never_throws_whatever_a_setting_holds()
