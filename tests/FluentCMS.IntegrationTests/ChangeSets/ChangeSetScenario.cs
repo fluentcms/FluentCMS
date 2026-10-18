@@ -1,6 +1,10 @@
+using System.Security.Cryptography;
+using FluentCMS.Core.Agents;
 using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Schema;
+using FluentCMS.Core.Sites;
+using FluentCMS.Infrastructure.Agents;
 using FluentCMS.Infrastructure.Audit;
 using FluentCMS.Infrastructure.ChangeSets;
 using FluentCMS.Infrastructure.Persistence;
@@ -20,12 +24,14 @@ internal sealed class ChangeSetScenario : IAsyncDisposable
 
     private readonly TemporaryDatabase _database;
     private readonly SwitchableInitiator _initiator;
+    private readonly TickingClock _clock;
 
-    private ChangeSetScenario(TemporaryDatabase database, ServiceProvider services, SwitchableInitiator initiator)
+    private ChangeSetScenario(TemporaryDatabase database, ServiceProvider services, SwitchableInitiator initiator, TickingClock clock)
     {
         _database = database;
         Services = services;
         _initiator = initiator;
+        _clock = clock;
     }
 
     public ServiceProvider Services { get; }
@@ -40,14 +46,52 @@ internal sealed class ChangeSetScenario : IAsyncDisposable
     {
         var database = await TemporaryDatabase.CreateAsync(provider);
         var initiator = new SwitchableInitiator { Current = Agent };
+        var clock = new TickingClock();
         var services = TestServices.Build(
             database.Configuration,
             collection => collection
                 .AddSingleton<ICurrentInitiator>(initiator)
-                .AddSingleton<TimeProvider>(new TickingClock()));
+                .AddSingleton<TimeProvider>(clock));
 
         await TestServices.MigrateAsync(services);
-        return new ChangeSetScenario(database, services, initiator);
+        var scenario = new ChangeSetScenario(database, services, initiator, clock);
+        await scenario.QueryAsync(async context =>
+        {
+            context.AgentCredentials.Add(AgentCredential());
+            return await context.SaveChangesAsync();
+        });
+
+        return scenario;
+    }
+
+    // As a person, who stands in for the checks, routing and the desk, whose moves an agent cannot make (MCP-06).
+    public async Task<T> AsPersonAsync<T>(Func<IChangeSetDirectory, Task<T>> action)
+    {
+        var initiator = Initiator;
+        Initiator = Amir;
+        try
+        {
+            return await RunAsync(action);
+        }
+        finally
+        {
+            Initiator = initiator;
+        }
+    }
+
+    public void AdvanceClock(TimeSpan by)
+    {
+        _clock.Advance(by);
+    }
+
+    // Changes Agent's stored credential, such as a cap, its expiry or its revocation.
+    public Task<int> UpdateAgentAsync(Action<AgentCredentialRow> change)
+    {
+        return QueryAsync(async context =>
+        {
+            change(await context.AgentCredentials.SingleAsync(row => row.Id == Agent.CredentialId));
+            return await context.SaveChangesAsync();
+        });
     }
 
     // Each call gets its own scope and DbContext, as separate requests would.
@@ -134,6 +178,26 @@ internal sealed class ChangeSetScenario : IAsyncDisposable
         return ChangeOperation.Create(OperationKind.Create, ItemKind.Schema, type.Id, null, 1).Value;
     }
 
+    // The stored credential behind Agent, scoped to the site with room to spare, so only a test that lowers a cap meets one.
+    private static AgentCredentialRow AgentCredential()
+    {
+        return new AgentCredentialRow
+        {
+            Id = Agent.CredentialId,
+            DisplayName = Agent.DisplayName,
+            KeyHash = RandomNumberGenerator.GetBytes(32),
+            IssuedAt = new DateTimeOffset(2026, 10, 1, 0, 0, 0, TimeSpan.Zero),
+            ExpiresAt = new DateTimeOffset(2027, 10, 1, 0, 0, 0, TimeSpan.Zero),
+            Sites = [Site.Default.Id],
+            Operations = [AgentOperation.Read, AgentOperation.Create, AgentOperation.Update, AgentOperation.Delete],
+            CallsPerPeriod = 1000,
+            CallPeriod = TimeSpan.FromHours(1),
+            LlmSpendPeriod = TimeSpan.FromDays(1),
+            ItemsPerChangeSet = 1000,
+            ChangeSetsPerDay = 1000,
+        };
+    }
+
     private sealed class SwitchableInitiator : ICurrentInitiator
     {
         public Initiator? Current { get; set; }
@@ -147,6 +211,11 @@ internal sealed class ChangeSetScenario : IAsyncDisposable
         public override DateTimeOffset GetUtcNow()
         {
             return new DateTimeOffset(Interlocked.Add(ref _ticks, TimeSpan.TicksPerMillisecond), TimeSpan.Zero);
+        }
+
+        public void Advance(TimeSpan by)
+        {
+            Interlocked.Add(ref _ticks, by.Ticks);
         }
     }
 }
