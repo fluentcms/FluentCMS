@@ -78,6 +78,7 @@ public static class InfrastructureServiceCollectionExtensions
     private static void AddAgents(IServiceCollection services)
     {
         services.AddScoped<IAgentCredentialDirectory, AgentCredentialDirectory>();
+        services.AddSingleton<IToolCallLog, ToolCallLog>();
     }
 
     private static void AddContent(IServiceCollection services, IConfiguration configuration)
