@@ -85,6 +85,11 @@ public static class EntryFields
             .Select(property => Invalid($"A fact has no property '{property.Name}'; it has {FactProperties}."))
             .ToList();
 
+        errors.AddRange(fact.EnumerateObject()
+            .GroupBy(property => property.Name, StringComparer.Ordinal)
+            .Where(group => group.Count() > 1)
+            .Select(group => Invalid($"The fact's '{group.Key}' is given more than once.")));
+
         if (!fact.TryGetProperty(FactMetadata.Value, out var value) || value.ValueKind == JsonValueKind.Null)
         {
             errors.Add(Invalid("The fact has no value; leave the field out instead."));

@@ -159,6 +159,21 @@ public sealed class EntryFieldsTests
             errors.Select(error => error.Message));
     }
 
+    [Fact]
+    public void A_fact_property_given_twice_is_refused()
+    {
+        using var document = JsonDocument.Parse("""
+            {
+              "name": {"value": "Widget", "source": null, "owner": null, "validFrom": null, "validUntil": null, "lastVerified": null},
+              "price": {"value": -1, "value": 5, "source": null, "owner": null, "validFrom": null, "validUntil": null, "lastVerified": null}
+            }
+            """);
+
+        var errors = EntryFields.Validate(document.RootElement, Product, Registry).Errors;
+
+        Assert.Contains("Field 'price': The fact's 'value' is given more than once.", errors.Select(error => error.Message));
+    }
+
     [Theory]
     [InlineData("""{"kind": "url"}""")]
     [InlineData("""{"kind": "url", "reference": " "}""")]
