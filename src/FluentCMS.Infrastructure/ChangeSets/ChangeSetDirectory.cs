@@ -383,7 +383,7 @@ internal sealed class ChangeSetDirectory(
         }
 
         // Checked against the read whose revision guards the write, as for AddOperationAsync.
-        var allowed = await permissions.CheckChangeSetSizeAsync(set, cancellationToken);
+        var allowed = await permissions.CheckChangeSetSizeAsync(set, cancellationToken: cancellationToken);
         if (!allowed.IsSuccess)
         {
             return Result<PendingOperation>.Failure(allowed.Errors);

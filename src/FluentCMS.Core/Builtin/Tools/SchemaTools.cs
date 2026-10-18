@@ -146,8 +146,8 @@ public sealed class SchemaTools : IToolProvider, IResourceProvider
         return await ProposedWrite.RunAsync(
             call,
             target!,
-            directory => directory.CreateAsync(new NewContentType(name!, slug!, parsed!), cancellationToken),
-            type => ChangeOperation.Create(OperationKind.Create, ItemKind.Schema, type.Id, null, type.Version).Value,
+            (directory, changeSet) => directory.CreateAsync(new NewContentType(name!, slug!, parsed!), changeSet, cancellationToken),
+            OperationKind.Create,
             cancellationToken);
     }
 
@@ -167,8 +167,8 @@ public sealed class SchemaTools : IToolProvider, IResourceProvider
         return await ProposedWrite.RunAsync(
             call,
             target!,
-            directory => directory.ReviseAsync(slug!, baseVersion!.Value, parsed!, cancellationToken),
-            type => ChangeOperation.Create(OperationKind.Update, ItemKind.Schema, type.Id, baseVersion!.Value, type.Version).Value,
+            (directory, changeSet) => directory.ReviseAsync(slug!, baseVersion!.Value, parsed!, changeSet, cancellationToken),
+            OperationKind.Update,
             cancellationToken);
     }
 

@@ -144,7 +144,7 @@ public sealed class WriteToolsTests
         await agent.AsPersonAsync<IContentTypeDirectory, ContentType>(directory => directory.ReviseAsync(
             "product",
             1,
-            new ContentTypeDefinition([new FieldDefinition("title", "text"), new FieldDefinition("summary", "text")])));
+            new ContentTypeDefinition([new FieldDefinition("title", "text"), new FieldDefinition("summary", "text")]), TestChangeSetTargets.ContentModel));
 
         var stale = await agent.FailAsync("revise_content_type", new()
         {
@@ -221,7 +221,7 @@ public sealed class WriteToolsTests
         public Task<ContentType> CreateAsPersonAsync(string slug)
         {
             return AsPersonAsync<IContentTypeDirectory, ContentType>(directory =>
-                directory.CreateAsync(new NewContentType(slug, slug, new ContentTypeDefinition([new FieldDefinition("title", "text")]))));
+                directory.CreateAsync(new NewContentType(slug, slug, new ContentTypeDefinition([new FieldDefinition("title", "text")])), TestChangeSetTargets.ContentModel));
         }
 
         public async Task<T> QueryAsync<T>(Func<FluentCmsDbContext, Task<T>> query)
