@@ -74,6 +74,8 @@ public sealed class TailwindMergeTests
     [InlineData("bg-[url(/img.png)] bg-none", "bg-none")]
     [InlineData("bg-linear-to-r bg-[url(/img.png)] bg-red-500", "bg-[url(/img.png)] bg-red-500")]
     [InlineData("bg-no-repeat bg-repeat-x", "bg-repeat-x")]
+    [InlineData("from-red-500 from-10% from-blue-500 from-20%", "from-blue-500 from-20%")]
+    [InlineData("via-red-500 via-[30%] to-blue-500 to-90%", "via-red-500 via-[30%] to-blue-500 to-90%")]
     [InlineData("border border-2", "border-2")]
     [InlineData("border-transparent border-2 border-red-500", "border-2 border-red-500")]
     [InlineData("border border-input", "border border-input")]

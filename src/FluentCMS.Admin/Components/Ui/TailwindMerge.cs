@@ -411,9 +411,11 @@ public static partial class TailwindMerge
         Add("bg-image", value => ArbitraryOf(value, "image", IsImage) || ArbitraryOf(value, "url", static _ => false), "bg");
         Add("bg-image", Any, "bg-linear", "bg-radial", "bg-conic");
         Add("bg-color", Any, "bg");
-        Add("gradient-from", Any, "from");
-        Add("gradient-via", Any, "via");
-        Add("gradient-to", Any, "to");
+        foreach (var stop in new[] { "from", "via", "to" })
+        {
+            Add("gradient-" + stop + "-position", value => Percentage(value) || ArbitraryOf(value, "percentage", Percentage), stop);
+            Add("gradient-" + stop, Any, stop);
+        }
 
         // Borders
         foreach (var side in new[] { "rounded", "rounded-s", "rounded-e", "rounded-t", "rounded-r", "rounded-b", "rounded-l",
@@ -536,6 +538,8 @@ public static partial class TailwindMerge
     private static bool TshirtSize(string value) => TshirtSizeRegex().IsMatch(value);
 
     private static bool Fraction(string value) => FractionRegex().IsMatch(value);
+
+    private static bool Percentage(string value) => value.EndsWith('%') && Number(value[..^1]);
 
     private static bool Arbitrary(string value) => ArbitraryRegex().IsMatch(value);
 
