@@ -1,0 +1,8 @@
+<div data-slot="sheet-footer" class="@ClassNames.Cn("mt-auto flex flex-col gap-2 p-4", Class)">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

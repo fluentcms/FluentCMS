@@ -1,4 +1,5 @@
 using Bunit;
+using FluentCMS.Admin;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 
@@ -10,6 +11,7 @@ internal sealed class AdminTestContext : BunitContext
     public AdminTestContext()
     {
         Services.AddSingleton(typeof(IStringLocalizer<>), typeof(KeyLocalizer<>));
+        Services.AddFluentCmsAdmin();
     }
 
     private sealed class KeyLocalizer<T> : IStringLocalizer<T>

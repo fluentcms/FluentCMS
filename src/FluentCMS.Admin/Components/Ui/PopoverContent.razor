@@ -1,0 +1,20 @@
+@* A popover with role=dialog: light dismiss, Escape and focus returning to the trigger are native; admin.js moves focus in on open. *@
+<div id="@Context.Id"
+     popover="auto"
+     role="dialog"
+     tabindex="-1"
+     aria-labelledby="@Context.TriggerId"
+     data-ui="popover"
+     data-slot="popover-content"
+     class="@ClassNames.Cn("z-50 w-72 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-hidden", Class)"
+     @attributes="AdditionalAttributes">
+    @ChildContent
+</div>
+
+@code {
+    [CascadingParameter] private PopoverContext Context { get; set; } = null!;
+
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+}

@@ -1,0 +1,10 @@
+@* A sheet is a dialog that slides in from an edge, so it shares the dialog's ids and behaviour. *@
+<CascadingValue Value="_context" IsFixed="true">
+    @ChildContent
+</CascadingValue>
+
+@code {
+    private readonly DialogContext _context = new();
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

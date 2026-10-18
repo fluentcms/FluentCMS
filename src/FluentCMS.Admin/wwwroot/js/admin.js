@@ -123,6 +123,111 @@ function onMenuTriggerKeydown(event, trigger) {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Popover: light dismiss, Escape and focus return are native. This moves focus into it on open, as
+// Radix does, keeps aria-expanded on the trigger, and positions it where anchor positioning is missing.
+
+function onPopoverToggle(event) {
+    const popover = event.target;
+    if (!(popover instanceof HTMLElement) || popover.dataset.ui !== "popover") return;
+    const trigger = menuTrigger(popover);
+    if (event.newState === "open") {
+        trigger?.setAttribute("aria-expanded", "true");
+        if (!supportsAnchors) positionMenu(popover, trigger);
+        const first = [...popover.querySelectorAll(focusableSelector)].find(visible);
+        (first ?? popover).focus();
+    } else {
+        trigger?.setAttribute("aria-expanded", "false");
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Tooltip: a manual popover shown while its trigger is hovered or focused, hidden on leave, blur
+// and Escape. The trigger is described by it whether it shows or not.
+
+function tooltipFor(trigger) {
+    return document.getElementById(trigger.dataset.tooltip);
+}
+
+function showTooltip(trigger) {
+    const tooltip = tooltipFor(trigger);
+    if (!tooltip || tooltip.matches(":popover-open")) return;
+    tooltip.showPopover({ source: trigger });
+    if (!supportsAnchors) positionTooltip(tooltip, trigger);
+}
+
+function hideTooltip(trigger) {
+    const tooltip = tooltipFor(trigger);
+    if (tooltip?.matches(":popover-open")) tooltip.hidePopover();
+}
+
+function positionTooltip(tooltip, trigger) {
+    const rect = trigger.getBoundingClientRect();
+    tooltip.style.position = "fixed";
+    tooltip.style.top = `${rect.top - tooltip.offsetHeight - 4}px`;
+    tooltip.style.left = `${rect.left + (rect.width - tooltip.offsetWidth) / 2}px`;
+}
+
+function onTooltipPointer(event) {
+    const trigger = event.target.closest?.('[data-ui="tooltip-trigger"]');
+    if (!trigger || trigger.contains(event.relatedTarget)) return;
+    if (event.type === "pointerover") showTooltip(trigger);
+    else hideTooltip(trigger);
+}
+
+function onTooltipFocus(event) {
+    const trigger = event.target.closest?.('[data-ui="tooltip-trigger"]');
+    if (!trigger) return;
+    if (event.type === "focusin") showTooltip(trigger);
+    else hideTooltip(trigger);
+}
+
+function hideTooltips() {
+    document.querySelectorAll('[data-ui="tooltip"]:popover-open').forEach((tooltip) => tooltip.hidePopover());
+}
+
+// ---------------------------------------------------------------------------------------------
+// Tabs: the active tab lives in the DOM, so switching needs no round trip. The arrow keys move and
+// activate (Radix's automatic activation), following the direction; only the active tab is tabbable.
+
+const tabsOf = (root) => [...root.querySelectorAll('[data-ui="tab"]')].filter((tab) => tab.closest('[data-ui="tabs"]') === root);
+
+function activateTab(tab) {
+    const root = tab.closest('[data-ui="tabs"]');
+    if (!root || tab.disabled) return;
+    for (const other of tabsOf(root)) {
+        const active = other === tab;
+        other.setAttribute("aria-selected", String(active));
+        other.dataset.state = active ? "active" : "inactive";
+        other.tabIndex = active ? 0 : -1;
+        const panel = document.getElementById(other.getAttribute("aria-controls"));
+        if (panel) {
+            panel.hidden = !active;
+            panel.dataset.state = active ? "active" : "inactive";
+        }
+    }
+}
+
+function onTabKeydown(event, tab) {
+    const root = tab.closest('[data-ui="tabs"]');
+    const tabs = tabsOf(root).filter((other) => !other.disabled);
+    const index = tabs.indexOf(tab);
+    const rtl = getComputedStyle(tab).direction === "rtl";
+    let next;
+    switch (event.key) {
+        case "ArrowRight": next = index + (rtl ? -1 : 1); break;
+        case "ArrowLeft": next = index + (rtl ? 1 : -1); break;
+        case "Home": next = 0; break;
+        case "End": next = tabs.length - 1; break;
+        default: return false;
+    }
+    event.preventDefault();
+    const target = tabs[((next % tabs.length) + tabs.length) % tabs.length];
+    target.focus();
+    activateTab(target);
+    return true;
+}
+
+// ---------------------------------------------------------------------------------------------
 // Command: an input with role=combobox over a listbox. Filtering, the active option, Enter and
 // pointer selection stay in the browser; Blazor hears about a choice through the option's click.
 
@@ -279,6 +384,9 @@ document.addEventListener("click", (event) => {
     const button = event.target.closest?.("button[commandfor]");
     if (button && !supportsCommands) runCommand(button);
 
+    const tab = event.target.closest?.('[data-ui="tab"]');
+    if (tab) activateTab(tab);
+
     const item = event.target.closest?.('[data-ui="menu-item"]');
     if (item && !item.hasAttribute("data-disabled")) item.closest('[data-ui="menu"]')?.hidePopover();
 
@@ -295,6 +403,8 @@ document.addEventListener("keydown", (event) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
 
+    if (event.key === "Escape") hideTooltips();
+
     const menu = target.closest('[data-ui="menu"]');
     if (menu) return onMenuKeydown(event, menu);
 
@@ -302,6 +412,9 @@ document.addEventListener("keydown", (event) => {
     if (trigger) return onMenuTriggerKeydown(event, trigger);
 
     if (target.matches('[data-ui="command-input"]')) return onCommandKeydown(event, target);
+
+    // Other keys fall through, so Tab from a tab inside a dialog still wraps.
+    if (target.matches('[data-ui="tab"]') && onTabKeydown(event, target)) return;
 
     const trap = event.key === "Tab" ? target.closest("[data-trap-focus]") : null;
     if (trap) trapFocus(event, trap);
@@ -312,7 +425,12 @@ document.addEventListener("input", (event) => {
 });
 
 document.addEventListener("pointermove", onCommandPointerMove);
+document.addEventListener("pointerover", onTooltipPointer);
+document.addEventListener("pointerout", onTooltipPointer);
+document.addEventListener("focusin", onTooltipFocus);
+document.addEventListener("focusout", onTooltipFocus);
 document.addEventListener("toggle", onMenuToggle, true);
+document.addEventListener("toggle", onPopoverToggle, true);
 document.addEventListener("components-reconnect-state-changed", onReconnectStateChanged, true);
 document.querySelectorAll('[data-ui="command-input"]').forEach(filterCommand);
 observer.observe(document.body, { childList: true, subtree: true });
