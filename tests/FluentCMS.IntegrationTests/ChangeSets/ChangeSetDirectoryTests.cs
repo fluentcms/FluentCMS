@@ -115,7 +115,7 @@ public sealed class ChangeSetDirectoryTests
                 ChangeOperation.Create(OperationKind.Update, ItemKind.Schema, category.Id, 3, 5).Value,
                 [ChangeSetErrorCodes.VersionNotFound, ChangeSetErrorCodes.VersionNotFound]
             ),
-            (ChangeOperation.Create(OperationKind.Update, ItemKind.Entry, Guid.NewGuid(), 1, 2).Value, [ChangeSetErrorCodes.ItemKindUnavailable]),
+            (ChangeOperation.Create(OperationKind.Update, ItemKind.Media, Guid.NewGuid(), 1, 2).Value, [ChangeSetErrorCodes.ItemKindUnavailable]),
             (ChangeOperation.Create(OperationKind.Delete, ItemKind.Schema, product.Id, 2, null).Value, [ChangeSetErrorCodes.ItemDuplicate]),
         ];
 
