@@ -1,0 +1,109 @@
+<Project>
+
+  <!--
+    Generates the Lucide icon components in Components/Icons from the pinned Lucide release (ADR-0011).
+    Icons/icons.txt lists the icons the admin uses, one Lucide name per line. After changing it or the
+    version, run: dotnet build src/FluentCMS.Admin -t:GenerateIcons
+    The generated components are committed, so a normal build neither downloads nor generates anything.
+    The release archive and the licence are downloaded once per machine into a cache and verified against
+    the checksums pinned here. Lucide is ISC licensed, with the icons it took from Feather under MIT;
+    Icons/LICENSE is the licence file of the pinned release.
+  -->
+
+  <PropertyGroup>
+    <LucideVersion>1.59.0</LucideVersion>
+    <_LucideArchiveSha256>aae4638a541df91e28cd7733eed2d0d87e72da0942a28b306941284fd00e176a</_LucideArchiveSha256>
+    <_LucideLicenseSha256>b495047bd93a9b06913511076f504daba17d5bbeb3e0650f3bb53a4220329c57</_LucideLicenseSha256>
+    <LucideCacheDirectory Condition="'$(LucideCacheDirectory)' == '' And '$(LocalAppData)' != ''">$(LocalAppData)/FluentCMS/lucide</LucideCacheDirectory>
+    <LucideCacheDirectory Condition="'$(LucideCacheDirectory)' == ''">$(HOME)/.cache/fluentcms/lucide</LucideCacheDirectory>
+    <_LucideVersionDirectory>$(LucideCacheDirectory)/$(LucideVersion)</_LucideVersionDirectory>
+    <_LucideArchive>lucide-icons-$(LucideVersion).zip</_LucideArchive>
+    <_LucideArchiveUrl>https://github.com/lucide-icons/lucide/releases/download/$(LucideVersion)/$(_LucideArchive)</_LucideArchiveUrl>
+    <_LucideLicenseUrl>https://raw.githubusercontent.com/lucide-icons/lucide/$(LucideVersion)/LICENSE</_LucideLicenseUrl>
+    <_LucideIconList>$(MSBuildProjectDirectory)/Icons/icons.txt</_LucideIconList>
+    <_LucideOutputDirectory>$(MSBuildProjectDirectory)/Components/Icons</_LucideOutputDirectory>
+  </PropertyGroup>
+
+  <Target Name="DownloadLucide" Condition="!Exists('$(_LucideVersionDirectory)/icons') Or !Exists('$(_LucideVersionDirectory)/LICENSE')">
+    <Message Importance="high" Text="Downloading Lucide $(LucideVersion) to $(_LucideVersionDirectory)" />
+    <MakeDir Directories="$(_LucideVersionDirectory)" />
+
+    <DownloadFile SourceUrl="$(_LucideArchiveUrl)" DestinationFolder="$(_LucideVersionDirectory)" DestinationFileName="$(_LucideArchive).download" Retries="3" />
+    <GetFileHash Files="$(_LucideVersionDirectory)/$(_LucideArchive).download" Algorithm="SHA256">
+      <Output TaskParameter="Hash" PropertyName="_LucideActualArchiveSha256" />
+    </GetFileHash>
+    <Delete Files="$(_LucideVersionDirectory)/$(_LucideArchive).download" Condition="'$(_LucideActualArchiveSha256)' != '$(_LucideArchiveSha256)'" />
+    <Error Condition="'$(_LucideActualArchiveSha256)' != '$(_LucideArchiveSha256)'" Text="The downloaded Lucide archive does not match the pinned SHA-256 checksum (expected $(_LucideArchiveSha256), got $(_LucideActualArchiveSha256)). The download was deleted." />
+
+    <DownloadFile SourceUrl="$(_LucideLicenseUrl)" DestinationFolder="$(_LucideVersionDirectory)" DestinationFileName="LICENSE.download" Retries="3" />
+    <GetFileHash Files="$(_LucideVersionDirectory)/LICENSE.download" Algorithm="SHA256">
+      <Output TaskParameter="Hash" PropertyName="_LucideActualLicenseSha256" />
+    </GetFileHash>
+    <Delete Files="$(_LucideVersionDirectory)/LICENSE.download" Condition="'$(_LucideActualLicenseSha256)' != '$(_LucideLicenseSha256)'" />
+    <Error Condition="'$(_LucideActualLicenseSha256)' != '$(_LucideLicenseSha256)'" Text="The downloaded Lucide licence does not match the pinned SHA-256 checksum (expected $(_LucideLicenseSha256), got $(_LucideActualLicenseSha256)). The download was deleted." />
+
+    <Unzip SourceFiles="$(_LucideVersionDirectory)/$(_LucideArchive).download" DestinationFolder="$(_LucideVersionDirectory)" />
+    <Delete Files="$(_LucideVersionDirectory)/$(_LucideArchive).download" />
+    <Move SourceFiles="$(_LucideVersionDirectory)/LICENSE.download" DestinationFiles="$(_LucideVersionDirectory)/LICENSE" />
+  </Target>
+
+  <Target Name="GenerateIcons" DependsOnTargets="DownloadLucide">
+    <ReadLinesFromFile File="$(_LucideIconList)">
+      <Output TaskParameter="Lines" ItemName="_LucideIconLine" />
+    </ReadLinesFromFile>
+    <ItemGroup>
+      <_LucideStaleIcon Include="$(_LucideOutputDirectory)/*Icon.razor" />
+    </ItemGroup>
+    <Delete Files="@(_LucideStaleIcon)" />
+    <GenerateLucideIcons Names="@(_LucideIconLine)" SourceDirectory="$(_LucideVersionDirectory)/icons" OutputDirectory="$(_LucideOutputDirectory)" Version="$(LucideVersion)" />
+    <Copy SourceFiles="$(_LucideVersionDirectory)/LICENSE" DestinationFolder="$(MSBuildProjectDirectory)/Icons" />
+    <Message Importance="high" Text="Generated the icons in Icons/icons.txt from Lucide $(LucideVersion) into $(_LucideOutputDirectory)" />
+  </Target>
+
+  <!-- One component per icon: the SVG's own attributes and shapes, hidden from assistive technology, with Class merged in as lucide-react does. -->
+  <UsingTask TaskName="GenerateLucideIcons" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <Names ParameterType="Microsoft.Build.Framework.ITaskItem[]" Required="true" />
+      <SourceDirectory Required="true" />
+      <OutputDirectory Required="true" />
+      <Version Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System.IO" />
+      <Using Namespace="System.Linq" />
+      <Using Namespace="System.Text.RegularExpressions" />
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        Directory.CreateDirectory(OutputDirectory);
+        foreach (var item in Names)
+        {
+            var name = item.ItemSpec.Trim();
+            if (name.Length == 0 || name.StartsWith("#"))
+            {
+                continue;
+            }
+            var source = Path.Combine(SourceDirectory, name + ".svg");
+            if (!File.Exists(source))
+            {
+                Log.LogError("Lucide " + Version + " has no icon named '" + name + "'.");
+                continue;
+            }
+            var svg = Regex.Replace(File.ReadAllText(source), @"\s+", " ");
+            var open = Regex.Match(svg, @"<svg ([^>]*?)\s*>");
+            var close = svg.LastIndexOf("</svg>", StringComparison.Ordinal);
+            var shapes = Regex.Replace(svg.Substring(open.Index + open.Length, close - open.Index - open.Length), @">\s+<", "><").Trim();
+            var type = string.Concat(name.Split('-').Select(part => char.ToUpperInvariant(part[0]) + part.Substring(1))) + "Icon";
+            var razor =
+                "@* Lucide \"" + name + "\" " + Version + ", generated by Icons.targets from Icons/icons.txt; do not edit. ISC licence, see Icons/LICENSE. *@\n" +
+                "<svg " + open.Groups[1].Value + " aria-hidden=\"true\" class=\"@ClassNames.Cn(\"lucide lucide-" + name + "\", Class)\" @attributes=\"AdditionalAttributes\">" + shapes + "</svg>\n" +
+                "\n" +
+                "@code {\n" +
+                "    [Parameter] public string? Class { get; set; }\n" +
+                "    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }\n" +
+                "}\n";
+            File.WriteAllText(Path.Combine(OutputDirectory, type + ".razor"), razor);
+        }
+      ]]></Code>
+    </Task>
+  </UsingTask>
+
+</Project>

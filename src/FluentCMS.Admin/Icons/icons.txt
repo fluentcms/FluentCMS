@@ -1,0 +1,9 @@
+# The Lucide icons the admin uses, one name per line as on lucide.dev. Run: dotnet build src/FluentCMS.Admin -t:GenerateIcons
+check
+chevron-down
+circle
+moon
+plus
+search
+sun
+x

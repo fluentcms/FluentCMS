@@ -1,4 +1,5 @@
 using Bunit;
+using FluentCMS.Admin.Components.Icons;
 using FluentCMS.Admin.Components.Pages;
 using FluentCMS.Admin.Components.Ui;
 using Microsoft.AspNetCore.Components;
@@ -26,6 +27,24 @@ public sealed class ShowcaseTests
     }
 
     [Fact]
+    public void Renders_every_generated_icon()
+    {
+        using var context = new AdminTestContext();
+
+        var cut = context.Render<Showcase>();
+
+        var icons = typeof(XIcon).Assembly.GetTypes()
+            .Where(type => type.Namespace == typeof(XIcon).Namespace && typeof(IComponent).IsAssignableFrom(type))
+            .Select(type => type.Name)
+            .ToHashSet();
+        var rendered = cut.Find("[data-testid=icons]").QuerySelectorAll("code").Select(name => name.TextContent).ToHashSet();
+
+        Assert.NotEmpty(icons);
+        Assert.Equal(icons, rendered);
+        Assert.Equal(icons.Count, cut.FindAll("[data-testid=icons] svg[aria-hidden=true]").Count);
+    }
+
+    [Fact]
     public void Every_section_lists_its_keyboard_hints()
     {
         using var context = new AdminTestContext();
@@ -34,7 +53,7 @@ public sealed class ShowcaseTests
 
         var sections = cut.FindAll("section");
 
-        Assert.Equal(22, sections.Count);
+        Assert.Equal(23, sections.Count);
         Assert.All(sections, section =>
         {
             var hints = section.QuerySelector("[data-testid=keyboard-hints]");
