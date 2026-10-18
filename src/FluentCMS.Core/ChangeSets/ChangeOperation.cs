@@ -87,6 +87,19 @@ public sealed record ChangeOperation
             : Result<ChangeOperation>.Failure(errors);
     }
 
+    // The operation that puts the item back at the version this one was based on (CHG-06). An update back to an earlier version
+    // exists only this way; Create still asks an update for a later version.
+    public ChangeOperation Inverse()
+    {
+        return Kind switch
+        {
+            OperationKind.Create => new ChangeOperation(OperationKind.Delete, ItemKind, ItemId, ProposedVersion, null),
+            OperationKind.Update => new ChangeOperation(OperationKind.Update, ItemKind, ItemId, ProposedVersion, BaseVersion),
+            OperationKind.Delete => new ChangeOperation(OperationKind.Create, ItemKind, ItemId, null, BaseVersion),
+            _ => throw new InvalidOperationException($"The operation '{Kind}' has no inverse."),
+        };
+    }
+
     // Rebuilds a stored operation without checking it again, so a set stays readable if the rules above change.
     public static ChangeOperation Restore(OperationKind kind, ItemKind itemKind, Guid itemId, int? baseVersion, int? proposedVersion)
     {

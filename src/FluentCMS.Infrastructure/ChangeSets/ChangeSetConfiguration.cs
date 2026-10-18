@@ -23,6 +23,7 @@ internal sealed class ChangeSetConfiguration : IEntityTypeConfiguration<ChangeSe
         row.Property(set => set.State).HasConversion<string>().HasMaxLength(32);
 
         row.HasOne<SiteRow>().WithMany().HasForeignKey(set => set.SiteId).OnDelete(DeleteBehavior.Restrict);
+        row.HasOne<ChangeSetRow>().WithMany().HasForeignKey(set => set.RevertsChangeSetId).OnDelete(DeleteBehavior.Restrict);
 
         row.HasIndex(set => set.State);
 

@@ -23,4 +23,5 @@ public static class ChangeSetErrorCodes
     public const string SessionHasOpenSet = "session_has_open_set";
     public const string Conflict = "change_set_conflict";
     public const string BaseVersionStale = "base_version_stale";
+    public const string RevertFixed = "revert_set_fixed";
 }
