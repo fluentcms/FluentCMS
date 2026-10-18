@@ -71,7 +71,7 @@ public sealed class AuditExportTests
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
     [PostgresData]
-    public async Task An_items_history_exports_on_its_own_and_an_empty_selection_exports_nothing(string provider)
+    public async Task An_items_history_exports_on_its_own_and_records_each_export_in_it(string provider)
     {
         await using var log = await AuditScenario.CreateAsync(provider);
         var price = new AuditSubject("entry", Guid.NewGuid());
@@ -83,14 +83,40 @@ public sealed class AuditExportTests
         expected.Add(await log.AppendAsync(Start.AddHours(2), "entry.updated", price));
 
         var item = new AuditQuery { Subject = price };
+        var fromJson = ExportedEvents.FromJson(await log.ExportAsync(item, AuditExportFormat.Json, at: Start.AddHours(3)));
+        var fromCsv = ExportedEvents.FromCsv(await log.ExportAsync(item, AuditExportFormat.Csv, at: Start.AddHours(4)));
 
-        Assert.Equal(expected.Select(ExportedEvents.Fingerprint), ExportedEvents.FromJson(await log.ExportAsync(item, AuditExportFormat.Json)).Select(ExportedEvents.Fingerprint));
-        Assert.Equal(expected.Select(ExportedEvents.Fingerprint), ExportedEvents.FromCsv(await log.ExportAsync(item, AuditExportFormat.Csv)).Select(ExportedEvents.Fingerprint));
+        // An export is recorded before it reads, so each one is part of what it exports.
+        Assert.Equal(expected.Select(ExportedEvents.Fingerprint), fromJson.Take(2).Select(ExportedEvents.Fingerprint));
+        AssertExportRecord(fromJson[2], price, Start.AddHours(3));
+        Assert.Equal(fromJson.Select(ExportedEvents.Fingerprint), fromCsv.Take(3).Select(ExportedEvents.Fingerprint));
+        AssertExportRecord(fromCsv[3], price, Start.AddHours(4));
+        Assert.Equal(4, fromCsv.Count);
+    }
 
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task An_empty_selection_exports_nothing_but_the_export_is_still_recorded(string provider)
+    {
+        await using var log = await AuditScenario.CreateAsync(provider);
+        await log.AppendAsync(Start, "entry.created");
         var nothing = new AuditQuery { To = Start };
 
-        Assert.Equal("[]", await log.ExportAsync(nothing, AuditExportFormat.Json));
-        Assert.Single(ExportedEvents.ParseCsv(await log.ExportAsync(nothing, AuditExportFormat.Csv)));
+        Assert.Equal("[]", await log.ExportAsync(nothing, AuditExportFormat.Json, at: End));
+        Assert.Single(ExportedEvents.ParseCsv(await log.ExportAsync(nothing, AuditExportFormat.Csv, at: End)));
+
+        var recorded = await log.ReadAsync(new AuditQuery { From = End });
+        Assert.Equal(2, recorded.Count);
+        Assert.All(recorded, record => AssertExportRecord(record, null, End));
+    }
+
+    private static void AssertExportRecord(AuditEvent record, AuditSubject? subject, DateTimeOffset at)
+    {
+        Assert.Equal("audit.exported", record.Operation);
+        Assert.Equal(AuditScenario.Amir, record.Initiator);
+        Assert.Equal(at, record.Timestamp);
+        Assert.Equal((subject?.Type, subject?.Id), (record.SubjectType, record.SubjectId));
     }
 
     private static IEnumerable<AuditEvent> OnlyThe(AuditSubject subject, IEnumerable<AuditEvent> events)

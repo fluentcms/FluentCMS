@@ -3,6 +3,7 @@ using FluentCMS.Admin.Components;
 using FluentCMS.Api;
 using FluentCMS.Core;
 using FluentCMS.Core.Identity;
+using FluentCMS.Host.Audit;
 using FluentCMS.Host.Identity;
 using FluentCMS.Host.Jobs;
 using FluentCMS.Host.Security;
@@ -60,6 +61,7 @@ public static class FluentCmsHost
         MapStaticAssets(app);
         app.MapHealthChecks("/health");
         app.MapExternalSignIn();
+        app.MapAuditExport();
 
         // Every admin page needs a signed-in user unless it allows anonymous access itself (setup, sign-in, not found).
         app.MapRazorComponents<App>()

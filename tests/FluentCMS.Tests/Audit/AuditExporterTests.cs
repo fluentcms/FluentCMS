@@ -3,6 +3,7 @@ using System.Text.Json;
 using FluentCMS.Core;
 using FluentCMS.Core.Audit;
 using FluentCMS.Core.Identity;
+using FluentCMS.Core.Persistence;
 using FluentCMS.Core.Results;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -179,7 +180,8 @@ public sealed class AuditExporterTests
             yield break;
         }
 
-        var exporter = ExporterOver(new StubReader(Tracked));
+        var trail = new RecordingTrail();
+        var exporter = ExporterOver(new StubReader(Tracked), trail);
         using var destination = new MemoryStream();
 
         var unknown = await exporter.ExportAsync(new AuditQuery(), (AuditExportFormat)42, destination);
@@ -192,6 +194,41 @@ public sealed class AuditExporterTests
         Assert.Equal("audit_window_inverted", Assert.Single(inverted.Errors).Code);
         Assert.False(read);
         Assert.Equal(0, destination.Length);
+        Assert.Empty(trail.Committed);
+        Assert.Equal(0, trail.Begun);
+    }
+
+    [Theory]
+    [InlineData(AuditExportFormat.Json)]
+    [InlineData(AuditExportFormat.Csv)]
+    public async Task An_export_commits_its_own_event_before_it_writes_anything(AuditExportFormat format)
+    {
+        using var destination = new MemoryStream();
+        var trail = new RecordingTrail(destination);
+
+        var result = await ExporterOver(new StubReader(new[] { Full, Minimal }.ToAsyncEnumerable), trail)
+            .ExportAsync(new AuditQuery { From = Full.Timestamp }, format, destination);
+
+        Assert.True(result.IsSuccess);
+        var recorded = Assert.Single(trail.Committed);
+        Assert.Equal("audit.exported", recorded.Operation);
+        Assert.Null(recorded.SubjectType);
+        Assert.Null(recorded.SubjectId);
+        Assert.Equal([0L], trail.DestinationLengthAtCommit);
+        Assert.True(destination.Length > 0);
+    }
+
+    [Fact]
+    public async Task An_items_export_names_the_item_in_its_event()
+    {
+        var trail = new RecordingTrail();
+        var subject = new AuditSubject("entry", Guid.NewGuid());
+
+        await ExporterOver(new StubReader(Array.Empty<AuditEvent>().ToAsyncEnumerable), trail)
+            .ExportAsync(new AuditQuery { Subject = subject }, AuditExportFormat.Json, new MemoryStream());
+
+        var recorded = Assert.Single(trail.Committed);
+        Assert.Equal(("entry", subject.Id), (recorded.SubjectType, recorded.SubjectId));
     }
 
     private static async Task<(Result Result, string Output)> ExportAsync(AuditEvent[] events, AuditExportFormat format)
@@ -203,15 +240,61 @@ public sealed class AuditExporterTests
     }
 
     // Resolved the way the host does, so the Core registration is covered too.
-    private static IAuditExporter ExporterOver(IAuditReader reader)
+    private static IAuditExporter ExporterOver(IAuditReader reader, RecordingTrail? trail = null)
     {
+        trail ??= new RecordingTrail();
+
         return new ServiceCollection()
             .AddFluentCmsCore()
             .AddScoped(_ => reader)
+            .AddSingleton<IUnitOfWork>(trail)
+            .AddSingleton<IAuditLog>(trail)
             .BuildServiceProvider()
             .CreateScope()
             .ServiceProvider
             .GetRequiredService<IAuditExporter>();
+    }
+
+    // Stands in for the unit of work and the log, keeping what was committed and how much had been written by then.
+    private sealed class RecordingTrail(Stream? destination = null) : IUnitOfWork, IAuditLog
+    {
+        private readonly List<NewAuditEvent> _pending = [];
+        private readonly Stream? _destination = destination;
+
+        public int Begun { get; private set; }
+
+        public List<NewAuditEvent> Committed { get; } = [];
+
+        public List<long> DestinationLengthAtCommit { get; } = [];
+
+        public Task<IUnitOfWorkScope> BeginAsync(CancellationToken cancellationToken = default)
+        {
+            Begun++;
+            return Task.FromResult<IUnitOfWorkScope>(new Scope(this));
+        }
+
+        public Task<AuditEvent> AppendAsync(NewAuditEvent entry, CancellationToken cancellationToken = default)
+        {
+            _pending.Add(entry);
+            return Task.FromResult(Minimal with { Id = Guid.NewGuid(), Operation = entry.Operation });
+        }
+
+        private sealed class Scope(RecordingTrail trail) : IUnitOfWorkScope
+        {
+            public Task CommitAsync(CancellationToken cancellationToken = default)
+            {
+                trail.Committed.AddRange(trail._pending);
+                trail._pending.Clear();
+                trail.DestinationLengthAtCommit.Add(trail._destination?.Length ?? 0);
+                return Task.CompletedTask;
+            }
+
+            public ValueTask DisposeAsync()
+            {
+                trail._pending.Clear();
+                return ValueTask.CompletedTask;
+            }
+        }
     }
 
     private sealed class StubReader(Func<IAsyncEnumerable<AuditEvent>> events) : IAuditReader
