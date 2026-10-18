@@ -30,6 +30,20 @@ internal sealed class ReferenceFieldType : IFieldType
         return reader.Errors();
     }
 
+    // Whether the entry exists is checked where entries are stored.
+    public IReadOnlyList<Error> ValidateValue(JsonElement value, JsonElement settings, FieldTypeRegistry fieldTypes)
+    {
+        if (Values.IsId(value))
+        {
+            return [];
+        }
+
+        var target = ReferenceTargets(settings, fieldTypes)[0];
+        var what = target.Field is null ? $"an entry of the content type '{target.Type}'" : $"a '{target.Type}' entity";
+
+        return Values.Invalid($"The value must be the id of {what}, a UUID such as {FieldValueDescription.ExampleId}.");
+    }
+
     public FieldValueDescription DescribeValue(JsonElement settings, FieldTypeRegistry fieldTypes)
     {
         var target = ReferenceTargets(settings, fieldTypes)[0];

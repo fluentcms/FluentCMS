@@ -25,10 +25,12 @@ public sealed class DatabaseTests
     }
 
     // Upgrades must be reversible one version back (OPS-04, ADR-0005), so the newest migration's Down is exercised here.
-    [Fact]
-    public async Task The_newest_migration_reverts_and_reapplies_on_sqlite()
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task The_newest_migration_reverts_and_reapplies(string provider)
     {
-        using var database = new TemporarySqliteDatabase();
+        await using var database = await TemporaryDatabase.CreateAsync(provider);
         await using var services = TestServices.Build(database.Configuration);
         await TestServices.MigrateAsync(services);
 
