@@ -1,4 +1,5 @@
 using System.Net;
+using FluentCMS.Core.Audit;
 using FluentCMS.Core.Identity;
 using FluentCMS.Infrastructure.Audit;
 using FluentCMS.Infrastructure.Persistence;
