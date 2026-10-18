@@ -1,0 +1,14 @@
+@* popovertarget toggles the popover in the browser; the invoker becomes the anchor it is positioned against. *@
+<Button id="@Context.TriggerId" Variant="@Variant" Size="@Size" Class="@Class" popovertarget="@Context.Id" aria-haspopup="dialog" aria-expanded="false" aria-controls="@Context.Id" data-slot="popover-trigger" data-ui="popover-trigger" @attributes="AdditionalAttributes">
+    @ChildContent
+</Button>
+
+@code {
+    [CascadingParameter] private PopoverContext Context { get; set; } = null!;
+
+    [Parameter] public string Variant { get; set; } = "outline";
+    [Parameter] public string Size { get; set; } = "default";
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+}

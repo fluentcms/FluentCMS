@@ -85,6 +85,7 @@ public static class InfrastructureServiceCollectionExtensions
     {
         services.AddScoped<IEntryDirectory, EntryDirectory>();
         services.AddScoped<IWhereUsed, WhereUsed>();
+        services.AddScoped<IResolvedEntries, ResolvedEntries>();
     }
 
     private static void AddIdentity(IServiceCollection services)
