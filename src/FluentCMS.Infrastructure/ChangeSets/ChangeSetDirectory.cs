@@ -1,3 +1,4 @@
+using System.Text.Json;
 using FluentCMS.Core.Agents;
 using FluentCMS.Core.Audit;
 using FluentCMS.Core.ChangeSets;
@@ -45,15 +46,19 @@ internal sealed class ChangeSetDirectory(
 
         var set = stored.ChangeSet;
         var definitions = await DefinitionsAsync(set.Operations, cancellationToken);
+        var entries = await EntryDiffsAsync(set, cancellationToken);
 
         var items = set.Operations
-            .Select(operation => operation.ItemKind == ItemKind.Schema
-                ? ItemDiff.ForSchema(
+            .Select((operation, position) => operation.ItemKind switch
+            {
+                ItemKind.Schema => ItemDiff.ForSchema(
                     operation,
                     Definition(definitions, set.Id, operation.ItemId, operation.BaseVersion),
-                    Definition(definitions, set.Id, operation.ItemId, operation.ProposedVersion))
-                : throw new InvalidOperationException(
-                    $"Change set {set.Id} holds an operation on a {ItemSubjectType(operation.ItemKind)} item, which no diff covers yet."))
+                    Definition(definitions, set.Id, operation.ItemId, operation.ProposedVersion)),
+                ItemKind.Entry or ItemKind.Entity => entries[position],
+                _ => throw new InvalidOperationException(
+                    $"Change set {set.Id} holds an operation on a {ItemSubjectType(operation.ItemKind)} item, which no diff covers yet."),
+            })
             .ToList();
 
         return Result<ChangeSetDiff>.Success(new ChangeSetDiff(set.Id, items));
@@ -219,8 +224,7 @@ internal sealed class ChangeSetDirectory(
             {
                 return Result<ChangeSet>.Failure(
                     ChangeSetErrorCodes.BaseVersionStale,
-                    $"Another change set published the content type '{item.Slug}' at the same time, "
-                    + "so it is no longer at the version this change set was based on.");
+                    $"Another change set published {item.Name} at the same time, so it is no longer at the version this change set was based on.");
             }
 
             var subjectType = ItemSubjectType(item.Operation.ItemKind);
@@ -585,12 +589,17 @@ internal sealed class ChangeSetDirectory(
     // Points an operation at stored versions of its item; the result is the id of the base version's row, if any.
     private async Task<Result<Guid?>> ResolveAsync(ChangeOperation operation, CancellationToken cancellationToken)
     {
+        if (operation.ItemKind is ItemKind.Entry or ItemKind.Entity)
+        {
+            return await ResolveEntryAsync(operation, cancellationToken);
+        }
+
         if (operation.ItemKind != ItemKind.Schema)
         {
             return Result<Guid?>.Failure(
                 ChangeSetErrorCodes.ItemKindUnavailable,
                 $"There are no stored {ItemSubjectType(operation.ItemKind)} items yet, so a change set cannot point at one; "
-                + "only schema operations can be added.");
+                + "only schema, entry and entity operations can be added.");
         }
 
         var slug = await context.ContentTypes
@@ -682,11 +691,13 @@ internal sealed class ChangeSetDirectory(
     // operation's base version, and a create's item not at all, so a publish never replaces a version its set has not seen.
     private async Task<Result<List<PublishableItem>>> PublishableItemsAsync(ChangeSet set, CancellationToken cancellationToken)
     {
-        if (set.Operations.FirstOrDefault(operation => operation.ItemKind != ItemKind.Schema) is { } other)
+        if (set.Operations.FirstOrDefault(operation => operation.ItemKind is not (ItemKind.Schema or ItemKind.Entry or ItemKind.Entity)) is { } other)
         {
             throw new InvalidOperationException(
                 $"Change set {set.Id} holds an operation on a {ItemSubjectType(other.ItemKind)} item, which nothing publishes yet.");
         }
+
+        var entries = await PublishedEntriesAsync(set.Operations, cancellationToken);
 
         var ids = set.Operations.Select(operation => operation.ItemId).ToList();
         var bases = set.Operations.Select(operation => operation.BaseVersion).OfType<int>().Distinct().ToList();
@@ -706,6 +717,16 @@ internal sealed class ChangeSetDirectory(
         var errors = new List<Error>();
         foreach (var operation in set.Operations)
         {
+            if (operation.ItemKind is ItemKind.Entry or ItemKind.Entity)
+            {
+                if (PublishableEntry(set, operation, entries, errors) is { } item)
+                {
+                    items.Add(item);
+                }
+
+                continue;
+            }
+
             // Types and versions are never deleted and an operation is checked against them when it is added.
             var type = types.GetValueOrDefault(operation.ItemId)
                 ?? throw new InvalidOperationException($"Change set {set.Id} points at content type {operation.ItemId}, which is not stored.");
@@ -719,7 +740,7 @@ internal sealed class ChangeSetDirectory(
             }
 
             Guid? previousVersionId = operation.BaseVersion is { } baseVersion ? versions[(operation.ItemId, baseVersion)] : null;
-            items.Add(new PublishableItem(operation, type.Slug, previousVersionId));
+            items.Add(new PublishableItem(operation, $"the content type '{type.Slug}'", previousVersionId));
         }
 
         return errors.Count == 0 ? Result<List<PublishableItem>>.Success(items) : Result<List<PublishableItem>>.Failure(errors);
@@ -728,11 +749,212 @@ internal sealed class ChangeSetDirectory(
     // Moves only from the base version, so a publish over the same item that committed first leaves nothing to move.
     private async Task<bool> MovePublishedVersionAsync(ChangeOperation operation, CancellationToken cancellationToken)
     {
+        if (operation.ItemKind is ItemKind.Entry or ItemKind.Entity)
+        {
+            // A delete published from here unpublishes the entry; its versions and its draft stay.
+            return await context.Entries
+                .Where(entry => entry.Id == operation.ItemId && entry.PublishedVersion == operation.BaseVersion && entry.DeletedAt == null)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(entry => entry.PublishedVersion, operation.ProposedVersion), cancellationToken) == 1;
+        }
+
         var moved = await context.ContentTypes
             .Where(type => type.Id == operation.ItemId && type.PublishedVersion == operation.BaseVersion)
             .ExecuteUpdateAsync(setters => setters.SetProperty(type => type.PublishedVersion, operation.ProposedVersion), cancellationToken);
 
         return moved == 1;
+    }
+
+    // An entry operation points at an entry of a plain content type and an entity operation at an entry of an entity type, so the
+    // desk can tell content changes from fact changes (CHG-09). A deleted entry waits for its restore.
+    private async Task<Result<Guid?>> ResolveEntryAsync(ChangeOperation operation, CancellationToken cancellationToken)
+    {
+        var entry = await (
+            from row in context.Entries.AsNoTracking()
+            join type in context.ContentTypes.AsNoTracking() on row.ContentTypeId equals type.Id
+            join current in context.ContentTypeVersions.AsNoTracking()
+                on new { ContentTypeId = type.Id, type.Version } equals new { current.ContentTypeId, current.Version }
+            where row.Id == operation.ItemId && row.SiteId == SiteId
+            select new { row.DeletedAt, type.Slug, current.Definition })
+            .SingleOrDefaultAsync(cancellationToken);
+
+        if (entry is null)
+        {
+            return Result<Guid?>.Failure(ChangeSetErrorCodes.ItemNotFound, $"There is no entry {operation.ItemId} in this site.");
+        }
+
+        if (entry.DeletedAt is not null)
+        {
+            return Result<Guid?>.Failure(
+                ChangeSetErrorCodes.ItemNotFound,
+                $"Entry {operation.ItemId} is deleted; restore it before a change set points at it.");
+        }
+
+        var isEntity = ReadDefinition($"of the content type '{entry.Slug}'", entry.Definition).IsEntity;
+        if (isEntity != (operation.ItemKind == ItemKind.Entity))
+        {
+            return Result<Guid?>.Failure(
+                ChangeSetErrorCodes.ItemKindMismatch,
+                isEntity
+                    ? $"Entry {operation.ItemId} is an entity of the entity type '{entry.Slug}', so an entity operation changes it."
+                    : $"Entry {operation.ItemId} is of the content type '{entry.Slug}', which is not an entity type, so an entry operation changes it.");
+        }
+
+        // The write that stored the version was checked field by field; the operation is checked on the type (MCP-05).
+        var allowed = await permissions.CheckContentAsync(entry.Slug, AgentOperationOf(operation.Kind), cancellationToken: cancellationToken);
+        if (!allowed.IsSuccess)
+        {
+            return Result<Guid?>.Failure(allowed.Errors);
+        }
+
+        var wanted = new[] { operation.BaseVersion, operation.ProposedVersion }.OfType<int>().ToList();
+        var stored = await context.EntryVersions
+            .AsNoTracking()
+            .Where(version => version.EntryId == operation.ItemId && wanted.Contains(version.Version))
+            .Select(version => new { version.Version, version.Id })
+            .ToListAsync(cancellationToken);
+
+        var missing = wanted.Except(stored.Select(version => version.Version)).ToList();
+        if (missing.Count > 0)
+        {
+            return Result<Guid?>.Failure(missing.Select(version => new Error(
+                ChangeSetErrorCodes.VersionNotFound,
+                $"Entry {operation.ItemId} has no version {version}.")));
+        }
+
+        return Result<Guid?>.Success(stored.SingleOrDefault(version => version.Version == operation.BaseVersion)?.Id);
+    }
+
+    // The diff of every entry and entity operation, by its position in the set, from all the versions they name in one query. Each
+    // version brings the definition it was written against, so fields keep their order on both databases.
+    private async Task<Dictionary<int, ItemDiff>> EntryDiffsAsync(ChangeSet set, CancellationToken cancellationToken)
+    {
+        var operations = set.Operations
+            .Select((operation, position) => (Operation: operation, Position: position))
+            .Where(item => item.Operation.ItemKind is ItemKind.Entry or ItemKind.Entity)
+            .ToList();
+        if (operations.Count == 0)
+        {
+            return [];
+        }
+
+        var ids = operations.Select(item => item.Operation.ItemId).Distinct().ToList();
+        var numbers = operations
+            .SelectMany(item => new[] { item.Operation.BaseVersion, item.Operation.ProposedVersion })
+            .OfType<int>()
+            .Distinct()
+            .ToList();
+
+        var rows = await (
+            from version in context.EntryVersions.AsNoTracking()
+            join entry in context.Entries.AsNoTracking() on version.EntryId equals entry.Id
+            join written in context.ContentTypeVersions.AsNoTracking()
+                on new { entry.ContentTypeId, Version = version.ContentTypeVersion } equals new { written.ContentTypeId, written.Version }
+            where ids.Contains(version.EntryId) && numbers.Contains(version.Version)
+            select new { version.EntryId, version.Version, version.Fields, written.Definition })
+            .ToListAsync(cancellationToken);
+        var versions = rows.ToDictionary(row => (row.EntryId, row.Version));
+
+        // Versions are never changed and an operation is checked against them when it is added, so a missing one is a broken store.
+        (JsonElement Fields, string Definition)? Stored(Guid entryId, int? number)
+        {
+            if (number is not { } version)
+            {
+                return null;
+            }
+
+            var row = versions.GetValueOrDefault((entryId, version))
+                ?? throw new InvalidOperationException($"Change set {set.Id} points at version {version} of entry {entryId}, which is not stored.");
+
+            return (JsonSerializer.Deserialize<JsonElement>(row.Fields), row.Definition);
+        }
+
+        return operations.ToDictionary(
+            item => item.Position,
+            item =>
+            {
+                var before = Stored(item.Operation.ItemId, item.Operation.BaseVersion);
+                var after = Stored(item.Operation.ItemId, item.Operation.ProposedVersion);
+                var shown = (after ?? before)!.Value;
+
+                return ItemDiff.ForEntry(item.Operation, before?.Fields, after?.Fields, ReadDefinition($"of entry {item.Operation.ItemId}", shown.Definition));
+            });
+    }
+
+    // Each entry the operations name with its published version, whether it is deleted, and the rows of their base versions.
+    private async Task<Dictionary<Guid, PublishedEntry>> PublishedEntriesAsync(IReadOnlyList<ChangeOperation> operations, CancellationToken cancellationToken)
+    {
+        var entryOperations = operations.Where(operation => operation.ItemKind is ItemKind.Entry or ItemKind.Entity).ToList();
+        if (entryOperations.Count == 0)
+        {
+            return [];
+        }
+
+        var ids = entryOperations.Select(operation => operation.ItemId).Distinct().ToList();
+        var bases = entryOperations.Select(operation => operation.BaseVersion).OfType<int>().Distinct().ToList();
+
+        var entries = await context.Entries
+            .AsNoTracking()
+            .Where(entry => entry.SiteId == SiteId && ids.Contains(entry.Id))
+            .Select(entry => new { entry.Id, entry.PublishedVersion, Deleted = entry.DeletedAt != null })
+            .ToListAsync(cancellationToken);
+        var versions = await context.EntryVersions
+            .AsNoTracking()
+            .Where(version => ids.Contains(version.EntryId) && bases.Contains(version.Version))
+            .Select(version => new { version.EntryId, version.Version, version.Id })
+            .ToListAsync(cancellationToken);
+
+        var versionIds = versions.ToLookup(version => version.EntryId);
+
+        return entries.ToDictionary(
+            entry => entry.Id,
+            entry => new PublishedEntry(
+                entry.PublishedVersion,
+                entry.Deleted,
+                versionIds[entry.Id].ToDictionary(version => version.Version, version => version.Id)));
+    }
+
+    // An entry is published only at its operation's base version, and a create's entry not at all; a deleted one waits for its
+    // restore. Entries are never removed inside the retention window, and an operation is checked against them when it is added.
+    private static PublishableItem? PublishableEntry(
+        ChangeSet set,
+        ChangeOperation operation,
+        Dictionary<Guid, PublishedEntry> entries,
+        List<Error> errors)
+    {
+        var name = $"the {ItemSubjectType(operation.ItemKind)} {operation.ItemId}";
+        var entry = entries.GetValueOrDefault(operation.ItemId)
+            ?? throw new InvalidOperationException($"Change set {set.Id} points at {name}, which is not stored.");
+
+        if (entry.Deleted)
+        {
+            errors.Add(new Error(ChangeSetErrorCodes.ItemNotFound, $"{Capitalize(name)} is deleted, so it cannot be published; restore it first."));
+            return null;
+        }
+
+        if (entry.PublishedVersion != operation.BaseVersion)
+        {
+            var published = entry.PublishedVersion is { } current ? $"is published at version {current}" : "is not published";
+            var based = operation.BaseVersion is { } number ? $"was based on version {number}" : "creates it";
+            errors.Add(new Error(ChangeSetErrorCodes.BaseVersionStale, $"{Capitalize(name)} {published}, but this change set {based}."));
+            return null;
+        }
+
+        return new PublishableItem(operation, name, operation.BaseVersion is { } baseVersion ? entry.VersionIds[baseVersion] : null);
+    }
+
+    private static string Capitalize(string text)
+    {
+        return char.ToUpperInvariant(text[0]) + text[1..];
+    }
+
+    private static ContentTypeDefinition ReadDefinition(string subject, string json)
+    {
+        var definition = ContentTypeDefinition.Parse(json);
+
+        return definition.IsSuccess
+            ? definition.Value
+            : throw new InvalidOperationException(
+                $"The definition {subject} is stored in a form that cannot be read: " + string.Join("; ", definition.Errors.Select(error => error.Message)));
     }
 
     private Task<Guid?> OpenSetOfSessionAsync(Initiator initiator, string sessionId, CancellationToken cancellationToken)
@@ -872,5 +1094,8 @@ internal sealed class ChangeSetDirectory(
     // extends an operation the set already holds.
     internal sealed record PendingOperation(ChangeSet ChangeSet, int? Revision, int Position, bool Extends);
 
-    private sealed record PublishableItem(ChangeOperation Operation, string Slug, Guid? PreviousVersionId);
+    // Name says which item it is in a message, such as "the content type 'product'".
+    private sealed record PublishableItem(ChangeOperation Operation, string Name, Guid? PreviousVersionId);
+
+    private sealed record PublishedEntry(int? PublishedVersion, bool Deleted, Dictionary<int, Guid> VersionIds);
 }
