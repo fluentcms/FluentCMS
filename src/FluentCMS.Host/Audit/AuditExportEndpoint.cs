@@ -13,10 +13,7 @@ internal static class AuditExportEndpoint
 {
     public static void MapAuditExport(this IEndpointRouteBuilder endpoints)
     {
-        // A forged token gets a bare 400. Re-executing the not-found page would read the rejected form again and fail with a 500.
-        endpoints.MapPost(AdminRoutes.AuditExport, ExportAsync)
-            .RequireAuthorization()
-            .WithMetadata(new SkipStatusCodePagesAttribute());
+        endpoints.MapPost(AdminRoutes.AuditExport, ExportAsync).RequireAuthorization();
 
         // Someone whose session ran out signs in again and is sent back here with a GET; the form is on the page.
         endpoints.MapGet(AdminRoutes.AuditExport, () => Results.LocalRedirect(AdminRoutes.Audit)).RequireAuthorization();
