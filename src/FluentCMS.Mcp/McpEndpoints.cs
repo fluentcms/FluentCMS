@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -7,6 +8,10 @@ namespace FluentCMS.Mcp;
 public static class McpEndpoints
 {
     public const string Route = "/mcp";
+
+    private static readonly AuthorizationPolicy AgentsOnly = new AuthorizationPolicyBuilder(AgentKeyAuthentication.Scheme)
+        .RequireAuthenticatedUser()
+        .Build();
 
     public static IEndpointConventionBuilder MapFluentCmsMcp(this IEndpointRouteBuilder endpoints)
     {
@@ -18,6 +23,7 @@ public static class McpEndpoints
             return Results.StatusCode(StatusCodes.Status405MethodNotAllowed);
         });
 
-        return endpoints.MapMcp(Route);
+        // The agent scheme alone: a person's admin cookie is never read here, so it cannot become the initiator of a call (SEC-01).
+        return endpoints.MapMcp(Route).RequireAuthorization(AgentsOnly);
     }
 }
