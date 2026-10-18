@@ -334,6 +334,13 @@ internal sealed class ChangeSetDirectory(
             return Result<Guid?>.Failure(ChangeSetErrorCodes.ItemNotFound, $"There is no content type {operation.ItemId} in this site.");
         }
 
+        // A schema operation proposes a definition, so the scope must allow its operation on the whole type (MCP-05).
+        var allowed = await permissions.CheckDefinitionAsync(slug, AgentOperationOf(operation.Kind), cancellationToken);
+        if (!allowed.IsSuccess)
+        {
+            return Result<Guid?>.Failure(allowed.Errors);
+        }
+
         var wanted = new[] { operation.BaseVersion, operation.ProposedVersion }.OfType<int>().ToList();
         var stored = await context.ContentTypeVersions
             .AsNoTracking()
@@ -491,6 +498,17 @@ internal sealed class ChangeSetDirectory(
     private static string ItemSubjectType(ItemKind kind)
     {
         return kind == ItemKind.Schema ? "content_type" : kind.ToString().ToLowerInvariant();
+    }
+
+    private static AgentOperation AgentOperationOf(OperationKind kind)
+    {
+        return kind switch
+        {
+            OperationKind.Create => AgentOperation.Create,
+            OperationKind.Update => AgentOperation.Update,
+            OperationKind.Delete => AgentOperation.Delete,
+            _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown operation kind."),
+        };
     }
 
     private static string TransitionOperation(ChangeSetState state)

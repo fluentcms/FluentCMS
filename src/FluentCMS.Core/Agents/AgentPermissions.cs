@@ -119,6 +119,176 @@ internal sealed class AgentPermissions(
             + $"{cap} (items per change set). Submit this change set and add the rest to a new one.");
     }
 
+    public async Task<Result> CheckContentAsync(
+        string contentType,
+        AgentOperation operation,
+        IReadOnlyCollection<string>? fields = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(contentType);
+
+        var agent = await AgentAsync(cancellationToken);
+        if (!agent.IsSuccess)
+        {
+            return Result.Failure(agent.Errors);
+        }
+
+        if (agent.Value is not { } credential)
+        {
+            return Result.Success();
+        }
+
+        // Reading a type covers its definition and its entries; every other operation is on entries.
+        var target = operation == AgentOperation.Read ? $"the content type '{contentType}' or its entries" : $"entries of '{contentType}'";
+        var allowed = Allows(credential, operation, contentType, target);
+        if (!allowed.IsSuccess || fields is null)
+        {
+            return allowed;
+        }
+
+        var outside = fields
+            .Where(field => !credential.Scope.AllowsField(contentType, field))
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+        return outside.Count == 0
+            ? Result.Success()
+            : Result.Failure(
+                AgentPermissionErrorCodes.ScopeDenied,
+                $"The credential '{credential.DisplayName}' may not change {Fields(outside)} of '{contentType}': its scope allows only "
+                + $"{Fields(ListedFields(credential.Scope, contentType))}. Leave the other fields as they are, or ask an administrator for a "
+                + "credential that includes them.");
+    }
+
+    public async Task<Result> CheckDefinitionAsync(string contentType, AgentOperation operation, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(contentType);
+
+        var agent = await AgentAsync(cancellationToken);
+        if (!agent.IsSuccess)
+        {
+            return Result.Failure(agent.Errors);
+        }
+
+        if (agent.Value is not { } credential)
+        {
+            return Result.Success();
+        }
+
+        var allowed = Allows(credential, operation, contentType, $"the content type '{contentType}'");
+        if (!allowed.IsSuccess)
+        {
+            return allowed;
+        }
+
+        var listed = ListedFields(credential.Scope, contentType);
+        return listed.Count == 0
+            ? Result.Success()
+            : Result.Failure(
+                AgentPermissionErrorCodes.ScopeDenied,
+                $"The credential '{credential.DisplayName}' may not {Verb(operation)} the definition of '{contentType}': its scope limits "
+                + $"'{contentType}' to {Fields(listed)}, and a definition covers every field.");
+    }
+
+    public async Task<Func<string, bool>> ReadableTypesAsync(CancellationToken cancellationToken = default)
+    {
+        var agent = await AgentAsync(cancellationToken);
+        if (!agent.IsSuccess)
+        {
+            return _ => false;
+        }
+
+        if (agent.Value is not { } credential)
+        {
+            return _ => true;
+        }
+
+        var scope = credential.Scope;
+        return scope.AllowsOperation(AgentOperation.Read) ? scope.AllowsType : _ => false;
+    }
+
+    public async Task<Result> CheckToolCallAsync(CancellationToken cancellationToken = default)
+    {
+        var agent = await AgentAsync(cancellationToken);
+        if (!agent.IsSuccess)
+        {
+            return Result.Failure(agent.Errors);
+        }
+
+        if (agent.Value is not { } credential)
+        {
+            return Result.Success();
+        }
+
+        var caps = credential.Caps;
+        var made = await activity.ToolCallsSinceAsync(credential.Id, clock.GetUtcNow() - caps.CallPeriod, cancellationToken);
+        if (made < caps.CallsPerPeriod)
+        {
+            return Result.Success();
+        }
+
+        await RecordAsync(
+            new NewAuditEvent("agent.calls_per_period_exceeded") { SubjectType = "agent_credential", SubjectId = credential.Id },
+            cancellationToken);
+
+        return Result.Failure(
+            AgentPermissionErrorCodes.CapExceeded,
+            $"The credential '{credential.DisplayName}' has made {made} tool calls {Within(caps.CallPeriod)}, and its cap is "
+            + $"{caps.CallsPerPeriod} (calls per period). Wait until fewer than {caps.CallsPerPeriod} calls fall {Within(caps.CallPeriod)}, then call again.");
+    }
+
+    // The operation first, then the type, so the message names the first part of the scope that refuses.
+    private static Result Allows(AgentCredential credential, AgentOperation operation, string contentType, string target)
+    {
+        var scope = credential.Scope;
+
+        if (!scope.AllowsOperation(operation))
+        {
+            return Result.Failure(
+                AgentPermissionErrorCodes.ScopeDenied,
+                $"The credential '{credential.DisplayName}' may not {Verb(operation)} {target}: its scope allows "
+                + $"{string.Join(", ", scope.Operations.Select(Verb))} only. Ask an administrator for a credential that allows {Verb(operation)}.");
+        }
+
+        if (!scope.AllowsType(contentType))
+        {
+            return Result.Failure(
+                AgentPermissionErrorCodes.ScopeDenied,
+                $"The credential '{credential.DisplayName}' may not {Verb(operation)} {target}: '{contentType}' is not among the content types "
+                + $"in its scope, which are {string.Join(", ", scope.Types!.Select(type => $"'{type}'"))}.");
+        }
+
+        return Result.Success();
+    }
+
+    // The fields the scope lists for the type; none when the type keeps all its fields.
+    private static List<string> ListedFields(AgentScope scope, string contentType)
+    {
+        var prefix = contentType + ".";
+        return (scope.Fields ?? [])
+            .Where(field => field.StartsWith(prefix, StringComparison.Ordinal))
+            .Select(field => field[prefix.Length..])
+            .ToList();
+    }
+
+    private static string Fields(IReadOnlyCollection<string> fields)
+    {
+        return (fields.Count == 1 ? "the field " : "the fields ") + string.Join(", ", fields.Select(field => $"'{field}'"));
+    }
+
+    private static string Verb(AgentOperation operation)
+    {
+        return operation.ToString().ToLowerInvariant();
+    }
+
+    private static string Within(TimeSpan period)
+    {
+        return period == TimeSpan.FromHours(1) ? "in the last hour"
+            : period == TimeSpan.FromDays(1) ? "in the last day"
+            : $"in the last {period}";
+    }
+
     // An agent works on the change sets it opened; a person's set, or another agent's, is not its to submit or add to.
     private static Result Owns(AgentCredential credential, ChangeSet changeSet)
     {

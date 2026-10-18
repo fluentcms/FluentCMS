@@ -1,3 +1,4 @@
+using FluentCMS.Core.Agents;
 using FluentCMS.Core.Audit;
 using FluentCMS.Core.Persistence;
 using FluentCMS.Core.Results;
@@ -9,11 +10,13 @@ using Microsoft.EntityFrameworkCore;
 namespace FluentCMS.Infrastructure.Schema;
 
 // Reads never track rows, so a long-lived context (a Blazor circuit) always sees what is stored, not what it saw before.
+// An agent reads and writes only the types its scope allows (MCP-05); the scope is checked before anything else.
 internal sealed class ContentTypeDirectory(
     FluentCmsDbContext context,
     IUnitOfWork unitOfWork,
     IAuditLog auditLog,
-    FieldTypeRegistry fieldTypes) : IContentTypeDirectory
+    FieldTypeRegistry fieldTypes,
+    IAgentPermissions permissions) : IContentTypeDirectory
 {
     private const string SubjectType = "content_type";
 
@@ -22,12 +25,15 @@ internal sealed class ContentTypeDirectory(
 
     public async Task<IReadOnlyList<ContentTypeSummary>> ListAsync(CancellationToken cancellationToken = default)
     {
-        return await context.ContentTypes
+        var readable = await permissions.ReadableTypesAsync(cancellationToken);
+        var types = await context.ContentTypes
             .AsNoTracking()
             .Where(type => type.SiteId == SiteId)
             .OrderBy(type => type.Slug)
             .Select(type => new ContentTypeSummary(type.Id, type.Name, type.Slug, type.Version))
             .ToListAsync(cancellationToken);
+
+        return types.Where(type => readable(type.Slug)).ToList();
     }
 
     public Task<Result<ContentType>> GetAsync(string slug, CancellationToken cancellationToken = default)
@@ -43,6 +49,12 @@ internal sealed class ContentTypeDirectory(
     public async Task<Result<ContentType>> CreateAsync(NewContentType contentType, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(contentType);
+
+        var allowed = await permissions.CheckDefinitionAsync(contentType.Slug, AgentOperation.Create, cancellationToken);
+        if (!allowed.IsSuccess)
+        {
+            return Result<ContentType>.Failure(allowed.Errors);
+        }
 
         var created = ContentType.Create(SiteId, contentType.Name, contentType.Slug, contentType.Definition, fieldTypes);
         if (!created.IsSuccess)
@@ -89,6 +101,12 @@ internal sealed class ContentTypeDirectory(
     {
         ArgumentNullException.ThrowIfNull(slug);
         ArgumentNullException.ThrowIfNull(definition);
+
+        var allowed = await permissions.CheckDefinitionAsync(slug, AgentOperation.Update, cancellationToken);
+        if (!allowed.IsSuccess)
+        {
+            return Result<ContentType>.Failure(allowed.Errors);
+        }
 
         var row = await FindAsync(slug, cancellationToken);
         if (row is null)
@@ -142,6 +160,12 @@ internal sealed class ContentTypeDirectory(
     private async Task<Result<ContentType>> ReadAsync(string slug, int? version, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(slug);
+
+        var allowed = await permissions.CheckContentAsync(slug, AgentOperation.Read, cancellationToken: cancellationToken);
+        if (!allowed.IsSuccess)
+        {
+            return Result<ContentType>.Failure(allowed.Errors);
+        }
 
         var row = await FindAsync(slug, cancellationToken);
         if (row is null)

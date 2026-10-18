@@ -16,4 +16,21 @@ public interface IAgentPermissions
 
     // Called with the agent's own set as read for the write and the new operation added in memory, before anything is written.
     Task<Result> CheckChangeSetSizeAsync(ChangeSet changeSet, CancellationToken cancellationToken = default);
+
+    // The operation on items of the content type (MCP-05). A write names the fields it changes, which a field list in the scope can
+    // narrow; a read names none, so an agent reads whole entries of a type in its scope.
+    Task<Result> CheckContentAsync(
+        string contentType,
+        AgentOperation operation,
+        IReadOnlyCollection<string>? fields = null,
+        CancellationToken cancellationToken = default);
+
+    // A content type's own definition, which covers every field, so a scope that narrows the type to some of its fields is refused.
+    Task<Result> CheckDefinitionAsync(string contentType, AgentOperation operation, CancellationToken cancellationToken = default);
+
+    // For lists: every type for a person, the types in scope for an agent that may read, and none for a refused credential.
+    Task<Func<string, bool>> ReadableTypesAsync(CancellationToken cancellationToken = default);
+
+    // One more tool call within the credential's calls per period (SEC-04), before the tool runs.
+    Task<Result> CheckToolCallAsync(CancellationToken cancellationToken = default);
 }
