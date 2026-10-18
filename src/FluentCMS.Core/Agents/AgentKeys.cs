@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Buffers.Text;
 using System.Security.Cryptography;
 using System.Text;
@@ -12,6 +13,9 @@ public static class AgentKeys
 
     private const int SecretBytes = 32;
 
+    private static readonly SearchValues<char> Alphabet =
+        SearchValues.Create("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_");
+
     public static int Length { get; } = Prefix.Length + Base64Url.GetEncodedLength(SecretBytes);
 
     public static string Generate()
@@ -19,12 +23,14 @@ public static class AgentKeys
         return Prefix + Base64Url.EncodeToString(RandomNumberGenerator.GetBytes(SecretBytes));
     }
 
-    // False for anything Generate cannot produce, so a malformed key is refused without a lookup.
+    // False for anything Generate cannot produce, so a malformed key is refused without a lookup. The base64url check skips
+    // whitespace, so the alphabet is checked first.
     public static bool IsWellFormed(string? key)
     {
         return key is not null
             && key.Length == Length
             && key.StartsWith(Prefix, StringComparison.Ordinal)
+            && !key.AsSpan(Prefix.Length).ContainsAnyExcept(Alphabet)
             && Base64Url.IsValid(key.AsSpan(Prefix.Length));
     }
 
