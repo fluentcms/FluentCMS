@@ -68,6 +68,17 @@ public sealed class ContentType
             : Result<ContentType>.Failure(errors);
     }
 
+    // Rebuilds a stored type as it was written, without validating again: a type stays readable after a field type it uses is gone.
+    public static ContentType Restore(Guid id, Guid siteId, string name, string slug, int version, ContentTypeDefinition definition)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        ArgumentNullException.ThrowIfNull(slug);
+        ArgumentNullException.ThrowIfNull(definition);
+        ArgumentOutOfRangeException.ThrowIfLessThan(version, 1);
+
+        return new ContentType(id, siteId, name, slug, version, definition);
+    }
+
     // The current instance is left as it is, so a failed revision changes nothing.
     public Result<ContentType> Revise(ContentTypeDefinition definition, FieldTypeRegistry fieldTypes)
     {

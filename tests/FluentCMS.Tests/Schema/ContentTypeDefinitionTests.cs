@@ -176,6 +176,14 @@ public sealed class ContentTypeDefinitionTests : IDisposable
     }
 
     [Fact]
+    public void References_list_each_field_that_points_at_a_content_type()
+    {
+        var definition = ContentTypeDefinition.Parse(EveryFieldType).Value;
+
+        Assert.Equal([new FieldReference("category", "category")], definition.References(FieldTypes));
+    }
+
+    [Fact]
     public void Field_settings_must_be_an_object()
     {
         Assert.Throws<ArgumentException>(() => new FieldDefinition("title", "text", settings: Element("[]")));
