@@ -48,6 +48,6 @@ public static class McpServiceCollectionExtensions
 
             // Tools arrive once agents authenticate; until then clients find an empty list rather than no tools capability.
             options.Capabilities = new ServerCapabilities { Tools = new ToolsCapability() };
-        });
+        }).WithRequestFilters(filters => filters.AddCallToolFilter(ToolCallRecording.Filter));
     }
 }

@@ -61,4 +61,19 @@ public sealed class AgentKeysTests
 
         Assert.All(malformed, candidate => Assert.False(AgentKeys.IsWellFormed(candidate)));
     }
+
+    // A base64url check alone skips whitespace, so these would pass whenever the characters around them decode cleanly. With every
+    // character zero they always would.
+    [Theory]
+    [InlineData(' ', 42)]
+    [InlineData('\t', 42)]
+    [InlineData(' ', 20)]
+    [InlineData('\n', 20)]
+    public void Whitespace_anywhere_in_a_key_is_not_well_formed(char whitespace, int position)
+    {
+        var secret = new string('A', 43).ToCharArray();
+        secret[position] = whitespace;
+
+        Assert.False(AgentKeys.IsWellFormed(AgentKeys.Prefix + new string(secret)));
+    }
 }
