@@ -8,6 +8,9 @@ public interface IChangeSetDirectory
 {
     Task<Result<ChangeSet>> GetAsync(Guid id, CancellationToken cancellationToken = default);
 
+    // Computed from the stored versions each operation names; a read, so it appends no event.
+    Task<Result<ChangeSetDiff>> DiffAsync(Guid id, CancellationToken cancellationToken = default);
+
     Task<Result<ChangeSet>> OpenAsync(NewChangeSet changeSet, CancellationToken cancellationToken = default);
 
     Task<Result<ChangeSet>> AddOperationAsync(Guid changeSetId, ChangeOperation operation, CancellationToken cancellationToken = default);

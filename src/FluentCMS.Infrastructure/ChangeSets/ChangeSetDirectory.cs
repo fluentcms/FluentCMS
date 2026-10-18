@@ -3,6 +3,7 @@ using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Persistence;
 using FluentCMS.Core.Results;
+using FluentCMS.Core.Schema;
 using FluentCMS.Core.Sites;
 using FluentCMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -27,6 +28,30 @@ internal sealed class ChangeSetDirectory(
         var stored = await ReadAsync(id, cancellationToken);
 
         return stored is null ? NotFound(id) : Result<ChangeSet>.Success(stored.ChangeSet);
+    }
+
+    public async Task<Result<ChangeSetDiff>> DiffAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var stored = await ReadAsync(id, cancellationToken);
+        if (stored is null)
+        {
+            return Result<ChangeSetDiff>.Failure(NotFound(id).Errors);
+        }
+
+        var set = stored.ChangeSet;
+        var definitions = await DefinitionsAsync(set.Operations, cancellationToken);
+
+        var items = set.Operations
+            .Select(operation => operation.ItemKind == ItemKind.Schema
+                ? ItemDiff.ForSchema(
+                    operation,
+                    Definition(definitions, set.Id, operation.ItemId, operation.BaseVersion),
+                    Definition(definitions, set.Id, operation.ItemId, operation.ProposedVersion))
+                : throw new InvalidOperationException(
+                    $"Change set {set.Id} holds an operation on a {ItemSubjectType(operation.ItemKind)} item, which no diff covers yet."))
+            .ToList();
+
+        return Result<ChangeSetDiff>.Success(new ChangeSetDiff(set.Id, items));
     }
 
     public async Task<Result<ChangeSet>> OpenAsync(NewChangeSet changeSet, CancellationToken cancellationToken = default)
@@ -289,6 +314,56 @@ internal sealed class ChangeSetDirectory(
         }
 
         return Result<Guid?>.Success(stored.SingleOrDefault(version => version.Version == operation.BaseVersion)?.Id);
+    }
+
+    // Every stored definition the schema operations name, keyed by content type and version, read in one query.
+    private async Task<Dictionary<(Guid ContentTypeId, int Version), string>> DefinitionsAsync(
+        IReadOnlyList<ChangeOperation> operations,
+        CancellationToken cancellationToken)
+    {
+        var schema = operations.Where(operation => operation.ItemKind == ItemKind.Schema).ToList();
+        if (schema.Count == 0)
+        {
+            return [];
+        }
+
+        var ids = schema.Select(operation => operation.ItemId).Distinct().ToList();
+        var versions = schema.SelectMany(operation => new[] { operation.BaseVersion, operation.ProposedVersion }).OfType<int>().Distinct().ToList();
+
+        var rows = await context.ContentTypeVersions
+            .AsNoTracking()
+            .Where(version => ids.Contains(version.ContentTypeId) && versions.Contains(version.Version))
+            .Select(version => new { version.ContentTypeId, version.Version, version.Definition })
+            .ToListAsync(cancellationToken);
+
+        return rows.ToDictionary(row => (row.ContentTypeId, row.Version), row => row.Definition);
+    }
+
+    // Versions are never deleted and an operation is checked against them when it is added, so a missing one is a broken store.
+    private static ContentTypeDefinition? Definition(
+        Dictionary<(Guid ContentTypeId, int Version), string> definitions,
+        Guid changeSetId,
+        Guid contentTypeId,
+        int? version)
+    {
+        if (version is not { } number)
+        {
+            return null;
+        }
+
+        if (!definitions.TryGetValue((contentTypeId, number), out var json))
+        {
+            throw new InvalidOperationException(
+                $"Change set {changeSetId} points at version {number} of content type {contentTypeId}, which is not stored.");
+        }
+
+        var definition = ContentTypeDefinition.Parse(json);
+
+        return definition.IsSuccess
+            ? definition.Value
+            : throw new InvalidOperationException(
+                $"Version {number} of content type {contentTypeId} is stored in a form that cannot be read: "
+                + string.Join("; ", definition.Errors.Select(error => error.Message)));
     }
 
     private Task<Guid?> OpenSetOfSessionAsync(Initiator initiator, string sessionId, CancellationToken cancellationToken)
