@@ -3,6 +3,7 @@
 @inject NavigationManager Navigation
 @using FluentCMS.Core.ChangeSets
 @inject IStringLocalizer<Showcase> L
+@inject ToastService Toasts
 
 <PageTitle>@L["Components"]</PageTitle>
 
@@ -242,6 +243,137 @@
             ([L["Esc"]], L["Closes it and returns focus to the trigger."]))
     </section>
 
+    <section class="grid gap-4" aria-labelledby="sheet-heading">
+        <h2 id="sheet-heading" class="text-lg font-semibold">@L["Sheet"]</h2>
+        <div class="flex flex-wrap gap-2">
+            @foreach (var (side, label) in new[] { ("end", L["End"].Value), ("start", L["Start"].Value), ("top", L["Top"].Value), ("bottom", L["Bottom"].Value) })
+            {
+                <Sheet>
+                    <SheetTrigger data-testid="@($"sheet-trigger-{side}")">@label</SheetTrigger>
+                    <SheetContent Side="@side" OnClose='() => Record(L["Sheet closed"])'>
+                        <SheetHeader>
+                            <SheetTitle>@L["Edit profile"]</SheetTitle>
+                            <SheetDescription>@L["Make changes to your profile here. Save when you're done."]</SheetDescription>
+                        </SheetHeader>
+                        <div class="grid gap-4 px-4">
+                            <FormField Label="@L["Name"]">
+                                <Input value="Pedro Duarte" />
+                            </FormField>
+                        </div>
+                        <SheetFooter>
+                            <SheetClose Variant="default" OnClick='() => Record(L["Sheet saved"])'>@L["Save changes"]</SheetClose>
+                            <SheetClose>@L["Cancel"]</SheetClose>
+                        </SheetFooter>
+                    </SheetContent>
+                </Sheet>
+            }
+        </div>
+        @Hints(
+            ([L["Enter"], L["Space"]], L["Opens the sheet from its edge and moves focus into it."]),
+            ([L["Tab"], L["Shift"] + "+" + L["Tab"]], L["Moves between its controls and wraps around."]),
+            ([L["Esc"]], L["Closes it and returns focus to the trigger."]))
+    </section>
+
+    <section class="grid gap-4" aria-labelledby="popover-heading">
+        <h2 id="popover-heading" class="text-lg font-semibold">@L["Popover"]</h2>
+        <Popover>
+            <PopoverTrigger Class="w-fit" data-testid="popover-trigger">@L["Open popover"]</PopoverTrigger>
+            <PopoverContent Class="w-80">
+                <div class="grid gap-4">
+                    <div class="space-y-2">
+                        <h3 class="leading-none font-medium">@L["Dimensions"]</h3>
+                        <p class="text-sm text-muted-foreground">@L["Set the dimensions for the layer."]</p>
+                    </div>
+                    <div class="grid gap-2">
+                        <FormField Label="@L["Width"]">
+                            <Input value="100%" Class="h-8" />
+                        </FormField>
+                        <FormField Label="@L["Height"]">
+                            <Input value="25px" Class="h-8" />
+                        </FormField>
+                    </div>
+                </div>
+            </PopoverContent>
+        </Popover>
+        @Hints(
+            ([L["Enter"], L["Space"]], L["Opens the popover and moves focus to its first control."]),
+            ([L["Tab"]], L["Moves through its controls."]),
+            ([L["Esc"]], L["Closes it and returns focus to the trigger; so does a click outside."]))
+    </section>
+
+    <section class="grid gap-4" aria-labelledby="tooltip-heading">
+        <h2 id="tooltip-heading" class="text-lg font-semibold">@L["Tooltip"]</h2>
+        <div class="flex flex-wrap items-center gap-2">
+            <Tooltip>
+                <TooltipTrigger data-testid="tooltip-trigger">@L["Hover"]</TooltipTrigger>
+                <TooltipContent>@L["Add to library"]</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+                <TooltipTrigger Variant="ghost" Size="icon" OnClick='() => Record(L["Save"])'>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="M12 5v14" /></svg>
+                    <span class="sr-only">@L["Save"]</span>
+                </TooltipTrigger>
+                <TooltipContent><span class="flex items-center gap-2">@L["Save"] <Kbd>⌘S</Kbd></span></TooltipContent>
+            </Tooltip>
+        </div>
+        @Hints(
+            ([L["Tab"]], L["Moves focus to the trigger and shows its tooltip."]),
+            ([L["Esc"]], L["Hides the tooltip and leaves focus where it is."]))
+    </section>
+
+    <section class="grid gap-4" aria-labelledby="tabs-heading">
+        <h2 id="tabs-heading" class="text-lg font-semibold">@L["Tabs"]</h2>
+        <Tabs DefaultValue="account" Class="max-w-sm">
+            <TabsList>
+                <TabsTrigger Value="account">@L["Account"]</TabsTrigger>
+                <TabsTrigger Value="password">@L["Password"]</TabsTrigger>
+                <TabsTrigger Value="billing" Disabled>@L["Billing"]</TabsTrigger>
+            </TabsList>
+            <TabsContent Value="account">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>@L["Account"]</CardTitle>
+                        <CardDescription>@L["Make changes to your account here."]</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <FormField Label="@L["Name"]">
+                            <Input value="Pedro Duarte" />
+                        </FormField>
+                    </CardContent>
+                </Card>
+            </TabsContent>
+            <TabsContent Value="password">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>@L["Password"]</CardTitle>
+                        <CardDescription>@L["Change your password here."]</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <FormField Label="@L["Current password"]">
+                            <Input Type="password" />
+                        </FormField>
+                    </CardContent>
+                </Card>
+            </TabsContent>
+            <TabsContent Value="billing" />
+        </Tabs>
+        @Hints(
+            ([L["Tab"]], L["Moves focus to the active tab, then into its panel."]),
+            (["←", "→", L["Home"], L["End"]], L["Move to another tab and show it, in the browser, skipping disabled ones."]))
+    </section>
+
+    <section class="grid gap-4" aria-labelledby="toast-heading">
+        <h2 id="toast-heading" class="text-lg font-semibold">@L["Toast"]</h2>
+        <div class="flex flex-wrap gap-2">
+            <Button Variant="outline" OnClick="ShowToast" data-testid="toast-show">@L["Show toast"]</Button>
+            <Button Variant="outline" OnClick="ShowErrorToast" data-testid="toast-error">@L["Show error"]</Button>
+        </div>
+        <Toaster />
+        @Hints(
+            ([L["Tab"]], L["Reaches the close button of each toast; a toast never takes focus."]),
+            ([L["Enter"], L["Space"]], L["Closes the toast; otherwise it goes after five seconds."]))
+    </section>
+
     <section class="grid gap-4" aria-labelledby="dropdown-menu-heading">
         <h2 id="dropdown-menu-heading" class="text-lg font-semibold">@L["DropdownMenu"]</h2>
         <DropdownMenu>
@@ -317,6 +449,18 @@
     private bool IsRtl => Dir == "rtl";
 
     private void Record(string action) => _lastAction = L["{0} at {1}", action, DateTime.Now.ToString("HH:mm:ss")];
+
+    private void ShowToast()
+    {
+        Toasts.Show(L["Event has been created"], L["Sunday, December 3 at 9:00 AM"]);
+        Record(L["Toast shown"]);
+    }
+
+    private void ShowErrorToast()
+    {
+        Toasts.Show(L["The change set could not be published"], L["Its base version is stale. Review it again."], "destructive");
+        Record(L["Error toast shown"]);
+    }
 
     private void ToggleLargeDiff()
     {

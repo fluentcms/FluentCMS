@@ -1,0 +1,9 @@
+<CascadingValue Value="_context" IsFixed="true">
+    @ChildContent
+</CascadingValue>
+
+@code {
+    private readonly PopoverContext _context = new();
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

@@ -1,0 +1,10 @@
+<h2 id="@Context.TitleId" data-slot="sheet-title" class="@ClassNames.Cn("font-semibold text-foreground", Class)">
+    @ChildContent
+</h2>
+
+@code {
+    [CascadingParameter] private DialogContext Context { get; set; } = null!;
+
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}
