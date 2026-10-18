@@ -1,0 +1,15 @@
+@* The tooltip describes its trigger even while hidden, so a screen reader hears it on focus without waiting for it to show. *@
+<Button Variant="@Variant" Size="@Size" Class="@Class" aria-describedby="@Context.Id" data-tooltip="@Context.Id" data-slot="tooltip-trigger" data-ui="tooltip-trigger" OnClick="OnClick" @attributes="AdditionalAttributes">
+    @ChildContent
+</Button>
+
+@code {
+    [CascadingParameter] private TooltipContext Context { get; set; } = null!;
+
+    [Parameter] public string Variant { get; set; } = "outline";
+    [Parameter] public string Size { get; set; } = "default";
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+}

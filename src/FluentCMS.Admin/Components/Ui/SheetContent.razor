@@ -1,0 +1,43 @@
+@inject IStringLocalizer<SheetContent> L
+
+@* shadcn's sheet on a native modal dialog, with the sides named by direction (start and end) instead of left and right,
+   so an end sheet opens on the right in LTR and on the left in RTL. The dialog's own behaviour comes with it (DialogContent). *@
+<dialog id="@Context.Id"
+        data-ui="dialog"
+        data-slot="sheet-content"
+        data-side="@Side"
+        data-trap-focus
+        aria-labelledby="@Context.TitleId"
+        aria-describedby="@Context.DescriptionId"
+        class="@ClassNames.Cn("fixed m-0 max-h-none max-w-none flex-col gap-4 bg-background text-foreground shadow-lg outline-none open:flex", SideClasses(Side), Class)"
+        @onclose="OnClose"
+        @attributes="AdditionalAttributes">
+    @ChildContent
+    <button type="button"
+            commandfor="@Context.Id"
+            command="close"
+            data-slot="sheet-close"
+            class="absolute top-4 end-4 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+        <span class="sr-only">@L["Close"]</span>
+    </button>
+</dialog>
+
+@code {
+    [CascadingParameter] private DialogContext Context { get; set; } = null!;
+
+    [Parameter] public string Side { get; set; } = "end";
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    // The dialog's default inset is 0 on every side, so the side away from the sheet is set back to auto.
+    private static string SideClasses(string side) => side switch
+    {
+        "start" => "inset-y-0 start-0 end-auto h-full w-3/4 border-e sm:max-w-sm",
+        "top" => "inset-x-0 top-0 bottom-auto h-auto w-full border-b",
+        "bottom" => "inset-x-0 top-auto bottom-0 h-auto w-full border-t",
+        _ => "inset-y-0 start-auto end-0 h-full w-3/4 border-s sm:max-w-sm",
+    };
+}

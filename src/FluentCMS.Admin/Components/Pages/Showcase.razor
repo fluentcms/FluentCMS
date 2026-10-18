@@ -3,6 +3,7 @@
 @inject NavigationManager Navigation
 @using FluentCMS.Core.ChangeSets
 @inject IStringLocalizer<Showcase> L
+@inject ToastService Toasts
 
 <PageTitle>@L["Components"]</PageTitle>
 
@@ -55,6 +56,35 @@
         @Hints(([L["Tab"]], L["Passes over it; a badge labels, it takes no focus."]))
     </section>
 
+    <section class="grid gap-4" aria-labelledby="kbd-heading">
+        <h2 id="kbd-heading" class="text-lg font-semibold">@L["Kbd"]</h2>
+        <div class="flex flex-wrap items-center gap-4 text-sm">
+            <span class="flex items-center gap-1"><Kbd>⌘</Kbd><Kbd>K</Kbd></span>
+            <span class="flex items-center gap-1"><Kbd>@L["Ctrl"]</Kbd><span>+</span><Kbd>B</Kbd></span>
+            <Kbd>@L["Esc"]</Kbd>
+        </div>
+        @Hints(([L["Tab"]], L["Passes over it; a key names a shortcut, it takes no focus."]))
+    </section>
+
+    <section class="grid gap-4" aria-labelledby="separator-heading">
+        <h2 id="separator-heading" class="text-lg font-semibold">@L["Separator"]</h2>
+        <div class="max-w-sm">
+            <div class="space-y-1">
+                <p class="text-sm leading-none font-medium">@L["Change sets"]</p>
+                <p class="text-sm text-muted-foreground">@L["Review what agents propose before it goes live."]</p>
+            </div>
+            <Separator Class="my-4" />
+            <div class="flex h-5 items-center gap-4 text-sm">
+                <span>@L["Desk"]</span>
+                <Separator Orientation="vertical" />
+                <span>@L["Rules"]</span>
+                <Separator Orientation="vertical" />
+                <span>@L["Audit log"]</span>
+            </div>
+        </div>
+        @Hints(([L["Tab"]], L["Passes over it; a separator divides, it takes no focus."]))
+    </section>
+
     <section class="grid gap-4" aria-labelledby="input-heading">
         <h2 id="input-heading" class="text-lg font-semibold">@L["Input"]</h2>
         <div class="grid max-w-sm gap-3">
@@ -65,6 +95,37 @@
         @Hints(([L["Tab"]], L["Moves focus to the field."]))
     </section>
 
+    <section class="grid gap-4" aria-labelledby="textarea-heading">
+        <h2 id="textarea-heading" class="text-lg font-semibold">@L["Textarea"]</h2>
+        <div class="grid max-w-sm gap-3">
+            <Textarea placeholder="@L["Type your message here."]" aria-label="@L["Message"]" />
+            <Textarea placeholder="@L["Disabled"]" aria-label="@L["Disabled"]" disabled />
+        </div>
+        @Hints(([L["Tab"]], L["Moves focus to the field."]), ([L["Enter"]], L["Starts a new line; the field grows with its text."]))
+    </section>
+
+    <section class="grid gap-4" aria-labelledby="select-heading">
+        <h2 id="select-heading" class="text-lg font-semibold">@L["Select"]</h2>
+        <div class="grid max-w-sm gap-6">
+            <FormField Label="@L["Status"]" Description="@L["The browser's own list, so it works the same on every device."]">
+                <Select value="in-progress" @onchange='(ChangeEventArgs e) => Record(L["Status {0}", e.Value ?? string.Empty])'>
+                    <option value="todo">@L["Todo"]</option>
+                    <option value="in-progress">@L["In progress"]</option>
+                    <option value="done">@L["Done"]</option>
+                    <option value="cancelled">@L["Cancelled"]</option>
+                </Select>
+            </FormField>
+            <Select aria-label="@L["Disabled"]" disabled>
+                <option>@L["Disabled"]</option>
+            </Select>
+        </div>
+        @Hints(
+            ([L["Tab"]], L["Moves focus to the list."]),
+            (["↓", "↑"], L["Change the option; on some systems they open the list first."]),
+            ([L["Space"], L["Alt"] + "+↓"], L["Open the list."]),
+            ([L["A–Z"]], L["Moves to the next option starting with that letter."]))
+    </section>
+
     <section class="grid gap-4" aria-labelledby="checkbox-heading">
         <h2 id="checkbox-heading" class="text-lg font-semibold">@L["Checkbox"]</h2>
         <div class="grid max-w-sm gap-3">
@@ -73,6 +134,31 @@
             <label class="flex items-center gap-2 text-sm text-muted-foreground"><Checkbox disabled /> @L["Disabled"]</label>
         </div>
         @Hints(([L["Tab"]], L["Moves focus to the box."]), ([L["Space"]], L["Checks or clears it."]))
+    </section>
+
+    <section class="grid gap-4" aria-labelledby="switch-heading">
+        <h2 id="switch-heading" class="text-lg font-semibold">@L["Switch"]</h2>
+        <div class="grid max-w-sm gap-3">
+            <label class="flex items-center gap-2 text-sm"><Switch checked /> @L["Airplane mode"]</label>
+            <label class="flex items-center gap-2 text-sm"><Switch @onchange='(ChangeEventArgs e) => Record(e.Value is true ? L["Notifications on"] : L["Notifications off"])' /> @L["Notifications"]</label>
+            <label class="flex items-center gap-2 text-sm text-muted-foreground"><Switch disabled /> @L["Disabled"]</label>
+        </div>
+        @Hints(([L["Tab"]], L["Moves focus to the switch."]), ([L["Space"]], L["Turns it on or off."]))
+    </section>
+
+    <section class="grid gap-4" aria-labelledby="radio-group-heading">
+        <h2 id="radio-group-heading" class="text-lg font-semibold">@L["RadioGroup"]</h2>
+        <FormField Label="@L["Density"]" Class="max-w-sm">
+            <RadioGroup Value="comfortable">
+                <label class="flex items-center gap-3 text-sm"><RadioGroupItem Value="default" /> @L["Default"]</label>
+                <label class="flex items-center gap-3 text-sm"><RadioGroupItem Value="comfortable" /> @L["Comfortable"]</label>
+                <label class="flex items-center gap-3 text-sm"><RadioGroupItem Value="compact" /> @L["Compact"]</label>
+                <label class="flex items-center gap-3 text-sm text-muted-foreground"><RadioGroupItem Value="spacious" disabled /> @L["Disabled"]</label>
+            </RadioGroup>
+        </FormField>
+        @Hints(
+            ([L["Tab"]], L["Moves into the group, onto the checked option, and out again."]),
+            (["↓", "↑", "←", "→"], L["Move to the next or previous option and check it, skipping disabled ones."]))
     </section>
 
     <section class="grid gap-4" aria-labelledby="form-field-heading">
@@ -157,6 +243,137 @@
             ([L["Esc"]], L["Closes it and returns focus to the trigger."]))
     </section>
 
+    <section class="grid gap-4" aria-labelledby="sheet-heading">
+        <h2 id="sheet-heading" class="text-lg font-semibold">@L["Sheet"]</h2>
+        <div class="flex flex-wrap gap-2">
+            @foreach (var (side, label) in new[] { ("end", L["End"].Value), ("start", L["Start"].Value), ("top", L["Top"].Value), ("bottom", L["Bottom"].Value) })
+            {
+                <Sheet>
+                    <SheetTrigger data-testid="@($"sheet-trigger-{side}")">@label</SheetTrigger>
+                    <SheetContent Side="@side" OnClose='() => Record(L["Sheet closed"])'>
+                        <SheetHeader>
+                            <SheetTitle>@L["Edit profile"]</SheetTitle>
+                            <SheetDescription>@L["Make changes to your profile here. Save when you're done."]</SheetDescription>
+                        </SheetHeader>
+                        <div class="grid gap-4 px-4">
+                            <FormField Label="@L["Name"]">
+                                <Input value="Pedro Duarte" />
+                            </FormField>
+                        </div>
+                        <SheetFooter>
+                            <SheetClose Variant="default" OnClick='() => Record(L["Sheet saved"])'>@L["Save changes"]</SheetClose>
+                            <SheetClose>@L["Cancel"]</SheetClose>
+                        </SheetFooter>
+                    </SheetContent>
+                </Sheet>
+            }
+        </div>
+        @Hints(
+            ([L["Enter"], L["Space"]], L["Opens the sheet from its edge and moves focus into it."]),
+            ([L["Tab"], L["Shift"] + "+" + L["Tab"]], L["Moves between its controls and wraps around."]),
+            ([L["Esc"]], L["Closes it and returns focus to the trigger."]))
+    </section>
+
+    <section class="grid gap-4" aria-labelledby="popover-heading">
+        <h2 id="popover-heading" class="text-lg font-semibold">@L["Popover"]</h2>
+        <Popover>
+            <PopoverTrigger Class="w-fit" data-testid="popover-trigger">@L["Open popover"]</PopoverTrigger>
+            <PopoverContent Class="w-80">
+                <div class="grid gap-4">
+                    <div class="space-y-2">
+                        <h3 class="leading-none font-medium">@L["Dimensions"]</h3>
+                        <p class="text-sm text-muted-foreground">@L["Set the dimensions for the layer."]</p>
+                    </div>
+                    <div class="grid gap-2">
+                        <FormField Label="@L["Width"]">
+                            <Input value="100%" Class="h-8" />
+                        </FormField>
+                        <FormField Label="@L["Height"]">
+                            <Input value="25px" Class="h-8" />
+                        </FormField>
+                    </div>
+                </div>
+            </PopoverContent>
+        </Popover>
+        @Hints(
+            ([L["Enter"], L["Space"]], L["Opens the popover and moves focus to its first control."]),
+            ([L["Tab"]], L["Moves through its controls."]),
+            ([L["Esc"]], L["Closes it and returns focus to the trigger; so does a click outside."]))
+    </section>
+
+    <section class="grid gap-4" aria-labelledby="tooltip-heading">
+        <h2 id="tooltip-heading" class="text-lg font-semibold">@L["Tooltip"]</h2>
+        <div class="flex flex-wrap items-center gap-2">
+            <Tooltip>
+                <TooltipTrigger data-testid="tooltip-trigger">@L["Hover"]</TooltipTrigger>
+                <TooltipContent>@L["Add to library"]</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+                <TooltipTrigger Variant="ghost" Size="icon" OnClick='() => Record(L["Save"])'>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="M12 5v14" /></svg>
+                    <span class="sr-only">@L["Save"]</span>
+                </TooltipTrigger>
+                <TooltipContent><span class="flex items-center gap-2">@L["Save"] <Kbd>⌘S</Kbd></span></TooltipContent>
+            </Tooltip>
+        </div>
+        @Hints(
+            ([L["Tab"]], L["Moves focus to the trigger and shows its tooltip."]),
+            ([L["Esc"]], L["Hides the tooltip and leaves focus where it is."]))
+    </section>
+
+    <section class="grid gap-4" aria-labelledby="tabs-heading">
+        <h2 id="tabs-heading" class="text-lg font-semibold">@L["Tabs"]</h2>
+        <Tabs DefaultValue="account" Class="max-w-sm">
+            <TabsList>
+                <TabsTrigger Value="account">@L["Account"]</TabsTrigger>
+                <TabsTrigger Value="password">@L["Password"]</TabsTrigger>
+                <TabsTrigger Value="billing" Disabled>@L["Billing"]</TabsTrigger>
+            </TabsList>
+            <TabsContent Value="account">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>@L["Account"]</CardTitle>
+                        <CardDescription>@L["Make changes to your account here."]</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <FormField Label="@L["Name"]">
+                            <Input value="Pedro Duarte" />
+                        </FormField>
+                    </CardContent>
+                </Card>
+            </TabsContent>
+            <TabsContent Value="password">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>@L["Password"]</CardTitle>
+                        <CardDescription>@L["Change your password here."]</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <FormField Label="@L["Current password"]">
+                            <Input Type="password" />
+                        </FormField>
+                    </CardContent>
+                </Card>
+            </TabsContent>
+            <TabsContent Value="billing" />
+        </Tabs>
+        @Hints(
+            ([L["Tab"]], L["Moves focus to the active tab, then into its panel."]),
+            (["←", "→", L["Home"], L["End"]], L["Move to another tab and show it, in the browser, skipping disabled ones."]))
+    </section>
+
+    <section class="grid gap-4" aria-labelledby="toast-heading">
+        <h2 id="toast-heading" class="text-lg font-semibold">@L["Toast"]</h2>
+        <div class="flex flex-wrap gap-2">
+            <Button Variant="outline" OnClick="ShowToast" data-testid="toast-show">@L["Show toast"]</Button>
+            <Button Variant="outline" OnClick="ShowErrorToast" data-testid="toast-error">@L["Show error"]</Button>
+        </div>
+        <Toaster />
+        @Hints(
+            ([L["Tab"]], L["Reaches the close button of each toast; a toast never takes focus."]),
+            ([L["Enter"], L["Space"]], L["Closes the toast; otherwise it goes after five seconds."]))
+    </section>
+
     <section class="grid gap-4" aria-labelledby="dropdown-menu-heading">
         <h2 id="dropdown-menu-heading" class="text-lg font-semibold">@L["DropdownMenu"]</h2>
         <DropdownMenu>
@@ -233,13 +450,24 @@
 
     private void Record(string action) => _lastAction = L["{0} at {1}", action, DateTime.Now.ToString("HH:mm:ss")];
 
+    private void ShowToast()
+    {
+        Toasts.Show(L["Event has been created"], L["Sunday, December 3 at 9:00 AM"]);
+        Record(L["Toast shown"]);
+    }
+
+    private void ShowErrorToast()
+    {
+        Toasts.Show(L["The change set could not be published"], L["Its base version is stale. Review it again."], "destructive");
+        Record(L["Error toast shown"]);
+    }
+
     private void ToggleLargeDiff()
     {
         _largeDiff = _largeDiff is null ? ShowcaseDiffs.Large() : null;
         Record(_largeDiff is null ? L["Diff sample"] : L["Diff of 200 items"]);
     }
 
-    // shadcn's Kbd classes on a plain element; the Kbd component arrives with the first screen that needs it.
     private RenderFragment Hints(params (string[] Keys, string Action)[] hints) =>
         @<dl class="grid gap-2 text-sm" data-testid="keyboard-hints">
             @foreach (var (keys, action) in hints)
@@ -248,7 +476,7 @@
                     <dt class="flex items-center gap-1">
                         @foreach (var key in keys)
                         {
-                            <kbd class="pointer-events-none inline-flex h-5 min-w-5 items-center justify-center rounded-sm bg-muted px-1 font-sans text-xs font-medium text-muted-foreground select-none">@key</kbd>
+                            <Kbd>@key</Kbd>
                         }
                     </dt>
                     <dd class="text-muted-foreground">@action</dd>

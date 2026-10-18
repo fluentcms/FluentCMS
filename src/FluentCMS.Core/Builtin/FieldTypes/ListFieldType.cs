@@ -31,12 +31,35 @@ internal sealed class ListFieldType : IFieldType
         return reader.Errors();
     }
 
+    // Every item is checked, so one answer names each item that is wrong.
+    public IReadOnlyList<Error> ValidateValue(JsonElement value, JsonElement settings, FieldTypeRegistry fieldTypes)
+    {
+        if (value.ValueKind != JsonValueKind.Array)
+        {
+            return Values.Invalid("The value must be an array.");
+        }
+
+        var itemType = ItemType(settings);
+        var itemSettings = ItemSettings(settings);
+        var errors = new List<Error>();
+        var position = 0;
+
+        foreach (var item in value.EnumerateArray())
+        {
+            position++;
+            var itemErrors = item.ValueKind == JsonValueKind.Null
+                ? Values.Invalid("The value must not be null.")
+                : fieldTypes.ValidateValue(itemType, itemSettings, item);
+
+            errors.AddRange(itemErrors.Select(error => error with { Message = $"Item {position}: {error.Message}" }));
+        }
+
+        return errors;
+    }
+
     public FieldValueDescription DescribeValue(JsonElement settings, FieldTypeRegistry fieldTypes)
     {
-        var itemSettings = settings.TryGetProperty("itemSettings", out var value) && value.ValueKind == JsonValueKind.Object
-            ? value
-            : FieldDefinition.EmptySettings;
-        var item = fieldTypes.DescribeValue(settings.GetProperty("itemType").GetString()!, itemSettings);
+        var item = fieldTypes.DescribeValue(ItemType(settings), ItemSettings(settings));
 
         return new FieldValueDescription(
             new JsonObject { ["type"] = "array", ["items"] = item.Schema },
@@ -46,10 +69,29 @@ internal sealed class ListFieldType : IFieldType
 
     public IReadOnlyList<ReferenceTarget> ReferenceTargets(JsonElement settings, FieldTypeRegistry fieldTypes)
     {
-        var itemSettings = settings.TryGetProperty("itemSettings", out var value) && value.ValueKind == JsonValueKind.Object
+        return fieldTypes.ReferenceTargets(ItemType(settings), ItemSettings(settings));
+    }
+
+    public IReadOnlyList<ValueReference> References(JsonElement value, JsonElement settings, FieldTypeRegistry fieldTypes)
+    {
+        var itemType = ItemType(settings);
+        var itemSettings = ItemSettings(settings);
+
+        return value.EnumerateArray()
+            .SelectMany((item, index) => fieldTypes.References(itemType, itemSettings, item)
+                .Select(reference => reference with { Pointer = $"/{index}{reference.Pointer}" }))
+            .ToList();
+    }
+
+    private static string ItemType(JsonElement settings)
+    {
+        return settings.GetProperty("itemType").GetString()!;
+    }
+
+    private static JsonElement ItemSettings(JsonElement settings)
+    {
+        return settings.TryGetProperty("itemSettings", out var value) && value.ValueKind == JsonValueKind.Object
             ? value
             : FieldDefinition.EmptySettings;
-
-        return fieldTypes.ReferenceTargets(settings.GetProperty("itemType").GetString()!, itemSettings);
     }
 }

@@ -2,7 +2,8 @@
    Not a fixed cascading value: an error that appears after a submit has to re-render the control as well. *@
 <CascadingValue Value="_context">
     <div data-slot="form-item" class="@ClassNames.Cn("grid gap-2", Class)">
-        <label for="@_context.Id"
+        <label id="@_context.LabelId"
+               for="@_context.Id"
                data-slot="form-label"
                data-error="@(_context.HasError ? "true" : "false")"
                class="flex items-center gap-2 text-sm leading-none font-medium select-none peer-disabled:cursor-not-allowed peer-disabled:opacity-50 data-[error=true]:text-destructive">

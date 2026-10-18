@@ -84,6 +84,7 @@ public static class FluentCmsHost
 
         var authentication = services.AddAuthentication(IdentityConstants.ApplicationScheme);
         authentication.AddIdentityCookies();
+        authentication.AddFluentCmsAgentKeys();
         authentication.AddOpenIdConnectProvider(provider, environment);
         services.ConfigureApplicationCookie(options =>
         {
@@ -155,15 +156,15 @@ public static class FluentCmsHost
         string[] args,
         Stream? standardInput = null,
         Stream? standardOutput = null,
-        Action<HostApplicationBuilder>? configure = null)
+        Action<HostApplicationBuilder>? configure = null,
+        string? agentKey = null)
     {
         var builder = Microsoft.Extensions.Hosting.Host.CreateApplicationBuilder(args);
         configure?.Invoke(builder);
 
         ConfigureLogging(builder.Logging, logToStandardError: true);
         AddFluentCms(builder.Services, builder.Configuration, builder.Environment);
-        builder.Services.AddFluentCmsMcpStdio(standardInput, standardOutput);
-        builder.Services.AddScoped<ICurrentInitiator, NoInitiator>();
+        builder.Services.AddFluentCmsMcpStdio(agentKey ?? Environment.GetEnvironmentVariable(StdioAgentAuthentication.KeyVariable), standardInput, standardOutput);
 
         return builder.Build();
     }

@@ -10,6 +10,22 @@ public sealed class TextFieldTypeTests : FieldTypeConformanceTests
 
     protected override IEnumerable<string> RejectedSettings =>
         ["""{"maxLength": 0}""", """{"maxLength": -5}""", """{"maxLength": 1.5}""", """{"maxLength": "200"}"""];
+
+    protected override IEnumerable<(string Settings, string Value)> AcceptedValues =>
+    [
+        ("{}", "\"\""),
+        ("{}", "\"Plain text\\non two lines\""),
+        ("""{"maxLength": 5}""", "\"héllo\""),
+        ("""{"maxLength": 2}""", "\"😀😀\""),
+    ];
+
+    protected override IEnumerable<(string Settings, string Value)> RejectedValues =>
+    [
+        ("{}", "5"),
+        ("{}", "true"),
+        ("{}", """["text"]"""),
+        ("""{"maxLength": 5}""", "\"too long\""),
+    ];
 }
 
 public sealed class RichTextFieldTypeTests : FieldTypeConformanceTests
@@ -19,6 +35,18 @@ public sealed class RichTextFieldTypeTests : FieldTypeConformanceTests
     protected override IEnumerable<string> AcceptedSettings => ["{}", """{"maxLength": 20000}"""];
 
     protected override IEnumerable<string> RejectedSettings => ["""{"maxLength": 0}""", """{"maxLength": true}"""];
+
+    protected override IEnumerable<(string Settings, string Value)> AcceptedValues =>
+    [
+        ("{}", "\"Some **Markdown**.\""),
+        ("""{"maxLength": 20000}""", "\"\""),
+    ];
+
+    protected override IEnumerable<(string Settings, string Value)> RejectedValues =>
+    [
+        ("{}", """{"markdown": "text"}"""),
+        ("""{"maxLength": 3}""", "\"**a**\""),
+    ];
 }
 
 public sealed class NumberFieldTypeTests : FieldTypeConformanceTests
@@ -42,6 +70,26 @@ public sealed class NumberFieldTypeTests : FieldTypeConformanceTests
         """{"min": "0"}""",
     ];
 
+    protected override IEnumerable<(string Settings, string Value)> AcceptedValues =>
+    [
+        ("{}", "0"),
+        ("{}", "-1.5"),
+        ("{}", "1e3"),
+        ("""{"integer": true, "min": 0, "max": 100}""", "100"),
+        ("""{"integer": true, "min": 0, "max": 100}""", "2.0"),
+        ("""{"min": -1.5, "max": 2.25}""", "-1.5"),
+    ];
+
+    protected override IEnumerable<(string Settings, string Value)> RejectedValues =>
+    [
+        ("{}", "\"5\""),
+        ("{}", "1e400"),
+        ("""{"integer": true, "min": 0, "max": 100}""", "1.5"),
+        ("""{"integer": true, "min": 0, "max": 100}""", "-1"),
+        ("""{"integer": true, "min": 0, "max": 100}""", "101"),
+        ("""{"min": -1.5, "max": 2.25}""", "2.26"),
+    ];
+
     [Fact]
     public void A_maximum_below_the_minimum_is_reported_on_max()
     {
@@ -49,6 +97,18 @@ public sealed class NumberFieldTypeTests : FieldTypeConformanceTests
 
         Assert.Equal(SchemaErrorCodes.SettingInvalid, error.Code);
         Assert.Equal("The setting 'max' must not be less than 'min'.", error.Message);
+    }
+
+    [Theory]
+    [InlineData("-1", "The value must be at least 0.")]
+    [InlineData("101", "The value must be at most 100.")]
+    [InlineData("1.5", "The value must be a whole number.")]
+    [InlineData("1e400", "The value 1e400 is too large or too precise to store.")]
+    public void A_value_outside_the_settings_says_which_limit_it_breaks(string value, string message)
+    {
+        var error = Assert.Single(Registry.ValidateValue(FieldTypeName, Parse("""{"integer": true, "min": 0, "max": 100}"""), Parse(value)));
+
+        Assert.Equal(message, error.Message);
     }
 }
 
@@ -59,6 +119,18 @@ public sealed class BooleanFieldTypeTests : FieldTypeConformanceTests
     protected override IEnumerable<string> AcceptedSettings => ["{}"];
 
     protected override IEnumerable<string> RejectedSettings => ["""{"default": true}"""];
+
+    protected override IEnumerable<(string Settings, string Value)> AcceptedValues =>
+    [
+        ("{}", "true"),
+        ("{}", "false"),
+    ];
+
+    protected override IEnumerable<(string Settings, string Value)> RejectedValues =>
+    [
+        ("{}", "\"true\""),
+        ("{}", "1"),
+    ];
 }
 
 public sealed class DateTimeFieldTypeTests : FieldTypeConformanceTests
@@ -68,6 +140,25 @@ public sealed class DateTimeFieldTypeTests : FieldTypeConformanceTests
     protected override IEnumerable<string> AcceptedSettings => ["{}", """{"dateOnly": true}""", """{"dateOnly": false}"""];
 
     protected override IEnumerable<string> RejectedSettings => ["""{"dateOnly": "yes"}""", """{"dateOnly": 1}"""];
+
+    protected override IEnumerable<(string Settings, string Value)> AcceptedValues =>
+    [
+        ("{}", "\"2026-01-31T09:30:00Z\""),
+        ("{}", "\"2026-01-31T09:30:00.125+02:00\""),
+        ("""{"dateOnly": false}""", "\"2026-12-31T23:59:59-05:00\""),
+        ("""{"dateOnly": true}""", "\"2026-01-31\""),
+    ];
+
+    protected override IEnumerable<(string Settings, string Value)> RejectedValues =>
+    [
+        ("{}", "\"2026-01-31\""),
+        ("{}", "\"2026-01-31T09:30:00\""),
+        ("{}", "\"2026-02-30T09:30:00Z\""),
+        ("{}", "\"31/01/2026 09:30\""),
+        ("{}", "20260131"),
+        ("""{"dateOnly": true}""", "\"2026-01-31T09:30:00Z\""),
+        ("""{"dateOnly": true}""", "\"2026-13-01\""),
+    ];
 }
 
 public sealed class EnumFieldTypeTests : FieldTypeConformanceTests
@@ -84,6 +175,19 @@ public sealed class EnumFieldTypeTests : FieldTypeConformanceTests
         """{"values": ["a", " "]}""",
         """{"values": "a"}""",
         """{"values": [1]}""",
+    ];
+
+    protected override IEnumerable<(string Settings, string Value)> AcceptedValues =>
+    [
+        ("""{"values": ["draft", "live"]}""", "\"live\""),
+        ("""{"values": ["only"]}""", "\"only\""),
+    ];
+
+    protected override IEnumerable<(string Settings, string Value)> RejectedValues =>
+    [
+        ("""{"values": ["draft", "live"]}""", "\"Live\""),
+        ("""{"values": ["draft", "live"]}""", "\"other\""),
+        ("""{"values": ["only"]}""", """["only"]"""),
     ];
 
     [Fact]
@@ -103,6 +207,26 @@ public sealed class MediaFieldTypeTests : FieldTypeConformanceTests
     protected override IEnumerable<string> AcceptedSettings => ["{}"];
 
     protected override IEnumerable<string> RejectedSettings => ["""{"accept": ["image/*"]}"""];
+
+    protected override IEnumerable<(string Settings, string Value)> AcceptedValues =>
+    [
+        ("{}", "\"0199a000-0000-7000-8000-000000000001\""),
+    ];
+
+    protected override IEnumerable<(string Settings, string Value)> RejectedValues =>
+    [
+        ("{}", "\"hero.png\""),
+        ("{}", "\"0199a000000070008000000000000001\""),
+        ("{}", "1"),
+    ];
+
+    [Fact]
+    public void A_value_is_one_reference_to_an_asset()
+    {
+        var id = Guid.CreateVersion7();
+
+        Assert.Equal([new ValueReference("", ReferenceKind.Media, id)], Registry.References(FieldTypeName, Parse("{}"), Parse($"\"{id}\"")));
+    }
 }
 
 public sealed class ReferenceFieldTypeTests : FieldTypeConformanceTests
@@ -124,6 +248,39 @@ public sealed class ReferenceFieldTypeTests : FieldTypeConformanceTests
         """{"target": "product", "field": ""}""",
         """{"target": "product", "field": ["price"]}""",
     ];
+
+    protected override IEnumerable<(string Settings, string Value)> AcceptedValues =>
+    [
+        ("""{"target": "product"}""", "\"0199a000-0000-7000-8000-000000000001\""),
+        ("""{"target": "product", "field": "price"}""", "\"0199a000-0000-7000-8000-000000000001\""),
+    ];
+
+    protected override IEnumerable<(string Settings, string Value)> RejectedValues =>
+    [
+        ("""{"target": "product"}""", "\"product-1\""),
+        ("""{"target": "product", "field": "price"}""", "19.99"),
+        ("""{"target": "product"}""", """{"id": "0199a000-0000-7000-8000-000000000001"}"""),
+    ];
+
+    [Fact]
+    public void A_value_that_is_not_an_id_names_what_it_should_point_at()
+    {
+        var entry = Assert.Single(Registry.ValidateValue(FieldTypeName, Parse("""{"target": "product"}"""), Parse("\"Widget\"")));
+        var entity = Assert.Single(Registry.ValidateValue(FieldTypeName, Parse("""{"target": "product", "field": "price"}"""), Parse("19.99")));
+
+        Assert.StartsWith("The value must be the id of an entry of the content type 'product', a UUID", entry.Message);
+        Assert.StartsWith("The value must be the id of a 'product' entity, a UUID", entity.Message);
+    }
+
+    [Fact]
+    public void A_value_is_one_reference_to_its_target()
+    {
+        var id = Guid.CreateVersion7();
+
+        Assert.Equal(
+            [new ValueReference("", ReferenceKind.Entry, id, new ReferenceTarget("product", "price"))],
+            Registry.References(FieldTypeName, Parse("""{"target": "product", "field": "price"}"""), Parse($"\"{id}\"")));
+    }
 
     [Fact]
     public void Declares_its_target_type_and_field()
@@ -157,6 +314,23 @@ public sealed class ListFieldTypeTests : FieldTypeConformanceTests
         """{"itemType": "text", "itemSettings": []}""",
     ];
 
+    protected override IEnumerable<(string Settings, string Value)> AcceptedValues =>
+    [
+        ("""{"itemType": "text"}""", "[]"),
+        ("""{"itemType": "text"}""", """["a", "b"]"""),
+        ("""{"itemType": "enum", "itemSettings": {"values": ["a", "b"]}}""", """["b", "a", "b"]"""),
+        ("""{"itemType": "reference", "itemSettings": {"target": "product"}}""", """["0199a000-0000-7000-8000-000000000001"]"""),
+    ];
+
+    protected override IEnumerable<(string Settings, string Value)> RejectedValues =>
+    [
+        ("""{"itemType": "text"}""", "\"a\""),
+        ("""{"itemType": "text"}""", """["a", 5]"""),
+        ("""{"itemType": "text"}""", "[null]"),
+        ("""{"itemType": "text", "itemSettings": {"maxLength": 40}}""", """["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]"""),
+        ("""{"itemType": "reference", "itemSettings": {"target": "product"}}""", """["product-1"]"""),
+    ];
+
     [Fact]
     public void A_list_of_lists_is_rejected()
     {
@@ -173,6 +347,39 @@ public sealed class ListFieldTypeTests : FieldTypeConformanceTests
             [new ReferenceTarget("product", "price")],
             Registry.ReferenceTargets(FieldTypeName, Parse("""{"itemType": "reference", "itemSettings": {"target": "product", "field": "price"}}""")));
         Assert.Empty(Registry.ReferenceTargets(FieldTypeName, Parse("""{"itemType": "text"}""")));
+    }
+
+    [Fact]
+    public void Each_item_reference_points_at_its_position()
+    {
+        var (first, second) = (Guid.CreateVersion7(), Guid.CreateVersion7());
+
+        var references = Registry.References(
+            FieldTypeName,
+            Parse("""{"itemType": "reference", "itemSettings": {"target": "product"}}"""),
+            Parse($"[\"{first}\", \"{second}\"]"));
+
+        Assert.Equal(
+            [
+                new ValueReference("/0", ReferenceKind.Entry, first, new ReferenceTarget("product")),
+                new ValueReference("/1", ReferenceKind.Entry, second, new ReferenceTarget("product")),
+            ],
+            references);
+        Assert.Empty(Registry.References(FieldTypeName, Parse("""{"itemType": "text"}"""), Parse("""["a"]""")));
+    }
+
+    [Fact]
+    public void Each_item_that_is_wrong_is_named_by_its_position()
+    {
+        var errors = Registry.ValidateValue(FieldTypeName, Parse("""{"itemType": "text", "itemSettings": {"maxLength": 3}}"""), Parse("""["abc", 5, null, "abcd"]"""));
+
+        Assert.Equal(
+            [
+                "Item 2: The value must be a string.",
+                "Item 3: The value must not be null.",
+                "Item 4: The value must be at most 3 characters, and it has 4.",
+            ],
+            errors.Select(error => error.Message));
     }
 
     [Fact]
@@ -193,4 +400,14 @@ public sealed class JsonFieldTypeTests : FieldTypeConformanceTests
     protected override IEnumerable<string> AcceptedSettings => ["{}"];
 
     protected override IEnumerable<string> RejectedSettings => ["""{"schema": {}}"""];
+
+    protected override IEnumerable<(string Settings, string Value)> AcceptedValues =>
+    [
+        ("{}", """{"key": "value"}"""),
+        ("{}", """[1, "a", null]"""),
+        ("{}", "\"text\""),
+        ("{}", "0"),
+    ];
+
+    protected override IEnumerable<(string Settings, string Value)> RejectedValues => [];
 }

@@ -57,6 +57,16 @@ public sealed class FieldTypeRegistry
         return fieldType.ValidateSettings(settings, this);
     }
 
+    // A value of a type that is no longer installed cannot be checked, so it is refused rather than stored unchecked.
+    public IReadOnlyList<Error> ValidateValue(string type, JsonElement settings, JsonElement value)
+    {
+        ArgumentNullException.ThrowIfNull(type);
+
+        return Find(type) is { } fieldType
+            ? fieldType.ValidateValue(value, settings, this)
+            : [new Error(SchemaErrorCodes.FieldTypeUnknown, $"The field type '{type}' is not installed, so a value of it cannot be checked.")];
+    }
+
     // A type that is no longer installed is described as any value, so a stored definition that uses it still has a document.
     public FieldValueDescription DescribeValue(string type, JsonElement settings)
     {
@@ -71,5 +81,12 @@ public sealed class FieldTypeRegistry
         ArgumentNullException.ThrowIfNull(type);
 
         return Find(type)?.ReferenceTargets(settings, this) ?? [];
+    }
+
+    public IReadOnlyList<ValueReference> References(string type, JsonElement settings, JsonElement value)
+    {
+        ArgumentNullException.ThrowIfNull(type);
+
+        return Find(type)?.References(value, settings, this) ?? [];
     }
 }

@@ -18,6 +18,11 @@ internal sealed class RichTextFieldType : IFieldType
         return reader.Errors();
     }
 
+    public IReadOnlyList<Error> ValidateValue(JsonElement value, JsonElement settings, FieldTypeRegistry fieldTypes)
+    {
+        return Values.Text(value, new FieldSettingsReader(Name, settings).PositiveInteger("maxLength"));
+    }
+
     public FieldValueDescription DescribeValue(JsonElement settings, FieldTypeRegistry fieldTypes)
     {
         var maxLength = new FieldSettingsReader(Name, settings).PositiveInteger("maxLength");

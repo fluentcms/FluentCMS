@@ -18,6 +18,20 @@ internal sealed class DateTimeFieldType : IFieldType
         return reader.Errors();
     }
 
+    public IReadOnlyList<Error> ValidateValue(JsonElement value, JsonElement settings, FieldTypeRegistry fieldTypes)
+    {
+        var text = value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+
+        if (new FieldSettingsReader(Name, settings).Flag("dateOnly"))
+        {
+            return IsoDateTimes.IsDate(text) ? [] : Values.Invalid("The value must be a calendar date as YYYY-MM-DD, such as 2026-01-31.");
+        }
+
+        return IsoDateTimes.IsPointInTime(text)
+            ? []
+            : Values.Invalid("The value must be a point in time in ISO 8601 with an offset, such as 2026-01-31T09:30:00Z.");
+    }
+
     public FieldValueDescription DescribeValue(JsonElement settings, FieldTypeRegistry fieldTypes)
     {
         return new FieldSettingsReader(Name, settings).Flag("dateOnly")

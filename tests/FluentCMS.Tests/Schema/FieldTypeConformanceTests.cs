@@ -9,7 +9,8 @@ using Microsoft.Extensions.DependencyInjection;
 namespace FluentCMS.Tests.Schema;
 
 // The contract every field type meets, built in or not (EXT-N1). Derive one class per type: name the type, list settings it must
-// accept and settings it must reject, and override AddFieldTypes to register a type that lives outside Core.
+// accept and settings it must reject, list values it must accept and reject under given settings, and override AddFieldTypes to
+// register a type that lives outside Core.
 public abstract class FieldTypeConformanceTests : IDisposable
 {
     private static readonly string[] ValuesOfEveryKind =
@@ -22,6 +23,11 @@ public abstract class FieldTypeConformanceTests : IDisposable
     protected abstract IEnumerable<string> AcceptedSettings { get; }
 
     protected abstract IEnumerable<string> RejectedSettings { get; }
+
+    // Each pair is settings the type accepts and a value as an entry stores it.
+    protected abstract IEnumerable<(string Settings, string Value)> AcceptedValues { get; }
+
+    protected abstract IEnumerable<(string Settings, string Value)> RejectedValues { get; }
 
     protected FieldTypeRegistry Registry => Provider.GetRequiredService<FieldTypeRegistry>();
 
@@ -114,6 +120,90 @@ public abstract class FieldTypeConformanceTests : IDisposable
             Assert.True(
                 errors.Count == 0,
                 $"{json}: {value.Example?.ToJsonString() ?? "null"} does not satisfy {value.Schema.ToJsonString()}: {string.Join("; ", errors)}");
+        }
+    }
+
+    [Fact]
+    public void Accepts_the_values_it_documents()
+    {
+        Assert.NotEmpty(AcceptedValues);
+
+        foreach (var (settings, value) in AcceptedValues)
+        {
+            var errors = Registry.ValidateValue(FieldTypeName, Parse(settings), Parse(value));
+
+            Assert.True(errors.Count == 0, $"{value} under {settings} was rejected: {Describe(errors)}");
+        }
+    }
+
+    [Fact]
+    public void Rejects_invalid_values_with_value_invalid_and_a_message()
+    {
+        foreach (var (settings, value) in RejectedValues)
+        {
+            var errors = Registry.ValidateValue(FieldTypeName, Parse(settings), Parse(value));
+
+            Assert.True(errors.Count > 0, $"{value} under {settings} was accepted.");
+            Assert.All(errors, error =>
+            {
+                Assert.Equal(SchemaErrorCodes.ValueInvalid, error.Code);
+                Assert.False(string.IsNullOrWhiteSpace(error.Message));
+            });
+        }
+    }
+
+    // An agent writes entries from the schema document's examples (SCH-06), so each one must be a value the type stores.
+    [Fact]
+    public void Accepts_the_example_it_describes()
+    {
+        foreach (var json in AcceptedSettings)
+        {
+            var settings = Parse(json);
+            var example = Registry.DescribeValue(FieldTypeName, settings).Example;
+            var errors = Registry.ValidateValue(FieldTypeName, settings, Parse(example?.ToJsonString() ?? "null"));
+
+            Assert.True(errors.Count == 0, $"{json}: the example {example?.ToJsonString()} was rejected: {Describe(errors)}");
+        }
+    }
+
+    // Where used and resolved views read the reference index (CNT-05, ADR-0005), so a type that points somewhere must say where
+    // every value points, and a type that declares no targets points at no entry.
+    [Fact]
+    public void Lists_the_references_of_its_example_against_the_targets_it_declares()
+    {
+        foreach (var json in AcceptedSettings)
+        {
+            var settings = Parse(json);
+            var targets = Registry.ReferenceTargets(FieldTypeName, settings);
+            var example = Parse(Registry.DescribeValue(FieldTypeName, settings).Example?.ToJsonString() ?? "null");
+
+            var entries = Registry.References(FieldTypeName, settings, example).Where(reference => reference.Kind == ReferenceKind.Entry).ToList();
+
+            if (targets.Count > 0)
+            {
+                Assert.True(entries.Count > 0, $"{json} declares targets but its example lists no reference.");
+            }
+
+            Assert.All(entries, reference =>
+            {
+                Assert.Contains(reference.Target, targets);
+                Assert.True(reference.Pointer.Length == 0 || reference.Pointer.StartsWith('/'), $"'{reference.Pointer}' is not a JSON Pointer.");
+            });
+        }
+    }
+
+    // A value comes from an agent too; the answer is an error, never an exception.
+    [Fact]
+    public void Never_throws_whatever_a_value_holds()
+    {
+        foreach (var json in AcceptedSettings)
+        {
+            foreach (var value in ValuesOfEveryKind.Where(value => value != "null"))
+            {
+                var exception = Record.Exception(() => Registry.ValidateValue(FieldTypeName, Parse(json), Parse(value)));
+
+                Assert.True(exception is null, $"{value} under {json} threw {exception}");
+            }
         }
     }
 

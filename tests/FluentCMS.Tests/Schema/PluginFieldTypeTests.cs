@@ -71,6 +71,19 @@ public sealed class RatingFieldTypeTests : FieldTypeConformanceTests
 
     protected override IEnumerable<string> RejectedSettings => ["""{"stars": 0}""", """{"stars": 11}"""];
 
+    protected override IEnumerable<(string Settings, string Value)> AcceptedValues =>
+    [
+        ("{}", "5"),
+        ("""{"stars": 10}""", "1"),
+    ];
+
+    protected override IEnumerable<(string Settings, string Value)> RejectedValues =>
+    [
+        ("{}", "6"),
+        ("""{"stars": 10}""", "0"),
+        ("{}", "\"5\""),
+    ];
+
     protected override void AddFieldTypes(IServiceCollection services)
     {
         services.AddFluentCmsExtensions(typeof(RatingFieldType).Assembly);
@@ -94,6 +107,15 @@ public sealed class RatingFieldType : IFieldType
         return reader.Errors();
     }
 
+    public IReadOnlyList<Error> ValidateValue(JsonElement value, JsonElement settings, FieldTypeRegistry fieldTypes)
+    {
+        var stars = new FieldSettingsReader(Name, settings).PositiveInteger("stars") ?? 5;
+
+        return value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var rating) && rating >= 1 && rating <= stars
+            ? []
+            : [new Error(SchemaErrorCodes.ValueInvalid, $"The value must be a whole number from 1 to {stars}.")];
+    }
+
     public FieldValueDescription DescribeValue(JsonElement settings, FieldTypeRegistry fieldTypes)
     {
         var stars = new FieldSettingsReader(Name, settings).PositiveInteger("stars") ?? 5;
@@ -112,6 +134,16 @@ public sealed class LinkFieldTypeTests : FieldTypeConformanceTests
     protected override IEnumerable<string> AcceptedSettings => ["""{"to": "product"}"""];
 
     protected override IEnumerable<string> RejectedSettings => ["{}", """{"to": "Product"}"""];
+
+    protected override IEnumerable<(string Settings, string Value)> AcceptedValues =>
+    [
+        ("""{"to": "product"}""", "\"0199a000-0000-7000-8000-000000000001\""),
+    ];
+
+    protected override IEnumerable<(string Settings, string Value)> RejectedValues =>
+    [
+        ("""{"to": "product"}""", "\"product-1\""),
+    ];
 
     protected override void AddFieldTypes(IServiceCollection services)
     {
@@ -153,6 +185,18 @@ public sealed class LinkFieldType : IFieldType
     public IReadOnlyList<ReferenceTarget> ReferenceTargets(JsonElement settings, FieldTypeRegistry fieldTypes)
     {
         return [new ReferenceTarget(settings.GetProperty("to").GetString()!)];
+    }
+
+    public IReadOnlyList<ValueReference> References(JsonElement value, JsonElement settings, FieldTypeRegistry fieldTypes)
+    {
+        return [new ValueReference(string.Empty, ReferenceKind.Entry, value.GetGuid(), ReferenceTargets(settings, fieldTypes)[0])];
+    }
+
+    public IReadOnlyList<Error> ValidateValue(JsonElement value, JsonElement settings, FieldTypeRegistry fieldTypes)
+    {
+        return value.ValueKind == JsonValueKind.String && Guid.TryParse(value.GetString(), out _)
+            ? []
+            : [new Error(SchemaErrorCodes.ValueInvalid, "The value must be the id of an entry.")];
     }
 
     public FieldValueDescription DescribeValue(JsonElement settings, FieldTypeRegistry fieldTypes)

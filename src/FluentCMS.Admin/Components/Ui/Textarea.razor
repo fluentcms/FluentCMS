@@ -1,0 +1,14 @@
+@* Inside a FormField the textarea takes the field's id and is described by its description and error. *@
+<textarea id="@Field?.Id"
+          data-slot="textarea"
+          aria-describedby="@Field?.DescribedBy"
+          aria-invalid="@(Field?.HasError == true ? "true" : null)"
+          class="@ClassNames.Cn("flex field-sizing-content min-h-16 w-full rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30", "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50", "aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40", Class)"
+          @attributes="AdditionalAttributes"></textarea>
+
+@code {
+    [CascadingParameter] private FormFieldContext? Field { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+}
