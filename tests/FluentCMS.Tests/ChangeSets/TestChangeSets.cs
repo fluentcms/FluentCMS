@@ -16,7 +16,7 @@ internal static class TestChangeSets
 
     public static ChangeOperation Update(ItemKind itemKind, Guid? itemId = null)
     {
-        return ChangeOperation.Create(OperationKind.Update, itemKind, itemId ?? Guid.NewGuid(), 1).Value;
+        return ChangeOperation.Create(OperationKind.Update, itemKind, itemId ?? Guid.NewGuid(), 1, 2).Value;
     }
 
     // A set with one operation, moved along the shortest path of the transition table to the given state.
