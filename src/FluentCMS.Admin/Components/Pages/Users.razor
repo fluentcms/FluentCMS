@@ -1,0 +1,101 @@
+@page "/users"
+@inject IUserDirectory Directory
+@inject ICurrentInitiator Initiator
+@inject IStringLocalizer<Users> L
+
+<PageTitle>@L["Users"]</PageTitle>
+
+<div class="flex flex-wrap items-center justify-between gap-4">
+    <div>
+        <h1 id="users-heading" class="text-2xl font-semibold tracking-tight">@L["Users"]</h1>
+        <p class="mt-1 text-sm text-muted-foreground">@L["Everyone listed here is an administrator."]</p>
+    </div>
+    <a href="users/new" class="@ButtonVariants.Classes()">@L["Add user"]</a>
+</div>
+
+@if (_message is not null)
+{
+    <p role="status" class="mt-4 rounded-md border bg-muted/50 px-3 py-2 text-sm" data-testid="users-message">@_message</p>
+}
+
+<div class="mt-6 rounded-md border">
+    <Table aria-labelledby="users-heading">
+        <TableHeader>
+            <TableRow>
+                <TableHead>@L["Name"]</TableHead>
+                <TableHead>@L["Email"]</TableHead>
+                <TableHead>@L["Status"]</TableHead>
+                <TableHead Class="text-end"><span class="sr-only">@L["Actions"]</span></TableHead>
+            </TableRow>
+        </TableHeader>
+        <TableBody>
+            @foreach (var user in _users)
+            {
+                <TableRow data-user="@user.Email">
+                    <TableCell Class="font-medium">
+                        @user.DisplayName
+                        @if (IsSelf(user))
+                        {
+                            <span class="ms-1 text-muted-foreground">@L["(you)"]</span>
+                        }
+                    </TableCell>
+                    <TableCell>@user.Email</TableCell>
+                    <TableCell Class="@(user.IsDisabled ? "text-muted-foreground" : null)">@(user.IsDisabled ? L["Disabled"] : L["Active"])</TableCell>
+                    <TableCell Class="text-end">
+                        @* One posted form per action and row, named after the user, so the action reaches the user it was rendered for. *@
+                        @if (user.IsDisabled)
+                        {
+                            <form method="post" @onsubmit="() => EnableAsync(user)" @formname="@($"enable-{user.Id:N}")" class="inline">
+                                <AntiforgeryToken />
+                                <Button Type="submit" Variant="outline" Size="sm">@L["Enable"]<span class="sr-only"> @user.DisplayName</span></Button>
+                            </form>
+                        }
+                        else if (!IsSelf(user))
+                        {
+                            <form method="post" @onsubmit="() => DisableAsync(user)" @formname="@($"disable-{user.Id:N}")" class="inline">
+                                <AntiforgeryToken />
+                                <Button Type="submit" Variant="outline" Size="sm">@L["Disable"]<span class="sr-only"> @user.DisplayName</span></Button>
+                            </form>
+                        }
+                    </TableCell>
+                </TableRow>
+            }
+        </TableBody>
+    </Table>
+</div>
+
+@code {
+    private IReadOnlyList<UserSummary> _users = [];
+    private string? _message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _users = await Directory.ListAsync();
+    }
+
+    private bool IsSelf(UserSummary user) => Initiator.Current is UserInitiator self && self.UserId == user.Id;
+
+    private async Task DisableAsync(UserSummary user)
+    {
+        var result = await Directory.DisableAsync(user.Id);
+        _message = result.IsSuccess ? L["{0} is disabled. Their open sessions end within a minute.", user.DisplayName] : Describe(result);
+        _users = await Directory.ListAsync();
+    }
+
+    private async Task EnableAsync(UserSummary user)
+    {
+        var result = await Directory.EnableAsync(user.Id);
+        _message = result.IsSuccess ? L["{0} can sign in again.", user.DisplayName] : Describe(result);
+        _users = await Directory.ListAsync();
+    }
+
+    // The error code is the resource key; the directory's own message is the text until a resource exists.
+    private string Describe(FluentCMS.Core.Results.Result result)
+    {
+        return string.Join(" ", result.Errors.Select(error =>
+        {
+            var localized = L[error.Code];
+            return localized.ResourceNotFound ? error.Message : localized.Value;
+        }));
+    }
+}

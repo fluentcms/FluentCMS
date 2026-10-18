@@ -1,0 +1,59 @@
+@page "/users/new"
+@inject IUserDirectory Directory
+@inject NavigationManager Navigation
+@inject IStringLocalizer<AddUser> L
+
+<PageTitle>@L["Add user"]</PageTitle>
+
+<div class="max-w-md">
+    <Card>
+        <CardHeader>
+            <CardTitle><h1>@L["Add user"]</h1></CardTitle>
+            <CardDescription>@L["Every user is an administrator. They can sign in as soon as you pass the password on to them."]</CardDescription>
+        </CardHeader>
+        <CardContent>
+            <form method="post" @onsubmit="SubmitAsync" @formname="add-user" class="grid gap-6">
+                <AntiforgeryToken />
+                @if (_errors.Form is not null)
+                {
+                    <p role="alert" class="text-sm text-destructive">@_errors.Form</p>
+                }
+                <NewUserFields Form="Form" Errors="_errors" />
+                <div class="flex gap-2">
+                    <Button Type="submit">@L["Add user"]</Button>
+                    <a href="users" class="@ButtonVariants.Classes("outline")">@L["Cancel"]</a>
+                </div>
+            </form>
+        </CardContent>
+    </Card>
+</div>
+
+@code {
+    private readonly NewUserErrors _errors = new();
+
+    [SupplyParameterFromForm(FormName = "add-user")]
+    private NewUserForm Form { get; set; } = default!;
+
+    protected override void OnInitialized()
+    {
+        Form ??= new();
+    }
+
+    private async Task SubmitAsync()
+    {
+        _errors.Validate(Form, L);
+        if (_errors.Any)
+        {
+            return;
+        }
+
+        var created = await Directory.CreateAsync(Form.ToNewUser());
+        if (!created.IsSuccess)
+        {
+            _errors.Report(created.Errors, L);
+            return;
+        }
+
+        Navigation.NavigateTo("users");
+    }
+}
