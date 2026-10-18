@@ -1,0 +1,21 @@
+@* A native checkbox drawn like shadcn's: the box is the input itself, so it submits, focuses and toggles with Space as any
+   checkbox does, and the tick is drawn over it while it is checked. Inside a FormField it takes the field's id and description. *@
+<span data-slot="checkbox" class="@ClassNames.Cn("relative inline-flex size-4 shrink-0", Class)">
+    <input id="@Field?.Id"
+           type="checkbox"
+           aria-describedby="@Field?.DescribedBy"
+           aria-invalid="@(Field?.HasError == true ? "true" : null)"
+           class="peer size-4 shrink-0 appearance-none rounded-[4px] border border-input shadow-xs transition-shadow outline-none checked:border-primary checked:bg-primary focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:bg-input/30 dark:checked:bg-primary dark:aria-invalid:ring-destructive/40"
+           @attributes="AdditionalAttributes" />
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"
+         aria-hidden="true" class="pointer-events-none absolute inset-0 m-auto hidden size-3.5 text-primary-foreground peer-checked:block">
+        <path d="M20 6 9 17l-5-5" />
+    </svg>
+</span>
+
+@code {
+    [CascadingParameter] private FormFieldContext? Field { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+}

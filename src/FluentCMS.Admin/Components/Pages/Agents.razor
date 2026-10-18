@@ -1,0 +1,143 @@
+@page "/agents"
+@using System.Globalization
+@using FluentCMS.Core.Agents
+@inject IAgentCredentialDirectory Directory
+@inject TimeProvider Clock
+@inject IStringLocalizer<Agents> L
+
+<PageTitle>@L["Agents"]</PageTitle>
+
+<div class="flex flex-wrap items-center justify-between gap-4">
+    <div>
+        <h1 id="agents-heading" class="text-2xl font-semibold tracking-tight">@L["Agents"]</h1>
+        <p class="mt-1 text-sm text-muted-foreground">@L["Each agent connects with its own key. Revoking a key stops it at once."]</p>
+    </div>
+    <a href="agents/new" class="@ButtonVariants.Classes()">@L["Add agent"]</a>
+</div>
+
+@if (_message is not null)
+{
+    <p role="status" class="mt-4 rounded-md border bg-muted/50 px-3 py-2 text-sm" data-testid="agents-message">@_message</p>
+}
+
+<div class="mt-6 rounded-md border">
+    <Table aria-labelledby="agents-heading">
+        <TableHeader>
+            <TableRow>
+                <TableHead>@L["Name"]</TableHead>
+                <TableHead>@L["Scope"]</TableHead>
+                <TableHead>@L["Caps"]</TableHead>
+                <TableHead>@L["Expires"]</TableHead>
+                <TableHead>@L["Status"]</TableHead>
+                <TableHead Class="text-end"><span class="sr-only">@L["Actions"]</span></TableHead>
+            </TableRow>
+        </TableHeader>
+        <TableBody>
+            @if (_agents.Count == 0)
+            {
+                <TableRow>
+                    <TableCell colspan="6" Class="text-muted-foreground">@L["No agent has a key yet."]</TableCell>
+                </TableRow>
+            }
+            @foreach (var agent in _agents)
+            {
+                <TableRow data-agent="@agent.Id.ToString("N")">
+                    <TableCell Class="font-medium">@agent.DisplayName</TableCell>
+                    <TableCell>
+                        <dl class="grid grid-cols-[auto_1fr] gap-x-2 text-sm">
+                            <dt class="text-muted-foreground">@L["Types"]</dt>
+                            <dd>@(agent.Scope.Types is { } types ? string.Join(", ", types) : L["All"])</dd>
+                            <dt class="text-muted-foreground">@L["Fields"]</dt>
+                            <dd>@(agent.Scope.Fields is { } fields ? string.Join(", ", fields) : L["All"])</dd>
+                            <dt class="text-muted-foreground">@L["Operations"]</dt>
+                            <dd>@string.Join(", ", agent.Scope.Operations.Select(operation => L[operation.ToString()].Value))</dd>
+                        </dl>
+                    </TableCell>
+                    <TableCell>
+                        <ul class="text-sm">
+                            <li>@L["{0} calls {1}", agent.Caps.CallsPerPeriod, Per(agent.Caps.CallPeriod)]</li>
+                            <li>@L["{0} US dollars of LLM spend {1}", agent.Caps.LlmSpendPerPeriod.ToString("0.00####", CultureInfo.InvariantCulture), Per(agent.Caps.LlmSpendPeriod)]</li>
+                            <li>@L["{0} items per change set", agent.Caps.ItemsPerChangeSet]</li>
+                            <li>@L["{0} change sets per day", agent.Caps.ChangeSetsPerDay]</li>
+                        </ul>
+                    </TableCell>
+                    <TableCell>
+                        <time datetime="@agent.ExpiresAt.ToString("O", CultureInfo.InvariantCulture)" dir="ltr">@agent.ExpiresAt.UtcDateTime.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture) UTC</time>
+                    </TableCell>
+                    <TableCell>
+                        @if (agent.RevokedAt is not null)
+                        {
+                            <Badge Variant="destructive" data-status="revoked">@L["Revoked"]</Badge>
+                        }
+                        else if (agent.CheckActive(_now).IsSuccess)
+                        {
+                            <Badge Variant="secondary" data-status="active">@L["Active"]</Badge>
+                        }
+                        else
+                        {
+                            <Badge Variant="outline" data-status="expired">@L["Expired"]</Badge>
+                        }
+                    </TableCell>
+                    <TableCell Class="text-end">
+                        @if (agent.RevokedAt is null)
+                        {
+                            @* Revocation cannot be undone, so the posted form sits in a dialog that asks first. The form is named after
+                               the credential, so the action reaches the credential it was rendered for. *@
+                            <Dialog>
+                                <DialogTrigger Variant="outline" Size="sm">@L["Revoke"]<span class="sr-only"> @agent.DisplayName</span></DialogTrigger>
+                                <DialogContent Class="text-start whitespace-normal">
+                                    <DialogHeader>
+                                        <DialogTitle>@L["Revoke the key of {0}?", agent.DisplayName]</DialogTitle>
+                                        <DialogDescription>@L["The agent is refused from its next call on. This cannot be undone; the agent needs a new key to connect again."]</DialogDescription>
+                                    </DialogHeader>
+                                    <form method="post" @onsubmit="() => RevokeAsync(agent)" @formname="@($"revoke-{agent.Id:N}")">
+                                        <AntiforgeryToken />
+                                        <DialogFooter>
+                                            <DialogClose>@L["Cancel"]</DialogClose>
+                                            <Button Type="submit" Variant="destructive">@L["Revoke"]</Button>
+                                        </DialogFooter>
+                                    </form>
+                                </DialogContent>
+                            </Dialog>
+                        }
+                    </TableCell>
+                </TableRow>
+            }
+        </TableBody>
+    </Table>
+</div>
+
+@code {
+    private IReadOnlyList<AgentCredential> _agents = [];
+    private DateTimeOffset _now;
+    private string? _message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _now = Clock.GetUtcNow();
+        _agents = await Directory.ListAsync();
+    }
+
+    private async Task RevokeAsync(AgentCredential agent)
+    {
+        var result = await Directory.RevokeAsync(agent.Id);
+        _message = result.IsSuccess
+            ? L["The key of {0} is revoked. It is refused from now on.", agent.DisplayName]
+            : string.Join(" ", result.Errors.Select(Describe));
+        _agents = await Directory.ListAsync();
+    }
+
+    private string Per(TimeSpan period)
+    {
+        return period == TimeSpan.FromHours(1) ? L["per hour"]
+            : period == TimeSpan.FromDays(1) ? L["per day"]
+            : L["every {0}", period.ToString("c", CultureInfo.InvariantCulture)];
+    }
+
+    // The error code is the resource key; the directory's own message is the text until a resource exists.
+    private string Describe(FluentCMS.Core.Results.Error error)
+    {
+        var localized = L[error.Code];
+        return localized.ResourceNotFound ? error.Message : localized.Value;
+    }
+}
