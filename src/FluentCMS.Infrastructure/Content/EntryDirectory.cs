@@ -7,6 +7,7 @@ using FluentCMS.Core.Schema;
 using FluentCMS.Core.Sites;
 using FluentCMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace FluentCMS.Infrastructure.Content;
 
@@ -18,7 +19,8 @@ internal sealed class EntryDirectory(
     IAuditLog auditLog,
     IContentTypeDirectory contentTypes,
     FieldTypeRegistry fieldTypes,
-    TimeProvider clock) : IEntryDirectory
+    TimeProvider clock,
+    IOptions<ContentOptions> options) : IEntryDirectory
 {
     private const string SubjectType = "entry";
 
@@ -41,7 +43,7 @@ internal sealed class EntryDirectory(
 
         var entries = await context.Entries
             .AsNoTracking()
-            .Where(entry => entry.SiteId == SiteId && entry.ContentTypeId == typeId)
+            .Where(entry => entry.SiteId == SiteId && entry.ContentTypeId == typeId && entry.DeletedAt == null)
             .OrderBy(entry => entry.Id)
             .Select(entry => new EntrySummary(entry.Id, entry.LatestVersion, entry.PublishedVersion))
             .ToListAsync(cancellationToken);
@@ -182,7 +184,7 @@ internal sealed class EntryDirectory(
 
         // Moves the pointer only from the version the caller read; a concurrent update that committed first leaves nothing to move.
         var moved = await context.Entries
-            .Where(row => row.Id == id && row.LatestVersion == baseVersion)
+            .Where(row => row.Id == id && row.LatestVersion == baseVersion && row.DeletedAt == null)
             .ExecuteUpdateAsync(setters => setters.SetProperty(row => row.LatestVersion, entry.LatestVersion), cancellationToken);
         if (moved == 0)
         {
@@ -198,12 +200,106 @@ internal sealed class EntryDirectory(
         return await CommitAsync(scope, entry, VersionConflict(id, baseVersion), cancellationToken);
     }
 
-    private async Task<StoredEntry?> FindAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<Result> DeleteAsync(Guid id, int baseVersion, CancellationToken cancellationToken = default)
+    {
+        var stored = await FindAsync(id, cancellationToken);
+        if (stored is null)
+        {
+            return Result.Failure([EntryNotFound(id)]);
+        }
+
+        if (stored.Row.LatestVersion != baseVersion)
+        {
+            return Result.Failure([VersionConflict(id, baseVersion)]);
+        }
+
+        var latest = await VersionRowAsync(id, baseVersion, cancellationToken)
+            ?? throw new InvalidOperationException($"Entry {id} points at version {baseVersion}, which is not stored.");
+
+        await using var scope = await unitOfWork.BeginAsync(cancellationToken);
+
+        // Only from the version the caller read, and only once: a concurrent update or delete that committed first wins.
+        var deletedAt = clock.GetUtcNow();
+        var deleted = await context.Entries
+            .Where(row => row.Id == id && row.LatestVersion == baseVersion && row.DeletedAt == null)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(row => row.DeletedAt, deletedAt), cancellationToken);
+        if (deleted == 0)
+        {
+            return Result.Failure([VersionConflict(id, baseVersion)]);
+        }
+
+        await auditLog.AppendAsync(
+            new NewAuditEvent("entry.deleted") { SubjectType = SubjectType, SubjectId = id, PreviousVersionId = latest.Id },
+            cancellationToken);
+        await scope.CommitAsync(cancellationToken);
+
+        return Result.Success();
+    }
+
+    public async Task<Result<Entry>> RestoreAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var stored = await FindAsync(id, cancellationToken, includeDeleted: true);
+        if (stored is null)
+        {
+            return Result<Entry>.Failure([EntryNotFound(id)]);
+        }
+
+        if (stored.Row.DeletedAt is not { } deletedAt)
+        {
+            return Result<Entry>.Failure([EntryNotDeleted(id)]);
+        }
+
+        var until = deletedAt + options.Value.DeletedRetention;
+        if (clock.GetUtcNow() >= until)
+        {
+            return Result<Entry>.Failure(
+                ContentErrorCodes.RetentionExpired,
+                $"Entry {id} was deleted at {deletedAt:O} and could be restored until {until:O}; that window has closed.");
+        }
+
+        var latest = await VersionRowAsync(id, stored.Row.LatestVersion, cancellationToken)
+            ?? throw new InvalidOperationException($"Entry {id} points at version {stored.Row.LatestVersion}, which is not stored.");
+
+        await using var scope = await unitOfWork.BeginAsync(cancellationToken);
+
+        // A concurrent restore that committed first leaves nothing to restore.
+        var restored = await context.Entries
+            .Where(row => row.Id == id && row.DeletedAt != null)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(row => row.DeletedAt, (DateTimeOffset?)null), cancellationToken);
+        if (restored == 0)
+        {
+            return Result<Entry>.Failure([EntryNotDeleted(id)]);
+        }
+
+        await auditLog.AppendAsync(new NewAuditEvent("entry.restored") { SubjectType = SubjectType, SubjectId = id }, cancellationToken);
+        await scope.CommitAsync(cancellationToken);
+
+        return Result<Entry>.Success(ToEntry(stored, latest));
+    }
+
+    public async Task<IReadOnlyList<DeletedEntry>> ListDeletedAsync(CancellationToken cancellationToken = default)
+    {
+        var rows = await (
+            from entry in context.Entries.AsNoTracking()
+            join type in context.ContentTypes.AsNoTracking() on entry.ContentTypeId equals type.Id
+            where entry.SiteId == SiteId && entry.DeletedAt != null
+            select new { entry.Id, type.Slug, entry.LatestVersion, entry.DeletedAt })
+            .ToListAsync(cancellationToken);
+
+        // Ordered here, because SQLite cannot order by the stored offsets.
+        return rows
+            .Select(row => new DeletedEntry(row.Id, row.Slug, row.LatestVersion, row.DeletedAt!.Value, row.DeletedAt.Value + options.Value.DeletedRetention))
+            .OrderByDescending(entry => entry.DeletedAt)
+            .ThenBy(entry => entry.Id)
+            .ToList();
+    }
+
+    private async Task<StoredEntry?> FindAsync(Guid id, CancellationToken cancellationToken, bool includeDeleted = false)
     {
         return await (
             from entry in context.Entries.AsNoTracking()
             join type in context.ContentTypes.AsNoTracking() on entry.ContentTypeId equals type.Id
-            where entry.Id == id && entry.SiteId == SiteId
+            where entry.Id == id && entry.SiteId == SiteId && (includeDeleted || entry.DeletedAt == null)
             select new StoredEntry(entry, type.Slug))
             .SingleOrDefaultAsync(cancellationToken);
     }
@@ -222,7 +318,7 @@ internal sealed class EntryDirectory(
         var types = await (
             from entry in context.Entries.AsNoTracking()
             join type in context.ContentTypes.AsNoTracking() on entry.ContentTypeId equals type.Id
-            where entry.SiteId == SiteId && ids.Contains(entry.Id)
+            where entry.SiteId == SiteId && ids.Contains(entry.Id) && entry.DeletedAt == null
             select new { entry.Id, type.Slug })
             .ToDictionaryAsync(found => found.Id, found => found.Slug, cancellationToken);
 
@@ -318,6 +414,11 @@ internal sealed class EntryDirectory(
     private static Error EntryNotFound(Guid id)
     {
         return new Error(ContentErrorCodes.EntryNotFound, $"There is no entry {id} in this site.");
+    }
+
+    private static Error EntryNotDeleted(Guid id)
+    {
+        return new Error(ContentErrorCodes.EntryNotDeleted, $"Entry {id} is not deleted, so there is nothing to restore.");
     }
 
     private static Error VersionConflict(Guid id, int baseVersion)

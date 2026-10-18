@@ -64,6 +64,7 @@ internal sealed class WhereUsed(FluentCmsDbContext context, IContentTypeDirector
             join entry in context.Entries.AsNoTracking() on reference.EntryId equals entry.Id
             join type in context.ContentTypes.AsNoTracking() on entry.ContentTypeId equals type.Id
             where entry.SiteId == SiteId
+                && entry.DeletedAt == null
                 && reference.TargetKind == kind
                 && reference.TargetId == targetId
                 && (reference.Version == entry.LatestVersion || reference.Version == entry.PublishedVersion)
@@ -99,7 +100,7 @@ internal sealed class WhereUsed(FluentCmsDbContext context, IContentTypeDirector
         return (
             from entry in context.Entries.AsNoTracking()
             join type in context.ContentTypes.AsNoTracking() on entry.ContentTypeId equals type.Id
-            where entry.Id == entryId && entry.SiteId == SiteId
+            where entry.Id == entryId && entry.SiteId == SiteId && entry.DeletedAt == null
             select type.Slug)
             .SingleOrDefaultAsync(cancellationToken);
     }

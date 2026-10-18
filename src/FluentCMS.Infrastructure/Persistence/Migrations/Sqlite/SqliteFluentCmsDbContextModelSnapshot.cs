@@ -304,6 +304,9 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                     b.Property<Guid>("ContentTypeId")
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("LatestVersion")
                         .HasColumnType("INTEGER");
 
