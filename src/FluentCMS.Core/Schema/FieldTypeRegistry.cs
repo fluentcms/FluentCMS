@@ -56,10 +56,10 @@ public sealed class FieldTypeRegistry
         return fieldType.ValidateSettings(settings, this);
     }
 
-    public IReadOnlyList<string> ReferencedTypes(string type, JsonElement settings)
+    public IReadOnlyList<ReferenceTarget> ReferenceTargets(string type, JsonElement settings)
     {
         ArgumentNullException.ThrowIfNull(type);
 
-        return Find(type)?.ReferencedTypes(settings, this) ?? [];
+        return Find(type)?.ReferenceTargets(settings, this) ?? [];
     }
 }

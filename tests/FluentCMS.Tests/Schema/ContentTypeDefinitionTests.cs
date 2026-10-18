@@ -10,7 +10,7 @@ public sealed class ContentTypeDefinitionTests : IDisposable
     // One field of every SCH-02 type, in the form the definition is stored in.
     private const string EveryFieldType =
         """
-        {"fields":[
+        {"entity":false,"fields":[
           {"name":"title","type":"text","required":true,"settings":{"maxLength":200}},
           {"name":"body","type":"richText","required":false,"settings":{}},
           {"name":"price","type":"number","required":true,"settings":{"min":0,"max":99999.99}},
@@ -56,7 +56,7 @@ public sealed class ContentTypeDefinitionTests : IDisposable
         ]);
 
         Assert.Equal(
-            """{"fields":[{"name":"title","type":"text","required":true,"settings":{"maxLength":200}},{"name":"body","type":"richText","required":false,"settings":{}}]}""",
+            """{"entity":false,"fields":[{"name":"title","type":"text","required":true,"settings":{"maxLength":200}},{"name":"body","type":"richText","required":false,"settings":{}}]}""",
             definition.ToJson());
     }
 
@@ -124,7 +124,7 @@ public sealed class ContentTypeDefinitionTests : IDisposable
         Assert.All(result.Errors, error => Assert.Equal(SchemaErrorCodes.DefinitionMalformed, error.Code));
         Assert.Equal(
         [
-            "$.version is not part of a definition; it has only 'fields'.",
+            "$.version is not part of a definition; it has 'entity' and 'fields'.",
             "$.fields[0].type must be a string.",
             "$.fields[1].name is missing.",
             "$.fields[2] must be an object.",
@@ -180,7 +180,68 @@ public sealed class ContentTypeDefinitionTests : IDisposable
     {
         var definition = ContentTypeDefinition.Parse(EveryFieldType).Value;
 
-        Assert.Equal([new FieldReference("category", "category")], definition.References(FieldTypes));
+        Assert.Equal([new FieldReference("category", new ReferenceTarget("category"))], definition.References(FieldTypes));
+    }
+
+    [Fact]
+    public void The_entity_flag_is_written_and_read_back()
+    {
+        var entity = new ContentTypeDefinition([new FieldDefinition("price", "number")], isEntity: true);
+
+        var json = entity.ToJson();
+        var readBack = ContentTypeDefinition.Parse(json).Value;
+
+        Assert.StartsWith("""{"entity":true,""", json);
+        Assert.True(readBack.IsEntity);
+        Assert.Equal(json, readBack.ToJson());
+    }
+
+    // Definitions stored before the flag existed have no 'entity' property, and they stay plain content types.
+    [Fact]
+    public void A_document_without_the_flag_is_a_plain_content_type()
+    {
+        Assert.False(ContentTypeDefinition.Parse("""{"fields":[]}""").Value.IsEntity);
+    }
+
+    [Theory]
+    [InlineData("""{"entity": "yes", "fields": []}""")]
+    [InlineData("""{"entity": null, "fields": []}""")]
+    [InlineData("""{"entity": 1, "fields": []}""")]
+    public void The_entity_flag_must_be_true_or_false(string json)
+    {
+        var error = Assert.Single(ContentTypeDefinition.Parse(json).Errors);
+
+        Assert.Equal("$.entity must be true or false.", error.Message);
+    }
+
+    // There is no way to opt a field of an entity type out of its fact metadata (SCH-03).
+    [Fact]
+    public void A_field_cannot_opt_out_of_fact_metadata()
+    {
+        var result = ContentTypeDefinition.Parse("""{"entity": true, "fields": [{"name": "price", "type": "number", "fact": false}]}""");
+
+        Assert.Equal(
+            "$.fields[0].fact is not part of a field; a field has name, type, required and settings.",
+            Assert.Single(result.Errors).Message);
+    }
+
+    [Fact]
+    public void References_name_the_field_a_reference_targets()
+    {
+        var definition = new ContentTypeDefinition(
+        [
+            new FieldDefinition("product", "reference", settings: Element("""{"target": "product"}""")),
+            new FieldDefinition("price", "reference", settings: Element("""{"target": "product", "field": "price"}""")),
+            new FieldDefinition("prices", "list", settings: Element("""{"itemType": "reference", "itemSettings": {"target": "product", "field": "price"}}""")),
+        ]);
+
+        Assert.Equal(
+            [
+                new FieldReference("product", new ReferenceTarget("product")),
+                new FieldReference("price", new ReferenceTarget("product", "price")),
+                new FieldReference("prices", new ReferenceTarget("product", "price")),
+            ],
+            definition.References(FieldTypes));
     }
 
     [Fact]

@@ -109,15 +109,29 @@ public sealed class ReferenceFieldTypeTests : FieldTypeConformanceTests
 {
     protected override string FieldTypeName => "reference";
 
-    protected override IEnumerable<string> AcceptedSettings => ["""{"target": "product"}""", """{"target": "product-page"}"""];
+    protected override IEnumerable<string> AcceptedSettings =>
+        ["""{"target": "product"}""", """{"target": "product-page"}""", """{"target": "product", "field": "price"}"""];
 
     protected override IEnumerable<string> RejectedSettings =>
-        ["{}", """{"target": "Product"}""", """{"target": "product page"}""", """{"target": ""}""", """{"target": 5}"""];
+    [
+        "{}",
+        """{"target": "Product"}""",
+        """{"target": "product page"}""",
+        """{"target": ""}""",
+        """{"target": 5}""",
+        """{"field": "price"}""",
+        """{"target": "product", "field": "Price"}""",
+        """{"target": "product", "field": ""}""",
+        """{"target": "product", "field": ["price"]}""",
+    ];
 
     [Fact]
-    public void Declares_its_target_as_referenced()
+    public void Declares_its_target_type_and_field()
     {
-        Assert.Equal(["product"], Registry.ReferencedTypes(FieldTypeName, Parse("""{"target": "product"}""")));
+        Assert.Equal([new ReferenceTarget("product")], Registry.ReferenceTargets(FieldTypeName, Parse("""{"target": "product"}""")));
+        Assert.Equal(
+            [new ReferenceTarget("product", "price")],
+            Registry.ReferenceTargets(FieldTypeName, Parse("""{"target": "product", "field": "price"}""")));
     }
 }
 
@@ -155,8 +169,10 @@ public sealed class ListFieldTypeTests : FieldTypeConformanceTests
     [Fact]
     public void Declares_what_its_item_type_references()
     {
-        Assert.Equal(["product"], Registry.ReferencedTypes(FieldTypeName, Parse("""{"itemType": "reference", "itemSettings": {"target": "product"}}""")));
-        Assert.Empty(Registry.ReferencedTypes(FieldTypeName, Parse("""{"itemType": "text"}""")));
+        Assert.Equal(
+            [new ReferenceTarget("product", "price")],
+            Registry.ReferenceTargets(FieldTypeName, Parse("""{"itemType": "reference", "itemSettings": {"target": "product", "field": "price"}}""")));
+        Assert.Empty(Registry.ReferenceTargets(FieldTypeName, Parse("""{"itemType": "text"}""")));
     }
 
     [Fact]

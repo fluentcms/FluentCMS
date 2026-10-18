@@ -86,6 +86,22 @@ public sealed class FieldSettingsReader
         return null;
     }
 
+    public string? OptionalString(string name)
+    {
+        if (Read(name) is not { } value)
+        {
+            return null;
+        }
+
+        if (value.ValueKind == JsonValueKind.String && value.GetString() is { } text && !string.IsNullOrWhiteSpace(text))
+        {
+            return text;
+        }
+
+        Invalid(name, "must be a non-empty string");
+        return null;
+    }
+
     public IReadOnlyList<string>? RequiredStringList(string name)
     {
         if (Read(name) is not { } value)

@@ -17,4 +17,8 @@ public static class SchemaErrorCodes
     public const string ContentTypeNotFound = "content_type_not_found";
     public const string VersionNotFound = "version_not_found";
     public const string VersionConflict = "version_conflict";
+    public const string EntityFlagRemoved = "entity_flag_removed";
+    public const string ReferenceTargetNotEntity = "reference_target_not_entity";
+    public const string ReferenceFieldUnknown = "reference_field_unknown";
+    public const string FieldReferenced = "field_referenced";
 }

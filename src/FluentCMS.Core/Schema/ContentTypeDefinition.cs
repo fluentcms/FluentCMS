@@ -6,16 +6,17 @@ using FluentCMS.Core.Results;
 namespace FluentCMS.Core.Schema;
 
 // The fields of one content type version, stored as one JSON document (SCH-01, ADR-0005):
-// {"fields":[{"name":"price","type":"number","required":true,"settings":{"min":0}}]}
+// {"entity":true,"fields":[{"name":"price","type":"number","required":true,"settings":{"min":0}}]}
 public sealed class ContentTypeDefinition
 {
     private static readonly JsonDocumentOptions ParseOptions = new() { AllowDuplicateProperties = false };
 
-    public ContentTypeDefinition(IEnumerable<FieldDefinition> fields)
+    public ContentTypeDefinition(IEnumerable<FieldDefinition> fields, bool isEntity = false)
     {
         ArgumentNullException.ThrowIfNull(fields);
 
         Fields = fields.ToList();
+        IsEntity = isEntity;
         if (Fields.Any(field => field is null))
         {
             throw new ArgumentException("A definition cannot contain a null field.", nameof(fields));
@@ -23,6 +24,9 @@ public sealed class ContentTypeDefinition
     }
 
     public IReadOnlyList<FieldDefinition> Fields { get; }
+
+    // An entity type is a fact source: every one of its fields carries FactMetadata next to its value (SCH-03).
+    public bool IsEntity { get; }
 
     // Checks the shape of the document only; what the names, types and settings mean is checked by Validate.
     public static Result<ContentTypeDefinition> Parse(string json)
@@ -42,10 +46,10 @@ public sealed class ContentTypeDefinition
         using (document)
         {
             var errors = new List<Error>();
-            var fields = ReadFields(document.RootElement, errors);
+            var (fields, isEntity) = ReadDocument(document.RootElement, errors);
 
             return errors.Count == 0
-                ? Result<ContentTypeDefinition>.Success(new ContentTypeDefinition(fields))
+                ? Result<ContentTypeDefinition>.Success(new ContentTypeDefinition(fields, isEntity))
                 : Result<ContentTypeDefinition>.Failure(errors);
         }
     }
@@ -56,6 +60,7 @@ public sealed class ContentTypeDefinition
         using (var writer = new Utf8JsonWriter(buffer))
         {
             writer.WriteStartObject();
+            writer.WriteBoolean("entity", IsEntity);
             writer.WriteStartArray("fields");
 
             foreach (var field in Fields)
@@ -111,35 +116,56 @@ public sealed class ContentTypeDefinition
         return errors.Count == 0 ? Result.Success() : Result.Failure(errors);
     }
 
+    public bool HasField(string name)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        return Fields.Any(field => field.Name == name);
+    }
+
     // Only meaningful for a definition that passed Validate.
     public IReadOnlyList<FieldReference> References(FieldTypeRegistry fieldTypes)
     {
         ArgumentNullException.ThrowIfNull(fieldTypes);
 
         return Fields
-            .SelectMany(field => fieldTypes.ReferencedTypes(field.Type, field.Settings).Select(target => new FieldReference(field.Name, target)))
+            .SelectMany(field => fieldTypes.ReferenceTargets(field.Type, field.Settings).Select(target => new FieldReference(field.Name, target)))
             .ToList();
     }
 
-    private static List<FieldDefinition> ReadFields(JsonElement root, List<Error> errors)
+    // A document without 'entity' is a plain content type, as every definition stored before the flag existed.
+    private static (List<FieldDefinition> Fields, bool IsEntity) ReadDocument(JsonElement root, List<Error> errors)
     {
         var fields = new List<FieldDefinition>();
+        var isEntity = false;
 
         if (root.ValueKind != JsonValueKind.Object)
         {
             errors.Add(Malformed("$ must be an object with a 'fields' array."));
-            return fields;
+            return (fields, isEntity);
         }
 
-        foreach (var property in root.EnumerateObject().Where(property => property.Name != "fields"))
+        foreach (var property in root.EnumerateObject())
         {
-            errors.Add(Malformed($"$.{property.Name} is not part of a definition; it has only 'fields'."));
+            switch (property.Name)
+            {
+                case "fields":
+                    break;
+                case "entity" when property.Value.ValueKind is JsonValueKind.True or JsonValueKind.False:
+                    isEntity = property.Value.GetBoolean();
+                    break;
+                case "entity":
+                    errors.Add(Malformed("$.entity must be true or false."));
+                    break;
+                default:
+                    errors.Add(Malformed($"$.{property.Name} is not part of a definition; it has 'entity' and 'fields'."));
+                    break;
+            }
         }
 
         if (!root.TryGetProperty("fields", out var array) || array.ValueKind != JsonValueKind.Array)
         {
             errors.Add(Malformed("$.fields must be an array."));
-            return fields;
+            return (fields, isEntity);
         }
 
         var index = 0;
@@ -151,7 +177,7 @@ public sealed class ContentTypeDefinition
             }
         }
 
-        return fields;
+        return (fields, isEntity);
     }
 
     private static FieldDefinition? ReadField(JsonElement element, string path, List<Error> errors)

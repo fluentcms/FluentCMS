@@ -118,7 +118,7 @@ public sealed class LinkFieldTypeTests : FieldTypeConformanceTests
         ]);
 
         Assert.Equal(
-            [new FieldReference("seeAlso", "product"), new FieldReference("category", "category")],
+            [new FieldReference("seeAlso", new ReferenceTarget("product")), new FieldReference("category", new ReferenceTarget("category"))],
             definition.References(Registry));
     }
 }
@@ -139,8 +139,8 @@ public sealed class LinkFieldType : IFieldType
         return reader.Errors();
     }
 
-    public IReadOnlyList<string> ReferencedTypes(JsonElement settings, FieldTypeRegistry fieldTypes)
+    public IReadOnlyList<ReferenceTarget> ReferenceTargets(JsonElement settings, FieldTypeRegistry fieldTypes)
     {
-        return [settings.GetProperty("to").GetString()!];
+        return [new ReferenceTarget(settings.GetProperty("to").GetString()!)];
     }
 }
