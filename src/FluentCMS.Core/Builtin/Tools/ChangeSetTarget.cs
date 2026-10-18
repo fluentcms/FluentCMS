@@ -66,6 +66,12 @@ internal sealed class ChangeSetTarget
             return new ChangeSetTarget(null, sessionId, new NewChangeSet(rationale, sources ?? []));
         }
 
+        // A malformed id is already reported by the reader; saying the target is missing as well would mislead.
+        if (changeSetId is null && sessionId is null && arguments.Has("change_set_id"))
+        {
+            return null;
+        }
+
         errors.Add(new Error(
             ToolErrorCodes.ArgumentMissing,
             changeSetId is not null

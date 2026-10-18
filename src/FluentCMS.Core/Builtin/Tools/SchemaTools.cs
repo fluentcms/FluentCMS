@@ -50,7 +50,7 @@ public sealed class SchemaTools : IToolProvider, IResourceProvider
             "create_content_type",
             "Propose a new content type",
             "Proposes a new content type: it stores version 1, unpublished, and adds the create to a change set in the same "
-            + "call. Nothing is live until a person approves and publishes the set. Every problem with the definition comes back "
+            + "call. It is not published until a person approves and publishes the set. Every problem with the definition comes back "
             + "at once, by field. Field types: text, richText, number, boolean, dateTime, enum, list, json, media and reference; "
             + "get_schema_document shows how values of each look.",
             ToolSchemas.Object([

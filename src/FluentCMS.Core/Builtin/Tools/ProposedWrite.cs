@@ -35,7 +35,8 @@ internal static class ProposedWrite
             return ToolResult.Failure(type.Errors, Hint(type.Errors));
         }
 
-        var set = await target.AddAsync(services.GetRequiredService<IChangeSetDirectory>(), operation(type.Value), cancellationToken);
+        var proposed = operation(type.Value);
+        var set = await target.AddAsync(services.GetRequiredService<IChangeSetDirectory>(), proposed, cancellationToken);
         if (!set.IsSuccess)
         {
             return ToolResult.Failure(set.Errors);
@@ -47,7 +48,7 @@ internal static class ProposedWrite
         {
             ["contentType"] = ToolJson.ContentType(type.Value),
             ["changeSet"] = ToolJson.ChangeSet(set.Value),
-            ["next"] = $"The {ToolJson.Name(operation(type.Value).Kind)} is in change set {set.Value.Id}, which stays open for more "
+            ["next"] = $"The {ToolJson.Name(proposed.Kind)} is in change set {set.Value.Id}, which stays open for more "
                 + "operations. Call submit_change_set when it is complete; checks run and a person reviews it before it is published.",
         });
     }

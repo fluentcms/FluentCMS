@@ -98,6 +98,12 @@ public sealed class ToolArgumentsReader
         return Read(name) is null ? null : PositiveIntegerOf(name);
     }
 
+    // Whether the agent gave the argument at all, whatever its value.
+    public bool Has(string name)
+    {
+        return _arguments.ValueKind == JsonValueKind.Object && _arguments.TryGetProperty(name, out var value) && value.ValueKind != JsonValueKind.Null;
+    }
+
     public IReadOnlyList<Error> Errors()
     {
         var errors = new List<Error>(_errors);
