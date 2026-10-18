@@ -162,6 +162,24 @@
     position-try-fallbacks: flip-block, flip-inline, flip-block flip-inline;
   }
 
+  /* A popover sits centred below its trigger and a tooltip above it; admin.js places them where anchor positioning is missing. */
+  [popover][data-ui="popover"] {
+    inset: auto;
+    margin: 0;
+    margin-block-start: 4px;
+    position-area: block-end;
+    position-try-fallbacks: flip-block, block-end span-inline-end, block-end span-inline-start;
+  }
+
+  [popover][data-ui="tooltip"] {
+    inset: auto;
+    margin: 0;
+    margin-block-end: 4px;
+    position-area: block-start;
+    position-try-fallbacks: flip-block;
+    pointer-events: none;
+  }
+
   /* Blazor reports a lost circuit as a state class on this element (ReconnectModal.razor); each part names the state it shows in. */
   #components-reconnect-modal {
     display: none;

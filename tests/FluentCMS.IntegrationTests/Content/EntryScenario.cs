@@ -70,6 +70,12 @@ internal sealed class EntryScenario : IAsyncDisposable
         Assert.Equal(events, (await EntryEventsAsync()).Count);
     }
 
+    // An entity's field as a fact with the given value and no metadata (SCH-03).
+    public static string Fact(string value)
+    {
+        return $$"""{"value": {{value}}, "source": null, "owner": null, "validFrom": null, "validUntil": null, "lastVerified": null}""";
+    }
+
     public static JsonElement Json(string json)
     {
         return JsonSerializer.Deserialize<JsonElement>(json);

@@ -3,6 +3,7 @@ using FluentCMS.Core.Results;
 using FluentCMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using static FluentCMS.IntegrationTests.Content.EntryScenario;
 
 namespace FluentCMS.IntegrationTests.Content;
 
@@ -148,11 +149,6 @@ public sealed class WhereUsedTests
         var created = await scenario.CreateAsync("product", $$"""{"name": {{Fact($"\"{name}\"")}}, "price": {{Fact("19.99")}}}""");
         Assert.True(created.IsSuccess, string.Join("; ", created.Errors.Select(error => error.Message)));
         return created.Value.Id;
-    }
-
-    private static string Fact(string value)
-    {
-        return $$"""{"value": {{value}}, "source": null, "owner": null, "validFrom": null, "validUntil": null, "lastVerified": null}""";
     }
 
     private static EntryUsage Usage(Guid entryId, string contentType, params string[] paths)

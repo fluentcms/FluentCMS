@@ -1,0 +1,24 @@
+@* Every panel stays in the page; the inactive ones are hidden, so switching needs no round trip. *@
+<div id="@Context.ContentId(Value)"
+     role="tabpanel"
+     aria-labelledby="@Context.TriggerId(Value)"
+     tabindex="0"
+     hidden="@(!Active)"
+     data-state="@(Active ? "active" : "inactive")"
+     data-ui="tab-panel"
+     data-slot="tabs-content"
+     class="@ClassNames.Cn("flex-1 outline-none", Class)"
+     @attributes="AdditionalAttributes">
+    @ChildContent
+</div>
+
+@code {
+    [CascadingParameter] private TabsContext Context { get; set; } = null!;
+
+    [Parameter, EditorRequired] public string Value { get; set; } = string.Empty;
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private bool Active => Value == Context.DefaultValue;
+}
