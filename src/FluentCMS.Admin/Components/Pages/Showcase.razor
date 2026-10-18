@@ -370,6 +370,7 @@
         </div>
         <Toaster />
         @Hints(
+            ([L["Alt"] + "+T"], L["Moves focus to the toasts from anywhere on the page."]),
             ([L["Tab"]], L["Reaches the close button of each toast; a toast never takes focus."]),
             ([L["Enter"], L["Space"]], L["Closes the toast; otherwise it goes after five seconds."]))
     </section>
@@ -403,7 +404,7 @@
     <section class="grid gap-4" aria-labelledby="command-heading">
         <h2 id="command-heading" class="text-lg font-semibold">@L["Command"]</h2>
         <Command Class="max-w-md rounded-lg border shadow-md">
-            <CommandInput Placeholder="@L["Type a command or search..."]" />
+            <CommandInput Placeholder="@L["Type a command or search..."]" aria-keyshortcuts="Control+K Meta+K" />
             <CommandList Label="@L["Commands"]">
                 <CommandEmpty>@L["No results found."]</CommandEmpty>
                 <CommandGroup Heading="@L["Suggestions"]">
@@ -420,6 +421,7 @@
             </CommandList>
         </Command>
         @Hints(
+            ([L["Ctrl"] + "+K", "⌘K"], L["Moves focus to the palette from anywhere on the page."]),
             ([L["Type"]], L["Filters the options in the browser, with no round trip."]),
             (["↓", "↑", L["Home"], L["End"]], L["Move the active option, skipping disabled ones."]),
             ([L["Enter"]], L["Chooses the active option."]))

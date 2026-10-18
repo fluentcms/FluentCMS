@@ -16,6 +16,8 @@ public sealed class ToasterTests
 
         Assert.Equal("region", region.GetAttribute("role"));
         Assert.Equal("Notifications", region.GetAttribute("aria-label"));
+        Assert.Equal("Alt+T", region.GetAttribute("aria-keyshortcuts"));
+        Assert.Equal("-1", region.GetAttribute("tabindex"));
         Assert.Equal("polite", cut.Find("ol").GetAttribute("aria-live"));
         Assert.Empty(cut.FindAll("li"));
         Assert.Contains("end-4", region.ClassList);
