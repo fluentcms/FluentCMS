@@ -23,7 +23,13 @@ public interface IChangeSetDirectory
         ChangeOperation operation,
         CancellationToken cancellationToken = default);
 
+    // Moving to published publishes the set, as PublishAsync does.
     Task<Result<ChangeSet>> TransitionAsync(Guid changeSetId, ChangeSetState target, CancellationToken cancellationToken = default);
+
+    // Moves every item of an approved set from the version its operation was based on to the proposed one, together with the set
+    // and the provenance of each item, or nothing at all (CHG-05, AUD-N1, REL-01). An item that is no longer published at its
+    // base version fails the whole publish.
+    Task<Result<ChangeSet>> PublishAsync(Guid changeSetId, CancellationToken cancellationToken = default);
 
     Task<Result<ChangeSet>> RejectAsync(Guid changeSetId, string reason, CancellationToken cancellationToken = default);
 }

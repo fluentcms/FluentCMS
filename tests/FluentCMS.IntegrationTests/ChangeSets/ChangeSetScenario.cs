@@ -2,6 +2,8 @@ using System.Security.Cryptography;
 using FluentCMS.Core.Agents;
 using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Identity;
+using FluentCMS.Core.Persistence;
+using FluentCMS.Core.Results;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Sites;
 using FluentCMS.Infrastructure.Agents;
@@ -25,13 +27,20 @@ internal sealed class ChangeSetScenario : IAsyncDisposable
     private readonly TemporaryDatabase _database;
     private readonly SwitchableInitiator _initiator;
     private readonly TickingClock _clock;
+    private readonly AuditFailure _auditFailure;
 
-    private ChangeSetScenario(TemporaryDatabase database, ServiceProvider services, SwitchableInitiator initiator, TickingClock clock)
+    private ChangeSetScenario(
+        TemporaryDatabase database,
+        ServiceProvider services,
+        SwitchableInitiator initiator,
+        TickingClock clock,
+        AuditFailure auditFailure)
     {
         _database = database;
         Services = services;
         _initiator = initiator;
         _clock = clock;
+        _auditFailure = auditFailure;
     }
 
     public ServiceProvider Services { get; }
@@ -47,14 +56,16 @@ internal sealed class ChangeSetScenario : IAsyncDisposable
         var database = await TemporaryDatabase.CreateAsync(provider);
         var initiator = new SwitchableInitiator { Current = Agent };
         var clock = new TickingClock();
+        var auditFailure = new AuditFailure();
         var services = TestServices.Build(
             database.Configuration,
             collection => collection
                 .AddSingleton<ICurrentInitiator>(initiator)
-                .AddSingleton<TimeProvider>(clock));
+                .AddSingleton<TimeProvider>(clock),
+            collection => FailingAuditLog.Wrap(collection, auditFailure));
 
         await TestServices.MigrateAsync(services);
-        var scenario = new ChangeSetScenario(database, services, initiator, clock);
+        var scenario = new ChangeSetScenario(database, services, initiator, clock, auditFailure);
         await scenario.QueryAsync(async context =>
         {
             context.AgentCredentials.Add(AgentCredential());
@@ -94,11 +105,35 @@ internal sealed class ChangeSetScenario : IAsyncDisposable
         });
     }
 
+    // The given audit append from now on throws, counting from one.
+    public void FailOnAppend(int append)
+    {
+        _auditFailure.FailOnAppend(append);
+    }
+
     // Each call gets its own scope and DbContext, as separate requests would.
     public async Task<T> RunAsync<T>(Func<IChangeSetDirectory, Task<T>> action)
     {
         await using var scope = Services.CreateAsyncScope();
         return await action(scope.ServiceProvider.GetRequiredService<IChangeSetDirectory>());
+    }
+
+    // The loser reads while the winner has not committed, so its own checks pass and the database has the last word.
+    public async Task<Result<ChangeSet>> RaceAsync(
+        Func<IChangeSetDirectory, Task<Result<ChangeSet>>> winner,
+        Func<IChangeSetDirectory, Task<Result<ChangeSet>>> loser)
+    {
+        await using var scope = Services.CreateAsyncScope();
+        var work = await scope.ServiceProvider.GetRequiredService<IUnitOfWork>().BeginAsync();
+
+        Assert.True((await winner(scope.ServiceProvider.GetRequiredService<IChangeSetDirectory>())).IsSuccess);
+
+        var second = Task.Run(() => RunAsync(loser));
+        await Task.Delay(TimeSpan.FromMilliseconds(500));
+        await work.CommitAsync();
+        await work.DisposeAsync();
+
+        return await second;
     }
 
     // A content type at version 1, or at version 2 when revised, for operations to point at.
@@ -115,6 +150,16 @@ internal sealed class ChangeSetScenario : IAsyncDisposable
             : type;
     }
 
+    // The next version of a type, with one more field.
+    public async Task<ContentType> ReviseAsync(ContentType type)
+    {
+        await using var scope = Services.CreateAsyncScope();
+        var directory = scope.ServiceProvider.GetRequiredService<IContentTypeDirectory>();
+        var definition = new ContentTypeDefinition([.. type.Definition.Fields, new FieldDefinition($"note{type.Version + 1}", "text")]);
+
+        return (await directory.ReviseAsync(type.Slug, type.Version, definition)).Value;
+    }
+
     public async Task<ChangeSet> OpenAsync(params ChangeOperation[] operations)
     {
         var changeSet = (await RunAsync(directory => directory.OpenAsync(CatalogSync))).Value;
@@ -124,6 +169,34 @@ internal sealed class ChangeSetScenario : IAsyncDisposable
         }
 
         return changeSet;
+    }
+
+    // Opened with the operations, submitted and approved, the way routing approves a set without review.
+    public async Task<ChangeSet> ApproveAsync(params ChangeOperation[] operations)
+    {
+        var changeSet = await OpenAsync(operations);
+        Assert.True((await RunAsync(directory => directory.TransitionAsync(changeSet.Id, ChangeSetState.ChecksRunning))).IsSuccess);
+
+        return (await AsPersonAsync(directory => directory.TransitionAsync(changeSet.Id, ChangeSetState.Approved))).Value;
+    }
+
+    // Approved and published with the operations, so later sets can be based on the versions they publish.
+    public async Task<ChangeSet> PublishAsync(params ChangeOperation[] operations)
+    {
+        var changeSet = await ApproveAsync(operations);
+        var published = await AsPersonAsync(directory => directory.PublishAsync(changeSet.Id));
+        Assert.True(published.IsSuccess, string.Join("; ", published.Errors.Select(error => error.Message)));
+
+        return published.Value;
+    }
+
+    public Task<int?> PublishedVersionAsync(Guid contentTypeId)
+    {
+        return QueryAsync(context => context.ContentTypes
+            .AsNoTracking()
+            .Where(row => row.Id == contentTypeId)
+            .Select(row => row.PublishedVersion)
+            .SingleAsync());
     }
 
     public Task<ChangeSetRow> ChangeSetRowAsync(Guid id)
@@ -145,7 +218,7 @@ internal sealed class ChangeSetScenario : IAsyncDisposable
             .ToListAsync());
     }
 
-    // Change set events only, in the order they were appended; content type events are left out.
+    // Events that carry a change set id, in the order they were appended; the content type directory's own events are left out.
     public async Task<List<AuditEventRow>> ChangeSetEventsAsync(Guid? changeSetId = null)
     {
         var rows = await QueryAsync(context => context.AuditEvents
@@ -176,6 +249,16 @@ internal sealed class ChangeSetScenario : IAsyncDisposable
     public static ChangeOperation Create(ContentType type)
     {
         return ChangeOperation.Create(OperationKind.Create, ItemKind.Schema, type.Id, null, 1).Value;
+    }
+
+    public static ChangeOperation Update(ContentType type, int baseVersion, int proposedVersion)
+    {
+        return ChangeOperation.Create(OperationKind.Update, ItemKind.Schema, type.Id, baseVersion, proposedVersion).Value;
+    }
+
+    public static ChangeOperation Delete(ContentType type, int baseVersion)
+    {
+        return ChangeOperation.Create(OperationKind.Delete, ItemKind.Schema, type.Id, baseVersion, null).Value;
     }
 
     // The stored credential behind Agent, scoped to the site with room to spare, so only a test that lowers a cap meets one.

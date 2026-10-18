@@ -23,7 +23,7 @@ public sealed class McpServerTests
 
         Assert.Equal(protocolVersion, client.NegotiatedProtocolVersion);
         AssertFluentCmsServer(client);
-        Assert.Empty(await client.ListToolsAsync());
+        Assert.Equal(McpAgents.BuiltInTools, await McpAgents.ToolNamesAsync(client));
         Assert.Null(client.SessionId);
         // A stateless server offers no stream to GET.
         Assert.Equal(HttpStatusCode.MethodNotAllowed, stream.StatusCode);
@@ -52,7 +52,7 @@ public sealed class McpServerTests
 
             AssertFluentCmsServer(client);
             Assert.Equal(http.ServerInfo.Version, client.ServerInfo.Version);
-            Assert.Empty(await client.ListToolsAsync());
+            Assert.Equal(McpAgents.BuiltInTools, await McpAgents.ToolNamesAsync(client));
         }
 
         Assert.Equal(0, await stdio.CloseInputAndWaitForExitAsync());

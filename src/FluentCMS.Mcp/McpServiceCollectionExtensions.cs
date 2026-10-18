@@ -1,7 +1,9 @@
 using FluentCMS.Core.Identity;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using ModelContextProtocol.AspNetCore;
 using ModelContextProtocol.Protocol;
+using ModelContextProtocol.Server;
 
 namespace FluentCMS.Mcp;
 
@@ -37,6 +39,10 @@ public static class McpServiceCollectionExtensions
 
     private static IMcpServerBuilder AddServer(IServiceCollection services)
     {
+        // Built when the host starts, so two tools with one name stop it there instead of at the first call.
+        services.AddSingleton<IConfigureOptions<McpServerOptions>, CoreToolsSetup>();
+        services.AddOptions<McpServerOptions>().ValidateOnStart();
+
         return services.AddMcpServer(options =>
         {
             // Without this the SDK names the server after the entry assembly.
@@ -45,9 +51,6 @@ public static class McpServiceCollectionExtensions
                 Name = ServerName,
                 Version = typeof(McpServiceCollectionExtensions).Assembly.GetName().Version?.ToString(3) ?? "0.0.0",
             };
-
-            // Tools arrive once agents authenticate; until then clients find an empty list rather than no tools capability.
-            options.Capabilities = new ServerCapabilities { Tools = new ToolsCapability() };
         }).WithRequestFilters(filters => filters.AddCallToolFilter(ToolCallRecording.Filter));
     }
 }

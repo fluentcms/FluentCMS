@@ -526,6 +526,9 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
 
+                    b.Property<int?>("PublishedVersion")
+                        .HasColumnType("integer");
+
                     b.Property<Guid>("SiteId")
                         .HasColumnType("uuid");
 
@@ -544,6 +547,8 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
 
                     b.ToTable("ContentTypes", null, t =>
                         {
+                            t.HasCheckConstraint("CK_ContentTypes_PublishedVersion", "\"PublishedVersion\" IS NULL OR \"PublishedVersion\" >= 1");
+
                             t.HasCheckConstraint("CK_ContentTypes_Version", "\"Version\" >= 1");
                         });
                 });

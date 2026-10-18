@@ -144,7 +144,72 @@ internal sealed class ChangeSetDirectory(
 
     public Task<Result<ChangeSet>> TransitionAsync(Guid changeSetId, ChangeSetState target, CancellationToken cancellationToken = default)
     {
-        return MoveAsync(changeSetId, target, set => set.TransitionTo(target), cancellationToken);
+        // No call moves a set to published without its items.
+        return target == ChangeSetState.Published
+            ? PublishAsync(changeSetId, cancellationToken)
+            : MoveAsync(changeSetId, target, set => set.TransitionTo(target), cancellationToken);
+    }
+
+    public async Task<Result<ChangeSet>> PublishAsync(Guid changeSetId, CancellationToken cancellationToken = default)
+    {
+        var stored = await ReadAsync(changeSetId, cancellationToken);
+        if (stored is null)
+        {
+            return NotFound(changeSetId);
+        }
+
+        var allowed = await permissions.CheckTransitionAsync(stored.ChangeSet, ChangeSetState.Published, cancellationToken);
+        if (!allowed.IsSuccess)
+        {
+            return Result<ChangeSet>.Failure(allowed.Errors);
+        }
+
+        var set = stored.ChangeSet;
+        var moved = set.TransitionTo(ChangeSetState.Published);
+        if (!moved.IsSuccess)
+        {
+            return Result<ChangeSet>.Failure(moved.Errors);
+        }
+
+        var items = await PublishableItemsAsync(set, cancellationToken);
+        if (!items.IsSuccess)
+        {
+            return Result<ChangeSet>.Failure(items.Errors);
+        }
+
+        await using var scope = await unitOfWork.BeginAsync(cancellationToken);
+        if (!await UpdateAsync(stored.Revision, set, cancellationToken))
+        {
+            return Conflict(set.Id);
+        }
+
+        foreach (var item in items.Value)
+        {
+            // The scope rolls back the items moved before this one.
+            if (!await MovePublishedVersionAsync(item.Operation, cancellationToken))
+            {
+                return Result<ChangeSet>.Failure(
+                    ChangeSetErrorCodes.BaseVersionStale,
+                    $"Another change set published the content type '{item.Slug}' at the same time, "
+                    + "so it is no longer at the version this change set was based on.");
+            }
+
+            var subjectType = ItemSubjectType(item.Operation.ItemKind);
+            await auditLog.AppendAsync(
+                new NewAuditEvent(item.Operation.Kind == OperationKind.Delete ? $"{subjectType}.unpublished" : $"{subjectType}.published")
+                {
+                    SubjectType = subjectType,
+                    SubjectId = item.Operation.ItemId,
+                    ChangeSetId = set.Id,
+                    Sources = set.Sources,
+                    PreviousVersionId = item.PreviousVersionId,
+                },
+                cancellationToken);
+        }
+
+        await AppendTransitionAsync(set, cancellationToken);
+
+        return await CommitAsync(scope, set, Conflict(set.Id), cancellationToken);
     }
 
     public Task<Result<ChangeSet>> RejectAsync(Guid changeSetId, string reason, CancellationToken cancellationToken = default)
@@ -238,11 +303,16 @@ internal sealed class ChangeSetDirectory(
             return Conflict(set.Id);
         }
 
-        await auditLog.AppendAsync(
-            new NewAuditEvent(TransitionOperation(set.State)) { SubjectType = SubjectType, SubjectId = set.Id, ChangeSetId = set.Id },
-            cancellationToken);
+        await AppendTransitionAsync(set, cancellationToken);
 
         return await CommitAsync(scope, set, Conflict(set.Id), cancellationToken);
+    }
+
+    private Task AppendTransitionAsync(ChangeSet set, CancellationToken cancellationToken)
+    {
+        return auditLog.AppendAsync(
+            new NewAuditEvent(TransitionOperation(set.State)) { SubjectType = SubjectType, SubjectId = set.Id, ChangeSetId = set.Id },
+            cancellationToken);
     }
 
     private async Task InsertAsync(ChangeSet set, CancellationToken cancellationToken)
@@ -409,6 +479,63 @@ internal sealed class ChangeSetDirectory(
                 + string.Join("; ", definition.Errors.Select(error => error.Message)));
     }
 
+    // The items of a set with the row of the version each is published at. Every item must still be published at its
+    // operation's base version, and a create's item not at all, so a publish never replaces a version its set has not seen.
+    private async Task<Result<List<PublishableItem>>> PublishableItemsAsync(ChangeSet set, CancellationToken cancellationToken)
+    {
+        if (set.Operations.FirstOrDefault(operation => operation.ItemKind != ItemKind.Schema) is { } other)
+        {
+            throw new InvalidOperationException(
+                $"Change set {set.Id} holds an operation on a {ItemSubjectType(other.ItemKind)} item, which nothing publishes yet.");
+        }
+
+        var ids = set.Operations.Select(operation => operation.ItemId).ToList();
+        var bases = set.Operations.Select(operation => operation.BaseVersion).OfType<int>().Distinct().ToList();
+
+        var types = await context.ContentTypes
+            .AsNoTracking()
+            .Where(type => type.SiteId == SiteId && ids.Contains(type.Id))
+            .Select(type => new { type.Id, type.Slug, type.PublishedVersion })
+            .ToDictionaryAsync(type => type.Id, cancellationToken);
+        var versions = await context.ContentTypeVersions
+            .AsNoTracking()
+            .Where(version => ids.Contains(version.ContentTypeId) && bases.Contains(version.Version))
+            .Select(version => new { version.ContentTypeId, version.Version, version.Id })
+            .ToDictionaryAsync(version => (version.ContentTypeId, version.Version), version => version.Id, cancellationToken);
+
+        var items = new List<PublishableItem>();
+        var errors = new List<Error>();
+        foreach (var operation in set.Operations)
+        {
+            // Types and versions are never deleted and an operation is checked against them when it is added.
+            var type = types.GetValueOrDefault(operation.ItemId)
+                ?? throw new InvalidOperationException($"Change set {set.Id} points at content type {operation.ItemId}, which is not stored.");
+
+            if (type.PublishedVersion != operation.BaseVersion)
+            {
+                var published = type.PublishedVersion is { } current ? $"is published at version {current}" : "is not published";
+                var based = operation.BaseVersion is { } number ? $"was based on version {number}" : "creates it";
+                errors.Add(new Error(ChangeSetErrorCodes.BaseVersionStale, $"The content type '{type.Slug}' {published}, but this change set {based}."));
+                continue;
+            }
+
+            Guid? previousVersionId = operation.BaseVersion is { } baseVersion ? versions[(operation.ItemId, baseVersion)] : null;
+            items.Add(new PublishableItem(operation, type.Slug, previousVersionId));
+        }
+
+        return errors.Count == 0 ? Result<List<PublishableItem>>.Success(items) : Result<List<PublishableItem>>.Failure(errors);
+    }
+
+    // Moves only from the base version, so a publish over the same item that committed first leaves nothing to move.
+    private async Task<bool> MovePublishedVersionAsync(ChangeOperation operation, CancellationToken cancellationToken)
+    {
+        var moved = await context.ContentTypes
+            .Where(type => type.Id == operation.ItemId && type.PublishedVersion == operation.BaseVersion)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(type => type.PublishedVersion, operation.ProposedVersion), cancellationToken);
+
+        return moved == 1;
+    }
+
     private Task<Guid?> OpenSetOfSessionAsync(Initiator initiator, string sessionId, CancellationToken cancellationToken)
     {
         var (kind, initiatorId) = InitiatorKinds.Describe(initiator);
@@ -540,4 +667,6 @@ internal sealed class ChangeSetDirectory(
     }
 
     private sealed record StoredChangeSet(ChangeSet ChangeSet, int Revision);
+
+    private sealed record PublishableItem(ChangeOperation Operation, string Slug, Guid? PreviousVersionId);
 }
