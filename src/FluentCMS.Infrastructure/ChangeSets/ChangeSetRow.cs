@@ -25,6 +25,8 @@ public sealed class ChangeSetRow
 
     public string? RejectionReason { get; set; }
 
+    public Guid? RevertsChangeSetId { get; set; }
+
     // Every write moves it on and only applies to the revision it read, so of two concurrent writers the second changes nothing.
     public int Revision { get; set; }
 }

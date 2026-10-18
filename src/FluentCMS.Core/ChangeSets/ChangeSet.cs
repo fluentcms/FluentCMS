@@ -42,6 +42,9 @@ public sealed class ChangeSet
     // Kept so the desk can offer it as rule feedback once the rule book exists (CHG-08, RUL-08).
     public string? RejectionReason { get; private set; }
 
+    // The published set this one undoes (CHG-06); null for every other set.
+    public Guid? RevertsChangeSetId { get; private set; }
+
     // Operations come later, while the set is open, so an agent can open a set before its first write (CHG-02). An empty
     // list of sources is allowed here: requiring one is a check (CHK-01), not a rule of the model.
     public static Result<ChangeSet> Open(Guid siteId, string rationale, IEnumerable<string> sources, Initiator initiator, string? sessionId = null)
@@ -87,7 +90,8 @@ public sealed class ChangeSet
         string? sessionId,
         IEnumerable<ChangeOperation> operations,
         ChangeSetState state,
-        string? rejectionReason)
+        string? rejectionReason,
+        Guid? revertsChangeSetId = null)
     {
         ArgumentNullException.ThrowIfNull(rationale);
         ArgumentNullException.ThrowIfNull(sources);
@@ -98,10 +102,37 @@ public sealed class ChangeSet
         {
             State = state,
             RejectionReason = rejectionReason,
+            RevertsChangeSetId = revertsChangeSetId,
         };
         changeSet._operations.AddRange(operations);
 
         return changeSet;
+    }
+
+    // Opens the set that undoes this published one (CHG-06): the inverse of every operation, in the same order. It names this set
+    // instead of citing sources, and holds nothing else, so publishing it restores exactly what this set changed.
+    public Result<ChangeSet> Revert(string rationale, Initiator initiator)
+    {
+        ArgumentNullException.ThrowIfNull(initiator);
+
+        if (State != ChangeSetState.Published)
+        {
+            return Result<ChangeSet>.Failure(
+                ChangeSetErrorCodes.TransitionNotAllowed,
+                $"Only a published change set can be reverted, and this one is {Describe(State)}.");
+        }
+
+        var opened = Open(SiteId, rationale, [], initiator);
+        if (!opened.IsSuccess)
+        {
+            return opened;
+        }
+
+        var revert = opened.Value;
+        revert.RevertsChangeSetId = Id;
+        revert._operations.AddRange(_operations.Select(operation => operation.Inverse()));
+
+        return Result<ChangeSet>.Success(revert);
     }
 
     // Later operations in a session may cite sources the first one did not; a source already on the set is not added twice.
@@ -136,6 +167,13 @@ public sealed class ChangeSet
             return Result.Failure(
                 ChangeSetErrorCodes.NotOpen,
                 $"Operations are added while a change set is open, and this one is {Describe(State)}.");
+        }
+
+        if (RevertsChangeSetId is { } reverted)
+        {
+            return Result.Failure(
+                ChangeSetErrorCodes.RevertFixed,
+                $"This change set reverts change set {reverted} and holds exactly what undoes it, so no operation can be added.");
         }
 
         // One operation per item keeps one diff per item and one version to restore on revert (CHG-03, CHG-06).
