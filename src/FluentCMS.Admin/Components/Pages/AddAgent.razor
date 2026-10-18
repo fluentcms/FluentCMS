@@ -1,0 +1,141 @@
+@page "/agents/new"
+@using System.Globalization
+@using FluentCMS.Admin.Components.Agents
+@using FluentCMS.Core.Agents
+@inject IAgentCredentialDirectory Directory
+@inject TimeProvider Clock
+@inject IStringLocalizer<AddAgent> L
+
+<PageTitle>@L["Add agent"]</PageTitle>
+
+<div class="max-w-xl">
+    @* Shown in the response to the post that issued it and nowhere else, so the key never sits in a URL, a redirect or the
+       browser's history, and no later page can show it again. *@
+    @if (_issued is { } issued)
+    {
+        <Card>
+            <CardHeader>
+                <CardTitle><h1>@L["Key for {0}", issued.Credential.DisplayName]</h1></CardTitle>
+                <CardDescription>@L["Copy the key now and give it to the agent. Only its hash is stored, so it cannot be shown again."]</CardDescription>
+            </CardHeader>
+            <CardContent Class="grid gap-6">
+                <div role="status" data-testid="agent-key">
+                    <FormField Label="@L["Key"]" Description="@L["Expires {0} UTC.", issued.Credential.ExpiresAt.UtcDateTime.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)]">
+                        <Input value="@issued.Key" readonly dir="ltr" autocomplete="off" spellcheck="false" Class="font-mono" />
+                    </FormField>
+                </div>
+                <a href="agents" class="@ButtonVariants.Classes(className: "w-fit")">@L["Done"]</a>
+            </CardContent>
+        </Card>
+    }
+    else
+    {
+        <Card>
+            <CardHeader>
+                <CardTitle><h1>@L["Add agent"]</h1></CardTitle>
+                <CardDescription>@L["The agent gets its own key with the scope and caps below. Agents can never approve or publish, whatever they are given here."]</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <form method="post" @onsubmit="SubmitAsync" @formname="add-agent" class="grid gap-6">
+                    <AntiforgeryToken />
+                    @if (_errors.Form is not null)
+                    {
+                        <p role="alert" class="text-sm text-destructive">@_errors.Form</p>
+                    }
+                    <FormField Label="@L["Name"]" Description="@L["Shown in the audit log next to everything the agent does."]" Error="@_errors.For(nameof(NewAgentForm.DisplayName))">
+                        <Input name="Form.DisplayName" value="@Form.DisplayName" autocomplete="off" required />
+                    </FormField>
+                    <FormField Label="@L["Valid for (days)"]" Error="@_errors.For(nameof(NewAgentForm.ValidForDays))">
+                        <Input Type="number" name="Form.ValidForDays" value="@Form.ValidForDays" min="1" max="@NewAgentForm.MaxValidForDays" inputmode="numeric" required />
+                    </FormField>
+
+                    <fieldset class="grid gap-6">
+                        <legend class="mb-4 text-base font-semibold">@L["Scope"]</legend>
+                        <FormField Label="@L["Content types"]" Description="@L["Slugs separated by commas, such as product, category. Leave empty for every type."]" Error="@_errors.For(nameof(NewAgentForm.Types))">
+                            <Input name="Form.Types" value="@Form.Types" autocomplete="off" dir="ltr" />
+                        </FormField>
+                        <FormField Label="@L["Fields"]" Description="@L["Type and field joined by a dot, separated by commas, such as product.price. A type named here is limited to its listed fields. Leave empty for every field."]" Error="@_errors.For(nameof(NewAgentForm.Fields))">
+                            <Input name="Form.Fields" value="@Form.Fields" autocomplete="off" dir="ltr" />
+                        </FormField>
+                        <fieldset class="grid gap-3" aria-describedby="@(_errors.For(NewAgentErrors.Operations) is null ? null : "operations-error")">
+                            <legend class="mb-2 text-sm leading-none font-medium">@L["Operations"]</legend>
+                            <div class="flex flex-wrap gap-x-6 gap-y-3">
+                                @foreach (var (name, label, ticked) in OperationOptions())
+                                {
+                                    <label class="flex items-center gap-2 text-sm">
+                                        <Checkbox name="@($"Form.{name}")" value="true" checked="@ticked" />
+                                        @label
+                                    </label>
+                                }
+                            </div>
+                            @if (_errors.For(NewAgentErrors.Operations) is { } operationsError)
+                            {
+                                <p id="operations-error" class="text-sm text-destructive">@operationsError</p>
+                            }
+                        </fieldset>
+                    </fieldset>
+
+                    <fieldset class="grid gap-6">
+                        <legend class="mb-4 text-base font-semibold">@L["Caps"]</legend>
+                        <FormField Label="@L["Tool calls per hour"]" Error="@_errors.For(nameof(NewAgentForm.CallsPerHour))">
+                            <Input Type="number" name="Form.CallsPerHour" value="@Form.CallsPerHour" min="1" inputmode="numeric" required />
+                        </FormField>
+                        <FormField Label="@L["LLM spend per day (US dollars)"]" Description="@L["0 allows no model spend."]" Error="@_errors.For(nameof(NewAgentForm.LlmSpendPerDay))">
+                            <Input Type="number" name="Form.LlmSpendPerDay" value="@Form.LlmSpendPerDay" min="0" step="0.01" inputmode="decimal" required />
+                        </FormField>
+                        <FormField Label="@L["Items per change set"]" Error="@_errors.For(nameof(NewAgentForm.ItemsPerChangeSet))">
+                            <Input Type="number" name="Form.ItemsPerChangeSet" value="@Form.ItemsPerChangeSet" min="1" inputmode="numeric" required />
+                        </FormField>
+                        <FormField Label="@L["Change sets per day"]" Error="@_errors.For(nameof(NewAgentForm.ChangeSetsPerDay))">
+                            <Input Type="number" name="Form.ChangeSetsPerDay" value="@Form.ChangeSetsPerDay" min="1" inputmode="numeric" required />
+                        </FormField>
+                    </fieldset>
+
+                    <div class="flex gap-2">
+                        <Button Type="submit">@L["Add agent"]</Button>
+                        <a href="agents" class="@ButtonVariants.Classes("outline")">@L["Cancel"]</a>
+                    </div>
+                </form>
+            </CardContent>
+        </Card>
+    }
+</div>
+
+@code {
+    private readonly NewAgentErrors _errors = new();
+    private IssuedAgentCredential? _issued;
+
+    [SupplyParameterFromForm(FormName = "add-agent")]
+    private NewAgentForm Form { get; set; } = default!;
+
+    protected override void OnInitialized()
+    {
+        Form ??= NewAgentForm.Defaults();
+    }
+
+    private async Task SubmitAsync()
+    {
+        var credential = _errors.Read(Form, Clock.GetUtcNow(), L);
+        if (credential is null)
+        {
+            return;
+        }
+
+        var issued = await Directory.IssueAsync(credential);
+        if (!issued.IsSuccess)
+        {
+            _errors.Report(issued.Errors, L);
+            return;
+        }
+
+        _issued = issued.Value;
+    }
+
+    private IEnumerable<(string Name, string Label, bool Ticked)> OperationOptions()
+    {
+        yield return (nameof(NewAgentForm.Read), L["Read"], Form.Read);
+        yield return (nameof(NewAgentForm.Create), L["Create"], Form.Create);
+        yield return (nameof(NewAgentForm.Update), L["Update"], Form.Update);
+        yield return (nameof(NewAgentForm.Delete), L["Delete"], Form.Delete);
+    }
+}
