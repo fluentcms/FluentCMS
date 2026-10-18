@@ -166,6 +166,32 @@ public abstract class FieldTypeConformanceTests : IDisposable
         }
     }
 
+    // Where used and resolved views read the reference index (CNT-05, ADR-0005), so a type that points somewhere must say where
+    // every value points, and a type that declares no targets points at no entry.
+    [Fact]
+    public void Lists_the_references_of_its_example_against_the_targets_it_declares()
+    {
+        foreach (var json in AcceptedSettings)
+        {
+            var settings = Parse(json);
+            var targets = Registry.ReferenceTargets(FieldTypeName, settings);
+            var example = Parse(Registry.DescribeValue(FieldTypeName, settings).Example?.ToJsonString() ?? "null");
+
+            var entries = Registry.References(FieldTypeName, settings, example).Where(reference => reference.Kind == ReferenceKind.Entry).ToList();
+
+            if (targets.Count > 0)
+            {
+                Assert.True(entries.Count > 0, $"{json} declares targets but its example lists no reference.");
+            }
+
+            Assert.All(entries, reference =>
+            {
+                Assert.Contains(reference.Target, targets);
+                Assert.True(reference.Pointer.Length == 0 || reference.Pointer.StartsWith('/'), $"'{reference.Pointer}' is not a JSON Pointer.");
+            });
+        }
+    }
+
     // A value comes from an agent too; the answer is an error, never an exception.
     [Fact]
     public void Never_throws_whatever_a_value_holds()

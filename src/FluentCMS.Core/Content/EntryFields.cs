@@ -65,6 +65,32 @@ public static class EntryFields
         return errors.Count == 0 ? Result<JsonElement>.Success(Write(stored)) : Result<JsonElement>.Failure(errors);
     }
 
+    // Every reference a validated document makes, with pointers from the document's root, such as /price, /prices/2 or, inside an
+    // entity's fact, /category/value. Field names need no escaping in a pointer (SchemaNames.IsFieldName).
+    public static IReadOnlyList<ValueReference> References(JsonElement fields, ContentTypeDefinition definition, FieldTypeRegistry fieldTypes)
+    {
+        ArgumentNullException.ThrowIfNull(definition);
+        ArgumentNullException.ThrowIfNull(fieldTypes);
+
+        var references = new List<ValueReference>();
+        foreach (var field in definition.Fields)
+        {
+            if (!fields.TryGetProperty(field.Name, out var value) || value.ValueKind == JsonValueKind.Null)
+            {
+                continue;
+            }
+
+            var (pointer, stored) = definition.IsEntity
+                ? ($"/{field.Name}/{FactMetadata.Value}", value.GetProperty(FactMetadata.Value))
+                : ($"/{field.Name}", value);
+
+            references.AddRange(fieldTypes.References(field.Type, field.Settings, stored)
+                .Select(reference => reference with { Pointer = pointer + reference.Pointer }));
+        }
+
+        return references;
+    }
+
     private static string UnknownField(string name, ContentTypeDefinition definition)
     {
         return definition.Fields.Count == 0

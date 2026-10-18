@@ -82,4 +82,11 @@ public sealed class FieldTypeRegistry
 
         return Find(type)?.ReferenceTargets(settings, this) ?? [];
     }
+
+    public IReadOnlyList<ValueReference> References(string type, JsonElement settings, JsonElement value)
+    {
+        ArgumentNullException.ThrowIfNull(type);
+
+        return Find(type)?.References(value, settings, this) ?? [];
+    }
 }
