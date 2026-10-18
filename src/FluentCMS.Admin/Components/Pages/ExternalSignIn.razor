@@ -1,0 +1,33 @@
+@page "/sign-in/external"
+@layout AccountLayout
+@attribute [AllowAnonymous]
+@inject IUserSignIn UserSignIn
+@inject NavigationManager Navigation
+@inject IStringLocalizer<ExternalSignIn> L
+
+@* Where the browser returns from the external provider. A success moves on at once; only a refusal renders. *@
+<PageTitle>@L["Sign-in did not work"]</PageTitle>
+
+<Card data-testid="external-sign-in-error">
+    <CardHeader>
+        <CardTitle><h1>@L["Sign-in did not work"]</h1></CardTitle>
+        <CardDescription>@L["Your account at the identity provider needs a verified email that belongs to an active FluentCMS user. Ask an administrator to add you, then try again."]</CardDescription>
+    </CardHeader>
+    <CardContent>
+        <a href="sign-in" class="@ButtonVariants.Classes("outline", className: "w-full")">@L["Back to sign in"]</a>
+    </CardContent>
+</Card>
+
+@code {
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await UserSignIn.SignInExternalAsync();
+        if (result.IsSuccess)
+        {
+            Navigation.NavigateTo(AdminRoutes.IsLocal(ReturnUrl) ? ReturnUrl! : "");
+        }
+    }
+}

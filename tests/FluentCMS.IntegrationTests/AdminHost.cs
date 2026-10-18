@@ -61,13 +61,15 @@ internal sealed partial class AdminHost : IAsyncDisposable
         TemporaryInstall install,
         string[]? args = null,
         IDictionary<string, string?>? settings = null,
-        CookieContainer? cookies = null)
+        CookieContainer? cookies = null,
+        Action<WebApplicationBuilder>? configure = null)
     {
         var app = FluentCmsHost.BuildWebApplication(args ?? [], builder =>
         {
             builder.WebHost.UseUrls("http://127.0.0.1:0");
             builder.Configuration.AddInMemoryCollection(install.Configuration);
             builder.Configuration.AddInMemoryCollection(settings ?? new Dictionary<string, string?>());
+            configure?.Invoke(builder);
         });
 
         await app.StartAsync();
@@ -82,7 +84,8 @@ internal sealed partial class AdminHost : IAsyncDisposable
     }
 
     // Fetches the page with the form first, as a browser would, for the anti-forgery cookie and the token that goes with it.
-    public async Task<HttpResponseMessage> SubmitAsync(string path, string handler, IReadOnlyDictionary<string, string> fields, string? from = null)
+    // A null handler is for a form that posts to a host endpoint rather than to a page's named form.
+    public async Task<HttpResponseMessage> SubmitAsync(string path, string? handler, IReadOnlyDictionary<string, string> fields, string? from = null)
     {
         var page = await Client.GetStringAsync(from ?? path);
         var token = AntiforgeryToken().Match(page);
@@ -91,8 +94,11 @@ internal sealed partial class AdminHost : IAsyncDisposable
         var form = new Dictionary<string, string>(fields)
         {
             ["__RequestVerificationToken"] = WebUtility.HtmlDecode(token.Groups[1].Value),
-            ["_handler"] = handler,
         };
+        if (handler is not null)
+        {
+            form["_handler"] = handler;
+        }
 
         return await Client.PostAsync(path, new FormUrlEncodedContent(form));
     }

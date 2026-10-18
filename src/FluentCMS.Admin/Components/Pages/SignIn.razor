@@ -14,7 +14,7 @@
         <CardTitle><h1>@L["Sign in"]</h1></CardTitle>
         <CardDescription>@L["Enter your email and password to sign in to the admin."]</CardDescription>
     </CardHeader>
-    <CardContent>
+    <CardContent Class="grid gap-6">
         <form method="post" @onsubmit="SubmitAsync" @formname="sign-in" class="grid gap-6">
             <AntiforgeryToken />
             @if (_failed)
@@ -29,11 +29,28 @@
             </FormField>
             <Button Type="submit" Class="w-full">@L["Sign in"]</Button>
         </form>
+        @if (_providers.Count > 0)
+        {
+            <div class="relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t after:border-border">
+                <span class="relative z-10 bg-card px-2 text-muted-foreground">@L["or"]</span>
+            </div>
+            @foreach (var provider in _providers)
+            {
+                @* A plain form: the host's endpoint starts the redirect to the provider, which a page cannot do. *@
+                <form method="post" action="sign-in/external/start" class="grid">
+                    <AntiforgeryToken />
+                    <input type="hidden" name="provider" value="@provider.Scheme" />
+                    <input type="hidden" name="returnUrl" value="@(AdminRoutes.IsLocal(ReturnUrl) ? ReturnUrl : null)" />
+                    <Button Type="submit" Variant="outline" Class="w-full">@L["Sign in with {0}", provider.DisplayName]</Button>
+                </form>
+            }
+        }
     </CardContent>
 </Card>
 
 @code {
     private bool _failed;
+    private IReadOnlyList<ExternalProvider> _providers = [];
 
     [SupplyParameterFromForm(FormName = "sign-in")]
     private SignInForm Form { get; set; } = default!;
@@ -50,6 +67,8 @@
         {
             Navigation.NavigateTo("setup");
         }
+
+        _providers = await UserSignIn.GetExternalProvidersAsync();
     }
 
     private async Task SubmitAsync()
