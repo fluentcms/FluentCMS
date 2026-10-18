@@ -2,6 +2,7 @@ using System.Net;
 using FluentCMS.Admin;
 using FluentCMS.Host;
 using FluentCMS.Host.Jobs;
+using FluentCMS.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.Extensions.Configuration;
@@ -117,6 +118,7 @@ public sealed class HostTests
 
         Assert.Null(host.Services.GetService<IServer>());
         Assert.Contains(host.Services.GetServices<IHostedService>(), service => service is JobQueueWorker);
+        Assert.Contains(host.Services.GetServices<IHostedService>(), service => service is DatabaseMigrator);
 
         var run = host.RunAsync();
         var finished = await Task.WhenAny(run, Task.Delay(TimeSpan.FromSeconds(30)));
