@@ -32,4 +32,12 @@ public interface IFieldType
     {
         return [];
     }
+
+    // The references one stored value makes, which the reference index holds so nothing reads them out of the JSON (CNT-03,
+    // ADR-0005). A type that declares ReferenceTargets returns one, to one of those targets, for every place its value points at.
+    // Only called with settings and a value that passed validation.
+    IReadOnlyList<ValueReference> References(JsonElement value, JsonElement settings, FieldTypeRegistry fieldTypes)
+    {
+        return [];
+    }
 }

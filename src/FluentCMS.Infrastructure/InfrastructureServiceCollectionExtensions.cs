@@ -83,6 +83,7 @@ public static class InfrastructureServiceCollectionExtensions
     private static void AddContent(IServiceCollection services)
     {
         services.AddScoped<IEntryDirectory, EntryDirectory>();
+        services.AddScoped<IWhereUsed, WhereUsed>();
     }
 
     private static void AddIdentity(IServiceCollection services)

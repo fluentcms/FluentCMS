@@ -187,6 +187,11 @@ public sealed class LinkFieldType : IFieldType
         return [new ReferenceTarget(settings.GetProperty("to").GetString()!)];
     }
 
+    public IReadOnlyList<ValueReference> References(JsonElement value, JsonElement settings, FieldTypeRegistry fieldTypes)
+    {
+        return [new ValueReference(string.Empty, ReferenceKind.Entry, value.GetGuid(), ReferenceTargets(settings, fieldTypes)[0])];
+    }
+
     public IReadOnlyList<Error> ValidateValue(JsonElement value, JsonElement settings, FieldTypeRegistry fieldTypes)
     {
         return value.ValueKind == JsonValueKind.String && Guid.TryParse(value.GetString(), out _)

@@ -219,6 +219,14 @@ public sealed class MediaFieldTypeTests : FieldTypeConformanceTests
         ("{}", "\"0199a000000070008000000000000001\""),
         ("{}", "1"),
     ];
+
+    [Fact]
+    public void A_value_is_one_reference_to_an_asset()
+    {
+        var id = Guid.CreateVersion7();
+
+        Assert.Equal([new ValueReference("", ReferenceKind.Media, id)], Registry.References(FieldTypeName, Parse("{}"), Parse($"\"{id}\"")));
+    }
 }
 
 public sealed class ReferenceFieldTypeTests : FieldTypeConformanceTests
@@ -262,6 +270,16 @@ public sealed class ReferenceFieldTypeTests : FieldTypeConformanceTests
 
         Assert.StartsWith("The value must be the id of an entry of the content type 'product', a UUID", entry.Message);
         Assert.StartsWith("The value must be the id of a 'product' entity, a UUID", entity.Message);
+    }
+
+    [Fact]
+    public void A_value_is_one_reference_to_its_target()
+    {
+        var id = Guid.CreateVersion7();
+
+        Assert.Equal(
+            [new ValueReference("", ReferenceKind.Entry, id, new ReferenceTarget("product", "price"))],
+            Registry.References(FieldTypeName, Parse("""{"target": "product", "field": "price"}"""), Parse($"\"{id}\"")));
     }
 
     [Fact]
@@ -329,6 +347,25 @@ public sealed class ListFieldTypeTests : FieldTypeConformanceTests
             [new ReferenceTarget("product", "price")],
             Registry.ReferenceTargets(FieldTypeName, Parse("""{"itemType": "reference", "itemSettings": {"target": "product", "field": "price"}}""")));
         Assert.Empty(Registry.ReferenceTargets(FieldTypeName, Parse("""{"itemType": "text"}""")));
+    }
+
+    [Fact]
+    public void Each_item_reference_points_at_its_position()
+    {
+        var (first, second) = (Guid.CreateVersion7(), Guid.CreateVersion7());
+
+        var references = Registry.References(
+            FieldTypeName,
+            Parse("""{"itemType": "reference", "itemSettings": {"target": "product"}}"""),
+            Parse($"[\"{first}\", \"{second}\"]"));
+
+        Assert.Equal(
+            [
+                new ValueReference("/0", ReferenceKind.Entry, first, new ReferenceTarget("product")),
+                new ValueReference("/1", ReferenceKind.Entry, second, new ReferenceTarget("product")),
+            ],
+            references);
+        Assert.Empty(Registry.References(FieldTypeName, Parse("""{"itemType": "text"}"""), Parse("""["a"]""")));
     }
 
     [Fact]
