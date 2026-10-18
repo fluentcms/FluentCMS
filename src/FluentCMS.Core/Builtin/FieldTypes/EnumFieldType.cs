@@ -18,6 +18,15 @@ internal sealed class EnumFieldType : IFieldType
         return reader.Errors();
     }
 
+    public IReadOnlyList<Error> ValidateValue(JsonElement value, JsonElement settings, FieldTypeRegistry fieldTypes)
+    {
+        var values = new FieldSettingsReader(Name, settings).RequiredStringList("values") ?? [];
+
+        return value.ValueKind == JsonValueKind.String && values.Contains(value.GetString()!, StringComparer.Ordinal)
+            ? []
+            : Values.Invalid($"The value must be one of: {string.Join(", ", values)}.");
+    }
+
     public FieldValueDescription DescribeValue(JsonElement settings, FieldTypeRegistry fieldTypes)
     {
         var values = new FieldSettingsReader(Name, settings).RequiredStringList("values") ?? [];

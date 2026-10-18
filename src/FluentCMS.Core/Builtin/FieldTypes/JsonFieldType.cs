@@ -15,6 +15,11 @@ internal sealed class JsonFieldType : IFieldType
         return new FieldSettingsReader(Name, settings).Errors();
     }
 
+    public IReadOnlyList<Error> ValidateValue(JsonElement value, JsonElement settings, FieldTypeRegistry fieldTypes)
+    {
+        return [];
+    }
+
     public FieldValueDescription DescribeValue(JsonElement settings, FieldTypeRegistry fieldTypes)
     {
         return new FieldValueDescription(new JsonObject(), new JsonObject { ["key"] = "value" }, "Any JSON value.");

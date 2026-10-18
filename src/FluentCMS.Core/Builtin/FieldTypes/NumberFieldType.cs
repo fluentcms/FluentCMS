@@ -35,6 +35,37 @@ internal sealed class NumberFieldType : IFieldType
         return reader.Errors();
     }
 
+    public IReadOnlyList<Error> ValidateValue(JsonElement value, JsonElement settings, FieldTypeRegistry fieldTypes)
+    {
+        var reader = new FieldSettingsReader(Name, settings);
+        var integer = reader.Flag("integer");
+        var min = reader.Number("min");
+        var max = reader.Number("max");
+
+        if (value.ValueKind != JsonValueKind.Number)
+        {
+            return Values.Invalid(integer ? "The value must be a whole number." : "The value must be a number.");
+        }
+
+        // Settings are read as decimals too, so a value is compared with its limits exactly.
+        if (!value.TryGetDecimal(out var number))
+        {
+            return Values.Invalid($"The value {value.GetRawText()} is too large or too precise to store.");
+        }
+
+        if (integer && number != decimal.Truncate(number))
+        {
+            return Values.Invalid("The value must be a whole number.");
+        }
+
+        if (number < min)
+        {
+            return Values.Invalid(string.Create(CultureInfo.InvariantCulture, $"The value must be at least {min}."));
+        }
+
+        return number > max ? Values.Invalid(string.Create(CultureInfo.InvariantCulture, $"The value must be at most {max}.")) : [];
+    }
+
     public FieldValueDescription DescribeValue(JsonElement settings, FieldTypeRegistry fieldTypes)
     {
         var reader = new FieldSettingsReader(Name, settings);
