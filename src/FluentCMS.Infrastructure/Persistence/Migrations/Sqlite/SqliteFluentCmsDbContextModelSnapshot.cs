@@ -83,6 +83,50 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                         });
                 });
 
+            modelBuilder.Entity("FluentCMS.Infrastructure.Agents.ToolCallRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("AgentCredentialId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AgentName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<TimeSpan>("Duration")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Model")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TaskId")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("Timestamp")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Tool")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AgentCredentialId", "Timestamp");
+
+                    b.ToTable("ToolCalls", (string)null);
+                });
+
             modelBuilder.Entity("FluentCMS.Infrastructure.Audit.AuditEventRow", b =>
                 {
                     b.Property<Guid>("Id")
@@ -302,9 +346,6 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                         .HasColumnType("TEXT");
 
                     b.Property<Guid>("ContentTypeId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTimeOffset?>("DeletedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<int>("LatestVersion")
@@ -643,6 +684,15 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("UserTokens", (string)null);
+                });
+
+            modelBuilder.Entity("FluentCMS.Infrastructure.Agents.ToolCallRow", b =>
+                {
+                    b.HasOne("FluentCMS.Infrastructure.Agents.AgentCredentialRow", null)
+                        .WithMany()
+                        .HasForeignKey("AgentCredentialId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("FluentCMS.Infrastructure.ChangeSets.ChangeSetOperationRow", b =>
