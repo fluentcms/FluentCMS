@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
 {
     [DbContext(typeof(SqliteFluentCmsDbContext))]
-    [Migration("20261018212456_ContentTypePublishedVersion")]
+    [Migration("20261018215549_ContentTypePublishedVersion")]
     partial class ContentTypePublishedVersion
     {
         /// <inheritdoc />
@@ -19,6 +19,72 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.13");
+
+            modelBuilder.Entity("FluentCMS.Infrastructure.Agents.AgentCredentialRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<TimeSpan>("CallPeriod")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("CallsPerPeriod")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("ChangeSetsPerDay")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("TEXT");
+
+                    b.PrimitiveCollection<string>("Fields")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("IssuedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ItemsPerChangeSet")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<byte[]>("KeyHash")
+                        .IsRequired()
+                        .HasColumnType("BLOB");
+
+                    b.Property<decimal>("LlmSpendPerPeriod")
+                        .HasColumnType("TEXT");
+
+                    b.Property<TimeSpan>("LlmSpendPeriod")
+                        .HasColumnType("TEXT");
+
+                    b.PrimitiveCollection<string>("Operations")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("TEXT");
+
+                    b.PrimitiveCollection<string>("Sites")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.PrimitiveCollection<string>("Types")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("KeyHash")
+                        .IsUnique();
+
+                    b.ToTable("AgentCredentials", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_AgentCredentials_Caps", "\"CallsPerPeriod\" >= 1 AND \"ItemsPerChangeSet\" >= 1 AND \"ChangeSetsPerDay\" >= 1");
+                        });
+                });
 
             modelBuilder.Entity("FluentCMS.Infrastructure.Audit.AuditEventRow", b =>
                 {
