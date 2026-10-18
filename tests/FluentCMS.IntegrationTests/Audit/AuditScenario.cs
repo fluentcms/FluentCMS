@@ -60,8 +60,12 @@ internal sealed class AuditScenario : IAsyncDisposable
         return await read.Value.ToListAsync();
     }
 
-    public async Task<string> ExportAsync(AuditQuery query, AuditExportFormat format)
+    // An export records itself as Amir, at the time given or at the time of the last append.
+    public async Task<string> ExportAsync(AuditQuery query, AuditExportFormat format, DateTimeOffset? at = null)
     {
+        _clock.Now = at ?? _clock.Now;
+        _initiator.Current = Amir;
+
         await using var scope = _services.CreateAsyncScope();
         using var destination = new MemoryStream();
         var exported = await scope.ServiceProvider.GetRequiredService<IAuditExporter>().ExportAsync(query, format, destination);
