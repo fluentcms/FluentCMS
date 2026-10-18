@@ -376,12 +376,29 @@ public sealed class ChangeSetDirectoryTests
     }
 
     // Submitting and reopening are the caller's own moves; the others are made as a person, as the checks and the desk will.
-    private static Task<Result<ChangeSet>> MoveAsync(ChangeSetScenario scenario, Guid id, ChangeSetState state)
+    private static async Task<Result<ChangeSet>> MoveAsync(ChangeSetScenario scenario, Guid id, ChangeSetState state)
     {
+        // A set is reverted by publishing its revert, which moves it in the same unit of work; a person makes every step.
+        if (state == ChangeSetState.Reverted)
+        {
+            var caller = scenario.Initiator;
+            scenario.Initiator = Amir;
+            try
+            {
+                var revert = (await scenario.RunAsync(directory => directory.RevertAsync(id, "The sync used the wrong export."))).Value;
+                await scenario.PublishAsync(revert.Id);
+                return await scenario.RunAsync(directory => directory.GetAsync(id));
+            }
+            finally
+            {
+                scenario.Initiator = caller;
+            }
+        }
+
         Func<IChangeSetDirectory, Task<Result<ChangeSet>>> move = directory => state == ChangeSetState.Rejected
             ? directory.RejectAsync(id, "The price has no source.")
             : directory.TransitionAsync(id, state);
 
-        return state is ChangeSetState.ChecksRunning or ChangeSetState.Open ? scenario.RunAsync(move) : scenario.AsPersonAsync(move);
+        return state is ChangeSetState.ChecksRunning or ChangeSetState.Open ? await scenario.RunAsync(move) : await scenario.AsPersonAsync(move);
     }
 }

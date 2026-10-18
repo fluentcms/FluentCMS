@@ -140,7 +140,7 @@ internal sealed class ChangeSetDirectory(
 
         await using var scope = await unitOfWork.BeginAsync(cancellationToken);
         await InsertAsync(set, cancellationToken);
-        await InsertOperationAsync(set, previousVersion.Value, cancellationToken);
+        await InsertOperationAsync(set, set.Operations.Count - 1, previousVersion.Value, cancellationToken);
 
         // A concurrent first operation of the same session that committed first trips the one-open-set index.
         return await CommitAsync(
@@ -154,10 +154,15 @@ internal sealed class ChangeSetDirectory(
 
     public Task<Result<ChangeSet>> TransitionAsync(Guid changeSetId, ChangeSetState target, CancellationToken cancellationToken = default)
     {
-        // No call moves a set to published without its items.
-        return target == ChangeSetState.Published
-            ? PublishAsync(changeSetId, cancellationToken)
-            : MoveAsync(changeSetId, target, set => set.TransitionTo(target), cancellationToken);
+        // No call moves a set to published or reverted without its items.
+        return target switch
+        {
+            ChangeSetState.Published => PublishAsync(changeSetId, cancellationToken),
+            ChangeSetState.Reverted => MoveAsync(changeSetId, target, _ => Result.Failure(
+                ChangeSetErrorCodes.TransitionNotAllowed,
+                "A change set is reverted by publishing the change set that reverting it opens; revert it instead."), cancellationToken),
+            _ => MoveAsync(changeSetId, target, set => set.TransitionTo(target), cancellationToken),
+        };
     }
 
     public async Task<Result<ChangeSet>> PublishAsync(Guid changeSetId, CancellationToken cancellationToken = default)
@@ -187,10 +192,24 @@ internal sealed class ChangeSetDirectory(
             return Result<ChangeSet>.Failure(items.Errors);
         }
 
+        // A revert moves the set it undoes to reverted in the same unit of work (CHG-06).
+        var reverted = set.RevertsChangeSetId is { } revertedId ? await ReadAsync(revertedId, cancellationToken) : null;
+        if (reverted is not null && !reverted.ChangeSet.TransitionTo(ChangeSetState.Reverted).IsSuccess)
+        {
+            return Result<ChangeSet>.Failure(
+                ChangeSetErrorCodes.TransitionNotAllowed,
+                $"This change set reverts change set {reverted.ChangeSet.Id}, which is no longer published, so there is nothing left to revert.");
+        }
+
         await using var scope = await unitOfWork.BeginAsync(cancellationToken);
         if (!await UpdateAsync(stored.Revision, set, cancellationToken))
         {
             return Conflict(set.Id);
+        }
+
+        if (reverted is not null && !await UpdateAsync(reverted.Revision, reverted.ChangeSet, cancellationToken))
+        {
+            return Conflict(reverted.ChangeSet.Id);
         }
 
         foreach (var item in items.Value)
@@ -218,8 +237,52 @@ internal sealed class ChangeSetDirectory(
         }
 
         await AppendTransitionAsync(set, cancellationToken);
+        if (reverted is not null)
+        {
+            await AppendTransitionAsync(reverted.ChangeSet, cancellationToken);
+        }
 
         return await CommitAsync(scope, set, Conflict(set.Id), cancellationToken);
+    }
+
+    public async Task<Result<ChangeSet>> RevertAsync(Guid changeSetId, string rationale, CancellationToken cancellationToken = default)
+    {
+        var stored = await ReadAsync(changeSetId, cancellationToken);
+        if (stored is null)
+        {
+            return NotFound(changeSetId);
+        }
+
+        // Reverting changes what is live, as publishing does, so only a person reverts, and people have no caps (MCP-06).
+        var allowed = await permissions.CheckTransitionAsync(stored.ChangeSet, ChangeSetState.Reverted, cancellationToken);
+        if (!allowed.IsSuccess)
+        {
+            return Result<ChangeSet>.Failure(allowed.Errors);
+        }
+
+        var opened = stored.ChangeSet.Revert(rationale, Initiator());
+        if (!opened.IsSuccess)
+        {
+            return opened;
+        }
+
+        // The revert publishes over the versions the original published, so an item that moved on since fails it here already.
+        var revert = opened.Value;
+        var items = await PublishableItemsAsync(revert, cancellationToken);
+        if (!items.IsSuccess)
+        {
+            return Result<ChangeSet>.Failure(items.Errors);
+        }
+
+
+        await using var scope = await unitOfWork.BeginAsync(cancellationToken);
+        await InsertAsync(revert, cancellationToken);
+        for (var position = 0; position < revert.Operations.Count; position++)
+        {
+            await InsertOperationAsync(revert, position, items.Value[position].PreviousVersionId, cancellationToken);
+        }
+
+        return await CommitAsync(scope, revert, Conflict(revert.Id), cancellationToken);
     }
 
     public Task<Result<ChangeSet>> RejectAsync(Guid changeSetId, string reason, CancellationToken cancellationToken = default)
@@ -267,7 +330,7 @@ internal sealed class ChangeSetDirectory(
             return Conflict(set.Id);
         }
 
-        await InsertOperationAsync(set, previousVersion.Value, cancellationToken);
+        await InsertOperationAsync(set, set.Operations.Count - 1, previousVersion.Value, cancellationToken);
 
         return await CommitAsync(scope, set, Conflict(set.Id), cancellationToken);
     }
@@ -340,6 +403,7 @@ internal sealed class ChangeSetDirectory(
             InitiatorName = set.Initiator.DisplayName,
             SessionId = set.SessionId,
             State = set.State,
+            RevertsChangeSetId = set.RevertsChangeSetId,
         });
 
         await auditLog.AppendAsync(
@@ -347,16 +411,16 @@ internal sealed class ChangeSetDirectory(
             cancellationToken);
     }
 
-    // The newest operation of the set, with the stored version it was based on as the event's previous version (AUD-01).
-    private async Task InsertOperationAsync(ChangeSet set, Guid? previousVersionId, CancellationToken cancellationToken)
+    // An operation of the set, with the stored version it was based on as the event's previous version (AUD-01).
+    private async Task InsertOperationAsync(ChangeSet set, int position, Guid? previousVersionId, CancellationToken cancellationToken)
     {
-        var operation = set.Operations[^1];
+        var operation = set.Operations[position];
 
         context.ChangeSetOperations.Add(new ChangeSetOperationRow
         {
             Id = Guid.CreateVersion7(),
             ChangeSetId = set.Id,
-            Position = set.Operations.Count - 1,
+            Position = position,
             Kind = operation.Kind,
             ItemKind = operation.ItemKind,
             ItemId = operation.ItemId,
@@ -584,7 +648,8 @@ internal sealed class ChangeSetDirectory(
                 operation.BaseVersion,
                 operation.ProposedVersion)),
             row.State,
-            row.RejectionReason);
+            row.RejectionReason,
+            row.RevertsChangeSetId);
 
         return new StoredChangeSet(set, row.Revision);
     }

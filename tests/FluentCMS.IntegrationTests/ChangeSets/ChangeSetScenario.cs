@@ -174,17 +174,26 @@ internal sealed class ChangeSetScenario : IAsyncDisposable
     // Opened with the operations, submitted and approved, the way routing approves a set without review.
     public async Task<ChangeSet> ApproveAsync(params ChangeOperation[] operations)
     {
-        var changeSet = await OpenAsync(operations);
-        Assert.True((await RunAsync(directory => directory.TransitionAsync(changeSet.Id, ChangeSetState.ChecksRunning))).IsSuccess);
+        return await ApproveAsync((await OpenAsync(operations)).Id);
+    }
 
-        return (await AsPersonAsync(directory => directory.TransitionAsync(changeSet.Id, ChangeSetState.Approved))).Value;
+    public async Task<ChangeSet> ApproveAsync(Guid changeSetId)
+    {
+        Assert.True((await RunAsync(directory => directory.TransitionAsync(changeSetId, ChangeSetState.ChecksRunning))).IsSuccess);
+
+        return (await AsPersonAsync(directory => directory.TransitionAsync(changeSetId, ChangeSetState.Approved))).Value;
     }
 
     // Approved and published with the operations, so later sets can be based on the versions they publish.
     public async Task<ChangeSet> PublishAsync(params ChangeOperation[] operations)
     {
-        var changeSet = await ApproveAsync(operations);
-        var published = await AsPersonAsync(directory => directory.PublishAsync(changeSet.Id));
+        return await PublishAsync((await OpenAsync(operations)).Id);
+    }
+
+    public async Task<ChangeSet> PublishAsync(Guid changeSetId)
+    {
+        await ApproveAsync(changeSetId);
+        var published = await AsPersonAsync(directory => directory.PublishAsync(changeSetId));
         Assert.True(published.IsSuccess, string.Join("; ", published.Errors.Select(error => error.Message)));
 
         return published.Value;
