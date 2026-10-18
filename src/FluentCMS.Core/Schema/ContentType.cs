@@ -85,10 +85,20 @@ public sealed class ContentType
         ArgumentNullException.ThrowIfNull(definition);
         ArgumentNullException.ThrowIfNull(fieldTypes);
 
-        var validation = definition.Validate(fieldTypes);
+        var errors = new List<Error>();
 
-        return validation.IsSuccess
+        // Dropping the flag would strip the source, owner and validity from every fact stored under this type (SCH-03).
+        if (Definition.IsEntity && !definition.IsEntity)
+        {
+            errors.Add(new Error(
+                SchemaErrorCodes.EntityFlagRemoved,
+                $"The content type '{Slug}' is an entity type whose fields carry source, owner and validity, so a revision must keep \"entity\": true."));
+        }
+
+        errors.AddRange(definition.Validate(fieldTypes).Errors);
+
+        return errors.Count == 0
             ? Result<ContentType>.Success(new ContentType(Id, SiteId, Name, Slug, Version + 1, definition))
-            : Result<ContentType>.Failure(validation.Errors);
+            : Result<ContentType>.Failure(errors);
     }
 }

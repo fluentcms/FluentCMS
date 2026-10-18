@@ -17,9 +17,9 @@ public interface IFieldType
     // Nested types, such as the items of a list, are checked through the registry.
     IReadOnlyList<Error> ValidateSettings(JsonElement settings, FieldTypeRegistry fieldTypes);
 
-    // The slugs of the content types a field of this type points at, so the schema can check that they exist.
+    // What a field of this type points at, so the schema can check that the types and fields exist (SCH-04).
     // Only called with settings that passed ValidateSettings.
-    IReadOnlyList<string> ReferencedTypes(JsonElement settings, FieldTypeRegistry fieldTypes)
+    IReadOnlyList<ReferenceTarget> ReferenceTargets(JsonElement settings, FieldTypeRegistry fieldTypes)
     {
         return [];
     }

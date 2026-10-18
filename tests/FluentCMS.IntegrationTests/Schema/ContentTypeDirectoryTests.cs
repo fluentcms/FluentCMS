@@ -250,34 +250,44 @@ public sealed class ContentTypeDirectoryTests
         await AssertStoredAsync(scenario, types: 1, versions: 2, events: 2);
     }
 
-    // The model behind the reference scenario (02-personas-and-scenarios), without the entity flag and field references (SCH-03, SCH-04).
+    // The model behind the reference scenario (02-personas-and-scenarios), the setup for S1 and S2 in the F-SCH acceptance.
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
     [PostgresData]
     public async Task The_reference_scenario_model_can_be_defined(string provider)
     {
         await using var scenario = await SchemaScenario.CreateAsync(provider);
-        (string Slug, FieldDefinition[] Fields)[] model =
+        (string Slug, bool IsEntity, FieldDefinition[] Fields)[] model =
         [
-            ("category", [Field("name", "text", required: true), Reference("parent", "category")]),
-            ("region", [Field("name", "text", required: true), Field("code", "text", """{"maxLength": 8}""")]),
-            ("spec", [Field("name", "text", required: true), Field("value", "text"), Field("unit", "enum", """{"values": ["mm", "kg", "W"]}""")]),
-            ("product", [.. ProductFields, Reference("category", "category"), References("specs", "spec"), References("regions", "region"), Field("hero", "media")]),
-            ("product-page", [Reference("product", "product"), Field("headline", "text"), Field("body", "richText")]),
-            ("category-page", [Reference("category", "category"), Field("intro", "richText")]),
-            ("comparison-page", [References("products", "product"), Field("verdict", "richText"), Field("extra", "json")]),
-            ("blog-post", [Field("title", "text", required: true), Field("body", "richText"), Field("publishedOn", "dateTime"), Field("featured", "boolean"), References("related", "product")]),
+            ("category", true, [Field("name", "text", required: true), Reference("parent", "category")]),
+            ("region", true, [Field("name", "text", required: true), Field("code", "text", """{"maxLength": 8}""")]),
+            ("spec", true, [Field("name", "text", required: true), Field("value", "text"), Field("unit", "enum", """{"values": ["mm", "kg", "W"]}""")]),
+            ("product", true, [.. ProductFields, Reference("category", "category"), References("specs", "spec"), References("regions", "region"), Field("hero", "media")]),
+            ("product-page", false, [Reference("product", "product"), Reference("price", "product", "price"), Field("headline", "text"), Field("body", "richText")]),
+            ("category-page", false, [Reference("category", "category"), Field("intro", "richText")]),
+            ("comparison-page", false, [References("products", "product"), References("prices", "product", "price"), Field("verdict", "richText"), Field("extra", "json")]),
+            ("blog-post", false, [Field("title", "text", required: true), Field("body", "richText"), Field("publishedOn", "dateTime"), Field("featured", "boolean"), References("related", "product")]),
         ];
 
-        foreach (var (slug, fields) in model)
+        foreach (var (slug, isEntity, fields) in model)
         {
-            var created = await scenario.CreateAsync(slug, fields);
+            var created = isEntity ? await scenario.CreateEntityAsync(slug, fields) : await scenario.CreateAsync(slug, fields);
             Assert.True(created.IsSuccess, $"{slug}: {string.Join("; ", created.Errors.Select(error => error.Message))}");
         }
 
         Assert.Equal(
             model.Select(type => type.Slug).Order(StringComparer.Ordinal),
             (await scenario.RunAsync(directory => directory.ListAsync())).Select(summary => summary.Slug));
+
+        foreach (var (slug, isEntity, _) in model)
+        {
+            Assert.Equal(isEntity, (await scenario.RunAsync(directory => directory.GetAsync(slug))).Value.Definition.IsEntity);
+        }
+
+        var productPage = (await scenario.RunAsync(directory => directory.GetAsync("product-page"))).Value;
+        Assert.Contains(
+            new FieldReference("price", new ReferenceTarget("product", "price")),
+            productPage.Definition.References(scenario.Services.GetRequiredService<FieldTypeRegistry>()));
     }
 
     [PostgresFact]

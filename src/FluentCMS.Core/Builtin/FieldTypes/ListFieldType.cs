@@ -30,12 +30,12 @@ internal sealed class ListFieldType : IFieldType
         return reader.Errors();
     }
 
-    public IReadOnlyList<string> ReferencedTypes(JsonElement settings, FieldTypeRegistry fieldTypes)
+    public IReadOnlyList<ReferenceTarget> ReferenceTargets(JsonElement settings, FieldTypeRegistry fieldTypes)
     {
         var itemSettings = settings.TryGetProperty("itemSettings", out var value) && value.ValueKind == JsonValueKind.Object
             ? value
             : FieldDefinition.EmptySettings;
 
-        return fieldTypes.ReferencedTypes(settings.GetProperty("itemType").GetString()!, itemSettings);
+        return fieldTypes.ReferenceTargets(settings.GetProperty("itemType").GetString()!, itemSettings);
     }
 }

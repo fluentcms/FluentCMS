@@ -130,6 +130,31 @@ public sealed class ContentTypeTests : IDisposable
         Assert.False(restored.Revise(stored, FieldTypes).IsSuccess);
     }
 
+    [Fact]
+    public void An_entity_type_stays_an_entity_type()
+    {
+        var fields = new[] { new FieldDefinition("price", "number") };
+        var product = ContentType.Create(Site, "Product", "product", new ContentTypeDefinition(fields, isEntity: true), FieldTypes).Value;
+
+        var dropped = product.Revise(new ContentTypeDefinition(fields), FieldTypes);
+        var kept = product.Revise(new ContentTypeDefinition([.. fields, new FieldDefinition("currency", "text")], isEntity: true), FieldTypes);
+
+        Assert.True(product.Definition.IsEntity);
+        Assert.Equal(SchemaErrorCodes.EntityFlagRemoved, Assert.Single(dropped.Errors).Code);
+        Assert.True(kept.Value.Definition.IsEntity);
+    }
+
+    [Fact]
+    public void A_content_type_can_become_an_entity_type()
+    {
+        var region = ContentType.Create(Site, "Region", "region", ProductPage(), FieldTypes).Value;
+
+        var flagged = region.Revise(new ContentTypeDefinition(region.Definition.Fields, isEntity: true), FieldTypes);
+
+        Assert.True(flagged.Value.Definition.IsEntity);
+        Assert.Equal(2, flagged.Value.Version);
+    }
+
     public void Dispose()
     {
         _provider.Dispose();

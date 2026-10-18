@@ -87,13 +87,17 @@ public abstract class FieldTypeConformanceTests : IDisposable
     }
 
     [Fact]
-    public void Declares_only_slugs_as_referenced_types()
+    public void Declares_reference_targets_as_a_slug_and_an_optional_field_name()
     {
         foreach (var json in AcceptedSettings)
         {
-            var referenced = Registry.ReferencedTypes(FieldTypeName, Parse(json));
-
-            Assert.All(referenced, slug => Assert.True(SchemaNames.IsSlug(slug), $"{json} declared '{slug}', which is not a slug."));
+            foreach (var target in Registry.ReferenceTargets(FieldTypeName, Parse(json)))
+            {
+                Assert.True(SchemaNames.IsSlug(target.Type), $"{json} declared the type '{target.Type}', which is not a slug.");
+                Assert.True(
+                    target.Field is null || SchemaNames.IsFieldName(target.Field),
+                    $"{json} declared the field '{target.Field}', which is not a field name.");
+            }
         }
     }
 

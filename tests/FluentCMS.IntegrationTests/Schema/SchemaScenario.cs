@@ -48,6 +48,16 @@ internal sealed class SchemaScenario : IAsyncDisposable
         return RunAsync(directory => directory.CreateAsync(new NewContentType(Title(slug), slug, new ContentTypeDefinition(fields))));
     }
 
+    public Task<Result<ContentType>> CreateEntityAsync(string slug, params FieldDefinition[] fields)
+    {
+        return RunAsync(directory => directory.CreateAsync(new NewContentType(Title(slug), slug, new ContentTypeDefinition(fields, isEntity: true))));
+    }
+
+    public Task<Result<ContentType>> ReviseAsync(string slug, int baseVersion, ContentTypeDefinition definition)
+    {
+        return RunAsync(directory => directory.ReviseAsync(slug, baseVersion, definition));
+    }
+
     public async Task<List<ContentTypeRow>> ContentTypeRowsAsync()
     {
         return await QueryAsync(context => context.ContentTypes.AsNoTracking().ToListAsync());
@@ -80,14 +90,19 @@ internal sealed class SchemaScenario : IAsyncDisposable
         return new FieldDefinition(name, type, required, JsonSerializer.Deserialize<JsonElement>(settings));
     }
 
-    public static FieldDefinition Reference(string name, string target)
+    public static FieldDefinition Reference(string name, string target, string? field = null)
     {
-        return Field(name, "reference", $$"""{"target": "{{target}}"}""");
+        return Field(name, "reference", ReferenceSettings(target, field));
     }
 
-    public static FieldDefinition References(string name, string target)
+    public static FieldDefinition References(string name, string target, string? field = null)
     {
-        return Field(name, "list", $$$"""{"itemType": "reference", "itemSettings": {"target": "{{{target}}}"}}""");
+        return Field(name, "list", $$"""{"itemType": "reference", "itemSettings": {{ReferenceSettings(target, field)}}}""");
+    }
+
+    private static string ReferenceSettings(string target, string? field)
+    {
+        return field is null ? $$"""{"target": "{{target}}"}""" : $$"""{"target": "{{target}}", "field": "{{field}}"}""";
     }
 
     private static string Title(string slug)

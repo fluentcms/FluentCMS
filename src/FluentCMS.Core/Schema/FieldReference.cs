@@ -1,4 +1,4 @@
 namespace FluentCMS.Core.Schema;
 
-// A field whose values point at entries of the content type with the target slug.
-public sealed record FieldReference(string Field, string Target);
+// A field of a definition whose values point at the target.
+public sealed record FieldReference(string Field, ReferenceTarget Target);

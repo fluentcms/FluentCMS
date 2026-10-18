@@ -59,7 +59,7 @@ internal sealed class ContentTypeDirectory(
             errors.Add(SlugTaken(type.Slug));
         }
 
-        errors.AddRange(await UnknownTargetsAsync(type, cancellationToken));
+        errors.AddRange(await ReferenceErrorsAsync(type, cancellationToken));
         if (errors.Count > 0)
         {
             return Result<ContentType>.Failure(errors);
@@ -105,17 +105,19 @@ internal sealed class ContentTypeDirectory(
             .AsNoTracking()
             .SingleAsync(version => version.ContentTypeId == row.Id && version.Version == row.Version, cancellationToken);
 
-        var revised = ToContentType(row, current).Revise(definition, fieldTypes);
+        var previous = ToContentType(row, current);
+        var revised = previous.Revise(definition, fieldTypes);
         if (!revised.IsSuccess)
         {
             return revised;
         }
 
         var type = revised.Value;
-        var unknownTargets = await UnknownTargetsAsync(type, cancellationToken);
-        if (unknownTargets.Count > 0)
+        var errors = await ReferenceErrorsAsync(type, cancellationToken);
+        errors.AddRange(await RemovedFieldsInUseAsync(type, previous.Definition, cancellationToken));
+        if (errors.Count > 0)
         {
-            return Result<ContentType>.Failure(unknownTargets);
+            return Result<ContentType>.Failure(errors);
         }
 
         await using var scope = await unitOfWork.BeginAsync(cancellationToken);
@@ -166,28 +168,91 @@ internal sealed class ContentTypeDirectory(
             .SingleOrDefaultAsync(row => row.SiteId == SiteId && row.Slug == slug, cancellationToken);
     }
 
-    // A reference to the type being written is allowed, so a category can have a parent category.
-    private async Task<List<Error>> UnknownTargetsAsync(ContentType type, CancellationToken cancellationToken)
+    // A reference to the type being written is checked against the definition being written, so a category can have a parent category.
+    private async Task<List<Error>> ReferenceErrorsAsync(ContentType type, CancellationToken cancellationToken)
     {
-        var references = type.Definition.References(fieldTypes).Where(reference => reference.Target != type.Slug).ToList();
+        var references = type.Definition.References(fieldTypes);
         if (references.Count == 0)
         {
             return [];
         }
 
-        var targets = references.Select(reference => reference.Target).Distinct().ToList();
-        var existing = await context.ContentTypes
-            .AsNoTracking()
-            .Where(row => row.SiteId == type.SiteId && targets.Contains(row.Slug))
-            .Select(row => row.Slug)
-            .ToListAsync(cancellationToken);
+        var others = references.Select(reference => reference.Target.Type).Where(slug => slug != type.Slug).Distinct().ToList();
+        var targets = others.Count == 0 ? [] : await CurrentDefinitionsAsync(others, cancellationToken);
+        targets[type.Slug] = type.Definition;
 
-        return references
-            .Where(reference => !existing.Contains(reference.Target))
-            .Select(reference => new Error(
-                SchemaErrorCodes.ReferenceTargetUnknown,
-                $"Field '{reference.Field}': there is no content type '{reference.Target}' in this site to reference."))
+        var errors = new List<Error>();
+        foreach (var (field, target) in references)
+        {
+            if (!targets.TryGetValue(target.Type, out var definition))
+            {
+                errors.Add(new Error(
+                    SchemaErrorCodes.ReferenceTargetUnknown,
+                    $"Field '{field}': there is no content type '{target.Type}' in this site to reference."));
+            }
+            else if (target.Field is null)
+            {
+                continue;
+            }
+            else if (!definition.IsEntity)
+            {
+                // Only facts are referenced field by field (SCH-04); anything else is referenced as a whole entry.
+                errors.Add(new Error(
+                    SchemaErrorCodes.ReferenceTargetNotEntity,
+                    $"Field '{field}': '{target.Type}' is not an entity type, so its fields cannot be referenced; reference its entries instead."));
+            }
+            else if (!definition.HasField(target.Field))
+            {
+                errors.Add(new Error(
+                    SchemaErrorCodes.ReferenceFieldUnknown,
+                    $"Field '{field}': the entity type '{target.Type}' has no field '{target.Field}'."));
+            }
+        }
+
+        return errors;
+    }
+
+    // A field another type points at cannot go, or that reference would dangle (SCH-04).
+    private async Task<List<Error>> RemovedFieldsInUseAsync(ContentType type, ContentTypeDefinition previous, CancellationToken cancellationToken)
+    {
+        var removed = previous.Fields.Select(field => field.Name).Where(name => !type.Definition.HasField(name)).ToHashSet();
+        if (removed.Count == 0)
+        {
+            return [];
+        }
+
+        var definitions = await CurrentDefinitionsAsync(slugs: null, cancellationToken);
+
+        return definitions
+            .Where(other => other.Key != type.Slug)
+            .OrderBy(other => other.Key, StringComparer.Ordinal)
+            .SelectMany(other => other.Value.References(fieldTypes).Select(reference => (Type: other.Key, Reference: reference)))
+            .Where(use => use.Reference.Target.Type == type.Slug && use.Reference.Target.Field is { } field && removed.Contains(field))
+            .Select(use => new Error(
+                SchemaErrorCodes.FieldReferenced,
+                $"Field '{use.Reference.Target.Field}' is referenced by the field '{use.Reference.Field}' of '{use.Type}'; change that type first."))
             .ToList();
+    }
+
+    // The current definition of every type in the site, or of the given slugs only.
+    private async Task<Dictionary<string, ContentTypeDefinition>> CurrentDefinitionsAsync(
+        IReadOnlyCollection<string>? slugs,
+        CancellationToken cancellationToken)
+    {
+        var query =
+            from type in context.ContentTypes.AsNoTracking()
+            join version in context.ContentTypeVersions.AsNoTracking()
+                on new { ContentTypeId = type.Id, type.Version } equals new { version.ContentTypeId, version.Version }
+            where type.SiteId == SiteId
+            select new { type.Slug, version.Version, version.Definition };
+
+        if (slugs is not null)
+        {
+            query = query.Where(row => slugs.Contains(row.Slug));
+        }
+
+        var rows = await query.ToListAsync(cancellationToken);
+        return rows.ToDictionary(row => row.Slug, row => ReadDefinition(row.Slug, row.Version, row.Definition));
     }
 
     private static async Task<Result<ContentType>> CommitAsync(
@@ -222,15 +287,18 @@ internal sealed class ContentTypeDirectory(
 
     private static ContentType ToContentType(ContentTypeRow row, ContentTypeVersionRow version)
     {
-        var definition = ContentTypeDefinition.Parse(version.Definition);
-        if (!definition.IsSuccess)
-        {
-            throw new InvalidOperationException(
-                $"Version {version.Version} of content type '{row.Slug}' is stored in a form that cannot be read: "
-                + string.Join("; ", definition.Errors.Select(error => error.Message)));
-        }
+        return ContentType.Restore(row.Id, row.SiteId, row.Name, row.Slug, version.Version, ReadDefinition(row.Slug, version.Version, version.Definition));
+    }
 
-        return ContentType.Restore(row.Id, row.SiteId, row.Name, row.Slug, version.Version, definition.Value);
+    private static ContentTypeDefinition ReadDefinition(string slug, int version, string json)
+    {
+        var definition = ContentTypeDefinition.Parse(json);
+
+        return definition.IsSuccess
+            ? definition.Value
+            : throw new InvalidOperationException(
+                $"Version {version} of content type '{slug}' is stored in a form that cannot be read: "
+                + string.Join("; ", definition.Errors.Select(error => error.Message)));
     }
 
     private static Result<ContentType> NotFound(string slug)
