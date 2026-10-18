@@ -1,0 +1,232 @@
+@page "/audit"
+@using System.Globalization
+@using FluentCMS.Admin.Audit
+@using FluentCMS.Core.Audit
+@inject IAuditReader Reader
+@inject IStringLocalizer<AuditLog> L
+
+<PageTitle>@L["Audit log"]</PageTitle>
+
+<h1 class="text-2xl font-semibold tracking-tight">@L["Audit log"]</h1>
+<p class="mt-2 text-muted-foreground">@L["Every operation is recorded: who or what acted, with which model and sources, in which change set."]</p>
+
+<div class="mt-6 grid gap-6">
+    <Card data-testid="audit-export">
+        <CardHeader>
+            <CardTitle><h2>@L["Export"]</h2></CardTitle>
+            <CardDescription>@L["Download the whole log, a date range or one item's history as JSON or CSV. Dates are in UTC and include both days. Every export is recorded in the log."]</CardDescription>
+        </CardHeader>
+        <CardContent>
+            @* Posts to the host's download endpoint, which answers with the file or sends a rejected form back here. *@
+            <form method="post" action="audit/export" class="grid gap-6">
+                <AntiforgeryToken />
+                @if (FormError is { } formError)
+                {
+                    <p role="alert" class="text-sm text-destructive" data-testid="audit-export-error">@formError</p>
+                }
+                <div class="grid gap-6 sm:grid-cols-2">
+                    <FormField Label="@L["From"]" Error="@ExportError(AuditExportForm.FromInvalid)">
+                        <Input Type="date" name="From" value="@From" />
+                    </FormField>
+                    <FormField Label="@L["To"]" Error="@ExportError(AuditExportForm.ToInvalid, AuditErrorCodes.WindowInverted)">
+                        <Input Type="date" name="To" value="@To" />
+                    </FormField>
+                    <FormField Label="@L["Item type"]"
+                               Description="@L["Optional. For one item's history, such as entry or content_type."]"
+                               Error="@ExportError(AuditErrorCodes.SubjectTypeMissing)">
+                        <Input name="SubjectType" value="@SubjectType" />
+                    </FormField>
+                    <FormField Label="@L["Item id"]" Error="@ExportError(AuditErrorCodes.SubjectIdMissing, AuditExportForm.SubjectIdInvalid)">
+                        <Input name="SubjectId" value="@SubjectId" />
+                    </FormField>
+                </div>
+                <div class="flex flex-wrap gap-3">
+                    <Button Type="submit" name="Format" value="json">@L["Download JSON"]</Button>
+                    <Button Type="submit" Variant="outline" name="Format" value="csv">@L["Download CSV"]</Button>
+                </div>
+            </form>
+        </CardContent>
+    </Card>
+
+    <Card data-testid="audit-history">
+        <CardHeader>
+            <CardTitle><h2>@L["Item history"]</h2></CardTitle>
+            <CardDescription>@L["Every event recorded for one item, oldest first."]</CardDescription>
+        </CardHeader>
+        <CardContent Class="grid gap-6">
+            <form method="get" action="audit" class="grid gap-6 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+                <FormField Label="@L["Item type"]" Error="@_historyTypeError">
+                    <Input name="type" value="@HistoryType" required />
+                </FormField>
+                <FormField Label="@L["Item id"]" Error="@_historyIdError">
+                    <Input name="id" value="@HistoryId" required />
+                </FormField>
+                <Button Type="submit" Variant="secondary">@L["Show history"]</Button>
+            </form>
+
+            @if (_history is { Count: 0 })
+            {
+                <p class="text-sm text-muted-foreground" data-testid="audit-history-empty">@L["Nothing is recorded for this item."]</p>
+            }
+            else if (_history is not null)
+            {
+                <ol class="grid gap-4" data-testid="audit-history-events">
+                    @foreach (var auditEvent in _history)
+                    {
+                        <li class="rounded-lg border p-4">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="font-medium">@auditEvent.Operation</span>
+                                @if (auditEvent.Initiator is AgentInitiator)
+                                {
+                                    <Badge>@L["Agent"]</Badge>
+                                }
+                                else
+                                {
+                                    <Badge Variant="secondary">@L["User"]</Badge>
+                                }
+                                <span>@auditEvent.Initiator.DisplayName</span>
+                                <time datetime="@auditEvent.Timestamp.ToString("O", CultureInfo.InvariantCulture)" dir="ltr" class="ms-auto text-sm text-muted-foreground">
+                                    @auditEvent.Timestamp.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) UTC
+                                </time>
+                            </div>
+                            <dl class="mt-3 grid gap-x-4 gap-y-1 text-sm sm:grid-cols-[max-content_1fr]">
+                                @Detail(L["Agent credential"], auditEvent.AgentCredentialId?.ToString())
+                                @Detail(L["Model"], auditEvent.Model)
+                                @Detail(L["Prompt hash"], auditEvent.PromptHash)
+                                @Detail(L["Change set"], auditEvent.ChangeSetId?.ToString())
+                                @Detail(L["Previous version"], auditEvent.PreviousVersionId?.ToString())
+                                @if (auditEvent.Sources.Count > 0)
+                                {
+                                    <dt class="text-muted-foreground">@L["Sources"]</dt>
+                                    <dd>
+                                        <ul class="grid gap-1">
+                                            @foreach (var source in auditEvent.Sources)
+                                            {
+                                                <li class="break-all">@source</li>
+                                            }
+                                        </ul>
+                                    </dd>
+                                }
+                                @Detail(L["Event id"], auditEvent.Id.ToString())
+                            </dl>
+                        </li>
+                    }
+                </ol>
+                @if (_historyTruncated)
+                {
+                    <p class="text-sm text-muted-foreground" data-testid="audit-history-truncated">@L["Only the first {0} events are shown. Export the item's history for all of them.", HistoryLimit]</p>
+                }
+            }
+        </CardContent>
+    </Card>
+</div>
+
+@code {
+    private const int HistoryLimit = 200;
+
+    private List<AuditEvent>? _history;
+    private bool _historyTruncated;
+    private string? _historyTypeError;
+    private string? _historyIdError;
+
+    [SupplyParameterFromQuery(Name = AuditExportForm.FromName)]
+    private string? From { get; set; }
+
+    [SupplyParameterFromQuery(Name = AuditExportForm.ToName)]
+    private string? To { get; set; }
+
+    [SupplyParameterFromQuery(Name = AuditExportForm.SubjectTypeName)]
+    private string? SubjectType { get; set; }
+
+    [SupplyParameterFromQuery(Name = AuditExportForm.SubjectIdName)]
+    private string? SubjectId { get; set; }
+
+    [SupplyParameterFromQuery(Name = AuditExportForm.ErrorName)]
+    private string[]? ExportErrors { get; set; }
+
+    [SupplyParameterFromQuery(Name = "type")]
+    private string? HistoryType { get; set; }
+
+    [SupplyParameterFromQuery(Name = "id")]
+    private string? HistoryId { get; set; }
+
+    // Codes the form shows next to a field; any other code the endpoint sends back is shown above the form.
+    private static readonly HashSet<string> FieldCodes =
+    [
+        AuditExportForm.FromInvalid,
+        AuditExportForm.ToInvalid,
+        AuditErrorCodes.WindowInverted,
+        AuditErrorCodes.SubjectTypeMissing,
+        AuditErrorCodes.SubjectIdMissing,
+        AuditExportForm.SubjectIdInvalid,
+    ];
+
+    private string? FormError => (ExportErrors ?? []).FirstOrDefault(code => !FieldCodes.Contains(code)) switch
+    {
+        null => null,
+        AuditErrorCodes.ExportFormatUnknown => L["Choose JSON or CSV."].Value,
+        _ => L["The export could not be made. Check the fields and try again."].Value,
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (string.IsNullOrWhiteSpace(HistoryType) && string.IsNullOrWhiteSpace(HistoryId))
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(HistoryType))
+        {
+            _historyTypeError = L["Enter the item's type."];
+        }
+
+        if (!Guid.TryParse(HistoryId?.Trim(), out var id) || id == Guid.Empty)
+        {
+            _historyIdError = L["Enter the item's id, such as 3f2504e0-4f89-41d3-9a0c-0305e82c3301."];
+        }
+
+        if (_historyTypeError is not null || _historyIdError is not null)
+        {
+            return;
+        }
+
+        var read = Reader.Read(new AuditQuery { Subject = new AuditSubject(HistoryType!.Trim(), id) });
+        if (!read.IsSuccess)
+        {
+            return;
+        }
+
+        _history = [];
+        await foreach (var auditEvent in read.Value)
+        {
+            if (_history.Count == HistoryLimit)
+            {
+                _historyTruncated = true;
+                break;
+            }
+
+            _history.Add(auditEvent);
+        }
+    }
+
+    private string? ExportError(params string[] codes)
+    {
+        var code = codes.FirstOrDefault(code => ExportErrors?.Contains(code) == true);
+        return code switch
+        {
+            null => null,
+            AuditExportForm.FromInvalid or AuditExportForm.ToInvalid => L["Enter a date as YYYY-MM-DD."].Value,
+            AuditErrorCodes.WindowInverted => L["The end date is before the start date."].Value,
+            AuditErrorCodes.SubjectTypeMissing => L["Enter the item's type, or leave both item fields empty."].Value,
+            AuditErrorCodes.SubjectIdMissing => L["Enter the item's id, or leave both item fields empty."].Value,
+            _ => L["Enter the item's id, such as 3f2504e0-4f89-41d3-9a0c-0305e82c3301."].Value,
+        };
+    }
+
+    private static RenderFragment? Detail(string label, string? value) => value is null
+        ? null
+        : @<text>
+              <dt class="text-muted-foreground">@label</dt>
+              <dd class="break-all">@value</dd>
+          </text>;
+}

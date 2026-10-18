@@ -1,11 +1,14 @@
 using System.Text;
 using System.Text.Json;
+using FluentCMS.Core.Persistence;
 using FluentCMS.Core.Results;
 
 namespace FluentCMS.Core.Audit;
 
-internal sealed class AuditExporter(IAuditReader reader) : IAuditExporter
+internal sealed class AuditExporter(IAuditReader reader, IUnitOfWork unitOfWork, IAuditLog auditLog) : IAuditExporter
 {
+    private const string Operation = "audit.exported";
+
     // Output reaches the destination in pieces of about this size, so a long range never builds up in memory.
     private const int ChunkSize = 16 * 1024;
 
@@ -23,7 +26,7 @@ internal sealed class AuditExporter(IAuditReader reader) : IAuditExporter
         if (!Enum.IsDefined(format))
         {
             return Result.Failure(
-                "audit_export_format_unknown",
+                AuditErrorCodes.ExportFormatUnknown,
                 $"The audit log exports as {string.Join(" or ", Enum.GetNames<AuditExportFormat>())}, not as {format}.");
         }
 
@@ -31,6 +34,16 @@ internal sealed class AuditExporter(IAuditReader reader) : IAuditExporter
         if (!read.IsSuccess)
         {
             return Result.Failure(read.Errors);
+        }
+
+        // Recorded before anything leaves, so an export that is cut off is on record too. The events are read only below,
+        // so a selection that reaches the present includes this one.
+        await using (var work = await unitOfWork.BeginAsync(cancellationToken))
+        {
+            await auditLog.AppendAsync(
+                new NewAuditEvent(Operation) { SubjectType = query.Subject?.Type, SubjectId = query.Subject?.Id },
+                cancellationToken);
+            await work.CommitAsync(cancellationToken);
         }
 
         if (format == AuditExportFormat.Json)

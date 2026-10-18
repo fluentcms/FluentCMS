@@ -18,19 +18,19 @@ public sealed record AuditQuery
 
         if (From > To)
         {
-            errors.Add(new Error("audit_window_inverted", $"The window starts at {From:O}, after it ends at {To:O}."));
+            errors.Add(new Error(AuditErrorCodes.WindowInverted, $"The window starts at {From:O}, after it ends at {To:O}."));
         }
 
         if (Subject is { } subject)
         {
             if (string.IsNullOrWhiteSpace(subject.Type))
             {
-                errors.Add(new Error("audit_subject_type_missing", "An item's history needs the item's type."));
+                errors.Add(new Error(AuditErrorCodes.SubjectTypeMissing, "An item's history needs the item's type."));
             }
 
             if (subject.Id == Guid.Empty)
             {
-                errors.Add(new Error("audit_subject_id_missing", "An item's history needs the item's id."));
+                errors.Add(new Error(AuditErrorCodes.SubjectIdMissing, "An item's history needs the item's id."));
             }
         }
 

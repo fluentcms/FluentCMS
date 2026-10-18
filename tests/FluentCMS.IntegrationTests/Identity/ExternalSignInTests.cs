@@ -93,12 +93,8 @@ public sealed partial class ExternalSignInTests
         await using var provider = await TestOpenIdProvider.StartAsync();
         using var install = new TemporaryInstall();
         await using var host = await StartAsync(install, provider);
-        await host.CreateFirstAdministratorAsync();
-        await using (var scope = host.App.Services.CreateAsyncScope())
-        {
-            var directory = scope.ServiceProvider.GetRequiredService<IUserDirectory>();
-            await directory.DisableAsync((await directory.CreateAsync(Editor)).Value);
-        }
+        var ownerId = await host.CreateFirstAdministratorAsync();
+        await host.AsUserAsync(ownerId, async directory => await directory.DisableAsync((await directory.CreateAsync(Editor)).Value));
 
         var identities = new[]
         {
@@ -120,7 +116,7 @@ public sealed partial class ExternalSignInTests
 
         await using var check = host.App.Services.CreateAsyncScope();
         Assert.Empty(await check.ServiceProvider.GetRequiredService<FluentCmsDbContext>().UserLogins.ToListAsync());
-        Assert.Empty(await AuditRowsAsync(host));
+        Assert.DoesNotContain(await AuditRowsAsync(host), row => row.Operation is "user.login_linked" or "user.signed_in");
     }
 
     [Fact]

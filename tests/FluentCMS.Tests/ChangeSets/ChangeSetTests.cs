@@ -67,7 +67,7 @@ public sealed class ChangeSetTests
         {
             TestChangeSets.Update(ItemKind.Entity),
             TestChangeSets.Update(ItemKind.Entry),
-            ChangeOperation.Create(OperationKind.Create, ItemKind.Schema, Guid.NewGuid(), null).Value,
+            ChangeOperation.Create(OperationKind.Create, ItemKind.Schema, Guid.NewGuid(), null, 1).Value,
         };
 
         foreach (var operation in operations)
@@ -86,7 +86,7 @@ public sealed class ChangeSetTests
         var item = Guid.NewGuid();
         changeSet.AddOperation(TestChangeSets.Update(ItemKind.Entry, item));
 
-        var result = changeSet.AddOperation(ChangeOperation.Create(OperationKind.Delete, ItemKind.Entry, item, 1).Value);
+        var result = changeSet.AddOperation(ChangeOperation.Create(OperationKind.Delete, ItemKind.Entry, item, 1, null).Value);
 
         var error = Assert.Single(result.Errors);
         Assert.Equal(ChangeSetErrorCodes.ItemDuplicate, error.Code);
@@ -128,5 +128,102 @@ public sealed class ChangeSetTests
         Assert.True(changeSet.TransitionTo(ChangeSetState.Open).IsSuccess);
         Assert.True(changeSet.AddOperation(TestChangeSets.Update(ItemKind.Entity)).IsSuccess);
         Assert.Equal(2, changeSet.Operations.Count);
+    }
+
+    [Fact]
+    public void A_set_lists_each_source_once()
+    {
+        var changeSet = ChangeSet.Open(Site, "Sync prices.", ["exports/catalog.csv", " exports/catalog.csv ", "Product team"], TestChangeSets.Agent).Value;
+
+        Assert.Equal(["exports/catalog.csv", "Product team"], changeSet.Sources);
+    }
+
+    [Fact]
+    public void A_set_opened_for_a_session_keeps_its_session_id()
+    {
+        var changeSet = ChangeSet.Open(Site, "Sync prices.", [], TestChangeSets.Agent, "example-session-1").Value;
+
+        Assert.Equal("example-session-1", changeSet.SessionId);
+        Assert.Null(TestChangeSets.Open().SessionId);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void A_blank_session_id_is_rejected(string sessionId)
+    {
+        var result = ChangeSet.Open(Site, "Sync prices.", [], TestChangeSets.Agent, sessionId);
+
+        Assert.Equal(ChangeSetErrorCodes.SessionIdInvalid, Assert.Single(result.Errors).Code);
+    }
+
+    [Fact]
+    public void A_session_id_longer_than_the_limit_is_rejected()
+    {
+        var result = ChangeSet.Open(Site, "Sync prices.", [], TestChangeSets.Agent, new string('s', ChangeSet.MaxSessionIdLength + 1));
+
+        Assert.Equal(ChangeSetErrorCodes.SessionIdInvalid, Assert.Single(result.Errors).Code);
+    }
+
+    [Fact]
+    public void Sources_added_while_open_are_appended_once()
+    {
+        var changeSet = TestChangeSets.Open();
+
+        Assert.True(changeSet.AddSources([" https://example.com/spec-sheet ", "exports/catalog-2026-10-18.csv", "https://example.com/spec-sheet"]).IsSuccess);
+
+        Assert.Equal(["exports/catalog-2026-10-18.csv", "https://example.com/spec-sheet"], changeSet.Sources);
+    }
+
+    [Fact]
+    public void A_blank_source_is_not_added()
+    {
+        var changeSet = TestChangeSets.Open();
+
+        var result = changeSet.AddSources(["https://example.com/spec-sheet", " "]);
+
+        var error = Assert.Single(result.Errors);
+        Assert.Equal(ChangeSetErrorCodes.SourceBlank, error.Code);
+        Assert.Contains("Source 2", error.Message);
+        Assert.Equal(["exports/catalog-2026-10-18.csv"], changeSet.Sources);
+    }
+
+    [Fact]
+    public void Sources_are_added_only_while_the_set_is_open()
+    {
+        var changeSet = TestChangeSets.InState(ChangeSetState.ChecksRunning);
+
+        var result = changeSet.AddSources(["https://example.com/spec-sheet"]);
+
+        Assert.Equal(ChangeSetErrorCodes.NotOpen, Assert.Single(result.Errors).Code);
+        Assert.Single(changeSet.Sources);
+    }
+
+    [Fact]
+    public void A_stored_set_is_restored_as_it_was()
+    {
+        var id = Guid.NewGuid();
+        var operation = TestChangeSets.Update(ItemKind.Schema);
+
+        var changeSet = ChangeSet.Restore(
+            id,
+            Site,
+            "Sync prices.",
+            ["exports/catalog.csv"],
+            TestChangeSets.Agent,
+            "example-session-1",
+            [operation],
+            ChangeSetState.Rejected,
+            "The price has no source.");
+
+        Assert.Equal(id, changeSet.Id);
+        Assert.Equal(Site, changeSet.SiteId);
+        Assert.Equal("Sync prices.", changeSet.Rationale);
+        Assert.Equal(["exports/catalog.csv"], changeSet.Sources);
+        Assert.Same(TestChangeSets.Agent, changeSet.Initiator);
+        Assert.Equal("example-session-1", changeSet.SessionId);
+        Assert.Equal([operation], changeSet.Operations);
+        Assert.Equal(ChangeSetState.Rejected, changeSet.State);
+        Assert.Equal("The price has no source.", changeSet.RejectionReason);
     }
 }

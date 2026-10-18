@@ -1,6 +1,7 @@
 namespace FluentCMS.Admin;
 
-// The account routes the host needs for the cookie's redirects; each matches the @page directive of its page.
+// The routes the host needs: the account pages for the cookie's redirects, and the audit page with the download it posts to.
+// Each page route matches the @page directive of its page.
 public static class AdminRoutes
 {
     public const string Setup = "/setup";
@@ -10,6 +11,9 @@ public static class AdminRoutes
 
     // Not a page: the host's endpoint that sends the browser to the external provider.
     public const string ExternalSignInStart = "/sign-in/external/start";
+
+    public const string Audit = "/audit";
+    public const string AuditExport = "/audit/export";
 
     // Only a path on this site is followed after sign-in, so a crafted link cannot send someone elsewhere.
     public static bool IsLocal(string? url)
