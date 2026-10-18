@@ -40,10 +40,13 @@ public static class FluentCmsHost
         // First, so the settings a caller adds are there when the composition below reads them.
         configure?.Invoke(builder);
 
+        UseStaticWebAssets(builder);
+
         ConfigureLogging(builder.Logging, logToStandardError: false);
         AddFluentCms(builder.Services, builder.Configuration, builder.Environment);
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddScoped<ICurrentInitiator, HttpContextInitiator>();
+        builder.Services.AddScoped<IThemePreference, CookieThemePreference>();
         var provider = AddCookieSignIn(builder.Services, builder.Configuration, builder.Environment);
         builder.Services.AddSignInRateLimit(builder.Configuration);
         builder.Services.AddHealthChecks();
@@ -85,12 +88,18 @@ public static class FluentCmsHost
             options.LoginPath = AdminRoutes.SignIn;
             options.LogoutPath = AdminRoutes.SignOut;
         });
-        new IdentityBuilder(typeof(FluentCmsUser), typeof(FluentCmsRole), services).AddSignInManager();
+        // The data protection token provider for reset links is in the shared framework, which Infrastructure does not reference.
+        new IdentityBuilder(typeof(FluentCmsUser), typeof(FluentCmsRole), services)
+            .AddSignInManager()
+            .AddTokenProvider<DataProtectorTokenProvider<FluentCmsUser>>(TokenOptions.DefaultProvider);
+        services.Configure<DataProtectionTokenProviderOptions>(options =>
+            options.TokenLifespan = configuration.GetValue(IdentityPasswordReset.LifespanSetting, TimeSpan.FromDays(1)));
 
         // Disabling a user changes their security stamp; checking it every minute instead of every thirty ends their session soon after.
         services.Configure<SecurityStampValidatorOptions>(options => options.ValidationInterval = TimeSpan.FromMinutes(1));
         services.AddAuthorization();
         services.AddScoped<IUserSignIn, CookieUserSignIn>();
+        services.AddScoped<IPasswordReset, IdentityPasswordReset>();
         return provider;
     }
 
@@ -109,6 +118,20 @@ public static class FluentCmsHost
 
             return next(context);
         });
+    }
+
+    // An unpublished build leaves the admin's files in its own wwwroot and lists them in this manifest, which the host defaults
+    // load in Development alone and look for under the entry assembly's name, the test host under xunit. Without it the admin
+    // is served without its stylesheet and script. A published build copies the files next to the binary and has no manifest.
+    private static void UseStaticWebAssets(WebApplicationBuilder builder)
+    {
+        var manifest = Path.Combine(AppContext.BaseDirectory, "fluentcms.staticwebassets.runtime.json");
+
+        if (File.Exists(manifest))
+        {
+            builder.WebHost.UseSetting(WebHostDefaults.StaticWebAssetsKey, manifest);
+            builder.WebHost.UseStaticWebAssets();
+        }
     }
 
     // The manifest is named after the entry assembly, which is the test host under xunit; without it the files are served unfingerprinted.
@@ -149,7 +172,7 @@ public static class FluentCmsHost
         services.AddFluentCmsInfrastructure(configuration);
         services.AddFluentCmsMcp();
         services.AddFluentCmsApi();
-        services.AddFluentCmsAdmin(options => options.ShowcaseEnabled = environment.IsDevelopment());
+        services.AddFluentCmsAdmin();
 
         // Both modes share one key ring, so whatever the web host protects the stdio host can read.
         var keyRing = configuration.GetSection(KeyRingOptions.SectionName).Get<KeyRingOptions>() ?? new KeyRingOptions();

@@ -95,7 +95,13 @@ internal sealed partial class AdminHost : IAsyncDisposable
     }
 
     // Calls the directory outside a request, as a request signed in as that user would, since every change names its initiator.
-    public async Task<T> AsUserAsync<T>(Guid userId, Func<IUserDirectory, Task<T>> action)
+    public Task<T> AsUserAsync<T>(Guid userId, Func<IUserDirectory, Task<T>> action)
+    {
+        return AsUserAsync<IUserDirectory, T>(userId, action);
+    }
+
+    public async Task<T> AsUserAsync<TService, T>(Guid userId, Func<TService, Task<T>> action)
+        where TService : notnull
     {
         var accessor = App.Services.GetRequiredService<IHttpContextAccessor>();
         await using var scope = App.Services.CreateAsyncScope();
@@ -106,7 +112,7 @@ internal sealed partial class AdminHost : IAsyncDisposable
         accessor.HttpContext = new DefaultHttpContext { RequestServices = scope.ServiceProvider, User = new ClaimsPrincipal(identity) };
         try
         {
-            return await action(scope.ServiceProvider.GetRequiredService<IUserDirectory>());
+            return await action(scope.ServiceProvider.GetRequiredService<TService>());
         }
         finally
         {

@@ -1,6 +1,9 @@
 @page "/users"
+@using System.Globalization
 @inject IUserDirectory Directory
 @inject ICurrentInitiator Initiator
+@inject IPasswordReset PasswordReset
+@inject NavigationManager Navigation
 @inject IStringLocalizer<Users> L
 
 <PageTitle>@L["Users"]</PageTitle>
@@ -16,6 +19,20 @@
 @if (_message is not null)
 {
     <p role="status" class="mt-4 rounded-md border bg-muted/50 px-3 py-2 text-sm" data-testid="users-message">@_message</p>
+}
+
+@* Shown in the response to the post that issued it and nowhere else, so the link never sits in a URL or the browser's history. *@
+@if (_issued is { } issued)
+{
+    <div role="status" class="mt-4 grid gap-2 rounded-md border bg-muted/50 p-3 text-sm" data-testid="reset-link">
+        <label for="reset-link" class="font-medium">@L["Reset link for {0}", issued.DisplayName]</label>
+        <Input id="reset-link" value="@issued.Link" readonly dir="ltr" aria-describedby="reset-link-expiry" />
+        <p id="reset-link-expiry" class="text-muted-foreground">
+            @L["Expires"]
+            <time datetime="@issued.ExpiresAt.ToString("O", CultureInfo.InvariantCulture)" dir="ltr">@issued.ExpiresAt.UtcDateTime.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture) UTC</time>.
+            @L["It works once and is not shown again, so pass it on now."]
+        </p>
+    </div>
 }
 
 <div class="mt-6 rounded-md border">
@@ -50,12 +67,19 @@
                                 <Button Type="submit" Variant="outline" Size="sm">@L["Enable"]<span class="sr-only"> @user.DisplayName</span></Button>
                             </form>
                         }
-                        else if (!IsSelf(user))
+                        else
                         {
-                            <form method="post" @onsubmit="() => DisableAsync(user)" @formname="@($"disable-{user.Id:N}")" class="inline">
+                            <form method="post" @onsubmit="() => IssueResetLinkAsync(user)" @formname="@($"reset-link-{user.Id:N}")" class="inline">
                                 <AntiforgeryToken />
-                                <Button Type="submit" Variant="outline" Size="sm">@L["Disable"]<span class="sr-only"> @user.DisplayName</span></Button>
+                                <Button Type="submit" Variant="outline" Size="sm">@L["Issue reset link"]<span class="sr-only"> @user.DisplayName</span></Button>
                             </form>
+                            @if (!IsSelf(user))
+                            {
+                                <form method="post" @onsubmit="() => DisableAsync(user)" @formname="@($"disable-{user.Id:N}")" class="ms-2 inline">
+                                    <AntiforgeryToken />
+                                    <Button Type="submit" Variant="outline" Size="sm">@L["Disable"]<span class="sr-only"> @user.DisplayName</span></Button>
+                                </form>
+                            }
                         }
                     </TableCell>
                 </TableRow>
@@ -67,6 +91,7 @@
 @code {
     private IReadOnlyList<UserSummary> _users = [];
     private string? _message;
+    private IssuedLink? _issued;
 
     protected override async Task OnInitializedAsync()
     {
@@ -78,24 +103,39 @@
     private async Task DisableAsync(UserSummary user)
     {
         var result = await Directory.DisableAsync(user.Id);
-        _message = result.IsSuccess ? L["{0} is disabled. Their open sessions end within a minute.", user.DisplayName] : Describe(result);
+        _message = result.IsSuccess ? L["{0} is disabled. Their open sessions end within a minute.", user.DisplayName] : Describe(result.Errors);
         _users = await Directory.ListAsync();
     }
 
     private async Task EnableAsync(UserSummary user)
     {
         var result = await Directory.EnableAsync(user.Id);
-        _message = result.IsSuccess ? L["{0} can sign in again.", user.DisplayName] : Describe(result);
+        _message = result.IsSuccess ? L["{0} can sign in again.", user.DisplayName] : Describe(result.Errors);
         _users = await Directory.ListAsync();
     }
 
-    // The error code is the resource key; the directory's own message is the text until a resource exists.
-    private string Describe(FluentCMS.Core.Results.Result result)
+    private async Task IssueResetLinkAsync(UserSummary user)
     {
-        return string.Join(" ", result.Errors.Select(error =>
+        var result = await PasswordReset.IssueAsync(user.Id);
+        if (!result.IsSuccess)
+        {
+            _message = Describe(result.Errors);
+            return;
+        }
+
+        var link = $"{Navigation.BaseUri}reset-password?user={user.Id:N}&token={Uri.EscapeDataString(result.Value.Token)}";
+        _issued = new IssuedLink(user.DisplayName, link, result.Value.ExpiresAt);
+    }
+
+    // The error code is the resource key; the directory's own message is the text until a resource exists.
+    private string Describe(IEnumerable<FluentCMS.Core.Results.Error> errors)
+    {
+        return string.Join(" ", errors.Select(error =>
         {
             var localized = L[error.Code];
             return localized.ResourceNotFound ? error.Message : localized.Value;
         }));
     }
+
+    private sealed record IssuedLink(string DisplayName, string Link, DateTimeOffset ExpiresAt);
 }
