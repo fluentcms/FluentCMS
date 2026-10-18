@@ -188,9 +188,9 @@ public sealed class BuiltInToolsTests
         return await host.AsUserAsync<IContentTypeDirectory, ContentType>(administrator, async directory =>
         {
             var title = new FieldDefinition("title", "text", required: true);
-            await directory.CreateAsync(new NewContentType("Category", "category", new ContentTypeDefinition([title])));
-            await directory.CreateAsync(new NewContentType("Product", "product", new ContentTypeDefinition([title])));
-            return (await directory.ReviseAsync("product", 1, new ContentTypeDefinition([title, new FieldDefinition("price", "number")]))).Value;
+            await directory.CreateAsync(new NewContentType("Category", "category", new ContentTypeDefinition([title])), TestChangeSetTargets.ContentModel);
+            await directory.CreateAsync(new NewContentType("Product", "product", new ContentTypeDefinition([title])), TestChangeSetTargets.ContentModel);
+            return (await directory.ReviseAsync("product", 1, new ContentTypeDefinition([title, new FieldDefinition("price", "number")]), TestChangeSetTargets.ContentModel)).Value;
         });
     }
 

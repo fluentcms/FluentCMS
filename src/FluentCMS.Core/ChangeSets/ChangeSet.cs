@@ -162,18 +162,10 @@ public sealed class ChangeSet
     {
         ArgumentNullException.ThrowIfNull(operation);
 
-        if (State != ChangeSetState.Open)
+        var writable = CanTakeOperations();
+        if (!writable.IsSuccess)
         {
-            return Result.Failure(
-                ChangeSetErrorCodes.NotOpen,
-                $"Operations are added while a change set is open, and this one is {Describe(State)}.");
-        }
-
-        if (RevertsChangeSetId is { } reverted)
-        {
-            return Result.Failure(
-                ChangeSetErrorCodes.RevertFixed,
-                $"This change set reverts change set {reverted} and holds exactly what undoes it, so no operation can be added.");
+            return writable;
         }
 
         // One operation per item keeps one diff per item and one version to restore on revert (CHG-03, CHG-06).
@@ -185,6 +177,39 @@ public sealed class ChangeSet
         }
 
         _operations.Add(operation);
+        return Result.Success();
+    }
+
+    // A write of an item adds its operation, or extends the one the set already holds for the item, so the set still has one
+    // operation per item (SCH-05): the write is based on the version the set proposes, and the operation now proposes the write's
+    // version. A create stays a create and an update keeps its base.
+    public Result Record(ChangeOperation operation)
+    {
+        ArgumentNullException.ThrowIfNull(operation);
+
+        var index = _operations.FindIndex(existing => existing.ItemKind == operation.ItemKind && existing.ItemId == operation.ItemId);
+        if (index < 0)
+        {
+            return AddOperation(operation);
+        }
+
+        var writable = CanTakeOperations();
+        if (!writable.IsSuccess)
+        {
+            return writable;
+        }
+
+        var current = _operations[index];
+        if (operation.Kind != OperationKind.Update || current.ProposedVersion is not { } proposed || operation.BaseVersion != proposed)
+        {
+            var proposes = current.ProposedVersion is { } version ? $"version {version}" : "its deletion";
+            return Result.Failure(
+                ChangeSetErrorCodes.ItemDuplicate,
+                $"The {Describe(operation.ItemKind)} {operation.ItemId} already has an operation in this change set, which proposes {proposes}; "
+                + "a later write of it in this set is an update based on that version.");
+        }
+
+        _operations[index] = ChangeOperation.Create(current.Kind, current.ItemKind, current.ItemId, current.BaseVersion, operation.ProposedVersion).Value;
         return Result.Success();
     }
 
@@ -225,6 +250,25 @@ public sealed class ChangeSet
 
         State = ChangeSetState.Rejected;
         RejectionReason = trimmedReason;
+        return Result.Success();
+    }
+
+    private Result CanTakeOperations()
+    {
+        if (State != ChangeSetState.Open)
+        {
+            return Result.Failure(
+                ChangeSetErrorCodes.NotOpen,
+                $"Operations are added while a change set is open, and this one is {Describe(State)}.");
+        }
+
+        if (RevertsChangeSetId is { } reverted)
+        {
+            return Result.Failure(
+                ChangeSetErrorCodes.RevertFixed,
+                $"This change set reverts change set {reverted} and holds exactly what undoes it, so no operation can be added.");
+        }
+
         return Result.Success();
     }
 

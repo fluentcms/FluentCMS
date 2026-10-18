@@ -1,8 +1,10 @@
 using FluentCMS.Core.Audit;
+using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Persistence;
 using FluentCMS.Core.Results;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Sites;
+using FluentCMS.Infrastructure.ChangeSets;
 using FluentCMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,7 +15,8 @@ internal sealed class ContentTypeDirectory(
     FluentCmsDbContext context,
     IUnitOfWork unitOfWork,
     IAuditLog auditLog,
-    FieldTypeRegistry fieldTypes) : IContentTypeDirectory
+    FieldTypeRegistry fieldTypes,
+    ChangeSetDirectory changeSets) : IContentTypeDirectory
 {
     private const string SubjectType = "content_type";
 
@@ -26,23 +29,29 @@ internal sealed class ContentTypeDirectory(
             .AsNoTracking()
             .Where(type => type.SiteId == SiteId)
             .OrderBy(type => type.Slug)
-            .Select(type => new ContentTypeSummary(type.Id, type.Name, type.Slug, type.Version))
+            .Select(type => new ContentTypeSummary(type.Id, type.Name, type.Slug, type.Version, type.PublishedVersion))
             .ToListAsync(cancellationToken);
     }
 
     public Task<Result<ContentType>> GetAsync(string slug, CancellationToken cancellationToken = default)
     {
-        return ReadAsync(slug, version: null, cancellationToken);
+        return ReadAsync(slug, row => row.Version, cancellationToken);
+    }
+
+    public Task<Result<ContentType>> GetPublishedAsync(string slug, CancellationToken cancellationToken = default)
+    {
+        return ReadAsync(slug, row => row.PublishedVersion, cancellationToken);
     }
 
     public Task<Result<ContentType>> GetVersionAsync(string slug, int version, CancellationToken cancellationToken = default)
     {
-        return ReadAsync(slug, version, cancellationToken);
+        return ReadAsync(slug, _ => version, cancellationToken);
     }
 
-    public async Task<Result<ContentType>> CreateAsync(NewContentType contentType, CancellationToken cancellationToken = default)
+    public async Task<Result<ContentType>> CreateAsync(NewContentType contentType, ChangeSetTarget changeSet, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(contentType);
+        ArgumentNullException.ThrowIfNull(changeSet);
 
         var created = ContentType.Create(SiteId, contentType.Name, contentType.Slug, contentType.Definition, fieldTypes);
         if (!created.IsSuccess)
@@ -65,6 +74,12 @@ internal sealed class ContentTypeDirectory(
             return Result<ContentType>.Failure(errors);
         }
 
+        var pending = await changeSets.PrepareAsync(changeSet, Operation(OperationKind.Create, type.Id, null, type.Version), cancellationToken);
+        if (!pending.IsSuccess)
+        {
+            return Result<ContentType>.Failure(pending.Errors);
+        }
+
         await using var scope = await unitOfWork.BeginAsync(cancellationToken);
 
         context.ContentTypes.Add(new ContentTypeRow
@@ -76,19 +91,28 @@ internal sealed class ContentTypeDirectory(
             Version = type.Version,
         });
         context.ContentTypeVersions.Add(VersionRow(type));
-        await auditLog.AppendAsync(new NewAuditEvent("content_type.created") { SubjectType = SubjectType, SubjectId = type.Id }, cancellationToken);
+        await auditLog.AppendAsync(
+            new NewAuditEvent("content_type.created") { SubjectType = SubjectType, SubjectId = type.Id, ChangeSetId = pending.Value.ChangeSet.Id },
+            cancellationToken);
 
-        return await CommitAsync(scope, type, SlugTaken(type.Slug), cancellationToken);
+        if (!await changeSets.WriteAsync(pending.Value, null, cancellationToken))
+        {
+            return Result<ContentType>.Failure([SetConflict(pending.Value)]);
+        }
+
+        return await CommitAsync(scope, type, CommitConflict(changeSet, pending.Value, SlugTaken(type.Slug)), cancellationToken);
     }
 
     public async Task<Result<ContentType>> ReviseAsync(
         string slug,
         int baseVersion,
         ContentTypeDefinition definition,
+        ChangeSetTarget changeSet,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(slug);
         ArgumentNullException.ThrowIfNull(definition);
+        ArgumentNullException.ThrowIfNull(changeSet);
 
         var row = await FindAsync(slug, cancellationToken);
         if (row is null)
@@ -96,16 +120,18 @@ internal sealed class ContentTypeDirectory(
             return NotFound(slug);
         }
 
-        if (row.Version != baseVersion)
+        // The published version is a base too, so a revision can leave an unpublished draft behind, such as a rejected one.
+        if (baseVersion != row.Version && baseVersion != row.PublishedVersion)
         {
-            return Result<ContentType>.Failure([VersionConflict(slug, baseVersion)]);
+            return Result<ContentType>.Failure([VersionConflict(row, baseVersion)]);
         }
 
-        var current = await context.ContentTypeVersions
+        var based = await context.ContentTypeVersions
             .AsNoTracking()
-            .SingleAsync(version => version.ContentTypeId == row.Id && version.Version == row.Version, cancellationToken);
+            .SingleAsync(version => version.ContentTypeId == row.Id && version.Version == baseVersion, cancellationToken);
 
-        var previous = ToContentType(row, current);
+        // Numbered after the latest version, whichever version the revision changes.
+        var previous = ContentType.Restore(row.Id, row.SiteId, row.Name, row.Slug, row.Version, ReadDefinition(row.Slug, based.Version, based.Definition));
         var revised = previous.Revise(definition, fieldTypes);
         if (!revised.IsSuccess)
         {
@@ -120,26 +146,43 @@ internal sealed class ContentTypeDirectory(
             return Result<ContentType>.Failure(errors);
         }
 
+        var pending = await changeSets.PrepareAsync(changeSet, Operation(OperationKind.Update, type.Id, baseVersion, type.Version), cancellationToken);
+        if (!pending.IsSuccess)
+        {
+            return Result<ContentType>.Failure(pending.Errors);
+        }
+
         await using var scope = await unitOfWork.BeginAsync(cancellationToken);
 
-        // Moves the pointer only from the version the caller read; a concurrent revision that committed first leaves nothing to move.
+        // Moves the pointer only from the latest version this call read; a concurrent revision that committed first leaves nothing to move.
         var moved = await context.ContentTypes
-            .Where(stored => stored.Id == row.Id && stored.Version == baseVersion)
+            .Where(stored => stored.Id == row.Id && stored.Version == row.Version)
             .ExecuteUpdateAsync(setters => setters.SetProperty(stored => stored.Version, type.Version), cancellationToken);
         if (moved == 0)
         {
-            return Result<ContentType>.Failure([VersionConflict(slug, baseVersion)]);
+            return Result<ContentType>.Failure([VersionConflict(row, baseVersion)]);
         }
 
         context.ContentTypeVersions.Add(VersionRow(type));
         await auditLog.AppendAsync(
-            new NewAuditEvent("content_type.revised") { SubjectType = SubjectType, SubjectId = type.Id, PreviousVersionId = current.Id },
+            new NewAuditEvent("content_type.revised")
+            {
+                SubjectType = SubjectType,
+                SubjectId = type.Id,
+                ChangeSetId = pending.Value.ChangeSet.Id,
+                PreviousVersionId = based.Id,
+            },
             cancellationToken);
 
-        return await CommitAsync(scope, type, VersionConflict(slug, baseVersion), cancellationToken);
+        if (!await changeSets.WriteAsync(pending.Value, based.Id, cancellationToken))
+        {
+            return Result<ContentType>.Failure([SetConflict(pending.Value)]);
+        }
+
+        return await CommitAsync(scope, type, CommitConflict(changeSet, pending.Value, VersionConflict(row, baseVersion)), cancellationToken);
     }
 
-    private async Task<Result<ContentType>> ReadAsync(string slug, int? version, CancellationToken cancellationToken)
+    private async Task<Result<ContentType>> ReadAsync(string slug, Func<ContentTypeRow, int?> version, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(slug);
 
@@ -149,7 +192,13 @@ internal sealed class ContentTypeDirectory(
             return NotFound(slug);
         }
 
-        var number = version ?? row.Version;
+        if (version(row) is not { } number)
+        {
+            return Result<ContentType>.Failure(
+                SchemaErrorCodes.ContentTypeNotPublished,
+                $"No change set has published the content type '{slug}' yet; its latest version is {row.Version}.");
+        }
+
         var stored = await context.ContentTypeVersions
             .AsNoTracking()
             .SingleOrDefaultAsync(candidate => candidate.ContentTypeId == row.Id && candidate.Version == number, cancellationToken);
@@ -311,10 +360,35 @@ internal sealed class ContentTypeDirectory(
         return new Error(SchemaErrorCodes.SlugTaken, $"The slug '{slug}' is already used by another content type in this site.");
     }
 
-    private static Error VersionConflict(string slug, int baseVersion)
+    private static Error VersionConflict(ContentTypeRow row, int baseVersion)
     {
+        var published = row.PublishedVersion is { } version ? $" or the published version {version}" : string.Empty;
+
         return new Error(
             SchemaErrorCodes.VersionConflict,
-            $"Version {baseVersion} is not the current version of the content type '{slug}'; read it again and revise the current version.");
+            $"Version {baseVersion} is not the latest version of the content type '{row.Slug}'{published}; read it again and revise one of those.");
+    }
+
+    private static ChangeOperation Operation(OperationKind kind, Guid contentTypeId, int? baseVersion, int proposedVersion)
+    {
+        return ChangeOperation.Create(kind, ItemKind.Schema, contentTypeId, baseVersion, proposedVersion).Value;
+    }
+
+    private static Error SetConflict(ChangeSetDirectory.PendingOperation pending)
+    {
+        return new Error(
+            ChangeSetErrorCodes.Conflict,
+            $"Change set {pending.ChangeSet.Id} was changed by another call at the same time; read it again and retry.");
+    }
+
+    // A unique index at commit is this write's own conflict or, when the write opened its session's set, possibly a concurrent
+    // first write of the same session.
+    private static Error CommitConflict(ChangeSetTarget target, ChangeSetDirectory.PendingOperation pending, Error own)
+    {
+        return pending.Revision is null && target.SessionId is { } session
+            ? new Error(
+                ChangeSetErrorCodes.Conflict,
+                $"Another call wrote this content type or opened a change set for session '{session}' at the same time; read it again and retry.")
+            : own;
     }
 }
