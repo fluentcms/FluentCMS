@@ -87,6 +87,109 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                         });
                 });
 
+            modelBuilder.Entity("FluentCMS.Infrastructure.ChangeSets.ChangeSetOperationRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("BaseVersion")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("ChangeSetId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ItemId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ItemKind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("ProposedVersion")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChangeSetId", "Position")
+                        .IsUnique();
+
+                    b.HasIndex("ItemKind", "ItemId");
+
+                    b.HasIndex("ChangeSetId", "ItemKind", "ItemId")
+                        .IsUnique();
+
+                    b.ToTable("ChangeSetOperations", (string)null);
+                });
+
+            modelBuilder.Entity("FluentCMS.Infrastructure.ChangeSets.ChangeSetRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("InitiatorId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("InitiatorKind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("InitiatorName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Rationale")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RejectionReason")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Revision")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("SessionId")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("SiteId")
+                        .HasColumnType("TEXT");
+
+                    b.PrimitiveCollection<string>("Sources")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SiteId");
+
+                    b.HasIndex("State");
+
+                    b.HasIndex("InitiatorKind", "InitiatorId", "SessionId")
+                        .IsUnique()
+                        .HasFilter("\"State\" = 'Open' AND \"SessionId\" IS NOT NULL");
+
+                    b.ToTable("ChangeSets", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_ChangeSets_RejectionReason", "(\"State\" = 'Rejected') = (\"RejectionReason\" IS NOT NULL)");
+                        });
+                });
+
             modelBuilder.Entity("FluentCMS.Infrastructure.Persistence.FluentCmsRole", b =>
                 {
                     b.Property<Guid>("Id")
@@ -364,6 +467,24 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("UserTokens", (string)null);
+                });
+
+            modelBuilder.Entity("FluentCMS.Infrastructure.ChangeSets.ChangeSetOperationRow", b =>
+                {
+                    b.HasOne("FluentCMS.Infrastructure.ChangeSets.ChangeSetRow", null)
+                        .WithMany()
+                        .HasForeignKey("ChangeSetId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FluentCMS.Infrastructure.ChangeSets.ChangeSetRow", b =>
+                {
+                    b.HasOne("FluentCMS.Infrastructure.Sites.SiteRow", null)
+                        .WithMany()
+                        .HasForeignKey("SiteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("FluentCMS.Infrastructure.Schema.ContentTypeRow", b =>

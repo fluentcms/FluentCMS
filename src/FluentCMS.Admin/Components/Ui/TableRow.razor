@@ -1,0 +1,9 @@
+<tr data-slot="table-row" class="@ClassNames.Cn("border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted", Class)" @attributes="AdditionalAttributes">
+    @ChildContent
+</tr>
+
+@code {
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+}

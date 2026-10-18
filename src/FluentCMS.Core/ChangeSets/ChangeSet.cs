@@ -7,15 +7,19 @@ namespace FluentCMS.Core.ChangeSets;
 // who started them (CHG-01, D15). It moves only along ChangeSetTransitions, and a refused call leaves it as it was.
 public sealed class ChangeSet
 {
+    public const int MaxSessionIdLength = 128;
+
+    private readonly List<string> _sources;
     private readonly List<ChangeOperation> _operations = [];
 
-    private ChangeSet(Guid id, Guid siteId, string rationale, IReadOnlyList<string> sources, Initiator initiator)
+    private ChangeSet(Guid id, Guid siteId, string rationale, IEnumerable<string> sources, Initiator initiator, string? sessionId)
     {
         Id = id;
         SiteId = siteId;
         Rationale = rationale;
-        Sources = sources;
+        _sources = [.. sources];
         Initiator = initiator;
+        SessionId = sessionId;
     }
 
     public Guid Id { get; }
@@ -24,9 +28,12 @@ public sealed class ChangeSet
 
     public string Rationale { get; }
 
-    public IReadOnlyList<string> Sources { get; }
+    public IReadOnlyList<string> Sources => _sources.AsReadOnly();
 
     public Initiator Initiator { get; }
+
+    // The caller's session whose consecutive operations this set groups (CHG-02); null for a set opened explicitly.
+    public string? SessionId { get; }
 
     public IReadOnlyList<ChangeOperation> Operations => _operations.AsReadOnly();
 
@@ -37,14 +44,14 @@ public sealed class ChangeSet
 
     // Operations come later, while the set is open, so an agent can open a set before its first write (CHG-02). An empty
     // list of sources is allowed here: requiring one is a check (CHK-01), not a rule of the model.
-    public static Result<ChangeSet> Open(Guid siteId, string rationale, IEnumerable<string> sources, Initiator initiator)
+    public static Result<ChangeSet> Open(Guid siteId, string rationale, IEnumerable<string> sources, Initiator initiator, string? sessionId = null)
     {
         ArgumentNullException.ThrowIfNull(sources);
         ArgumentNullException.ThrowIfNull(initiator);
 
         var errors = new List<Error>();
         var trimmedRationale = rationale?.Trim() ?? string.Empty;
-        var trimmedSources = sources.Select(source => source?.Trim() ?? string.Empty).ToList();
+        var trimmedSources = Trim(sources);
 
         if (siteId == Guid.Empty)
         {
@@ -56,19 +63,68 @@ public sealed class ChangeSet
             errors.Add(new Error(ChangeSetErrorCodes.RationaleMissing, "A change set needs a rationale that says why the changes are made."));
         }
 
-        for (var index = 0; index < trimmedSources.Count; index++)
+        errors.AddRange(BlankSources(trimmedSources));
+
+        if (sessionId is not null && (string.IsNullOrWhiteSpace(sessionId) || sessionId.Length > MaxSessionIdLength))
         {
-            if (trimmedSources[index].Length == 0)
-            {
-                errors.Add(new Error(
-                    ChangeSetErrorCodes.SourceBlank,
-                    $"Source {index + 1} is blank. A source names where a change came from, such as a URL, a file, an export or a person."));
-            }
+            errors.Add(new Error(
+                ChangeSetErrorCodes.SessionIdInvalid,
+                $"A session id must not be blank and must be at most {MaxSessionIdLength} characters."));
         }
 
         return errors.Count == 0
-            ? Result<ChangeSet>.Success(new ChangeSet(Guid.CreateVersion7(), siteId, trimmedRationale, trimmedSources, initiator))
+            ? Result<ChangeSet>.Success(new ChangeSet(Guid.CreateVersion7(), siteId, trimmedRationale, trimmedSources.Distinct(), initiator, sessionId))
             : Result<ChangeSet>.Failure(errors);
+    }
+
+    // Rebuilds a stored set without checking it again, so it stays readable if the rules above change.
+    public static ChangeSet Restore(
+        Guid id,
+        Guid siteId,
+        string rationale,
+        IEnumerable<string> sources,
+        Initiator initiator,
+        string? sessionId,
+        IEnumerable<ChangeOperation> operations,
+        ChangeSetState state,
+        string? rejectionReason)
+    {
+        ArgumentNullException.ThrowIfNull(rationale);
+        ArgumentNullException.ThrowIfNull(sources);
+        ArgumentNullException.ThrowIfNull(initiator);
+        ArgumentNullException.ThrowIfNull(operations);
+
+        var changeSet = new ChangeSet(id, siteId, rationale, sources, initiator, sessionId)
+        {
+            State = state,
+            RejectionReason = rejectionReason,
+        };
+        changeSet._operations.AddRange(operations);
+
+        return changeSet;
+    }
+
+    // Later operations in a session may cite sources the first one did not; a source already on the set is not added twice.
+    public Result AddSources(IEnumerable<string> sources)
+    {
+        ArgumentNullException.ThrowIfNull(sources);
+
+        if (State != ChangeSetState.Open)
+        {
+            return Result.Failure(
+                ChangeSetErrorCodes.NotOpen,
+                $"Sources are added while a change set is open, and this one is {Describe(State)}.");
+        }
+
+        var trimmedSources = Trim(sources);
+        var blank = BlankSources(trimmedSources);
+        if (blank.Count > 0)
+        {
+            return Result.Failure(blank);
+        }
+
+        _sources.AddRange(trimmedSources.Distinct().Except(_sources));
+        return Result.Success();
     }
 
     public Result AddOperation(ChangeOperation operation)
@@ -155,6 +211,22 @@ public sealed class ChangeSet
         }
 
         return Result.Success();
+    }
+
+    private static List<string> Trim(IEnumerable<string> sources)
+    {
+        return sources.Select(source => source?.Trim() ?? string.Empty).ToList();
+    }
+
+    private static List<Error> BlankSources(List<string> sources)
+    {
+        return sources
+            .Select((source, index) => (source, index))
+            .Where(candidate => candidate.source.Length == 0)
+            .Select(candidate => new Error(
+                ChangeSetErrorCodes.SourceBlank,
+                $"Source {candidate.index + 1} is blank. A source names where a change came from, such as a URL, a file, an export or a person."))
+            .ToList();
     }
 
     private static string Describe(ChangeSetState state)

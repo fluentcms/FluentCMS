@@ -1,0 +1,25 @@
+@inject IStringLocalizer<NewUserFields> L
+
+@* The fields of a new account. The page's form property is called Form, so the names bind to it. *@
+<FormField Label="@L["Name"]"
+           Description="@(ForSelf ? L["Shown in the audit log next to your actions."] : L["Shown in the audit log next to their actions."])"
+           Error="@Errors.For(nameof(NewUserForm.DisplayName))">
+    <Input name="Form.DisplayName" value="@Form.DisplayName" autocomplete="@(ForSelf ? "name" : "off")" required />
+</FormField>
+<FormField Label="@L["Email"]" Error="@Errors.For(nameof(NewUserForm.Email))">
+    <Input Type="email" name="Form.Email" value="@Form.Email" autocomplete="@(ForSelf ? "username" : "off")" required />
+</FormField>
+<FormField Label="@L["Password"]" Error="@Errors.For(nameof(NewUserForm.Password))">
+    <Input Type="password" name="Form.Password" autocomplete="new-password" required />
+</FormField>
+<FormField Label="@L["Confirm password"]" Error="@Errors.For(nameof(NewUserForm.ConfirmPassword))">
+    <Input Type="password" name="Form.ConfirmPassword" autocomplete="new-password" required />
+</FormField>
+
+@code {
+    [Parameter, EditorRequired] public NewUserForm Form { get; set; } = null!;
+    [Parameter, EditorRequired] public NewUserErrors Errors { get; set; } = null!;
+
+    // On the setup page people enter their own details, so the browser may fill them; on the users screen they are someone else's.
+    [Parameter] public bool ForSelf { get; set; }
+}

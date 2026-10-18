@@ -2,7 +2,6 @@
 @layout AccountLayout
 @attribute [AllowAnonymous]
 @attribute [AcceptsCredentials]
-@using FluentCMS.Core.Results
 @inject IFirstRunSetup FirstRun
 @inject IUserSignIn UserSignIn
 @inject NavigationManager Navigation
@@ -18,33 +17,21 @@
     <CardContent>
         <form method="post" @onsubmit="SubmitAsync" @formname="setup" class="grid gap-6">
             <AntiforgeryToken />
-            @if (_formError is not null)
+            @if (_errors.Form is not null)
             {
-                <p role="alert" class="text-sm text-destructive">@_formError</p>
+                <p role="alert" class="text-sm text-destructive">@_errors.Form</p>
             }
-            <FormField Label="@L["Name"]" Description="@L["Shown in the audit log next to your actions."]" Error="@ErrorFor(nameof(SetupForm.DisplayName))">
-                <Input name="Form.DisplayName" value="@Form.DisplayName" autocomplete="name" required />
-            </FormField>
-            <FormField Label="@L["Email"]" Error="@ErrorFor(nameof(SetupForm.Email))">
-                <Input Type="email" name="Form.Email" value="@Form.Email" autocomplete="username" required />
-            </FormField>
-            <FormField Label="@L["Password"]" Error="@ErrorFor(nameof(SetupForm.Password))">
-                <Input Type="password" name="Form.Password" autocomplete="new-password" required />
-            </FormField>
-            <FormField Label="@L["Confirm password"]" Error="@ErrorFor(nameof(SetupForm.ConfirmPassword))">
-                <Input Type="password" name="Form.ConfirmPassword" autocomplete="new-password" required />
-            </FormField>
+            <NewUserFields Form="Form" Errors="_errors" ForSelf="true" />
             <Button Type="submit" Class="w-full">@L["Create administrator"]</Button>
         </form>
     </CardContent>
 </Card>
 
 @code {
-    private readonly Dictionary<string, string> _errors = [];
-    private string? _formError;
+    private readonly NewUserErrors _errors = new();
 
     [SupplyParameterFromForm(FormName = "setup")]
-    private SetupForm Form { get; set; } = default!;
+    private NewUserForm Form { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
     {
@@ -58,75 +45,21 @@
 
     private async Task SubmitAsync()
     {
-        Require(nameof(SetupForm.DisplayName), Form.DisplayName, L["Enter your name."]);
-        Require(nameof(SetupForm.Email), Form.Email, L["Enter your email address."]);
-        Require(nameof(SetupForm.Password), Form.Password, L["Enter a password."]);
-        if (Form.Password != Form.ConfirmPassword)
-        {
-            _errors[nameof(SetupForm.ConfirmPassword)] = L["The passwords do not match."];
-        }
-
-        if (_errors.Count > 0)
+        _errors.Validate(Form, L);
+        if (_errors.Any)
         {
             return;
         }
 
-        var email = Form.Email!.Trim();
-        var created = await FirstRun.CreateFirstAdministratorAsync(new NewUser(email, Form.DisplayName!.Trim(), Form.Password!));
+        var user = Form.ToNewUser();
+        var created = await FirstRun.CreateFirstAdministratorAsync(user);
         if (!created.IsSuccess)
         {
-            foreach (var error in created.Errors)
-            {
-                Report(error);
-            }
-
+            _errors.Report(created.Errors, L);
             return;
         }
 
-        var signedIn = await UserSignIn.SignInAsync(email, Form.Password!);
+        var signedIn = await UserSignIn.SignInAsync(user.Email, user.Password);
         Navigation.NavigateTo(signedIn.IsSuccess ? "" : "sign-in");
-    }
-
-    private void Require(string field, string? value, string message)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            _errors[field] = message;
-        }
-    }
-
-    // Identity reports problems by code: the code is the resource key, and Identity's own message the text until a resource exists.
-    private void Report(Error error)
-    {
-        var localized = L[error.Code];
-        var message = localized.ResourceNotFound ? error.Message : localized.Value;
-        var field = error.Code switch
-        {
-            "InvalidEmail" or "DuplicateEmail" or "InvalidUserName" or "DuplicateUserName" => nameof(SetupForm.Email),
-            _ when error.Code.StartsWith("Password", StringComparison.Ordinal) => nameof(SetupForm.Password),
-            _ => null,
-        };
-
-        if (field is null)
-        {
-            _formError = _formError is null ? message : _formError + " " + message;
-        }
-        else
-        {
-            _errors[field] = _errors.TryGetValue(field, out var existing) ? existing + " " + message : message;
-        }
-    }
-
-    private string? ErrorFor(string field) => _errors.GetValueOrDefault(field);
-
-    private sealed class SetupForm
-    {
-        public string? DisplayName { get; set; }
-
-        public string? Email { get; set; }
-
-        public string? Password { get; set; }
-
-        public string? ConfirmPassword { get; set; }
     }
 }
