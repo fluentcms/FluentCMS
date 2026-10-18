@@ -12,4 +12,7 @@ public sealed class EntryRow
     public int LatestVersion { get; set; }
 
     public int? PublishedVersion { get; set; }
+
+    // Set while the entry is soft deleted (CNT-06).
+    public DateTimeOffset? DeletedAt { get; set; }
 }

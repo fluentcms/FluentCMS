@@ -3,8 +3,9 @@
 @inject IStringLocalizer<Toaster> L
 
 @* The region the toasts of this circuit appear in, at the bottom end; shadcn's Sonner look. It is always rendered, so a screen
-   reader already knows the live region when the first toast arrives. Toasts never take focus; Tab reaches their close buttons. *@
-<div role="region" aria-label="@L["Notifications"]" data-slot="toaster" class="@ClassNames.Cn("pointer-events-none fixed end-4 bottom-4 z-[100] w-[calc(100%-2rem)] max-w-[356px]", Class)">
+   reader already knows the live region when the first toast arrives. Toasts never take focus; Alt+T moves focus to the region
+   as in Sonner, and Tab reaches their close buttons from there. *@
+<div role="region" aria-label="@L["Notifications"]" aria-keyshortcuts="Alt+T" tabindex="-1" data-slot="toaster" class="@ClassNames.Cn("pointer-events-none fixed end-4 bottom-4 z-[100] w-[calc(100%-2rem)] max-w-[356px] outline-none", Class)">
     <ol aria-live="polite" aria-relevant="additions text" class="flex flex-col gap-2">
         @foreach (var toast in Toasts.Toasts)
         {

@@ -32,7 +32,7 @@ public static class InfrastructureServiceCollectionExtensions
         AddSchema(services);
         AddChangeSets(services);
         AddAgents(services);
-        AddContent(services);
+        AddContent(services, configuration);
 
         services.AddHostedService<DatabaseMigrator>();
 
@@ -81,8 +81,9 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IToolCallLog, ToolCallLog>();
     }
 
-    private static void AddContent(IServiceCollection services)
+    private static void AddContent(IServiceCollection services, IConfiguration configuration)
     {
+        services.Configure<ContentOptions>(configuration.GetSection(ContentOptions.SectionName));
         services.AddScoped<IEntryDirectory, EntryDirectory>();
         services.AddScoped<IWhereUsed, WhereUsed>();
         services.AddScoped<IResolvedEntries, ResolvedEntries>();

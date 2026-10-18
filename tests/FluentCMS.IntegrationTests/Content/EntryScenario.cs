@@ -22,9 +22,9 @@ internal sealed class EntryScenario : IAsyncDisposable
 
     public ServiceProvider Services => Schema.Services;
 
-    public static async Task<EntryScenario> CreateAsync(string provider)
+    public static async Task<EntryScenario> CreateAsync(string provider, Action<IServiceCollection>? configure = null)
     {
-        return new EntryScenario(await SchemaScenario.CreateAsync(provider));
+        return new EntryScenario(await SchemaScenario.CreateAsync(provider, configure));
     }
 
     // Each call gets its own scope and DbContext, as separate requests would.

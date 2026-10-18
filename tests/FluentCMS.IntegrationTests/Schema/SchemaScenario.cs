@@ -25,12 +25,16 @@ internal sealed class SchemaScenario : IAsyncDisposable
 
     public ServiceProvider Services { get; }
 
-    public static async Task<SchemaScenario> CreateAsync(string provider)
+    public static async Task<SchemaScenario> CreateAsync(string provider, Action<IServiceCollection>? configure = null)
     {
         var database = await TemporaryDatabase.CreateAsync(provider);
         var services = TestServices.Build(
             database.Configuration,
-            collection => collection.AddScoped<ICurrentInitiator>(_ => new TestInitiator(Amir)));
+            collection =>
+            {
+                collection.AddScoped<ICurrentInitiator>(_ => new TestInitiator(Amir));
+                configure?.Invoke(collection);
+            });
 
         await TestServices.MigrateAsync(services);
         return new SchemaScenario(database, services);

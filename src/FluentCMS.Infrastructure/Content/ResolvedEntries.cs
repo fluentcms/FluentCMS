@@ -18,7 +18,7 @@ internal sealed class ResolvedEntries(FluentCmsDbContext context) : IResolvedEnt
         var entry = await (
             from row in context.Entries.AsNoTracking()
             join type in context.ContentTypes.AsNoTracking() on row.ContentTypeId equals type.Id
-            where row.Id == entryId && row.SiteId == SiteId
+            where row.Id == entryId && row.SiteId == SiteId && row.DeletedAt == null
             select new { row.LatestVersion, type.Slug })
             .SingleOrDefaultAsync(cancellationToken);
         if (entry is null)
@@ -51,19 +51,14 @@ internal sealed class ResolvedEntries(FluentCmsDbContext context) : IResolvedEnt
 
         foreach (var reference in references.OrderBy(reference => reference.Path, StringComparer.Ordinal))
         {
-            if (!published.TryGetValue(reference.TargetId, out var entity))
+            var (deleted, entity) = published.GetValueOrDefault(reference.TargetId);
+            var value = entity is { } fieldsOfEntity ? FactValue(fieldsOfEntity, reference.Field) : null;
+            values[reference.Path] = value;
+
+            if (value is null)
             {
-                unresolved.Add(new UnresolvedReference(reference.Path, reference.TargetId, reference.Field, UnresolvedReason.NotPublished));
-                values[reference.Path] = null;
-            }
-            else if (FactValue(entity, reference.Field) is { } value)
-            {
-                values[reference.Path] = value;
-            }
-            else
-            {
-                unresolved.Add(new UnresolvedReference(reference.Path, reference.TargetId, reference.Field, UnresolvedReason.NoValue));
-                values[reference.Path] = null;
+                var reason = deleted ? UnresolvedReason.Deleted : entity is null ? UnresolvedReason.NotPublished : UnresolvedReason.NoValue;
+                unresolved.Add(new UnresolvedReference(reference.Path, reference.TargetId, reference.Field, reason));
             }
         }
 
@@ -72,8 +67,8 @@ internal sealed class ResolvedEntries(FluentCmsDbContext context) : IResolvedEnt
             new ResolvedEntry(entryId, entry.Slug, number, ResolvedFields.Replace(document.RootElement, values), unresolved));
     }
 
-    // The fields of each entity's published version, read in one query; an entity without one is left out.
-    private async Task<Dictionary<Guid, JsonElement>> PublishedFieldsAsync(List<Guid> ids, CancellationToken cancellationToken)
+    // Each entity's published fields, read in one query: none when it is deleted or has no published version.
+    private async Task<Dictionary<Guid, (bool Deleted, JsonElement? Fields)>> PublishedFieldsAsync(List<Guid> ids, CancellationToken cancellationToken)
     {
         if (ids.Count == 0)
         {
@@ -82,15 +77,16 @@ internal sealed class ResolvedEntries(FluentCmsDbContext context) : IResolvedEnt
 
         var rows = await (
             from entity in context.Entries.AsNoTracking()
+            where ids.Contains(entity.Id) && entity.SiteId == SiteId
             from version in context.EntryVersions.AsNoTracking()
-            where ids.Contains(entity.Id)
-                && entity.SiteId == SiteId
-                && version.EntryId == entity.Id
-                && version.Version == entity.PublishedVersion
-            select new { entity.Id, version.Fields })
+                .Where(version => version.EntryId == entity.Id && version.Version == entity.PublishedVersion)
+                .DefaultIfEmpty()
+            select new { entity.Id, Deleted = entity.DeletedAt != null, Fields = version == null ? null : version.Fields })
             .ToListAsync(cancellationToken);
 
-        return rows.ToDictionary(row => row.Id, row => JsonSerializer.Deserialize<JsonElement>(row.Fields));
+        return rows.ToDictionary(
+            row => row.Id,
+            row => (row.Deleted, row.Deleted || row.Fields is null ? (JsonElement?)null : JsonSerializer.Deserialize<JsonElement>(row.Fields)));
     }
 
     // An entity stores each field as a fact; the view shows the fact's value (SCH-03).
