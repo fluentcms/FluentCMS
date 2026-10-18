@@ -78,12 +78,14 @@ public static class InfrastructureServiceCollectionExtensions
     private static void AddAgents(IServiceCollection services)
     {
         services.AddScoped<IAgentCredentialDirectory, AgentCredentialDirectory>();
+        services.AddSingleton<IToolCallLog, ToolCallLog>();
     }
 
     private static void AddContent(IServiceCollection services)
     {
         services.AddScoped<IEntryDirectory, EntryDirectory>();
         services.AddScoped<IWhereUsed, WhereUsed>();
+        services.AddScoped<IResolvedEntries, ResolvedEntries>();
     }
 
     private static void AddIdentity(IServiceCollection services)
