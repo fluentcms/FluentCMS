@@ -1,0 +1,32 @@
+@* shadcn's radio group on native radio buttons that share one name: the browser moves between them with the arrow keys,
+   checks the one it moves to, and lets Tab in on the checked one. Inside a FormField the field's label names the group. *@
+<CascadingValue Value="_context">
+    <div id="@Field?.Id"
+         role="radiogroup"
+         data-slot="radio-group"
+         aria-labelledby="@Field?.LabelId"
+         aria-describedby="@Field?.DescribedBy"
+         aria-invalid="@(Field?.HasError == true ? "true" : null)"
+         class="@ClassNames.Cn("grid gap-3", Class)"
+         @attributes="AdditionalAttributes">
+        @ChildContent
+    </div>
+</CascadingValue>
+
+@code {
+    private readonly RadioGroupContext _context = new();
+
+    [CascadingParameter] private FormFieldContext? Field { get; set; }
+
+    [Parameter] public string? Name { get; set; }
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        _context.Name = Name ?? _context.GeneratedName;
+        _context.Value = Value;
+    }
+}
