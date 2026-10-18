@@ -15,7 +15,7 @@ public sealed class ChangeSetPublishTests
     [PostgresData]
     public async Task Publishing_an_approved_set_moves_every_item_and_records_its_provenance(string provider)
     {
-        await using var scenario = await ChangeSetScenario.CreateAsync(provider);
+        await using var scenario = await ScenarioAsync(provider);
         var category = await scenario.ContentTypeAsync("category");
         var product = await scenario.ContentTypeAsync("product", revised: true);
         var productVersions = await scenario.QueryAsync(context => context.ContentTypeVersions
@@ -33,9 +33,7 @@ public sealed class ChangeSetPublishTests
         var changeSet = await scenario.ApproveAsync(Create(category), Update(product));
         var before = (await scenario.ChangeSetEventsAsync(changeSet.Id)).Count;
 
-        scenario.Initiator = Amir;
         var published = await scenario.RunAsync(directory => directory.PublishAsync(changeSet.Id));
-        scenario.Initiator = Agent;
 
         Assert.True(published.IsSuccess, string.Join("; ", published.Errors.Select(error => error.Message)));
         Assert.Equal(ChangeSetState.Published, published.Value.State);
@@ -59,7 +57,7 @@ public sealed class ChangeSetPublishTests
     [PostgresData]
     public async Task A_published_delete_clears_the_published_version(string provider)
     {
-        await using var scenario = await ChangeSetScenario.CreateAsync(provider);
+        await using var scenario = await ScenarioAsync(provider);
         var product = await scenario.ContentTypeAsync("product");
         await scenario.PublishAsync(Create(product));
         var publishedRow = await scenario.QueryAsync(context => context.ContentTypeVersions
@@ -82,7 +80,7 @@ public sealed class ChangeSetPublishTests
     [PostgresData]
     public async Task Only_an_approved_set_publishes(string provider)
     {
-        await using var scenario = await ChangeSetScenario.CreateAsync(provider);
+        await using var scenario = await ScenarioAsync(provider);
         var category = await scenario.ContentTypeAsync("category");
         var product = await scenario.ContentTypeAsync("product");
         var open = await scenario.OpenAsync(Create(product));
@@ -112,7 +110,7 @@ public sealed class ChangeSetPublishTests
     [PostgresData]
     public async Task A_set_whose_items_moved_past_their_base_versions_is_refused_and_writes_nothing(string provider)
     {
-        await using var scenario = await ChangeSetScenario.CreateAsync(provider);
+        await using var scenario = await ScenarioAsync(provider);
         var product = await scenario.ContentTypeAsync("product", revised: true);
         var category = await scenario.ContentTypeAsync("category", revised: true);
         await scenario.PublishAsync(Create(product));
@@ -155,7 +153,7 @@ public sealed class ChangeSetPublishTests
     [PostgresData]
     public async Task A_failure_mid_publish_leaves_nothing_published_and_the_set_approved(string provider)
     {
-        await using var scenario = await ChangeSetScenario.CreateAsync(provider);
+        await using var scenario = await ScenarioAsync(provider);
         var category = await scenario.ContentTypeAsync("category");
         var product = await scenario.ContentTypeAsync("product", revised: true);
         await scenario.PublishAsync(Create(product));
@@ -211,7 +209,7 @@ public sealed class ChangeSetPublishTests
     [PostgresData]
     public async Task Of_two_concurrent_publishes_over_one_item_one_wins_and_the_other_is_stale(string provider)
     {
-        await using var scenario = await ChangeSetScenario.CreateAsync(provider);
+        await using var scenario = await ScenarioAsync(provider);
         var product = await scenario.ContentTypeAsync("product", revised: true);
         await scenario.PublishAsync(Create(product));
         var winner = await scenario.ApproveAsync(Update(product));
@@ -234,7 +232,7 @@ public sealed class ChangeSetPublishTests
     [PostgresData]
     public async Task Of_two_concurrent_publishes_of_one_set_one_wins_and_the_other_gets_a_conflict(string provider)
     {
-        await using var scenario = await ChangeSetScenario.CreateAsync(provider);
+        await using var scenario = await ScenarioAsync(provider);
         var product = await scenario.ContentTypeAsync("product");
         var changeSet = await scenario.ApproveAsync(Create(product));
 
@@ -255,7 +253,7 @@ public sealed class ChangeSetPublishTests
     [PostgresData]
     public async Task A_refused_publish_leaves_the_callers_unit_of_work_able_to_commit(string provider)
     {
-        await using var scenario = await ChangeSetScenario.CreateAsync(provider);
+        await using var scenario = await ScenarioAsync(provider);
         var product = await scenario.ContentTypeAsync("product", revised: true);
         var stale = await scenario.ApproveAsync(Update(product));
         Guid id;
@@ -277,5 +275,13 @@ public sealed class ChangeSetPublishTests
         Assert.Equal(ChangeSetState.Open, (await scenario.ChangeSetRowAsync(id)).State);
         Assert.Equal(ChangeSetState.Approved, (await scenario.ChangeSetRowAsync(stale.Id)).State);
         Assert.Null(await scenario.PublishedVersionAsync(product.Id));
+    }
+
+    // Approving and publishing are review moves, which only a person makes (MCP-06).
+    private static async Task<ChangeSetScenario> ScenarioAsync(string provider)
+    {
+        var scenario = await ChangeSetScenario.CreateAsync(provider);
+        scenario.Initiator = Amir;
+        return scenario;
     }
 }

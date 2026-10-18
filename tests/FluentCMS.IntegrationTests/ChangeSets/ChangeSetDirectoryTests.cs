@@ -184,9 +184,9 @@ public sealed class ChangeSetDirectoryTests
         var events = (await scenario.ChangeSetEventsAsync()).Count;
 
         var withoutOperations = await scenario.RunAsync(directory => directory.TransitionAsync(empty.Id, ChangeSetState.ChecksRunning));
-        var skipped = await scenario.RunAsync(directory => directory.TransitionAsync(reviewed.Id, ChangeSetState.Published));
-        var silentRejection = await scenario.RunAsync(directory => directory.TransitionAsync(reviewed.Id, ChangeSetState.Rejected));
-        var blankReason = await scenario.RunAsync(directory => directory.RejectAsync(reviewed.Id, "  "));
+        var skipped = await scenario.AsPersonAsync(directory => directory.TransitionAsync(reviewed.Id, ChangeSetState.Published));
+        var silentRejection = await scenario.AsPersonAsync(directory => directory.TransitionAsync(reviewed.Id, ChangeSetState.Rejected));
+        var blankReason = await scenario.AsPersonAsync(directory => directory.RejectAsync(reviewed.Id, "  "));
         var unknown = await scenario.RunAsync(directory => directory.TransitionAsync(Guid.NewGuid(), ChangeSetState.ChecksRunning));
 
         Assert.Equal(ChangeSetErrorCodes.OperationsMissing, Assert.Single(withoutOperations.Errors).Code);
@@ -236,7 +236,7 @@ public sealed class ChangeSetDirectoryTests
         Assert.Equal(ChangeSetState.ChecksRunning, after.State);
         Assert.Equal(before.Revision, after.Revision);
         Assert.Equal(events, (await scenario.ChangeSetEventsAsync()).Count);
-        Assert.True((await scenario.RunAsync(directory => directory.TransitionAsync(changeSet.Id, ChangeSetState.AwaitingReview))).IsSuccess);
+        Assert.True((await scenario.AsPersonAsync(directory => directory.TransitionAsync(changeSet.Id, ChangeSetState.AwaitingReview))).IsSuccess);
     }
 
     [Theory]
@@ -324,6 +324,7 @@ public sealed class ChangeSetDirectoryTests
             id = (await directory.OpenAsync(CatalogSync)).Value.Id;
             var unknown = await directory.AddOperationAsync(id, ChangeOperation.Create(OperationKind.Update, ItemKind.Schema, Guid.NewGuid(), 1, 2).Value);
             Assert.True((await directory.AddOperationAsync(id, Update(product))).IsSuccess);
+            scenario.Initiator = Amir;
             var refused = await directory.TransitionAsync(id, ChangeSetState.Published);
 
             Assert.Equal(ChangeSetErrorCodes.ItemNotFound, Assert.Single(unknown.Errors).Code);
@@ -345,6 +346,7 @@ public sealed class ChangeSetDirectoryTests
         var product = await scenario.ContentTypeAsync("product", revised: true);
         var changeSet = await scenario.OpenAsync(Update(product));
         await MoveAsync(scenario, changeSet.Id, ChangeSetState.ChecksRunning);
+        scenario.Initiator = Amir;
 
         var lost = await scenario.RaceAsync(
             directory => directory.TransitionAsync(changeSet.Id, ChangeSetState.AwaitingReview),
@@ -373,10 +375,13 @@ public sealed class ChangeSetDirectoryTests
         Assert.Equal(["change_set.opened", "change_set.operation_added"], (await scenario.ChangeSetEventsAsync()).Select(row => row.Operation));
     }
 
+    // Submitting and reopening are the caller's own moves; the others are made as a person, as the checks and the desk will.
     private static Task<Result<ChangeSet>> MoveAsync(ChangeSetScenario scenario, Guid id, ChangeSetState state)
     {
-        return scenario.RunAsync(directory => state == ChangeSetState.Rejected
+        Func<IChangeSetDirectory, Task<Result<ChangeSet>>> move = directory => state == ChangeSetState.Rejected
             ? directory.RejectAsync(id, "The price has no source.")
-            : directory.TransitionAsync(id, state));
+            : directory.TransitionAsync(id, state);
+
+        return state is ChangeSetState.ChecksRunning or ChangeSetState.Open ? scenario.RunAsync(move) : scenario.AsPersonAsync(move);
     }
 }

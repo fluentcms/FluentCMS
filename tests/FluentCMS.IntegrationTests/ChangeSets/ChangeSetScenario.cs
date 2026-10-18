@@ -1,8 +1,12 @@
+using System.Security.Cryptography;
+using FluentCMS.Core.Agents;
 using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Persistence;
 using FluentCMS.Core.Results;
 using FluentCMS.Core.Schema;
+using FluentCMS.Core.Sites;
+using FluentCMS.Infrastructure.Agents;
 using FluentCMS.Infrastructure.Audit;
 using FluentCMS.Infrastructure.ChangeSets;
 using FluentCMS.Infrastructure.Persistence;
@@ -22,13 +26,20 @@ internal sealed class ChangeSetScenario : IAsyncDisposable
 
     private readonly TemporaryDatabase _database;
     private readonly SwitchableInitiator _initiator;
+    private readonly TickingClock _clock;
     private readonly AuditFailure _auditFailure;
 
-    private ChangeSetScenario(TemporaryDatabase database, ServiceProvider services, SwitchableInitiator initiator, AuditFailure auditFailure)
+    private ChangeSetScenario(
+        TemporaryDatabase database,
+        ServiceProvider services,
+        SwitchableInitiator initiator,
+        TickingClock clock,
+        AuditFailure auditFailure)
     {
         _database = database;
         Services = services;
         _initiator = initiator;
+        _clock = clock;
         _auditFailure = auditFailure;
     }
 
@@ -44,16 +55,54 @@ internal sealed class ChangeSetScenario : IAsyncDisposable
     {
         var database = await TemporaryDatabase.CreateAsync(provider);
         var initiator = new SwitchableInitiator { Current = Agent };
+        var clock = new TickingClock();
         var auditFailure = new AuditFailure();
         var services = TestServices.Build(
             database.Configuration,
             collection => collection
                 .AddSingleton<ICurrentInitiator>(initiator)
-                .AddSingleton<TimeProvider>(new TickingClock()),
+                .AddSingleton<TimeProvider>(clock),
             collection => FailingAuditLog.Wrap(collection, auditFailure));
 
         await TestServices.MigrateAsync(services);
-        return new ChangeSetScenario(database, services, initiator, auditFailure);
+        var scenario = new ChangeSetScenario(database, services, initiator, clock, auditFailure);
+        await scenario.QueryAsync(async context =>
+        {
+            context.AgentCredentials.Add(AgentCredential());
+            return await context.SaveChangesAsync();
+        });
+
+        return scenario;
+    }
+
+    // As a person, who stands in for the checks, routing and the desk, whose moves an agent cannot make (MCP-06).
+    public async Task<T> AsPersonAsync<T>(Func<IChangeSetDirectory, Task<T>> action)
+    {
+        var initiator = Initiator;
+        Initiator = Amir;
+        try
+        {
+            return await RunAsync(action);
+        }
+        finally
+        {
+            Initiator = initiator;
+        }
+    }
+
+    public void AdvanceClock(TimeSpan by)
+    {
+        _clock.Advance(by);
+    }
+
+    // Changes Agent's stored credential, such as a cap, its expiry or its revocation.
+    public Task<int> UpdateAgentAsync(Action<AgentCredentialRow> change)
+    {
+        return QueryAsync(async context =>
+        {
+            change(await context.AgentCredentials.SingleAsync(row => row.Id == Agent.CredentialId));
+            return await context.SaveChangesAsync();
+        });
     }
 
     // The given audit append from now on throws, counting from one.
@@ -128,14 +177,14 @@ internal sealed class ChangeSetScenario : IAsyncDisposable
         var changeSet = await OpenAsync(operations);
         Assert.True((await RunAsync(directory => directory.TransitionAsync(changeSet.Id, ChangeSetState.ChecksRunning))).IsSuccess);
 
-        return (await RunAsync(directory => directory.TransitionAsync(changeSet.Id, ChangeSetState.Approved))).Value;
+        return (await AsPersonAsync(directory => directory.TransitionAsync(changeSet.Id, ChangeSetState.Approved))).Value;
     }
 
     // Approved and published with the operations, so later sets can be based on the versions they publish.
     public async Task<ChangeSet> PublishAsync(params ChangeOperation[] operations)
     {
         var changeSet = await ApproveAsync(operations);
-        var published = await RunAsync(directory => directory.PublishAsync(changeSet.Id));
+        var published = await AsPersonAsync(directory => directory.PublishAsync(changeSet.Id));
         Assert.True(published.IsSuccess, string.Join("; ", published.Errors.Select(error => error.Message)));
 
         return published.Value;
@@ -212,6 +261,26 @@ internal sealed class ChangeSetScenario : IAsyncDisposable
         return ChangeOperation.Create(OperationKind.Delete, ItemKind.Schema, type.Id, baseVersion, null).Value;
     }
 
+    // The stored credential behind Agent, scoped to the site with room to spare, so only a test that lowers a cap meets one.
+    private static AgentCredentialRow AgentCredential()
+    {
+        return new AgentCredentialRow
+        {
+            Id = Agent.CredentialId,
+            DisplayName = Agent.DisplayName,
+            KeyHash = RandomNumberGenerator.GetBytes(32),
+            IssuedAt = new DateTimeOffset(2026, 10, 1, 0, 0, 0, TimeSpan.Zero),
+            ExpiresAt = new DateTimeOffset(2027, 10, 1, 0, 0, 0, TimeSpan.Zero),
+            Sites = [Site.Default.Id],
+            Operations = [AgentOperation.Read, AgentOperation.Create, AgentOperation.Update, AgentOperation.Delete],
+            CallsPerPeriod = 1000,
+            CallPeriod = TimeSpan.FromHours(1),
+            LlmSpendPeriod = TimeSpan.FromDays(1),
+            ItemsPerChangeSet = 1000,
+            ChangeSetsPerDay = 1000,
+        };
+    }
+
     private sealed class SwitchableInitiator : ICurrentInitiator
     {
         public Initiator? Current { get; set; }
@@ -225,6 +294,11 @@ internal sealed class ChangeSetScenario : IAsyncDisposable
         public override DateTimeOffset GetUtcNow()
         {
             return new DateTimeOffset(Interlocked.Add(ref _ticks, TimeSpan.TicksPerMillisecond), TimeSpan.Zero);
+        }
+
+        public void Advance(TimeSpan by)
+        {
+            Interlocked.Add(ref _ticks, by.Ticks);
         }
     }
 }

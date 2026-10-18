@@ -1,3 +1,4 @@
+using FluentCMS.Core.Agents;
 using FluentCMS.Core.Audit;
 using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Identity;
@@ -16,8 +17,12 @@ internal sealed class ChangeSetDirectory(
     FluentCmsDbContext context,
     IUnitOfWork unitOfWork,
     IAuditLog auditLog,
-    ICurrentInitiator currentInitiator) : IChangeSetDirectory
+    ICurrentInitiator currentInitiator,
+    IAgentPermissions permissions) : IChangeSetDirectory
 {
+    // AgentActivity counts these events for the change-sets-per-day cap.
+    internal const string OpenedOperation = "change_set.opened";
+
     private const string SubjectType = "change_set";
 
     // Until multi-site (MST-01), every set belongs to the one site (SCH-07).
@@ -64,6 +69,12 @@ internal sealed class ChangeSetDirectory(
             return opened;
         }
 
+        var allowed = await permissions.CheckNewChangeSetAsync(cancellationToken);
+        if (!allowed.IsSuccess)
+        {
+            return Result<ChangeSet>.Failure(allowed.Errors);
+        }
+
         await using var scope = await unitOfWork.BeginAsync(cancellationToken);
         await InsertAsync(opened.Value, cancellationToken);
 
@@ -103,11 +114,18 @@ internal sealed class ChangeSetDirectory(
         }
 
         var set = opened.Value;
+
         var added = set.AddOperation(operation);
         var previousVersion = added.IsSuccess ? await ResolveAsync(operation, cancellationToken) : Result<Guid?>.Failure(added.Errors);
         if (!previousVersion.IsSuccess)
         {
             return Result<ChangeSet>.Failure(previousVersion.Errors);
+        }
+
+        var allowed = await permissions.CheckNewChangeSetAsync(cancellationToken);
+        if (!allowed.IsSuccess)
+        {
+            return Result<ChangeSet>.Failure(allowed.Errors);
         }
 
         await using var scope = await unitOfWork.BeginAsync(cancellationToken);
@@ -129,7 +147,7 @@ internal sealed class ChangeSetDirectory(
         // No call moves a set to published without its items.
         return target == ChangeSetState.Published
             ? PublishAsync(changeSetId, cancellationToken)
-            : MoveAsync(changeSetId, set => set.TransitionTo(target), cancellationToken);
+            : MoveAsync(changeSetId, target, set => set.TransitionTo(target), cancellationToken);
     }
 
     public async Task<Result<ChangeSet>> PublishAsync(Guid changeSetId, CancellationToken cancellationToken = default)
@@ -138,6 +156,12 @@ internal sealed class ChangeSetDirectory(
         if (stored is null)
         {
             return NotFound(changeSetId);
+        }
+
+        var allowed = await permissions.CheckTransitionAsync(stored.ChangeSet, ChangeSetState.Published, cancellationToken);
+        if (!allowed.IsSuccess)
+        {
+            return Result<ChangeSet>.Failure(allowed.Errors);
         }
 
         var set = stored.ChangeSet;
@@ -190,7 +214,7 @@ internal sealed class ChangeSetDirectory(
 
     public Task<Result<ChangeSet>> RejectAsync(Guid changeSetId, string reason, CancellationToken cancellationToken = default)
     {
-        return MoveAsync(changeSetId, set => set.Reject(reason), cancellationToken);
+        return MoveAsync(changeSetId, ChangeSetState.Rejected, set => set.Reject(reason), cancellationToken);
     }
 
     private async Task<Result<ChangeSet>> AddAsync(
@@ -207,6 +231,7 @@ internal sealed class ChangeSetDirectory(
             return Result<ChangeSet>.Failure(added.Errors);
         }
 
+
         var sourcesAdded = set.AddSources(sources);
         if (!sourcesAdded.IsSuccess)
         {
@@ -217,6 +242,13 @@ internal sealed class ChangeSetDirectory(
         if (!previousVersion.IsSuccess)
         {
             return Result<ChangeSet>.Failure(previousVersion.Errors);
+        }
+
+        // Checked against the read whose revision guards the write, so two concurrent operations cannot both pass the cap.
+        var allowed = await permissions.CheckChangeSetSizeAsync(set, cancellationToken);
+        if (!allowed.IsSuccess)
+        {
+            return Result<ChangeSet>.Failure(allowed.Errors);
         }
 
         await using var scope = await unitOfWork.BeginAsync(cancellationToken);
@@ -230,12 +262,22 @@ internal sealed class ChangeSetDirectory(
         return await CommitAsync(scope, set, Conflict(set.Id), cancellationToken);
     }
 
-    private async Task<Result<ChangeSet>> MoveAsync(Guid changeSetId, Func<ChangeSet, Result> move, CancellationToken cancellationToken)
+    private async Task<Result<ChangeSet>> MoveAsync(
+        Guid changeSetId,
+        ChangeSetState target,
+        Func<ChangeSet, Result> move,
+        CancellationToken cancellationToken)
     {
         var stored = await ReadAsync(changeSetId, cancellationToken);
         if (stored is null)
         {
             return NotFound(changeSetId);
+        }
+
+        var allowed = await permissions.CheckTransitionAsync(stored.ChangeSet, target, cancellationToken);
+        if (!allowed.IsSuccess)
+        {
+            return Result<ChangeSet>.Failure(allowed.Errors);
         }
 
         var set = stored.ChangeSet;
@@ -291,7 +333,7 @@ internal sealed class ChangeSetDirectory(
         });
 
         await auditLog.AppendAsync(
-            new NewAuditEvent("change_set.opened") { SubjectType = SubjectType, SubjectId = set.Id, ChangeSetId = set.Id, Sources = set.Sources },
+            new NewAuditEvent(OpenedOperation) { SubjectType = SubjectType, SubjectId = set.Id, ChangeSetId = set.Id, Sources = set.Sources },
             cancellationToken);
     }
 
