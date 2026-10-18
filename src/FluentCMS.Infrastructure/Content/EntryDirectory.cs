@@ -1,5 +1,7 @@
 using System.Text.Json;
+using FluentCMS.Core.Agents;
 using FluentCMS.Core.Audit;
+using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Persistence;
 using FluentCMS.Core.Results;
@@ -13,6 +15,7 @@ namespace FluentCMS.Infrastructure.Content;
 
 // Expected failures are found before the unit of work begins, so they leave a caller's outer unit of work able to commit.
 // Reads never track rows, so a long-lived context (a Blazor circuit) always sees what is stored, not what it saw before.
+// An agent reads and writes entries only of the types, with the operations and the fields its scope allows (MCP-05).
 internal sealed class EntryDirectory(
     FluentCmsDbContext context,
     IUnitOfWork unitOfWork,
@@ -20,7 +23,8 @@ internal sealed class EntryDirectory(
     IContentTypeDirectory contentTypes,
     FieldTypeRegistry fieldTypes,
     TimeProvider clock,
-    IOptions<ContentOptions> options) : IEntryDirectory
+    IOptions<ContentOptions> options,
+    IAgentPermissions permissions) : IEntryDirectory
 {
     private const string SubjectType = "entry";
 
@@ -30,6 +34,12 @@ internal sealed class EntryDirectory(
     public async Task<Result<IReadOnlyList<EntrySummary>>> ListAsync(string contentType, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(contentType);
+
+        var allowed = await permissions.CheckContentAsync(contentType, AgentOperation.Read, cancellationToken: cancellationToken);
+        if (!allowed.IsSuccess)
+        {
+            return Result<IReadOnlyList<EntrySummary>>.Failure(allowed.Errors);
+        }
 
         var typeId = await context.ContentTypes
             .AsNoTracking()
@@ -59,6 +69,12 @@ internal sealed class EntryDirectory(
             return Result<Entry>.Failure([EntryNotFound(id)]);
         }
 
+        var allowed = await permissions.CheckContentAsync(stored.ContentType, AgentOperation.Read, cancellationToken: cancellationToken);
+        if (!allowed.IsSuccess)
+        {
+            return Result<Entry>.Failure(allowed.Errors);
+        }
+
         var latest = await VersionRowAsync(id, stored.Row.LatestVersion, cancellationToken)
             ?? throw new InvalidOperationException($"Entry {id} points at version {stored.Row.LatestVersion}, which is not stored.");
 
@@ -73,6 +89,12 @@ internal sealed class EntryDirectory(
             return Result<EntryVersion>.Failure([EntryNotFound(id)]);
         }
 
+        var allowed = await permissions.CheckContentAsync(stored.ContentType, AgentOperation.Read, cancellationToken: cancellationToken);
+        if (!allowed.IsSuccess)
+        {
+            return Result<EntryVersion>.Failure(allowed.Errors);
+        }
+
         var row = await VersionRowAsync(id, version, cancellationToken);
 
         return row is null
@@ -84,9 +106,16 @@ internal sealed class EntryDirectory(
 
     public async Task<Result<IReadOnlyList<EntryVersionSummary>>> HistoryAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        if (await FindAsync(id, cancellationToken) is null)
+        var stored = await FindAsync(id, cancellationToken);
+        if (stored is null)
         {
             return Result<IReadOnlyList<EntryVersionSummary>>.Failure([EntryNotFound(id)]);
+        }
+
+        var allowed = await permissions.CheckContentAsync(stored.ContentType, AgentOperation.Read, cancellationToken: cancellationToken);
+        if (!allowed.IsSuccess)
+        {
+            return Result<IReadOnlyList<EntryVersionSummary>>.Failure(allowed.Errors);
         }
 
         var versions = await context.EntryVersions
@@ -103,6 +132,12 @@ internal sealed class EntryDirectory(
     {
         ArgumentNullException.ThrowIfNull(entry);
         ArgumentNullException.ThrowIfNull(entry.ContentType);
+
+        var allowed = await permissions.CheckContentAsync(entry.ContentType, AgentOperation.Create, FieldNames(entry.Fields), cancellationToken);
+        if (!allowed.IsSuccess)
+        {
+            return Result<Entry>.Failure(allowed.Errors);
+        }
 
         var type = await contentTypes.GetAsync(entry.ContentType, cancellationToken);
         if (!type.IsSuccess)
@@ -156,15 +191,25 @@ internal sealed class EntryDirectory(
             return Result<Entry>.Failure([VersionConflict(id, baseVersion)]);
         }
 
+        var baseRow = await VersionRowAsync(id, baseVersion, cancellationToken)
+            ?? throw new InvalidOperationException($"Entry {id} points at version {baseVersion}, which is not stored.");
+
+        var allowed = await permissions.CheckContentAsync(
+            stored.ContentType,
+            AgentOperation.Update,
+            ChangedFields(baseRow.Fields, fields),
+            cancellationToken);
+        if (!allowed.IsSuccess)
+        {
+            return Result<Entry>.Failure(allowed.Errors);
+        }
+
         // Checked against the type as it is now, so a field added since the last write is filled in or reported.
         var type = await contentTypes.GetAsync(stored.ContentType, cancellationToken);
         if (!type.IsSuccess)
         {
             return Result<Entry>.Failure(type.Errors);
         }
-
-        var baseRow = await VersionRowAsync(id, baseVersion, cancellationToken)
-            ?? throw new InvalidOperationException($"Entry {id} points at version {baseVersion}, which is not stored.");
 
         var revised = ToEntry(stored, baseRow).Revise(type.Value, fields, fieldTypes, clock.GetUtcNow());
         if (!revised.IsSuccess)
@@ -208,6 +253,12 @@ internal sealed class EntryDirectory(
             return Result.Failure([EntryNotFound(id)]);
         }
 
+        var allowed = await permissions.CheckContentAsync(stored.ContentType, AgentOperation.Delete, cancellationToken: cancellationToken);
+        if (!allowed.IsSuccess)
+        {
+            return allowed;
+        }
+
         if (stored.Row.LatestVersion != baseVersion)
         {
             return Result.Failure([VersionConflict(id, baseVersion)]);
@@ -242,6 +293,13 @@ internal sealed class EntryDirectory(
         if (stored is null)
         {
             return Result<Entry>.Failure([EntryNotFound(id)]);
+        }
+
+        // Restoring undoes a delete, so it takes the same operation.
+        var allowed = await permissions.CheckContentAsync(stored.ContentType, AgentOperation.Delete, cancellationToken: cancellationToken);
+        if (!allowed.IsSuccess)
+        {
+            return Result<Entry>.Failure(allowed.Errors);
         }
 
         if (stored.Row.DeletedAt is not { } deletedAt)
@@ -279,6 +337,7 @@ internal sealed class EntryDirectory(
 
     public async Task<IReadOnlyList<DeletedEntry>> ListDeletedAsync(CancellationToken cancellationToken = default)
     {
+        var readable = await permissions.ReadableTypesAsync(cancellationToken);
         var rows = await (
             from entry in context.Entries.AsNoTracking()
             join type in context.ContentTypes.AsNoTracking() on entry.ContentTypeId equals type.Id
@@ -288,10 +347,37 @@ internal sealed class EntryDirectory(
 
         // Ordered here, because SQLite cannot order by the stored offsets.
         return rows
+            .Where(row => readable(row.Slug))
             .Select(row => new DeletedEntry(row.Id, row.Slug, row.LatestVersion, row.DeletedAt!.Value, row.DeletedAt.Value + options.Value.DeletedRetention))
             .OrderByDescending(entry => entry.DeletedAt)
             .ThenBy(entry => entry.Id)
             .ToList();
+    }
+
+    // The names a create sets; nothing for a document that is not an object, which the write then refuses on its own.
+    private static List<string> FieldNames(JsonElement fields)
+    {
+        return fields.ValueKind == JsonValueKind.Object ? fields.EnumerateObject().Select(field => field.Name).ToList() : [];
+    }
+
+    // The fields whose values an update changes from the version it is based on, compared as JSON, so a field sent back as it was
+    // is not a change.
+    private static List<string> ChangedFields(string stored, JsonElement fields)
+    {
+        if (fields.ValueKind != JsonValueKind.Object)
+        {
+            return [];
+        }
+
+        using var document = JsonDocument.Parse(stored);
+        return ValueDiff.Compare(Properties(document.RootElement), Properties(fields)).Select(diff => diff.Name).ToList();
+    }
+
+    private static IEnumerable<KeyValuePair<string, JsonElement>> Properties(JsonElement element)
+    {
+        return element.ValueKind == JsonValueKind.Object
+            ? element.EnumerateObject().Select(property => new KeyValuePair<string, JsonElement>(property.Name, property.Value))
+            : [];
     }
 
     private async Task<StoredEntry?> FindAsync(Guid id, CancellationToken cancellationToken, bool includeDeleted = false)

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using FluentCMS.Core.Agents;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Results;
 using FluentCMS.Core.Schema;
@@ -8,7 +9,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FluentCMS.Infrastructure.Content;
 
-internal sealed class ResolvedEntries(FluentCmsDbContext context) : IResolvedEntries
+// An agent resolves entries only of the types it may read (MCP-05). Fact values a view inlines from other types belong to the view.
+internal sealed class ResolvedEntries(FluentCmsDbContext context, IAgentPermissions permissions) : IResolvedEntries
 {
     // Until multi-site (MST-01), every entry belongs to the one site (SCH-07).
     private static readonly Guid SiteId = Site.Default.Id;
@@ -24,6 +26,12 @@ internal sealed class ResolvedEntries(FluentCmsDbContext context) : IResolvedEnt
         if (entry is null)
         {
             return Result<ResolvedEntry>.Failure(ContentErrorCodes.EntryNotFound, $"There is no entry {entryId} in this site.");
+        }
+
+        var allowed = await permissions.CheckContentAsync(entry.Slug, AgentOperation.Read, cancellationToken: cancellationToken);
+        if (!allowed.IsSuccess)
+        {
+            return Result<ResolvedEntry>.Failure(allowed.Errors);
         }
 
         var number = version ?? entry.LatestVersion;
