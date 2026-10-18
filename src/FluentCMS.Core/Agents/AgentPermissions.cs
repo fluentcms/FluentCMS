@@ -82,7 +82,7 @@ internal sealed class AgentPermissions(
             + $"(change sets per day). Add the operation to a change set that is still open, or wait until fewer than {cap} were opened in the last 24 hours.");
     }
 
-    public async Task<Result> CheckChangeSetSizeAsync(ChangeSet changeSet, CancellationToken cancellationToken = default)
+    public async Task<Result> CheckChangeSetSizeAsync(ChangeSet changeSet, int adding = 0, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(changeSet);
 
@@ -104,7 +104,8 @@ internal sealed class AgentPermissions(
         }
 
         var cap = credential.Caps.ItemsPerChangeSet;
-        if (changeSet.Operations.Count <= cap)
+        var count = changeSet.Operations.Count + adding;
+        if (count <= cap)
         {
             return Result.Success();
         }
@@ -115,7 +116,7 @@ internal sealed class AgentPermissions(
 
         return Result.Failure(
             AgentPermissionErrorCodes.CapExceeded,
-            $"Change set {changeSet.Id} already holds {changeSet.Operations.Count - 1} items, and the credential '{credential.DisplayName}' allows "
+            $"Change set {changeSet.Id} already holds {count - 1} items, and the credential '{credential.DisplayName}' allows "
             + $"{cap} (items per change set). Submit this change set and add the rest to a new one.");
     }
 

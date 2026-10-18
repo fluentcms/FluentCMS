@@ -32,37 +32,70 @@ public sealed class ToolArgumentsReader
         return String(name, example, required: false);
     }
 
-    public Guid? RequiredGuid(string name)
+    public IReadOnlyList<string>? OptionalStrings(string name, string example)
     {
         if (Read(name) is not { } value)
+        {
+            return null;
+        }
+
+        if (value.ValueKind == JsonValueKind.Array
+            && value.EnumerateArray().All(item => item.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(item.GetString())))
+        {
+            return [.. value.EnumerateArray().Select(item => item.GetString()!)];
+        }
+
+        Invalid(name, $"must be an array of non-empty strings such as [\"{example}\"]");
+        return null;
+    }
+
+    public JsonElement? RequiredObject(string name, string form)
+    {
+        if (Read(name) is not { } value)
+        {
+            Missing(name, form);
+            return null;
+        }
+
+        if (value.ValueKind == JsonValueKind.Object)
+        {
+            return value;
+        }
+
+        Invalid(name, $"must be a JSON object: {form}");
+        return null;
+    }
+
+    public Guid? OptionalGuid(string name)
+    {
+        return Read(name) is null ? null : GuidOf(name);
+    }
+
+    public Guid? RequiredGuid(string name)
+    {
+        if (Read(name) is null)
         {
             Missing(name, "a UUID such as '0192f3a1-7c2e-7a4b-9d3e-1f2a3b4c5d6e'");
             return null;
         }
 
-        if (value.ValueKind == JsonValueKind.String && Guid.TryParse(value.GetString(), out var id))
+        return GuidOf(name);
+    }
+
+    public int? RequiredPositiveInteger(string name)
+    {
+        if (Read(name) is null)
         {
-            return id;
+            Missing(name, "a whole number greater than zero, such as 1");
+            return null;
         }
 
-        Invalid(name, "must be a UUID string such as '0192f3a1-7c2e-7a4b-9d3e-1f2a3b4c5d6e'");
-        return null;
+        return PositiveIntegerOf(name);
     }
 
     public int? OptionalPositiveInteger(string name)
     {
-        if (Read(name) is not { } value)
-        {
-            return null;
-        }
-
-        if (value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var number) && number > 0)
-        {
-            return number;
-        }
-
-        Invalid(name, "must be a whole number greater than zero");
-        return null;
+        return Read(name) is null ? null : PositiveIntegerOf(name);
     }
 
     public IReadOnlyList<Error> Errors()
@@ -102,6 +135,31 @@ public sealed class ToolArgumentsReader
         }
 
         Invalid(name, $"must be a non-empty string such as '{example}'");
+        return null;
+    }
+
+    private int? PositiveIntegerOf(string name)
+    {
+        var value = _arguments.GetProperty(name);
+
+        if (value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out var number) && number > 0)
+        {
+            return number;
+        }
+
+        Invalid(name, "must be a whole number greater than zero");
+        return null;
+    }
+
+    private Guid? GuidOf(string name)
+    {
+        var value = _arguments.GetProperty(name);
+        if (value.ValueKind == JsonValueKind.String && Guid.TryParse(value.GetString(), out var id))
+        {
+            return id;
+        }
+
+        Invalid(name, "must be a UUID string such as '0192f3a1-7c2e-7a4b-9d3e-1f2a3b4c5d6e'");
         return null;
     }
 

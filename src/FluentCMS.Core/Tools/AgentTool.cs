@@ -7,7 +7,7 @@ namespace FluentCMS.Core.Tools;
 // call it and what to call next (MCP-02). The input schema refuses arguments it does not name, as the arguments reader does.
 public sealed class AgentTool
 {
-    private readonly Func<ToolCall, CancellationToken, Task<ToolResult>> _invoke;
+    private readonly Func<ToolInvocation, CancellationToken, Task<ToolResult>> _invoke;
 
     public AgentTool(
         string name,
@@ -15,7 +15,7 @@ public sealed class AgentTool
         string description,
         JsonObject inputSchema,
         bool readOnly,
-        Func<ToolCall, CancellationToken, Task<ToolResult>> invoke)
+        Func<ToolInvocation, CancellationToken, Task<ToolResult>> invoke)
     {
         if (!ToolNames.IsName(name))
         {
@@ -47,7 +47,7 @@ public sealed class AgentTool
     // Whether the tool only reads. A tool that writes goes through a change set, so a person reviews what it proposes.
     public bool ReadOnly { get; }
 
-    public Task<ToolResult> InvokeAsync(ToolCall call, CancellationToken cancellationToken = default)
+    public Task<ToolResult> InvokeAsync(ToolInvocation call, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(call);
         return _invoke(call, cancellationToken);
@@ -56,4 +56,4 @@ public sealed class AgentTool
 
 // The arguments are a JSON object, empty when the agent sent none. The services are the call's own scope, so a tool reads the
 // directories as the agent that called it.
-public sealed record ToolCall(JsonElement Arguments, IServiceProvider Services);
+public sealed record ToolInvocation(JsonElement Arguments, IServiceProvider Services);
