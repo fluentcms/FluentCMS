@@ -1,0 +1,56 @@
+@using FluentCMS.Core.ChangeSets
+@inject IStringLocalizer<DiffView> L
+
+@* The desk's view of a change set diff, rendered from Core's structured model (ADR-0006), one disclosure per item in operation order. *@
+<div data-slot="diff-view" class="@ClassNames.Cn("grid gap-4", Class)" @attributes="AdditionalAttributes">
+    @if (Diff.Items.Count == 0)
+    {
+        <p data-slot="diff-view-empty" class="text-sm text-muted-foreground">@L["The change set has no items."]</p>
+    }
+    else
+    {
+        <ol role="list" class="grid gap-4" aria-busy="@(_rendered < Diff.Items.Count ? "true" : null)">
+            @for (var index = 0; index < _rendered; index++)
+            {
+                var item = Diff.Items[index];
+                <li @key="item">
+                    <DiffViewItem Item="item" />
+                </li>
+            }
+        </ol>
+    }
+</div>
+
+@code {
+    // The first batch renders at once and each later one after the browser has applied the one before, so a set of hundreds of
+    // items shows its start straight away and the circuit is never flooded (PERF-04).
+    private const int BatchSize = 25;
+
+    private ChangeSetDiff? _diff;
+    private int _rendered;
+
+    [Parameter, EditorRequired] public ChangeSetDiff Diff { get; set; } = null!;
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (ReferenceEquals(Diff, _diff))
+        {
+            return;
+        }
+
+        _diff = Diff;
+        // A static page renders once, so it gets every item; a prerendered one gets the first batch and the circuit adds the rest.
+        _rendered = AssignedRenderMode is null ? Diff.Items.Count : Math.Min(BatchSize, Diff.Items.Count);
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (_rendered < Diff.Items.Count)
+        {
+            _rendered = Math.Min(_rendered + BatchSize, Diff.Items.Count);
+            StateHasChanged();
+        }
+    }
+}
