@@ -11,4 +11,6 @@ public static class ContentErrorCodes
     public const string ReferenceNotFound = "reference_not_found";
     public const string ReferenceTypeMismatch = "reference_type_mismatch";
     public const string EntryNotEntity = "entry_not_entity";
+    public const string EntryNotDeleted = "entry_not_deleted";
+    public const string RetentionExpired = "retention_expired";
 }

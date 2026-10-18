@@ -16,4 +16,7 @@ public enum UnresolvedReason
 
     // The entity's published version holds no value for the field.
     NoValue,
+
+    // The entity is deleted, though it can still be restored.
+    Deleted,
 }

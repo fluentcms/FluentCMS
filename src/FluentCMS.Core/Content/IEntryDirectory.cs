@@ -3,7 +3,7 @@ using FluentCMS.Core.Results;
 
 namespace FluentCMS.Core.Content;
 
-// The stored entries of the site (CNT-02, SCH-07). Every write is checked against the current version of the entry's content type,
+// The stored entries of the site (CNT-02, SCH-07). A deleted entry is gone from every read until it is restored (CNT-06). Every write is checked against the current version of the entry's content type,
 // stores a new version and appends its audit event in the same unit of work (AUD-N1); no write changes a stored version.
 public interface IEntryDirectory
 {
@@ -22,4 +22,13 @@ public interface IEntryDirectory
 
     // The caller names the version it read, so an update never silently replaces one it has not seen.
     Task<Result<Entry>> UpdateAsync(Guid id, int baseVersion, JsonElement fields, CancellationToken cancellationToken = default);
+
+    // A soft delete: versions, references and pointers stay, so restore brings the entry back as it was (CNT-06).
+    Task<Result> DeleteAsync(Guid id, int baseVersion, CancellationToken cancellationToken = default);
+
+    // Only within the retention window after the delete (REL-03).
+    Task<Result<Entry>> RestoreAsync(Guid id, CancellationToken cancellationToken = default);
+
+    // Most recently deleted first.
+    Task<IReadOnlyList<DeletedEntry>> ListDeletedAsync(CancellationToken cancellationToken = default);
 }
