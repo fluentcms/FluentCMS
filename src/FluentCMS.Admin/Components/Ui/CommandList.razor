@@ -1,0 +1,11 @@
+<div id="@Context.ListId" role="listbox" aria-label="@Label" data-ui="command-list" data-slot="command-list" class="@ClassNames.Cn("max-h-[300px] scroll-py-1 overflow-x-hidden overflow-y-auto", Class)">
+    @ChildContent
+</div>
+
+@code {
+    [CascadingParameter] private CommandContext Context { get; set; } = null!;
+
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

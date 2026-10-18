@@ -1,0 +1,82 @@
+<Project>
+
+  <!--
+    Compiles the admin stylesheet with the Tailwind CSS standalone CLI (ADR-0011).
+    The pinned binary is downloaded once per machine into a cache and verified against the
+    checksum published with the release. Point TailwindExecutable at a pre-downloaded binary
+    for offline builds, or TailwindCacheDirectory at a directory CI restores from its cache.
+  -->
+
+  <PropertyGroup>
+    <TailwindVersion>4.3.3</TailwindVersion>
+    <TailwindInputFile>$(MSBuildProjectDirectory)/Styles/app.css</TailwindInputFile>
+    <TailwindOutputFile>$(MSBuildProjectDirectory)/wwwroot/css/app.generated.css</TailwindOutputFile>
+    <TailwindCacheDirectory Condition="'$(TailwindCacheDirectory)' == '' And '$(LocalAppData)' != ''">$(LocalAppData)/FluentCMS/tailwind</TailwindCacheDirectory>
+    <TailwindCacheDirectory Condition="'$(TailwindCacheDirectory)' == ''">$(HOME)/.cache/fluentcms/tailwind</TailwindCacheDirectory>
+  </PropertyGroup>
+
+  <!-- One asset and checksum per platform, from sha256sums.txt of the pinned release. -->
+  <PropertyGroup>
+    <_TailwindIsWindows>$([MSBuild]::IsOSPlatform('Windows'))</_TailwindIsWindows>
+    <_TailwindIsMacOS>$([MSBuild]::IsOSPlatform('OSX'))</_TailwindIsMacOS>
+    <_TailwindIsArm64>$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().Equals('Arm64'))</_TailwindIsArm64>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(_TailwindIsWindows)' == 'true'">
+    <_TailwindAsset>tailwindcss-windows-x64.exe</_TailwindAsset>
+    <_TailwindAssetSha256>e0e260ce048014e9268f6237ff18f8ccf02cef521cbd0ae04e82c2cdf7aa3955</_TailwindAssetSha256>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(_TailwindIsMacOS)' == 'true' And '$(_TailwindIsArm64)' == 'true'">
+    <_TailwindAsset>tailwindcss-macos-arm64</_TailwindAsset>
+    <_TailwindAssetSha256>cdf646702987a743464dff4d9c60fd4480d1c1e73dd819a9a67f1078815dce9d</_TailwindAssetSha256>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(_TailwindIsMacOS)' == 'true' And '$(_TailwindIsArm64)' != 'true'">
+    <_TailwindAsset>tailwindcss-macos-x64</_TailwindAsset>
+    <_TailwindAssetSha256>7922e0953f2110c05976e3bf58f14e643d90427575e766b7d433f5f80cbee7e1</_TailwindAssetSha256>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(_TailwindIsWindows)' != 'true' And '$(_TailwindIsMacOS)' != 'true' And '$(_TailwindIsArm64)' == 'true'">
+    <_TailwindAsset>tailwindcss-linux-arm64</_TailwindAsset>
+    <_TailwindAssetSha256>55fd0b241214eff3de1e8ee4f22796662f2d2e7a49bcfca7477cfd0bac398195</_TailwindAssetSha256>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(_TailwindIsWindows)' != 'true' And '$(_TailwindIsMacOS)' != 'true' And '$(_TailwindIsArm64)' != 'true'">
+    <_TailwindAsset>tailwindcss-linux-x64</_TailwindAsset>
+    <_TailwindAssetSha256>dc61b3ac6b8c9ca874c0cc4c57b2409791a64c5540404ca5f5367360babc313a</_TailwindAssetSha256>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <_TailwindVersionDirectory>$(TailwindCacheDirectory)/v$(TailwindVersion)</_TailwindVersionDirectory>
+    <TailwindExecutable Condition="'$(TailwindExecutable)' == ''">$(_TailwindVersionDirectory)/$(_TailwindAsset)</TailwindExecutable>
+    <_TailwindDownloadFile>$(_TailwindVersionDirectory)/$(_TailwindAsset).download</_TailwindDownloadFile>
+    <_TailwindDownloadUrl>https://github.com/tailwindlabs/tailwindcss/releases/download/v$(TailwindVersion)/$(_TailwindAsset)</_TailwindDownloadUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <TailwindSourceFile Include="$(MSBuildProjectDirectory)/Components/**/*.razor;$(MSBuildProjectDirectory)/Components/**/*.cs;$(MSBuildProjectDirectory)/Styles/**/*.css" />
+  </ItemGroup>
+
+  <Target Name="DownloadTailwind" Condition="!Exists('$(TailwindExecutable)')">
+    <Message Importance="high" Text="Downloading Tailwind CSS v$(TailwindVersion) ($(_TailwindAsset)) to $(_TailwindVersionDirectory)" />
+    <MakeDir Directories="$(_TailwindVersionDirectory)" />
+    <DownloadFile SourceUrl="$(_TailwindDownloadUrl)" DestinationFolder="$(_TailwindVersionDirectory)" DestinationFileName="$(_TailwindAsset).download" Retries="3" />
+    <GetFileHash Files="$(_TailwindDownloadFile)" Algorithm="SHA256">
+      <Output TaskParameter="Hash" PropertyName="_TailwindActualSha256" />
+    </GetFileHash>
+    <Delete Files="$(_TailwindDownloadFile)" Condition="'$(_TailwindActualSha256)' != '$(_TailwindAssetSha256)'" />
+    <Error Condition="'$(_TailwindActualSha256)' != '$(_TailwindAssetSha256)'" Text="The downloaded Tailwind CSS binary does not match the pinned SHA-256 checksum (expected $(_TailwindAssetSha256), got $(_TailwindActualSha256)). The download was deleted." />
+    <Move SourceFiles="$(_TailwindDownloadFile)" DestinationFiles="$(TailwindExecutable)" />
+    <Exec Command="chmod +x &quot;$(TailwindExecutable)&quot;" Condition="'$(_TailwindIsWindows)' != 'true'" />
+  </Target>
+
+  <Target Name="CompileTailwind" DependsOnTargets="DownloadTailwind" Inputs="@(TailwindSourceFile)" Outputs="$(TailwindOutputFile)">
+    <Error Condition="!Exists('$(TailwindExecutable)')" Text="Tailwind CSS binary not found at $(TailwindExecutable). Set TailwindExecutable to a pre-downloaded binary for offline builds." />
+    <Exec Command="&quot;$(TailwindExecutable)&quot; --input &quot;$(TailwindInputFile)&quot; --output &quot;$(TailwindOutputFile)&quot; --minify" WorkingDirectory="$(MSBuildProjectDirectory)" StandardOutputImportance="low" />
+  </Target>
+
+  <!-- The generated file does not exist when the project is evaluated for the first time, so it is added to Content here, before the static web assets are defined. -->
+  <Target Name="IncludeTailwindOutput" DependsOnTargets="CompileTailwind" BeforeTargets="ResolveProjectStaticWebAssets">
+    <ItemGroup>
+      <Content Remove="$(TailwindOutputFile)" />
+      <Content Include="$(TailwindOutputFile)" />
+    </ItemGroup>
+  </Target>
+
+</Project>

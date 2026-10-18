@@ -1,0 +1,14 @@
+<Button Variant="@Variant" Size="@Size" Class="@Class" commandfor="@Context.Id" command="close" data-slot="dialog-close" OnClick="OnClick" @attributes="AdditionalAttributes">
+    @ChildContent
+</Button>
+
+@code {
+    [CascadingParameter] private DialogContext Context { get; set; } = null!;
+
+    [Parameter] public string Variant { get; set; } = "outline";
+    [Parameter] public string Size { get; set; } = "default";
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public EventCallback<MouseEventArgs> OnClick { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+}

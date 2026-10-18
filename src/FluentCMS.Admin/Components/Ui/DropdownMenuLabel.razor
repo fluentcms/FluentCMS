@@ -1,0 +1,9 @@
+<div data-slot="dropdown-menu-label" data-inset="@(Inset ? "true" : null)" class="@ClassNames.Cn("px-2 py-1.5 text-sm font-medium data-[inset]:ps-8", Class)">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public bool Inset { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

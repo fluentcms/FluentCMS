@@ -48,6 +48,8 @@ dotnet build
 dotnet test
 ```
 
+The admin stylesheet is compiled by the Tailwind CSS standalone CLI (ADR-0011). The first build of `FluentCMS.Admin` downloads the pinned binary (about 110 MB) once per machine into `%LocalAppData%\FluentCMS\tailwind` on Windows or `~/.cache/fluentcms/tailwind` elsewhere, verifies its SHA-256 checksum, and every build after that compiles `src/FluentCMS.Admin/Styles/app.css` into the generated stylesheet, which is not committed. For an offline build, pass the path of a binary you downloaded yourself: `dotnet build -p:TailwindExecutable=/path/to/tailwindcss`. CI restores the cache directory keyed on the pinned version. The version and checksums live in `src/FluentCMS.Admin/Tailwind.targets`.
+
 Tests run against SQLite in-process. To run the PostgreSQL tests as well, set `FLUENTCMS_TEST_POSTGRES` to a connection string for an empty database, for example `Host=localhost;Port=5432;Database=fluentcms_test;Username=postgres;Password=postgres`. CI does this with a service container. Without the variable those tests are skipped.
 
 To run the host, `dotnet run --project src/FluentCMS.Host` starts the web host on `http://localhost:5000` with a SQLite database in `fluentcms.db`, and `dotnet run --project src/FluentCMS.Host -- mcp` starts the stdio mode. Configuration comes from environment variables such as `Database__ConnectionString`, `Database__Provider` (`sqlite` or `postgresql`, inferred from the connection string when omitted) and `JobQueue__WorkerCount`, and from an optional `appsettings.json` next to the binary.

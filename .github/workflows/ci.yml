@@ -56,6 +56,12 @@ jobs:
           cache: true
           cache-dependency-path: Directory.Packages.props
 
+      - name: Cache the Tailwind CSS binary
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/fluentcms/tailwind
+          key: tailwind-${{ hashFiles('src/FluentCMS.Admin/Tailwind.targets') }}
+
       - name: Restore
         run: dotnet restore
 

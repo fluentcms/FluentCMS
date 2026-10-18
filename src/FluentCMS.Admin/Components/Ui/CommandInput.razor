@@ -1,0 +1,24 @@
+<div data-slot="command-input-wrapper" class="flex h-9 items-center gap-2 border-b px-3">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4 shrink-0 opacity-50" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+    <input id="@Context.InputId"
+           type="text"
+           role="combobox"
+           aria-expanded="true"
+           aria-controls="@Context.ListId"
+           aria-autocomplete="list"
+           autocomplete="off"
+           spellcheck="false"
+           placeholder="@Placeholder"
+           data-ui="command-input"
+           data-slot="command-input"
+           class="@ClassNames.Cn("flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-hidden placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50", Class)"
+           @attributes="AdditionalAttributes" />
+</div>
+
+@code {
+    [CascadingParameter] private CommandContext Context { get; set; } = null!;
+
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+}

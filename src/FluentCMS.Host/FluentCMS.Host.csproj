@@ -3,6 +3,8 @@
   <PropertyGroup>
     <AssemblyName>fluentcms</AssemblyName>
     <RootNamespace>FluentCMS.Host</RootNamespace>
+    <!-- The root component lives in FluentCMS.Admin, so the Web SDK does not see a .razor file here and would skip the blazor.web.js asset. -->
+    <RequiresAspNetWebAssets>true</RequiresAspNetWebAssets>
   </PropertyGroup>
 
   <ItemGroup>

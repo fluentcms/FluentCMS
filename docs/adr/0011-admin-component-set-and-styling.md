@@ -1,7 +1,7 @@
 # ADR-0011: Admin component set and styling
 
-- Status: proposed (one open point, see "Open until the spike")
-- Date: 2026-10-16
+- Status: accepted
+- Date: 2026-10-16, accepted 2026-10-17
 - Related: ADR-0006, D02, D11, DSK-03, DSK-04, FRM-01, FRM-03, UX-02, UX-04, I18-N1, I18-N2, OPS-02, EXT-03 (M3)
 
 ## Context
@@ -30,9 +30,13 @@ Constraints carried over from ADR-0006: permissive licences only, WCAG 2.1 AA, R
 
 **Testing.** bUnit tests per component for rendering and keyboard behaviour; Playwright tests for the desk flows, including the keyboard-only ten-item review from UX-02.
 
-## Open until the spike
+## Decided by the spike
 
-Whether to write the headless primitives (focus, menus, combobox, listbox) or build on Blazor Blueprint's headless layer, which is Apache 2.0. A one-week spike builds Dialog, DropdownMenu and Command both ways and compares: keyboard and screen-reader behaviour, RTL, behaviour over an interactive-server circuit including reconnect, dependency size, and the project's maintenance activity. The outcome is written into this ADR before it is accepted. Either way, no styled components are taken from a third-party library.
+The spike in `docs/spikes/2026-10-admin-primitives.md` built Dialog, DropdownMenu and Command both ways: on native HTML with one interop module, and on Blazor Blueprint's headless layer (Apache 2.0), each styled with the same shadcn classes, and compared them on keyboard and screen-reader behaviour, RTL, behaviour over an interactive-server circuit including a forced reconnect, dependency size and the project's maintenance activity.
+
+**The headless primitives are written in this repository.** Behaviour comes from the platform first: `<dialog>` for modals, the Popover API for menus and popovers, Invoker Commands to open them without a round trip, CSS anchor positioning to place them, and a listbox under a combobox for Command. `admin.js`, the one JavaScript module in the admin, adds what the platform lacks (focus wrapping, roving tab index, typeahead, client-side filtering) as delegated document listeners, so no component makes an interop call to work and the overlays keep working while the circuit is disconnected. Fallbacks for the two newest platform features live in the same module.
+
+Blazor Blueprint was not chosen because its headless layer has no Command primitive, its overlays keep their open state on the server and need a portal host inside an interactive subtree (which per-page render modes make awkward), its package is sizeable for the two components it would cover, and it has shipped three major versions in eight months from one maintainer. The keyboard and screen-reader behaviour of the two variants was otherwise equivalent.
 
 ## Consequences
 
@@ -45,6 +49,6 @@ Whether to write the headless primitives (focus, menus, combobox, listbox) or bu
 ## Alternatives considered
 
 - General Blazor libraries (MudBlazor, Fluent UI Blazor, Radzen): fast start, but a Material or Fluent look, a large theming surface, and the desk's keyboard and diff needs would still be custom.
-- shadcn-style Blazor libraries (Blazor Blueprint, BlazorCN, NeoBlazorUI): the closest look, but young, and depending on their styled components contradicts the ownership model. Blueprint's headless layer stays a spike option.
+- shadcn-style Blazor libraries (Blazor Blueprint, BlazorCN, NeoBlazorUI): the closest look, but young, and depending on their styled components contradicts the ownership model. Blueprint's headless layer was tried in the spike and not chosen; see above.
 - Plain CSS with shadcn tokens and no Tailwind: no build step at all, but it loses the utility vocabulary that makes shadcn examples portable, and every screen takes longer.
 - Tailwind through npm: the common path, but it breaks the .NET-SDK-only rule and fails in clean CI images without Node.

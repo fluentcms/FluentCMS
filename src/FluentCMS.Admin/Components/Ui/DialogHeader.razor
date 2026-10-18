@@ -1,0 +1,8 @@
+<div data-slot="dialog-header" class="@ClassNames.Cn("flex flex-col gap-2 text-center sm:text-start", Class)">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

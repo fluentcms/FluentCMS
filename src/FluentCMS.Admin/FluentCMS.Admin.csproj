@@ -1,11 +1,19 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <StaticWebAssetBasePath>_content/FluentCMS.Admin</StaticWebAssetBasePath>
+  </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\FluentCMS.Core\FluentCMS.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Localization.Abstractions" />
   </ItemGroup>
+
+  <Import Project="Tailwind.targets" />
 
 </Project>

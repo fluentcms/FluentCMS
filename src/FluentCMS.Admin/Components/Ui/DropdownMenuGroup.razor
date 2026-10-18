@@ -1,0 +1,7 @@
+<div role="group" data-slot="dropdown-menu-group">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}
