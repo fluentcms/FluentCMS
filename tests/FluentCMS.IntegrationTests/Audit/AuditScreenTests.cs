@@ -3,6 +3,7 @@ using FluentCMS.Core.Audit;
 using FluentCMS.Core.Identity;
 using FluentCMS.Infrastructure.Audit;
 using FluentCMS.Infrastructure.Persistence;
+using FluentCMS.IntegrationTests.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -17,6 +18,28 @@ public sealed class AuditScreenTests
         await using var host = await AdminHost.StartAsync(install);
         await host.CreateFirstAdministratorAsync();
 
+        await AssertAnonymousRequestsGoToSignInAsync(host);
+    }
+
+    // An external provider adds a sign-in option, not a second way in: the admin's own sign-in page still answers every challenge.
+    [Fact]
+    public async Task With_an_external_provider_configured_anonymous_requests_still_go_to_sign_in()
+    {
+        await using var provider = await TestOpenIdProvider.StartAsync();
+        using var install = new TemporaryInstall();
+        await using var host = await AdminHost.StartAsync(install, ["--environment", "Development"], new Dictionary<string, string?>
+        {
+            ["Authentication:OpenIdConnect:Authority"] = provider.Authority,
+            ["Authentication:OpenIdConnect:ClientId"] = TestOpenIdProvider.ClientId,
+            ["Authentication:OpenIdConnect:ClientSecret"] = TestOpenIdProvider.ClientSecret,
+        });
+        await host.CreateFirstAdministratorAsync();
+
+        await AssertAnonymousRequestsGoToSignInAsync(host);
+    }
+
+    private static async Task AssertAnonymousRequestsGoToSignInAsync(AdminHost host)
+    {
         var page = await host.Client.GetAsync("/audit");
         var download = await host.Client.PostAsync("/audit/export", new FormUrlEncodedContent(new Dictionary<string, string>
         {
