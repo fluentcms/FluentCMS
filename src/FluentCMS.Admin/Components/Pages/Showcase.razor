@@ -56,6 +56,21 @@
         @Hints(([L["Tab"]], L["Passes over it; a badge labels, it takes no focus."]))
     </section>
 
+    <section class="grid gap-4" aria-labelledby="icons-heading">
+        <h2 id="icons-heading" class="text-lg font-semibold">@L["Icons"]</h2>
+        <p class="text-sm text-muted-foreground">@L["Lucide icons, generated from the pinned release. A new one is a name in Icons/icons.txt and a run of the GenerateIcons target."]</p>
+        <ul class="flex flex-wrap gap-3" data-testid="icons">
+            @foreach (var icon in Icons)
+            {
+                <li class="flex w-28 flex-col items-center gap-2 rounded-md border p-3 text-xs text-muted-foreground">
+                    <DynamicComponent Type="icon" Parameters="IconParameters" />
+                    <code dir="ltr">@icon.Name</code>
+                </li>
+            }
+        </ul>
+        @Hints(([L["Tab"]], L["Passes over them; an icon is hidden from assistive technology, so the control around it carries the name."]))
+    </section>
+
     <section class="grid gap-4" aria-labelledby="kbd-heading">
         <h2 id="kbd-heading" class="text-lg font-semibold">@L["Kbd"]</h2>
         <div class="flex flex-wrap items-center gap-4 text-sm">
@@ -310,7 +325,7 @@
             </Tooltip>
             <Tooltip>
                 <TooltipTrigger Variant="ghost" Size="icon" OnClick='() => Record(L["Save"])'>
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="M12 5v14" /></svg>
+                    <PlusIcon />
                     <span class="sr-only">@L["Save"]</span>
                 </TooltipTrigger>
                 <TooltipContent><span class="flex items-center gap-2">@L["Save"] <Kbd>⌘S</Kbd></span></TooltipContent>
@@ -442,6 +457,13 @@
 </div>
 
 @code {
+    private static readonly Type[] Icons = typeof(XIcon).Assembly.GetTypes()
+        .Where(type => type.Namespace == typeof(XIcon).Namespace && typeof(IComponent).IsAssignableFrom(type))
+        .OrderBy(type => type.Name, StringComparer.Ordinal)
+        .ToArray();
+
+    private static readonly Dictionary<string, object> IconParameters = new() { ["Class"] = "size-5 text-foreground" };
+
     private string? _lastAction;
     private ChangeSetDiff? _largeDiff;
 

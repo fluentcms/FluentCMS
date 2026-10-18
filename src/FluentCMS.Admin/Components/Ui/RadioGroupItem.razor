@@ -7,10 +7,7 @@
            aria-invalid="@(Field?.HasError == true ? "true" : null)"
            class="peer aspect-square size-4 shrink-0 appearance-none rounded-full border border-input text-primary shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:bg-input/30 dark:aria-invalid:ring-destructive/40"
            @attributes="AdditionalAttributes" />
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-         aria-hidden="true" data-slot="radio-group-indicator" class="pointer-events-none absolute inset-0 m-auto hidden size-2 fill-primary text-primary peer-checked:block">
-        <circle cx="12" cy="12" r="10" />
-    </svg>
+    <CircleIcon data-slot="radio-group-indicator" Class="pointer-events-none absolute inset-0 m-auto hidden size-2 fill-primary text-primary peer-checked:block" />
 </span>
 
 @code {

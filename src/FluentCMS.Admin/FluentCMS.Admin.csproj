@@ -15,5 +15,6 @@
   </ItemGroup>
 
   <Import Project="Tailwind.targets" />
+  <Import Project="Icons.targets" />
 
 </Project>
