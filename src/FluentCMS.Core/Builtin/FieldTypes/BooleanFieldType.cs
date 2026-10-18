@@ -14,6 +14,11 @@ internal sealed class BooleanFieldType : IFieldType
         return new FieldSettingsReader(Name, settings).Errors();
     }
 
+    public IReadOnlyList<Error> ValidateValue(JsonElement value, JsonElement settings, FieldTypeRegistry fieldTypes)
+    {
+        return value.ValueKind is JsonValueKind.True or JsonValueKind.False ? [] : Values.Invalid("The value must be true or false.");
+    }
+
     public FieldValueDescription DescribeValue(JsonElement settings, FieldTypeRegistry fieldTypes)
     {
         return new FieldValueDescription(new JsonObject { ["type"] = "boolean" }, true, "true or false.");

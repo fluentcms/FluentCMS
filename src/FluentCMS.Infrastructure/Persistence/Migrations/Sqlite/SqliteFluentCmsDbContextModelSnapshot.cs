@@ -300,6 +300,73 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                         });
                 });
 
+            modelBuilder.Entity("FluentCMS.Infrastructure.Content.EntryRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ContentTypeId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("LatestVersion")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("PublishedVersion")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("SiteId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContentTypeId");
+
+                    b.HasIndex("SiteId", "ContentTypeId");
+
+                    b.ToTable("Entries", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Entries_LatestVersion", "\"LatestVersion\" >= 1");
+
+                            t.HasCheckConstraint("CK_Entries_PublishedVersion", "\"PublishedVersion\" IS NULL OR (\"PublishedVersion\" >= 1 AND \"PublishedVersion\" <= \"LatestVersion\")");
+                        });
+                });
+
+            modelBuilder.Entity("FluentCMS.Infrastructure.Content.EntryVersionRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ContentTypeVersion")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("EntryId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Fields")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EntryId", "Version")
+                        .IsUnique();
+
+                    b.ToTable("EntryVersions", null, t =>
+                        {
+                            t.HasTrigger("TR_EntryVersions_NoUpdate");
+
+                            t.HasCheckConstraint("CK_EntryVersions_ContentTypeVersion", "\"ContentTypeVersion\" >= 1");
+
+                            t.HasCheckConstraint("CK_EntryVersions_Version", "\"Version\" >= 1");
+                        });
+                });
+
             modelBuilder.Entity("FluentCMS.Infrastructure.Persistence.FluentCmsRole", b =>
                 {
                     b.Property<Guid>("Id")
@@ -602,6 +669,30 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                     b.HasOne("FluentCMS.Infrastructure.Sites.SiteRow", null)
                         .WithMany()
                         .HasForeignKey("SiteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FluentCMS.Infrastructure.Content.EntryRow", b =>
+                {
+                    b.HasOne("FluentCMS.Infrastructure.Schema.ContentTypeRow", null)
+                        .WithMany()
+                        .HasForeignKey("ContentTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FluentCMS.Infrastructure.Sites.SiteRow", null)
+                        .WithMany()
+                        .HasForeignKey("SiteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FluentCMS.Infrastructure.Content.EntryVersionRow", b =>
+                {
+                    b.HasOne("FluentCMS.Infrastructure.Content.EntryRow", null)
+                        .WithMany()
+                        .HasForeignKey("EntryId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

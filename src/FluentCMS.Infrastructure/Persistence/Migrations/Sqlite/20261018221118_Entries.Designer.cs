@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
 {
     [DbContext(typeof(SqliteFluentCmsDbContext))]
-    [Migration("20261018221110_ToolCalls")]
-    partial class ToolCalls
+    [Migration("20261018221118_Entries")]
+    partial class Entries
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -84,50 +84,6 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                         {
                             t.HasCheckConstraint("CK_AgentCredentials_Caps", "\"CallsPerPeriod\" >= 1 AND \"ItemsPerChangeSet\" >= 1 AND \"ChangeSetsPerDay\" >= 1");
                         });
-                });
-
-            modelBuilder.Entity("FluentCMS.Infrastructure.Agents.ToolCallRow", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("AgentCredentialId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("AgentName")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("TEXT");
-
-                    b.Property<TimeSpan>("Duration")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Model")
-                        .HasMaxLength(128)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Outcome")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("TaskId")
-                        .HasMaxLength(128)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTimeOffset>("Timestamp")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Tool")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AgentCredentialId", "Timestamp");
-
-                    b.ToTable("ToolCalls", (string)null);
                 });
 
             modelBuilder.Entity("FluentCMS.Infrastructure.Audit.AuditEventRow", b =>
@@ -300,6 +256,73 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                     b.ToTable("ChangeSets", null, t =>
                         {
                             t.HasCheckConstraint("CK_ChangeSets_RejectionReason", "(\"State\" = 'Rejected') = (\"RejectionReason\" IS NOT NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("FluentCMS.Infrastructure.Content.EntryRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ContentTypeId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("LatestVersion")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("PublishedVersion")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("SiteId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContentTypeId");
+
+                    b.HasIndex("SiteId", "ContentTypeId");
+
+                    b.ToTable("Entries", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Entries_LatestVersion", "\"LatestVersion\" >= 1");
+
+                            t.HasCheckConstraint("CK_Entries_PublishedVersion", "\"PublishedVersion\" IS NULL OR (\"PublishedVersion\" >= 1 AND \"PublishedVersion\" <= \"LatestVersion\")");
+                        });
+                });
+
+            modelBuilder.Entity("FluentCMS.Infrastructure.Content.EntryVersionRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ContentTypeVersion")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("EntryId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Fields")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EntryId", "Version")
+                        .IsUnique();
+
+                    b.ToTable("EntryVersions", null, t =>
+                        {
+                            t.HasTrigger("TR_EntryVersions_NoUpdate");
+
+                            t.HasCheckConstraint("CK_EntryVersions_ContentTypeVersion", "\"ContentTypeVersion\" >= 1");
+
+                            t.HasCheckConstraint("CK_EntryVersions_Version", "\"Version\" >= 1");
                         });
                 });
 
@@ -582,15 +605,6 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                     b.ToTable("UserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("FluentCMS.Infrastructure.Agents.ToolCallRow", b =>
-                {
-                    b.HasOne("FluentCMS.Infrastructure.Agents.AgentCredentialRow", null)
-                        .WithMany()
-                        .HasForeignKey("AgentCredentialId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("FluentCMS.Infrastructure.ChangeSets.ChangeSetOperationRow", b =>
                 {
                     b.HasOne("FluentCMS.Infrastructure.ChangeSets.ChangeSetRow", null)
@@ -605,6 +619,30 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                     b.HasOne("FluentCMS.Infrastructure.Sites.SiteRow", null)
                         .WithMany()
                         .HasForeignKey("SiteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FluentCMS.Infrastructure.Content.EntryRow", b =>
+                {
+                    b.HasOne("FluentCMS.Infrastructure.Schema.ContentTypeRow", null)
+                        .WithMany()
+                        .HasForeignKey("ContentTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FluentCMS.Infrastructure.Sites.SiteRow", null)
+                        .WithMany()
+                        .HasForeignKey("SiteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FluentCMS.Infrastructure.Content.EntryVersionRow", b =>
+                {
+                    b.HasOne("FluentCMS.Infrastructure.Content.EntryRow", null)
+                        .WithMany()
+                        .HasForeignKey("EntryId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

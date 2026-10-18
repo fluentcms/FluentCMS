@@ -29,9 +29,17 @@ public sealed class CommandContext
     public string InputId => Id + "-input";
 }
 
+public sealed class RadioGroupContext
+{
+    public string GeneratedName { get; } = "radio-group-" + Guid.NewGuid().ToString("N")[..8];
+    public string Name { get; set; } = string.Empty;
+    public string? Value { get; set; }
+}
+
 public sealed class FormFieldContext
 {
     public string Id { get; } = "field-" + Guid.NewGuid().ToString("N")[..8];
+    public string LabelId => Id + "-label";
     public string DescriptionId => Id + "-description";
     public string ErrorId => Id + "-error";
     public bool HasDescription { get; set; }
