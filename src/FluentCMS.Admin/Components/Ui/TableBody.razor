@@ -1,0 +1,8 @@
+<tbody data-slot="table-body" class="@ClassNames.Cn("[&_tr:last-child]:border-0", Class)">
+    @ChildContent
+</tbody>
+
+@code {
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}
