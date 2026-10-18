@@ -2,16 +2,18 @@ using FluentCMS.Core.Results;
 
 namespace FluentCMS.Core.ChangeSets;
 
-// One create, update or delete in a change set. It names the item and the version the change was based on, so publish can
-// tell whether the item moved on in the meantime and revert knows what to restore (CHG-05, CHG-06).
+// One create, update or delete in a change set. It names the item, the version the change was based on and the version it
+// proposes, so the diff compares the two, publish can tell whether the item moved on in the meantime and revert knows what
+// to restore (CHG-03, CHG-05, CHG-06).
 public sealed record ChangeOperation
 {
-    private ChangeOperation(OperationKind kind, ItemKind itemKind, Guid itemId, int? baseVersion)
+    private ChangeOperation(OperationKind kind, ItemKind itemKind, Guid itemId, int? baseVersion, int? proposedVersion)
     {
         Kind = kind;
         ItemKind = itemKind;
         ItemId = itemId;
         BaseVersion = baseVersion;
+        ProposedVersion = proposedVersion;
     }
 
     public OperationKind Kind { get; }
@@ -23,7 +25,10 @@ public sealed record ChangeOperation
     // Null for a create, which has no earlier version.
     public int? BaseVersion { get; }
 
-    public static Result<ChangeOperation> Create(OperationKind kind, ItemKind itemKind, Guid itemId, int? baseVersion)
+    // Null for a delete, which leaves no version behind.
+    public int? ProposedVersion { get; }
+
+    public static Result<ChangeOperation> Create(OperationKind kind, ItemKind itemKind, Guid itemId, int? baseVersion, int? proposedVersion)
     {
         var errors = new List<Error>();
 
@@ -58,8 +63,33 @@ public sealed record ChangeOperation
                 $"An {kind.ToString().ToLowerInvariant()} names the version it was based on, which is 1 or later."));
         }
 
+        if (kind == OperationKind.Create && proposedVersion is not >= 1)
+        {
+            errors.Add(new Error(ChangeSetErrorCodes.ProposedVersionInvalid, "A create names the version it proposes, which is 1 or later."));
+        }
+
+        if (kind == OperationKind.Update && baseVersion is >= 1 && !(proposedVersion > baseVersion))
+        {
+            errors.Add(new Error(
+                ChangeSetErrorCodes.ProposedVersionInvalid,
+                $"An update names the version it proposes, which is later than its base version {baseVersion}."));
+        }
+
+        if (kind == OperationKind.Delete && proposedVersion is not null)
+        {
+            errors.Add(new Error(
+                ChangeSetErrorCodes.ProposedVersionInvalid,
+                $"A delete proposes no version because the item goes away, but version {proposedVersion} was given."));
+        }
+
         return errors.Count == 0
-            ? Result<ChangeOperation>.Success(new ChangeOperation(kind, itemKind, itemId, baseVersion))
+            ? Result<ChangeOperation>.Success(new ChangeOperation(kind, itemKind, itemId, baseVersion, proposedVersion))
             : Result<ChangeOperation>.Failure(errors);
+    }
+
+    // Rebuilds a stored operation without checking it again, so a set stays readable if the rules above change.
+    public static ChangeOperation Restore(OperationKind kind, ItemKind itemKind, Guid itemId, int? baseVersion, int? proposedVersion)
+    {
+        return new ChangeOperation(kind, itemKind, itemId, baseVersion, proposedVersion);
     }
 }

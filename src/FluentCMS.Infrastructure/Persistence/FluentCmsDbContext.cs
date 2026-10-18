@@ -1,4 +1,5 @@
 using FluentCMS.Infrastructure.Audit;
+using FluentCMS.Infrastructure.ChangeSets;
 using FluentCMS.Infrastructure.Schema;
 using FluentCMS.Infrastructure.Sites;
 using Microsoft.AspNetCore.Identity;
@@ -18,6 +19,10 @@ public abstract class FluentCmsDbContext(DbContextOptions options) : IdentityDbC
 
     public DbSet<ContentTypeVersionRow> ContentTypeVersions => Set<ContentTypeVersionRow>();
 
+    public DbSet<ChangeSetRow> ChangeSets => Set<ChangeSetRow>();
+
+    public DbSet<ChangeSetOperationRow> ChangeSetOperations => Set<ChangeSetOperationRow>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -26,6 +31,8 @@ public abstract class FluentCmsDbContext(DbContextOptions options) : IdentityDbC
         builder.ApplyConfiguration(new SiteConfiguration());
         builder.ApplyConfiguration(new ContentTypeConfiguration());
         builder.ApplyConfiguration(new ContentTypeVersionConfiguration());
+        builder.ApplyConfiguration(new ChangeSetConfiguration());
+        builder.ApplyConfiguration(new ChangeSetOperationConfiguration());
 
         builder.Entity<FluentCmsUser>(user =>
         {
