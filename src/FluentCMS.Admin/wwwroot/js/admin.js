@@ -218,12 +218,13 @@ function onTabKeydown(event, tab) {
         case "ArrowLeft": next = index + (rtl ? 1 : -1); break;
         case "Home": next = 0; break;
         case "End": next = tabs.length - 1; break;
-        default: return;
+        default: return false;
     }
     event.preventDefault();
     const target = tabs[((next % tabs.length) + tabs.length) % tabs.length];
     target.focus();
     activateTab(target);
+    return true;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -412,7 +413,8 @@ document.addEventListener("keydown", (event) => {
 
     if (target.matches('[data-ui="command-input"]')) return onCommandKeydown(event, target);
 
-    if (target.matches('[data-ui="tab"]')) return onTabKeydown(event, target);
+    // Other keys fall through, so Tab from a tab inside a dialog still wraps.
+    if (target.matches('[data-ui="tab"]') && onTabKeydown(event, target)) return;
 
     const trap = event.key === "Tab" ? target.closest("[data-trap-focus]") : null;
     if (trap) trapFocus(event, trap);

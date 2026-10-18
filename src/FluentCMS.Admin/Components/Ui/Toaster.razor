@@ -11,7 +11,7 @@
             <li @key="toast.Id"
                 data-slot="toast"
                 data-variant="@toast.Variant"
-                class="@ClassNames.Cn("pointer-events-auto relative grid gap-1 rounded-lg border bg-popover p-4 pe-10 text-popover-foreground shadow-lg", toast.Variant == "destructive" ? "text-destructive" : null)">
+                class="@ClassNames.Cn("pointer-events-auto relative grid gap-1 rounded-lg border bg-popover p-4 pe-10 shadow-lg", toast.Variant == "destructive" ? "text-destructive" : "text-popover-foreground")">
                 <p data-slot="toast-title" class="text-sm font-medium">@toast.Title</p>
                 @if (toast.Description is not null)
                 {

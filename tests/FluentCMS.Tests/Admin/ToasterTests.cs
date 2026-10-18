@@ -51,6 +51,7 @@ public sealed class ToasterTests
         toasts.Show("Could not publish", variant: "destructive");
 
         cut.WaitForAssertion(() => Assert.Contains("text-destructive", cut.Find("li").ClassList));
+        Assert.DoesNotContain("text-popover-foreground", cut.Find("li").ClassList);
         Assert.Empty(cut.FindAll("[data-slot=toast-description]"));
     }
 
