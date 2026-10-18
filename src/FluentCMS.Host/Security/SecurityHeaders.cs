@@ -3,7 +3,7 @@ namespace FluentCMS.Host.Security;
 internal static class SecurityHeaders
 {
     // Everything from this origin and nothing inline: Blazor's script, the admin's module and the stylesheet are files (SEC-07).
-    // Blazor's default reconnect display injects a style element, which this blocks; it still works, unstyled, until the shell brings its own.
+    // The shell brings its own reconnect display, so Blazor's default one, which injects a style element, never runs.
     // Browsers also hold the redirect that leaves a form post to form-action, so an external provider's origin is added there.
     public static string ContentSecurityPolicy(IEnumerable<string> formTargets)
     {

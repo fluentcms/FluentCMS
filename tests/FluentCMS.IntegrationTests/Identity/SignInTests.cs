@@ -15,9 +15,9 @@ public sealed class SignInTests
     public async Task A_fresh_install_leads_every_admin_route_to_setup_until_the_first_administrator_exists()
     {
         using var install = new TemporaryInstall();
-        await using var host = await AdminHost.StartAsync(install, ["--environment", "Development"]);
+        await using var host = await AdminHost.StartAsync(install);
 
-        foreach (var route in new[] { "/", "/ui-spike", "/sign-in", "/sign-out" })
+        foreach (var route in new[] { "/", "/ui", "/sign-in", "/sign-out" })
         {
             var (path, response) = await host.FollowAsync(route);
             Assert.Equal("/setup", path);
@@ -83,18 +83,18 @@ public sealed class SignInTests
     public async Task An_anonymous_request_is_sent_to_sign_in_and_returns_to_the_route_it_asked_for()
     {
         using var install = new TemporaryInstall();
-        await using var host = await AdminHost.StartAsync(install, ["--environment", "Development"]);
+        await using var host = await AdminHost.StartAsync(install);
         await host.CreateFirstAdministratorAsync();
 
-        var anonymous = await host.Client.GetAsync("/ui-spike");
+        var anonymous = await host.Client.GetAsync("/ui");
         Assert.Equal(HttpStatusCode.Redirect, anonymous.StatusCode);
-        Assert.Equal("/sign-in?ReturnUrl=%2Fui-spike", host.LocationOf(anonymous));
+        Assert.Equal("/sign-in?ReturnUrl=%2Fui", host.LocationOf(anonymous));
 
         var signedIn = await host.SignInAsync(AdminHost.Owner, host.LocationOf(anonymous)!);
 
         Assert.Equal(HttpStatusCode.Redirect, signedIn.StatusCode);
-        Assert.Equal("/ui-spike", host.LocationOf(signedIn));
-        Assert.Equal(HttpStatusCode.OK, (await host.Client.GetAsync("/ui-spike")).StatusCode);
+        Assert.Equal("/ui", host.LocationOf(signedIn));
+        Assert.Equal(HttpStatusCode.OK, (await host.Client.GetAsync("/ui")).StatusCode);
     }
 
     [Theory]

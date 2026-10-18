@@ -1,0 +1,33 @@
+@inject IStringLocalizer<ReconnectModal> L
+
+@* Blazor uses the element with this id instead of its default reconnect display, whose injected style element the CSP blocks.
+   It reports the state as a class on the element: app.css shows the matching part and admin.js runs the buttons.
+   Not modal, so the page stays readable and the client-side overlays keep working until the circuit is back. *@
+<div id="components-reconnect-modal"
+     role="status"
+     aria-live="polite"
+     data-permanent
+     data-nosnippet
+     class="fixed end-4 bottom-4 z-50 w-80 max-w-[calc(100%-2rem)] flex-col gap-3 rounded-lg border bg-popover p-4 text-sm text-popover-foreground shadow-lg">
+    <p data-reconnect-when="show">@L["Connection lost. Rejoining the server…"]</p>
+    <p data-reconnect-when="retrying">@_retrying[0]<span id="components-seconds-to-next-attempt"></span>@_retrying.ElementAtOrDefault(1)</p>
+    <div data-reconnect-when="failed" class="space-y-3">
+        <p>@L["Could not rejoin the server."]</p>
+        <Button Size="sm" data-reconnect="retry">@L["Retry"]</Button>
+    </div>
+    <div data-reconnect-when="paused" class="space-y-3">
+        <p>@L["The session has been paused."]</p>
+        <Button Size="sm" data-reconnect="resume">@L["Resume"]</Button>
+    </div>
+    <div data-reconnect-when="resume-failed" class="space-y-3">
+        <p>@L["Could not resume the session."]</p>
+        <Button Size="sm" data-reconnect="reload">@L["Reload"]</Button>
+    </div>
+</div>
+
+@code {
+    private string[] _retrying = [];
+
+    // Blazor writes the countdown into the span, so the sentence is split where the translation puts the number.
+    protected override void OnInitialized() => _retrying = L["Rejoin failed. Trying again in {0} seconds."].Value.Split("{0}", 2);
+}
