@@ -69,7 +69,7 @@ public abstract class ToolProviderConformanceTests
 
         foreach (var tool in Tools)
         {
-            var result = await tool.InvokeAsync(new ToolCall(arguments, new NoServices()));
+            var result = await tool.InvokeAsync(new ToolInvocation(arguments, new NoServices()));
 
             Assert.False(result.IsSuccess, tool.Name);
             Assert.Contains(result.Errors, error => error.Code == ToolErrorCodes.ArgumentUnknown && error.Message.Contains("no_such_argument"));

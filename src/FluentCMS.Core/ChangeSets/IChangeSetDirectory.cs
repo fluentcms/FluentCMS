@@ -11,6 +11,9 @@ public interface IChangeSetDirectory
     // Computed from the stored versions each operation names; a read, so it appends no event.
     Task<Result<ChangeSetDiff>> DiffAsync(Guid id, CancellationToken cancellationToken = default);
 
+    // The open set the caller opened under this session id, the one AddToSessionAsync adds to; change_set_not_found when none is.
+    Task<Result<ChangeSet>> GetSessionSetAsync(string sessionId, CancellationToken cancellationToken = default);
+
     Task<Result<ChangeSet>> OpenAsync(NewChangeSet changeSet, CancellationToken cancellationToken = default);
 
     Task<Result<ChangeSet>> AddOperationAsync(Guid changeSetId, ChangeOperation operation, CancellationToken cancellationToken = default);

@@ -42,6 +42,27 @@ public sealed class ToolConventionsTests
     }
 
     [Fact]
+    public void Lists_objects_and_optional_ids_are_read_and_checked()
+    {
+        var good = Reader("""{"sources": ["a", "b"], "definition": {"fields": []}, "change_set_id": "0192f3a1-7c2e-7a4b-9d3e-1f2a3b4c5d6e", "base_version": 3}""");
+        var bad = Reader("""{"sources": ["a", 1], "definition": [], "change_set_id": 7}""");
+
+        Assert.Equal(["a", "b"], good.OptionalStrings("sources", "a"));
+        Assert.Equal(JsonValueKind.Object, good.RequiredObject("definition", "an object")!.Value.ValueKind);
+        Assert.Equal(Guid.Parse("0192f3a1-7c2e-7a4b-9d3e-1f2a3b4c5d6e"), good.OptionalGuid("change_set_id"));
+        Assert.Equal(3, good.RequiredPositiveInteger("base_version"));
+        Assert.Empty(good.Errors());
+
+        Assert.Null(bad.OptionalStrings("sources", "a"));
+        Assert.Null(bad.RequiredObject("definition", "an object"));
+        Assert.Null(bad.OptionalGuid("change_set_id"));
+        Assert.Null(bad.RequiredPositiveInteger("base_version"));
+        Assert.Equal(
+            [ToolErrorCodes.ArgumentInvalid, ToolErrorCodes.ArgumentInvalid, ToolErrorCodes.ArgumentInvalid, ToolErrorCodes.ArgumentMissing],
+            bad.Errors().Select(error => error.Code));
+    }
+
+    [Fact]
     public void A_tool_without_arguments_accepts_none_and_null_and_refuses_a_value_that_is_not_an_object()
     {
         Assert.Empty(Reader("{}").Errors());
