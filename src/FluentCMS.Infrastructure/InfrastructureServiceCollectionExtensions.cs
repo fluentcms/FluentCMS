@@ -1,4 +1,7 @@
+using FluentCMS.Core.Audit;
 using FluentCMS.Core.Identity;
+using FluentCMS.Core.Persistence;
+using FluentCMS.Infrastructure.Audit;
 using FluentCMS.Infrastructure.Identity;
 using FluentCMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -17,6 +20,7 @@ public static class InfrastructureServiceCollectionExtensions
 
         AddDatabase(services, configuration.GetSection(DatabaseOptions.SectionName).Get<DatabaseOptions>() ?? new DatabaseOptions());
         AddIdentity(services);
+        AddAudit(services);
 
         services.AddHostedService<DatabaseMigrator>();
 
@@ -38,6 +42,13 @@ public static class InfrastructureServiceCollectionExtensions
                 throw new InvalidOperationException(
                     $"Unknown database provider '{database.Provider}'. Use '{DatabaseProviders.Sqlite}' or '{DatabaseProviders.PostgreSql}'.");
         }
+    }
+
+    // The log reads ICurrentInitiator, which each host registers for its own kind of caller.
+    private static void AddAudit(IServiceCollection services)
+    {
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<IAuditLog, AuditLog>();
     }
 
     private static void AddIdentity(IServiceCollection services)

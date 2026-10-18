@@ -17,6 +17,76 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.13");
 
+            modelBuilder.Entity("FluentCMS.Infrastructure.Audit.AuditEventRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("AgentCredentialId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("ChangeSetId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("InitiatorId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("InitiatorKind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("InitiatorName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Model")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Operation")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("PreviousVersionId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PromptHash")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.PrimitiveCollection<string>("Sources")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("SubjectId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SubjectType")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("Timestamp")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AgentCredentialId");
+
+                    b.HasIndex("ChangeSetId");
+
+                    b.HasIndex("Timestamp");
+
+                    b.HasIndex("SubjectType", "SubjectId");
+
+                    b.ToTable("AuditEvents", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_AuditEvents_AgentCredentialId", "(\"InitiatorKind\" = 'agent') = (\"AgentCredentialId\" IS NOT NULL)");
+                        });
+                });
+
             modelBuilder.Entity("FluentCMS.Infrastructure.Persistence.FluentCmsRole", b =>
                 {
                     b.Property<Guid>("Id")

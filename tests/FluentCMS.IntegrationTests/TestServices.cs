@@ -8,12 +8,14 @@ namespace FluentCMS.IntegrationTests;
 
 internal static class TestServices
 {
-    public static ServiceProvider Build(IEnumerable<KeyValuePair<string, string?>> settings)
+    public static ServiceProvider Build(IEnumerable<KeyValuePair<string, string?>> settings, Action<IServiceCollection>? configure = null)
     {
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
         var services = new ServiceCollection();
 
         services.AddLogging();
+        // Test doubles go in first so a test clock wins over the TimeProvider Infrastructure adds with TryAdd.
+        configure?.Invoke(services);
         services.AddFluentCmsInfrastructure(configuration);
 
         return services.BuildServiceProvider();
