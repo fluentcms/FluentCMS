@@ -93,3 +93,54 @@ public sealed class RatingFieldType : IFieldType
         return reader.Errors();
     }
 }
+
+public sealed class LinkFieldTypeTests : FieldTypeConformanceTests
+{
+    protected override string FieldTypeName => "sample.link";
+
+    protected override IEnumerable<string> AcceptedSettings => ["""{"to": "product"}"""];
+
+    protected override IEnumerable<string> RejectedSettings => ["{}", """{"to": "Product"}"""];
+
+    protected override void AddFieldTypes(IServiceCollection services)
+    {
+        services.AddFluentCmsExtensions(typeof(LinkFieldType).Assembly);
+    }
+
+    // A plugin type that points at entries declares its targets like the built-in reference does, so the same existence check applies.
+    [Fact]
+    public void Its_targets_count_as_references_of_a_definition()
+    {
+        var definition = new ContentTypeDefinition(
+        [
+            new FieldDefinition("seeAlso", "sample.link", settings: JsonSerializer.Deserialize<JsonElement>("""{"to": "product"}""")),
+            new FieldDefinition("category", "reference", settings: JsonSerializer.Deserialize<JsonElement>("""{"target": "category"}""")),
+        ]);
+
+        Assert.Equal(
+            [new FieldReference("seeAlso", "product"), new FieldReference("category", "category")],
+            definition.References(Registry));
+    }
+}
+
+public sealed class LinkFieldType : IFieldType
+{
+    public string Name => "sample.link";
+
+    public IReadOnlyList<Error> ValidateSettings(JsonElement settings, FieldTypeRegistry fieldTypes)
+    {
+        var reader = new FieldSettingsReader(Name, settings);
+
+        if (reader.RequiredString("to") is { } to && !SchemaNames.IsSlug(to))
+        {
+            reader.Invalid("to", "must be the slug of a content type");
+        }
+
+        return reader.Errors();
+    }
+
+    public IReadOnlyList<string> ReferencedTypes(JsonElement settings, FieldTypeRegistry fieldTypes)
+    {
+        return [settings.GetProperty("to").GetString()!];
+    }
+}

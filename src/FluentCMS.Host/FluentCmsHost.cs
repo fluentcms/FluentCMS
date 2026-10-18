@@ -11,6 +11,7 @@ using FluentCMS.Infrastructure;
 using FluentCMS.Infrastructure.Persistence;
 using FluentCMS.Mcp;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging.Console;
 
@@ -43,21 +44,23 @@ public static class FluentCmsHost
         AddFluentCms(builder.Services, builder.Configuration, builder.Environment);
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddScoped<ICurrentInitiator, HttpContextInitiator>();
-        AddCookieSignIn(builder.Services);
+        var provider = AddCookieSignIn(builder.Services, builder.Configuration, builder.Environment);
         builder.Services.AddSignInRateLimit(builder.Configuration);
         builder.Services.AddHealthChecks();
         builder.Services.AddLocalization();
         builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 
         var app = builder.Build();
-        app.UseSecurityHeaders();
+        app.UseSecurityHeaders(provider.IsConfigured ? [provider.AuthorityOrigin] : []);
         app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
+        KeepStatusCodePagesToPageLoads(app);
         app.UseRateLimiter();
         app.UseAuthentication();
         app.UseAuthorization();
         app.UseAntiforgery();
         MapStaticAssets(app);
         app.MapHealthChecks("/health");
+        app.MapExternalSignIn();
         app.MapAuditExport();
 
         // Every admin page needs a signed-in user unless it allows anonymous access itself (setup, sign-in, not found).
@@ -68,9 +71,15 @@ public static class FluentCmsHost
         return app;
     }
 
-    private static void AddCookieSignIn(IServiceCollection services)
+    private static OpenIdConnectProviderOptions AddCookieSignIn(IServiceCollection services, IConfiguration configuration, IHostEnvironment environment)
     {
-        services.AddAuthentication(IdentityConstants.ApplicationScheme).AddIdentityCookies();
+        var providerSection = configuration.GetSection(OpenIdConnectProviderOptions.SectionName);
+        var provider = providerSection.Get<OpenIdConnectProviderOptions>() ?? new OpenIdConnectProviderOptions();
+        services.Configure<OpenIdConnectProviderOptions>(providerSection);
+
+        var authentication = services.AddAuthentication(IdentityConstants.ApplicationScheme);
+        authentication.AddIdentityCookies();
+        authentication.AddOpenIdConnectProvider(provider, environment);
         services.ConfigureApplicationCookie(options =>
         {
             options.LoginPath = AdminRoutes.SignIn;
@@ -79,6 +88,24 @@ public static class FluentCmsHost
         new IdentityBuilder(typeof(FluentCmsUser), typeof(FluentCmsRole), services).AddSignInManager();
         services.AddAuthorization();
         services.AddScoped<IUserSignIn, CookieUserSignIn>();
+        return provider;
+    }
+
+    // The not-found page is for page loads. Re-running a rejected post against it would check the anti-forgery token
+    // a second time, which throws once the first check has failed, and would call the rejected form "not found".
+    private static void KeepStatusCodePagesToPageLoads(WebApplication app)
+    {
+        app.Use((context, next) =>
+        {
+            if (!HttpMethods.IsGet(context.Request.Method)
+                && !HttpMethods.IsHead(context.Request.Method)
+                && context.Features.Get<IStatusCodePagesFeature>() is { } statusCodePages)
+            {
+                statusCodePages.Enabled = false;
+            }
+
+            return next(context);
+        });
     }
 
     // The manifest is named after the entry assembly, which is the test host under xunit; without it the files are served unfingerprinted.

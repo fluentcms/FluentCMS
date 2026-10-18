@@ -113,6 +113,23 @@ public sealed class ContentTypeTests : IDisposable
         Assert.Same(definition, original.Definition);
     }
 
+    [Fact]
+    public void A_restored_type_keeps_what_was_stored_without_validating_it_again()
+    {
+        var id = Guid.NewGuid();
+        var stored = new ContentTypeDefinition([new FieldDefinition("rating", "sample.removed")]);
+
+        var restored = ContentType.Restore(id, Site, "Review", "review", 4, stored);
+
+        Assert.Equal(id, restored.Id);
+        Assert.Equal(Site, restored.SiteId);
+        Assert.Equal("Review", restored.Name);
+        Assert.Equal("review", restored.Slug);
+        Assert.Equal(4, restored.Version);
+        Assert.Same(stored, restored.Definition);
+        Assert.False(restored.Revise(stored, FieldTypes).IsSuccess);
+    }
+
     public void Dispose()
     {
         _provider.Dispose();

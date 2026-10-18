@@ -111,6 +111,16 @@ public sealed class ContentTypeDefinition
         return errors.Count == 0 ? Result.Success() : Result.Failure(errors);
     }
 
+    // Only meaningful for a definition that passed Validate.
+    public IReadOnlyList<FieldReference> References(FieldTypeRegistry fieldTypes)
+    {
+        ArgumentNullException.ThrowIfNull(fieldTypes);
+
+        return Fields
+            .SelectMany(field => fieldTypes.ReferencedTypes(field.Type, field.Settings).Select(target => new FieldReference(field.Name, target)))
+            .ToList();
+    }
+
     private static List<FieldDefinition> ReadFields(JsonElement root, List<Error> errors)
     {
         var fields = new List<FieldDefinition>();

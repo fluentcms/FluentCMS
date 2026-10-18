@@ -29,4 +29,13 @@ internal sealed class ListFieldType : IFieldType
 
         return reader.Errors();
     }
+
+    public IReadOnlyList<string> ReferencedTypes(JsonElement settings, FieldTypeRegistry fieldTypes)
+    {
+        var itemSettings = settings.TryGetProperty("itemSettings", out var value) && value.ValueKind == JsonValueKind.Object
+            ? value
+            : FieldDefinition.EmptySettings;
+
+        return fieldTypes.ReferencedTypes(settings.GetProperty("itemType").GetString()!, itemSettings);
+    }
 }

@@ -7,6 +7,11 @@ public static class AdminRoutes
     public const string Setup = "/setup";
     public const string SignIn = "/sign-in";
     public const string SignOut = "/sign-out";
+    public const string ExternalSignIn = "/sign-in/external";
+
+    // Not a page: the host's endpoint that sends the browser to the external provider.
+    public const string ExternalSignInStart = "/sign-in/external/start";
+
     public const string Audit = "/audit";
     public const string AuditExport = "/audit/export";
 

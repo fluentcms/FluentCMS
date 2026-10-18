@@ -1,4 +1,6 @@
 using FluentCMS.Infrastructure.Audit;
+using FluentCMS.Infrastructure.Schema;
+using FluentCMS.Infrastructure.Sites;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -10,11 +12,20 @@ public abstract class FluentCmsDbContext(DbContextOptions options) : IdentityDbC
 {
     public DbSet<AuditEventRow> AuditEvents => Set<AuditEventRow>();
 
+    public DbSet<SiteRow> Sites => Set<SiteRow>();
+
+    public DbSet<ContentTypeRow> ContentTypes => Set<ContentTypeRow>();
+
+    public DbSet<ContentTypeVersionRow> ContentTypeVersions => Set<ContentTypeVersionRow>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
 
         builder.ApplyConfiguration(new AuditEventConfiguration());
+        builder.ApplyConfiguration(new SiteConfiguration());
+        builder.ApplyConfiguration(new ContentTypeConfiguration());
+        builder.ApplyConfiguration(new ContentTypeVersionConfiguration());
 
         builder.Entity<FluentCmsUser>(user =>
         {
@@ -32,4 +43,13 @@ public abstract class FluentCmsDbContext(DbContextOptions options) : IdentityDbC
 
 public sealed class SqliteFluentCmsDbContext(DbContextOptions<SqliteFluentCmsDbContext> options) : FluentCmsDbContext(options);
 
-public sealed class PostgreSqlFluentCmsDbContext(DbContextOptions<PostgreSqlFluentCmsDbContext> options) : FluentCmsDbContext(options);
+public sealed class PostgreSqlFluentCmsDbContext(DbContextOptions<PostgreSqlFluentCmsDbContext> options) : FluentCmsDbContext(options)
+{
+    protected override void OnModelCreating(ModelBuilder builder)
+    {
+        base.OnModelCreating(builder);
+
+        // Definitions are JSON documents, stored as jsonb where the provider has it (ADR-0005).
+        builder.Entity<ContentTypeVersionRow>().Property(version => version.Definition).HasColumnType("jsonb");
+    }
+}

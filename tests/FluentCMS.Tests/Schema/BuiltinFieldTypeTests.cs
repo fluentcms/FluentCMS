@@ -113,6 +113,12 @@ public sealed class ReferenceFieldTypeTests : FieldTypeConformanceTests
 
     protected override IEnumerable<string> RejectedSettings =>
         ["{}", """{"target": "Product"}""", """{"target": "product page"}""", """{"target": ""}""", """{"target": 5}"""];
+
+    [Fact]
+    public void Declares_its_target_as_referenced()
+    {
+        Assert.Equal(["product"], Registry.ReferencedTypes(FieldTypeName, Parse("""{"target": "product"}""")));
+    }
 }
 
 public sealed class ListFieldTypeTests : FieldTypeConformanceTests
@@ -144,6 +150,13 @@ public sealed class ListFieldTypeTests : FieldTypeConformanceTests
 
         Assert.Equal(SchemaErrorCodes.SettingInvalid, error.Code);
         Assert.Contains("cannot be 'list'", error.Message);
+    }
+
+    [Fact]
+    public void Declares_what_its_item_type_references()
+    {
+        Assert.Equal(["product"], Registry.ReferencedTypes(FieldTypeName, Parse("""{"itemType": "reference", "itemSettings": {"target": "product"}}""")));
+        Assert.Empty(Registry.ReferencedTypes(FieldTypeName, Parse("""{"itemType": "text"}""")));
     }
 
     [Fact]

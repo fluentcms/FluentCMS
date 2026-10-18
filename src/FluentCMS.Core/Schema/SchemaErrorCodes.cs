@@ -12,4 +12,9 @@ public static class SchemaErrorCodes
     public const string NameInvalid = "name_invalid";
     public const string SlugInvalid = "slug_invalid";
     public const string SiteMissing = "site_missing";
+    public const string SlugTaken = "slug_taken";
+    public const string ReferenceTargetUnknown = "reference_target_unknown";
+    public const string ContentTypeNotFound = "content_type_not_found";
+    public const string VersionNotFound = "version_not_found";
+    public const string VersionConflict = "version_conflict";
 }
