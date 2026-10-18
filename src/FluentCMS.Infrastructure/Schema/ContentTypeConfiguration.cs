@@ -9,7 +9,11 @@ internal sealed class ContentTypeConfiguration : IEntityTypeConfiguration<Conten
 {
     public void Configure(EntityTypeBuilder<ContentTypeRow> row)
     {
-        row.ToTable("ContentTypes", table => table.HasCheckConstraint("CK_ContentTypes_Version", "\"Version\" >= 1"));
+        row.ToTable("ContentTypes", table =>
+        {
+            table.HasCheckConstraint("CK_ContentTypes_Version", "\"Version\" >= 1");
+            table.HasCheckConstraint("CK_ContentTypes_PublishedVersion", "\"PublishedVersion\" IS NULL OR \"PublishedVersion\" >= 1");
+        });
         row.HasKey(type => type.Id);
         row.Property(type => type.Id).ValueGeneratedNever();
         row.Property(type => type.Name).HasMaxLength(ContentType.MaxNameLength).IsRequired();

@@ -31,11 +31,12 @@ public sealed class AgentPermissionTests
     public async Task An_agent_makes_no_move_but_submit_and_reopen_and_each_refusal_is_logged(string provider)
     {
         await using var scenario = await ChangeSetScenario.CreateAsync(provider);
-        var product = await scenario.ContentTypeAsync("product", revised: true);
+        var agentMoves = ChangeSetTransitions.All.Where(transition => transition.To is not (ChangeSetState.ChecksRunning or ChangeSetState.Open));
 
-        foreach (var (from, to) in ChangeSetTransitions.All.Where(transition => transition.To is not (ChangeSetState.ChecksRunning or ChangeSetState.Open)))
+        foreach (var ((from, to), index) in agentMoves.Select((transition, index) => (transition, index)))
         {
-            var changeSet = await scenario.OpenAsync(Update(product));
+            // A new type each time, so a set that reaches published has no earlier publish of its item to be stale against.
+            var changeSet = await scenario.OpenAsync(Create(await scenario.ContentTypeAsync($"type-{index}")));
             foreach (var state in PathFromOpen[from])
             {
                 Assert.True((await MoveAsync(scenario, changeSet.Id, state)).IsSuccess);

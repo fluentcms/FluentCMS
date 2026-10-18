@@ -9,7 +9,10 @@ namespace FluentCMS.IntegrationTests;
 
 internal static class TestServices
 {
-    public static ServiceProvider Build(IEnumerable<KeyValuePair<string, string?>> settings, Action<IServiceCollection>? configure = null)
+    public static ServiceProvider Build(
+        IEnumerable<KeyValuePair<string, string?>> settings,
+        Action<IServiceCollection>? configure = null,
+        Action<IServiceCollection>? replace = null)
     {
         var configuration = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
         var services = new ServiceCollection();
@@ -19,6 +22,9 @@ internal static class TestServices
         configure?.Invoke(services);
         services.AddFluentCmsCore();
         services.AddFluentCmsInfrastructure(configuration);
+
+        // Runs last, to wrap or swap what Infrastructure registered.
+        replace?.Invoke(services);
 
         return services.BuildServiceProvider();
     }
