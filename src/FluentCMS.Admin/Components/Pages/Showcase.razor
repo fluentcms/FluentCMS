@@ -91,6 +91,32 @@
         @Hints(([L["Tab"]], L["Passes through to the controls inside; the card itself takes no focus."]))
     </section>
 
+    <section class="grid gap-4" aria-labelledby="table-heading">
+        <h2 id="table-heading" class="text-lg font-semibold">@L["Table"]</h2>
+        <Table Class="max-w-lg">
+            <TableHeader>
+                <TableRow>
+                    <TableHead>@L["Display name"]</TableHead>
+                    <TableHead>@L["Email"]</TableHead>
+                    <TableHead>@L["Status"]</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                <TableRow>
+                    <TableCell>Owner</TableCell>
+                    <TableCell>owner@@example.com</TableCell>
+                    <TableCell><Badge Variant="secondary">@L["Enabled"]</Badge></TableCell>
+                </TableRow>
+                <TableRow>
+                    <TableCell>Editor</TableCell>
+                    <TableCell>editor@@example.com</TableCell>
+                    <TableCell><Badge Variant="outline">@L["Disabled"]</Badge></TableCell>
+                </TableRow>
+            </TableBody>
+        </Table>
+        @Hints(([L["Tab"]], L["Passes through to the controls in the rows; the table itself takes no focus."]))
+    </section>
+
     <section class="grid gap-4" aria-labelledby="dialog-heading">
         <h2 id="dialog-heading" class="text-lg font-semibold">@L["Dialog"]</h2>
         <Dialog>

@@ -34,7 +34,7 @@ public sealed class ShowcaseTests
 
         var sections = cut.FindAll("section");
 
-        Assert.Equal(8, sections.Count);
+        Assert.Equal(9, sections.Count);
         Assert.All(sections, section =>
         {
             var hints = section.QuerySelector("[data-testid=keyboard-hints]");
