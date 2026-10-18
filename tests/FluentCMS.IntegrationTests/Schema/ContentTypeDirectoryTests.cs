@@ -257,29 +257,14 @@ public sealed class ContentTypeDirectoryTests
     public async Task The_reference_scenario_model_can_be_defined(string provider)
     {
         await using var scenario = await SchemaScenario.CreateAsync(provider);
-        (string Slug, bool IsEntity, FieldDefinition[] Fields)[] model =
-        [
-            ("category", true, [Field("name", "text", required: true), Reference("parent", "category")]),
-            ("region", true, [Field("name", "text", required: true), Field("code", "text", """{"maxLength": 8}""")]),
-            ("spec", true, [Field("name", "text", required: true), Field("value", "text"), Field("unit", "enum", """{"values": ["mm", "kg", "W"]}""")]),
-            ("product", true, [.. ProductFields, Reference("category", "category"), References("specs", "spec"), References("regions", "region"), Field("hero", "media")]),
-            ("product-page", false, [Reference("product", "product"), Reference("price", "product", "price"), Field("headline", "text"), Field("body", "richText")]),
-            ("category-page", false, [Reference("category", "category"), Field("intro", "richText")]),
-            ("comparison-page", false, [References("products", "product"), References("prices", "product", "price"), Field("verdict", "richText"), Field("extra", "json")]),
-            ("blog-post", false, [Field("title", "text", required: true), Field("body", "richText"), Field("publishedOn", "dateTime"), Field("featured", "boolean"), References("related", "product")]),
-        ];
 
-        foreach (var (slug, isEntity, fields) in model)
-        {
-            var created = isEntity ? await scenario.CreateEntityAsync(slug, fields) : await scenario.CreateAsync(slug, fields);
-            Assert.True(created.IsSuccess, $"{slug}: {string.Join("; ", created.Errors.Select(error => error.Message))}");
-        }
+        await scenario.CreateReferenceModelAsync();
 
         Assert.Equal(
-            model.Select(type => type.Slug).Order(StringComparer.Ordinal),
+            ReferenceModel.Select(type => type.Slug).Order(StringComparer.Ordinal),
             (await scenario.RunAsync(directory => directory.ListAsync())).Select(summary => summary.Slug));
 
-        foreach (var (slug, isEntity, _) in model)
+        foreach (var (slug, isEntity, _) in ReferenceModel)
         {
             Assert.Equal(isEntity, (await scenario.RunAsync(directory => directory.GetAsync(slug))).Value.Definition.IsEntity);
         }

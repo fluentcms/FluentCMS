@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using FluentCMS.Core.Results;
 
 namespace FluentCMS.Core.Schema;
@@ -54,6 +55,15 @@ public sealed class FieldTypeRegistry
         }
 
         return fieldType.ValidateSettings(settings, this);
+    }
+
+    // A type that is no longer installed is described as any value, so a stored definition that uses it still has a document.
+    public FieldValueDescription DescribeValue(string type, JsonElement settings)
+    {
+        ArgumentNullException.ThrowIfNull(type);
+
+        return Find(type)?.DescribeValue(settings, this)
+            ?? new FieldValueDescription(new JsonObject(), null, $"A value of the field type '{type}', which is not installed.");
     }
 
     public IReadOnlyList<ReferenceTarget> ReferenceTargets(string type, JsonElement settings)

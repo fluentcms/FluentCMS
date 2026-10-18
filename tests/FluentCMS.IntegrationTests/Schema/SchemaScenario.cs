@@ -85,9 +85,40 @@ internal sealed class SchemaScenario : IAsyncDisposable
         await _database.DisposeAsync();
     }
 
-    public static FieldDefinition Field(string name, string type, string settings = "{}", bool required = false)
+    // The model behind the reference scenario (02-personas-and-scenarios): four entity types and the four page types that use them.
+    public static readonly (string Slug, bool IsEntity, FieldDefinition[] Fields)[] ReferenceModel =
+    [
+        ("category", true, [Field("name", "text", required: true), Reference("parent", "category")]),
+        ("region", true, [Field("name", "text", required: true), Field("code", "text", """{"maxLength": 8}""")]),
+        ("spec", true, [Field("name", "text", required: true), Field("value", "text"), Field("unit", "enum", """{"values": ["mm", "kg", "W"]}""")]),
+        ("product", true,
+        [
+            Field("name", "text", """{"maxLength": 200}""", required: true),
+            Field("price", "number", """{"min": 0, "max": 99999.99}""", required: true, description: "The list price, before discounts."),
+            Field("tags", "list", """{"itemType": "text"}"""),
+            Reference("category", "category"),
+            References("specs", "spec"),
+            References("regions", "region"),
+            Field("hero", "media"),
+        ]),
+        ("product-page", false, [Reference("product", "product"), Reference("price", "product", "price"), Field("headline", "text"), Field("body", "richText")]),
+        ("category-page", false, [Reference("category", "category"), Field("intro", "richText")]),
+        ("comparison-page", false, [References("products", "product"), References("prices", "product", "price"), Field("verdict", "richText"), Field("extra", "json")]),
+        ("blog-post", false, [Field("title", "text", required: true), Field("body", "richText"), Field("publishedOn", "dateTime"), Field("featured", "boolean"), References("related", "product")]),
+    ];
+
+    public async Task CreateReferenceModelAsync()
     {
-        return new FieldDefinition(name, type, required, JsonSerializer.Deserialize<JsonElement>(settings));
+        foreach (var (slug, isEntity, fields) in ReferenceModel)
+        {
+            var created = isEntity ? await CreateEntityAsync(slug, fields) : await CreateAsync(slug, fields);
+            Assert.True(created.IsSuccess, $"{slug}: {string.Join("; ", created.Errors.Select(error => error.Message))}");
+        }
+    }
+
+    public static FieldDefinition Field(string name, string type, string settings = "{}", bool required = false, string? description = null)
+    {
+        return new FieldDefinition(name, type, required, JsonSerializer.Deserialize<JsonElement>(settings), description);
     }
 
     public static FieldDefinition Reference(string name, string target, string? field = null)

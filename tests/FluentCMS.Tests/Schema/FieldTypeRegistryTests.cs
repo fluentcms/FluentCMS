@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using FluentCMS.Core;
 using FluentCMS.Core.Extensions;
 using FluentCMS.Core.Results;
@@ -106,6 +107,11 @@ public sealed class FieldTypeRegistryTests
         public IReadOnlyList<Error> ValidateSettings(JsonElement settings, FieldTypeRegistry fieldTypes)
         {
             return [];
+        }
+
+        public FieldValueDescription DescribeValue(JsonElement settings, FieldTypeRegistry fieldTypes)
+        {
+            return new FieldValueDescription(new JsonObject(), null, "Anything.");
         }
     }
 }

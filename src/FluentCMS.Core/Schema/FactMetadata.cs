@@ -11,6 +11,10 @@ public static class FactMetadata
     public const string ValidUntil = "validUntil";
     public const string LastVerified = "lastVerified";
 
+    // A source is {"kind": "url", "reference": "https://..."}; the reference is the URL, file, person or system it names.
+    public const string SourceKind = "kind";
+    public const string SourceReference = "reference";
+
     public static IReadOnlyList<string> Properties { get; } = [Source, Owner, ValidFrom, ValidUntil, LastVerified];
 
     public static IReadOnlyList<string> SourceKinds { get; } = ["url", "file", "person", "system"];

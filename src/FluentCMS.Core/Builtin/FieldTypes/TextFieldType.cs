@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using FluentCMS.Core.Results;
 using FluentCMS.Core.Schema;
 
@@ -15,5 +16,17 @@ internal sealed class TextFieldType : IFieldType
         reader.PositiveInteger("maxLength");
 
         return reader.Errors();
+    }
+
+    public FieldValueDescription DescribeValue(JsonElement settings, FieldTypeRegistry fieldTypes)
+    {
+        var maxLength = new FieldSettingsReader(Name, settings).PositiveInteger("maxLength");
+        var schema = new JsonObject { ["type"] = "string" };
+        if (maxLength is { } limit)
+        {
+            schema["maxLength"] = limit;
+        }
+
+        return new FieldValueDescription(schema, Examples.Fit("Example text", maxLength), $"Plain text{Examples.AtMost(maxLength)}.");
     }
 }

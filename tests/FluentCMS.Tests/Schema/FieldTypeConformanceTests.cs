@@ -101,6 +101,22 @@ public abstract class FieldTypeConformanceTests : IDisposable
         }
     }
 
+    // The schema document hands this example to agents as a valid value (SCH-06).
+    [Fact]
+    public async Task Describes_its_values_with_a_schema_its_own_example_satisfies()
+    {
+        foreach (var json in AcceptedSettings)
+        {
+            var value = Registry.DescribeValue(FieldTypeName, Parse(json));
+            var errors = await JsonSchemaValidation.ErrorsAsync(value.Schema, value.Example);
+
+            Assert.False(string.IsNullOrWhiteSpace(value.Description), $"{json} has no description.");
+            Assert.True(
+                errors.Count == 0,
+                $"{json}: {value.Example?.ToJsonString() ?? "null"} does not satisfy {value.Schema.ToJsonString()}: {string.Join("; ", errors)}");
+        }
+    }
+
     // A definition comes from an agent, so a setting can hold anything; the answer is an error, never an exception.
     [Fact]
     public void Never_throws_whatever_a_setting_holds()

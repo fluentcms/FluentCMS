@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using FluentCMS.Core.Results;
 using FluentCMS.Core.Schema;
 
@@ -15,5 +16,15 @@ internal sealed class EnumFieldType : IFieldType
         reader.RequiredStringList("values");
 
         return reader.Errors();
+    }
+
+    public FieldValueDescription DescribeValue(JsonElement settings, FieldTypeRegistry fieldTypes)
+    {
+        var values = new FieldSettingsReader(Name, settings).RequiredStringList("values") ?? [];
+
+        return new FieldValueDescription(
+            new JsonObject { ["type"] = "string", ["enum"] = new JsonArray([.. values.Select(value => (JsonNode?)value)]) },
+            values.FirstOrDefault(),
+            $"One of: {string.Join(", ", values)}.");
     }
 }
