@@ -18,6 +18,14 @@ internal static class McpAgents
 {
     public static readonly UserInitiator Issuer = new(Guid.NewGuid(), "Test administrator");
 
+    // The built-in tools every server lists, sorted by name.
+    public static readonly string[] BuiltInTools = ["get_change_set", "get_change_set_diff", "get_content_type", "get_schema_document", "list_content_types"];
+
+    public static async Task<string[]> ToolNamesAsync(McpClient client)
+    {
+        return [.. (await client.ListToolsAsync()).Select(tool => tool.Name).Order(StringComparer.Ordinal)];
+    }
+
     // Reports who a call runs as, so a test can see the initiator the services would record.
     public static McpServerTool WhoAmI { get; } = McpServerTool.Create(
         (IServiceProvider services) => services.GetRequiredService<ICurrentInitiator>().Current switch

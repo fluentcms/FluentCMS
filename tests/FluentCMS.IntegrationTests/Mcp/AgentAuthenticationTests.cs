@@ -25,7 +25,7 @@ public sealed class AgentAuthenticationTests
 
         await using var client = await McpAgents.ConnectOverHttpAsync(host, issued.Key);
 
-        Assert.Equal(["whoami"], (await client.ListToolsAsync()).Select(tool => tool.Name));
+        Assert.Contains("whoami", await McpAgents.ToolNamesAsync(client));
         Assert.Equal($"agent {issued.Credential.Id} pipeline-agent", await McpAgents.WhoAmIAsync(client));
     }
 
@@ -168,7 +168,7 @@ public sealed class AgentAuthenticationTests
         });
 
         await using var client = await stdio.ConnectAsync();
-        Assert.Empty(await client.ListToolsAsync());
+        Assert.Equal(McpAgents.BuiltInTools, await McpAgents.ToolNamesAsync(client));
 
         await McpAgents.RevokeAsync(database.Configuration, issued.Credential.Id);
         var refused = await Assert.ThrowsAnyAsync<McpException>(() => client.ListToolsAsync().AsTask());
