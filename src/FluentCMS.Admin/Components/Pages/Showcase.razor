@@ -65,6 +65,16 @@
         @Hints(([L["Tab"]], L["Moves focus to the field."]))
     </section>
 
+    <section class="grid gap-4" aria-labelledby="checkbox-heading">
+        <h2 id="checkbox-heading" class="text-lg font-semibold">@L["Checkbox"]</h2>
+        <div class="grid max-w-sm gap-3">
+            <label class="flex items-center gap-2 text-sm"><Checkbox checked /> @L["Read"]</label>
+            <label class="flex items-center gap-2 text-sm"><Checkbox /> @L["Update"]</label>
+            <label class="flex items-center gap-2 text-sm text-muted-foreground"><Checkbox disabled /> @L["Disabled"]</label>
+        </div>
+        @Hints(([L["Tab"]], L["Moves focus to the box."]), ([L["Space"]], L["Checks or clears it."]))
+    </section>
+
     <section class="grid gap-4" aria-labelledby="form-field-heading">
         <h2 id="form-field-heading" class="text-lg font-semibold">@L["FormField"]</h2>
         <div class="grid max-w-sm gap-6">
