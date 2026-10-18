@@ -1,12 +1,15 @@
-// The admin's only JavaScript (ADR-0011). It installs delegated behaviour for the native overlays, the theme
-// and the reconnect display once per document: no component makes an interop call to work, nothing has to be
-// re-attached after Blazor re-renders, and everything here keeps working while the circuit is disconnected.
+// The admin's only JavaScript (ADR-0011): focus trapping, the roving tab index and global keyboard shortcuts,
+// plus the native overlays, the theme and the reconnect display. It installs delegated listeners once per
+// document and reads everything else from the DOM when an event arrives: no component makes an interop call to
+// work, nothing has to be re-attached after Blazor renders or a reconnect, and focus, scroll and keys stay in
+// the browser while the circuit is disconnected.
 
 const supportsCommands = "command" in HTMLButtonElement.prototype;
 const supportsAnchors = CSS.supports("position-area: block-end");
 
 const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 const visible = (element) => element.offsetParent !== null || element.matches(":popover-open, dialog[open]");
+const wrap = (index, length) => ((index % length) + length) % length;
 
 // ---------------------------------------------------------------------------------------------
 // Invoker Commands (commandfor / command) for browsers that do not implement them yet.
@@ -50,6 +53,30 @@ function trapFocus(event, trap) {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Roving tab index: one item of a group is in the tab order and the keys move focus between the
+// items. Horizontal groups follow the direction, so the arrow pointing forward moves forward in RTL too.
+
+function rove(items, index) {
+    const next = items[wrap(index, items.length)];
+    items.forEach((item) => { item.tabIndex = item === next ? 0 : -1; });
+    next.focus();
+    return next;
+}
+
+function roveIndex(event, index, count, axis) {
+    const rtl = getComputedStyle(event.target).direction === "rtl";
+    const forward = axis === "vertical" ? "ArrowDown" : rtl ? "ArrowLeft" : "ArrowRight";
+    const backward = axis === "vertical" ? "ArrowUp" : rtl ? "ArrowRight" : "ArrowLeft";
+    switch (event.key) {
+        case forward: return index + 1;
+        case backward: return index - 1;
+        case "Home": return 0;
+        case "End": return count - 1;
+        default: return null;
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
 // Menu: a popover with role=menu. Light dismiss and Escape are native; this adds the roving tab
 // index, typeahead, Tab to leave, and the anchor positioning fallback.
 
@@ -58,13 +85,8 @@ const menuTrigger = (menu) => document.querySelector(`[popovertarget="${menu.id}
 
 function focusMenuItem(menu, index) {
     const items = menuItems(menu);
-    if (items.length === 0) {
-        menu.focus();
-        return;
-    }
-    const next = ((index % items.length) + items.length) % items.length;
-    items.forEach((item, i) => { item.tabIndex = i === next ? 0 : -1; });
-    items[next].focus();
+    if (items.length === 0) menu.focus();
+    else rove(items, index);
 }
 
 function positionMenu(menu, trigger) {
@@ -95,31 +117,36 @@ function onMenuToggle(event) {
 function onMenuKeydown(event, menu) {
     const items = menuItems(menu);
     const index = items.indexOf(document.activeElement);
+    const next = roveIndex(event, index, items.length, "vertical");
+    if (next !== null) {
+        event.preventDefault();
+        focusMenuItem(menu, next);
+        return true;
+    }
     switch (event.key) {
-        case "ArrowDown": event.preventDefault(); focusMenuItem(menu, index + 1); return;
-        case "ArrowUp": event.preventDefault(); focusMenuItem(menu, index - 1); return;
-        case "Home": event.preventDefault(); focusMenuItem(menu, 0); return;
-        case "End": event.preventDefault(); focusMenuItem(menu, -1); return;
-        case "Tab": menu.hidePopover(); return;
-        case "Enter": case " ": event.preventDefault(); items[index]?.click(); return;
+        case "Tab": menu.hidePopover(); return false;
+        case "Enter": case " ": event.preventDefault(); items[index]?.click(); return true;
     }
     if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
         const key = event.key.toLowerCase();
         const order = [...items.slice(index + 1), ...items.slice(0, index + 1)];
         const match = order.find((item) => item.textContent.trim().toLowerCase().startsWith(key));
         if (match) focusMenuItem(menu, items.indexOf(match));
+        return true;
     }
+    return false;
 }
 
 function onMenuTriggerKeydown(event, trigger) {
-    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return false;
     const menu = document.getElementById(trigger.getAttribute("popovertarget"));
-    if (!menu) return;
+    if (!menu) return false;
     event.preventDefault();
     menu.dataset.openFocus = event.key === "ArrowUp" ? "last" : "first";
     if (menu.matches(":popover-open")) focusMenuItem(menu, event.key === "ArrowUp" ? -1 : 0);
     // The source makes the trigger the menu's anchor, as opening through popovertarget does.
     else menu.showPopover({ source: trigger });
+    return true;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -208,22 +235,11 @@ function activateTab(tab) {
 }
 
 function onTabKeydown(event, tab) {
-    const root = tab.closest('[data-ui="tabs"]');
-    const tabs = tabsOf(root).filter((other) => !other.disabled);
-    const index = tabs.indexOf(tab);
-    const rtl = getComputedStyle(tab).direction === "rtl";
-    let next;
-    switch (event.key) {
-        case "ArrowRight": next = index + (rtl ? -1 : 1); break;
-        case "ArrowLeft": next = index + (rtl ? 1 : -1); break;
-        case "Home": next = 0; break;
-        case "End": next = tabs.length - 1; break;
-        default: return false;
-    }
+    const tabs = tabsOf(tab.closest('[data-ui="tabs"]')).filter((other) => !other.disabled);
+    const next = roveIndex(event, tabs.indexOf(tab), tabs.length, "horizontal");
+    if (next === null) return false;
     event.preventDefault();
-    const target = tabs[((next % tabs.length) + tabs.length) % tabs.length];
-    target.focus();
-    activateTab(target);
+    activateTab(rove(tabs, next));
     return true;
 }
 
@@ -249,7 +265,7 @@ function selectOption(input, list, index) {
         input.removeAttribute("aria-activedescendant");
         return;
     }
-    const next = ((index % options.length) + options.length) % options.length;
+    const next = wrap(index, options.length);
     options[next].setAttribute("data-selected", "true");
     options[next].setAttribute("aria-selected", "true");
     input.setAttribute("aria-activedescendant", options[next].id);
@@ -280,18 +296,22 @@ function filterCommand(input) {
     selectOption(input, list, 0);
 }
 
+// Focus stays in the input, so the active option moves through aria-activedescendant instead of a roving tab index.
 function onCommandKeydown(event, input) {
     const { list } = commandParts(input);
-    if (!list) return;
+    if (!list) return false;
     const options = activeOptions(list);
     const index = options.findIndex((option) => option.hasAttribute("data-selected"));
     switch (event.key) {
-        case "ArrowDown": event.preventDefault(); selectOption(input, list, index + 1); break;
-        case "ArrowUp": event.preventDefault(); selectOption(input, list, index - 1); break;
-        case "Home": event.preventDefault(); selectOption(input, list, 0); break;
-        case "End": event.preventDefault(); selectOption(input, list, -1); break;
-        case "Enter": event.preventDefault(); options[index]?.click(); break;
+        case "ArrowDown": selectOption(input, list, index + 1); break;
+        case "ArrowUp": selectOption(input, list, index - 1); break;
+        case "Home": selectOption(input, list, 0); break;
+        case "End": selectOption(input, list, -1); break;
+        case "Enter": options[index]?.click(); break;
+        default: return false;
     }
+    event.preventDefault();
+    return true;
 }
 
 function onCommandPointerMove(event) {
@@ -313,6 +333,49 @@ const observer = new MutationObserver((mutations) => {
     }
     inputs.forEach(filterCommand);
 });
+
+// ---------------------------------------------------------------------------------------------
+// Global shortcuts: an element declares its keys in aria-keyshortcuts, ARIA's own attribute, so
+// assistive technology announces them too: "Control+K Meta+K" is either chord. The page is read when a
+// key is pressed, so a shortcut on content Blazor renders later, or again after a reconnect, works at
+// once. A button or link is clicked and anything else is focused. A shortcut without Control, Alt or
+// Meta waits while someone types in a field or a menu, and with a modal dialog open only the
+// shortcuts inside it apply.
+
+const modifiers = { control: "ctrlKey", alt: "altKey", shift: "shiftKey", meta: "metaKey" };
+const editable = (element) => element.isContentEditable
+    || element.matches('input:not([type="checkbox"], [type="radio"], [type="button"], [type="submit"], [type="reset"]), textarea, select');
+const shown = (element) => (element.checkVisibility ? element.checkVisibility() : visible(element)) && !element.closest("[inert]");
+
+function matchesShortcut(event, shortcut) {
+    const parts = shortcut.split("+");
+    const key = parts.pop().toLowerCase();
+    const held = parts.map((part) => part.toLowerCase());
+    if (key === "" || held.some((part) => !(part in modifiers))) return false;
+    const name = key === "space" ? " " : key;
+    // A letter or digit also matches by its physical key, so shortcuts work on other layouts and with Option on a Mac.
+    const code = /^[a-z]$/.test(name) ? `Key${name.toUpperCase()}` : /^[0-9]$/.test(name) ? `Digit${name}` : null;
+    if (event.key.toLowerCase() !== name && event.code !== code) return false;
+    // A symbol such as ? already needs Shift on most layouts, so Shift is compared only for letters, digits and named keys.
+    const symbol = name.length === 1 && code === null;
+    return Object.entries(modifiers).every(([modifier, property]) => (modifier === "shift" && symbol) || event[property] === held.includes(modifier));
+}
+
+function onShortcutKeydown(event) {
+    if (event.defaultPrevented || event.isComposing || event.repeat || ["Control", "Alt", "Shift", "Meta"].includes(event.key)) return false;
+    const chord = event.ctrlKey || event.altKey || event.metaKey;
+    if (!chord && (editable(event.target) || event.target.closest('[data-ui="menu"]'))) return false;
+    const modal = document.querySelector("dialog:modal");
+    for (const element of document.querySelectorAll("[aria-keyshortcuts]")) {
+        if ((modal && !modal.contains(element)) || element.matches(":disabled") || !shown(element)) continue;
+        if (!element.getAttribute("aria-keyshortcuts").split(/\s+/).some((shortcut) => matchesShortcut(event, shortcut))) continue;
+        event.preventDefault();
+        if (element.matches('button, a[href], summary, [role="button"], [role="menuitem"]')) element.click();
+        else element.focus();
+        return true;
+    }
+    return false;
+}
 
 // ---------------------------------------------------------------------------------------------
 // Theme: the root carries "light" or "dark", or neither to follow the system. The choice goes into
@@ -399,21 +462,22 @@ document.addEventListener("click", (event) => {
     closeOnBackdropClick(event);
 });
 
+// Each handler says whether it used the key; a key none of them used reaches the focus trap, so Tab
+// wraps inside a dialog whatever control has focus.
 document.addEventListener("keydown", (event) => {
     const target = event.target;
     if (!(target instanceof Element)) return;
 
     if (event.key === "Escape") hideTooltips();
+    if (onShortcutKeydown(event)) return;
 
     const menu = target.closest('[data-ui="menu"]');
-    if (menu) return onMenuKeydown(event, menu);
+    if (menu && onMenuKeydown(event, menu)) return;
 
     const trigger = target.closest('[data-ui="menu-trigger"]');
-    if (trigger) return onMenuTriggerKeydown(event, trigger);
+    if (trigger && onMenuTriggerKeydown(event, trigger)) return;
 
-    if (target.matches('[data-ui="command-input"]')) return onCommandKeydown(event, target);
-
-    // Other keys fall through, so Tab from a tab inside a dialog still wraps.
+    if (target.matches('[data-ui="command-input"]') && onCommandKeydown(event, target)) return;
     if (target.matches('[data-ui="tab"]') && onTabKeydown(event, target)) return;
 
     const trap = event.key === "Tab" ? target.closest("[data-trap-focus]") : null;
