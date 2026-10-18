@@ -1,0 +1,8 @@
+<thead data-slot="table-header" class="@ClassNames.Cn("[&_tr]:border-b", Class)">
+    @ChildContent
+</thead>
+
+@code {
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

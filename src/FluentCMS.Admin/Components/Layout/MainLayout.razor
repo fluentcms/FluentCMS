@@ -9,6 +9,7 @@
             @if (Initiator.Current is UserInitiator user)
             {
                 <a href="audit" class="text-sm text-muted-foreground hover:text-foreground">@L["Audit log"]</a>
+                <a href="users" class="text-sm text-muted-foreground hover:text-foreground">@L["Users"]</a>
                 @* A plain form, so it posts to the sign-out page's handler from any page, static or interactive. *@
                 <form method="post" action="sign-out" class="ms-auto flex items-center gap-3">
                     <AntiforgeryToken />

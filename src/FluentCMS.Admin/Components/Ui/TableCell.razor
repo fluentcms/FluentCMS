@@ -1,0 +1,9 @@
+<td data-slot="table-cell" class="@ClassNames.Cn("p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pe-0 [&>[role=checkbox]]:translate-y-[2px]", Class)" @attributes="AdditionalAttributes">
+    @ChildContent
+</td>
+
+@code {
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+}

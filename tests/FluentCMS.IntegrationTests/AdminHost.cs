@@ -1,9 +1,11 @@
 using System.Net;
+using System.Security.Claims;
 using System.Text.RegularExpressions;
 using FluentCMS.Core.Identity;
 using FluentCMS.Host;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -39,10 +41,13 @@ internal sealed partial class AdminHost : IAsyncDisposable
 
     public static readonly NewUser Owner = new("owner@example.com", "Owner", "Str0ng!Passw0rd");
 
-    private AdminHost(WebApplication app, CookieContainer cookies)
+    private readonly bool _ownsApp;
+
+    private AdminHost(WebApplication app, CookieContainer cookies, bool ownsApp = true)
     {
         App = app;
         Cookies = cookies;
+        _ownsApp = ownsApp;
         Client = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false, CookieContainer = cookies })
         {
             BaseAddress = new Uri(app.Urls.Single()),
@@ -81,6 +86,38 @@ internal sealed partial class AdminHost : IAsyncDisposable
         await using var scope = App.Services.CreateAsyncScope();
         var created = await scope.ServiceProvider.GetRequiredService<IFirstRunSetup>().CreateFirstAdministratorAsync(user ?? Owner);
         return created.Value;
+    }
+
+    // Another browser on the same host, with cookies of its own; disposing it leaves the host running.
+    public AdminHost OpenAnotherBrowser()
+    {
+        return new AdminHost(App, new CookieContainer(), ownsApp: false);
+    }
+
+    // Calls the directory outside a request, as a request signed in as that user would, since every change names its initiator.
+    public async Task<T> AsUserAsync<T>(Guid userId, Func<IUserDirectory, Task<T>> action)
+    {
+        var accessor = App.Services.GetRequiredService<IHttpContextAccessor>();
+        await using var scope = App.Services.CreateAsyncScope();
+        var identity = new ClaimsIdentity(
+            [new Claim(ClaimTypes.NameIdentifier, userId.ToString()), new Claim(FluentCmsClaimTypes.DisplayName, "Test administrator")],
+            authenticationType: "test");
+
+        accessor.HttpContext = new DefaultHttpContext { RequestServices = scope.ServiceProvider, User = new ClaimsPrincipal(identity) };
+        try
+        {
+            return await action(scope.ServiceProvider.GetRequiredService<IUserDirectory>());
+        }
+        finally
+        {
+            accessor.HttpContext = null;
+        }
+    }
+
+    public async Task<IReadOnlyList<UserSummary>> UsersAsync()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        return await scope.ServiceProvider.GetRequiredService<IUserDirectory>().ListAsync();
     }
 
     // Fetches the page with the form first, as a browser would, for the anti-forgery cookie and the token that goes with it.
@@ -144,8 +181,11 @@ internal sealed partial class AdminHost : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         Client.Dispose();
-        await App.StopAsync();
-        await App.DisposeAsync();
+        if (_ownsApp)
+        {
+            await App.StopAsync();
+            await App.DisposeAsync();
+        }
     }
 
     [GeneratedRegex("name=\"__RequestVerificationToken\" value=\"([^\"]+)\"")]

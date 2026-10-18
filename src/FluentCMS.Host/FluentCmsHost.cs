@@ -86,6 +86,9 @@ public static class FluentCmsHost
             options.LogoutPath = AdminRoutes.SignOut;
         });
         new IdentityBuilder(typeof(FluentCmsUser), typeof(FluentCmsRole), services).AddSignInManager();
+
+        // Disabling a user changes their security stamp; checking it every minute instead of every thirty ends their session soon after.
+        services.Configure<SecurityStampValidatorOptions>(options => options.ValidationInterval = TimeSpan.FromMinutes(1));
         services.AddAuthorization();
         services.AddScoped<IUserSignIn, CookieUserSignIn>();
         return provider;
