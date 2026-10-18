@@ -1,5 +1,6 @@
 using FluentCMS.Core.Agents;
 using FluentCMS.Core.Audit;
+using FluentCMS.Core.Checks;
 using FluentCMS.Core.Extensions;
 using FluentCMS.Core.Schema;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,6 +17,7 @@ public static class CoreServiceCollectionExtensions
         services.AddFluentCmsExtensions(typeof(CoreServiceCollectionExtensions).Assembly);
 
         services.TryAddSingleton<FieldTypeRegistry>();
+        services.TryAddSingleton<CheckTypeRegistry>();
 
         // Reads through IAuditReader, which Infrastructure provides.
         services.AddScoped<IAuditExporter, AuditExporter>();
