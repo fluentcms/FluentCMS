@@ -764,12 +764,14 @@ internal sealed class ChangeSetDirectory(
             .Select(version => new { version.EntryId, version.Version, version.Id })
             .ToListAsync(cancellationToken);
 
+        var versionIds = versions.ToLookup(version => version.EntryId);
+
         return entries.ToDictionary(
             entry => entry.Id,
             entry => new PublishedEntry(
                 entry.PublishedVersion,
                 entry.Deleted,
-                versions.Where(version => version.EntryId == entry.Id).ToDictionary(version => version.Version, version => version.Id)));
+                versionIds[entry.Id].ToDictionary(version => version.Version, version => version.Id)));
     }
 
     // An entry is published only at its operation's base version, and a create's entry not at all; a deleted one waits for its
