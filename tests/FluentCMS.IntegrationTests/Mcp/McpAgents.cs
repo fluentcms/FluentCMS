@@ -19,7 +19,11 @@ internal static class McpAgents
     public static readonly UserInitiator Issuer = new(Guid.NewGuid(), "Test administrator");
 
     // The built-in tools every server lists, sorted by name.
-    public static readonly string[] BuiltInTools = ["get_change_set", "get_change_set_diff", "get_content_type", "get_schema_document", "list_content_types"];
+    public static readonly string[] BuiltInTools =
+    [
+        "create_content_type", "get_change_set", "get_change_set_diff", "get_content_type", "get_schema_document",
+        "list_content_types", "open_change_set", "reopen_change_set", "revise_content_type", "submit_change_set",
+    ];
 
     public static async Task<string[]> ToolNamesAsync(McpClient client)
     {

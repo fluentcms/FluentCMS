@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Results;
 using FluentCMS.Core.Tools;
@@ -5,7 +6,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Core.Builtin.Tools;
 
-// Reading change sets (CHG-01, CHG-03): a set's state and operations, and what each operation changes field by field.
+// An agent's change sets (CHG-01, CHG-03, CHG-04): reading a set and its diff, opening one, and submitting or reopening it.
+// Approving, rejecting and publishing are a person's, so no tool does them (MCP-06).
 public sealed class ChangeSetTools : IToolProvider
 {
     private const string FindIds = "A change set's id comes back from the call that opened it or added an operation to it.";
@@ -31,9 +33,77 @@ public sealed class ChangeSetTools : IToolProvider
             ToolSchemas.Object(ToolSchemas.Uuid("id", "The change set's id.")),
             readOnly: true,
             DiffAsync),
+        new AgentTool(
+            "open_change_set",
+            "Open a change set",
+            "Opens a change set for the changes you are about to propose, with the reason for them and where they come from. "
+            + "Pass its id as change_set_id to the write tools, then call submit_change_set. A person reviews the set before "
+            + "anything in it is published. To group operations without keeping an id, give the write tools a session_id instead.",
+            ToolSchemas.Object(
+                ToolSchemas.String("rationale", "Why the changes are made, for the person who reviews them.", "Add a price field so product pages can show prices."),
+                ToolSchemas.Strings("sources", "Where the changes come from, such as URLs or file names.", "https://example.com/catalog-spec", required: false)),
+            readOnly: false,
+            OpenAsync),
+        new AgentTool(
+            "submit_change_set",
+            "Submit a change set for checks and review",
+            "Submits one of your open change sets once it holds every operation it needs: checks run on it, and a person reviews "
+            + "it before anything is published. A submitted set takes no more operations. An agent never approves or publishes "
+            + "a set; if checks fail, reopen it with reopen_change_set, fix it and submit it again.",
+            ToolSchemas.Object(ToolSchemas.Uuid("id", "The id of your open change set.")),
+            readOnly: false,
+            (call, cancellationToken) => MoveAsync(call, ChangeSetState.ChecksRunning, cancellationToken)),
+        new AgentTool(
+            "reopen_change_set",
+            "Reopen a change set after failed checks",
+            "Reopens one of your change sets whose checks failed, so you can add operations that fix it and submit it again. "
+            + "Read the set with get_change_set first.",
+            ToolSchemas.Object(ToolSchemas.Uuid("id", "The id of your change set whose checks failed.")),
+            readOnly: false,
+            (call, cancellationToken) => MoveAsync(call, ChangeSetState.Open, cancellationToken)),
     ];
 
-    private static async Task<ToolResult> GetAsync(ToolCall call, CancellationToken cancellationToken)
+    private static async Task<ToolResult> OpenAsync(ToolInvocation call, CancellationToken cancellationToken)
+    {
+        var arguments = new ToolArgumentsReader(call.Arguments);
+        var rationale = arguments.RequiredString("rationale", "Add a price field so product pages can show prices.");
+        var sources = arguments.OptionalStrings("sources", "https://example.com/catalog-spec");
+        if (arguments.Errors() is { Count: > 0 } errors)
+        {
+            return ToolResult.Failure(errors);
+        }
+
+        var set = await call.Services.GetRequiredService<IChangeSetDirectory>().OpenAsync(new NewChangeSet(rationale!, sources ?? []), cancellationToken);
+        return ToolResult.From(set, opened => new JsonObject
+        {
+            ["changeSet"] = ToolJson.ChangeSet(opened),
+            ["next"] = $"Pass change_set_id {opened.Id} to create_content_type or revise_content_type, then call submit_change_set.",
+        });
+    }
+
+    private static async Task<ToolResult> MoveAsync(ToolInvocation call, ChangeSetState target, CancellationToken cancellationToken)
+    {
+        var arguments = new ToolArgumentsReader(call.Arguments);
+        var id = arguments.RequiredGuid("id");
+        if (arguments.Errors() is { Count: > 0 } errors)
+        {
+            return ToolResult.Failure(errors);
+        }
+
+        var set = await call.Services.GetRequiredService<IChangeSetDirectory>().TransitionAsync(id!.Value, target, cancellationToken);
+        return ToolResult.From(
+            set,
+            moved => new JsonObject
+            {
+                ["changeSet"] = ToolJson.ChangeSet(moved),
+                ["next"] = target == ChangeSetState.Open
+                    ? "The set is open again: add the operations that fix it, then call submit_change_set."
+                    : "Checks run next, and a person reviews the set. Follow its state with get_change_set.",
+            },
+            Hint(set));
+    }
+
+    private static async Task<ToolResult> GetAsync(ToolInvocation call, CancellationToken cancellationToken)
     {
         var arguments = new ToolArgumentsReader(call.Arguments);
         var id = arguments.RequiredGuid("id");
@@ -46,7 +116,7 @@ public sealed class ChangeSetTools : IToolProvider
         return ToolResult.From(set, ToolJson.ChangeSet, Hint(set));
     }
 
-    private static async Task<ToolResult> DiffAsync(ToolCall call, CancellationToken cancellationToken)
+    private static async Task<ToolResult> DiffAsync(ToolInvocation call, CancellationToken cancellationToken)
     {
         var arguments = new ToolArgumentsReader(call.Arguments);
         var id = arguments.RequiredGuid("id");

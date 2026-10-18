@@ -65,7 +65,7 @@ internal sealed class CoreTool(AgentTool tool) : McpServerTool
         ArgumentNullException.ThrowIfNull(request);
 
         var arguments = JsonSerializer.SerializeToElement(request.Params?.Arguments ?? new Dictionary<string, JsonElement>());
-        var result = await tool.InvokeAsync(new ToolCall(arguments, request.Services!), cancellationToken);
+        var result = await tool.InvokeAsync(new ToolInvocation(arguments, request.Services!), cancellationToken);
         var node = result.ToJson();
         var json = JsonSerializer.SerializeToElement(node);
 

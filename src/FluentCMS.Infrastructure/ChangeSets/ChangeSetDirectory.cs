@@ -64,6 +64,16 @@ internal sealed class ChangeSetDirectory(
         return Result<ChangeSetDiff>.Success(new ChangeSetDiff(set.Id, items));
     }
 
+    public async Task<Result<ChangeSet>> GetSessionSetAsync(string sessionId, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(sessionId);
+
+        var openId = await OpenSetOfSessionAsync(Initiator(), sessionId, cancellationToken);
+        return openId is { } id && await ReadAsync(id, cancellationToken) is { } stored
+            ? Result<ChangeSet>.Success(stored.ChangeSet)
+            : Result<ChangeSet>.Failure(ChangeSetErrorCodes.ChangeSetNotFound, $"You have no open change set for session '{sessionId}'.");
+    }
+
     public async Task<Result<ChangeSet>> OpenAsync(NewChangeSet changeSet, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(changeSet);
@@ -312,7 +322,7 @@ internal sealed class ChangeSetDirectory(
         }
 
         // Checked against the read whose revision guards the write, so two concurrent operations cannot both pass the cap.
-        var allowed = await permissions.CheckChangeSetSizeAsync(set, cancellationToken);
+        var allowed = await permissions.CheckChangeSetSizeAsync(set, cancellationToken: cancellationToken);
         if (!allowed.IsSuccess)
         {
             return Result<ChangeSet>.Failure(allowed.Errors);
