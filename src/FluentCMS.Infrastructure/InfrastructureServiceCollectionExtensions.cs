@@ -52,6 +52,7 @@ public static class InfrastructureServiceCollectionExtensions
     {
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IAuditLog, AuditLog>();
+        services.AddScoped<IAuditReader, AuditReader>();
     }
 
     // FieldTypeRegistry comes from AddFluentCmsCore, so built-in and plugin field types reach the directory the same way.
@@ -64,7 +65,8 @@ public static class InfrastructureServiceCollectionExtensions
     {
         services.AddIdentityCore<FluentCmsUser>(options => options.User.RequireUniqueEmail = true)
             .AddRoles<FluentCmsRole>()
-            .AddEntityFrameworkStores<FluentCmsDbContext>();
+            .AddEntityFrameworkStores<FluentCmsDbContext>()
+            .AddClaimsPrincipalFactory<FluentCmsClaimsPrincipalFactory>();
 
         services.AddScoped<IUserDirectory, UserDirectory>();
         services.AddScoped<IFirstRunSetup, FirstRunSetup>();

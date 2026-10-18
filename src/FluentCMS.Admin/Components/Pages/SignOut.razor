@@ -1,0 +1,29 @@
+@page "/sign-out"
+@layout AccountLayout
+@inject IUserSignIn UserSignIn
+@inject NavigationManager Navigation
+@inject IStringLocalizer<SignOut> L
+
+<PageTitle>@L["Sign out"]</PageTitle>
+
+@* Signing out only happens on a post, so a link or an image on another site cannot end the session. *@
+<Card>
+    <CardHeader>
+        <CardTitle><h1>@L["Sign out"]</h1></CardTitle>
+        <CardDescription>@L["Sign out of the admin on this browser."]</CardDescription>
+    </CardHeader>
+    <CardContent>
+        <form method="post" @onsubmit="SubmitAsync" @formname="sign-out">
+            <AntiforgeryToken />
+            <Button Type="submit" Class="w-full">@L["Sign out"]</Button>
+        </form>
+    </CardContent>
+</Card>
+
+@code {
+    private async Task SubmitAsync()
+    {
+        await UserSignIn.SignOutAsync();
+        Navigation.NavigateTo("sign-in");
+    }
+}

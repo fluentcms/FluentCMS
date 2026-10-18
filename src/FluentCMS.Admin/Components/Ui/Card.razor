@@ -1,0 +1,9 @@
+<div data-slot="card" class="@ClassNames.Cn("flex flex-col gap-6 rounded-xl border bg-card py-6 text-card-foreground shadow-sm", Class)" @attributes="AdditionalAttributes">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
+}

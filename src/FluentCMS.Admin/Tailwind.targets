@@ -10,7 +10,8 @@
   <PropertyGroup>
     <TailwindVersion>4.3.3</TailwindVersion>
     <TailwindInputFile>$(MSBuildProjectDirectory)/Styles/app.css</TailwindInputFile>
-    <TailwindOutputFile>$(MSBuildProjectDirectory)/wwwroot/css/app.generated.css</TailwindOutputFile>
+    <_TailwindOutputRelativePath>wwwroot\css\app.generated.css</_TailwindOutputRelativePath>
+    <TailwindOutputFile>$(MSBuildProjectDirectory)/$(_TailwindOutputRelativePath)</TailwindOutputFile>
     <TailwindCacheDirectory Condition="'$(TailwindCacheDirectory)' == '' And '$(LocalAppData)' != ''">$(LocalAppData)/FluentCMS/tailwind</TailwindCacheDirectory>
     <TailwindCacheDirectory Condition="'$(TailwindCacheDirectory)' == ''">$(HOME)/.cache/fluentcms/tailwind</TailwindCacheDirectory>
   </PropertyGroup>
@@ -71,11 +72,12 @@
     <Exec Command="&quot;$(TailwindExecutable)&quot; --input &quot;$(TailwindInputFile)&quot; --output &quot;$(TailwindOutputFile)&quot; --minify" WorkingDirectory="$(MSBuildProjectDirectory)" StandardOutputImportance="low" />
   </Target>
 
-  <!-- The generated file does not exist when the project is evaluated for the first time, so it is added to Content here, before the static web assets are defined. -->
+  <!-- The generated file does not exist when the project is evaluated for the first time, so it is added to Content here, before the static web assets are defined.
+       The path is relative to the project because the SDK only takes Content matching wwwroot/** as a static web asset; an absolute path is skipped on a clean build. -->
   <Target Name="IncludeTailwindOutput" DependsOnTargets="CompileTailwind" BeforeTargets="ResolveProjectStaticWebAssets">
     <ItemGroup>
-      <Content Remove="$(TailwindOutputFile)" />
-      <Content Include="$(TailwindOutputFile)" />
+      <Content Remove="$(_TailwindOutputRelativePath);$(TailwindOutputFile)" />
+      <Content Include="$(_TailwindOutputRelativePath)" />
     </ItemGroup>
   </Target>
 

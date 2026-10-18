@@ -28,3 +28,20 @@ public sealed class CommandContext
     public string ListId => Id + "-list";
     public string InputId => Id + "-input";
 }
+
+public sealed class FormFieldContext
+{
+    public string Id { get; } = "field-" + Guid.NewGuid().ToString("N")[..8];
+    public string DescriptionId => Id + "-description";
+    public string ErrorId => Id + "-error";
+    public bool HasDescription { get; set; }
+    public bool HasError { get; set; }
+
+    public string? DescribedBy => (HasDescription, HasError) switch
+    {
+        (true, true) => DescriptionId + " " + ErrorId,
+        (true, false) => DescriptionId,
+        (false, true) => ErrorId,
+        _ => null,
+    };
+}

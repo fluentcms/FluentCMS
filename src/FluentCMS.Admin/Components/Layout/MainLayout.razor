@@ -1,10 +1,21 @@
 @inherits LayoutComponentBase
+@inject ICurrentInitiator Initiator
 @inject IStringLocalizer<MainLayout> L
 
 <div class="flex min-h-screen flex-col">
     <header class="border-b">
         <nav class="mx-auto flex h-14 max-w-6xl items-center gap-6 px-4" aria-label="@L["Main"]">
             <a href="" class="font-semibold">FluentCMS</a>
+            @if (Initiator.Current is UserInitiator user)
+            {
+                @* A plain form, so it posts to the sign-out page's handler from any page, static or interactive. *@
+                <form method="post" action="sign-out" class="ms-auto flex items-center gap-3">
+                    <AntiforgeryToken />
+                    <input type="hidden" name="_handler" value="sign-out" />
+                    <span class="text-sm text-muted-foreground" data-testid="signed-in-user">@user.DisplayName</span>
+                    <Button Type="submit" Variant="ghost" Size="sm">@L["Sign out"]</Button>
+                </form>
+            }
         </nav>
     </header>
     <main class="mx-auto w-full max-w-6xl flex-1 px-4 py-6">

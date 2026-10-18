@@ -1,0 +1,8 @@
+<div data-slot="card-description" class="@ClassNames.Cn("text-sm text-muted-foreground", Class)">
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}
