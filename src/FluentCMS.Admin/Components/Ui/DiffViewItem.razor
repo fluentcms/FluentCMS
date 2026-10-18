@@ -1,0 +1,151 @@
+@using System.Buffers
+@using System.Text
+@using System.Text.Encodings.Web
+@using System.Text.Json
+@using FluentCMS.Core.ChangeSets
+@inject IStringLocalizer<DiffViewItem> L
+
+@* A native disclosure: Tab reaches the summary and Enter or Space folds the item in the browser, without a round trip. *@
+<details open
+         data-slot="diff-view-item"
+         data-operation="@Item.Operation.Kind.ToString().ToLowerInvariant()"
+         data-item-kind="@Item.Operation.ItemKind.ToString().ToLowerInvariant()"
+         class="group rounded-xl border bg-card text-card-foreground shadow-sm">
+    <summary data-slot="diff-view-item-summary"
+             class="flex cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1 rounded-xl px-4 py-3 text-start text-sm font-medium outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 [&::-webkit-details-marker]:hidden">
+        <Badge Variant="@OperationVariant(Item.Operation.Kind)">@OperationLabel(Item.Operation.Kind)</Badge>
+        <span>@KindLabel(Item.Operation.ItemKind)</span>
+        <bdi class="font-mono text-xs font-normal break-all text-muted-foreground">@Item.Operation.ItemId</bdi>
+        <span data-slot="diff-view-item-versions" class="ms-auto text-xs font-normal text-muted-foreground">@Versions(Item.Operation)</span>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-open:rotate-180" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+    </summary>
+    <div class="grid gap-4 border-t px-4 py-4">
+        @if (Item.Properties.Count == 0 && Item.Fields.Count == 0)
+        {
+            <p class="text-sm text-muted-foreground">@L["No differences."]</p>
+        }
+        @if (Item.Properties.Count > 0)
+        {
+            @Values(Item.Properties, "properties", L["Properties"])
+        }
+        @if (Item.Fields.Count > 0)
+        {
+            @Values(Item.Fields, "fields", L["Fields"])
+        }
+    </div>
+</details>
+
+@code {
+    // Relaxed escaping keeps non-Latin text readable; Blazor encodes the result as text either way.
+    private static readonly JsonWriterOptions Indented = new() { Indented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+
+    private readonly string _id = "diff-item-" + Guid.NewGuid().ToString("N")[..8];
+    private ItemDiff? _previous;
+    private bool _changed;
+
+    [Parameter, EditorRequired] public ItemDiff Item { get; set; } = null!;
+
+    protected override void OnParametersSet()
+    {
+        _changed = !ReferenceEquals(Item, _previous);
+        _previous = Item;
+    }
+
+    // DiffView re-renders for every batch it adds; an item already on the page stays as it is.
+    protected override bool ShouldRender() => _changed;
+
+    private RenderFragment Values(IReadOnlyList<ValueDiff> values, string group, string label) =>
+        @<div data-slot="diff-view-values" data-group="@group" class="grid gap-2">
+            <div id="@($"{_id}-{group}")" class="text-sm font-medium">@label</div>
+            <Table Class="min-w-xl" aria-labelledby="@($"{_id}-{group}")">
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>@L["Name"]</TableHead>
+                        <TableHead>@L["Change"]</TableHead>
+                        <TableHead>@L["Before"]</TableHead>
+                        <TableHead>@L["After"]</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    @foreach (var value in values)
+                    {
+                        <TableRow data-change="@value.Change.ToString().ToLowerInvariant()">
+                            <th scope="row" class="p-2 text-start align-top font-mono text-xs font-medium whitespace-nowrap"><bdi>@value.Name</bdi></th>
+                            <td class="p-2 align-top"><Badge Variant="@ChangeVariant(value.Change)">@ChangeLabel(value.Change)</Badge></td>
+                            @Side("before", value.Before)
+                            @Side("after", value.After)
+                        </TableRow>
+                    }
+                </TableBody>
+            </Table>
+        </div>;
+
+    // An absent side stays empty, so it does not read as a JSON null. JSON reads left to right in either direction; the block
+    // still sits at the start of its cell.
+    private static RenderFragment Side(string side, JsonElement? value) =>
+        @<td data-side="@side" class="w-1/2 p-2 align-top">
+            @if (value is { } element)
+            {
+                <pre dir="ltr" class="w-fit font-mono text-xs whitespace-pre-wrap wrap-anywhere">@Format(element)</pre>
+            }
+        </td>;
+
+    private static string Format(JsonElement value)
+    {
+        var buffer = new ArrayBufferWriter<byte>();
+        using (var writer = new Utf8JsonWriter(buffer, Indented))
+        {
+            value.WriteTo(writer);
+        }
+
+        return Encoding.UTF8.GetString(buffer.WrittenSpan);
+    }
+
+    private string? Versions(ChangeOperation operation) => (operation.BaseVersion, operation.ProposedVersion) switch
+    {
+        (int from, int to) => L["Version {0} to {1}", from, to].Value,
+        (int from, null) => L["Version {0}", from].Value,
+        (null, int to) => L["Version {0}", to].Value,
+        _ => null,
+    };
+
+    private string OperationLabel(OperationKind kind) => kind switch
+    {
+        OperationKind.Create => L["Create"],
+        OperationKind.Update => L["Update"],
+        OperationKind.Delete => L["Delete"],
+        _ => L[kind.ToString()],
+    };
+
+    private string KindLabel(ItemKind kind) => kind switch
+    {
+        ItemKind.Entry => L["Entry"],
+        ItemKind.Entity => L["Entity"],
+        ItemKind.Media => L["Media"],
+        ItemKind.Schema => L["Schema"],
+        ItemKind.Rule => L["Rule"],
+        _ => L[kind.ToString()],
+    };
+
+    private string ChangeLabel(ValueChange change) => change switch
+    {
+        ValueChange.Added => L["Added"],
+        ValueChange.Removed => L["Removed"],
+        ValueChange.Changed => L["Changed"],
+        _ => L[change.ToString()],
+    };
+
+    private static string OperationVariant(OperationKind kind) => kind switch
+    {
+        OperationKind.Create => "default",
+        OperationKind.Delete => "destructive",
+        _ => "secondary",
+    };
+
+    private static string ChangeVariant(ValueChange change) => change switch
+    {
+        ValueChange.Added => "default",
+        ValueChange.Removed => "destructive",
+        _ => "secondary",
+    };
+}
