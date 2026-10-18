@@ -11,6 +11,11 @@ public static class ResolvedFields
     {
         ArgumentNullException.ThrowIfNull(values);
 
+        if (values.Count == 0)
+        {
+            return fields.Clone();
+        }
+
         var root = JsonNode.Parse(fields.GetRawText())
             ?? throw new ArgumentException("The fields are a JSON object.", nameof(fields));
 
