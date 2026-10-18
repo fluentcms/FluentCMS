@@ -1,3 +1,4 @@
+using FluentCMS.Core.Agents;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Results;
 using FluentCMS.Core.Schema;
@@ -8,16 +9,23 @@ using Microsoft.EntityFrameworkCore;
 namespace FluentCMS.Infrastructure.Content;
 
 // Reads the reference index, never the stored documents, so the answer is one indexed query on both providers (ADR-0005).
-internal sealed class WhereUsed(FluentCmsDbContext context, IContentTypeDirectory contentTypes) : IWhereUsed
+// An agent asks only about entries of types it may read, and is told only of uses in entries of types it may read (MCP-05).
+internal sealed class WhereUsed(FluentCmsDbContext context, IContentTypeDirectory contentTypes, IAgentPermissions permissions) : IWhereUsed
 {
     // Until multi-site (MST-01), every entry belongs to the one site (SCH-07).
     private static readonly Guid SiteId = Site.Default.Id;
 
     public async Task<Result<IReadOnlyList<EntryUsage>>> ForEntryAsync(Guid entryId, CancellationToken cancellationToken = default)
     {
-        if (await ContentTypeOfAsync(entryId, cancellationToken) is null)
+        if (await ContentTypeOfAsync(entryId, cancellationToken) is not { } slug)
         {
             return Result<IReadOnlyList<EntryUsage>>.Failure([EntryNotFound(entryId)]);
+        }
+
+        var allowed = await permissions.CheckContentAsync(slug, AgentOperation.Read, cancellationToken: cancellationToken);
+        if (!allowed.IsSuccess)
+        {
+            return Result<IReadOnlyList<EntryUsage>>.Failure(allowed.Errors);
         }
 
         return Result<IReadOnlyList<EntryUsage>>.Success(await UsagesAsync(ReferenceKind.Entry, entryId, field: null, cancellationToken));
@@ -32,8 +40,14 @@ internal sealed class WhereUsed(FluentCmsDbContext context, IContentTypeDirector
             return Result<IReadOnlyList<EntryUsage>>.Failure([EntryNotFound(entityId)]);
         }
 
-        // Types are never deleted, so the type of a stored entry is always there.
-        var definition = (await contentTypes.GetAsync(slug, cancellationToken)).Value.Definition;
+        // Types are never deleted, so the type of a stored entry is always there; reading it is the scope check.
+        var type = await contentTypes.GetAsync(slug, cancellationToken);
+        if (!type.IsSuccess)
+        {
+            return Result<IReadOnlyList<EntryUsage>>.Failure(type.Errors);
+        }
+
+        var definition = type.Value.Definition;
         if (!definition.IsEntity)
         {
             return Result<IReadOnlyList<EntryUsage>>.Failure(
@@ -75,9 +89,11 @@ internal sealed class WhereUsed(FluentCmsDbContext context, IContentTypeDirector
             query = query.Where(row => row.TargetField == field);
         }
 
+        var readable = await permissions.ReadableTypesAsync(cancellationToken);
         var rows = await query.ToListAsync(cancellationToken);
 
         return rows
+            .Where(row => readable(row.Slug))
             .GroupBy(row => (row.Id, row.Version))
             .OrderBy(group => group.Key.Id)
             .ThenBy(group => group.Key.Version)
