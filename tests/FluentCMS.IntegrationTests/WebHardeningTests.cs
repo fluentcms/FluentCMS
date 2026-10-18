@@ -75,7 +75,15 @@ public sealed partial class WebHardeningTests
         foreach (var asset in assets)
         {
             var response = await host.Client.GetAsync(asset);
+            var body = await response.Content.ReadAsByteArrayAsync();
             Assert.True(response.StatusCode == HttpStatusCode.OK, $"{asset} answered {response.StatusCode}.");
+            Assert.True(body.Length > 0, $"{asset} answered an empty body.");
+
+            if (asset.EndsWith(".css", StringComparison.Ordinal))
+            {
+                Assert.Equal("text/css", response.Content.Headers.ContentType?.MediaType);
+            }
+
             responses.Add(response);
         }
 
