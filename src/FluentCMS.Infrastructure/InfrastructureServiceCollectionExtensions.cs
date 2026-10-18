@@ -1,8 +1,10 @@
+using FluentCMS.Core.Agents;
 using FluentCMS.Core.Audit;
 using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Persistence;
 using FluentCMS.Core.Schema;
+using FluentCMS.Infrastructure.Agents;
 using FluentCMS.Infrastructure.Audit;
 using FluentCMS.Infrastructure.ChangeSets;
 using FluentCMS.Infrastructure.Identity;
@@ -27,6 +29,7 @@ public static class InfrastructureServiceCollectionExtensions
         AddAudit(services);
         AddSchema(services);
         AddChangeSets(services);
+        AddAgents(services);
 
         services.AddHostedService<DatabaseMigrator>();
 
@@ -67,6 +70,11 @@ public static class InfrastructureServiceCollectionExtensions
     private static void AddChangeSets(IServiceCollection services)
     {
         services.AddScoped<IChangeSetDirectory, ChangeSetDirectory>();
+    }
+
+    private static void AddAgents(IServiceCollection services)
+    {
+        services.AddScoped<IAgentCredentialDirectory, AgentCredentialDirectory>();
     }
 
     private static void AddIdentity(IServiceCollection services)

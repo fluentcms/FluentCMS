@@ -23,6 +23,72 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("FluentCMS.Infrastructure.Agents.AgentCredentialRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<TimeSpan>("CallPeriod")
+                        .HasColumnType("interval");
+
+                    b.Property<int>("CallsPerPeriod")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ChangeSetsPerDay")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.PrimitiveCollection<List<string>>("Fields")
+                        .HasColumnType("text[]");
+
+                    b.Property<DateTimeOffset>("IssuedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("ItemsPerChangeSet")
+                        .HasColumnType("integer");
+
+                    b.Property<byte[]>("KeyHash")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<decimal>("LlmSpendPerPeriod")
+                        .HasColumnType("numeric");
+
+                    b.Property<TimeSpan>("LlmSpendPeriod")
+                        .HasColumnType("interval");
+
+                    b.PrimitiveCollection<string[]>("Operations")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.PrimitiveCollection<List<Guid>>("Sites")
+                        .IsRequired()
+                        .HasColumnType("uuid[]");
+
+                    b.PrimitiveCollection<List<string>>("Types")
+                        .HasColumnType("text[]");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("KeyHash")
+                        .IsUnique();
+
+                    b.ToTable("AgentCredentials", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_AgentCredentials_Caps", "\"CallsPerPeriod\" >= 1 AND \"ItemsPerChangeSet\" >= 1 AND \"ChangeSetsPerDay\" >= 1");
+                        });
+                });
+
             modelBuilder.Entity("FluentCMS.Infrastructure.Audit.AuditEventRow", b =>
                 {
                     b.Property<Guid>("Id")

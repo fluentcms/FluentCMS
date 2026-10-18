@@ -1,6 +1,7 @@
 @page "/ui"
 @rendermode InteractiveServer
 @inject NavigationManager Navigation
+@using FluentCMS.Core.ChangeSets
 @inject IStringLocalizer<Showcase> L
 
 <PageTitle>@L["Components"]</PageTitle>
@@ -62,6 +63,16 @@
             <Input placeholder="@L["Disabled"]" aria-label="@L["Disabled"]" disabled />
         </div>
         @Hints(([L["Tab"]], L["Moves focus to the field."]))
+    </section>
+
+    <section class="grid gap-4" aria-labelledby="checkbox-heading">
+        <h2 id="checkbox-heading" class="text-lg font-semibold">@L["Checkbox"]</h2>
+        <div class="grid max-w-sm gap-3">
+            <label class="flex items-center gap-2 text-sm"><Checkbox checked /> @L["Read"]</label>
+            <label class="flex items-center gap-2 text-sm"><Checkbox /> @L["Update"]</label>
+            <label class="flex items-center gap-2 text-sm text-muted-foreground"><Checkbox disabled /> @L["Disabled"]</label>
+        </div>
+        @Hints(([L["Tab"]], L["Moves focus to the box."]), ([L["Space"]], L["Checks or clears it."]))
     </section>
 
     <section class="grid gap-4" aria-labelledby="form-field-heading">
@@ -196,10 +207,24 @@
             (["↓", "↑", L["Home"], L["End"]], L["Move the active option, skipping disabled ones."]),
             ([L["Enter"]], L["Chooses the active option."]))
     </section>
+
+    <section class="grid gap-4" aria-labelledby="diff-view-heading">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <h2 id="diff-view-heading" class="text-lg font-semibold">@L["DiffView"]</h2>
+            <Button Variant="outline" Size="sm" OnClick="ToggleLargeDiff" data-testid="diff-size">
+                @(_largeDiff is null ? L["Show 200 items"] : L["Show the sample"])
+            </Button>
+        </div>
+        <DiffView Diff="@(_largeDiff ?? ShowcaseDiffs.Sample)" />
+        @Hints(
+            ([L["Tab"], L["Shift"] + "+" + L["Tab"]], L["Move between the items."]),
+            ([L["Enter"], L["Space"]], L["Fold or unfold the item, in the browser."]))
+    </section>
 </div>
 
 @code {
     private string? _lastAction;
+    private ChangeSetDiff? _largeDiff;
 
     [SupplyParameterFromQuery(Name = "dir")]
     private string? Dir { get; set; }
@@ -207,6 +232,12 @@
     private bool IsRtl => Dir == "rtl";
 
     private void Record(string action) => _lastAction = L["{0} at {1}", action, DateTime.Now.ToString("HH:mm:ss")];
+
+    private void ToggleLargeDiff()
+    {
+        _largeDiff = _largeDiff is null ? ShowcaseDiffs.Large() : null;
+        Record(_largeDiff is null ? L["Diff sample"] : L["Diff of 200 items"]);
+    }
 
     // shadcn's Kbd classes on a plain element; the Kbd component arrives with the first screen that needs it.
     private RenderFragment Hints(params (string[] Keys, string Action)[] hints) =>

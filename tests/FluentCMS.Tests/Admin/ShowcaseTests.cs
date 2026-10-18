@@ -34,7 +34,7 @@ public sealed class ShowcaseTests
 
         var sections = cut.FindAll("section");
 
-        Assert.Equal(9, sections.Count);
+        Assert.Equal(11, sections.Count);
         Assert.All(sections, section =>
         {
             var hints = section.QuerySelector("[data-testid=keyboard-hints]");
@@ -55,6 +55,22 @@ public sealed class ShowcaseTests
         await cut.Find("[data-slot=button][data-variant=secondary]").ClickAsync(new());
 
         Assert.StartsWith("Secondary at ", cut.Find("[data-testid=last-action]").TextContent);
+    }
+
+    [Fact]
+    public async Task The_diff_section_switches_between_the_sample_and_a_set_of_200_items()
+    {
+        using var context = new AdminTestContext();
+
+        var cut = context.Render<Showcase>();
+        Assert.Equal(["update", "create", "delete"], cut.FindAll("[data-slot=diff-view-item]").Select(item => item.GetAttribute("data-operation")));
+
+        await cut.Find("[data-testid=diff-size]").ClickAsync(new());
+        cut.WaitForAssertion(() => Assert.Equal(200, cut.FindAll("[data-slot=diff-view-item]").Count));
+        Assert.StartsWith("Diff of 200 items at ", cut.Find("[data-testid=last-action]").TextContent);
+
+        await cut.Find("[data-testid=diff-size]").ClickAsync(new());
+        Assert.Equal(3, cut.FindAll("[data-slot=diff-view-item]").Count);
     }
 
     [Fact]
