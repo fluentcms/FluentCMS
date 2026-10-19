@@ -82,6 +82,41 @@ public sealed class SearchToolsTests
         Assert.Equal([(product, (Guid?)null), (page, product)], person.Hits.Select(hit => (hit.EntryId, hit.Via)));
     }
 
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task An_agent_filters_by_field_values_and_references_with_or_without_words(string provider)
+    {
+        await using var agent = await ConnectedAgent.StartAsync(provider);
+        await agent.AsPersonAsync<IContentTypeDirectory, ContentType>(directory =>
+            directory.CreateAsync(new NewContentType("product", "product", new ContentTypeDefinition(
+                [new FieldDefinition("title", "text"), new FieldDefinition("price", "number")]))));
+        await agent.AsPersonAsync<IContentTypeDirectory, ContentType>(directory =>
+            directory.CreateAsync(new NewContentType("page", "page", new ContentTypeDefinition(
+                [new FieldDefinition("title", "text"), new FieldDefinition("product", "reference", settings: JsonSerializer.SerializeToElement(new { target = "product" }))]))));
+        var cheap = await CreateAsync(agent, "product", new { title = "Part 4411", price = 19.99 });
+        await CreateAsync(agent, "product", new { title = "Part 4412", price = 25 });
+        var page = await CreateAsync(agent, "page", new { title = "Spring sale", product = cheap.ToString() });
+
+        var underTwenty = await agent.CallAsync("search_entries", new()
+        {
+            ["query"] = "part",
+            ["types"] = new[] { "product" },
+            ["fields"] = new[] { new { field = "price", @operator = "less_than", value = 20 } },
+        });
+        var referencing = await agent.CallAsync("search_entries", new() { ["types"] = new[] { "page" }, ["references"] = cheap.ToString() });
+        var refused = await agent.FailAsync("search_entries", new()
+        {
+            ["types"] = new[] { "product" },
+            ["fields"] = new object[] { new { field = "price", @operator = "below", value = 20 }, new { field = "price" } },
+        });
+
+        Assert.Equal([cheap.ToString()], underTwenty["hits"]!.AsArray().Select(hit => (string?)hit!["id"]));
+        Assert.Equal([page.ToString()], referencing["hits"]!.AsArray().Select(hit => (string?)hit!["id"]));
+        Assert.Equal([ToolErrorCodes.ArgumentInvalid, ToolErrorCodes.ArgumentInvalid], refused["errors"]!.AsArray().Select(error => (string?)error!["code"]));
+        Assert.Contains("'below' is not an operator", (string?)refused["errors"]![0]!["message"]);
+    }
+
     [Fact]
     public async Task A_type_filter_naming_an_unknown_type_or_one_outside_the_scope_is_a_tool_error()
     {
@@ -114,9 +149,14 @@ public sealed class SearchToolsTests
         Assert.Contains("'live' is not an entry state", (string?)state["errors"]![0]!["message"]);
     }
 
-    private static async Task<Guid> CreateAsync(ConnectedAgent agent, string type, string title)
+    private static Task<Guid> CreateAsync(ConnectedAgent agent, string type, string title)
     {
-        var fields = JsonSerializer.SerializeToElement(new { title });
-        return (await agent.AsPersonAsync<IEntryDirectory, Entry>(entries => entries.CreateAsync(new NewEntry(type, fields)))).Id;
+        return CreateAsync(agent, type, new { title });
+    }
+
+    private static async Task<Guid> CreateAsync(ConnectedAgent agent, string type, object fields)
+    {
+        var json = JsonSerializer.SerializeToElement(fields);
+        return (await agent.AsPersonAsync<IEntryDirectory, Entry>(entries => entries.CreateAsync(new NewEntry(type, json)))).Id;
     }
 }
