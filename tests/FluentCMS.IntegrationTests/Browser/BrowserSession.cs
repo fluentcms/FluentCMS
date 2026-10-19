@@ -35,7 +35,7 @@ internal sealed class BrowserSession : IAsyncDisposable
         var playwright = await Playwright.CreateAsync();
         var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = true });
         var page = await browser.NewPageAsync(new BrowserNewPageOptions { ViewportSize = new ViewportSize { Width = 1280, Height = 900 } });
-        page.SetDefaultTimeout(15_000);
+        page.SetDefaultTimeout(30_000);
 
         return new BrowserSession(install, host, ownerId, playwright, browser, page);
     }

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using FluentCMS.Core.Agents;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Results;
@@ -13,7 +14,13 @@ namespace FluentCMS.Infrastructure.Search;
 
 // The index finds the text; the entry rows decide the rest, so deleting, restoring and publishing change results without touching
 // the index. A match is followed to the entries whose latest version references it, such as the page that shows a matching entity.
-internal sealed class EntrySearch(FluentCmsDbContext context, ISearchIndex index, IAgentPermissions permissions, IOptions<SearchOptions> options) : ISearch
+// Field and reference filters read the latest versions of the candidates that pass everything else.
+internal sealed class EntrySearch(
+    FluentCmsDbContext context,
+    ISearchIndex index,
+    IAgentPermissions permissions,
+    IContentTypeDirectory contentTypes,
+    IOptions<SearchOptions> options) : ISearch
 {
     private readonly SearchOptions _settings = options.Value;
 
@@ -35,17 +42,24 @@ internal sealed class EntrySearch(FluentCmsDbContext context, ISearchIndex index
             return Result<SearchResults>.Failure(types);
         }
 
-        var (matched, ranks, complete) = await MatchedAsync(terms, readable, query, cancellationToken);
+        var filters = await FieldFiltersAsync(query, cancellationToken);
+        if (!filters.IsSuccess)
+        {
+            return Result<SearchResults>.Failure(filters.Errors);
+        }
+
+        var (matched, passing, ranks, complete) = await MatchedAsync(terms, readable, query, filters.Value, cancellationToken);
         var direct = matched
-            .Where(entry => Passes(entry, query))
+            .Where(entry => passing.Contains(entry.Id))
             .Select(entry => entry.Hit(ranks[entry.Id], via: null))
             .OrderByDescending(hit => hit.Rank)
             .ThenBy(hit => hit.EntryId)
             .Take(query.Limit)
             .ToList();
 
+        // Without words every candidate is a match, so there is nothing for a reference to explain.
         var room = query.Limit - direct.Count;
-        if (room == 0)
+        if (room == 0 || terms.Count == 0)
         {
             return Result<SearchResults>.Success(new SearchResults(direct, complete));
         }
@@ -63,8 +77,12 @@ internal sealed class EntrySearch(FluentCmsDbContext context, ISearchIndex index
 
         var referencingIds = references.Select(reference => reference.EntryId).Distinct().ToList();
         var shown = direct.Select(hit => hit.EntryId).ToHashSet();
-        var via = (await EntriesAsync(context.Entries.Where(row => referencingIds.Contains(row.Id)), cancellationToken))
+        var referencing = (await EntriesAsync(context.Entries.Where(row => referencingIds.Contains(row.Id)), cancellationToken))
             .Where(entry => !shown.Contains(entry.Id) && readable(entry.ContentType) && Passes(entry, query))
+            .ToList();
+        var referencingPassing = await StructuredAsync(referencing, query, filters.Value, cancellationToken);
+        var via = referencing
+            .Where(entry => referencingPassing.Contains(entry.Id))
             .Select(entry =>
             {
                 // The best match the entry references explains why it is shown.
@@ -85,35 +103,125 @@ internal sealed class EntrySearch(FluentCmsDbContext context, ISearchIndex index
 
     // The readable matches, a page at a time in rank order. Better-ranked matches the scope, deletions or filters drop would otherwise
     // crowd out the rest, so reading stops only once enough pass the filters, the index has no more, or MaxMatches are read.
-    private async Task<(List<Candidate> Matched, Dictionary<Guid, double> Ranks, bool Complete)> MatchedAsync(
+    private async Task<(List<Candidate> Matched, HashSet<Guid> Passing, Dictionary<Guid, double> Ranks, bool Complete)> MatchedAsync(
         IReadOnlyList<string> terms,
         Func<string, bool> readable,
         SearchQuery query,
+        FieldFilters filters,
         CancellationToken cancellationToken)
     {
         var matched = new List<Candidate>();
+        var passing = new HashSet<Guid>();
         var ranks = new Dictionary<Guid, double>();
         var read = 0;
 
         while (read < _settings.MaxMatches)
         {
             var take = Math.Min(_settings.PageSize, _settings.MaxMatches - read);
-            var page = await index.MatchAsync(terms, read, take, cancellationToken);
+            var page = await PageAsync(terms, query, read, take, cancellationToken);
             read += page.Count;
 
             var fresh = page.Where(match => ranks.TryAdd(match.EntryId, match.Rank)).Select(match => match.EntryId).ToList();
-            matched.AddRange((await EntriesAsync(context.Entries.Where(row => fresh.Contains(row.Id)), cancellationToken))
-                .Where(entry => readable(entry.ContentType)));
+            var candidates = (await EntriesAsync(context.Entries.Where(row => fresh.Contains(row.Id)), cancellationToken))
+                .Where(entry => readable(entry.ContentType))
+                .ToList();
+            matched.AddRange(candidates);
+            passing.UnionWith(await StructuredAsync([.. candidates.Where(entry => Passes(entry, query))], query, filters, cancellationToken));
 
-            if (page.Count < take || matched.Count(entry => Passes(entry, query)) >= query.Limit)
+            if (page.Count < take || passing.Count >= query.Limit)
             {
-                return (matched, ranks, true);
+                return (matched, passing, ranks, true);
             }
         }
 
         // Whether anything is left past the last match read.
-        var more = await index.MatchAsync(terms, read, 1, cancellationToken);
-        return (matched, ranks, more.Count == 0);
+        var more = await PageAsync(terms, query, read, 1, cancellationToken);
+        return (matched, passing, ranks, more.Count == 0);
+    }
+
+    // Matches of the words in rank order, or without words the one type's entries in id order, each with no rank.
+    private async Task<IReadOnlyList<SearchMatch>> PageAsync(IReadOnlyList<string> terms, SearchQuery query, int skip, int take, CancellationToken cancellationToken)
+    {
+        if (terms.Count > 0)
+        {
+            return await index.MatchAsync(terms, skip, take, cancellationToken);
+        }
+
+        var siteId = Site.Default.Id;
+        var slug = query.ContentTypes![0];
+        var ids = await context.Entries
+            .AsNoTracking()
+            .Join(context.ContentTypes, row => row.ContentTypeId, type => type.Id, (row, type) => new { row, type.Slug })
+            .Where(pair => pair.row.SiteId == siteId && pair.Slug == slug && pair.row.DeletedAt == null)
+            .OrderBy(pair => pair.row.Id)
+            .Skip(skip)
+            .Take(take)
+            .Select(pair => pair.row.Id)
+            .ToListAsync(cancellationToken);
+
+        return [.. ids.Select(id => new SearchMatch(id, 0))];
+    }
+
+    // The field filters checked against the one type they need, before anything is read.
+    private async Task<Result<FieldFilters>> FieldFiltersAsync(SearchQuery query, CancellationToken cancellationToken)
+    {
+        if (query.Fields is not { Count: > 0 } fields)
+        {
+            return Result<FieldFilters>.Success(FieldFilters.None);
+        }
+
+        var slug = query.ContentTypes![0];
+        var type = await contentTypes.GetAsync(slug, cancellationToken);
+
+        return type.IsSuccess ? FieldFilters.Create(fields, slug, type.Value.Definition) : Result<FieldFilters>.Failure(type.Errors);
+    }
+
+    // The candidates whose latest version references the given id and has field values the filters accept; every candidate when the
+    // query has neither.
+    private async Task<HashSet<Guid>> StructuredAsync(IReadOnlyList<Candidate> candidates, SearchQuery query, FieldFilters filters, CancellationToken cancellationToken)
+    {
+        var ids = candidates.Select(entry => entry.Id).ToList();
+        if (ids.Count == 0 || !IsStructured(query))
+        {
+            return [.. ids];
+        }
+
+        if (query.References is { } target)
+        {
+            ids = await context.EntryReferences
+                .AsNoTracking()
+                .Where(reference => ids.Contains(reference.EntryId) && reference.TargetId == target)
+                .Join(context.Entries, reference => reference.EntryId, row => row.Id, (reference, row) => new { reference, row })
+                .Where(pair => pair.reference.Version == pair.row.LatestVersion)
+                .Select(pair => pair.reference.EntryId)
+                .Distinct()
+                .ToListAsync(cancellationToken);
+        }
+
+        if (query.Fields is { Count: > 0 } && ids.Count > 0)
+        {
+            var versions = await context.EntryVersions
+                .AsNoTracking()
+                .Join(context.Entries, version => version.EntryId, row => row.Id, (version, row) => new { version, row })
+                .Where(pair => ids.Contains(pair.row.Id) && pair.version.Version == pair.row.LatestVersion)
+                .Select(pair => new { pair.row.Id, pair.version.Fields })
+                .ToListAsync(cancellationToken);
+
+            ids = [.. versions.Where(version => Accepts(filters, version.Fields)).Select(version => version.Id)];
+        }
+
+        return [.. ids];
+    }
+
+    private static bool Accepts(FieldFilters filters, string fields)
+    {
+        using var document = JsonDocument.Parse(fields);
+        return filters.Matches(document.RootElement);
+    }
+
+    private static bool IsStructured(SearchQuery query)
+    {
+        return query.References is not null || query.Fields is { Count: > 0 };
     }
 
     // Each type a filter names exists and is one the caller may read, as list_entries asks, so a typo or a type outside the scope is
@@ -187,9 +295,11 @@ internal sealed class EntrySearch(FluentCmsDbContext context, ISearchIndex index
     {
         var errors = new List<Error>();
 
-        if (terms.Count == 0)
+        if (terms.Count == 0 && !IsStructured(query))
         {
-            errors.Add(new Error(SearchErrorCodes.QueryEmpty, "The query has no words to search for; give at least one word or number, such as '4411'."));
+            errors.Add(new Error(
+                SearchErrorCodes.QueryEmpty,
+                "The query has no words to search for; give at least one word or number, such as '4411', or filter one type by its fields or a reference."));
         }
         else if (terms.Count > SearchTerms.MaxTerms || terms.Any(term => term.Length > SearchTerms.MaxTermLength))
         {
@@ -201,6 +311,22 @@ internal sealed class EntrySearch(FluentCmsDbContext context, ISearchIndex index
         if (query.ContentTypes is { Count: 0 })
         {
             errors.Add(new Error(SearchErrorCodes.FilterEmpty, "The types filter is empty; name at least one content type, or leave it out to search every type you may read."));
+        }
+
+        if (query.Fields is { Count: 0 })
+        {
+            errors.Add(new Error(SearchErrorCodes.FilterEmpty, "The fields filter is empty; give at least one field filter, or leave it out."));
+        }
+
+        // A field belongs to one type, and without words the candidates are one type's entries.
+        var needsOneType = query.Fields is { Count: > 0 } || (terms.Count == 0 && IsStructured(query));
+        if (needsOneType && query.ContentTypes is not { Count: 0 } && query.ContentTypes?.Distinct(StringComparer.Ordinal).Count() != 1)
+        {
+            errors.Add(new Error(
+                SearchErrorCodes.FilterNeedsOneType,
+                terms.Count == 0
+                    ? "A search without words needs exactly one type in types, such as [\"product\"], whose entries it filters."
+                    : "Field filters need exactly one type in types, such as [\"product\"], whose fields they name."));
         }
 
         if (query.States is { Count: 0 })
