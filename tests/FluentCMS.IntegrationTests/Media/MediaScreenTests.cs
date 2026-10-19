@@ -15,11 +15,14 @@ public sealed partial class MediaScreenTests
 {
     private static readonly byte[] Png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52];
 
-    [Fact]
-    public async Task An_administrator_uploads_an_image_lands_on_it_and_its_bytes_come_back()
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task An_administrator_uploads_an_image_lands_on_it_and_its_bytes_come_back(string provider)
     {
         using var install = new TemporaryInstall();
-        await using var host = await AdminHost.StartAsync(install);
+        await using var database = await TemporaryDatabase.CreateAsync(provider);
+        await using var host = await AdminHost.StartAsync(install, settings: database.Configuration);
         await host.CreateFirstAdministratorAsync();
         await host.SignInAsync(AdminHost.Owner);
 
@@ -43,37 +46,49 @@ public sealed partial class MediaScreenTests
         Assert.Equal(HttpStatusCode.NotFound, (await host.Client.GetAsync($"/media/{Guid.NewGuid()}/file")).StatusCode);
     }
 
-    [Fact]
-    public async Task A_refused_upload_comes_back_with_its_problems_next_to_the_fields_and_stores_nothing()
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_refused_upload_comes_back_with_its_problems_next_to_the_fields_and_stores_nothing(string provider)
     {
         using var install = new TemporaryInstall();
-        await using var host = await AdminHost.StartAsync(install);
-        await host.CreateFirstAdministratorAsync();
+        await using var database = await TemporaryDatabase.CreateAsync(provider);
+        await using var host = await AdminHost.StartAsync(install, settings: database.Configuration);
+        var ownerId = await host.CreateFirstAdministratorAsync();
+        var stored = await StoreAsync(host, ownerId, "logo.jpg", "", [], "The logo.");
         await host.SignInAsync(AdminHost.Owner);
 
         var mismatch = await UploadAsync(host, "notes.png", "image/png", "plain text, not a PNG"u8.ToArray(), ("Folder", "Bad Folder"), ("AltText", "Notes."));
         var noFile = await UploadAsync(host, null, null, null);
+        var svg = await UploadAsync(host, "icon.svg", "image/svg+xml", "<svg xmlns=\"http://www.w3.org/2000/svg\"/>"u8.ToArray());
 
-        Assert.StartsWith("/media?error=folder_invalid", host.LocationOf(mismatch));
+        // The typed folder comes back to the form, and the library still lists every asset.
+        Assert.StartsWith("/media?upload-error=folder_invalid", host.LocationOf(mismatch));
         var form = await host.Client.GetStringAsync(host.LocationOf(mismatch)!);
         Assert.Contains("A folder is lowercase words joined by hyphens", form);
         Assert.Contains("value=\"Bad Folder\"", form);
         Assert.Contains("Notes.", form);
+        Assert.Equal([stored], Assets(form));
 
         var fixedFolder = await UploadAsync(host, "notes.png", "image/png", "plain text, not a PNG"u8.ToArray());
         Assert.True(fixedFolder.StatusCode == HttpStatusCode.Redirect, $"{fixedFolder.StatusCode}: {await fixedFolder.Content.ReadAsStringAsync()}");
-        Assert.Equal("/media?error=media_content_mismatch", host.LocationOf(fixedFolder)!.Split('&')[0]);
+        Assert.Equal("/media?upload-error=media_content_mismatch", host.LocationOf(fixedFolder)!.Split('&')[0]);
         Assert.Contains("does not match its type", await host.Client.GetStringAsync(host.LocationOf(fixedFolder)!));
         Assert.True(noFile.StatusCode == HttpStatusCode.Redirect, $"{noFile.StatusCode}: {await noFile.Content.ReadAsStringAsync()}");
-        Assert.Equal("/media?error=media_file_missing", host.LocationOf(noFile)!.Split('&')[0]);
-        Assert.Equal(0, await QueryAsync(host, context => context.Set<FluentCMS.Infrastructure.Media.MediaAssetRow>().CountAsync()));
+        Assert.Equal("/media?upload-error=media_file_missing", host.LocationOf(noFile)!.Split('&')[0]);
+        Assert.Equal($"/media?upload-error={MediaErrorCodes.ContentTypeInvalid}", host.LocationOf(svg)!.Split('&')[0]);
+        Assert.Contains("This type of file cannot be uploaded.", await host.Client.GetStringAsync(host.LocationOf(svg)!));
+        Assert.Equal(1, await QueryAsync(host, context => context.Set<FluentCMS.Infrastructure.Media.MediaAssetRow>().CountAsync()));
     }
 
-    [Fact]
-    public async Task The_library_filters_by_folder_subfolders_and_tag_and_marks_images_without_alt_text()
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task The_library_filters_by_folder_subfolders_and_tag_and_marks_images_without_alt_text(string provider)
     {
         using var install = new TemporaryInstall();
-        await using var host = await AdminHost.StartAsync(install);
+        await using var database = await TemporaryDatabase.CreateAsync(provider);
+        await using var host = await AdminHost.StartAsync(install, settings: database.Configuration);
         var ownerId = await host.CreateFirstAdministratorAsync();
         var drill = await StoreAsync(host, ownerId, "drill.jpg", "products/drills", ["hero"], "A drill.");
         var saw = await StoreAsync(host, ownerId, "saw.jpg", "products", [], null);
@@ -83,11 +98,15 @@ public sealed partial class MediaScreenTests
         var all = await host.Client.GetStringAsync("/media");
         var products = await host.Client.GetStringAsync("/media?folder=products&sub=true");
         var productsOnly = await host.Client.GetStringAsync("/media?folder=products");
+        var productsByOne = await host.Client.GetStringAsync("/media?folder=products&sub=1");
+        var productsByOther = await host.Client.GetStringAsync("/media?folder=products&sub=yes");
         var hero = await host.Client.GetStringAsync("/media?tag=hero");
 
         Assert.Equal([logo, saw, drill], Assets(all));
         Assert.Equal([saw, drill], Assets(products));
         Assert.Equal([saw], Assets(productsOnly));
+        Assert.Equal([saw, drill], Assets(productsByOne));
+        Assert.Equal([saw], Assets(productsByOther));
         Assert.Equal([logo, drill], Assets(hero));
         Assert.Contains("data-folder=\"products/drills\"", all);
         Assert.Contains("data-tag=\"hero\"", all);
@@ -96,11 +115,14 @@ public sealed partial class MediaScreenTests
         Assert.Equal(1, Regex.Count(all, "data-status=\"no-alt-text\""));
     }
 
-    [Fact]
-    public async Task Saving_details_stores_the_next_version_and_a_form_from_an_older_version_is_refused()
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task Saving_details_stores_the_next_version_and_a_form_from_an_older_version_is_refused(string provider)
     {
         using var install = new TemporaryInstall();
-        await using var host = await AdminHost.StartAsync(install);
+        await using var database = await TemporaryDatabase.CreateAsync(provider);
+        await using var host = await AdminHost.StartAsync(install, settings: database.Configuration);
         var ownerId = await host.CreateFirstAdministratorAsync();
         var id = await StoreAsync(host, ownerId, "saw.jpg", "", [], null);
         await host.SignInAsync(AdminHost.Owner);
@@ -119,13 +141,26 @@ public sealed partial class MediaScreenTests
         Assert.Contains("Each tag is lowercase words", await invalid.Content.ReadAsStringAsync());
         var stored = await host.AsUserAsync<IMediaLibrary, MediaAsset>(ownerId, async library => (await library.GetAsync(id)).Value);
         Assert.Equal((2, "A circular saw."), (stored.LatestVersion, stored.Latest.Metadata.AltText));
+
+        // Someone saves version 3 while this form, made from version 2, is refused for its own problem; its next save is a conflict.
+        await host.AsUserAsync<IMediaLibrary, MediaAsset>(ownerId, async library =>
+            (await library.UpdateAsync(id, 2, AssetMetadata.Create("saw.jpg", "", [], "Theirs.", null).Value)).Value);
+        var refused = await host.SubmitAsync($"/media/{id}", "metadata", Details(2, "Mine.", tags: "Not A Tag!"));
+        Assert.Contains("name=\"Form.BaseVersion\" value=\"2\"", await refused.Content.ReadAsStringAsync());
+        var again = await host.SubmitAsync($"/media/{id}", "metadata", Details(2, "Mine."));
+        Assert.Contains("details since the page was shown.", await again.Content.ReadAsStringAsync());
+        var kept = await host.AsUserAsync<IMediaLibrary, MediaAsset>(ownerId, async library => (await library.GetAsync(id)).Value);
+        Assert.Equal((3, "Theirs."), (kept.LatestVersion, kept.Latest.Metadata.AltText));
     }
 
-    [Fact]
-    public async Task The_asset_page_lists_where_it_is_used()
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task The_asset_page_lists_where_it_is_used(string provider)
     {
         using var install = new TemporaryInstall();
-        await using var host = await AdminHost.StartAsync(install);
+        await using var database = await TemporaryDatabase.CreateAsync(provider);
+        await using var host = await AdminHost.StartAsync(install, settings: database.Configuration);
         var ownerId = await host.CreateFirstAdministratorAsync();
         var hero = await StoreAsync(host, ownerId, "hero.jpg", "", [], "A drill on a bench.");
         var unused = await StoreAsync(host, ownerId, "spare.jpg", "", [], "A spare.");
@@ -142,15 +177,19 @@ public sealed partial class MediaScreenTests
         var notUsed = await host.Client.GetStringAsync($"/media/{unused}");
 
         Assert.Contains($"data-entry=\"{page.Id:N}\"", used);
+        Assert.Contains($"href=\"audit?type=entry&amp;id={page.Id}\"", used);
         Assert.Contains("/hero", used);
         Assert.Contains("data-testid=\"media-unused\"", notUsed);
     }
 
-    [Fact]
-    public async Task Anonymous_requests_go_to_sign_in_and_an_upload_without_the_token_stores_nothing()
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task Anonymous_requests_go_to_sign_in_and_an_upload_without_the_token_stores_nothing(string provider)
     {
         using var install = new TemporaryInstall();
-        await using var host = await AdminHost.StartAsync(install);
+        await using var database = await TemporaryDatabase.CreateAsync(provider);
+        await using var host = await AdminHost.StartAsync(install, settings: database.Configuration);
         var ownerId = await host.CreateFirstAdministratorAsync();
         var id = await StoreAsync(host, ownerId, "saw.jpg", "", [], null);
 
@@ -167,6 +206,40 @@ public sealed partial class MediaScreenTests
 
         Assert.Equal(HttpStatusCode.BadRequest, forged.StatusCode);
         Assert.Equal(1, await QueryAsync(host, context => context.Set<FluentCMS.Infrastructure.Media.MediaAssetRow>().CountAsync()));
+    }
+
+    [Fact]
+    public async Task A_pdf_downloads_as_an_attachment()
+    {
+        using var install = new TemporaryInstall();
+        await using var host = await AdminHost.StartAsync(install);
+        await host.CreateFirstAdministratorAsync();
+        await host.SignInAsync(AdminHost.Owner);
+
+        var uploaded = await UploadAsync(host, "manual.pdf", "application/pdf", "%PDF-1.4\n%%EOF\n"u8.ToArray());
+        var location = host.LocationOf(uploaded)!;
+        var file = await host.Client.GetAsync($"{location[..location.IndexOf('?')]}/file");
+
+        Assert.Equal("application/pdf", file.Content.Headers.ContentType!.MediaType);
+        Assert.Equal("attachment", file.Content.Headers.ContentDisposition!.DispositionType);
+        Assert.Equal("manual.pdf", file.Content.Headers.ContentDisposition.FileNameStar);
+    }
+
+    // A body declared over the limit is answered before it is read, with the library's own message.
+    [Fact]
+    public async Task An_upload_declared_over_the_limit_comes_back_with_the_too_large_message()
+    {
+        using var install = new TemporaryInstall();
+        await using var host = await AdminHost.StartAsync(install, settings: new Dictionary<string, string?> { ["Media:MaxBytes"] = "1024" });
+        await host.CreateFirstAdministratorAsync();
+        await host.SignInAsync(AdminHost.Owner);
+
+        var refused = await UploadAsync(host, "huge.jpg", "image/jpeg", MediaFiles.Jpeg(1536 * 1024));
+
+        Assert.Equal(HttpStatusCode.Redirect, refused.StatusCode);
+        Assert.Equal($"/media?upload-error={MediaErrorCodes.MediaTooLarge}", host.LocationOf(refused));
+        Assert.Contains("The file is larger than the library accepts.", await host.Client.GetStringAsync(host.LocationOf(refused)!));
+        Assert.Equal(0, await QueryAsync(host, context => context.Set<FluentCMS.Infrastructure.Media.MediaAssetRow>().CountAsync()));
     }
 
     private static Dictionary<string, string> Details(int baseVersion, string altText, string tags = "")
