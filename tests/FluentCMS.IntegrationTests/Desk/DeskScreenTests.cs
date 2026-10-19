@@ -40,7 +40,7 @@ public sealed partial class DeskScreenTests
         Assert.Contains("data-current-queue=\"awaiting-me\"", desk);
         Assert.Contains($"data-change-set=\"{waiting:N}\"", desk);
         Assert.Contains("Add the product type.", desk);
-        Assert.Matches("<a href[^>]*>Desk</a>", desk);
+        Assert.Contains("data-testid=\"nav-desk\"", desk);
 
         var empty = await host.Client.GetStringAsync("/?queue=reverted");
         Assert.Contains("data-current-queue=\"reverted\"", empty);

@@ -21,7 +21,7 @@ public sealed class AccessibilityTests
         var set = await AwaitingReviewAsync(session);
         await session.SignInWithKeyboardAsync();
 
-        string[] paths = ["/ui", "/", "/?queue=stale-facts", $"/sets/{set.Id}?queue=awaiting-me"];
+        string[] paths = ["/ui", "/", "/?queue=stale-facts", $"/sets/{set.Id}?queue=awaiting-me", "/security"];
         var violations = new List<string>();
         foreach (var theme in new[] { "light", "dark" })
         {

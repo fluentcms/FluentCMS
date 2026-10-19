@@ -61,6 +61,17 @@ public sealed class DeskQueuesTests : IDisposable
     }
 
     [Fact]
+    public async Task One_queue_is_counted_on_its_own()
+    {
+        _lists.Counts[ChangeSetState.AwaitingReview] = 3;
+        _facts.Stale = [Fact()];
+
+        Assert.Equal(3, (await Queues.CountAsync(DeskQueue.AwaitingMe)).Value);
+        Assert.Equal(1, (await Queues.CountAsync(DeskQueue.StaleFacts)).Value);
+        Assert.Equal([ChangeSetState.AwaitingReview], Assert.Single(_lists.Counted).States);
+    }
+
+    [Fact]
     public async Task Stale_facts_are_paged_in_their_order()
     {
         _facts.Stale = [Fact("a"), Fact("b"), Fact("c")];
