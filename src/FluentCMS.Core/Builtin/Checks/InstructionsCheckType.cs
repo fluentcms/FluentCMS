@@ -101,12 +101,12 @@ internal sealed class InstructionsCheckType : ICheckType
 
     public Task<CheckOutcome> EvaluateAsync(CheckInput input, CancellationToken cancellationToken)
     {
-        // A phrase with nothing left once folded matches nothing, as when it was saved before phrases were folded. A phrase written
-        // in Latin letters is matched on the Latin copy, so look-alike spellings of it count; any other is matched in its own script,
-        // in either case.
+        // A phrase with nothing left once folded matches nothing, as when it was saved before phrases were folded. A phrase whose
+        // letters are all Latin, accented or not, is matched on the Latin copy, so look-alike spellings of it count; any other is
+        // matched in its own script, in either case.
         var phrases = (new CheckSettingsReader(Name, input.Settings).OptionalStringList("phrases") ?? [])
             .Select(Fold)
-            .Select(phrase => (Latin: Ascii.IsValid(phrase.Plain), Words: Words(phrase.Plain)))
+            .Select(phrase => IsLatin(phrase.Plain) ? (Latin: true, Words: Words(phrase.Latin)) : (Latin: false, Words: Words(phrase.Plain)))
             .Where(phrase => phrase.Words.Count > 0)
             .Select(phrase => (phrase.Latin, Pattern: new Regex(string.Join(@"\s+", phrase.Words), Linear, MatchTimeout)))
             .ToList();
@@ -239,6 +239,14 @@ internal sealed class InstructionsCheckType : ICheckType
         }
 
         return new FoldedRune(plain.ToString(), latin.ToString());
+    }
+
+    // Latin letters of every block, such as ł, ß and ø; marks, digits and punctuation do not decide.
+    private static bool IsLatin(string phrase)
+    {
+        return phrase.EnumerateRunes().Where(Rune.IsLetter).All(letter =>
+            letter.Value is <= 0x02AF or (>= 0x1D00 and <= 0x1DBF) or (>= 0x1E00 and <= 0x1EFF) or (>= 0x2C60 and <= 0x2C7F)
+                or (>= 0xA720 and <= 0xA7FF) or (>= 0xAB30 and <= 0xAB6F));
     }
 
     private static List<string> Words(string text)
