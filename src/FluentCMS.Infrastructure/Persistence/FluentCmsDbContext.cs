@@ -1,6 +1,7 @@
 using FluentCMS.Infrastructure.Agents;
 using FluentCMS.Infrastructure.Audit;
 using FluentCMS.Infrastructure.ChangeSets;
+using FluentCMS.Infrastructure.Checks;
 using FluentCMS.Infrastructure.Content;
 using FluentCMS.Infrastructure.Schema;
 using FluentCMS.Infrastructure.Sites;
@@ -35,6 +36,10 @@ public abstract class FluentCmsDbContext(DbContextOptions options) : IdentityDbC
 
     public DbSet<EntryReferenceRow> EntryReferences => Set<EntryReferenceRow>();
 
+    public DbSet<CheckRow> Checks => Set<CheckRow>();
+
+    public DbSet<CheckVersionRow> CheckVersions => Set<CheckVersionRow>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -50,6 +55,8 @@ public abstract class FluentCmsDbContext(DbContextOptions options) : IdentityDbC
         builder.ApplyConfiguration(new EntryConfiguration());
         builder.ApplyConfiguration(new EntryVersionConfiguration());
         builder.ApplyConfiguration(new EntryReferenceConfiguration());
+        builder.ApplyConfiguration(new CheckConfiguration());
+        builder.ApplyConfiguration(new CheckVersionConfiguration());
 
         builder.Entity<FluentCmsUser>(user =>
         {
@@ -76,5 +83,6 @@ public sealed class PostgreSqlFluentCmsDbContext(DbContextOptions<PostgreSqlFlue
         // Definitions and entry fields are JSON documents, stored as jsonb where the provider has it (ADR-0005).
         builder.Entity<ContentTypeVersionRow>().Property(version => version.Definition).HasColumnType("jsonb");
         builder.Entity<EntryVersionRow>().Property(version => version.Fields).HasColumnType("jsonb");
+        builder.Entity<CheckVersionRow>().Property(version => version.Definition).HasColumnType("jsonb");
     }
 }
