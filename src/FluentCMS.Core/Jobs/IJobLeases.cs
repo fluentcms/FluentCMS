@@ -22,4 +22,7 @@ public interface IJobLeases
 
     // Queued again after the delay while attempts remain, dead otherwise.
     Task<bool> RetryAsync(Guid jobId, string owner, string error, TimeSpan delay, CancellationToken cancellationToken = default);
+
+    // Queued again at once with the attempt given back, for a job its worker stopped on purpose, such as when the host shuts down.
+    Task<bool> ReleaseAsync(Guid jobId, string owner, CancellationToken cancellationToken = default);
 }

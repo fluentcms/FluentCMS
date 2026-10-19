@@ -108,7 +108,7 @@ Work that outlives a request, such as a bulk operation or a check run, is a job 
 
 A handler implements `IJobHandler` (an extension point) with the type name its jobs store, which never changes once released. It reads the payload from `JobContext.Job`, resolves services from `JobContext.Services`, a scope of its own, and reports progress with `ReportProgressAsync`, which also keeps its lease; when that returns false another worker has the job, and the handler stops. A returned failure ends the job as `failed`. An exception retries it after `JobQueue__RetryDelay`, doubled for each attempt up to `JobQueue__MaxRetryDelay`, and after its last attempt the job is `dead`. Work in a handler therefore has to be safe to run again.
 
-`JobQueue__WorkerCount` workers in the host claim due jobs every `JobQueue__PollingInterval`. A claim holds a job for `JobQueue__LeaseDuration`, which the worker renews while the handler runs, and a job whose worker stopped is claimed again once the lease runs out, counting another attempt. Claims are conditional updates on the row, so with any number of workers, in one host or several, each job runs once at a time.
+`JobQueue__WorkerCount` workers in the host claim due jobs every `JobQueue__PollingInterval`. A claim holds a job for `JobQueue__LeaseDuration`, which the worker renews at a third of it while the handler runs. A renewal that fails is tried again while the lease holds, and no wait or renewal lasts past the lease's end. The handler's cancellation token fires as soon as the lease is lost or its end passes with no renewal, because another worker may then claim the job; a handler should honour it. A job whose worker stopped is claimed again once the lease runs out, counting another attempt. A host that stops while a handler runs puts the job back in the queue with its attempt given back. Claims are conditional updates on the row, so with any number of workers, in one host or several, each job runs once at a time.
 
 ## Model access
 
@@ -121,6 +121,16 @@ Every model call goes through `IModelGateway` in `FluentCMS.Core.Models` (ADR-00
 - **Spend.** A call is charged to the calling agent, or to the agent a request names (SEC-04). Before it is sent, it is recorded as pending at the most it can cost, one token per byte of prompt plus the profile's output limit. It goes out only if that fits under what is left of the agent's `LlmSpendPerPeriod` for its `LlmSpendPeriod`. An answered call then costs what the provider counted, and a failed one keeps its reserved cost, since it may have been charged. The SDKs do not retry, so each attempt is a call on record.
 - **Records.** Every call is kept in `ModelCalls` with its provider, model and version, verbatim prompt and response, tokens, cost and outcome (MDL-04, CHK-05). Audit events carry its prompt hash, and `IModelCallLog.FindByPromptHashAsync` finds the prompt again. A provider's error stays in the record; the caller gets the record's id. A call is made outside a unit of work, so the database is not held while a provider answers, and making one inside one throws.
 - **Retention.** Prompts and responses are kept for `Models__PromptRetention`, 90 days by default. A person runs `IModelCallLog.PurgeAsync`, which clears the prompt, response and error of older calls, keeps the rest of each record, and appends a `model_call.purged` event for each call (AUD-04, AUD-N2).
+
+## Webhooks
+
+An administrator adds a webhook on `/webhooks` with the URL of an endpoint and the events it is told about, `change_set.published` and `change_set.reverted` (API-05). Only a person lists, adds or disables one; an agent is refused (SEC-02).
+
+- **URL.** It is https, or http to an endpoint on the same machine, and its host is on `Outbound__AllowedHosts`, the allow-list the model gateway uses. Nothing can be added until an administrator names a host (SEC-05). A URL with a user name or password in it is refused. A URL is never edited: disable the webhook and add a new one.
+- **Secret.** Each webhook gets a signing secret, 32 random bytes written as `whsec_` and base64, shown once in the response that adds it. It is stored encrypted with the Data Protection key ring, so losing `DataProtection__KeysDirectory` loses the secrets too. It never appears in a list, a log or the audit log (SEC-07).
+- **Audit.** Adding and disabling append `webhook.added` and `webhook.disabled`, which name the subscription.
+
+Deliveries, their signature and how a receiver checks it come with the next slice.
 
 ## Extension points
 
