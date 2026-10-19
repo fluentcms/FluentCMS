@@ -3,6 +3,8 @@ using FluentCMS.Infrastructure.Audit;
 using FluentCMS.Infrastructure.ChangeSets;
 using FluentCMS.Infrastructure.Checks;
 using FluentCMS.Infrastructure.Content;
+using FluentCMS.Infrastructure.Entities;
+using FluentCMS.Infrastructure.Jobs;
 using FluentCMS.Infrastructure.Schema;
 using FluentCMS.Infrastructure.Sites;
 using Microsoft.AspNetCore.Identity;
@@ -36,9 +38,13 @@ public abstract class FluentCmsDbContext(DbContextOptions options) : IdentityDbC
 
     public DbSet<EntryReferenceRow> EntryReferences => Set<EntryReferenceRow>();
 
+    public DbSet<EntityFactRow> EntityFacts => Set<EntityFactRow>();
+
     public DbSet<CheckRow> Checks => Set<CheckRow>();
 
     public DbSet<CheckVersionRow> CheckVersions => Set<CheckVersionRow>();
+
+    public DbSet<JobRow> Jobs => Set<JobRow>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -55,8 +61,10 @@ public abstract class FluentCmsDbContext(DbContextOptions options) : IdentityDbC
         builder.ApplyConfiguration(new EntryConfiguration());
         builder.ApplyConfiguration(new EntryVersionConfiguration());
         builder.ApplyConfiguration(new EntryReferenceConfiguration());
+        builder.ApplyConfiguration(new EntityFactConfiguration());
         builder.ApplyConfiguration(new CheckConfiguration());
         builder.ApplyConfiguration(new CheckVersionConfiguration());
+        builder.ApplyConfiguration(new JobConfiguration());
 
         builder.Entity<FluentCmsUser>(user =>
         {

@@ -30,7 +30,7 @@ internal sealed class EntityRelationsReader(FluentCmsDbContext context, IAgentPe
             return Result<EntityRelations>.Failure(ContentErrorCodes.EntryNotFound, $"There is no entry {entityId} in this site.");
         }
 
-        var entityTypes = await EntityTypesAsync(cancellationToken);
+        var entityTypes = await EntityTypes.LoadAsync(context, cancellationToken);
         if (!entityTypes.ContainsKey(entity.ContentTypeId))
         {
             return Result<EntityRelations>.Failure(
@@ -104,33 +104,6 @@ internal sealed class EntityRelationsReader(FluentCmsDbContext context, IAgentPe
             .ToList();
 
         return Result<EntityRelations>.Success(new EntityRelations(entityId, entity.Slug, relationsFrom, relationsTo));
-    }
-
-    // The entity types of the site by id: types whose current definition is flagged, as the schema reads them (SCH-03).
-    private async Task<Dictionary<Guid, string>> EntityTypesAsync(CancellationToken cancellationToken)
-    {
-        var types = await (
-            from type in context.ContentTypes.AsNoTracking()
-            join version in context.ContentTypeVersions.AsNoTracking()
-                on new { ContentTypeId = type.Id, type.Version } equals new { version.ContentTypeId, version.Version }
-            where type.SiteId == SiteId
-            select new { type.Id, type.Slug, version.Definition })
-            .ToListAsync(cancellationToken);
-
-        return types
-            .Where(type => IsEntity(type.Slug, type.Definition))
-            .ToDictionary(type => type.Id, type => type.Slug);
-    }
-
-    private static bool IsEntity(string slug, string json)
-    {
-        var definition = ContentTypeDefinition.Parse(json);
-
-        return definition.IsSuccess
-            ? definition.Value.IsEntity
-            : throw new InvalidOperationException(
-                $"The current definition of content type '{slug}' is stored in a form that cannot be read: "
-                + string.Join("; ", definition.Errors.Select(error => error.Message)));
     }
 
     // The index stores pointers from the document root, so the field is the first segment, such as category in /category/value.

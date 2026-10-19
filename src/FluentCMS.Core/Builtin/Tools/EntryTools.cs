@@ -2,9 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Content;
-using FluentCMS.Core.Persistence;
 using FluentCMS.Core.Results;
-using FluentCMS.Core.Schema;
 using FluentCMS.Core.Tools;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -14,9 +12,6 @@ namespace FluentCMS.Core.Builtin.Tools;
 // which go into a change set a person reviews. Entities are entries of entity types, so their fields are facts.
 public sealed class EntryTools : IToolProvider
 {
-    private const string FindEntries = "Call list_entries with the content type's slug for the ids of its entries.";
-    private const string ReadSchema = "Call get_schema_document with the content type's slug for its fields and the values each one takes.";
-
     public IReadOnlyList<AgentTool> Tools { get; } =
     [
         new AgentTool(
@@ -124,7 +119,7 @@ public sealed class EntryTools : IToolProvider
         }
 
         var entries = await call.Services.GetRequiredService<IEntryDirectory>().ListAsync(contentType!, cancellationToken);
-        return ToolResult.From(entries, list => new JsonObject { ["entries"] = new JsonArray([.. list.Select(ToolJson.EntrySummary)]) }, Hint(entries.Errors));
+        return ToolResult.From(entries, list => new JsonObject { ["entries"] = new JsonArray([.. list.Select(ToolJson.EntrySummary)]) }, ProposedEntryWrite.Hint(entries.Errors));
     }
 
     private static async Task<ToolResult> GetAsync(ToolInvocation call, CancellationToken cancellationToken)
@@ -141,7 +136,7 @@ public sealed class EntryTools : IToolProvider
         var entry = await directory.GetAsync(id!.Value, cancellationToken);
         if (!entry.IsSuccess || version is not { } number)
         {
-            return ToolResult.From(entry, read => ToolJson.Entry(read), Hint(entry.Errors));
+            return ToolResult.From(entry, read => ToolJson.Entry(read), ProposedEntryWrite.Hint(entry.Errors));
         }
 
         var stored = await directory.GetVersionAsync(id.Value, number, cancellationToken);
@@ -158,7 +153,7 @@ public sealed class EntryTools : IToolProvider
         }
 
         var history = await call.Services.GetRequiredService<IEntryDirectory>().HistoryAsync(id!.Value, cancellationToken);
-        return ToolResult.From(history, versions => new JsonObject { ["versions"] = new JsonArray([.. versions.Select(ToolJson.EntryVersion)]) }, Hint(history.Errors));
+        return ToolResult.From(history, versions => new JsonObject { ["versions"] = new JsonArray([.. versions.Select(ToolJson.EntryVersion)]) }, ProposedEntryWrite.Hint(history.Errors));
     }
 
     private static async Task<ToolResult> ResolvedAsync(ToolInvocation call, CancellationToken cancellationToken)
@@ -172,7 +167,7 @@ public sealed class EntryTools : IToolProvider
         }
 
         var resolved = await call.Services.GetRequiredService<IResolvedEntries>().ResolveAsync(id!.Value, version, cancellationToken);
-        return ToolResult.From(resolved, ToolJson.Resolved, Hint(resolved.Errors));
+        return ToolResult.From(resolved, ToolJson.Resolved, ProposedEntryWrite.Hint(resolved.Errors));
     }
 
     private static async Task<ToolResult> WhereUsedAsync(ToolInvocation call, CancellationToken cancellationToken)
@@ -204,7 +199,7 @@ public sealed class EntryTools : IToolProvider
                 : await whereUsed.ForEntityFieldAsync(id, field, cancellationToken)
             : Result<IReadOnlyList<EntryUsage>>.Success(await whereUsed.ForMediaAsync(assetId!.Value, cancellationToken));
 
-        return ToolResult.From(usages, list => new JsonObject { ["usages"] = new JsonArray([.. list.Select(ToolJson.Usage)]) }, Hint(usages.Errors));
+        return ToolResult.From(usages, list => new JsonObject { ["usages"] = new JsonArray([.. list.Select(ToolJson.Usage)]) }, ProposedEntryWrite.Hint(usages.Errors));
     }
 
     private static async Task<ToolResult> CreateAsync(ToolInvocation call, CancellationToken cancellationToken)
@@ -220,7 +215,7 @@ public sealed class EntryTools : IToolProvider
             return ToolResult.Failure(errors);
         }
 
-        return await ProposeAsync(
+        return await ProposedEntryWrite.RunAsync(
             call,
             target!,
             entries => entries.CreateAsync(new NewEntry(contentType!, fields!.Value), cancellationToken),
@@ -228,7 +223,6 @@ public sealed class EntryTools : IToolProvider
             cancellationToken);
     }
 
-    // The operation is based on what is published, which is what publishing it replaces; a draft never published is still a create.
     private static async Task<ToolResult> UpdateAsync(ToolInvocation call, CancellationToken cancellationToken)
     {
         var arguments = new ToolArgumentsReader(call.Arguments);
@@ -243,13 +237,11 @@ public sealed class EntryTools : IToolProvider
             return ToolResult.Failure(errors);
         }
 
-        return await ProposeAsync(
+        return await ProposedEntryWrite.RunAsync(
             call,
             target!,
             entries => entries.UpdateAsync(id!.Value, baseVersion!.Value, fields!.Value, cancellationToken),
-            (entry, kind) => entry.PublishedVersion is { } published
-                ? ChangeOperation.Create(OperationKind.Update, kind, entry.Id, published, entry.LatestVersion)
-                : ChangeOperation.Create(OperationKind.Create, kind, entry.Id, null, entry.LatestVersion),
+            ProposedEntryWrite.Update,
             cancellationToken);
     }
 
@@ -265,7 +257,7 @@ public sealed class EntryTools : IToolProvider
             return ToolResult.Failure(errors);
         }
 
-        return await ProposeAsync(
+        return await ProposedEntryWrite.RunAsync(
             call,
             target!,
             entries => entries.GetAsync(id!.Value, cancellationToken),
@@ -277,77 +269,5 @@ public sealed class EntryTools : IToolProvider
             cancellationToken);
     }
 
-    // The version an agent writes and its operation in the change set commit together or not at all, as for content types, so no
-    // version an agent writes exists outside a change set a person reviews (AUD-N1, CHG-01).
-    private static async Task<ToolResult> ProposeAsync(
-        ToolInvocation call,
-        ChangeSetTarget target,
-        Func<IEntryDirectory, Task<Result<Entry>>> write,
-        Func<Entry, ItemKind, Result<ChangeOperation>> operation,
-        CancellationToken cancellationToken)
-    {
-        var services = call.Services;
-        var ready = await target.CheckAsync(services, cancellationToken);
-        if (!ready.IsSuccess)
-        {
-            return ToolResult.Failure(ready.Errors);
-        }
-
-        // Each directory finds its expected failures before its own unit of work, so leaving this one uncommitted undoes them all.
-        await using var scope = await services.GetRequiredService<IUnitOfWork>().BeginAsync(cancellationToken);
-
-        var entry = await write(services.GetRequiredService<IEntryDirectory>());
-        if (!entry.IsSuccess)
-        {
-            return ToolResult.Failure(entry.Errors, Hint(entry.Errors));
-        }
-
-        // Types are never deleted, but reading one is scope-checked, so an agent that may write a type's entries without reading it is refused here.
-        var type = await services.GetRequiredService<IContentTypeDirectory>().GetAsync(entry.Value.ContentType, cancellationToken);
-        if (!type.IsSuccess)
-        {
-            return ToolResult.Failure(type.Errors);
-        }
-
-        var kind = type.Value.Definition.IsEntity ? ItemKind.Entity : ItemKind.Entry;
-        var proposed = operation(entry.Value, kind);
-        if (!proposed.IsSuccess)
-        {
-            return ToolResult.Failure(proposed.Errors, Hint(proposed.Errors));
-        }
-
-        var set = await target.AddAsync(services.GetRequiredService<IChangeSetDirectory>(), proposed.Value, cancellationToken);
-        if (!set.IsSuccess)
-        {
-            return ToolResult.Failure(set.Errors);
-        }
-
-        await scope.CommitAsync(cancellationToken);
-
-        return ToolResult.Success(new JsonObject
-        {
-            ["entry"] = ToolJson.Entry(entry.Value),
-            ["changeSet"] = ToolJson.ChangeSet(set.Value),
-            ["next"] = $"The {ToolJson.Name(proposed.Value.Kind)} is in change set {set.Value.Id}, which stays open for more "
-                + "operations. Call submit_change_set when it is complete; checks run and a person reviews it before it is published.",
-        });
-    }
-
     private const string FieldsForm = "an object with one property per field, such as {\"headline\": \"The Widget\"}";
-
-    private static string? Hint(IReadOnlyList<Error> errors)
-    {
-        return errors.FirstOrDefault()?.Code switch
-        {
-            ContentErrorCodes.VersionConflict => "Call get_entry for the latest version and its fields, then update from that version.",
-            ContentErrorCodes.EntryNotFound => FindEntries,
-            ContentErrorCodes.VersionNotFound => "Call get_entry_history for the versions the entry has.",
-            ContentErrorCodes.FieldsMalformed or ContentErrorCodes.FieldUnknown or ContentErrorCodes.FieldRequired or SchemaErrorCodes.ValueInvalid => ReadSchema,
-            ContentErrorCodes.ReferenceNotFound or ContentErrorCodes.ReferenceTypeMismatch =>
-                "Call list_entries with the referenced content type's slug for the ids a reference field can take.",
-            ContentErrorCodes.EntryNotPublished => "Only a published entry can be taken offline; get_entry shows its publishedVersion.",
-            SchemaErrorCodes.ContentTypeNotFound => "Call list_content_types for the slugs of the site's content types.",
-            _ => null,
-        };
-    }
 }

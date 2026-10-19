@@ -112,22 +112,12 @@ public abstract class SettingsReader
             return null;
         }
 
-        if (value.ValueKind == JsonValueKind.Array)
-        {
-            var items = value.EnumerateArray()
-                .Select(item => item.ValueKind == JsonValueKind.String ? item.GetString() : null)
-                .ToList();
+        return StringList(name, value);
+    }
 
-            if (items.Count > 0
-                && items.All(item => !string.IsNullOrWhiteSpace(item))
-                && items.Distinct(StringComparer.Ordinal).Count() == items.Count)
-            {
-                return items!;
-            }
-        }
-
-        Invalid(name, "must be a non-empty array of distinct, non-empty strings");
-        return null;
+    public IReadOnlyList<string>? OptionalStringList(string name)
+    {
+        return Read(name) is { } value ? StringList(name, value) : null;
     }
 
     public JsonElement? OptionalObject(string name)
@@ -173,6 +163,26 @@ public abstract class SettingsReader
                 : $"{_owner} has no setting '{name}'; its settings are {string.Join(", ", _known)}."));
 
         return [.. _errors, .. unknown];
+    }
+
+    private IReadOnlyList<string>? StringList(string name, JsonElement value)
+    {
+        if (value.ValueKind == JsonValueKind.Array)
+        {
+            var items = value.EnumerateArray()
+                .Select(item => item.ValueKind == JsonValueKind.String ? item.GetString() : null)
+                .ToList();
+
+            if (items.Count > 0
+                && items.All(item => !string.IsNullOrWhiteSpace(item))
+                && items.Distinct(StringComparer.Ordinal).Count() == items.Count)
+            {
+                return items!;
+            }
+        }
+
+        Invalid(name, "must be a non-empty array of distinct, non-empty strings");
+        return null;
     }
 
     private void Missing(string name)
