@@ -3,6 +3,7 @@ using FluentCMS.Admin.Media;
 using FluentCMS.Core.Media;
 using FluentCMS.Core.Results;
 using FluentCMS.Infrastructure.Media;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
@@ -16,9 +17,41 @@ internal static class MediaEndpoints
     // Room for the form's other fields and the multipart framing around a file of the largest size the library accepts.
     private const long FormOverhead = 1024 * 1024;
 
+    // The largest refused body read through to answer it, so a mistaken upload of a large file gets the message.
+    private const long DrainCap = 1024L * 1024 * 1024;
+
+    // A signed-in person's upload that declares a body over the limit is sent back to the library without being parsed, the
+    // anti-forgery check included, so they get the library's own message rather than a reset connection. The body is read and
+    // discarded first, since a browser still sending it treats an early answer as a failure. A body declared over DrainCap, or a
+    // chunked one that declares no length, still meets the server's limit.
+    public static IApplicationBuilder UseMediaUploadLimit(this IApplicationBuilder app)
+    {
+        var limit = UploadLimit(app.ApplicationServices);
+        return app.Use(async (context, next) =>
+        {
+            if (HttpMethods.IsPost(context.Request.Method)
+                && context.Request.Path.Equals(AdminRoutes.MediaUpload, StringComparison.OrdinalIgnoreCase)
+                && context.User.Identity?.IsAuthenticated == true
+                && context.Request.ContentLength is { } length && length > limit && length <= DrainCap)
+            {
+                if (context.Features.Get<IHttpMaxRequestBodySizeFeature>() is { IsReadOnly: false } size)
+                {
+                    size.MaxRequestBodySize = null;
+                }
+
+                await context.Request.Body.CopyToAsync(Stream.Null, context.RequestAborted);
+                context.Response.Redirect(AdminRoutes.Media + QueryString.Create(new MediaUploadForm().ReturnQuery(
+                    [new Error(MediaErrorCodes.MediaTooLarge, "The file is larger than the library accepts.")])));
+                return;
+            }
+
+            await next(context);
+        });
+    }
+
     public static void MapMediaLibrary(this IEndpointRouteBuilder endpoints)
     {
-        var limit = endpoints.ServiceProvider.GetRequiredService<IOptions<MediaOptions>>().Value.MaxBytes + FormOverhead;
+        var limit = UploadLimit(endpoints.ServiceProvider);
 
         endpoints.MapPost(AdminRoutes.MediaUpload, UploadAsync)
             .RequireAuthorization()
@@ -74,6 +107,11 @@ internal static class MediaEndpoints
         }.ToString();
 
         return Results.Stream(content.Content, content.ContentType);
+    }
+
+    private static long UploadLimit(IServiceProvider services)
+    {
+        return services.GetRequiredService<IOptions<MediaOptions>>().Value.MaxBytes + FormOverhead;
     }
 
     private static IResult BackToLibrary(MediaUploadForm form, IEnumerable<Error> errors)
