@@ -136,6 +136,7 @@ public sealed class ChangeSetTransitionTests
     [Theory]
     [InlineData(ChangeSetState.ChecksFailed)]
     [InlineData(ChangeSetState.AwaitingReview)]
+    [InlineData(ChangeSetState.Approved)]
     public void A_rejection_without_a_reason_is_refused(ChangeSetState from)
     {
         var changeSet = TestChangeSets.InState(from);
