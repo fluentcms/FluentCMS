@@ -47,6 +47,9 @@ internal sealed class ModelCallLog(
     {
         ArgumentNullException.ThrowIfNull(call);
 
+        // A record purged while its call waited keeps no response or error, so the purge holds; its outcome and cost still count.
+        var response = call.Response;
+        var error = call.Error;
         await using var scope = scopes.CreateAsyncScope();
         await scope.ServiceProvider.GetRequiredService<FluentCmsDbContext>().ModelCalls
             .Where(row => row.Id == call.Id && row.Outcome == ModelCallOutcome.Pending)
@@ -54,12 +57,12 @@ internal sealed class ModelCallLog(
                 setters => setters
                     .SetProperty(row => row.Outcome, call.Outcome)
                     .SetProperty(row => row.ModelVersion, call.ModelVersion)
-                    .SetProperty(row => row.Response, call.Response)
+                    .SetProperty(row => row.Response, row => row.PurgedAt == null ? response : null)
                     .SetProperty(row => row.InputTokens, call.InputTokens)
                     .SetProperty(row => row.OutputTokens, call.OutputTokens)
                     .SetProperty(row => row.Cost, call.Cost)
                     .SetProperty(row => row.Duration, call.Duration)
-                    .SetProperty(row => row.Error, call.Error),
+                    .SetProperty(row => row.Error, row => row.PurgedAt == null ? error : null),
                 cancellationToken);
     }
 
