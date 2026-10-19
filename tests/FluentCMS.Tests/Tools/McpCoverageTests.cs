@@ -34,7 +34,9 @@ public sealed class McpCoverageTests
         Missing("RUL", "Read and propose rules", "#2419"),
         Missing("CHK", "Read the check results of a change set", "#2420"),
         Missing("DSK", "Read review decisions, read-only", "#2422"),
-        Missing("MED", "Upload and describe media", "#2427"),
+        new("MED", "Upload and describe media", ["upload_media", "update_media"]),
+        new("MED", "Read and list media", ["get_media", "list_media"]),
+        new("MED", "Attach media to a field", ["attach_media"]),
         Missing("Search", "Search entries and entities", "#2430"),
         Missing("MCP-08", "Bulk operations that return a change set id and report progress", "#2423"),
     ];

@@ -4,6 +4,7 @@ using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Entities;
 using FluentCMS.Core.Identity;
+using FluentCMS.Core.Media;
 using FluentCMS.Core.Schema;
 
 namespace FluentCMS.Core.Builtin.Tools;
@@ -216,6 +217,43 @@ internal static class ToolJson
                 ["version"] = entry.Version,
                 ["fields"] = Values(entry.Fields),
             })]),
+        };
+    }
+
+    public static JsonObject Media(MediaAsset asset, MediaAssetVersion? version = null)
+    {
+        var shown = version ?? asset.Latest;
+
+        return new JsonObject
+        {
+            ["id"] = asset.Id.ToString(),
+            ["latestVersion"] = asset.LatestVersion,
+            ["publishedVersion"] = asset.PublishedVersion,
+            ["version"] = shown.Version,
+            ["contentType"] = shown.Blob.ContentType,
+            ["length"] = shown.Blob.Length,
+            ["sha256"] = shown.Blob.Sha256,
+            ["fileName"] = shown.Metadata.FileName,
+            ["folder"] = shown.Metadata.Folder,
+            ["tags"] = new JsonArray([.. shown.Metadata.Tags.Select(tag => JsonValue.Create(tag))]),
+            ["altText"] = shown.Metadata.AltText,
+            ["caption"] = shown.Metadata.Caption,
+        };
+    }
+
+    public static JsonObject MediaSummary(MediaAssetSummary asset)
+    {
+        return new JsonObject
+        {
+            ["id"] = asset.Id.ToString(),
+            ["latestVersion"] = asset.LatestVersion,
+            ["publishedVersion"] = asset.PublishedVersion,
+            ["fileName"] = asset.FileName,
+            ["contentType"] = asset.ContentType,
+            ["length"] = asset.Length,
+            ["folder"] = asset.Folder,
+            ["tags"] = new JsonArray([.. asset.Tags.Select(tag => JsonValue.Create(tag))]),
+            ["hasAltText"] = asset.HasAltText,
         };
     }
 

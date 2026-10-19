@@ -56,4 +56,5 @@ public static class MediaErrorCodes
     public const string VersionNotFound = "version_not_found";
     public const string VersionConflict = "version_conflict";
     public const string ContentMissing = "media_content_missing";
+    public const string FieldNotMedia = "field_not_media";
 }

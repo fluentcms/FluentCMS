@@ -68,6 +68,11 @@ public static class ToolSchemas
         return new ToolArgument(name, description, required, copy);
     }
 
+    public static ToolArgument Boolean(string name, string description, bool required = true)
+    {
+        return new ToolArgument(name, description, required, new JsonObject { ["type"] = "boolean", ["examples"] = new JsonArray(true) });
+    }
+
     public static ToolArgument PositiveInteger(string name, string description, int example, bool required = true)
     {
         return new ToolArgument(name, description, required, new JsonObject { ["type"] = "integer", ["minimum"] = 1, ["examples"] = new JsonArray(example) });

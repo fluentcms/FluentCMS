@@ -94,6 +94,22 @@ public sealed class ToolArgumentsReader
         return null;
     }
 
+    public bool? OptionalFlag(string name)
+    {
+        if (Read(name) is not { } value)
+        {
+            return null;
+        }
+
+        if (value.ValueKind is JsonValueKind.True or JsonValueKind.False)
+        {
+            return value.GetBoolean();
+        }
+
+        Invalid(name, "must be true or false");
+        return null;
+    }
+
     public Guid? OptionalGuid(string name)
     {
         return Read(name) is null ? null : GuidOf(name);
