@@ -45,7 +45,7 @@ public sealed class CheckRunnerTests : IDisposable
     [Fact]
     public async Task Every_active_check_that_applies_gives_its_status_and_evidence_in_name_order()
     {
-        var results = await Runner.RunAsync(Subject("product-page", """{"headline": "The best-in-class kettle", "body": "BUY NOW!!!"}"""));
+        var results = (await Runner.RunAsync(Subject("product-page", """{"headline": "The best-in-class kettle", "body": "BUY NOW!!!"}"""))).Results;
 
         Assert.Equal(["calm-voice", "no-superlatives", "short-headline"], results.Select(result => result.Check));
         Assert.Equal([CheckStatus.Fail, CheckStatus.Fail, CheckStatus.Warn], results.Select(result => result.Status));
@@ -60,8 +60,8 @@ public sealed class CheckRunnerTests : IDisposable
     [Fact]
     public async Task A_check_runs_only_on_the_content_types_and_fields_its_scope_names()
     {
-        var page = await Runner.RunAsync(Subject("blog-post", """{"headline": "Best in class", "body": "Fine."}"""));
-        var untyped = await Runner.RunAsync(Subject(null, """{"headline": "Best in class"}"""));
+        var page = (await Runner.RunAsync(Subject("blog-post", """{"headline": "Best in class", "body": "Fine."}"""))).Results;
+        var untyped = (await Runner.RunAsync(Subject(null, """{"headline": "Best in class"}"""))).Results;
 
         Assert.Equal(["calm-voice", "short-headline"], page.Select(result => result.Check));
         Assert.Equal(CheckStatus.Warn, page[1].Status);
@@ -71,9 +71,11 @@ public sealed class CheckRunnerTests : IDisposable
     [Fact]
     public async Task Deterministic_checks_alone_ask_no_model()
     {
-        var results = await Runner.RunAsync(Subject("product-page", """{"headline": "A kettle", "body": "Loud!!!"}"""), CheckSelection.Deterministic);
+        var run = await Runner.RunAsync(Subject("product-page", """{"headline": "A kettle", "body": "Loud!!!"}"""), CheckSelection.Deterministic);
+        var results = run.Results;
 
         Assert.Equal(["no-superlatives", "short-headline"], results.Select(result => result.Check));
+        Assert.Equal(["calm-voice"], run.Skipped);
         Assert.All(results, result => Assert.Equal(CheckStatus.Pass, result.Status));
         Assert.Equal(CheckStatus.Pass, CheckResult.Overall(results));
         Assert.Empty(_gateway.Requests);
@@ -85,8 +87,8 @@ public sealed class CheckRunnerTests : IDisposable
     {
         _gateway.Available = false;
 
-        var calm = await Runner.RunAsync(Subject("product-page", """{"headline": "A kettle", "body": "Calm."}"""));
-        var loud = await Runner.RunAsync(Subject("product-page", """{"headline": "Best in class", "body": "Calm."}"""));
+        var calm = (await Runner.RunAsync(Subject("product-page", """{"headline": "A kettle", "body": "Calm."}"""))).Results;
+        var loud = (await Runner.RunAsync(Subject("product-page", """{"headline": "Best in class", "body": "Calm."}"""))).Results;
 
         Assert.Equal(CheckStatus.NeedsReview, calm[0].Status);
         Assert.Equal(CheckStatus.NeedsReview, CheckResult.Overall(calm));

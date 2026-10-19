@@ -53,11 +53,15 @@ public enum CheckSelection
     Deterministic,
 }
 
+// The results of the checks that ran, and the names of the active checks that applied but were left out by the selection, so
+// a pass never hides a check that did not run.
+public sealed record CheckRun(IReadOnlyList<CheckResult> Results, IReadOnlyList<string> Skipped);
+
 // Runs the active checks that apply to a piece of content (CHK-03, CHK-04). A model call is never made inside a unit of work, so
-// neither is a run that includes LLM-judged checks.
+// neither is a run that includes LLM-judged checks: the caller runs it before any unit of work begins.
 public interface ICheckRunner
 {
-    Task<IReadOnlyList<CheckResult>> RunAsync(
+    Task<CheckRun> RunAsync(
         CheckSubject subject,
         CheckSelection selection = CheckSelection.All,
         CancellationToken cancellationToken = default);

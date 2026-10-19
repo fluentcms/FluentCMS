@@ -2,6 +2,8 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Core.Checks;
 using FluentCMS.Core.Schema;
+using FluentCMS.Core.Sites;
+using FluentCMS.Infrastructure.Checks;
 using FluentCMS.Infrastructure.Persistence;
 
 namespace FluentCMS.IntegrationTests.Mcp;
@@ -24,7 +26,7 @@ public sealed class CheckToolsTests
         await using var agent = await ConnectedAgent.StartAsync(provider);
         await ReferenceChecksAsync(agent);
 
-        var failing = await agent.CallAsync("check_draft", new() { ["content_type"] = "product-page", ["fields"] = S2Draft });
+        var failing = await agent.CallAsync("check_draft", new() { ["content_type"] = "product-page", ["fields"] = S2Draft.DeepClone() });
         var fixedDraft = await agent.CallAsync("check_draft", new()
         {
             ["content_type"] = "product-page",
@@ -57,37 +59,80 @@ public sealed class CheckToolsTests
         Assert.Equal(0, await agent.QueryAsync(context => Task.FromResult(context.Entries.Count())));
     }
 
-    // Only active checks run. Without a model an LLM-judged check cannot be activated (CHK-02, MDL-03), and an agent can always ask
-    // for the deterministic checks alone.
+    // MDL-03: an LLM-judged check activated while a model was configured needs review once there is none, and the run does too;
+    // an agent that asks for the deterministic checks alone is told which ones it left out.
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
     [PostgresData]
-    public async Task A_check_that_is_not_active_does_not_run_and_deterministic_checks_can_run_alone(string provider)
+    public async Task Without_a_model_an_active_LLM_judged_check_needs_review_and_can_be_left_out(string provider)
     {
         await using var agent = await ConnectedAgent.StartAsync(provider);
         await ReferenceChecksAsync(agent);
-        await agent.AsPersonAsync<ICheckDirectory, Check>(directory => directory.CreateAsync(new NewCheck("calm-voice", new CheckDefinition(
+        await ActiveWithoutItsGateAsync(agent, "calm-voice", new CheckDefinition(
             "tone",
             "Product copy is calm.",
             Parse("""{"voice": "Calm and factual."}"""),
             [
                 new CheckExample("calm", CheckVerdict.Pass, Parse("""{"headline": "A kettle"}""")),
                 new CheckExample("loud", CheckVerdict.Fail, Parse("""{"headline": "BUY!!!"}""")),
-            ]))));
+            ]));
+        var draft = new JsonObject { ["headline"] = "A kettle" };
 
-        // Stored, not activated: without a model its examples cannot be decided, so the run sees only active checks.
-        var all = await agent.CallAsync("check_draft", new() { ["content_type"] = "product-page", ["fields"] = new JsonObject { ["headline"] = "A kettle" } });
-
-        Assert.Equal("pass", (string?)all["status"]);
-        Assert.DoesNotContain(all["results"]!.AsArray(), result => (string?)result!["check"] == "calm-voice");
-
+        var all = await agent.CallAsync("check_draft", new() { ["content_type"] = "product-page", ["fields"] = draft.DeepClone() });
         var deterministic = await agent.CallAsync("check_draft", new()
         {
             ["content_type"] = "product-page",
-            ["fields"] = new JsonObject { ["headline"] = "A kettle" },
+            ["fields"] = draft.DeepClone(),
             ["checks"] = "deterministic",
         });
-        Assert.Equal(3, deterministic["results"]!.AsArray().Count);
+
+        Assert.Equal("needs_review", (string?)all["status"]);
+        var judged = all["results"]!.AsArray().Single(result => (string?)result!["check"] == "calm-voice")!;
+        Assert.Equal(("needs_review", "llm_judged"), ((string?)judged["status"], (string?)judged["kind"]));
+        Assert.Null(judged["model"]);
+        Assert.Empty(all["skipped"]!.AsArray());
+
+        Assert.Equal("pass", (string?)deterministic["status"]);
+        Assert.DoesNotContain(deterministic["results"]!.AsArray(), result => (string?)result!["check"] == "calm-voice");
+        Assert.Equal(["calm-voice"], deterministic["skipped"]!.AsArray().Select(name => (string?)name));
+    }
+
+    // A draft of an update names its entry, so a check that asks about changes sees only the fields that differ.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_draft_of_an_update_is_checked_for_what_it_changes(string provider)
+    {
+        await using var agent = await ConnectedAgent.StartAsync(provider);
+        await ReferenceChecksAsync(agent);
+        var created = await agent.CallAsync("create_entry", new()
+        {
+            ["content_type"] = "product-page",
+            ["fields"] = new JsonObject { ["headline"] = "A kettle", ["price"] = 199 },
+            ["session_id"] = "launch",
+            ["rationale"] = "Launch the kettle.",
+            ["sources"] = new JsonArray("exports/catalog-2026-10-18.csv"),
+        });
+        var id = (string?)created["entry"]!["id"];
+
+        var headline = await agent.CallAsync("check_draft", new()
+        {
+            ["content_type"] = "product-page",
+            ["id"] = id,
+            ["fields"] = new JsonObject { ["headline"] = "A steel kettle", ["price"] = 199 },
+        });
+        var price = await agent.CallAsync("check_draft", new()
+        {
+            ["content_type"] = "product-page",
+            ["id"] = id,
+            ["fields"] = new JsonObject { ["headline"] = "A kettle", ["price"] = 179 },
+        });
+        var wrongType = await agent.FailAsync("check_draft", new() { ["content_type"] = "blog-post", ["id"] = id, ["fields"] = new JsonObject() });
+
+        Assert.Equal("pass", (string?)headline["status"]);
+        Assert.Equal("fail", (string?)price["status"]);
+        Assert.Equal("sourced-prices", (string?)price["results"]!.AsArray().Single(result => (string?)result!["status"] == "fail")!["check"]);
+        Assert.Equal(SchemaErrorCodes.ContentTypeNotFound, (string?)wrongType["errors"]![0]!["code"]);
     }
 
     [Theory]
@@ -108,6 +153,7 @@ public sealed class CheckToolsTests
             ["field_unknown", "value_invalid"],
             checkedDraft["fieldErrors"]!.AsArray().Select(error => (string?)error!["code"]).Order());
         Assert.Equal(3, checkedDraft["results"]!.AsArray().Count);
+        Assert.Equal("fail", (string?)checkedDraft["status"]);
     }
 
     [Theory]
@@ -118,6 +164,13 @@ public sealed class CheckToolsTests
         await using var agent = await ConnectedAgent.StartAsync(provider);
 
         var unknown = await agent.FailAsync("check_draft", new() { ["content_type"] = "landing-page", ["fields"] = new JsonObject() });
+        await agent.CreateAsPersonAsync("landing-page");
+        var unknownEntry = await agent.FailAsync("check_draft", new()
+        {
+            ["content_type"] = "landing-page",
+            ["fields"] = new JsonObject(),
+            ["id"] = Guid.NewGuid().ToString(),
+        });
         var selection = await agent.FailAsync("check_draft", new()
         {
             ["content_type"] = "landing-page",
@@ -128,9 +181,38 @@ public sealed class CheckToolsTests
 
         Assert.Equal(SchemaErrorCodes.ContentTypeNotFound, (string?)unknown["errors"]![0]!["code"]);
         Assert.Equal("Call list_content_types for the slugs of the site's content types.", (string?)unknown["hint"]);
+        Assert.Equal("entry_not_found", (string?)unknownEntry["errors"]![0]!["code"]);
+        Assert.Equal("Call list_entries with the content type's slug for the ids of its entries.", (string?)unknownEntry["hint"]);
         Assert.Equal(
             ["argument_unknown", "argument_invalid"],
             selection["errors"]!.AsArray().Select(error => (string?)error!["code"]));
+    }
+
+    // A check reads a draft only of a content type the agent may read, as every tool does.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_draft_of_a_content_type_outside_the_agent_s_scope_is_refused(string provider)
+    {
+        await using var agent = await ConnectedAgent.StartAsync(provider, types: ["blog-post"]);
+        await ReferenceChecksAsync(agent);
+
+        var refused = await agent.FailAsync("check_draft", new() { ["content_type"] = "product-page", ["fields"] = S2Draft.DeepClone() });
+
+        Assert.NotEqual(SchemaErrorCodes.ContentTypeNotFound, (string?)refused["errors"]![0]!["code"]);
+        Assert.Null(refused["hint"]);
+    }
+
+    // A check activated when a model was configured, written straight to the store, since without a model its examples cannot pass.
+    private static Task ActiveWithoutItsGateAsync(ConnectedAgent agent, string name, CheckDefinition definition)
+    {
+        return agent.QueryAsync(async context =>
+        {
+            var id = Guid.CreateVersion7();
+            context.Checks.Add(new CheckRow { Id = id, SiteId = Site.Default.Id, Name = name, Version = 1, ActiveVersion = 1 });
+            context.CheckVersions.Add(new CheckVersionRow { Id = Guid.CreateVersion7(), CheckId = id, Version = 1, Definition = definition.ToJson() });
+            return await context.SaveChangesAsync();
+        });
     }
 
     // The checks of the reference scenario, activated by a person, on a product page with a required headline.

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Core.Checks;
 using FluentCMS.Core.Content;
@@ -13,6 +14,7 @@ namespace FluentCMS.Core.Builtin.Tools;
 public sealed class CheckTools : IToolProvider
 {
     private const string FindContentTypes = "Call list_content_types for the slugs of the site's content types.";
+    private const string FindEntries = "Call list_entries with the content type's slug for the ids of its entries.";
 
     public IReadOnlyList<AgentTool> Tools { get; } =
     [
@@ -21,8 +23,9 @@ public sealed class CheckTools : IToolProvider
             "Check a draft",
             "Runs the site's active checks on a draft of an entry without storing it or opening a change set, and returns each check's "
             + "status (pass, warn, fail or needs_review) with findings that say what to change and where, plus any field the content "
-            + "type refuses. Call it before create_entry or update_entry, fix what it finds and call it again. LLM-judged checks ask a "
-            + "model and count against your model spend; give checks \"deterministic\" to run only the others.",
+            + "type refuses. Call it before create_entry, or before update_entry with the entry's id so checks see what changed; fix "
+            + "what it finds and call it again. LLM-judged checks ask a model and count against your model spend; give checks "
+            + "\"deterministic\" to run only the others, and the ones left out are listed under skipped.",
             ToolSchemas.Object(
                 ToolSchemas.String("content_type", "The slug of the draft's content type, as list_content_types shows it.", "product-page"),
                 ToolSchemas.Json(
@@ -35,8 +38,11 @@ public sealed class CheckTools : IToolProvider
                     "Where the draft's content came from, such as URLs, files or exports, as the change set will cite them.",
                     "exports/catalog-2026-10-18.csv",
                     required: false),
-                ToolSchemas.String("checks", "Which checks to run: \"all\", the default, or \"deterministic\".", "deterministic", required: false)),
-            readOnly: true,
+                ToolSchemas.String("checks", "Which checks to run: \"all\", the default, or \"deterministic\".", "deterministic", required: false),
+                ToolSchemas.Uuid("id", "For a draft of an update: the entry it updates, so checks that ask about changes see only what differs.", required: false)),
+
+            // Not read-only: it stores nothing, but an LLM-judged check spends the agent's model budget.
+            readOnly: false,
             CheckDraftAsync),
     ];
 
@@ -47,6 +53,7 @@ public sealed class CheckTools : IToolProvider
         var fields = arguments.RequiredObject("fields", "an object with one property per field");
         var sources = arguments.OptionalStrings("sources", "exports/catalog-2026-10-18.csv") ?? [];
         var checks = arguments.OptionalString("checks", "deterministic");
+        var id = arguments.OptionalGuid("id");
         var errors = arguments.Errors().ToList();
         if (checks is not (null or "all" or "deterministic"))
         {
@@ -62,22 +69,54 @@ public sealed class CheckTools : IToolProvider
         var type = await services.GetRequiredService<IContentTypeDirectory>().GetAsync(slug!, cancellationToken);
         if (!type.IsSuccess)
         {
-            return ToolResult.Failure(type.Errors, FindContentTypes);
+            return ToolResult.Failure(type.Errors, type.Errors.Any(error => error.Code == SchemaErrorCodes.ContentTypeNotFound) ? FindContentTypes : null);
+        }
+
+        IReadOnlyList<string>? changed = null;
+        if (id is { } entryId)
+        {
+            var entry = await services.GetRequiredService<IEntryDirectory>().GetAsync(entryId, cancellationToken);
+            if (!entry.IsSuccess)
+            {
+                return ToolResult.Failure(entry.Errors, entry.Errors.Any(error => error.Code == ContentErrorCodes.EntryNotFound) ? FindEntries : null);
+            }
+
+            if (entry.Value.ContentType != slug)
+            {
+                return ToolResult.Failure(
+                    [new Error(ToolErrorCodes.ArgumentInvalid, $"The entry {entryId} is of the content type '{entry.Value.ContentType}', not '{slug}'.")],
+                    FindEntries);
+            }
+
+            changed = Changed(fields!.Value, entry.Value.Latest.Fields);
         }
 
         var definition = type.Value.Definition;
         var refused = EntryFields.Validate(fields!.Value, definition, services.GetRequiredService<FieldTypeRegistry>()).Errors;
-        var results = await services.GetRequiredService<ICheckRunner>().RunAsync(
-            new CheckSubject(fields.Value, sources, slug, definition),
+        var run = await services.GetRequiredService<ICheckRunner>().RunAsync(
+            new CheckSubject(fields.Value, sources, slug, definition, changed),
             checks == "deterministic" ? CheckSelection.Deterministic : CheckSelection.All,
             cancellationToken);
 
+        // A draft the content type refuses cannot be proposed, whatever the checks say.
         return ToolResult.Success(new JsonObject
         {
-            ["status"] = ToolJson.Name(CheckResult.Overall(results)),
-            ["results"] = new JsonArray([.. results.Select(Result)]),
+            ["status"] = ToolJson.Name(refused.Count > 0 ? CheckStatus.Fail : CheckResult.Overall(run.Results)),
+            ["results"] = new JsonArray([.. run.Results.Select(Result)]),
+            ["skipped"] = new JsonArray([.. run.Skipped.Select(name => JsonValue.Create(name))]),
             ["fieldErrors"] = new JsonArray([.. refused.Select(error => new JsonObject { ["code"] = error.Code, ["message"] = error.Message })]),
         });
+    }
+
+    // The fields whose value the draft sets to something the latest version does not hold.
+    private static List<string> Changed(JsonElement draft, JsonElement latest)
+    {
+        return draft.EnumerateObject()
+            .Where(field => latest.ValueKind != JsonValueKind.Object
+                || !latest.TryGetProperty(field.Name, out var before)
+                || !JsonElement.DeepEquals(before, field.Value))
+            .Select(field => field.Name)
+            .ToList();
     }
 
     private static JsonObject Result(CheckResult result)
