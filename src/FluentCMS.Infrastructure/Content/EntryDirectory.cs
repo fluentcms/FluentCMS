@@ -3,10 +3,12 @@ using FluentCMS.Core.Agents;
 using FluentCMS.Core.Audit;
 using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Content;
+using FluentCMS.Core.Entities;
 using FluentCMS.Core.Persistence;
 using FluentCMS.Core.Results;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Sites;
+using FluentCMS.Infrastructure.Entities;
 using FluentCMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -173,6 +175,7 @@ internal sealed class EntryDirectory(
         });
         context.EntryVersions.Add(VersionRow(stored.Latest));
         context.EntryReferences.AddRange(ReferenceRows(stored.Latest, references));
+        context.EntityFacts.AddRange(FactRows(stored.Latest, type.Value.Definition));
         var subject = Subject(type.Value.Definition);
         await auditLog.AppendAsync(new NewAuditEvent($"{subject}.created") { SubjectType = subject, SubjectId = stored.Id }, cancellationToken);
 
@@ -241,6 +244,7 @@ internal sealed class EntryDirectory(
 
         context.EntryVersions.Add(VersionRow(entry.Latest));
         context.EntryReferences.AddRange(ReferenceRows(entry.Latest, references));
+        context.EntityFacts.AddRange(FactRows(entry.Latest, type.Value.Definition));
         var subject = Subject(type.Value.Definition);
         await auditLog.AppendAsync(
             new NewAuditEvent($"{subject}.updated") { SubjectType = subject, SubjectId = id, PreviousVersionId = baseRow.Id },
@@ -495,6 +499,31 @@ internal sealed class EntryDirectory(
             TargetKind = reference.Kind,
             TargetId = reference.TargetId,
             TargetField = reference.Target?.Field,
+        });
+    }
+
+    // An entity's facts go to the fact index with the version (ENT-02); a plain entry has none.
+    private static IEnumerable<EntityFactRow> FactRows(EntryVersion version, ContentTypeDefinition definition)
+    {
+        if (!definition.IsEntity)
+        {
+            return [];
+        }
+
+        return Fact.ReadAll(version.Fields).Select((fact, position) => new EntityFactRow
+        {
+            Id = Guid.CreateVersion7(version.CreatedAt),
+            EntryId = version.EntryId,
+            Version = version.Version,
+            Position = position,
+            Field = fact.Field,
+            SourceKind = fact.SourceKind,
+            SourceReference = fact.SourceReference,
+            Owner = fact.Owner,
+            ValidFrom = fact.ValidFrom?.UtcDateTime,
+            ValidUntil = fact.ValidUntil?.UtcDateTime,
+            LastVerified = fact.LastVerified?.UtcDateTime,
+            Unsourced = fact.IsUnsourced,
         });
     }
 
