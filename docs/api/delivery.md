@@ -20,6 +20,9 @@ Entities are content too, so their fields hold facts as stored: each value with 
 | --- | --- |
 | `GET /api/v1/content/{type}` | The published entries of a content type, in the order they were created. |
 | `GET /api/v1/entries/{id}` | One published entry. |
+| `GET /api/v1/entries/{id}.md` | The same entry as Markdown. |
+| `GET /api/v1/index` | Every published entry with its type, title and URLs, as JSON. |
+| `GET /api/v1/index.md` and `GET /llms.txt` | The same index as Markdown, grouped by content type. |
 
 `GET /api/v1/content/{type}` takes these query parameters:
 
@@ -39,6 +42,7 @@ A list looks like this:
       "type": "product-page",
       "version": 3,
       "fields": { "product": "0192f3a1-0000-7000-8000-000000000001", "price": 99, "headline": "A sturdy drill" },
+      "markdown": "/api/v1/entries/0192f3a1-7c2e-7a4b-9d3e-1f2a3b4c5d6e.md",
       "unresolved": []
     }
   ],
@@ -47,6 +51,22 @@ A list looks like this:
 ```
 
 `next` is `null` on the last page. Pages are keyed by id, so entries added while a client pages through do not shift the pages it has not read yet.
+
+## Markdown and the site index
+
+Each published entry has a Markdown representation at `/api/v1/entries/{id}.md` (API-03). The URL is the entry's id, so it stays the same across versions and always shows the published version.
+
+- Front matter gives the id, type, version and URL, as quoted strings apart from the version number.
+- The heading is the entry's title: its first text field that holds text.
+- Each other field follows under its name, in the order of the content type definition that the published version was written against:
+  - rich text as written, since it is stored as Markdown, inside a block quote so that whatever it opens ends with its field;
+  - other text escaped where it could open structure, which means a value can never pose as a heading, a field, a link or HTML, while words and URLs keep their characters;
+  - lists as bullets, each item keeping its own paragraphs, and JSON in a fenced block;
+  - references to whole entries as links to their Markdown.
+- On an entity, every fact, the title's included, is followed by a `**Source:**` paragraph, which also says when the fact is unsourced. A source that is a web address is a link.
+- References that could not be resolved are listed under "Unresolved references", each with its reason.
+
+The site index lists every published entry for agents. `/llms.txt` serves it where agents look for it first.
 
 ## Errors
 
