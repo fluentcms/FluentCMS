@@ -10,7 +10,7 @@ namespace FluentCMS.Core.Builtin.Jobs;
 
 // Clears stored prompts and responses past their retention as the retention engine (AUD-04, ADR-0012), a batch at a time until a
 // batch clears nothing. Its next run is scheduled first, so a run that fails or dies still leaves one coming.
-internal sealed class RetentionPurgeJob(TimeProvider clock) : IJobHandler
+internal sealed class RetentionPurgeJob : IJobHandler
 {
     public const string JobType = "retention.purge";
 
@@ -25,6 +25,7 @@ internal sealed class RetentionPurgeJob(TimeProvider clock) : IJobHandler
 
     public async Task<Result> RunAsync(JobContext context, CancellationToken cancellationToken)
     {
+        var clock = context.Services.GetRequiredService<TimeProvider>();
         await context.Services.GetRequiredService<RetentionSchedule>().ScheduleAsync(context.Job.Id, clock.GetUtcNow() + Every, cancellationToken);
 
         var log = context.Services.GetRequiredService<IModelCallLog>();
