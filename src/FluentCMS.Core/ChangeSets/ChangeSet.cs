@@ -192,11 +192,7 @@ public sealed class ChangeSet
             var existing = _operations[position];
             if (!Supersedes(existing, operation))
             {
-                return Result.Failure(
-                    ChangeSetErrorCodes.ItemDuplicate,
-                    existing.ProposedVersion is { } proposed && operation.ItemKind is ItemKind.Entry or ItemKind.Entity
-                        ? $"The {Describe(operation.ItemKind)} {operation.ItemId} already has an operation in this change set; update it from version {proposed}, which the set proposes, to change what it proposes."
-                        : $"The {Describe(operation.ItemKind)} {operation.ItemId} already has an operation in this change set.");
+                return Result.Failure(ChangeSetErrorCodes.ItemDuplicate, Duplicate(existing, operation));
             }
 
             _operations[position] = ChangeOperation.Restore(existing.Kind, existing.ItemKind, existing.ItemId, existing.BaseVersion, operation.ProposedVersion);
@@ -295,6 +291,20 @@ public sealed class ChangeSet
             ChangeSetState.AwaitingReview => "awaiting review",
             _ => state.ToString().ToLowerInvariant(),
         };
+    }
+
+    // An item published by another set since this one proposed it changes kind or base, and this set can no longer change it.
+    private static string Duplicate(ChangeOperation existing, ChangeOperation operation)
+    {
+        var item = $"The {Describe(operation.ItemKind)} {operation.ItemId}";
+        if (operation.ItemKind is not (ItemKind.Entry or ItemKind.Entity) || existing.ProposedVersion is not { } proposed)
+        {
+            return $"{item} already has an operation in this change set.";
+        }
+
+        return operation.Kind != existing.Kind || operation.BaseVersion != existing.BaseVersion
+            ? $"{item} was published by another change set after this one proposed it, so this set can no longer change it; propose the change in a new change set."
+            : $"{item} already has an operation in this change set; update it from version {proposed}, which the set proposes, to change what it proposes.";
     }
 
     // The same change from the same published version, proposing a later draft.

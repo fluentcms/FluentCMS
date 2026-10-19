@@ -130,6 +130,21 @@ public sealed class ChangeSetTests
         Assert.Equal([2, 2], changeSet.Operations.Select(operation => operation.ProposedVersion!.Value));
     }
 
+    // An item another set published after this one proposed it comes back as an update from that published version, which this set
+    // cannot take, so the agent is told to propose the change anew rather than to update from a version it cannot.
+    [Fact]
+    public void An_item_published_by_another_set_since_says_so()
+    {
+        var changeSet = TestChangeSets.Open();
+        var entry = Guid.NewGuid();
+        changeSet.AddOperation(ChangeOperation.Create(OperationKind.Create, ItemKind.Entry, entry, null, 1).Value);
+
+        var result = changeSet.AddOperation(ChangeOperation.Create(OperationKind.Update, ItemKind.Entry, entry, 2, 3).Value);
+
+        Assert.Equal(ChangeSetErrorCodes.ItemDuplicate, Assert.Single(result.Errors).Code);
+        Assert.Contains("was published by another change set", result.Errors[0].Message);
+    }
+
     [Fact]
     public void A_set_with_no_operations_cannot_leave_open()
     {
