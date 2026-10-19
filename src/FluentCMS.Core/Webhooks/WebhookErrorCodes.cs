@@ -11,5 +11,6 @@ public static class WebhookErrorCodes
     public const string EventUnknown = "webhook_event_unknown";
     public const string NotFound = "webhook_not_found";
     public const string AlreadyDisabled = "webhook_already_disabled";
+    public const string Disabled = "webhook_disabled";
     public const string PeopleOnly = "webhook_people_only";
 }

@@ -1153,6 +1153,50 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
                         });
                 });
 
+            modelBuilder.Entity("FluentCMS.Infrastructure.Webhooks.WebhookDeliveryRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Attempt")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("AttemptedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ChangeSetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DeliveryId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<TimeSpan>("Duration")
+                        .HasColumnType("interval");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Event")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int?>("StatusCode")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("SubscriptionId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SubscriptionId", "Id");
+
+                    b.ToTable("WebhookDeliveries", (string)null);
+                });
+
             modelBuilder.Entity("FluentCMS.Infrastructure.Webhooks.WebhookSubscriptionRow", b =>
                 {
                     b.Property<Guid>("Id")
