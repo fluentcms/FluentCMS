@@ -88,6 +88,7 @@ public sealed class ModelGatewayTests
             ["Models:Profiles:rogue:Provider"] = "openai",
             ["Models:Profiles:rogue:Endpoint"] = "https://models.evil.test/v1",
             ["Models:Profiles:rogue:Model"] = "gpt-fake",
+            ["Models:Profiles:rogue:Free"] = "true",
         });
         var gateway = scenario.Services.CreateScope().ServiceProvider.GetRequiredService<IModelGateway>();
         var rogue = scenario.Services.GetRequiredService<IModelProfiles>().Find("rogue")!;
@@ -165,6 +166,67 @@ public sealed class ModelGatewayTests
 
         var purge = Assert.Single(await scenario.PurgeEventsAsync());
         Assert.Equal(("model_call", old.CallId, old.PromptHash, "gpt-fake-2026-01-01", Amir.UserId), (purge.SubjectType, purge.SubjectId!.Value, purge.PromptHash, purge.Model, purge.InitiatorId));
+    }
+
+    // SEC-04: without prices every call costs nothing and no spend cap refuses one, so an endpoint off this machine needs them unless
+    // it charges nothing. A prompt is never purged while its call waits for the answer (AUD-04).
+    [Fact]
+    public void A_profile_off_this_machine_needs_prices_unless_it_is_free_and_retention_outlasts_every_timeout()
+    {
+        using var services = TestServices.Build(new Dictionary<string, string?>
+        {
+            ["Database:ConnectionString"] = "Data Source=unused",
+            ["Models:PromptRetention"] = "00:00:30",
+            ["Models:Profiles:checks:Provider"] = "openai",
+            ["Models:Profiles:checks:Model"] = "gpt-fake",
+            ["Models:Profiles:checks:InputCostPerMillionTokens"] = "1",
+            ["Models:Profiles:free:Provider"] = "openai",
+            ["Models:Profiles:free:Model"] = "gpt-fake",
+            ["Models:Profiles:free:Endpoint"] = "https://models.example.com/v1",
+            ["Models:Profiles:free:Free"] = "true",
+            ["Models:Profiles:local:Provider"] = "openai",
+            ["Models:Profiles:local:Model"] = "llama-fake",
+            ["Models:Profiles:local:Endpoint"] = "http://localhost:11434/v1",
+            ["Models:Profiles:local:Timeout"] = "00:02:00",
+        });
+
+        var exception = Assert.Throws<OptionsValidationException>(() => services.GetRequiredService<IModelProfiles>());
+
+        Assert.Equal(
+            [
+                "Models:Profiles:checks: set InputCostPerMillionTokens and OutputCostPerMillionTokens in US dollars, so spend caps count "
+                + "what its calls cost; set Free to true only if the endpoint charges nothing.",
+                "Models:PromptRetention must be longer than the longest profile Timeout, 00:02:00, so no call is purged while it waits for its answer.",
+            ],
+            exception.Failures);
+    }
+
+    // AUD-04: a call purged while it waits for its answer stays purged when the answer comes; its outcome and cost still count.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_call_purged_while_it_waits_stays_purged_when_it_is_answered(string provider)
+    {
+        await using var scenario = await ModelScenario.CreateAsync(provider, new() { ["Models:PromptRetention"] = "30.00:00:00" });
+        scenario.Providers.Gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var asking = scenario.AskAsync(Tone);
+        var deadline = DateTime.UtcNow.AddSeconds(30);
+        while ((await scenario.CallRowsAsync()).Count == 0)
+        {
+            Assert.True(DateTime.UtcNow < deadline && !asking.IsCompleted, "The call was never recorded as pending.");
+            await Task.Delay(20);
+        }
+
+        scenario.Clock.Now = scenario.Clock.Now.AddDays(31);
+        var purged = await scenario.RunAsync(services => services.GetRequiredService<IModelCallLog>().PurgeAsync());
+        scenario.Providers.Gate.SetResult();
+        await asking;
+
+        var row = Assert.Single(await scenario.CallRowsAsync());
+        Assert.Equal(1, purged.Value);
+        Assert.Equal((ModelCallOutcome.Succeeded, (string?)null, (string?)null, 0.012m), (row.Outcome, row.Prompt, row.Response, row.Cost));
+        Assert.NotNull(row.PurgedAt);
     }
 
     // A provider can take a minute to answer, which no unit of work may hold the database for; the call is refused before it is sent.
@@ -268,6 +330,8 @@ public sealed class ModelGatewayTests
                 "Models:Profiles:Risk_Scoring: a profile is named in lowercase words joined by hyphens, such as risk-scoring.",
                 "Models:Profiles:Risk_Scoring:ApiKey is required for Anthropic, so the SDK never falls back to credentials it finds on the machine.",
                 "Models:Profiles:Risk_Scoring:Endpoint must be an absolute https URL, or http to this machine, such as http://localhost:11434/v1.",
+                "Models:Profiles:Risk_Scoring: set InputCostPerMillionTokens and OutputCostPerMillionTokens in US dollars, so spend caps count "
+                + "what its calls cost; set Free to true only if the endpoint charges nothing.",
                 "Models:Profiles:Risk_Scoring:MaxOutputTokens must be from 1 to 200000.",
                 "Models:Profiles:Risk_Scoring:Temperature must be from 0 to 2, or left out for the provider's default.",
                 "Models:Profiles:Risk_Scoring:Timeout must be from 1 second to 1 hour, such as 00:01:00.",

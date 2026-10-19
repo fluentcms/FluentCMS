@@ -4,11 +4,13 @@ using FluentCMS.Core.Audit;
 using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Identity;
+using FluentCMS.Core.Media;
 using FluentCMS.Core.Persistence;
 using FluentCMS.Core.Results;
 using FluentCMS.Core.Rules;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Sites;
+using FluentCMS.Infrastructure.Media;
 using FluentCMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -62,6 +64,7 @@ internal sealed class ChangeSetDirectory(
         var definitions = await DefinitionsAsync(set.Operations, cancellationToken);
         var rules = await RuleDefinitionsAsync(set.Operations, cancellationToken);
         var entries = await EntryDiffsAsync(set, cancellationToken);
+        var media = await MediaDiffsAsync(set, cancellationToken);
 
         var items = set.Operations
             .Select((operation, position) => operation.ItemKind switch
@@ -71,6 +74,7 @@ internal sealed class ChangeSetDirectory(
                     Definition(definitions, set.Id, operation.ItemId, operation.BaseVersion),
                     Definition(definitions, set.Id, operation.ItemId, operation.ProposedVersion)),
                 ItemKind.Entry or ItemKind.Entity => entries[position],
+                ItemKind.Media => media[position],
                 ItemKind.Rule => ItemDiff.ForRule(
                     operation,
                     RuleDefinitionAt(rules, set.Id, operation.ItemId, operation.BaseVersion),
@@ -678,6 +682,11 @@ internal sealed class ChangeSetDirectory(
             return await ResolveEntryAsync(operation, cancellationToken);
         }
 
+        if (operation.ItemKind == ItemKind.Media)
+        {
+            return await ResolveMediaAsync(operation, cancellationToken);
+        }
+
         if (operation.ItemKind == ItemKind.Rule)
         {
             return await ResolveRuleAsync(operation, cancellationToken);
@@ -688,7 +697,7 @@ internal sealed class ChangeSetDirectory(
             return Result<Guid?>.Failure(
                 ChangeSetErrorCodes.ItemKindUnavailable,
                 $"There are no stored {ItemSubjectType(operation.ItemKind)} items yet, so a change set cannot point at one; "
-                + "only schema, entry, entity and rule operations can be added.");
+                + "only schema, entry, entity, media and rule operations can be added.");
         }
 
         var slug = await context.ContentTypes
@@ -903,13 +912,14 @@ internal sealed class ChangeSetDirectory(
     // operation's base version, and a create's item not at all, so a publish never replaces a version its set has not seen.
     private async Task<Result<List<PublishableItem>>> PublishableItemsAsync(ChangeSet set, CancellationToken cancellationToken)
     {
-        if (set.Operations.FirstOrDefault(operation => operation.ItemKind is not (ItemKind.Schema or ItemKind.Entry or ItemKind.Entity or ItemKind.Rule)) is { } other)
+        if (set.Operations.FirstOrDefault(operation => operation.ItemKind is not (ItemKind.Schema or ItemKind.Entry or ItemKind.Entity or ItemKind.Media or ItemKind.Rule)) is { } other)
         {
             throw new InvalidOperationException(
                 $"Change set {set.Id} holds an operation on a {ItemSubjectType(other.ItemKind)} item, which nothing publishes yet.");
         }
 
         var entries = await PublishedEntriesAsync(set.Operations, cancellationToken);
+        var media = await PublishedMediaAsync(set.Operations, cancellationToken);
         var rules = await PublishedRulesAsync(set.Operations, cancellationToken);
 
         var ids = set.Operations.Select(operation => operation.ItemId).ToList();
@@ -930,9 +940,9 @@ internal sealed class ChangeSetDirectory(
         var errors = new List<Error>();
         foreach (var operation in set.Operations)
         {
-            if (operation.ItemKind is ItemKind.Entry or ItemKind.Entity)
+            if (operation.ItemKind is ItemKind.Entry or ItemKind.Entity or ItemKind.Media)
             {
-                if (PublishableEntry(set, operation, entries, errors) is { } item)
+                if (PublishableEntry(set, operation, operation.ItemKind == ItemKind.Media ? media : entries, errors) is { } item)
                 {
                     items.Add(item);
                 }
@@ -972,6 +982,14 @@ internal sealed class ChangeSetDirectory(
     // Moves only from the base version, so a publish over the same item that committed first leaves nothing to move.
     private async Task<bool> MovePublishedVersionAsync(ChangeOperation operation, bool revert, CancellationToken cancellationToken)
     {
+        if (operation.ItemKind == ItemKind.Media)
+        {
+            // A delete published from here unpublishes the asset; its versions and its bytes stay.
+            return await context.MediaAssets
+                .Where(asset => asset.Id == operation.ItemId && asset.PublishedVersion == operation.BaseVersion)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(asset => asset.PublishedVersion, operation.ProposedVersion), cancellationToken) == 1;
+        }
+
         if (operation.ItemKind is ItemKind.Entry or ItemKind.Entity)
         {
             // A delete published from here unpublishes the entry; its versions and its draft stay. The state moves with the pointer,
@@ -1179,6 +1197,102 @@ internal sealed class ChangeSetDirectory(
         }
 
         return new PublishableItem(operation, name, operation.BaseVersion is { } baseVersion ? entry.VersionIds[baseVersion] : null);
+    }
+
+    // A media operation points at an asset of the site and at stored versions of it (MED-03); an agent needs its scope to allow the
+    // operation on media.
+    private async Task<Result<Guid?>> ResolveMediaAsync(ChangeOperation operation, CancellationToken cancellationToken)
+    {
+        if (!await context.MediaAssets.AnyAsync(asset => asset.Id == operation.ItemId && asset.SiteId == SiteId, cancellationToken))
+        {
+            return Result<Guid?>.Failure(ChangeSetErrorCodes.ItemNotFound, $"There is no media asset {operation.ItemId} in this site.");
+        }
+
+        var allowed = await permissions.CheckMediaAsync(AgentOperationOf(operation.Kind), cancellationToken);
+        if (!allowed.IsSuccess)
+        {
+            return Result<Guid?>.Failure(allowed.Errors);
+        }
+
+        var wanted = new[] { operation.BaseVersion, operation.ProposedVersion }.OfType<int>().ToList();
+        var stored = await context.MediaAssetVersions
+            .AsNoTracking()
+            .Where(version => version.AssetId == operation.ItemId && wanted.Contains(version.Version))
+            .Select(version => new { version.Version, version.Id })
+            .ToListAsync(cancellationToken);
+
+        var missing = wanted.Except(stored.Select(version => version.Version)).ToList();
+        if (missing.Count > 0)
+        {
+            return Result<Guid?>.Failure(missing.Select(version => new Error(
+                ChangeSetErrorCodes.VersionNotFound,
+                $"Media asset {operation.ItemId} has no version {version}.")));
+        }
+
+        return Result<Guid?>.Success(stored.SingleOrDefault(version => version.Version == operation.BaseVersion)?.Id);
+    }
+
+    // The diff of every media operation, by its position in the set, from all the versions they name in one query.
+    private async Task<Dictionary<int, ItemDiff>> MediaDiffsAsync(ChangeSet set, CancellationToken cancellationToken)
+    {
+        var operations = set.Operations
+            .Select((operation, position) => (Operation: operation, Position: position))
+            .Where(item => item.Operation.ItemKind == ItemKind.Media)
+            .ToList();
+        if (operations.Count == 0)
+        {
+            return [];
+        }
+
+        var ids = operations.Select(item => item.Operation.ItemId).Distinct().ToList();
+        var numbers = operations.SelectMany(item => new[] { item.Operation.BaseVersion, item.Operation.ProposedVersion }).OfType<int>().Distinct().ToList();
+        var rows = await context.MediaAssetVersions
+            .AsNoTracking()
+            .Where(version => ids.Contains(version.AssetId) && numbers.Contains(version.Version))
+            .ToListAsync(cancellationToken);
+        var versions = rows.ToDictionary(row => (row.AssetId, row.Version), row => row.ToVersion());
+
+        // Versions are never changed and an operation is checked against them when it is added, so a missing one is a broken store.
+        MediaAssetVersion? Stored(Guid assetId, int? number)
+        {
+            return number is { } version
+                ? versions.GetValueOrDefault((assetId, version))
+                    ?? throw new InvalidOperationException($"Change set {set.Id} points at version {version} of media asset {assetId}, which is not stored.")
+                : null;
+        }
+
+        return operations.ToDictionary(
+            item => item.Position,
+            item => ItemDiff.ForMedia(item.Operation, Stored(item.Operation.ItemId, item.Operation.BaseVersion), Stored(item.Operation.ItemId, item.Operation.ProposedVersion)));
+    }
+
+    // Each asset the operations name with its published version and the rows of their base versions.
+    private async Task<Dictionary<Guid, PublishedEntry>> PublishedMediaAsync(IReadOnlyList<ChangeOperation> operations, CancellationToken cancellationToken)
+    {
+        var mediaOperations = operations.Where(operation => operation.ItemKind == ItemKind.Media).ToList();
+        if (mediaOperations.Count == 0)
+        {
+            return [];
+        }
+
+        var ids = mediaOperations.Select(operation => operation.ItemId).Distinct().ToList();
+        var bases = mediaOperations.Select(operation => operation.BaseVersion).OfType<int>().Distinct().ToList();
+
+        var assets = await context.MediaAssets
+            .AsNoTracking()
+            .Where(asset => asset.SiteId == SiteId && ids.Contains(asset.Id))
+            .Select(asset => new { asset.Id, asset.PublishedVersion })
+            .ToListAsync(cancellationToken);
+        var versionIds = (await context.MediaAssetVersions
+            .AsNoTracking()
+            .Where(version => ids.Contains(version.AssetId) && bases.Contains(version.Version))
+            .Select(version => new { version.AssetId, version.Version, version.Id })
+            .ToListAsync(cancellationToken))
+            .ToLookup(version => version.AssetId);
+
+        return assets.ToDictionary(
+            asset => asset.Id,
+            asset => new PublishedEntry(asset.PublishedVersion, Deleted: false, versionIds[asset.Id].ToDictionary(version => version.Version, version => version.Id)));
     }
 
     private static string Capitalize(string text)

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using FluentCMS.Core.Identity;
 
 namespace FluentCMS.Core.Models;
 
@@ -9,8 +10,9 @@ public sealed record ModelRequest(string Profile, string Purpose, string Instruc
     // A JSON Schema the answer must follow; the provider is asked for JSON in that shape.
     public JsonElement? AnswerSchema { get; init; }
 
-    // The agent whose LLM spend cap the call counts against (SEC-04); the calling agent when null, and nobody for a person.
-    public Guid? ChargedTo { get; init; }
+    // Whose work an engine asks the model for, such as the agent or person whose change set it checks; only an engine names one.
+    // An agent's call counts against its LLM spend cap (SEC-04), and a person's against none.
+    public Initiator? OnBehalfOf { get; init; }
 }
 
 // One named section of untrusted text, such as "content" or "rule".
