@@ -84,6 +84,20 @@ public sealed class DeliveryEndpointsTests
     }
 
     [Theory]
+    [InlineData("Product-Page")]
+    [InlineData("product_page")]
+    public async Task A_type_that_cannot_be_a_slug_is_not_found_without_asking_the_reader(string type)
+    {
+        var content = new StubContent();
+        await using var api = await StubApi.StartAsync(content);
+
+        var response = await api.Client.GetAsync($"/api/v1/content/{type}");
+
+        await AssertProblemAsync(response, HttpStatusCode.NotFound, SchemaErrorCodes.ContentTypeNotFound);
+        Assert.Null(content.Query);
+    }
+
+    [Theory]
     [InlineData("limit=ten", DeliveryErrorCodes.LimitInvalid, "'limit'")]
     [InlineData("limit=-1", DeliveryErrorCodes.LimitInvalid, "'limit'")]
     [InlineData("after=page-2", DeliveryErrorCodes.ParameterInvalid, "'after'")]
