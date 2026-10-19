@@ -174,5 +174,11 @@ public sealed class PickerFieldTests
         public Task<IReadOnlyList<string>> FoldersAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
         public Task<Result<MediaContent>> OpenAsync(Guid id, int? version = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<Result> DeleteAsync(Guid id, int baseVersion, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<Result<MediaAsset>> RestoreAsync(Guid id, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<IReadOnlyList<DeletedAsset>> ListDeletedAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 }
