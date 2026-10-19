@@ -104,6 +104,20 @@ public sealed class FactValuesTests
     }
 
     [Fact]
+    public void A_json_object_without_a_value_is_a_plain_value_not_a_fact()
+    {
+        var facts = new Dictionary<string, string?>();
+        var plain = JsonDocument.Parse("""{"watts": 500}""").RootElement;
+
+        var shown = FactValues.Show("specs", plain, facts);
+
+        Assert.Equal(500, shown!.Value.GetProperty("watts").GetInt32());
+        Assert.Empty(facts);
+        Assert.False(FactValues.IsFact(plain));
+        Assert.True(FactValues.IsUnsourced(plain));
+    }
+
+    [Fact]
     public void The_owner_a_fact_already_has_is_kept_though_no_user_has_that_id()
     {
         var stranger = Guid.NewGuid();

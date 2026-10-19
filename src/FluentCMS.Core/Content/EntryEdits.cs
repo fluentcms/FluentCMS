@@ -22,6 +22,13 @@ internal sealed class EntryEdits(
             return Result<SavedEntryEdit>.Failure(ContentErrorCodes.VersionConflict, "An update names the version it was made from.");
         }
 
+        // Publishing that moved on since the values were read is found before anything is written, as the directories find theirs.
+        if (edit.PublishedBase is { } expected && edit.EntryId is { } entryId
+            && await entries.GetAsync(entryId, cancellationToken) is { IsSuccess: true } current && current.Value.PublishedVersion != expected)
+        {
+            return PublishedMoved(expected, current.Value.PublishedVersion);
+        }
+
         // The set's own expected failures are found before anything is written, as the directories find theirs.
         if (string.IsNullOrWhiteSpace(edit.ChangeSet.Rationale))
         {
@@ -43,12 +50,10 @@ internal sealed class EntryEdits(
             return Result<SavedEntryEdit>.Failure(entry.Errors);
         }
 
-        // Checked against the version the operation is based on below, read in this unit of work, so no publish slips in between.
+        // Checked again against the published version the operation is based on below, for a publish since the check above.
         if (edit.PublishedBase is { } publishedBase && entry.Value.PublishedVersion != publishedBase)
         {
-            return Result<SavedEntryEdit>.Failure(
-                ContentErrorCodes.VersionConflict,
-                $"The values came from published version {publishedBase}, and version {entry.Value.PublishedVersion?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "none"} is published now.");
+            return PublishedMoved(publishedBase, entry.Value.PublishedVersion);
         }
 
         var type = await contentTypes.GetAsync(entry.Value.ContentType, cancellationToken);
@@ -81,5 +86,12 @@ internal sealed class EntryEdits(
 
         await scope.CommitAsync(cancellationToken);
         return Result<SavedEntryEdit>.Success(new SavedEntryEdit(entry.Value, set.Value));
+    }
+
+    private static Result<SavedEntryEdit> PublishedMoved(int expected, int? published)
+    {
+        return Result<SavedEntryEdit>.Failure(
+            ContentErrorCodes.VersionConflict,
+            $"The values came from published version {expected}, and {(published is { } version ? $"version {version}" : "no version")} is published now.");
     }
 }

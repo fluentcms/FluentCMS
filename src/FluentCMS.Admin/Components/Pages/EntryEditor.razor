@@ -184,7 +184,13 @@
         }
 
         // An update is always made from the latest version, so the version check holds whichever version the values come from.
-        Shown = new EntryFormModel { BaseVersion = _entry?.LatestVersion ?? 0, FromPublished = FromPublished ? _entry!.PublishedVersion : null };
+        // The published version the values came from: the one asked for, or the latest when it is the published one, so a revert or a
+        // publish while the form is open is caught when it is saved.
+        Shown = new EntryFormModel
+        {
+            BaseVersion = _entry?.LatestVersion ?? 0,
+            FromPublished = FromPublished || _entry?.LatestVersion == _entry?.PublishedVersion ? _entry?.PublishedVersion : null,
+        };
         _unsourced.Clear();
         _stored.Clear();
         foreach (var field in _type.Definition.Fields)
@@ -251,6 +257,13 @@
         {
             var stored = _stored.TryGetValue(field.Name, out var storedValue) ? storedValue : (JsonElement?)null;
             var storedValueOnly = _type.Definition.IsEntity ? FactValues.Show(field.Name, stored, new Dictionary<string, string?>()) : stored;
+
+            // A stored value its field's type no longer takes, as after a number field became text, is read from what was posted.
+            if (storedValueOnly is { } keptValue && FieldTypes.ValidateValue(field.Type, field.Settings, keptValue).Count > 0)
+            {
+                storedValueOnly = null;
+            }
+
             var value = FieldValues.Read(field, Form.Values.GetValueOrDefault(field.Name), out var problem, storedValueOnly);
             if (value is null && field.Type == "boolean" && _type.Definition.IsEntity && FactValues.HasDetails(field.Name, Form.Facts))
             {

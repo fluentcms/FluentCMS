@@ -176,11 +176,11 @@ public sealed class EntityFormScreenTests
         using var install = new TemporaryInstall();
         await using var host = await AdminHost.StartAsync(install);
         var ownerId = await host.CreateFirstAdministratorAsync();
-        IReadOnlyList<FieldDefinition> fields = [new FieldDefinition("name", "text", required: true), new FieldDefinition("price", "number")];
+        IReadOnlyList<FieldDefinition> fields = [new FieldDefinition("name", "text", required: true), new FieldDefinition("price", "number"), new FieldDefinition("specs", "json")];
         await host.AsUserAsync<IContentTypeDirectory, ContentType>(ownerId, async types => (await types.CreateAsync(
             new NewContentType("Product", "product", new ContentTypeDefinition(fields)), TestChangeSetTargets.ContentModel)).Value);
         var entry = await host.AsUserAsync<IEntryDirectory, Entry>(ownerId, async entries =>
-            (await entries.CreateAsync(new NewEntry("product", Json("""{"name": "Drill", "price": 4.5}""")))).Value);
+            (await entries.CreateAsync(new NewEntry("product", Json("""{"name": "Drill", "price": 4.5, "specs": {"watts": 500}}""")))).Value);
         await host.AsUserAsync<IContentTypeDirectory, ContentType>(ownerId, async types => (await types.ReviseAsync(
             "product", 1, new ContentTypeDefinition(fields, isEntity: true), TestChangeSetTargets.ContentModel)).Value);
         await host.SignInAsync(AdminHost.Owner);
@@ -189,12 +189,15 @@ public sealed class EntityFormScreenTests
         var form = await host.Client.GetStringAsync($"/content/product/{entry.Id}");
         Assert.Contains("value=\"4.5\"", form);
         Assert.Contains("data-testid=\"fact-unsourced\"", Fieldset(form, "price"));
+        Assert.Contains("&quot;watts&quot;: 500", form);
+        Assert.Contains("data-testid=\"fact-unsourced\"", Fieldset(form, "specs"));
 
         var saved = await host.SubmitAsync($"/content/product/{entry.Id}", "entry", new Dictionary<string, string>
         {
             ["Form.Values[name]"] = "Cordless drill",
             ["Form.Facts[name.owner]"] = ownerId.ToString(),
             ["Form.Values[price]"] = "4.5",
+            ["Form.Values[specs]"] = "{\r\n  \"watts\": 500\r\n}",
             ["Form.Rationale"] = "Record the facts.",
             ["Form.BaseVersion"] = "1",
         });
@@ -204,6 +207,7 @@ public sealed class EntityFormScreenTests
         var name = stored.GetProperty("name");
         Assert.Equal(("Cordless drill", ownerId.ToString()), (name.GetProperty("value").GetString(), name.GetProperty("owner").GetString()));
         Assert.Equal("4.5", stored.GetProperty("price").GetProperty("value").GetRawText());
+        Assert.Equal(500, stored.GetProperty("specs").GetProperty("value").GetProperty("watts").GetInt32());
     }
 
     private static JsonElement Json(string json)

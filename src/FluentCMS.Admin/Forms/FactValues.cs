@@ -19,10 +19,17 @@ public static class FactValues
 
     public static string Key(string field, string part) => $"{field}.{part}";
 
+    // A stored fact is an object with a value. Anything else, such as a JSON object written before its type held facts, is a plain
+    // value with no fact around it yet.
+    public static bool IsFact(JsonElement? stored)
+    {
+        return stored is { ValueKind: JsonValueKind.Object } fact && fact.TryGetProperty(FactMetadata.Value, out _);
+    }
+
     // The owner a stored fact names, so an owner who is no longer a user still shows and is kept.
     public static Guid? OwnerOf(JsonElement? stored)
     {
-        return stored is { ValueKind: JsonValueKind.Object } fact && fact.TryGetProperty(FactMetadata.Owner, out var owner)
+        return IsFact(stored) && stored!.Value.TryGetProperty(FactMetadata.Owner, out var owner)
             && owner.ValueKind == JsonValueKind.String && Guid.TryParse(owner.GetString(), out var id) ? id : null;
     }
 
@@ -38,7 +45,7 @@ public static class FactValues
         JsonElement? stored = null,
         IReadOnlySet<Guid>? owners = null)
     {
-        var fact = stored is { ValueKind: JsonValueKind.Object } storedFact ? storedFact : (JsonElement?)null;
+        var fact = IsFact(stored) ? stored : null;
         var shown = new Dictionary<string, string?>();
         var storedValue = Show(field, fact, shown);
         if (fact is { } untouched && storedValue is { } kept && JsonNode.DeepEquals(value, JsonNode.Parse(kept.GetRawText()))
@@ -125,10 +132,12 @@ public static class FactValues
     // held facts, is the value of a fact with no details yet.
     public static JsonElement? Show(string field, JsonElement? stored, IDictionary<string, string?> facts)
     {
-        if (stored is not { ValueKind: JsonValueKind.Object } fact)
+        if (!IsFact(stored))
         {
             return stored is { ValueKind: not (JsonValueKind.Null or JsonValueKind.Undefined) } plain ? plain : null;
         }
+
+        var fact = stored!.Value;
 
         if (fact.TryGetProperty(FactMetadata.Source, out var source) && source.ValueKind == JsonValueKind.Object)
         {
@@ -163,7 +172,6 @@ public static class FactValues
     public static bool IsUnsourced(JsonElement? stored)
     {
         return stored is { ValueKind: not (JsonValueKind.Null or JsonValueKind.Undefined) } value
-            && (value.ValueKind != JsonValueKind.Object
-                || !value.TryGetProperty(FactMetadata.Source, out var source) || source.ValueKind != JsonValueKind.Object);
+            && (!IsFact(value) || !value.TryGetProperty(FactMetadata.Source, out var source) || source.ValueKind != JsonValueKind.Object);
     }
 }

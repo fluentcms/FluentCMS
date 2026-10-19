@@ -71,6 +71,7 @@ public sealed class EntryEditsTests
     {
         await using var scenario = await CreateAsync(provider);
         var first = (await SaveAsync(scenario, new EntryEdit("blog-post", null, null, Json("""{"title": "Hello"}"""), new NewChangeSet("Draft.", [])))).Value;
+        var events = await scenario.Schema.QueryAsync(context => context.AuditEvents.CountAsync());
 
         var refused = await SaveAsync(scenario, new EntryEdit("blog-post", first.Entry.Id, 1, Json("""{"title": "Old values"}"""), new NewChangeSet("Retitle.", []))
         {
@@ -79,6 +80,8 @@ public sealed class EntryEditsTests
 
         Assert.Equal(ContentErrorCodes.VersionConflict, Assert.Single(refused.Errors).Code);
         Assert.Single(await scenario.EntryRowsAsync());
+        Assert.Equal(1, await scenario.Schema.QueryAsync(context => context.EntryVersions.CountAsync(row => row.EntryId == first.Entry.Id)));
+        Assert.Equal(events, await scenario.Schema.QueryAsync(context => context.AuditEvents.CountAsync()));
         Assert.Equal(1, await scenario.Schema.QueryAsync(context => context.ChangeSets.CountAsync(row => row.SessionId != TestChangeSetTargets.ContentModelSession)));
     }
 

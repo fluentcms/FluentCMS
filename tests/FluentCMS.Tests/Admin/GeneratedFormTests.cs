@@ -64,6 +64,14 @@ public sealed class GeneratedFormTests
     }
 
     [Fact]
+    public void Only_carriage_returns_are_line_breaks_to_compare_and_other_separators_stay_as_typed()
+    {
+        var value = FieldValues.Read(Field("richText", "{}"), "One\r\nTwo\u2028three", out _, JsonDocument.Parse("\"One\\nTwo\"").RootElement);
+
+        Assert.Equal("One\nTwo\u2028three", value!.GetValue<string>());
+    }
+
+    [Fact]
     public void A_changed_text_replaces_the_stored_value()
     {
         var value = FieldValues.Read(Field("dateTime", "{}"), "2026-11-01T07:31", out _, JsonDocument.Parse("\"2026-11-01T09:30:45+02:00\"").RootElement);

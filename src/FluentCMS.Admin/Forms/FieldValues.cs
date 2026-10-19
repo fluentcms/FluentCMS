@@ -43,9 +43,9 @@ public static class FieldValues
     {
         problem = null;
 
-        // Browsers send a textarea's line breaks as CRLF; stored text keeps LF.
-        posted = posted?.ReplaceLineEndings("\n");
-        if (stored is { ValueKind: not JsonValueKind.Null } kept && posted is not null && posted == Show(field, kept)?.ReplaceLineEndings("\n"))
+        // Browsers send a textarea's line breaks as CRLF; stored text keeps LF. Other line separators are text and stay as typed.
+        posted = Lf(posted);
+        if (stored is { ValueKind: not JsonValueKind.Null } kept && posted is not null && posted == Lf(Show(field, kept)))
         {
             return JsonNode.Parse(kept.GetRawText());
         }
@@ -113,6 +113,8 @@ public static class FieldValues
                 return JsonValue.Create(posted);
         }
     }
+
+    private static string? Lf(string? text) => text?.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
 
     // What the widget shows for a stored value.
     public static string? Show(FieldDefinition field, JsonElement? value)

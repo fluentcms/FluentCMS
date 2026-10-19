@@ -14,8 +14,8 @@ public interface IEntryEdits
 // EntryId and BaseVersion name the entry and the version the form read for an update, and are null for a create.
 public sealed record EntryEdit(string ContentType, Guid? EntryId, int? BaseVersion, JsonElement Fields, NewChangeSet ChangeSet)
 {
-    // The published version an update's values came from, when they came from it rather than from the latest draft. If publishing
-    // has moved on, the save is refused, so it cannot undo what was published meanwhile.
+    // The published version an update's values came from, when they are the published version's. If publishing has moved on, the
+    // save is refused, so it cannot undo what was published meanwhile.
     public int? PublishedBase { get; init; }
 }
 

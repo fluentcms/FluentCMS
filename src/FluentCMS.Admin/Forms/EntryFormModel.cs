@@ -15,7 +15,7 @@ public sealed class EntryFormModel
 
     public int BaseVersion { get; set; }
 
-    // The published version the values came from, when the form started from it rather than from the latest draft.
+    // The published version the values came from, when they are the published version's.
     public int? FromPublished { get; set; }
 
     public IReadOnlyList<string> SourceList()

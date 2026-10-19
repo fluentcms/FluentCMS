@@ -272,8 +272,19 @@ public sealed class EntryFormScreenTests
         await PublishAsync(host, ownerId, sets => sets.OpenAsync(new NewChangeSet("Publish it.", [])), ChangeOperation.Create(OperationKind.Create, ItemKind.Entry, entry.Id, null, 1).Value);
         await host.AsUserAsync<IEntryDirectory, Entry>(ownerId, async entries => (await entries.UpdateAsync(entry.Id, 1, Json("""{"title": "Wrong"}"""))).Value);
         var wrong = await PublishAsync(host, ownerId, sets => sets.OpenAsync(new NewChangeSet("Retitle.", [])), ChangeOperation.Create(OperationKind.Update, ItemKind.Entry, entry.Id, 1, 2).Value);
-        await PublishAsync(host, ownerId, sets => sets.RevertAsync(wrong, "The title was wrong."));
         await host.SignInAsync(AdminHost.Owner);
+
+        // A form open on the published version when a revert publishes an older one can't put the reverted values back.
+        Assert.Contains("name=\"Form.FromPublished\" value=\"2\"", await host.Client.GetStringAsync($"/content/kitchen-sink/{entry.Id}"));
+        await PublishAsync(host, ownerId, sets => sets.RevertAsync(wrong, "The title was wrong."));
+        var stale = await host.SubmitAsync($"/content/kitchen-sink/{entry.Id}", "entry", new Dictionary<string, string>
+        {
+            ["Form.Values[title]"] = "Wrong, retitled",
+            ["Form.Rationale"] = "Retitle.",
+            ["Form.BaseVersion"] = "2",
+            ["Form.FromPublished"] = "2",
+        });
+        Assert.Contains("Someone saved this entry since the form was shown.", await stale.Content.ReadAsStringAsync());
 
         var reverted = await host.AsUserAsync<IEntryDirectory, Entry>(ownerId, async entries => (await entries.GetAsync(entry.Id)).Value);
         Assert.Equal((EntryState.Reverted, (int?)1, 2), (reverted.State, reverted.PublishedVersion, reverted.LatestVersion));
@@ -306,6 +317,35 @@ public sealed class EntryFormScreenTests
         var revertedCreate = await host.Client.GetStringAsync($"/content/kitchen-sink/{created.Id}");
         Assert.Contains("whose creation was reverted", revertedCreate);
         Assert.DoesNotContain("data-testid=\"from-published\"", revertedCreate);
+    }
+
+    // A field whose type changed keeps its stored value until it is saved; the form then saves what the new type takes.
+    [Fact]
+    public async Task An_untouched_value_its_field_type_no_longer_takes_is_saved_as_the_new_type()
+    {
+        using var install = new TemporaryInstall();
+        await using var host = await AdminHost.StartAsync(install);
+        var ownerId = await host.CreateFirstAdministratorAsync();
+        FieldDefinition[] before = [new FieldDefinition("title", "text"), new FieldDefinition("code", "number")];
+        await host.AsUserAsync<IContentTypeDirectory, ContentType>(ownerId, async types => (await types.CreateAsync(
+            new NewContentType("Part", "part", new ContentTypeDefinition(before)), TestChangeSetTargets.ContentModel)).Value);
+        var entry = await host.AsUserAsync<IEntryDirectory, Entry>(ownerId, async entries =>
+            (await entries.CreateAsync(new NewEntry("part", Json("""{"title": "Bolt", "code": 45}""")))).Value);
+        await host.AsUserAsync<IContentTypeDirectory, ContentType>(ownerId, async types => (await types.ReviseAsync(
+            "part", 1, new ContentTypeDefinition([new FieldDefinition("title", "text"), new FieldDefinition("code", "text")]), TestChangeSetTargets.ContentModel)).Value);
+        await host.SignInAsync(AdminHost.Owner);
+
+        var saved = await host.SubmitAsync($"/content/part/{entry.Id}", "entry", new Dictionary<string, string>
+        {
+            ["Form.Values[title]"] = "Hex bolt",
+            ["Form.Values[code]"] = "45",
+            ["Form.Rationale"] = "Retitle.",
+            ["Form.BaseVersion"] = "1",
+        });
+
+        Assert.StartsWith("/sets/", host.LocationOf(saved));
+        var code = (await host.AsUserAsync<IEntryDirectory, Entry>(ownerId, async entries => (await entries.GetAsync(entry.Id)).Value)).Latest.Fields.GetProperty("code");
+        Assert.Equal((JsonValueKind.String, "45"), (code.ValueKind, code.GetString()));
     }
 
     [Fact]
