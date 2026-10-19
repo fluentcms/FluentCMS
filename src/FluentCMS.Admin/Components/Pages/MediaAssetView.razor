@@ -161,8 +161,11 @@
 
     [Parameter] public Guid Id { get; set; }
 
+    // Read as text, as the library's sub flag is, so a value that is not true or false shows the page rather than failing it.
     [SupplyParameterFromQuery(Name = "uploaded")]
-    private bool Uploaded { get; set; }
+    private string? UploadedText { get; set; }
+
+    private bool Uploaded => bool.TryParse(UploadedText, out var uploaded) && uploaded;
 
     [SupplyParameterFromForm(FormName = "metadata")]
     private MediaMetadataForm? Form { get; set; }

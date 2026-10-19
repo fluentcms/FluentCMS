@@ -34,6 +34,7 @@ public sealed partial class MediaScreenTests
         var id = Guid.Parse(location["/media/".Length..location.IndexOf('?')]);
         var page = await host.Client.GetStringAsync(location);
         Assert.Contains("data-testid=\"media-uploaded\"", page);
+        Assert.DoesNotContain("data-testid=\"media-uploaded\"", await host.Client.GetStringAsync($"/media/{id}?uploaded=abc"));
         Assert.Contains($"src=\"media/{id}/file?version=1\" alt=\"A cordless drill.\"", page);
         Assert.Contains("value=\"product-shot, hero\"", page);
 
