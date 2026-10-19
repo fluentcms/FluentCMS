@@ -95,7 +95,8 @@ public sealed class ToolCallRecordingTests
         Assert.Equal([ToolCallOutcome.Failed, ToolCallOutcome.Errored, ToolCallOutcome.Errored], calls.Select(call => call.Outcome));
     }
 
-    // The record is written after the tool's own unit of work has ended, so it stays when the tool's changes roll back.
+    // The call is recorded before the tool runs and finished after, each outside the tool's unit of work, so it stays when the tool's
+    // changes roll back.
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
     [PostgresData]
@@ -115,6 +116,29 @@ public sealed class ToolCallRecordingTests
         var call = Assert.Single(await CallsAsync(host));
         Assert.Equal("rolls-back", call.Tool);
         Assert.Equal(ToolCallOutcome.Errored, call.Outcome);
+    }
+
+    // The claim's own record rolls back with it, so the call is logged on its own; a trigger stands in for a database that fails.
+    [Fact]
+    public async Task A_call_whose_claim_fails_is_recorded_as_errored_and_its_tool_does_not_run()
+    {
+        using var install = new TemporaryInstall();
+        await using var host = await AdminHost.StartAsync(install, configure: AddTestTools);
+        var issued = await McpAgents.IssueAsync(host, await host.CreateFirstAdministratorAsync());
+        await using var client = await McpAgents.ConnectOverHttpAsync(host, issued.Key);
+        await using (var scope = host.App.Services.CreateAsyncScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<FluentCmsDbContext>().Database.ExecuteSqlRawAsync(
+                """CREATE TRIGGER "FailHold" BEFORE UPDATE ON "AgentCredentials" BEGIN SELECT RAISE(ABORT, 'The database is unreachable.'); END;""");
+        }
+
+        // The tool would answer "Refused."; the SDK's own error text shows it never ran.
+        var result = await client.CallToolAsync("fails");
+
+        Assert.True(result.IsError);
+        Assert.DoesNotContain("Refused.", Assert.IsType<TextContentBlock>(Assert.Single(result.Content)).Text, StringComparison.Ordinal);
+        var call = Assert.Single(await CallsAsync(host));
+        Assert.Equal((issued.Credential.Id, "fails", ToolCallOutcome.Errored), (call.AgentCredentialId, call.Tool, call.Outcome));
     }
 
     [Fact]
