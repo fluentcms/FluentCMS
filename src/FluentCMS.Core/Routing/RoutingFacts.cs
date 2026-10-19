@@ -12,8 +12,15 @@ public enum RoutingCheckOutcome
 }
 
 // One item of a set as routing sees it. ContentType is the type's slug for a schema item, the entry's type for an entry or an
-// entity, and null for kinds without one. ChangedFields are the names of the fields the diff lists for the item.
-public sealed record RoutingItem(ItemKind ItemKind, Guid ItemId, OperationKind ChangeKind, string? ContentType, IReadOnlySet<string> ChangedFields);
+// entity, and null for kinds without one. ChangedFields are the names of the fields the diff lists for the item. ChangedProperties
+// are the changes to the item as a whole, such as a schema's entity flag or field order, which no condition names.
+public sealed record RoutingItem(
+    ItemKind ItemKind,
+    Guid ItemId,
+    OperationKind ChangeKind,
+    string? ContentType,
+    IReadOnlySet<string> ChangedFields,
+    IReadOnlySet<string>? ChangedProperties = null);
 
 // What routing knows about a set. Checks and RiskScore stay null until the check run (F-CHK) and the scorer (RTE-02) supply them,
 // and a condition on either does not match without them.

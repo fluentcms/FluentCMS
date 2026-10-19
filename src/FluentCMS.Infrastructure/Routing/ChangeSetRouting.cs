@@ -34,7 +34,8 @@ internal sealed class ChangeSetRouting(
                 item.Operation.ItemId,
                 item.Operation.Kind,
                 contentTypes.GetValueOrDefault(item.Operation.ItemId),
-                item.Fields.Select(field => field.Name).ToHashSet(StringComparer.Ordinal)))
+                item.Fields.Select(field => field.Name).ToHashSet(StringComparer.Ordinal),
+                item.Properties.Select(property => property.Name).ToHashSet(StringComparer.Ordinal)))
             .ToList();
 
         var active = await rules.ListActiveAsync(cancellationToken);

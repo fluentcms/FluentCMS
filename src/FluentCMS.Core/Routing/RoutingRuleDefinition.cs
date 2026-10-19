@@ -372,6 +372,7 @@ public sealed class RoutingRuleDefinition
 
         string? disposition = null;
         int? approvals = null;
+        var wellFormed = true;
         foreach (var property in value.EnumerateObject())
         {
             switch (property.Name)
@@ -379,18 +380,30 @@ public sealed class RoutingRuleDefinition
                 case "disposition" when property.Value.ValueKind == JsonValueKind.String:
                     disposition = property.Value.GetString();
                     break;
+                case "disposition":
+                    // Reported below with an unknown disposition.
+                    break;
                 case "approvals" when property.Value.ValueKind == JsonValueKind.Number && property.Value.TryGetInt32(out var count):
                     approvals = count;
                     break;
                 case "approvals":
                     errors.Add(Malformed("$.then.approvals must be a whole number."));
-                    return null;
+                    wellFormed = false;
+                    break;
                 default:
                     errors.Add(Malformed($"$.then.{property.Name} is not part of a disposition; it has 'disposition' and, for a review, 'approvals'."));
-                    return null;
+                    wellFormed = false;
+                    break;
             }
         }
 
+        // Every problem in the disposition is reported, though one is enough to refuse it.
+        var decided = Decide(disposition, approvals, errors);
+        return wellFormed ? decided : null;
+    }
+
+    private static RoutingDisposition? Decide(string? disposition, int? approvals, List<Error> errors)
+    {
         switch (disposition)
         {
             case "review" when approvals is null or (>= 1 and <= RoutingDisposition.MaxApprovals):

@@ -4,6 +4,7 @@ using FluentCMS.Core.Content;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Persistence;
 using FluentCMS.Core.Routing;
+using FluentCMS.Core.Schema;
 using FluentCMS.Infrastructure.Persistence;
 using FluentCMS.IntegrationTests.ChangeSets;
 using Microsoft.EntityFrameworkCore;
@@ -166,6 +167,28 @@ public sealed class RoutingRuleDirectoryTests
         var agentDecision = (await RouteAsync(scenario, byAgent.Id)).Value;
         Assert.Null(agentDecision.Disposition);
         Assert.Equal([category.Id], agentDecision.UnmatchedItems);
+    }
+
+    // Making a type an entity type changes it as a whole, which no field condition names, so a rule for its fields does not cover it.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_change_to_a_type_as_a_whole_is_not_covered_by_a_rule_that_names_fields(string provider)
+    {
+        await using var scenario = await ScenarioAsync(provider);
+        var product = await scenario.ContentTypeAsync("product");
+        var definition = new ContentTypeDefinition([new FieldDefinition("title", "text"), new FieldDefinition("summary", "text")], isEntity: true);
+        var entity = (await scenario.RunSchemaAsync(directory => directory.ReviseAsync("product", 1, definition, TestChangeSetTargets.ContentModel))).Value;
+        var summaries = Definition("New summaries are routine.", new RoutingConditions { ContentTypes = ["product"], Fields = ["summary"] }, RoutingDisposition.AutoPublish);
+        await RunAsync(scenario, rules => rules.CreateAsync(new NewRoutingRule("summaries", summaries)));
+        await RunAsync(scenario, rules => rules.ActivateAsync("summaries", 1));
+        var changeSet = await scenario.OpenAsync(Update(entity));
+
+        var decision = (await RouteAsync(scenario, changeSet.Id)).Value;
+
+        Assert.Null(decision.Disposition);
+        Assert.Equal(["summaries"], decision.Rules.Select(rule => rule.Name));
+        Assert.Equal([product.Id], decision.UnmatchedItems);
     }
 
     // Routing rules are a person's to write, so these tests act as one unless they say otherwise.

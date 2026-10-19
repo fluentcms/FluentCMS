@@ -4,8 +4,8 @@ namespace FluentCMS.Core.Routing;
 public sealed record MatchedRoutingRule(string Name, int Version, RoutingDisposition Disposition, IReadOnlyList<Guid> Items, string Reason);
 
 // Where explicit rules send a set (RTE-01, RTE-02). Disposition is the strictest of the rules that applied, or auto-publish when
-// every item is matched by an auto-publish rule and nothing stricter applies; null when no rule settled it. UnmatchedItems are the
-// items no rule matched, which the risk score routes.
+// auto-publish rules cover every change of every item and nothing stricter applies; null when no rule settled it. UnmatchedItems
+// are the items with a change no rule decides, which the risk score routes.
 public sealed record RoutingDecision(
     RoutingDisposition? Disposition,
     IReadOnlyList<MatchedRoutingRule> Rules,
@@ -19,8 +19,8 @@ public sealed record RoutingDecision(
         if (unmatched.Count > 0)
         {
             reasons.Add(unmatched.Count == 1
-                ? "1 item matches no routing rule, so the set needs a risk score."
-                : $"{unmatched.Count} items match no routing rule, so the set needs a risk score.");
+                ? "1 item has a change no routing rule decides, so the set needs a risk score."
+                : $"{unmatched.Count} items have changes no routing rule decides, so the set needs a risk score.");
         }
 
         return reasons;

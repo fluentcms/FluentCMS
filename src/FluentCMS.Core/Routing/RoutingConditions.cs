@@ -22,7 +22,7 @@ public sealed record RoutingConditions
     public IReadOnlyList<string>? ContentTypes { get; init; }
 
     // Matches an item that changes at least one of these fields. An auto-publish rule covers only the fields it names, so any other
-    // field the item changes still needs a rule of its own (RoutingEvaluator).
+    // field the item changes, or a change to the item as a whole, still needs a rule of its own (RoutingEvaluator).
     public IReadOnlyList<string>? Fields { get; init; }
 
     public IReadOnlyList<OperationKind>? ChangeKinds { get; init; }

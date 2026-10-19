@@ -74,6 +74,21 @@ public sealed class RoutingEvaluatorTests
         Assert.Equal(RoutingDisposition.AutoPublish, RoutingEvaluator.Evaluate([SpecNames, whole], Facts(item)).Disposition);
     }
 
+    // A change to the item as a whole, such as a schema becoming an entity type, is no field, so only a rule for the whole item covers it.
+    [Fact]
+    public void A_change_to_the_item_as_a_whole_needs_a_rule_without_a_field_condition()
+    {
+        var item = Item("spec", OperationKind.Update, "name") with { ChangedProperties = new HashSet<string>(["entity"]) };
+        var whole = Rule("specs", new RoutingConditions { ContentTypes = ["spec"] }, RoutingDisposition.AutoPublish);
+
+        var decision = RoutingEvaluator.Evaluate([SpecNames], Facts(item));
+
+        Assert.Null(decision.Disposition);
+        Assert.Equal([item.ItemId], decision.UnmatchedItems);
+        Assert.Contains("1 item has a change no routing rule decides, so the set needs a risk score.", decision.Reasons);
+        Assert.Equal(RoutingDisposition.AutoPublish, RoutingEvaluator.Evaluate([SpecNames, whole], Facts(item)).Disposition);
+    }
+
     [Fact]
     public void Block_beats_review_and_review_takes_the_highest_count()
     {
@@ -98,7 +113,7 @@ public sealed class RoutingEvaluatorTests
 
         Assert.Null(decision.Disposition);
         Assert.Equal([unit.ItemId, created.ItemId], decision.UnmatchedItems);
-        Assert.Contains("2 items match no routing rule, so the set needs a risk score.", decision.Reasons);
+        Assert.Contains("2 items have changes no routing rule decides, so the set needs a risk score.", decision.Reasons);
         Assert.Null(RoutingEvaluator.Evaluate([], Facts(name)).Disposition);
     }
 

@@ -81,6 +81,20 @@ public sealed class RoutingRuleDefinitionTests
         Assert.DoesNotContain(messages, message => message.Contains("Unicode"));
     }
 
+    [Fact]
+    public void Every_problem_in_a_disposition_is_reported_at_once()
+    {
+        var several = RoutingRuleDefinition.Parse("""{"description": "x", "then": {"disposition": "maybe", "approvals": "2", "colour": 1}}""");
+        var number = RoutingRuleDefinition.Parse("""{"description": "x", "then": {"disposition": 5}}""");
+
+        var messages = several.Errors.Select(error => error.Message).ToList();
+        Assert.Equal(3, messages.Count);
+        Assert.Contains(messages, message => message.Contains("$.then.approvals"));
+        Assert.Contains(messages, message => message.Contains("$.then.colour"));
+        Assert.Contains(messages, message => message.Contains("$.then.disposition must be"));
+        Assert.Contains("$.then.disposition must be", Assert.Single(number.Errors).Message);
+    }
+
     [Theory]
     [InlineData("""{"description": "x", "then": {"disposition": "review", "approvals": 0}}""")]
     [InlineData("""{"description": "x", "then": {"disposition": "review", "approvals": 11}}""")]
