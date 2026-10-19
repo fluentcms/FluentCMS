@@ -27,6 +27,8 @@ public static class DeliveryEndpoints
         api.MapGet("/entries/{id:guid}.md", GetMarkdownAsync);
         api.MapGet("/index", IndexAsync);
         api.MapGet("/index.md", IndexMarkdownAsync);
+        api.MapGet("/preview/entries/{id:guid}", PreviewEntryAsync);
+        api.MapGet("/preview/changes", PreviewChangesAsync);
 
         // Where agents look for a site's index first, by the llms.txt convention.
         endpoints.MapGet("/llms.txt", IndexMarkdownAsync).AllowAnonymous();
@@ -69,6 +71,30 @@ public static class DeliveryEndpoints
         return page.IsSuccess
             ? Results.Json(new PageResponse([.. page.Value.Items.Select(Item)], page.Value.Next))
             : Problem(page.Errors);
+    }
+
+    // Unpublished content is never cached on the way, so it disappears with the token (API-04).
+    private static async Task<IResult> PreviewEntryAsync(Guid id, HttpContext http, IPreviewContent preview, CancellationToken cancellationToken)
+    {
+        http.Response.Headers.CacheControl = "no-store";
+        var item = await preview.GetAsync(BearerToken(http), id, cancellationToken);
+        return item.IsSuccess ? Results.Json(Item(item.Value)) : Problem(item.Errors);
+    }
+
+    private static async Task<IResult> PreviewChangesAsync(HttpContext http, IPreviewContent preview, CancellationToken cancellationToken)
+    {
+        http.Response.Headers.CacheControl = "no-store";
+        var changes = await preview.ChangesAsync(BearerToken(http), cancellationToken);
+        return changes.IsSuccess
+            ? Results.Json(new ChangesResponse(changes.Value.ChangeSetId, [.. changes.Value.Items.Select(Item)]))
+            : Problem(changes.Errors);
+    }
+
+    // The token travels in the Authorization header, never in the URL, so it stays out of logs and browser history.
+    private static string BearerToken(HttpContext http)
+    {
+        var header = http.Request.Headers.Authorization.ToString();
+        return header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? header["Bearer ".Length..].Trim() : string.Empty;
     }
 
     private static async Task<IResult> GetAsync(Guid id, IPublishedContent content, CancellationToken cancellationToken)
@@ -156,6 +182,7 @@ public static class DeliveryEndpoints
         {
             ContentErrorCodes.EntryNotFound or SchemaErrorCodes.ContentTypeNotFound => StatusCodes.Status404NotFound,
             AgentPermissionErrorCodes.ScopeDenied => StatusCodes.Status403Forbidden,
+            DeliveryErrorCodes.PreviewTokenInvalid => StatusCodes.Status401Unauthorized,
             _ => StatusCodes.Status400BadRequest,
         };
 
@@ -169,6 +196,8 @@ public static class DeliveryEndpoints
     }
 
     private sealed record PageResponse(IReadOnlyList<ItemResponse> Items, Guid? Next);
+
+    private sealed record ChangesResponse(Guid ChangeSet, IReadOnlyList<ItemResponse> Items);
 
     private sealed record ItemResponse(Guid Id, string Type, int Version, JsonElement Fields, string Markdown, IReadOnlyList<UnresolvedResponse> Unresolved);
 

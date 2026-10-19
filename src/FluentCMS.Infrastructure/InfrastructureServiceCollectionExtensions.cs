@@ -117,7 +117,12 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IEntryDirectory, EntryDirectory>();
         services.AddScoped<IWhereUsed, WhereUsed>();
         services.AddScoped<IResolvedEntries, ResolvedEntries>();
-        services.AddScoped<IPublishedContent, PublishedContentReader>();
+        services.AddScoped<PublishedContentReader>();
+        services.AddScoped<IPublishedContent>(provider => provider.GetRequiredService<PublishedContentReader>());
+        services.AddScoped<IPreviewContent>(provider => provider.GetRequiredService<PublishedContentReader>());
+        services.AddScoped<IPreviewTokens, PreviewTokenDirectory>();
+        services.AddOptions<DeliveryOptions>().Bind(configuration.GetSection(DeliveryOptions.SectionName)).ValidateOnStart();
+        services.AddSingleton<IValidateOptions<DeliveryOptions>, DeliveryOptionsValidation>();
         services.AddScoped<IEntityRelations, EntityRelationsReader>();
         services.AddScoped<IEntityFacts, EntityFactsReader>();
         services.AddScoped<IBlastRadius, BlastRadiusReader>();
