@@ -1,5 +1,6 @@
 using System.Buffers;
 using System.Text.Json;
+using FluentCMS.Core.Media;
 using FluentCMS.Core.Schema;
 
 namespace FluentCMS.Core.ChangeSets;
@@ -73,6 +74,64 @@ public sealed class ItemDiff
         var order = definition.Fields.Select((field, index) => (field.Name, index)).ToDictionary(field => field.Name, field => field.index, StringComparer.Ordinal);
 
         return new ItemDiff(operation, [], ValueDiff.Compare(EntryValues(baseFields, order), EntryValues(proposedFields, order)));
+    }
+
+    // The base version is absent for a create and the proposed one for a delete, as the operation's versions say. The metadata
+    // people and agents write are fields; the bytes, which a metadata change keeps, are properties.
+    public static ItemDiff ForMedia(ChangeOperation operation, MediaAssetVersion? baseVersion, MediaAssetVersion? proposedVersion)
+    {
+        ArgumentNullException.ThrowIfNull(operation);
+
+        if (operation.ItemKind != ItemKind.Media)
+        {
+            throw new ArgumentException($"A media diff is for a media operation, and this one is on a {operation.ItemKind} item.", nameof(operation));
+        }
+
+        if ((operation.BaseVersion is null) != (baseVersion is null) || (operation.ProposedVersion is null) != (proposedVersion is null))
+        {
+            throw new ArgumentException("A media diff takes a version for each version the operation names, and only for those.");
+        }
+
+        return new ItemDiff(
+            operation,
+            ValueDiff.Compare(MediaProperties(baseVersion), MediaProperties(proposedVersion)),
+            ValueDiff.Compare(MediaFields(baseVersion), MediaFields(proposedVersion)));
+    }
+
+    private static IEnumerable<KeyValuePair<string, JsonElement>> MediaProperties(MediaAssetVersion? version)
+    {
+        return version is null
+            ? []
+            :
+            [
+                new("contentType", JsonSerializer.SerializeToElement(version.Blob.ContentType)),
+                new("length", JsonSerializer.SerializeToElement(version.Blob.Length)),
+                new("sha256", JsonSerializer.SerializeToElement(version.Blob.Sha256)),
+            ];
+    }
+
+    // Alt text and a caption that are absent are absent here too, so adding one reads as added.
+    private static IEnumerable<KeyValuePair<string, JsonElement>> MediaFields(MediaAssetVersion? version)
+    {
+        if (version is null)
+        {
+            yield break;
+        }
+
+        var metadata = version.Metadata;
+        yield return new("fileName", JsonSerializer.SerializeToElement(metadata.FileName));
+        yield return new("folder", JsonSerializer.SerializeToElement(metadata.Folder));
+        yield return new("tags", JsonSerializer.SerializeToElement(metadata.Tags));
+
+        if (metadata.AltText is { } altText)
+        {
+            yield return new("altText", JsonSerializer.SerializeToElement(altText));
+        }
+
+        if (metadata.Caption is { } caption)
+        {
+            yield return new("caption", JsonSerializer.SerializeToElement(caption));
+        }
     }
 
     // A field the definition no longer has goes last, by name.

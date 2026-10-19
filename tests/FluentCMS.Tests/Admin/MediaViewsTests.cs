@@ -143,6 +143,8 @@ public sealed class MediaViewsTests
 
     private sealed class FakeLibrary : IMediaLibrary
     {
+        public long MaxBytes => 50 * 1024 * 1024;
+
         public MediaAssetSummary Drill { get; } = new(Guid.CreateVersion7(), 2, 1, "drill.jpg", "image/jpeg", 2048, "products/drills", ["hero", "product-shot"], true);
 
         public MediaAssetSummary NoAlt { get; } = new(Guid.CreateVersion7(), 1, null, "saw.png", "image/png", 512, "products", [], false);

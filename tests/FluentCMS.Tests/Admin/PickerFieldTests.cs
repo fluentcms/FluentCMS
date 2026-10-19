@@ -151,6 +151,8 @@ public sealed class PickerFieldTests
 
     private sealed class FakeMedia : IMediaLibrary
     {
+        public long MaxBytes => 50 * 1024 * 1024;
+
         public Task<IReadOnlyList<MediaAssetSummary>> ListAsync(MediaQuery query, CancellationToken cancellationToken = default)
         {
             IReadOnlyList<MediaAssetSummary> assets =

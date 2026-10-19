@@ -32,6 +32,9 @@ public interface IAgentPermissions
         IReadOnlyCollection<string>? fields = null,
         CancellationToken cancellationToken = default);
 
+    // Media is not a content type, so a scope allows it by its sites and operations alone, whatever types it lists (MED-03, MCP-05).
+    Task<Result> CheckMediaAsync(AgentOperation operation, CancellationToken cancellationToken = default);
+
     // A content type's own definition, which covers every field, so a scope that narrows the type to some of its fields is refused.
     Task<Result> CheckDefinitionAsync(string contentType, AgentOperation operation, CancellationToken cancellationToken = default);
 
