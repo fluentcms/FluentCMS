@@ -13,6 +13,8 @@ internal sealed class ResolvedEntries(FluentCmsDbContext context, IAgentPermissi
     // Until multi-site (MST-01), every entry belongs to the one site (SCH-07).
     private static readonly Guid SiteId = Site.Default.Id;
 
+    private static readonly Dictionary<Guid, int?> NoProposals = [];
+
     public async Task<Result<ResolvedEntry>> ResolveAsync(Guid entryId, int? version = null, CancellationToken cancellationToken = default)
     {
         var entry = await (
@@ -40,7 +42,7 @@ internal sealed class ResolvedEntries(FluentCmsDbContext context, IAgentPermissi
                 $"Entry {entryId} has no version {number}; its latest version is {entry.LatestVersion}.");
         }
 
-        var resolved = await EntryResolution.ResolveAsync(context, [new VersionToResolve(entryId, entry.Slug, number)], cancellationToken);
+        var resolved = await EntryResolution.ResolveAsync(context, [new VersionToResolve(entryId, entry.Slug, number)], NoProposals, cancellationToken);
         return Result<ResolvedEntry>.Success(resolved[0]);
     }
 }

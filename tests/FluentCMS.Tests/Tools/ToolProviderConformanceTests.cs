@@ -135,6 +135,11 @@ public sealed class EntityToolsConformanceTests : ToolProviderConformanceTests
     protected override object Provider { get; } = new EntityTools();
 }
 
+public sealed class MediaToolsConformanceTests : ToolProviderConformanceTests
+{
+    protected override object Provider { get; } = new MediaTools();
+}
+
 public sealed class SearchToolsConformanceTests : ToolProviderConformanceTests
 {
     protected override object Provider { get; } = new SearchTools();

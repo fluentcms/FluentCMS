@@ -248,8 +248,8 @@ public sealed class ChangeSetChecksTests
         Assert.Equal(("job", "fail"), ((string?)finished["checks"]!["mode"], (string?)finished["checks"]!["status"]));
         Assert.Equal(("succeeded", 1, 1), ((string?)finished["job"]!["state"], (int)finished["job"]!["done"]!, (int)finished["job"]!["total"]!));
 
-        var (chargedTo, ranAs) = RecordingJudge.Calls.Last();
-        Assert.Equal(agent.Credential.Id, chargedTo);
+        var (onBehalfOf, ranAs) = RecordingJudge.Calls.Last();
+        Assert.Equal(agent.Credential.Id, Assert.IsType<AgentInitiator>(onBehalfOf).CredentialId);
         Assert.Equal(SystemInitiator.Checks, ranAs);
 
         var judged = (string?)finished["checks"]!["items"]![0]!["results"]!.AsArray().Single(result => (string?)result!["check"] == "calm")!["model"]!["model"];
@@ -259,6 +259,39 @@ public sealed class ChangeSetChecksTests
         Assert.Equal(
             (Guid.Parse(setId), RecordingJudge.Model, RecordingJudge.PromptHash, "system", "checks"),
             (judgement.ChangeSetId!.Value, judgement.Model, judgement.PromptHash, judgement.InitiatorKind, judgement.InitiatorName));
+    }
+
+    // SEC-04: the engine judges a person's set on that person's behalf, so its LLM-judged checks run, uncapped as people are, rather
+    // than being refused for naming no one.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_person_s_set_is_judged_on_that_person_s_behalf(string provider)
+    {
+        await using var agent = await ConnectedAgent.StartAsync(
+            provider,
+            settings: FastQueue,
+            configure: builder => builder.Services.AddFluentCmsExtension<ICheckType, RecordingJudge>());
+        await ProductChecksAsync(agent);
+        await ActivateAsync(agent, "calm", Definition(RecordingJudge.Name, "{}", "A kettle", "BUY!!!"));
+
+        var set = await agent.AsPersonAsync<IChangeSetDirectory, ChangeSet>(directory => directory.OpenAsync(new NewChangeSet("Launch the kettle.", ["exports/catalog.csv"])));
+        var entry = await agent.AsPersonAsync<IEntryDirectory, Entry>(directory => directory.CreateAsync(new NewEntry("product-page", Title("BUY THIS KETTLE!!!"))));
+        await agent.AsPersonAsync<IChangeSetDirectory, ChangeSet>(directory =>
+            directory.AddOperationAsync(set.Id, ChangeOperation.Create(OperationKind.Create, ItemKind.Entry, entry.Id, null, 1).Value));
+        await agent.AsPersonAsync<IChangeSetChecks, ChangeSetSubmission>(checks => checks.SubmitAsync(set.Id));
+
+        var deadline = DateTime.UtcNow.AddSeconds(60);
+        ChangeSetChecksState state;
+        do
+        {
+            await Task.Delay(100);
+            state = await agent.AsPersonAsync<IChangeSetChecks, ChangeSetChecksState>(checks => checks.GetAsync(set.Id));
+        }
+        while (state.Job?.State is not (JobState.Succeeded or JobState.Failed or JobState.Dead) && DateTime.UtcNow < deadline);
+
+        Assert.Equal(ChangeSetState.ChecksFailed, state.ChangeSet.State);
+        Assert.Contains(RecordingJudge.Calls, call => call.OnBehalfOf is UserInitiator && call.RanAs == SystemInitiator.Checks);
     }
 
     // PERF-02: deterministic checks over a 200-item set finish in under ten seconds; a set that large runs as a job.
@@ -384,7 +417,7 @@ public sealed class ChangeSetChecksTests
 
         public const decimal Cost = 0.25m;
 
-        public static ConcurrentQueue<(Guid? ChargedTo, Initiator? RanAs)> Calls { get; } = new();
+        public static ConcurrentQueue<(Initiator? OnBehalfOf, Initiator? RanAs)> Calls { get; } = new();
 
         string ICheckType.Name => Name;
 
@@ -397,7 +430,7 @@ public sealed class ChangeSetChecksTests
 
         public Task<CheckOutcome> EvaluateAsync(CheckInput input, CancellationToken cancellationToken)
         {
-            Calls.Enqueue((input.ChargedTo, input.Services.GetRequiredService<ICurrentInitiator>().Current));
+            Calls.Enqueue((input.OnBehalfOf, input.Services.GetRequiredService<ICurrentInitiator>().Current));
             var loud = input.Subject.Fields.ValueKind == JsonValueKind.Object
                 && input.Subject.Fields.EnumerateObject().Any(field => field.Value.ValueKind == JsonValueKind.String && field.Value.GetString()!.Contains("!!!"));
 

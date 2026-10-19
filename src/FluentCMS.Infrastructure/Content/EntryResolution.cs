@@ -14,10 +14,12 @@ internal static class EntryResolution
     // Until multi-site (MST-01), every entry belongs to the one site (SCH-07).
     private static readonly Guid SiteId = Site.Default.Id;
 
-    // In the order given; every version must be stored.
+    // In the order given; every version must be stored. EntityVersions replaces an entity's published version with the one a change
+    // set proposes, or with none where it unpublishes the entity, so a preview resolves as the set would publish (API-04).
     public static async Task<IReadOnlyList<ResolvedEntry>> ResolveAsync(
         FluentCmsDbContext context,
         IReadOnlyList<VersionToResolve> versions,
+        IReadOnlyDictionary<Guid, int?> entityVersions,
         CancellationToken cancellationToken)
     {
         if (versions.Count == 0)
@@ -49,7 +51,11 @@ internal static class EntryResolution
             .Where(row => wanted.Contains((row.EntryId, row.Version)))
             .ToLookup(row => (row.EntryId, row.Version));
 
-        var published = await PublishedFieldsAsync(context, references.SelectMany(group => group).Select(row => row.TargetId).Distinct().ToList(), cancellationToken);
+        var published = await PublishedFieldsAsync(
+            context,
+            references.SelectMany(group => group).Select(row => row.TargetId).Distinct().ToList(),
+            entityVersions,
+            cancellationToken);
 
         return versions.Select(version =>
         {
@@ -76,10 +82,11 @@ internal static class EntryResolution
         }).ToList();
     }
 
-    // Each entity's published fields, read in one query: none when it is deleted or has no published version.
+    // Each entity's published fields: none when it is deleted or has no published version.
     private static async Task<Dictionary<Guid, (bool Deleted, JsonElement? Fields)>> PublishedFieldsAsync(
         FluentCmsDbContext context,
         List<Guid> ids,
+        IReadOnlyDictionary<Guid, int?> entityVersions,
         CancellationToken cancellationToken)
     {
         if (ids.Count == 0)
@@ -96,9 +103,29 @@ internal static class EntryResolution
             select new { entity.Id, Deleted = entity.DeletedAt != null, Fields = version == null ? null : version.Fields })
             .ToListAsync(cancellationToken);
 
-        return rows.ToDictionary(
-            row => row.Id,
-            row => (row.Deleted, row.Deleted || row.Fields is null ? (JsonElement?)null : JsonSerializer.Deserialize<JsonElement>(row.Fields)));
+        var fields = rows.ToDictionary(row => row.Id, row => (row.Deleted, Fields: (string?)row.Fields));
+
+        var proposed = ids.Where(entityVersions.ContainsKey).ToList();
+        if (proposed.Count > 0)
+        {
+            var numbers = proposed.Select(id => entityVersions[id]).OfType<int>().Distinct().ToList();
+            var stored = (await context.EntryVersions
+                .AsNoTracking()
+                .Where(version => proposed.Contains(version.EntryId) && numbers.Contains(version.Version))
+                .Select(version => new { version.EntryId, version.Version, version.Fields })
+                .ToListAsync(cancellationToken))
+                .Where(version => entityVersions[version.EntryId] == version.Version)
+                .ToDictionary(version => version.EntryId, version => version.Fields);
+
+            foreach (var id in proposed.Where(fields.ContainsKey))
+            {
+                fields[id] = (fields[id].Deleted, stored.GetValueOrDefault(id));
+            }
+        }
+
+        return fields.ToDictionary(
+            pair => pair.Key,
+            pair => (pair.Value.Deleted, pair.Value.Deleted || pair.Value.Fields is null ? (JsonElement?)null : JsonSerializer.Deserialize<JsonElement>(pair.Value.Fields)));
     }
 
     // An entity stores each field as a fact; the view shows the fact's value (SCH-03).

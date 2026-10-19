@@ -24,6 +24,8 @@ internal sealed class MediaLibrary(
     // Until multi-site (MST-01), every asset belongs to the one site (SCH-07).
     private static readonly Guid SiteId = Site.Default.Id;
 
+    public long MaxBytes => options.Value.MaxBytes;
+
     public async Task<Result<MediaAsset>> UploadAsync(NewAsset asset, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(asset);
@@ -119,7 +121,7 @@ internal sealed class MediaLibrary(
 
         var baseRow = await VersionRowAsync(id, baseVersion, cancellationToken)
             ?? throw new InvalidOperationException($"Media asset {id} points at version {baseVersion}, which is not stored.");
-        var version = ToVersion(baseRow) with { Version = baseVersion + 1, Metadata = checkedMetadata!, CreatedAt = clock.GetUtcNow() };
+        var version = baseRow.ToVersion() with { Version = baseVersion + 1, Metadata = checkedMetadata!, CreatedAt = clock.GetUtcNow() };
 
         await using var scope = await unitOfWork.BeginAsync(cancellationToken);
 
@@ -160,7 +162,7 @@ internal sealed class MediaLibrary(
         var latest = await VersionRowAsync(id, row.LatestVersion, cancellationToken)
             ?? throw new InvalidOperationException($"Media asset {id} points at version {row.LatestVersion}, which is not stored.");
 
-        return Result<MediaAsset>.Success(new MediaAsset(id, row.SiteId, row.LatestVersion, row.PublishedVersion, ToVersion(latest)));
+        return Result<MediaAsset>.Success(new MediaAsset(id, row.SiteId, row.LatestVersion, row.PublishedVersion, latest.ToVersion()));
     }
 
     public async Task<Result<MediaAssetVersion>> GetVersionAsync(Guid id, int version, CancellationToken cancellationToken = default)
@@ -176,7 +178,7 @@ internal sealed class MediaLibrary(
             ? Result<MediaAssetVersion>.Failure(
                 MediaErrorCodes.VersionNotFound,
                 $"Media asset {id} has no version {version}; its latest version is {row.LatestVersion}.")
-            : Result<MediaAssetVersion>.Success(ToVersion(stored));
+            : Result<MediaAssetVersion>.Success(stored.ToVersion());
     }
 
     public async Task<IReadOnlyList<MediaAssetSummary>> ListAsync(MediaQuery query, CancellationToken cancellationToken = default)
@@ -308,16 +310,6 @@ internal sealed class MediaLibrary(
             Caption = version.Metadata.Caption,
             CreatedAt = version.CreatedAt,
         };
-    }
-
-    private static MediaAssetVersion ToVersion(MediaAssetVersionRow row)
-    {
-        return new MediaAssetVersion(
-            row.AssetId,
-            row.Version,
-            new MediaBlob(row.ContentType, row.Length, row.Sha256, row.Storage, row.StorageKey),
-            new AssetMetadata(row.FileName, row.Folder, row.Tags, row.AltText, row.Caption),
-            row.CreatedAt);
     }
 
     private static Error NotFound(Guid id)

@@ -98,7 +98,11 @@ public sealed class BulkToolsTests
         Assert.Equal(
             [(ToolErrorCodes.ArgumentInvalid, "items[1]"), (ToolErrorCodes.ArgumentMissing, "items[1]"), (ToolErrorCodes.ArgumentInvalid, "items[2]")],
             malformed["errors"]!.AsArray().Select(error => ((string)error!["code"]!, ((string)error["message"]!).Split(':')[0])));
-        Assert.Empty(await agent.QueryAsync(context => context.ChangeSets.AsNoTracking().ToListAsync()));
+        // The only set is the one the test's content model was written in.
+        Assert.Empty(await agent.QueryAsync(context => context.ChangeSets
+            .AsNoTracking()
+            .Where(row => row.SessionId != TestChangeSetTargets.ContentModelSession)
+            .ToListAsync()));
         Assert.Empty(await agent.QueryAsync(context => context.Jobs.AsNoTracking().ToListAsync()));
     }
 
@@ -165,7 +169,8 @@ public sealed class BulkToolsTests
         await agent.AsPersonAsync<IContentTypeDirectory, ContentType>(directory => directory.CreateAsync(new NewContentType(
             "Product",
             "product",
-            new ContentTypeDefinition([new FieldDefinition("name", "text"), new FieldDefinition("price", "number")], isEntity: true))));
+            new ContentTypeDefinition([new FieldDefinition("name", "text"), new FieldDefinition("price", "number")], isEntity: true)),
+            TestChangeSetTargets.ContentModel));
 
         var ids = new List<Guid>();
         for (var index = 0; index < count; index++)
