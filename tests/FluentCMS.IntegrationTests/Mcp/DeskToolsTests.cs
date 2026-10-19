@@ -16,9 +16,8 @@ public sealed class DeskToolsTests
         await using var agent = await ConnectedAgent.StartAsync(provider);
         var first = await SubmitAsync(agent, "product");
         var second = await SubmitAsync(agent, "category");
-        var failed = await SubmitAsync(agent, "brand");
-        await MoveAsync(agent, first, ChangeSetState.AwaitingReview);
-        await MoveAsync(agent, second, ChangeSetState.AwaitingReview);
+        var failed = await SubmitAsync(agent, "brand", submit: false);
+        await MoveAsync(agent, failed, ChangeSetState.ChecksRunning);
         await MoveAsync(agent, failed, ChangeSetState.ChecksFailed);
         var someoneElses = await PersonsSetAsync(agent, "page");
         var events = await agent.QueryAsync(context => Task.FromResult(context.AuditEvents.Count()));
@@ -53,7 +52,6 @@ public sealed class DeskToolsTests
     {
         await using var agent = await ConnectedAgent.StartAsync(provider);
         var set = await SubmitAsync(agent, "product");
-        await MoveAsync(agent, set, ChangeSetState.AwaitingReview);
         await agent.AsPersonAsync<IChangeSetDirectory, ChangeSet>(directory => directory.RejectAsync(set, "The type duplicates item."));
         var someoneElses = await PersonsSetAsync(agent, "page");
 
@@ -104,8 +102,9 @@ public sealed class DeskToolsTests
         return [.. list["changeSets"]!.AsArray().Select(set => (string?)set!["id"])];
     }
 
-    // A set the agent opens and submits through its tools, proposing one new content type.
-    private static async Task<Guid> SubmitAsync(ConnectedAgent agent, string slug)
+    // A set the agent opens and submits through its tools, proposing one new content type. No check reads a content type, so the
+    // set passes its checks and waits for review; one left unsubmitted is moved on by a person, standing in for the engine.
+    private static async Task<Guid> SubmitAsync(ConnectedAgent agent, string slug, bool submit = true)
     {
         var opened = await agent.CallAsync("open_change_set", new() { ["rationale"] = $"Add the {slug} type." });
         var id = (string)opened["changeSet"]!["id"]!;
@@ -116,7 +115,11 @@ public sealed class DeskToolsTests
             ["definition"] = new JsonObject { ["fields"] = new JsonArray(new JsonObject { ["name"] = "title", ["type"] = "text" }) },
             ["change_set_id"] = id,
         });
-        await agent.CallAsync("submit_change_set", new() { ["id"] = id });
+        if (submit)
+        {
+            await agent.CallAsync("submit_change_set", new() { ["id"] = id });
+        }
+
         return Guid.Parse(id);
     }
 

@@ -233,7 +233,8 @@ public sealed class EntityTools : IToolProvider
                 return Result.Success();
             }, cancellationToken),
             ProposedEntryWrite.Update,
-            cancellationToken);
+            cancellationToken,
+            id);
     }
 
     private static async Task<ToolResult> RelateAsync(ToolInvocation call, CancellationToken cancellationToken)
@@ -290,7 +291,8 @@ public sealed class EntityTools : IToolProvider
                 return Result.Success();
             }, cancellationToken),
             ProposedEntryWrite.Update,
-            cancellationToken);
+            cancellationToken,
+            id);
     }
 
     // Reads the entity at the version the agent read, changes its fields in a copy and writes the next version; a stale base version

@@ -55,6 +55,10 @@ public abstract class FluentCmsDbContext(DbContextOptions options) : IdentityDbC
 
     public DbSet<ModelCallRow> ModelCalls => Set<ModelCallRow>();
 
+    public DbSet<CheckRunRow> CheckRuns => Set<CheckRunRow>();
+
+    public DbSet<CheckResultRow> CheckResults => Set<CheckResultRow>();
+
     public DbSet<WebhookSubscriptionRow> WebhookSubscriptions => Set<WebhookSubscriptionRow>();
 
     protected override void OnModelCreating(ModelBuilder builder)
@@ -79,6 +83,8 @@ public abstract class FluentCmsDbContext(DbContextOptions options) : IdentityDbC
         builder.ApplyConfiguration(new CheckVersionConfiguration());
         builder.ApplyConfiguration(new JobConfiguration());
         builder.ApplyConfiguration(new ModelCallConfiguration());
+        builder.ApplyConfiguration(new CheckRunConfiguration());
+        builder.ApplyConfiguration(new CheckResultConfiguration());
         builder.ApplyConfiguration(new WebhookSubscriptionConfiguration());
 
         builder.Entity<FluentCmsUser>(user =>
