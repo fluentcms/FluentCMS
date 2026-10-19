@@ -25,10 +25,30 @@ public sealed class BulkEntryUpdates : IJobHandler
         return JsonSerializer.SerializeToElement(new Request(changeSetId, items), JsonSerializerOptions.Web);
     }
 
+    private static Request? Read(JsonElement payload)
+    {
+        try
+        {
+            return payload.ValueKind == JsonValueKind.Object
+                && payload.Deserialize<Request>(JsonSerializerOptions.Web) is { ChangeSetId: var id, Items: not null } request
+                && id != Guid.Empty
+                    ? request
+                    : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
     public async Task<Result> RunAsync(JobContext context, CancellationToken cancellationToken)
     {
-        var request = context.Job.Payload.Deserialize<Request>(JsonSerializerOptions.Web)
-            ?? throw new InvalidOperationException($"Job {context.Job.Id} has no bulk update in its payload.");
+        // Another attempt reads the same payload, so one this handler cannot read is a failure, not an exception to retry.
+        if (Read(context.Job.Payload) is not { } request)
+        {
+            return Result.Failure("payload_invalid", "A bulk update names its change set as changeSetId and its items as a list of id, baseVersion and fields.");
+        }
+
         var services = context.Services;
         var changeSets = services.GetRequiredService<IChangeSetDirectory>();
 
