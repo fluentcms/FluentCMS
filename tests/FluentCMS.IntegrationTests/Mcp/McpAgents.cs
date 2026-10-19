@@ -25,7 +25,7 @@ internal static class McpAgents
         "get_change_set_diff", "get_change_set_review", "get_content_type", "get_desk_counts", "get_entity_facts", "get_entity_relations",
         "get_entry", "get_entry_history", "get_resolved_entry", "get_schema_document", "get_where_used", "list_content_types",
         "list_desk_queue", "list_entries", "list_stale_facts", "list_unsourced_facts", "open_change_set", "relate_entities",
-        "reopen_change_set", "revise_content_type", "set_entity_fact", "submit_change_set", "update_entry",
+        "reopen_change_set", "revise_content_type", "search_entries", "set_entity_fact", "submit_change_set", "update_entry",
     ];
 
     public static async Task<string[]> ToolNamesAsync(McpClient client)

@@ -6,14 +6,21 @@ namespace FluentCMS.Core.Extensions;
 
 public static class ExtensionServiceCollectionExtensions
 {
-    public static IServiceCollection AddFluentCmsExtension<TContract, TImplementation>(this IServiceCollection services)
+    public static IServiceCollection AddFluentCmsExtension<TContract, TImplementation>(
+        this IServiceCollection services,
+        ServiceLifetime lifetime = ServiceLifetime.Singleton)
         where TContract : class
         where TImplementation : class, TContract
     {
-        return services.AddFluentCmsExtension(typeof(TContract), typeof(TImplementation));
+        return services.AddFluentCmsExtension(typeof(TContract), typeof(TImplementation), lifetime);
     }
 
-    public static IServiceCollection AddFluentCmsExtension(this IServiceCollection services, Type contract, Type implementation)
+    // Singleton unless the implementation needs a scope, such as one that reads the database through the request's context.
+    public static IServiceCollection AddFluentCmsExtension(
+        this IServiceCollection services,
+        Type contract,
+        Type implementation,
+        ServiceLifetime lifetime = ServiceLifetime.Singleton)
     {
         if (!IsExtensionPoint(contract))
         {
@@ -36,7 +43,7 @@ public static class ExtensionServiceCollectionExtensions
             return services;
         }
 
-        services.AddSingleton(contract, implementation);
+        services.Add(new ServiceDescriptor(contract, implementation, lifetime));
         services.AddSingleton(new ExtensionDescriptor(contract, implementation));
 
         return services;

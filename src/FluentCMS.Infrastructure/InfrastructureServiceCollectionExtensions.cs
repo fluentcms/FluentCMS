@@ -12,6 +12,7 @@ using FluentCMS.Core.Media;
 using FluentCMS.Core.Models;
 using FluentCMS.Core.Persistence;
 using FluentCMS.Core.Schema;
+using FluentCMS.Core.Search;
 using FluentCMS.Infrastructure.Agents;
 using FluentCMS.Infrastructure.Audit;
 using FluentCMS.Infrastructure.ChangeSets;
@@ -25,6 +26,7 @@ using FluentCMS.Infrastructure.Media;
 using FluentCMS.Infrastructure.Models;
 using FluentCMS.Infrastructure.Persistence;
 using FluentCMS.Infrastructure.Schema;
+using FluentCMS.Infrastructure.Search;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -40,7 +42,9 @@ public static class InfrastructureServiceCollectionExtensions
         services.Configure<DatabaseOptions>(configuration.GetSection(DatabaseOptions.SectionName));
         services.TryAddSingleton(TimeProvider.System);
 
-        AddDatabase(services, configuration.GetSection(DatabaseOptions.SectionName).Get<DatabaseOptions>() ?? new DatabaseOptions());
+        var database = configuration.GetSection(DatabaseOptions.SectionName).Get<DatabaseOptions>() ?? new DatabaseOptions();
+        AddDatabase(services, database);
+        AddSearch(services, configuration, database.ResolveProvider());
         AddIdentity(services);
         AddAudit(services);
         AddSchema(services);
@@ -72,6 +76,24 @@ public static class InfrastructureServiceCollectionExtensions
                 throw new InvalidOperationException(
                     $"Unknown database provider '{database.Provider}'. Use '{DatabaseProviders.Sqlite}' or '{DatabaseProviders.PostgreSql}'.");
         }
+    }
+
+    // The index of the configured provider, scoped because it writes through the request's context (ADR-0010).
+    private static void AddSearch(IServiceCollection services, IConfiguration configuration, string provider)
+    {
+        services.AddOptions<SearchOptions>().Bind(configuration.GetSection(SearchOptions.SectionName)).ValidateOnStart();
+        services.AddSingleton<IValidateOptions<SearchOptions>, SearchOptionsValidation>();
+
+        if (provider == DatabaseProviders.PostgreSql)
+        {
+            services.AddFluentCmsExtension<ISearchIndex, PostgreSqlSearchIndex>(ServiceLifetime.Scoped);
+        }
+        else
+        {
+            services.AddFluentCmsExtension<ISearchIndex, SqliteSearchIndex>(ServiceLifetime.Scoped);
+        }
+
+        services.AddScoped<ISearch, EntrySearch>();
     }
 
     // The log reads ICurrentInitiator, which each host registers for its own kind of caller.

@@ -4,6 +4,7 @@ using FluentCMS.Core.Schema;
 using FluentCMS.Core.Sites;
 using FluentCMS.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
@@ -70,6 +71,22 @@ internal sealed class ConnectedAgent(
         where TService : notnull
     {
         return host.AsUserAsync<TService, Core.Results.Result>(administrator, action);
+    }
+
+    // Runs as the agent, as a call over MCP would, for work a test drives without a tool.
+    public async Task<T> AsAgentAsync<T>(Func<IServiceProvider, Task<T>> action)
+    {
+        var accessor = host.App.Services.GetRequiredService<IHttpContextAccessor>();
+        await using var scope = host.App.Services.CreateAsyncScope();
+        accessor.HttpContext = new DefaultHttpContext { RequestServices = scope.ServiceProvider, User = AgentPrincipal.For(Credential, "test") };
+        try
+        {
+            return await action(scope.ServiceProvider);
+        }
+        finally
+        {
+            accessor.HttpContext = null;
+        }
     }
 
     public Task<ContentType> CreateAsPersonAsync(string slug)
