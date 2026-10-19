@@ -3,7 +3,9 @@
 @using FluentCMS.Admin.Components.Review
 @using FluentCMS.Core.Audit
 @using FluentCMS.Core.ChangeSets
+@using FluentCMS.Core.Desk
 @inject IChangeSetDirectory Directory
+@inject IDeskQueues Queues
 @inject IAuditReader Audit
 @inject NavigationManager Navigation
 @inject IStringLocalizer<ChangeSetView> L
@@ -12,6 +14,21 @@
 
 @if (_set is { } set)
 {
+    <nav class="mb-4 flex flex-wrap items-center gap-2" aria-label="@L["Review navigation"]" data-testid="review-navigation">
+        <a href="@BackHref" aria-keyshortcuts="B" class="@ButtonVariants.Classes("outline", "sm")" data-testid="back-to-queue">
+            @(_queue is { } queue ? L["Back to {0}", QueueTitle(queue)] : L["Back to the desk"])
+        </a>
+        @if (_next is { } next)
+        {
+            <a href="@($"sets/{next}?queue={Desk.Slugs[_queue!.Value]}")" aria-keyshortcuts="N" class="@ButtonVariants.Classes("outline", "sm")" data-testid="next-in-queue">@L["Next in queue"]</a>
+        }
+        <span class="ms-auto"><ShortcutHelp Shortcuts="Shortcuts" /></span>
+    </nav>
+    @if (DoneMessage is { } done)
+    {
+        <p role="status" class="mb-4 rounded-md border bg-muted/50 px-3 py-2 text-sm" data-testid="review-done">@done</p>
+    }
+
     <div class="grid gap-2" data-testid="change-set" data-state="@StateSlug(set.State)">
         <p class="text-sm text-muted-foreground">@L["Change set"] <bdi class="font-mono text-xs" dir="ltr">@set.Id</bdi></p>
         <h1 class="text-2xl font-semibold tracking-tight whitespace-pre-line">@set.Rationale</h1>
@@ -70,7 +87,7 @@
                     <form method="post" @onsubmit="ApproveAsync" @formname="approve">
                         <AntiforgeryToken />
                         <input type="hidden" name="Approve.Seen" value="@_seen" />
-                        <Button Type="submit" data-action="approve">@L["Approve"]</Button>
+                        <Button Type="submit" data-action="approve" aria-keyshortcuts="A">@L["Approve"] <Kbd Class="bg-primary-foreground/20 text-primary-foreground" aria-hidden="true">A</Kbd></Button>
                     </form>
                 }
                 @if (set.State == ChangeSetState.Approved)
@@ -78,13 +95,13 @@
                     <form method="post" @onsubmit="PublishAsync" @formname="publish">
                         <AntiforgeryToken />
                         <input type="hidden" name="Publish.Seen" value="@_seen" />
-                        <Button Type="submit" data-action="publish">@L["Publish"]</Button>
+                        <Button Type="submit" data-action="publish" aria-keyshortcuts="P">@L["Publish"] <Kbd Class="bg-primary-foreground/20 text-primary-foreground" aria-hidden="true">P</Kbd></Button>
                     </form>
                 }
                 @if (set.State is ChangeSetState.AwaitingReview or ChangeSetState.ChecksFailed)
                 {
                     <Dialog>
-                        <DialogTrigger Variant="outline" data-action="reject">@L["Reject"]</DialogTrigger>
+                        <DialogTrigger Variant="outline" data-action="reject" aria-keyshortcuts="R">@L["Reject"] <Kbd aria-hidden="true">R</Kbd></DialogTrigger>
                         <DialogContent Class="text-start whitespace-normal">
                             <DialogHeader>
                                 <DialogTitle>@L["Reject this change set?"]</DialogTitle>
@@ -224,20 +241,6 @@
 @code {
     private const int HistoryLimit = 200;
 
-    // The events the directory appends when it opens a set and on each move; refusals and other events about the set are history too.
-    private static readonly HashSet<string> Moves =
-    [
-        "change_set.opened",
-        "change_set.reopened",
-        "change_set.submitted",
-        "change_set.checks_failed",
-        "change_set.awaiting_review",
-        "change_set.approved",
-        "change_set.published",
-        "change_set.rejected",
-        "change_set.reverted",
-    ];
-
     private ChangeSet? _set;
     private List<AuditEvent> _history = [];
     private bool _historyTruncated;
@@ -248,6 +251,17 @@
     private string? _refusal;
 
     [Parameter] public Guid Id { get; set; }
+
+    // The queue the set was opened from, so the reviewer can move on through it (DSK-04).
+    [SupplyParameterFromQuery(Name = "queue")]
+    private string? QueueSlug { get; set; }
+
+    // What the page did to the set before this one in the queue.
+    [SupplyParameterFromQuery(Name = "done")]
+    private string? Done { get; set; }
+
+    private DeskQueue? _queue;
+    private Guid? _next;
 
     [SupplyParameterFromForm(FormName = "approve")]
     private ReviewForm? Approve { get; set; }
@@ -263,10 +277,63 @@
 
     protected override async Task OnInitializedAsync()
     {
+        _queue = Desk.Slugs
+            .Where(pair => pair.Value == QueueSlug && pair.Key != DeskQueue.StaleFacts)
+            .Select(pair => (DeskQueue?)pair.Key)
+            .FirstOrDefault();
         if (!await LoadAsync())
         {
             Navigation.NotFound();
         }
+    }
+
+    private string BackHref => _queue is { } queue ? $"?queue={Desk.Slugs[queue]}" : "";
+
+    private string? DoneMessage => Done switch
+    {
+        "approved" => L["The previous set was approved."].Value,
+        "rejected" => L["The previous set was rejected."].Value,
+        _ => null,
+    };
+
+    private IReadOnlyList<KeyboardShortcut> Shortcuts =>
+    [
+        new(["J", "K"], L["Move to the next or previous item"]),
+        new(["Enter"], L["Fold or unfold the item that has focus"]),
+        new(["A"], L["Approve the set and move to the next one"]),
+        new(["R"], L["Reject the set with a reason"]),
+        new(["P"], L["Publish an approved set"]),
+        new(["N"], L["Open the next set in the queue"]),
+        new(["B"], L["Go back to the queue"]),
+        new(["?"], L["Show these shortcuts"]),
+    ];
+
+    private string QueueTitle(DeskQueue queue) => queue switch
+    {
+        DeskQueue.AwaitingMe => L["awaiting me"],
+        DeskQueue.AwaitingAnyone => L["awaiting anyone"],
+        DeskQueue.ChecksFailed => L["checks failed"],
+        DeskQueue.RecentlyPublished => L["recently published"],
+        _ => L["reverted"],
+    };
+
+    // The set after this one in the queue's first page, or its first set once this one has left the queue.
+    private async Task<Guid?> NextAsync()
+    {
+        if (_queue is not { } queue)
+        {
+            return null;
+        }
+
+        var listed = await Queues.ListChangeSetsAsync(queue, 0, ChangeSetListQuery.MaxLimit);
+        if (!listed.IsSuccess)
+        {
+            return null;
+        }
+
+        var ids = listed.Value.Items.Select(item => (Guid?)item.Id).ToList();
+        var position = ids.IndexOf(Id);
+        return position >= 0 ? ids.ElementAtOrDefault(position + 1) : ids.FirstOrDefault();
     }
 
     private async Task<bool> LoadAsync()
@@ -290,9 +357,9 @@
         {
             await foreach (var auditEvent in history.Value)
             {
-                if (Moves.Contains(auditEvent.Operation))
+                if (ChangeSetMoves.Operations.Contains(auditEvent.Operation))
                 {
-                    opened ??= auditEvent.Operation == "change_set.opened" ? auditEvent : null;
+                    opened ??= auditEvent.Operation == ChangeSetMoves.Opened ? auditEvent : null;
                     lastMove = auditEvent;
                 }
 
@@ -310,12 +377,16 @@
         _openedAt = opened?.Timestamp;
         _stateSince = lastMove?.Timestamp;
         _seen = lastMove?.Id.ToString("N");
+        _next = await NextAsync();
         return true;
     }
 
-    private Task ApproveAsync()
+    private async Task ApproveAsync()
     {
-        return ActAsync(Approve, () => Directory.TransitionAsync(Id, ChangeSetState.Approved), L["Approved. Publish the set to make its items live."]);
+        if (await ActAsync(Approve, () => Directory.TransitionAsync(Id, ChangeSetState.Approved), L["Approved. Publish the set to make its items live."]) is not null)
+        {
+            MoveOn("approved");
+        }
     }
 
     private Task PublishAsync()
@@ -323,9 +394,24 @@
         return ActAsync(Publish, () => Directory.PublishAsync(Id), L["Published. Its items are live."]);
     }
 
-    private Task RejectAsync()
+    private async Task RejectAsync()
     {
-        return ActAsync(Reject, () => Directory.RejectAsync(Id, Reject?.Reason ?? string.Empty), L["Rejected. The reason is stored with the set."]);
+        if (await ActAsync(Reject, () => Directory.RejectAsync(Id, Reject?.Reason ?? string.Empty), L["Rejected. The reason is stored with the set."]) is not null)
+        {
+            MoveOn("rejected");
+        }
+    }
+
+    // Reviewing from a queue goes straight on to its next set, or back to the queue once it is empty; the decision is saved either way.
+    private void MoveOn(string done)
+    {
+        if (_queue is not { } queue)
+        {
+            return;
+        }
+
+        var slug = Desk.Slugs[queue];
+        Navigation.NavigateTo(_next is { } next ? $"sets/{next}?queue={slug}&done={done}" : $"?queue={slug}&done={done}");
     }
 
     private async Task RevertAsync()

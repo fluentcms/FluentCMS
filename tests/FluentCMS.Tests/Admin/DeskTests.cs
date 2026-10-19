@@ -46,7 +46,7 @@ public sealed class DeskTests
         Assert.Equal(queues.Agent.Id.ToString("N"), rows[0].GetAttribute("data-change-set"));
         var link = rows[0].QuerySelector("a")!;
         Assert.Equal("Sync prices from the catalog export.", link.TextContent);
-        Assert.Equal($"sets/{queues.Agent.Id}", link.GetAttribute("href"));
+        Assert.Equal($"sets/{queues.Agent.Id}?queue=awaiting-me", link.GetAttribute("href"));
         Assert.Equal("agent", rows[0].QuerySelector("[data-initiator]")!.GetAttribute("data-initiator"));
         Assert.Contains("catalog-sync", rows[0].TextContent);
         Assert.Contains("12", rows[0].QuerySelectorAll("td")[2].TextContent);
@@ -57,6 +57,35 @@ public sealed class DeskTests
         Assert.Equal("user", rows[1].QuerySelector("[data-initiator]")!.GetAttribute("data-initiator"));
         Assert.Equal(queues.Agent.Id.ToString("N"), rows[1].QuerySelector("[data-reverts]")!.GetAttribute("data-reverts"));
         Assert.Equal([(DeskQueue.AwaitingMe, 0, DeskPage.PageSize)], queues.SetPages);
+    }
+
+    [Fact]
+    public void Rows_rove_with_only_the_first_in_the_tab_order_and_queues_have_number_keys()
+    {
+        using var context = Context(new FakeQueues());
+
+        var cut = context.Render<DeskPage>();
+
+        Assert.Equal("rove", cut.Find("tbody").GetAttribute("data-ui"));
+        var links = cut.FindAll("tbody [data-ui=rove-item]");
+        Assert.Equal(2, links.Count);
+        Assert.Equal([null, "-1"], links.Select(link => link.GetAttribute("tabindex")));
+        Assert.Equal(["1", "2", "3", "4", "5", "6"], cut.FindAll("[data-queue]").Select(link => link.GetAttribute("aria-keyshortcuts")));
+        Assert.Equal("?", cut.Find("[data-testid=shortcut-help]").GetAttribute("aria-keyshortcuts"));
+        Assert.Equal(5, cut.FindAll("[data-testid=shortcut-list] dt").Count);
+    }
+
+    [Theory]
+    [InlineData("approved", "The set was approved. This queue has nothing more to review.")]
+    [InlineData("rejected", "The set was rejected. This queue has nothing more to review.")]
+    public void Says_what_the_set_view_did_when_it_comes_back_to_an_empty_queue(string done, string message)
+    {
+        using var context = Context(new FakeQueues());
+        context.Services.GetRequiredService<NavigationManager>().NavigateTo($"/?queue=awaiting-me&done={done}");
+
+        var cut = context.Render<DeskPage>();
+
+        Assert.Equal(message, cut.Find("[data-testid=desk-done]").TextContent);
     }
 
     [Fact]
@@ -223,6 +252,8 @@ public sealed class DeskTests
             };
             return Task.FromResult(Result<IReadOnlyDictionary<DeskQueue, int>>.Success(counts));
         }
+
+        public Task<Result<int>> CountAsync(DeskQueue queue, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
         public Task<Result<ChangeSetList>> ListChangeSetsAsync(DeskQueue queue, int offset, int limit, CancellationToken cancellationToken = default)
         {

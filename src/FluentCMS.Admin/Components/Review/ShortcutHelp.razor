@@ -1,0 +1,33 @@
+@inject IStringLocalizer<ShortcutHelp> L
+
+@* The keys of the page, listed in a dialog that ? opens; the keys themselves are declared where they act, with aria-keyshortcuts. *@
+<Dialog>
+    <DialogTrigger Variant="ghost" Size="sm" aria-keyshortcuts="?" data-testid="shortcut-help">
+        @L["Keyboard shortcuts"] <Kbd>?</Kbd>
+    </DialogTrigger>
+    <DialogContent Class="text-start whitespace-normal">
+        <DialogHeader>
+            <DialogTitle>@L["Keyboard shortcuts"]</DialogTitle>
+            <DialogDescription>@L["Keys work anywhere on the page except while you type in a field."]</DialogDescription>
+        </DialogHeader>
+        <dl class="grid grid-cols-[max-content_1fr] items-center gap-x-4 gap-y-2 text-sm" data-testid="shortcut-list">
+            @foreach (var shortcut in Shortcuts)
+            {
+                <dt class="flex gap-1">
+                    @foreach (var key in shortcut.Keys)
+                    {
+                        <Kbd>@key</Kbd>
+                    }
+                </dt>
+                <dd>@shortcut.Description</dd>
+            }
+        </dl>
+        <DialogFooter>
+            <DialogClose>@L["Close"]</DialogClose>
+        </DialogFooter>
+    </DialogContent>
+</Dialog>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<KeyboardShortcut> Shortcuts { get; set; } = [];
+}

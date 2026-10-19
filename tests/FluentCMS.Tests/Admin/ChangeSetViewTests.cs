@@ -3,6 +3,8 @@ using FluentCMS.Admin.Components.Pages;
 using FluentCMS.Admin.Components.Review;
 using FluentCMS.Core.Audit;
 using FluentCMS.Core.ChangeSets;
+using FluentCMS.Core.Desk;
+using FluentCMS.Core.Entities;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Results;
 using Microsoft.AspNetCore.Components;
@@ -135,6 +137,39 @@ public sealed class ChangeSetViewTests
     }
 
     [Fact]
+    public void The_actions_have_their_keys_and_a_set_opened_from_a_queue_links_back_and_to_the_next_set()
+    {
+        var sets = new FakeSets();
+        using var context = Context(sets);
+        context.Services.GetRequiredService<NavigationManager>().NavigateTo($"/sets/{sets.Set.Id}?queue=awaiting-anyone&done=approved");
+        var next = ((QueueAfter)context.Services.GetRequiredService<IDeskQueues>()).Next;
+
+        var cut = context.Render<ChangeSetView>(page => page.Add(p => p.Id, sets.Set.Id));
+
+        Assert.Equal("A", cut.Find("[data-action=approve]").GetAttribute("aria-keyshortcuts"));
+        Assert.Equal("R", cut.Find("[data-action=reject]").GetAttribute("aria-keyshortcuts"));
+        Assert.Equal("?queue=awaiting-anyone", cut.Find("[data-testid=back-to-queue]").GetAttribute("href"));
+        Assert.Equal("B", cut.Find("[data-testid=back-to-queue]").GetAttribute("aria-keyshortcuts"));
+        Assert.Equal($"sets/{next}?queue=awaiting-anyone", cut.Find("[data-testid=next-in-queue]").GetAttribute("href"));
+        Assert.Equal("N", cut.Find("[data-testid=next-in-queue]").GetAttribute("aria-keyshortcuts"));
+        Assert.Equal("The previous set was approved.", cut.Find("[data-testid=review-done]").TextContent);
+        Assert.Equal(8, cut.FindAll("[data-testid=shortcut-list] dt").Count);
+    }
+
+    [Fact]
+    public void A_set_opened_without_a_queue_links_back_to_the_desk_and_has_no_next()
+    {
+        var sets = new FakeSets();
+        using var context = Context(sets);
+
+        var cut = context.Render<ChangeSetView>(page => page.Add(p => p.Id, sets.Set.Id));
+
+        Assert.Equal("", cut.Find("[data-testid=back-to-queue]").GetAttribute("href"));
+        Assert.Empty(cut.FindAll("[data-testid=next-in-queue]"));
+        Assert.Empty(cut.FindAll("[data-testid=review-done]"));
+    }
+
+    [Fact]
     public void A_rejection_asks_for_its_reason_in_a_dialog()
     {
         var sets = new FakeSets();
@@ -168,6 +203,12 @@ public sealed class ChangeSetViewTests
 
         Assert.Equal(2, cut.FindAll("[data-slot=diff-view-item]").Count);
         Assert.Equal([sets.Set.Id], sets.Diffed);
+        Assert.Equal("rove", cut.Find("ol").GetAttribute("data-ui"));
+        Assert.Equal("false", cut.Find("[data-testid=change-set-items]").GetAttribute("data-interactive"));
+
+        context.Renderer.SetRendererInfo(new RendererInfo("Server", isInteractive: true));
+        var live = context.Render<ChangeSetItems>(items => items.Add(p => p.ChangeSetId, sets.Set.Id));
+        Assert.Equal("true", live.Find("[data-testid=change-set-items]").GetAttribute("data-interactive"));
     }
 
     [Fact]
@@ -198,6 +239,8 @@ public sealed class ChangeSetViewTests
         var context = new AdminTestContext();
         context.Services.AddSingleton<IChangeSetDirectory>(sets);
         context.Services.AddSingleton<IAuditReader>(new FakeHistory(sets));
+        context.Services.AddSingleton<IDeskQueues>(new QueueAfter(sets));
+        context.Renderer.SetRendererInfo(new RendererInfo("Static", isInteractive: false));
         return context;
     }
 
@@ -268,6 +311,24 @@ public sealed class ChangeSetViewTests
         public Task<Result<ChangeSet>> RevertAsync(Guid changeSetId, string rationale, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
         public Task<Result<ChangeSet>> RejectAsync(Guid changeSetId, string reason, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    }
+
+    // A queue holding the set and one more after it.
+    private sealed class QueueAfter(FakeSets sets) : IDeskQueues
+    {
+        public Guid Next { get; } = Guid.NewGuid();
+
+        public Task<Result<IReadOnlyDictionary<DeskQueue, int>>> CountAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<Result<int>> CountAsync(DeskQueue queue, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<Result<ChangeSetList>> ListChangeSetsAsync(DeskQueue queue, int offset, int limit, CancellationToken cancellationToken = default)
+        {
+            var current = new ChangeSetSummary(sets.Set.Id, "This set.", sets.Set.Initiator, ChangeSetState.AwaitingReview, 2, null, Opened, Opened);
+            return Task.FromResult(Result<ChangeSetList>.Success(new ChangeSetList([current, current with { Id = Next }], 2)));
+        }
+
+        public Task<Result<StaleFactList>> ListStaleFactsAsync(int offset, int limit, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 
     private sealed class FakeHistory(FakeSets sets) : IAuditReader

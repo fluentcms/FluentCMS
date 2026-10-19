@@ -68,6 +68,7 @@ public static class FluentCmsHost
         MapStaticAssets(app);
         app.MapHealthChecks("/health");
         app.MapFluentCmsMcp();
+        app.MapFluentCmsApi();
         app.MapExternalSignIn();
         app.MapAuditExport();
 
