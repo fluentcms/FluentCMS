@@ -41,7 +41,8 @@ public sealed class DeskTools : IToolProvider
             "List a review desk queue",
             "Lists one queue of the review desk, holding only the change sets this agent opened: awaiting_review and checks_failed "
             + "put the set that has waited longest first; recently_published and reverted cover the last seven days, newest first; "
-            + "stale_facts lists every stale fact, the longest stale first. Read a set with get_change_set or get_change_set_review.",
+            + "stale_facts lists the stale facts of the types this agent may read, the longest stale first. Read a set with "
+            + "get_change_set or get_change_set_review.",
             ToolSchemas.Object(
                 new ToolArgument(
                     "queue",

@@ -109,31 +109,37 @@ public sealed class DeskToolsTests
         var clock = new ManualClock(DateTimeOffset.UtcNow);
         await using var agent = await ConnectedAgent.StartAsync(provider, configure: builder => builder.Services.AddSingleton<TimeProvider>(clock));
         var old = await PublishAsync(agent, await SubmitAsync(agent, "region"));
+        var oldRevert = await RevertAsync(agent, await PublishAsync(agent, await SubmitAsync(agent, "warehouse")));
         clock.Now = clock.Now.AddDays(8);
         var first = await PublishAsync(agent, await SubmitAsync(agent, "product"));
         clock.Now = clock.Now.AddMinutes(1);
-        var wrong = await PublishAsync(agent, await SubmitAsync(agent, "category"));
+        var wrong = await RevertAsync(agent, await PublishAsync(agent, await SubmitAsync(agent, "category")));
         clock.Now = clock.Now.AddMinutes(1);
-        var revert = await agent.AsPersonAsync<IChangeSetDirectory, ChangeSet>(directory => directory.RevertAsync(wrong, "The category type was a mistake."));
-        await MoveAsync(agent, revert.Id, ChangeSetState.ChecksRunning);
-        await MoveAsync(agent, revert.Id, ChangeSetState.AwaitingReview);
-        await PublishAsync(agent, revert.Id);
+        var alsoWrong = await RevertAsync(agent, await PublishAsync(agent, await SubmitAsync(agent, "colour")));
         clock.Now = clock.Now.AddMinutes(1);
         var second = await PublishAsync(agent, await SubmitAsync(agent, "brand"));
+        var failedFirst = await FailedAsync(agent, "size");
+        clock.Now = clock.Now.AddMinutes(1);
+        var failedLater = await FailedAsync(agent, "shape");
         var stale = await StaleFactsAsync(agent, 3);
         var events = await agent.QueryAsync(context => Task.FromResult(context.AuditEvents.Count()));
 
         var counts = await agent.CallAsync("get_desk_counts", []);
         var published = await agent.CallAsync("list_desk_queue", new() { ["queue"] = "recently_published" });
         var reverted = await agent.CallAsync("list_desk_queue", new() { ["queue"] = "reverted" });
+        var failed = await agent.CallAsync("list_desk_queue", new() { ["queue"] = "checks_failed" });
         var staleFirst = await agent.CallAsync("list_desk_queue", new() { ["queue"] = "stale_facts", ["limit"] = 2 });
         var staleSecond = await agent.CallAsync("list_desk_queue", new() { ["queue"] = "stale_facts", ["limit"] = 2, ["page"] = 2 });
         await agent.CallAsync("get_change_set_review", new() { ["id"] = wrong.ToString() });
 
-        Assert.Equal((2, 1, 3), ((int)counts["counts"]!["recently_published"]!, (int)counts["counts"]!["reverted"]!, (int)counts["counts"]!["stale_facts"]!));
+        Assert.Equal(
+            (2, 2, 2, 3),
+            ((int)counts["counts"]!["recently_published"]!, (int)counts["counts"]!["reverted"]!, (int)counts["counts"]!["checks_failed"]!, (int)counts["counts"]!["stale_facts"]!));
         Assert.Equal([second.ToString(), first.ToString()], Ids(published));
         Assert.DoesNotContain(old.ToString(), Ids(published));
-        Assert.Equal([wrong.ToString()], Ids(reverted));
+        Assert.Equal([alsoWrong.ToString(), wrong.ToString()], Ids(reverted));
+        Assert.DoesNotContain(oldRevert.ToString(), Ids(reverted));
+        Assert.Equal([failedFirst.ToString(), failedLater.ToString()], Ids(failed));
         Assert.Equal((3, 3), ((int)staleFirst["total"]!, (int)staleSecond["total"]!));
         Assert.Equal(
             stale,
@@ -195,6 +201,24 @@ public sealed class DeskToolsTests
         }
 
         return Guid.Parse(id);
+    }
+
+    // A person reverts the published set and publishes the revert, which moves the set to reverted.
+    private static async Task<Guid> RevertAsync(ConnectedAgent agent, Guid id)
+    {
+        var revert = await agent.AsPersonAsync<IChangeSetDirectory, ChangeSet>(directory => directory.RevertAsync(id, "It was a mistake."));
+        await MoveAsync(agent, revert.Id, ChangeSetState.ChecksRunning);
+        await MoveAsync(agent, revert.Id, ChangeSetState.AwaitingReview);
+        await PublishAsync(agent, revert.Id);
+        return id;
+    }
+
+    private static async Task<Guid> FailedAsync(ConnectedAgent agent, string slug)
+    {
+        var id = await SubmitAsync(agent, slug, submit: false);
+        await MoveAsync(agent, id, ChangeSetState.ChecksRunning);
+        await MoveAsync(agent, id, ChangeSetState.ChecksFailed);
+        return id;
     }
 
     // A person approves and publishes the set, as a reviewer would.
