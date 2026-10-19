@@ -12,7 +12,7 @@ public interface IWhereUsed
     // References to one field of an entity, such as product.price.
     Task<Result<IReadOnlyList<EntryUsage>>> ForEntityFieldAsync(Guid entityId, string field, CancellationToken cancellationToken = default);
 
-    // Assets are not checked to exist until the media library does (F-MED).
+    // An asset the library does not hold has no uses, so it lists none.
     Task<IReadOnlyList<EntryUsage>> ForMediaAsync(Guid assetId, CancellationToken cancellationToken = default);
 }
 
