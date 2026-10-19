@@ -311,64 +311,6 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
                         });
                 });
 
-            modelBuilder.Entity("FluentCMS.Infrastructure.Checks.CheckRow", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid");
-
-                    b.Property<int?>("ActiveVersion")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<Guid>("SiteId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("Version")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SiteId", "Name")
-                        .IsUnique();
-
-                    b.ToTable("Checks", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_Checks_ActiveVersion", "\"ActiveVersion\" IS NULL OR (\"ActiveVersion\" >= 1 AND \"ActiveVersion\" <= \"Version\")");
-
-                            t.HasCheckConstraint("CK_Checks_Version", "\"Version\" >= 1");
-                        });
-                });
-
-            modelBuilder.Entity("FluentCMS.Infrastructure.Checks.CheckVersionRow", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("CheckId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Definition")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
-
-                    b.Property<int>("Version")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CheckId", "Version")
-                        .IsUnique();
-
-                    b.ToTable("CheckVersions", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_CheckVersions_Version", "\"Version\" >= 1");
-                        });
-                });
-
             modelBuilder.Entity("FluentCMS.Infrastructure.Content.EntryReferenceRow", b =>
                 {
                     b.Property<Guid>("Id")
@@ -429,6 +371,11 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
                     b.Property<Guid>("SiteId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ContentTypeId");
@@ -440,6 +387,8 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
                             t.HasCheckConstraint("CK_Entries_LatestVersion", "\"LatestVersion\" >= 1");
 
                             t.HasCheckConstraint("CK_Entries_PublishedVersion", "\"PublishedVersion\" IS NULL OR (\"PublishedVersion\" >= 1 AND \"PublishedVersion\" <= \"LatestVersion\")");
+
+                            t.HasCheckConstraint("CK_Entries_State", "\"State\" IN ('Draft', 'Published', 'Reverted', 'Archived')");
                         });
                 });
 
@@ -795,24 +744,6 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
                     b.HasOne("FluentCMS.Infrastructure.Sites.SiteRow", null)
                         .WithMany()
                         .HasForeignKey("SiteId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("FluentCMS.Infrastructure.Checks.CheckRow", b =>
-                {
-                    b.HasOne("FluentCMS.Infrastructure.Sites.SiteRow", null)
-                        .WithMany()
-                        .HasForeignKey("SiteId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("FluentCMS.Infrastructure.Checks.CheckVersionRow", b =>
-                {
-                    b.HasOne("FluentCMS.Infrastructure.Checks.CheckRow", null)
-                        .WithMany()
-                        .HasForeignKey("CheckId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
