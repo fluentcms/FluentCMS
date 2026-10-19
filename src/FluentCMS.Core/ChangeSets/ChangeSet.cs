@@ -61,6 +61,14 @@ public sealed class ChangeSet
             errors.Add(new Error(ChangeSetErrorCodes.SiteMissing, "A change set belongs to a site, and the site id is empty."));
         }
 
+        // A set always has a person or an agent behind it (CHG-01); the product's own engines move sets, never open them (ADR-0012).
+        if (initiator is SystemInitiator system)
+        {
+            errors.Add(new Error(
+                ChangeSetErrorCodes.InitiatorNotAllowed,
+                $"A change set is opened by a person or an agent, and '{system.Component}' is part of the product."));
+        }
+
         if (trimmedRationale.Length == 0)
         {
             errors.Add(new Error(ChangeSetErrorCodes.RationaleMissing, "A change set needs a rationale that says why the changes are made."));
