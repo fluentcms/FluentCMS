@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Core.Agents;
 using FluentCMS.Core.Audit;
+using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Checks;
 using FluentCMS.Core.Extensions;
 using FluentCMS.Core.Identity;
@@ -76,6 +77,35 @@ public sealed class SystemInitiatorTests
         Assert.Equal(CheckErrorCodes.PeopleOnly, Assert.Single(activate.Errors).Code);
         Assert.Equal(AgentCredentialErrorCodes.PeopleOnly, Assert.Single(issue.Errors).Code);
         Assert.Equal(UserErrorCodes.PeopleOnly, Assert.Single(user.Errors).Code);
+    }
+
+    // An engine is refused the other moves only people make: grouping an operation into a session's set, disabling and enabling a
+    // user, revoking a credential and deactivating a check. Each refusal comes before anything is read, so no item needs to exist.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task An_engine_cannot_group_a_session_manage_users_revoke_a_credential_or_deactivate_a_check(string provider)
+    {
+        await using var scenario = await CheckScenario.CreateAsync(provider);
+        await scenario.CreateAsync("no-superlatives", CheckScenario.NoSuperlatives());
+        scenario.Initiator = SystemInitiator.Checks;
+        await using var scope = scenario.Services.CreateAsyncScope();
+        var services = scope.ServiceProvider;
+
+        var grouped = await services.GetRequiredService<IChangeSetDirectory>().AddToSessionAsync(
+            "tidy-up",
+            new NewChangeSet("Tidy up.", []),
+            ChangeOperation.Create(OperationKind.Create, ItemKind.Entry, Guid.NewGuid(), null, 1).Value);
+        var disabled = await services.GetRequiredService<IUserDirectory>().DisableAsync(Guid.NewGuid());
+        var enabled = await services.GetRequiredService<IUserDirectory>().EnableAsync(Guid.NewGuid());
+        var revoked = await services.GetRequiredService<IAgentCredentialDirectory>().RevokeAsync(Guid.NewGuid());
+        var deactivated = await scenario.RunAsync(directory => directory.DeactivateAsync("no-superlatives"));
+
+        Assert.Equal(ChangeSetErrorCodes.InitiatorNotAllowed, Assert.Single(grouped.Errors).Code);
+        Assert.Equal(UserErrorCodes.PeopleOnly, Assert.Single(disabled.Errors).Code);
+        Assert.Equal(UserErrorCodes.PeopleOnly, Assert.Single(enabled.Errors).Code);
+        Assert.Equal(AgentCredentialErrorCodes.PeopleOnly, Assert.Single(revoked.Errors).Code);
+        Assert.Equal(CheckErrorCodes.PeopleOnly, Assert.Single(deactivated.Errors).Code);
     }
 
     // AUD-04: the retention purge runs as the retention engine, and no other engine may purge.
@@ -165,6 +195,37 @@ public sealed class SystemInitiatorTests
         Assert.Equal("checks", Assert.IsType<SystemInitiator>(read.Initiator).Component);
         Assert.Throws<InvalidOperationException>(() => InitiatorKinds.RestoreSystem("checks", SystemInitiator.Retention.Id));
         Assert.Throws<InvalidOperationException>(() => InitiatorKinds.RestoreSystem("Not A Component", Guid.NewGuid()));
+
+        // Read back through the log, a row whose id is not its component's is a fault, not an engine.
+        await QueryAsync(scenario, context => context.AuditEvents
+            .Where(row => row.Operation == "checks.renamed")
+            .ExecuteUpdateAsync(row => row.SetProperty(stored => stored.InitiatorId, SystemInitiator.Retention.Id)));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => scenario.ReadAsync(new AuditQuery { Subject = Set }));
+    }
+
+    // A job row whose engine id is not its component's is refused when it is read, as an audit row is.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_job_stored_with_another_engine_s_id_is_refused_when_it_is_read(string provider)
+    {
+        await using var scenario = await CheckScenario.CreateAsync(provider);
+        scenario.Initiator = SystemInitiator.Retention;
+        await using var scope = scenario.Services.CreateAsyncScope();
+        var services = scope.ServiceProvider;
+        Job enqueued;
+        await using (var work = await services.GetRequiredService<IUnitOfWork>().BeginAsync())
+        {
+            enqueued = await services.GetRequiredService<IJobQueue>().EnqueueAsync(new NewJob("retention.purge", JsonDocument.Parse("{}").RootElement.Clone()));
+            await work.CommitAsync();
+        }
+
+        await scenario.QueryAsync(context => context.Jobs
+            .Where(row => row.Id == enqueued.Id)
+            .ExecuteUpdateAsync(row => row.SetProperty(stored => stored.InitiatorId, SystemInitiator.Checks.Id)));
+
+        await using var reading = scenario.Services.CreateAsyncScope();
+        await Assert.ThrowsAsync<InvalidOperationException>(() => reading.ServiceProvider.GetRequiredService<IJobQueue>().GetAsync(enqueued.Id));
     }
 
     private static async Task<T> QueryAsync<T>(AuditScenario scenario, Func<FluentCmsDbContext, Task<T>> query)
