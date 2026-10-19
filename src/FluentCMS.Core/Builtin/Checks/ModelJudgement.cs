@@ -1,3 +1,4 @@
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using FluentCMS.Core.Checks;
 using FluentCMS.Core.Models;
@@ -14,6 +15,12 @@ internal static class ModelJudgement
     public const string Profile = "checks";
 
     private const int MaxExcerptLength = 500;
+
+    // An answer is one small object; a duplicate key could hide a second verdict behind the first.
+    private static readonly JsonDocumentOptions AnswerOptions = new() { AllowDuplicateProperties = false, MaxDepth = 16 };
+
+    // The model reads the content as written, not as \u escapes, which would hide non-Latin text and cost more tokens.
+    private static readonly JsonSerializerOptions FieldsOptions = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
     private static readonly JsonElement AnswerSchema = JsonSerializer.Deserialize<JsonElement>("""
         {
@@ -60,7 +67,8 @@ internal static class ModelJudgement
                 $"No model is configured for LLM-judged checks, so a person reviews what the '{checkType}' check would have judged.");
         }
 
-        var data = new List<ModelData> { new("fields", input.Subject.Fields.ValueKind == JsonValueKind.Undefined ? "{}" : input.Subject.Fields.GetRawText()) };
+        var fields = input.Subject.Fields.ValueKind == JsonValueKind.Undefined ? "{}" : JsonSerializer.Serialize(input.Subject.Fields, FieldsOptions);
+        var data = new List<ModelData> { new("fields", fields) };
         data.AddRange(settings);
 
         var asked = await gateway.AskAsync(
@@ -81,27 +89,30 @@ internal static class ModelJudgement
         JsonElement root;
         try
         {
-            using var document = JsonDocument.Parse(Unfenced(text));
+            using var document = JsonDocument.Parse(Unfenced(text), AnswerOptions);
             root = document.RootElement.Clone();
         }
-        catch (JsonException)
+        catch (Exception exception) when (exception is JsonException or ArgumentException)
         {
             return Unreadable(checkType);
         }
 
+        // Only the shape that was asked for counts, so an answer that says two things at once is read as neither.
         if (root.ValueKind != JsonValueKind.Object
+            || root.EnumerateObject().Any(property => property.Name is not ("verdict" or "findings"))
             || !root.TryGetProperty("verdict", out var verdict)
-            || verdict.ValueKind != JsonValueKind.String)
+            || !root.TryGetProperty("findings", out var listed)
+            || listed.ValueKind != JsonValueKind.Array)
         {
             return Unreadable(checkType);
         }
 
-        switch (verdict.GetString())
+        switch (verdict.ValueKind == JsonValueKind.String ? verdict.GetString() : null)
         {
-            case "pass":
+            case "pass" when listed.GetArrayLength() == 0:
                 return CheckOutcome.Pass();
             case "fail":
-                var findings = Findings(root, subject).ToList();
+                var findings = Findings(listed, subject).ToList();
                 return findings.Count > 0
                     ? CheckOutcome.Fail(findings)
                     : CheckOutcome.NeedsReview($"The model failed the '{checkType}' check without saying what to change, so a person reviews it.");
@@ -112,13 +123,8 @@ internal static class ModelJudgement
 
     // A pointer the content does not have, or an excerpt it does not hold, is dropped rather than shown, so a finding never
     // points at text the model made up.
-    private static IEnumerable<CheckFinding> Findings(JsonElement root, CheckSubject subject)
+    private static IEnumerable<CheckFinding> Findings(JsonElement findings, CheckSubject subject)
     {
-        if (!root.TryGetProperty("findings", out var findings) || findings.ValueKind != JsonValueKind.Array)
-        {
-            yield break;
-        }
-
         var strings = CheckContent.Strings(subject).ToList();
         foreach (var finding in findings.EnumerateArray().Where(item => item.ValueKind == JsonValueKind.Object))
         {
@@ -139,17 +145,18 @@ internal static class ModelJudgement
         }
     }
 
-    // Models often wrap JSON in a Markdown code fence even when asked for JSON alone.
+    // Models often wrap JSON in a Markdown code fence even when asked for JSON alone. Only a fence around the whole answer is taken
+    // off; anything said after it leaves the answer as it is, which then does not read as JSON.
     private static string Unfenced(string text)
     {
         var trimmed = text.Trim();
-        if (!trimmed.StartsWith("```", StringComparison.Ordinal))
+        if (!trimmed.StartsWith("```", StringComparison.Ordinal) || !trimmed.EndsWith("```", StringComparison.Ordinal))
         {
             return trimmed;
         }
 
         var start = trimmed.IndexOf('\n');
-        var end = trimmed.LastIndexOf("```", StringComparison.Ordinal);
+        var end = trimmed.Length - 3;
         return start > 0 && end > start ? trimmed[(start + 1)..end] : trimmed;
     }
 
