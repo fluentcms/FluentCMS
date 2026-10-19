@@ -240,7 +240,8 @@ public sealed class EntityTools : IToolProvider
 
                 var fact = fields[field!] as JsonObject ?? EmptyFact();
                 var related = relatedId!.Value.ToString();
-                if (relation.Type == "list")
+                // A value that is already an array holds several references, whatever field type stores them.
+                if (relation.Type == "list" || fact[FactMetadata.Value] is JsonArray)
                 {
                     var list = fact[FactMetadata.Value] as JsonArray ?? [];
                     if (!list.Any(item => item?.GetValue<string>() is { } existing && Guid.TryParse(existing, out var parsed) && parsed == relatedId))
