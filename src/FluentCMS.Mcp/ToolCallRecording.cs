@@ -42,7 +42,21 @@ public static class ToolCallRecording
             Duration = TimeSpan.Zero,
         };
 
-        if (await ClaimAsync(services, call, cancellationToken) is { } refusal)
+        CallToolResult? refusal;
+        try
+        {
+            refusal = await ClaimAsync(services, call, cancellationToken);
+        }
+        catch (Exception)
+        {
+            // The claim rolled back with the call it recorded, so the call is logged again on its own, and its tool never runs.
+            await RecordAsync(services, call, log => log.AppendAsync(
+                call with { Outcome = ToolCallOutcome.Errored, Duration = clock.GetElapsedTime(started) },
+                CancellationToken.None));
+            throw;
+        }
+
+        if (refusal is not null)
         {
             return refusal;
         }
@@ -56,7 +70,8 @@ public static class ToolCallRecording
         }
         finally
         {
-            await FinishAsync(services, call, outcome, clock.GetElapsedTime(started));
+            var duration = clock.GetElapsedTime(started);
+            await RecordAsync(services, call, log => log.FinishAsync(call.Id, outcome, duration, CancellationToken.None));
         }
     };
 
@@ -77,12 +92,12 @@ public static class ToolCallRecording
             };
     }
 
-    // A call that already ran is not failed afterwards because its outcome could not be written; the failure is logged instead.
-    private static async Task FinishAsync(IServiceProvider services, ToolCall call, ToolCallOutcome outcome, TimeSpan duration)
+    // A call is not failed again because its record could not be written; that failure is logged instead.
+    private static async Task RecordAsync(IServiceProvider services, ToolCall call, Func<IToolCallLog, Task> write)
     {
         try
         {
-            await services.GetRequiredService<IToolCallLog>().FinishAsync(call.Id, outcome, duration, CancellationToken.None);
+            await write(services.GetRequiredService<IToolCallLog>());
         }
         catch (Exception exception)
         {

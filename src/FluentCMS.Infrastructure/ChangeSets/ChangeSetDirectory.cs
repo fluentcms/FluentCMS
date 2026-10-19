@@ -13,7 +13,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FluentCMS.Infrastructure.ChangeSets;
 
-// Expected failures are found before the unit of work begins, so they leave a caller's outer unit of work able to commit.
+// Expected failures are found before the unit of work begins, so they leave a caller's outer unit of work able to commit. An agent's
+// daily cap is the exception: it is counted inside, so concurrent opens take turns, and its refusal rolls the caller's unit of work back.
 // Reads never track rows, and updates go straight to the database, so a long-lived context always sees what is stored.
 internal sealed class ChangeSetDirectory(
     FluentCmsDbContext context,

@@ -268,11 +268,8 @@ public sealed class AuditExporterTests
         public List<long> DestinationLengthAtCommit { get; } = [];
 
         public void AfterRollback(Func<CancellationToken, Task> step)
-
         {
-
         }
-
 
         public Task<IUnitOfWorkScope> BeginAsync(CancellationToken cancellationToken = default)
         {
