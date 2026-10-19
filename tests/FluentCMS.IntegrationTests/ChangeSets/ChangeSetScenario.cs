@@ -68,11 +68,21 @@ internal sealed class ChangeSetScenario : IAsyncDisposable
         var scenario = new ChangeSetScenario(database, services, initiator, clock, auditFailure);
         await scenario.QueryAsync(async context =>
         {
-            context.AgentCredentials.Add(AgentCredential());
+            context.AgentCredentials.Add(AgentCredential(Agent));
             return await context.SaveChangesAsync();
         });
 
         return scenario;
+    }
+
+    // Stores a credential for another agent with the same scope and caps as Agent.
+    public Task<int> AddAgentAsync(AgentInitiator agent)
+    {
+        return QueryAsync(async context =>
+        {
+            context.AgentCredentials.Add(AgentCredential(agent));
+            return await context.SaveChangesAsync();
+        });
     }
 
     // As a person, who stands in for the checks, routing and the desk, whose moves an agent cannot make (MCP-06).
@@ -270,13 +280,13 @@ internal sealed class ChangeSetScenario : IAsyncDisposable
         return ChangeOperation.Create(OperationKind.Delete, ItemKind.Schema, type.Id, baseVersion, null).Value;
     }
 
-    // The stored credential behind Agent, scoped to the site with room to spare, so only a test that lowers a cap meets one.
-    private static AgentCredentialRow AgentCredential()
+    // The stored credential behind an agent, scoped to the site with room to spare, so only a test that lowers a cap meets one.
+    private static AgentCredentialRow AgentCredential(AgentInitiator agent)
     {
         return new AgentCredentialRow
         {
-            Id = Agent.CredentialId,
-            DisplayName = Agent.DisplayName,
+            Id = agent.CredentialId,
+            DisplayName = agent.DisplayName,
             KeyHash = RandomNumberGenerator.GetBytes(32),
             IssuedAt = new DateTimeOffset(2026, 10, 1, 0, 0, 0, TimeSpan.Zero),
             ExpiresAt = new DateTimeOffset(2027, 10, 1, 0, 0, 0, TimeSpan.Zero),
