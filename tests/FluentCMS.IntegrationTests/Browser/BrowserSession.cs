@@ -27,10 +27,11 @@ internal sealed class BrowserSession : IAsyncDisposable
 
     public string BaseUrl => Host.Client.BaseAddress!.ToString().TrimEnd('/');
 
-    public static async Task<BrowserSession> StartAsync()
+    // Settings such as a TemporaryDatabase's configuration run the host on another provider.
+    public static async Task<BrowserSession> StartAsync(IDictionary<string, string?>? settings = null)
     {
         var install = new TemporaryInstall();
-        var host = await AdminHost.StartAsync(install);
+        var host = await AdminHost.StartAsync(install, settings: settings);
         var ownerId = await host.CreateFirstAdministratorAsync();
         var playwright = await Playwright.CreateAsync();
         var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions { Headless = true });

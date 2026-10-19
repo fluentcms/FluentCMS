@@ -1,20 +1,24 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using FluentCMS.Admin.Components.Forms;
 using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Schema;
+using FluentCMS.Infrastructure.Persistence;
 using Microsoft.Playwright;
 
 namespace FluentCMS.IntegrationTests.Browser;
 
 public sealed class FormPickerTests
 {
-    // FRM-01 by keyboard alone: a person finds the referenced product by typing, chooses it with the arrow keys and saves the page.
+    // FRM-01 by keyboard alone, from the top of the page: a person finds the referenced product by typing at full speed, chooses it
+    // with the keyboard and saves. The target type holds 500 entries, more than a circuit's first message could carry as options.
     [BrowserFact]
-    public async Task A_person_picks_a_referenced_entry_by_search_with_the_keyboard_and_saves()
+    public async Task A_person_picks_a_referenced_entry_by_search_with_the_keyboard_alone_and_saves()
     {
-        await using var session = await BrowserSession.StartAsync();
-        var drill = await ModelAsync(session);
+        await using var database = await TemporaryDatabase.CreateAsync(Provider);
+        await using var session = await BrowserSession.StartAsync(database.Configuration);
+        var drill = await ModelAsync(session, products: 500);
         var page = session.Page;
 
         await session.SignInWithKeyboardAsync();
@@ -22,21 +26,25 @@ public sealed class FormPickerTests
         var search = page.Locator("[data-picker=product] input[type=search]");
         await Assertions.Expect(search).ToBeVisibleAsync();
 
-        await page.Locator("input[name='Form.Values[title]']").FocusAsync();
+        await TabToAsync(page, "input[name='Form.Values[title]']");
         await page.Keyboard.TypeAsync("Drills");
         await page.Keyboard.PressAsync("Tab");
         await Assertions.Expect(search).ToBeFocusedAsync();
-        await page.Keyboard.TypeAsync("cordless");
+        await page.Keyboard.TypeAsync("cordless drill");
+        await Assertions.Expect(search).ToHaveValueAsync("cordless drill");
         await Assertions.Expect(page.Locator("[data-picker=product] [role=option]")).ToHaveCountAsync(1);
-        await page.Keyboard.PressAsync("ArrowDown");
-        await Assertions.Expect(page.Locator("[data-picker=product] [role=option]")).ToBeFocusedAsync();
+
+        // Enter chooses the only match and keeps focus in the box; it never submits the form.
         await page.Keyboard.PressAsync("Enter");
         await Assertions.Expect(page.Locator("[data-picker=product] input[type=hidden]")).ToHaveValueAsync(drill.ToString());
+        await Assertions.Expect(page.Locator("[data-testid=picker-choice]")).ToContainTextAsync("Cordless drill");
+        await Assertions.Expect(search).ToBeFocusedAsync();
+        await Assertions.Expect(search).ToHaveValueAsync("");
+        Assert.EndsWith("/content/product-page/new", page.Url);
 
-        await page.Locator("textarea[name='Form.Rationale']").FocusAsync();
+        await TabToAsync(page, "textarea[name='Form.Rationale']");
         await page.Keyboard.TypeAsync("Add the drills page.");
-        await page.Keyboard.PressAsync("Tab");
-        await page.Keyboard.PressAsync("Tab");
+        await TabToAsync(page, "[data-action=save]");
         await page.Keyboard.PressAsync("Enter");
         await page.WaitForURLAsync(new Regex("/sets/[0-9a-f-]{36}\\?done=saved$"));
 
@@ -46,7 +54,76 @@ public sealed class FormPickerTests
         Assert.Equal(drill.ToString(), entry.Latest.Fields.GetProperty("product").GetString());
     }
 
-    private static async Task<Guid> ModelAsync(BrowserSession session)
+    // With no pause, every key runs a search, and the searches overlap; each reads through its own scope, so none ends the circuit.
+    [BrowserFact]
+    public async Task Overlapping_searches_never_end_the_circuit_and_the_newest_one_shows()
+    {
+        await using var database = await TemporaryDatabase.CreateAsync(Provider);
+        await using var session = await BrowserSession.StartAsync(database.Configuration);
+        await ModelAsync(session, products: 20);
+        var page = session.Page;
+        var pause = PickerField.SearchPause;
+        PickerField.SearchPause = TimeSpan.Zero;
+        try
+        {
+            await session.SignInWithKeyboardAsync();
+            await page.GotoAsync($"{session.BaseUrl}/content/product-page/new");
+            var search = page.Locator("[data-picker=product] input[type=search]");
+            await Assertions.Expect(search).ToBeVisibleAsync();
+
+            await search.PressSequentiallyAsync("product number 1");
+            await Assertions.Expect(page.Locator("[data-picker=product] [role=option]").First).ToContainTextAsync("Product number 1");
+            await search.FillAsync("");
+            await search.PressSequentiallyAsync("cordless");
+            await Assertions.Expect(page.Locator("[data-picker=product] [role=option]")).ToHaveCountAsync(1);
+            await Assertions.Expect(page.Locator("#components-reconnect-modal")).ToBeHiddenAsync();
+        }
+        finally
+        {
+            PickerField.SearchPause = pause;
+        }
+    }
+
+    // A circuit the server no longer knows ends the search, not the form: nothing reloads and what was typed stays.
+    [BrowserFact]
+    public async Task A_lost_circuit_keeps_the_form_and_what_was_typed()
+    {
+        await using var session = await BrowserSession.StartAsync();
+        await ModelAsync(session, products: 1);
+        var page = session.Page;
+
+        await session.SignInWithKeyboardAsync();
+        await page.GotoAsync($"{session.BaseUrl}/content/product-page/new");
+        await Assertions.Expect(page.Locator("[data-picker=product] input[type=search]")).ToBeVisibleAsync();
+        await page.Locator("input[name='Form.Values[title]']").FillAsync("Typed before the loss");
+        await page.EvaluateAsync("document.dispatchEvent(new CustomEvent('components-reconnect-state-changed', { detail: { state: 'rejected' } }))");
+
+        await Assertions.Expect(page.Locator("[data-testid=reconnect-lost]")).ToBeVisibleAsync();
+        await Assertions.Expect(page.Locator("input[name='Form.Values[title]']")).ToHaveValueAsync("Typed before the loss");
+        await Assertions.Expect(page.Locator("[data-picker=product] input[type=search]")).ToBeDisabledAsync();
+    }
+
+    private static string Provider => string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(PostgresFactAttribute.VariableName))
+        ? DatabaseProviders.Sqlite
+        : DatabaseProviders.PostgreSql;
+
+    // Presses Tab until the element has focus, as a keyboard user reaches a field.
+    private static async Task TabToAsync(IPage page, string selector)
+    {
+        for (var press = 0; press < 40; press++)
+        {
+            if (await page.Locator(selector).EvaluateAsync<bool>("element => element === document.activeElement"))
+            {
+                return;
+            }
+
+            await page.Keyboard.PressAsync("Tab");
+        }
+
+        Assert.Fail($"Tab never reached {selector}.");
+    }
+
+    private static async Task<Guid> ModelAsync(BrowserSession session, int products)
     {
         await session.Host.AsUserAsync<IContentTypeDirectory, ContentType>(session.OwnerId, async types => (await types.CreateAsync(new NewContentType(
             "Product", "product", new ContentTypeDefinition([new FieldDefinition("name", "text", required: true)])), TestChangeSetTargets.ContentModel)).Value);
@@ -58,8 +135,15 @@ public sealed class FormPickerTests
                 new FieldDefinition("title", "text", required: true),
                 new FieldDefinition("product", "reference", settings: JsonDocument.Parse("""{"target": "product"}""").RootElement),
             ])), TestChangeSetTargets.ContentModel)).Value);
-        await session.Host.AsUserAsync<IEntryDirectory, Entry>(session.OwnerId, async entries =>
-            (await entries.CreateAsync(new NewEntry("product", JsonDocument.Parse("""{"name": "Hammer"}""").RootElement))).Value);
+        await session.Host.AsUserAsync<IEntryDirectory, bool>(session.OwnerId, async entries =>
+        {
+            for (var number = 1; number < products; number++)
+            {
+                await entries.CreateAsync(new NewEntry("product", JsonDocument.Parse($$"""{"name": "Product number {{number}}"}""").RootElement));
+            }
+
+            return true;
+        });
         var drill = await session.Host.AsUserAsync<IEntryDirectory, Entry>(session.OwnerId, async entries =>
             (await entries.CreateAsync(new NewEntry("product", JsonDocument.Parse("""{"name": "Cordless drill"}""").RootElement))).Value);
         return drill.Id;

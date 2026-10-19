@@ -202,11 +202,18 @@ internal sealed class MediaLibrary(
             latest = latest.Where(version => version.Tags.Contains(wanted));
         }
 
-        var rows = await (
+        if (query.Text?.Trim().ToLowerInvariant() is { Length: > 0 } text)
+        {
+            latest = latest.Where(version => version.FileName.ToLower().Contains(text) || version.Folder.Contains(text));
+        }
+
+        var joined =
             from version in latest
             join asset in context.MediaAssets.AsNoTracking() on version.AssetId equals asset.Id
-            orderby asset.Id
-            select new { asset.PublishedVersion, Version = version })
+            select new { asset.Id, asset.PublishedVersion, Version = version };
+        var rows = await (query.Newest is { } newest
+            ? joined.OrderByDescending(row => row.Id).Take(newest)
+            : joined.OrderBy(row => row.Id))
             .ToListAsync(cancellationToken);
 
         return rows

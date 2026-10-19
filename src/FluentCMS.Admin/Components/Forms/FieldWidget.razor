@@ -13,7 +13,6 @@
                  Description="@Description"
                  Error="@Error"
                  Required="@Field.Required"
-                 Options="@Options.ToArray()"
                  @rendermode="InteractiveServer" />
     return;
 }
@@ -65,7 +64,6 @@
     [Parameter, EditorRequired] public FieldDefinition Field { get; set; } = null!;
     [Parameter] public string? Value { get; set; }
     [Parameter] public string? Error { get; set; }
-    [Parameter] public IReadOnlyList<FieldOption> Options { get; set; } = [];
 
     private string Name => $"Form.Values[{Field.Name}]";
 
