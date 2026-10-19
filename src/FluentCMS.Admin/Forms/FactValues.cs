@@ -15,11 +15,21 @@ public static class FactValues
 
     public static IReadOnlyList<string> Times { get; } = [FactMetadata.ValidFrom, FactMetadata.ValidUntil, FactMetadata.LastVerified];
 
+    private static IReadOnlyList<string> Parts { get; } = [Kind, Reference, Owner, .. Times];
+
     public static string Key(string field, string part) => $"{field}.{part}";
 
+    // The owner a stored fact names, so an owner who is no longer a user still shows and is kept.
+    public static Guid? OwnerOf(JsonElement? stored)
+    {
+        return stored is { ValueKind: JsonValueKind.Object } fact && fact.TryGetProperty(FactMetadata.Owner, out var owner)
+            && owner.ValueKind == JsonValueKind.String && Guid.TryParse(owner.GetString(), out var id) ? id : null;
+    }
+
     // The fact for a value, or null with the problems of each part by part name.
-    // A time that shows the same as the stored fact's keeps its stored text, so its seconds are not lost to the widget.
-    // An owner must be one of the known users when they are given.
+    // A fact whose value and parts all show as stored is kept exactly as stored. Otherwise a time that shows the same as the stored
+    // fact's keeps its stored text, so its seconds are not lost to the widget.
+    // An owner must be one of the known users, or the owner the fact already had.
     public static JsonObject? Read(
         string field,
         JsonNode value,
@@ -28,8 +38,19 @@ public static class FactValues
         JsonElement? stored = null,
         IReadOnlySet<Guid>? owners = null)
     {
+        var fact = stored is { ValueKind: JsonValueKind.Object } storedFact ? storedFact : (JsonElement?)null;
         var shown = new Dictionary<string, string?>();
-        Show(field, stored, shown);
+        var storedValue = Show(field, fact, shown);
+        if (fact is { } untouched && storedValue is { } kept && JsonNode.DeepEquals(value, JsonNode.Parse(kept.GetRawText()))
+            && Parts.All(part => posted.GetValueOrDefault(Key(field, part)) is var text
+                && (string.IsNullOrEmpty(text) ? string.IsNullOrEmpty(shown.GetValueOrDefault(Key(field, part))) : text == shown.GetValueOrDefault(Key(field, part)))))
+        {
+            return JsonNode.Parse(untouched.GetRawText())!.AsObject();
+        }
+
+        var storedOwner = fact is { } withOwner && withOwner.TryGetProperty(FactMetadata.Owner, out var ownerElement)
+            && ownerElement.ValueKind == JsonValueKind.String ? ownerElement.GetString() : null;
+        Guid? storedOwnerId = Guid.TryParse(storedOwner, out var parsedOwner) ? parsedOwner : null;
 
         string? Part(string part) => posted.GetValueOrDefault(Key(field, part)) is { } text && text.Trim().Length > 0 ? text.Trim() : null;
 
@@ -47,13 +68,10 @@ public static class FactValues
         string? owner = null;
         if (Part(Owner) is { } ownerText)
         {
-            if (Guid.TryParse(ownerText, out var ownerId) && (owners is null || owners.Contains(ownerId)))
+            if (Guid.TryParse(ownerText, out var ownerId) && (owners is null || owners.Contains(ownerId) || ownerId == storedOwnerId))
             {
                 // The stored text is kept when it names the same user, whatever its case.
-                owner = stored is { } fact && fact.TryGetProperty(FactMetadata.Owner, out var storedOwner) && storedOwner.ValueKind == JsonValueKind.String
-                    && Guid.TryParse(storedOwner.GetString(), out var storedId) && storedId == ownerId
-                        ? storedOwner.GetString()
-                        : ownerId.ToString();
+                owner = ownerId == storedOwnerId ? storedOwner : ownerId.ToString();
             }
             else
             {
@@ -70,9 +88,10 @@ public static class FactValues
                 continue;
             }
 
-            if (text == shown.GetValueOrDefault(Key(field, name)) && stored is { } fact && fact.GetProperty(name).GetString() is { } kept)
+            if (text == shown.GetValueOrDefault(Key(field, name)) && fact is { } timed && timed.TryGetProperty(name, out var keptTime)
+                && keptTime.GetString() is { } keptText)
             {
-                times[name] = kept;
+                times[name] = keptText;
                 continue;
             }
 
@@ -137,7 +156,7 @@ public static class FactValues
     // Whether any part of the field's fact was given, such as a source typed for a value left empty.
     public static bool HasDetails(string field, IReadOnlyDictionary<string, string?> posted)
     {
-        return new[] { Kind, Reference, Owner }.Concat(Times).Any(part => !string.IsNullOrWhiteSpace(posted.GetValueOrDefault(Key(field, part))));
+        return Parts.Any(part => !string.IsNullOrWhiteSpace(posted.GetValueOrDefault(Key(field, part))));
     }
 
     public static bool IsUnsourced(JsonElement? stored)

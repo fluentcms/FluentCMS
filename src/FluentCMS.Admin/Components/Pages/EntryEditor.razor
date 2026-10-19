@@ -54,6 +54,10 @@
         @* The version the shown values were made from: after a refused save it is still the one the person started from, so a change
            someone saved meanwhile is refused as a conflict rather than overwritten. *@
         <input type="hidden" name="Form.BaseVersion" value="@Shown.BaseVersion" />
+        @if (Shown.FromPublished is { } fromPublished)
+        {
+            <input type="hidden" name="Form.FromPublished" value="@fromPublished" />
+        }
         @if (_formError is not null)
         {
             <p role="alert" class="rounded-md border border-destructive/50 px-3 py-2 text-sm text-destructive" data-testid="entry-form-error">@_formError</p>
@@ -166,7 +170,7 @@
         }
 
         // An update is always made from the latest version, so the version check holds whichever version the values come from.
-        Shown = new EntryFormModel { BaseVersion = _entry?.LatestVersion ?? 0 };
+        Shown = new EntryFormModel { BaseVersion = _entry?.LatestVersion ?? 0, FromPublished = FromPublished ? _entry!.PublishedVersion : null };
         _unsourced.Clear();
         _stored.Clear();
         foreach (var field in _type.Definition.Fields)
@@ -198,10 +202,16 @@
     {
         if (_type!.Definition.IsEntity)
         {
-            // Every user, so a fact owned by someone since disabled keeps its owner when it is saved again.
+            // Every user, so a fact owned by someone since disabled keeps its owner when it is saved again, and any stored owner who is
+            // not a user, such as one an agent set, so it stays selected rather than being cleared.
             var users = await Users.ListAsync();
-            _owners = [.. users.Select(user => new FieldOption(user.Id.ToString(), user.IsDisabled ? L["{0} (disabled)", user.DisplayName] : user.DisplayName))];
             _ownerIds = [.. users.Select(user => user.Id)];
+            var unknown = _stored.Values.Select(stored => FactValues.OwnerOf(stored)).OfType<Guid>().Where(id => !_ownerIds.Contains(id)).Distinct();
+            _owners =
+            [
+                .. users.Select(user => new FieldOption(user.Id.ToString(), user.IsDisabled ? L["{0} (disabled)", user.DisplayName] : user.DisplayName)),
+                .. unknown.Select(id => new FieldOption(id.ToString(), L["Unknown user {0}", id.ToString()[..8]])),
+            ];
         }
 
         foreach (var field in _type!.Definition.Fields)
@@ -224,6 +234,14 @@
     {
         if (_type is null || Form is null)
         {
+            return;
+        }
+
+        // The values came from a published version that has since changed, so saving them would undo what was published meanwhile.
+        if (Form.FromPublished is { } fromPublished && _entry?.PublishedVersion != fromPublished)
+        {
+            await LoadAsync();
+            _formError = L["Someone saved this entry since the form was shown. Here it is as it is now; make your change again."];
             return;
         }
 

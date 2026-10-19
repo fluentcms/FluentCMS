@@ -15,6 +15,9 @@ public sealed class EntryFormModel
 
     public int BaseVersion { get; set; }
 
+    // The published version the values came from, when the form started from it rather than from the latest draft.
+    public int? FromPublished { get; set; }
+
     public IReadOnlyList<string> SourceList()
     {
         return (Sources ?? string.Empty).Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);

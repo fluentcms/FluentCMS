@@ -168,7 +168,7 @@ public sealed class EntryFormScreenTests
             ["Form.BaseVersion"] = "1",
         });
 
-        Assert.Contains("data-testid=\"entry-form-error\"", await again.Content.ReadAsStringAsync());
+        Assert.Contains("Someone saved this entry since the form was shown.", await again.Content.ReadAsStringAsync());
         var stored = await host.AsUserAsync<IEntryDirectory, Entry>(ownerId, async entries => (await entries.GetAsync(entry.Id)).Value);
         Assert.Equal((2, "Theirs"), (stored.LatestVersion, stored.Latest.Fields.GetProperty("title").GetString()));
     }
@@ -254,6 +254,45 @@ public sealed class EntryFormScreenTests
     }
 
     [Fact]
+    public async Task After_a_revert_the_form_names_the_reverted_draft_and_a_form_from_a_published_version_since_replaced_is_refused()
+    {
+        using var install = new TemporaryInstall();
+        await using var host = await AdminHost.StartAsync(install);
+        var ownerId = await host.CreateFirstAdministratorAsync();
+        await KitchenSinkAsync(host, ownerId);
+        var entry = await host.AsUserAsync<IEntryDirectory, Entry>(ownerId, async entries =>
+            (await entries.CreateAsync(new NewEntry("kitchen-sink", Json("""{"title": "First"}""")))).Value);
+        await PublishAsync(host, ownerId, sets => sets.OpenAsync(new NewChangeSet("Publish it.", [])), ChangeOperation.Create(OperationKind.Create, ItemKind.Entry, entry.Id, null, 1).Value);
+        await host.AsUserAsync<IEntryDirectory, Entry>(ownerId, async entries => (await entries.UpdateAsync(entry.Id, 1, Json("""{"title": "Wrong"}"""))).Value);
+        var wrong = await PublishAsync(host, ownerId, sets => sets.OpenAsync(new NewChangeSet("Retitle.", [])), ChangeOperation.Create(OperationKind.Update, ItemKind.Entry, entry.Id, 1, 2).Value);
+        await PublishAsync(host, ownerId, sets => sets.RevertAsync(wrong, "The title was wrong."));
+        await host.SignInAsync(AdminHost.Owner);
+
+        var reverted = await host.AsUserAsync<IEntryDirectory, Entry>(ownerId, async entries => (await entries.GetAsync(entry.Id)).Value);
+        Assert.Equal((EntryState.Reverted, (int?)1, 2), (reverted.State, reverted.PublishedVersion, reverted.LatestVersion));
+        var latest = await host.Client.GetStringAsync($"/content/kitchen-sink/{entry.Id}");
+        Assert.Contains("data-testid=\"entry-draft-note\"", latest);
+        Assert.Contains("value=\"Wrong\"", latest);
+        var published = await host.Client.GetStringAsync($"/content/kitchen-sink/{entry.Id}?from=published");
+        Assert.Contains("value=\"First\"", published);
+        Assert.Contains("name=\"Form.FromPublished\" value=\"1\"", published);
+
+        // The published version moves on while the form is open: its values would undo that, so the save is refused.
+        await host.AsUserAsync<IEntryDirectory, Entry>(ownerId, async entries => (await entries.UpdateAsync(entry.Id, 2, Json("""{"title": "Second"}"""))).Value);
+        await PublishAsync(host, ownerId, sets => sets.OpenAsync(new NewChangeSet("Retitle again.", [])), ChangeOperation.Create(OperationKind.Update, ItemKind.Entry, entry.Id, 1, 3).Value);
+        var refused = await host.SubmitAsync($"/content/kitchen-sink/{entry.Id}?from=published", "entry", new Dictionary<string, string>
+        {
+            ["Form.Values[title]"] = "First, retitled",
+            ["Form.Rationale"] = "Retitle.",
+            ["Form.BaseVersion"] = "3",
+            ["Form.FromPublished"] = "1",
+        });
+
+        Assert.Contains("Someone saved this entry since the form was shown.", await refused.Content.ReadAsStringAsync());
+        Assert.Equal(3, (await host.AsUserAsync<IEntryDirectory, Entry>(ownerId, async entries => (await entries.GetAsync(entry.Id)).Value)).LatestVersion);
+    }
+
+    [Fact]
     public async Task The_content_pages_list_types_and_entries_and_need_a_signed_in_person()
     {
         using var install = new TemporaryInstall();
@@ -269,6 +308,23 @@ public sealed class EntryFormScreenTests
         Assert.Contains("data-entry=", entries);
         Assert.Equal(HttpStatusCode.NotFound, (await host.Client.GetAsync("/content/nothing")).StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, (await host.Client.GetAsync($"/content/kitchen-sink/{Guid.NewGuid()}")).StatusCode);
+    }
+
+    // Opens a set, adds the operations and publishes it; a revert opens its own set with its operations.
+    private static Task<Guid> PublishAsync(AdminHost host, Guid ownerId, Func<IChangeSetDirectory, Task<FluentCMS.Core.Results.Result<ChangeSet>>> open, params ChangeOperation[] operations)
+    {
+        return host.AsUserAsync<IChangeSetDirectory, Guid>(ownerId, async sets =>
+        {
+            var set = (await open(sets)).Value;
+            foreach (var operation in operations)
+            {
+                await sets.AddOperationAsync(set.Id, operation);
+            }
+
+            await sets.TransitionAsync(set.Id, ChangeSetState.ChecksRunning);
+            await sets.TransitionAsync(set.Id, ChangeSetState.Approved);
+            return (await sets.PublishAsync(set.Id)).Value.Id;
+        });
     }
 
     // A type with one field of every built-in type, a category entry to reference and an asset to show.
