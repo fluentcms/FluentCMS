@@ -12,6 +12,11 @@ using static FluentCMS.IntegrationTests.Content.EntryScenario;
 
 namespace FluentCMS.IntegrationTests.Delivery;
 
+// Measured alone: the collection runs after the parallel ones, so the rest of the suite does not load the machine meanwhile.
+[CollectionDefinition(nameof(DeliveryPerformanceTests), DisableParallelization = true)]
+public sealed class DeliveryPerformanceCollection;
+
+[Collection(nameof(DeliveryPerformanceTests))]
 public sealed class DeliveryPerformanceTests
 {
     private const int Products = 50;

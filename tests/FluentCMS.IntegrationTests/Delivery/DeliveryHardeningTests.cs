@@ -37,6 +37,77 @@ public sealed class DeliveryHardeningTests
         Assert.Equal(HttpStatusCode.OK, (await host.Client.GetAsync("/health")).StatusCode);
     }
 
+    // Behind a trusted proxy each client has its own limit; without one, X-Forwarded-For is ignored and cannot pick a fresh bucket.
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Only_a_trusted_proxy_names_the_client_a_limit_counts(bool trusted)
+    {
+        using var install = new TemporaryInstall();
+        var settings = new Dictionary<string, string?>
+        {
+            ["Delivery:RateLimit:PermitLimit"] = "3",
+            ["Delivery:RateLimit:Window"] = "00:01:00",
+        };
+        if (trusted)
+        {
+            settings["ReverseProxy:KnownProxies:0"] = "127.0.0.1";
+        }
+
+        await using var host = await AdminHost.StartAsync(install, settings: settings);
+
+        async Task<HttpStatusCode> FromAsync(string client)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, "/api/v1/index");
+            request.Headers.Add("X-Forwarded-For", client);
+            return (await host.Client.SendAsync(request)).StatusCode;
+        }
+
+        var sixClients = new List<HttpStatusCode>();
+        for (var client = 1; client <= 6; client++)
+        {
+            sixClients.Add(await FromAsync($"203.0.113.{client}"));
+        }
+
+        if (trusted)
+        {
+            Assert.All(sixClients, status => Assert.Equal(HttpStatusCode.OK, status));
+            Assert.Equal(HttpStatusCode.OK, await FromAsync("203.0.113.1"));
+            Assert.Equal(HttpStatusCode.OK, await FromAsync("203.0.113.1"));
+            Assert.Equal(HttpStatusCode.TooManyRequests, await FromAsync("203.0.113.1"));
+        }
+        else
+        {
+            Assert.Equal([HttpStatusCode.OK, HttpStatusCode.OK, HttpStatusCode.OK], sixClients.Take(3));
+            Assert.All(sixClients.Skip(3), status => Assert.Equal(HttpStatusCode.TooManyRequests, status));
+        }
+    }
+
+    [Fact]
+    public async Task A_proxy_that_is_not_an_address_stops_the_host()
+    {
+        using var install = new TemporaryInstall();
+
+        var exception = await Assert.ThrowsAsync<OptionsValidationException>(() => AdminHost.StartAsync(install, settings: new Dictionary<string, string?>
+        {
+            ["ReverseProxy:KnownProxies:0"] = "proxy.example",
+            ["ReverseProxy:KnownNetworks:0"] = "10.0.0.0/33",
+        }));
+
+        Assert.Contains("ReverseProxy__KnownProxies has 'proxy.example'", exception.Message);
+        Assert.Contains("ReverseProxy__KnownNetworks has '10.0.0.0/33'", exception.Message);
+    }
+
+    [Theory]
+    [InlineData("2001:db8:1:2::5", "2001:db8:1:2:ffff::9", true)]
+    [InlineData("2001:db8:1:2::5", "2001:db8:1:3::5", false)]
+    [InlineData("::ffff:203.0.113.7", "203.0.113.7", true)]
+    [InlineData("203.0.113.7", "203.0.113.8", false)]
+    public void An_ipv6_client_is_counted_by_its_64_prefix(string first, string second, bool same)
+    {
+        Assert.Equal(same, DeliveryRateLimit.ClientKey(IPAddress.Parse(first)) == DeliveryRateLimit.ClientKey(IPAddress.Parse(second)));
+    }
+
     [Fact]
     public void Each_client_address_has_its_own_limit()
     {
