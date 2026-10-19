@@ -30,6 +30,7 @@ public sealed class SearchToolsTests
         Assert.Equal([page], service.Value.Hits.Select(serviceHit => serviceHit.EntryId));
         Assert.Single(drafts["hits"]!.AsArray());
         Assert.Empty(published["hits"]!.AsArray());
+        Assert.True((bool)found["complete"]!);
         Assert.Contains("get_entry", (string?)found["next"]);
         Assert.Contains("Nothing matched", (string?)published["next"]);
     }

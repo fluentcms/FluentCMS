@@ -21,15 +21,18 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
                 CREATE INDEX "IX_SearchDocuments_Document" ON "SearchDocuments" USING GIN ("Document");
                 """);
 
-            // Every entry that already exists, flattened as SearchText does: each string and number of its latest version, as
-            // lowercase words, cut at SearchText.MaxLength.
+            // Every entry that already exists, flattened as SearchText does: each string and number of its latest version but a GUID,
+            // as lowercase words, cut at SearchText.MaxLength.
             migrationBuilder.Sql("""
                 INSERT INTO "SearchDocuments" ("EntryId", "Text")
                 SELECT entry."Id",
                        left(trim(regexp_replace(lower(coalesce((
                            SELECT string_agg(item #>> '{}', ' ')
                            FROM jsonb_path_query(version."Fields", 'strict $.**') AS item
-                           WHERE jsonb_typeof(item) IN ('string', 'number')), '')), '[^[:alnum:]]+', ' ', 'g')), 100000)
+                           WHERE jsonb_typeof(item) IN ('string', 'number')
+                             AND NOT (jsonb_typeof(item) = 'string'
+                                      AND (item #>> '{}') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')), '')),
+                           '[^[:alnum:]]+', ' ', 'g')), 100000)
                 FROM "Entries" AS entry
                 JOIN "EntryVersions" AS version ON version."EntryId" = entry."Id" AND version."Version" = entry."LatestVersion";
                 """);

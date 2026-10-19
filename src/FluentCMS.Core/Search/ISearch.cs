@@ -26,7 +26,9 @@ public sealed record SearchQuery(string Text)
     public int Limit { get; init; } = DefaultLimit;
 }
 
-public sealed record SearchResults(IReadOnlyList<SearchHit> Hits);
+// Complete is false when the search stopped at the most matches it reads, so better-ranked matches outside the filters or the
+// scope may have crowded out some that would pass them.
+public sealed record SearchResults(IReadOnlyList<SearchHit> Hits, bool Complete = true);
 
 // A direct match has no Via; an entry that references a match names it in Via, such as the page that shows a matching entity.
 public sealed record SearchHit(

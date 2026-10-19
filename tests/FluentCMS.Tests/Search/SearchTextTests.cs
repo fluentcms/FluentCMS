@@ -21,6 +21,17 @@ public sealed class SearchTextTests
         Assert.Equal("widget pro a 4411 url https example com spec 19 99 garden café", SearchText.From(fields));
     }
 
+    // An id's parts would match queries such as "01" in every entry that references something.
+    [Fact]
+    public void A_string_that_is_a_guid_is_left_out()
+    {
+        var fields = JsonDocument.Parse("""
+            {"title": "Episode 01", "product": "0199F3A1-7C2B-7D4E-8A1B-2C3D4E5F6A7B", "note": "0199f3a1 is not an id"}
+            """).RootElement;
+
+        Assert.Equal("episode 01 0199f3a1 is not an id", SearchText.From(fields));
+    }
+
     [Fact]
     public void A_very_long_entry_is_cut_at_a_word_within_the_limit()
     {

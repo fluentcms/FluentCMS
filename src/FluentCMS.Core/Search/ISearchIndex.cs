@@ -11,8 +11,9 @@ public interface ISearchIndex
     // Replaces what the index holds for the entry.
     Task IndexAsync(SearchDocument document, CancellationToken cancellationToken = default);
 
-    // Entries whose text has every term, each matched as a prefix, best first. Terms are words of letters and digits (SearchTerms).
-    Task<IReadOnlyList<SearchMatch>> MatchAsync(IReadOnlyList<string> terms, int limit, CancellationToken cancellationToken = default);
+    // Entries whose text has every term, each matched as a prefix, best first and in the same order on every call, so a caller pages
+    // through them by skipping those it has read. Terms are words of letters and digits (SearchTerms).
+    Task<IReadOnlyList<SearchMatch>> MatchAsync(IReadOnlyList<string> terms, int skip, int limit, CancellationToken cancellationToken = default);
 }
 
 public sealed record SearchDocument(Guid EntryId, string Text);

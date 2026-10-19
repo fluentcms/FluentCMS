@@ -4,6 +4,7 @@ using FluentCMS.Core.Persistence;
 using FluentCMS.Core.Results;
 using FluentCMS.Core.Search;
 using FluentCMS.Infrastructure.Persistence;
+using FluentCMS.Infrastructure.Search;
 using FluentCMS.IntegrationTests.ChangeSets;
 using FluentCMS.IntegrationTests.Content;
 using Microsoft.EntityFrameworkCore;
@@ -32,6 +33,7 @@ public sealed class SearchTests
         var publishedBefore = await SearchAsync(scenario.Entries, new SearchQuery("4411") { PublishedOnly = true });
         await scenario.Entries.Schema.QueryAsync(context => context.Entries.Where(row => row.Id == product).ExecuteUpdateAsync(setters => setters.SetProperty(row => row.PublishedVersion, 1)));
         var publishedAfter = await SearchAsync(scenario.Entries, new SearchQuery("4411") { PublishedOnly = true });
+        var productId = await SearchAsync(scenario.Entries, new SearchQuery(product.ToString()[..8]));
 
         Assert.Equal([(product, (Guid?)null), (page, product)], all.Select(hit => (hit.EntryId, hit.Via)));
         Assert.Equal(("product", EntryState.Draft, 1), (all[0].ContentType, all[0].State, all[0].LatestVersion));
@@ -41,6 +43,7 @@ public sealed class SearchTests
         Assert.DoesNotContain(all, hit => hit.EntryId == other);
         Assert.Empty(publishedBefore);
         Assert.Equal([product], publishedAfter.Select(hit => hit.EntryId));
+        Assert.Empty(productId);
     }
 
     // In review is read from the change sets, as the entry tools read it, so a hit's state and the filter agree with get_entry.
@@ -103,6 +106,61 @@ public sealed class SearchTests
         Assert.Equal([note.Id], restored.Select(hit => hit.EntryId));
     }
 
+    // The index row is written in the write's transaction, so an update that rolls back leaves the old words found and the new ones not.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task An_update_that_rolls_back_leaves_the_index_as_it_was(string provider)
+    {
+        await using var scenario = await EntryScenario.CreateAsync(provider);
+        await scenario.Schema.CreateAsync("note", Field("text", "text"));
+        var note = (await scenario.CreateAsync("note", """{"text": "first draft borealis"}""")).Value;
+
+        await using (var scope = scenario.Services.CreateAsyncScope())
+        {
+            await using var work = await scope.ServiceProvider.GetRequiredService<IUnitOfWork>().BeginAsync();
+            var updated = await scope.ServiceProvider.GetRequiredService<IEntryDirectory>().UpdateAsync(note.Id, 1, Json("""{"text": "second draft australis"}"""));
+            Assert.True(updated.IsSuccess);
+        }
+
+        Assert.Equal([note.Id], (await SearchAsync(scenario, new SearchQuery("borealis"))).Select(hit => hit.EntryId));
+        Assert.Empty(await SearchAsync(scenario, new SearchQuery("australis")));
+    }
+
+    // Better-ranked matches a filter drops are read past a page at a time, up to the most a search reads, and a search that stops
+    // there says so.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_filtered_search_reads_past_better_ranked_matches_and_says_when_it_stopped_early(string provider)
+    {
+        await using var scenario = await EntryScenario.CreateAsync(
+            provider,
+            services => services.Configure<SearchOptions>(search => (search.PageSize, search.MaxMatches) = (20, 60)));
+        await scenario.Schema.CreateAsync("note", Field("text", "text"));
+        await scenario.Schema.CreateAsync("page", Field("title", "text"));
+        foreach (var _ in Enumerable.Range(0, 45))
+        {
+            await scenario.CreateAsync("note", """{"text": "zephyr zephyr zephyr"}""");
+        }
+
+        var page = (await scenario.CreateAsync("page", """{"title": "A zephyr in a much longer title of the page with many other words"}""")).Value;
+        var found = await RunAsync(scenario, new SearchQuery("zephyr") { ContentTypes = ["page"] });
+
+        foreach (var _ in Enumerable.Range(0, 20))
+        {
+            await scenario.CreateAsync("note", """{"text": "zephyr zephyr zephyr"}""");
+        }
+
+        var stopped = await RunAsync(scenario, new SearchQuery("zephyr") { ContentTypes = ["page"] });
+        var unfiltered = await RunAsync(scenario, new SearchQuery("zephyr") { Limit = 5 });
+
+        Assert.Equal([page.Id], found.Value.Hits.Select(hit => hit.EntryId));
+        Assert.True(found.Value.Complete);
+        Assert.Equal((0, false), (stopped.Value.Hits.Count, stopped.Value.Complete));
+        Assert.Equal((5, true), (unfiltered.Value.Hits.Count, unfiltered.Value.Complete));
+    }
+
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
     [PostgresData]
@@ -120,8 +178,10 @@ public sealed class SearchTests
         }
 
         var hits = await SearchAsync(scenario.Entries, new SearchQuery("widget 4411"));
+        var productId = await SearchAsync(scenario.Entries, new SearchQuery(scenario.Product.ToString()[..8]));
 
         Assert.Equal([scenario.Product, scenario.Page], hits.Select(hit => hit.EntryId));
+        Assert.Empty(productId);
     }
 
     [Theory]

@@ -42,7 +42,7 @@ public static class InfrastructureServiceCollectionExtensions
 
         var database = configuration.GetSection(DatabaseOptions.SectionName).Get<DatabaseOptions>() ?? new DatabaseOptions();
         AddDatabase(services, database);
-        AddSearch(services, database.ResolveProvider());
+        AddSearch(services, configuration, database.ResolveProvider());
         AddIdentity(services);
         AddAudit(services);
         AddSchema(services);
@@ -77,8 +77,11 @@ public static class InfrastructureServiceCollectionExtensions
     }
 
     // The index of the configured provider, scoped because it writes through the request's context (ADR-0010).
-    private static void AddSearch(IServiceCollection services, string provider)
+    private static void AddSearch(IServiceCollection services, IConfiguration configuration, string provider)
     {
+        services.AddOptions<SearchOptions>().Bind(configuration.GetSection(SearchOptions.SectionName)).ValidateOnStart();
+        services.AddSingleton<IValidateOptions<SearchOptions>, SearchOptionsValidation>();
+
         if (provider == DatabaseProviders.PostgreSql)
         {
             services.AddFluentCmsExtension<ISearchIndex, PostgreSqlSearchIndex>(ServiceLifetime.Scoped);

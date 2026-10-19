@@ -21,7 +21,7 @@ internal sealed class PostgreSqlSearchIndex(FluentCmsDbContext context) : ISearc
             cancellationToken);
     }
 
-    public async Task<IReadOnlyList<SearchMatch>> MatchAsync(IReadOnlyList<string> terms, int limit, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<SearchMatch>> MatchAsync(IReadOnlyList<string> terms, int skip, int limit, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(terms);
 
@@ -34,7 +34,7 @@ internal sealed class PostgreSqlSearchIndex(FluentCmsDbContext context) : ISearc
                 FROM "SearchDocuments", to_tsquery('simple', {query}) AS matched
                 WHERE "Document" @@ matched
                 ORDER BY "Rank" DESC, "EntryId"
-                LIMIT {limit}
+                LIMIT {limit} OFFSET {skip}
                 """)
             .ToListAsync(cancellationToken);
 
@@ -55,7 +55,7 @@ internal sealed class SqliteSearchIndex(FluentCmsDbContext context) : ISearchInd
             cancellationToken);
     }
 
-    public async Task<IReadOnlyList<SearchMatch>> MatchAsync(IReadOnlyList<string> terms, int limit, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<SearchMatch>> MatchAsync(IReadOnlyList<string> terms, int skip, int limit, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(terms);
 
@@ -68,7 +68,7 @@ internal sealed class SqliteSearchIndex(FluentCmsDbContext context) : ISearchInd
                 FROM "SearchDocuments"
                 WHERE "SearchDocuments" MATCH {query}
                 ORDER BY bm25("SearchDocuments"), "EntryId"
-                LIMIT {limit}
+                LIMIT {limit} OFFSET {skip}
                 """)
             .ToListAsync(cancellationToken);
 

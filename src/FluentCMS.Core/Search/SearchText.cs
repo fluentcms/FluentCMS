@@ -6,7 +6,8 @@ using System.Text.RegularExpressions;
 namespace FluentCMS.Core.Search;
 
 // What an entry is found by: every string and number in its fields, a fact's value and source included, in field order, as the
-// lowercase words SearchTerms splits a query into. Indexing words rather than raw text keeps both engines' tokenizers out of it, so
+// lowercase words SearchTerms splits a query into. A string that is a GUID, such as a reference or a media asset's id, is left out:
+// its parts would match queries such as "01". Indexing words rather than raw text keeps both engines' tokenizers out of it, so
 // "19.99" or "A-4411" match the same way on PostgreSQL and SQLite. The migrations that index existing entries do the same.
 public static class SearchText
 {
@@ -50,7 +51,7 @@ public static class SearchText
                 }
 
                 break;
-            case JsonValueKind.String:
+            case JsonValueKind.String when !Guid.TryParseExact(value.GetString(), "D", out _):
                 text.Append(value.GetString()).Append(' ');
                 break;
             case JsonValueKind.Number:
