@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using FluentCMS.Core.Agents;
 using FluentCMS.Core.Audit;
@@ -7,8 +8,9 @@ using FluentCMS.Core.Identity;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Sites;
 using FluentCMS.Infrastructure.Audit;
-using FluentCMS.IntegrationTests.Mcp;
 using FluentCMS.Infrastructure.Persistence;
+using FluentCMS.IntegrationTests.Mcp;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -102,6 +104,7 @@ public sealed partial class SecurityEventTests
     }
 
     // SEC-08 end to end: each event is appended by the code that owns it, so a renamed operation drops off the view and fails here.
+    // The password reset and a linked sign-in are read back the same way in PasswordResetTests and ExternalSignInTests.
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
     [PostgresData]
@@ -125,6 +128,35 @@ public sealed partial class SecurityEventTests
             Assert.True((await client.CallToolAsync("whoami")).IsError);
         }
 
+        // An agent at its caps of one item per set and one set a day, which then tries to approve its own set.
+        var capped = await McpAgents.IssueAsync(host, ownerId, McpAgents.Credential(DateTimeOffset.UtcNow, "capped-agent") with
+        {
+            Scope = AgentScope.Create([Site.Default.Id], null, null, [AgentOperation.Read, AgentOperation.Create, AgentOperation.Update]).Value,
+            Caps = AgentCaps.Create(600, TimeSpan.FromHours(1), 5m, TimeSpan.FromDays(1), 1, 1).Value,
+        });
+        Guid cappedSet;
+        await using (var client = await McpAgents.ConnectOverHttpAsync(host, capped.Key))
+        {
+            var opened = await client.CallToolAsync("open_change_set", new Dictionary<string, object?> { ["rationale"] = "Add the catalog types." });
+            cappedSet = Guid.Parse((string)JsonNode.Parse(Text(opened))!["changeSet"]!["id"]!);
+            foreach (var slug in new[] { "product", "category" })
+            {
+                await client.CallToolAsync("create_content_type", new Dictionary<string, object?>
+                {
+                    ["name"] = slug,
+                    ["slug"] = slug,
+                    ["definition"] = new JsonObject { ["fields"] = new JsonArray(new JsonObject { ["name"] = "title", ["type"] = "text" }) },
+                    ["change_set_id"] = cappedSet.ToString(),
+                });
+            }
+
+            Assert.True((await client.CallToolAsync("open_change_set", new Dictionary<string, object?> { ["rationale"] = "One more." })).IsError);
+            Assert.NotEqual(true, (await client.CallToolAsync("submit_change_set", new Dictionary<string, object?> { ["id"] = cappedSet.ToString() })).IsError);
+        }
+
+        var refusedMove = await AsAgentAsync(host, capped.Credential, directory => directory.TransitionAsync(cappedSet, ChangeSetState.Approved));
+        Assert.Equal(AgentPermissionErrorCodes.TransitionNotPermitted, Assert.Single(refusedMove.Errors).Code);
+
         await host.AsUserAsync(ownerId, async users =>
         {
             var editor = (await users.CreateAsync(new NewUser("editor@example.com", "Editor", "An0ther!Passw0rd"))).Value;
@@ -134,11 +166,14 @@ public sealed partial class SecurityEventTests
         await host.AsUserAsync<IAgentCredentialDirectory, bool>(ownerId, async credentials => (await credentials.RevokeAsync(issued.Credential.Id)).IsSuccess);
         await host.SignInAsync(AdminHost.Owner);
 
-        var rows = RowPattern().Matches(await host.Client.GetStringAsync("/security"))
-            .Select(match => (match.Groups[1].Value, match.Groups[2].Value, match.Groups[3].Value))
-            .ToList();
+        var rows = SecurityRows.Parse(await host.Client.GetStringAsync("/security"));
 
         Assert.Contains(("agent.calls_per_period_exceeded", "agent", "pipeline-agent"), rows);
+        foreach (var operation in new[] { "agent.items_per_change_set_exceeded", "agent.change_sets_per_day_exceeded", "agent.transition_refused" })
+        {
+            Assert.Contains((operation, "agent", "capped-agent"), rows);
+        }
+
         foreach (var operation in new[] { "agent_credential.issued", "agent_credential.revoked", "user.created", "user.disabled", "user.enabled" })
         {
             Assert.Contains((operation, "user", "Test administrator"), rows);
@@ -230,7 +265,27 @@ public sealed partial class SecurityEventTests
     [GeneratedRegex("data-event=\"([a-z_.]+)\"")]
     private static partial Regex EventAttribute();
 
-    // A row's operation, the kind of initiator and the initiator's name.
-    [GeneratedRegex("data-event=\"([a-z_.]+)\".*?data-initiator=\"([a-z]+)\".*?<bdi>([^<]*)</bdi>", RegexOptions.Singleline)]
-    private static partial Regex RowPattern();
+    // Runs as the agent, as a call over MCP would, for a move no tool offers.
+    private static async Task<FluentCMS.Core.Results.Result<ChangeSet>> AsAgentAsync(
+        AdminHost host,
+        AgentCredential credential,
+        Func<IChangeSetDirectory, Task<FluentCMS.Core.Results.Result<ChangeSet>>> action)
+    {
+        var accessor = host.App.Services.GetRequiredService<IHttpContextAccessor>();
+        await using var scope = host.App.Services.CreateAsyncScope();
+        accessor.HttpContext = new DefaultHttpContext { RequestServices = scope.ServiceProvider, User = AgentPrincipal.For(credential, "test") };
+        try
+        {
+            return await action(scope.ServiceProvider.GetRequiredService<IChangeSetDirectory>());
+        }
+        finally
+        {
+            accessor.HttpContext = null;
+        }
+    }
+
+    private static string Text(ModelContextProtocol.Protocol.CallToolResult result)
+    {
+        return Assert.IsType<ModelContextProtocol.Protocol.TextContentBlock>(Assert.Single(result.Content)).Text;
+    }
 }
