@@ -24,6 +24,8 @@ internal sealed class MediaLibrary(
     // Until multi-site (MST-01), every asset belongs to the one site (SCH-07).
     private static readonly Guid SiteId = Site.Default.Id;
 
+    public long MaxBytes => options.Value.MaxBytes;
+
     public async Task<Result<MediaAsset>> UploadAsync(NewAsset asset, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(asset);

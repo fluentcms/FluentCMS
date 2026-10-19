@@ -108,7 +108,7 @@ public sealed class MediaTools : IToolProvider
         var target = ChangeSetTarget.Read(arguments, errors);
         errors.InsertRange(0, arguments.Errors());
 
-        var bytes = content is null ? null : Base64(content, errors);
+        var bytes = content is null ? null : Base64(content, call.Services.GetRequiredService<IMediaLibrary>().MaxBytes, errors);
         var metadata = fileName is null ? null : AssetMetadata.Create(fileName, folder, tags, altText, caption);
         errors.AddRange(metadata?.Errors ?? []);
         if (errors.Count > 0)
@@ -404,8 +404,17 @@ public sealed class MediaTools : IToolProvider
         }
     }
 
-    private static byte[]? Base64(string content, List<Error> errors)
+    // The decoded length follows from the text's length, so an oversized file is refused before anything is decoded.
+    private static byte[]? Base64(string content, long maxBytes, List<Error> errors)
     {
+        var characters = content.Count(character => !char.IsWhiteSpace(character));
+        var padding = content.TrimEnd().EndsWith("==", StringComparison.Ordinal) ? 2 : content.TrimEnd().EndsWith('=') ? 1 : 0;
+        if ((long)characters / 4 * 3 - padding > maxBytes)
+        {
+            errors.Add(new Error(MediaErrorCodes.MediaTooLarge, $"The file has more than {maxBytes} bytes, and an upload may have at most {maxBytes}."));
+            return null;
+        }
+
         try
         {
             return Convert.FromBase64String(content);

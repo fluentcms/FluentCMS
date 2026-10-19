@@ -6,6 +6,9 @@ namespace FluentCMS.Core.Media;
 // afterwards, and appends its audit event in the same unit of work (CNT-02, AUD-N1).
 public interface IMediaLibrary
 {
+    // The largest upload accepted, in bytes, so a caller can refuse a larger one before reading it.
+    long MaxBytes { get; }
+
     // The bytes go to the configured storage before anything is written; a refused upload deletes them again.
     Task<Result<MediaAsset>> UploadAsync(NewAsset asset, CancellationToken cancellationToken = default);
 

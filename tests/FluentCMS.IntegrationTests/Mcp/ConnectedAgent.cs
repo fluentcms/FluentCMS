@@ -25,11 +25,18 @@ internal sealed class ConnectedAgent(
         string provider,
         int itemsPerChangeSet = 200,
         IReadOnlyList<string>? types = null,
-        AgentOperation[]? operations = null)
+        AgentOperation[]? operations = null,
+        IReadOnlyDictionary<string, string?>? settings = null)
     {
         var install = new TemporaryInstall();
         var database = await TemporaryDatabase.CreateAsync(provider);
-        var host = await AdminHost.StartAsync(install, settings: database.Configuration);
+        var configuration = new Dictionary<string, string?>(database.Configuration);
+        foreach (var (key, value) in settings ?? new Dictionary<string, string?>())
+        {
+            configuration[key] = value;
+        }
+
+        var host = await AdminHost.StartAsync(install, settings: configuration);
         var administrator = await host.CreateFirstAdministratorAsync();
         var issued = await McpAgents.IssueAsync(host, administrator, new NewAgentCredential(
             "schema-agent",
