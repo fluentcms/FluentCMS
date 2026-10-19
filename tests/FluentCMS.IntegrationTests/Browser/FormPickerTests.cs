@@ -49,7 +49,7 @@ public sealed class FormPickerTests
     private static async Task<Guid> ModelAsync(BrowserSession session)
     {
         await session.Host.AsUserAsync<IContentTypeDirectory, ContentType>(session.OwnerId, async types => (await types.CreateAsync(new NewContentType(
-            "Product", "product", new ContentTypeDefinition([new FieldDefinition("name", "text", required: true)])))).Value);
+            "Product", "product", new ContentTypeDefinition([new FieldDefinition("name", "text", required: true)])), TestChangeSetTargets.ContentModel)).Value);
         await session.Host.AsUserAsync<IContentTypeDirectory, ContentType>(session.OwnerId, async types => (await types.CreateAsync(new NewContentType(
             "Product page",
             "product-page",
@@ -57,7 +57,7 @@ public sealed class FormPickerTests
             [
                 new FieldDefinition("title", "text", required: true),
                 new FieldDefinition("product", "reference", settings: JsonDocument.Parse("""{"target": "product"}""").RootElement),
-            ])))).Value);
+            ])), TestChangeSetTargets.ContentModel)).Value);
         await session.Host.AsUserAsync<IEntryDirectory, Entry>(session.OwnerId, async entries =>
             (await entries.CreateAsync(new NewEntry("product", JsonDocument.Parse("""{"name": "Hammer"}""").RootElement))).Value);
         var drill = await session.Host.AsUserAsync<IEntryDirectory, Entry>(session.OwnerId, async entries =>

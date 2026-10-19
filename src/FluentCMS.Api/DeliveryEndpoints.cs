@@ -27,6 +27,8 @@ public static class DeliveryEndpoints
         api.MapGet("/entries/{id}.md", GetMarkdownAsync);
         api.MapGet("/index", IndexAsync);
         api.MapGet("/index.md", IndexMarkdownAsync);
+        api.MapGet("/preview/entries/{id}", PreviewEntryAsync);
+        api.MapGet("/preview/changes", PreviewChangesAsync);
 
         // Ids are parsed by the handlers and every other path under the prefix is answered here, so no API call falls through to the
         // admin's not-found page.
@@ -74,6 +76,47 @@ public static class DeliveryEndpoints
         return page.IsSuccess
             ? Results.Json(new PageResponse([.. page.Value.Items.Select(Item)], page.Value.Next))
             : Problem(page.Errors);
+    }
+
+    // Unpublished content is never cached on the way, so it disappears with the token (API-04).
+    private static async Task<IResult> PreviewEntryAsync(string id, HttpContext http, IPreviewContent preview, CancellationToken cancellationToken)
+    {
+        http.Response.Headers.CacheControl = "no-store";
+        var errors = new List<Error>();
+        if (Id(id, "id", "the id of an entry", errors) is not { } entryId)
+        {
+            return Problem(errors);
+        }
+
+        var item = await preview.GetAsync(BearerToken(http), entryId, cancellationToken);
+        return item.IsSuccess ? Results.Json(Item(item.Value)) : PreviewProblem(http, item.Errors);
+    }
+
+    private static async Task<IResult> PreviewChangesAsync(HttpContext http, IPreviewContent preview, CancellationToken cancellationToken)
+    {
+        http.Response.Headers.CacheControl = "no-store";
+        var changes = await preview.ChangesAsync(BearerToken(http), cancellationToken);
+        return changes.IsSuccess
+            ? Results.Json(new ChangesResponse(changes.Value.ChangeSetId, [.. changes.Value.Items.Select(Item)]))
+            : PreviewProblem(http, changes.Errors);
+    }
+
+    // A 401 names the scheme it expects (RFC 9110).
+    private static IResult PreviewProblem(HttpContext http, IReadOnlyList<Error> errors)
+    {
+        if (errors[0].Code == DeliveryErrorCodes.PreviewTokenInvalid)
+        {
+            http.Response.Headers.WWWAuthenticate = "Bearer";
+        }
+
+        return Problem(errors);
+    }
+
+    // The token travels in the Authorization header, never in the URL, so it stays out of logs and browser history.
+    private static string BearerToken(HttpContext http)
+    {
+        var header = http.Request.Headers.Authorization.ToString();
+        return header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? header["Bearer ".Length..].Trim() : string.Empty;
     }
 
     private static async Task<IResult> GetAsync(string id, IPublishedContent content, CancellationToken cancellationToken)
@@ -173,6 +216,7 @@ public static class DeliveryEndpoints
         {
             ContentErrorCodes.EntryNotFound or SchemaErrorCodes.ContentTypeNotFound or DeliveryErrorCodes.EndpointNotFound => StatusCodes.Status404NotFound,
             AgentPermissionErrorCodes.ScopeDenied => StatusCodes.Status403Forbidden,
+            DeliveryErrorCodes.PreviewTokenInvalid => StatusCodes.Status401Unauthorized,
             _ => StatusCodes.Status400BadRequest,
         };
 
@@ -186,6 +230,8 @@ public static class DeliveryEndpoints
     }
 
     private sealed record PageResponse(IReadOnlyList<ItemResponse> Items, Guid? Next);
+
+    private sealed record ChangesResponse(Guid ChangeSet, IReadOnlyList<ItemResponse> Items);
 
     private sealed record ItemResponse(Guid Id, string Type, int Version, JsonElement Fields, string Markdown, IReadOnlyList<UnresolvedResponse> Unresolved);
 
