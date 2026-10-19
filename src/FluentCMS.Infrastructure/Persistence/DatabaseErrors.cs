@@ -21,4 +21,12 @@ internal static class DatabaseErrors
             _ => false,
         };
     }
+
+    // PostgreSQL aborts one of two writers that each wait for a row the other holds, or a serializable transaction that read what
+    // another one changed; the aborted writer answers as it would had the other committed first.
+    public static bool IsConcurrencyFailure(Exception exception)
+    {
+        var postgres = exception as PostgresException ?? exception.InnerException as PostgresException;
+        return postgres?.SqlState is PostgresErrorCodes.DeadlockDetected or PostgresErrorCodes.SerializationFailure;
+    }
 }

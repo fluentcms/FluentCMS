@@ -4,6 +4,7 @@ using System.Text;
 using FluentCMS.Core.Agents;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Models;
+using FluentCMS.Core.Security;
 using FluentCMS.Core.Sites;
 using FluentCMS.Infrastructure.Audit;
 using FluentCMS.Infrastructure.Models;
@@ -83,12 +84,14 @@ internal sealed class ModelScenario : IAsyncDisposable
             configuration[key] = value;
         }
 
+        // The retention tests resolve the job handlers together, as the worker does, and the webhook handler needs a secret protector.
         var services = TestServices.Build(
             configuration,
             collection => collection
                 .AddSingleton<ICurrentInitiator>(initiator)
                 .AddSingleton<TimeProvider>(clock)
-                .AddSingleton(new ModelTransport(() => providers)));
+                .AddSingleton(new ModelTransport(() => providers))
+                .AddSingleton<ISecretProtector, NoSecrets>());
 
         await TestServices.MigrateAsync(services);
         return new ModelScenario(database, services, initiator, clock, providers);
@@ -139,6 +142,13 @@ internal sealed class ModelScenario : IAsyncDisposable
     {
         await Services.DisposeAsync();
         await _database.DisposeAsync();
+    }
+
+    private sealed class NoSecrets : ISecretProtector
+    {
+        public string Protect(string purpose, string secret) => throw new NotSupportedException("Model tests protect no secrets.");
+
+        public string Unprotect(string purpose, string protectedSecret) => throw new NotSupportedException("Model tests protect no secrets.");
     }
 
     private sealed class SwitchableInitiator : ICurrentInitiator
