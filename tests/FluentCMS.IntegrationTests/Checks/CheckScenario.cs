@@ -92,7 +92,7 @@ internal sealed class CheckScenario : IAsyncDisposable
     {
         await using var scope = Services.CreateAsyncScope();
         return await scope.ServiceProvider.GetRequiredService<IContentTypeDirectory>()
-            .CreateAsync(new NewContentType(slug, slug, new ContentTypeDefinition(fields)));
+            .CreateAsync(new NewContentType(slug, slug, new ContentTypeDefinition(fields)), TestChangeSetTargets.ContentModel);
     }
 
     public async Task<List<AuditEventRow>> AuditRowsAsync()

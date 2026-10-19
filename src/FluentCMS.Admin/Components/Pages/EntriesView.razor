@@ -20,15 +20,8 @@
                 @(type.Definition.IsEntity ? L["An entity type: each field is a fact with its source, owner and validity."] : L["Entries of this content type."])
             </p>
         </div>
-        @if (!type.Definition.IsEntity)
-        {
-            <a href="@($"content/{type.Slug}/new")" aria-keyshortcuts="N" class="@ButtonVariants.Classes()" data-testid="new-entry">@L["New entry"]</a>
-        }
+        <a href="@($"content/{type.Slug}/new")" aria-keyshortcuts="N" class="@ButtonVariants.Classes()" data-testid="new-entry">@L["New entry"]</a>
     </div>
-    @if (type.Definition.IsEntity)
-    {
-        <p class="mt-4 rounded-md border px-3 py-2 text-sm text-muted-foreground" data-testid="entity-form-note">@L["Entity forms, with a source, owner and validity on every fact, come with the next forms slice. Agents write entities with set_entity_fact until then."]</p>
-    }
 
     @if (_entries.Count == 0)
     {
@@ -51,14 +44,7 @@
                     {
                         <TableRow data-entry="@entry.Id.ToString("N")">
                             <TableCell>
-                                @if (type.Definition.IsEntity)
-                                {
-                                    <bdi dir="ltr" class="font-mono text-xs">@entry.Id</bdi>
-                                }
-                                else
-                                {
-                                    <a href="@($"content/{type.Slug}/{entry.Id}")" data-ui="rove-item" tabindex="@(index == 0 ? null : "-1")" class="font-mono text-xs underline-offset-4 hover:underline" dir="ltr">@entry.Id</a>
-                                }
+                                <a href="@($"content/{type.Slug}/{entry.Id}")" data-ui="rove-item" tabindex="@(index == 0 ? null : "-1")" class="font-mono text-xs underline-offset-4 hover:underline" dir="ltr">@entry.Id</a>
                             </TableCell>
                             <TableCell><Badge Variant="outline">@StateLabel(entry.State)</Badge></TableCell>
                             <TableCell>@entry.LatestVersion</TableCell>

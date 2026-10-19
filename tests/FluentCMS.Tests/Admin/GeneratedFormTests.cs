@@ -75,7 +75,8 @@ public sealed class GeneratedFormTests
     [InlineData("json", "textarea")]
     public void Each_field_type_renders_its_widget_inside_a_form_field(string type, string selector)
     {
-        using var context = new AdminTestContext();
+        // Before the circuit attaches, a reference or media picker is its plain select.
+        using var context = PickerFieldTests.Context(interactive: false);
 
         var cut = context.Render<FieldWidget>(widget => widget
             .Add(w => w.Field, Field(type, type == "enum" ? """{"values": ["red", "blue"]}""" : "{}", required: true))

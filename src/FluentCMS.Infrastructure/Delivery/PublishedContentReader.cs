@@ -1,5 +1,6 @@
 using System.Text.Json;
 using FluentCMS.Core.Agents;
+using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Delivery;
 using FluentCMS.Core.Results;
@@ -13,10 +14,13 @@ namespace FluentCMS.Infrastructure.Delivery;
 
 // An agent that reads through here keeps to its scope (MCP-05); people and anonymous readers see every published entry. Each item
 // carries the definition its version was written against, so a revision of the type waiting for review changes nothing it shows.
-internal sealed class PublishedContentReader(FluentCmsDbContext context, IAgentPermissions permissions) : IPublishedContent
+internal sealed class PublishedContentReader(FluentCmsDbContext context, IAgentPermissions permissions, TimeProvider clock)
+    : IPublishedContent, IPreviewContent
 {
     // Until multi-site (MST-01), every entry belongs to the one site (SCH-07).
     private static readonly Guid SiteId = Site.Default.Id;
+
+    private static readonly Dictionary<Guid, int?> NoProposals = [];
 
     public async Task<Result<PublishedPage>> ListAsync(PublishedQuery query, CancellationToken cancellationToken = default)
     {
@@ -75,6 +79,7 @@ internal sealed class PublishedContentReader(FluentCmsDbContext context, IAgentP
         var resolved = await EntryResolution.ResolveAsync(
             context,
             [.. page.Select(row => new VersionToResolve(row.Id, query.ContentType, row.Version))],
+            NoProposals,
             cancellationToken);
 
         return Result<PublishedPage>.Success(new PublishedPage(
@@ -82,30 +87,49 @@ internal sealed class PublishedContentReader(FluentCmsDbContext context, IAgentP
             rows.Count > query.Limit ? page[^1].Id : null));
     }
 
-    public async Task<Result<PublishedItem>> GetAsync(Guid id, CancellationToken cancellationToken = default)
+    public Task<Result<PublishedItem>> GetAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var entry = await (
-            from row in context.Entries.AsNoTracking()
-            join type in context.ContentTypes.AsNoTracking() on row.ContentTypeId equals type.Id
-            join version in context.EntryVersions.AsNoTracking()
-                on new { EntryId = row.Id, Version = row.PublishedVersion!.Value } equals new { version.EntryId, version.Version }
-            where row.Id == id && row.SiteId == SiteId && row.PublishedVersion != null && row.DeletedAt == null
-            select new { row.ContentTypeId, type.Slug, type.Name, version.Version, version.ContentTypeVersion })
-            .SingleOrDefaultAsync(cancellationToken);
-        if (entry is null)
+        return ReadAsync(id, proposals: null, cancellationToken);
+    }
+
+    public async Task<Result<PublishedItem>> GetAsync(string token, Guid entryId, CancellationToken cancellationToken = default)
+    {
+        var proposals = await ProposalsAsync(token, cancellationToken);
+        return proposals is null ? PreviewRefused<PublishedItem>() : await ReadAsync(entryId, proposals, cancellationToken);
+    }
+
+    public async Task<Result<PreviewChanges>> ChangesAsync(string token, CancellationToken cancellationToken = default)
+    {
+        var proposals = await ProposalsAsync(token, cancellationToken);
+        if (proposals is null)
         {
-            return Result<PublishedItem>.Failure(ContentErrorCodes.EntryNotFound, $"There is no published entry {id} in this site.");
+            return PreviewRefused<PreviewChanges>();
         }
 
-        var allowed = await permissions.CheckContentAsync(entry.Slug, AgentOperation.Read, cancellationToken: cancellationToken);
-        if (!allowed.IsSuccess)
-        {
-            return Result<PublishedItem>.Failure(allowed.Errors);
-        }
+        var changed = proposals.Items.Where(id => proposals.Versions[id] is not null).ToList();
+        var numbers = changed.Select(id => proposals.Versions[id]!.Value).Distinct().ToList();
+        var rows = (await (
+            from entry in context.Entries.AsNoTracking()
+            join type in context.ContentTypes.AsNoTracking() on entry.ContentTypeId equals type.Id
+            join version in context.EntryVersions.AsNoTracking() on entry.Id equals version.EntryId
+            where changed.Contains(entry.Id) && numbers.Contains(version.Version) && entry.SiteId == SiteId && entry.DeletedAt == null
+            select new { entry.Id, entry.ContentTypeId, type.Slug, type.Name, version.Version, version.ContentTypeVersion })
+            .ToListAsync(cancellationToken))
+            .Where(row => proposals.Versions[row.Id] == row.Version)
+            .ToDictionary(row => row.Id);
 
-        var definitions = await DefinitionsAsync([(entry.ContentTypeId, entry.ContentTypeVersion)], cancellationToken);
-        var resolved = await EntryResolution.ResolveAsync(context, [new VersionToResolve(id, entry.Slug, entry.Version)], cancellationToken);
-        return Result<PublishedItem>.Success(Item(resolved[0], entry.Name, definitions[(entry.ContentTypeId, entry.ContentTypeVersion)]));
+        var readable = await permissions.ReadableTypesAsync(cancellationToken);
+        var shown = changed.Where(id => rows.TryGetValue(id, out var row) && readable(row.Slug)).Select(id => rows[id]).ToList();
+        var definitions = await DefinitionsAsync([.. shown.Select(row => (row.ContentTypeId, row.ContentTypeVersion))], cancellationToken);
+        var resolved = await EntryResolution.ResolveAsync(
+            context,
+            [.. shown.Select(row => new VersionToResolve(row.Id, row.Slug, row.Version))],
+            proposals.Versions,
+            cancellationToken);
+
+        return Result<PreviewChanges>.Success(new PreviewChanges(
+            proposals.ChangeSetId,
+            [.. resolved.Select((entry, index) => Item(entry, shown[index].Name, definitions[(shown[index].ContentTypeId, shown[index].ContentTypeVersion)]))]));
     }
 
     public async Task<IReadOnlyList<PublishedSummary>> IndexAsync(CancellationToken cancellationToken = default)
@@ -138,6 +162,83 @@ internal sealed class PublishedContentReader(FluentCmsDbContext context, IAgentP
             .OrderBy(summary => summary.ContentType, StringComparer.Ordinal)
             .ThenBy(summary => summary.Id)
             .ToList();
+    }
+
+    // A set's proposal wins over the published version, and a set that unpublishes the entry hides it, as publishing would.
+    private async Task<Result<PublishedItem>> ReadAsync(Guid id, Proposals? proposals, CancellationToken cancellationToken)
+    {
+        var entry = await (
+            from row in context.Entries.AsNoTracking()
+            join type in context.ContentTypes.AsNoTracking() on row.ContentTypeId equals type.Id
+            where row.Id == id && row.SiteId == SiteId && row.DeletedAt == null
+            select new { row.ContentTypeId, type.Slug, type.Name, row.PublishedVersion })
+            .SingleOrDefaultAsync(cancellationToken);
+        var number = proposals is not null && proposals.Versions.TryGetValue(id, out var proposed) ? proposed : entry?.PublishedVersion;
+        if (entry is null || number is not { } version)
+        {
+            return Result<PublishedItem>.Failure(ContentErrorCodes.EntryNotFound, $"There is no published entry {id} in this site.");
+        }
+
+        var allowed = await permissions.CheckContentAsync(entry.Slug, AgentOperation.Read, cancellationToken: cancellationToken);
+        if (!allowed.IsSuccess)
+        {
+            return Result<PublishedItem>.Failure(allowed.Errors);
+        }
+
+        var typeVersion = await context.EntryVersions
+            .AsNoTracking()
+            .Where(row => row.EntryId == id && row.Version == version)
+            .Select(row => row.ContentTypeVersion)
+            .SingleAsync(cancellationToken);
+        var definitions = await DefinitionsAsync([(entry.ContentTypeId, typeVersion)], cancellationToken);
+        var resolved = await EntryResolution.ResolveAsync(
+            context,
+            [new VersionToResolve(id, entry.Slug, version)],
+            proposals?.Versions ?? NoProposals,
+            cancellationToken);
+        return Result<PublishedItem>.Success(Item(resolved[0], entry.Name, definitions[(entry.ContentTypeId, typeVersion)]));
+    }
+
+    // The entry and entity versions the token's set proposes, or null when the token does not work (API-04).
+    private async Task<Proposals?> ProposalsAsync(string token, CancellationToken cancellationToken)
+    {
+        if (!PreviewTokenKeys.IsWellFormed(token))
+        {
+            return null;
+        }
+
+        var hash = PreviewTokenKeys.Hash(token);
+        var found = await (
+            from preview in context.PreviewTokens.AsNoTracking()
+            join set in context.ChangeSets.AsNoTracking() on preview.ChangeSetId equals set.Id
+            where preview.TokenHash == hash && preview.SiteId == SiteId
+            select new { preview.ExpiresAt, preview.RevokedAt, set.Id, set.State })
+            .SingleOrDefaultAsync(cancellationToken);
+
+        // Compared here, because SQLite cannot compare stored offsets in a query.
+        if (found is null || found.RevokedAt is not null || found.ExpiresAt <= clock.GetUtcNow() || !PreviewTokenKeys.Previewable.Contains(found.State))
+        {
+            return null;
+        }
+
+        var operations = await context.ChangeSetOperations
+            .AsNoTracking()
+            .Where(operation => operation.ChangeSetId == found.Id && (operation.ItemKind == ItemKind.Entry || operation.ItemKind == ItemKind.Entity))
+            .OrderBy(operation => operation.Position)
+            .Select(operation => new { operation.ItemId, operation.ProposedVersion })
+            .ToListAsync(cancellationToken);
+
+        return new Proposals(
+            found.Id,
+            [.. operations.Select(operation => operation.ItemId)],
+            operations.ToDictionary(operation => operation.ItemId, operation => operation.ProposedVersion));
+    }
+
+    private static Result<T> PreviewRefused<T>()
+    {
+        return Result<T>.Failure(
+            DeliveryErrorCodes.PreviewTokenInvalid,
+            "The preview token does not work: it is unknown, expired or revoked, or its change set was published, rejected or reverted.");
     }
 
     // The definitions of the type versions given, read in one query; every pair must be stored.
@@ -175,4 +276,7 @@ internal sealed class PublishedContentReader(FluentCmsDbContext context, IAgentP
     {
         return new PublishedItem(entry.EntryId, entry.ContentType, typeName, definition, entry.Version, entry.Fields, entry.Unresolved);
     }
+
+    // Items are in the order of the set's operations; a null version is an unpublish.
+    private sealed record Proposals(Guid ChangeSetId, IReadOnlyList<Guid> Items, IReadOnlyDictionary<Guid, int?> Versions);
 }
