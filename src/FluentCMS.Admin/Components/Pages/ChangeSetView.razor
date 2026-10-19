@@ -241,20 +241,6 @@
 @code {
     private const int HistoryLimit = 200;
 
-    // The events the directory appends when it opens a set and on each move; refusals and other events about the set are history too.
-    private static readonly HashSet<string> Moves =
-    [
-        "change_set.opened",
-        "change_set.reopened",
-        "change_set.submitted",
-        "change_set.checks_failed",
-        "change_set.awaiting_review",
-        "change_set.approved",
-        "change_set.published",
-        "change_set.rejected",
-        "change_set.reverted",
-    ];
-
     private ChangeSet? _set;
     private List<AuditEvent> _history = [];
     private bool _historyTruncated;
@@ -371,9 +357,9 @@
         {
             await foreach (var auditEvent in history.Value)
             {
-                if (Moves.Contains(auditEvent.Operation))
+                if (ChangeSetMoves.Operations.Contains(auditEvent.Operation))
                 {
-                    opened ??= auditEvent.Operation == "change_set.opened" ? auditEvent : null;
+                    opened ??= auditEvent.Operation == ChangeSetMoves.Opened ? auditEvent : null;
                     lastMove = auditEvent;
                 }
 
