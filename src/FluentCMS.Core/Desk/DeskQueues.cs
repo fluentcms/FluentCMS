@@ -23,7 +23,7 @@ internal sealed class DeskQueues(IChangeSetLists lists, IEntityFacts facts, Time
         var now = clock.GetUtcNow();
         var counts = new Dictionary<DeskQueue, int>();
 
-        foreach (var queue in ChangeSetQueues)
+        foreach (var queue in ChangeSetQueues.Where(queue => queue != DeskQueue.AwaitingMe))
         {
             var counted = await lists.CountAsync(Query(queue, now), cancellationToken);
             if (!counted.IsSuccess)
@@ -33,6 +33,9 @@ internal sealed class DeskQueues(IChangeSetLists lists, IEntityFacts facts, Time
 
             counts[queue] = counted.Value;
         }
+
+        // The same sets as awaiting anyone until approvals exist; see Query.
+        counts[DeskQueue.AwaitingMe] = counts[DeskQueue.AwaitingAnyone];
 
         var stale = await facts.StaleAsync(cancellationToken: cancellationToken);
         if (!stale.IsSuccess)

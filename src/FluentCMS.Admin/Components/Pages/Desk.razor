@@ -28,6 +28,10 @@
         }
     </ul>
 </nav>
+@if (_countsError is not null)
+{
+    <p role="alert" class="mt-2 text-sm text-destructive" data-testid="desk-counts-error">@L["The counts could not be read."] @_countsError</p>
+}
 
 <section class="mt-6" aria-labelledby="queue-heading" data-testid="desk-queue" data-current-queue="@Slugs[_queue]">
     <h2 id="queue-heading" class="text-lg font-semibold">@Title(_queue)</h2>
@@ -200,6 +204,7 @@
     private IReadOnlyList<ChangeSetSummary>? _sets;
     private IReadOnlyList<StaleFact>? _facts;
     private string? _error;
+    private string? _countsError;
 
     [SupplyParameterFromQuery(Name = "queue")]
     private string? QueueSlug { get; set; }
@@ -218,6 +223,10 @@
         if (counts.IsSuccess)
         {
             _counts = counts.Value;
+        }
+        else
+        {
+            _countsError = Describe(counts.Errors);
         }
 
         if (_queue == DeskQueue.StaleFacts)
