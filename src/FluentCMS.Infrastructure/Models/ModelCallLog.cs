@@ -86,10 +86,11 @@ internal sealed class ModelCallLog(
 
     public async Task<Result<int>> PurgeAsync(CancellationToken cancellationToken = default)
     {
-        // Purging removes what the audit log points at, which no agent decides (AUD-N2).
-        if (currentInitiator.Current is not UserInitiator)
+        // Purging removes what the audit log points at, which no agent decides (AUD-N2): a person does, or the retention engine.
+        var initiator = currentInitiator.Current;
+        if (initiator is not UserInitiator && !(initiator is SystemInitiator system && system.Component == SystemInitiator.Retention.Component))
         {
-            return Result<int>.Failure(ModelErrorCodes.PeopleOnly, "Only a signed-in person can purge stored prompts; an agent cannot.");
+            return Result<int>.Failure(ModelErrorCodes.PeopleOnly, "Only a person, or the retention purge, can purge stored prompts; an agent cannot.");
         }
 
         var now = clock.GetUtcNow();
