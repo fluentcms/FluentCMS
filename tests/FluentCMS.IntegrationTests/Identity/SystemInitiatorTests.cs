@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Core.Agents;
 using FluentCMS.Core.Audit;
+using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Checks;
 using FluentCMS.Core.Extensions;
 using FluentCMS.Core.Identity;
@@ -15,6 +16,7 @@ using FluentCMS.Infrastructure.Persistence;
 using FluentCMS.IntegrationTests.Audit;
 using FluentCMS.IntegrationTests.Checks;
 using FluentCMS.IntegrationTests.Models;
+using FluentCMS.IntegrationTests.Mcp;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -78,6 +80,35 @@ public sealed class SystemInitiatorTests
         Assert.Equal(UserErrorCodes.PeopleOnly, Assert.Single(user.Errors).Code);
     }
 
+    // An engine is refused the other moves only people make: grouping an operation into a session's set, disabling and enabling a
+    // user, revoking a credential and deactivating a check. Each refusal comes before anything is read, so no item needs to exist.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task An_engine_cannot_group_a_session_manage_users_revoke_a_credential_or_deactivate_a_check(string provider)
+    {
+        await using var scenario = await CheckScenario.CreateAsync(provider);
+        await scenario.CreateAsync("no-superlatives", CheckScenario.NoSuperlatives());
+        scenario.Initiator = SystemInitiator.Checks;
+        await using var scope = scenario.Services.CreateAsyncScope();
+        var services = scope.ServiceProvider;
+
+        var grouped = await services.GetRequiredService<IChangeSetDirectory>().AddToSessionAsync(
+            "tidy-up",
+            new NewChangeSet("Tidy up.", []),
+            ChangeOperation.Create(OperationKind.Create, ItemKind.Entry, Guid.NewGuid(), null, 1).Value);
+        var disabled = await services.GetRequiredService<IUserDirectory>().DisableAsync(Guid.NewGuid());
+        var enabled = await services.GetRequiredService<IUserDirectory>().EnableAsync(Guid.NewGuid());
+        var revoked = await services.GetRequiredService<IAgentCredentialDirectory>().RevokeAsync(Guid.NewGuid());
+        var deactivated = await scenario.RunAsync(directory => directory.DeactivateAsync("no-superlatives"));
+
+        Assert.Equal(ChangeSetErrorCodes.InitiatorNotAllowed, Assert.Single(grouped.Errors).Code);
+        Assert.Equal(UserErrorCodes.PeopleOnly, Assert.Single(disabled.Errors).Code);
+        Assert.Equal(UserErrorCodes.PeopleOnly, Assert.Single(enabled.Errors).Code);
+        Assert.Equal(AgentCredentialErrorCodes.PeopleOnly, Assert.Single(revoked.Errors).Code);
+        Assert.Equal(CheckErrorCodes.PeopleOnly, Assert.Single(deactivated.Errors).Code);
+    }
+
     // AUD-04: the retention purge runs as the retention engine, and no other engine may purge.
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
@@ -120,34 +151,99 @@ public sealed class SystemInitiatorTests
         Assert.Equal(SystemInitiator.Retention, (await services.GetRequiredService<IJobQueue>().GetAsync(enqueued.Id)).Value.Initiator);
     }
 
-    // A submission enqueues the check run in the agent's call; the job type, not whoever enqueued it, decides that it runs as the
-    // check engine, and the job still records who enqueued it.
-    [Fact]
-    public async Task The_worker_runs_a_job_as_the_engine_its_handler_names()
+    // EXT-03: a handler Core does not list cannot borrow an engine's permissions by naming it in RunAs; its job fails without running,
+    // and says why. The check run, which Core lists, runs as the check engine (ChangeSetChecksTests).
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_handler_that_claims_an_engine_it_is_not_listed_for_fails_its_job_unrun(string provider)
     {
-        using var install = new TemporaryInstall();
-        await using var host = await AdminHost.StartAsync(
-            install,
-            settings: new Dictionary<string, string?> { ["JobQueue:PollingInterval"] = "00:00:00.050" },
+        await using var agent = await ConnectedAgent.StartAsync(
+            provider,
+            settings: FastQueue,
             configure: builder => builder.Services.AddFluentCmsExtension<IJobHandler, EngineHandler>());
-        var administrator = await host.CreateFirstAdministratorAsync();
 
-        var job = await host.AsUserAsync<IServiceProvider, Job>(administrator, async services =>
+        var job = await agent.AsAgentAsync(services => EnqueueAsync(services, EngineHandler.Name));
+        var ended = await EndedAsync(agent, job.Id);
+
+        Assert.Equal(JobState.Failed, ended.State);
+        Assert.StartsWith(JobErrorCodes.EngineNotAllowed, ended.LastError);
+        Assert.False(EngineHandler.RanAs.ContainsKey(job.Id));
+    }
+
+    // ADR-0012: a reset link takes over the account it resets, so only a person issues one. Code running inside the check engine's
+    // scope, as a check type does, is refused, and cannot pass the engine on to a job of a handler Core does not list for it either.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task Code_running_as_an_engine_cannot_issue_a_reset_link_or_pass_the_engine_to_a_job(string provider)
+    {
+        // The probe's records are shared by both providers' runs, which run one after the other.
+        EngineProbe.Refusals.Clear();
+        EngineProbe.Enqueued.Clear();
+        Follower.Ran.Clear();
+        await using var agent = await ConnectedAgent.StartAsync(
+            provider,
+            settings: FastQueue,
+            configure: builder =>
+            {
+                builder.Services.AddFluentCmsExtension<ICheckType, EngineProbe>();
+                builder.Services.AddFluentCmsExtension<IJobHandler, Follower>();
+            });
+        await agent.CreateAsPersonAsync("probe");
+        var definition = new CheckDefinition(
+            EngineProbe.Name,
+            "Probes what the check engine may do.",
+            JsonSerializer.SerializeToElement(new { }),
+            [
+                new CheckExample("passes", CheckVerdict.Pass, JsonSerializer.SerializeToElement(new { title = "A kettle" }), contentType: "probe"),
+                new CheckExample("fails", CheckVerdict.Fail, JsonSerializer.SerializeToElement(new { title = "fail" }), contentType: "probe"),
+            ],
+            scope: new CheckScope(["probe"]));
+        await agent.AsPersonAsync<ICheckDirectory, Check>(directory => directory.CreateAsync(new NewCheck("engine-probe", definition)));
+        await agent.AsPersonAsync<ICheckDirectory, Check>(directory => directory.ActivateAsync("engine-probe", 1));
+        var byAgent = await agent.AsAgentAsync(services => services.GetRequiredService<IPasswordReset>().IssueAsync(Guid.NewGuid()));
+
+        var created = await agent.CallAsync("create_entry", new()
         {
-            await using var work = await services.GetRequiredService<IUnitOfWork>().BeginAsync();
-            var enqueued = await services.GetRequiredService<IJobQueue>().EnqueueAsync(new NewJob(EngineHandler.Name, JsonDocument.Parse("{}").RootElement.Clone()));
-            await work.CommitAsync();
-            return enqueued;
+            ["content_type"] = "probe",
+            ["fields"] = new JsonObject { ["title"] = "A kettle" },
+            ["session_id"] = "probe",
+            ["rationale"] = "Probe the engine.",
         });
+        await agent.CallAsync("submit_change_set", new() { ["id"] = (string?)created["changeSet"]!["id"] });
+        var followed = await EndedAsync(agent, Assert.Single(EngineProbe.Enqueued));
 
+        Assert.Equal(UserErrorCodes.PeopleOnly, Assert.Single(byAgent.Errors).Code);
+        Assert.Equal(UserErrorCodes.PeopleOnly, Assert.Single(EngineProbe.Refusals));
+        Assert.Equal(JobState.Failed, followed.State);
+        Assert.StartsWith(JobErrorCodes.EngineNotAllowed, followed.LastError);
+        Assert.Empty(Follower.Ran);
+        Assert.DoesNotContain(await agent.QueryAsync(context => context.AuditEvents.AsNoTracking().ToListAsync()), row => row.Operation == "user.password_reset_issued");
+    }
+
+    private static readonly Dictionary<string, string?> FastQueue = new() { ["JobQueue:PollingInterval"] = "00:00:00.050" };
+
+    private static async Task<Job> EnqueueAsync(IServiceProvider services, string type)
+    {
+        await using var work = await services.GetRequiredService<IUnitOfWork>().BeginAsync();
+        var enqueued = await services.GetRequiredService<IJobQueue>().EnqueueAsync(new NewJob(type, JsonDocument.Parse("{}").RootElement.Clone()));
+        await work.CommitAsync();
+        return enqueued;
+    }
+
+    private static async Task<Job> EndedAsync(ConnectedAgent agent, Guid jobId)
+    {
         var deadline = DateTime.UtcNow.AddSeconds(30);
-        while (!EngineHandler.RanAs.ContainsKey(job.Id) && DateTime.UtcNow < deadline)
+        Job read;
+        do
         {
             await Task.Delay(50);
+            read = await agent.AsAgentAsync(async services => (await services.GetRequiredService<IJobQueue>().GetAsync(jobId)).Value);
         }
+        while (read.State is JobState.Queued or JobState.Running && DateTime.UtcNow < deadline);
 
-        Assert.Equal(SystemInitiator.Checks, EngineHandler.RanAs[job.Id]);
-        Assert.IsType<UserInitiator>(job.Initiator);
+        return read;
     }
 
     // A component's name and id are stored together, and a row whose id is not its component's is refused as a fault.
@@ -165,12 +261,90 @@ public sealed class SystemInitiatorTests
         Assert.Equal("checks", Assert.IsType<SystemInitiator>(read.Initiator).Component);
         Assert.Throws<InvalidOperationException>(() => InitiatorKinds.RestoreSystem("checks", SystemInitiator.Retention.Id));
         Assert.Throws<InvalidOperationException>(() => InitiatorKinds.RestoreSystem("Not A Component", Guid.NewGuid()));
+
+        // Read back through the log, a row whose id is not its component's is a fault, not an engine.
+        await QueryAsync(scenario, context => context.AuditEvents
+            .Where(row => row.Operation == "checks.renamed")
+            .ExecuteUpdateAsync(row => row.SetProperty(stored => stored.InitiatorId, SystemInitiator.Retention.Id)));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => scenario.ReadAsync(new AuditQuery { Subject = Set }));
+    }
+
+    // A job row whose engine id is not its component's is refused when it is read, as an audit row is.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_job_stored_with_another_engine_s_id_is_refused_when_it_is_read(string provider)
+    {
+        await using var scenario = await CheckScenario.CreateAsync(provider);
+        scenario.Initiator = SystemInitiator.Retention;
+        await using var scope = scenario.Services.CreateAsyncScope();
+        var services = scope.ServiceProvider;
+        Job enqueued;
+        await using (var work = await services.GetRequiredService<IUnitOfWork>().BeginAsync())
+        {
+            enqueued = await services.GetRequiredService<IJobQueue>().EnqueueAsync(new NewJob("retention.purge", JsonDocument.Parse("{}").RootElement.Clone()));
+            await work.CommitAsync();
+        }
+
+        await scenario.QueryAsync(context => context.Jobs
+            .Where(row => row.Id == enqueued.Id)
+            .ExecuteUpdateAsync(row => row.SetProperty(stored => stored.InitiatorId, SystemInitiator.Checks.Id)));
+
+        await using var reading = scenario.Services.CreateAsyncScope();
+        await Assert.ThrowsAsync<InvalidOperationException>(() => reading.ServiceProvider.GetRequiredService<IJobQueue>().GetAsync(enqueued.Id));
     }
 
     private static async Task<T> QueryAsync<T>(AuditScenario scenario, Func<FluentCmsDbContext, Task<T>> query)
     {
         await using var scope = scenario.CreateScope();
         return await query(scope.ServiceProvider.GetRequiredService<FluentCmsDbContext>());
+    }
+
+    // A check type that, run as the check engine, tries what only a person does and to enqueue a job for a handler Core does not list.
+    private sealed class EngineProbe : ICheckType
+    {
+        public const string Name = "sample.engineProbe";
+
+        public static ConcurrentQueue<string> Refusals { get; } = new();
+
+        public static ConcurrentQueue<Guid> Enqueued { get; } = new();
+
+        string ICheckType.Name => Name;
+
+        public CheckKind Kind => CheckKind.Deterministic;
+
+        public IReadOnlyList<Error> ValidateSettings(JsonElement settings)
+        {
+            return new CheckSettingsReader(Name, settings).Errors();
+        }
+
+        public async Task<CheckOutcome> EvaluateAsync(CheckInput input, CancellationToken cancellationToken)
+        {
+            var services = input.Services;
+            if (services.GetRequiredService<ICurrentInitiator>().Current is SystemInitiator)
+            {
+                var reset = await services.GetRequiredService<IPasswordReset>().IssueAsync(Guid.NewGuid(), cancellationToken);
+                Refusals.Enqueue(reset.Errors.FirstOrDefault()?.Code ?? "issued");
+                Enqueued.Enqueue((await EnqueueAsync(services, Follower.Name)).Id);
+            }
+
+            return input.Subject.Fields.GetRawText().Contains("fail", StringComparison.Ordinal) ? CheckOutcome.Fail("Remove 'fail'.") : CheckOutcome.Pass();
+        }
+    }
+
+    private sealed class Follower : IJobHandler
+    {
+        public const string Name = "test.follower";
+
+        public static ConcurrentQueue<Guid> Ran { get; } = new();
+
+        public string Type => Name;
+
+        public Task<Result> RunAsync(JobContext context, CancellationToken cancellationToken)
+        {
+            Ran.Enqueue(context.Job.Id);
+            return Task.FromResult(Result.Success());
+        }
     }
 
     private sealed class EngineHandler : IJobHandler
