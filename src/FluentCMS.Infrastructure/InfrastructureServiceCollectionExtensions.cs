@@ -89,6 +89,7 @@ public static class InfrastructureServiceCollectionExtensions
     private static void AddChangeSets(IServiceCollection services)
     {
         services.AddScoped<IChangeSetDirectory, ChangeSetDirectory>();
+        services.AddScoped<IChangeSetLists, ChangeSetLists>();
     }
 
     private static void AddAgents(IServiceCollection services)

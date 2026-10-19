@@ -291,8 +291,13 @@ internal sealed class ChangeSetChecks(
         foreach (var operation in set.Operations.Where(operation =>
                      operation.ItemKind is ItemKind.Entry or ItemKind.Entity && operation.ProposedVersion is not null))
         {
+            // The version a set proposes is most often the entry's latest, which the entry read already holds.
             var entry = await entries.GetAsync(operation.ItemId, cancellationToken);
-            var proposed = entry.IsSuccess ? await entries.GetVersionAsync(operation.ItemId, operation.ProposedVersion!.Value, cancellationToken) : null;
+            var proposed = !entry.IsSuccess
+                ? null
+                : entry.Value.Latest.Version == operation.ProposedVersion
+                    ? Result<EntryVersion>.Success(entry.Value.Latest)
+                    : await entries.GetVersionAsync(operation.ItemId, operation.ProposedVersion!.Value, cancellationToken);
             var before = proposed is { IsSuccess: true } && operation.Kind == OperationKind.Update && operation.BaseVersion is { } baseVersion
                 ? await entries.GetVersionAsync(operation.ItemId, baseVersion, cancellationToken)
                 : null;
