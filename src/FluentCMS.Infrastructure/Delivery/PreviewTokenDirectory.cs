@@ -80,6 +80,11 @@ internal sealed class PreviewTokenDirectory(
             return Result.Failure(DeliveryErrorCodes.PreviewTokenNotFound, $"There is no preview token {tokenId} in this site.");
         }
 
+        if (row.RevokedAt is { } revokedAt)
+        {
+            return Result.Failure([AlreadyRevoked(tokenId, revokedAt)]);
+        }
+
         await using var scope = await unitOfWork.BeginAsync(cancellationToken);
 
         // Only a token nobody revoked in the meantime is updated, so of two concurrent revokes the second changes nothing.
@@ -88,7 +93,7 @@ internal sealed class PreviewTokenDirectory(
             .ExecuteUpdateAsync(setters => setters.SetProperty(token => token.RevokedAt, clock.GetUtcNow()), cancellationToken);
         if (revoked == 0)
         {
-            return Result.Failure(DeliveryErrorCodes.PreviewTokenNotFound, $"Preview token {tokenId} is already revoked.");
+            return Result.Failure(DeliveryErrorCodes.PreviewTokenAlreadyRevoked, $"Preview token {tokenId} was revoked meanwhile.");
         }
 
         await auditLog.AppendAsync(
@@ -114,6 +119,11 @@ internal sealed class PreviewTokenDirectory(
 
         return Result<IReadOnlyList<PreviewToken>>.Success(
             [.. rows.Select(row => new PreviewToken(row.Id, row.ChangeSetId, row.CreatedAt, row.ExpiresAt, row.RevokedAt))]);
+    }
+
+    private static Error AlreadyRevoked(Guid tokenId, DateTimeOffset revokedAt)
+    {
+        return new Error(DeliveryErrorCodes.PreviewTokenAlreadyRevoked, $"Preview token {tokenId} was already revoked at {revokedAt:O}.");
     }
 
     // A token shows unapproved content to whoever holds it, so only a person hands one out (API-04).

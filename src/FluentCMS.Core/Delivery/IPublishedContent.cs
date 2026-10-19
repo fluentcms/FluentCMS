@@ -52,5 +52,6 @@ public static class DeliveryErrorCodes
     public const string PreviewTokenInvalid = "preview_token_invalid";
     public const string PreviewByPeopleOnly = "preview_by_people_only";
     public const string PreviewTokenNotFound = "preview_token_not_found";
+    public const string PreviewTokenAlreadyRevoked = "preview_token_already_revoked";
     public const string ChangeSetNotPreviewable = "change_set_not_previewable";
 }

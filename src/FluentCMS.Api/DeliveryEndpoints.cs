@@ -89,7 +89,7 @@ public static class DeliveryEndpoints
         }
 
         var item = await preview.GetAsync(BearerToken(http), entryId, cancellationToken);
-        return item.IsSuccess ? Results.Json(Item(item.Value)) : Problem(item.Errors);
+        return item.IsSuccess ? Results.Json(Item(item.Value)) : PreviewProblem(http, item.Errors);
     }
 
     private static async Task<IResult> PreviewChangesAsync(HttpContext http, IPreviewContent preview, CancellationToken cancellationToken)
@@ -98,7 +98,18 @@ public static class DeliveryEndpoints
         var changes = await preview.ChangesAsync(BearerToken(http), cancellationToken);
         return changes.IsSuccess
             ? Results.Json(new ChangesResponse(changes.Value.ChangeSetId, [.. changes.Value.Items.Select(Item)]))
-            : Problem(changes.Errors);
+            : PreviewProblem(http, changes.Errors);
+    }
+
+    // A 401 names the scheme it expects (RFC 9110).
+    private static IResult PreviewProblem(HttpContext http, IReadOnlyList<Error> errors)
+    {
+        if (errors[0].Code == DeliveryErrorCodes.PreviewTokenInvalid)
+        {
+            http.Response.Headers.WWWAuthenticate = "Bearer";
+        }
+
+        return Problem(errors);
     }
 
     // The token travels in the Authorization header, never in the URL, so it stays out of logs and browser history.
