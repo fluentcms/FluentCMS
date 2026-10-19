@@ -90,7 +90,7 @@ A token stops working when it is revoked or expires (`Delivery__PreviewTokenLife
 
 Each client address may make 600 requests a minute to the delivery API, `/llms.txt` included (`Delivery__RateLimit__PermitLimit` and `Delivery__RateLimit__Window`). A request beyond that gets a 429 problem with `Retry-After`.
 
-An IPv6 client is counted by its /64 prefix. Behind a reverse proxy, list the proxy in `ReverseProxy__KnownProxies__0` or its network in `ReverseProxy__KnownNetworks__0`, so each client is counted by the address the proxy forwards. Without that, every client shares the proxy's address. `X-Forwarded-For` from anyone else is ignored.
+An IPv6 client is counted by its /64 prefix. Behind a reverse proxy, list the proxy in `ReverseProxy__KnownProxies__0` or its network in `ReverseProxy__KnownNetworks__0`, so each client is counted by the address the proxy forwards. Without that, every client shares the proxy's address. `X-Forwarded-For` from anyone else is ignored. Only the address the nearest listed proxy forwards is read, so with a chain such as a CDN in front of nginx, have nginx pass the real client address in its own `X-Forwarded-For`.
 
 ## Errors
 
