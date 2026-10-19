@@ -60,6 +60,11 @@ public static class ToolSchemas
             });
     }
 
+    public static ToolArgument Flag(string name, string description)
+    {
+        return new ToolArgument(name, description, Required: false, new JsonObject { ["type"] = "boolean", ["examples"] = new JsonArray(true) });
+    }
+
     // An argument that is itself a JSON object, with its own schema and one example that satisfies it.
     public static ToolArgument Json(string name, string description, JsonObject schema, JsonNode example, bool required = true)
     {

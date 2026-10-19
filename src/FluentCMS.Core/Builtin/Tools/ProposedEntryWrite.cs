@@ -23,10 +23,11 @@ internal static class ProposedEntryWrite
         ChangeSetTarget target,
         Func<IEntryDirectory, Task<Result<Entry>>> write,
         Func<Entry, ItemKind, Result<ChangeOperation>> operation,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Guid? itemId = null)
     {
         var services = call.Services;
-        var ready = await target.CheckAsync(services, cancellationToken);
+        var ready = await target.CheckAsync(services, itemId, cancellationToken);
         if (!ready.IsSuccess)
         {
             return ToolResult.Failure(ready.Errors);

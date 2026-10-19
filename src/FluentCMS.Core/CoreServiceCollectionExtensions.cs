@@ -40,6 +40,9 @@ public static class CoreServiceCollectionExtensions
         // Reads the active checks through ICheckDirectory, which Infrastructure provides.
         services.AddScoped<ICheckRunner, CheckRunner>();
 
+        // Reads and writes through IChangeSetDirectory, IEntryDirectory, ICheckRuns and IJobQueue, which Infrastructure provides.
+        services.AddScoped<IChangeSetChecks, ChangeSetChecks>();
+
         // Reads through IChangeSetLists and IEntityFacts, which Infrastructure provides.
         services.AddScoped<IDeskQueues, DeskQueues>();
 

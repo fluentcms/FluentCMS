@@ -33,11 +33,11 @@ public sealed class McpCoverageTests
         new("ENT", "List stale facts", ["list_stale_facts"]),
         Missing("RUL", "Read and propose rules", "#2419"),
         new("CHK", "Run the checks on a draft before proposing it", ["check_draft"]),
-        Missing("CHK", "Read the check results of a change set", "#2420"),
+        new("CHK", "Read the check results of a change set", ["get_change_set_checks"]),
         new("DSK", "Read the review desk's queues and counts, read-only", ["get_desk_counts", "list_desk_queue"]),
         new("DSK", "Read a change set's review status and decisions, read-only", ["get_change_set_review"]),
         Missing("MED", "Upload and describe media", "#2427"),
-        Missing("Search", "Search entries and entities", "#2430"),
+        new("Search", "Search entries and entities by their words", ["search_entries"]),
         Missing("MCP-08", "Bulk operations that return a change set id and report progress", "#2423"),
     ];
 

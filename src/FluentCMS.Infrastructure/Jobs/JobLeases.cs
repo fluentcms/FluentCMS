@@ -135,6 +135,22 @@ internal sealed class JobLeases(FluentCmsDbContext context, TimeProvider clock) 
             cancellationToken);
     }
 
+    public Task<bool> ReleaseAsync(Guid jobId, string owner, CancellationToken cancellationToken = default)
+    {
+        var now = clock.GetUtcNow();
+
+        return UpdateHeldAsync(
+            jobId,
+            owner,
+            setters => setters
+                .SetProperty(row => row.State, JobState.Queued)
+                .SetProperty(row => row.Attempts, row => row.Attempts - 1)
+                .SetProperty(row => row.ScheduledAt, now)
+                .SetProperty(row => row.LeaseOwner, (string?)null)
+                .SetProperty(row => row.LeaseUntil, (DateTimeOffset?)null),
+            cancellationToken);
+    }
+
     private Task<bool> FinishAsync(Guid jobId, string owner, JobState state, string? error, CancellationToken cancellationToken)
     {
         var now = clock.GetUtcNow();

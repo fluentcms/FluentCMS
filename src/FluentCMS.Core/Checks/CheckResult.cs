@@ -61,8 +61,18 @@ public sealed record CheckRun(IReadOnlyList<CheckResult> Results, IReadOnlyList<
 // neither is a run that includes LLM-judged checks: the caller runs it before any unit of work begins.
 public interface ICheckRunner
 {
+    // ChargedTo names the agent whose spend cap LLM-judged checks count against, when the caller is not that agent (SEC-04).
     Task<CheckRun> RunAsync(
         CheckSubject subject,
         CheckSelection selection = CheckSelection.All,
+        Guid? chargedTo = null,
+        CancellationToken cancellationToken = default);
+
+    // Runs the given active checks, read once by a caller that checks many subjects, so each is judged by the same checks.
+    Task<CheckRun> RunAsync(
+        CheckSubject subject,
+        IReadOnlyList<Check> active,
+        CheckSelection selection = CheckSelection.All,
+        Guid? chargedTo = null,
         CancellationToken cancellationToken = default);
 }
