@@ -62,8 +62,12 @@ public sealed record AssetMetadata(string FileName, string Folder, IReadOnlyList
             : Result<AssetMetadata>.Failure(errors);
     }
 
+    // Line breaks are text; other control characters are not, and PostgreSQL refuses NUL outright.
     private static bool IsValidText(string? text, int maxLength)
     {
-        return text is null || (!string.IsNullOrWhiteSpace(text) && text.Trim().Length <= maxLength);
+        return text is null
+            || (!string.IsNullOrWhiteSpace(text)
+                && text.Trim().Length <= maxLength
+                && !text.Any(character => char.IsControl(character) && character is not ('\n' or '\r' or '\t')));
     }
 }

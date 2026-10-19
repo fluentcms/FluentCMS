@@ -45,6 +45,16 @@ public sealed class AssetMetadataTests
     }
 
     [Fact]
+    public void Alt_text_and_caption_keep_line_breaks_and_refuse_other_control_characters()
+    {
+        var multiline = AssetMetadata.Create("a.png", null, null, "A drill.\nOn a bench.", "Line one\r\n\tline two");
+        var withNul = AssetMetadata.Create("a.png", null, null, "alt\0text", "bell\a");
+
+        Assert.True(multiline.IsSuccess);
+        Assert.Equal([MediaErrorCodes.AltTextInvalid, MediaErrorCodes.CaptionInvalid], withNul.Errors.Select(error => error.Code));
+    }
+
+    [Fact]
     public void An_asset_has_at_most_32_tags()
     {
         var tags = Enumerable.Range(0, 33).Select(index => $"tag-{index}");

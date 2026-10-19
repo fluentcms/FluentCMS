@@ -127,7 +127,7 @@
                         {
                             <TableRow data-change-set="@set.Id.ToString("N")">
                                 <TableCell Class="whitespace-normal">
-                                    <a href="@($"audit?type=change_set&id={set.Id}")" class="font-medium underline-offset-4 hover:underline">@set.Rationale</a>
+                                    <a href="@($"sets/{set.Id}")" class="font-medium underline-offset-4 hover:underline">@set.Rationale</a>
                                     @if (set.RevertsChangeSetId is not null)
                                     {
                                         <Badge Variant="outline" Class="ms-2" data-reverts="@set.RevertsChangeSetId.Value.ToString("N")">@L["Revert"]</Badge>
