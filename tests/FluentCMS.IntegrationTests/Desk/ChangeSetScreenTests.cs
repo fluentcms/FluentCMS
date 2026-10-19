@@ -114,7 +114,7 @@ public sealed class ChangeSetScreenTests
     private static Task<ContentType> CreateTypeAsync(AdminHost host, Guid userId, string slug)
     {
         return host.AsUserAsync<IContentTypeDirectory, ContentType>(userId, async directory =>
-            (await directory.CreateAsync(new NewContentType(slug, slug, new ContentTypeDefinition([new FieldDefinition("title", "text")])))).Value);
+            (await directory.CreateAsync(new NewContentType(slug, slug, new ContentTypeDefinition([new FieldDefinition("title", "text")])), TestChangeSetTargets.ContentModel)).Value);
     }
 
     private static ChangeOperation Create(ContentType type)

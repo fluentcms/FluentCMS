@@ -23,4 +23,5 @@ public static class SchemaErrorCodes
     public const string FieldReferenced = "field_referenced";
     public const string DescriptionInvalid = "description_invalid";
     public const string ValueInvalid = "value_invalid";
+    public const string ContentTypeNotPublished = "content_type_not_published";
 }

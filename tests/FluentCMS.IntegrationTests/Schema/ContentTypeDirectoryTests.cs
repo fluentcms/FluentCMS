@@ -39,7 +39,7 @@ public sealed class ContentTypeDirectoryTests
         AssertSameDefinition(created.Definition, read.Definition);
 
         Assert.Equal(
-            [new ContentTypeSummary(created.Id, "Product", "product", 1)],
+            [new ContentTypeSummary(created.Id, "Product", "product", 1, null)],
             await scenario.RunAsync(directory => directory.ListAsync()));
         Assert.Equal(Site.Default.Id, Assert.Single(await scenario.ContentTypeRowsAsync()).SiteId);
         Assert.Equal(
@@ -62,7 +62,7 @@ public sealed class ContentTypeDirectoryTests
         var original = (await scenario.CreateAsync("product", ProductFields)).Value;
         var revisedDefinition = new ContentTypeDefinition([.. ProductFields, Field("releasedOn", "dateTime", """{"dateOnly": true}""")]);
 
-        var revised = (await scenario.RunAsync(directory => directory.ReviseAsync("product", 1, revisedDefinition))).Value;
+        var revised = (await scenario.RunAsync(directory => directory.ReviseAsync("product", 1, revisedDefinition, TestChangeSetTargets.ContentModel))).Value;
 
         Assert.Equal(2, revised.Version);
         Assert.Equal(original.Id, revised.Id);
@@ -123,7 +123,7 @@ public sealed class ContentTypeDirectoryTests
         var revision = await scenario.RunAsync(directory => directory.ReviseAsync(
             "category",
             1,
-            new ContentTypeDefinition([Field("name", "text"), References("regions", "region")])));
+            new ContentTypeDefinition([Field("name", "text"), References("regions", "region")]), TestChangeSetTargets.ContentModel));
 
         Assert.Equal(SchemaErrorCodes.ReferenceTargetUnknown, Assert.Single(revision.Errors).Code);
         await AssertStoredAsync(scenario, types: 3, versions: 3, events: 3);
@@ -138,9 +138,9 @@ public sealed class ContentTypeDirectoryTests
         await scenario.CreateAsync("product", ProductFields);
         var definition = new ContentTypeDefinition([.. ProductFields, Field("summary", "text")]);
 
-        var first = await scenario.RunAsync(directory => directory.ReviseAsync("product", 1, definition));
-        var stale = await scenario.RunAsync(directory => directory.ReviseAsync("product", 1, definition));
-        var ahead = await scenario.RunAsync(directory => directory.ReviseAsync("product", 5, definition));
+        var first = await scenario.RunAsync(directory => directory.ReviseAsync("product", 1, definition, TestChangeSetTargets.ContentModel));
+        var stale = await scenario.RunAsync(directory => directory.ReviseAsync("product", 1, definition, TestChangeSetTargets.ContentModel));
+        var ahead = await scenario.RunAsync(directory => directory.ReviseAsync("product", 5, definition, TestChangeSetTargets.ContentModel));
 
         Assert.Equal(2, first.Value.Version);
         Assert.Equal(SchemaErrorCodes.VersionConflict, Assert.Single(stale.Errors).Code);
@@ -157,7 +157,7 @@ public sealed class ContentTypeDirectoryTests
 
         var invalid = await scenario.CreateAsync("product", Field("price", "money"), Field("price", "number"));
         var unknownRead = await scenario.RunAsync(directory => directory.GetAsync("product"));
-        var unknownRevision = await scenario.RunAsync(directory => directory.ReviseAsync("product", 1, new ContentTypeDefinition([])));
+        var unknownRevision = await scenario.RunAsync(directory => directory.ReviseAsync("product", 1, new ContentTypeDefinition([]), TestChangeSetTargets.ContentModel));
 
         Assert.Equal([SchemaErrorCodes.FieldTypeUnknown, SchemaErrorCodes.FieldNameDuplicate], invalid.Errors.Select(error => error.Code));
         Assert.Equal(SchemaErrorCodes.ContentTypeNotFound, Assert.Single(unknownRead.Errors).Code);
@@ -165,7 +165,7 @@ public sealed class ContentTypeDirectoryTests
         Assert.Empty(await scenario.RunAsync(directory => directory.ListAsync()));
 
         await scenario.CreateAsync("product", ProductFields);
-        var invalidRevision = await scenario.RunAsync(directory => directory.ReviseAsync("product", 1, new ContentTypeDefinition([Field("Name", "text")])));
+        var invalidRevision = await scenario.RunAsync(directory => directory.ReviseAsync("product", 1, new ContentTypeDefinition([Field("Name", "text")]), TestChangeSetTargets.ContentModel));
 
         Assert.Equal(SchemaErrorCodes.FieldNameInvalid, Assert.Single(invalidRevision.Errors).Code);
         await AssertStoredAsync(scenario, types: 1, versions: 1, events: 1);
@@ -183,7 +183,7 @@ public sealed class ContentTypeDirectoryTests
             await using (await scope.ServiceProvider.GetRequiredService<IUnitOfWork>().BeginAsync())
             {
                 var created = await scope.ServiceProvider.GetRequiredService<IContentTypeDirectory>()
-                    .CreateAsync(new NewContentType("Product", "product", new ContentTypeDefinition(ProductFields)));
+                    .CreateAsync(new NewContentType("Product", "product", new ContentTypeDefinition(ProductFields)), TestChangeSetTargets.ContentModel);
                 Assert.True(created.IsSuccess);
             }
         }
@@ -204,9 +204,9 @@ public sealed class ContentTypeDirectoryTests
             var directory = scope.ServiceProvider.GetRequiredService<IContentTypeDirectory>();
             await using var work = await scope.ServiceProvider.GetRequiredService<IUnitOfWork>().BeginAsync();
 
-            Assert.True((await directory.CreateAsync(new NewContentType("Product", "product", new ContentTypeDefinition(ProductFields)))).IsSuccess);
-            var duplicate = await directory.CreateAsync(new NewContentType("Product again", "product", new ContentTypeDefinition(ProductFields)));
-            var dangling = await directory.CreateAsync(new NewContentType("Page", "page", new ContentTypeDefinition([Reference("about", "nothing")])));
+            Assert.True((await directory.CreateAsync(new NewContentType("Product", "product", new ContentTypeDefinition(ProductFields)), TestChangeSetTargets.ContentModel)).IsSuccess);
+            var duplicate = await directory.CreateAsync(new NewContentType("Product again", "product", new ContentTypeDefinition(ProductFields)), TestChangeSetTargets.ContentModel);
+            var dangling = await directory.CreateAsync(new NewContentType("Page", "page", new ContentTypeDefinition([Reference("about", "nothing")])), TestChangeSetTargets.ContentModel);
 
             Assert.Equal(SchemaErrorCodes.SlugTaken, Assert.Single(duplicate.Errors).Code);
             Assert.Equal(SchemaErrorCodes.ReferenceTargetUnknown, Assert.Single(dangling.Errors).Code);
@@ -225,7 +225,10 @@ public sealed class ContentTypeDirectoryTests
         await using var scenario = await SchemaScenario.CreateAsync(provider);
         var product = new NewContentType("Product", "product", new ContentTypeDefinition(ProductFields));
 
-        var lost = await RaceAsync(scenario, directory => directory.CreateAsync(product), directory => directory.CreateAsync(product));
+        // Each writer has its own set, so the two meet only on the slug.
+        var first = await scenario.OpenChangeSetAsync();
+        var second = await scenario.OpenChangeSetAsync();
+        var lost = await RaceAsync(scenario, directory => directory.CreateAsync(product, first), directory => directory.CreateAsync(product, second));
 
         Assert.Equal(SchemaErrorCodes.SlugTaken, Assert.Single(lost.Errors).Code);
         await AssertStoredAsync(scenario, types: 1, versions: 1, events: 1);
@@ -240,10 +243,13 @@ public sealed class ContentTypeDirectoryTests
         await scenario.CreateAsync("product", ProductFields);
         var definition = new ContentTypeDefinition([.. ProductFields, Field("summary", "text")]);
 
+        // Each writer has its own set, so the two meet only on the version.
+        var first = await scenario.OpenChangeSetAsync();
+        var second = await scenario.OpenChangeSetAsync();
         var lost = await RaceAsync(
             scenario,
-            directory => directory.ReviseAsync("product", 1, definition),
-            directory => directory.ReviseAsync("product", 1, definition));
+            directory => directory.ReviseAsync("product", 1, definition, first),
+            directory => directory.ReviseAsync("product", 1, definition, second));
 
         Assert.Equal(SchemaErrorCodes.VersionConflict, Assert.Single(lost.Errors).Code);
         Assert.Equal(2, Assert.Single(await scenario.ContentTypeRowsAsync()).Version);
