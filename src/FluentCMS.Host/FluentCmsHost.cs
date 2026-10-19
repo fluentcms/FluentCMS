@@ -67,6 +67,7 @@ public static class FluentCmsHost
         app.UseRateLimiter();
         app.UseAuthentication();
         app.UseAuthorization();
+        app.UseMediaUploadLimit();
         app.UseAntiforgery();
         MapStaticAssets(app);
         app.MapHealthChecks("/health");
