@@ -79,9 +79,10 @@ public sealed class JobQueueWorkerTests
         var run = WaitingHandler.For(job.Id);
         await run.Started.Task.WaitAsync(Timeout);
 
-        foreach (var _ in Enumerable.Range(0, 4))
+        // Steps under half the lease, so a renewal that read the clock just before a step still holds past the next one.
+        foreach (var _ in Enumerable.Range(0, 8))
         {
-            clock.Now += TimeSpan.FromSeconds(2);
+            clock.Now += TimeSpan.FromSeconds(1);
             await UntilAsync(async () => (await JobRowAsync(host, job.Id)).LeaseUntil >= clock.Now + TimeSpan.FromSeconds(3));
         }
 
@@ -118,9 +119,9 @@ public sealed class JobQueueWorkerTests
         await Task.Delay(TimeSpan.FromSeconds(1));
         await QueryAsync(host, context => context.Database.ExecuteSqlRawAsync("""DELETE FROM "FailRenewals";"""));
 
-        foreach (var _ in Enumerable.Range(0, 4))
+        foreach (var _ in Enumerable.Range(0, 6))
         {
-            clock.Now += TimeSpan.FromMilliseconds(400);
+            clock.Now += TimeSpan.FromMilliseconds(250);
             await UntilAsync(async () => (await JobRowAsync(host, job.Id)).LeaseUntil >= clock.Now + TimeSpan.FromMilliseconds(600));
         }
 
