@@ -45,6 +45,7 @@ jobs:
       DOTNET_NOLOGO: true
       DOTNET_CLI_TELEMETRY_OPTOUT: true
       FLUENTCMS_TEST_POSTGRES: Host=localhost;Port=5432;Database=fluentcms_test;Username=postgres;Password=postgres
+      FLUENTCMS_TEST_BROWSER: "1"
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -67,6 +68,15 @@ jobs:
 
       - name: Build
         run: dotnet build --no-restore --configuration Release
+
+      - name: Cache the Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ hashFiles('Directory.Packages.props') }}
+
+      - name: Install Chromium for the browser tests
+        run: pwsh tests/FluentCMS.IntegrationTests/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
 
       - name: Test
         run: dotnet test --no-build --configuration Release
