@@ -27,7 +27,7 @@ public sealed class AccessibilityTests
             AssetMetadata.Create("drill.jpg", "products", ["hero"], null, null).Value))).Value.Id);
         await session.SignInWithKeyboardAsync();
 
-        string[] paths = ["/ui", "/", "/?queue=stale-facts", $"/sets/{set.Id}?queue=awaiting-me", "/security", "/media", $"/media/{asset}"];
+        string[] paths = ["/ui", "/", "/?queue=stale-facts", $"/sets/{set.Id}?queue=awaiting-me", "/security", "/media", $"/media/{asset}", "/content", "/content/product", "/content/product/new", "/content/supplier/new"];
         var violations = new List<string>();
         foreach (var theme in new[] { "light", "dark" })
         {
@@ -54,6 +54,8 @@ public sealed class AccessibilityTests
     {
         var type = await session.Host.AsUserAsync<IContentTypeDirectory, ContentType>(session.OwnerId, async directory =>
             (await directory.CreateAsync(new NewContentType("Product", "product", new ContentTypeDefinition([new FieldDefinition("title", "text")])))).Value);
+        await session.Host.AsUserAsync<IContentTypeDirectory, ContentType>(session.OwnerId, async directory =>
+            (await directory.CreateAsync(new NewContentType("Supplier", "supplier", new ContentTypeDefinition([new FieldDefinition("name", "text")], isEntity: true)))).Value);
 
         return await session.Host.AsUserAsync<IChangeSetDirectory, ChangeSet>(session.OwnerId, async directory =>
         {
