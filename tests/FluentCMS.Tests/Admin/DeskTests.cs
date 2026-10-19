@@ -253,6 +253,8 @@ public sealed class DeskTests
             return Task.FromResult(Result<IReadOnlyDictionary<DeskQueue, int>>.Success(counts));
         }
 
+        public Task<Result<int>> CountAsync(DeskQueue queue, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
         public Task<Result<ChangeSetList>> ListChangeSetsAsync(DeskQueue queue, int offset, int limit, CancellationToken cancellationToken = default)
         {
             SetPages.Add((queue, offset, limit));

@@ -7,6 +7,7 @@ using FluentCMS.Core.Schema;
 using FluentCMS.Infrastructure.Persistence;
 using FluentCMS.IntegrationTests.ChangeSets;
 using FluentCMS.IntegrationTests.Content;
+using FluentCMS.IntegrationTests.Schema;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using static FluentCMS.IntegrationTests.Content.EntryScenario;
@@ -191,6 +192,55 @@ public sealed class PublishedContentTests
             before);
         Assert.Equal((2, "Second headline"), (after[^1].Version, after[^1].Title));
         Assert.DoesNotContain(after, summary => summary.Id == draft || summary.Id == deleted);
+    }
+
+    // API-03: the Markdown URL is the entry's id, so it stays the same across versions and always shows the published one.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task The_markdown_of_a_published_page_follows_its_published_version(string provider)
+    {
+        await using var scenario = await CreateAsync(provider);
+        var product = await ProductAsync(scenario, "99");
+        await PublishAsync(scenario, product, 1);
+        var page = await PageAsync(scenario, product, "A sturdy drill");
+        await PublishAsync(scenario, page, 1);
+        await scenario.UpdateAsync(page, 1, $$"""{"product": "{{product}}", "price": "{{product}}", "headline": "Now cheaper"}""");
+
+        async Task<string> MarkdownAsync() =>
+            EntryMarkdown.Render((await ContentAsync(scenario, content => content.GetAsync(page))).Value, $"/api/v1/entries/{page}.md", id => $"/api/v1/entries/{id}.md");
+
+        var draft = await MarkdownAsync();
+        await PublishAsync(scenario, page, 2);
+        var published = await MarkdownAsync();
+
+        Assert.Contains("# A sturdy drill\n", draft, StringComparison.Ordinal);
+        Assert.Contains("## price\n\n99\n", draft, StringComparison.Ordinal);
+        Assert.Contains($"## product\n\n[{product}](/api/v1/entries/{product}.md)\n", draft, StringComparison.Ordinal);
+        Assert.Contains("# Now cheaper\n", published, StringComparison.Ordinal);
+        Assert.Contains($"url: \"/api/v1/entries/{page}.md\"\n", published, StringComparison.Ordinal);
+        Assert.Contains("version: 2\n", published, StringComparison.Ordinal);
+    }
+
+    // A revision of the type waiting for review changes nothing a reader sees: each version is read against the definition it was
+    // written against.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_published_version_is_read_against_the_definition_it_was_written_against(string provider)
+    {
+        await using var scenario = await CreateAsync(provider);
+        var product = await ProductAsync(scenario, "99");
+        var page = await PageAsync(scenario, product, "A sturdy drill");
+        await PublishAsync(scenario, page, 1);
+        var revised = new ContentTypeDefinition([SchemaScenario.Reference("product", "product"), SchemaScenario.Field("body", "richText")]);
+        Assert.True((await scenario.Schema.ReviseAsync("product-page", 1, revised)).IsSuccess);
+
+        var read = (await ContentAsync(scenario, content => content.GetAsync(page))).Value;
+        var index = await ContentAsync(scenario, content => content.IndexAsync());
+
+        Assert.Equal(["product", "price", "headline", "body"], read.Definition.Fields.Select(field => field.Name));
+        Assert.Equal("A sturdy drill", Assert.Single(index).Title);
     }
 
     private static async Task<EntryScenario> CreateAsync(string provider)

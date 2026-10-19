@@ -12,7 +12,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FluentCMS.Infrastructure.Delivery;
 
-// An agent that reads through here keeps to its scope (MCP-05); people and anonymous readers see every published entry.
+// An agent that reads through here keeps to its scope (MCP-05); people and anonymous readers see every published entry. Each item
+// carries the definition its version was written against, so a revision of the type waiting for review changes nothing it shows.
 internal sealed class PublishedContentReader(FluentCmsDbContext context, IAgentPermissions permissions, TimeProvider clock)
     : IPublishedContent, IPreviewContent
 {
@@ -38,7 +39,12 @@ internal sealed class PublishedContentReader(FluentCmsDbContext context, IAgentP
             return Result<PublishedPage>.Failure(allowed.Errors);
         }
 
-        if ((await TypesAsync(query.ContentType, null, cancellationToken)).Values.SingleOrDefault() is not { } type)
+        var type = await context.ContentTypes
+            .AsNoTracking()
+            .Where(row => row.SiteId == SiteId && row.Slug == query.ContentType)
+            .Select(row => new { row.Id, row.Name })
+            .SingleOrDefaultAsync(cancellationToken);
+        if (type is null)
         {
             return Result<PublishedPage>.Failure(SchemaErrorCodes.ContentTypeNotFound, $"There is no content type '{query.ContentType}' in this site.");
         }
@@ -59,21 +65,25 @@ internal sealed class PublishedContentReader(FluentCmsDbContext context, IAgentP
                 .Any(reference => reference.EntryId == entry.Id && reference.Version == entry.PublishedVersion && reference.TargetId == target));
         }
 
-        var rows = await entries
-            .OrderBy(entry => entry.Id)
+        var rows = await (
+            from entry in entries
+            join version in context.EntryVersions.AsNoTracking()
+                on new { EntryId = entry.Id, Version = entry.PublishedVersion!.Value } equals new { version.EntryId, version.Version }
+            orderby entry.Id
+            select new { entry.Id, version.Version, version.ContentTypeVersion })
             .Take(query.Limit + 1)
-            .Select(entry => new { entry.Id, Version = entry.PublishedVersion!.Value })
             .ToListAsync(cancellationToken);
 
         var page = rows.Take(query.Limit).ToList();
+        var definitions = await DefinitionsAsync([.. page.Select(row => (type.Id, row.ContentTypeVersion))], cancellationToken);
         var resolved = await EntryResolution.ResolveAsync(
             context,
-            [.. page.Select(row => new VersionToResolve(row.Id, type.Slug, row.Version))],
+            [.. page.Select(row => new VersionToResolve(row.Id, query.ContentType, row.Version))],
             NoProposals,
             cancellationToken);
 
         return Result<PublishedPage>.Success(new PublishedPage(
-            [.. resolved.Select(entry => Item(entry, type))],
+            [.. resolved.Select((entry, index) => Item(entry, type.Name, definitions[(type.Id, page[index].ContentTypeVersion)]))],
             rows.Count > query.Limit ? page[^1].Id : null));
     }
 
@@ -97,57 +107,57 @@ internal sealed class PublishedContentReader(FluentCmsDbContext context, IAgentP
         }
 
         var changed = proposals.Items.Where(id => proposals.Versions[id] is not null).ToList();
-        var entries = await context.Entries
-            .AsNoTracking()
-            .Where(row => changed.Contains(row.Id) && row.SiteId == SiteId && row.DeletedAt == null)
-            .Select(row => new { row.Id, row.ContentTypeId })
-            .ToListAsync(cancellationToken);
+        var numbers = changed.Select(id => proposals.Versions[id]!.Value).Distinct().ToList();
+        var rows = (await (
+            from entry in context.Entries.AsNoTracking()
+            join type in context.ContentTypes.AsNoTracking() on entry.ContentTypeId equals type.Id
+            join version in context.EntryVersions.AsNoTracking() on entry.Id equals version.EntryId
+            where changed.Contains(entry.Id) && numbers.Contains(version.Version) && entry.SiteId == SiteId && entry.DeletedAt == null
+            select new { entry.Id, entry.ContentTypeId, type.Slug, type.Name, version.Version, version.ContentTypeVersion })
+            .ToListAsync(cancellationToken))
+            .Where(row => proposals.Versions[row.Id] == row.Version)
+            .ToDictionary(row => row.Id);
 
-        var types = await TypesAsync(null, null, cancellationToken);
         var readable = await permissions.ReadableTypesAsync(cancellationToken);
-        var shown = changed
-            .Join(entries, id => id, entry => entry.Id, (id, entry) => (Id: id, Type: types[entry.ContentTypeId]))
-            .Where(entry => readable(entry.Type.Slug))
-            .ToList();
-
+        var shown = changed.Where(id => rows.TryGetValue(id, out var row) && readable(row.Slug)).Select(id => rows[id]).ToList();
+        var definitions = await DefinitionsAsync([.. shown.Select(row => (row.ContentTypeId, row.ContentTypeVersion))], cancellationToken);
         var resolved = await EntryResolution.ResolveAsync(
             context,
-            [.. shown.Select(entry => new VersionToResolve(entry.Id, entry.Type.Slug, proposals.Versions[entry.Id]!.Value))],
+            [.. shown.Select(row => new VersionToResolve(row.Id, row.Slug, row.Version))],
             proposals.Versions,
             cancellationToken);
 
         return Result<PreviewChanges>.Success(new PreviewChanges(
             proposals.ChangeSetId,
-            [.. resolved.Select((entry, index) => Item(entry, shown[index].Type))]));
+            [.. resolved.Select((entry, index) => Item(entry, shown[index].Name, definitions[(shown[index].ContentTypeId, shown[index].ContentTypeVersion)]))]));
     }
 
     public async Task<IReadOnlyList<PublishedSummary>> IndexAsync(CancellationToken cancellationToken = default)
     {
-        var types = await TypesAsync(null, null, cancellationToken);
-
         // The stored documents, not resolved views: a title is a text field of the entry itself, never a resolved reference.
         var rows = await (
             from entry in context.Entries.AsNoTracking()
+            join type in context.ContentTypes.AsNoTracking() on entry.ContentTypeId equals type.Id
             join version in context.EntryVersions.AsNoTracking()
                 on new { EntryId = entry.Id, Version = entry.PublishedVersion!.Value } equals new { version.EntryId, version.Version }
             where entry.SiteId == SiteId && entry.PublishedVersion != null && entry.DeletedAt == null
-            select new { entry.Id, entry.ContentTypeId, version.Version, version.Fields })
+            select new { entry.Id, entry.ContentTypeId, type.Slug, type.Name, version.Version, version.ContentTypeVersion, version.Fields })
             .ToListAsync(cancellationToken);
 
         var readable = await permissions.ReadableTypesAsync(cancellationToken);
+        var shown = rows.Where(row => readable(row.Slug)).ToList();
+        var definitions = await DefinitionsAsync([.. shown.Select(row => (row.ContentTypeId, row.ContentTypeVersion))], cancellationToken);
 
-        return rows
-            .Select(row => (Row: row, Type: types[row.ContentTypeId]))
-            .Where(item => readable(item.Type.Slug))
-            .Select(item =>
+        return shown
+            .Select(row =>
             {
-                using var fields = JsonDocument.Parse(item.Row.Fields);
+                using var fields = JsonDocument.Parse(row.Fields);
                 return new PublishedSummary(
-                    item.Row.Id,
-                    item.Type.Slug,
-                    item.Type.Name,
-                    item.Row.Version,
-                    EntryMarkdown.Title(fields.RootElement, item.Type.Definition));
+                    row.Id,
+                    row.Slug,
+                    row.Name,
+                    row.Version,
+                    EntryMarkdown.Title(fields.RootElement, definitions[(row.ContentTypeId, row.ContentTypeVersion)]));
             })
             .OrderBy(summary => summary.ContentType, StringComparer.Ordinal)
             .ThenBy(summary => summary.Id)
@@ -157,30 +167,36 @@ internal sealed class PublishedContentReader(FluentCmsDbContext context, IAgentP
     // A set's proposal wins over the published version, and a set that unpublishes the entry hides it, as publishing would.
     private async Task<Result<PublishedItem>> ReadAsync(Guid id, Proposals? proposals, CancellationToken cancellationToken)
     {
-        var entry = await context.Entries
-            .AsNoTracking()
-            .Where(row => row.Id == id && row.SiteId == SiteId && row.DeletedAt == null)
-            .Select(row => new { row.ContentTypeId, row.PublishedVersion })
+        var entry = await (
+            from row in context.Entries.AsNoTracking()
+            join type in context.ContentTypes.AsNoTracking() on row.ContentTypeId equals type.Id
+            where row.Id == id && row.SiteId == SiteId && row.DeletedAt == null
+            select new { row.ContentTypeId, type.Slug, type.Name, row.PublishedVersion })
             .SingleOrDefaultAsync(cancellationToken);
-        var version = proposals is not null && proposals.Versions.TryGetValue(id, out var proposed) ? proposed : entry?.PublishedVersion;
-        if (entry is null || version is null)
+        var number = proposals is not null && proposals.Versions.TryGetValue(id, out var proposed) ? proposed : entry?.PublishedVersion;
+        if (entry is null || number is not { } version)
         {
             return Result<PublishedItem>.Failure(ContentErrorCodes.EntryNotFound, $"There is no published entry {id} in this site.");
         }
 
-        var type = (await TypesAsync(null, entry.ContentTypeId, cancellationToken))[entry.ContentTypeId];
-        var allowed = await permissions.CheckContentAsync(type.Slug, AgentOperation.Read, cancellationToken: cancellationToken);
+        var allowed = await permissions.CheckContentAsync(entry.Slug, AgentOperation.Read, cancellationToken: cancellationToken);
         if (!allowed.IsSuccess)
         {
             return Result<PublishedItem>.Failure(allowed.Errors);
         }
 
+        var typeVersion = await context.EntryVersions
+            .AsNoTracking()
+            .Where(row => row.EntryId == id && row.Version == version)
+            .Select(row => row.ContentTypeVersion)
+            .SingleAsync(cancellationToken);
+        var definitions = await DefinitionsAsync([(entry.ContentTypeId, typeVersion)], cancellationToken);
         var resolved = await EntryResolution.ResolveAsync(
             context,
-            [new VersionToResolve(id, type.Slug, version.Value)],
+            [new VersionToResolve(id, entry.Slug, version)],
             proposals?.Versions ?? NoProposals,
             cancellationToken);
-        return Result<PublishedItem>.Success(Item(resolved[0], type));
+        return Result<PublishedItem>.Success(Item(resolved[0], entry.Name, definitions[(entry.ContentTypeId, typeVersion)]));
     }
 
     // The entry and entity versions the token's set proposes, or null when the token does not work (API-04).
@@ -225,38 +241,41 @@ internal sealed class PublishedContentReader(FluentCmsDbContext context, IAgentP
             "The preview token does not work: it is unknown, expired or revoked, or its change set was published, rejected or reverted.");
     }
 
-    // The site's content types with their current definitions, which a published version is read against: every type, the one
-    // with the slug, or the one with the id.
-    private async Task<Dictionary<Guid, PublishedType>> TypesAsync(string? slug, Guid? id, CancellationToken cancellationToken)
+    // The definitions of the type versions given, read in one query; every pair must be stored.
+    private async Task<Dictionary<(Guid TypeId, int Version), ContentTypeDefinition>> DefinitionsAsync(
+        IReadOnlyCollection<(Guid TypeId, int Version)> wanted,
+        CancellationToken cancellationToken)
     {
-        var rows = await (
-            from type in context.ContentTypes.AsNoTracking()
-            join version in context.ContentTypeVersions.AsNoTracking()
-                on new { ContentTypeId = type.Id, type.Version } equals new { version.ContentTypeId, version.Version }
-            where type.SiteId == SiteId && (slug == null || type.Slug == slug) && (id == null || type.Id == id)
-            select new { type.Id, type.Slug, type.Name, version.Definition })
+        var pairs = wanted.ToHashSet();
+        var typeIds = pairs.Select(pair => pair.TypeId).Distinct().ToList();
+        var versions = pairs.Select(pair => pair.Version).Distinct().ToList();
+
+        var rows = await context.ContentTypeVersions
+            .AsNoTracking()
+            .Where(row => typeIds.Contains(row.ContentTypeId) && versions.Contains(row.Version))
+            .Select(row => new { row.ContentTypeId, row.Version, row.Definition })
             .ToListAsync(cancellationToken);
 
-        return rows.ToDictionary(row => row.Id, row => new PublishedType(row.Id, row.Slug, row.Name, ReadDefinition(row.Slug, row.Definition)));
+        return rows
+            .Where(row => pairs.Contains((row.ContentTypeId, row.Version)))
+            .ToDictionary(row => (row.ContentTypeId, row.Version), row => ReadDefinition(row.ContentTypeId, row.Version, row.Definition));
     }
 
-    private static ContentTypeDefinition ReadDefinition(string slug, string json)
+    private static ContentTypeDefinition ReadDefinition(Guid typeId, int version, string json)
     {
         var definition = ContentTypeDefinition.Parse(json);
 
         return definition.IsSuccess
             ? definition.Value
             : throw new InvalidOperationException(
-                $"The current definition of content type '{slug}' is stored in a form that cannot be read: "
+                $"Version {version} of content type {typeId} is stored in a form that cannot be read: "
                 + string.Join("; ", definition.Errors.Select(error => error.Message)));
     }
 
-    private static PublishedItem Item(ResolvedEntry entry, PublishedType type)
+    private static PublishedItem Item(ResolvedEntry entry, string typeName, ContentTypeDefinition definition)
     {
-        return new PublishedItem(entry.EntryId, type.Slug, type.Name, type.Definition, entry.Version, entry.Fields, entry.Unresolved);
+        return new PublishedItem(entry.EntryId, entry.ContentType, typeName, definition, entry.Version, entry.Fields, entry.Unresolved);
     }
-
-    private sealed record PublishedType(Guid Id, string Slug, string Name, ContentTypeDefinition Definition);
 
     // Items are in the order of the set's operations; a null version is an unpublish.
     private sealed record Proposals(Guid ChangeSetId, IReadOnlyList<Guid> Items, IReadOnlyDictionary<Guid, int?> Versions);
