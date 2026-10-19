@@ -3,6 +3,20 @@
 @inject IStringLocalizer<FieldWidget> L
 
 @* One field of a generated form (FRM-01): the widget its type takes, inside a FormField with the field's description and error. *@
+@if (Field.Type is "reference" or "media")
+{
+    <PickerField Field="@Field.Name"
+                 Kind="@(Field.Type == "media" ? PickerField.MediaKind : PickerField.EntryKind)"
+                 Target="@FieldValues.Setting(Field, "target")"
+                 Value="@Value"
+                 Label="@Label"
+                 Description="@Description"
+                 Error="@Error"
+                 Required="@Field.Required"
+                 Options="@Options.ToArray()"
+                 @rendermode="InteractiveServer" />
+    return;
+}
 <FormField Label="@Label" Description="@Description" Error="@Error" Class="@(Wide ? "sm:col-span-2" : null)">
     @switch (Field.Type)
     {
@@ -30,16 +44,6 @@
                 @foreach (var choice in FieldValues.Strings(Field, "values"))
                 {
                     <option value="@choice" selected="@(choice == Value)">@choice</option>
-                }
-            </Select>
-            break;
-        case "reference":
-        case "media":
-            <Select name="@Name" required="@Field.Required" data-field="@Field.Name">
-                <option value="">@L["Choose…"]</option>
-                @foreach (var option in Options)
-                {
-                    <option value="@option.Value" selected="@(option.Value == Value)">@option.Label</option>
                 }
             </Select>
             break;
