@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json;
 using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Content;
+using FluentCMS.Core.Media;
 using FluentCMS.Core.Schema;
 using FluentCMS.Infrastructure.Persistence;
 
@@ -21,12 +22,14 @@ public sealed class SignedInPageTests
         await using var host = await AdminHost.StartAsync(install, settings: database.Configuration);
         var ownerId = await host.CreateFirstAdministratorAsync();
         var (set, entry) = await AwaitingReviewAsync(host, ownerId);
+        var asset = await host.AsUserAsync<IMediaLibrary, Guid>(ownerId, async library => (await library.UploadAsync(new NewAsset(
+            new MemoryStream(Media.MediaFiles.Jpeg()), "image/jpeg", AssetMetadata.Create("drill.jpg", "", [], "A drill.", null).Value))).Value.Id);
         await host.SignInAsync(AdminHost.Owner);
 
         string[] paths =
         [
-            "/", "/?queue=stale-facts", $"/sets/{set}", "/security", "/audit", "/users", "/agents", "/webhooks", "/media",
-            "/content", "/content/product", "/content/product/new", $"/content/product/{entry}",
+            "/", "/?queue=stale-facts", $"/sets/{set}", "/security", "/audit", "/users", "/users/new", "/agents", "/agents/new", "/webhooks",
+            "/media", $"/media/{asset}", "/content", "/content/product", "/content/product/new", $"/content/product/{entry}",
         ];
         var failures = new List<string>();
         for (var round = 0; round < 5; round++)

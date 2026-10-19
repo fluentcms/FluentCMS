@@ -5,6 +5,7 @@ using FluentCMS.Core.Agents;
 using FluentCMS.Core.Audit;
 using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Identity;
+using FluentCMS.Core.Routing;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Sites;
 using FluentCMS.Infrastructure.Audit;
@@ -164,6 +165,17 @@ public sealed partial class SecurityEventTests
             return await users.EnableAsync(editor);
         });
         await host.AsUserAsync<IAgentCredentialDirectory, bool>(ownerId, async credentials => (await credentials.RevokeAsync(issued.Credential.Id)).IsSuccess);
+
+        // A routing rule created, revised, activated and deactivated.
+        var rule = new RoutingRuleDefinition(
+            "A changed product summary needs a person.",
+            new RoutingConditions { ContentTypes = ["product"], Fields = ["summary"] },
+            RoutingDisposition.Review(1));
+        await host.AsUserAsync<IRoutingRuleDirectory, bool>(ownerId, async rules =>
+            (await rules.CreateAsync(new NewRoutingRule("summary-changes", rule))).IsSuccess
+            && (await rules.ReviseAsync("summary-changes", 1, new RoutingRuleDefinition("Two people read a changed summary.", rule.When, RoutingDisposition.Review(2)))).IsSuccess
+            && (await rules.ActivateAsync("summary-changes", 2)).IsSuccess
+            && (await rules.DeactivateAsync("summary-changes")).IsSuccess);
         await host.SignInAsync(AdminHost.Owner);
 
         var rows = SecurityRows.Parse(await host.Client.GetStringAsync("/security"));
@@ -174,7 +186,11 @@ public sealed partial class SecurityEventTests
             Assert.Contains((operation, "agent", "capped-agent"), rows);
         }
 
-        foreach (var operation in new[] { "agent_credential.issued", "agent_credential.revoked", "user.created", "user.disabled", "user.enabled" })
+        foreach (var operation in new[]
+        {
+            "agent_credential.issued", "agent_credential.revoked", "user.created", "user.disabled", "user.enabled",
+            "routing_rule.created", "routing_rule.revised", "routing_rule.activated", "routing_rule.deactivated",
+        })
         {
             Assert.Contains((operation, "user", "Test administrator"), rows);
         }
