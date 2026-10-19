@@ -137,10 +137,10 @@ internal sealed class AgentCredentialDirectory(
         return active.IsSuccess ? Result<AgentCredential>.Success(credential) : Result<AgentCredential>.Failure(active.Errors);
     }
 
-    // A credential grants permissions, which no agent may change, whatever its own scope (SEC-02).
+    // A credential grants permissions, which only a person changes: no agent, whatever its own scope (SEC-02), and no engine.
     private Result? RefuseAgent()
     {
-        return currentInitiator.Current is AgentInitiator
+        return currentInitiator.Current is not UserInitiator
             ? Result.Failure(AgentCredentialErrorCodes.PeopleOnly, "Only a person can issue or revoke an agent credential; an agent cannot.")
             : null;
     }

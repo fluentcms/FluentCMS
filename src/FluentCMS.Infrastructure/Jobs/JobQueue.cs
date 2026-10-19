@@ -28,7 +28,7 @@ internal sealed class JobQueue(FluentCmsDbContext context, ICurrentInitiator cur
         }
 
         var now = clock.GetUtcNow();
-        var initiator = currentInitiator.Current;
+        Initiator? initiator = job.RunAs ?? currentInitiator.Current;
         (string Kind, Guid Id)? described = initiator is null ? null : InitiatorKinds.Describe(initiator);
 
         var row = new JobRow

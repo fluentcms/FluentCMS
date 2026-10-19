@@ -1,0 +1,167 @@
+using System.Collections.Concurrent;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using FluentCMS.Core.Agents;
+using FluentCMS.Core.Audit;
+using FluentCMS.Core.Checks;
+using FluentCMS.Core.Extensions;
+using FluentCMS.Core.Identity;
+using FluentCMS.Core.Jobs;
+using FluentCMS.Core.Models;
+using FluentCMS.Core.Persistence;
+using FluentCMS.Core.Results;
+using FluentCMS.Core.Sites;
+using FluentCMS.Infrastructure.Persistence;
+using FluentCMS.IntegrationTests.Audit;
+using FluentCMS.IntegrationTests.Checks;
+using FluentCMS.IntegrationTests.Models;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace FluentCMS.IntegrationTests.Identity;
+
+// ADR-0012: what the product does on its own is recorded as the system, never as a person or an agent.
+public sealed class SystemInitiatorTests
+{
+    private static readonly AuditSubject Set = new("change_set", Guid.NewGuid());
+
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task An_engine_s_event_reads_back_and_exports_as_the_system_with_no_credential(string provider)
+    {
+        await using var scenario = await AuditScenario.CreateAsync(provider);
+        var at = new DateTimeOffset(2026, 10, 19, 9, 0, 0, TimeSpan.Zero);
+
+        await scenario.AppendAsync(at, new NewAuditEvent("change_set.checks_passed") { SubjectType = Set.Type, SubjectId = Set.Id }, SystemInitiator.Checks);
+
+        var read = Assert.Single(await scenario.ReadAsync(new AuditQuery { Subject = Set }));
+        var exported = JsonNode.Parse(await scenario.ExportAsync(new AuditQuery { Subject = Set }, AuditExportFormat.Json))!.AsArray();
+        var row = await QueryAsync(scenario, context => context.AuditEvents.AsNoTracking().SingleAsync(e => e.Operation == "change_set.checks_passed"));
+
+        var system = Assert.IsType<SystemInitiator>(read.Initiator);
+        Assert.Equal(("checks", SystemInitiator.Checks.Id), (system.Component, system.Id));
+        Assert.Null(read.AgentCredentialId);
+        Assert.Equal(("system", SystemInitiator.Checks.Id, "checks", (Guid?)null), (row.InitiatorKind, row.InitiatorId, row.InitiatorName, row.AgentCredentialId));
+        var exportedEvent = exported.Single(e => (string?)e!["operation"] == "change_set.checks_passed")!;
+        Assert.Equal(
+            ("system", SystemInitiator.Checks.Id.ToString(), "checks", (string?)null),
+            ((string?)exportedEvent["initiatorKind"], (string?)exportedEvent["initiatorId"], (string?)exportedEvent["initiatorName"], (string?)exportedEvent["agentCredentialId"]));
+    }
+
+    // Only a person issues credentials and activates checks; an engine is refused, as an agent is.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task An_engine_cannot_activate_a_check_or_issue_a_credential(string provider)
+    {
+        await using var scenario = await CheckScenario.CreateAsync(provider);
+        await scenario.CreateAsync("no-superlatives", CheckScenario.NoSuperlatives());
+        scenario.Initiator = SystemInitiator.Checks;
+
+        var activate = await scenario.RunAsync(directory => directory.ActivateAsync("no-superlatives", 1));
+        await using var scope = scenario.Services.CreateAsyncScope();
+        var issue = await scope.ServiceProvider.GetRequiredService<IAgentCredentialDirectory>().IssueAsync(new NewAgentCredential(
+            "engine-made",
+            DateTimeOffset.UtcNow.AddDays(30),
+            AgentScope.Create([Site.Default.Id], null, null, [AgentOperation.Read]).Value,
+            AgentCaps.Create(10, TimeSpan.FromHours(1), 1m, TimeSpan.FromDays(1), 10, 10).Value));
+
+        Assert.Equal(CheckErrorCodes.PeopleOnly, Assert.Single(activate.Errors).Code);
+        Assert.Equal(AgentCredentialErrorCodes.PeopleOnly, Assert.Single(issue.Errors).Code);
+    }
+
+    // AUD-04: the retention purge runs as the retention engine, and no other engine may purge.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task The_retention_engine_purges_stored_prompts_and_logs_each_as_itself(string provider)
+    {
+        await using var scenario = await ModelScenario.CreateAsync(provider, new() { ["Models:PromptRetention"] = "1.00:00:00" });
+        var old = (await scenario.AskAsync(ModelScenario.Tone)).Value;
+        scenario.Clock.Now = scenario.Clock.Now.AddDays(2);
+
+        scenario.Initiator = SystemInitiator.Checks;
+        var byChecks = await scenario.RunAsync(services => services.GetRequiredService<IModelCallLog>().PurgeAsync());
+        scenario.Initiator = SystemInitiator.Retention;
+        var byRetention = await scenario.RunAsync(services => services.GetRequiredService<IModelCallLog>().PurgeAsync());
+
+        Assert.Equal(ModelErrorCodes.PeopleOnly, Assert.Single(byChecks.Errors).Code);
+        Assert.Equal(1, byRetention.Value);
+        var purge = Assert.Single(await scenario.PurgeEventsAsync());
+        Assert.Equal((old.CallId, "system", "retention"), (purge.SubjectId!.Value, purge.InitiatorKind, purge.InitiatorName));
+    }
+
+    // A submission enqueues the check run, which must run as the check engine rather than as the agent that submitted.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_job_enqueued_to_run_as_an_engine_is_stored_as_that_engine(string provider)
+    {
+        await using var scenario = await AuditScenario.CreateAsync(provider);
+        await using var scope = scenario.CreateScope();
+        var services = scope.ServiceProvider;
+
+        Job enqueued;
+        await using (var work = await services.GetRequiredService<IUnitOfWork>().BeginAsync())
+        {
+            enqueued = await services.GetRequiredService<IJobQueue>().EnqueueAsync(
+                new NewJob("checks.run", JsonDocument.Parse("{}").RootElement.Clone()) { RunAs = SystemInitiator.Checks });
+            await work.CommitAsync();
+        }
+
+        var read = (await services.GetRequiredService<IJobQueue>().GetAsync(enqueued.Id)).Value;
+
+        Assert.Equal(SystemInitiator.Checks, enqueued.Initiator);
+        Assert.Equal(SystemInitiator.Checks, read.Initiator);
+    }
+
+    [Fact]
+    public async Task The_worker_runs_a_job_as_the_engine_it_names()
+    {
+        using var install = new TemporaryInstall();
+        await using var host = await AdminHost.StartAsync(
+            install,
+            settings: new Dictionary<string, string?> { ["JobQueue:PollingInterval"] = "00:00:00.050" },
+            configure: builder => builder.Services.AddFluentCmsExtension<IJobHandler, WhoRunsHandler>());
+        var administrator = await host.CreateFirstAdministratorAsync();
+
+        var job = await host.AsUserAsync<IServiceProvider, Job>(administrator, async services =>
+        {
+            await using var work = await services.GetRequiredService<IUnitOfWork>().BeginAsync();
+            var enqueued = await services.GetRequiredService<IJobQueue>().EnqueueAsync(
+                new NewJob(WhoRunsHandler.Name, JsonDocument.Parse("{}").RootElement.Clone()) { RunAs = SystemInitiator.Checks });
+            await work.CommitAsync();
+            return enqueued;
+        });
+
+        var deadline = DateTime.UtcNow.AddSeconds(30);
+        while (!WhoRunsHandler.RanAs.ContainsKey(job.Id) && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(50);
+        }
+
+        Assert.Equal(SystemInitiator.Checks, WhoRunsHandler.RanAs[job.Id]);
+    }
+
+    private static async Task<T> QueryAsync<T>(AuditScenario scenario, Func<FluentCmsDbContext, Task<T>> query)
+    {
+        await using var scope = scenario.CreateScope();
+        return await query(scope.ServiceProvider.GetRequiredService<FluentCmsDbContext>());
+    }
+
+    private sealed class WhoRunsHandler : IJobHandler
+    {
+        public const string Name = "test.who-runs";
+
+        public static ConcurrentDictionary<Guid, Initiator?> RanAs { get; } = new();
+
+        public string Type => Name;
+
+        public Task<Result> RunAsync(JobContext context, CancellationToken cancellationToken)
+        {
+            RanAs[context.Job.Id] = context.Services.GetRequiredService<ICurrentInitiator>().Current;
+            return Task.FromResult(Result.Success());
+        }
+    }
+}

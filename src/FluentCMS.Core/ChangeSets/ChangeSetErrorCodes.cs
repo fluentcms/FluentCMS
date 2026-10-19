@@ -24,5 +24,6 @@ public static class ChangeSetErrorCodes
     public const string Conflict = "change_set_conflict";
     public const string BaseVersionStale = "base_version_stale";
     public const string RevertFixed = "revert_set_fixed";
+    public const string InitiatorNotAllowed = "initiator_not_allowed";
     public const string ItemKindMismatch = "item_kind_mismatch";
 }

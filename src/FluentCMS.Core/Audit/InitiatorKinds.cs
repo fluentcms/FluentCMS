@@ -7,6 +7,7 @@ public static class InitiatorKinds
 {
     public const string User = "user";
     public const string Agent = "agent";
+    public const string System = "system";
 
     public static (string Kind, Guid Id) Describe(Initiator initiator)
     {
@@ -16,6 +17,7 @@ public static class InitiatorKinds
         {
             UserInitiator user => (User, user.UserId),
             AgentInitiator agent => (Agent, agent.CredentialId),
+            SystemInitiator system => (System, system.Id),
             _ => throw new NotSupportedException($"The audit log cannot store an initiator of type {initiator.GetType().Name}."),
         };
     }

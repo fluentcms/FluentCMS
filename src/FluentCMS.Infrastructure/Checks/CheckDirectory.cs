@@ -269,10 +269,10 @@ internal sealed class CheckDirectory(
             : Result<IReadOnlyDictionary<string, ContentTypeDefinition>>.Failure(errors);
     }
 
-    // Activating decides what guards content, which no agent does, whatever its scope (D17, SEC-02).
+    // Activating decides what guards content, which only a person does (D17, SEC-02): no agent, whatever its scope, and no engine.
     private Result<Check>? RefuseAgent(string action)
     {
-        return currentInitiator.Current is AgentInitiator
+        return currentInitiator.Current is not UserInitiator
             ? Result<Check>.Failure(CheckErrorCodes.PeopleOnly, $"Only a person can {action} a check; an agent cannot.")
             : null;
     }

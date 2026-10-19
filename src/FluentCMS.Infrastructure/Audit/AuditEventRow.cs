@@ -63,6 +63,7 @@ public sealed class AuditEventRow
         {
             InitiatorKinds.User => new UserInitiator(InitiatorId, InitiatorName),
             InitiatorKinds.Agent => new AgentInitiator(InitiatorId, InitiatorName),
+            InitiatorKinds.System => new SystemInitiator(InitiatorName),
             _ => throw new InvalidOperationException($"Audit event {Id} names an unknown initiator kind '{InitiatorKind}'."),
         };
 

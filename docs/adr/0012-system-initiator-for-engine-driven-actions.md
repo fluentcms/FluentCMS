@@ -1,0 +1,39 @@
+# ADR-0012: A system initiator for actions the product takes on its own
+
+- Status: accepted
+- Date: 2026-10-19
+- Related: AUD-01, AUD-04, AUD-N2, CHG-01, CHG-04, CHK-03, RTE-01, MCP-06, SEC-02, ADR-0009, ADR-0010
+
+## Context
+
+The audit log names who caused every change, a person or an agent (AUD-01, ADR-0009), and every change set has one of them as its initiator (CHG-01). Some actions have neither behind them:
+
+- The check engine moves a change set from checks running to checks failed or awaiting review once its checks have run (CHK-03, CHG-04).
+- Routing auto-publishes a set that passes on checks (RTE-01, the one exception in MCP-06).
+- Maintenance runs on its own, such as clearing stored prompts past their retention (AUD-04, AUD-N2).
+
+These run inside a request or as a job (ADR-0010), and a job runs as whoever enqueued it. For the check run that is the agent that submitted the set, and agents may not make the checks' moves (MCP-06, SEC-02).
+
+## Decision
+
+- A third kind of initiator, `SystemInitiator`, names a part of the product acting on its own by its component: `checks` and `retention`, and `routing` when F-RTE lands. The audit log stores it with the kind `system`, the component as its name, a stable id derived from the component, and no agent credential.
+- Its limits are enforced in Core:
+  - It is never a change set's initiator. `ChangeSet.Open` refuses it, and so do session grouping and revert, which open sets through it.
+  - `AgentPermissions` treats it as not an agent and lets it make only the moves its component owns. `checks` moves a set from checks running to checks failed or awaiting review; routing will add auto-publish.
+  - It reads content, and never creates, edits or deletes content, opens or adds to a change set, or calls a tool.
+  - What only a person may do (issuing credentials, activating checks) is written as "a person", so a system initiator is refused there too.
+  - Maintenance names what it may do: the prompt purge accepts `retention` as well as a person.
+- A job can run as a system initiator instead of whoever enqueued it (`NewJob.RunAs`). The check run is enqueued in the submitting agent's call and runs as `checks`.
+
+## Consequences
+
+- The log tells what an agent did apart from what the product did: an agent submits its set, and the check engine, not the agent, moves it on.
+- Exports and the audit screen show a third initiator kind. Readers of the export handle `system`.
+- A new engine moves nothing until its moves are written into `AgentPermissions`, and none writes content.
+- AUD-01 and CHG-01 read "agent/user". The system kind covers only engine-driven moves and maintenance, and the maintainer updates that wording in the decision record.
+
+## Alternatives considered
+
+- Act as the submitting agent: no new kind, but false provenance. The log would say the agent moved its own set out of checks running, which it is not allowed to do.
+- A service user, an Identity account the engine signs in as: a fake person in the user list and in the log, with a password or key to protect, and "human reviewed" claims would become ambiguous.
+- No initiator for these actions: the audit log refuses a change without one (AUD-N1), and a gap would hide who did what.
