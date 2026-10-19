@@ -147,7 +147,6 @@ public sealed class SchemaTools : IToolProvider, IResourceProvider
             call,
             target!,
             (directory, changeSet) => directory.CreateAsync(new NewContentType(name!, slug!, parsed!), changeSet, cancellationToken),
-            OperationKind.Create,
             cancellationToken);
     }
 
@@ -168,7 +167,6 @@ public sealed class SchemaTools : IToolProvider, IResourceProvider
             call,
             target!,
             (directory, changeSet) => directory.ReviseAsync(slug!, baseVersion!.Value, parsed!, changeSet, cancellationToken),
-            OperationKind.Update,
             cancellationToken);
     }
 

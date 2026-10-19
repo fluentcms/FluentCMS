@@ -117,9 +117,14 @@ public sealed class SchemaChangeSetTests
         var changeSet = await scenario.OpenAsync();
         var target = ChangeSetTarget.Existing(changeSet.Id);
 
+        // The rejected draft is still the latest version, but no set that can publish proposes it, so it is no base.
+        var deadDraft = await scenario.RunSchemaAsync(directory => directory.ReviseAsync("product", 2, WithPrice, target));
         var revised = await scenario.RunSchemaAsync(directory => directory.ReviseAsync("product", 1, WithPrice, target));
         var unknownBase = await scenario.RunSchemaAsync(directory => directory.ReviseAsync("product", 2, WithPrice, target));
 
+        var refusal = Assert.Single(deadDraft.Errors);
+        Assert.Equal(SchemaErrorCodes.VersionConflict, refusal.Code);
+        Assert.Contains("revise the published version 1", refusal.Message);
         Assert.Equal(3, revised.Value.Version);
         Assert.Equal([Update(created, 1, 3)], (await scenario.RunAsync(directory => directory.GetAsync(changeSet.Id))).Value.Operations);
         Assert.Equal(SchemaErrorCodes.VersionConflict, Assert.Single(unknownBase.Errors).Code);
@@ -224,6 +229,77 @@ public sealed class SchemaChangeSetTests
             await scenario.QueryAsync(context => context.AuditEvents.AsNoTracking().Where(row => row.Operation == "agent.items_per_change_set_exceeded").ToListAsync()));
     }
 
+    // A draft an open set proposes is a base for the next draft, which publishes after it.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_revision_may_build_on_a_draft_an_open_set_still_proposes(string provider)
+    {
+        await using var scenario = await ScenarioAsync(provider);
+        var created = await PublishedProductAsync(scenario);
+        var first = await scenario.OpenAsync();
+        await scenario.RunSchemaAsync(directory => directory.ReviseAsync("product", 1, WithSummary, ChangeSetTarget.Existing(first.Id)));
+        var second = await scenario.OpenAsync();
+
+        var chained = await scenario.RunSchemaAsync(directory => directory.ReviseAsync(
+            "product",
+            2,
+            new ContentTypeDefinition([Title, new FieldDefinition("summary", "text"), new FieldDefinition("price", "number")]),
+            ChangeSetTarget.Existing(second.Id)));
+
+        Assert.Equal(3, chained.Value.Version);
+        Assert.Equal([Update(created, 2, 3)], (await scenario.RunAsync(directory => directory.GetAsync(second.Id))).Value.Operations);
+        await scenario.PublishAsync(first.Id);
+        await scenario.PublishAsync(second.Id);
+        Assert.Equal(3, (await scenario.RunSchemaAsync(directory => directory.GetPublishedAsync("product"))).Value.Version);
+    }
+
+    // A revision of a type with nothing live is recorded as its create, so an agent needs the create scope for it (MCP-05).
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task An_agent_without_the_create_scope_cannot_revise_a_type_with_nothing_live(string provider)
+    {
+        await using var scenario = await ChangeSetScenario.CreateAsync(provider);
+        await scenario.ContentTypeAsync("product");
+        var own = await scenario.OpenAsync();
+        await scenario.UpdateAgentAsync(row => row.Operations = [AgentOperation.Read, AgentOperation.Update]);
+
+        var revised = await scenario.RunSchemaAsync(directory => directory.ReviseAsync("product", 1, WithSummary, ChangeSetTarget.Existing(own.Id)));
+
+        Assert.Equal(AgentPermissionErrorCodes.ScopeDenied, Assert.Single(revised.Errors).Code);
+        Assert.Empty(await scenario.OperationRowsAsync(own.Id));
+        Assert.Equal(1, (await scenario.RunSchemaAsync(directory => directory.GetAsync("product"))).Value.Version);
+    }
+
+    // Inside a caller's unit of work the revision's rows are saved, so rolling that unit back is what undoes them.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_rollback_after_the_rows_reached_the_database_leaves_neither_the_version_nor_the_operation(string provider)
+    {
+        await using var scenario = await ScenarioAsync(provider);
+        var changeSet = await scenario.OpenAsync();
+        var target = ChangeSetTarget.Existing(changeSet.Id);
+        var created = (await scenario.RunSchemaAsync(directory => directory.CreateAsync(Product, target))).Value;
+        var events = (await scenario.ChangeSetEventsAsync()).Count;
+
+        await using (var scope = scenario.Services.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<FluentCmsDbContext>();
+            await using var work = await scope.ServiceProvider.GetRequiredService<IUnitOfWork>().BeginAsync();
+
+            Assert.True((await scope.ServiceProvider.GetRequiredService<IContentTypeDirectory>().ReviseAsync("product", 1, WithSummary, target)).IsSuccess);
+
+            Assert.True(await context.ContentTypeVersions.AsNoTracking().AnyAsync(row => row.ContentTypeId == created.Id && row.Version == 2));
+            Assert.Equal(2, await context.ChangeSetOperations.AsNoTracking().Where(row => row.ChangeSetId == changeSet.Id).Select(row => row.ProposedVersion).SingleAsync());
+        }
+
+        Assert.Equal(1, (await scenario.RunSchemaAsync(directory => directory.GetAsync("product"))).Value.Version);
+        Assert.Single(await scenario.QueryAsync(context => context.ContentTypeVersions.AsNoTracking().Where(row => row.ContentTypeId == created.Id).ToListAsync()));
+        Assert.Equal(1, Assert.Single(await scenario.OperationRowsAsync(changeSet.Id)).ProposedVersion);
+        Assert.Equal(events, (await scenario.ChangeSetEventsAsync()).Count);
+    }
     // A rejected create leaves a type no set has published, and a reverted one takes it offline; either way the next revision
     // records a create, so the type can be published again.
     [Theory]

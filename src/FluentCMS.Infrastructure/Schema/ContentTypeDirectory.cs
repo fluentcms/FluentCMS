@@ -144,6 +144,28 @@ internal sealed class ContentTypeDirectory(
             return Result<ContentType>.Failure([VersionConflict(row, baseVersion)]);
         }
 
+        // A draft is only worth building on while a set that can still publish proposes it; a revision of a rejected or reverted
+        // draft could never publish over the version that is live.
+        if (row.PublishedVersion is { } published
+            && baseVersion != published
+            && !await changeSets.ProposesAsync(ItemKind.Schema, row.Id, baseVersion, cancellationToken))
+        {
+            return Result<ContentType>.Failure(
+                SchemaErrorCodes.VersionConflict,
+                $"Version {baseVersion} of the content type '{slug}' is a draft that no open change set proposes any more, so it will never "
+                + $"be published; revise the published version {published} instead.");
+        }
+
+        // A type with nothing live is made live again by a create, so the revision needs the scope to create it (MCP-05).
+        if (row.PublishedVersion is null)
+        {
+            var creatable = await permissions.CheckDefinitionAsync(slug, AgentOperation.Create, cancellationToken);
+            if (!creatable.IsSuccess)
+            {
+                return Result<ContentType>.Failure(creatable.Errors);
+            }
+        }
+
         var based = await context.ContentTypeVersions
             .AsNoTracking()
             .SingleAsync(version => version.ContentTypeId == row.Id && version.Version == baseVersion, cancellationToken);

@@ -16,7 +16,6 @@ internal static class ProposedWrite
         ToolInvocation call,
         ChangeSetTarget target,
         Func<IContentTypeDirectory, DirectoryTarget, Task<Result<ContentType>>> write,
-        OperationKind kind,
         CancellationToken cancellationToken)
     {
         var services = call.Services;
@@ -33,11 +32,14 @@ internal static class ProposedWrite
             return ToolResult.Failure(set.Errors);
         }
 
+        // The set says what the write became: a revision of a type with nothing live is recorded as its create.
+        var recorded = set.Value.Operations.Single(operation => operation.ItemKind == ItemKind.Schema && operation.ItemId == type.Value.Id);
+
         return ToolResult.Success(new JsonObject
         {
             ["contentType"] = ToolJson.ContentType(type.Value),
             ["changeSet"] = ToolJson.ChangeSet(set.Value),
-            ["next"] = $"The {ToolJson.Name(kind)} is in change set {set.Value.Id}, which stays open for more "
+            ["next"] = $"The {ToolJson.Name(recorded.Kind)} is in change set {set.Value.Id}, which stays open for more "
                 + "operations. Call submit_change_set when it is complete; checks run and a person reviews it before it is published.",
         });
     }

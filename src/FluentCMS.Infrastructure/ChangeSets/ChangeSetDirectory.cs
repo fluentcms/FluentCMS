@@ -344,6 +344,23 @@ internal sealed class ChangeSetDirectory(
             : Result<PendingOperation>.Failure(allowed.Errors);
     }
 
+    // Whether a set that can still publish, one not yet published, rejected or reverted, proposes this version of the item.
+    internal Task<bool> ProposesAsync(ItemKind itemKind, Guid itemId, int version, CancellationToken cancellationToken)
+    {
+        return (
+                from operation in context.ChangeSetOperations.AsNoTracking()
+                join set in context.ChangeSets.AsNoTracking() on operation.ChangeSetId equals set.Id
+                where set.SiteId == SiteId
+                    && operation.ItemKind == itemKind
+                    && operation.ItemId == itemId
+                    && operation.ProposedVersion == version
+                    && set.State != ChangeSetState.Published
+                    && set.State != ChangeSetState.Rejected
+                    && set.State != ChangeSetState.Reverted
+                select operation.Id)
+            .AnyAsync(cancellationToken);
+    }
+
     // False when another call changed the set since PrepareAsync read it; the caller rolls back and answers with a conflict.
     internal async Task<bool> WriteAsync(PendingOperation pending, Guid? previousVersionId, CancellationToken cancellationToken)
     {
