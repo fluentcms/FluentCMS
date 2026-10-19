@@ -22,18 +22,19 @@ public sealed class ChangeSetChecksTests
     // The worker polls once as the host starts, so a job enqueued later waits for the test.
     private static readonly Dictionary<string, string?> IdleQueue = new() { ["JobQueue:PollingInterval"] = "01:00:00" };
 
-    // S2: a set with "best in class", an image without alt text and copy that cites no source fails three checks that say what to change;
-    // the fixed content passes. The checks, not the agent, move the set.
+    // S2: a set with "best in class", an image without alt text and copy that cites no source fails three checks that say what to change.
+    // The agent reopens it, updates the entry from the version the set proposes, and the fixed set passes. The checks, not the agent,
+    // move the set.
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
     [PostgresData]
-    public async Task A_small_set_is_checked_when_it_is_submitted_and_the_check_engine_moves_it(string provider)
+    public async Task A_small_set_is_checked_when_it_is_submitted_fixed_in_place_and_the_check_engine_moves_it(string provider)
     {
         await using var agent = await ConnectedAgent.StartAsync(provider);
         await ProductChecksAsync(agent);
 
-        var failing = await SubmitAsync(agent, "s2", "The best in class kettle ![](/media/kettle.jpg)");
-        var passing = await SubmitAsync(agent, "s2-fixed", "A kettle that boils in two minutes ![A steel kettle](/media/kettle.jpg)", "exports/catalog.csv");
+        var created = await CreateAsync(agent, "s2", "The best in class kettle ![](/media/kettle.jpg)");
+        var failing = await agent.CallAsync("submit_change_set", new() { ["id"] = (string?)created["changeSet"]!["id"] });
 
         Assert.Equal("checks_failed", (string?)failing["changeSet"]!["state"]);
         var checks = failing["checks"]!;
@@ -44,21 +45,38 @@ public sealed class ChangeSetChecksTests
         Assert.Equal("/title", (string?)results[1]!["findings"]![0]!["pointer"]);
         Assert.Null(failing["job"]);
 
-        Assert.Equal("awaiting_review", (string?)passing["changeSet"]!["state"]);
-        Assert.Equal("pass", (string?)passing["checks"]!["status"]);
-
         // The run is stored with the set, and the backup job only waits in case it had not finished.
         var setId = (string)failing["changeSet"]!["id"]!;
         var read = await agent.CallAsync("get_change_set_checks", new() { ["id"] = setId });
         Assert.Equal(1, (int)read["checks"]!["number"]!);
         Assert.Equal("queued", (string?)read["job"]!["state"]);
 
+        await agent.CallAsync("reopen_change_set", new() { ["id"] = setId });
+        var fixedEntry = await agent.CallAsync("update_entry", new()
+        {
+            ["id"] = (string?)created["entry"]!["id"],
+            ["base_version"] = 1,
+            ["fields"] = new JsonObject { ["title"] = "A kettle that boils in two minutes ![A steel kettle](/media/kettle.jpg)" },
+            ["session_id"] = "s2",
+            ["rationale"] = "Fix what the checks found.",
+            ["sources"] = new JsonArray("exports/catalog.csv"),
+        });
+        var passing = await agent.CallAsync("submit_change_set", new() { ["id"] = setId });
+
+        Assert.Equal(setId, (string?)fixedEntry["changeSet"]!["id"]);
+        Assert.Equal(("awaiting_review", "pass", 2), ((string?)passing["changeSet"]!["state"], (string?)passing["checks"]!["status"], (int)passing["checks"]!["number"]!));
+        Assert.Equal(2, (int)passing["checks"]!["items"]![0]!["version"]!);
+        var stored = await agent.AsPersonAsync<IChangeSetDirectory, ChangeSet>(directory => directory.GetAsync(Guid.Parse(setId)));
+        var operation = Assert.Single(stored.Operations);
+        Assert.Equal((OperationKind.Create, (int?)null, (int?)2), (operation.Kind, operation.BaseVersion, operation.ProposedVersion));
+
         var events = await agent.QueryAsync(context => context.AuditEvents.AsNoTracking()
             .Where(row => row.ChangeSetId == Guid.Parse(setId) || row.SubjectId == Guid.Parse(setId))
             .ToListAsync());
-        Assert.Equal("agent", events.Single(row => row.Operation == "change_set.submitted").InitiatorKind);
-        var byEngine = events.Where(row => row.Operation is "change_set.checked" or "change_set.checks_failed").ToList();
-        Assert.Equal(2, byEngine.Count);
+        Assert.All(events.Where(row => row.Operation == "change_set.submitted"), row => Assert.Equal("agent", row.InitiatorKind));
+        Assert.Single(events, row => row.Operation == "change_set.operation_updated");
+        var byEngine = events.Where(row => row.Operation is "change_set.checked" or "change_set.checks_failed" or "change_set.awaiting_review").ToList();
+        Assert.Equal(4, byEngine.Count);
         Assert.All(byEngine, row => Assert.Equal(("system", "checks", (Guid?)null), (row.InitiatorKind, row.InitiatorName, row.AgentCredentialId)));
     }
 
@@ -171,6 +189,15 @@ public sealed class ChangeSetChecksTests
         Assert.Contains(jobId.ToString(), (string?)Assert.Single(again["checks"]!["problems"]!.AsArray()));
         var reopened = await agent.CallAsync("reopen_change_set", new() { ["id"] = setId });
         Assert.Equal("open", (string?)reopened["changeSet"]!["state"]);
+
+        // A person can fail a stuck set too.
+        var other = await SubmitAsync(agent, "stuck-too", "A kettle", "exports/catalog.csv");
+        var otherId = Guid.Parse((string)other["changeSet"]!["id"]!);
+        var otherJob = Guid.Parse((string)other["job"]!["id"]!);
+        await agent.QueryAsync(context => context.Jobs.Where(row => row.Id == otherJob).ExecuteUpdateAsync(row => row.SetProperty(job => job.State, JobState.Failed)));
+        var byPerson = await agent.AsPersonAsync<IChangeSetChecks, ChangeSetSubmission>(checks => checks.SubmitAsync(otherId));
+        Assert.Equal(ChangeSetState.ChecksFailed, byPerson.ChangeSet.State);
+        Assert.Contains(otherJob.ToString(), Assert.Single(byPerson.Run!.Problems));
     }
 
     // A set with nothing to check passes and waits for review; routing decides more once it lands (F-RTE).

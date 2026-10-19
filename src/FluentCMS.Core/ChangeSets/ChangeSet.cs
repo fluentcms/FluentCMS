@@ -184,12 +184,23 @@ public sealed class ChangeSet
                 $"This change set reverts change set {reverted} and holds exactly what undoes it, so no operation can be added.");
         }
 
-        // One operation per item keeps one diff per item and one version to restore on revert (CHG-03, CHG-06).
-        if (_operations.Any(existing => existing.ItemKind == operation.ItemKind && existing.ItemId == operation.ItemId))
+        // One operation per item keeps one diff per item and one version to restore on revert (CHG-03, CHG-06). A newer version of an
+        // entry or entity the set already proposes, as when a reopened set is fixed, moves that operation on to it.
+        var position = _operations.FindIndex(existing => existing.ItemKind == operation.ItemKind && existing.ItemId == operation.ItemId);
+        if (position >= 0)
         {
-            return Result.Failure(
-                ChangeSetErrorCodes.ItemDuplicate,
-                $"The {Describe(operation.ItemKind)} {operation.ItemId} already has an operation in this change set.");
+            var existing = _operations[position];
+            if (!Supersedes(existing, operation))
+            {
+                return Result.Failure(
+                    ChangeSetErrorCodes.ItemDuplicate,
+                    existing.ProposedVersion is { } proposed && operation.ItemKind is ItemKind.Entry or ItemKind.Entity
+                        ? $"The {Describe(operation.ItemKind)} {operation.ItemId} already has an operation in this change set; update it from version {proposed}, which the set proposes, to change what it proposes."
+                        : $"The {Describe(operation.ItemKind)} {operation.ItemId} already has an operation in this change set.");
+            }
+
+            _operations[position] = ChangeOperation.Restore(existing.Kind, existing.ItemKind, existing.ItemId, existing.BaseVersion, operation.ProposedVersion);
+            return Result.Success();
         }
 
         _operations.Add(operation);
@@ -284,6 +295,16 @@ public sealed class ChangeSet
             ChangeSetState.AwaitingReview => "awaiting review",
             _ => state.ToString().ToLowerInvariant(),
         };
+    }
+
+    // The same change from the same published version, proposing a later draft.
+    private static bool Supersedes(ChangeOperation existing, ChangeOperation operation)
+    {
+        return operation.ItemKind is ItemKind.Entry or ItemKind.Entity
+            && operation.Kind is OperationKind.Create or OperationKind.Update
+            && operation.Kind == existing.Kind
+            && operation.BaseVersion == existing.BaseVersion
+            && operation.ProposedVersion > existing.ProposedVersion;
     }
 
     private static string Describe(ItemKind kind)

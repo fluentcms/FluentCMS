@@ -303,6 +303,8 @@ internal sealed class ChangeSetDirectory(
     {
         var set = stored.ChangeSet;
 
+        // An operation that moves the item's operation on to a newer version takes its place rather than joining the set.
+        var position = set.Operations.ToList().FindIndex(existing => existing.ItemKind == operation.ItemKind && existing.ItemId == operation.ItemId);
         var added = set.AddOperation(operation);
         if (!added.IsSuccess)
         {
@@ -335,7 +337,14 @@ internal sealed class ChangeSetDirectory(
             return Conflict(set.Id);
         }
 
-        await InsertOperationAsync(set, set.Operations.Count - 1, previousVersion.Value, cancellationToken);
+        if (position >= 0)
+        {
+            await UpdateOperationAsync(set, position, previousVersion.Value, cancellationToken);
+        }
+        else
+        {
+            await InsertOperationAsync(set, set.Operations.Count - 1, previousVersion.Value, cancellationToken);
+        }
 
         return await CommitAsync(scope, set, Conflict(set.Id), cancellationToken);
     }
@@ -435,6 +444,25 @@ internal sealed class ChangeSetDirectory(
 
         await auditLog.AppendAsync(
             new NewAuditEvent("change_set.operation_added")
+            {
+                SubjectType = ItemSubjectType(operation.ItemKind),
+                SubjectId = operation.ItemId,
+                ChangeSetId = set.Id,
+                Sources = set.Sources,
+                PreviousVersionId = previousVersionId,
+            },
+            cancellationToken);
+    }
+
+    private async Task UpdateOperationAsync(ChangeSet set, int position, Guid? previousVersionId, CancellationToken cancellationToken)
+    {
+        var operation = set.Operations[position];
+        await context.ChangeSetOperations
+            .Where(row => row.ChangeSetId == set.Id && row.Position == position)
+            .ExecuteUpdateAsync(row => row.SetProperty(stored => stored.ProposedVersion, operation.ProposedVersion), cancellationToken);
+
+        await auditLog.AppendAsync(
+            new NewAuditEvent("change_set.operation_updated")
             {
                 SubjectType = ItemSubjectType(operation.ItemKind),
                 SubjectId = operation.ItemId,

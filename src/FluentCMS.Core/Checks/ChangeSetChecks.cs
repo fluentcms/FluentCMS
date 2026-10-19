@@ -71,6 +71,9 @@ internal sealed class ChangeSetChecks(
 
         var inline = read.Value.Operations.Count <= InlineItems && !await AnyJudgedAsync(cancellationToken);
 
+        // Opened before the set moves, so a host that cannot run the engine says so instead of leaving every set to its job.
+        await using var engine = inline ? scopes.CreateEngineScope(SystemInitiator.Checks) : (AsyncServiceScope?)null;
+
         Job job;
         ChangeSet submitted;
         await using (var work = await unitOfWork.BeginAsync(cancellationToken))
@@ -110,13 +113,13 @@ internal sealed class ChangeSetChecks(
         ChangeSetCheckRun? run = null;
         try
         {
-            await using var engine = scopes.CreateEngineScope(SystemInitiator.Checks);
-            var ran = await engine.ServiceProvider.GetRequiredService<IChangeSetChecks>()
+            var ran = await engine!.Value.ServiceProvider.GetRequiredService<IChangeSetChecks>()
                 .RunAsync(changeSetId, job.Id, CheckRunMode.Inline, null, CancellationToken.None);
             run = ran.IsSuccess ? ran.Value : null;
         }
         catch (Exception)
         {
+            // Check types never throw, so this is a fault such as a lost connection; the job records it if it happens again.
         }
 
         var after = await changeSets.GetAsync(changeSetId, CancellationToken.None);
@@ -208,7 +211,9 @@ internal sealed class ChangeSetChecks(
                 CheckStatus.Fail,
                 0,
                 [],
-                [$"The checks could not run on this change set. Reopen it and submit it again; if they still cannot run, ask a person to look at job {jobId}."]),
+                [set.RevertsChangeSetId is null
+                    ? $"The checks could not run on this change set. Reopen it and submit it again; if they still cannot run, ask a person to look at job {jobId}."
+                    : $"The checks could not run on this revert, so its reviewer decides without them; a person can look at job {jobId}."]),
             cancellationToken);
     }
 
@@ -338,7 +343,7 @@ internal sealed class ChangeSetChecks(
             var before = proposed is { IsSuccess: true } && operation.Kind == OperationKind.Update && operation.BaseVersion is { } baseVersion
                 ? await entries.GetVersionAsync(operation.ItemId, baseVersion, cancellationToken)
                 : null;
-            if (Problem(operation, entry.Errors, proposed?.Errors, before?.Errors) is { } unreadable)
+            if (Problem(set, operation, entry.Errors, proposed?.Errors, before?.Errors) is { } unreadable)
             {
                 problems.Add(unreadable);
                 continue;
@@ -348,7 +353,7 @@ internal sealed class ChangeSetChecks(
             if (!types.TryGetValue(key, out var type))
             {
                 var read = await contentTypes.GetVersionAsync(key.ContentType, key.ContentTypeVersion, cancellationToken);
-                if (Problem(operation, read.Errors) is { } missing)
+                if (Problem(set, operation, read.Errors) is { } missing)
                 {
                     problems.Add(missing);
                     continue;
@@ -364,13 +369,15 @@ internal sealed class ChangeSetChecks(
         return (subjects, problems);
     }
 
-    private static string? Problem(ChangeOperation operation, params IReadOnlyList<Error>?[] errors)
+    private static string? Problem(ChangeSet set, ChangeOperation operation, params IReadOnlyList<Error>?[] errors)
     {
         var error = errors.FirstOrDefault(list => list is { Count: > 0 })?[0];
         return error is null
             ? null
             : $"The {operation.ItemKind.ToString().ToLowerInvariant()} {operation.ItemId} could not be checked: {error.Message} "
-                + "A person can restore it; then reopen the change set and submit it again.";
+                + (set.RevertsChangeSetId is null
+                    ? "A person can restore it; then reopen the change set and submit it again."
+                    : "A person can restore it before the revert is approved.");
     }
 
     private static List<string> Changed(JsonElement proposed, JsonElement before)

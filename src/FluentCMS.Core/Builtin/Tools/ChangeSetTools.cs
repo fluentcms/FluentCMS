@@ -59,8 +59,9 @@ public sealed class ChangeSetTools : IToolProvider
         new AgentTool(
             "reopen_change_set",
             "Reopen a change set after failed checks",
-            "Reopens one of your change sets whose checks failed, so you can add operations that fix it and submit it again. "
-            + "Read the set with get_change_set first.",
+            "Reopens one of your change sets whose checks failed, so you can fix it and submit it again: update an item from the "
+            + "version the set proposes, with update_entry and the set's change_set_id, or add operations. Read what failed with "
+            + "get_change_set_checks first.",
             ToolSchemas.Object(ToolSchemas.Uuid("id", "The id of your change set whose checks failed.")),
             readOnly: false,
             ReopenAsync),
@@ -109,7 +110,8 @@ public sealed class ChangeSetTools : IToolProvider
             ["next"] = set.State switch
             {
                 ChangeSetState.ChecksFailed =>
-                    "Checks failed: each failing result says what to change. Call reopen_change_set, fix the items and submit the set again.",
+                    "Checks failed: each failing result and problem says what to change. Call reopen_change_set, update the items from the "
+                    + "versions the set proposes and submit the set again.",
                 ChangeSetState.AwaitingReview => "Checks passed, and a person reviews the set next. Follow its state with get_change_set.",
                 _ => $"Checks run in the background as job {submission.Job.Id}. Follow them with get_change_set_checks.",
             },
@@ -131,7 +133,7 @@ public sealed class ChangeSetTools : IToolProvider
             moved => new JsonObject
             {
                 ["changeSet"] = ToolJson.ChangeSet(moved),
-                ["next"] = "The set is open again: add the operations that fix it, then call submit_change_set.",
+                ["next"] = "The set is open again: update its items from the versions it proposes, or add operations, then call submit_change_set.",
             },
             Hint(set));
     }

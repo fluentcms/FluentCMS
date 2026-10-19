@@ -94,6 +94,42 @@ public sealed class ChangeSetTests
         Assert.Single(changeSet.Operations);
     }
 
+    // A set reopened to fix an item takes the item's newer draft: the same change from the same published version, proposing the
+    // later draft, so the item still has one diff and one version to restore (CHG-03, CHG-06).
+    [Theory]
+    [InlineData(OperationKind.Create, null, 1)]
+    [InlineData(OperationKind.Update, 3, 4)]
+    public void An_update_from_the_version_a_set_proposes_moves_the_item_s_operation_on(OperationKind kind, int? baseVersion, int proposed)
+    {
+        var changeSet = TestChangeSets.Open();
+        var item = Guid.NewGuid();
+        changeSet.AddOperation(ChangeOperation.Create(kind, ItemKind.Entry, item, baseVersion, proposed).Value);
+
+        var result = changeSet.AddOperation(ChangeOperation.Create(kind, ItemKind.Entry, item, baseVersion, proposed + 1).Value);
+
+        Assert.True(result.IsSuccess);
+        var operation = Assert.Single(changeSet.Operations);
+        Assert.Equal((kind, baseVersion, (int?)proposed + 1), (operation.Kind, operation.BaseVersion, operation.ProposedVersion));
+    }
+
+    [Fact]
+    public void An_operation_that_proposes_no_later_draft_or_that_changes_a_content_type_is_still_a_duplicate()
+    {
+        var changeSet = TestChangeSets.Open();
+        var entry = Guid.NewGuid();
+        var type = Guid.NewGuid();
+        changeSet.AddOperation(TestChangeSets.Update(ItemKind.Entry, entry));
+        changeSet.AddOperation(TestChangeSets.Update(ItemKind.Schema, type));
+
+        var stale = changeSet.AddOperation(ChangeOperation.Create(OperationKind.Update, ItemKind.Entry, entry, 1, 2).Value);
+        var schema = changeSet.AddOperation(ChangeOperation.Create(OperationKind.Update, ItemKind.Schema, type, 2, 3).Value);
+
+        Assert.Equal(ChangeSetErrorCodes.ItemDuplicate, Assert.Single(stale.Errors).Code);
+        Assert.Contains("update it from version 2", stale.Errors[0].Message);
+        Assert.Equal(ChangeSetErrorCodes.ItemDuplicate, Assert.Single(schema.Errors).Code);
+        Assert.Equal([2, 2], changeSet.Operations.Select(operation => operation.ProposedVersion!.Value));
+    }
+
     [Fact]
     public void A_set_with_no_operations_cannot_leave_open()
     {
