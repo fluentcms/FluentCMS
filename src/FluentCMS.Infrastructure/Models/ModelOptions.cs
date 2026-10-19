@@ -30,6 +30,9 @@ public sealed class ModelProfileOptions
 
     public decimal OutputCostPerMillionTokens { get; set; }
 
+    // Says an endpoint off this machine charges nothing, so it needs no prices; an endpoint on this machine never needs them.
+    public bool Free { get; set; }
+
     public int MaxOutputTokens { get; set; } = 1024;
 
     public float? Temperature { get; set; }
