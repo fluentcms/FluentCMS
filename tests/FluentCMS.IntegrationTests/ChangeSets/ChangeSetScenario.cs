@@ -78,6 +78,16 @@ internal sealed class ChangeSetScenario : IAsyncDisposable
         return scenario;
     }
 
+    // Stores a credential for another agent with the same scope and caps as Agent.
+    public Task<int> AddAgentAsync(AgentInitiator agent)
+    {
+        return QueryAsync(async context =>
+        {
+            context.AgentCredentials.Add(AgentCredential(agent));
+            return await context.SaveChangesAsync();
+        });
+    }
+
     // As a person, who stands in for the checks, routing and the desk, whose moves an agent cannot make (MCP-06).
     public async Task<T> AsPersonAsync<T>(Func<IChangeSetDirectory, Task<T>> action)
     {
