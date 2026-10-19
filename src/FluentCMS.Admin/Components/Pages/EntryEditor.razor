@@ -34,6 +34,12 @@
     {
         <p class="mt-2 text-sm text-muted-foreground">@L["An entity type: every field is a fact with its source, owner and validity."]</p>
     }
+    @if (_entry is { State: EntryState.Reverted, PublishedVersion: null } revertedCreate)
+    {
+        <p role="status" class="mt-4 rounded-md border bg-muted/50 px-3 py-2 text-sm" data-testid="entry-draft-note">
+            @L["The form shows version {0}, whose creation was reverted. Nothing of this entry is published; saving proposes it again.", revertedCreate.LatestVersion]
+        </p>
+    }
     @if (_entry is { PublishedVersion: { } published } entry && entry.LatestVersion != published && entry.State != EntryState.InReview)
     {
         <p role="status" class="mt-4 rounded-md border bg-muted/50 px-3 py-2 text-sm" data-testid="entry-draft-note">
@@ -72,7 +78,7 @@
                     <FieldWidget Field="field" Value="@Shown.Values.GetValueOrDefault(field.Name)" Error="@_fieldErrors.GetValueOrDefault(field.Name)" Options="@_options.GetValueOrDefault(field.Name, [])" />
                     @if (type.Definition.IsEntity)
                     {
-                        <FactFields Field="@field.Name" Values="Shown.Facts" Problems="@_factProblems.GetValueOrDefault(field.Name, new Dictionary<string, string>())" Owners="_owners" Unsourced="@_unsourced.Contains(field.Name)" />
+                        <FactFields Field="@field.Name" Values="Shown.Facts" Problems="@_factProblems.GetValueOrDefault(field.Name, new Dictionary<string, string>())" Owners="@OwnersFor(field.Name)" Unsourced="@_unsourced.Contains(field.Name)" />
                     }
                 }
             </CardContent>
@@ -106,6 +112,14 @@
     private HashSet<string> _unsourced = new(StringComparer.Ordinal);
     private IReadOnlyList<FieldOption> _owners = [];
     private HashSet<Guid> _ownerIds = [];
+
+    // A field's stored owner who is no user, such as one an agent set, is offered on that field alone, so it stays selected.
+    private IReadOnlyList<FieldOption> OwnersFor(string field)
+    {
+        return FactValues.OwnerOf(_stored.TryGetValue(field, out var stored) ? stored : null) is { } owner && !_ownerIds.Contains(owner)
+            ? [.. _owners, new FieldOption(owner.ToString(), L["Unknown user {0}", owner.ToString()[..8]])]
+            : _owners;
+    }
     private string? _rationaleError;
     private string? _formError;
 
@@ -202,16 +216,10 @@
     {
         if (_type!.Definition.IsEntity)
         {
-            // Every user, so a fact owned by someone since disabled keeps its owner when it is saved again, and any stored owner who is
-            // not a user, such as one an agent set, so it stays selected rather than being cleared.
+            // Every user, so a fact owned by someone since disabled keeps its owner when it is saved again.
             var users = await Users.ListAsync();
             _ownerIds = [.. users.Select(user => user.Id)];
-            var unknown = _stored.Values.Select(stored => FactValues.OwnerOf(stored)).OfType<Guid>().Where(id => !_ownerIds.Contains(id)).Distinct();
-            _owners =
-            [
-                .. users.Select(user => new FieldOption(user.Id.ToString(), user.IsDisabled ? L["{0} (disabled)", user.DisplayName] : user.DisplayName)),
-                .. unknown.Select(id => new FieldOption(id.ToString(), L["Unknown user {0}", id.ToString()[..8]])),
-            ];
+            _owners = [.. users.Select(user => new FieldOption(user.Id.ToString(), user.IsDisabled ? L["{0} (disabled)", user.DisplayName] : user.DisplayName))];
         }
 
         foreach (var field in _type!.Definition.Fields)
@@ -237,13 +245,6 @@
             return;
         }
 
-        // The values came from a published version that has since changed, so saving them would undo what was published meanwhile.
-        if (Form.FromPublished is { } fromPublished && _entry?.PublishedVersion != fromPublished)
-        {
-            await LoadAsync();
-            _formError = L["Someone saved this entry since the form was shown. Here it is as it is now; make your change again."];
-            return;
-        }
 
         var fields = new JsonObject();
         foreach (var field in _type.Definition.Fields)
@@ -318,7 +319,10 @@
             _entry?.Id,
             _entry is null ? null : Form.BaseVersion,
             JsonSerializer.SerializeToElement(fields),
-            new NewChangeSet(Form.Rationale!, Form.SourceList())));
+            new NewChangeSet(Form.Rationale!, Form.SourceList()))
+        {
+            PublishedBase = Form.FromPublished,
+        });
 
         if (saved.IsSuccess)
         {

@@ -26,11 +26,11 @@
             </div>
             break;
         case "richText":
-            <Textarea name="@Name" rows="6" value="@Value" required="@Field.Required" maxlength="@MaxLength" data-field="@Field.Name" />
+            <Textarea name="@Name" rows="6" value="@TextareaValue" required="@Field.Required" maxlength="@MaxLength" data-field="@Field.Name" />
             break;
         case "list":
         case "json":
-            <Textarea name="@Name" rows="5" value="@Value" required="@Field.Required" dir="ltr" Class="font-mono text-xs" data-field="@Field.Name" />
+            <Textarea name="@Name" rows="5" value="@TextareaValue" required="@Field.Required" dir="ltr" Class="font-mono text-xs" data-field="@Field.Name" />
             break;
         case "number":
             <Input Type="number" step="any" name="@Name" value="@Value" required="@Field.Required" dir="ltr" data-field="@Field.Name" />
@@ -48,7 +48,15 @@
             </Select>
             break;
         default:
-            <Input name="@Name" value="@Value" required="@Field.Required" maxlength="@MaxLength" data-field="@Field.Name" />
+            @* A single-line input drops line breaks, so a text that has them is shown where they survive the post. *@
+            @if (Value?.Contains('\n') == true)
+            {
+                <Textarea name="@Name" rows="3" value="@TextareaValue" required="@Field.Required" maxlength="@MaxLength" data-field="@Field.Name" />
+            }
+            else
+            {
+                <Input name="@Name" value="@Value" required="@Field.Required" maxlength="@MaxLength" data-field="@Field.Name" />
+            }
             break;
     }
 </FormField>
@@ -71,6 +79,9 @@
     };
 
     private bool Wide => Field.Type is "richText" or "list" or "json";
+
+    // HTML drops one line break right after a textarea's start tag, so a value that starts with one gets another to lose.
+    private string? TextareaValue => Value is ['\n', ..] or ['\r', ..] ? "\n" + Value : Value;
 
     private int? MaxLength => Field.Settings.ValueKind == System.Text.Json.JsonValueKind.Object
         && Field.Settings.TryGetProperty("maxLength", out var max)

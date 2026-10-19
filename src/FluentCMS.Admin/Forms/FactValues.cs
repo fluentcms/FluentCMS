@@ -121,12 +121,13 @@ public static class FactValues
         };
     }
 
-    // The stored fact's value for the value widget, and its parts for the metadata widgets.
+    // The stored fact's value for the value widget, and its parts for the metadata widgets. A plain value, written before its type
+    // held facts, is the value of a fact with no details yet.
     public static JsonElement? Show(string field, JsonElement? stored, IDictionary<string, string?> facts)
     {
         if (stored is not { ValueKind: JsonValueKind.Object } fact)
         {
-            return null;
+            return stored is { ValueKind: not (JsonValueKind.Null or JsonValueKind.Undefined) } plain ? plain : null;
         }
 
         if (fact.TryGetProperty(FactMetadata.Source, out var source) && source.ValueKind == JsonValueKind.Object)
@@ -161,7 +162,8 @@ public static class FactValues
 
     public static bool IsUnsourced(JsonElement? stored)
     {
-        return stored is { ValueKind: JsonValueKind.Object } fact
-            && (!fact.TryGetProperty(FactMetadata.Source, out var source) || source.ValueKind != JsonValueKind.Object);
+        return stored is { ValueKind: not (JsonValueKind.Null or JsonValueKind.Undefined) } value
+            && (value.ValueKind != JsonValueKind.Object
+                || !value.TryGetProperty(FactMetadata.Source, out var source) || source.ValueKind != JsonValueKind.Object);
     }
 }

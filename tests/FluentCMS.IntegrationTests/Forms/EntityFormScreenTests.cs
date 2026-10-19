@@ -140,6 +140,7 @@ public sealed class EntityFormScreenTests
         var edit = await host.Client.GetStringAsync($"/content/product/{created.Id}");
         Assert.Contains($"<option value=\"{leaverId}\" selected>Leaver (disabled)</option>", Fieldset(edit, "price"));
         Assert.Contains($"<option value=\"{stranger}\" selected>Unknown user {stranger.ToString()[..8]}</option>", Fieldset(edit, "name"));
+        Assert.DoesNotContain("Unknown user", Fieldset(edit, "price"));
         Assert.Contains("value=\"2026-10-18T07:00\"", Fieldset(edit, "price"));
         Assert.Contains("value=\"2026-12-31T22:59\"", Fieldset(edit, "price"));
         Assert.Contains("data-testid=\"fact-unsourced\"", Fieldset(edit, "name"));
@@ -184,6 +185,11 @@ public sealed class EntityFormScreenTests
             "product", 1, new ContentTypeDefinition(fields, isEntity: true), TestChangeSetTargets.ContentModel)).Value);
         await host.SignInAsync(AdminHost.Owner);
 
+        // The plain value shows as the fact's value, flagged unsourced, so an untouched one is not dropped.
+        var form = await host.Client.GetStringAsync($"/content/product/{entry.Id}");
+        Assert.Contains("value=\"4.5\"", form);
+        Assert.Contains("data-testid=\"fact-unsourced\"", Fieldset(form, "price"));
+
         var saved = await host.SubmitAsync($"/content/product/{entry.Id}", "entry", new Dictionary<string, string>
         {
             ["Form.Values[name]"] = "Cordless drill",
@@ -194,8 +200,10 @@ public sealed class EntityFormScreenTests
         });
 
         Assert.StartsWith("/sets/", host.LocationOf(saved));
-        var name = (await host.AsUserAsync<IEntryDirectory, Entry>(ownerId, async entries => (await entries.GetAsync(entry.Id)).Value)).Latest.Fields.GetProperty("name");
+        var stored = (await host.AsUserAsync<IEntryDirectory, Entry>(ownerId, async entries => (await entries.GetAsync(entry.Id)).Value)).Latest.Fields;
+        var name = stored.GetProperty("name");
         Assert.Equal(("Cordless drill", ownerId.ToString()), (name.GetProperty("value").GetString(), name.GetProperty("owner").GetString()));
+        Assert.Equal("4.5", stored.GetProperty("price").GetProperty("value").GetRawText());
     }
 
     private static JsonElement Json(string json)

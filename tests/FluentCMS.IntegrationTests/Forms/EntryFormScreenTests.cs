@@ -182,14 +182,20 @@ public sealed class EntryFormScreenTests
         await KitchenSinkAsync(host, ownerId);
         var entry = await host.AsUserAsync<IEntryDirectory, Entry>(ownerId, async entries => (await entries.CreateAsync(new NewEntry(
             "kitchen-sink",
-            Json("""{"title": "Drill", "body": "First line.\nSecond line.", "launch": "2026-11-01T09:30:45.5+02:00", "price": 4.50}""")))).Value);
+            Json("""{"title": "Drill", "body": "\nFirst line.\nSecond line.", "subtitle": "Line one\nLine two", "launch": "2026-11-01T09:30:45.5+02:00", "price": 4.50}""")))).Value);
         await host.SignInAsync(AdminHost.Owner);
+
+        // A text with line breaks gets a textarea, and a leading line break is doubled, since HTML drops the first.
+        var form = await host.Client.GetStringAsync($"/content/kitchen-sink/{entry.Id}");
+        Assert.Matches("<textarea[^>]*name=\"Form.Values\\[subtitle\\]\"[^>]*>Line one&#xA;Line two</textarea>", form);
+        Assert.Matches("<textarea[^>]*name=\"Form.Values\\[body\\]\"[^>]*>&#xA;&#xA;First line.", form);
 
         // What a browser posts back for the untouched fields: the widgets' text, with CRLF line breaks and minutes only.
         var saved = await host.SubmitAsync($"/content/kitchen-sink/{entry.Id}", "entry", new Dictionary<string, string>
         {
             ["Form.Values[title]"] = "Cordless drill",
-            ["Form.Values[body]"] = "First line.\r\nSecond line.",
+            ["Form.Values[body]"] = "\r\nFirst line.\r\nSecond line.",
+            ["Form.Values[subtitle]"] = "Line one\r\nLine two",
             ["Form.Values[launch]"] = "2026-11-01T07:30",
             ["Form.Values[price]"] = "4.50",
             ["Form.Rationale"] = "Retitle.",
@@ -199,8 +205,9 @@ public sealed class EntryFormScreenTests
         var set = await host.AsUserAsync<IChangeSetDirectory, ChangeSet>(ownerId, async sets => (await sets.GetAsync(Guid.Parse(host.LocationOf(saved)![6..42]))).Value);
         var fields = (await host.AsUserAsync<IEntryDirectory, Entry>(ownerId, async entries => (await entries.GetAsync(entry.Id)).Value)).Latest.Fields;
         Assert.Equal("Cordless drill", fields.GetProperty("title").GetString());
-        Assert.Equal("First line.\nSecond line.", fields.GetProperty("body").GetString());
-        Assert.Equal(DateTimeOffset.Parse("2026-11-01T09:30:45.5+02:00", System.Globalization.CultureInfo.InvariantCulture), fields.GetProperty("launch").GetDateTimeOffset());
+        Assert.Equal("\nFirst line.\nSecond line.", fields.GetProperty("body").GetString());
+        Assert.Equal("Line one\nLine two", fields.GetProperty("subtitle").GetString());
+        Assert.Equal("2026-11-01T09:30:45.5+02:00", fields.GetProperty("launch").GetString());
         Assert.Equal("4.50", fields.GetProperty("price").GetRawText());
         Assert.False(fields.TryGetProperty("active", out _));
         Assert.Equal(2, set.Operations[0].ProposedVersion);
@@ -290,6 +297,15 @@ public sealed class EntryFormScreenTests
 
         Assert.Contains("Someone saved this entry since the form was shown.", await refused.Content.ReadAsStringAsync());
         Assert.Equal(3, (await host.AsUserAsync<IEntryDirectory, Entry>(ownerId, async entries => (await entries.GetAsync(entry.Id)).Value)).LatestVersion);
+
+        // A reverted create leaves nothing published, and the form says whose values it shows.
+        var created = await host.AsUserAsync<IEntryDirectory, Entry>(ownerId, async entries =>
+            (await entries.CreateAsync(new NewEntry("kitchen-sink", Json("""{"title": "Never meant"}""")))).Value);
+        var creation = await PublishAsync(host, ownerId, sets => sets.OpenAsync(new NewChangeSet("Add it.", [])), ChangeOperation.Create(OperationKind.Create, ItemKind.Entry, created.Id, null, 1).Value);
+        await PublishAsync(host, ownerId, sets => sets.RevertAsync(creation, "It was never meant."));
+        var revertedCreate = await host.Client.GetStringAsync($"/content/kitchen-sink/{created.Id}");
+        Assert.Contains("whose creation was reverted", revertedCreate);
+        Assert.DoesNotContain("data-testid=\"from-published\"", revertedCreate);
     }
 
     [Fact]
@@ -339,6 +355,7 @@ public sealed class EntryFormScreenTests
             [
                 new FieldDefinition("title", "text", required: true, settings: Json("""{"maxLength": 80}""")),
                 new FieldDefinition("body", "richText"),
+                new FieldDefinition("subtitle", "text"),
                 new FieldDefinition("price", "number"),
                 new FieldDefinition("active", "boolean"),
                 new FieldDefinition("launch", "dateTime"),

@@ -43,6 +43,14 @@ internal sealed class EntryEdits(
             return Result<SavedEntryEdit>.Failure(entry.Errors);
         }
 
+        // Checked against the version the operation is based on below, read in this unit of work, so no publish slips in between.
+        if (edit.PublishedBase is { } publishedBase && entry.Value.PublishedVersion != publishedBase)
+        {
+            return Result<SavedEntryEdit>.Failure(
+                ContentErrorCodes.VersionConflict,
+                $"The values came from published version {publishedBase}, and version {entry.Value.PublishedVersion?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "none"} is published now.");
+        }
+
         var type = await contentTypes.GetAsync(entry.Value.ContentType, cancellationToken);
         if (!type.IsSuccess)
         {
