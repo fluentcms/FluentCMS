@@ -1,13 +1,12 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Core.ChangeSets;
+using FluentCMS.Core.Checks;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Entities;
 using FluentCMS.Core.Identity;
-using FluentCMS.Core.Schema;
-
-using FluentCMS.Core.Checks;
 using FluentCMS.Core.Jobs;
+using FluentCMS.Core.Schema;
 
 namespace FluentCMS.Core.Builtin.Tools;
 
@@ -76,6 +75,7 @@ internal static class ToolJson
         };
     }
 
+    // Not the error a worker recorded, which can quote database or provider details; a failed run says what to do in its problems.
     public static JsonObject Job(Job job)
     {
         return new JsonObject
@@ -85,7 +85,6 @@ internal static class ToolJson
             ["done"] = job.Progress.Done,
             ["total"] = job.Progress.Total,
             ["message"] = job.Progress.Message,
-            ["lastError"] = job.LastError,
         };
     }
 

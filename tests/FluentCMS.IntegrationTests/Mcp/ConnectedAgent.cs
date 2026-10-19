@@ -1,6 +1,5 @@
 using System.Text.Json.Nodes;
 using FluentCMS.Core.Agents;
-using FluentCMS.Core.Identity;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Sites;
 using FluentCMS.Infrastructure.Persistence;
@@ -71,14 +70,6 @@ internal sealed class ConnectedAgent(
         where TService : notnull
     {
         return host.AsUserAsync<TService, Core.Results.Result>(administrator, action);
-    }
-
-    // As the check engine, for what only it does (ADR-0012).
-    public async Task<T> AsEngineAsync<TService, T>(Func<TService, Task<T>> action)
-        where TService : notnull
-    {
-        await using var scope = host.App.Services.GetRequiredService<IServiceScopeFactory>().CreateScopeActingAs(SystemInitiator.Checks);
-        return await action(scope.ServiceProvider.GetRequiredService<TService>());
     }
 
     public Task<ContentType> CreateAsPersonAsync(string slug)

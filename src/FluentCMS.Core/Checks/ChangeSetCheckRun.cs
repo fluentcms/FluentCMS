@@ -17,10 +17,11 @@ public sealed record ItemChecks(ItemKind ItemKind, Guid ItemId, int Version, str
 
 // One run of the checks on a change set, stored with the set (CHK-03): its results with their evidence, the overall status and what
 // its model calls cost. Problems say what kept the engine from checking an item, or the set, and fail the run. A set reopened and
-// submitted again runs again, so runs are numbered from 1.
+// submitted again runs again, so runs are numbered from 1, and each names the job of the submission it checked.
 public sealed record ChangeSetCheckRun(
     Guid Id,
     Guid ChangeSetId,
+    Guid JobId,
     int Number,
     CheckRunMode Mode,
     DateTimeOffset StartedAt,
@@ -33,7 +34,7 @@ public sealed record ChangeSetCheckRun(
 // A submitted set, with its check run when it ran inline and the job that runs or backs it.
 public sealed record ChangeSetSubmission(ChangeSet ChangeSet, ChangeSetCheckRun? Run, Job Job);
 
-// A set's latest check run, null before one finishes, and its latest check job, which shows a run's progress.
+// A set's check run for its latest submission, null until that run is done, and the submission's job, which shows its progress.
 public sealed record ChangeSetChecksState(ChangeSet ChangeSet, ChangeSetCheckRun? Run, Job? Job);
 
 // The check runs of change sets, which Infrastructure stores.
@@ -48,8 +49,9 @@ public interface ICheckRuns
 // Checks run on every change set before routing (CHK-03). A set is submitted through here, so the checks are sure to run on it.
 public interface IChangeSetChecks
 {
-    // Moves an open set to checks running and enqueues its check run with it. A small set whose active checks are all deterministic
-    // is then checked at once (PERF-02); its job only waits in case that run did not finish. Anything else runs as the job.
+    // Moves an open set to checks running and enqueues its check run with it. A small set is checked at once while every active
+    // check is deterministic (PERF-02); its job only waits in case that run did not finish. Anything else runs as the job. A set
+    // whose job ended without moving it is failed instead, so it can be reopened.
     Task<Result<ChangeSetSubmission>> SubmitAsync(Guid changeSetId, CancellationToken cancellationToken = default);
 
     // Runs the active checks on every entry and entity the set proposes, stores the results and moves the set: to checks failed if

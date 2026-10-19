@@ -26,10 +26,11 @@ internal sealed class ChangeSetChecks(
     IUnitOfWork unitOfWork,
     IAuditLog auditLog,
     IServiceScopeFactory scopes,
+    ICurrentInitiator currentInitiator,
     TimeProvider clock) : IChangeSetChecks
 {
     // The most items a set may have to be checked on the request that submits it, which keeps that request within PERF-02's ten
-    // seconds; larger sets, and any set an LLM-judged check reads, are checked as a job (ADR-0010).
+    // seconds; larger sets, and every set while an LLM-judged check is active, are checked as a job (ADR-0010).
     public const int InlineItems = 50;
 
     public const string JobType = "checks.run";
@@ -52,6 +53,20 @@ internal sealed class ChangeSetChecks(
         if (!read.IsSuccess)
         {
             return Result<ChangeSetSubmission>.Failure(read.Errors);
+        }
+
+        // A set whose check job ended without moving it, as when the host stopped during its last attempt, is failed now, so the
+        // agent can reopen it and submit it again. Only whoever may submit the set gets that far.
+        if (read.Value.State == ChangeSetState.ChecksRunning
+            && MaySubmit(read.Value)
+            && await LatestJobAsync(changeSetId, cancellationToken) is { State: JobState.Succeeded or JobState.Failed or JobState.Dead } ended)
+        {
+            await using var recovery = scopes.CreateEngineScope(SystemInitiator.Checks);
+            var abandoned = await recovery.ServiceProvider.GetRequiredService<IChangeSetChecks>().AbandonAsync(changeSetId, ended.Id, CheckRunMode.Job, cancellationToken);
+            var recovered = await changeSets.GetAsync(changeSetId, cancellationToken);
+            return abandoned.IsSuccess && recovered.IsSuccess
+                ? Result<ChangeSetSubmission>.Success(new ChangeSetSubmission(recovered.Value, abandoned.Value, ended))
+                : Result<ChangeSetSubmission>.Failure(abandoned.IsSuccess ? recovered.Errors : abandoned.Errors);
         }
 
         var inline = read.Value.Operations.Count <= InlineItems && !await AnyJudgedAsync(cancellationToken);
@@ -90,17 +105,22 @@ internal sealed class ChangeSetChecks(
             return Result<ChangeSetSubmission>.Success(new ChangeSetSubmission(submitted, null, job));
         }
 
-        // The set is submitted now whatever becomes of the request, so the run is not cancelled with it; if it does not finish, the
-        // job checks the set instead.
-        await using var engine = scopes.CreateScopeActingAs(SystemInitiator.Checks);
-        var ran = await engine.ServiceProvider.GetRequiredService<IChangeSetChecks>()
-            .RunAsync(changeSetId, job.Id, CheckRunMode.Inline, null, CancellationToken.None);
+        // The set is submitted now whatever becomes of the request, so the run is not cancelled with it, and a run that fails is
+        // left to the job, which checks the set instead and keeps the error if it fails again.
+        ChangeSetCheckRun? run = null;
+        try
+        {
+            await using var engine = scopes.CreateEngineScope(SystemInitiator.Checks);
+            var ran = await engine.ServiceProvider.GetRequiredService<IChangeSetChecks>()
+                .RunAsync(changeSetId, job.Id, CheckRunMode.Inline, null, CancellationToken.None);
+            run = ran.IsSuccess ? ran.Value : null;
+        }
+        catch (Exception)
+        {
+        }
 
         var after = await changeSets.GetAsync(changeSetId, CancellationToken.None);
-        return Result<ChangeSetSubmission>.Success(new ChangeSetSubmission(
-            after.IsSuccess ? after.Value : submitted,
-            ran.IsSuccess ? ran.Value : null,
-            job));
+        return Result<ChangeSetSubmission>.Success(new ChangeSetSubmission(after.IsSuccess ? after.Value : submitted, run, job));
     }
 
     public async Task<Result<ChangeSetCheckRun?>> RunAsync(
@@ -153,6 +173,7 @@ internal sealed class ChangeSetChecks(
         var run = new ChangeSetCheckRun(
             Guid.CreateVersion7(),
             changeSetId,
+            jobId,
             0,
             mode,
             started,
@@ -162,22 +183,24 @@ internal sealed class ChangeSetChecks(
             items,
             problems);
 
-        return await FinishAsync(run, jobId, cancellationToken);
+        return await FinishAsync(set, run, cancellationToken);
     }
 
     public async Task<Result<ChangeSetCheckRun?>> AbandonAsync(Guid changeSetId, Guid jobId, CheckRunMode mode, CancellationToken cancellationToken = default)
     {
         var current = await CurrentAsync(changeSetId, jobId, cancellationToken);
-        if (!current.IsSuccess || current.Value is null)
+        if (!current.IsSuccess || current.Value is not { } set)
         {
             return current.IsSuccess ? Result<ChangeSetCheckRun?>.Success(await runs.LatestAsync(changeSetId, cancellationToken)) : Result<ChangeSetCheckRun?>.Failure(current.Errors);
         }
 
         var now = clock.GetUtcNow();
         return await FinishAsync(
+            set,
             new ChangeSetCheckRun(
                 Guid.CreateVersion7(),
                 changeSetId,
+                jobId,
                 0,
                 mode,
                 now,
@@ -186,20 +209,22 @@ internal sealed class ChangeSetChecks(
                 0,
                 [],
                 [$"The checks could not run on this change set. Reopen it and submit it again; if they still cannot run, ask a person to look at job {jobId}."]),
-            jobId,
             cancellationToken);
     }
 
     public async Task<Result<ChangeSetChecksState>> GetAsync(Guid changeSetId, CancellationToken cancellationToken = default)
     {
+        // The job first: a run moves its set before its job ends, so a job read as ended comes with the set it moved.
+        var job = await LatestJobAsync(changeSetId, cancellationToken);
         var read = await changeSets.GetAsync(changeSetId, cancellationToken);
         if (!read.IsSuccess)
         {
             return Result<ChangeSetChecksState>.Failure(read.Errors);
         }
 
+        // The run of an earlier submission says nothing about this one, so a set submitted again shows none until its run is done.
         var run = await runs.LatestAsync(changeSetId, cancellationToken);
-        return Result<ChangeSetChecksState>.Success(new ChangeSetChecksState(read.Value, run, await LatestJobAsync(changeSetId, cancellationToken)));
+        return Result<ChangeSetChecksState>.Success(new ChangeSetChecksState(read.Value, run?.JobId == job?.Id ? run : null, job));
     }
 
     // The set when this job's submission is the one in checks running, and null when the set has moved on or been submitted again.
@@ -217,7 +242,7 @@ internal sealed class ChangeSetChecks(
 
     // Records the run and makes the move it decides in one unit of work, which commits only if the run's submission is still the
     // set's: the job is checked after the move, whose row lock makes a submission that commits first visible to it.
-    private async Task<Result<ChangeSetCheckRun?>> FinishAsync(ChangeSetCheckRun run, Guid jobId, CancellationToken cancellationToken)
+    private async Task<Result<ChangeSetCheckRun?>> FinishAsync(ChangeSet set, ChangeSetCheckRun run, CancellationToken cancellationToken)
     {
         var changeSetId = run.ChangeSetId;
         Result<ChangeSet> moved;
@@ -242,10 +267,12 @@ internal sealed class ChangeSetChecks(
                     cancellationToken);
             }
 
-            // Routing decides what happens to a set that passes (F-RTE); until it does, every set that passes waits for review.
-            var target = run.Status == CheckStatus.Fail ? ChangeSetState.ChecksFailed : ChangeSetState.AwaitingReview;
+            // Routing decides what happens to a set that passes (F-RTE); until it does, every set that passes waits for review. A
+            // revert restores what was published before and takes no new operations, so its checks inform the person who reviews
+            // it rather than hold it (CHG-06).
+            var target = run.Status == CheckStatus.Fail && set.RevertsChangeSetId is null ? ChangeSetState.ChecksFailed : ChangeSetState.AwaitingReview;
             moved = await changeSets.TransitionAsync(changeSetId, target, cancellationToken);
-            if (moved.IsSuccess && (await LatestJobAsync(changeSetId, cancellationToken))?.Id == jobId)
+            if (moved.IsSuccess && (await LatestJobAsync(changeSetId, cancellationToken))?.Id == run.JobId)
             {
                 await work.CommitAsync(cancellationToken);
                 committed = true;
@@ -259,13 +286,23 @@ internal sealed class ChangeSetChecks(
         }
 
         // Rolled back. A set still in checks running for this submission met a write that another attempt can get past.
-        var current = await CurrentAsync(changeSetId, jobId, cancellationToken);
+        var current = await CurrentAsync(changeSetId, run.JobId, cancellationToken);
         if (current.IsSuccess && current.Value is not null)
         {
             return Result<ChangeSetCheckRun?>.Failure(moved.IsSuccess ? [new Error(ChangeSetErrorCodes.Conflict, $"Change set {changeSetId} changed during its check run.")] : moved.Errors);
         }
 
         return Result<ChangeSetCheckRun?>.Success(await runs.LatestAsync(changeSetId, cancellationToken));
+    }
+
+    private bool MaySubmit(ChangeSet set)
+    {
+        return currentInitiator.Current switch
+        {
+            UserInitiator => true,
+            AgentInitiator agent => set.Initiator is AgentInitiator owner && owner.CredentialId == agent.CredentialId,
+            _ => false,
+        };
     }
 
     private async Task<Job?> LatestJobAsync(Guid changeSetId, CancellationToken cancellationToken)
@@ -333,7 +370,7 @@ internal sealed class ChangeSetChecks(
         return error is null
             ? null
             : $"The {operation.ItemKind.ToString().ToLowerInvariant()} {operation.ItemId} could not be checked: {error.Message} "
-                + "Restore it, or reopen the change set and remove its operation.";
+                + "A person can restore it; then reopen the change set and submit it again.";
     }
 
     private static List<string> Changed(JsonElement proposed, JsonElement before)

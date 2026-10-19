@@ -1,10 +1,12 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Checks;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Extensions;
 using FluentCMS.Core.Identity;
+using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Results;
 using FluentCMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -16,6 +18,9 @@ namespace FluentCMS.IntegrationTests.Mcp;
 public sealed class ChangeSetChecksTests
 {
     private static readonly Dictionary<string, string?> FastQueue = new() { ["JobQueue:PollingInterval"] = "00:00:00.050" };
+
+    // The worker polls once as the host starts, so a job enqueued later waits for the test.
+    private static readonly Dictionary<string, string?> IdleQueue = new() { ["JobQueue:PollingInterval"] = "01:00:00" };
 
     // S2: a set with "best in class", an image without alt text and copy that cites no source fails three checks that say what to change;
     // the fixed content passes. The checks, not the agent, move the set.
@@ -58,7 +63,7 @@ public sealed class ChangeSetChecksTests
     }
 
     // A run belongs to its submission: the job of an earlier one, which may still fire, leaves a set reopened or submitted again
-    // as it is, and adds no run.
+    // as it is, and adds no run, even when a person, who may move any set, runs it.
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
     [PostgresData]
@@ -72,14 +77,14 @@ public sealed class ChangeSetChecksTests
         var earlierJob = Guid.Parse((string)earlier["id"]!);
 
         await agent.CallAsync("reopen_change_set", new() { ["id"] = setId.ToString() });
-        var whileOpen = await agent.AsEngineAsync<IChangeSetChecks, Result<ChangeSetCheckRun?>>(checks => checks.RunAsync(setId, earlierJob, CheckRunMode.Job));
+        var whileOpen = await agent.AsPersonAsync<IChangeSetChecks, ChangeSetCheckRun?>(checks => checks.RunAsync(setId, earlierJob, CheckRunMode.Job));
         var again = await agent.CallAsync("submit_change_set", new() { ["id"] = setId.ToString() });
-        var afterwards = await agent.AsEngineAsync<IChangeSetChecks, Result<ChangeSetCheckRun?>>(checks => checks.RunAsync(setId, earlierJob, CheckRunMode.Job));
-        var abandoned = await agent.AsEngineAsync<IChangeSetChecks, Result<ChangeSetCheckRun?>>(checks => checks.AbandonAsync(setId, earlierJob, CheckRunMode.Job));
+        var afterwards = await agent.AsPersonAsync<IChangeSetChecks, ChangeSetCheckRun?>(checks => checks.RunAsync(setId, earlierJob, CheckRunMode.Job));
+        var abandoned = await agent.AsPersonAsync<IChangeSetChecks, ChangeSetCheckRun?>(checks => checks.AbandonAsync(setId, earlierJob, CheckRunMode.Job));
 
-        Assert.Equal(1, whileOpen.Value!.Number);
+        Assert.Equal(1, whileOpen!.Number);
         Assert.Equal(2, (int)again["checks"]!["number"]!);
-        Assert.Equal((2, 2), (afterwards.Value!.Number, abandoned.Value!.Number));
+        Assert.Equal((2, 2), (afterwards!.Number, abandoned!.Number));
         var read = await agent.CallAsync("get_change_set_checks", new() { ["id"] = setId.ToString() });
         Assert.Equal(("checks_failed", 2), ((string?)read["changeSet"]!["state"], (int)read["checks"]!["number"]!));
         Assert.NotEqual(earlierJob, Guid.Parse((string)read["job"]!["id"]!));
@@ -109,6 +114,65 @@ public sealed class ChangeSetChecksTests
         Assert.Equal((string?)kept["entry"]!["id"], (string?)Assert.Single(checks["items"]!.AsArray())!["itemId"]);
     }
 
+    // CHG-06: a revert restores what was published and takes no new operations, so a check that fails it, such as one asking for a
+    // source the revert cannot cite, informs its reviewer instead of holding it.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_revert_goes_to_review_with_the_results_of_its_checks(string provider)
+    {
+        await using var agent = await ConnectedAgent.StartAsync(provider);
+        await ProductChecksAsync(agent);
+        var created = await SubmitAsync(agent, "launch", "A kettle", "exports/catalog.csv");
+        await PublishAsync(agent, created);
+        var entryId = (string)(await agent.QueryAsync(context => context.Entries.AsNoTracking().Select(row => row.Id.ToString()).SingleAsync()));
+        var renamed = await agent.CallAsync("update_entry", new()
+        {
+            ["id"] = entryId,
+            ["base_version"] = 1,
+            ["fields"] = new JsonObject { ["title"] = "A steel kettle" },
+            ["session_id"] = "rename",
+            ["rationale"] = "Name the material.",
+            ["sources"] = new JsonArray("exports/catalog.csv"),
+        });
+        var published = await PublishAsync(agent, await agent.CallAsync("submit_change_set", new() { ["id"] = (string?)renamed["changeSet"]!["id"] }));
+
+        var revert = await agent.AsPersonAsync<IChangeSetDirectory, ChangeSet>(directory => directory.RevertAsync(published, "The rename was wrong."));
+        var submitted = await agent.AsPersonAsync<IChangeSetChecks, ChangeSetSubmission>(checks => checks.SubmitAsync(revert.Id));
+
+        Assert.Equal(ChangeSetState.AwaitingReview, submitted.ChangeSet.State);
+        Assert.Equal(CheckStatus.Fail, submitted.Run!.Status);
+        var result = Assert.Single(submitted.Run.Items.Single().Results, result => result.Check == "sourced-copy");
+        Assert.Equal((CheckStatus.Fail, 1), (result.Status, submitted.Run.Items.Single().Version));
+    }
+
+    // A set whose check job ended without moving it, as when the host stopped during the job's last attempt, is failed when the
+    // agent submits it again, so it can be reopened rather than stay in checks running.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_set_whose_check_job_ended_without_moving_it_is_failed_when_it_is_submitted_again(string provider)
+    {
+        await using var agent = await ConnectedAgent.StartAsync(
+            provider,
+            settings: IdleQueue,
+            configure: builder => builder.Services.AddFluentCmsExtension<ICheckType, RecordingJudge>());
+        await ProductChecksAsync(agent);
+        await ActivateAsync(agent, "calm", Definition(RecordingJudge.Name, "{}", "A kettle", "BUY!!!"));
+        var submitted = await SubmitAsync(agent, "stuck", "A kettle", "exports/catalog.csv");
+        var setId = (string)submitted["changeSet"]!["id"]!;
+        var jobId = Guid.Parse((string)submitted["job"]!["id"]!);
+        await agent.QueryAsync(context => context.Jobs.Where(row => row.Id == jobId).ExecuteUpdateAsync(row => row.SetProperty(job => job.State, JobState.Dead)));
+
+        var again = await agent.CallAsync("submit_change_set", new() { ["id"] = setId });
+
+        Assert.Equal("checks_running", (string?)submitted["changeSet"]!["state"]);
+        Assert.Equal("checks_failed", (string?)again["changeSet"]!["state"]);
+        Assert.Contains(jobId.ToString(), (string?)Assert.Single(again["checks"]!["problems"]!.AsArray()));
+        var reopened = await agent.CallAsync("reopen_change_set", new() { ["id"] = setId });
+        Assert.Equal("open", (string?)reopened["changeSet"]!["state"]);
+    }
+
     // A set with nothing to check passes and waits for review; routing decides more once it lands (F-RTE).
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
@@ -134,12 +198,14 @@ public sealed class ChangeSetChecksTests
     }
 
     // LLM-judged checks run as a job with progress (PERF-02), as the check engine, and their model calls count against the agent
-    // whose set they judge (SEC-04).
-    [Fact]
-    public async Task A_set_an_LLM_judged_check_reads_is_checked_as_a_job_charged_to_the_agent()
+    // whose set they judge (SEC-04). Each judgement names its model and prompt in the audit log (CHK-05).
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_set_is_checked_as_a_job_while_an_LLM_judged_check_is_active_and_charged_to_the_agent(string provider)
     {
         await using var agent = await ConnectedAgent.StartAsync(
-            "sqlite",
+            provider,
             settings: FastQueue,
             configure: builder => builder.Services.AddFluentCmsExtension<ICheckType, RecordingJudge>());
         await ProductChecksAsync(agent);
@@ -158,6 +224,14 @@ public sealed class ChangeSetChecksTests
         var (chargedTo, ranAs) = RecordingJudge.Calls.Last();
         Assert.Equal(agent.Credential.Id, chargedTo);
         Assert.Equal(SystemInitiator.Checks, ranAs);
+
+        var judged = (string?)finished["checks"]!["items"]![0]!["results"]!.AsArray().Single(result => (string?)result!["check"] == "calm")!["model"]!["model"];
+        Assert.Equal((RecordingJudge.Model, RecordingJudge.Cost), (judged, (decimal)finished["checks"]!["cost"]!));
+        var events = await agent.QueryAsync(context => context.AuditEvents.AsNoTracking().Where(row => row.Operation == "check.judged").ToListAsync());
+        var judgement = Assert.Single(events);
+        Assert.Equal(
+            (Guid.Parse(setId), RecordingJudge.Model, RecordingJudge.PromptHash, "system", "checks"),
+            (judgement.ChangeSetId!.Value, judgement.Model, judgement.PromptHash, judgement.InitiatorKind, judgement.InitiatorName));
     }
 
     // PERF-02: deterministic checks over a 200-item set finish in under ten seconds; a set that large runs as a job.
@@ -228,6 +302,16 @@ public sealed class ChangeSetChecksTests
         return JsonSerializer.SerializeToElement(new { title });
     }
 
+    // A person approves and publishes a set that passed its checks.
+    private static async Task<Guid> PublishAsync(ConnectedAgent agent, JsonObject submitted)
+    {
+        Assert.Equal("awaiting_review", (string?)submitted["changeSet"]!["state"]);
+        var id = Guid.Parse((string)submitted["changeSet"]!["id"]!);
+        await agent.AsPersonAsync<IChangeSetDirectory, ChangeSet>(directory => directory.TransitionAsync(id, ChangeSetState.Approved));
+        await agent.AsPersonAsync<IChangeSetDirectory, ChangeSet>(directory => directory.TransitionAsync(id, ChangeSetState.Published));
+        return id;
+    }
+
     private static async Task<JsonObject> SubmitAsync(ConnectedAgent agent, string session, string title, params string[] sources)
     {
         var created = await CreateAsync(agent, session, title, sources);
@@ -261,10 +345,17 @@ public sealed class ChangeSetChecksTests
         }
     }
 
-    // An LLM-judged type that asks no model: it fails content with "!!!" and records whom it was charged to and as whom it ran.
+    // An LLM-judged type that asks no model: it fails content with "!!!", names a made-up model call, and records whom it was
+    // charged to and as whom it ran.
     private sealed class RecordingJudge : ICheckType
     {
         public const string Name = "sample.judge";
+
+        public const string Model = "judge-1";
+
+        public const string PromptHash = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+
+        public const decimal Cost = 0.25m;
 
         public static ConcurrentQueue<(Guid? ChargedTo, Initiator? RanAs)> Calls { get; } = new();
 
@@ -283,7 +374,8 @@ public sealed class ChangeSetChecksTests
             var loud = input.Subject.Fields.ValueKind == JsonValueKind.Object
                 && input.Subject.Fields.EnumerateObject().Any(field => field.Value.ValueKind == JsonValueKind.String && field.Value.GetString()!.Contains("!!!"));
 
-            return Task.FromResult(loud ? CheckOutcome.Fail("Drop the exclamation marks.", "/title") : CheckOutcome.Pass());
+            var outcome = loud ? CheckOutcome.Fail("Drop the exclamation marks.", "/title") : CheckOutcome.Pass();
+            return Task.FromResult(outcome.WithModel(new CheckModelUse(Guid.CreateVersion7(), "openai", Model, PromptHash, Cost)));
         }
     }
 }

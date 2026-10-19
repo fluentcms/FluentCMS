@@ -25,7 +25,7 @@ internal static class TestServices
         // As the hosts do, so a scope can act as an engine (ADR-0012).
         if (services.Any(descriptor => descriptor.ServiceType == typeof(ICurrentInitiator)))
         {
-            services.AddActingInitiator();
+            services.AddEngineScopes();
         }
         services.AddFluentCmsCore();
         services.AddFluentCmsInfrastructure(configuration);

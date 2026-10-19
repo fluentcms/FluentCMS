@@ -451,6 +451,9 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
                     b.Property<DateTimeOffset>("FinishedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Mode")
                         .IsRequired()
                         .HasMaxLength(16)

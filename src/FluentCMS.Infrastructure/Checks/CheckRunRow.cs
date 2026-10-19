@@ -10,6 +10,9 @@ public sealed class CheckRunRow
 
     public Guid ChangeSetId { get; set; }
 
+    // The job of the submission the run checked, so a run of an earlier submission is told apart from the current one's.
+    public Guid JobId { get; set; }
+
     public int Number { get; set; }
 
     public CheckRunMode Mode { get; set; }

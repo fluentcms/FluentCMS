@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
 {
     [DbContext(typeof(SqliteFluentCmsDbContext))]
-    [Migration("20261019035242_CheckRuns")]
+    [Migration("20261019043548_CheckRuns")]
     partial class CheckRuns
     {
         /// <inheritdoc />
@@ -446,6 +446,9 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                         .HasColumnType("TEXT");
 
                     b.Property<DateTimeOffset>("FinishedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("JobId")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Mode")

@@ -17,6 +17,7 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                 {
                     Id = table.Column<Guid>(type: "TEXT", nullable: false),
                     ChangeSetId = table.Column<Guid>(type: "TEXT", nullable: false),
+                    JobId = table.Column<Guid>(type: "TEXT", nullable: false),
                     Number = table.Column<int>(type: "INTEGER", nullable: false),
                     Mode = table.Column<string>(type: "TEXT", maxLength: 16, nullable: false),
                     StartedAt = table.Column<DateTimeOffset>(type: "TEXT", nullable: false),

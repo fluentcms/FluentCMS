@@ -50,7 +50,7 @@ public sealed class ChangeSetTools : IToolProvider
             "Submit a change set for checks and review",
             "Submits one of your open change sets once it holds every operation it needs: the site's checks run on it, and a person "
             + "reviews it before anything is published. A small set is checked at once and the answer holds its check results; a "
-            + "larger one, or one an LLM-judged check reads, is checked in the background, so follow it with get_change_set_checks. "
+            + "larger one, or any set while an LLM-judged check is active, is checked in the background, so follow it with get_change_set_checks. "
             + "A submitted set takes no more operations. An agent never approves or publishes a set; if checks fail, reopen it with "
             + "reopen_change_set, fix what they found and submit it again.",
             ToolSchemas.Object(ToolSchemas.Uuid("id", "The id of your open change set.")),
@@ -63,7 +63,7 @@ public sealed class ChangeSetTools : IToolProvider
             + "Read the set with get_change_set first.",
             ToolSchemas.Object(ToolSchemas.Uuid("id", "The id of your change set whose checks failed.")),
             readOnly: false,
-            (call, cancellationToken) => MoveAsync(call, ChangeSetState.Open, cancellationToken)),
+            ReopenAsync),
     ];
 
     private static async Task<ToolResult> OpenAsync(ToolInvocation call, CancellationToken cancellationToken)
@@ -116,7 +116,7 @@ public sealed class ChangeSetTools : IToolProvider
         });
     }
 
-    private static async Task<ToolResult> MoveAsync(ToolInvocation call, ChangeSetState target, CancellationToken cancellationToken)
+    private static async Task<ToolResult> ReopenAsync(ToolInvocation call, CancellationToken cancellationToken)
     {
         var arguments = new ToolArgumentsReader(call.Arguments);
         var id = arguments.RequiredGuid("id");
@@ -125,15 +125,13 @@ public sealed class ChangeSetTools : IToolProvider
             return ToolResult.Failure(errors);
         }
 
-        var set = await call.Services.GetRequiredService<IChangeSetDirectory>().TransitionAsync(id!.Value, target, cancellationToken);
+        var set = await call.Services.GetRequiredService<IChangeSetDirectory>().TransitionAsync(id!.Value, ChangeSetState.Open, cancellationToken);
         return ToolResult.From(
             set,
             moved => new JsonObject
             {
                 ["changeSet"] = ToolJson.ChangeSet(moved),
-                ["next"] = target == ChangeSetState.Open
-                    ? "The set is open again: add the operations that fix it, then call submit_change_set."
-                    : "Checks run next, and a person reviews the set. Follow its state with get_change_set.",
+                ["next"] = "The set is open again: add the operations that fix it, then call submit_change_set.",
             },
             Hint(set));
     }

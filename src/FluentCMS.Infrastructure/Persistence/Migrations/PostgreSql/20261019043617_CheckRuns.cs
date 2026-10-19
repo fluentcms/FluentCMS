@@ -17,6 +17,7 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     ChangeSetId = table.Column<Guid>(type: "uuid", nullable: false),
+                    JobId = table.Column<Guid>(type: "uuid", nullable: false),
                     Number = table.Column<int>(type: "integer", nullable: false),
                     Mode = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: false),
                     StartedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),

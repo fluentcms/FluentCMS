@@ -1,4 +1,3 @@
-using FluentCMS.Core.Identity;
 using FluentCMS.Core.Jobs;
 using Microsoft.Extensions.Options;
 
@@ -72,7 +71,7 @@ public sealed class JobQueueWorker(
             return true;
         }
 
-        runScope.ServiceProvider.GetRequiredService<ActingInitiator>().Initiator = handler.RunAs ?? job.Initiator;
+        runScope.ServiceProvider.GetRequiredService<JobRun>().Initiator = handler.RunAs ?? job.Initiator;
 
         var context = new JobContext(
             job,

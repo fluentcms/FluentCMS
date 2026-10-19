@@ -26,6 +26,7 @@ internal sealed class CheckRuns(FluentCmsDbContext context) : ICheckRuns
         {
             Id = numbered.Id,
             ChangeSetId = numbered.ChangeSetId,
+            JobId = numbered.JobId,
             Number = numbered.Number,
             Mode = numbered.Mode,
             StartedAt = numbered.StartedAt,
@@ -93,7 +94,7 @@ internal sealed class CheckRuns(FluentCmsDbContext context) : ICheckRuns
             .ToList();
 
         var problems = JsonSerializer.Deserialize<List<string>>(run.Problems) ?? [];
-        return new ChangeSetCheckRun(run.Id, run.ChangeSetId, run.Number, run.Mode, run.StartedAt, run.FinishedAt, run.Status, run.Cost, items, problems);
+        return new ChangeSetCheckRun(run.Id, run.ChangeSetId, run.JobId, run.Number, run.Mode, run.StartedAt, run.FinishedAt, run.Status, run.Cost, items, problems);
     }
 
     private static CheckResult ToResult(CheckResultRow row)

@@ -13,7 +13,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
 {
     [DbContext(typeof(PostgreSqlFluentCmsDbContext))]
-    [Migration("20261019035255_CheckRuns")]
+    [Migration("20261019043617_CheckRuns")]
     partial class CheckRuns
     {
         /// <inheritdoc />
@@ -453,6 +453,9 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
 
                     b.Property<DateTimeOffset>("FinishedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("Mode")
                         .IsRequired()

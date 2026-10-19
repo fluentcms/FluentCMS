@@ -445,6 +445,9 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                     b.Property<DateTimeOffset>("FinishedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Mode")
                         .IsRequired()
                         .HasMaxLength(16)
