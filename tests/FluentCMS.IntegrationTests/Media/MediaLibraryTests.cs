@@ -70,11 +70,12 @@ public sealed class MediaLibraryTests
         await using var scenario = await EntryScenario.CreateAsync(provider, services => services.PostConfigure<MediaOptions>(media => media.MaxBytes = 100));
 
         var empty = await UploadAsync(scenario, [], Metadata("empty.png"));
-        var large = await UploadAsync(scenario, new byte[101], Metadata("large.png"));
+        var large = await UploadAsync(scenario, new byte[100_000], Metadata("large.png"));
         var mistyped = await UploadAsync(scenario, new byte[10], Metadata("text.png"), contentType: "png");
 
         Assert.Equal(MediaErrorCodes.MediaEmpty, Assert.Single(empty.Errors).Code);
         Assert.Equal(MediaErrorCodes.MediaTooLarge, Assert.Single(large.Errors).Code);
+        Assert.Equal("The file has more than 100 bytes, and an upload may have at most 100.", large.Errors[0].Message);
         Assert.Equal(MediaErrorCodes.ContentTypeInvalid, Assert.Single(mistyped.Errors).Code);
         Assert.Equal(0, await scenario.Schema.QueryAsync(context => context.MediaAssets.CountAsync()));
 

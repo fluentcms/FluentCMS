@@ -42,14 +42,16 @@ internal sealed class MediaLibrary(
         }
 
         var storage = Storage();
-        var stored = await storage.SaveAsync(asset.Content, cancellationToken);
         var limit = options.Value.MaxBytes;
+
+        // The storage sees at most one byte past the limit, so an oversized upload costs no more than the limit to refuse.
+        var stored = await storage.SaveAsync(new CappedStream(asset.Content, limit + 1), cancellationToken);
         if (stored.Length == 0 || stored.Length > limit)
         {
             await storage.DeleteAsync(stored.Key, cancellationToken);
             return stored.Length == 0
                 ? Result<MediaAsset>.Failure(MediaErrorCodes.MediaEmpty, "The file is empty; upload the bytes of the asset.")
-                : Result<MediaAsset>.Failure(MediaErrorCodes.MediaTooLarge, $"The file has {stored.Length} bytes, and an upload may have at most {limit}.");
+                : Result<MediaAsset>.Failure(MediaErrorCodes.MediaTooLarge, $"The file has more than {limit} bytes, and an upload may have at most {limit}.");
         }
 
         var now = clock.GetUtcNow();
