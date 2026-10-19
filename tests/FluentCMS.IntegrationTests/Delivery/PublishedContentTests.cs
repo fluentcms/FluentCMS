@@ -127,6 +127,40 @@ public sealed class PublishedContentTests
         Assert.Empty((await ContentAsync(scenario, content => content.ListAsync(new PublishedQuery("product-page", 100)))).Value.Items);
     }
 
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task The_index_lists_each_published_entry_once_with_the_title_of_its_published_version(string provider)
+    {
+        await using var scenario = await CreateAsync(provider);
+        var product = await ProductAsync(scenario, "99");
+        var page = await PageAsync(scenario, product, "First headline");
+        var draft = await PageAsync(scenario, product, "Draft");
+        var deleted = await PageAsync(scenario, product, "Deleted");
+        var post = (await scenario.CreateAsync("blog-post", """{"title": "Launch"}""")).Value.Id;
+        foreach (var entry in new[] { product, page, deleted, post })
+        {
+            await PublishAsync(scenario, entry, 1);
+        }
+
+        await scenario.RunAsync(entries => entries.DeleteAsync(deleted, 1));
+        await scenario.UpdateAsync(page, 1, $$"""{"product": "{{product}}", "price": "{{product}}", "headline": "Second headline"}""");
+
+        var before = await ContentAsync(scenario, content => content.IndexAsync());
+        await PublishAsync(scenario, page, 2);
+        var after = await ContentAsync(scenario, content => content.IndexAsync());
+
+        Assert.Equal(
+            [
+                new PublishedSummary(post, "blog-post", "Blog Post", 1, "Launch"),
+                new PublishedSummary(product, "product", "Product", 1, "Drill"),
+                new PublishedSummary(page, "product-page", "Product Page", 1, "First headline"),
+            ],
+            before);
+        Assert.Equal((2, "Second headline"), (after[^1].Version, after[^1].Title));
+        Assert.DoesNotContain(after, summary => summary.Id == draft || summary.Id == deleted);
+    }
+
     private static async Task<EntryScenario> CreateAsync(string provider)
     {
         var scenario = await EntryScenario.CreateAsync(provider);
