@@ -130,6 +130,41 @@ public sealed class DeliveryEndpointsTests
         await AssertProblemAsync(await host.Client.GetAsync(path), status, code);
     }
 
+    [Fact]
+    public async Task A_preview_reads_with_the_bearer_token_and_is_never_cached()
+    {
+        await using var api = await StubApi.StartAsync(new StubContent());
+        using var entry = new HttpRequestMessage(HttpMethod.Get, $"/api/v1/preview/entries/{Page}");
+        entry.Headers.Authorization = new("Bearer", StubPreview.Token);
+        using var changes = new HttpRequestMessage(HttpMethod.Get, "/api/v1/preview/changes");
+        changes.Headers.Authorization = new("Bearer", StubPreview.Token);
+
+        var entryResponse = await api.Client.SendAsync(entry);
+        var changesResponse = await api.Client.SendAsync(changes);
+
+        Assert.Equal(HttpStatusCode.OK, entryResponse.StatusCode);
+        Assert.True(entryResponse.Headers.CacheControl?.NoStore);
+        Assert.Equal(Page.ToString(), (string?)(await entryResponse.Content.ReadFromJsonAsync<JsonObject>())!["id"]);
+        var body = (await changesResponse.Content.ReadFromJsonAsync<JsonObject>())!;
+        Assert.Equal((StubPreview.ChangeSet.ToString(), 1), ((string?)body["changeSet"], body["items"]!.AsArray().Count));
+    }
+
+    [Fact]
+    public async Task A_preview_without_a_working_token_is_a_problem_with_401()
+    {
+        await using var api = await StubApi.StartAsync(new StubContent());
+        using var wrong = new HttpRequestMessage(HttpMethod.Get, "/api/v1/preview/changes");
+        wrong.Headers.Authorization = new("Bearer", "fcmsp_wrong");
+
+        var missing = await api.Client.GetAsync($"/api/v1/preview/entries/{Page}");
+        var refused = await api.Client.SendAsync(wrong);
+
+        await AssertProblemAsync(missing, HttpStatusCode.Unauthorized, DeliveryErrorCodes.PreviewTokenInvalid);
+        await AssertProblemAsync(refused, HttpStatusCode.Unauthorized, DeliveryErrorCodes.PreviewTokenInvalid);
+        Assert.Equal("Bearer", Assert.Single(missing.Headers.WwwAuthenticate).Scheme);
+        Assert.Equal("Bearer", Assert.Single(refused.Headers.WwwAuthenticate).Scheme);
+    }
+
     private static async Task<JsonObject> AssertProblemAsync(HttpResponseMessage response, HttpStatusCode status, string code)
     {
         Assert.Equal(status, response.StatusCode);
@@ -186,6 +221,31 @@ public sealed class DeliveryEndpointsTests
         }
     }
 
+    // Works for one token only, as a preview of a set that changes the page.
+    private sealed class StubPreview : IPreviewContent
+    {
+        public const string Token = "fcmsp_works";
+
+        public static readonly Guid ChangeSet = Guid.CreateVersion7();
+
+        public async Task<Result<PublishedItem>> GetAsync(string token, Guid entryId, CancellationToken cancellationToken = default)
+        {
+            return token == Token ? await new StubContent().GetAsync(entryId, cancellationToken) : Refused<PublishedItem>();
+        }
+
+        public async Task<Result<PreviewChanges>> ChangesAsync(string token, CancellationToken cancellationToken = default)
+        {
+            return token == Token
+                ? Result<PreviewChanges>.Success(new PreviewChanges(ChangeSet, [(await new StubContent().GetAsync(Page, cancellationToken)).Value]))
+                : Refused<PreviewChanges>();
+        }
+
+        private static Result<T> Refused<T>()
+        {
+            return Result<T>.Failure(DeliveryErrorCodes.PreviewTokenInvalid, "The preview token does not work.");
+        }
+    }
+
     // The endpoints alone on a free port, over the content given.
     private sealed class StubApi(WebApplication app) : IAsyncDisposable
     {
@@ -196,6 +256,7 @@ public sealed class DeliveryEndpointsTests
             var builder = WebApplication.CreateSlimBuilder();
             builder.WebHost.UseUrls("http://127.0.0.1:0");
             builder.Services.AddSingleton(content);
+            builder.Services.AddSingleton<IPreviewContent>(new StubPreview());
             var app = builder.Build();
             app.MapFluentCmsApi();
             await app.StartAsync();
