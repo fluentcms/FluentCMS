@@ -179,7 +179,7 @@ public sealed class MediaToolsTests
         Assert.Equal("field_not_media", Code(notMedia));
         Assert.Equal(ContentErrorCodes.ReferenceNotFound, Code(missingAsset));
         Assert.Equal(0, await agent.QueryAsync(context => context.MediaAssets.CountAsync()));
-        Assert.Equal(0, await agent.QueryAsync(context => context.ChangeSets.CountAsync()));
+        Assert.Equal(0, await agent.QueryAsync(context => context.ChangeSets.CountAsync(row => row.SessionId != TestChangeSetTargets.ContentModelSession)));
     }
 
     // A published product page with a headline and an empty hero image, defined and written by a person.
