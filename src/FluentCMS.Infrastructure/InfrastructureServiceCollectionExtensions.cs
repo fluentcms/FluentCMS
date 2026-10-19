@@ -5,6 +5,7 @@ using FluentCMS.Core.Checks;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Entities;
 using FluentCMS.Core.Identity;
+using FluentCMS.Core.Models;
 using FluentCMS.Core.Persistence;
 using FluentCMS.Core.Schema;
 using FluentCMS.Infrastructure.Agents;
@@ -14,12 +15,14 @@ using FluentCMS.Infrastructure.Checks;
 using FluentCMS.Infrastructure.Content;
 using FluentCMS.Infrastructure.Entities;
 using FluentCMS.Infrastructure.Identity;
+using FluentCMS.Infrastructure.Models;
 using FluentCMS.Infrastructure.Persistence;
 using FluentCMS.Infrastructure.Schema;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 
 namespace FluentCMS.Infrastructure;
 
@@ -38,6 +41,7 @@ public static class InfrastructureServiceCollectionExtensions
         AddAgents(services);
         AddContent(services, configuration);
         AddChecks(services);
+        AddModels(services, configuration);
 
         services.AddHostedService<DatabaseMigrator>();
 
@@ -102,6 +106,19 @@ public static class InfrastructureServiceCollectionExtensions
     private static void AddChecks(IServiceCollection services)
     {
         services.AddScoped<ICheckDirectory, CheckDirectory>();
+    }
+
+    // The provider wiring behind the gateway in Core (ADR-0008). A profile the host cannot use stops it at startup.
+    private static void AddModels(IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddOptions<ModelOptions>().Bind(configuration.GetSection(ModelOptions.SectionName)).ValidateOnStart();
+        services.AddSingleton<IValidateOptions<ModelOptions>, ModelOptionsValidation>();
+        services.Configure<OutboundOptions>(configuration.GetSection(OutboundOptions.SectionName));
+        services.TryAddSingleton(ModelTransport.Network);
+        services.AddSingleton<IModelProfiles, ModelProfiles>();
+        services.AddSingleton<IOutboundHosts, OutboundHosts>();
+        services.AddSingleton<IModelClients, ModelClients>();
+        services.AddScoped<IModelCallLog, ModelCallLog>();
     }
 
     private static void AddIdentity(IServiceCollection services)

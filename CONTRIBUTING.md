@@ -99,6 +99,18 @@ Nothing in the code updates or deletes an audit row. On PostgreSQL the `AuditEve
 
 The admin's `/audit` page offers the export and an item's history. A page cannot answer with a file, so its export form posts to `POST /audit/export` in the host, which maps the form, calls the exporter and streams the result; it needs a signed-in user and an anti-forgery token like every form, and sends a rejected form back to the page.
 
+## Model access
+
+Every model call goes through `IModelGateway` in `FluentCMS.Core.Models` (ADR-0008). Nothing else holds a model client: only `FluentCMS.Infrastructure` references a provider package, and a test fails when other code uses one.
+
+- **Profiles.** A caller names a profile, such as `checks`, and an administrator points it at a provider: `Models__Profiles__checks__Provider` (`openai` for any OpenAI-compatible endpoint, including LiteLLM, OpenRouter, Ollama, LM Studio and vLLM, or `anthropic`), `__Model`, `__Endpoint` (the provider's own when left out), `__ApiKey`, `__InputCostPerMillionTokens` and `__OutputCostPerMillionTokens` in US dollars, `__MaxOutputTokens` and `__Timeout`. Put keys in the environment or a secret store, never in a committed file. A profile the host cannot use stops it at startup with what to change.
+- **No model.** With no profile configured, `IsAvailable` is false and a call fails with `model_not_configured`. The governance loop still runs, and a caller degrades, for example to needs review (MDL-03).
+- **Prompts.** A request carries the caller's own instructions apart from untrusted data, and the gateway builds the structured prompt. Content, rule text and sources go only in `ModelData` sections, never into the instructions (SEC-03).
+- **Allow-list.** Outbound requests go only to hosts in `Outbound__AllowedHosts`, and to their subdomains. A profile whose endpoint is not allowed is refused, and the provider HTTP clients refuse any other host (SEC-05).
+- **Spend.** A call is charged to the calling agent, or to the agent a request names, and refused once that agent's calls in its `LlmSpendPeriod` cost its `LlmSpendPerPeriod` (SEC-04).
+- **Records.** Every call is kept in `ModelCalls` with its provider, model and version, verbatim prompt and response, tokens, cost and outcome (MDL-04, CHK-05). Audit events carry its prompt hash, and `IModelCallLog.FindByPromptHashAsync` finds the prompt again.
+- **Retention.** Prompts and responses are kept for `Models__PromptRetention`, 90 days by default. A person runs `IModelCallLog.PurgeAsync`, which clears the text of older calls, keeps the rest of each record, and appends a `model_call.purged` event for each call (AUD-04, AUD-N2).
+
 ## Extension points
 
 Every pluggable part of the product is an interface in `FluentCMS.Core` marked `[ExtensionPoint]`. Implementations register through dependency injection, either explicitly with `AddFluentCmsExtension<TContract, TImplementation>()` or by discovery with `AddFluentCmsExtensions(assembly)`, which picks up every concrete class implementing an extension-point interface in that assembly. Both paths produce the same `IExtensionCatalog` entry and the same `IEnumerable<TContract>` resolution, so built-ins under `FluentCMS.Core.Builtin` and future plugins look identical to the rest of the product. Each interface is documented where it is defined, together with the conformance tests an implementation must pass.

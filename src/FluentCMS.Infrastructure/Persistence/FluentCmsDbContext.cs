@@ -4,6 +4,7 @@ using FluentCMS.Infrastructure.ChangeSets;
 using FluentCMS.Infrastructure.Checks;
 using FluentCMS.Infrastructure.Content;
 using FluentCMS.Infrastructure.Entities;
+using FluentCMS.Infrastructure.Models;
 using FluentCMS.Infrastructure.Schema;
 using FluentCMS.Infrastructure.Sites;
 using Microsoft.AspNetCore.Identity;
@@ -43,6 +44,8 @@ public abstract class FluentCmsDbContext(DbContextOptions options) : IdentityDbC
 
     public DbSet<CheckVersionRow> CheckVersions => Set<CheckVersionRow>();
 
+    public DbSet<ModelCallRow> ModelCalls => Set<ModelCallRow>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -61,6 +64,7 @@ public abstract class FluentCmsDbContext(DbContextOptions options) : IdentityDbC
         builder.ApplyConfiguration(new EntityFactConfiguration());
         builder.ApplyConfiguration(new CheckConfiguration());
         builder.ApplyConfiguration(new CheckVersionConfiguration());
+        builder.ApplyConfiguration(new ModelCallConfiguration());
 
         builder.Entity<FluentCmsUser>(user =>
         {
