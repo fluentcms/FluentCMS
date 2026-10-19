@@ -66,6 +66,34 @@ public sealed class ToolArgumentsReader
         return null;
     }
 
+    // Any JSON value but null, such as the value of a field.
+    public JsonElement? RequiredValue(string name, string form)
+    {
+        var value = Read(name);
+        if (value is null)
+        {
+            Missing(name, form);
+        }
+
+        return value;
+    }
+
+    public JsonElement? OptionalObject(string name, string form)
+    {
+        if (Read(name) is not { } value)
+        {
+            return null;
+        }
+
+        if (value.ValueKind == JsonValueKind.Object)
+        {
+            return value;
+        }
+
+        Invalid(name, $"must be a JSON object: {form}");
+        return null;
+    }
+
     public Guid? OptionalGuid(string name)
     {
         return Read(name) is null ? null : GuidOf(name);

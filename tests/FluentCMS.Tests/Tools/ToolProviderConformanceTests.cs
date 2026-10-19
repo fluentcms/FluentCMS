@@ -114,3 +114,8 @@ public sealed class EntryToolsConformanceTests : ToolProviderConformanceTests
 {
     protected override object Provider { get; } = new EntryTools();
 }
+
+public sealed class EntityToolsConformanceTests : ToolProviderConformanceTests
+{
+    protected override object Provider { get; } = new EntityTools();
+}

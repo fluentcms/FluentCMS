@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Content;
+using FluentCMS.Core.Entities;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Schema;
 
@@ -157,6 +158,85 @@ internal static class ToolJson
             ["isPublished"] = usage.IsPublished,
             ["paths"] = new JsonArray([.. usage.Paths.Select(path => JsonValue.Create(path))]),
         };
+    }
+
+    public static JsonObject Facts(EntityFactSheet sheet)
+    {
+        return new JsonObject
+        {
+            ["entityId"] = sheet.EntityId.ToString(),
+            ["type"] = sheet.Type,
+            ["version"] = sheet.Version,
+            ["facts"] = new JsonArray([.. sheet.Facts.Select(fact => new JsonObject
+            {
+                ["field"] = fact.Field,
+                ["unsourced"] = fact.IsUnsourced,
+                ["source"] = fact.SourceKind is null ? null : new JsonObject { ["kind"] = fact.SourceKind, ["reference"] = fact.SourceReference },
+                ["owner"] = fact.Owner?.ToString(),
+                ["validFrom"] = Time(fact.ValidFrom),
+                ["validUntil"] = Time(fact.ValidUntil),
+                ["lastVerified"] = Time(fact.LastVerified),
+            })]),
+        };
+    }
+
+    public static JsonObject Flag(FactFlag flag)
+    {
+        return new JsonObject
+        {
+            ["entityId"] = flag.EntityId.ToString(),
+            ["type"] = flag.Type,
+            ["field"] = flag.Field,
+            ["version"] = flag.Version,
+            ["isLatest"] = flag.IsLatest,
+            ["isPublished"] = flag.IsPublished,
+        };
+    }
+
+    public static JsonObject Relations(EntityRelations relations)
+    {
+        return new JsonObject
+        {
+            ["entityId"] = relations.EntityId.ToString(),
+            ["type"] = relations.Type,
+            ["outgoing"] = new JsonArray([.. relations.Outgoing.Select(Relation)]),
+            ["incoming"] = new JsonArray([.. relations.Incoming.Select(Relation)]),
+        };
+    }
+
+    public static JsonObject BlastRadius(BlastRadius radius)
+    {
+        return new JsonObject
+        {
+            ["changeSetId"] = radius.ChangeSetId.ToString(),
+            ["entries"] = new JsonArray([.. radius.Entries.Select(entry => new JsonObject
+            {
+                ["entryId"] = entry.EntryId.ToString(),
+                ["contentType"] = entry.ContentType,
+                ["version"] = entry.Version,
+                ["fields"] = Values(entry.Fields),
+            })]),
+        };
+    }
+
+    private static JsonObject Relation(EntityRelation relation)
+    {
+        return new JsonObject
+        {
+            ["fromId"] = relation.FromId.ToString(),
+            ["fromType"] = relation.FromType,
+            ["field"] = relation.Field,
+            ["toId"] = relation.ToId.ToString(),
+            ["toType"] = relation.ToType,
+            ["toField"] = relation.ToField,
+            ["isLatest"] = relation.IsLatest,
+            ["isPublished"] = relation.IsPublished,
+        };
+    }
+
+    private static string? Time(DateTimeOffset? time)
+    {
+        return time?.ToString("O", System.Globalization.CultureInfo.InvariantCulture);
     }
 
     private static JsonObject Operation(ChangeOperation operation)
