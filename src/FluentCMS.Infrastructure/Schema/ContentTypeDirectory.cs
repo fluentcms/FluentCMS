@@ -139,10 +139,12 @@ internal sealed class ContentTypeDirectory(
             return NotFound(slug);
         }
 
-        // The published version is a base too, so a revision can leave an unpublished draft behind, such as a rejected one.
-        if (baseVersion != row.Version && baseVersion != row.PublishedVersion)
+        // The published version is a base too, so a revision can leave an unpublished draft behind, such as a rejected one. A set that
+        // already holds the type is revised from the version it proposes, however many drafts other sets have written since.
+        var own = await changeSets.ProposedVersionAsync(changeSet, ItemKind.Schema, row.Id, cancellationToken);
+        if (own is { } proposed ? baseVersion != proposed : baseVersion != row.Version && baseVersion != row.PublishedVersion)
         {
-            return Result<ContentType>.Failure([VersionConflict(row, baseVersion)]);
+            return Result<ContentType>.Failure([VersionConflict(row, baseVersion, own)]);
         }
 
         // A draft is only worth building on while a set that can still publish proposes it; a revision of a rejected or reverted
@@ -463,14 +465,17 @@ internal sealed class ContentTypeDirectory(
         return new Error(SchemaErrorCodes.SlugTaken, $"The slug '{slug}' is already used by another content type in this site.");
     }
 
-    private static Error VersionConflict(ContentTypeRow row, int baseVersion)
+    private static Error VersionConflict(ContentTypeRow row, int baseVersion, int? own)
     {
         return new Error(
             SchemaErrorCodes.VersionConflict,
-            row.PublishedVersion is { } published && published != row.Version
-                ? $"Version {baseVersion} is neither the latest version {row.Version} of the content type '{row.Slug}' nor the published "
-                    + $"version {published}; revise one of those."
-                : $"Version {baseVersion} is not the latest version {row.Version} of the content type '{row.Slug}'; revise that one.");
+            own is { } proposed
+                ? $"The change set already proposes version {proposed} of the content type '{row.Slug}', so a later write of it in that set "
+                    + $"revises version {proposed}, not {baseVersion}."
+                : row.PublishedVersion is { } published && published != row.Version
+                    ? $"Version {baseVersion} is neither the latest version {row.Version} of the content type '{row.Slug}' nor the published "
+                        + $"version {published}; revise one of those."
+                    : $"Version {baseVersion} is not the latest version {row.Version} of the content type '{row.Slug}'; revise that one.");
     }
 
     private static Error RevisedMeanwhile(ContentTypeRow row)

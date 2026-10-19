@@ -355,6 +355,25 @@ internal sealed class ChangeSetDirectory(
         return Result<PendingOperation>.Success(new PendingOperation(set, null, 0, Extends: false));
     }
 
+    // The version the set a write joins already proposes for the item, which a later write in that set builds on (SCH-05). Null when
+    // that set holds no operation proposing a version of the item, or the write would open the set.
+    internal async Task<int?> ProposedVersionAsync(ChangeSetTarget target, ItemKind itemKind, Guid itemId, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+
+        var setId = target.ChangeSetId ?? await OpenSetOfSessionAsync(Initiator(), target.SessionId!, cancellationToken);
+        if (setId is null)
+        {
+            return null;
+        }
+
+        return await context.ChangeSetOperations
+            .AsNoTracking()
+            .Where(operation => operation.ChangeSetId == setId && operation.ItemKind == itemKind && operation.ItemId == itemId)
+            .Select(operation => operation.ProposedVersion)
+            .SingleOrDefaultAsync(cancellationToken);
+    }
+
     // Whether a set that can still publish, one not yet published, rejected or reverted, proposes this version of the item.
     internal Task<bool> ProposesAsync(ItemKind itemKind, Guid itemId, int version, CancellationToken cancellationToken)
     {

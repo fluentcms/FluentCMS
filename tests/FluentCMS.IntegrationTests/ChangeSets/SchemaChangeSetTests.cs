@@ -263,6 +263,33 @@ public sealed class SchemaChangeSetTests
         Assert.Equal(3, (await scenario.RunSchemaAsync(directory => directory.GetPublishedAsync("product"))).Value.Version);
     }
 
+    // A set that already holds a type builds on its own draft, whatever other sets have drafted since.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_set_revises_its_own_draft_after_another_set_drafted_the_type(string provider)
+    {
+        await using var scenario = await ScenarioAsync(provider);
+        var created = await PublishedProductAsync(scenario);
+        var first = await scenario.OpenAsync();
+        var target = ChangeSetTarget.Existing(first.Id);
+        await scenario.RunSchemaAsync(directory => directory.ReviseAsync("product", 1, WithSummary, target));
+        var other = ChangeSetTarget.Existing((await scenario.OpenAsync()).Id);
+        await scenario.RunSchemaAsync(directory => directory.ReviseAsync("product", 1, WithPrice, other));
+        var both = new ContentTypeDefinition([Title, new FieldDefinition("summary", "text"), new FieldDefinition("price", "number")]);
+
+        var fromLatest = await scenario.RunSchemaAsync(directory => directory.ReviseAsync("product", 3, both, target));
+        var fromOwn = await scenario.RunSchemaAsync(directory => directory.ReviseAsync("product", 2, both, target));
+
+        var refusal = Assert.Single(fromLatest.Errors);
+        Assert.Equal(SchemaErrorCodes.VersionConflict, refusal.Code);
+        Assert.Contains("already proposes version 2", refusal.Message);
+        Assert.Equal(4, fromOwn.Value.Version);
+        Assert.Equal([Update(created, 1, 4)], (await scenario.RunAsync(directory => directory.GetAsync(first.Id))).Value.Operations);
+        await scenario.PublishAsync(first.Id);
+        Assert.Equal(4, (await scenario.RunSchemaAsync(directory => directory.GetPublishedAsync("product"))).Value.Version);
+    }
+
     // A revision of a type with nothing live is recorded as its create, so an agent needs the create scope for it (MCP-05).
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
