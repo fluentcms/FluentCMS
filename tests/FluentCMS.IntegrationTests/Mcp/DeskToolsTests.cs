@@ -1,8 +1,12 @@
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Core.Agents;
 using FluentCMS.Core.ChangeSets;
+using FluentCMS.Core.Content;
+using FluentCMS.Core.Schema;
 using FluentCMS.Core.Tools;
 using FluentCMS.Infrastructure.Persistence;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.IntegrationTests.Mcp;
 
@@ -55,6 +59,8 @@ public sealed class DeskToolsTests
         await agent.AsPersonAsync<IChangeSetDirectory, ChangeSet>(directory => directory.RejectAsync(set, "The type duplicates item."));
         var someoneElses = await PersonsSetAsync(agent, "page");
 
+        var events = await agent.QueryAsync(context => Task.FromResult(context.AuditEvents.Count()));
+
         var review = await agent.CallAsync("get_change_set_review", new() { ["id"] = set.ToString() });
         var refused = await agent.FailAsync("get_change_set_review", new() { ["id"] = someoneElses.ToString() });
 
@@ -65,6 +71,80 @@ public sealed class DeskToolsTests
         Assert.Equal(("user", "Test administrator"), ((string?)moves[3]!["by"]!["kind"], (string?)moves[3]!["by"]!["name"]));
         Assert.Equal((string?)moves[3]!["at"], (string?)review["stateSince"]);
         Assert.Equal(AgentPermissionErrorCodes.NotOwner, Code(refused));
+        Assert.Equal(events, await agent.QueryAsync(context => Task.FromResult(context.AuditEvents.Count())));
+    }
+
+    // The credential id separates one agent from another; a person's sets are already left out by the initiator's kind.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task Another_agents_sets_are_not_counted_listed_or_readable(string provider)
+    {
+        await using var agent = await ConnectedAgent.StartAsync(provider);
+        await using var other = await agent.AnotherAgentAsync("other-agent");
+        var mine = await SubmitAsync(agent, "product");
+        var theirs = await SubmitAsync(other, "category");
+        var theirsFailed = await SubmitAsync(other, "brand", submit: false);
+        await MoveAsync(agent, theirsFailed, ChangeSetState.ChecksRunning);
+        await MoveAsync(agent, theirsFailed, ChangeSetState.ChecksFailed);
+
+        var counts = await agent.CallAsync("get_desk_counts", []);
+        var awaiting = await agent.CallAsync("list_desk_queue", new() { ["queue"] = "awaiting_review" });
+        var failed = await agent.CallAsync("list_desk_queue", new() { ["queue"] = "checks_failed" });
+        var refused = await agent.FailAsync("get_change_set_review", new() { ["id"] = theirs.ToString() });
+        var theirCounts = await other.CallAsync("get_desk_counts", []);
+
+        Assert.Equal((1, 0), ((int)counts["counts"]!["awaiting_review"]!, (int)counts["counts"]!["checks_failed"]!));
+        Assert.Equal([mine.ToString()], Ids(awaiting));
+        Assert.Empty(Ids(failed));
+        Assert.Equal(AgentPermissionErrorCodes.NotOwner, Code(refused));
+        Assert.Equal((1, 1), ((int)theirCounts["counts"]!["awaiting_review"]!, (int)theirCounts["counts"]!["checks_failed"]!));
+    }
+
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task Every_queue_lists_through_the_tool_in_its_order_and_window_and_no_call_appends_an_event(string provider)
+    {
+        var clock = new ManualClock(DateTimeOffset.UtcNow);
+        await using var agent = await ConnectedAgent.StartAsync(provider, configure: builder => builder.Services.AddSingleton<TimeProvider>(clock));
+        var old = await PublishAsync(agent, await SubmitAsync(agent, "region"));
+        var oldRevert = await RevertAsync(agent, await PublishAsync(agent, await SubmitAsync(agent, "warehouse")));
+        clock.Now = clock.Now.AddDays(8);
+        var first = await PublishAsync(agent, await SubmitAsync(agent, "product"));
+        clock.Now = clock.Now.AddMinutes(1);
+        var wrong = await RevertAsync(agent, await PublishAsync(agent, await SubmitAsync(agent, "category")));
+        clock.Now = clock.Now.AddMinutes(1);
+        var alsoWrong = await RevertAsync(agent, await PublishAsync(agent, await SubmitAsync(agent, "colour")));
+        clock.Now = clock.Now.AddMinutes(1);
+        var second = await PublishAsync(agent, await SubmitAsync(agent, "brand"));
+        var failedFirst = await FailedAsync(agent, "size");
+        clock.Now = clock.Now.AddMinutes(1);
+        var failedLater = await FailedAsync(agent, "shape");
+        var stale = await StaleFactsAsync(agent, 3);
+        var events = await agent.QueryAsync(context => Task.FromResult(context.AuditEvents.Count()));
+
+        var counts = await agent.CallAsync("get_desk_counts", []);
+        var published = await agent.CallAsync("list_desk_queue", new() { ["queue"] = "recently_published" });
+        var reverted = await agent.CallAsync("list_desk_queue", new() { ["queue"] = "reverted" });
+        var failed = await agent.CallAsync("list_desk_queue", new() { ["queue"] = "checks_failed" });
+        var staleFirst = await agent.CallAsync("list_desk_queue", new() { ["queue"] = "stale_facts", ["limit"] = 2 });
+        var staleSecond = await agent.CallAsync("list_desk_queue", new() { ["queue"] = "stale_facts", ["limit"] = 2, ["page"] = 2 });
+        await agent.CallAsync("get_change_set_review", new() { ["id"] = wrong.ToString() });
+
+        Assert.Equal(
+            (2, 2, 2, 3),
+            ((int)counts["counts"]!["recently_published"]!, (int)counts["counts"]!["reverted"]!, (int)counts["counts"]!["checks_failed"]!, (int)counts["counts"]!["stale_facts"]!));
+        Assert.Equal([second.ToString(), first.ToString()], Ids(published));
+        Assert.DoesNotContain(old.ToString(), Ids(published));
+        Assert.Equal([alsoWrong.ToString(), wrong.ToString()], Ids(reverted));
+        Assert.DoesNotContain(oldRevert.ToString(), Ids(reverted));
+        Assert.Equal([failedFirst.ToString(), failedLater.ToString()], Ids(failed));
+        Assert.Equal((3, 3), ((int)staleFirst["total"]!, (int)staleSecond["total"]!));
+        Assert.Equal(
+            stale,
+            [.. staleFirst["facts"]!.AsArray().Concat(staleSecond["facts"]!.AsArray()).Select(fact => Guid.Parse((string)fact!["entityId"]!))]);
+        Assert.Equal(events, await agent.QueryAsync(context => Task.FromResult(context.AuditEvents.Count())));
     }
 
     [Theory]
@@ -121,6 +201,54 @@ public sealed class DeskToolsTests
         }
 
         return Guid.Parse(id);
+    }
+
+    // A person reverts the published set and publishes the revert, which moves the set to reverted.
+    private static async Task<Guid> RevertAsync(ConnectedAgent agent, Guid id)
+    {
+        var revert = await agent.AsPersonAsync<IChangeSetDirectory, ChangeSet>(directory => directory.RevertAsync(id, "It was a mistake."));
+        await MoveAsync(agent, revert.Id, ChangeSetState.ChecksRunning);
+        await MoveAsync(agent, revert.Id, ChangeSetState.AwaitingReview);
+        await PublishAsync(agent, revert.Id);
+        return id;
+    }
+
+    private static async Task<Guid> FailedAsync(ConnectedAgent agent, string slug)
+    {
+        var id = await SubmitAsync(agent, slug, submit: false);
+        await MoveAsync(agent, id, ChangeSetState.ChecksRunning);
+        await MoveAsync(agent, id, ChangeSetState.ChecksFailed);
+        return id;
+    }
+
+    // A person approves and publishes the set, as a reviewer would.
+    private static async Task<Guid> PublishAsync(ConnectedAgent agent, Guid id)
+    {
+        await MoveAsync(agent, id, ChangeSetState.Approved);
+        await agent.AsPersonAsync<IChangeSetDirectory, ChangeSet>(directory => directory.PublishAsync(id));
+        return id;
+    }
+
+    // Suppliers whose price expired a day apart, so the longest stale comes first; returns them in that order.
+    private static async Task<List<Guid>> StaleFactsAsync(ConnectedAgent agent, int count)
+    {
+        await agent.AsPersonAsync<IContentTypeDirectory, ContentType>(directory => directory.CreateAsync(
+            new NewContentType("Supplier", "supplier", new ContentTypeDefinition([new FieldDefinition("name", "text"), new FieldDefinition("price", "number")], isEntity: true)),
+            TestChangeSetTargets.ContentModel));
+        var ids = new List<Guid>();
+        for (var day = 1; day <= count; day++)
+        {
+            const string sourced = """{"kind": "url", "reference": "https://example.com/catalog"}""";
+            var fields = JsonSerializer.Deserialize<JsonElement>($$"""
+                {
+                  "name": {"value": "Supplier {{day}}", "source": {{sourced}}, "owner": null, "validFrom": null, "validUntil": null, "lastVerified": null},
+                  "price": {"value": 99, "source": {{sourced}}, "owner": null, "validFrom": null, "validUntil": "2020-01-0{{day}}T00:00:00Z", "lastVerified": null}
+                }
+                """);
+            ids.Add((await agent.AsPersonAsync<IEntryDirectory, Entry>(directory => directory.CreateAsync(new NewEntry("supplier", fields)))).Id);
+        }
+
+        return ids;
     }
 
     // The checks and the reviewer move a set on; a person stands in for the engine here.
