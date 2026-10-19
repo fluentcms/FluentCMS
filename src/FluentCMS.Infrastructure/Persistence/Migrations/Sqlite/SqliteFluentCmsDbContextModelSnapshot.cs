@@ -365,6 +365,11 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                     b.Property<Guid>("SiteId")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ContentTypeId");
@@ -376,6 +381,8 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                             t.HasCheckConstraint("CK_Entries_LatestVersion", "\"LatestVersion\" >= 1");
 
                             t.HasCheckConstraint("CK_Entries_PublishedVersion", "\"PublishedVersion\" IS NULL OR (\"PublishedVersion\" >= 1 AND \"PublishedVersion\" <= \"LatestVersion\")");
+
+                            t.HasCheckConstraint("CK_Entries_State", "\"State\" IN ('Draft', 'Published', 'Reverted', 'Archived')");
                         });
                 });
 

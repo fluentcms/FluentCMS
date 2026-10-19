@@ -49,14 +49,17 @@ internal sealed class EntryDirectory(
             return Result<IReadOnlyList<EntrySummary>>.Failure([ContentTypeNotFound(contentType)]);
         }
 
+        var inReview = EntriesInReview.Ids(context);
         var entries = await context.Entries
             .AsNoTracking()
             .Where(entry => entry.SiteId == SiteId && entry.ContentTypeId == typeId && entry.DeletedAt == null)
             .OrderBy(entry => entry.Id)
-            .Select(entry => new EntrySummary(entry.Id, entry.LatestVersion, entry.PublishedVersion))
+            .Select(entry => new { entry.Id, entry.LatestVersion, entry.PublishedVersion, entry.State, InReview = inReview.Contains(entry.Id) })
             .ToListAsync(cancellationToken);
 
-        return Result<IReadOnlyList<EntrySummary>>.Success(entries);
+        return Result<IReadOnlyList<EntrySummary>>.Success(entries
+            .Select(entry => new EntrySummary(entry.Id, entry.LatestVersion, entry.PublishedVersion, entry.InReview ? EntryState.InReview : entry.State))
+            .ToList());
     }
 
     public async Task<Result<Entry>> GetAsync(Guid id, CancellationToken cancellationToken = default)
@@ -166,6 +169,7 @@ internal sealed class EntryDirectory(
             ContentTypeId = stored.ContentTypeId,
             LatestVersion = stored.LatestVersion,
             PublishedVersion = stored.PublishedVersion,
+            State = stored.State,
         });
         context.EntryVersions.Add(VersionRow(stored.Latest));
         context.EntryReferences.AddRange(ReferenceRows(stored.Latest, references));
@@ -388,7 +392,7 @@ internal sealed class EntryDirectory(
             from entry in context.Entries.AsNoTracking()
             join type in context.ContentTypes.AsNoTracking() on entry.ContentTypeId equals type.Id
             where entry.Id == id && entry.SiteId == SiteId && (includeDeleted || entry.DeletedAt == null)
-            select new StoredEntry(entry, type.Slug))
+            select new StoredEntry(entry, type.Slug, EntriesInReview.Ids(context).Contains(entry.Id)))
             .SingleOrDefaultAsync(cancellationToken);
     }
 
@@ -497,7 +501,8 @@ internal sealed class EntryDirectory(
     private static Entry ToEntry(StoredEntry stored, EntryVersionRow latest)
     {
         var row = stored.Row;
-        return Entry.Restore(row.Id, row.SiteId, row.ContentTypeId, stored.ContentType, row.PublishedVersion, ToVersion(latest));
+        var state = stored.InReview ? EntryState.InReview : row.State;
+        return Entry.Restore(row.Id, row.SiteId, row.ContentTypeId, stored.ContentType, row.PublishedVersion, state, ToVersion(latest));
     }
 
     private static EntryVersion ToVersion(EntryVersionRow row)
@@ -528,5 +533,5 @@ internal sealed class EntryDirectory(
             $"Version {baseVersion} is not the latest version of entry {id}; read it again and update the latest version.");
     }
 
-    private sealed record StoredEntry(EntryRow Row, string ContentType);
+    private sealed record StoredEntry(EntryRow Row, string ContentType, bool InReview);
 }

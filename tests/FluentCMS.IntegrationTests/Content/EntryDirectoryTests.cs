@@ -176,7 +176,7 @@ public sealed class EntryDirectoryTests
         var unknown = await scenario.RunAsync(directory => directory.ListAsync("news"));
 
         // Ids are version 7, so their order is the order of creation to the millisecond.
-        Assert.Equal(new[] { new EntrySummary(first.Id, 1, null), new EntrySummary(second.Id, 2, null) }.OrderBy(entry => entry.Id), posts);
+        Assert.Equal(new[] { new EntrySummary(first.Id, 1, null, EntryState.Draft), new EntrySummary(second.Id, 2, null, EntryState.Draft) }.OrderBy(entry => entry.Id), posts);
         Assert.Equal(SchemaErrorCodes.ContentTypeNotFound, Assert.Single(unknown.Errors).Code);
     }
 
