@@ -67,10 +67,10 @@ public sealed class SearchToolsTests
     {
         await using var agent = await ConnectedAgent.StartAsync(provider, types: ["page"]);
         await agent.AsPersonAsync<IContentTypeDirectory, ContentType>(directory =>
-            directory.CreateAsync(new NewContentType("product", "product", new ContentTypeDefinition([new FieldDefinition("title", "text")]))));
+            directory.CreateAsync(new NewContentType("product", "product", new ContentTypeDefinition([new FieldDefinition("title", "text")])), TestChangeSetTargets.ContentModel));
         await agent.AsPersonAsync<IContentTypeDirectory, ContentType>(directory =>
             directory.CreateAsync(new NewContentType("page", "page", new ContentTypeDefinition(
-                [new FieldDefinition("title", "text"), new FieldDefinition("product", "reference", settings: JsonSerializer.SerializeToElement(new { target = "product" }))]))));
+                [new FieldDefinition("title", "text"), new FieldDefinition("product", "reference", settings: JsonSerializer.SerializeToElement(new { target = "product" }))])), TestChangeSetTargets.ContentModel));
         var product = await CreateAsync(agent, "product", "Part 4411");
         var page = (await agent.AsPersonAsync<IEntryDirectory, Entry>(entries =>
             entries.CreateAsync(new NewEntry("page", JsonSerializer.SerializeToElement(new { title = "Spring sale", product = product.ToString() }))))).Id;
@@ -92,10 +92,10 @@ public sealed class SearchToolsTests
         await agent.AsPersonAsync<IContentTypeDirectory, ContentType>(directory =>
             directory.CreateAsync(new NewContentType("product", "product", new ContentTypeDefinition(
                 [new FieldDefinition("title", "text"), new FieldDefinition("price", "number")],
-                isEntity: true))));
+                isEntity: true)), TestChangeSetTargets.ContentModel));
         await agent.AsPersonAsync<IContentTypeDirectory, ContentType>(directory =>
             directory.CreateAsync(new NewContentType("page", "page", new ContentTypeDefinition(
-                [new FieldDefinition("title", "text"), new FieldDefinition("product", "reference", settings: JsonSerializer.SerializeToElement(new { target = "product" }))]))));
+                [new FieldDefinition("title", "text"), new FieldDefinition("product", "reference", settings: JsonSerializer.SerializeToElement(new { target = "product" }))])), TestChangeSetTargets.ContentModel));
         var cheap = await CreateAsync(agent, "product", new { title = Fact("Part 4411"), price = Fact(19.99) });
         var dear = await CreateAsync(agent, "product", new { title = Fact("Part 4412"), price = Fact(25) });
         var page = await CreateAsync(agent, "page", new { title = "Spring sale", product = cheap.ToString() });
@@ -136,7 +136,7 @@ public sealed class SearchToolsTests
         await using var agent = await ConnectedAgent.StartAsync(provider);
         await agent.AsPersonAsync<IContentTypeDirectory, ContentType>(directory =>
             directory.CreateAsync(new NewContentType("product", "product", new ContentTypeDefinition(
-                [new FieldDefinition("title", "text"), new FieldDefinition("price", "number")]))));
+                [new FieldDefinition("title", "text"), new FieldDefinition("price", "number")])), TestChangeSetTargets.ContentModel));
         await agent.CreateAsPersonAsync("page");
 
         async Task<string?> CodeAsync(Dictionary<string, object?> arguments)
