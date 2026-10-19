@@ -4,7 +4,10 @@ using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Checks;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Entities;
+using FluentCMS.Core.Extensions;
 using FluentCMS.Core.Identity;
+using FluentCMS.Core.Jobs;
+using FluentCMS.Core.Media;
 using FluentCMS.Core.Models;
 using FluentCMS.Core.Persistence;
 using FluentCMS.Core.Schema;
@@ -15,6 +18,8 @@ using FluentCMS.Infrastructure.Checks;
 using FluentCMS.Infrastructure.Content;
 using FluentCMS.Infrastructure.Entities;
 using FluentCMS.Infrastructure.Identity;
+using FluentCMS.Infrastructure.Jobs;
+using FluentCMS.Infrastructure.Media;
 using FluentCMS.Infrastructure.Models;
 using FluentCMS.Infrastructure.Persistence;
 using FluentCMS.Infrastructure.Schema;
@@ -40,7 +45,9 @@ public static class InfrastructureServiceCollectionExtensions
         AddChangeSets(services);
         AddAgents(services);
         AddContent(services, configuration);
+        AddMedia(services, configuration);
         AddChecks(services);
+        AddJobs(services);
         AddModels(services, configuration);
 
         services.AddHostedService<DatabaseMigrator>();
@@ -91,6 +98,15 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<IToolCallLog, ToolCallLog>();
     }
 
+    // The configured storage is checked against the registered ones when the host starts (MED-04).
+    private static void AddMedia(IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<LocalDiskOptions>(configuration.GetSection(LocalDiskOptions.SectionName));
+        services.AddFluentCmsExtension<IMediaStorage, LocalDiskMediaStorage>();
+        services.AddOptions<MediaOptions>().Bind(configuration.GetSection(MediaOptions.SectionName)).ValidateOnStart();
+        services.AddSingleton<IValidateOptions<MediaOptions>, MediaOptionsValidation>();
+    }
+
     private static void AddContent(IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<ContentOptions>(configuration.GetSection(ContentOptions.SectionName));
@@ -106,6 +122,13 @@ public static class InfrastructureServiceCollectionExtensions
     private static void AddChecks(IServiceCollection services)
     {
         services.AddScoped<ICheckDirectory, CheckDirectory>();
+    }
+
+    // The worker in Host claims and finishes jobs through IJobLeases; everything else enqueues and reads through IJobQueue.
+    private static void AddJobs(IServiceCollection services)
+    {
+        services.AddScoped<IJobQueue, JobQueue>();
+        services.AddScoped<IJobLeases, JobLeases>();
     }
 
     // The provider wiring behind the gateway in Core (ADR-0008). A profile the host cannot use stops it at startup.
