@@ -77,30 +77,65 @@ public sealed class JobQueueWorker(
             runScope.ServiceProvider,
             (progress, cancellationToken) => leases.ReportProgressAsync(job.Id, owner, progress, settings.LeaseDuration, cancellationToken));
 
+        // The lease is kept while the handler works, so a long step without progress does not hand the job to another worker.
+        using var heartbeat = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
+        var keeping = KeepLeaseAsync(job.Id, owner, settings.LeaseDuration, heartbeat.Token);
+
+        // Once the handler is done, how it ended is recorded even if the host is stopping, so finished work is not run again.
         try
         {
             var result = await handler.RunAsync(context, stoppingToken);
+            await heartbeat.CancelAsync();
+            await keeping;
+
             if (result.IsSuccess)
             {
-                await leases.SucceedAsync(job.Id, owner, stoppingToken);
+                await leases.SucceedAsync(job.Id, owner, CancellationToken.None);
             }
             else
             {
-                await leases.FailAsync(job.Id, owner, string.Join(" ", result.Errors.Select(error => $"{error.Code}: {error.Message}")), stoppingToken);
+                await leases.FailAsync(job.Id, owner, string.Join(" ", result.Errors.Select(error => $"{error.Code}: {error.Message}")), CancellationToken.None);
             }
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
-            // The host is stopping: the lease runs out and another worker runs the job again.
+            // The host is stopping mid-job: the lease runs out and another worker runs the job again.
             throw;
         }
         catch (Exception exception)
         {
-            logger.LogWarning(exception, "Job {JobId} of the type {JobType} failed on attempt {Attempt} of {MaxAttempts}.", job.Id, job.Type, job.Attempts, job.MaxAttempts);
-            await leases.RetryAsync(job.Id, owner, exception.Message, RetryDelay(settings, job.Attempts), stoppingToken);
-        }
+            await heartbeat.CancelAsync();
+            await keeping;
 
+            logger.LogWarning(exception, "Job {JobId} of the type {JobType} failed on attempt {Attempt} of {MaxAttempts}.", job.Id, job.Type, job.Attempts, job.MaxAttempts);
+            await leases.RetryAsync(job.Id, owner, exception.Message, RetryDelay(settings, job.Attempts), CancellationToken.None);
+        }
         return true;
+    }
+
+    // Renews the lease at a third of its duration, each time in a scope of its own, until the handler is done.
+    private async Task KeepLeaseAsync(Guid jobId, string owner, TimeSpan duration, CancellationToken cancellationToken)
+    {
+        try
+        {
+            while (true)
+            {
+                await Task.Delay(duration / 3, cancellationToken);
+                await using var scope = scopes.CreateAsyncScope();
+                if (!await scope.ServiceProvider.GetRequiredService<IJobLeases>().RenewAsync(jobId, owner, duration, cancellationToken))
+                {
+                    return;
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // The handler is done.
+        }
+        catch (Exception exception)
+        {
+            logger.LogWarning(exception, "The lease on job {JobId} could not be renewed.", jobId);
+        }
     }
 
     // Doubled for each attempt after the first, so a failing dependency gets room to recover.

@@ -10,6 +10,9 @@ public interface IJobLeases
 
     Task<bool> ReportProgressAsync(Guid jobId, string owner, JobProgress progress, TimeSpan duration, CancellationToken cancellationToken = default);
 
+    // Keeps the lease without touching the progress, for a handler that is still working.
+    Task<bool> RenewAsync(Guid jobId, string owner, TimeSpan duration, CancellationToken cancellationToken = default);
+
     Task<bool> SucceedAsync(Guid jobId, string owner, CancellationToken cancellationToken = default);
 
     Task<bool> FailAsync(Guid jobId, string owner, string error, CancellationToken cancellationToken = default);

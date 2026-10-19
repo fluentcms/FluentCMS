@@ -105,11 +105,13 @@ public sealed class JobLeaseTests
 
         scenario.Clock.Now = Start.AddMinutes(2);
         var reclaimed = await scenario.ClaimAsync("worker-b");
+        var lateRenewal = await scenario.LeasesAsync(leases => leases.RenewAsync(job.Id, "worker-a", Lease));
         var lateProgress = await scenario.LeasesAsync(leases => leases.ReportProgressAsync(job.Id, "worker-a", new JobProgress(4, 4, null), Lease));
         var lateSuccess = await scenario.LeasesAsync(leases => leases.SucceedAsync(job.Id, "worker-a"));
         var success = await scenario.LeasesAsync(leases => leases.SucceedAsync(job.Id, "worker-b"));
 
         Assert.Equal((job.Id, 2), (reclaimed!.Id, reclaimed.Attempts));
+        Assert.False(lateRenewal);
         Assert.False(lateProgress);
         Assert.False(lateSuccess);
         Assert.True(success);

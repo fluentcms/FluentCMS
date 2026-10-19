@@ -105,7 +105,7 @@ Work that outlives a request, such as a bulk operation or a check run, is a job 
 
 A handler implements `IJobHandler` (an extension point) with the type name its jobs store, which never changes once released. It reads the payload from `JobContext.Job`, resolves services from `JobContext.Services`, a scope of its own, and reports progress with `ReportProgressAsync`, which also keeps its lease; when that returns false another worker has the job, and the handler stops. A returned failure ends the job as `failed`. An exception retries it after `JobQueue__RetryDelay`, doubled for each attempt up to `JobQueue__MaxRetryDelay`, and after its last attempt the job is `dead`. Work in a handler therefore has to be safe to run again.
 
-`JobQueue__WorkerCount` workers in the host claim due jobs every `JobQueue__PollingInterval`. A claim holds a job for `JobQueue__LeaseDuration`, renewed by progress, and a job whose worker stopped is claimed again once the lease runs out, counting another attempt. Claims are conditional updates on the row, so with any number of workers, in one host or several, each job runs once at a time.
+`JobQueue__WorkerCount` workers in the host claim due jobs every `JobQueue__PollingInterval`. A claim holds a job for `JobQueue__LeaseDuration`, which the worker renews while the handler runs, and a job whose worker stopped is claimed again once the lease runs out, counting another attempt. Claims are conditional updates on the row, so with any number of workers, in one host or several, each job runs once at a time.
 
 ## Extension points
 

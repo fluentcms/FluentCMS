@@ -87,6 +87,11 @@ internal sealed class JobLeases(FluentCmsDbContext context, TimeProvider clock) 
             cancellationToken);
     }
 
+    public Task<bool> RenewAsync(Guid jobId, string owner, TimeSpan duration, CancellationToken cancellationToken = default)
+    {
+        return UpdateHeldAsync(jobId, owner, setters => setters.SetProperty(row => row.LeaseUntil, clock.GetUtcNow() + duration), cancellationToken);
+    }
+
     public Task<bool> SucceedAsync(Guid jobId, string owner, CancellationToken cancellationToken = default)
     {
         return FinishAsync(jobId, owner, JobState.Succeeded, null, cancellationToken);

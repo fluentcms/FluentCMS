@@ -52,6 +52,23 @@ public sealed class JobQueueWorkerTests
     }
 
     [Fact]
+    public async Task A_handler_that_works_past_its_lease_without_progress_keeps_the_job_and_runs_once()
+    {
+        using var install = new TemporaryInstall();
+        await using var host = await AdminHost.StartAsync(
+            install,
+            settings: new Dictionary<string, string?>(FastQueue) { ["JobQueue:LeaseDuration"] = "00:00:01.500", ["JobQueue:WorkerCount"] = "3" },
+            configure: builder => builder.Services.AddFluentCmsExtension<IJobHandler, SlowHandler>());
+        var administrator = await host.CreateFirstAdministratorAsync();
+
+        var job = await EnqueueAsync(host, administrator, new NewJob(SlowHandler.Name, default));
+        var finished = await FinishedAsync(host, administrator, job.Id);
+
+        Assert.Equal((JobState.Succeeded, 1), (finished.State, finished.Attempts));
+        Assert.Equal(1, SlowHandler.Runs[job.Id]);
+    }
+
+    [Fact]
     public void The_retry_delay_doubles_with_each_attempt_up_to_its_ceiling()
     {
         var settings = new JobQueueOptions { RetryDelay = TimeSpan.FromSeconds(30), MaxRetryDelay = TimeSpan.FromMinutes(3) };
@@ -118,6 +135,22 @@ public sealed class JobQueueWorkerTests
         public Task<Result> RunAsync(JobContext context, CancellationToken cancellationToken)
         {
             return Task.FromResult(Result.Failure("item_not_found", "There is no such item."));
+        }
+    }
+
+    private sealed class SlowHandler : IJobHandler
+    {
+        public const string Name = "test.slow";
+
+        public static ConcurrentDictionary<Guid, int> Runs { get; } = new();
+
+        public string Type => Name;
+
+        public async Task<Result> RunAsync(JobContext context, CancellationToken cancellationToken)
+        {
+            Runs.AddOrUpdate(context.Job.Id, 1, (_, runs) => runs + 1);
+            await Task.Delay(TimeSpan.FromSeconds(3.5), cancellationToken);
+            return Result.Success();
         }
     }
 
