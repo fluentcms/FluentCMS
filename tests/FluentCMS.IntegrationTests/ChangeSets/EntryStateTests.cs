@@ -1,6 +1,7 @@
 using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Content;
 using FluentCMS.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 using static FluentCMS.IntegrationTests.ChangeSets.EntryChangeSetTests;
 
 namespace FluentCMS.IntegrationTests.ChangeSets;
@@ -63,6 +64,39 @@ public sealed class EntryStateTests
         Assert.Equal(
             [new EntrySummary(page, 2, 1, EntryState.Published)],
             (await EntriesAsync(scenario, entries => entries.ListAsync("page"))).Value);
+    }
+
+    // Two reverts of one set can both be approved. Once one publishes the other is stale, and a person's rejection clears it,
+    // which takes its entries out of review.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_stale_approved_revert_is_rejected_with_a_reason_and_its_entries_leave_review(string provider)
+    {
+        await using var scenario = await ScenarioAsync(provider);
+        var (page, _) = await CatalogAsync(scenario);
+        var published = await scenario.PublishAsync(Operation(OperationKind.Create, ItemKind.Entry, page, null, 1));
+        var first = (await scenario.RunAsync(directory => directory.RevertAsync(published.Id, "The page is not ready."))).Value;
+        var second = (await scenario.RunAsync(directory => directory.RevertAsync(published.Id, "The page is not ready."))).Value;
+        foreach (var revert in new[] { first, second })
+        {
+            await MoveAsync(scenario, revert.Id, ChangeSetState.ChecksRunning);
+            await MoveAsync(scenario, revert.Id, ChangeSetState.Approved);
+        }
+
+        Assert.True((await scenario.RunAsync(directory => directory.PublishAsync(first.Id))).IsSuccess);
+        var stale = await scenario.RunAsync(directory => directory.PublishAsync(second.Id));
+        Assert.Equal(ChangeSetErrorCodes.BaseVersionStale, Assert.Single(stale.Errors).Code);
+        Assert.Equal(EntryState.InReview, await StateAsync(scenario, page));
+
+        var blank = await scenario.RunAsync(directory => directory.RejectAsync(second.Id, " "));
+        var rejected = await scenario.RunAsync(directory => directory.RejectAsync(second.Id, "The first revert already took the page down."));
+
+        Assert.Equal(ChangeSetErrorCodes.RejectionReasonMissing, Assert.Single(blank.Errors).Code);
+        Assert.Equal(ChangeSetState.Rejected, rejected.Value.State);
+        Assert.Equal(EntryState.Reverted, await StateAsync(scenario, page));
+        Assert.Equal(ChangeSetState.Reverted, (await scenario.ChangeSetRowAsync(published.Id)).State);
+        Assert.Equal(1, await scenario.QueryAsync(context => context.AuditEvents.CountAsync(row => row.Operation == "change_set.reverted")));
     }
 
     [Theory]
