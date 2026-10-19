@@ -47,7 +47,7 @@ public sealed class DeliveryEndpointsTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("text/markdown", response.Content.Headers.ContentType?.MediaType);
         var markdown = await response.Content.ReadAsStringAsync();
-        Assert.StartsWith($"---\nid: {Page}\ntype: product-page\nversion: 3\nurl: /api/v1/entries/{Page}.md\n---\n\n# A sturdy drill\n", markdown, StringComparison.Ordinal);
+        Assert.StartsWith($"---\nid: \"{Page}\"\ntype: \"product-page\"\nversion: 3\nurl: \"/api/v1/entries/{Page}.md\"\n---\n\n# A sturdy drill\n", markdown, StringComparison.Ordinal);
         Assert.Contains($"[{Product}](/api/v1/entries/{Product}.md)", markdown, StringComparison.Ordinal);
         await AssertProblemAsync(missing, HttpStatusCode.NotFound, ContentErrorCodes.EntryNotFound);
     }
@@ -113,6 +113,21 @@ public sealed class DeliveryEndpointsTests
         await AssertProblemAsync(unknownType, HttpStatusCode.NotFound, SchemaErrorCodes.ContentTypeNotFound);
         await AssertProblemAsync(unknownEntry, HttpStatusCode.NotFound, ContentErrorCodes.EntryNotFound);
         await AssertProblemAsync(badLimit, HttpStatusCode.BadRequest, DeliveryErrorCodes.LimitInvalid);
+    }
+
+    // The admin's not-found page answers every other path of the host, so the API answers each of its own.
+    [Theory]
+    [InlineData("/api/v1/entries/not-a-guid", HttpStatusCode.BadRequest, DeliveryErrorCodes.ParameterInvalid)]
+    [InlineData("/api/v1/entries/not-a-guid.md", HttpStatusCode.BadRequest, DeliveryErrorCodes.ParameterInvalid)]
+    [InlineData("/api/v1/entries/", HttpStatusCode.NotFound, DeliveryErrorCodes.EndpointNotFound)]
+    [InlineData("/api/v1/content/", HttpStatusCode.NotFound, DeliveryErrorCodes.EndpointNotFound)]
+    [InlineData("/api/v1/nothing/here", HttpStatusCode.NotFound, DeliveryErrorCodes.EndpointNotFound)]
+    public async Task A_path_or_id_the_api_does_not_know_is_a_problem_never_the_admin_page(string path, HttpStatusCode status, string code)
+    {
+        using var install = new TemporaryInstall();
+        await using var host = await AdminHost.StartAsync(install);
+
+        await AssertProblemAsync(await host.Client.GetAsync(path), status, code);
     }
 
     [Fact]

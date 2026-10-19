@@ -8,6 +8,7 @@
             <a href="" class="font-semibold">FluentCMS</a>
             @if (Initiator.Current is UserInitiator user)
             {
+                <NotificationLinks />
                 <a href="audit" class="text-sm text-muted-foreground hover:text-foreground">@L["Audit log"]</a>
                 <a href="users" class="text-sm text-muted-foreground hover:text-foreground">@L["Users"]</a>
                 <a href="agents" class="text-sm text-muted-foreground hover:text-foreground">@L["Agents"]</a>

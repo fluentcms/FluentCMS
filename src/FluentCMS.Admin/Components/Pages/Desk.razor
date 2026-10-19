@@ -1,0 +1,351 @@
+@page "/"
+@using System.Globalization
+@using FluentCMS.Core.ChangeSets
+@using FluentCMS.Core.Desk
+@using FluentCMS.Core.Entities
+@using FluentCMS.Admin.Components.Review
+@inject IDeskQueues Queues
+@inject IStringLocalizer<Desk> L
+
+<PageTitle>@L["Desk"]</PageTitle>
+
+<div class="flex flex-wrap items-start justify-between gap-4">
+    <div>
+        <h1 class="text-2xl font-semibold tracking-tight">@L["Desk"]</h1>
+        <p class="mt-1 text-sm text-muted-foreground">@L["Change sets and facts that are waiting for a person."]</p>
+    </div>
+    <span class="flex items-center gap-2">
+        <a href="security" class="@ButtonVariants.Classes("ghost", "sm")" data-testid="desk-security">@L["Security events"]</a>
+        <ShortcutHelp Shortcuts="Shortcuts" />
+    </span>
+</div>
+@if (DoneMessage is { } done)
+{
+    <p role="status" class="mt-4 rounded-md border bg-muted/50 px-3 py-2 text-sm" data-testid="desk-done">@done</p>
+}
+
+<nav class="mt-6" aria-label="@L["Queues"]" data-testid="desk-queues">
+    <ul class="flex flex-wrap gap-1">
+        @foreach (var (queue, number) in Order.Select((queue, index) => (queue, index + 1)))
+        {
+            var current = queue == _queue;
+            <li>
+                <a href="@Href(queue, 1)"
+                   aria-current="@(current ? "page" : null)"
+                   data-queue="@Slugs[queue]"
+                   aria-keyshortcuts="@number"
+                   class="@ButtonVariants.Classes(current ? "secondary" : "ghost", "sm")">
+                    @Title(queue)
+                    <Badge Variant="@(current ? "default" : "outline")" data-count="@Count(queue)">@Count(queue)</Badge>
+                </a>
+            </li>
+        }
+    </ul>
+</nav>
+@if (_countsError is not null)
+{
+    <p role="alert" class="mt-2 text-sm text-destructive" data-testid="desk-counts-error">@L["The counts could not be read."] @_countsError</p>
+}
+
+<section class="mt-6" aria-labelledby="queue-heading" data-testid="desk-queue" data-current-queue="@Slugs[_queue]">
+    <h2 id="queue-heading" class="text-lg font-semibold">@Title(_queue)</h2>
+    <p class="mt-1 text-sm text-muted-foreground">@Description(_queue)</p>
+    @if (_queue == DeskQueue.AwaitingMe)
+    {
+        <p class="mt-2 text-sm text-muted-foreground" data-testid="awaiting-me-note">
+            @L["Until routing records approvals, this queue lists every set awaiting review, as awaiting anyone does."]
+        </p>
+    }
+
+    @if (_error is not null)
+    {
+        <p role="alert" class="mt-4 text-sm text-destructive" data-testid="desk-error">@_error</p>
+    }
+    else if (_total == 0)
+    {
+        <p class="mt-4 rounded-md border px-3 py-6 text-center text-sm text-muted-foreground" data-testid="desk-empty">@Empty(_queue)</p>
+    }
+    else if (_shown == 0)
+    {
+        <p class="mt-4 rounded-md border px-3 py-6 text-center text-sm text-muted-foreground" data-testid="desk-past-end">
+            @L["This page is past the end of the queue."]
+            <a href="@Href(_queue, 1)" class="underline underline-offset-4">@L["Go to the first page"]</a>
+        </p>
+    }
+    else
+    {
+        <div class="mt-4 rounded-md border">
+            @if (_facts is not null)
+            {
+                <Table aria-labelledby="queue-heading">
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>@L["Entity"]</TableHead>
+                            <TableHead>@L["Field"]</TableHead>
+                            <TableHead>@L["Reason"]</TableHead>
+                            <TableHead>@L["Stale since"]</TableHead>
+                            <TableHead>@L["Held by"]</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody data-ui="rove">
+                        @foreach (var (fact, index) in _facts.Select((fact, index) => (fact, index)))
+                        {
+                            <TableRow data-fact="@($"{fact.EntityId:N}/{fact.Field}/{fact.Version}")">
+                                <TableCell>
+                                    <a href="@($"audit?type=entity&id={fact.EntityId}")" data-ui="rove-item" tabindex="@(index == 0 ? null : "-1")" class="font-medium underline-offset-4 hover:underline">
+                                        <bdi>@fact.Type</bdi> <bdi class="text-muted-foreground" dir="ltr">@fact.EntityId.ToString("N")[..8]</bdi>
+                                    </a>
+                                </TableCell>
+                                <TableCell><bdi>@fact.Field</bdi></TableCell>
+                                <TableCell>
+                                    @if (fact.Reason == StaleReason.Expired)
+                                    {
+                                        <Badge Variant="destructive" data-reason="expired">@L["Expired"]</Badge>
+                                    }
+                                    else
+                                    {
+                                        <Badge Variant="secondary" data-reason="unverified">@L["Unverified"]</Badge>
+                                    }
+                                </TableCell>
+                                <TableCell>@Time(fact.StaleSince)</TableCell>
+                                <TableCell>
+                                    <span class="flex gap-1">
+                                        @if (fact.IsPublished)
+                                        {
+                                            <Badge Variant="outline">@L["Published"]</Badge>
+                                        }
+                                        @if (fact.IsLatest)
+                                        {
+                                            <Badge Variant="outline">@L["Latest draft"]</Badge>
+                                        }
+                                    </span>
+                                </TableCell>
+                            </TableRow>
+                        }
+                    </TableBody>
+                </Table>
+            }
+            else
+            {
+                <Table aria-labelledby="queue-heading">
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>@L["Change set"]</TableHead>
+                            <TableHead>@L["Started by"]</TableHead>
+                            <TableHead Class="text-end">@L["Items"]</TableHead>
+                            <TableHead>@Since(_queue)</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody data-ui="rove">
+                        @foreach (var (set, index) in (_sets ?? []).Select((set, index) => (set, index)))
+                        {
+                            <TableRow data-change-set="@set.Id.ToString("N")">
+                                <TableCell Class="whitespace-normal">
+                                    <a href="@($"sets/{set.Id}?queue={Slugs[_queue]}")" data-ui="rove-item" tabindex="@(index == 0 ? null : "-1")" class="font-medium underline-offset-4 hover:underline">@set.Rationale</a>
+                                    @if (set.RevertsChangeSetId is not null)
+                                    {
+                                        <Badge Variant="outline" Class="ms-2" data-reverts="@set.RevertsChangeSetId.Value.ToString("N")">@L["Revert"]</Badge>
+                                    }
+                                </TableCell>
+                                <TableCell>
+                                    <span class="flex items-center gap-2">
+                                        @if (set.Initiator is AgentInitiator)
+                                        {
+                                            <Badge data-initiator="agent">@L["Agent"]</Badge>
+                                        }
+                                        else
+                                        {
+                                            <Badge Variant="secondary" data-initiator="user">@L["User"]</Badge>
+                                        }
+                                        <bdi>@set.Initiator.DisplayName</bdi>
+                                    </span>
+                                </TableCell>
+                                <TableCell Class="text-end tabular-nums">@set.ItemCount.ToString(CultureInfo.CurrentCulture)</TableCell>
+                                <TableCell>@Time(set.StateSince)</TableCell>
+                            </TableRow>
+                        }
+                    </TableBody>
+                </Table>
+            }
+        </div>
+
+        <nav class="mt-4 flex flex-wrap items-center justify-between gap-4" aria-label="@L["Pages"]" data-testid="desk-pages">
+            <p class="text-sm text-muted-foreground">@L["{0} to {1} of {2}", _offset + 1, _offset + _shown, _total]</p>
+            <span class="flex gap-2">
+                @if (_page > 1)
+                {
+                    <a href="@Href(_queue, _page - 1)" rel="prev" class="@ButtonVariants.Classes("outline", "sm")">@L["Previous"]</a>
+                }
+                @if (_offset + PageSize < _total)
+                {
+                    <a href="@Href(_queue, _page + 1)" rel="next" class="@ButtonVariants.Classes("outline", "sm")">@L["Next"]</a>
+                }
+            </span>
+        </nav>
+    }
+</section>
+
+@code {
+    public const int PageSize = 50;
+
+    private static readonly DeskQueue[] Order =
+    [
+        DeskQueue.AwaitingMe,
+        DeskQueue.AwaitingAnyone,
+        DeskQueue.ChecksFailed,
+        DeskQueue.StaleFacts,
+        DeskQueue.RecentlyPublished,
+        DeskQueue.Reverted,
+    ];
+
+    // Each queue has its own URL, so a queue and a page of it can be bookmarked and shared.
+    public static readonly IReadOnlyDictionary<DeskQueue, string> Slugs = new Dictionary<DeskQueue, string>
+    {
+        [DeskQueue.AwaitingMe] = "awaiting-me",
+        [DeskQueue.AwaitingAnyone] = "awaiting-anyone",
+        [DeskQueue.ChecksFailed] = "checks-failed",
+        [DeskQueue.StaleFacts] = "stale-facts",
+        [DeskQueue.RecentlyPublished] = "recently-published",
+        [DeskQueue.Reverted] = "reverted",
+    };
+
+    private DeskQueue _queue;
+    private int _page;
+    private int _offset;
+    private int _total;
+    private int _shown;
+    private IReadOnlyDictionary<DeskQueue, int> _counts = new Dictionary<DeskQueue, int>();
+    private IReadOnlyList<ChangeSetSummary>? _sets;
+    private IReadOnlyList<StaleFact>? _facts;
+    private string? _error;
+    private string? _countsError;
+
+    [SupplyParameterFromQuery(Name = "queue")]
+    private string? QueueSlug { get; set; }
+
+    [SupplyParameterFromQuery(Name = "page")]
+    private int? PageNumber { get; set; }
+
+    // What the set view did before it came back here, because the queue it was reviewing is now empty.
+    [SupplyParameterFromQuery(Name = "done")]
+    private string? Done { get; set; }
+
+    private string? DoneMessage => Done switch
+    {
+        "approved" => L["The set was approved. This queue has nothing more to review."].Value,
+        "rejected" => L["The set was rejected. This queue has nothing more to review."].Value,
+        _ => null,
+    };
+
+    private IReadOnlyList<KeyboardShortcut> Shortcuts =>
+    [
+        new(["1–6"], L["Switch to a queue by its number"]),
+        new(["J", "K"], L["Move to the next or previous row"]),
+        new(["↓", "↑"], L["Move between rows while one has focus"]),
+        new(["Enter"], L["Open the row's change set"]),
+        new(["?"], L["Show these shortcuts"]),
+    ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        // An unknown queue shows the default one rather than an error, as a mistyped link would otherwise land nowhere.
+        _queue = Slugs.FirstOrDefault(pair => pair.Value == QueueSlug).Key;
+        _page = Math.Max(1, PageNumber ?? 1);
+        _offset = (int)Math.Min((_page - 1L) * PageSize, int.MaxValue - PageSize);
+
+        var counts = await Queues.CountAsync();
+        if (counts.IsSuccess)
+        {
+            _counts = counts.Value;
+        }
+        else
+        {
+            _countsError = Describe(counts.Errors);
+        }
+
+        if (_queue == DeskQueue.StaleFacts)
+        {
+            var facts = await Queues.ListStaleFactsAsync(_offset, PageSize);
+            if (facts.IsSuccess)
+            {
+                (_facts, _total, _shown) = (facts.Value.Items, facts.Value.Total, facts.Value.Items.Count);
+            }
+            else
+            {
+                _error = Describe(facts.Errors);
+            }
+        }
+        else
+        {
+            var sets = await Queues.ListChangeSetsAsync(_queue, _offset, PageSize);
+            if (sets.IsSuccess)
+            {
+                (_sets, _total, _shown) = (sets.Value.Items, sets.Value.Total, sets.Value.Items.Count);
+            }
+            else
+            {
+                _error = Describe(sets.Errors);
+            }
+        }
+    }
+
+    private static string Href(DeskQueue queue, int page)
+    {
+        return page > 1 ? $"?queue={Slugs[queue]}&page={page}" : $"?queue={Slugs[queue]}";
+    }
+
+    private string Count(DeskQueue queue)
+    {
+        return _counts.TryGetValue(queue, out var count) ? count.ToString(CultureInfo.CurrentCulture) : "–";
+    }
+
+    private string Title(DeskQueue queue) => queue switch
+    {
+        DeskQueue.AwaitingMe => L["Awaiting me"],
+        DeskQueue.AwaitingAnyone => L["Awaiting anyone"],
+        DeskQueue.ChecksFailed => L["Checks failed"],
+        DeskQueue.StaleFacts => L["Stale facts"],
+        DeskQueue.RecentlyPublished => L["Recently published"],
+        _ => L["Reverted"],
+    };
+
+    private string Description(DeskQueue queue) => queue switch
+    {
+        DeskQueue.AwaitingMe => L["Change sets waiting for your review, the longest waiting first."],
+        DeskQueue.AwaitingAnyone => L["Change sets waiting for any reviewer, the longest waiting first."],
+        DeskQueue.ChecksFailed => L["Change sets whose checks failed, the longest waiting first. The agent or person who opened one fixes and resubmits it, or a reviewer rejects it."],
+        DeskQueue.StaleFacts => L["Facts past their valid-until date or not verified recently, the longest stale first."],
+        DeskQueue.RecentlyPublished => L["Change sets published in the last seven days, the newest first."],
+        _ => L["Change sets reverted in the last seven days, the newest first."],
+    };
+
+    private string Empty(DeskQueue queue) => queue switch
+    {
+        DeskQueue.AwaitingMe or DeskQueue.AwaitingAnyone => L["Nothing is awaiting review."],
+        DeskQueue.ChecksFailed => L["No change set has failed its checks."],
+        DeskQueue.StaleFacts => L["No fact is stale."],
+        DeskQueue.RecentlyPublished => L["Nothing was published in the last seven days."],
+        _ => L["Nothing was reverted in the last seven days."],
+    };
+
+    private string Since(DeskQueue queue) => queue switch
+    {
+        DeskQueue.ChecksFailed => L["Failed"],
+        DeskQueue.RecentlyPublished => L["Published"],
+        DeskQueue.Reverted => L["Reverted"],
+        _ => L["Waiting since"],
+    };
+
+    private static RenderFragment Time(DateTimeOffset time) =>
+        @<time datetime="@time.ToString("O", CultureInfo.InvariantCulture)" dir="ltr" class="text-muted-foreground">@time.UtcDateTime.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture) UTC</time>;
+
+    // The error code is the resource key; the service's own message is the text until a resource exists.
+    private string Describe(IReadOnlyList<FluentCMS.Core.Results.Error> errors)
+    {
+        return string.Join(" ", errors.Select(error =>
+        {
+            var localized = L[error.Code];
+            return localized.ResourceNotFound ? error.Message : localized.Value;
+        }));
+    }
+}

@@ -2,7 +2,8 @@ using FluentCMS.Core.Agents;
 
 namespace FluentCMS.Infrastructure.Agents;
 
-// The flat shape of a ToolCall in the ToolCalls table; rows are inserted and never changed.
+// The flat shape of a ToolCall in the ToolCalls table; a row is inserted when its call starts, and only a running call's outcome and
+// duration change after that.
 public sealed class ToolCallRow
 {
     public Guid Id { get; set; }

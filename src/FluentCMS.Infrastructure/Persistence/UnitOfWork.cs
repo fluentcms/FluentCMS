@@ -1,11 +1,13 @@
 using FluentCMS.Core.Persistence;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Infrastructure.Persistence;
 
 // One database transaction per outermost scope; inner scopes flush into it and cannot commit it on their own.
-internal sealed class UnitOfWork(FluentCmsDbContext context) : IUnitOfWork
+internal sealed class UnitOfWork(FluentCmsDbContext context, ILogger<UnitOfWork> logger) : IUnitOfWork
 {
+    private readonly List<Func<CancellationToken, Task>> _afterRollback = [];
     private IDbContextTransaction? _transaction;
     private int _depth;
     private bool _abandoned;
@@ -20,6 +22,16 @@ internal sealed class UnitOfWork(FluentCmsDbContext context) : IUnitOfWork
 
         _depth++;
         return new Scope(this);
+    }
+
+    public void AfterRollback(Func<CancellationToken, Task> step)
+    {
+        ArgumentNullException.ThrowIfNull(step);
+
+        if (_depth > 0)
+        {
+            _afterRollback.Add(step);
+        }
     }
 
     private async Task CommitAsync(CancellationToken cancellationToken)
@@ -47,6 +59,9 @@ internal sealed class UnitOfWork(FluentCmsDbContext context) : IUnitOfWork
             return;
         }
 
+        List<Func<CancellationToken, Task>> steps = _abandoned ? [.. _afterRollback] : [];
+        _afterRollback.Clear();
+
         // Disposing an uncommitted transaction rolls it back; the tracker is cleared so nothing from it leaks into the next scope.
         await _transaction!.DisposeAsync();
         _transaction = null;
@@ -54,6 +69,19 @@ internal sealed class UnitOfWork(FluentCmsDbContext context) : IUnitOfWork
         if (_abandoned)
         {
             context.ChangeTracker.Clear();
+        }
+
+        // Each step begins a unit of work of its own; a failing one is logged, because this runs while the caller's scope ends.
+        foreach (var step in steps)
+        {
+            try
+            {
+                await step(CancellationToken.None);
+            }
+            catch (Exception exception)
+            {
+                logger.LogError(exception, "A step that runs after a rolled-back unit of work failed.");
+            }
         }
     }
 

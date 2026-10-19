@@ -1,9 +1,13 @@
+using FluentCMS.Core.Agents;
+using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Delivery;
 using FluentCMS.Core.Results;
 using FluentCMS.Core.Schema;
 using FluentCMS.Infrastructure.Persistence;
+using FluentCMS.IntegrationTests.ChangeSets;
 using FluentCMS.IntegrationTests.Content;
+using FluentCMS.IntegrationTests.Schema;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using static FluentCMS.IntegrationTests.Content.EntryScenario;
@@ -50,12 +54,19 @@ public sealed class PublishedContentTests
         await PublishAsync(scenario, deleted, 1);
         await scenario.RunAsync(entries => entries.DeleteAsync(deleted, 1));
 
+        var archived = await PageAsync(scenario, product, "Archived");
+        await scenario.Schema.QueryAsync(context => context.Entries
+            .Where(row => row.Id == archived)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(row => row.PublishedVersion, (int?)null).SetProperty(row => row.State, EntryState.Archived)));
+
         var listed = (await ContentAsync(scenario, content => content.ListAsync(new PublishedQuery("product-page")))).Value;
+        var products = (await ContentAsync(scenario, content => content.ListAsync(new PublishedQuery("product")))).Value;
 
         Assert.Equal([live], listed.Items.Select(item => item.Id));
         Assert.Null(listed.Next);
+        Assert.Empty(products.Items);
         Assert.Equal("/price", Assert.Single(listed.Items[0].Unresolved).Path);
-        foreach (var hidden in new[] { draft, deleted, product, Guid.CreateVersion7() })
+        foreach (var hidden in new[] { draft, deleted, archived, product, Guid.CreateVersion7() })
         {
             Assert.Equal(ContentErrorCodes.EntryNotFound, Code(await ContentAsync(scenario, content => content.GetAsync(hidden))));
         }
@@ -127,6 +138,28 @@ public sealed class PublishedContentTests
         Assert.Empty((await ContentAsync(scenario, content => content.ListAsync(new PublishedQuery("product-page", 100)))).Value.Items);
     }
 
+    // An agent that reads through these services keeps to its scope (MCP-05).
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task An_agent_reads_only_published_content_of_types_it_may_read(string provider)
+    {
+        await using var scenario = await EntryChangeSetTests.ScenarioAsync(provider);
+        var (page, product) = await EntryChangeSetTests.CatalogAsync(scenario);
+        await scenario.PublishAsync(
+            ChangeOperation.Create(OperationKind.Create, ItemKind.Entity, product, null, 1).Value,
+            ChangeOperation.Create(OperationKind.Create, ItemKind.Entry, page, null, 1).Value);
+        await scenario.UpdateAgentAsync(row => row.Types = ["product"]);
+        scenario.Initiator = ChangeSetScenario.Agent;
+
+        await using var scope = scenario.Services.CreateAsyncScope();
+        var content = scope.ServiceProvider.GetRequiredService<IPublishedContent>();
+
+        Assert.Equal(AgentPermissionErrorCodes.ScopeDenied, Code(await content.GetAsync(page)));
+        Assert.Equal(AgentPermissionErrorCodes.ScopeDenied, Code(await content.ListAsync(new PublishedQuery("page"))));
+        Assert.Equal([product], (await content.ListAsync(new PublishedQuery("product"))).Value.Items.Select(item => item.Id));
+    }
+
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
     [PostgresData]
@@ -159,6 +192,55 @@ public sealed class PublishedContentTests
             before);
         Assert.Equal((2, "Second headline"), (after[^1].Version, after[^1].Title));
         Assert.DoesNotContain(after, summary => summary.Id == draft || summary.Id == deleted);
+    }
+
+    // API-03: the Markdown URL is the entry's id, so it stays the same across versions and always shows the published one.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task The_markdown_of_a_published_page_follows_its_published_version(string provider)
+    {
+        await using var scenario = await CreateAsync(provider);
+        var product = await ProductAsync(scenario, "99");
+        await PublishAsync(scenario, product, 1);
+        var page = await PageAsync(scenario, product, "A sturdy drill");
+        await PublishAsync(scenario, page, 1);
+        await scenario.UpdateAsync(page, 1, $$"""{"product": "{{product}}", "price": "{{product}}", "headline": "Now cheaper"}""");
+
+        async Task<string> MarkdownAsync() =>
+            EntryMarkdown.Render((await ContentAsync(scenario, content => content.GetAsync(page))).Value, $"/api/v1/entries/{page}.md", id => $"/api/v1/entries/{id}.md");
+
+        var draft = await MarkdownAsync();
+        await PublishAsync(scenario, page, 2);
+        var published = await MarkdownAsync();
+
+        Assert.Contains("# A sturdy drill\n", draft, StringComparison.Ordinal);
+        Assert.Contains("## price\n\n99\n", draft, StringComparison.Ordinal);
+        Assert.Contains($"## product\n\n[{product}](/api/v1/entries/{product}.md)\n", draft, StringComparison.Ordinal);
+        Assert.Contains("# Now cheaper\n", published, StringComparison.Ordinal);
+        Assert.Contains($"url: \"/api/v1/entries/{page}.md\"\n", published, StringComparison.Ordinal);
+        Assert.Contains("version: 2\n", published, StringComparison.Ordinal);
+    }
+
+    // A revision of the type waiting for review changes nothing a reader sees: each version is read against the definition it was
+    // written against.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_published_version_is_read_against_the_definition_it_was_written_against(string provider)
+    {
+        await using var scenario = await CreateAsync(provider);
+        var product = await ProductAsync(scenario, "99");
+        var page = await PageAsync(scenario, product, "A sturdy drill");
+        await PublishAsync(scenario, page, 1);
+        var revised = new ContentTypeDefinition([SchemaScenario.Reference("product", "product"), SchemaScenario.Field("body", "richText")]);
+        Assert.True((await scenario.Schema.ReviseAsync("product-page", 1, revised)).IsSuccess);
+
+        var read = (await ContentAsync(scenario, content => content.GetAsync(page))).Value;
+        var index = await ContentAsync(scenario, content => content.IndexAsync());
+
+        Assert.Equal(["product", "price", "headline", "body"], read.Definition.Fields.Select(field => field.Name));
+        Assert.Equal("A sturdy drill", Assert.Single(index).Title);
     }
 
     private static async Task<EntryScenario> CreateAsync(string provider)

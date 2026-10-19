@@ -80,6 +80,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IAuditLog, AuditLog>();
         services.AddScoped<IAuditReader, AuditReader>();
+        services.AddScoped<IAuditEventLists, AuditEventLists>();
     }
 
     // FieldTypeRegistry comes from AddFluentCmsCore, so built-in and plugin field types reach the directory the same way.
@@ -91,6 +92,7 @@ public static class InfrastructureServiceCollectionExtensions
     private static void AddChangeSets(IServiceCollection services)
     {
         services.AddScoped<IChangeSetDirectory, ChangeSetDirectory>();
+        services.AddScoped<IChangeSetLists, ChangeSetLists>();
     }
 
     private static void AddAgents(IServiceCollection services)
@@ -107,6 +109,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddFluentCmsExtension<IMediaStorage, LocalDiskMediaStorage>();
         services.AddOptions<MediaOptions>().Bind(configuration.GetSection(MediaOptions.SectionName)).ValidateOnStart();
         services.AddSingleton<IValidateOptions<MediaOptions>, MediaOptionsValidation>();
+        services.AddScoped<IMediaLibrary, MediaLibrary>();
     }
 
     private static void AddContent(IServiceCollection services, IConfiguration configuration)

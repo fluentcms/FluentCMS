@@ -9,12 +9,12 @@
     }
     else
     {
-        <ol role="list" class="grid gap-4" aria-busy="@(_rendered < Diff.Items.Count ? "true" : null)">
+        <ol role="list" class="grid gap-4" aria-busy="@(_rendered < Diff.Items.Count ? "true" : null)" data-ui="@(Roving ? "rove" : null)">
             @for (var index = 0; index < _rendered; index++)
             {
                 var item = Diff.Items[index];
                 <li @key="item">
-                    <DiffViewItem Item="item" />
+                    <DiffViewItem Item="item" Roving="Roving" First="index == 0" />
                 </li>
             }
         </ol>
@@ -30,6 +30,9 @@
     private int _rendered;
 
     [Parameter, EditorRequired] public ChangeSetDiff Diff { get; set; } = null!;
+
+    // The items rove (admin.js): J and K step through them and only one summary is in the tab order, for keyboard review (DSK-04).
+    [Parameter] public bool Roving { get; set; }
     [Parameter] public string? Class { get; set; }
     [Parameter(CaptureUnmatchedValues = true)] public Dictionary<string, object>? AdditionalAttributes { get; set; }
 

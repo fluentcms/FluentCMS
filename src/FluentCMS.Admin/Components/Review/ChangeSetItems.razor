@@ -1,0 +1,50 @@
+@using FluentCMS.Core.ChangeSets
+@inject IChangeSetDirectory Directory
+@inject IStringLocalizer<ChangeSetItems> L
+
+@* The set view's interactive island: DiffView adds items in batches over the circuit (PERF-04) while the rest of the page stays static. *@
+@* The circuit replaces the prerendered items when it attaches; data-interactive says it has, for tests that drive the keyboard. *@
+<div data-testid="change-set-items" data-interactive="@(RendererInfo.IsInteractive ? "true" : "false")">
+    @if (_error is not null)
+    {
+        <p role="alert" class="text-sm text-destructive">@_error</p>
+    }
+    else if (_diff is null)
+    {
+        <p class="text-sm text-muted-foreground" aria-busy="true">@L["Loading the items…"]</p>
+    }
+    else
+    {
+        <DiffView Diff="_diff" Roving="true" />
+    }
+</div>
+
+@code {
+    private ChangeSetDiff? _diff;
+    private string? _error;
+
+    [Parameter, EditorRequired] public Guid ChangeSetId { get; set; }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_diff?.ChangeSetId == ChangeSetId)
+        {
+            return;
+        }
+
+        var diff = await Directory.DiffAsync(ChangeSetId);
+        if (diff.IsSuccess)
+        {
+            (_diff, _error) = (diff.Value, null);
+        }
+        else
+        {
+            // The error code is the resource key; the directory's own message is the text until a resource exists.
+            _error = string.Join(" ", diff.Errors.Select(error =>
+            {
+                var localized = L[error.Code];
+                return localized.ResourceNotFound ? error.Message : localized.Value;
+            }));
+        }
+    }
+}
