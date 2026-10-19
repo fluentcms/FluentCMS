@@ -64,7 +64,7 @@ public sealed partial class ReviewActionTests
         await using var host = await AdminHost.StartAsync(install);
         var ownerId = await host.CreateFirstAdministratorAsync();
         await host.AsUserAsync<IContentTypeDirectory, ContentType>(ownerId, async types => (await types.CreateAsync(new NewContentType(
-            "Product page", "product-page", new ContentTypeDefinition([new FieldDefinition("headline", "text", required: true)])))).Value);
+            "Product page", "product-page", new ContentTypeDefinition([new FieldDefinition("headline", "text", required: true)])), TestChangeSetTargets.ContentModel)).Value);
         await host.AsUserAsync<FluentCMS.Core.Checks.ICheckDirectory, bool>(ownerId, async checks =>
         {
             var definition = new FluentCMS.Core.Checks.CheckDefinition(
