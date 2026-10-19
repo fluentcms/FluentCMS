@@ -12,6 +12,8 @@
          data-item-kind="@Item.Operation.ItemKind.ToString().ToLowerInvariant()"
          class="group rounded-xl border bg-card text-card-foreground shadow-sm">
     <summary data-slot="diff-view-item-summary"
+             data-ui="@(Roving ? "rove-item" : null)"
+             tabindex="@(Roving && !First ? "-1" : null)"
              class="flex cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1 rounded-xl px-4 py-3 text-start text-sm font-medium outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 [&::-webkit-details-marker]:hidden">
         <Badge Variant="@OperationVariant(Item.Operation.Kind)">@OperationLabel(Item.Operation.Kind)</Badge>
         <span>@KindLabel(Item.Operation.ItemKind)</span>
@@ -44,6 +46,8 @@
     private bool _changed;
 
     [Parameter, EditorRequired] public ItemDiff Item { get; set; } = null!;
+    [Parameter] public bool Roving { get; set; }
+    [Parameter] public bool First { get; set; }
 
     protected override void OnParametersSet()
     {

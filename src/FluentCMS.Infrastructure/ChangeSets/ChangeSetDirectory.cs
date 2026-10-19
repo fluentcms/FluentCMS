@@ -13,7 +13,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FluentCMS.Infrastructure.ChangeSets;
 
-// Expected failures are found before the unit of work begins, so they leave a caller's outer unit of work able to commit.
+// Expected failures are found before the unit of work begins, so they leave a caller's outer unit of work able to commit. An agent's
+// daily cap is the exception: it is counted inside, so concurrent opens take turns, and its refusal rolls the caller's unit of work back.
 // Reads never track rows, and updates go straight to the database, so a long-lived context always sees what is stored.
 internal sealed class ChangeSetDirectory(
     FluentCmsDbContext context,
@@ -33,8 +34,13 @@ internal sealed class ChangeSetDirectory(
     public async Task<Result<ChangeSet>> GetAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var stored = await ReadAsync(id, cancellationToken);
+        if (stored is null)
+        {
+            return NotFound(id);
+        }
 
-        return stored is null ? NotFound(id) : Result<ChangeSet>.Success(stored.ChangeSet);
+        var readable = await permissions.CheckChangeSetReadAsync(stored.ChangeSet, cancellationToken);
+        return readable.IsSuccess ? Result<ChangeSet>.Success(stored.ChangeSet) : Result<ChangeSet>.Failure(readable.Errors);
     }
 
     public async Task<Result<ChangeSetDiff>> DiffAsync(Guid id, CancellationToken cancellationToken = default)
@@ -43,6 +49,12 @@ internal sealed class ChangeSetDirectory(
         if (stored is null)
         {
             return Result<ChangeSetDiff>.Failure(NotFound(id).Errors);
+        }
+
+        var readable = await permissions.CheckChangeSetReadAsync(stored.ChangeSet, cancellationToken);
+        if (!readable.IsSuccess)
+        {
+            return Result<ChangeSetDiff>.Failure(readable.Errors);
         }
 
         var set = stored.ChangeSet;
@@ -85,13 +97,14 @@ internal sealed class ChangeSetDirectory(
             return opened;
         }
 
+        // Counted inside the unit of work, after holding the agent's credential, so concurrent opens cannot all pass the cap.
+        await using var scope = await unitOfWork.BeginAsync(cancellationToken);
         var allowed = await permissions.CheckNewChangeSetAsync(cancellationToken);
         if (!allowed.IsSuccess)
         {
             return Result<ChangeSet>.Failure(allowed.Errors);
         }
 
-        await using var scope = await unitOfWork.BeginAsync(cancellationToken);
         await InsertAsync(opened.Value, cancellationToken);
 
         return await CommitAsync(scope, opened.Value, Conflict(opened.Value.Id), cancellationToken);
@@ -138,13 +151,13 @@ internal sealed class ChangeSetDirectory(
             return Result<ChangeSet>.Failure(previousVersion.Errors);
         }
 
+        await using var scope = await unitOfWork.BeginAsync(cancellationToken);
         var allowed = await permissions.CheckNewChangeSetAsync(cancellationToken);
         if (!allowed.IsSuccess)
         {
             return Result<ChangeSet>.Failure(allowed.Errors);
         }
 
-        await using var scope = await unitOfWork.BeginAsync(cancellationToken);
         await InsertAsync(set, cancellationToken);
         await InsertOperationAsync(set, set.Operations.Count - 1, previousVersion.Value, cancellationToken);
 

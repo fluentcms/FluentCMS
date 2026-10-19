@@ -4,6 +4,7 @@ using FluentCMS.Infrastructure.ChangeSets;
 using FluentCMS.Infrastructure.Checks;
 using FluentCMS.Infrastructure.Content;
 using FluentCMS.Infrastructure.Entities;
+using FluentCMS.Infrastructure.Media;
 using FluentCMS.Infrastructure.Jobs;
 using FluentCMS.Infrastructure.Models;
 using FluentCMS.Infrastructure.Schema;
@@ -41,6 +42,10 @@ public abstract class FluentCmsDbContext(DbContextOptions options) : IdentityDbC
 
     public DbSet<EntityFactRow> EntityFacts => Set<EntityFactRow>();
 
+    public DbSet<MediaAssetRow> MediaAssets => Set<MediaAssetRow>();
+
+    public DbSet<MediaAssetVersionRow> MediaAssetVersions => Set<MediaAssetVersionRow>();
+
     public DbSet<CheckRow> Checks => Set<CheckRow>();
 
     public DbSet<CheckVersionRow> CheckVersions => Set<CheckVersionRow>();
@@ -69,6 +74,8 @@ public abstract class FluentCmsDbContext(DbContextOptions options) : IdentityDbC
         builder.ApplyConfiguration(new EntryVersionConfiguration());
         builder.ApplyConfiguration(new EntryReferenceConfiguration());
         builder.ApplyConfiguration(new EntityFactConfiguration());
+        builder.ApplyConfiguration(new MediaAssetConfiguration());
+        builder.ApplyConfiguration(new MediaAssetVersionConfiguration());
         builder.ApplyConfiguration(new CheckConfiguration());
         builder.ApplyConfiguration(new CheckVersionConfiguration());
         builder.ApplyConfiguration(new JobConfiguration());

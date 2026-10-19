@@ -3,6 +3,7 @@ using FluentCMS.Core.Audit;
 using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Checks;
 using FluentCMS.Core.Content;
+using FluentCMS.Core.Delivery;
 using FluentCMS.Core.Entities;
 using FluentCMS.Core.Extensions;
 using FluentCMS.Core.Identity;
@@ -16,6 +17,7 @@ using FluentCMS.Infrastructure.Audit;
 using FluentCMS.Infrastructure.ChangeSets;
 using FluentCMS.Infrastructure.Checks;
 using FluentCMS.Infrastructure.Content;
+using FluentCMS.Infrastructure.Delivery;
 using FluentCMS.Infrastructure.Entities;
 using FluentCMS.Infrastructure.Identity;
 using FluentCMS.Infrastructure.Jobs;
@@ -106,6 +108,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddFluentCmsExtension<IMediaStorage, LocalDiskMediaStorage>();
         services.AddOptions<MediaOptions>().Bind(configuration.GetSection(MediaOptions.SectionName)).ValidateOnStart();
         services.AddSingleton<IValidateOptions<MediaOptions>, MediaOptionsValidation>();
+        services.AddScoped<IMediaLibrary, MediaLibrary>();
     }
 
     private static void AddContent(IServiceCollection services, IConfiguration configuration)
@@ -116,6 +119,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IEntryDirectory, EntryDirectory>();
         services.AddScoped<IWhereUsed, WhereUsed>();
         services.AddScoped<IResolvedEntries, ResolvedEntries>();
+        services.AddScoped<IPublishedContent, PublishedContentReader>();
         services.AddScoped<IEntityRelations, EntityRelationsReader>();
         services.AddScoped<IEntityFacts, EntityFactsReader>();
         services.AddScoped<IBlastRadius, BlastRadiusReader>();
