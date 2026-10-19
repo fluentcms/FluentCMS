@@ -248,8 +248,8 @@ public sealed class ChangeSetChecksTests
         Assert.Equal(("job", "fail"), ((string?)finished["checks"]!["mode"], (string?)finished["checks"]!["status"]));
         Assert.Equal(("succeeded", 1, 1), ((string?)finished["job"]!["state"], (int)finished["job"]!["done"]!, (int)finished["job"]!["total"]!));
 
-        var (chargedTo, ranAs) = RecordingJudge.Calls.Last();
-        Assert.Equal(agent.Credential.Id, chargedTo);
+        var (onBehalfOf, ranAs) = RecordingJudge.Calls.Last();
+        Assert.Equal(agent.Credential.Id, Assert.IsType<AgentInitiator>(onBehalfOf).CredentialId);
         Assert.Equal(SystemInitiator.Checks, ranAs);
 
         var judged = (string?)finished["checks"]!["items"]![0]!["results"]!.AsArray().Single(result => (string?)result!["check"] == "calm")!["model"]!["model"];
@@ -384,7 +384,7 @@ public sealed class ChangeSetChecksTests
 
         public const decimal Cost = 0.25m;
 
-        public static ConcurrentQueue<(Guid? ChargedTo, Initiator? RanAs)> Calls { get; } = new();
+        public static ConcurrentQueue<(Initiator? OnBehalfOf, Initiator? RanAs)> Calls { get; } = new();
 
         string ICheckType.Name => Name;
 
@@ -397,7 +397,7 @@ public sealed class ChangeSetChecksTests
 
         public Task<CheckOutcome> EvaluateAsync(CheckInput input, CancellationToken cancellationToken)
         {
-            Calls.Enqueue((input.ChargedTo, input.Services.GetRequiredService<ICurrentInitiator>().Current));
+            Calls.Enqueue((input.OnBehalfOf, input.Services.GetRequiredService<ICurrentInitiator>().Current));
             var loud = input.Subject.Fields.ValueKind == JsonValueKind.Object
                 && input.Subject.Fields.EnumerateObject().Any(field => field.Value.ValueKind == JsonValueKind.String && field.Value.GetString()!.Contains("!!!"));
 

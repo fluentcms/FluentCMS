@@ -139,7 +139,9 @@ internal sealed class InstructionsCheckType : ICheckType
 
         var builder = new StringBuilder(text.Length);
         var origins = new List<int>(text.Length);
-        Span<char> encoded = stackalloc char[2];
+
+        // Each character other than ASCII is folded once per text, however often it repeats.
+        var folds = new Dictionary<int, string>();
         var index = 0;
         foreach (var rune in text.EnumerateRunes())
         {
@@ -148,22 +150,17 @@ internal sealed class InstructionsCheckType : ICheckType
                 builder.Append((char)rune.Value);
                 origins.Add(index);
             }
-            else if (Rune.GetUnicodeCategory(rune) != UnicodeCategory.Format && !IsVariationSelector(rune))
+            else
             {
-                var decomposed = BlankLetters.Contains(rune.Value) ? " " : rune.ToString().Normalize(NormalizationForm.FormKD);
-                foreach (var part in (decomposed.Length <= MaxExpansion ? decomposed : rune.ToString()).EnumerateRunes())
+                if (!folds.TryGetValue(rune.Value, out var folded))
                 {
-                    if (Rune.GetUnicodeCategory(part) is UnicodeCategory.NonSpacingMark or UnicodeCategory.SpacingCombiningMark or UnicodeCategory.EnclosingMark)
-                    {
-                        continue;
-                    }
+                    folded = folds[rune.Value] = FoldRune(rune);
+                }
 
-                    var length = LatinLookalikes.TryGetValue(part.Value, out var latin) ? new Rune(latin).EncodeToUtf16(encoded) : part.EncodeToUtf16(encoded);
-                    builder.Append(encoded[..length]);
-                    for (var copy = 0; copy < length; copy++)
-                    {
-                        origins.Add(index);
-                    }
+                builder.Append(folded);
+                for (var copy = 0; copy < folded.Length; copy++)
+                {
+                    origins.Add(index);
                 }
             }
 
@@ -171,6 +168,31 @@ internal sealed class InstructionsCheckType : ICheckType
         }
 
         return new FoldedText(builder.ToString(), [.. origins]);
+    }
+
+    private static string FoldRune(Rune rune)
+    {
+        if (Rune.GetUnicodeCategory(rune) == UnicodeCategory.Format || IsVariationSelector(rune))
+        {
+            return string.Empty;
+        }
+
+        if (BlankLetters.Contains(rune.Value))
+        {
+            return " ";
+        }
+
+        var decomposed = rune.ToString().Normalize(NormalizationForm.FormKD);
+        var builder = new StringBuilder(MaxExpansion);
+        foreach (var part in (decomposed.Length <= MaxExpansion ? decomposed : rune.ToString()).EnumerateRunes())
+        {
+            if (Rune.GetUnicodeCategory(part) is not (UnicodeCategory.NonSpacingMark or UnicodeCategory.SpacingCombiningMark or UnicodeCategory.EnclosingMark))
+            {
+                builder.Append(LatinLookalikes.TryGetValue(part.Value, out var latin) ? latin.ToString() : part.ToString());
+            }
+        }
+
+        return builder.ToString();
     }
 
     private readonly record struct FoldedText(string Text, int[]? Origins)

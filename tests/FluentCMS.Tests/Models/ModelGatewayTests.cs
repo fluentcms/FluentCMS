@@ -113,26 +113,32 @@ public sealed class ModelGatewayTests
         Assert.Equal((ModelCallOutcome.Succeeded, Reserved(ModelScenario.Checks)), (call.Outcome, call.Cost));
     }
 
-    // SEC-04: an engine asks a model only for an agent's work and charges it to that agent; a call no one answers for is not made.
+    // SEC-04: an engine asks a model only for a person's or an agent's work, and an agent's counts against its cap; only an engine
+    // asks on someone else's behalf, and a call no one answers for is not made.
     [Fact]
-    public async Task An_engine_call_is_charged_to_the_agent_it_names_and_a_call_no_one_answers_for_is_refused()
+    public async Task An_engine_call_counts_for_whose_work_it_is_and_a_call_no_one_answers_for_is_refused()
     {
         using var scenario = new ModelScenario();
         var agent = scenario.AddAgent(spendCap: 1m, period: TimeSpan.FromDays(1));
+        var person = (UserInitiator)scenario.Initiator!;
 
+        var borrowed = await scenario.Gateway.AskAsync(Request with { OnBehalfOf = new AgentInitiator(agent.Id, agent.DisplayName) });
         scenario.Initiator = SystemInitiator.Checks;
         var unnamed = await scenario.Gateway.AskAsync(Request);
-        var charged = await scenario.Gateway.AskAsync(Request with { ChargedTo = agent.Id });
+        var forAgent = await scenario.Gateway.AskAsync(Request with { OnBehalfOf = new AgentInitiator(agent.Id, agent.DisplayName) });
+        var forPerson = await scenario.Gateway.AskAsync(Request with { OnBehalfOf = person });
         scenario.Initiator = null;
         var nobody = await scenario.Gateway.AskAsync(Request);
 
+        Assert.Equal(ModelErrorCodes.Unaccounted, Assert.Single(borrowed.Errors).Code);
         Assert.Equal(ModelErrorCodes.Unaccounted, Assert.Single(unnamed.Errors).Code);
         Assert.Contains("'checks' engine", unnamed.Errors[0].Message);
-        Assert.True(charged.IsSuccess);
+        Assert.True(forAgent.IsSuccess && forPerson.IsSuccess);
         Assert.Equal(ModelErrorCodes.Unaccounted, Assert.Single(nobody.Errors).Code);
-        var call = Assert.Single(scenario.Log.Calls);
-        Assert.Equal(("system", (Guid?)agent.Id), (call.InitiatorKind, call.AgentCredentialId));
-        Assert.Single(scenario.Client.Calls);
+        Assert.Equal(
+            [("system", (Guid?)agent.Id), ("system", null)],
+            scenario.Log.Calls.Select(call => (call.InitiatorKind, call.AgentCredentialId)));
+        Assert.Equal(2, scenario.Client.Calls.Count);
     }
 
     // A call is on record before it is sent, at the most it can cost, so one that never comes back still counts.
@@ -199,13 +205,14 @@ public sealed class ModelGatewayTests
     }
 
     [Fact]
-    public async Task A_call_is_charged_to_the_agent_named_even_when_a_person_causes_it_and_fails_closed_for_an_unknown_one()
+    public async Task An_engine_call_for_an_agent_counts_against_its_cap_and_fails_closed_for_an_unknown_one()
     {
         using var scenario = new ModelScenario();
         var agent = scenario.AddAgent(spendCap: 0m, period: TimeSpan.FromDays(1));
+        scenario.Initiator = SystemInitiator.Checks;
 
-        var zeroCap = await scenario.Gateway.AskAsync(Request with { ChargedTo = agent.Id });
-        var unknown = await scenario.Gateway.AskAsync(Request with { ChargedTo = Guid.NewGuid() });
+        var zeroCap = await scenario.Gateway.AskAsync(Request with { OnBehalfOf = new AgentInitiator(agent.Id, agent.DisplayName) });
+        var unknown = await scenario.Gateway.AskAsync(Request with { OnBehalfOf = new AgentInitiator(Guid.NewGuid(), "gone") });
 
         Assert.Equal(ModelErrorCodes.SpendCapExceeded, Assert.Single(zeroCap.Errors).Code);
         Assert.Equal(ModelErrorCodes.SpendUnknown, Assert.Single(unknown.Errors).Code);
