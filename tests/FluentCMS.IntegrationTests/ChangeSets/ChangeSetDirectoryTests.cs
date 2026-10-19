@@ -2,6 +2,7 @@ using FluentCMS.Core.Audit;
 using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Persistence;
 using FluentCMS.Core.Results;
+using FluentCMS.Core.Rules;
 using FluentCMS.Core.Sites;
 using FluentCMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -115,7 +116,8 @@ public sealed class ChangeSetDirectoryTests
                 ChangeOperation.Create(OperationKind.Update, ItemKind.Schema, category.Id, 3, 5).Value,
                 [ChangeSetErrorCodes.VersionNotFound, ChangeSetErrorCodes.VersionNotFound]
             ),
-            (ChangeOperation.Create(OperationKind.Update, ItemKind.Rule, Guid.NewGuid(), 1, 2).Value, [ChangeSetErrorCodes.ItemKindUnavailable]),
+            // Only a person puts a rule in a set, so an agent's rule operation is refused before anything is read.
+            (ChangeOperation.Create(OperationKind.Update, ItemKind.Rule, Guid.NewGuid(), 1, 2).Value, [RuleErrorCodes.PeopleOnly]),
             (ChangeOperation.Create(OperationKind.Delete, ItemKind.Schema, product.Id, 2, null).Value, [ChangeSetErrorCodes.ItemDuplicate]),
         ];
 

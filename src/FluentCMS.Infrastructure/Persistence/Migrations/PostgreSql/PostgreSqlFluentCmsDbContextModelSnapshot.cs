@@ -195,6 +195,8 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
 
                     b.HasIndex("Timestamp");
 
+                    b.HasIndex("Operation", "Timestamp");
+
                     b.HasIndex("SubjectType", "SubjectId");
 
                     b.ToTable("AuditEvents", null, t =>
@@ -1162,6 +1164,69 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
                         });
                 });
 
+            modelBuilder.Entity("FluentCMS.Infrastructure.Rules.RuleRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("ActiveVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("SiteId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SiteId", "Slug")
+                        .IsUnique();
+
+                    b.ToTable("Rules", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Rules_ActiveVersion", "\"ActiveVersion\" IS NULL OR \"ActiveVersion\" >= 1");
+
+                            t.HasCheckConstraint("CK_Rules_Version", "\"Version\" >= 1");
+                        });
+                });
+
+            modelBuilder.Entity("FluentCMS.Infrastructure.Rules.RuleVersionRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Definition")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<Guid>("RuleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RuleId", "Version")
+                        .IsUnique();
+
+                    b.ToTable("RuleVersions", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_RuleVersions_Version", "\"Version\" >= 1");
+                        });
+                });
+
             modelBuilder.Entity("FluentCMS.Infrastructure.Schema.ContentTypeRow", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1596,6 +1661,24 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
                     b.HasOne("FluentCMS.Infrastructure.Routing.RoutingRuleRow", null)
                         .WithMany()
                         .HasForeignKey("RoutingRuleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FluentCMS.Infrastructure.Rules.RuleRow", b =>
+                {
+                    b.HasOne("FluentCMS.Infrastructure.Sites.SiteRow", null)
+                        .WithMany()
+                        .HasForeignKey("SiteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FluentCMS.Infrastructure.Rules.RuleVersionRow", b =>
+                {
+                    b.HasOne("FluentCMS.Infrastructure.Rules.RuleRow", null)
+                        .WithMany()
+                        .HasForeignKey("RuleId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
