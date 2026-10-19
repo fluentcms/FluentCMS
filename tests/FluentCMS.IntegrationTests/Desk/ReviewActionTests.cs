@@ -171,7 +171,7 @@ public sealed partial class ReviewActionTests
     private static async Task<ChangeSet> OpenAsync(AdminHost host, Guid userId, string slug, params ChangeSetState[] moves)
     {
         var type = await host.AsUserAsync<IContentTypeDirectory, ContentType>(userId, async directory =>
-            (await directory.CreateAsync(new NewContentType(slug, slug, new ContentTypeDefinition([new FieldDefinition("title", "text")])))).Value);
+            (await directory.CreateAsync(new NewContentType(slug, slug, new ContentTypeDefinition([new FieldDefinition("title", "text")])), TestChangeSetTargets.ContentModel)).Value);
 
         return await host.AsUserAsync<IChangeSetDirectory, ChangeSet>(userId, async directory =>
         {
