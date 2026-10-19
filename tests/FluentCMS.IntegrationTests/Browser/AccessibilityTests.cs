@@ -1,8 +1,10 @@
 using Deque.AxeCore.Commons;
 using Deque.AxeCore.Playwright;
+using FluentCMS.Core.Agents;
 using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Media;
 using FluentCMS.Core.Schema;
+using FluentCMS.IntegrationTests.Mcp;
 using FluentCMS.IntegrationTests.Media;
 using Microsoft.Playwright;
 
@@ -25,6 +27,14 @@ public sealed class AccessibilityTests
             new MemoryStream(MediaFiles.Jpeg()),
             "image/jpeg",
             AssetMetadata.Create("drill.jpg", "products", ["hero"], null, null).Value))).Value.Id);
+
+        // Security events, so the security view is checked with its table, badges, links and pager.
+        var key = await McpAgents.IssueAsync(session.Host, session.OwnerId);
+        await session.Host.AsUserAsync<IAgentCredentialDirectory, bool>(session.OwnerId, async credentials => (await credentials.RevokeAsync(key.Credential.Id)).IsSuccess);
+        for (var user = 0; user < 50; user++)
+        {
+            await session.Host.AsUserAsync(session.OwnerId, async users => await users.CreateAsync(new FluentCMS.Core.Identity.NewUser($"editor{user}@example.com", $"Editor {user}", "An0ther!Passw0rd")));
+        }
         await session.SignInWithKeyboardAsync();
 
         string[] paths = ["/ui", "/", "/?queue=stale-facts", $"/sets/{set.Id}?queue=awaiting-me", "/security", "/media", $"/media/{asset}", "/content", "/content/product", "/content/product/new", "/content/supplier/new", "/content/kitchen-sink/new"];
