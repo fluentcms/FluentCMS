@@ -15,11 +15,13 @@ public sealed class SystemInitiatorTests
     [Fact]
     public void A_component_has_one_stable_id_and_the_audit_log_names_it_system()
     {
-        Assert.Equal(SystemInitiator.Checks.Id, new SystemInitiator("checks").Id);
+        Assert.Equal(SystemInitiator.Checks, InitiatorKinds.RestoreSystem("checks", SystemInitiator.Checks.Id));
         Assert.NotEqual(SystemInitiator.Checks.Id, SystemInitiator.Retention.Id);
         Assert.Equal(("checks", "checks"), (SystemInitiator.Checks.Component, SystemInitiator.Checks.DisplayName));
         Assert.Equal(("system", SystemInitiator.Retention.Id), InitiatorKinds.Describe(SystemInitiator.Retention));
-        Assert.Throws<ArgumentException>(() => new SystemInitiator("Check Engine"));
+        Assert.Throws<InvalidOperationException>(() => InitiatorKinds.RestoreSystem("Check Engine", SystemInitiator.Checks.Id));
+        Assert.Throws<InvalidOperationException>(() => InitiatorKinds.RestoreSystem("billing", Guid.NewGuid()));
+        Assert.DoesNotContain(typeof(SystemInitiator).GetConstructors(), constructor => constructor.GetParameters() is [{ ParameterType: var type }] && type == typeof(string));
     }
 
     // CHG-01: a change set always has a person or an agent behind it.

@@ -15,6 +15,7 @@ internal sealed class IdentityPasswordReset(
     IUnitOfWork unitOfWork,
     IAuditLog auditLog,
     IHttpContextAccessor accessor,
+    ICurrentInitiator currentInitiator,
     IOptions<DataProtectionTokenProviderOptions> tokenOptions) : IPasswordReset
 {
     public const string LifespanSetting = "PasswordReset:TokenLifespan";
@@ -28,6 +29,14 @@ internal sealed class IdentityPasswordReset(
 
     public async Task<Result<PasswordResetToken>> IssueAsync(Guid userId, CancellationToken cancellationToken = default)
     {
+        // A reset link takes over the account it resets, so only a person issues one, never an agent or an engine (ADR-0012).
+        if (currentInitiator.Current is AgentInitiator or SystemInitiator)
+        {
+            return Result<PasswordResetToken>.Failure(
+                UserErrorCodes.PeopleOnly,
+                $"Only a person can issue a password reset link; {currentInitiator.Current.DisplayName} cannot.");
+        }
+
         var users = signInManager.UserManager;
         var user = await users.FindByIdAsync(userId.ToString());
         if (user is null)
