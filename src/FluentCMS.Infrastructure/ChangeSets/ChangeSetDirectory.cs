@@ -356,7 +356,8 @@ internal sealed class ChangeSetDirectory(
     }
 
     // The version the set a write joins already proposes for the item, which a later write in that set builds on (SCH-05). Null when
-    // that set holds no operation proposing a version of the item, or the write would open the set.
+    // that set holds no operation proposing a version of the item, the write would open the set, or the set is not open, which the
+    // join then refuses.
     internal async Task<int?> ProposedVersionAsync(ChangeSetTarget target, ItemKind itemKind, Guid itemId, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(target);
@@ -367,10 +368,14 @@ internal sealed class ChangeSetDirectory(
             return null;
         }
 
-        return await context.ChangeSetOperations
-            .AsNoTracking()
-            .Where(operation => operation.ChangeSetId == setId && operation.ItemKind == itemKind && operation.ItemId == itemId)
-            .Select(operation => operation.ProposedVersion)
+        return await (
+                from operation in context.ChangeSetOperations.AsNoTracking()
+                join set in context.ChangeSets.AsNoTracking() on operation.ChangeSetId equals set.Id
+                where set.Id == setId
+                    && set.State == ChangeSetState.Open
+                    && operation.ItemKind == itemKind
+                    && operation.ItemId == itemId
+                select operation.ProposedVersion)
             .SingleOrDefaultAsync(cancellationToken);
     }
 

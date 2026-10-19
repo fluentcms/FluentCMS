@@ -290,6 +290,24 @@ public sealed class SchemaChangeSetTests
         Assert.Equal(4, (await scenario.RunSchemaAsync(directory => directory.GetPublishedAsync("product"))).Value.Version);
     }
 
+    // A closed set takes no more writes, whatever it proposes, so the refusal says so rather than naming a version to revise.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_revision_into_a_rejected_set_that_holds_the_type_is_refused_as_not_open(string provider)
+    {
+        await using var scenario = await ScenarioAsync(provider);
+        await PublishedProductAsync(scenario);
+        var rejected = await scenario.OpenAsync();
+        var target = ChangeSetTarget.Existing(rejected.Id);
+        await scenario.RunSchemaAsync(directory => directory.ReviseAsync("product", 1, WithSummary, target));
+        await RejectAsync(scenario, rejected.Id);
+
+        var revised = await scenario.RunSchemaAsync(directory => directory.ReviseAsync("product", 1, WithPrice, target));
+
+        Assert.Equal(ChangeSetErrorCodes.NotOpen, Assert.Single(revised.Errors).Code);
+    }
+
     // A revision of a type with nothing live is recorded as its create, so an agent needs the create scope for it (MCP-05).
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
