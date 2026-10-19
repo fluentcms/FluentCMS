@@ -120,6 +120,11 @@ public sealed class MediaToolsTests
         Assert.Equal("fail", (string?)before["status"]);
         Assert.Equal("/hero", (string?)before["results"]![0]!["findings"]![0]!["pointer"]);
         Assert.Equal("pass", (string?)after["status"]);
+
+        // Submitted, the set's own checks read the version it proposes too.
+        var submitted = await agent.CallAsync("submit_change_set", new() { ["id"] = setId });
+        var altText = submitted["checks"]!["items"]!.AsArray().Single()!["results"]!.AsArray().Single(result => (string?)result!["check"] == "alt-text")!;
+        Assert.Equal("pass", (string?)altText["status"]);
     }
 
     [Theory]
