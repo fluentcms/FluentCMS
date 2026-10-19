@@ -72,6 +72,8 @@ internal sealed class RecordingChatClient(
             throw;
         }
 
+        // An answer without its token counts keeps the cost reserved for it, the most it could have cost, rather than none.
+        var counted = response.Usage is { InputTokenCount: not null, OutputTokenCount: not null };
         var input = response.Usage?.InputTokenCount ?? 0;
         var output = response.Usage?.OutputTokenCount ?? 0;
         var version = response.ModelId ?? profile.Model;
@@ -82,7 +84,7 @@ internal sealed class RecordingChatClient(
             Response = response.Text,
             InputTokens = input,
             OutputTokens = output,
-            Cost = profile.Cost(input, output),
+            Cost = counted ? profile.Cost(input, output) : pending.Cost,
             Duration = Stopwatch.GetElapsedTime(started),
         };
         await log.CompleteAsync(Recorded, CancellationToken.None);
