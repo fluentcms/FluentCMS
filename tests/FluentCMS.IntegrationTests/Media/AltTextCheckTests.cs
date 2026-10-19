@@ -1,9 +1,11 @@
 using System.Text.Json;
+using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Checks;
 using FluentCMS.Core.Media;
 using FluentCMS.Core.Schema;
 using FluentCMS.Infrastructure.Persistence;
 using FluentCMS.IntegrationTests.Content;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.IntegrationTests.Media;
@@ -41,7 +43,7 @@ public sealed class AltTextCheckTests
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
     [PostgresData]
-    public async Task Alt_text_in_the_assets_latest_version_passes_on_pages_and_entities(string provider)
+    public async Task Alt_text_on_an_unpublished_assets_latest_version_passes_on_pages_and_entities(string provider)
     {
         await using var scenario = await EntryScenario.CreateAsync(provider);
         var asset = await UploadAsync(scenario, "drill.jpg", altText: null);
@@ -59,16 +61,54 @@ public sealed class AltTextCheckTests
             new[] { page, entityAfter, unknown }.Select(outcome => outcome.Verdict));
     }
 
+    // MED-02: what goes live counts. A published image without alt text fails while a newer version with alt text waits in a set,
+    // and passes when the page goes live with that set.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task The_published_version_counts_unless_the_pages_change_set_proposes_another(string provider)
+    {
+        await using var scenario = await EntryScenario.CreateAsync(provider);
+        var asset = await UploadAsync(scenario, "drill.jpg", altText: null);
+        await scenario.Schema.QueryAsync(context => context.MediaAssets
+            .Where(row => row.Id == asset.Id)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(row => row.PublishedVersion, 1)));
+        await LibraryAsync(scenario, library => library.UpdateAsync(asset.Id, 1, AssetMetadata.Create("drill.jpg", null, [], "A cordless drill.", null).Value));
+        var page = $$"""{"hero": "{{asset.Id}}"}""";
+
+        await using var scope = scenario.Services.CreateAsyncScope();
+        var sets = scope.ServiceProvider.GetRequiredService<IChangeSetDirectory>();
+        var set = (await sets.OpenAsync(new NewChangeSet("Describe the drill.", []))).Value;
+        Assert.True((await sets.AddOperationAsync(set.Id, ChangeOperation.Create(OperationKind.Update, ItemKind.Media, asset.Id, 1, 2).Value)).IsSuccess);
+        var other = (await sets.OpenAsync(new NewChangeSet("Something else.", []))).Value;
+
+        Assert.Equal(CheckVerdict.Fail, (await EvaluateAsync(scenario, ProductPage, page)).Verdict);
+        Assert.Equal(CheckVerdict.Fail, (await EvaluateAsync(scenario, ProductPage, page, other.Id)).Verdict);
+        Assert.Equal(CheckVerdict.Pass, (await EvaluateAsync(scenario, ProductPage, page, set.Id)).Verdict);
+    }
+
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task Media_that_is_not_an_image_needs_no_alt_text(string provider)
+    {
+        await using var scenario = await EntryScenario.CreateAsync(provider);
+        var metadata = AssetMetadata.Create("manual.pdf", null, [], null, null).Value;
+        var manual = (await LibraryAsync(scenario, library => library.UploadAsync(new NewAsset(new MemoryStream("%PDF-1.7"u8.ToArray()), "application/pdf", metadata)))).Value;
+
+        Assert.Equal(CheckVerdict.Pass, (await EvaluateAsync(scenario, ProductPage, $$"""{"hero": "{{manual.Id}}"}""")).Verdict);
+    }
+
     private static async Task<MediaAsset> UploadAsync(EntryScenario scenario, string fileName, string? altText)
     {
         var metadata = AssetMetadata.Create(fileName, null, [], altText, null).Value;
-        return (await LibraryAsync(scenario, library => library.UploadAsync(new NewAsset(new MemoryStream([1, 2, 3]), "image/jpeg", metadata)))).Value;
+        return (await LibraryAsync(scenario, library => library.UploadAsync(new NewAsset(new MemoryStream(MediaFiles.Jpeg()), "image/jpeg", metadata)))).Value;
     }
 
-    private static async Task<CheckOutcome> EvaluateAsync(EntryScenario scenario, ContentTypeDefinition definition, string fields)
+    private static async Task<CheckOutcome> EvaluateAsync(EntryScenario scenario, ContentTypeDefinition definition, string fields, Guid? changeSetId = null)
     {
         await using var scope = scenario.Services.CreateAsyncScope();
-        var subject = new CheckSubject(JsonSerializer.Deserialize<JsonElement>(fields), [], "product-page", definition);
+        var subject = new CheckSubject(JsonSerializer.Deserialize<JsonElement>(fields), [], "product-page", definition, ChangeSetId: changeSetId);
         var input = new CheckInput(JsonSerializer.Deserialize<JsonElement>("{}"), subject, scope.ServiceProvider);
 
         return await scope.ServiceProvider.GetRequiredService<CheckTypeRegistry>().EvaluateAsync("altText", input);

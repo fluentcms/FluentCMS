@@ -3,6 +3,7 @@ using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Media;
 using FluentCMS.Core.Persistence;
 using FluentCMS.Infrastructure.Persistence;
+using FluentCMS.IntegrationTests.Media;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using static FluentCMS.IntegrationTests.ChangeSets.ChangeSetScenario;
@@ -162,7 +163,7 @@ public sealed class MediaChangeSetTests
     private static async Task<Guid> UploadAsync(ChangeSetScenario scenario, AssetMetadata metadata)
     {
         await using var scope = scenario.Services.CreateAsyncScope();
-        var asset = await scope.ServiceProvider.GetRequiredService<IMediaLibrary>().UploadAsync(new NewAsset(new MemoryStream([1, 2, 3]), "image/jpeg", metadata));
+        var asset = await scope.ServiceProvider.GetRequiredService<IMediaLibrary>().UploadAsync(new NewAsset(new MemoryStream(MediaFiles.Jpeg()), "image/jpeg", metadata));
         return asset.Value.Id;
     }
 

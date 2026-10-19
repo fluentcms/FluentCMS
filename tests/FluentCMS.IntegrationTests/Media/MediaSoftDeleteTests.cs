@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Media;
 using FluentCMS.Core.Results;
@@ -57,7 +58,7 @@ public sealed class MediaSoftDeleteTests
         var restored = (await LibraryAsync(scenario, library => library.RestoreAsync(drill))).Value;
 
         Assert.Equal((2, (int?)1, "A cordless drill."), (restored.LatestVersion, restored.PublishedVersion, restored.Latest.Metadata.AltText));
-        Assert.Equal([1, 2, 3], await ContentAsync(scenario, drill, 1));
+        Assert.Equal(restored.Latest.Blob.Sha256, Convert.ToHexStringLower(SHA256.HashData(await ContentAsync(scenario, drill, 1))));
         Assert.Equal([drill], (await LibraryAsync(scenario, library => library.ListAsync(new MediaQuery()))).Select(asset => asset.Id));
         Assert.Empty(await LibraryAsync(scenario, library => library.ListDeletedAsync()));
         var restoredEvent = Assert.Single(await scenario.Schema.QueryAsync(context => context.AuditEvents.Where(row => row.Operation == "media.restored").ToListAsync()));
@@ -144,7 +145,7 @@ public sealed class MediaSoftDeleteTests
 
     private static async Task<Guid> UploadAsync(EntryScenario scenario, string fileName, string folder)
     {
-        var asset = await LibraryAsync(scenario, library => library.UploadAsync(new NewAsset(new MemoryStream([1, 2, 3]), "image/jpeg", Metadata(fileName, folder))));
+        var asset = await LibraryAsync(scenario, library => library.UploadAsync(new NewAsset(new MemoryStream(MediaFiles.Jpeg()), "image/jpeg", Metadata(fileName, folder))));
         return asset.Value.Id;
     }
 

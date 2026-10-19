@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using FluentCMS.Core.Results;
 using FluentCMS.Core.Schema;
 
@@ -6,7 +5,7 @@ namespace FluentCMS.Core.Media;
 
 // What people and agents say about an asset (MED-01, MED-02): its file name, the folder it sits in, its tags, and the alt text and
 // caption pages show with it. Folder is "" for the root or slug segments joined by slashes, such as "products/drills".
-public sealed partial record AssetMetadata(string FileName, string Folder, IReadOnlyList<string> Tags, string? AltText, string? Caption)
+public sealed record AssetMetadata(string FileName, string Folder, IReadOnlyList<string> Tags, string? AltText, string? Caption)
 {
     public const int MaxFileNameLength = 255;
     public const int MaxFolderLength = 512;
@@ -63,17 +62,8 @@ public sealed partial record AssetMetadata(string FileName, string Folder, IRead
             : Result<AssetMetadata>.Failure(errors);
     }
 
-    // "image/jpeg" and the like, as uploads name their content.
-    public static bool IsContentType(string? value)
-    {
-        return value is { Length: > 0 and <= 127 } && ContentTypePattern().IsMatch(value);
-    }
-
     private static bool IsValidText(string? text, int maxLength)
     {
         return text is null || (!string.IsNullOrWhiteSpace(text) && text.Trim().Length <= maxLength);
     }
-
-    [GeneratedRegex(@"^[a-z0-9][a-z0-9!#$&^_.+-]*/[a-z0-9][a-z0-9!#$&^_.+-]*\z", RegexOptions.CultureInvariant)]
-    private static partial Regex ContentTypePattern();
 }

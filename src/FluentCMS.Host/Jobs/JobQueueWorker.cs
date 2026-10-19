@@ -62,7 +62,6 @@ public sealed class JobQueueWorker(
         }
 
         await using var runScope = scopes.CreateAsyncScope();
-        runScope.ServiceProvider.GetRequiredService<JobRun>().Initiator = job.Initiator;
 
         var handler = runScope.ServiceProvider.GetServices<IJobHandler>().FirstOrDefault(candidate => candidate.Type == job.Type);
         if (handler is null)
@@ -71,6 +70,8 @@ public sealed class JobQueueWorker(
             await leases.AbandonAsync(job.Id, owner, $"No handler runs jobs of the type '{job.Type}'.", stoppingToken);
             return true;
         }
+
+        runScope.ServiceProvider.GetRequiredService<JobRun>().Initiator = handler.RunAs ?? job.Initiator;
 
         var context = new JobContext(
             job,

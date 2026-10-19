@@ -2,7 +2,9 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Core.Agents;
 using FluentCMS.Core.ChangeSets;
+using FluentCMS.Core.Checks;
 using FluentCMS.Core.Content;
+using FluentCMS.Core.Media;
 using FluentCMS.Core.Schema;
 using FluentCMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -11,7 +13,7 @@ namespace FluentCMS.IntegrationTests.Mcp;
 
 public sealed class MediaToolsTests
 {
-    private static readonly string Image = Convert.ToBase64String([0x89, 0x50, 0x4E, 0x47, 1, 2, 3, 4]);
+    private static readonly string Image = Convert.ToBase64String([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3, 4]);
 
     // S2 in the F-MED acceptance, as far as media goes: the image and the page that shows it arrive in one set.
     [Theory]
@@ -64,6 +66,62 @@ public sealed class MediaToolsTests
         Assert.False((bool)listed["media"]![0]!["hasAltText"]!);
     }
 
+    // S2 with the alt text check (MED-02): a page that will show a published image without alt text fails until the same set adds
+    // the alt text with update_media.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task The_alt_text_check_passes_once_the_pages_set_adds_alt_text_with_update_media(string provider)
+    {
+        await using var agent = await ConnectedAgent.StartAsync(provider);
+        var page = await PageAsync(agent);
+        var uploaded = await agent.CallAsync("upload_media", new()
+        {
+            ["content_base64"] = Image,
+            ["content_type"] = "image/png",
+            ["file_name"] = "drill.png",
+            ["session_id"] = "library",
+            ["rationale"] = "An image for the catalog.",
+        });
+        var assetId = (string)uploaded["media"]!["id"]!;
+        await PublishAsPersonAsync(agent, (string)uploaded["changeSet"]!["id"]!);
+        await agent.AsPersonAsync<ICheckDirectory, Check>(directory => directory.CreateAsync(new NewCheck("alt-text", AltTextCheck)));
+        await agent.AsPersonAsync<ICheckDirectory, Check>(directory => directory.ActivateAsync("alt-text", 1));
+
+        var attached = await agent.CallAsync("attach_media", new()
+        {
+            ["entry_id"] = page.ToString(),
+            ["base_version"] = 1,
+            ["field"] = "hero",
+            ["asset_id"] = assetId,
+            ["session_id"] = "launch",
+            ["rationale"] = "Show the drill on its page.",
+        });
+        var setId = (string)attached["changeSet"]!["id"]!;
+        Dictionary<string, object?> Draft() => new()
+        {
+            ["content_type"] = "product-page",
+            ["fields"] = JsonNode.Parse($$"""{"headline": "The Widget", "hero": "{{assetId}}"}"""),
+            ["id"] = page.ToString(),
+            ["change_set_id"] = setId,
+        };
+
+        var before = await agent.CallAsync("check_draft", Draft());
+        await agent.CallAsync("update_media", new()
+        {
+            ["id"] = assetId,
+            ["base_version"] = 1,
+            ["alt_text"] = "A cordless drill on a workbench.",
+            ["session_id"] = "launch",
+            ["rationale"] = "Describe the drill for people who cannot see it.",
+        });
+        var after = await agent.CallAsync("check_draft", Draft());
+
+        Assert.Equal("fail", (string?)before["status"]);
+        Assert.Equal("/hero", (string?)before["results"]![0]!["findings"]![0]!["pointer"]);
+        Assert.Equal("pass", (string?)after["status"]);
+    }
+
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
     [PostgresData]
@@ -98,6 +156,36 @@ public sealed class MediaToolsTests
         var altText = Assert.Single(diff["items"]![0]!["fields"]!.AsArray(), field => (string?)field!["name"] == "altText")!;
         Assert.Equal(("added", "A cordless drill on a workbench."), ((string)altText["change"]!, (string)altText["after"]!));
         Assert.Equal(("drill.png", "product-shot"), ((string)media["fileName"]!, (string)media["tags"]![0]!));
+    }
+
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task An_upload_over_the_limit_or_unlike_its_type_is_refused_and_stores_nothing(string provider)
+    {
+        await using var agent = await ConnectedAgent.StartAsync(provider, settings: new Dictionary<string, string?> { ["Media:MaxBytes"] = "8" });
+
+        var large = await agent.FailAsync("upload_media", new()
+        {
+            ["content_base64"] = Image,
+            ["content_type"] = "image/png",
+            ["file_name"] = "drill.png",
+            ["session_id"] = "upload",
+            ["rationale"] = "Upload.",
+        });
+        var disguised = await agent.FailAsync("upload_media", new()
+        {
+            ["content_base64"] = Convert.ToBase64String("<html>"u8),
+            ["content_type"] = "image/png",
+            ["file_name"] = "drill.png",
+            ["session_id"] = "upload",
+            ["rationale"] = "Upload.",
+        });
+
+        Assert.Equal(MediaErrorCodes.MediaTooLarge, Code(large));
+        Assert.Equal(MediaErrorCodes.ContentMismatch, Code(disguised));
+        Assert.Equal(0, await agent.QueryAsync(context => context.MediaAssets.CountAsync()));
+        Assert.Equal(0, await agent.QueryAsync(context => context.ChangeSets.CountAsync()));
     }
 
     [Theory]
@@ -164,6 +252,24 @@ public sealed class MediaToolsTests
             .Where(row => row.Id == page.Id)
             .ExecuteUpdateAsync(setters => setters.SetProperty(row => row.PublishedVersion, 1)));
         return page.Id;
+    }
+
+    private static readonly CheckDefinition AltTextCheck = new(
+        "altText",
+        "Every image a product page shows has alt text.",
+        JsonSerializer.Deserialize<JsonElement>("{}"),
+        [
+            new CheckExample("described", CheckVerdict.Pass, JsonSerializer.Deserialize<JsonElement>("""{"headline": "A drill"}"""), contentType: "product-page"),
+            new CheckExample("bare", CheckVerdict.Fail, JsonSerializer.Deserialize<JsonElement>("""{"headline": "![](/drill.jpg)"}"""), contentType: "product-page"),
+        ],
+        scope: new CheckScope(["product-page"]));
+
+    private static async Task PublishAsPersonAsync(ConnectedAgent agent, string setId)
+    {
+        var id = Guid.Parse(setId);
+        await agent.CallAsync("submit_change_set", new() { ["id"] = setId });
+        await agent.AsPersonAsync<IChangeSetDirectory, ChangeSet>(directory => directory.TransitionAsync(id, ChangeSetState.Approved));
+        await agent.AsPersonAsync<IChangeSetDirectory, ChangeSet>(directory => directory.PublishAsync(id));
     }
 
     private static string? Code(JsonObject failure)

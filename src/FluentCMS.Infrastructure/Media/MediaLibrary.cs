@@ -28,6 +28,8 @@ internal sealed class MediaLibrary(
     // Until multi-site (MST-01), every asset belongs to the one site (SCH-07).
     private static readonly Guid SiteId = Site.Default.Id;
 
+    public long MaxBytes => options.Value.MaxBytes;
+
     public async Task<Result<MediaAsset>> UploadAsync(NewAsset asset, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(asset);
@@ -35,9 +37,11 @@ internal sealed class MediaLibrary(
         var errors = new List<Error>();
         var metadata = Revalidate(asset.Metadata, errors);
         var contentType = asset.ContentType?.Trim().ToLowerInvariant();
-        if (!AssetMetadata.IsContentType(contentType))
+        if (!MediaTypes.IsAllowed(contentType))
         {
-            errors.Add(new Error(MediaErrorCodes.ContentTypeInvalid, $"contentType: '{asset.ContentType}' is not a media type such as 'image/jpeg'."));
+            errors.Add(new Error(
+                MediaErrorCodes.ContentTypeInvalid,
+                $"contentType: '{asset.ContentType}' is not a media type uploads accept; use one of {string.Join(", ", MediaTypes.Allowed)}."));
         }
 
         if (errors.Count > 0)
@@ -45,11 +49,26 @@ internal sealed class MediaLibrary(
             return Result<MediaAsset>.Failure(errors);
         }
 
+        // The file's start is read first, so a file that is not what it claims to be never reaches the storage.
+        var head = new byte[MediaTypes.SignatureLength];
+        var headLength = await asset.Content.ReadAtLeastAsync(head, head.Length, throwOnEndOfStream: false, cancellationToken);
+        if (headLength == 0)
+        {
+            return Result<MediaAsset>.Failure(MediaErrorCodes.MediaEmpty, "The file is empty; upload the bytes of the asset.");
+        }
+
+        if (!MediaTypes.Matches(contentType!, head.AsSpan(0, headLength)))
+        {
+            return Result<MediaAsset>.Failure(
+                MediaErrorCodes.ContentMismatch,
+                $"The file does not start like {contentType}; upload it with the media type of its content.");
+        }
+
         var storage = Storage();
         var limit = options.Value.MaxBytes;
 
         // The storage sees at most one byte past the limit, so an oversized upload costs no more than the limit to refuse.
-        var stored = await storage.SaveAsync(new CappedStream(asset.Content, limit + 1), cancellationToken);
+        var stored = await storage.SaveAsync(new CappedStream(new PrefixedStream(head.AsMemory(0, headLength), asset.Content), limit + 1), cancellationToken);
         if (stored.Length == 0 || stored.Length > limit)
         {
             await storage.DeleteAsync(stored.Key, cancellationToken);

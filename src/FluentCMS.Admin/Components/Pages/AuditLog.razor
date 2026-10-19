@@ -80,6 +80,10 @@
                                 {
                                     <Badge>@L["Agent"]</Badge>
                                 }
+                                else if (auditEvent.Initiator is SystemInitiator)
+                                {
+                                    <Badge Variant="outline">@L["System"]</Badge>
+                                }
                                 else
                                 {
                                     <Badge Variant="secondary">@L["User"]</Badge>
