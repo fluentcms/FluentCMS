@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
@@ -34,6 +35,26 @@ internal sealed class InstructionsCheckType : ICheckType
         Linear | RegexOptions.Multiline,
         MatchTimeout);
 
+    // Letters of other scripts drawn like Latin ones, after Unicode's confusables (UTS #39), mapped to the Latin letter they imitate.
+    private static readonly FrozenDictionary<char, char> LatinLookalikes = new Dictionary<int, char>
+    {
+        // Cyrillic
+        [0x0430] = 'a', [0x0435] = 'e', [0x0456] = 'i', [0x0458] = 'j', [0x043E] = 'o', [0x0440] = 'p', [0x0441] = 'c', [0x0443] = 'y',
+        [0x0445] = 'x', [0x0455] = 's', [0x0501] = 'd', [0x051B] = 'q', [0x051D] = 'w', [0x04BB] = 'h', [0x04CF] = 'l', [0x0475] = 'v',
+        [0x0410] = 'A', [0x0412] = 'B', [0x0415] = 'E', [0x041A] = 'K', [0x041C] = 'M', [0x041D] = 'H', [0x041E] = 'O', [0x0420] = 'P',
+        [0x0421] = 'C', [0x0422] = 'T', [0x0425] = 'X', [0x0423] = 'Y', [0x0406] = 'I', [0x0408] = 'J', [0x0405] = 'S', [0x04AE] = 'Y',
+        [0x050C] = 'G', [0x051A] = 'Q', [0x051C] = 'W',
+
+        // Greek
+        [0x03B1] = 'a', [0x03BF] = 'o', [0x03BD] = 'v', [0x03C1] = 'p', [0x03B9] = 'i', [0x03BA] = 'k', [0x03C5] = 'u', [0x03F3] = 'j',
+        [0x0391] = 'A', [0x0392] = 'B', [0x0395] = 'E', [0x0396] = 'Z', [0x0397] = 'H', [0x0399] = 'I', [0x039A] = 'K', [0x039C] = 'M',
+        [0x039D] = 'N', [0x039F] = 'O', [0x03A1] = 'P', [0x03A4] = 'T', [0x03A5] = 'Y', [0x03A7] = 'X',
+
+        // Armenian, and Latin letters outside ASCII
+        [0x0585] = 'o', [0x057D] = 'u', [0x0570] = 'h', [0x0578] = 'n',
+        [0x0131] = 'i', [0x0251] = 'a', [0x0261] = 'g', [0x0269] = 'i', [0x026A] = 'i', [0x0237] = 'j',
+    }.ToFrozenDictionary(pair => (char)pair.Key, pair => pair.Value);
+
     public string Name => "instructions";
 
     public CheckKind Kind => CheckKind.Deterministic;
@@ -48,23 +69,23 @@ internal sealed class InstructionsCheckType : ICheckType
     public Task<CheckOutcome> EvaluateAsync(CheckInput input, CancellationToken cancellationToken)
     {
         var phrases = (new CheckSettingsReader(Name, input.Settings).OptionalStringList("phrases") ?? [])
-            .Select(phrase => phrase.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Select(Regex.Escape))
+            .Select(phrase => Fold(phrase).Text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Select(Regex.Escape))
             .Select(words => new Regex(string.Join(@"\s+", words), Linear, MatchTimeout))
             .ToList();
         var findings = new List<CheckFinding>();
 
-        foreach (var (pointer, text) in CheckContent.Strings(input.Subject))
+        // A model reads a property name with the content it names, so names are read as well as text.
+        foreach (var (pointer, text) in CheckContent.Strings(input.Subject).Concat(CheckContent.Names(input.Subject)))
         {
             var field = CheckContent.FieldOf(pointer);
-
-            // Read without the characters that render as nothing, so a soft hyphen or zero-width space inside a word hides nothing.
-            var visible = Visible(text);
-            foreach (var match in phrases.SelectMany(phrase => phrase.Matches(visible)).Concat(Instruction.Matches(visible)).OrderBy(match => match.Index))
+            var folded = Fold(text);
+            foreach (var match in phrases.SelectMany(phrase => phrase.Matches(folded.Text)).Concat(Instruction.Matches(folded.Text)).OrderBy(match => match.Index))
             {
+                var written = text[folded.Starts[match.Index]..folded.Ends[match.Index + match.Length - 1]];
                 findings.Add(new CheckFinding(
-                    $"Rewrite or remove '{CheckContent.Quote(match.Value, 80)}' in {field}; it reads as an instruction to an AI model, not as content.",
+                    $"Rewrite or remove '{CheckContent.Quote(written, 80)}' in {field}; it reads as an instruction to an AI model, not as content.",
                     pointer,
-                    match.Value));
+                    written));
             }
 
             foreach (var hidden in Hidden(text))
@@ -79,18 +100,38 @@ internal sealed class InstructionsCheckType : ICheckType
         return Task.FromResult(findings.Count == 0 ? CheckOutcome.Pass() : CheckOutcome.Fail(findings));
     }
 
-    private static string Visible(string text)
+    // The text as a model may read it, so a look-alike spelling hides nothing: compatibility forms such as fullwidth or mathematical
+    // letters decomposed (NFKD), accents and other combining marks dropped, letters of other scripts that look Latin mapped to the
+    // letter they imitate, and characters that render as nothing, such as a soft hyphen or zero-width space, left out. Each folded
+    // character keeps where it came from, so a finding quotes the text as it was written.
+    private static (string Text, int[] Starts, int[] Ends) Fold(string text)
     {
         var builder = new StringBuilder(text.Length);
+        var starts = new List<int>(text.Length);
+        var ends = new List<int>(text.Length);
+        var index = 0;
         foreach (var rune in text.EnumerateRunes())
         {
+            var width = rune.Utf16SequenceLength;
             if (Rune.GetUnicodeCategory(rune) != UnicodeCategory.Format && !IsVariationSelector(rune))
             {
-                builder.Append(rune.ToString());
+                foreach (var character in rune.ToString().Normalize(NormalizationForm.FormKD))
+                {
+                    if (CharUnicodeInfo.GetUnicodeCategory(character) == UnicodeCategory.NonSpacingMark)
+                    {
+                        continue;
+                    }
+
+                    builder.Append(LatinLookalikes.GetValueOrDefault(character, character));
+                    starts.Add(index);
+                    ends.Add(index + width);
+                }
             }
+
+            index += width;
         }
 
-        return builder.ToString();
+        return (builder.ToString(), [.. starts], [.. ends]);
     }
 
     // Zero-width and direction-changing characters, tag characters, and runs of variation selectors, which can each spell text no

@@ -40,6 +40,11 @@ internal sealed class ModelGateway(
 
         var profile = profiles.Find(request.Profile)!;
         var initiator = currentInitiator.Current;
+        if (Unaccounted(initiator, request) is { } unaccounted)
+        {
+            return Result<ModelAnswer>.Failure([unaccounted]);
+        }
+
         var chargedTo = request.ChargedTo ?? (initiator as AgentInitiator)?.CredentialId;
         var prompt = ModelPrompt.Build(request.Instructions, request.Data);
 
@@ -77,6 +82,20 @@ internal sealed class ModelGateway(
                 ModelErrorCodes.CallFailed,
                 $"The call to the '{profile.Name}' model failed; model call {failed.Id} records the provider's error.");
         }
+    }
+
+    // Every call is made by someone who answers for it: a person, whose calls are not capped, an agent, whose are, or an engine doing
+    // an agent's work, which names that agent so the call counts against its cap (SEC-04).
+    private static Error? Unaccounted(Initiator? initiator, ModelRequest request)
+    {
+        return initiator switch
+        {
+            null => new Error(ModelErrorCodes.Unaccounted, "A model call is made for a person, an agent or one of the system's engines, and this one has none, so it is not made."),
+            SystemInitiator system when request.ChargedTo is null => new Error(
+                ModelErrorCodes.Unaccounted,
+                $"The '{system.Component}' engine asks a model only for an agent's work and names that agent in ChargedTo; this call names none, so it is not made."),
+            _ => null,
+        };
     }
 
     private Error? Refusal(string name)

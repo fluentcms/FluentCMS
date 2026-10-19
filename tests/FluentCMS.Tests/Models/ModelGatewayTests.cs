@@ -100,6 +100,41 @@ public sealed class ModelGatewayTests
         Assert.NotNull(call.Prompt);
     }
 
+    // An answer without its token counts could have cost up to its reservation, so that is what it costs, not nothing.
+    [Fact]
+    public async Task An_answer_without_token_counts_keeps_its_reserved_cost()
+    {
+        using var scenario = new ModelScenario();
+        scenario.Client.Answer = () => new ChatResponse(new ChatMessage(ChatRole.Assistant, """{"verdict": "pass"}""")) { ModelId = "gpt-test-2026-01-01" };
+
+        await scenario.Gateway.AskAsync(Request);
+
+        var call = Assert.Single(scenario.Log.Calls);
+        Assert.Equal((ModelCallOutcome.Succeeded, Reserved(ModelScenario.Checks)), (call.Outcome, call.Cost));
+    }
+
+    // SEC-04: an engine asks a model only for an agent's work and charges it to that agent; a call no one answers for is not made.
+    [Fact]
+    public async Task An_engine_call_is_charged_to_the_agent_it_names_and_a_call_no_one_answers_for_is_refused()
+    {
+        using var scenario = new ModelScenario();
+        var agent = scenario.AddAgent(spendCap: 1m, period: TimeSpan.FromDays(1));
+
+        scenario.Initiator = SystemInitiator.Checks;
+        var unnamed = await scenario.Gateway.AskAsync(Request);
+        var charged = await scenario.Gateway.AskAsync(Request with { ChargedTo = agent.Id });
+        scenario.Initiator = null;
+        var nobody = await scenario.Gateway.AskAsync(Request);
+
+        Assert.Equal(ModelErrorCodes.Unaccounted, Assert.Single(unnamed.Errors).Code);
+        Assert.Contains("'checks' engine", unnamed.Errors[0].Message);
+        Assert.True(charged.IsSuccess);
+        Assert.Equal(ModelErrorCodes.Unaccounted, Assert.Single(nobody.Errors).Code);
+        var call = Assert.Single(scenario.Log.Calls);
+        Assert.Equal(("system", (Guid?)agent.Id), (call.InitiatorKind, call.AgentCredentialId));
+        Assert.Single(scenario.Client.Calls);
+    }
+
     // A call is on record before it is sent, at the most it can cost, so one that never comes back still counts.
     [Fact]
     public async Task A_call_in_flight_is_on_record_as_pending_at_its_reserved_cost()

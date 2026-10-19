@@ -18,6 +18,15 @@ internal static class CheckContent
             .Select(item => (item.Pointer, item.Value.GetString()!));
     }
 
+    // Every property name inside the content, such as a key of a json field, which a model reads with the content it names.
+    public static IEnumerable<(string Pointer, string Name)> Names(CheckSubject subject)
+    {
+        return Roots(subject)
+            .SelectMany(root => Walk(root.Value, root.Pointer))
+            .Where(item => item.Value.ValueKind == JsonValueKind.Object)
+            .SelectMany(item => item.Value.EnumerateObject().Select(property => (Append(item.Pointer, property.Name), property.Name)));
+    }
+
     // Each field's value, or each item of a field that holds a list, as a field of a content type stores it.
     public static IEnumerable<(string Pointer, JsonElement Value)> FieldValues(CheckSubject subject)
     {
