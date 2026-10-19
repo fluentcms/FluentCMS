@@ -91,6 +91,7 @@ public static class InfrastructureServiceCollectionExtensions
         // The content type directory writes its operations through the same instance (SCH-05).
         services.AddScoped<ChangeSetDirectory>();
         services.AddScoped<IChangeSetDirectory>(provider => provider.GetRequiredService<ChangeSetDirectory>());
+        services.AddScoped<IChangeSetLists, ChangeSetLists>();
     }
 
     private static void AddAgents(IServiceCollection services)
