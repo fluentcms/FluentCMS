@@ -2,6 +2,7 @@ using FluentCMS.Core.Agents;
 using FluentCMS.Core.Audit;
 using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Checks;
+using FluentCMS.Core.Routing;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Delivery;
 using FluentCMS.Core.Entities;
@@ -18,6 +19,7 @@ using FluentCMS.Infrastructure.Agents;
 using FluentCMS.Infrastructure.Audit;
 using FluentCMS.Infrastructure.ChangeSets;
 using FluentCMS.Infrastructure.Checks;
+using FluentCMS.Infrastructure.Routing;
 using FluentCMS.Infrastructure.Content;
 using FluentCMS.Infrastructure.Delivery;
 using FluentCMS.Infrastructure.Entities;
@@ -55,6 +57,7 @@ public static class InfrastructureServiceCollectionExtensions
         AddContent(services, configuration);
         AddMedia(services, configuration);
         AddChecks(services);
+        AddRouting(services);
         AddJobs(services);
         AddModels(services, configuration);
         AddWebhooks(services, configuration);
@@ -163,6 +166,12 @@ public static class InfrastructureServiceCollectionExtensions
     {
         services.AddScoped<ICheckDirectory, CheckDirectory>();
         services.AddScoped<ICheckRuns, CheckRuns>();
+    }
+
+    private static void AddRouting(IServiceCollection services)
+    {
+        services.AddScoped<IRoutingRuleDirectory, RoutingRuleDirectory>();
+        services.AddScoped<IChangeSetRouting, ChangeSetRouting>();
     }
 
     // The worker in Host claims and finishes jobs through IJobLeases; everything else enqueues and reads through IJobQueue.
