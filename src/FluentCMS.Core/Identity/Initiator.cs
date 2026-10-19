@@ -35,6 +35,9 @@ public sealed record SystemInitiator : Initiator
     // Maintenance that clears data past its retention, such as stored prompts (AUD-04).
     public static SystemInitiator Retention { get; } = new("retention");
 
+    // The product's engines; a stored row naming any other is a fault, not an engine.
+    internal static IReadOnlyList<SystemInitiator> Engines => [Checks, Retention];
+
     public string Component { get; }
 
     // The same for a component every time, so the audit log names one engine one way in every row.
