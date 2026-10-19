@@ -57,6 +57,23 @@ public sealed class RoutingEvaluatorTests
         Assert.Equal(2, first.Rules.Count);
     }
 
+    // An auto-publish rule covers the fields it names, not the whole item, so a change to another field of the same item still waits.
+    [Fact]
+    public void An_auto_publish_rule_covers_only_the_fields_it_names()
+    {
+        var item = Item("spec", OperationKind.Update, "name", "unit");
+        var units = Rule("spec-units", new RoutingConditions { ContentTypes = ["spec"], Fields = ["unit"] }, RoutingDisposition.AutoPublish);
+        var whole = Rule("specs", new RoutingConditions { ContentTypes = ["spec"] }, RoutingDisposition.AutoPublish);
+
+        var nameOnly = RoutingEvaluator.Evaluate([SpecNames], Facts(item));
+
+        Assert.Null(nameOnly.Disposition);
+        Assert.Equal([item.ItemId], nameOnly.UnmatchedItems);
+        Assert.Equal(["spec-names"], nameOnly.Rules.Select(rule => rule.Name));
+        Assert.Equal(RoutingDisposition.AutoPublish, RoutingEvaluator.Evaluate([SpecNames, units], Facts(item)).Disposition);
+        Assert.Equal(RoutingDisposition.AutoPublish, RoutingEvaluator.Evaluate([SpecNames, whole], Facts(item)).Disposition);
+    }
+
     [Fact]
     public void Block_beats_review_and_review_takes_the_highest_count()
     {

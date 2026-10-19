@@ -26,7 +26,8 @@ internal sealed class ChangeSetRouting(
             return Result<RoutingDecision>.Failure(diff.Errors);
         }
 
-        var contentTypes = await ContentTypesAsync(set.Value.Operations, cancellationToken);
+        // Read from the diff's own operations, so an operation added between the two reads still has its content type.
+        var contentTypes = await ContentTypesAsync(diff.Value.Items.Select(item => item.Operation).ToList(), cancellationToken);
         var items = diff.Value.Items
             .Select(item => new RoutingItem(
                 item.Operation.ItemKind,

@@ -75,13 +75,16 @@ public sealed class RoutingRuleDirectoryTests
         var invalid = await RunAsync(scenario, rules => rules.CreateAsync(new NewRoutingRule("Bad Name", Definition(" ", RoutingConditions.Any, RoutingDisposition.Block))));
         var taken = await RunAsync(scenario, rules => rules.CreateAsync(new NewRoutingRule("summary-changes", NewCategories)));
         var unknown = await RunAsync(scenario, rules => rules.ReviseAsync("nothing", 1, NewCategories));
+        var unknownActivate = await RunAsync(scenario, rules => rules.ActivateAsync("nothing", 1));
+        var unknownDeactivate = await RunAsync(scenario, rules => rules.DeactivateAsync("nothing"));
+        var unknownRead = await RunAsync(scenario, rules => rules.GetAsync("nothing"));
         var stale = await RunAsync(scenario, rules => rules.ReviseAsync("summary-changes", 2, NewCategories));
         var noVersion = await RunAsync(scenario, rules => rules.ActivateAsync("summary-changes", 3));
         var already = await RunAsync(scenario, rules => rules.ActivateAsync("summary-changes", 1));
 
         Assert.Equal([RoutingErrorCodes.NameInvalid, RoutingErrorCodes.DescriptionInvalid], invalid.Errors.Select(error => error.Code));
         Assert.Equal(RoutingErrorCodes.NameTaken, Assert.Single(taken.Errors).Code);
-        Assert.Equal(RoutingErrorCodes.RuleNotFound, Assert.Single(unknown.Errors).Code);
+        Assert.All(new[] { unknown, unknownActivate, unknownDeactivate, unknownRead }, result => Assert.Equal(RoutingErrorCodes.RuleNotFound, Assert.Single(result.Errors).Code));
         Assert.Equal(RoutingErrorCodes.VersionConflict, Assert.Single(stale.Errors).Code);
         Assert.Equal(RoutingErrorCodes.VersionNotFound, Assert.Single(noVersion.Errors).Code);
         Assert.Equal(RoutingErrorCodes.AlreadyActive, Assert.Single(already.Errors).Code);

@@ -345,7 +345,7 @@ public sealed class RoutingRuleDefinition
 
         foreach (var property in value.EnumerateObject())
         {
-            if (property.Name is not ("min" or "max") || !property.Value.TryGetInt32(out var bound))
+            if (property.Name is not ("min" or "max") || property.Value.ValueKind != JsonValueKind.Number || !property.Value.TryGetInt32(out var bound))
             {
                 errors.Add(Malformed($"{path}.{property.Name} must be 'min' or 'max' with a whole number from 0 to {RoutingConditions.HighestRiskScore}."));
                 continue;
@@ -379,7 +379,7 @@ public sealed class RoutingRuleDefinition
                 case "disposition" when property.Value.ValueKind == JsonValueKind.String:
                     disposition = property.Value.GetString();
                     break;
-                case "approvals" when property.Value.TryGetInt32(out var count):
+                case "approvals" when property.Value.ValueKind == JsonValueKind.Number && property.Value.TryGetInt32(out var count):
                     approvals = count;
                     break;
                 case "approvals":

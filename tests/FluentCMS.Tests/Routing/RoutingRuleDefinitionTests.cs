@@ -65,6 +65,22 @@ public sealed class RoutingRuleDefinitionTests
         Assert.Contains(messages, message => message.Contains("$.extra"));
     }
 
+    // A number given as text or null is a malformed part like any other, reported with the rest.
+    [Fact]
+    public void A_count_or_a_bound_that_is_not_a_number_is_reported_with_the_other_problems()
+    {
+        var result = RoutingRuleDefinition.Parse("""
+            {"description": "x", "when": {"colour": ["red"], "riskScore": {"min": "10", "max": null}}, "then": {"disposition": "review", "approvals": "2"}}
+            """);
+
+        var messages = result.Errors.Select(error => error.Message).ToList();
+        Assert.Contains(messages, message => message.Contains("$.when.colour"));
+        Assert.Contains(messages, message => message.Contains("$.when.riskScore.min"));
+        Assert.Contains(messages, message => message.Contains("$.when.riskScore.max"));
+        Assert.Contains(messages, message => message.Contains("$.then.approvals"));
+        Assert.DoesNotContain(messages, message => message.Contains("Unicode"));
+    }
+
     [Theory]
     [InlineData("""{"description": "x", "then": {"disposition": "review", "approvals": 0}}""")]
     [InlineData("""{"description": "x", "then": {"disposition": "review", "approvals": 11}}""")]
