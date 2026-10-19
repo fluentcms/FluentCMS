@@ -62,7 +62,7 @@ public sealed class ChangeSetScreenTests
         });
         await host.SignInAsync(AdminHost.Owner);
 
-        Assert.Contains($"href=\"sets/{set.Id}\"", await host.Client.GetStringAsync("/"));
+        Assert.Contains($"href=\"sets/{set.Id}?queue=awaiting-me\"", await host.Client.GetStringAsync("/"));
         var page = await host.Client.GetStringAsync($"/sets/{set.Id}");
 
         Assert.Contains("<h1 class=\"text-2xl font-semibold tracking-tight whitespace-pre-line\">Add thirty types.</h1>", page);

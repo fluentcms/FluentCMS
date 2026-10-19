@@ -1,0 +1,58 @@
+# Delivery API
+
+The delivery API serves published content to frontends and agents over HTTP (API-01). It is read-only and anonymous: anyone who can reach the host can read what is published, and nothing else.
+
+## What it serves
+
+Only the published version of each entry is served, and only while the entry is not deleted. Drafts, unpublished entries, archived entries and deleted entries answer 404, the same as an id that never existed.
+
+Each item is a resolved view (CNT-04):
+
+- A reference to an entity field holds that entity's current published value. A newer draft of the entity changes nothing until it is published.
+- A reference that has no published value is `null`, and `unresolved` says why: `notPublished`, `noValue` or `deleted`.
+- References to whole entries and to media stay ids. Read a referenced entry at `/api/v1/entries/{id}`.
+
+Entities are content too, so their fields hold facts as stored: each value with its source, owner and validity.
+
+## Endpoints
+
+| Request | Returns |
+| --- | --- |
+| `GET /api/v1/content/{type}` | The published entries of a content type, in the order they were created. |
+| `GET /api/v1/entries/{id}` | One published entry. |
+
+`GET /api/v1/content/{type}` takes these query parameters:
+
+| Parameter | Meaning |
+| --- | --- |
+| `limit` | Items per page, from 1 to 100. Defaults to 20. |
+| `after` | The `next` cursor of the previous page. |
+| `references` | Keeps the entries whose published version points at this entry, entity or media asset, such as every product page that shows one product. |
+
+A list looks like this:
+
+```json
+{
+  "items": [
+    {
+      "id": "0192f3a1-7c2e-7a4b-9d3e-1f2a3b4c5d6e",
+      "type": "product-page",
+      "version": 3,
+      "fields": { "product": "0192f3a1-0000-7000-8000-000000000001", "price": 99, "headline": "A sturdy drill" },
+      "unresolved": []
+    }
+  ],
+  "next": "0192f3a1-7c2e-7a4b-9d3e-1f2a3b4c5d6e"
+}
+```
+
+`next` is `null` on the last page. Pages are keyed by id, so entries added while a client pages through do not shift the pages it has not read yet.
+
+## Errors
+
+Errors are [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem details (`application/problem+json`). `errors` lists each error with a stable `code`:
+
+| Status | Codes |
+| --- | --- |
+| 400 | `limit_invalid`, `parameter_invalid` |
+| 404 | `entry_not_found`, `content_type_not_found` |

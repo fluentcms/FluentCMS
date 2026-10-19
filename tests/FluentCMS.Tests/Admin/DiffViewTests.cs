@@ -171,6 +171,25 @@ public sealed class DiffViewTests
             Assert.Equal("true", summary.QuerySelector("svg")!.GetAttribute("aria-hidden"));
         });
         Assert.Empty(cut.FindAll("[onclick], [onkeydown], [tabindex='-1']"));
+        Assert.Empty(cut.FindAll("[data-ui]"));
+    }
+
+    [Fact]
+    public void A_roving_view_puts_only_the_first_summary_in_the_tab_order_for_admin_js_to_move()
+    {
+        using var context = new AdminTestContext();
+
+        var cut = context.Render<DiffView>(view => view
+            .Add(v => v.Roving, true)
+            .Add(v => v.Diff, Diff(
+                ItemDiff.ForSchema(Operation(OperationKind.Update, 1, 2), Product, RevisedProduct),
+                ItemDiff.ForSchema(Operation(OperationKind.Create, null, 1), null, Product),
+                ItemDiff.ForSchema(Operation(OperationKind.Delete, 1, null), Product, null))));
+
+        Assert.Equal("rove", cut.Find("ol[role=list]").GetAttribute("data-ui"));
+        var summaries = cut.FindAll("summary");
+        Assert.All(summaries, summary => Assert.Equal("rove-item", summary.GetAttribute("data-ui")));
+        Assert.Equal([null, "-1", "-1"], summaries.Select(summary => summary.GetAttribute("tabindex")));
     }
 
     [Fact]
