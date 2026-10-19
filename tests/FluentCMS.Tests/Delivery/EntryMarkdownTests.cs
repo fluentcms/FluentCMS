@@ -218,9 +218,22 @@ public sealed class EntryMarkdownTests
     [InlineData("C# and F#", "C# and F#")]
     [InlineData("Title ##", @"Title \##")]
     [InlineData("&copy; and &#169; and AT&T", @"\&copy; and \&#169; and AT&T")]
+    [InlineData("$$", @"\$$")]
+    [InlineData("^^^ figure", @"\^^^ figure")]
     public void Inline_text_escapes_only_what_could_open_structure(string text, string expected)
     {
         Assert.Equal(expected, EntryMarkdown.InlineText(text));
+    }
+
+    // CommonMark lets an item start with one blank line at most, so leading blank lines would push the text out of its bullet.
+    [Fact]
+    public void A_list_item_that_starts_with_blank_lines_stays_in_its_bullet()
+    {
+        var item = Item(PageType, "product-page", """{"tags": ["one", "\n\nsecond item", "third"]}""");
+
+        var markdown = EntryMarkdown.Render(item, "/x.md", id => $"/{id}.md");
+
+        Assert.Contains("## tags\n\n- one\n- second item\n- third\n", markdown, StringComparison.Ordinal);
     }
 
     [Fact]

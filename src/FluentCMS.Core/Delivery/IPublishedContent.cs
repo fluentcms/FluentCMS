@@ -34,7 +34,7 @@ public sealed record PublishedPage(IReadOnlyList<PublishedItem> Items, Guid? Nex
 // Title is EntryMarkdown.Title of the published version, null when it has no text.
 public sealed record PublishedSummary(Guid Id, string ContentType, string ContentTypeName, int Version, string? Title);
 
-// The content type's name and current definition come along, since the published version is read against them.
+// The content type's name and the definition the version was written against come along, since the version is read against it.
 public sealed record PublishedItem(
     Guid Id,
     string ContentType,

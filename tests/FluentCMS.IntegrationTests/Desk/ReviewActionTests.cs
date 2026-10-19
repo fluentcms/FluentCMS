@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using FluentCMS.Core.Audit;
 using FluentCMS.Core.ChangeSets;
@@ -54,6 +55,48 @@ public sealed partial class ReviewActionTests
         var rejected = await ActAsync(host, second.Id, "reject", "?queue=awaiting-me", ("Reject.Reason", "Not needed."));
         Assert.Equal("/?queue=awaiting-me&done=rejected", host.LocationOf(rejected));
         Assert.Contains("data-testid=\"desk-done\"", await host.Client.GetStringAsync(host.LocationOf(rejected)!));
+    }
+
+    [Fact]
+    public async Task Submitting_an_open_set_runs_its_checks_and_the_view_shows_each_result_with_its_evidence()
+    {
+        using var install = new TemporaryInstall();
+        await using var host = await AdminHost.StartAsync(install);
+        var ownerId = await host.CreateFirstAdministratorAsync();
+        await host.AsUserAsync<IContentTypeDirectory, ContentType>(ownerId, async types => (await types.CreateAsync(new NewContentType(
+            "Product page", "product-page", new ContentTypeDefinition([new FieldDefinition("headline", "text", required: true)])))).Value);
+        await host.AsUserAsync<FluentCMS.Core.Checks.ICheckDirectory, bool>(ownerId, async checks =>
+        {
+            var definition = new FluentCMS.Core.Checks.CheckDefinition(
+                "terms",
+                "No superlatives.",
+                JsonDocument.Parse("""{"terms": ["best in class"]}""").RootElement,
+                [
+                    new FluentCMS.Core.Checks.CheckExample("passes", FluentCMS.Core.Checks.CheckVerdict.Pass, JsonDocument.Parse("""{"headline": "A kettle"}""").RootElement, contentType: "product-page"),
+                    new FluentCMS.Core.Checks.CheckExample("fails", FluentCMS.Core.Checks.CheckVerdict.Fail, JsonDocument.Parse("""{"headline": "Best in class"}""").RootElement, contentType: "product-page"),
+                ],
+                scope: new FluentCMS.Core.Checks.CheckScope(["product-page"]));
+            Assert.True((await checks.CreateAsync(new FluentCMS.Core.Checks.NewCheck("no-superlatives", definition))).IsSuccess);
+            return (await checks.ActivateAsync("no-superlatives", 1)).IsSuccess;
+        });
+        var entry = await host.AsUserAsync<FluentCMS.Core.Content.IEntryDirectory, FluentCMS.Core.Content.Entry>(ownerId, async entries => (await entries.CreateAsync(
+            new FluentCMS.Core.Content.NewEntry("product-page", JsonDocument.Parse("""{"headline": "The best in class kettle"}""").RootElement))).Value);
+        var set = await host.AsUserAsync<IChangeSetDirectory, ChangeSet>(ownerId, async directory =>
+        {
+            var opened = (await directory.OpenAsync(new NewChangeSet("Launch the kettle.", []))).Value;
+            return (await directory.AddOperationAsync(opened.Id, ChangeOperation.Create(OperationKind.Create, ItemKind.Entry, entry.Id, null, 1).Value)).Value;
+        });
+        await host.SignInAsync(AdminHost.Owner);
+        Assert.Equal(["submit"], Actions(await host.Client.GetStringAsync($"/sets/{set.Id}")));
+
+        var submitted = await (await ActAsync(host, set.Id, "submit")).Content.ReadAsStringAsync();
+
+        Assert.Contains("data-state=\"checks-failed\"", submitted);
+        Assert.Contains("data-testid=\"check-run-status\" data-status=\"fail\"", submitted);
+        var result = submitted[submitted.IndexOf("data-check=\"no-superlatives\"", StringComparison.Ordinal)..];
+        Assert.StartsWith("data-check=\"no-superlatives\" data-status=\"fail\"", result);
+        Assert.Contains("/headline", result);
+        Assert.Contains("best in class", result);
     }
 
     [Fact]
