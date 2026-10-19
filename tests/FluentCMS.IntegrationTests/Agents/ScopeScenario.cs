@@ -55,11 +55,11 @@ internal sealed class ScopeScenario : IAsyncDisposable
         await scenario.RunAsync<IContentTypeDirectory, ContentType>(async directory => (await directory.CreateAsync(new NewContentType(
             "Product",
             "product",
-            new ContentTypeDefinition([new FieldDefinition("name", "text"), new FieldDefinition("price", "number")])))).Value);
+            new ContentTypeDefinition([new FieldDefinition("name", "text"), new FieldDefinition("price", "number")])), TestChangeSetTargets.ContentModel)).Value);
         await scenario.RunAsync<IContentTypeDirectory, ContentType>(async directory => (await directory.CreateAsync(new NewContentType(
             "Category",
             "category",
-            new ContentTypeDefinition([new FieldDefinition("name", "text")])))).Value);
+            new ContentTypeDefinition([new FieldDefinition("name", "text")])), TestChangeSetTargets.ContentModel)).Value);
 
         scenario.Product = await scenario.RunAsync<IEntryDirectory, Entry>(async directory =>
             (await directory.CreateAsync(new NewEntry("product", Json("""{"name":"Kettle","price":20}""")))).Value);

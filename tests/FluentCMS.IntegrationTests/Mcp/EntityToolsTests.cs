@@ -175,7 +175,7 @@ public sealed class EntityToolsTests
         Assert.Contains("get_content_type", (string?)notRelation["hint"]);
         Assert.Equal(ContentErrorCodes.ReferenceTypeMismatch, Code(wrongType));
         Assert.Equal(versions, await agent.QueryAsync(context => context.EntryVersions.CountAsync()));
-        Assert.Equal(0, await agent.QueryAsync(context => context.ChangeSets.CountAsync()));
+        Assert.Equal(0, await agent.QueryAsync(context => context.ChangeSets.CountAsync(set => set.SessionId != TestChangeSetTargets.ContentModelSession)));
     }
 
     private static async Task CatalogAsync(ConnectedAgent agent)
@@ -183,7 +183,7 @@ public sealed class EntityToolsTests
         async Task TypeAsync(string slug, bool isEntity, params FieldDefinition[] fields)
         {
             await agent.AsPersonAsync<IContentTypeDirectory, ContentType>(directory =>
-                directory.CreateAsync(new NewContentType(slug, slug, new ContentTypeDefinition(fields, isEntity))));
+                directory.CreateAsync(new NewContentType(slug, slug, new ContentTypeDefinition(fields, isEntity)), TestChangeSetTargets.ContentModel));
         }
 
         await TypeAsync("category", true, new FieldDefinition("name", "text"));

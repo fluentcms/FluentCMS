@@ -116,7 +116,7 @@ public sealed partial class SecurityEventTests
     private static async Task AwaitingReviewAsync(AdminHost host, Guid ownerId)
     {
         var type = await host.AsUserAsync<IContentTypeDirectory, ContentType>(ownerId, async directory =>
-            (await directory.CreateAsync(new NewContentType("Product", "product", new ContentTypeDefinition([new FieldDefinition("title", "text")])))).Value);
+            (await directory.CreateAsync(new NewContentType("Product", "product", new ContentTypeDefinition([new FieldDefinition("title", "text")])), TestChangeSetTargets.ContentModel)).Value);
         await host.AsUserAsync<IChangeSetDirectory, ChangeSet>(ownerId, async directory =>
         {
             var set = (await directory.OpenAsync(new NewChangeSet("Add the product type.", []))).Value;
