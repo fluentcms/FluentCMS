@@ -30,7 +30,7 @@ public sealed class McpCoverageTests
         new("ENT", "List unsourced facts", ["list_unsourced_facts"]),
         new("ENT", "Propose a fact with its source, or a relation", ["set_entity_fact", "relate_entities"]),
         new("ENT", "Read the pages a change set's entity changes affect", ["get_blast_radius"]),
-        Missing("ENT", "List stale facts", "#2417"),
+        new("ENT", "List stale facts", ["list_stale_facts"]),
         Missing("RUL", "Read and propose rules", "#2419"),
         new("CHK", "Run the checks on a draft before proposing it", ["check_draft"]),
         Missing("CHK", "Read the check results of a change set", "#2420"),
