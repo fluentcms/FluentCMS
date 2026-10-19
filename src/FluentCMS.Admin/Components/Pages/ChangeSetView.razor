@@ -107,7 +107,7 @@
                         <Button Type="submit" data-action="publish" aria-keyshortcuts="P">@L["Publish"] <Kbd Class="bg-primary-foreground/20 text-primary-foreground" aria-hidden="true">P</Kbd></Button>
                     </form>
                 }
-                @if (set.State is ChangeSetState.AwaitingReview or ChangeSetState.ChecksFailed)
+                @if (set.State is ChangeSetState.AwaitingReview or ChangeSetState.ChecksFailed or ChangeSetState.Approved)
                 {
                     <Dialog>
                         <DialogTrigger Variant="outline" data-action="reject" aria-keyshortcuts="R">@L["Reject"] <Kbd aria-hidden="true">R</Kbd></DialogTrigger>
@@ -153,7 +153,7 @@
             {
                 <form method="post" @onsubmit="PublishAsync" @formname="publish" hidden></form>
             }
-            @if (set.State is not (ChangeSetState.AwaitingReview or ChangeSetState.ChecksFailed))
+            @if (set.State is not (ChangeSetState.AwaitingReview or ChangeSetState.ChecksFailed or ChangeSetState.Approved))
             {
                 <form method="post" @onsubmit="RejectAsync" @formname="reject" hidden></form>
             }
@@ -578,7 +578,7 @@
     {
         ChangeSetState.AwaitingReview => L["Approve the set, or reject it with a reason."],
         ChangeSetState.ChecksFailed => L["The checks failed. Whoever opened the set can fix and resubmit it, or you can reject it with a reason."],
-        ChangeSetState.Approved => L["The set is approved. Publishing it makes all its items live together."],
+        ChangeSetState.Approved => L["The set is approved. Publishing it makes all its items live together; if it can no longer publish, reject it with a reason."],
         ChangeSetState.Published => L["The set is live. Reverting it opens a set that undoes it, which is reviewed like any other."],
         ChangeSetState.Open => L["The set is still open. Submit it when it holds every change; the checks run, then a person reviews it."],
         ChangeSetState.ChecksRunning => L["The checks are running, so it cannot be reviewed yet."],
