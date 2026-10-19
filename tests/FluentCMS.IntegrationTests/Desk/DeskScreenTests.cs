@@ -62,6 +62,21 @@ public sealed partial class DeskScreenTests
         Assert.Contains("data-testid=\"desk-queues\"", desk);
     }
 
+    [Fact]
+    public async Task A_page_that_is_not_a_number_shows_the_first_page()
+    {
+        using var install = new TemporaryInstall();
+        await using var host = await AdminHost.StartAsync(install);
+        await host.CreateFirstAdministratorAsync();
+        await host.SignInAsync(AdminHost.Owner);
+
+        foreach (var path in new[] { "/?queue=reverted&page=abc", "/?queue=reverted&page=99999999999", "/security?page=99999999999", "/security?page=abc" })
+        {
+            var response = await host.Client.GetAsync(path);
+            Assert.True(response.StatusCode == System.Net.HttpStatusCode.OK, $"{path}: {(int)response.StatusCode}");
+        }
+    }
+
     private static async Task<Guid> AwaitingReviewAsync(AdminHost host, Guid userId, string slug)
     {
         var type = await host.AsUserAsync<IContentTypeDirectory, ContentType>(userId, async directory =>
