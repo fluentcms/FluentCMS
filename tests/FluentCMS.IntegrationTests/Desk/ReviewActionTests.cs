@@ -158,7 +158,7 @@ public sealed partial class ReviewActionTests
         var revert = await host.AsUserAsync<IChangeSetDirectory, ChangeSet>(ownerId, async sets => (await sets.GetAsync(revertId)).Value);
         Assert.Equal(set.Id, revert.RevertsChangeSetId);
 
-        // A double click, or Back and click again, lands on the revert already in progress.
+        // Back and click again lands on the revert already in progress.
         var again = await ActAsync(host, set.Id, "revert");
         Assert.Equal(location, host.LocationOf(again));
         Assert.Equal(1, await QueryAsync(host, context => context.ChangeSets.CountAsync(row => row.RevertsChangeSetId == set.Id)));

@@ -1,5 +1,6 @@
 @using FluentCMS.Core.ChangeSets
-@inject IChangeSetDirectory Directory
+@using Microsoft.Extensions.DependencyInjection
+@inject IServiceScopeFactory Scopes
 @inject IStringLocalizer<ChangeSetItems> L
 
 @* The set view's interactive island: DiffView adds items in batches over the circuit (PERF-04) while the rest of the page stays static. *@
@@ -32,7 +33,10 @@
             return;
         }
 
-        var diff = await Directory.DiffAsync(ChangeSetId);
+        // Prerendered while the set view may still be loading: an async read on PostgreSQL can finish at once, so the view renders the
+        // island before its own reads are done. Its own scope keeps the two off one DbContext.
+        await using var scope = Scopes.CreateAsyncScope();
+        var diff = await scope.ServiceProvider.GetRequiredService<IChangeSetDirectory>().DiffAsync(ChangeSetId);
         if (diff.IsSuccess)
         {
             (_diff, _error) = (diff.Value, null);

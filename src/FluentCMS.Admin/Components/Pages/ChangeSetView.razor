@@ -504,7 +504,8 @@
         Navigation.NavigateTo(_next is { } next ? $"sets/{next}?queue={slug}&done={done}" : $"?queue={slug}&done={done}");
     }
 
-    // A revert already in progress is where a second click lands, so a double click or a resubmitted page opens no second set.
+    // A revert already in progress is where a second click lands, so a resubmitted page or a later click opens no second set. Two
+    // posts at the same instant can still both open one, until the directory refuses it (#2646).
     private async Task RevertAsync()
     {
         var rationale = _set is { } set ? L["Revert change set {0}: {1}", set.Id, set.Rationale].Value : string.Empty;
