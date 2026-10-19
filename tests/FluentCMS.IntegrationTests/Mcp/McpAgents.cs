@@ -21,8 +21,9 @@ internal static class McpAgents
     // The built-in tools every server lists, sorted by name.
     public static readonly string[] BuiltInTools =
     [
-        "create_content_type", "create_entry", "delete_entry", "get_change_set", "get_change_set_diff", "get_content_type", "get_entry",
-        "get_entry_history", "get_resolved_entry", "get_schema_document", "get_where_used", "list_content_types", "list_entries",
+        "bulk_update_entries", "create_content_type", "create_entry", "delete_entry", "get_change_set", "get_change_set_diff",
+        "get_content_type", "get_entry", "get_entry_history", "get_job", "get_resolved_entry", "get_schema_document", "get_where_used",
+        "list_content_types", "list_entries",
         "open_change_set", "reopen_change_set", "revise_content_type", "submit_change_set", "update_entry",
     ];
 

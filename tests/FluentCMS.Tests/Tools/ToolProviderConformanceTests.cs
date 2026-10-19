@@ -114,3 +114,13 @@ public sealed class EntryToolsConformanceTests : ToolProviderConformanceTests
 {
     protected override object Provider { get; } = new EntryTools();
 }
+
+public sealed class BulkToolsConformanceTests : ToolProviderConformanceTests
+{
+    protected override object Provider { get; } = new BulkTools();
+}
+
+public sealed class JobToolsConformanceTests : ToolProviderConformanceTests
+{
+    protected override object Provider { get; } = new JobTools();
+}

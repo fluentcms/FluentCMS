@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Identity;
+using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Schema;
 
 namespace FluentCMS.Core.Builtin.Tools;
@@ -156,6 +157,23 @@ internal static class ToolJson
             ["isLatest"] = usage.IsLatest,
             ["isPublished"] = usage.IsPublished,
             ["paths"] = new JsonArray([.. usage.Paths.Select(path => JsonValue.Create(path))]),
+        };
+    }
+
+    public static JsonObject Job(Job job)
+    {
+        return new JsonObject
+        {
+            ["id"] = job.Id.ToString(),
+            ["type"] = job.Type,
+            ["state"] = Name(job.State),
+            ["subject"] = job.Subject is { } subject ? new JsonObject { ["type"] = subject.Type, ["id"] = subject.Id.ToString() } : null,
+            ["progress"] = new JsonObject { ["done"] = job.Progress.Done, ["total"] = job.Progress.Total, ["message"] = job.Progress.Message },
+            ["attempts"] = job.Attempts,
+            ["maxAttempts"] = job.MaxAttempts,
+            ["lastError"] = job.LastError,
+            ["createdAt"] = job.CreatedAt.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
+            ["finishedAt"] = job.FinishedAt?.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
         };
     }
 

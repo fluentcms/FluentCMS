@@ -31,7 +31,8 @@ public sealed class McpCoverageTests
         Missing("DSK", "Read review decisions, read-only", "#2422"),
         Missing("MED", "Upload and describe media", "#2427"),
         Missing("Search", "Search entries and entities", "#2430"),
-        Missing("MCP-08", "Bulk operations that return a change set id and report progress", "#2423"),
+        new("MCP-08", "Bulk updates of entries and entities that return a change set id at once", ["bulk_update_entries"]),
+        new("MCP-08", "Read the progress of background work", ["get_job"]),
     ];
 
     // A person approves, rejects, publishes and reverts; no tool may (MCP-06, SEC-02). Tool names start with their verb.
