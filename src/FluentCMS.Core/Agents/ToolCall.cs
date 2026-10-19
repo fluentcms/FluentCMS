@@ -10,6 +10,9 @@ public enum ToolCallOutcome
 
     // The tool threw instead of returning a result.
     Errored,
+
+    // The tool never ran because the call was over the credential's calls per period; not counted toward that cap.
+    Refused,
 }
 
 // One tool call an agent made (MCP-07). Arguments and results are not kept: they hold content, and the audit log records every

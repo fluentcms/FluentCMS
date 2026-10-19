@@ -48,6 +48,43 @@ public sealed class ItemDiff
         return new ItemDiff(operation, properties, fields);
     }
 
+    // The base fields are absent for a create and the proposed ones for a delete, as the operation's versions say. A field's value is
+    // what the entry stores under its name, which on an entity is the whole fact. Fields follow the order of the definition given,
+    // the one the shown version was written against, so the diff reads the same on every database.
+    public static ItemDiff ForEntry(
+        ChangeOperation operation,
+        JsonElement? baseFields,
+        JsonElement? proposedFields,
+        ContentTypeDefinition definition)
+    {
+        ArgumentNullException.ThrowIfNull(operation);
+        ArgumentNullException.ThrowIfNull(definition);
+
+        if (operation.ItemKind is not (ItemKind.Entry or ItemKind.Entity))
+        {
+            throw new ArgumentException($"An entry diff is for an entry or entity operation, and this one is on a {operation.ItemKind} item.", nameof(operation));
+        }
+
+        if ((operation.BaseVersion is null) != (baseFields is null) || (operation.ProposedVersion is null) != (proposedFields is null))
+        {
+            throw new ArgumentException("An entry diff takes fields for each version the operation names, and only for those.");
+        }
+
+        var order = definition.Fields.Select((field, index) => (field.Name, index)).ToDictionary(field => field.Name, field => field.index, StringComparer.Ordinal);
+
+        return new ItemDiff(operation, [], ValueDiff.Compare(EntryValues(baseFields, order), EntryValues(proposedFields, order)));
+    }
+
+    // A field the definition no longer has goes last, by name.
+    private static IEnumerable<KeyValuePair<string, JsonElement>> EntryValues(JsonElement? fields, Dictionary<string, int> order)
+    {
+        return fields?.EnumerateObject()
+            .Select(property => new KeyValuePair<string, JsonElement>(property.Name, property.Value))
+            .OrderBy(field => order.GetValueOrDefault(field.Key, int.MaxValue))
+            .ThenBy(field => field.Key, StringComparer.Ordinal)
+            .ToList() ?? [];
+    }
+
     private static List<KeyValuePair<string, JsonElement>> SchemaProperties(ContentTypeDefinition? definition, ContentTypeDefinition? other)
     {
         if (definition is null)

@@ -5,7 +5,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FluentCMS.Infrastructure.Agents;
 
-// Counted from the audit log, which records every change set an agent opens with its credential (AUD-01).
+// Counted from the audit log, which records every change set an agent opens with its credential (AUD-01), and from the tool
+// call log (MCP-07).
 internal sealed class AgentActivity(FluentCmsDbContext context) : IAgentActivity
 {
     // SQL rather than LINQ because EF Core will not compare a DateTimeOffset on SQLite, which stores it as text; stored
@@ -16,6 +17,18 @@ internal sealed class AgentActivity(FluentCmsDbContext context) : IAgentActivity
             .FromSql($"""
                 SELECT * FROM "AuditEvents"
                 WHERE "Operation" = {ChangeSetDirectory.OpenedOperation} AND "AgentCredentialId" = {credentialId} AND "Timestamp" >= {since.ToUniversalTime()}
+                """)
+            .CountAsync(cancellationToken);
+    }
+
+    public Task<int> ToolCallsSinceAsync(Guid credentialId, DateTimeOffset since, CancellationToken cancellationToken = default)
+    {
+        var refused = nameof(ToolCallOutcome.Refused);
+
+        return context.ToolCalls
+            .FromSql($"""
+                SELECT * FROM "ToolCalls"
+                WHERE "AgentCredentialId" = {credentialId} AND "Timestamp" >= {since.ToUniversalTime()} AND "Outcome" <> {refused}
                 """)
             .CountAsync(cancellationToken);
     }

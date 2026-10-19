@@ -1,3 +1,5 @@
+using FluentCMS.Core.Content;
+
 namespace FluentCMS.Infrastructure.Content;
 
 // An entry and its pointers to the latest draft and the published version; each version's fields are their own EntryVersionRow.
@@ -12,6 +14,9 @@ public sealed class EntryRow
     public int LatestVersion { get; set; }
 
     public int? PublishedVersion { get; set; }
+
+    // Never InReview, which is read from the change sets holding the entry (CNT-01).
+    public EntryState State { get; set; }
 
     // Set while the entry is soft deleted (CNT-06).
     public DateTimeOffset? DeletedAt { get; set; }

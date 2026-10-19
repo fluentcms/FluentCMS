@@ -174,6 +174,76 @@ public sealed class ItemDiffTests
         Assert.Throws<ArgumentException>(() => ItemDiff.ForSchema(Update(), null, Product));
     }
 
+    [Fact]
+    public void An_entry_update_lists_each_changed_field_in_the_definitions_order()
+    {
+        var operation = EntryOperation(OperationKind.Update, 1, 2);
+
+        var diff = ItemDiff.ForEntry(
+            operation,
+            Json("""{"title": "Widget", "price": 10, "color": "red", "legacy": "old"}"""),
+            Json("""{"color": "blue", "price": 10.0, "title": "Widget Pro"}"""),
+            Product);
+
+        Assert.Empty(diff.Properties);
+        Assert.Equal(
+            [("title", ValueChange.Changed), ("color", ValueChange.Changed), ("legacy", ValueChange.Removed)],
+            diff.Fields.Select(field => (field.Name, field.Change)));
+        AssertJson("\"Widget\"", diff.Fields[0].Before);
+        AssertJson("\"Widget Pro\"", diff.Fields[0].After);
+    }
+
+    [Fact]
+    public void An_entitys_field_is_its_whole_fact()
+    {
+        var fact = """{"value": 10, "source": null, "owner": null, "validFrom": null, "validUntil": null, "lastVerified": null}""";
+        var sourced = """{"value": 10, "source": {"kind": "url", "reference": "https://example.com"}, "owner": null, "validFrom": null, "validUntil": null, "lastVerified": null}""";
+
+        var diff = ItemDiff.ForEntry(
+            ChangeOperation.Create(OperationKind.Update, ItemKind.Entity, Item, 1, 2).Value,
+            Json($$"""{"price": {{fact}}}"""),
+            Json($$"""{"price": {{sourced}}}"""),
+            Product);
+
+        var price = Assert.Single(diff.Fields);
+        Assert.Equal(("price", ValueChange.Changed), (price.Name, price.Change));
+        AssertJson(sourced, price.After);
+    }
+
+    [Fact]
+    public void An_entry_create_lists_every_field_as_added_and_a_delete_as_removed()
+    {
+        var fields = Json("""{"color": "red", "title": "Widget"}""");
+
+        var create = ItemDiff.ForEntry(EntryOperation(OperationKind.Create, null, 1), null, fields, Product);
+        var delete = ItemDiff.ForEntry(EntryOperation(OperationKind.Delete, 1, null), fields, null, Product);
+
+        Assert.Equal([("title", ValueChange.Added), ("color", ValueChange.Added)], create.Fields.Select(field => (field.Name, field.Change)));
+        Assert.Equal([("title", ValueChange.Removed), ("color", ValueChange.Removed)], delete.Fields.Select(field => (field.Name, field.Change)));
+        Assert.All(create.Fields, field => Assert.Null(field.Before));
+        Assert.All(delete.Fields, field => Assert.Null(field.After));
+    }
+
+    [Fact]
+    public void An_entry_diff_is_only_for_entry_operations_with_fields_for_their_versions()
+    {
+        var fields = Json("""{"title": "Widget"}""");
+
+        Assert.Throws<ArgumentException>(() => ItemDiff.ForEntry(Update(), fields, fields, Product));
+        Assert.Throws<ArgumentException>(() => ItemDiff.ForEntry(EntryOperation(OperationKind.Update, 1, 2), null, fields, Product));
+        Assert.Throws<ArgumentException>(() => ItemDiff.ForEntry(EntryOperation(OperationKind.Create, null, 1), fields, fields, Product));
+    }
+
+    private static ChangeOperation EntryOperation(OperationKind kind, int? baseVersion, int? proposedVersion)
+    {
+        return ChangeOperation.Create(kind, ItemKind.Entry, Item, baseVersion, proposedVersion).Value;
+    }
+
+    private static JsonElement Json(string json)
+    {
+        return JsonSerializer.Deserialize<JsonElement>(json);
+    }
+
     private static ChangeOperation Update()
     {
         return ChangeOperation.Create(OperationKind.Update, ItemKind.Schema, Item, 1, 2).Value;
