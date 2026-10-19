@@ -50,7 +50,8 @@ internal sealed class ModelScenario : IAsyncDisposable
         set => _initiator.Current = value;
     }
 
-    public static async Task<ModelScenario> CreateAsync(string provider, Dictionary<string, string?>? settings = null)
+    // replace runs after Infrastructure registers its services, to swap one for a test double.
+    public static async Task<ModelScenario> CreateAsync(string provider, Dictionary<string, string?>? settings = null, Action<IServiceCollection>? replace = null)
     {
         var database = await TemporaryDatabase.CreateAsync(provider);
         var initiator = new SwitchableInitiator { Current = Amir };
@@ -91,7 +92,8 @@ internal sealed class ModelScenario : IAsyncDisposable
                 .AddSingleton<ICurrentInitiator>(initiator)
                 .AddSingleton<TimeProvider>(clock)
                 .AddSingleton(new ModelTransport(() => providers))
-                .AddSingleton<ISecretProtector, NoSecrets>());
+                .AddSingleton<ISecretProtector, NoSecrets>(),
+            replace);
 
         await TestServices.MigrateAsync(services);
         return new ModelScenario(database, services, initiator, clock, providers);

@@ -32,7 +32,9 @@ public sealed class RetentionPurgeTests
         var expired = Guid.CreateVersion7();
         await using (var first = await AdminHost.StartAsync(install, settings: settings))
         {
-            // The first host only migrates the database here; its own run purges nothing, so the second host's run is the one that does.
+            // The first host only migrates the database. Its own run ends before the expired call goes in, so the second host's run
+            // is the one that purges it.
+            await UntilAsync(first, context => context.Jobs.AnyAsync(row => row.Type == JobType && row.State == JobState.Succeeded));
             await QueryAsync(first, context =>
             {
                 context.ModelCalls.Add(ExpiredCall(expired));
@@ -42,11 +44,7 @@ public sealed class RetentionPurgeTests
         }
 
         await using var host = await AdminHost.StartAsync(install, settings: settings);
-        var deadline = DateTime.UtcNow.AddSeconds(30);
-        while ((await QueryAsync(host, context => context.ModelCalls.AsNoTracking().SingleAsync(row => row.Id == expired))).PurgedAt is null && DateTime.UtcNow < deadline)
-        {
-            await Task.Delay(100);
-        }
+        await UntilAsync(host, context => context.Jobs.AnyAsync(row => row.Type == JobType && row.State == JobState.Succeeded));
 
         await using var second = await AdminHost.StartAsync(install, settings: new Dictionary<string, string?>(database.Configuration) { ["JobQueue:PollingInterval"] = "01:00:00" });
 
@@ -111,22 +109,53 @@ public sealed class RetentionPurgeTests
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
     [PostgresData]
-    public async Task A_run_that_finds_a_run_queued_schedules_none_and_a_failed_purge_fails_it(string provider)
+    public async Task A_run_that_finds_a_run_queued_schedules_none(string provider)
     {
         await using var scenario = await ModelScenario.CreateAsync(provider);
         await scenario.RunAsync(async services =>
         {
             await services.GetRequiredService<IRetentionSchedule>().EnsureScheduledAsync();
-            await services.GetRequiredService<IRetentionSchedule>().EnsureScheduledAsync();
             return true;
         });
+        var queued = Assert.Single(await RunsAsync(scenario)).Id;
+        scenario.Initiator = SystemInitiator.Retention;
 
-        // Another engine may not purge, so the run fails with the reason, and the run already queued stays the only one.
-        scenario.Initiator = SystemInitiator.Checks;
+        var ran = await RunAsync(scenario, Guid.CreateVersion7(), []);
+
+        Assert.True(ran.IsSuccess, string.Join(" ", ran.Errors.Select(error => error.Message)));
+        var still = Assert.Single(await RunsAsync(scenario));
+        Assert.Equal((queued, JobState.Queued), (still.Id, still.State));
+    }
+
+    // The next run is scheduled before the purge, so a run whose purge fails still leaves one coming.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_failed_purge_fails_the_run_with_its_reason(string provider)
+    {
+        await using var scenario = await ModelScenario.CreateAsync(provider, replace: services => services.AddScoped<IModelCallLog, FailingPurge>());
+        scenario.Initiator = SystemInitiator.Retention;
+
         var failed = await RunAsync(scenario, Guid.CreateVersion7(), []);
 
-        Assert.Equal(ModelErrorCodes.PeopleOnly, Assert.Single(failed.Errors).Code);
-        Assert.Single(await RunsAsync(scenario));
+        var error = Assert.Single(failed.Errors);
+        Assert.Equal((FailingPurge.Code, FailingPurge.Message), (error.Code, error.Message));
+        Assert.Equal(JobState.Queued, Assert.Single(await RunsAsync(scenario)).State);
+    }
+
+    // The worker runs the purge only as the retention engine; run as any other, it purges and schedules nothing.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_run_as_another_engine_purges_and_schedules_nothing(string provider)
+    {
+        await using var scenario = await ModelScenario.CreateAsync(provider);
+        scenario.Initiator = SystemInitiator.Checks;
+
+        var refused = await RunAsync(scenario, Guid.CreateVersion7(), []);
+
+        Assert.Equal(ModelErrorCodes.PeopleOnly, Assert.Single(refused.Errors).Code);
+        Assert.Empty(await RunsAsync(scenario));
     }
 
     private static async Task<FluentCMS.Core.Results.Result> RunAsync(ModelScenario scenario, Guid jobId, List<int> reported)
@@ -159,6 +188,16 @@ public sealed class RetentionPurgeTests
     private static Task<List<JobRow>> RunsAsync(ModelScenario scenario)
     {
         return scenario.QueryAsync(context => context.Jobs.AsNoTracking().Where(row => row.Type == JobType).ToListAsync());
+    }
+
+    private static async Task UntilAsync(AdminHost host, Func<FluentCmsDbContext, Task<bool>> condition)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(30);
+        while (!await QueryAsync(host, condition))
+        {
+            Assert.True(DateTime.UtcNow < deadline, "The host's retention run did not finish within 30 seconds.");
+            await Task.Delay(100);
+        }
     }
 
     private static async Task<T> QueryAsync<T>(AdminHost host, Func<FluentCmsDbContext, Task<T>> query)
@@ -204,6 +243,26 @@ public sealed class RetentionPurgeTests
             CreatedAt = at,
             ScheduledAt = at,
         };
+    }
+
+    // A call log whose purge fails, as when the database refuses it; a run uses nothing else of it.
+    private sealed class FailingPurge : IModelCallLog
+    {
+        public const string Code = "model_purge_failed";
+        public const string Message = "The stored prompts could not be cleared.";
+
+        public Task AppendAsync(ModelCall call, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task CompleteAsync(ModelCall call, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<decimal> SpendAsync(Guid agentCredentialId, DateTimeOffset since, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<IReadOnlyList<ModelCall>> FindByPromptHashAsync(string promptHash, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<FluentCMS.Core.Results.Result<int>> PurgeAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(FluentCMS.Core.Results.Result<int>.Failure(Code, Message));
+        }
     }
 
     // Copies of the one recorded call, so a purge has more than a batch to clear.
