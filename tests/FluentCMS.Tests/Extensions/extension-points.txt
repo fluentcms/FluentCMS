@@ -1,3 +1,5 @@
+FluentCMS.Core.ChangeSets.IChangeSetEvents
+  PublishedAsync(ChangeSet published, ChangeSet? reverted, CancellationToken cancellationToken = default): Task
 FluentCMS.Core.Checks.ICheckType
   EvaluateAsync(CheckInput input, CancellationToken cancellationToken): Task<CheckOutcome>
   Kind: CheckKind { get; }
