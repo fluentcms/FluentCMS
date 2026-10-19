@@ -109,3 +109,8 @@ public sealed class ChangeSetToolsConformanceTests : ToolProviderConformanceTest
 {
     protected override object Provider { get; } = new ChangeSetTools();
 }
+
+public sealed class EntryToolsConformanceTests : ToolProviderConformanceTests
+{
+    protected override object Provider { get; } = new EntryTools();
+}

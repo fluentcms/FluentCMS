@@ -173,74 +173,8 @@ public sealed class WriteToolsTests
         return (string?)failure["errors"]![0]!["code"];
     }
 
-    private static async Task<ConnectedAgent> AgentAsync(string provider, int itemsPerChangeSet = 200)
+    private static Task<ConnectedAgent> AgentAsync(string provider, int itemsPerChangeSet = 200)
     {
-        var install = new TemporaryInstall();
-        var database = await TemporaryDatabase.CreateAsync(provider);
-        var host = await AdminHost.StartAsync(install, settings: database.Configuration);
-        var administrator = await host.CreateFirstAdministratorAsync();
-        var issued = await McpAgents.IssueAsync(host, administrator, new NewAgentCredential(
-            "schema-agent",
-            DateTimeOffset.UtcNow.AddDays(30),
-            AgentScope.Create([Site.Default.Id], null, null, [AgentOperation.Read, AgentOperation.Create, AgentOperation.Update]).Value,
-            AgentCaps.Create(600, TimeSpan.FromHours(1), 5m, TimeSpan.FromDays(1), itemsPerChangeSet, 20).Value));
-        var client = await McpAgents.ConnectOverHttpAsync(host, issued.Key);
-        return new ConnectedAgent(install, database, host, administrator, issued.Credential, client);
-    }
-
-    private sealed class ConnectedAgent(
-        TemporaryInstall install,
-        TemporaryDatabase database,
-        AdminHost host,
-        Guid administrator,
-        AgentCredential credential,
-        McpClient client) : IAsyncDisposable
-    {
-        public AgentCredential Credential { get; } = credential;
-
-        public async Task<JsonObject> CallAsync(string tool, Dictionary<string, object?> arguments)
-        {
-            var result = await client.CallToolAsync(tool, arguments);
-            Assert.False(result.IsError ?? false, Text(result));
-            return JsonNode.Parse(Text(result))!.AsObject();
-        }
-
-        public async Task<JsonObject> FailAsync(string tool, Dictionary<string, object?> arguments)
-        {
-            var result = await client.CallToolAsync(tool, arguments);
-            Assert.True(result.IsError, Text(result));
-            return JsonNode.Parse(Text(result))!.AsObject();
-        }
-
-        public async Task<T> AsPersonAsync<TService, T>(Func<TService, Task<Core.Results.Result<T>>> action)
-            where TService : notnull
-        {
-            return (await host.AsUserAsync<TService, Core.Results.Result<T>>(administrator, action)).Value;
-        }
-
-        public Task<ContentType> CreateAsPersonAsync(string slug)
-        {
-            return AsPersonAsync<IContentTypeDirectory, ContentType>(directory =>
-                directory.CreateAsync(new NewContentType(slug, slug, new ContentTypeDefinition([new FieldDefinition("title", "text")]))));
-        }
-
-        public async Task<T> QueryAsync<T>(Func<FluentCmsDbContext, Task<T>> query)
-        {
-            await using var scope = host.App.Services.CreateAsyncScope();
-            return await query(scope.ServiceProvider.GetRequiredService<FluentCmsDbContext>());
-        }
-
-        public async ValueTask DisposeAsync()
-        {
-            await client.DisposeAsync();
-            await host.DisposeAsync();
-            await database.DisposeAsync();
-            install.Dispose();
-        }
-
-        private static string Text(CallToolResult result)
-        {
-            return Assert.IsType<TextContentBlock>(Assert.Single(result.Content)).Text;
-        }
+        return ConnectedAgent.StartAsync(provider, itemsPerChangeSet);
     }
 }
