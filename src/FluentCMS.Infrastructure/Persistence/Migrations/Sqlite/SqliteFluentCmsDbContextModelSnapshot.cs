@@ -480,6 +480,66 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                         });
                 });
 
+            modelBuilder.Entity("FluentCMS.Infrastructure.Entities.EntityFactRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("EntryId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Field")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LastVerified")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("Owner")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("SourceKind")
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SourceReference")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Unsourced")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("ValidFrom")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ValidUntil")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LastVerified");
+
+                    b.HasIndex("Unsourced");
+
+                    b.HasIndex("ValidUntil");
+
+                    b.HasIndex("EntryId", "Version", "Field")
+                        .IsUnique();
+
+                    b.ToTable("EntityFacts", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_EntityFacts_Unsourced", "\"Unsourced\" = (\"SourceKind\" IS NULL)");
+
+                            t.HasCheckConstraint("CK_EntityFacts_Version", "\"Version\" >= 1");
+                        });
+                });
+
             modelBuilder.Entity("FluentCMS.Infrastructure.Jobs.JobRow", b =>
                 {
                     b.Property<Guid>("Id")
@@ -929,6 +989,15 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                 });
 
             modelBuilder.Entity("FluentCMS.Infrastructure.Content.EntryVersionRow", b =>
+                {
+                    b.HasOne("FluentCMS.Infrastructure.Content.EntryRow", null)
+                        .WithMany()
+                        .HasForeignKey("EntryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FluentCMS.Infrastructure.Entities.EntityFactRow", b =>
                 {
                     b.HasOne("FluentCMS.Infrastructure.Content.EntryRow", null)
                         .WithMany()
