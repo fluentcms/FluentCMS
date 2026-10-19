@@ -47,6 +47,17 @@ internal sealed class DeskQueues(IChangeSetLists lists, IEntityFacts facts, Time
         return Result<IReadOnlyDictionary<DeskQueue, int>>.Success(counts);
     }
 
+    public async Task<Result<int>> CountAsync(DeskQueue queue, CancellationToken cancellationToken = default)
+    {
+        if (queue == DeskQueue.StaleFacts)
+        {
+            var stale = await facts.StaleAsync(cancellationToken: cancellationToken);
+            return stale.IsSuccess ? Result<int>.Success(stale.Value.Count) : Result<int>.Failure(stale.Errors);
+        }
+
+        return await lists.CountAsync(Query(queue, clock.GetUtcNow()), cancellationToken);
+    }
+
     public Task<Result<ChangeSetList>> ListChangeSetsAsync(DeskQueue queue, int offset, int limit, CancellationToken cancellationToken = default)
     {
         if (!ChangeSetQueues.Contains(queue))

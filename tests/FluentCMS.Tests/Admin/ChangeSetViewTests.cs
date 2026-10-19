@@ -320,6 +320,8 @@ public sealed class ChangeSetViewTests
 
         public Task<Result<IReadOnlyDictionary<DeskQueue, int>>> CountAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
+        public Task<Result<int>> CountAsync(DeskQueue queue, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
         public Task<Result<ChangeSetList>> ListChangeSetsAsync(DeskQueue queue, int offset, int limit, CancellationToken cancellationToken = default)
         {
             var current = new ChangeSetSummary(sets.Set.Id, "This set.", sets.Set.Initiator, ChangeSetState.AwaitingReview, 2, null, Opened, Opened);
