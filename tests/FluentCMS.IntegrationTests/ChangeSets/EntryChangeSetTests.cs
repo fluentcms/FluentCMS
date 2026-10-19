@@ -11,6 +11,7 @@ using static FluentCMS.IntegrationTests.ChangeSets.ChangeSetScenario;
 
 namespace FluentCMS.IntegrationTests.ChangeSets;
 
+// Its helpers set up the catalog that EntryStateTests use as well.
 public sealed class EntryChangeSetTests
 {
     [Theory]
@@ -242,7 +243,7 @@ public sealed class EntryChangeSetTests
         Assert.Equal(1, await PublishedVersionOfAsync(scenario, page));
     }
 
-    private static async Task<ChangeSetScenario> ScenarioAsync(string provider)
+    internal static async Task<ChangeSetScenario> ScenarioAsync(string provider)
     {
         var scenario = await ChangeSetScenario.CreateAsync(provider);
         scenario.Initiator = Amir;
@@ -250,7 +251,7 @@ public sealed class EntryChangeSetTests
     }
 
     // A product entity at 19.99 and a page that shows its price, each at version 1 and unpublished.
-    private static async Task<(Guid Page, Guid Product)> CatalogAsync(ChangeSetScenario scenario)
+    internal static async Task<(Guid Page, Guid Product)> CatalogAsync(ChangeSetScenario scenario)
     {
         await using (var scope = scenario.Services.CreateAsyncScope())
         {
@@ -272,7 +273,7 @@ public sealed class EntryChangeSetTests
         return (pageId, productId);
     }
 
-    private static string ProductFields(string price)
+    internal static string ProductFields(string price)
     {
         static string Fact(string value) =>
             $$"""{"value": {{value}}, "source": null, "owner": null, "validFrom": null, "validUntil": null, "lastVerified": null}""";
@@ -280,7 +281,7 @@ public sealed class EntryChangeSetTests
         return $$"""{"name": {{Fact("\"Widget\"")}}, "price": {{Fact(price)}}}""";
     }
 
-    private static async Task UpdatePageAsync(ChangeSetScenario scenario, Guid page, int baseVersion, string title)
+    internal static async Task UpdatePageAsync(ChangeSetScenario scenario, Guid page, int baseVersion, string title)
     {
         var current = (await EntriesAsync(scenario, entries => entries.GetAsync(page))).Value.Latest.Fields;
         var price = current.GetProperty("price").GetString();
@@ -288,7 +289,7 @@ public sealed class EntryChangeSetTests
         Assert.True(updated.IsSuccess, string.Join("; ", updated.Errors.Select(error => error.Message)));
     }
 
-    private static async Task<T> EntriesAsync<T>(ChangeSetScenario scenario, Func<IEntryDirectory, Task<T>> action)
+    internal static async Task<T> EntriesAsync<T>(ChangeSetScenario scenario, Func<IEntryDirectory, Task<T>> action)
     {
         await using var scope = scenario.Services.CreateAsyncScope();
         return await action(scope.ServiceProvider.GetRequiredService<IEntryDirectory>());
@@ -301,7 +302,7 @@ public sealed class EntryChangeSetTests
         return resolved.Value.Fields.GetProperty("price");
     }
 
-    private static Task<int?> PublishedVersionOfAsync(ChangeSetScenario scenario, Guid entry)
+    internal static Task<int?> PublishedVersionOfAsync(ChangeSetScenario scenario, Guid entry)
     {
         return scenario.QueryAsync(context => context.Entries.AsNoTracking().Where(row => row.Id == entry).Select(row => row.PublishedVersion).SingleAsync());
     }
@@ -315,7 +316,7 @@ public sealed class EntryChangeSetTests
             .SingleAsync());
     }
 
-    private static ChangeOperation Operation(OperationKind kind, ItemKind itemKind, Guid item, int? baseVersion, int? proposedVersion)
+    internal static ChangeOperation Operation(OperationKind kind, ItemKind itemKind, Guid item, int? baseVersion, int? proposedVersion)
     {
         return ChangeOperation.Create(kind, itemKind, item, baseVersion, proposedVersion).Value;
     }

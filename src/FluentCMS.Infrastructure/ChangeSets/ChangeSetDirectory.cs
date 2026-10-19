@@ -2,6 +2,7 @@ using System.Text.Json;
 using FluentCMS.Core.Agents;
 using FluentCMS.Core.Audit;
 using FluentCMS.Core.ChangeSets;
+using FluentCMS.Core.Content;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Persistence;
 using FluentCMS.Core.Results;
@@ -220,7 +221,7 @@ internal sealed class ChangeSetDirectory(
         foreach (var item in items.Value)
         {
             // The scope rolls back the items moved before this one.
-            if (!await MovePublishedVersionAsync(item.Operation, cancellationToken))
+            if (!await MovePublishedVersionAsync(item.Operation, set.RevertsChangeSetId is not null, cancellationToken))
             {
                 return Result<ChangeSet>.Failure(
                     ChangeSetErrorCodes.BaseVersionStale,
@@ -387,7 +388,7 @@ internal sealed class ChangeSetDirectory(
         }
 
         // Checked against the read whose revision guards the write, as for AddOperationAsync.
-        var allowed = await permissions.CheckChangeSetSizeAsync(set, cancellationToken);
+        var allowed = await permissions.CheckChangeSetSizeAsync(set, cancellationToken: cancellationToken);
         if (!allowed.IsSuccess)
         {
             return Result<PendingOperation>.Failure(allowed.Errors);
@@ -425,7 +426,7 @@ internal sealed class ChangeSetDirectory(
         }
 
         // Checked against the read whose revision guards the write, so two concurrent operations cannot both pass the cap.
-        var allowed = await permissions.CheckChangeSetSizeAsync(set, cancellationToken);
+        var allowed = await permissions.CheckChangeSetSizeAsync(set, cancellationToken: cancellationToken);
         if (!allowed.IsSuccess)
         {
             return Result<ChangeSet>.Failure(allowed.Errors);
@@ -747,14 +748,18 @@ internal sealed class ChangeSetDirectory(
     }
 
     // Moves only from the base version, so a publish over the same item that committed first leaves nothing to move.
-    private async Task<bool> MovePublishedVersionAsync(ChangeOperation operation, CancellationToken cancellationToken)
+    private async Task<bool> MovePublishedVersionAsync(ChangeOperation operation, bool revert, CancellationToken cancellationToken)
     {
         if (operation.ItemKind is ItemKind.Entry or ItemKind.Entity)
         {
-            // A delete published from here unpublishes the entry; its versions and its draft stay.
+            // A delete published from here unpublishes the entry; its versions and its draft stay. The state moves with the pointer,
+            // and nothing else moves it (CNT-01).
+            var state = EntryStates.AfterPublish(operation.Kind, revert);
             return await context.Entries
                 .Where(entry => entry.Id == operation.ItemId && entry.PublishedVersion == operation.BaseVersion && entry.DeletedAt == null)
-                .ExecuteUpdateAsync(setters => setters.SetProperty(entry => entry.PublishedVersion, operation.ProposedVersion), cancellationToken) == 1;
+                .ExecuteUpdateAsync(
+                    setters => setters.SetProperty(entry => entry.PublishedVersion, operation.ProposedVersion).SetProperty(entry => entry.State, state),
+                    cancellationToken) == 1;
         }
 
         var moved = await context.ContentTypes

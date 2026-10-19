@@ -14,8 +14,9 @@ public interface IAgentPermissions
 
     Task<Result> CheckNewChangeSetAsync(CancellationToken cancellationToken = default);
 
-    // Called with the agent's own set as read for the write and the new operation added in memory, before anything is written.
-    Task<Result> CheckChangeSetSizeAsync(ChangeSet changeSet, CancellationToken cancellationToken = default);
+    // Called with the agent's own set as read for the write and the new operation added in memory, before anything is written,
+    // or ahead of a write with the number of operations it will add.
+    Task<Result> CheckChangeSetSizeAsync(ChangeSet changeSet, int adding = 0, CancellationToken cancellationToken = default);
 
     // The operation on items of the content type (MCP-05). A write names the fields it changes, which a field list in the scope can
     // narrow; a read names none, so an agent reads whole entries of a type in its scope.

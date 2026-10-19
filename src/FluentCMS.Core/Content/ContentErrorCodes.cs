@@ -13,4 +13,5 @@ public static class ContentErrorCodes
     public const string EntryNotEntity = "entry_not_entity";
     public const string EntryNotDeleted = "entry_not_deleted";
     public const string RetentionExpired = "retention_expired";
+    public const string EntryNotPublished = "entry_not_published";
 }

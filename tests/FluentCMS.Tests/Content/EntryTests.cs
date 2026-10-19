@@ -20,6 +20,7 @@ public sealed class EntryTests
         Assert.Equal("page", entry.ContentType);
         Assert.Equal(1, entry.LatestVersion);
         Assert.Null(entry.PublishedVersion);
+        Assert.Equal(EntryState.Draft, entry.State);
         Assert.Equal(entry.Id, entry.Latest.EntryId);
         Assert.Equal(1, entry.Latest.ContentTypeVersion);
         Assert.Equal(Now, entry.Latest.CreatedAt);
@@ -58,16 +59,24 @@ public sealed class EntryTests
     }
 
     [Fact]
-    public void A_revision_keeps_the_published_version()
+    public void A_revision_keeps_the_published_version_and_the_state()
     {
         var type = Type(Page);
         var id = Guid.CreateVersion7();
-        var stored = Entry.Restore(id, Site.Default.Id, type.Id, type.Slug, publishedVersion: 3, new EntryVersion(id, 4, 1, Json("""{"headline": "Four"}"""), Now));
+        var stored = Entry.Restore(
+            id,
+            Site.Default.Id,
+            type.Id,
+            type.Slug,
+            publishedVersion: 3,
+            EntryState.Published,
+            new EntryVersion(id, 4, 1, Json("""{"headline": "Four"}"""), Now));
 
         var revised = stored.Revise(type, Json("""{"headline": "Five"}"""), Registry, Now).Value;
 
         Assert.Equal(5, revised.LatestVersion);
         Assert.Equal(3, revised.PublishedVersion);
+        Assert.Equal(EntryState.Published, revised.State);
     }
 
     [Fact]
@@ -76,7 +85,7 @@ public sealed class EntryTests
         var type = Type(Page);
         var version = new EntryVersion(Guid.CreateVersion7(), 1, 1, Json("{}"), Now);
 
-        Assert.Throws<ArgumentException>(() => Entry.Restore(Guid.CreateVersion7(), Site.Default.Id, type.Id, type.Slug, null, version));
+        Assert.Throws<ArgumentException>(() => Entry.Restore(Guid.CreateVersion7(), Site.Default.Id, type.Id, type.Slug, null, EntryState.Draft, version));
     }
 
     [Fact]

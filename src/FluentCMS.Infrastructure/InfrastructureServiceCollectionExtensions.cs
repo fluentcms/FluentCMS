@@ -1,6 +1,7 @@
 using FluentCMS.Core.Agents;
 using FluentCMS.Core.Audit;
 using FluentCMS.Core.ChangeSets;
+using FluentCMS.Core.Checks;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Persistence;
@@ -8,6 +9,7 @@ using FluentCMS.Core.Schema;
 using FluentCMS.Infrastructure.Agents;
 using FluentCMS.Infrastructure.Audit;
 using FluentCMS.Infrastructure.ChangeSets;
+using FluentCMS.Infrastructure.Checks;
 using FluentCMS.Infrastructure.Content;
 using FluentCMS.Infrastructure.Identity;
 using FluentCMS.Infrastructure.Persistence;
@@ -33,6 +35,7 @@ public static class InfrastructureServiceCollectionExtensions
         AddChangeSets(services);
         AddAgents(services);
         AddContent(services, configuration);
+        AddChecks(services);
 
         services.AddHostedService<DatabaseMigrator>();
 
@@ -90,6 +93,12 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IEntryDirectory, EntryDirectory>();
         services.AddScoped<IWhereUsed, WhereUsed>();
         services.AddScoped<IResolvedEntries, ResolvedEntries>();
+    }
+
+    // CheckTypeRegistry comes from AddFluentCmsCore, so built-in and plugin check types reach the directory the same way.
+    private static void AddChecks(IServiceCollection services)
+    {
+        services.AddScoped<ICheckDirectory, CheckDirectory>();
     }
 
     private static void AddIdentity(IServiceCollection services)

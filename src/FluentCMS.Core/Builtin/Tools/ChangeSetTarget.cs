@@ -1,6 +1,8 @@
+using FluentCMS.Core.Agents;
 using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Results;
 using FluentCMS.Core.Tools;
+using Microsoft.Extensions.DependencyInjection;
 using DirectoryTarget = FluentCMS.Core.ChangeSets.ChangeSetTarget;
 
 namespace FluentCMS.Core.Builtin.Tools;
@@ -81,6 +83,32 @@ internal sealed class ChangeSetTarget
         return null;
     }
 
+    // For a write whose directory does not join the change set itself, such as an entry's: refuses ahead of the write what the
+    // change set would refuse after it, so no version is stored for nothing and a refused cap keeps its security event (SEC-08),
+    // which a rolled-back write would take with it. The set checks again on the add.
+    public async Task<Result> CheckAsync(IServiceProvider services, CancellationToken cancellationToken)
+    {
+        var directory = services.GetRequiredService<IChangeSetDirectory>();
+        var permissions = services.GetRequiredService<IAgentPermissions>();
+
+        var set = _changeSetId is { } id
+            ? await directory.GetAsync(id, cancellationToken)
+            : await directory.GetSessionSetAsync(_sessionId!, cancellationToken);
+
+        if (set.IsSuccess)
+        {
+            return await permissions.CheckChangeSetSizeAsync(set.Value, adding: 1, cancellationToken);
+        }
+
+        return _changeSetId is null ? await permissions.CheckNewChangeSetAsync(cancellationToken) : Result.Failure(set.Errors);
+    }
+
+    public Task<Result<ChangeSet>> AddAsync(IChangeSetDirectory directory, ChangeOperation operation, CancellationToken cancellationToken)
+    {
+        return _changeSetId is { } id
+            ? directory.AddOperationAsync(id, operation, cancellationToken)
+            : directory.AddToSessionAsync(_sessionId!, _opening!, operation, cancellationToken);
+    }
     // The directories take the same target; they find every refusal, a cap included, before they write anything (SCH-05).
     public DirectoryTarget ToDirectoryTarget()
     {
