@@ -1,7 +1,6 @@
 using System.Text.Json;
 using FluentCMS.Core.Checks;
 using FluentCMS.Core.Results;
-using FluentCMS.Core.Schema;
 
 namespace FluentCMS.Core.Builtin.Checks;
 
@@ -28,8 +27,7 @@ internal sealed class SourcesCheckType : ICheckType
         if (subject.Definition is { IsEntity: true })
         {
             var unsourced = CheckContent.Facts(subject)
-                .Where(fact => changed.Contains(fact.Field, StringComparer.Ordinal))
-                .Where(fact => !fact.Fact.TryGetProperty(FactMetadata.Source, out var source) || source.ValueKind != JsonValueKind.Object)
+                .Where(fact => changed.Contains(fact.Field, StringComparer.Ordinal) && !CheckContent.HasSource(fact.Fact))
                 .Select(fact => new CheckFinding(
                     $"Give the {fact.Field} fact a source that says where its value came from, such as a URL, a file, a person or a system.",
                     CheckContent.Append(string.Empty, fact.Field)))

@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Text.Json;
 using FluentCMS.Core.Checks;
 using FluentCMS.Core.Results;
-using FluentCMS.Core.Schema;
 
 namespace FluentCMS.Core.Builtin.Checks;
 
@@ -40,7 +39,7 @@ internal sealed class RangeCheckType : ICheckType
         var max = reader.Number("max");
         var findings = new List<CheckFinding>();
 
-        foreach (var (pointer, value) in Numbers(input.Subject))
+        foreach (var (pointer, value) in CheckContent.FieldValues(input.Subject).Where(item => item.Value.ValueKind == JsonValueKind.Number))
         {
             var field = CheckContent.FieldOf(pointer);
             var shown = value.GetRawText();
@@ -59,24 +58,6 @@ internal sealed class RangeCheckType : ICheckType
         }
 
         return Task.FromResult(findings.Count == 0 ? CheckOutcome.Pass() : CheckOutcome.Fail(findings));
-    }
-
-    private static IEnumerable<(string Pointer, JsonElement Value)> Numbers(CheckSubject subject)
-    {
-        foreach (var (pointer, value) in CheckContent.FieldValues(subject.Fields))
-        {
-            if (value.ValueKind == JsonValueKind.Number)
-            {
-                yield return (pointer, value);
-            }
-            else if (subject.Definition is { IsEntity: true }
-                && value.ValueKind == JsonValueKind.Object
-                && value.TryGetProperty(FactMetadata.Value, out var fact)
-                && fact.ValueKind == JsonValueKind.Number)
-            {
-                yield return (CheckContent.Append(pointer, FactMetadata.Value), fact);
-            }
-        }
     }
 
     private static string? Show(decimal? number)

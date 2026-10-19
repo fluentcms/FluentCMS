@@ -37,7 +37,7 @@ internal sealed class TermsCheckType : ICheckType
         var patterns = terms.Where(term => Words(term).Length > 0).Select(term => (Term: term, Pattern: Pattern(term, options))).ToList();
 
         var findings = new List<CheckFinding>();
-        foreach (var (pointer, text) in CheckContent.Strings(input.Subject.Fields))
+        foreach (var (pointer, text) in CheckContent.Strings(input.Subject))
         {
             foreach (var (term, pattern) in patterns)
             {
@@ -54,12 +54,12 @@ internal sealed class TermsCheckType : ICheckType
     // The words are literal text, so the pattern cannot backtrack badly; the timeout guards the content's length.
     private static Regex Pattern(string term, RegexOptions options)
     {
-        var words = string.Join(@"[\s\-‐-―]+", Words(term).Select(Regex.Escape));
+        var words = string.Join(@"[\s\p{Pd}]+", Words(term).Select(Regex.Escape));
         return new Regex($@"(?<![\p{{L}}\p{{N}}]){words}(?![\p{{L}}\p{{N}}])", options, MatchTimeout);
     }
 
     private static string[] Words(string term)
     {
-        return Regex.Split(term, @"[\s\-‐-―]+").Where(word => word.Any(char.IsLetterOrDigit)).ToArray();
+        return Regex.Split(term, @"[\s\p{Pd}]+").Where(word => word.Any(char.IsLetterOrDigit)).ToArray();
     }
 }

@@ -1,5 +1,6 @@
 using System.Buffers;
 using System.Text.Json;
+using FluentCMS.Core.Schema;
 
 namespace FluentCMS.Core.Checks;
 
@@ -14,14 +15,24 @@ public sealed record CheckScope(IReadOnlyList<string>? ContentTypes = null, IRea
         return ContentTypes is null || (contentType is not null && ContentTypes.Contains(contentType, StringComparer.Ordinal));
     }
 
-    // The subject with only the fields the scope names, so a type reads every field it is given.
+    // The subject with only the fields the scope names, in its values and its definition alike, so a type reads every field it is
+    // given and a required field the scope leaves out is not missing.
     public CheckSubject Narrow(CheckSubject subject)
     {
         ArgumentNullException.ThrowIfNull(subject);
 
-        if (Fields is null || subject.Fields.ValueKind != JsonValueKind.Object)
+        if (Fields is null)
         {
             return subject;
+        }
+
+        var definition = subject.Definition is { } full
+            ? new ContentTypeDefinition(full.Fields.Where(field => Fields.Contains(field.Name, StringComparer.Ordinal)), full.IsEntity, full.Description)
+            : null;
+
+        if (subject.Fields.ValueKind != JsonValueKind.Object)
+        {
+            return subject with { Definition = definition };
         }
 
         var buffer = new ArrayBufferWriter<byte>();
@@ -37,6 +48,6 @@ public sealed record CheckScope(IReadOnlyList<string>? ContentTypes = null, IRea
         }
 
         using var document = JsonDocument.Parse(buffer.WrittenMemory);
-        return subject with { Fields = document.RootElement.Clone() };
+        return subject with { Fields = document.RootElement.Clone(), Definition = definition };
     }
 }

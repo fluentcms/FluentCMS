@@ -36,7 +36,7 @@ internal sealed class LengthCheckType : ICheckType
         var unit = words ? "words" : "characters";
         var findings = new List<CheckFinding>();
 
-        foreach (var (pointer, value) in CheckContent.FieldValues(input.Subject.Fields).Where(item => item.Value.ValueKind == JsonValueKind.String))
+        foreach (var (pointer, value) in CheckContent.FieldValues(input.Subject).Where(item => item.Value.ValueKind == JsonValueKind.String))
         {
             var text = value.GetString()!;
             var length = words ? text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length : text.EnumerateRunes().Count();

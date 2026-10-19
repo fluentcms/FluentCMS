@@ -49,7 +49,7 @@ internal sealed class PatternCheckType : ICheckType
         var require = reader.OptionalString("mode") == "require";
 
         var findings = new List<CheckFinding>();
-        foreach (var (pointer, text) in CheckContent.Strings(input.Subject.Fields))
+        foreach (var (pointer, text) in CheckContent.Strings(input.Subject))
         {
             var field = CheckContent.FieldOf(pointer);
             if (require)

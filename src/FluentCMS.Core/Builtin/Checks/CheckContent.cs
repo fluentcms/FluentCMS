@@ -1,45 +1,44 @@
 using System.Globalization;
 using System.Text.Json;
 using FluentCMS.Core.Checks;
+using FluentCMS.Core.Schema;
 
 namespace FluentCMS.Core.Builtin.Checks;
 
-// The places in a subject's fields the built-in checks read, each with a JSON Pointer from the fields' root.
+// The places in a subject's fields the built-in checks read, each with a JSON Pointer from the fields' root. On an entity a field
+// holds a fact, and only the fact's value is content; its source, owner and dates are read by the checks about them (SCH-03).
 internal static class CheckContent
 {
-    // Every string, however deep, such as /body, /tags/2 or /price/source/reference.
-    public static IEnumerable<(string Pointer, string Text)> Strings(JsonElement fields)
+    // Every string of the content, however deep, such as /body, /tags/2 or, on an entity, /name/value.
+    public static IEnumerable<(string Pointer, string Text)> Strings(CheckSubject subject)
     {
-        return Walk(fields, string.Empty).Where(item => item.Value.ValueKind == JsonValueKind.String)
+        return Roots(subject)
+            .SelectMany(root => Walk(root.Value, root.Pointer))
+            .Where(item => item.Value.ValueKind == JsonValueKind.String)
             .Select(item => (item.Pointer, item.Value.GetString()!));
     }
 
     // Each field's value, or each item of a field that holds a list, as a field of a content type stores it.
-    public static IEnumerable<(string Pointer, JsonElement Value)> FieldValues(JsonElement fields)
+    public static IEnumerable<(string Pointer, JsonElement Value)> FieldValues(CheckSubject subject)
     {
-        if (fields.ValueKind != JsonValueKind.Object)
+        foreach (var (pointer, value) in Roots(subject))
         {
-            yield break;
-        }
-
-        foreach (var field in fields.EnumerateObject())
-        {
-            var pointer = Append(string.Empty, field.Name);
-            if (field.Value.ValueKind != JsonValueKind.Array)
+            if (value.ValueKind != JsonValueKind.Array)
             {
-                yield return (pointer, field.Value);
+                yield return (pointer, value);
                 continue;
             }
 
             var index = 0;
-            foreach (var item in field.Value.EnumerateArray())
+            foreach (var item in value.EnumerateArray())
             {
-                yield return (Append(pointer, (index++).ToString(CultureInfo.InvariantCulture)), item);
+                yield return (Append(pointer, Index(index++)), item);
             }
         }
     }
 
-    // The facts of an entity, one per field that holds one (SCH-03); content of any other type has none.
+    // The facts of an entity, one per field that holds a value (SCH-03); content of any other type has none. A fact that is not an
+    // object, as in content written before its type became an entity, has no metadata at all.
     public static IEnumerable<(string Field, JsonElement Fact)> Facts(CheckSubject subject)
     {
         if (subject.Definition is not { IsEntity: true } || subject.Fields.ValueKind != JsonValueKind.Object)
@@ -48,8 +47,24 @@ internal static class CheckContent
         }
 
         return subject.Fields.EnumerateObject()
-            .Where(field => field.Value.ValueKind == JsonValueKind.Object)
+            .Where(field => field.Value.ValueKind != JsonValueKind.Null)
             .Select(field => (field.Name, field.Value));
+    }
+
+    public static JsonElement? Metadata(JsonElement fact, string name)
+    {
+        return fact.ValueKind == JsonValueKind.Object && fact.TryGetProperty(name, out var value) && value.ValueKind != JsonValueKind.Null
+            ? value
+            : null;
+    }
+
+    // A source names its kind and what it refers to, as entries store it (FactMetadata).
+    public static bool HasSource(JsonElement fact)
+    {
+        return Metadata(fact, FactMetadata.Source) is { ValueKind: JsonValueKind.Object } source
+            && source.TryGetProperty(FactMetadata.SourceReference, out var reference)
+            && reference.ValueKind == JsonValueKind.String
+            && !string.IsNullOrWhiteSpace(reference.GetString());
     }
 
     // The fields that hold a value and that the change touches.
@@ -98,6 +113,33 @@ internal static class CheckContent
         };
     }
 
+    // Each field's content: its value, or on an entity the value inside its fact.
+    private static IEnumerable<(string Pointer, JsonElement Value)> Roots(CheckSubject subject)
+    {
+        if (subject.Fields.ValueKind != JsonValueKind.Object)
+        {
+            yield break;
+        }
+
+        var entity = subject.Definition is { IsEntity: true };
+        foreach (var field in subject.Fields.EnumerateObject())
+        {
+            var pointer = Append(string.Empty, field.Name);
+            if (!entity)
+            {
+                yield return (pointer, field.Value);
+            }
+            else if (field.Value.ValueKind == JsonValueKind.Object && field.Value.TryGetProperty(FactMetadata.Value, out var value))
+            {
+                yield return (Append(pointer, FactMetadata.Value), value);
+            }
+            else if (field.Value.ValueKind != JsonValueKind.Object)
+            {
+                yield return (pointer, field.Value);
+            }
+        }
+    }
+
     private static IEnumerable<(string Pointer, JsonElement Value)> Walk(JsonElement value, string pointer)
     {
         yield return (pointer, value);
@@ -118,7 +160,7 @@ internal static class CheckContent
                 var index = 0;
                 foreach (var item in value.EnumerateArray())
                 {
-                    foreach (var nested in Walk(item, Append(pointer, (index++).ToString(CultureInfo.InvariantCulture))))
+                    foreach (var nested in Walk(item, Append(pointer, Index(index++))))
                     {
                         yield return nested;
                     }
@@ -126,5 +168,10 @@ internal static class CheckContent
 
                 break;
         }
+    }
+
+    private static string Index(int index)
+    {
+        return index.ToString(CultureInfo.InvariantCulture);
     }
 }
