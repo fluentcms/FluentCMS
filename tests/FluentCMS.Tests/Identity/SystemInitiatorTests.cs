@@ -91,6 +91,7 @@ public sealed class SystemPermissionTests : IDisposable
     [InlineData(ChangeSetState.ChecksFailed, ChangeSetState.Open, false)]
     [InlineData(ChangeSetState.AwaitingReview, ChangeSetState.Approved, false)]
     [InlineData(ChangeSetState.Approved, ChangeSetState.Published, false)]
+    [InlineData(ChangeSetState.Approved, ChangeSetState.Rejected, false)]
     [InlineData(ChangeSetState.ChecksFailed, ChangeSetState.Rejected, false)]
     [InlineData(ChangeSetState.Published, ChangeSetState.Reverted, false)]
     public async Task The_check_engine_makes_only_the_moves_it_owns(ChangeSetState from, ChangeSetState to, bool allowed)

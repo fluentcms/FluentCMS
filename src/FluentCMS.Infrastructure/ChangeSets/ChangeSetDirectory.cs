@@ -221,6 +221,25 @@ internal sealed class ChangeSetDirectory(
         }
 
         await using var scope = await unitOfWork.BeginAsync(cancellationToken);
+        try
+        {
+            return await PublishInScopeAsync(scope, stored, reverted, items.Value, cancellationToken);
+        }
+        catch (Exception exception) when (DatabaseErrors.IsConcurrencyFailure(exception))
+        {
+            // The scope rolls back when it is disposed.
+            return Conflict(set.Id);
+        }
+    }
+
+    private async Task<Result<ChangeSet>> PublishInScopeAsync(
+        IUnitOfWorkScope scope,
+        StoredChangeSet stored,
+        StoredChangeSet? reverted,
+        IReadOnlyList<PublishableItem> items,
+        CancellationToken cancellationToken)
+    {
+        var set = stored.ChangeSet;
         if (!await UpdateAsync(stored.Revision, set, cancellationToken))
         {
             return Conflict(set.Id);
@@ -231,7 +250,9 @@ internal sealed class ChangeSetDirectory(
             return Conflict(reverted.ChangeSet.Id);
         }
 
-        foreach (var item in items.Value)
+        // Items move by kind and id, whatever order the set lists them in, so two sets that publish the same items take their row
+        // locks in the same order and one waits for the other instead of deadlocking. The events keep the set's order.
+        foreach (var item in items.OrderBy(item => item.Operation.ItemKind).ThenBy(item => item.Operation.ItemId))
         {
             // The scope rolls back the items moved before this one.
             if (!await MovePublishedVersionAsync(item.Operation, set.RevertsChangeSetId is not null, cancellationToken))
@@ -240,7 +261,10 @@ internal sealed class ChangeSetDirectory(
                     ChangeSetErrorCodes.BaseVersionStale,
                     $"Another change set published {item.Name} at the same time, so it is no longer at the version this change set was based on.");
             }
+        }
 
+        foreach (var item in items)
+        {
             var subjectType = ItemSubjectType(item.Operation.ItemKind);
             await auditLog.AppendAsync(
                 new NewAuditEvent(item.Operation.Kind == OperationKind.Delete ? $"{subjectType}.unpublished" : $"{subjectType}.published")
@@ -945,7 +969,8 @@ internal sealed class ChangeSetDirectory(
         {
             await scope.CommitAsync(cancellationToken);
         }
-        catch (DbUpdateException exception) when (DatabaseErrors.IsUniqueViolation(exception))
+        catch (Exception exception) when (exception is DbUpdateException update && DatabaseErrors.IsUniqueViolation(update)
+            || DatabaseErrors.IsConcurrencyFailure(exception))
         {
             // The scope rolls back when the caller disposes it.
             return conflict;

@@ -130,7 +130,7 @@ public sealed class ChangeSetViewTests
     [Theory]
     [InlineData(ChangeSetState.AwaitingReview, new[] { "approve", "reject" })]
     [InlineData(ChangeSetState.ChecksFailed, new[] { "reject" })]
-    [InlineData(ChangeSetState.Approved, new[] { "publish" })]
+    [InlineData(ChangeSetState.Approved, new[] { "publish", "reject" })]
     [InlineData(ChangeSetState.Published, new[] { "revert" })]
     [InlineData(ChangeSetState.Open, new[] { "submit" })]
     [InlineData(ChangeSetState.ChecksRunning, new string[0])]

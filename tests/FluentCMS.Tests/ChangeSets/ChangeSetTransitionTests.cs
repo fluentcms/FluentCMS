@@ -43,6 +43,7 @@ public sealed class ChangeSetTransitionTests
                 (ChangeSetState.AwaitingReview, ChangeSetState.Approved),
                 (ChangeSetState.AwaitingReview, ChangeSetState.Rejected),
                 (ChangeSetState.Approved, ChangeSetState.Published),
+                (ChangeSetState.Approved, ChangeSetState.Rejected),
                 (ChangeSetState.Published, ChangeSetState.Reverted),
             ],
             ChangeSetTransitions.All);
@@ -102,7 +103,6 @@ public sealed class ChangeSetTransitionTests
     [Theory]
     [InlineData(ChangeSetState.Open)]
     [InlineData(ChangeSetState.ChecksRunning)]
-    [InlineData(ChangeSetState.Approved)]
     [InlineData(ChangeSetState.Published)]
     [InlineData(ChangeSetState.Rejected)]
     [InlineData(ChangeSetState.Reverted)]
