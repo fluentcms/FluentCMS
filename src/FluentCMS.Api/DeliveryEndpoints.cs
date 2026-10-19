@@ -124,10 +124,10 @@ public static class DeliveryEndpoints
 
         foreach (var type in index.GroupBy(entry => (entry.ContentType, entry.ContentTypeName)))
         {
-            markdown.Append(CultureInfo.InvariantCulture, $"\n## {type.Key.ContentTypeName}\n\n");
+            markdown.Append(CultureInfo.InvariantCulture, $"\n## {EntryMarkdown.InlineText(type.Key.ContentTypeName)}\n\n");
             foreach (var entry in type)
             {
-                var title = (entry.Title ?? $"{entry.ContentTypeName} {entry.Id}").Replace("[", @"\[", StringComparison.Ordinal).Replace("]", @"\]", StringComparison.Ordinal);
+                var title = EntryMarkdown.InlineText(entry.Title ?? $"{entry.ContentTypeName} {entry.Id}");
                 markdown.Append(CultureInfo.InvariantCulture, $"- [{title}]({MarkdownUrl(entry.Id)})\n");
             }
         }

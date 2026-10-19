@@ -47,7 +47,7 @@ public sealed class DeliveryEndpointsTests
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("text/markdown", response.Content.Headers.ContentType?.MediaType);
         var markdown = await response.Content.ReadAsStringAsync();
-        Assert.StartsWith($"---\nid: {Page}\ntype: product-page\nversion: 3\nurl: /api/v1/entries/{Page}.md\n---\n\n# A sturdy drill\n", markdown, StringComparison.Ordinal);
+        Assert.StartsWith($"---\nid: \"{Page}\"\ntype: \"product-page\"\nversion: 3\nurl: \"/api/v1/entries/{Page}.md\"\n---\n\n# A sturdy drill\n", markdown, StringComparison.Ordinal);
         Assert.Contains($"[{Product}](/api/v1/entries/{Product}.md)", markdown, StringComparison.Ordinal);
         await AssertProblemAsync(missing, HttpStatusCode.NotFound, ContentErrorCodes.EntryNotFound);
     }
