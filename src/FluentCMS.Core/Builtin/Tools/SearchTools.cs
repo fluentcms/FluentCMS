@@ -81,6 +81,9 @@ public sealed class SearchTools : IToolProvider
                 ["publishedVersion"] = hit.PublishedVersion,
                 ["via"] = hit.Via?.ToString(),
             })]),
+            ["next"] = found.Hits.Count == 0
+                ? "Nothing matched. Search for fewer or shorter words, or leave out a filter."
+                : "Read a hit with get_entry, or an entity's facts with get_entity_facts. A hit with 'via' references that match.",
         });
     }
 }

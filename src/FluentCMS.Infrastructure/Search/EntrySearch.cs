@@ -13,8 +13,7 @@ namespace FluentCMS.Infrastructure.Search;
 // the index. A match is followed to the entries whose latest version references it, such as the page that shows a matching entity.
 internal sealed class EntrySearch(FluentCmsDbContext context, ISearchIndex index, IAgentPermissions permissions) : ISearch
 {
-    // Matches read before filtering, so filters that drop many still leave enough to fill the limit.
-    private const int CandidatesPerHit = 10;
+    // Matches read before the scope, deletions and filters drop some, so the limit still fills when they drop many.
     private const int MaxCandidates = 1000;
 
     public async Task<Result<SearchResults>> SearchAsync(SearchQuery query, CancellationToken cancellationToken = default)
@@ -29,10 +28,7 @@ internal sealed class EntrySearch(FluentCmsDbContext context, ISearchIndex index
         }
 
         var readable = await permissions.ReadableTypesAsync(cancellationToken);
-        // A filter can drop most matches, so a filtered search reads as many as it may.
-        var filtered = query.ContentTypes is not null || query.States is not null || query.PublishedOnly;
-        var candidates = filtered ? MaxCandidates : Math.Min(query.Limit * CandidatesPerHit, MaxCandidates);
-        var matches = await index.MatchAsync(terms, candidates, cancellationToken);
+        var matches = await index.MatchAsync(terms, MaxCandidates, cancellationToken);
         var ranks = matches.ToDictionary(match => match.EntryId, match => match.Rank);
         var matchedIds = ranks.Keys.ToList();
 
@@ -41,7 +37,7 @@ internal sealed class EntrySearch(FluentCmsDbContext context, ISearchIndex index
             .ToList();
         var direct = matched
             .Where(entry => Passes(entry, query))
-            .Select(entry => entry.Hit(ranks[entry.Row.Id], via: null))
+            .Select(entry => entry.Hit(ranks[entry.Id], via: null))
             .OrderByDescending(hit => hit.Rank)
             .ThenBy(hit => hit.EntryId)
             .Take(query.Limit)
@@ -54,7 +50,7 @@ internal sealed class EntrySearch(FluentCmsDbContext context, ISearchIndex index
         }
 
         // Only matches the caller may read lead anywhere, so a reference never reveals an entry of a type outside the scope.
-        var targets = matched.ToDictionary(entry => entry.Row.Id, entry => ranks[entry.Row.Id]);
+        var targets = matched.ToDictionary(entry => entry.Id, entry => ranks[entry.Id]);
         var targetIds = targets.Keys.ToList();
         var references = await context.EntryReferences
             .AsNoTracking()
@@ -67,12 +63,12 @@ internal sealed class EntrySearch(FluentCmsDbContext context, ISearchIndex index
         var referencingIds = references.Select(reference => reference.EntryId).Distinct().ToList();
         var shown = direct.Select(hit => hit.EntryId).ToHashSet();
         var via = (await EntriesAsync(context.Entries.Where(row => referencingIds.Contains(row.Id)), cancellationToken))
-            .Where(entry => !shown.Contains(entry.Row.Id) && readable(entry.ContentType) && Passes(entry, query))
+            .Where(entry => !shown.Contains(entry.Id) && readable(entry.ContentType) && Passes(entry, query))
             .Select(entry =>
             {
                 // The best match the entry references explains why it is shown.
                 var target = references
-                    .Where(reference => reference.EntryId == entry.Row.Id)
+                    .Where(reference => reference.EntryId == entry.Id)
                     .Select(reference => reference.TargetId)
                     .OrderByDescending(id => targets[id])
                     .ThenBy(id => id)
@@ -86,23 +82,39 @@ internal sealed class EntrySearch(FluentCmsDbContext context, ISearchIndex index
         return Result<SearchResults>.Success(new SearchResults([.. direct, .. via]));
     }
 
+    // In review is read from the change sets holding the entry, as the entry tools read it (CNT-01).
     private async Task<List<Candidate>> EntriesAsync(IQueryable<EntryRow> rows, CancellationToken cancellationToken)
     {
         var siteId = Site.Default.Id;
+        var inReview = EntriesInReview.Ids(context);
         var found = await rows
             .AsNoTracking()
             .Where(row => row.SiteId == siteId && row.DeletedAt == null)
             .Join(context.ContentTypes, row => row.ContentTypeId, type => type.Id, (row, type) => new { row, type.Slug })
+            .Select(pair => new
+            {
+                pair.row.Id,
+                pair.Slug,
+                pair.row.State,
+                pair.row.LatestVersion,
+                pair.row.PublishedVersion,
+                InReview = inReview.Contains(pair.row.Id),
+            })
             .ToListAsync(cancellationToken);
 
-        return [.. found.Select(pair => new Candidate(pair.row, pair.Slug))];
+        return [.. found.Select(entry => new Candidate(
+            entry.Id,
+            entry.Slug,
+            entry.InReview ? EntryState.InReview : entry.State,
+            entry.LatestVersion,
+            entry.PublishedVersion))];
     }
 
     private static bool Passes(Candidate entry, SearchQuery query)
     {
         return (query.ContentTypes is null || query.ContentTypes.Contains(entry.ContentType, StringComparer.Ordinal))
-            && (query.States is null || query.States.Contains(entry.Row.State))
-            && (!query.PublishedOnly || entry.Row.PublishedVersion is not null);
+            && (query.States is null || query.States.Contains(entry.State))
+            && (!query.PublishedOnly || entry.PublishedVersion is not null);
     }
 
     private static List<Error> Validate(SearchQuery query, IReadOnlyList<string> terms)
@@ -120,6 +132,16 @@ internal sealed class EntrySearch(FluentCmsDbContext context, ISearchIndex index
                 $"A query has at most {SearchTerms.MaxTerms} words of at most {SearchTerms.MaxTermLength} characters each; search for fewer, shorter words."));
         }
 
+        if (query.ContentTypes is { Count: 0 })
+        {
+            errors.Add(new Error(SearchErrorCodes.FilterEmpty, "The types filter is empty; name at least one content type, or leave it out to search every type you may read."));
+        }
+
+        if (query.States is { Count: 0 })
+        {
+            errors.Add(new Error(SearchErrorCodes.FilterEmpty, "The states filter is empty; name at least one state, or leave it out to keep every state."));
+        }
+
         if (query.Limit is < 1 or > SearchQuery.MaxLimit)
         {
             errors.Add(new Error(SearchErrorCodes.LimitInvalid, $"The limit is from 1 to {SearchQuery.MaxLimit}, and {query.Limit} was given."));
@@ -128,11 +150,11 @@ internal sealed class EntrySearch(FluentCmsDbContext context, ISearchIndex index
         return errors;
     }
 
-    private sealed record Candidate(EntryRow Row, string ContentType)
+    private sealed record Candidate(Guid Id, string ContentType, EntryState State, int LatestVersion, int? PublishedVersion)
     {
         public SearchHit Hit(double rank, Guid? via)
         {
-            return new SearchHit(Row.Id, ContentType, Row.State, Row.LatestVersion, Row.PublishedVersion, rank, via);
+            return new SearchHit(Id, ContentType, State, LatestVersion, PublishedVersion, rank, via);
         }
     }
 }

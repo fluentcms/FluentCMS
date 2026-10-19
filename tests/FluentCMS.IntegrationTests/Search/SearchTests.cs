@@ -1,8 +1,10 @@
+using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Persistence;
 using FluentCMS.Core.Results;
 using FluentCMS.Core.Search;
 using FluentCMS.Infrastructure.Persistence;
+using FluentCMS.IntegrationTests.ChangeSets;
 using FluentCMS.IntegrationTests.Content;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -39,6 +41,31 @@ public sealed class SearchTests
         Assert.DoesNotContain(all, hit => hit.EntryId == other);
         Assert.Empty(publishedBefore);
         Assert.Equal([product], publishedAfter.Select(hit => hit.EntryId));
+    }
+
+    // In review is read from the change sets, as the entry tools read it, so a hit's state and the filter agree with get_entry.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task The_state_filter_keeps_entries_by_the_state_the_entry_tools_show_in_review_included(string provider)
+    {
+        await using var scenario = await EntryChangeSetTests.ScenarioAsync(provider);
+        var (page, product) = await EntryChangeSetTests.CatalogAsync(scenario);
+        await scenario.PublishAsync(EntryChangeSetTests.Operation(OperationKind.Create, ItemKind.Entity, product, null, 1));
+        var review = await scenario.OpenAsync(EntryChangeSetTests.Operation(OperationKind.Create, ItemKind.Entry, page, null, 1));
+        Assert.True((await scenario.RunAsync(directory => directory.TransitionAsync(review.Id, ChangeSetState.ChecksRunning))).IsSuccess);
+
+        var all = await SearchAsync(scenario.Services, new SearchQuery("widget"));
+        var published = await SearchAsync(scenario.Services, new SearchQuery("widget") { States = [EntryState.Published] });
+        var inReview = await SearchAsync(scenario.Services, new SearchQuery("widget") { States = [EntryState.InReview] });
+        var drafts = await SearchAsync(scenario.Services, new SearchQuery("widget") { States = [EntryState.Draft] });
+
+        Assert.Equal(
+            [(page, EntryState.InReview), (product, EntryState.Published)],
+            all.Select(hit => (hit.EntryId, hit.State)).OrderBy(hit => hit.State == EntryState.Published));
+        Assert.Equal([product], published.Select(hit => hit.EntryId));
+        Assert.Equal([page], inReview.Select(hit => hit.EntryId));
+        Assert.Empty(drafts);
     }
 
     [Theory]
@@ -100,15 +127,19 @@ public sealed class SearchTests
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
     [PostgresData]
-    public async Task A_query_without_words_or_with_too_many_or_a_limit_out_of_range_is_refused(string provider)
+    public async Task A_query_without_words_with_too_many_an_empty_filter_or_a_limit_out_of_range_is_refused(string provider)
     {
         await using var scenario = await EntryScenario.CreateAsync(provider);
 
         var empty = await RunAsync(scenario, new SearchQuery(" -- "));
         var tooMany = await RunAsync(scenario, new SearchQuery(string.Join(' ', Enumerable.Range(1, SearchTerms.MaxTerms + 1).Select(word => $"w{word}"))));
         var limit = await RunAsync(scenario, new SearchQuery("widget") { Limit = 0 });
+        var noTypes = await RunAsync(scenario, new SearchQuery("widget") { ContentTypes = [] });
+        var noStates = await RunAsync(scenario, new SearchQuery("widget") { States = [] });
 
         Assert.Equal(SearchErrorCodes.QueryEmpty, Assert.Single(empty.Errors).Code);
+        Assert.Equal(SearchErrorCodes.FilterEmpty, Assert.Single(noTypes.Errors).Code);
+        Assert.Equal(SearchErrorCodes.FilterEmpty, Assert.Single(noStates.Errors).Code);
         Assert.Equal(SearchErrorCodes.QueryTooLong, Assert.Single(tooMany.Errors).Code);
         Assert.Equal(SearchErrorCodes.LimitInvalid, Assert.Single(limit.Errors).Code);
     }
@@ -126,16 +157,26 @@ public sealed class SearchTests
         return new Catalog(entries, product, page, other);
     }
 
-    private static async Task<IReadOnlyList<SearchHit>> SearchAsync(EntryScenario scenario, SearchQuery query)
+    private static Task<IReadOnlyList<SearchHit>> SearchAsync(EntryScenario scenario, SearchQuery query)
     {
-        var results = await RunAsync(scenario, query);
+        return SearchAsync(scenario.Services, query);
+    }
+
+    private static async Task<IReadOnlyList<SearchHit>> SearchAsync(IServiceProvider services, SearchQuery query)
+    {
+        var results = await RunAsync(services, query);
         Assert.True(results.IsSuccess, string.Join("; ", results.Errors.Select(error => error.Message)));
         return results.Value.Hits;
     }
 
-    private static async Task<Result<SearchResults>> RunAsync(EntryScenario scenario, SearchQuery query)
+    private static Task<Result<SearchResults>> RunAsync(EntryScenario scenario, SearchQuery query)
     {
-        await using var scope = scenario.Services.CreateAsyncScope();
+        return RunAsync(scenario.Services, query);
+    }
+
+    private static async Task<Result<SearchResults>> RunAsync(IServiceProvider services, SearchQuery query)
+    {
+        await using var scope = services.CreateAsyncScope();
         return await scope.ServiceProvider.GetRequiredService<ISearch>().SearchAsync(query);
     }
 

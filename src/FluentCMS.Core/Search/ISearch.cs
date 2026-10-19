@@ -43,4 +43,5 @@ public static class SearchErrorCodes
     public const string QueryEmpty = "search_query_empty";
     public const string QueryTooLong = "search_query_too_long";
     public const string LimitInvalid = "search_limit_invalid";
+    public const string FilterEmpty = "search_filter_empty";
 }
