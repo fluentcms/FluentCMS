@@ -32,6 +32,7 @@ public sealed class McpCoverageTests
         new("ENT", "Read the pages a change set's entity changes affect", ["get_blast_radius"]),
         Missing("ENT", "List stale facts", "#2417"),
         Missing("RUL", "Read and propose rules", "#2419"),
+        new("CHK", "Run the checks on a draft before proposing it", ["check_draft"]),
         Missing("CHK", "Read the check results of a change set", "#2420"),
         Missing("DSK", "Read review decisions, read-only", "#2422"),
         Missing("MED", "Upload and describe media", "#2427"),

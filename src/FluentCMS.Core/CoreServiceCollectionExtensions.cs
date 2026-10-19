@@ -34,6 +34,9 @@ public static class CoreServiceCollectionExtensions
         // Reads through IModelProfiles, IModelClients, IModelCallLog and IOutboundHosts, which Infrastructure provides (ADR-0008).
         services.AddScoped<IModelGateway, ModelGateway>();
 
+        // Reads the active checks through ICheckDirectory, which Infrastructure provides.
+        services.AddScoped<ICheckRunner, CheckRunner>();
+
         return services;
     }
 }
