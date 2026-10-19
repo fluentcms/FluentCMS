@@ -116,13 +116,16 @@ public sealed class MediaLibraryTests
         var root = (await UploadAsync(scenario, MediaFiles.Jpeg(), Metadata("logo.png", tags: ["brand"]))).Value.Id;
         var drills = (await UploadAsync(scenario, MediaFiles.Jpeg(), Metadata("drill.png", "products/drills", ["product-shot"]))).Value.Id;
         var products = (await UploadAsync(scenario, MediaFiles.Jpeg(), Metadata("range.png", "products", ["product-shot", "brand"]))).Value.Id;
+        var catalog = (await UploadAsync(scenario, MediaFiles.Jpeg(), Metadata("catalog.png", "products"))).Value.Id;
 
         async Task<IReadOnlyList<Guid>> ListAsync(MediaQuery query) =>
             (await LibraryAsync(scenario, library => library.ListAsync(query))).Select(asset => asset.Id).ToList();
 
-        Assert.Equal(new[] { root, drills, products }.Order(), await ListAsync(new MediaQuery()));
-        Assert.Equal([products], await ListAsync(new MediaQuery("products")));
-        Assert.Equal(new[] { drills, products }.Order(), await ListAsync(new MediaQuery("products", IncludeSubfolders: true)));
+        Assert.Equal(new[] { root, drills, products, catalog }.Order(), await ListAsync(new MediaQuery()));
+        Assert.Equal(new[] { products, catalog }.Order(), await ListAsync(new MediaQuery("products")));
+        Assert.Equal(new[] { drills, products, catalog }.Order(), await ListAsync(new MediaQuery("products", IncludeSubfolders: true)));
+        Assert.Equal(new[] { drills, products, catalog }.Order(), await ListAsync(new MediaQuery("Products", IncludeSubfolders: true)));
+        Assert.Equal([drills], await ListAsync(new MediaQuery("Products/Drills")));
         Assert.Equal([root], await ListAsync(new MediaQuery("")));
         Assert.Equal(new[] { root, products }.Order(), await ListAsync(new MediaQuery(Tag: "brand")));
         Assert.Equal([drills], await ListAsync(new MediaQuery("products/drills", Tag: "product-shot")));

@@ -263,8 +263,8 @@ public sealed class EntryChangeSetTests
                 new FieldDefinition("price", "reference", settings: Json("""{"target": "product", "field": "price"}""")),
             ]);
 
-            Assert.True((await types.CreateAsync(new NewContentType("Product", "product", product))).IsSuccess);
-            Assert.True((await types.CreateAsync(new NewContentType("Page", "page", page))).IsSuccess);
+            Assert.True((await types.CreateAsync(new NewContentType("Product", "product", product), TestChangeSetTargets.ContentModel)).IsSuccess);
+            Assert.True((await types.CreateAsync(new NewContentType("Page", "page", page), TestChangeSetTargets.ContentModel)).IsSuccess);
         }
 
         var productId = (await EntriesAsync(scenario, entries => entries.CreateAsync(new NewEntry("product", Json(ProductFields("19.99")))))).Value.Id;

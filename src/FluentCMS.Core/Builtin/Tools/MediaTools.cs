@@ -64,7 +64,7 @@ public sealed class MediaTools : IToolProvider
             + "type, size, folder, tags and whether it has alt text. Without arguments it lists every asset.",
             ToolSchemas.Object(
                 ToolSchemas.String("folder", "A folder, such as products/drills; / is the root.", FolderExample, required: false),
-                ToolSchemas.Boolean("include_subfolders", "With folder: also list the assets in its subfolders.", required: false),
+                ToolSchemas.Flag("include_subfolders", "With folder: also list the assets in its subfolders."),
                 ToolSchemas.String("tag", "Only assets with this tag.", TagExample, required: false)),
             readOnly: true,
             ListAsync),
@@ -119,6 +119,7 @@ public sealed class MediaTools : IToolProvider
         return await ProposeAsync(
             call,
             target!,
+            itemId: null,
             AgentOperation.Create,
             library => library.UploadAsync(new NewAsset(new MemoryStream(bytes!), contentType!, metadata!.Value), cancellationToken),
             asset => ChangeOperation.Create(OperationKind.Create, ItemKind.Media, asset.Id, null, asset.LatestVersion),
@@ -147,6 +148,7 @@ public sealed class MediaTools : IToolProvider
         return await ProposeAsync(
             call,
             target!,
+            id,
             AgentOperation.Update,
             async library =>
             {
@@ -206,7 +208,7 @@ public sealed class MediaTools : IToolProvider
     {
         var arguments = new ToolArgumentsReader(call.Arguments);
         var folder = arguments.OptionalString("folder", FolderExample);
-        var subfolders = arguments.OptionalFlag("include_subfolders");
+        var subfolders = arguments.Flag("include_subfolders");
         var tag = arguments.OptionalString("tag", TagExample);
 
         if (arguments.Errors() is { Count: > 0 } errors)
@@ -220,7 +222,7 @@ public sealed class MediaTools : IToolProvider
             return ToolResult.Failure(readable.Errors);
         }
 
-        var assets = await call.Services.GetRequiredService<IMediaLibrary>().ListAsync(new MediaQuery(folder, subfolders ?? false, tag), cancellationToken);
+        var assets = await call.Services.GetRequiredService<IMediaLibrary>().ListAsync(new MediaQuery(folder, subfolders, tag), cancellationToken);
         return ToolResult.Success(new JsonObject { ["media"] = new JsonArray([.. assets.Select(ToolJson.MediaSummary)]) });
     }
 
@@ -333,6 +335,7 @@ public sealed class MediaTools : IToolProvider
     private static async Task<ToolResult> ProposeAsync(
         ToolInvocation call,
         ChangeSetTarget target,
+        Guid? itemId,
         AgentOperation agentOperation,
         Func<IMediaLibrary, Task<Result<MediaAsset>>> write,
         Func<MediaAsset, Result<ChangeOperation>> operation,
@@ -340,7 +343,7 @@ public sealed class MediaTools : IToolProvider
         CancellationToken cancellationToken)
     {
         var services = call.Services;
-        var ready = await target.CheckAsync(services, cancellationToken);
+        var ready = await target.CheckAsync(services, itemId, cancellationToken);
         if (!ready.IsSuccess)
         {
             return ToolResult.Failure(ready.Errors);

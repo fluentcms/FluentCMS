@@ -79,6 +79,13 @@ internal sealed class ModelOptionsValidation : IValidateOptions<ModelOptions>
             {
                 failures.Add($"{prefix}: token prices cannot be negative.");
             }
+            else if (!settings.Free && !IsOnThisMachine(settings) && (settings.InputCostPerMillionTokens == 0 || settings.OutputCostPerMillionTokens == 0))
+            {
+                // Without prices every call costs nothing, and the spend cap never refuses one (SEC-04).
+                failures.Add(
+                    $"{prefix}: set InputCostPerMillionTokens and OutputCostPerMillionTokens in US dollars, so spend caps count what its calls "
+                    + "cost; set Free to true only if the endpoint charges nothing.");
+            }
 
             if (settings.MaxOutputTokens is < 1 or > MaxOutputTokens)
             {
@@ -96,7 +103,23 @@ internal sealed class ModelOptionsValidation : IValidateOptions<ModelOptions>
             }
         }
 
+        // A call still waiting for its answer is never old enough to purge, so the answer is never written to a purged record.
+        if (options.Profiles.Count > 0
+            && options.PromptRetention > TimeSpan.Zero
+            && options.Profiles.Values.Max(settings => settings.Timeout) is var longest
+            && options.PromptRetention <= longest)
+        {
+            failures.Add(
+                $"Models:PromptRetention must be longer than the longest profile Timeout, {longest.ToString("c", CultureInfo.InvariantCulture)}, "
+                + "so no call is purged while it waits for its answer.");
+        }
+
         return failures.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(failures);
+    }
+
+    private static bool IsOnThisMachine(ModelProfileOptions settings)
+    {
+        return settings.Endpoint is { Length: > 0 } endpoint && Uri.TryCreate(endpoint, UriKind.Absolute, out var uri) && uri.IsLoopback;
     }
 
     // A key travels in every request, so it goes over plain http only to a server on this machine.

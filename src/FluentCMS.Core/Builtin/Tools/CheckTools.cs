@@ -48,6 +48,15 @@ public sealed class CheckTools : IToolProvider
             // Not read-only: it stores nothing, but an LLM-judged check spends the agent's model budget.
             readOnly: false,
             CheckDraftAsync),
+        new AgentTool(
+            "get_change_set_checks",
+            "Get a change set's check results",
+            "Returns the latest check run of a change set (CHK-03): its status, cost and each item's results, with findings that say "
+            + "what to change and where, plus the background job that runs the checks with its progress. A set's checks run when it "
+            + "is submitted; if they failed, call reopen_change_set, fix the items and submit the set again.",
+            ToolSchemas.Object(ToolSchemas.Uuid("id", "The change set's id.")),
+            readOnly: true,
+            ChangeSetChecksAsync),
     ];
 
     private static async Task<ToolResult> CheckDraftAsync(ToolInvocation call, CancellationToken cancellationToken)
@@ -101,13 +110,13 @@ public sealed class CheckTools : IToolProvider
         var run = await services.GetRequiredService<ICheckRunner>().RunAsync(
             new CheckSubject(fields.Value, sources, slug, definition, changed, changeSetId),
             checks == "deterministic" ? CheckSelection.Deterministic : CheckSelection.All,
-            cancellationToken);
+            cancellationToken: cancellationToken);
 
         // A draft the content type refuses cannot be proposed, whatever the checks say.
         return ToolResult.Success(new JsonObject
         {
             ["status"] = ToolJson.Name(refused.Count > 0 ? CheckStatus.Fail : CheckResult.Overall(run.Results)),
-            ["results"] = new JsonArray([.. run.Results.Select(Result)]),
+            ["results"] = new JsonArray([.. run.Results.Select(ToolJson.CheckResult)]),
             ["skipped"] = new JsonArray([.. run.Skipped.Select(name => JsonValue.Create(name))]),
             ["fieldErrors"] = new JsonArray([.. refused.Select(error => new JsonObject { ["code"] = error.Code, ["message"] = error.Message })]),
         });
@@ -124,26 +133,21 @@ public sealed class CheckTools : IToolProvider
             .ToList();
     }
 
-    private static JsonObject Result(CheckResult result)
+    private static async Task<ToolResult> ChangeSetChecksAsync(ToolInvocation call, CancellationToken cancellationToken)
     {
-        return new JsonObject
+        var arguments = new ToolArgumentsReader(call.Arguments);
+        var id = arguments.RequiredGuid("id");
+        if (arguments.Errors() is { Count: > 0 } errors)
         {
-            ["check"] = result.Check,
-            ["version"] = result.Version,
-            ["type"] = result.Type,
-            ["kind"] = ToolJson.Name(result.Kind),
-            ["severity"] = ToolJson.Name(result.Severity),
-            ["description"] = result.Description,
-            ["status"] = ToolJson.Name(result.Status),
-            ["findings"] = new JsonArray([.. result.Findings.Select(finding => new JsonObject
-            {
-                ["message"] = finding.Message,
-                ["pointer"] = finding.Pointer,
-                ["excerpt"] = finding.Excerpt,
-            })]),
-            ["model"] = result.Model is { } model
-                ? new JsonObject { ["callId"] = model.CallId.ToString(), ["provider"] = model.Provider, ["model"] = model.Model, ["cost"] = model.Cost }
-                : null,
-        };
+            return ToolResult.Failure(errors);
+        }
+
+        var state = await call.Services.GetRequiredService<IChangeSetChecks>().GetAsync(id!.Value, cancellationToken);
+        return ToolResult.From(state, read => new JsonObject
+        {
+            ["changeSet"] = ToolJson.ChangeSet(read.ChangeSet),
+            ["checks"] = read.Run is { } run ? ToolJson.CheckRun(run) : null,
+            ["job"] = read.Job is { } job ? ToolJson.Job(job) : null,
+        });
     }
 }

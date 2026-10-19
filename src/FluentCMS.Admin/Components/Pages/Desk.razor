@@ -3,23 +3,37 @@
 @using FluentCMS.Core.ChangeSets
 @using FluentCMS.Core.Desk
 @using FluentCMS.Core.Entities
+@using FluentCMS.Admin.Components.Review
 @inject IDeskQueues Queues
 @inject IStringLocalizer<Desk> L
 
 <PageTitle>@L["Desk"]</PageTitle>
 
-<h1 class="text-2xl font-semibold tracking-tight">@L["Desk"]</h1>
-<p class="mt-1 text-sm text-muted-foreground">@L["Change sets and facts that are waiting for a person."]</p>
+<div class="flex flex-wrap items-start justify-between gap-4">
+    <div>
+        <h1 class="text-2xl font-semibold tracking-tight">@L["Desk"]</h1>
+        <p class="mt-1 text-sm text-muted-foreground">@L["Change sets and facts that are waiting for a person."]</p>
+    </div>
+    <span class="flex items-center gap-2">
+        <a href="security" class="@ButtonVariants.Classes("ghost", "sm")" data-testid="desk-security">@L["Security events"]</a>
+        <ShortcutHelp Shortcuts="Shortcuts" />
+    </span>
+</div>
+@if (DoneMessage is { } done)
+{
+    <p role="status" class="mt-4 rounded-md border bg-muted/50 px-3 py-2 text-sm" data-testid="desk-done">@done</p>
+}
 
 <nav class="mt-6" aria-label="@L["Queues"]" data-testid="desk-queues">
     <ul class="flex flex-wrap gap-1">
-        @foreach (var queue in Order)
+        @foreach (var (queue, number) in Order.Select((queue, index) => (queue, index + 1)))
         {
             var current = queue == _queue;
             <li>
                 <a href="@Href(queue, 1)"
                    aria-current="@(current ? "page" : null)"
                    data-queue="@Slugs[queue]"
+                   aria-keyshortcuts="@number"
                    class="@ButtonVariants.Classes(current ? "secondary" : "ghost", "sm")">
                     @Title(queue)
                     <Badge Variant="@(current ? "default" : "outline")" data-count="@Count(queue)">@Count(queue)</Badge>
@@ -73,12 +87,12 @@
                             <TableHead>@L["Held by"]</TableHead>
                         </TableRow>
                     </TableHeader>
-                    <TableBody>
-                        @foreach (var fact in _facts)
+                    <TableBody data-ui="rove">
+                        @foreach (var (fact, index) in _facts.Select((fact, index) => (fact, index)))
                         {
                             <TableRow data-fact="@($"{fact.EntityId:N}/{fact.Field}/{fact.Version}")">
                                 <TableCell>
-                                    <a href="@($"audit?type=entity&id={fact.EntityId}")" class="font-medium underline-offset-4 hover:underline">
+                                    <a href="@($"audit?type=entity&id={fact.EntityId}")" data-ui="rove-item" tabindex="@(index == 0 ? null : "-1")" class="font-medium underline-offset-4 hover:underline">
                                         <bdi>@fact.Type</bdi> <bdi class="text-muted-foreground" dir="ltr">@fact.EntityId.ToString("N")[..8]</bdi>
                                     </a>
                                 </TableCell>
@@ -122,12 +136,12 @@
                             <TableHead>@Since(_queue)</TableHead>
                         </TableRow>
                     </TableHeader>
-                    <TableBody>
-                        @foreach (var set in _sets ?? [])
+                    <TableBody data-ui="rove">
+                        @foreach (var (set, index) in (_sets ?? []).Select((set, index) => (set, index)))
                         {
                             <TableRow data-change-set="@set.Id.ToString("N")">
                                 <TableCell Class="whitespace-normal">
-                                    <a href="@($"audit?type=change_set&id={set.Id}")" class="font-medium underline-offset-4 hover:underline">@set.Rationale</a>
+                                    <a href="@($"sets/{set.Id}?queue={Slugs[_queue]}")" data-ui="rove-item" tabindex="@(index == 0 ? null : "-1")" class="font-medium underline-offset-4 hover:underline">@set.Rationale</a>
                                     @if (set.RevertsChangeSetId is not null)
                                     {
                                         <Badge Variant="outline" Class="ms-2" data-reverts="@set.RevertsChangeSetId.Value.ToString("N")">@L["Revert"]</Badge>
@@ -211,6 +225,26 @@
 
     [SupplyParameterFromQuery(Name = "page")]
     private int? PageNumber { get; set; }
+
+    // What the set view did before it came back here, because the queue it was reviewing is now empty.
+    [SupplyParameterFromQuery(Name = "done")]
+    private string? Done { get; set; }
+
+    private string? DoneMessage => Done switch
+    {
+        "approved" => L["The set was approved. This queue has nothing more to review."].Value,
+        "rejected" => L["The set was rejected. This queue has nothing more to review."].Value,
+        _ => null,
+    };
+
+    private IReadOnlyList<KeyboardShortcut> Shortcuts =>
+    [
+        new(["1–6"], L["Switch to a queue by its number"]),
+        new(["J", "K"], L["Move to the next or previous row"]),
+        new(["↓", "↑"], L["Move between rows while one has focus"]),
+        new(["Enter"], L["Open the row's change set"]),
+        new(["?"], L["Show these shortcuts"]),
+    ];
 
     protected override async Task OnInitializedAsync()
     {

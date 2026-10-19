@@ -1,6 +1,7 @@
 using System.Text.Json;
 using FluentCMS.Core;
 using FluentCMS.Core.Checks;
+using FluentCMS.Core.Identity;
 using FluentCMS.Core.Models;
 using FluentCMS.Core.Results;
 using FluentCMS.Core.Sites;
@@ -79,6 +80,19 @@ public sealed class CheckRunnerTests : IDisposable
         Assert.All(results, result => Assert.Equal(CheckStatus.Pass, result.Status));
         Assert.Equal(CheckStatus.Pass, CheckResult.Overall(results));
         Assert.Empty(_gateway.Requests);
+    }
+
+    // SEC-04: a run the check engine makes for a change set asks the model on behalf of whoever opened it, so an agent's spends
+    // that agent's model budget, not the engine's.
+    [Fact]
+    public async Task An_LLM_judged_check_asks_the_model_on_behalf_of_whoever_the_run_is_for()
+    {
+        var agent = new AgentInitiator(Guid.NewGuid(), "catalog-agent");
+
+        await Runner.RunAsync(Subject("product-page", """{"headline": "A kettle", "body": "Calm."}"""), onBehalfOf: agent);
+        await Runner.RunAsync(Subject("product-page", """{"headline": "A kettle", "body": "Calm."}"""));
+
+        Assert.Equal([agent, null], _gateway.Requests.Select(request => request.OnBehalfOf));
     }
 
     // MDL-03: without a model an LLM-judged check needs review, which a pass elsewhere does not hide.

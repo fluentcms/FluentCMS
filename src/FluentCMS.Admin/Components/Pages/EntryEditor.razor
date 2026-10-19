@@ -1,0 +1,293 @@
+@page "/content/{Slug}/new"
+@page "/content/{Slug}/{Id:guid}"
+@using System.Text.Json
+@using System.Text.Json.Nodes
+@using System.Text.RegularExpressions
+@using FluentCMS.Admin.Components.Forms
+@using FluentCMS.Admin.Forms
+@using FluentCMS.Core.ChangeSets
+@using FluentCMS.Core.Content
+@using FluentCMS.Core.Media
+@using FluentCMS.Core.Schema
+@inject IContentTypeDirectory ContentTypes
+@inject IEntryDirectory Entries
+@inject IEntryEdits Edits
+@inject IMediaLibrary Media
+@inject FluentCMS.Core.Identity.IUserDirectory Users
+@inject FieldTypeRegistry FieldTypes
+@inject NavigationManager Navigation
+@inject IStringLocalizer<EntryEditor> L
+
+<PageTitle>@L["Content"]</PageTitle>
+
+@if (_type is { } type)
+{
+    <nav class="mb-4" aria-label="@L["Content navigation"]">
+        <a href="@($"content/{type.Slug}")" aria-keyshortcuts="B" class="@ButtonVariants.Classes("outline", "sm")">@L["Back to {0}", type.Name]</a>
+    </nav>
+    <h1 class="text-2xl font-semibold tracking-tight" data-testid="entry-editor" data-version="@(_entry?.LatestVersion)">
+        @(_entry is null ? L["New {0}", type.Name] : L["Edit {0}", type.Name])
+    </h1>
+    <p class="mt-1 text-sm text-muted-foreground">@L["Saving opens a change set with this change. Submit the set when it is ready; checks run and a person reviews it before anything is published."]</p>
+
+    @if (type.Definition.IsEntity)
+    {
+        <p class="mt-2 text-sm text-muted-foreground">@L["An entity type: every field is a fact with its source, owner and validity."]</p>
+    }
+    <form method="post" @onsubmit="SaveAsync" @formname="entry" class="mt-6 grid gap-6" data-testid="entry-form">
+        <AntiforgeryToken />
+        <input type="hidden" name="Form.BaseVersion" value="@(_entry?.LatestVersion ?? 0)" />
+        @if (_formError is not null)
+        {
+            <p role="alert" class="rounded-md border border-destructive/50 px-3 py-2 text-sm text-destructive" data-testid="entry-form-error">@_formError</p>
+        }
+        <Card>
+            <CardHeader>
+                <CardTitle><h2>@L["Fields"]</h2></CardTitle>
+            </CardHeader>
+            <CardContent Class="grid gap-6 sm:grid-cols-2">
+                @foreach (var field in type.Definition.Fields)
+                {
+                    <FieldWidget Field="field" Value="@Shown.Values.GetValueOrDefault(field.Name)" Error="@_fieldErrors.GetValueOrDefault(field.Name)" Options="@_options.GetValueOrDefault(field.Name, [])" />
+                    @if (type.Definition.IsEntity)
+                    {
+                        <FactFields Field="@field.Name" Values="Shown.Facts" Problems="@_factProblems.GetValueOrDefault(field.Name, new Dictionary<string, string>())" Owners="_owners" Unsourced="@_unsourced.Contains(field.Name)" />
+                    }
+                }
+            </CardContent>
+        </Card>
+        <Card>
+            <CardHeader>
+                <CardTitle><h2>@L["Change set"]</h2></CardTitle>
+                <CardDescription>@L["The reviewer reads why you made the change and where it comes from."]</CardDescription>
+            </CardHeader>
+            <CardContent Class="grid gap-6">
+                <FormField Label="@L["Why (required)"]" Error="@_rationaleError">
+                    <Textarea name="Form.Rationale" rows="2" value="@Shown.Rationale" required />
+                </FormField>
+                <FormField Label="@L["Sources"]" Description="@L["Optional, one per line, such as a URL or a file name."]">
+                    <Textarea name="Form.Sources" rows="2" value="@Shown.Sources" dir="ltr" />
+                </FormField>
+            </CardContent>
+        </Card>
+        <div>
+            <Button Type="submit" data-action="save">@L["Save to a change set"]</Button>
+        </div>
+    </form>
+}
+
+@code {
+    private ContentType? _type;
+    private Entry? _entry;
+    private Dictionary<string, IReadOnlyList<FieldOption>> _options = new(StringComparer.Ordinal);
+    private Dictionary<string, string> _fieldErrors = new(StringComparer.Ordinal);
+    private Dictionary<string, Dictionary<string, string>> _factProblems = new(StringComparer.Ordinal);
+    private HashSet<string> _unsourced = new(StringComparer.Ordinal);
+    private IReadOnlyList<FieldOption> _owners = [];
+    private string? _rationaleError;
+    private string? _formError;
+
+    [Parameter] public string Slug { get; set; } = string.Empty;
+
+    [Parameter] public Guid? Id { get; set; }
+
+    [SupplyParameterFromForm(FormName = "entry")]
+    private EntryFormModel? Form { get; set; }
+
+    // What the form shows: what was posted after a refused save, the stored values otherwise.
+    private EntryFormModel Shown { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await LoadAsync())
+        {
+            Navigation.NotFound();
+            return;
+        }
+
+        await LoadOptionsAsync();
+    }
+
+    private async Task<bool> LoadAsync()
+    {
+        var type = await ContentTypes.GetAsync(Slug);
+        if (!type.IsSuccess)
+        {
+            return false;
+        }
+
+        _type = type.Value;
+        _entry = null;
+        if (Id is { } id)
+        {
+            var entry = await Entries.GetAsync(id);
+            if (!entry.IsSuccess || entry.Value.ContentType != _type.Slug)
+            {
+                // Nothing renders for a page that is not found, the form included.
+                _type = null;
+                return false;
+            }
+
+            _entry = entry.Value;
+        }
+
+        Shown = new EntryFormModel { BaseVersion = _entry?.LatestVersion ?? 0 };
+        _unsourced.Clear();
+        foreach (var field in _type.Definition.Fields)
+        {
+            JsonElement? stored = _entry is not null && _entry.Latest.Fields.TryGetProperty(field.Name, out var value) ? value : null;
+            if (_type.Definition.IsEntity)
+            {
+                if (FactValues.IsUnsourced(stored))
+                {
+                    _unsourced.Add(field.Name);
+                }
+
+                stored = FactValues.Show(field.Name, stored, Shown.Facts);
+            }
+
+            Shown.Values[field.Name] = FieldValues.Show(field, stored);
+        }
+
+        return true;
+    }
+
+    // Until the pickers search (F-SRC), a reference offers every entry of its target type and a media field every asset.
+    private async Task LoadOptionsAsync()
+    {
+        if (_type!.Definition.IsEntity)
+        {
+            _owners = [.. (await Users.ListAsync()).Where(user => !user.IsDisabled).Select(user => new FieldOption(user.Id.ToString(), user.DisplayName))];
+        }
+
+        foreach (var field in _type!.Definition.Fields)
+        {
+            if (field.Type == "reference" && FieldValues.Setting(field, "target") is { } target)
+            {
+                var entries = await Entries.ListAsync(target);
+                _options[field.Name] = entries.IsSuccess
+                    ? [.. entries.Value.Select(entry => new FieldOption(entry.Id.ToString(), L["{0} (version {1})", entry.Id.ToString()[..8], entry.LatestVersion]))]
+                    : [];
+            }
+            else if (field.Type == "media")
+            {
+                _options[field.Name] = [.. (await Media.ListAsync(new MediaQuery())).Select(asset => new FieldOption(asset.Id.ToString(), asset.FileName))];
+            }
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_type is null || Form is null)
+        {
+            return;
+        }
+
+        var fields = new JsonObject();
+        foreach (var field in _type.Definition.Fields)
+        {
+            var value = FieldValues.Read(field, Form.Values.GetValueOrDefault(field.Name), out var problem);
+            if (problem is not null)
+            {
+                _fieldErrors[field.Name] = Problem(problem);
+                continue;
+            }
+
+            if (value is null)
+            {
+                if (field.Required)
+                {
+                    _fieldErrors[field.Name] = L["Fill in {0}.", field.Name];
+                }
+
+                continue;
+            }
+
+            var element = JsonSerializer.SerializeToElement(value);
+            var errors = FieldTypes.ValidateValue(field.Type, field.Settings, element);
+            if (errors.Count > 0)
+            {
+                _fieldErrors[field.Name] = string.Join(" ", errors.Select(error => error.Message));
+                continue;
+            }
+
+            if (!_type.Definition.IsEntity)
+            {
+                fields[field.Name] = value;
+                continue;
+            }
+
+            var problems = new Dictionary<string, string>();
+            var fact = FactValues.Read(field.Name, value, Form.Facts, problems);
+            if (fact is null)
+            {
+                _factProblems[field.Name] = problems;
+                continue;
+            }
+
+            fields[field.Name] = fact;
+        }
+
+        if (string.IsNullOrWhiteSpace(Form.Rationale))
+        {
+            _rationaleError = L["Say why you are making this change."];
+        }
+
+        if (_fieldErrors.Count > 0 || _factProblems.Count > 0 || _rationaleError is not null)
+        {
+            Shown = Form;
+            return;
+        }
+
+        var saved = await Edits.SaveAsync(new EntryEdit(
+            _type.Slug,
+            _entry?.Id,
+            _entry is null ? null : Form.BaseVersion,
+            JsonSerializer.SerializeToElement(fields),
+            new NewChangeSet(Form.Rationale!, Form.SourceList())));
+
+        if (saved.IsSuccess)
+        {
+            Navigation.NavigateTo($"sets/{saved.Value.ChangeSet.Id}?done=saved");
+            return;
+        }
+
+        if (saved.Errors.Any(error => error.Code == ContentErrorCodes.VersionConflict))
+        {
+            // The values someone else saved meanwhile are shown, and nothing typed here is applied over them.
+            await LoadAsync();
+            _formError = L["Someone saved this entry since the form was shown. Here it is as it is now; make your change again."];
+            return;
+        }
+
+        Shown = Form;
+        foreach (var error in saved.Errors)
+        {
+            if (FieldOf(error.Message) is { } field && _type.Definition.HasField(field))
+            {
+                _fieldErrors[field] = error.Message[(error.Message.IndexOf(':') + 1)..].Trim();
+            }
+            else
+            {
+                // The error code is the resource key; the service's own message is the text until a resource exists.
+                var localized = L[error.Code];
+                _formError = $"{_formError} {(localized.ResourceNotFound ? error.Message : localized.Value)}".Trim();
+            }
+        }
+    }
+
+    private string Problem(string kind) => kind switch
+    {
+        "number" => L["Enter a number, such as 12 or 4.5."],
+        "date" => L["Enter a date."],
+        "dateTime" => L["Enter a date and a time."],
+        _ => L["Enter valid JSON, such as [\"a\", \"b\"] or {\"key\": 1}."],
+    };
+
+    // The directory names the field a problem is about, as "Field 'price': ...".
+    private static string? FieldOf(string message)
+    {
+        var match = Regex.Match(message, "^Field '([^']+)'");
+        return match.Success ? match.Groups[1].Value : null;
+    }
+}

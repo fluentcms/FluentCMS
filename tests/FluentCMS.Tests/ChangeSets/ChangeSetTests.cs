@@ -94,6 +94,57 @@ public sealed class ChangeSetTests
         Assert.Single(changeSet.Operations);
     }
 
+    // A set reopened to fix an item takes the item's newer draft: the same change from the same published version, proposing the
+    // later draft, so the item still has one diff and one version to restore (CHG-03, CHG-06).
+    [Theory]
+    [InlineData(OperationKind.Create, null, 1)]
+    [InlineData(OperationKind.Update, 3, 4)]
+    public void An_update_from_the_version_a_set_proposes_moves_the_item_s_operation_on(OperationKind kind, int? baseVersion, int proposed)
+    {
+        var changeSet = TestChangeSets.Open();
+        var item = Guid.NewGuid();
+        changeSet.AddOperation(ChangeOperation.Create(kind, ItemKind.Entry, item, baseVersion, proposed).Value);
+
+        var result = changeSet.AddOperation(ChangeOperation.Create(kind, ItemKind.Entry, item, baseVersion, proposed + 1).Value);
+
+        Assert.True(result.IsSuccess);
+        var operation = Assert.Single(changeSet.Operations);
+        Assert.Equal((kind, baseVersion, (int?)proposed + 1), (operation.Kind, operation.BaseVersion, operation.ProposedVersion));
+    }
+
+    [Fact]
+    public void An_operation_that_proposes_no_later_draft_or_that_changes_a_content_type_is_still_a_duplicate()
+    {
+        var changeSet = TestChangeSets.Open();
+        var entry = Guid.NewGuid();
+        var type = Guid.NewGuid();
+        changeSet.AddOperation(TestChangeSets.Update(ItemKind.Entry, entry));
+        changeSet.AddOperation(TestChangeSets.Update(ItemKind.Schema, type));
+
+        var stale = changeSet.AddOperation(ChangeOperation.Create(OperationKind.Update, ItemKind.Entry, entry, 1, 2).Value);
+        var schema = changeSet.AddOperation(ChangeOperation.Create(OperationKind.Update, ItemKind.Schema, type, 2, 3).Value);
+
+        Assert.Equal(ChangeSetErrorCodes.ItemDuplicate, Assert.Single(stale.Errors).Code);
+        Assert.Contains("update it from version 2", stale.Errors[0].Message);
+        Assert.Equal(ChangeSetErrorCodes.ItemDuplicate, Assert.Single(schema.Errors).Code);
+        Assert.Equal([2, 2], changeSet.Operations.Select(operation => operation.ProposedVersion!.Value));
+    }
+
+    // An item another set published after this one proposed it comes back as an update from that published version, which this set
+    // cannot take, so the agent is told to propose the change anew rather than to update from a version it cannot.
+    [Fact]
+    public void An_item_published_by_another_set_since_says_so()
+    {
+        var changeSet = TestChangeSets.Open();
+        var entry = Guid.NewGuid();
+        changeSet.AddOperation(ChangeOperation.Create(OperationKind.Create, ItemKind.Entry, entry, null, 1).Value);
+
+        var result = changeSet.AddOperation(ChangeOperation.Create(OperationKind.Update, ItemKind.Entry, entry, 2, 3).Value);
+
+        Assert.Equal(ChangeSetErrorCodes.ItemDuplicate, Assert.Single(result.Errors).Code);
+        Assert.Contains("was published by another change set", result.Errors[0].Message);
+    }
+
     [Fact]
     public void A_set_with_no_operations_cannot_leave_open()
     {
@@ -200,6 +251,68 @@ public sealed class ChangeSetTests
     }
 
     [Fact]
+    public void A_later_write_of_an_item_extends_its_operation_and_keeps_its_kind_and_base()
+    {
+        var created = Guid.NewGuid();
+        var updated = Guid.NewGuid();
+        var changeSet = TestChangeSets.Open();
+
+        Assert.True(changeSet.Record(Operation(OperationKind.Create, created, null, 1)).IsSuccess);
+        Assert.True(changeSet.Record(Operation(OperationKind.Update, updated, 2, 3)).IsSuccess);
+        Assert.True(changeSet.Record(Operation(OperationKind.Update, created, 1, 2)).IsSuccess);
+        Assert.True(changeSet.Record(Operation(OperationKind.Update, updated, 3, 5)).IsSuccess);
+
+        Assert.Equal([Operation(OperationKind.Create, created, null, 2), Operation(OperationKind.Update, updated, 2, 5)], changeSet.Operations);
+    }
+
+    [Fact]
+    public void An_update_of_an_item_that_is_not_published_is_recorded_as_a_create()
+    {
+        var rejected = Guid.NewGuid();
+        var created = Guid.NewGuid();
+        var changeSet = TestChangeSets.Open();
+
+        Assert.True(changeSet.Record(Operation(OperationKind.Update, rejected, 1, 2), itemPublished: false).IsSuccess);
+        Assert.True(changeSet.Record(Operation(OperationKind.Create, created, null, 1), itemPublished: false).IsSuccess);
+        Assert.True(changeSet.Record(Operation(OperationKind.Update, rejected, 2, 3), itemPublished: false).IsSuccess);
+
+        Assert.Equal([Operation(OperationKind.Create, rejected, null, 3), Operation(OperationKind.Create, created, null, 1)], changeSet.Operations);
+    }
+
+    [Fact]
+    public void A_later_write_that_is_not_based_on_the_proposed_version_is_refused()
+    {
+        var item = Guid.NewGuid();
+        var deleted = Guid.NewGuid();
+        var changeSet = TestChangeSets.Open();
+        Assert.True(changeSet.Record(Operation(OperationKind.Update, item, 1, 2)).IsSuccess);
+        Assert.True(changeSet.Record(Operation(OperationKind.Delete, deleted, 1, null)).IsSuccess);
+
+        var errors = new[]
+        {
+            changeSet.Record(Operation(OperationKind.Update, item, 1, 3)),
+            changeSet.Record(Operation(OperationKind.Delete, item, 2, null)),
+            changeSet.Record(Operation(OperationKind.Update, deleted, 1, 2)),
+        };
+
+        Assert.All(errors, result => Assert.Equal(ChangeSetErrorCodes.ItemDuplicate, Assert.Single(result.Errors).Code));
+        Assert.Equal([Operation(OperationKind.Update, item, 1, 2), Operation(OperationKind.Delete, deleted, 1, null)], changeSet.Operations);
+    }
+
+    [Theory]
+    [InlineData(ChangeSetState.ChecksRunning)]
+    [InlineData(ChangeSetState.Published)]
+    public void A_write_is_recorded_only_while_the_set_is_open(ChangeSetState state)
+    {
+        var changeSet = TestChangeSets.InState(state);
+        var item = changeSet.Operations[0];
+
+        var extended = changeSet.Record(ChangeOperation.Create(OperationKind.Update, item.ItemKind, item.ItemId, 2, 3).Value);
+
+        Assert.Equal(ChangeSetErrorCodes.NotOpen, Assert.Single(extended.Errors).Code);
+    }
+
+    [Fact]
     public void A_stored_set_is_restored_as_it_was()
     {
         var id = Guid.NewGuid();
@@ -284,5 +397,10 @@ public sealed class ChangeSetTests
         Assert.Equal(ChangeSetErrorCodes.RationaleMissing, Assert.Single(blank.Errors).Code);
         Assert.Equal(ChangeSetErrorCodes.RevertFixed, Assert.Single(added.Errors).Code);
         Assert.Single(revert.Operations);
+    }
+
+    private static ChangeOperation Operation(OperationKind kind, Guid item, int? baseVersion, int? proposedVersion)
+    {
+        return ChangeOperation.Create(kind, ItemKind.Schema, item, baseVersion, proposedVersion).Value;
     }
 }

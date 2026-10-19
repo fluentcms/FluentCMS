@@ -3,6 +3,7 @@ using FluentCMS.Core.Audit;
 using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Checks;
 using FluentCMS.Core.Content;
+using FluentCMS.Core.Delivery;
 using FluentCMS.Core.Entities;
 using FluentCMS.Core.Extensions;
 using FluentCMS.Core.Identity;
@@ -11,11 +12,14 @@ using FluentCMS.Core.Media;
 using FluentCMS.Core.Models;
 using FluentCMS.Core.Persistence;
 using FluentCMS.Core.Schema;
+using FluentCMS.Core.Search;
+using FluentCMS.Core.Webhooks;
 using FluentCMS.Infrastructure.Agents;
 using FluentCMS.Infrastructure.Audit;
 using FluentCMS.Infrastructure.ChangeSets;
 using FluentCMS.Infrastructure.Checks;
 using FluentCMS.Infrastructure.Content;
+using FluentCMS.Infrastructure.Delivery;
 using FluentCMS.Infrastructure.Entities;
 using FluentCMS.Infrastructure.Identity;
 using FluentCMS.Infrastructure.Jobs;
@@ -23,6 +27,8 @@ using FluentCMS.Infrastructure.Media;
 using FluentCMS.Infrastructure.Models;
 using FluentCMS.Infrastructure.Persistence;
 using FluentCMS.Infrastructure.Schema;
+using FluentCMS.Infrastructure.Search;
+using FluentCMS.Infrastructure.Webhooks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -38,7 +44,9 @@ public static class InfrastructureServiceCollectionExtensions
         services.Configure<DatabaseOptions>(configuration.GetSection(DatabaseOptions.SectionName));
         services.TryAddSingleton(TimeProvider.System);
 
-        AddDatabase(services, configuration.GetSection(DatabaseOptions.SectionName).Get<DatabaseOptions>() ?? new DatabaseOptions());
+        var database = configuration.GetSection(DatabaseOptions.SectionName).Get<DatabaseOptions>() ?? new DatabaseOptions();
+        AddDatabase(services, database);
+        AddSearch(services, configuration, database.ResolveProvider());
         AddIdentity(services);
         AddAudit(services);
         AddSchema(services);
@@ -49,6 +57,7 @@ public static class InfrastructureServiceCollectionExtensions
         AddChecks(services);
         AddJobs(services);
         AddModels(services, configuration);
+        AddWebhooks(services);
 
         services.AddHostedService<DatabaseMigrator>();
 
@@ -72,12 +81,31 @@ public static class InfrastructureServiceCollectionExtensions
         }
     }
 
+    // The index of the configured provider, scoped because it writes through the request's context (ADR-0010).
+    private static void AddSearch(IServiceCollection services, IConfiguration configuration, string provider)
+    {
+        services.AddOptions<SearchOptions>().Bind(configuration.GetSection(SearchOptions.SectionName)).ValidateOnStart();
+        services.AddSingleton<IValidateOptions<SearchOptions>, SearchOptionsValidation>();
+
+        if (provider == DatabaseProviders.PostgreSql)
+        {
+            services.AddFluentCmsExtension<ISearchIndex, PostgreSqlSearchIndex>(ServiceLifetime.Scoped);
+        }
+        else
+        {
+            services.AddFluentCmsExtension<ISearchIndex, SqliteSearchIndex>(ServiceLifetime.Scoped);
+        }
+
+        services.AddScoped<ISearch, EntrySearch>();
+    }
+
     // The log reads ICurrentInitiator, which each host registers for its own kind of caller.
     private static void AddAudit(IServiceCollection services)
     {
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IAuditLog, AuditLog>();
         services.AddScoped<IAuditReader, AuditReader>();
+        services.AddScoped<IAuditEventLists, AuditEventLists>();
     }
 
     // FieldTypeRegistry comes from AddFluentCmsCore, so built-in and plugin field types reach the directory the same way.
@@ -88,7 +116,9 @@ public static class InfrastructureServiceCollectionExtensions
 
     private static void AddChangeSets(IServiceCollection services)
     {
-        services.AddScoped<IChangeSetDirectory, ChangeSetDirectory>();
+        // The content type directory writes its operations through the same instance (SCH-05).
+        services.AddScoped<ChangeSetDirectory>();
+        services.AddScoped<IChangeSetDirectory>(provider => provider.GetRequiredService<ChangeSetDirectory>());
         services.AddScoped<IChangeSetLists, ChangeSetLists>();
     }
 
@@ -117,6 +147,12 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IEntryDirectory, EntryDirectory>();
         services.AddScoped<IWhereUsed, WhereUsed>();
         services.AddScoped<IResolvedEntries, ResolvedEntries>();
+        services.AddScoped<PublishedContentReader>();
+        services.AddScoped<IPublishedContent>(provider => provider.GetRequiredService<PublishedContentReader>());
+        services.AddScoped<IPreviewContent>(provider => provider.GetRequiredService<PublishedContentReader>());
+        services.AddScoped<IPreviewTokens, PreviewTokenDirectory>();
+        services.AddOptions<DeliveryOptions>().Bind(configuration.GetSection(DeliveryOptions.SectionName)).ValidateOnStart();
+        services.AddSingleton<IValidateOptions<DeliveryOptions>, DeliveryOptionsValidation>();
         services.AddScoped<IEntityRelations, EntityRelationsReader>();
         services.AddScoped<IEntityFacts, EntityFactsReader>();
         services.AddScoped<IBlastRadius, BlastRadiusReader>();
@@ -126,6 +162,7 @@ public static class InfrastructureServiceCollectionExtensions
     private static void AddChecks(IServiceCollection services)
     {
         services.AddScoped<ICheckDirectory, CheckDirectory>();
+        services.AddScoped<ICheckRuns, CheckRuns>();
     }
 
     // The worker in Host claims and finishes jobs through IJobLeases; everything else enqueues and reads through IJobQueue.
@@ -133,6 +170,12 @@ public static class InfrastructureServiceCollectionExtensions
     {
         services.AddScoped<IJobQueue, JobQueue>();
         services.AddScoped<IJobLeases, JobLeases>();
+    }
+
+    // Subscriptions share the outbound allow-list with the model gateway (SEC-05); the host provides the secret protector (SEC-07).
+    private static void AddWebhooks(IServiceCollection services)
+    {
+        services.AddScoped<IWebhookDirectory, WebhookDirectory>();
     }
 
     // The provider wiring behind the gateway in Core (ADR-0008). A profile the host cannot use stops it at startup.

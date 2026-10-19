@@ -40,7 +40,7 @@ public sealed partial class DeskScreenTests
         Assert.Contains("data-current-queue=\"awaiting-me\"", desk);
         Assert.Contains($"data-change-set=\"{waiting:N}\"", desk);
         Assert.Contains("Add the product type.", desk);
-        Assert.Matches("<a href[^>]*>Desk</a>", desk);
+        Assert.Contains("data-testid=\"nav-desk\"", desk);
 
         var empty = await host.Client.GetStringAsync("/?queue=reverted");
         Assert.Contains("data-current-queue=\"reverted\"", empty);
@@ -65,7 +65,7 @@ public sealed partial class DeskScreenTests
     private static async Task<Guid> AwaitingReviewAsync(AdminHost host, Guid userId, string slug)
     {
         var type = await host.AsUserAsync<IContentTypeDirectory, ContentType>(userId, async directory =>
-            (await directory.CreateAsync(new NewContentType(slug, slug, new ContentTypeDefinition([new FieldDefinition("title", "text")])))).Value);
+            (await directory.CreateAsync(new NewContentType(slug, slug, new ContentTypeDefinition([new FieldDefinition("title", "text")])), TestChangeSetTargets.ContentModel)).Value);
 
         return await host.AsUserAsync<IChangeSetDirectory, Guid>(userId, async directory =>
         {

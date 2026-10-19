@@ -129,3 +129,13 @@ public sealed class MediaToolsConformanceTests : ToolProviderConformanceTests
 {
     protected override object Provider { get; } = new MediaTools();
 }
+
+public sealed class SearchToolsConformanceTests : ToolProviderConformanceTests
+{
+    protected override object Provider { get; } = new SearchTools();
+}
+
+public sealed class DeskToolsConformanceTests : ToolProviderConformanceTests
+{
+    protected override object Provider { get; } = new DeskTools();
+}

@@ -378,6 +378,57 @@ function onShortcutKeydown(event) {
 }
 
 // ---------------------------------------------------------------------------------------------
+// Roving lists: a [data-ui="rove"] list holds [data-ui="rove-item"] elements, one of them in the tab
+// order. J and K move to the next and previous item from anywhere outside a field, a menu or a modal
+// that does not hold the list, so a reviewer steps through a queue or a set with one hand. The arrow
+// keys, Home and End move while focus is in the list. A list Blazor is still filling is read again on
+// every key, so items added in a later batch are reached too.
+
+const roveItems = (list) => [...list.querySelectorAll('[data-ui="rove-item"]')].filter((item) => item.closest('[data-ui="rove"]') === list && shown(item));
+
+function onRoveKeydown(event) {
+    if (event.ctrlKey || event.altKey || event.metaKey || event.isComposing) return false;
+    const target = event.target;
+    const inside = target.closest('[data-ui="rove"]');
+    const key = event.key.toLowerCase();
+    const step = key === "j" ? 1 : key === "k" ? -1 : 0;
+
+    if (step !== 0) {
+        if (event.shiftKey || editable(target) || target.closest('[data-ui="menu"]')) return false;
+        const modal = document.querySelector("dialog:modal");
+        const list = inside ?? [...document.querySelectorAll('[data-ui="rove"]')].find((candidate) => (!modal || modal.contains(candidate)) && roveItems(candidate).length > 0);
+        if (!list || (modal && !modal.contains(list))) return false;
+        const items = roveItems(list);
+        const current = items.indexOf(target.closest('[data-ui="rove-item"]'));
+        // From outside the list, J enters at the item in the tab order and K at the last one.
+        const start = items.findIndex((item) => item.tabIndex === 0);
+        const index = current >= 0 ? current + step : step > 0 ? Math.max(start, 0) : items.length - 1;
+        if (current >= 0 && (index < 0 || index >= items.length)) return true;
+        event.preventDefault();
+        rove(items, index).scrollIntoView({ block: "nearest" });
+        return true;
+    }
+
+    // From a search box that controls a list, ArrowDown enters the list at its first item.
+    if (target.matches('[data-ui="rove-input"]') && event.key === "ArrowDown") {
+        const list = document.getElementById(target.getAttribute("aria-controls"));
+        const items = list ? roveItems(list) : [];
+        if (items.length === 0) return false;
+        event.preventDefault();
+        rove(items, 0);
+        return true;
+    }
+
+    if (!inside || !target.closest('[data-ui="rove-item"]')) return false;
+    const items = roveItems(inside);
+    const next = roveIndex(event, items.indexOf(target.closest('[data-ui="rove-item"]')), items.length, "vertical");
+    if (next === null) return false;
+    event.preventDefault();
+    rove(items, Math.min(Math.max(next, 0), items.length - 1)).scrollIntoView({ block: "nearest" });
+    return true;
+}
+
+// ---------------------------------------------------------------------------------------------
 // Theme: the root carries "light" or "dark", or neither to follow the system. The choice goes into
 // the cookie the host reads (ThemePreference.cs), so the next page arrives with the class already set.
 
@@ -470,6 +521,7 @@ document.addEventListener("keydown", (event) => {
 
     if (event.key === "Escape") hideTooltips();
     if (onShortcutKeydown(event)) return;
+    if (onRoveKeydown(event)) return;
 
     const menu = target.closest('[data-ui="menu"]');
     if (menu && onMenuKeydown(event, menu)) return;

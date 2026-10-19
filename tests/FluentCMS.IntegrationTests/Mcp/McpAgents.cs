@@ -22,10 +22,11 @@ internal static class McpAgents
     public static readonly string[] BuiltInTools =
     [
         "attach_media", "check_draft", "create_content_type", "create_entry", "delete_entry", "get_blast_radius", "get_change_set",
-        "get_change_set_diff", "get_content_type", "get_entity_facts", "get_entity_relations", "get_entry", "get_entry_history",
-        "get_media", "get_resolved_entry", "get_schema_document", "get_where_used", "list_content_types", "list_entries", "list_media",
+        "get_change_set_checks", "get_change_set_diff", "get_change_set_review", "get_content_type", "get_desk_counts",
+        "get_entity_facts", "get_entity_relations", "get_entry", "get_entry_history", "get_media", "get_resolved_entry",
+        "get_schema_document", "get_where_used", "list_content_types", "list_desk_queue", "list_entries", "list_media",
         "list_stale_facts", "list_unsourced_facts", "open_change_set", "relate_entities", "reopen_change_set", "revise_content_type",
-        "set_entity_fact", "submit_change_set", "update_entry", "update_media", "upload_media",
+        "search_entries", "set_entity_fact", "submit_change_set", "update_entry", "update_media", "upload_media",
     ];
 
     public static async Task<string[]> ToolNamesAsync(McpClient client)

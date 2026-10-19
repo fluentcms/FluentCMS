@@ -67,7 +67,7 @@ internal sealed class MediaLibrary(
         var stored = await storage.SaveAsync(new CappedStream(new PrefixedStream(head.AsMemory(0, headLength), asset.Content), limit + 1), cancellationToken);
         if (stored.Length == 0 || stored.Length > limit)
         {
-            await storage.DeleteAsync(stored.Key, cancellationToken);
+            await storage.DeleteAsync(stored.Key, CancellationToken.None);
             return stored.Length == 0
                 ? Result<MediaAsset>.Failure(MediaErrorCodes.MediaEmpty, "The file is empty; upload the bytes of the asset.")
                 : Result<MediaAsset>.Failure(MediaErrorCodes.MediaTooLarge, $"The file has more than {limit} bytes, and an upload may have at most {limit}.");
@@ -188,7 +188,8 @@ internal sealed class MediaLibrary(
         var latest = LatestVersions();
         if (query.Folder is { } folder)
         {
-            var path = folder.Trim().Trim('/');
+            // Folders are stored in lowercase, so both providers compare them alike whatever case the query uses.
+            var path = folder.Trim().Trim('/').ToLowerInvariant();
             var prefix = path + "/";
             latest = query.IncludeSubfolders
                 ? latest.Where(version => path.Length == 0 || version.Folder == path || version.Folder.StartsWith(prefix))

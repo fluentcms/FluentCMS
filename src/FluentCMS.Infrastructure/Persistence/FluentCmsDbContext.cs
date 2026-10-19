@@ -3,12 +3,14 @@ using FluentCMS.Infrastructure.Audit;
 using FluentCMS.Infrastructure.ChangeSets;
 using FluentCMS.Infrastructure.Checks;
 using FluentCMS.Infrastructure.Content;
+using FluentCMS.Infrastructure.Delivery;
 using FluentCMS.Infrastructure.Entities;
 using FluentCMS.Infrastructure.Media;
 using FluentCMS.Infrastructure.Jobs;
 using FluentCMS.Infrastructure.Models;
 using FluentCMS.Infrastructure.Schema;
 using FluentCMS.Infrastructure.Sites;
+using FluentCMS.Infrastructure.Webhooks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -54,6 +56,14 @@ public abstract class FluentCmsDbContext(DbContextOptions options) : IdentityDbC
 
     public DbSet<ModelCallRow> ModelCalls => Set<ModelCallRow>();
 
+    public DbSet<CheckRunRow> CheckRuns => Set<CheckRunRow>();
+
+    public DbSet<CheckResultRow> CheckResults => Set<CheckResultRow>();
+
+    public DbSet<WebhookSubscriptionRow> WebhookSubscriptions => Set<WebhookSubscriptionRow>();
+
+    public DbSet<PreviewTokenRow> PreviewTokens => Set<PreviewTokenRow>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -76,6 +86,10 @@ public abstract class FluentCmsDbContext(DbContextOptions options) : IdentityDbC
         builder.ApplyConfiguration(new CheckVersionConfiguration());
         builder.ApplyConfiguration(new JobConfiguration());
         builder.ApplyConfiguration(new ModelCallConfiguration());
+        builder.ApplyConfiguration(new CheckRunConfiguration());
+        builder.ApplyConfiguration(new CheckResultConfiguration());
+        builder.ApplyConfiguration(new WebhookSubscriptionConfiguration());
+        builder.ApplyConfiguration(new PreviewTokenConfiguration());
 
         builder.Entity<FluentCmsUser>(user =>
         {

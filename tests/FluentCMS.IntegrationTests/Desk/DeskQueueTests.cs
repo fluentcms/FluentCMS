@@ -225,10 +225,20 @@ public sealed class DeskQueueTests
         return (await scope.ServiceProvider.GetRequiredService<IChangeSetLists>().ListAsync(query)).Value;
     }
 
+    // As a reviewer reads them; an agent's queues hold only its own sets.
     private static async Task<T> QueuesAsync<T>(ChangeSetScenario scenario, Func<IDeskQueues, Task<T>> read)
     {
-        await using var scope = scenario.Services.CreateAsyncScope();
-        return await read(scope.ServiceProvider.GetRequiredService<IDeskQueues>());
+        var initiator = scenario.Initiator;
+        scenario.Initiator = Amir;
+        try
+        {
+            await using var scope = scenario.Services.CreateAsyncScope();
+            return await read(scope.ServiceProvider.GetRequiredService<IDeskQueues>());
+        }
+        finally
+        {
+            scenario.Initiator = initiator;
+        }
     }
 
     private static (Guid? Reverts, Initiator Initiator, ChangeSetState State, int Items) Describe(ChangeSetSummary set)

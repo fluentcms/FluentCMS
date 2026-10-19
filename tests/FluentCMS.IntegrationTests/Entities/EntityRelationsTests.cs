@@ -108,7 +108,7 @@ public sealed class EntityRelationsTests
             var types = scope.ServiceProvider.GetRequiredService<IContentTypeDirectory>();
             foreach (var (slug, isEntity, fields) in SchemaScenario.ReferenceModel)
             {
-                Assert.True((await types.CreateAsync(new NewContentType(slug, slug, new ContentTypeDefinition(fields, isEntity)))).IsSuccess);
+                Assert.True((await types.CreateAsync(new NewContentType(slug, slug, new ContentTypeDefinition(fields, isEntity)), TestChangeSetTargets.ContentModel)).IsSuccess);
             }
         }
 
