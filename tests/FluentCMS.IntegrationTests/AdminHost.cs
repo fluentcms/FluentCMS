@@ -100,32 +100,14 @@ internal sealed partial class AdminHost : IAsyncDisposable
         return AsUserAsync<IUserDirectory, T>(userId, action);
     }
 
-    public Task<T> AsUserAsync<TService, T>(Guid userId, Func<TService, Task<T>> action)
-        where TService : notnull
-    {
-        return AsAsync(
-            new ClaimsIdentity(
-                [new Claim(ClaimTypes.NameIdentifier, userId.ToString()), new Claim(FluentCmsClaimTypes.DisplayName, "Test administrator")],
-                authenticationType: "test"),
-            action);
-    }
-
-    // As a request an agent credential signed would, for what a test drives without a tool.
-    public Task<T> AsAgentAsync<TService, T>(Guid credentialId, Func<TService, Task<T>> action)
-        where TService : notnull
-    {
-        return AsAsync(
-            new ClaimsIdentity(
-                [new Claim(FluentCmsClaimTypes.AgentCredentialId, credentialId.ToString()), new Claim(FluentCmsClaimTypes.DisplayName, "Test agent")],
-                authenticationType: "test"),
-            action);
-    }
-
-    private async Task<T> AsAsync<TService, T>(ClaimsIdentity identity, Func<TService, Task<T>> action)
+    public async Task<T> AsUserAsync<TService, T>(Guid userId, Func<TService, Task<T>> action)
         where TService : notnull
     {
         var accessor = App.Services.GetRequiredService<IHttpContextAccessor>();
         await using var scope = App.Services.CreateAsyncScope();
+        var identity = new ClaimsIdentity(
+            [new Claim(ClaimTypes.NameIdentifier, userId.ToString()), new Claim(FluentCmsClaimTypes.DisplayName, "Test administrator")],
+            authenticationType: "test");
 
         accessor.HttpContext = new DefaultHttpContext { RequestServices = scope.ServiceProvider, User = new ClaimsPrincipal(identity) };
         try

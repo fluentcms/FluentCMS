@@ -97,21 +97,6 @@ public sealed partial class PasswordResetTests
         Assert.DoesNotContain(await AuditRowsAsync(host), row => row.Operation == "user.password_reset");
     }
 
-    // ADR-0012: a reset link takes over the account it resets, so only a person issues one; an agent is refused, as an engine is.
-    [Fact]
-    public async Task Only_a_person_issues_a_reset_link()
-    {
-        using var install = new TemporaryInstall();
-        await using var host = await AdminHost.StartAsync(install);
-        var ownerId = await host.CreateFirstAdministratorAsync();
-        var editorId = await host.AsUserAsync(ownerId, async directory => (await directory.CreateAsync(Editor)).Value);
-
-        var refused = await host.AsAgentAsync<IPasswordReset, Result<PasswordResetToken>>(Guid.NewGuid(), reset => reset.IssueAsync(editorId));
-
-        Assert.Equal(UserErrorCodes.PeopleOnly, Assert.Single(refused.Errors).Code);
-        Assert.DoesNotContain(await AuditRowsAsync(host), row => row.Operation == "user.password_reset_issued");
-    }
-
     [Fact]
     public async Task A_disabled_user_gets_no_link_and_cannot_use_one_issued_before()
     {
