@@ -71,6 +71,19 @@ public sealed class GeneratedFormTests
         Assert.Equal("One\nTwo\u2028three", value!.GetValue<string>());
     }
 
+    [Theory]
+    [InlineData("a\nb")]
+    [InlineData("a\rb")]
+    public void A_text_with_line_breaks_is_shown_in_a_textarea(string value)
+    {
+        using var context = new AdminTestContext();
+
+        var cut = context.Render<FieldWidget>(widget => widget.Add(w => w.Field, Field("text", "{}")).Add(w => w.Value, value));
+
+        Assert.Single(cut.FindAll("textarea"));
+        Assert.Empty(cut.FindAll("input"));
+    }
+
     [Fact]
     public void A_changed_text_replaces_the_stored_value()
     {

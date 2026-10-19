@@ -49,7 +49,7 @@
             break;
         default:
             @* A single-line input drops line breaks, so a text that has them is shown where they survive the post. *@
-            @if (Value?.Contains('\n') == true)
+            @if (Value?.IndexOfAny(['\n', '\r']) >= 0)
             {
                 <Textarea name="@Name" rows="3" value="@TextareaValue" required="@Field.Required" maxlength="@MaxLength" data-field="@Field.Name" />
             }

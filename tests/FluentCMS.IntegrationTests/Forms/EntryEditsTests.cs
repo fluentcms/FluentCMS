@@ -63,7 +63,7 @@ public sealed class EntryEditsTests
         Assert.Equal(0, await scenario.Schema.QueryAsync(context => context.ChangeSets.CountAsync(row => row.SessionId != TestChangeSetTargets.ContentModelSession)));
     }
 
-    // The published version the values came from is checked in the same unit of work as the write, which it rolls back.
+    // The published version the values came from is checked before anything is written.
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
     [PostgresData]

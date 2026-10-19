@@ -48,9 +48,14 @@
                 @L["The form shows the published version {0}. The latest draft, version {1}, is not published; saving proposes this version's values with your changes.", published, entry.LatestVersion]
                 <a href="@($"content/{Slug}/{entry.Id}")" class="ms-1 underline underline-offset-4">@L["Show the latest draft"]</a>
             }
+            else if (entry.State == EntryState.Reverted)
+            {
+                @L["The form shows the reverted draft, version {0}. Version {1} is published.", entry.LatestVersion, published]
+                <a href="@($"content/{Slug}/{entry.Id}?from=published")" class="ms-1 underline underline-offset-4" data-testid="from-published">@L["Start from the published version"]</a>
+            }
             else
             {
-                @L["The form shows the latest draft, version {0}, which is not published; a rejected or reverted change can leave such a draft. Version {1} is published.", entry.LatestVersion, published]
+                @L["The form shows the latest draft, version {0}, which is not published; a rejected change can leave such a draft. Version {1} is published.", entry.LatestVersion, published]
                 <a href="@($"content/{Slug}/{entry.Id}?from=published")" class="ms-1 underline underline-offset-4" data-testid="from-published">@L["Start from the published version"]</a>
             }
         </p>
@@ -250,7 +255,6 @@
         {
             return;
         }
-
 
         var fields = new JsonObject();
         foreach (var field in _type.Definition.Fields)

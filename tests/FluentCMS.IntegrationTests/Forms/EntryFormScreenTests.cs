@@ -289,7 +289,8 @@ public sealed class EntryFormScreenTests
         var reverted = await host.AsUserAsync<IEntryDirectory, Entry>(ownerId, async entries => (await entries.GetAsync(entry.Id)).Value);
         Assert.Equal((EntryState.Reverted, (int?)1, 2), (reverted.State, reverted.PublishedVersion, reverted.LatestVersion));
         var latest = await host.Client.GetStringAsync($"/content/kitchen-sink/{entry.Id}");
-        Assert.Contains("data-testid=\"entry-draft-note\"", latest);
+        Assert.Contains("The form shows the reverted draft, version 2.", latest);
+        Assert.Contains($"href=\"content/kitchen-sink/{entry.Id}?from=published\"", latest);
         Assert.Contains("value=\"Wrong\"", latest);
         var published = await host.Client.GetStringAsync($"/content/kitchen-sink/{entry.Id}?from=published");
         Assert.Contains("value=\"First\"", published);
