@@ -123,14 +123,19 @@ public sealed class ModelGatewayTests
         var person = (UserInitiator)scenario.Initiator!;
 
         var borrowed = await scenario.Gateway.AskAsync(Request with { OnBehalfOf = new AgentInitiator(agent.Id, agent.DisplayName) });
+        scenario.Initiator = new AgentInitiator(Guid.NewGuid(), "other-agent");
+        var byAgent = await scenario.Gateway.AskAsync(Request with { OnBehalfOf = person });
         scenario.Initiator = SystemInitiator.Checks;
         var unnamed = await scenario.Gateway.AskAsync(Request);
+        var forEngine = await scenario.Gateway.AskAsync(Request with { OnBehalfOf = SystemInitiator.Retention });
         var forAgent = await scenario.Gateway.AskAsync(Request with { OnBehalfOf = new AgentInitiator(agent.Id, agent.DisplayName) });
         var forPerson = await scenario.Gateway.AskAsync(Request with { OnBehalfOf = person });
         scenario.Initiator = null;
         var nobody = await scenario.Gateway.AskAsync(Request);
 
         Assert.Equal(ModelErrorCodes.Unaccounted, Assert.Single(borrowed.Errors).Code);
+        Assert.Equal(ModelErrorCodes.Unaccounted, Assert.Single(byAgent.Errors).Code);
+        Assert.Equal(ModelErrorCodes.Unaccounted, Assert.Single(forEngine.Errors).Code);
         Assert.Equal(ModelErrorCodes.Unaccounted, Assert.Single(unnamed.Errors).Code);
         Assert.Contains("'checks' engine", unnamed.Errors[0].Message);
         Assert.True(forAgent.IsSuccess && forPerson.IsSuccess);

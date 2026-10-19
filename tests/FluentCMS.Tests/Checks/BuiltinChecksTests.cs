@@ -172,6 +172,32 @@ public sealed class BuiltinChecksTests : IDisposable
         Assert.True(clock.Elapsed < TimeSpan.FromSeconds(3), $"It took {clock.Elapsed}.");
     }
 
+    // A field of many different characters is folded no slower than one character repeated, since each folds once per process.
+    [Fact]
+    public async Task A_field_of_many_different_characters_is_decided_quickly()
+    {
+        var text = JsonSerializer.Serialize(string.Concat(Enumerable.Range(0, 1_000_000).Select(index => (char)(0x4E00 + (index % 20_000)))));
+        var clock = Stopwatch.StartNew();
+
+        var outcome = await EvaluateAsync("instructions", "{}", $$"""{"body": {{text}}}""");
+
+        Assert.Equal(CheckVerdict.Pass, outcome.Verdict);
+        Assert.True(clock.Elapsed < TimeSpan.FromSeconds(3), $"It took {clock.Elapsed}.");
+    }
+
+    // A site phrase in another script matches in either case, as it did before folding.
+    [Theory]
+    [InlineData("\u041d\u043e\u0432\u044b\u0435 \u0438\u043d\u0441\u0442\u0440\u0443\u043a\u0446\u0438\u0438", "\u041d\u041e\u0412\u042b\u0415 \u0418\u041d\u0421\u0422\u0420\u0423\u041a\u0426\u0418\u0418")]
+    [InlineData("\u043d\u043e\u0432\u044b\u0435 \u0438\u043d\u0441\u0442\u0440\u0443\u043a\u0446\u0438\u0438", "\u041d\u043e\u0432\u044b\u0435 \u0438\u043d\u0441\u0442\u0440\u0443\u043a\u0446\u0438\u0438")]
+    public async Task A_site_phrase_in_another_script_matches_in_either_case(string phrase, string written)
+    {
+        var outcome = await CheckTypes.EvaluateAsync(
+            "instructions",
+            Input(JsonSerializer.Serialize(new { phrases = new[] { phrase } }), new CheckSubject(JsonSerializer.SerializeToElement(new { body = written }), [])));
+
+        Assert.Equal(written, Assert.Single(outcome.Findings).Excerpt);
+    }
+
     // A site phrase saved before phrases were folded may fold to nothing; it matches nothing rather than everything.
     [Fact]
     public async Task A_phrase_that_folds_to_nothing_matches_nothing()
