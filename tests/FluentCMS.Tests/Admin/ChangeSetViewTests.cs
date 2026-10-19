@@ -106,6 +106,47 @@ public sealed class ChangeSetViewTests
         Assert.Contains("Routing has not decided on this set.", cut.Find("[data-testid=change-set-routing]").TextContent);
     }
 
+    [Theory]
+    [InlineData(ChangeSetState.AwaitingReview, new[] { "approve", "reject" })]
+    [InlineData(ChangeSetState.ChecksFailed, new[] { "reject" })]
+    [InlineData(ChangeSetState.Approved, new[] { "publish" })]
+    [InlineData(ChangeSetState.Published, new[] { "revert" })]
+    [InlineData(ChangeSetState.Open, new string[0])]
+    [InlineData(ChangeSetState.ChecksRunning, new string[0])]
+    [InlineData(ChangeSetState.Rejected, new string[0])]
+    [InlineData(ChangeSetState.Reverted, new string[0])]
+    public void The_review_panel_offers_only_the_actions_the_state_allows(ChangeSetState state, string[] actions)
+    {
+        var sets = new FakeSets { State = state };
+        using var context = Context(sets);
+
+        var cut = context.Render<ChangeSetView>(page => page.Add(p => p.Id, sets.Set.Id));
+
+        var review = cut.Find("[data-testid=change-set-review]");
+        Assert.Equal(actions, review.QuerySelectorAll("[data-action]").Select(action => action.GetAttribute("data-action")));
+        Assert.NotEmpty(review.QuerySelector("[data-slot=card-description]")!.TextContent.Trim());
+
+        // Every action's form is on the page, so a post from an older page still reaches its handler; only the offered ones show.
+        Assert.Equal(4, review.QuerySelectorAll("form").Length);
+        Assert.Equal(4 - actions.Length, review.QuerySelectorAll("form[hidden]").Length);
+        Assert.All(
+            review.QuerySelectorAll("input[name$='.Seen']"),
+            seen => Assert.Matches("^[0-9a-f]{32}$", seen.GetAttribute("value")));
+    }
+
+    [Fact]
+    public void A_rejection_asks_for_its_reason_in_a_dialog()
+    {
+        var sets = new FakeSets();
+        using var context = Context(sets);
+
+        var cut = context.Render<ChangeSetView>(page => page.Add(p => p.Id, sets.Set.Id));
+
+        var reason = cut.Find("dialog textarea[name='Reject.Reason']");
+        Assert.True(reason.HasAttribute("required"));
+        Assert.Equal("dialog", cut.Find("[data-action=reject]").GetAttribute("aria-haspopup"));
+    }
+
     [Fact]
     public void An_unknown_set_is_not_found()
     {

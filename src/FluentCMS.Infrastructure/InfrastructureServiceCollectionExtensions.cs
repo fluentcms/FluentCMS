@@ -125,6 +125,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddFluentCmsExtension<IMediaStorage, LocalDiskMediaStorage>();
         services.AddOptions<MediaOptions>().Bind(configuration.GetSection(MediaOptions.SectionName)).ValidateOnStart();
         services.AddSingleton<IValidateOptions<MediaOptions>, MediaOptionsValidation>();
+        services.AddScoped<IMediaLibrary, MediaLibrary>();
     }
 
     private static void AddContent(IServiceCollection services, IConfiguration configuration)

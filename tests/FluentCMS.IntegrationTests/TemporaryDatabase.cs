@@ -10,9 +10,12 @@ internal sealed class TemporaryDatabase : IAsyncDisposable
     private readonly NpgsqlConnectionStringBuilder? _server;
     private readonly string? _postgresName;
 
+    // Media bytes go to a directory of the database's own, so no test writes into the build output.
+    private readonly string _mediaRoot = Path.Combine(Path.GetTempPath(), $"fluentcms-media-{Guid.NewGuid():N}");
+
     private TemporaryDatabase(Dictionary<string, string?> configuration, TemporarySqliteDatabase? sqlite, NpgsqlConnectionStringBuilder? server, string? postgresName)
     {
-        Configuration = configuration;
+        Configuration = new Dictionary<string, string?>(configuration) { ["Media:LocalDisk:Root"] = _mediaRoot };
         _sqlite = sqlite;
         _server = server;
         _postgresName = postgresName;
@@ -39,6 +42,11 @@ internal sealed class TemporaryDatabase : IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         _sqlite?.Dispose();
+
+        if (Directory.Exists(_mediaRoot))
+        {
+            Directory.Delete(_mediaRoot, recursive: true);
+        }
 
         if (_server is not null)
         {
