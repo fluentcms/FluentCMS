@@ -124,3 +124,8 @@ public sealed class JobToolsConformanceTests : ToolProviderConformanceTests
 {
     protected override object Provider { get; } = new JobTools();
 }
+
+public sealed class EntityToolsConformanceTests : ToolProviderConformanceTests
+{
+    protected override object Provider { get; } = new EntityTools();
+}
