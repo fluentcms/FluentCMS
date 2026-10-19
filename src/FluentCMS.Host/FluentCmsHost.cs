@@ -53,12 +53,14 @@ public static class FluentCmsHost
         builder.Services.AddFluentCmsMcpHttp();
         var provider = AddCookieSignIn(builder.Services, builder.Configuration, builder.Environment);
         builder.Services.AddSignInRateLimit(builder.Configuration);
+        builder.Services.AddReverseProxy(builder.Configuration);
         builder.Services.AddHealthChecks();
         builder.Services.AddLocalization();
         builder.Services.AddRazorComponents().AddInteractiveServerComponents();
         RunJobsAsTheirInitiator(builder.Services);
 
         var app = builder.Build();
+        app.UseReverseProxy();
         app.UseSecurityHeaders(provider.IsConfigured ? [provider.AuthorityOrigin] : []);
         app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
         KeepStatusCodePagesToPageLoads(app);
@@ -197,7 +199,7 @@ public static class FluentCmsHost
     {
         services.AddFluentCmsCore();
         services.AddFluentCmsInfrastructure(configuration);
-        services.AddFluentCmsApi();
+        services.AddFluentCmsApi(configuration);
         services.AddFluentCmsAdmin();
 
         // Both modes share one key ring, so whatever the web host protects the stdio host can read.

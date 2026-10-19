@@ -82,6 +82,7 @@
                 <TableHead>@L["Events"]</TableHead>
                 <TableHead>@L["Added"]</TableHead>
                 <TableHead>@L["Status"]</TableHead>
+                <TableHead>@L["Recent deliveries"]</TableHead>
                 <TableHead Class="text-end"><span class="sr-only">@L["Actions"]</span></TableHead>
             </TableRow>
         </TableHeader>
@@ -89,7 +90,7 @@
             @if (_subscriptions.Count == 0)
             {
                 <TableRow>
-                    <TableCell colspan="5" Class="text-muted-foreground">@L["No webhook is set up yet."]</TableCell>
+                    <TableCell colspan="6" Class="text-muted-foreground">@L["No webhook is set up yet."]</TableCell>
                 </TableRow>
             }
             @foreach (var subscription in _subscriptions)
@@ -111,9 +112,39 @@
                             <Badge Variant="outline" data-status="disabled">@L["Disabled"]</Badge>
                         }
                     </TableCell>
+                    <TableCell>
+                        @if (_deliveries.GetValueOrDefault(subscription.Id) is { Count: > 0 } deliveries)
+                        {
+                            <ul class="grid gap-1 text-sm" data-testid="deliveries">
+                                @foreach (var delivery in deliveries)
+                                {
+                                    <li data-delivery="@(delivery.Succeeded ? "delivered" : "failed")">
+                                        <time datetime="@delivery.AttemptedAt.ToString("O", CultureInfo.InvariantCulture)" dir="ltr">@delivery.AttemptedAt.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) UTC</time>
+                                        <span>@L[delivery.Event]</span>
+                                        @if (delivery.Succeeded)
+                                        {
+                                            <span>@L["delivered ({0})", delivery.StatusCode!]</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-destructive">@L["attempt {0}: {1}", delivery.Attempt, delivery.Error ?? string.Empty]</span>
+                                        }
+                                    </li>
+                                }
+                            </ul>
+                        }
+                        else
+                        {
+                            <span class="text-sm text-muted-foreground">@L["None yet."]</span>
+                        }
+                    </TableCell>
                     <TableCell Class="text-end">
                         @if (subscription.Enabled)
                         {
+                            <form method="post" @onsubmit="() => SendTestAsync(subscription)" @formname="@($"test-{subscription.Id:N}")" class="mb-2">
+                                <AntiforgeryToken />
+                                <Button Type="submit" Variant="outline" Size="sm">@L["Send test"]<span class="sr-only"> @subscription.Url</span></Button>
+                            </form>
                             @* Disabling cannot be undone, so the posted form sits in a dialog that asks first. The form is named after the
                                subscription, so the action reaches the subscription it was rendered for. *@
                             <Dialog>
@@ -142,6 +173,7 @@
 
 @code {
     private readonly NewWebhookErrors _errors = new();
+    private readonly Dictionary<Guid, IReadOnlyList<WebhookDelivery>> _deliveries = [];
     private IReadOnlyList<WebhookSubscription> _subscriptions = [];
     private AddedWebhookSubscription? _added;
     private string? _message;
@@ -178,6 +210,15 @@
         await LoadAsync();
     }
 
+    private async Task SendTestAsync(WebhookSubscription subscription)
+    {
+        var sent = await Directory.SendTestAsync(subscription.Id);
+        _message = sent.IsSuccess
+            ? L["A test delivery to {0} is queued. Its result appears under its recent deliveries.", subscription.Url]
+            : string.Join(" ", sent.Errors.Select(Describe));
+        await LoadAsync();
+    }
+
     private async Task LoadAsync()
     {
         var listed = await Directory.ListAsync();
@@ -185,6 +226,15 @@
         if (!listed.IsSuccess)
         {
             _message = string.Join(" ", listed.Errors.Select(Describe));
+        }
+
+        _deliveries.Clear();
+        foreach (var subscription in _subscriptions)
+        {
+            if ((await Directory.DeliveriesAsync(subscription.Id, 3)) is { IsSuccess: true } deliveries)
+            {
+                _deliveries[subscription.Id] = deliveries.Value;
+            }
         }
     }
 

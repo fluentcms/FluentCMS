@@ -43,6 +43,7 @@ public sealed class ChangeSetTransitionTests
                 (ChangeSetState.AwaitingReview, ChangeSetState.Approved),
                 (ChangeSetState.AwaitingReview, ChangeSetState.Rejected),
                 (ChangeSetState.Approved, ChangeSetState.Published),
+                (ChangeSetState.Approved, ChangeSetState.Rejected),
                 (ChangeSetState.Published, ChangeSetState.Reverted),
             ],
             ChangeSetTransitions.All);
@@ -102,7 +103,6 @@ public sealed class ChangeSetTransitionTests
     [Theory]
     [InlineData(ChangeSetState.Open)]
     [InlineData(ChangeSetState.ChecksRunning)]
-    [InlineData(ChangeSetState.Approved)]
     [InlineData(ChangeSetState.Published)]
     [InlineData(ChangeSetState.Rejected)]
     [InlineData(ChangeSetState.Reverted)]
@@ -136,6 +136,7 @@ public sealed class ChangeSetTransitionTests
     [Theory]
     [InlineData(ChangeSetState.ChecksFailed)]
     [InlineData(ChangeSetState.AwaitingReview)]
+    [InlineData(ChangeSetState.Approved)]
     public void A_rejection_without_a_reason_is_refused(ChangeSetState from)
     {
         var changeSet = TestChangeSets.InState(from);
