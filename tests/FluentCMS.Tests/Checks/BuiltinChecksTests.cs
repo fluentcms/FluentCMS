@@ -131,6 +131,7 @@ public sealed class BuiltinChecksTests : IDisposable
     [InlineData("altText", "<img ")]
     [InlineData("instructions", "\n")]
     [InlineData("instructions", "ignore the ")]
+    [InlineData("instructions", "\uff49gnore the ")]
     [InlineData("terms", "best in ")]
     public async Task Text_built_to_slow_a_check_down_is_still_decided_quickly(string type, string unit)
     {
@@ -155,6 +156,29 @@ public sealed class BuiltinChecksTests : IDisposable
                 "Remove the invisible character U+200B from body; it can hide text from the people who review it.",
             ],
             outcome.Findings.Select(finding => finding.Message));
+    }
+
+    // A character whose decomposition is long, such as the 18 letters of U+FDFA, spells no Latin word and is read as written, so a
+    // field full of them costs no more to check than any other text.
+    [Fact]
+    public async Task Characters_that_decompose_into_long_runs_do_not_blow_up_the_check()
+    {
+        var text = JsonSerializer.Serialize(new string('\uFDFA', 2_000_000));
+        var clock = Stopwatch.StartNew();
+
+        var outcome = await EvaluateAsync("instructions", "{}", $$"""{"body": {{text}}}""");
+
+        Assert.Equal(CheckVerdict.Pass, outcome.Verdict);
+        Assert.True(clock.Elapsed < TimeSpan.FromSeconds(3), $"It took {clock.Elapsed}.");
+    }
+
+    // A site phrase saved before phrases were folded may fold to nothing; it matches nothing rather than everything.
+    [Fact]
+    public async Task A_phrase_that_folds_to_nothing_matches_nothing()
+    {
+        var outcome = await CheckTypes.EvaluateAsync("instructions", Input("""{"phrases": ["\u00ad"]}""", new CheckSubject(Parse("""{"body": "A kettle."}"""), [])));
+
+        Assert.Equal(CheckVerdict.Pass, outcome.Verdict);
     }
 
     // SEC-03: a look-alike spelling or a property name hides nothing, and the finding quotes the text as it was written.

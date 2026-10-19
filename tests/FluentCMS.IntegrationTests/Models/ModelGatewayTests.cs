@@ -211,8 +211,10 @@ public sealed class ModelGatewayTests
         scenario.Providers.Gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
         var asking = scenario.AskAsync(Tone);
+        var deadline = DateTime.UtcNow.AddSeconds(30);
         while ((await scenario.CallRowsAsync()).Count == 0)
         {
+            Assert.True(DateTime.UtcNow < deadline && !asking.IsCompleted, "The call was never recorded as pending.");
             await Task.Delay(20);
         }
 

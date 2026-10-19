@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Collections.Frozen;
 using System.Globalization;
 using System.Text;
@@ -35,12 +36,14 @@ internal sealed class InstructionsCheckType : ICheckType
         Linear | RegexOptions.Multiline,
         MatchTimeout);
 
-    // Letters of other scripts drawn like Latin ones, after Unicode's confusables (UTS #39), mapped to the Latin letter they imitate.
-    private static readonly FrozenDictionary<char, char> LatinLookalikes = new Dictionary<int, char>
+    // Letters drawn like Latin ones that no decomposition reaches, after Unicode's confusables (UTS #39), mapped to the Latin letter
+    // they imitate: Cyrillic, Greek and Armenian look-alikes, small capitals, and Latin letters with a stroke.
+    private static readonly FrozenDictionary<int, char> LatinLookalikes = new Dictionary<int, char>
     {
         // Cyrillic
         [0x0430] = 'a', [0x0435] = 'e', [0x0456] = 'i', [0x0458] = 'j', [0x043E] = 'o', [0x0440] = 'p', [0x0441] = 'c', [0x0443] = 'y',
         [0x0445] = 'x', [0x0455] = 's', [0x0501] = 'd', [0x051B] = 'q', [0x051D] = 'w', [0x04BB] = 'h', [0x04CF] = 'l', [0x0475] = 'v',
+        [0x0433] = 'r', [0x043F] = 'n', [0x044C] = 'b',
         [0x0410] = 'A', [0x0412] = 'B', [0x0415] = 'E', [0x041A] = 'K', [0x041C] = 'M', [0x041D] = 'H', [0x041E] = 'O', [0x0420] = 'P',
         [0x0421] = 'C', [0x0422] = 'T', [0x0425] = 'X', [0x0423] = 'Y', [0x0406] = 'I', [0x0408] = 'J', [0x0405] = 'S', [0x04AE] = 'Y',
         [0x050C] = 'G', [0x051A] = 'Q', [0x051C] = 'W',
@@ -50,10 +53,27 @@ internal sealed class InstructionsCheckType : ICheckType
         [0x0391] = 'A', [0x0392] = 'B', [0x0395] = 'E', [0x0396] = 'Z', [0x0397] = 'H', [0x0399] = 'I', [0x039A] = 'K', [0x039C] = 'M',
         [0x039D] = 'N', [0x039F] = 'O', [0x03A1] = 'P', [0x03A4] = 'T', [0x03A5] = 'Y', [0x03A7] = 'X',
 
-        // Armenian, and Latin letters outside ASCII
+        // Armenian
         [0x0585] = 'o', [0x057D] = 'u', [0x0570] = 'h', [0x0578] = 'n',
-        [0x0131] = 'i', [0x0251] = 'a', [0x0261] = 'g', [0x0269] = 'i', [0x026A] = 'i', [0x0237] = 'j',
-    }.ToFrozenDictionary(pair => (char)pair.Key, pair => pair.Value);
+
+        // Small capitals
+        [0x1D00] = 'a', [0x0299] = 'b', [0x1D04] = 'c', [0x1D05] = 'd', [0x1D07] = 'e', [0xA730] = 'f', [0x0262] = 'g', [0x029C] = 'h',
+        [0x026A] = 'i', [0x1D0A] = 'j', [0x1D0B] = 'k', [0x029F] = 'l', [0x1D0D] = 'm', [0x0274] = 'n', [0x1D0F] = 'o', [0x1D18] = 'p',
+        [0x0280] = 'r', [0xA731] = 's', [0x1D1B] = 't', [0x1D1C] = 'u', [0x1D20] = 'v', [0x1D21] = 'w', [0x028F] = 'y', [0x1D22] = 'z',
+
+        // Latin letters with a stroke, and others outside ASCII
+        [0x00F8] = 'o', [0x00D8] = 'O', [0x0111] = 'd', [0x0110] = 'D', [0x0142] = 'l', [0x0141] = 'L', [0x0127] = 'h', [0x0126] = 'H',
+        [0x0167] = 't', [0x0166] = 'T', [0x0180] = 'b', [0x0268] = 'i', [0x0289] = 'u', [0x0247] = 'e', [0x0246] = 'E', [0x023C] = 'c',
+        [0x024D] = 'r', [0x024F] = 'y', [0x01B6] = 'z', [0x028B] = 'v',
+        [0x0131] = 'i', [0x0251] = 'a', [0x0261] = 'g', [0x0269] = 'i', [0x0237] = 'j',
+    }.ToFrozenDictionary();
+
+    // Letters that render as blank space, which a model reads as a space between words.
+    private static readonly FrozenSet<int> BlankLetters = new[] { 0x115F, 0x1160, 0x2800, 0x3164, 0xFFA0 }.ToFrozenSet();
+
+    // A decomposition longer than this, such as the 18 letters of the ligature U+FDFA, spells no Latin word, so the character is
+    // kept as written; it also keeps the folded text within a few characters of each one read.
+    private const int MaxExpansion = 3;
 
     public string Name => "instructions";
 
@@ -62,26 +82,32 @@ internal sealed class InstructionsCheckType : ICheckType
     public IReadOnlyList<Error> ValidateSettings(JsonElement settings)
     {
         var reader = new CheckSettingsReader(Name, settings);
-        reader.OptionalStringList("phrases");
+        if (reader.OptionalStringList("phrases") is { } phrases && phrases.Any(phrase => string.IsNullOrWhiteSpace(Fold(phrase).Text)))
+        {
+            reader.Invalid("phrases", "must hold phrases a reader can see, not only invisible characters or marks");
+        }
+
         return reader.Errors();
     }
 
     public Task<CheckOutcome> EvaluateAsync(CheckInput input, CancellationToken cancellationToken)
     {
+        // A phrase with nothing left once folded matches nothing, as when it was saved before phrases were folded.
         var phrases = (new CheckSettingsReader(Name, input.Settings).OptionalStringList("phrases") ?? [])
-            .Select(phrase => Fold(phrase).Text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Select(Regex.Escape))
+            .Select(phrase => Fold(phrase).Text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Select(Regex.Escape).ToList())
+            .Where(words => words.Count > 0)
             .Select(words => new Regex(string.Join(@"\s+", words), Linear, MatchTimeout))
             .ToList();
         var findings = new List<CheckFinding>();
 
-        // A model reads a property name with the content it names, so names are read as well as text.
-        foreach (var (pointer, text) in CheckContent.Strings(input.Subject).Concat(CheckContent.Names(input.Subject)))
+        // A model reads the fields whole, property names and an entity's fact metadata included, so the check reads them all.
+        foreach (var (pointer, text) in CheckContent.AllText(input.Subject))
         {
             var field = CheckContent.FieldOf(pointer);
             var folded = Fold(text);
             foreach (var match in phrases.SelectMany(phrase => phrase.Matches(folded.Text)).Concat(Instruction.Matches(folded.Text)).OrderBy(match => match.Index))
             {
-                var written = text[folded.Starts[match.Index]..folded.Ends[match.Index + match.Length - 1]];
+                var written = folded.Written(text, match.Index, match.Length);
                 findings.Add(new CheckFinding(
                     $"Rewrite or remove '{CheckContent.Quote(written, 80)}' in {field}; it reads as an instruction to an AI model, not as content.",
                     pointer,
@@ -101,37 +127,66 @@ internal sealed class InstructionsCheckType : ICheckType
     }
 
     // The text as a model may read it, so a look-alike spelling hides nothing: compatibility forms such as fullwidth or mathematical
-    // letters decomposed (NFKD), accents and other combining marks dropped, letters of other scripts that look Latin mapped to the
-    // letter they imitate, and characters that render as nothing, such as a soft hyphen or zero-width space, left out. Each folded
-    // character keeps where it came from, so a finding quotes the text as it was written.
-    private static (string Text, int[] Starts, int[] Ends) Fold(string text)
+    // letters decomposed (NFKD), accents and other combining marks dropped, look-alikes mapped to the Latin letter they imitate,
+    // blank letters read as spaces, and characters that render as nothing, such as a soft hyphen or zero-width space, left out.
+    // Each folded character keeps where it came from, so a finding quotes the text as it was written. ASCII folds to itself.
+    private static FoldedText Fold(string text)
     {
+        if (Ascii.IsValid(text))
+        {
+            return new FoldedText(text, null);
+        }
+
         var builder = new StringBuilder(text.Length);
-        var starts = new List<int>(text.Length);
-        var ends = new List<int>(text.Length);
+        var origins = new List<int>(text.Length);
+        Span<char> encoded = stackalloc char[2];
         var index = 0;
         foreach (var rune in text.EnumerateRunes())
         {
-            var width = rune.Utf16SequenceLength;
-            if (Rune.GetUnicodeCategory(rune) != UnicodeCategory.Format && !IsVariationSelector(rune))
+            if (rune.IsAscii)
             {
-                foreach (var character in rune.ToString().Normalize(NormalizationForm.FormKD))
+                builder.Append((char)rune.Value);
+                origins.Add(index);
+            }
+            else if (Rune.GetUnicodeCategory(rune) != UnicodeCategory.Format && !IsVariationSelector(rune))
+            {
+                var decomposed = BlankLetters.Contains(rune.Value) ? " " : rune.ToString().Normalize(NormalizationForm.FormKD);
+                foreach (var part in (decomposed.Length <= MaxExpansion ? decomposed : rune.ToString()).EnumerateRunes())
                 {
-                    if (CharUnicodeInfo.GetUnicodeCategory(character) == UnicodeCategory.NonSpacingMark)
+                    if (Rune.GetUnicodeCategory(part) is UnicodeCategory.NonSpacingMark or UnicodeCategory.SpacingCombiningMark or UnicodeCategory.EnclosingMark)
                     {
                         continue;
                     }
 
-                    builder.Append(LatinLookalikes.GetValueOrDefault(character, character));
-                    starts.Add(index);
-                    ends.Add(index + width);
+                    var length = LatinLookalikes.TryGetValue(part.Value, out var latin) ? new Rune(latin).EncodeToUtf16(encoded) : part.EncodeToUtf16(encoded);
+                    builder.Append(encoded[..length]);
+                    for (var copy = 0; copy < length; copy++)
+                    {
+                        origins.Add(index);
+                    }
                 }
             }
 
-            index += width;
+            index += rune.Utf16SequenceLength;
         }
 
-        return (builder.ToString(), [.. starts], [.. ends]);
+        return new FoldedText(builder.ToString(), [.. origins]);
+    }
+
+    private readonly record struct FoldedText(string Text, int[]? Origins)
+    {
+        // The written text a match on the folded text came from, from the first character it read to the end of the last.
+        public string Written(string text, int index, int length)
+        {
+            if (Origins is null)
+            {
+                return text.Substring(index, length);
+            }
+
+            var start = Origins[index];
+            var last = Origins[index + length - 1];
+            return text[start..(last + (char.IsHighSurrogate(text[last]) ? 2 : 1))];
+        }
     }
 
     // Zero-width and direction-changing characters, tag characters, and runs of variation selectors, which can each spell text no
