@@ -95,7 +95,8 @@ public sealed class ToolCallRecordingTests
         Assert.Equal([ToolCallOutcome.Failed, ToolCallOutcome.Errored, ToolCallOutcome.Errored], calls.Select(call => call.Outcome));
     }
 
-    // The record is written after the tool's own unit of work has ended, so it stays when the tool's changes roll back.
+    // The call is recorded before the tool runs and finished after, each outside the tool's unit of work, so it stays when the tool's
+    // changes roll back.
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
     [PostgresData]
