@@ -1,7 +1,7 @@
 namespace FluentCMS.Infrastructure.Entities;
 
 // One fact of one entity version, written with the version and never changed (ENT-02). Times are UTC, so both providers compare
-// them in queries, which the stale facts job does (ENT-03).
+// them in queries, as the stale facts query does (ENT-03).
 public sealed class EntityFactRow
 {
     public Guid Id { get; set; }

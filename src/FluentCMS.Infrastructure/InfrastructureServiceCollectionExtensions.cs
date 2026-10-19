@@ -110,6 +110,8 @@ public static class InfrastructureServiceCollectionExtensions
     private static void AddContent(IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<ContentOptions>(configuration.GetSection(ContentOptions.SectionName));
+        services.AddOptions<EntityOptions>().Bind(configuration.GetSection(EntityOptions.SectionName)).ValidateOnStart();
+        services.AddSingleton<IValidateOptions<EntityOptions>, EntityOptionsValidation>();
         services.AddScoped<IEntryDirectory, EntryDirectory>();
         services.AddScoped<IWhereUsed, WhereUsed>();
         services.AddScoped<IResolvedEntries, ResolvedEntries>();
