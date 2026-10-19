@@ -272,15 +272,16 @@ public sealed class MediaTools : IToolProvider
 
         var definition = type.Value.Definition;
         var media = definition.Fields.FirstOrDefault(candidate => candidate.Name == field);
-        var isList = media is { Type: "list" } && media.Settings.TryGetProperty("itemType", out var itemType) && itemType.GetString() == "media";
-        if (media is null || (media.Type != "media" && !isList))
+        if (media is null || !IsMediaField(media))
         {
             return Result<Entry>.Failure(
                 MediaErrorCodes.FieldNotMedia,
                 $"'{field}' is not a media field of '{entry.Value.ContentType}'; its media fields are "
-                + string.Join(", ", definition.Fields.Where(candidate => candidate.Type == "media" || candidate.Type == "list").Select(candidate => candidate.Name))
+                + string.Join(", ", definition.Fields.Where(IsMediaField).Select(candidate => candidate.Name))
                 + ".");
         }
+
+        var isList = media.Type == "list";
 
         var read = await entries.GetVersionAsync(entryId, baseVersion, cancellationToken);
         if (!read.IsSuccess)
@@ -324,6 +325,13 @@ public sealed class MediaTools : IToolProvider
         }
 
         return await entries.UpdateAsync(entryId, baseVersion, JsonSerializer.SerializeToElement(fields), cancellationToken);
+    }
+
+    // A single media field or a list of media.
+    private static bool IsMediaField(FieldDefinition field)
+    {
+        return field.Type == "media"
+            || (field.Type == "list" && field.Settings.TryGetProperty("itemType", out var itemType) && itemType.GetString() == "media");
     }
 
     // The version an agent writes and its operation commit together or not at all; uploaded bytes that end up in no asset are deleted
