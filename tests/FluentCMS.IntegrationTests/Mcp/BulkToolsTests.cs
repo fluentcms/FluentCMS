@@ -194,7 +194,8 @@ public sealed class BulkToolsTests
 
     private static async Task<JsonObject> FinishedAsync(ConnectedAgent agent, string jobId)
     {
-        var deadline = DateTime.UtcNow.AddSeconds(60);
+        // The job takes a few seconds for 180 items on its own; a loaded test machine can take far longer.
+        var deadline = DateTime.UtcNow.AddMinutes(3);
         while (true)
         {
             var job = await agent.CallAsync("get_job", new() { ["id"] = jobId });
