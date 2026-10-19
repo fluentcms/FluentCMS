@@ -190,15 +190,19 @@ public sealed class ChangeSet
 
     // A write of an item adds its operation, or extends the one the set already holds for the item, so the set still has one
     // operation per item (SCH-05): the write is based on the version the set proposes, and the operation now proposes the write's
-    // version. A create stays a create and an update keeps its base.
-    public Result Record(ChangeOperation operation)
+    // version. A create stays a create and an update keeps its base. An update of an item no set has published, or that a published
+    // delete took offline (a rejected create, a reverted one), is recorded as a create, since publishing it makes the item live again
+    // from nothing.
+    public Result Record(ChangeOperation operation, bool itemPublished = true)
     {
         ArgumentNullException.ThrowIfNull(operation);
 
         var index = _operations.FindIndex(existing => existing.ItemKind == operation.ItemKind && existing.ItemId == operation.ItemId);
         if (index < 0)
         {
-            return AddOperation(operation);
+            return AddOperation(itemPublished || operation.Kind != OperationKind.Update
+                ? operation
+                : ChangeOperation.Create(OperationKind.Create, operation.ItemKind, operation.ItemId, null, operation.ProposedVersion).Value);
         }
 
         var writable = CanTakeOperations();

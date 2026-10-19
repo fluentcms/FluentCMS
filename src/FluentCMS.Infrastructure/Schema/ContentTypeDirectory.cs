@@ -86,7 +86,7 @@ internal sealed class ContentTypeDirectory(
             return Result<ContentType>.Failure(errors);
         }
 
-        var pending = await changeSets.PrepareAsync(changeSet, Operation(OperationKind.Create, type.Id, null, type.Version), cancellationToken);
+        var pending = await changeSets.PrepareAsync(changeSet, Operation(OperationKind.Create, type.Id, null, type.Version), itemPublished: false, cancellationToken);
         if (!pending.IsSuccess)
         {
             return Result<ContentType>.Failure(pending.Errors);
@@ -156,15 +156,29 @@ internal sealed class ContentTypeDirectory(
             return revised;
         }
 
+        // A revision from the published version drops the latest draft's fields too, so other types must not reference those either.
+        var dropped = new List<ContentTypeDefinition> { previous.Definition };
+        if (baseVersion != row.Version)
+        {
+            var latest = await context.ContentTypeVersions
+                .AsNoTracking()
+                .SingleAsync(version => version.ContentTypeId == row.Id && version.Version == row.Version, cancellationToken);
+            dropped.Add(ReadDefinition(row.Slug, latest.Version, latest.Definition));
+        }
+
         var type = revised.Value;
         var errors = await ReferenceErrorsAsync(type, cancellationToken);
-        errors.AddRange(await RemovedFieldsInUseAsync(type, previous.Definition, cancellationToken));
+        errors.AddRange(await RemovedFieldsInUseAsync(type, dropped, cancellationToken));
         if (errors.Count > 0)
         {
             return Result<ContentType>.Failure(errors);
         }
 
-        var pending = await changeSets.PrepareAsync(changeSet, Operation(OperationKind.Update, type.Id, baseVersion, type.Version), cancellationToken);
+        var pending = await changeSets.PrepareAsync(
+            changeSet,
+            Operation(OperationKind.Update, type.Id, baseVersion, type.Version),
+            itemPublished: row.PublishedVersion is not null,
+            cancellationToken);
         if (!pending.IsSuccess)
         {
             return Result<ContentType>.Failure(pending.Errors);
@@ -286,9 +300,9 @@ internal sealed class ContentTypeDirectory(
     }
 
     // A field another type points at cannot go, or that reference would dangle (SCH-04).
-    private async Task<List<Error>> RemovedFieldsInUseAsync(ContentType type, ContentTypeDefinition previous, CancellationToken cancellationToken)
+    private async Task<List<Error>> RemovedFieldsInUseAsync(ContentType type, IEnumerable<ContentTypeDefinition> previous, CancellationToken cancellationToken)
     {
-        var removed = previous.Fields.Select(field => field.Name).Where(name => !type.Definition.HasField(name)).ToHashSet();
+        var removed = previous.SelectMany(definition => definition.Fields).Select(field => field.Name).Where(name => !type.Definition.HasField(name)).ToHashSet();
         if (removed.Count == 0)
         {
             return [];

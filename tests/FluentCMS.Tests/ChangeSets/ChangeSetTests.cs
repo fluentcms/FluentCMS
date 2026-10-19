@@ -215,6 +215,20 @@ public sealed class ChangeSetTests
     }
 
     [Fact]
+    public void An_update_of_an_item_that_is_not_published_is_recorded_as_a_create()
+    {
+        var rejected = Guid.NewGuid();
+        var created = Guid.NewGuid();
+        var changeSet = TestChangeSets.Open();
+
+        Assert.True(changeSet.Record(Operation(OperationKind.Update, rejected, 1, 2), itemPublished: false).IsSuccess);
+        Assert.True(changeSet.Record(Operation(OperationKind.Create, created, null, 1), itemPublished: false).IsSuccess);
+        Assert.True(changeSet.Record(Operation(OperationKind.Update, rejected, 2, 3), itemPublished: false).IsSuccess);
+
+        Assert.Equal([Operation(OperationKind.Create, rejected, null, 3), Operation(OperationKind.Create, created, null, 1)], changeSet.Operations);
+    }
+
+    [Fact]
     public void A_later_write_that_is_not_based_on_the_proposed_version_is_refused()
     {
         var item = Guid.NewGuid();

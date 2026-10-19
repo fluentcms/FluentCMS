@@ -299,7 +299,12 @@ internal sealed class ChangeSetDirectory(
     // (SCH-05), joins its set in two steps, so the item's rows and the operation commit together. PrepareAsync finds every
     // expected failure before the caller's unit of work begins; WriteAsync runs inside it, with the row of the version the write
     // was based on.
-    internal async Task<Result<PendingOperation>> PrepareAsync(ChangeSetTarget target, ChangeOperation operation, CancellationToken cancellationToken)
+    // ItemPublished says whether a change set has published the item, so an update of one that is not live records a create.
+    internal async Task<Result<PendingOperation>> PrepareAsync(
+        ChangeSetTarget target,
+        ChangeOperation operation,
+        bool itemPublished,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(target);
         ArgumentNullException.ThrowIfNull(operation);
@@ -309,7 +314,7 @@ internal sealed class ChangeSetDirectory(
             var stored = await ReadAsync(id, cancellationToken);
             return stored is null
                 ? Result<PendingOperation>.Failure(NotFound(id).Errors)
-                : await PrepareJoinAsync(stored, operation, [], cancellationToken);
+                : await PrepareJoinAsync(stored, operation, itemPublished, [], cancellationToken);
         }
 
         var sessionId = target.SessionId!;
@@ -317,7 +322,7 @@ internal sealed class ChangeSetDirectory(
         var openId = await OpenSetOfSessionAsync(initiator, sessionId, cancellationToken);
         if (openId is not null && await ReadAsync(openId.Value, cancellationToken) is { } open)
         {
-            return await PrepareJoinAsync(open, operation, target.NewChangeSet!.Sources, cancellationToken);
+            return await PrepareJoinAsync(open, operation, itemPublished, target.NewChangeSet!.Sources, cancellationToken);
         }
 
         var opened = ChangeSet.Open(SiteId, target.NewChangeSet!.Rationale, target.NewChangeSet.Sources, initiator, sessionId);
@@ -327,7 +332,7 @@ internal sealed class ChangeSetDirectory(
         }
 
         var set = opened.Value;
-        var recorded = set.Record(operation);
+        var recorded = set.Record(operation, itemPublished);
         if (!recorded.IsSuccess)
         {
             return Result<PendingOperation>.Failure(recorded.Errors);
@@ -369,13 +374,14 @@ internal sealed class ChangeSetDirectory(
     private async Task<Result<PendingOperation>> PrepareJoinAsync(
         StoredChangeSet stored,
         ChangeOperation operation,
+        bool itemPublished,
         IReadOnlyList<string> sources,
         CancellationToken cancellationToken)
     {
         var set = stored.ChangeSet;
         var count = set.Operations.Count;
 
-        var recorded = set.Record(operation);
+        var recorded = set.Record(operation, itemPublished);
         if (!recorded.IsSuccess)
         {
             return Result<PendingOperation>.Failure(recorded.Errors);

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using FluentCMS.Core.Agents;
 using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Persistence;
@@ -185,30 +186,108 @@ public sealed class SchemaChangeSetTests
         Assert.Equal(events + 1, (await scenario.ChangeSetEventsAsync()).Count);
     }
 
+    // A refusal is found before the directories write, so the caller's unit of work still commits; a refused cap keeps its
+    // security event (SEC-08), and nothing else of a refused write is stored.
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
     [PostgresData]
     public async Task An_agent_writes_only_into_its_own_set_and_within_its_cap(string provider)
     {
         await using var scenario = await ChangeSetScenario.CreateAsync(provider);
-        var persons = await scenario.AsPersonAsync(directory => directory.OpenAsync(CatalogSync));
+        scenario.Initiator = OtherAgent;
+        var others = await scenario.OpenAsync();
+        scenario.Initiator = Agent;
         var own = await scenario.OpenAsync();
         await scenario.UpdateAgentAsync(row => row.ItemsPerChangeSet = 1);
+        var writes = await WriteEventsAsync(scenario);
 
-        var intoPersons = await scenario.RunSchemaAsync(directory => directory.CreateAsync(Product, ChangeSetTarget.Existing(persons.Value.Id)));
-        var first = await scenario.RunSchemaAsync(directory => directory.CreateAsync(Product, ChangeSetTarget.Existing(own.Id)));
-        var pastCap = await scenario.RunSchemaAsync(directory => directory.CreateAsync(
-            new NewContentType("Category", "category", new ContentTypeDefinition([Title])),
-            ChangeSetTarget.Existing(own.Id)));
+        await using (var scope = scenario.Services.CreateAsyncScope())
+        {
+            var directory = scope.ServiceProvider.GetRequiredService<IContentTypeDirectory>();
+            await using var work = await scope.ServiceProvider.GetRequiredService<IUnitOfWork>().BeginAsync();
 
-        Assert.Equal(AgentPermissionErrorCodes.NotOwner, Assert.Single(intoPersons.Errors).Code);
-        Assert.True(first.IsSuccess);
-        Assert.Equal(AgentPermissionErrorCodes.CapExceeded, Assert.Single(pastCap.Errors).Code);
+            var first = await directory.CreateAsync(Product, ChangeSetTarget.Existing(own.Id));
+            var intoOthers = await directory.CreateAsync(new NewContentType("Region", "region", new ContentTypeDefinition([Title])), ChangeSetTarget.Existing(others.Id));
+            var pastCap = await directory.CreateAsync(new NewContentType("Category", "category", new ContentTypeDefinition([Title])), ChangeSetTarget.Existing(own.Id));
+
+            Assert.True(first.IsSuccess);
+            Assert.Equal(AgentPermissionErrorCodes.NotOwner, Assert.Single(intoOthers.Errors).Code);
+            Assert.Equal(AgentPermissionErrorCodes.CapExceeded, Assert.Single(pastCap.Errors).Code);
+            await work.CommitAsync();
+        }
+
         Assert.Equal(["product"], (await scenario.RunSchemaAsync(directory => directory.ListAsync())).Select(type => type.Slug));
-        Assert.Empty(await scenario.OperationRowsAsync(persons.Value.Id));
+        Assert.Empty(await scenario.OperationRowsAsync(others.Id));
         Assert.Single(await scenario.OperationRowsAsync(own.Id));
+        Assert.Equal(["content_type.created", "change_set.operation_added"], (await WriteEventsAsync(scenario)).Skip(writes.Count));
+        Assert.Single(
+            await scenario.QueryAsync(context => context.AuditEvents.AsNoTracking().Where(row => row.Operation == "agent.items_per_change_set_exceeded").ToListAsync()));
     }
 
+    // A rejected create leaves a type no set has published, and a reverted one takes it offline; either way the next revision
+    // records a create, so the type can be published again.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_type_whose_create_was_rejected_or_reverted_is_published_again_through_a_create(string provider)
+    {
+        await using var scenario = await ScenarioAsync(provider);
+
+        var rejected = await scenario.OpenAsync();
+        var product = (await scenario.RunSchemaAsync(directory => directory.CreateAsync(Product, ChangeSetTarget.Existing(rejected.Id)))).Value;
+        await scenario.RunAsync(directory => directory.TransitionAsync(rejected.Id, ChangeSetState.ChecksRunning));
+        await scenario.RunAsync(directory => directory.TransitionAsync(rejected.Id, ChangeSetState.AwaitingReview));
+        await scenario.RunAsync(directory => directory.RejectAsync(rejected.Id, "Not this quarter."));
+
+        var retry = await scenario.OpenAsync();
+        await scenario.RunSchemaAsync(directory => directory.ReviseAsync("product", 1, WithSummary, ChangeSetTarget.Existing(retry.Id)));
+        Assert.Equal([ChangeOperation.Create(OperationKind.Create, ItemKind.Schema, product.Id, null, 2).Value], (await scenario.RunAsync(directory => directory.GetAsync(retry.Id))).Value.Operations);
+        await scenario.PublishAsync(retry.Id);
+        Assert.Equal(2, (await scenario.RunSchemaAsync(directory => directory.GetPublishedAsync("product"))).Value.Version);
+
+        var published = await scenario.OpenAsync();
+        var category = (await scenario.RunSchemaAsync(directory => directory.CreateAsync(new NewContentType("Category", "category", new ContentTypeDefinition([Title])), ChangeSetTarget.Existing(published.Id)))).Value;
+        await scenario.PublishAsync(published.Id);
+        var revert = (await scenario.RunAsync(directory => directory.RevertAsync(published.Id, "Categories come later."))).Value;
+        await scenario.PublishAsync(revert.Id);
+        Assert.Equal(SchemaErrorCodes.ContentTypeNotPublished, Assert.Single((await scenario.RunSchemaAsync(directory => directory.GetPublishedAsync("category"))).Errors).Code);
+
+        var again = await scenario.OpenAsync();
+        await scenario.RunSchemaAsync(directory => directory.ReviseAsync("category", 1, new ContentTypeDefinition([Title, new FieldDefinition("parent", "text")]), ChangeSetTarget.Existing(again.Id)));
+        Assert.Equal([ChangeOperation.Create(OperationKind.Create, ItemKind.Schema, category.Id, null, 2).Value], (await scenario.RunAsync(directory => directory.GetAsync(again.Id))).Value.Operations);
+        await scenario.PublishAsync(again.Id);
+        Assert.Equal(2, (await scenario.RunSchemaAsync(directory => directory.GetPublishedAsync("category"))).Value.Version);
+    }
+
+    // The published version is behind the latest draft, whose fields other drafts may already reference (SCH-04).
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_revision_from_the_published_version_cannot_drop_a_field_a_draft_references(string provider)
+    {
+        await using var scenario = await ScenarioAsync(provider);
+        var name = new FieldDefinition("name", "text");
+        var first = await scenario.OpenAsync();
+        await scenario.RunSchemaAsync(directory => directory.CreateAsync(new NewContentType("Brand", "brand", new ContentTypeDefinition([name], isEntity: true)), ChangeSetTarget.Existing(first.Id)));
+        await scenario.PublishAsync(first.Id);
+
+        var draft = ChangeSetTarget.Existing((await scenario.OpenAsync()).Id);
+        await scenario.RunSchemaAsync(directory => directory.ReviseAsync("brand", 1, new ContentTypeDefinition([name, new FieldDefinition("country", "text")], isEntity: true), draft));
+        var country = new FieldDefinition("brandCountry", "reference", settings: Json("""{"target": "brand", "field": "country"}"""));
+        Assert.True((await scenario.RunSchemaAsync(directory => directory.CreateAsync(new NewContentType("Product", "product", new ContentTypeDefinition([Title, country])), draft))).IsSuccess);
+
+        var other = ChangeSetTarget.Existing((await scenario.OpenAsync()).Id);
+        var revision = await scenario.RunSchemaAsync(directory => directory.ReviseAsync(
+            "brand",
+            1,
+            new ContentTypeDefinition([name, new FieldDefinition("logo", "text")], isEntity: true),
+            other));
+
+        var error = Assert.Single(revision.Errors);
+        Assert.Equal(SchemaErrorCodes.FieldReferenced, error.Code);
+        Assert.Contains("'country'", error.Message);
+        Assert.Equal(2, (await scenario.RunSchemaAsync(directory => directory.GetAsync("brand"))).Value.Version);
+    }
     // A revision moves the latest version and the set's revision before its events are appended, so each failure point comes
     // after something reached the database.
     [Theory]
@@ -247,6 +326,22 @@ public sealed class SchemaChangeSetTests
         Assert.True((await scenario.RunSchemaAsync(directory => directory.ReviseAsync("product", 1, WithSummary, target))).IsSuccess);
     }
 
+    // The content type and change set events of writes, in the order they were appended; security events are left out.
+    private static async Task<List<string>> WriteEventsAsync(ChangeSetScenario scenario)
+    {
+        var rows = await scenario.QueryAsync(context => context.AuditEvents
+            .AsNoTracking()
+            .Where(row => row.Operation.StartsWith("content_type.") || row.Operation.StartsWith("change_set."))
+            .ToListAsync());
+
+        return [.. rows.OrderBy(row => row.Timestamp).Select(row => row.Operation)];
+    }
+
+    private static JsonElement Json(string json)
+    {
+        using var document = JsonDocument.Parse(json);
+        return document.RootElement.Clone();
+    }
     // Content type writes here are a person's, who also makes the review moves (MCP-06).
     private static async Task<ChangeSetScenario> ScenarioAsync(string provider)
     {

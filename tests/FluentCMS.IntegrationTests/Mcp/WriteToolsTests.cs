@@ -52,10 +52,11 @@ public sealed class WriteToolsTests
         var category = await agent.AsPersonAsync<IContentTypeDirectory, ContentType>(directory => directory.GetAsync("category"));
         Assert.Equal(ChangeSetState.ChecksRunning, stored.State);
         Assert.Equal(agent.Credential.Initiator, stored.Initiator);
+        // No set has published the person's product yet, so the agent's revision of it is recorded as its create.
         Assert.Equal(
             [
                 ChangeOperation.Create(OperationKind.Create, ItemKind.Schema, category.Id, null, 1).Value,
-                ChangeOperation.Create(OperationKind.Update, ItemKind.Schema, product.Id, 1, 2).Value,
+                ChangeOperation.Create(OperationKind.Create, ItemKind.Schema, product.Id, null, 2).Value,
             ],
             stored.Operations);
 
