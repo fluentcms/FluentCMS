@@ -186,6 +186,73 @@ public sealed class DeskQueueTests
         Assert.Equal((unverified, StaleReason.Unverified, 2), (Assert.Single(second.Items).EntityId, second.Items[0].Reason, second.Total));
     }
 
+    // The read sides date and describe sets by these move names, so each move the directory makes must append one of them.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task Every_move_the_directory_makes_appends_a_known_move_that_names_the_state_it_leaves(string provider)
+    {
+        await using var scenario = await ChangeSetScenario.CreateAsync(provider);
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var set = await scenario.OpenAsync(Create(await scenario.ContentTypeAsync("product")));
+        await ExpectMoveAsync(scenario, set.Id, ChangeSetState.Open, seen, before: []);
+
+        async Task MoveAsync(Guid id, ChangeSetState state, Func<IChangeSetDirectory, Task<FluentCMS.Core.Results.Result<ChangeSet>>> move, bool asPerson = true)
+        {
+            var before = await MoveEventsAsync(scenario, id);
+            var moved = asPerson ? await scenario.AsPersonAsync(move) : await scenario.RunAsync(move);
+            Assert.True(moved.IsSuccess, string.Join("; ", moved.Errors.Select(error => error.Message)));
+            await ExpectMoveAsync(scenario, id, state, seen, before);
+        }
+
+        await MoveAsync(set.Id, ChangeSetState.ChecksRunning, directory => directory.TransitionAsync(set.Id, ChangeSetState.ChecksRunning), asPerson: false);
+        await MoveAsync(set.Id, ChangeSetState.ChecksFailed, directory => directory.TransitionAsync(set.Id, ChangeSetState.ChecksFailed));
+        await MoveAsync(set.Id, ChangeSetState.Open, directory => directory.TransitionAsync(set.Id, ChangeSetState.Open), asPerson: false);
+        await MoveAsync(set.Id, ChangeSetState.ChecksRunning, directory => directory.TransitionAsync(set.Id, ChangeSetState.ChecksRunning), asPerson: false);
+        await MoveAsync(set.Id, ChangeSetState.AwaitingReview, directory => directory.TransitionAsync(set.Id, ChangeSetState.AwaitingReview));
+        await MoveAsync(set.Id, ChangeSetState.Approved, directory => directory.TransitionAsync(set.Id, ChangeSetState.Approved));
+        await MoveAsync(set.Id, ChangeSetState.Published, directory => directory.PublishAsync(set.Id));
+
+        var revert = (await scenario.AsPersonAsync(directory => directory.RevertAsync(set.Id, "Undo it."))).Value;
+        await MoveAsync(revert.Id, ChangeSetState.ChecksRunning, directory => directory.TransitionAsync(revert.Id, ChangeSetState.ChecksRunning));
+        await MoveAsync(revert.Id, ChangeSetState.AwaitingReview, directory => directory.TransitionAsync(revert.Id, ChangeSetState.AwaitingReview));
+        await MoveAsync(revert.Id, ChangeSetState.Approved, directory => directory.TransitionAsync(revert.Id, ChangeSetState.Approved));
+        var originalBefore = await MoveEventsAsync(scenario, set.Id);
+        await MoveAsync(revert.Id, ChangeSetState.Published, directory => directory.PublishAsync(revert.Id));
+        await ExpectMoveAsync(scenario, set.Id, ChangeSetState.Reverted, seen, originalBefore);
+
+        var rejected = await scenario.OpenAsync(Create(await scenario.ContentTypeAsync("category")));
+        await MoveAsync(rejected.Id, ChangeSetState.ChecksRunning, directory => directory.TransitionAsync(rejected.Id, ChangeSetState.ChecksRunning), asPerson: false);
+        await MoveAsync(rejected.Id, ChangeSetState.AwaitingReview, directory => directory.TransitionAsync(rejected.Id, ChangeSetState.AwaitingReview));
+        await MoveAsync(rejected.Id, ChangeSetState.Rejected, directory => directory.RejectAsync(rejected.Id, "Not needed."));
+
+        Assert.Equal(ChangeSetMoves.Operations.Order(StringComparer.Ordinal), seen.Order(StringComparer.Ordinal));
+    }
+
+    private static async Task ExpectMoveAsync(ChangeSetScenario scenario, Guid id, ChangeSetState state, HashSet<string> seen, IReadOnlyCollection<Guid> before)
+    {
+        var appended = (await scenario.QueryAsync(context => context.AuditEvents
+            .AsNoTracking()
+            .Where(row => row.SubjectType == "change_set" && row.SubjectId == id && row.Operation.StartsWith("change_set."))
+            .ToListAsync()))
+            .Where(row => !before.Contains(row.Id) && !row.Operation.StartsWith("change_set.operation_", StringComparison.Ordinal))
+            .ToList();
+
+        var move = Assert.Single(appended);
+        Assert.Contains(move.Operation, ChangeSetMoves.Operations);
+        Assert.Equal(state, ChangeSetMoves.StateAfter(move.Operation));
+        seen.Add(move.Operation);
+    }
+
+    private static async Task<List<Guid>> MoveEventsAsync(ChangeSetScenario scenario, Guid id)
+    {
+        return await scenario.QueryAsync(context => context.AuditEvents
+            .AsNoTracking()
+            .Where(row => row.SubjectType == "change_set" && row.SubjectId == id)
+            .Select(row => row.Id)
+            .ToListAsync());
+    }
+
     private static async Task<ChangeSet> AwaitingReviewAsync(ChangeSetScenario scenario, string slug)
     {
         var set = await scenario.OpenAsync(Create(await scenario.ContentTypeAsync(slug)));

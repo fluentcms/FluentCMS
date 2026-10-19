@@ -31,16 +31,18 @@ public sealed class DeskTools : IToolProvider
             "get_desk_counts",
             "Get the review desk's counts",
             "Returns how many items wait in each queue of the review desk: sets awaiting review, sets whose checks failed, stale facts, "
-            + "and sets published or reverted in the last seven days. Call list_desk_queue to see the items of one queue.",
+            + "and sets published or reverted in the last seven days. An agent counts only the change sets it opened, so other "
+            + "people's and agents' sets may wait too. Call list_desk_queue to see the items of one queue.",
             ToolSchemas.Object(),
             readOnly: true,
             CountsAsync),
         new AgentTool(
             "list_desk_queue",
             "List a review desk queue",
-            "Lists one queue of the review desk, as reviewers see it: awaiting_review and checks_failed put the set that has waited "
-            + "longest first; recently_published and reverted cover the last seven days, newest first; stale_facts lists the facts "
-            + "that are stale, the longest stale first. Read a set with get_change_set or get_change_set_review.",
+            "Lists one queue of the review desk, holding only the change sets this agent opened: awaiting_review and checks_failed "
+            + "put the set that has waited longest first; recently_published and reverted cover the last seven days, newest first; "
+            + "stale_facts lists the stale facts of the types this agent may read, the longest stale first. Read a set with "
+            + "get_change_set or get_change_set_review.",
             ToolSchemas.Object(
                 new ToolArgument(
                     "queue",
@@ -59,9 +61,9 @@ public sealed class DeskTools : IToolProvider
         new AgentTool(
             "get_change_set_review",
             "Get a change set's review status",
-            "Returns where a change set stands in review: its state and since when, the reason if a person rejected it, the set it "
-            + "reverts, and every move it made, in order, with who made it and when. Use it to learn whether your set was approved, "
-            + "published or rejected and why; a rejected set's reason says what to change in a new set.",
+            "Returns where a change set this agent opened stands in review: its state and since when, the reason if a person "
+            + "rejected it, the set it reverts, and every move it made, in order, with who made it and when. Use it to learn whether "
+            + "your set was approved, published or rejected and why; a rejected set's reason says what to change in a new set.",
             ToolSchemas.Object(ToolSchemas.Uuid("id", "The change set's id.")),
             readOnly: true,
             ReviewAsync),
@@ -139,44 +141,56 @@ public sealed class DeskTools : IToolProvider
             return ToolResult.Failure(errors);
         }
 
-        var read = await call.Services.GetRequiredService<IChangeSetDirectory>().GetAsync(id!.Value, cancellationToken);
-        if (!read.IsSuccess)
+        // The set and its moves are two reads. A decision that commits between them leaves the last move ahead of the set, so both
+        // are read again until they agree, and the answer is one moment's.
+        ChangeSet set;
+        List<AuditEvent> moves;
+        var attempts = 0;
+        do
         {
-            return ToolResult.Failure(read.Errors, "A change set's id comes back from the call that opened it, or from list_desk_queue.");
-        }
-
-        var set = read.Value;
-        var history = call.Services.GetRequiredService<IAuditReader>().Read(new AuditQuery { Subject = new AuditSubject("change_set", set.Id) });
-        var moves = new JsonArray();
-        DateTimeOffset? since = null;
-        if (history.IsSuccess)
-        {
-            await foreach (var auditEvent in history.Value.WithCancellation(cancellationToken))
+            var read = await call.Services.GetRequiredService<IChangeSetDirectory>().GetAsync(id!.Value, cancellationToken);
+            if (!read.IsSuccess)
             {
-                if (!ChangeSetMoves.Operations.Contains(auditEvent.Operation))
-                {
-                    continue;
-                }
-
-                since = auditEvent.Timestamp;
-                moves.Add(new JsonObject
-                {
-                    ["move"] = auditEvent.Operation["change_set.".Length..],
-                    ["by"] = Initiator(auditEvent.Initiator),
-                    ["at"] = auditEvent.Timestamp.ToUniversalTime().ToString("O"),
-                });
+                return ToolResult.Failure(read.Errors, "A change set's id comes back from the call that opened it, or from list_desk_queue.");
             }
+
+            set = read.Value;
+            moves = await MovesAsync(call.Services, set.Id, cancellationToken);
         }
+        while (moves.Count > 0 && ChangeSetMoves.StateAfter(moves[^1].Operation) != set.State && ++attempts < 3);
 
         return ToolResult.Success(new JsonObject
         {
             ["id"] = set.Id.ToString(),
             ["state"] = ToolJson.Name(set.State),
-            ["stateSince"] = since?.ToUniversalTime().ToString("O"),
+            ["stateSince"] = moves.Count > 0 ? moves[^1].Timestamp.ToUniversalTime().ToString("O") : null,
             ["rejectionReason"] = set.RejectionReason,
             ["revertsChangeSetId"] = set.RevertsChangeSetId?.ToString(),
-            ["moves"] = moves,
+            ["moves"] = new JsonArray([.. moves.Select(move => (JsonNode)new JsonObject
+            {
+                ["move"] = move.Operation["change_set.".Length..],
+                ["by"] = Initiator(move.Initiator),
+                ["at"] = move.Timestamp.ToUniversalTime().ToString("O"),
+            })]),
         });
+    }
+
+    private static async Task<List<AuditEvent>> MovesAsync(IServiceProvider services, Guid changeSetId, CancellationToken cancellationToken)
+    {
+        var moves = new List<AuditEvent>();
+        var history = services.GetRequiredService<IAuditReader>().Read(new AuditQuery { Subject = new AuditSubject("change_set", changeSetId) });
+        if (history.IsSuccess)
+        {
+            await foreach (var auditEvent in history.Value.WithCancellation(cancellationToken))
+            {
+                if (ChangeSetMoves.Operations.Contains(auditEvent.Operation))
+                {
+                    moves.Add(auditEvent);
+                }
+            }
+        }
+
+        return moves;
     }
 
     private static JsonObject Summary(ChangeSetSummary set)
