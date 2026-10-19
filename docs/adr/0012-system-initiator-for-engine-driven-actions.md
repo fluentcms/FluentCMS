@@ -21,7 +21,7 @@ These run inside a request or as a job (ADR-0010), and a job runs as whoever enq
   - It is never a change set's initiator. `ChangeSet.Open` refuses it, and so do session grouping and revert, which open sets through it.
   - `AgentPermissions` treats it as not an agent and lets it make only the moves its component owns. `checks` moves a set from checks running to checks failed or awaiting review; routing will add auto-publish.
   - It reads content, and never creates, edits or deletes content, opens or adds to a change set, or calls a tool.
-  - What only a person may do (issuing credentials, activating checks) is written as "a person", so a system initiator is refused there too.
+  - What only a person may do, such as issuing credentials or activating checks, refuses a system initiator as it refuses an agent.
   - Maintenance names what it may do: the prompt purge accepts `retention` as well as a person.
 - A job can run as a system initiator instead of whoever enqueued it (`NewJob.RunAs`). The check run is enqueued in the submitting agent's call and runs as `checks`.
 

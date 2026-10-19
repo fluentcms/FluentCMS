@@ -272,7 +272,7 @@ internal sealed class CheckDirectory(
     // Activating decides what guards content, which only a person does (D17, SEC-02): no agent, whatever its scope, and no engine.
     private Result<Check>? RefuseAgent(string action)
     {
-        return currentInitiator.Current is not UserInitiator
+        return currentInitiator.Current is AgentInitiator or SystemInitiator
             ? Result<Check>.Failure(CheckErrorCodes.PeopleOnly, $"Only a person can {action} a check; an agent cannot.")
             : null;
     }
