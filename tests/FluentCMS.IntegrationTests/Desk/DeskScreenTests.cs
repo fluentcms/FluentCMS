@@ -65,7 +65,7 @@ public sealed partial class DeskScreenTests
     private static async Task<Guid> AwaitingReviewAsync(AdminHost host, Guid userId, string slug)
     {
         var type = await host.AsUserAsync<IContentTypeDirectory, ContentType>(userId, async directory =>
-            (await directory.CreateAsync(new NewContentType(slug, slug, new ContentTypeDefinition([new FieldDefinition("title", "text")])))).Value);
+            (await directory.CreateAsync(new NewContentType(slug, slug, new ContentTypeDefinition([new FieldDefinition("title", "text")])), TestChangeSetTargets.ContentModel)).Value);
 
         return await host.AsUserAsync<IChangeSetDirectory, Guid>(userId, async directory =>
         {
