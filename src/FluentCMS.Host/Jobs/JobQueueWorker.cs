@@ -56,6 +56,8 @@ public sealed class JobQueueWorker(
         await using var leaseScope = scopes.CreateAsyncScope();
         var leases = leaseScope.ServiceProvider.GetRequiredService<IJobLeases>();
 
+        // Taken before the claim writes the lease, so the heartbeat never counts on more of it than the claim gave.
+        var claimedAt = clock.GetUtcNow();
         var job = await leases.ClaimAsync(owner, settings.LeaseDuration, stoppingToken);
         if (job is null)
         {
@@ -83,7 +85,7 @@ public sealed class JobQueueWorker(
         // is lost, the handler is stopped through its token, since another worker may already be running the job.
         using var running = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
         using var heartbeat = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
-        var keeping = KeepAsync(job, owner, settings.LeaseDuration, running, heartbeat.Token);
+        var keeping = KeepAsync(job, owner, claimedAt + settings.LeaseDuration, settings.LeaseDuration, running, heartbeat.Token);
 
         // Once the handler is done, how it ended is recorded even if the host is stopping, so finished work is not run again.
         try
@@ -132,7 +134,7 @@ public sealed class JobQueueWorker(
     }
 
     // Each renewal has a scope of its own; a lost lease stops the handler.
-    private async Task KeepAsync(Job job, string owner, TimeSpan duration, CancellationTokenSource running, CancellationToken cancellationToken)
+    private async Task KeepAsync(Job job, string owner, DateTimeOffset heldUntil, TimeSpan duration, CancellationTokenSource running, CancellationToken cancellationToken)
     {
         var kept = await KeepLeaseAsync(
             async renewing =>
@@ -140,6 +142,7 @@ public sealed class JobQueueWorker(
                 await using var scope = scopes.CreateAsyncScope();
                 return await scope.ServiceProvider.GetRequiredService<IJobLeases>().RenewAsync(job.Id, owner, duration, renewing);
             },
+            heldUntil,
             duration,
             clock,
             logger,
@@ -153,46 +156,57 @@ public sealed class JobQueueWorker(
     }
 
     // Renews the lease at a third of its duration until the token says the handler is done, and is then true. A renewal that throws is
-    // tried again at the next beat while the lease still holds, so one transient error does not give the job away. False once a
-    // renewal is refused, because another worker holds the lease, or once the lease has run out with no renewal.
+    // tried again while the lease holds, so one transient error does not give the job away. False once a renewal is refused, because
+    // another worker holds the lease, or as soon as the lease's deadline passes without a renewal: no wait or renewal outlasts it.
     public static async Task<bool> KeepLeaseAsync(
         Func<CancellationToken, Task<bool>> renew,
+        DateTimeOffset heldUntil,
         TimeSpan duration,
         TimeProvider clock,
         ILogger logger,
         CancellationToken cancellationToken)
     {
-        var heldUntil = clock.GetUtcNow() + duration;
-        try
+        while (true)
         {
-            while (true)
+            // A beat, or what is left of the lease when that is less, so a failed renewal is never retried past the deadline.
+            var left = heldUntil - clock.GetUtcNow();
+            var wait = left < duration / 3 ? left : duration / 3;
+            try
             {
-                await Task.Delay(duration / 3, cancellationToken);
-                var renewedAt = clock.GetUtcNow();
-                try
-                {
-                    if (!await renew(cancellationToken))
-                    {
-                        return false;
-                    }
-
-                    heldUntil = renewedAt + duration;
-                }
-                catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
-                {
-                    if (clock.GetUtcNow() >= heldUntil)
-                    {
-                        logger.LogError(exception, "A job's lease ran out at {HeldUntil} while it could not be renewed.", heldUntil);
-                        return false;
-                    }
-
-                    logger.LogWarning(exception, "A job's lease could not be renewed; it holds until {HeldUntil} and is tried again.", heldUntil);
-                }
+                await Task.Delay(wait > TimeSpan.Zero ? wait : TimeSpan.Zero, clock, cancellationToken);
             }
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            return true;
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                return true;
+            }
+
+            var renewingAt = clock.GetUtcNow();
+            if (renewingAt >= heldUntil)
+            {
+                logger.LogError("A job's lease ran out at {HeldUntil} with no renewal.", heldUntil);
+                return false;
+            }
+
+            using var attempt = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            attempt.CancelAfter(heldUntil - renewingAt);
+            try
+            {
+                if (!await renew(attempt.Token))
+                {
+                    return false;
+                }
+
+                heldUntil = renewingAt + duration;
+            }
+            catch (Exception) when (cancellationToken.IsCancellationRequested)
+            {
+                // The handler is done, so how the renewal ended no longer matters.
+                return true;
+            }
+            catch (Exception exception)
+            {
+                logger.LogWarning(exception, "A job's lease could not be renewed; it holds until {HeldUntil} and is tried again.", heldUntil);
+            }
         }
     }
 

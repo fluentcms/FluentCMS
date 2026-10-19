@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
 using FluentCMS.Core.Extensions;
@@ -91,6 +92,46 @@ public sealed class JobQueueWorkerTests
         Assert.Equal(1, run.Runs);
     }
 
+    // A trigger makes the renewals fail while the clock stands still, so the lease holds; once they work again, the clock moves past
+    // the lease twice over and the job is still this worker's.
+    [Fact]
+    public async Task A_running_worker_keeps_the_job_through_renewals_that_fail_and_runs_it_once()
+    {
+        var clock = new ManualClock(DateTimeOffset.FromUnixTimeSeconds(DateTimeOffset.UtcNow.ToUnixTimeSeconds()));
+        using var install = new TemporaryInstall();
+        await using var host = await AdminHost.StartAsync(
+            install,
+            settings: new Dictionary<string, string?>(FastQueue) { ["JobQueue:LeaseDuration"] = "00:00:00.600", ["JobQueue:WorkerCount"] = "2" },
+            configure: builder => builder.Services.AddSingleton<TimeProvider>(clock).AddFluentCmsExtension<IJobHandler, WaitingHandler>());
+        var administrator = await host.CreateFirstAdministratorAsync();
+        await QueryAsync(host, context => context.Database.ExecuteSqlRawAsync("""
+            CREATE TABLE "FailRenewals" ("Id" INTEGER PRIMARY KEY);
+            INSERT INTO "FailRenewals" ("Id") VALUES (1);
+            CREATE TRIGGER "FailRenewal" BEFORE UPDATE OF "LeaseUntil" ON "Jobs"
+            WHEN OLD."State" = 'Running' AND NEW."State" = 'Running' AND EXISTS (SELECT 1 FROM "FailRenewals")
+            BEGIN SELECT RAISE(ABORT, 'The database is unreachable.'); END;
+            """));
+
+        var job = await EnqueueAsync(host, administrator, new NewJob(WaitingHandler.Name, default));
+        var run = WaitingHandler.For(job.Id);
+        await run.Started.Task.WaitAsync(Timeout);
+        await Task.Delay(TimeSpan.FromSeconds(1));
+        await QueryAsync(host, context => context.Database.ExecuteSqlRawAsync("""DELETE FROM "FailRenewals";"""));
+
+        foreach (var _ in Enumerable.Range(0, 4))
+        {
+            clock.Now += TimeSpan.FromMilliseconds(400);
+            await UntilAsync(async () => (await JobRowAsync(host, job.Id)).LeaseUntil >= clock.Now + TimeSpan.FromMilliseconds(600));
+        }
+
+        run.Finish.SetResult();
+        var finished = await FinishedAsync(host, administrator, job.Id);
+
+        Assert.Equal((JobState.Succeeded, 1), (finished.State, finished.Attempts));
+        Assert.Equal(1, run.Runs);
+        Assert.False(run.Cancelled.Task.IsCompleted);
+    }
+
     // The clock stands still, so only the stolen lease can stop the handler; the next job shows the worker has moved on.
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
@@ -148,6 +189,7 @@ public sealed class JobQueueWorkerTests
             await run.Cancelled.Task.WaitAsync(Timeout);
             var released = await JobRowAsync(host, job.Id);
             Assert.Equal((JobState.Queued, 0, (string?)null, (DateTimeOffset?)null), (released.State, released.Attempts, released.LeaseOwner, released.LeaseUntil));
+            Assert.True(released.ScheduledAt <= DateTimeOffset.UtcNow, "The released job is not due at once.");
         }
 
         run.Finish.SetResult();
@@ -161,6 +203,8 @@ public sealed class JobQueueWorkerTests
     [Fact]
     public async Task A_renewal_that_throws_is_tried_again_at_the_next_beat()
     {
+        var clock = new ManualClock(DateTimeOffset.UtcNow);
+        var lease = TimeSpan.FromMilliseconds(300);
         var calls = 0;
         var third = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         using var done = new CancellationTokenSource();
@@ -176,8 +220,9 @@ public sealed class JobQueueWorkerTests
 
                 return call == 1 ? Task.FromException<bool>(new TimeoutException("The database did not answer.")) : Task.FromResult(true);
             },
-            TimeSpan.FromMilliseconds(300),
-            new ManualClock(DateTimeOffset.UtcNow),
+            clock.Now + lease,
+            lease,
+            clock,
             NullLogger.Instance,
             done.Token);
         await third.Task.WaitAsync(Timeout);
@@ -186,9 +231,10 @@ public sealed class JobQueueWorkerTests
         Assert.True(await keeping.WaitAsync(Timeout));
     }
 
-    // The clock stands still while renewals fail, so the lease holds however many beats pass; moving it past the lease ends it.
+    // The clock stands still while renewals fail, so the lease holds however many beats pass. Once it is past the deadline, the
+    // lease is given up without trying another renewal.
     [Fact]
-    public async Task Renewals_that_keep_failing_give_the_lease_up_once_it_has_run_out_and_not_before()
+    public async Task Renewals_that_keep_failing_give_the_lease_up_at_its_deadline_and_not_before()
     {
         var clock = new ManualClock(DateTimeOffset.UtcNow);
         var lease = TimeSpan.FromMilliseconds(300);
@@ -205,32 +251,84 @@ public sealed class JobQueueWorkerTests
 
                 throw new TimeoutException("The database did not answer.");
             },
+            clock.Now + lease,
             lease,
             clock,
             NullLogger.Instance,
             CancellationToken.None);
         await third.Task.WaitAsync(Timeout);
-
         Assert.False(keeping.IsCompleted);
 
-        clock.Now += lease;
+        var before = clock.Now;
+        clock.Now = before + lease;
+        var tried = Volatile.Read(ref failures);
 
         Assert.False(await keeping.WaitAsync(Timeout));
+        Assert.InRange(failures, tried, tried + 1);
+    }
+
+    // On the real clock: a renewal that hangs is cut off at the deadline, so the lease is given up then and not a beat or a timeout later.
+    [Fact]
+    public async Task A_renewal_that_hangs_gives_the_lease_up_at_its_deadline()
+    {
+        var lease = TimeSpan.FromMilliseconds(600);
+        var started = Stopwatch.StartNew();
+
+        var kept = await JobQueueWorker.KeepLeaseAsync(
+            async renewing =>
+            {
+                await Task.Delay(System.Threading.Timeout.InfiniteTimeSpan, renewing);
+                return true;
+            },
+            DateTimeOffset.UtcNow + lease,
+            lease,
+            TimeProvider.System,
+            NullLogger.Instance,
+            CancellationToken.None).WaitAsync(Timeout);
+
+        Assert.False(kept);
+        Assert.True(started.Elapsed >= lease - TimeSpan.FromMilliseconds(50), $"Gave up after {started.Elapsed}, before the lease ran out.");
     }
 
     [Fact]
     public async Task A_refused_renewal_gives_the_lease_up_at_once()
     {
+        var clock = new ManualClock(DateTimeOffset.UtcNow);
+        var lease = TimeSpan.FromMilliseconds(300);
         var calls = 0;
 
         var kept = await JobQueueWorker.KeepLeaseAsync(
             _ => Task.FromResult(Interlocked.Increment(ref calls) > 1),
-            TimeSpan.FromMilliseconds(300),
-            new ManualClock(DateTimeOffset.UtcNow),
+            clock.Now + lease,
+            lease,
+            clock,
             NullLogger.Instance,
             CancellationToken.None).WaitAsync(Timeout);
 
         Assert.Equal((false, 1), (kept, calls));
+    }
+
+    // Once the handler is done, how the renewal in flight ended no longer matters, so it never stops the outcome being recorded.
+    [Fact]
+    public async Task A_renewal_that_fails_as_the_handler_finishes_counts_as_done()
+    {
+        var clock = new ManualClock(DateTimeOffset.UtcNow);
+        var lease = TimeSpan.FromMilliseconds(300);
+        using var done = new CancellationTokenSource();
+
+        var kept = await JobQueueWorker.KeepLeaseAsync(
+            _ =>
+            {
+                done.Cancel();
+                throw new TimeoutException("The database did not answer.");
+            },
+            clock.Now + lease,
+            lease,
+            clock,
+            NullLogger.Instance,
+            done.Token).WaitAsync(Timeout);
+
+        Assert.True(kept);
     }
 
     [Fact]
