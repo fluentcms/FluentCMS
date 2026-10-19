@@ -1,4 +1,5 @@
 using System.Text.Json;
+using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Results;
 using FluentCMS.Core.Schema;
@@ -47,19 +48,27 @@ internal sealed class SchemaScenario : IAsyncDisposable
         return await action(scope.ServiceProvider.GetRequiredService<IContentTypeDirectory>());
     }
 
+    // A change set of its own, for a test whose writes must not meet in the content model's session set.
+    public async Task<ChangeSetTarget> OpenChangeSetAsync()
+    {
+        await using var scope = Services.CreateAsyncScope();
+        var opened = await scope.ServiceProvider.GetRequiredService<IChangeSetDirectory>().OpenAsync(new NewChangeSet("Define the content model.", []));
+
+        return ChangeSetTarget.Existing(opened.Value.Id);
+    }
     public Task<Result<ContentType>> CreateAsync(string slug, params FieldDefinition[] fields)
     {
-        return RunAsync(directory => directory.CreateAsync(new NewContentType(Title(slug), slug, new ContentTypeDefinition(fields))));
+        return RunAsync(directory => directory.CreateAsync(new NewContentType(Title(slug), slug, new ContentTypeDefinition(fields)), TestChangeSetTargets.ContentModel));
     }
 
     public Task<Result<ContentType>> CreateEntityAsync(string slug, params FieldDefinition[] fields)
     {
-        return RunAsync(directory => directory.CreateAsync(new NewContentType(Title(slug), slug, new ContentTypeDefinition(fields, isEntity: true))));
+        return RunAsync(directory => directory.CreateAsync(new NewContentType(Title(slug), slug, new ContentTypeDefinition(fields, isEntity: true)), TestChangeSetTargets.ContentModel));
     }
 
     public Task<Result<ContentType>> ReviseAsync(string slug, int baseVersion, ContentTypeDefinition definition)
     {
-        return RunAsync(directory => directory.ReviseAsync(slug, baseVersion, definition));
+        return RunAsync(directory => directory.ReviseAsync(slug, baseVersion, definition, TestChangeSetTargets.ContentModel));
     }
 
     public async Task<List<ContentTypeRow>> ContentTypeRowsAsync()
@@ -72,9 +81,13 @@ internal sealed class SchemaScenario : IAsyncDisposable
         return await QueryAsync(context => context.ContentTypeVersions.AsNoTracking().OrderBy(version => version.Version).ToListAsync());
     }
 
+    // The content type directory's own events; the change set events each write also appends are left out.
     public async Task<List<AuditEventRow>> AuditRowsAsync()
     {
-        return await QueryAsync(context => context.AuditEvents.AsNoTracking().ToListAsync());
+        return await QueryAsync(context => context.AuditEvents
+            .AsNoTracking()
+            .Where(row => row.Operation.StartsWith("content_type."))
+            .ToListAsync());
     }
 
     public async Task<T> QueryAsync<T>(Func<FluentCmsDbContext, Task<T>> query)

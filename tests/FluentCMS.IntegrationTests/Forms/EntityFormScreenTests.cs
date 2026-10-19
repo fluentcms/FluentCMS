@@ -183,6 +183,6 @@ public sealed class EntityFormScreenTests
             "product",
             new ContentTypeDefinition(
                 [new FieldDefinition("name", "text", required: true), new FieldDefinition("price", "number"), new FieldDefinition("inStock", "boolean")],
-                isEntity: true)))).Value);
+                isEntity: true)), TestChangeSetTargets.ContentModel)).Value);
     }
 }

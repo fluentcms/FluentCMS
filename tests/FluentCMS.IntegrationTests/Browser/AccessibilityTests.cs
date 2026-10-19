@@ -69,9 +69,9 @@ public sealed class AccessibilityTests
     private static async Task<ChangeSet> AwaitingReviewAsync(BrowserSession session)
     {
         var type = await session.Host.AsUserAsync<IContentTypeDirectory, ContentType>(session.OwnerId, async directory =>
-            (await directory.CreateAsync(new NewContentType("Product", "product", new ContentTypeDefinition([new FieldDefinition("title", "text")])))).Value);
+            (await directory.CreateAsync(new NewContentType("Product", "product", new ContentTypeDefinition([new FieldDefinition("title", "text")])), TestChangeSetTargets.ContentModel)).Value);
         await session.Host.AsUserAsync<IContentTypeDirectory, ContentType>(session.OwnerId, async directory =>
-            (await directory.CreateAsync(new NewContentType("Supplier", "supplier", new ContentTypeDefinition([new FieldDefinition("name", "text")], isEntity: true)))).Value);
+            (await directory.CreateAsync(new NewContentType("Supplier", "supplier", new ContentTypeDefinition([new FieldDefinition("name", "text")], isEntity: true)), TestChangeSetTargets.ContentModel)).Value);
         await session.Host.AsUserAsync<IContentTypeDirectory, ContentType>(session.OwnerId, async directory => (await directory.CreateAsync(new NewContentType(
             "Kitchen sink",
             "kitchen-sink",
@@ -88,7 +88,7 @@ public sealed class AccessibilityTests
                 new FieldDefinition("hero", "media"),
                 new FieldDefinition("tags", "list", settings: Json("""{"itemType": "text"}""")),
                 new FieldDefinition("extra", "json"),
-            ])))).Value);
+            ])), TestChangeSetTargets.ContentModel)).Value);
 
         return await session.Host.AsUserAsync<IChangeSetDirectory, ChangeSet>(session.OwnerId, async directory =>
         {

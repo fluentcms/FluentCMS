@@ -275,7 +275,7 @@ public sealed class EntryFormScreenTests
     private static async Task<(Guid Category, Guid Asset)> KitchenSinkAsync(AdminHost host, Guid ownerId)
     {
         await host.AsUserAsync<IContentTypeDirectory, ContentType>(ownerId, async types => (await types.CreateAsync(new NewContentType(
-            "Category", "category", new ContentTypeDefinition([new FieldDefinition("name", "text", required: true)])))).Value);
+            "Category", "category", new ContentTypeDefinition([new FieldDefinition("name", "text", required: true)])), TestChangeSetTargets.ContentModel)).Value);
         await host.AsUserAsync<IContentTypeDirectory, ContentType>(ownerId, async types => (await types.CreateAsync(new NewContentType(
             "Kitchen sink",
             "kitchen-sink",
@@ -292,7 +292,7 @@ public sealed class EntryFormScreenTests
                 new FieldDefinition("hero", "media"),
                 new FieldDefinition("tags", "list", settings: Json("""{"itemType": "text"}""")),
                 new FieldDefinition("extra", "json"),
-            ])))).Value);
+            ])), TestChangeSetTargets.ContentModel)).Value);
         var category = await host.AsUserAsync<IEntryDirectory, Entry>(ownerId, async entries =>
             (await entries.CreateAsync(new NewEntry("category", Json("""{"name": "Tools"}""")))).Value);
         var asset = await host.AsUserAsync<IMediaLibrary, MediaAsset>(ownerId, async library => (await library.UploadAsync(new NewAsset(

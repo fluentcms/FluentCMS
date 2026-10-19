@@ -100,7 +100,7 @@ public sealed class EntryToolsTests
         Assert.True(invalid["errors"]!.AsArray().Count >= 2, invalid.ToJsonString());
         Assert.Contains("get_schema_document", (string?)invalid["hint"]);
         Assert.Equal(2, await agent.QueryAsync(context => context.EntryVersions.CountAsync()));
-        Assert.Equal(2, await agent.QueryAsync(context => context.ChangeSets.CountAsync()));
+        Assert.Equal(2, await agent.QueryAsync(context => context.ChangeSets.CountAsync(set => set.SessionId != TestChangeSetTargets.ContentModelSession)));
     }
 
     [Theory]
@@ -155,7 +155,7 @@ public sealed class EntryToolsTests
         await agent.AsPersonAsync<IContentTypeDirectory, ContentType>(directory => directory.CreateAsync(new NewContentType(
             "Product",
             "product",
-            new ContentTypeDefinition([new FieldDefinition("name", "text", required: true), new FieldDefinition("price", "number")], isEntity: true))));
+            new ContentTypeDefinition([new FieldDefinition("name", "text", required: true), new FieldDefinition("price", "number")], isEntity: true)), TestChangeSetTargets.ContentModel));
         await agent.AsPersonAsync<IContentTypeDirectory, ContentType>(directory => directory.CreateAsync(new NewContentType(
             "Product page",
             "product-page",
@@ -163,7 +163,7 @@ public sealed class EntryToolsTests
             [
                 new FieldDefinition("headline", "text"),
                 new FieldDefinition("price", "reference", settings: Json("""{"target": "product", "field": "price"}""")),
-            ]))));
+            ])), TestChangeSetTargets.ContentModel));
     }
 
     private static async Task PublishAsPersonAsync(ConnectedAgent agent, string setId)

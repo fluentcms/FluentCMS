@@ -132,7 +132,7 @@ public sealed partial class MediaScreenTests
         await host.AsUserAsync<IContentTypeDirectory, ContentType>(ownerId, async types => (await types.CreateAsync(new NewContentType(
             "Product page",
             "product-page",
-            new ContentTypeDefinition([new FieldDefinition("title", "text"), new FieldDefinition("hero", "media")])))).Value);
+            new ContentTypeDefinition([new FieldDefinition("title", "text"), new FieldDefinition("hero", "media")])), TestChangeSetTargets.ContentModel)).Value);
         var page = await host.AsUserAsync<IEntryDirectory, Entry>(ownerId, async entries => (await entries.CreateAsync(new NewEntry(
             "product-page",
             JsonSerializer.Deserialize<JsonElement>($$"""{"title": "Drills", "hero": "{{hero}}"}""")))).Value);
