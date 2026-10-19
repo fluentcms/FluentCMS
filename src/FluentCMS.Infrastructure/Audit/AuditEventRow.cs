@@ -44,7 +44,7 @@ public sealed class AuditEventRow
             Timestamp = auditEvent.Timestamp,
             InitiatorKind = kind,
             InitiatorId = initiatorId,
-            InitiatorName = auditEvent.Initiator.DisplayName,
+            InitiatorName = InitiatorKinds.NameOf(auditEvent.Initiator),
             AgentCredentialId = auditEvent.AgentCredentialId,
             Operation = auditEvent.Operation,
             SubjectType = auditEvent.SubjectType,
@@ -63,6 +63,7 @@ public sealed class AuditEventRow
         {
             InitiatorKinds.User => new UserInitiator(InitiatorId, InitiatorName),
             InitiatorKinds.Agent => new AgentInitiator(InitiatorId, InitiatorName),
+            InitiatorKinds.System => InitiatorKinds.RestoreSystem(InitiatorName, InitiatorId),
             _ => throw new InvalidOperationException($"Audit event {Id} names an unknown initiator kind '{InitiatorKind}'."),
         };
 

@@ -44,7 +44,7 @@ internal static class AuditExportShape
             auditEvent.Operation,
             kind,
             Text(initiatorId),
-            auditEvent.Initiator.DisplayName,
+            InitiatorKinds.NameOf(auditEvent.Initiator),
             Text(auditEvent.AgentCredentialId),
             auditEvent.SubjectType,
             Text(auditEvent.SubjectId),
