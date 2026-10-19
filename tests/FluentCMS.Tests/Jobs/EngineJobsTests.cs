@@ -24,6 +24,16 @@ public sealed class EngineJobsTests
         Assert.Equal(SystemInitiator.Checks, provider.GetRequiredService<EngineJobs>().RunAs(checkRun, new AgentInitiator(Guid.NewGuid(), "agent")).Value);
     }
 
+    // RUL-04: a rule's compile proposes checks as the check engine, on behalf of the person who saved the rule.
+    [Fact]
+    public void The_rule_compile_runs_as_the_check_engine()
+    {
+        using var provider = new ServiceCollection().AddFluentCmsCore().BuildServiceProvider();
+        var compile = provider.GetServices<IJobHandler>().Single(handler => handler.Type == "rules.compile");
+
+        Assert.Equal(SystemInitiator.Checks, provider.GetRequiredService<EngineJobs>().RunAs(compile, new UserInitiator(Guid.NewGuid(), "Amir")).Value);
+    }
+
     [Fact]
     public void A_handler_Core_does_not_list_cannot_claim_an_engine()
     {

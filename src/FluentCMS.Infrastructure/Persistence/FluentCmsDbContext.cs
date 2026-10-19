@@ -74,6 +74,10 @@ public abstract class FluentCmsDbContext(DbContextOptions options) : IdentityDbC
 
     public DbSet<RuleVersionRow> RuleVersions => Set<RuleVersionRow>();
 
+    public DbSet<RuleCompilationRow> RuleCompilations => Set<RuleCompilationRow>();
+
+    public DbSet<RuleCheckProposalRow> RuleCheckProposals => Set<RuleCheckProposalRow>();
+
     public DbSet<WebhookDeliveryRow> WebhookDeliveries => Set<WebhookDeliveryRow>();
 
     protected override void OnModelCreating(ModelBuilder builder)
@@ -106,6 +110,8 @@ public abstract class FluentCmsDbContext(DbContextOptions options) : IdentityDbC
         builder.ApplyConfiguration(new PreviewTokenConfiguration());
         builder.ApplyConfiguration(new RuleConfiguration());
         builder.ApplyConfiguration(new RuleVersionConfiguration());
+        builder.ApplyConfiguration(new RuleCompilationConfiguration());
+        builder.ApplyConfiguration(new RuleCheckProposalConfiguration());
         builder.ApplyConfiguration(new WebhookDeliveryConfiguration());
 
         builder.Entity<FluentCmsUser>(user =>
@@ -135,6 +141,7 @@ public sealed class PostgreSqlFluentCmsDbContext(DbContextOptions<PostgreSqlFlue
         builder.Entity<EntryVersionRow>().Property(version => version.Fields).HasColumnType("jsonb");
         builder.Entity<CheckVersionRow>().Property(version => version.Definition).HasColumnType("jsonb");
         builder.Entity<RuleVersionRow>().Property(version => version.Definition).HasColumnType("jsonb");
+        builder.Entity<RuleCheckProposalRow>().Property(proposal => proposal.Definition).HasColumnType("jsonb");
         builder.Entity<RoutingRuleVersionRow>().Property(version => version.Definition).HasColumnType("jsonb");
     }
 }

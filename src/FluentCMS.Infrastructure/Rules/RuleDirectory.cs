@@ -12,13 +12,14 @@ using Microsoft.EntityFrameworkCore;
 namespace FluentCMS.Infrastructure.Rules;
 
 // Each write joins its change set as content types do (SCH-05): every expected failure is found before the unit of work, and the
-// rule's rows, its event and its operation commit together.
+// rule's rows, its event and its operation commit together. Saving a version also starts proposing checks for it (RUL-04).
 internal sealed class RuleDirectory(
     FluentCmsDbContext context,
     IUnitOfWork unitOfWork,
     IAuditLog auditLog,
     ICurrentInitiator currentInitiator,
-    ChangeSetDirectory changeSets) : IRuleDirectory
+    ChangeSetDirectory changeSets,
+    RuleChecks ruleChecks) : IRuleDirectory
 {
     private const string SubjectType = "rule";
 
@@ -105,6 +106,7 @@ internal sealed class RuleDirectory(
 
         context.Rules.Add(new RuleRow { Id = written.Id, SiteId = written.SiteId, Slug = written.Slug, Version = written.Version, State = RuleState.Draft });
         context.RuleVersions.Add(VersionRow(written));
+        await ruleChecks.ScheduleAsync(written.Id, written.Version, replace: false, cancellationToken);
         await auditLog.AppendAsync(
             new NewAuditEvent("rule.created") { SubjectType = SubjectType, SubjectId = written.Id, ChangeSetId = pending.Value.ChangeSet.Id },
             cancellationToken);
@@ -194,6 +196,7 @@ internal sealed class RuleDirectory(
         }
 
         context.RuleVersions.Add(VersionRow(revised));
+        await ruleChecks.ScheduleAsync(revised.Id, revised.Version, replace: false, cancellationToken);
         await auditLog.AppendAsync(
             new NewAuditEvent("rule.revised") { SubjectType = SubjectType, SubjectId = row.Id, ChangeSetId = pending.Value.ChangeSet.Id, PreviousVersionId = based.Id },
             cancellationToken);

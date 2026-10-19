@@ -8,7 +8,7 @@
 
 The audit log names who caused every change, a person or an agent (AUD-01, ADR-0009), and every change set has one of them as its initiator (CHG-01). Some actions have neither behind them:
 
-- The check engine moves a change set from checks running to checks failed or awaiting review once its checks have run (CHK-03, CHG-04).
+- The check engine moves a change set from checks running to checks failed or awaiting review once its checks have run (CHK-03, CHG-04). It also proposes checks for a saved rule, which its author then confirms (RUL-04).
 - Routing auto-publishes a set that passes on checks (RTE-01, the one exception in MCP-06).
 - Maintenance runs on its own, such as clearing stored prompts past their retention (AUD-04, AUD-N2).
 
