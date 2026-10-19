@@ -6,6 +6,7 @@
 @using FluentCMS.Core.Desk
 @inject IChangeSetDirectory Directory
 @inject IDeskQueues Queues
+@inject FluentCMS.Core.Checks.IChangeSetChecks Checks
 @inject IAuditReader Audit
 @inject NavigationManager Navigation
 @inject IStringLocalizer<ChangeSetView> L
@@ -90,6 +91,14 @@
                         <Button Type="submit" data-action="approve" aria-keyshortcuts="A">@L["Approve"] <Kbd Class="bg-primary-foreground/20 text-primary-foreground" aria-hidden="true">A</Kbd></Button>
                     </form>
                 }
+                @if (set.State == ChangeSetState.Open)
+                {
+                    <form method="post" @onsubmit="SubmitAsync" @formname="submit">
+                        <AntiforgeryToken />
+                        <input type="hidden" name="Submit.Seen" value="@_seen" />
+                        <Button Type="submit" data-action="submit" aria-keyshortcuts="S">@L["Submit for checks"] <Kbd Class="bg-primary-foreground/20 text-primary-foreground" aria-hidden="true">S</Kbd></Button>
+                    </form>
+                }
                 @if (set.State == ChangeSetState.Approved)
                 {
                     <form method="post" @onsubmit="PublishAsync" @formname="publish">
@@ -132,6 +141,10 @@
                 }
             </div>
             @* A form posted from a page shown before the set moved on must still find its handler, which then says the set moved on. *@
+            @if (set.State != ChangeSetState.Open)
+            {
+                <form method="post" @onsubmit="SubmitAsync" @formname="submit" hidden></form>
+            }
             @if (set.State != ChangeSetState.AwaitingReview)
             {
                 <form method="post" @onsubmit="ApproveAsync" @formname="approve" hidden></form>
@@ -188,17 +201,74 @@
                 <CardHeader>
                     <CardTitle><h2>@L["Checks"]</h2></CardTitle>
                     <CardDescription>
-                        @if (set.State == ChangeSetState.ChecksFailed)
+                        @if (_checks?.Run is { } run)
                         {
-                            @L["The checks failed for this set."]
+                            <span class="flex flex-wrap items-center gap-2">
+                                <Badge Variant="@CheckVariant(run.Status)" data-testid="check-run-status" data-status="@CheckSlug(run.Status)">@CheckLabel(run.Status)</Badge>
+                                <span>@L["Run {0}, {1}", run.Number, run.Mode == FluentCMS.Core.Checks.CheckRunMode.Inline ? L["checked on submit"] : L["checked in the background"]]</span>
+                                @Time(run.FinishedAt)
+                                @if (run.Cost > 0)
+                                {
+                                    <span dir="ltr">@run.Cost.ToString("0.00####", CultureInfo.InvariantCulture) USD</span>
+                                }
+                            </span>
+                        }
+                        else if (_checks?.Job is { } job)
+                        {
+                            @L["The checks are running: {0} of {1} items done.", job.Progress.Done, job.Progress.Total?.ToString(CultureInfo.CurrentCulture) ?? "?"]
                         }
                         else
                         {
-                            @L["No check results are stored for this set."]
+                            @L["The checks run when the set is submitted."]
                         }
-                        @L["Results per check appear here once checks run on every change set."]
                     </CardDescription>
                 </CardHeader>
+                @if (_checks?.Run is { } results && (results.Problems.Count > 0 || results.Items.Any(item => item.Results.Count > 0)))
+                {
+                    <CardContent Class="grid gap-4 text-sm">
+                        @if (results.Problems.Count > 0)
+                        {
+                            <ul class="grid gap-1 text-destructive" data-testid="check-problems">
+                                @foreach (var problem in results.Problems)
+                                {
+                                    <li>@problem</li>
+                                }
+                            </ul>
+                        }
+                        @foreach (var item in results.Items.Where(item => item.Results.Count > 0))
+                        {
+                            <div class="grid gap-2" data-checked-item="@item.ItemId.ToString("N")">
+                                <p class="font-medium"><bdi>@item.ContentType</bdi> <bdi class="font-mono text-xs text-muted-foreground" dir="ltr">@item.ItemId.ToString("N")[..8]</bdi></p>
+                                <ul class="grid gap-2">
+                                    @foreach (var result in item.Results.OrderBy(result => CheckOrder(result.Status)))
+                                    {
+                                        <li class="grid gap-1" data-check="@result.Check" data-status="@CheckSlug(result.Status)">
+                                            <span class="flex flex-wrap items-center gap-2">
+                                                <Badge Variant="@CheckVariant(result.Status)">@CheckLabel(result.Status)</Badge>
+                                                <span class="font-medium"><bdi>@result.Check</bdi></span>
+                                                <span class="text-muted-foreground">@(result.Severity == FluentCMS.Core.Checks.CheckSeverity.Block ? L["blocks"] : L["warns"])</span>
+                                            </span>
+                                            @foreach (var finding in result.Findings)
+                                            {
+                                                <span class="ps-2 text-muted-foreground" data-finding>
+                                                    @finding.Message
+                                                    @if (finding.Pointer.Length > 0)
+                                                    {
+                                                        <code class="ms-1 font-mono text-xs" dir="ltr">@finding.Pointer</code>
+                                                    }
+                                                    @if (finding.Excerpt is { } excerpt)
+                                                    {
+                                                        <q class="ms-1">@excerpt</q>
+                                                    }
+                                                </span>
+                                            }
+                                        </li>
+                                    }
+                                </ul>
+                            </div>
+                        }
+                    </CardContent>
+                }
             </Card>
             <Card data-testid="change-set-routing">
                 <CardHeader>
@@ -260,8 +330,12 @@
     [SupplyParameterFromQuery(Name = "done")]
     private string? Done { get; set; }
 
+    private FluentCMS.Core.Checks.ChangeSetChecksState? _checks;
     private DeskQueue? _queue;
     private Guid? _next;
+
+    [SupplyParameterFromForm(FormName = "submit")]
+    private ReviewForm? Submit { get; set; }
 
     [SupplyParameterFromForm(FormName = "approve")]
     private ReviewForm? Approve { get; set; }
@@ -293,6 +367,7 @@
     {
         "approved" => L["The previous set was approved."].Value,
         "rejected" => L["The previous set was rejected."].Value,
+        "saved" => L["Saved to this new change set. Submit it when it holds every change you want reviewed together."].Value,
         _ => null,
     };
 
@@ -300,6 +375,7 @@
     [
         new(["J", "K"], L["Move to the next or previous item"]),
         new(["Enter"], L["Fold or unfold the item that has focus"]),
+        new(["S"], L["Submit an open set for checks"]),
         new(["A"], L["Approve the set and move to the next one"]),
         new(["R"], L["Reject the set with a reason"]),
         new(["P"], L["Publish an approved set"]),
@@ -378,7 +454,20 @@
         _stateSince = lastMove?.Timestamp;
         _seen = lastMove?.Id.ToString("N");
         _next = await NextAsync();
+        var checks = await Checks.GetAsync(Id);
+        _checks = checks.IsSuccess ? checks.Value : null;
         return true;
+    }
+
+    private async Task SubmitAsync()
+    {
+        await ActAsync(Submit, async () =>
+        {
+            var submitted = await Checks.SubmitAsync(Id);
+            return submitted.IsSuccess
+                ? FluentCMS.Core.Results.Result<ChangeSet>.Success(submitted.Value.ChangeSet)
+                : FluentCMS.Core.Results.Result<ChangeSet>.Failure(submitted.Errors);
+        }, L["Submitted. The checks run on the set before it is reviewed."]);
     }
 
     private async Task ApproveAsync()
@@ -456,13 +545,42 @@
         return result.IsSuccess ? result.Value : null;
     }
 
+    private static string CheckSlug(FluentCMS.Core.Checks.CheckStatus status) => status switch
+    {
+        FluentCMS.Core.Checks.CheckStatus.NeedsReview => "needs-review",
+        _ => status.ToString().ToLowerInvariant(),
+    };
+
+    private static int CheckOrder(FluentCMS.Core.Checks.CheckStatus status) => status switch
+    {
+        FluentCMS.Core.Checks.CheckStatus.Fail => 0,
+        FluentCMS.Core.Checks.CheckStatus.NeedsReview => 1,
+        FluentCMS.Core.Checks.CheckStatus.Warn => 2,
+        _ => 3,
+    };
+
+    private static string CheckVariant(FluentCMS.Core.Checks.CheckStatus status) => status switch
+    {
+        FluentCMS.Core.Checks.CheckStatus.Fail => "destructive",
+        FluentCMS.Core.Checks.CheckStatus.Pass => "secondary",
+        _ => "outline",
+    };
+
+    private string CheckLabel(FluentCMS.Core.Checks.CheckStatus status) => status switch
+    {
+        FluentCMS.Core.Checks.CheckStatus.Pass => L["Passed"],
+        FluentCMS.Core.Checks.CheckStatus.Warn => L["Warning"],
+        FluentCMS.Core.Checks.CheckStatus.Fail => L["Failed"],
+        _ => L["Needs review"],
+    };
+
     private string ReviewHint(ChangeSetState state) => state switch
     {
         ChangeSetState.AwaitingReview => L["Approve the set, or reject it with a reason."],
         ChangeSetState.ChecksFailed => L["The checks failed. Whoever opened the set can fix and resubmit it, or you can reject it with a reason."],
         ChangeSetState.Approved => L["The set is approved. Publishing it makes all its items live together."],
         ChangeSetState.Published => L["The set is live. Reverting it opens a set that undoes it, which is reviewed like any other."],
-        ChangeSetState.Open => L["The set is still open, so it cannot be reviewed yet."],
+        ChangeSetState.Open => L["The set is still open. Submit it when it holds every change; the checks run, then a person reviews it."],
         ChangeSetState.ChecksRunning => L["The checks are running, so it cannot be reviewed yet."],
         ChangeSetState.Rejected => L["The set was rejected. Nothing more can be done with it."],
         _ => L["The set was reverted. Nothing more can be done with it."],

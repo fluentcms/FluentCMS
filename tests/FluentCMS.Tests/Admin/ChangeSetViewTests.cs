@@ -3,6 +3,7 @@ using FluentCMS.Admin.Components.Pages;
 using FluentCMS.Admin.Components.Review;
 using FluentCMS.Core.Audit;
 using FluentCMS.Core.ChangeSets;
+using FluentCMS.Core.Checks;
 using FluentCMS.Core.Desk;
 using FluentCMS.Core.Entities;
 using FluentCMS.Core.Identity;
@@ -97,15 +98,33 @@ public sealed class ChangeSetViewTests
     }
 
     [Fact]
-    public void Says_where_check_results_and_the_routing_decision_will_appear()
+    public void The_checks_card_shows_the_latest_run_with_failing_results_first_and_their_evidence()
     {
         var sets = new FakeSets { State = ChangeSetState.ChecksFailed };
         using var context = Context(sets);
 
         var cut = context.Render<ChangeSetView>(page => page.Add(p => p.Id, sets.Set.Id));
 
-        Assert.Contains("The checks failed for this set.", cut.Find("[data-testid=change-set-checks]").TextContent);
+        var card = cut.Find("[data-testid=change-set-checks]");
+        Assert.Equal("fail", card.QuerySelector("[data-testid=check-run-status]")!.GetAttribute("data-status"));
+        Assert.Equal(["no-superlatives", "short-headline"], card.QuerySelectorAll("[data-check]").Select(check => check.GetAttribute("data-check")));
+        var finding = card.QuerySelector("[data-check=no-superlatives] [data-finding]")!;
+        Assert.Contains("Remove 'best in class'.", finding.TextContent);
+        Assert.Equal("/headline", finding.QuerySelector("code")!.TextContent);
+        Assert.Equal("Best in class", finding.QuerySelector("q")!.TextContent);
+        Assert.Contains("The engine could not read one item.", card.QuerySelector("[data-testid=check-problems]")!.TextContent);
         Assert.Contains("Routing has not decided on this set.", cut.Find("[data-testid=change-set-routing]").TextContent);
+    }
+
+    [Fact]
+    public void A_set_still_being_checked_shows_the_job_progress()
+    {
+        var sets = new FakeSets { State = ChangeSetState.ChecksRunning };
+        using var context = Context(sets);
+
+        var cut = context.Render<ChangeSetView>(page => page.Add(p => p.Id, sets.Set.Id));
+
+        Assert.Contains("3 of 10 items done", cut.Find("[data-testid=change-set-checks]").TextContent);
     }
 
     [Theory]
@@ -113,7 +132,7 @@ public sealed class ChangeSetViewTests
     [InlineData(ChangeSetState.ChecksFailed, new[] { "reject" })]
     [InlineData(ChangeSetState.Approved, new[] { "publish" })]
     [InlineData(ChangeSetState.Published, new[] { "revert" })]
-    [InlineData(ChangeSetState.Open, new string[0])]
+    [InlineData(ChangeSetState.Open, new[] { "submit" })]
     [InlineData(ChangeSetState.ChecksRunning, new string[0])]
     [InlineData(ChangeSetState.Rejected, new string[0])]
     [InlineData(ChangeSetState.Reverted, new string[0])]
@@ -129,8 +148,8 @@ public sealed class ChangeSetViewTests
         Assert.NotEmpty(review.QuerySelector("[data-slot=card-description]")!.TextContent.Trim());
 
         // Every action's form is on the page, so a post from an older page still reaches its handler; only the offered ones show.
-        Assert.Equal(4, review.QuerySelectorAll("form").Length);
-        Assert.Equal(4 - actions.Length, review.QuerySelectorAll("form[hidden]").Length);
+        Assert.Equal(5, review.QuerySelectorAll("form").Length);
+        Assert.Equal(5 - actions.Length, review.QuerySelectorAll("form[hidden]").Length);
         Assert.All(
             review.QuerySelectorAll("input[name$='.Seen']"),
             seen => Assert.Matches("^[0-9a-f]{32}$", seen.GetAttribute("value")));
@@ -153,7 +172,7 @@ public sealed class ChangeSetViewTests
         Assert.Equal($"sets/{next}?queue=awaiting-anyone", cut.Find("[data-testid=next-in-queue]").GetAttribute("href"));
         Assert.Equal("N", cut.Find("[data-testid=next-in-queue]").GetAttribute("aria-keyshortcuts"));
         Assert.Equal("The previous set was approved.", cut.Find("[data-testid=review-done]").TextContent);
-        Assert.Equal(8, cut.FindAll("[data-testid=shortcut-list] dt").Count);
+        Assert.Equal(9, cut.FindAll("[data-testid=shortcut-list] dt").Count);
     }
 
     [Fact]
@@ -240,6 +259,7 @@ public sealed class ChangeSetViewTests
         context.Services.AddSingleton<IChangeSetDirectory>(sets);
         context.Services.AddSingleton<IAuditReader>(new FakeHistory(sets));
         context.Services.AddSingleton<IDeskQueues>(new QueueAfter(sets));
+        context.Services.AddSingleton<IChangeSetChecks>(new FakeChecks(sets));
         context.Renderer.SetRendererInfo(new RendererInfo("Static", isInteractive: false));
         return context;
     }
@@ -329,6 +349,45 @@ public sealed class ChangeSetViewTests
         }
 
         public Task<Result<StaleFactList>> ListStaleFactsAsync(int offset, int limit, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    }
+
+    private sealed class FakeChecks(FakeSets sets) : IChangeSetChecks
+    {
+        public Task<Result<ChangeSetChecksState>> GetAsync(Guid changeSetId, CancellationToken cancellationToken = default)
+        {
+            var job = new FluentCMS.Core.Jobs.Job
+            {
+                Id = Guid.NewGuid(),
+                Type = "checks.run",
+                Payload = default,
+                State = FluentCMS.Core.Jobs.JobState.Running,
+                Attempts = 1,
+                MaxAttempts = 6,
+                CreatedAt = Opened,
+                ScheduledAt = Opened,
+                Progress = new FluentCMS.Core.Jobs.JobProgress(3, 10, null),
+            };
+            if (sets.State is not ChangeSetState.ChecksFailed)
+            {
+                return Task.FromResult(Result<ChangeSetChecksState>.Success(new ChangeSetChecksState(sets.Set, null, sets.State == ChangeSetState.ChecksRunning ? job : null)));
+            }
+
+            CheckResult Result(string check, CheckStatus status, params CheckFinding[] findings) =>
+                new(Guid.NewGuid(), check, 1, "terms", CheckKind.Deterministic, CheckSeverity.Block, "A check.", status, findings, null);
+            var item = new ItemChecks(ItemKind.Entry, Guid.NewGuid(), 1, "product-page",
+            [
+                Result("short-headline", CheckStatus.Pass),
+                Result("no-superlatives", CheckStatus.Fail, new CheckFinding("Remove 'best in class'.", "/headline", "Best in class")),
+            ]);
+            var run = new ChangeSetCheckRun(Guid.NewGuid(), sets.Set.Id, job.Id, 1, CheckRunMode.Inline, Opened, Opened, CheckStatus.Fail, 0m, [item], ["The engine could not read one item."]);
+            return Task.FromResult(Result<ChangeSetChecksState>.Success(new ChangeSetChecksState(sets.Set, run, job)));
+        }
+
+        public Task<Result<ChangeSetSubmission>> SubmitAsync(Guid changeSetId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<Result<ChangeSetCheckRun?>> RunAsync(Guid changeSetId, Guid jobId, CheckRunMode mode, Func<int, int, Task<bool>>? progress = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<Result<ChangeSetCheckRun?>> AbandonAsync(Guid changeSetId, Guid jobId, CheckRunMode mode, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 
     private sealed class FakeHistory(FakeSets sets) : IAuditReader
