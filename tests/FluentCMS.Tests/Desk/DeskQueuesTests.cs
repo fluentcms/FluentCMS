@@ -2,6 +2,7 @@ using FluentCMS.Core;
 using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Desk;
 using FluentCMS.Core.Entities;
+using FluentCMS.Core.Identity;
 using FluentCMS.Core.Results;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -13,12 +14,14 @@ public sealed class DeskQueuesTests : IDisposable
 
     private readonly RecordingLists _lists = new();
     private readonly StaleFacts _facts = new();
+    private readonly Caller _initiator = new();
     private readonly ServiceProvider _provider;
 
     public DeskQueuesTests()
     {
         _provider = new ServiceCollection()
             .AddSingleton<TimeProvider>(new FixedClock(Now))
+            .AddSingleton<ICurrentInitiator>(_initiator)
             .AddFluentCmsCore()
             .AddSingleton<IChangeSetLists>(_lists)
             .AddSingleton<IEntityFacts>(_facts)
@@ -58,6 +61,35 @@ public sealed class DeskQueuesTests : IDisposable
             [(DeskQueue.AwaitingMe, 3), (DeskQueue.AwaitingAnyone, 3), (DeskQueue.ChecksFailed, 1), (DeskQueue.StaleFacts, 2), (DeskQueue.RecentlyPublished, 7), (DeskQueue.Reverted, 0)],
             counts.OrderBy(pair => pair.Key).Select(pair => (pair.Key, pair.Value)));
         Assert.All(_lists.Counted.Where(query => query.States.Contains(ChangeSetState.Published)), query => Assert.Equal(Now.AddDays(-7), query.EnteredSince));
+    }
+
+    // An agent reads its own change sets only, so its queues and counts hold the sets it opened; a person's hold every set.
+    [Fact]
+    public async Task An_agent_reads_only_the_sets_it_opened()
+    {
+        var agent = new AgentInitiator(Guid.NewGuid(), "catalog-sync");
+        _initiator.Current = agent;
+
+        await Queues.ListChangeSetsAsync(DeskQueue.AwaitingAnyone, 0, 10);
+        await Queues.CountAsync(DeskQueue.ChecksFailed);
+        await Queues.CountAsync();
+        _initiator.Current = new UserInitiator(Guid.NewGuid(), "Dana");
+        await Queues.ListChangeSetsAsync(DeskQueue.AwaitingAnyone, 0, 10);
+
+        Assert.Equal(agent, _lists.Listed[0].OpenedBy);
+        Assert.All(_lists.Counted, query => Assert.Equal(agent, query.OpenedBy));
+        Assert.Null(_lists.Listed[1].OpenedBy);
+    }
+
+    [Fact]
+    public async Task One_queue_is_counted_on_its_own()
+    {
+        _lists.Counts[ChangeSetState.AwaitingReview] = 3;
+        _facts.Stale = [Fact()];
+
+        Assert.Equal(3, (await Queues.CountAsync(DeskQueue.AwaitingMe)).Value);
+        Assert.Equal(1, (await Queues.CountAsync(DeskQueue.StaleFacts)).Value);
+        Assert.Equal([ChangeSetState.AwaitingReview], Assert.Single(_lists.Counted).States);
     }
 
     [Fact]
@@ -149,6 +181,11 @@ public sealed class DeskQueuesTests : IDisposable
         {
             throw new NotSupportedException();
         }
+    }
+
+    private sealed class Caller : ICurrentInitiator
+    {
+        public Initiator? Current { get; set; }
     }
 
     private sealed class FixedClock(DateTimeOffset now) : TimeProvider

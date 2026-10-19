@@ -3,6 +3,7 @@ using FluentCMS.Core.Audit;
 using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Checks;
 using FluentCMS.Core.Content;
+using FluentCMS.Core.Delivery;
 using FluentCMS.Core.Entities;
 using FluentCMS.Core.Extensions;
 using FluentCMS.Core.Identity;
@@ -17,6 +18,7 @@ using FluentCMS.Infrastructure.Audit;
 using FluentCMS.Infrastructure.ChangeSets;
 using FluentCMS.Infrastructure.Checks;
 using FluentCMS.Infrastructure.Content;
+using FluentCMS.Infrastructure.Delivery;
 using FluentCMS.Infrastructure.Entities;
 using FluentCMS.Infrastructure.Identity;
 using FluentCMS.Infrastructure.Jobs;
@@ -100,6 +102,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IAuditLog, AuditLog>();
         services.AddScoped<IAuditReader, AuditReader>();
+        services.AddScoped<IAuditEventLists, AuditEventLists>();
     }
 
     // FieldTypeRegistry comes from AddFluentCmsCore, so built-in and plugin field types reach the directory the same way.
@@ -139,6 +142,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IEntryDirectory, EntryDirectory>();
         services.AddScoped<IWhereUsed, WhereUsed>();
         services.AddScoped<IResolvedEntries, ResolvedEntries>();
+        services.AddScoped<IPublishedContent, PublishedContentReader>();
         services.AddScoped<IEntityRelations, EntityRelationsReader>();
         services.AddScoped<IEntityFacts, EntityFactsReader>();
         services.AddScoped<IBlastRadius, BlastRadiusReader>();
