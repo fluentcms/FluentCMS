@@ -29,7 +29,10 @@ internal sealed class EntrySearch(FluentCmsDbContext context, ISearchIndex index
         }
 
         var readable = await permissions.ReadableTypesAsync(cancellationToken);
-        var matches = await index.MatchAsync(terms, Math.Min(query.Limit * CandidatesPerHit, MaxCandidates), cancellationToken);
+        // A filter can drop most matches, so a filtered search reads as many as it may.
+        var filtered = query.ContentTypes is not null || query.States is not null || query.PublishedOnly;
+        var candidates = filtered ? MaxCandidates : Math.Min(query.Limit * CandidatesPerHit, MaxCandidates);
+        var matches = await index.MatchAsync(terms, candidates, cancellationToken);
         var ranks = matches.ToDictionary(match => match.EntryId, match => match.Rank);
         var matchedIds = ranks.Keys.ToList();
 

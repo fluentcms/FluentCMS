@@ -21,6 +21,17 @@ public sealed class SearchTextTests
         Assert.Equal("widget pro a 4411 url https example com spec 19 99 garden café", SearchText.From(fields));
     }
 
+    [Fact]
+    public void A_very_long_entry_is_cut_at_a_word_within_the_limit()
+    {
+        var fields = JsonSerializer.SerializeToElement(new { body = string.Join(' ', Enumerable.Repeat("lorem", 30_000)) });
+
+        var text = SearchText.From(fields);
+
+        Assert.True(text.Length <= SearchText.MaxLength);
+        Assert.EndsWith("lorem", text);
+    }
+
     [Theory]
     [InlineData("4411", new[] { "4411" })]
     [InlineData("  Widget  A-4411  widget ", new[] { "widget", "a", "4411" })]

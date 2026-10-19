@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -22,14 +22,14 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
                 """);
 
             // Every entry that already exists, flattened as SearchText does: each string and number of its latest version, as
-            // lowercase words.
+            // lowercase words, cut at SearchText.MaxLength.
             migrationBuilder.Sql("""
                 INSERT INTO "SearchDocuments" ("EntryId", "Text")
                 SELECT entry."Id",
-                       trim(regexp_replace(lower(coalesce((
+                       left(trim(regexp_replace(lower(coalesce((
                            SELECT string_agg(item #>> '{}', ' ')
                            FROM jsonb_path_query(version."Fields", 'strict $.**') AS item
-                           WHERE jsonb_typeof(item) IN ('string', 'number')), '')), '[^[:alnum:]]+', ' ', 'g'))
+                           WHERE jsonb_typeof(item) IN ('string', 'number')), '')), '[^[:alnum:]]+', ' ', 'g')), 100000)
                 FROM "Entries" AS entry
                 JOIN "EntryVersions" AS version ON version."EntryId" = entry."Id" AND version."Version" = entry."LatestVersion";
                 """);

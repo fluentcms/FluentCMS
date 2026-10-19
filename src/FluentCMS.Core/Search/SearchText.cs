@@ -10,11 +10,26 @@ namespace FluentCMS.Core.Search;
 // "19.99" or "A-4411" match the same way on PostgreSQL and SQLite. The migrations that index existing entries do the same.
 public static class SearchText
 {
+    // Well inside PostgreSQL's 1 MB limit on a tsvector, so even a very long entry is stored; words past it are not searchable.
+    public const int MaxLength = 100_000;
+
     public static string From(JsonElement fields)
     {
         var text = new StringBuilder();
         Append(fields, text);
-        return string.Join(' ', SearchTerms.Words(text.ToString()));
+
+        var words = new StringBuilder();
+        foreach (var word in SearchTerms.Words(text.ToString()))
+        {
+            if (words.Length + word.Length + 1 > MaxLength)
+            {
+                break;
+            }
+
+            words.Append(words.Length == 0 ? string.Empty : " ").Append(word);
+        }
+
+        return words.ToString();
     }
 
     private static void Append(JsonElement value, StringBuilder text)
