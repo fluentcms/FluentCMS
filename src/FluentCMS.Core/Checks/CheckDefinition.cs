@@ -71,16 +71,28 @@ public sealed class CheckDefinition
 
         using (document)
         {
-            return Parse(document.RootElement);
+            var errors = new List<Error>();
+            CheckDefinition? definition;
+            try
+            {
+                definition = ReadDocument(document.RootElement, errors);
+            }
+            catch (InvalidOperationException)
+            {
+                // A string escapes half of a surrogate pair, which no .NET string can hold.
+                return Result<CheckDefinition>.Failure(CheckErrorCodes.DefinitionMalformed, "The definition holds text that is not valid Unicode.");
+            }
+
+            return errors.Count == 0 ? Result<CheckDefinition>.Success(definition!) : Result<CheckDefinition>.Failure(errors);
         }
     }
 
+    // Read again from the text, so a duplicate property is refused here as it is in a stored document.
     public static Result<CheckDefinition> Parse(JsonElement root)
     {
-        var errors = new List<Error>();
-        var definition = ReadDocument(root, errors);
-
-        return errors.Count == 0 ? Result<CheckDefinition>.Success(definition!) : Result<CheckDefinition>.Failure(errors);
+        return root.ValueKind == JsonValueKind.Undefined
+            ? Result<CheckDefinition>.Failure(CheckErrorCodes.DefinitionMalformed, "$ must be an object with 'type', 'description' and 'examples'.")
+            : Parse(root.GetRawText());
     }
 
     public string ToJson()
@@ -150,6 +162,11 @@ public sealed class CheckDefinition
         errors.AddRange(ScopeErrors("fields", Scope.Fields, SchemaNames.IsFieldName, "a field name such as 'body'"));
         errors.AddRange(ExampleErrors());
 
+        if (errors.Count == 0)
+        {
+            errors.AddRange(StorageErrors());
+        }
+
         return errors.Count == 0 ? Result.Success() : Result.Failure(errors);
     }
 
@@ -179,6 +196,13 @@ public sealed class CheckDefinition
         }
 
         return errors.Count == 0 ? Result.Success() : Result.Failure(errors);
+    }
+
+    // A definition that passes Validate reads back as it is stored, so a duplicate property, which a definition built in code can
+    // hold, is refused instead of making the stored check unreadable.
+    private IReadOnlyList<Error> StorageErrors()
+    {
+        return Parse(ToJson()).Errors;
     }
 
     private static string? Mismatch(CheckExample example, CheckOutcome outcome)
@@ -242,7 +266,13 @@ public sealed class CheckDefinition
                 errors.Add(ExampleInvalid(label, "has a blank source"));
             }
 
-            if (example.ContentType is { } slug)
+            if (example.ContentType is null && Scope.ContentTypes is not null)
+            {
+                errors.Add(ExampleInvalid(
+                    label,
+                    $"names no content type, but the check applies only to {string.Join(", ", Scope.ContentTypes.Distinct())}; name one of them"));
+            }
+            else if (example.ContentType is { } slug)
             {
                 if (!SchemaNames.IsSlug(slug))
                 {

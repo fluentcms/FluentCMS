@@ -14,8 +14,8 @@ public sealed class CheckExample
 
         Name = name;
         Expected = expected;
-        // A clone outlives the document it was read from.
-        Fields = fields.Clone();
+        // A clone outlives the document it was read from; an element that holds nothing stays as it is, for Validate to refuse.
+        Fields = fields.ValueKind == JsonValueKind.Undefined ? fields : fields.Clone();
         Sources = [.. sources ?? []];
         ContentType = contentType;
     }

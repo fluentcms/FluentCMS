@@ -21,7 +21,7 @@ public sealed class CheckDefinitionTests
           "scope": {"contentTypes": ["product-page", "blog-post"], "fields": ["title"]},
           "examples": [
             {"name": "a short title", "expect": "pass", "contentType": "blog-post", "fields": {"title": "Three short words"}},
-            {"name": "a long title", "expect": "fail", "fields": {"title": "Four words is too many"}, "sources": ["style guide"]}
+            {"name": "a long title", "expect": "fail", "contentType": "product-page", "fields": {"title": "Four words is too many"}, "sources": ["style guide"]}
           ]
         }
         """;
@@ -50,7 +50,7 @@ public sealed class CheckDefinitionTests
                 },
                 example =>
                 {
-                    Assert.Equal(("a long title", CheckVerdict.Fail, null), (example.Name, example.Expected, example.ContentType));
+                    Assert.Equal(("a long title", CheckVerdict.Fail, "product-page"), (example.Name, example.Expected, example.ContentType));
                     Assert.Equal(["style guide"], example.Sources);
                 });
         }
@@ -141,6 +141,8 @@ public sealed class CheckDefinitionTests
                 (CheckErrorCodes.ScopeInvalid, "The scope's fields must not be empty; leave it out to apply to all of them."),
                 (CheckErrorCodes.ExamplesMissing,
                     "A check needs at least one example it must pass and one it must fail, so its examples show what it accepts and what it refuses."),
+                (CheckErrorCodes.ExampleInvalid,
+                    "Example 'a long title' names no content type, but the check applies only to blog-post, Blog; name one of them."),
                 (CheckErrorCodes.ExampleInvalid, "Example 'A Long Title' has the same name as another example; names are compared ignoring case."),
                 (CheckErrorCodes.ExampleInvalid,
                     "Example 'A Long Title' is of the content type 'product-page', which the check does not apply to; use one of blog-post, Blog."),
@@ -149,8 +151,30 @@ public sealed class CheckDefinitionTests
                 (CheckErrorCodes.ExampleInvalid, "Example 3 must give its fields as a JSON object with one property per field."),
                 (CheckErrorCodes.ExampleInvalid, "Example 3 names the content type 'Blog Post', which is not a slug such as 'product-page'."),
                 (CheckErrorCodes.ExampleInvalid, "Example 'sourced' has a blank source."),
+                (CheckErrorCodes.ExampleInvalid,
+                    "Example 'sourced' names no content type, but the check applies only to blog-post, Blog; name one of them."),
             ],
             errors.Select(error => (error.Code, error.Message)));
+    }
+
+    // What Validate accepts is stored and read back as it is, so a stored check never becomes unreadable.
+    [Fact]
+    public void A_definition_that_could_not_be_read_back_is_refused_instead_of_stored()
+    {
+        var duplicateSetting = Parse("""{"max": 3, "max": 4}""");
+        var examples = new[] { Example("short", CheckVerdict.Pass, "{}"), Example("long", CheckVerdict.Fail, "{}") };
+        var noFields = new CheckExample("no fields", CheckVerdict.Fail, default);
+
+        var duplicate = new CheckDefinition("sample.maxWords", "Short.", duplicateSetting, examples).Validate(CheckTypes);
+        var undefined = new CheckDefinition("sample.maxWords", "Short.", Parse("""{"max": 3}"""), [examples[0], noFields]).Validate(CheckTypes);
+
+        Assert.Equal(CheckErrorCodes.DefinitionMalformed, Assert.Single(duplicate.Errors).Code);
+        Assert.Equal("Example 'no fields' must give its fields as a JSON object with one property per field.", Assert.Single(undefined.Errors).Message);
+        Assert.Equal(CheckErrorCodes.DefinitionMalformed, Assert.Single(CheckDefinition.Parse(duplicateSetting).Errors).Code);
+        Assert.Equal(CheckErrorCodes.DefinitionMalformed, Assert.Single(CheckDefinition.Parse(default(JsonElement)).Errors).Code);
+        Assert.Equal(
+            "The definition holds text that is not valid Unicode.",
+            Assert.Single(CheckDefinition.Parse("""{"type": "\ud800", "description": "x", "examples": []}""").Errors).Message);
     }
 
     [Fact]

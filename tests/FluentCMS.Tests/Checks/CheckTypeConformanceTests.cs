@@ -67,6 +67,8 @@ public abstract class CheckTypeConformanceTests : IDisposable
     [Fact]
     public void Rejects_invalid_settings_with_a_code_and_a_message()
     {
+        Assert.NotEmpty(RejectedSettings);
+
         foreach (var json in RejectedSettings)
         {
             var errors = Registry.ValidateSettings(CheckTypeName, Parse(json));
