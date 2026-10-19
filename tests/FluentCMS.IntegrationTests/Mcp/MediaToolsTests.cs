@@ -68,6 +68,158 @@ public sealed class MediaToolsTests
 
     // S2 with the alt text check (MED-02): a page that will show a published image without alt text fails until the same set adds
     // the alt text with update_media.
+    // S2 in one set (MED-02): the agent uploads an image without alt text and attaches it to a page, the check names the field, the
+    // agent adds alt text to the image in the same set, and the set passes the check it runs when submitted.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task An_agent_uploads_attaches_and_describes_an_image_in_one_set_until_the_check_passes(string provider)
+    {
+        await using var agent = await ConnectedAgent.StartAsync(provider);
+        var page = await PageAsync(agent);
+        await ActiveAltTextCheckAsync(agent);
+
+        var uploaded = await agent.CallAsync("upload_media", new()
+        {
+            ["content_base64"] = Image,
+            ["content_type"] = "image/png",
+            ["file_name"] = "drill.png",
+            ["session_id"] = "launch",
+            ["rationale"] = "Show the drill on its page.",
+        });
+        var assetId = (string)uploaded["media"]!["id"]!;
+        var setId = (string)uploaded["changeSet"]!["id"]!;
+        await agent.CallAsync("attach_media", new()
+        {
+            ["entry_id"] = page.ToString(),
+            ["base_version"] = 1,
+            ["field"] = "hero",
+            ["asset_id"] = assetId,
+            ["session_id"] = "launch",
+            ["rationale"] = "Ignored once the set is open.",
+        });
+        Dictionary<string, object?> Draft() => new()
+        {
+            ["content_type"] = "product-page",
+            ["fields"] = JsonNode.Parse($$"""{"headline": "The Widget", "hero": "{{assetId}}"}"""),
+            ["id"] = page.ToString(),
+            ["change_set_id"] = setId,
+        };
+
+        var before = await agent.CallAsync("check_draft", Draft());
+        var described = await agent.CallAsync("update_media", new()
+        {
+            ["id"] = assetId,
+            ["base_version"] = 1,
+            ["alt_text"] = "A cordless drill on a workbench.",
+            ["session_id"] = "launch",
+            ["rationale"] = "Describe the drill for people who cannot see it.",
+        });
+        var after = await agent.CallAsync("check_draft", Draft());
+        var submitted = await agent.CallAsync("submit_change_set", new() { ["id"] = setId });
+
+        Assert.Equal("fail", (string?)before["status"]);
+        Assert.Equal("/hero", (string?)before["results"]![0]!["findings"]![0]!["pointer"]);
+        var media = described["changeSet"]!["operations"]!.AsArray().Single(operation => (string?)operation!["itemKind"] == "media")!;
+        Assert.Equal(("create", 2), ((string)media["kind"]!, (int)media["proposedVersion"]!));
+        Assert.Equal("pass", (string?)after["status"]);
+        var altText = submitted["checks"]!["items"]!.AsArray().Single()!["results"]!.AsArray().Single(result => (string?)result!["check"] == "alt-text")!;
+        Assert.Equal("pass", (string?)altText["status"]);
+    }
+
+    // The same for an entity's media fact: the photo of a product passes once update_media gives it alt text in the product's set.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task An_entity_s_media_fact_passes_once_update_media_describes_it_in_the_same_set(string provider)
+    {
+        await using var agent = await ConnectedAgent.StartAsync(provider);
+        await agent.AsPersonAsync<IContentTypeDirectory, ContentType>(directory => directory.CreateAsync(
+            new NewContentType("Product", "product", new ContentTypeDefinition([new FieldDefinition("name", "text"), new FieldDefinition("photo", "media")], isEntity: true)),
+            TestChangeSetTargets.ContentModel));
+        var check = new CheckDefinition(
+            "altText",
+            "Every image a product shows has alt text.",
+            JsonSerializer.Deserialize<JsonElement>("{}"),
+            [
+                new CheckExample("described", CheckVerdict.Pass, JsonSerializer.Deserialize<JsonElement>("""{"name": {"value": "A drill"}}"""), contentType: "product"),
+                new CheckExample("bare", CheckVerdict.Fail, JsonSerializer.Deserialize<JsonElement>("""{"name": {"value": "![](/drill.jpg)"}}"""), contentType: "product"),
+            ],
+            scope: new CheckScope(["product"]));
+        await agent.AsPersonAsync<ICheckDirectory, Check>(directory => directory.CreateAsync(new NewCheck("alt-text", check)));
+        await agent.AsPersonAsync<ICheckDirectory, Check>(directory => directory.ActivateAsync("alt-text", 1));
+
+        var uploaded = await agent.CallAsync("upload_media", new()
+        {
+            ["content_base64"] = Image,
+            ["content_type"] = "image/png",
+            ["file_name"] = "drill.png",
+            ["session_id"] = "catalog",
+            ["rationale"] = "A photo for the drill.",
+        });
+        var assetId = (string)uploaded["media"]!["id"]!;
+        var setId = (string)uploaded["changeSet"]!["id"]!;
+        Dictionary<string, object?> Draft() => new()
+        {
+            ["content_type"] = "product",
+            ["fields"] = JsonNode.Parse($$"""
+                {
+                  "name": {"value": "Drill", "source": {"kind": "system", "reference": "seed"}, "owner": null, "validFrom": null, "validUntil": null, "lastVerified": null},
+                  "photo": {"value": "{{assetId}}", "source": {"kind": "system", "reference": "seed"}, "owner": null, "validFrom": null, "validUntil": null, "lastVerified": null}
+                }
+                """),
+            ["change_set_id"] = setId,
+        };
+
+        var before = await agent.CallAsync("check_draft", Draft());
+        await agent.CallAsync("update_media", new()
+        {
+            ["id"] = assetId,
+            ["base_version"] = 1,
+            ["alt_text"] = "A cordless drill on a workbench.",
+            ["session_id"] = "catalog",
+            ["rationale"] = "Describe the photo.",
+        });
+        var after = await agent.CallAsync("check_draft", Draft());
+
+        Assert.Equal("/photo/value", (string?)before["results"]![0]!["findings"]![0]!["pointer"]);
+        Assert.Equal("pass", (string?)after["status"]);
+    }
+
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task Check_draft_refuses_a_change_set_it_cannot_read_or_that_has_ended(string provider)
+    {
+        await using var agent = await ConnectedAgent.StartAsync(provider);
+        await PageAsync(agent);
+        var opened = await agent.CallAsync("upload_media", new()
+        {
+            ["content_base64"] = Image,
+            ["content_type"] = "image/png",
+            ["file_name"] = "drill.png",
+            ["session_id"] = "rejected",
+            ["rationale"] = "A set to reject.",
+        });
+        var rejectedId = Guid.Parse((string)opened["changeSet"]!["id"]!);
+        await agent.AsPersonAsync<IChangeSetDirectory, ChangeSet>(directory => directory.TransitionAsync(rejectedId, ChangeSetState.ChecksRunning));
+        await agent.AsPersonAsync<IChangeSetDirectory, ChangeSet>(directory => directory.TransitionAsync(rejectedId, ChangeSetState.AwaitingReview));
+        await agent.AsPersonAsync<IChangeSetDirectory, ChangeSet>(directory => directory.RejectAsync(rejectedId, "Not now."));
+        Dictionary<string, object?> Draft(Guid changeSetId) => new()
+        {
+            ["content_type"] = "product-page",
+            ["fields"] = JsonNode.Parse("""{"headline": "The Widget"}"""),
+            ["change_set_id"] = changeSetId.ToString(),
+        };
+
+        var unknown = await agent.FailAsync("check_draft", Draft(Guid.CreateVersion7()));
+        var ended = await agent.FailAsync("check_draft", Draft(rejectedId));
+
+        Assert.Equal(ChangeSetErrorCodes.ChangeSetNotFound, Code(unknown));
+        Assert.Equal("argument_invalid", Code(ended));
+        Assert.Contains("rejected", (string?)ended["errors"]![0]!["message"]);
+    }
+
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
     [PostgresData]
@@ -85,8 +237,7 @@ public sealed class MediaToolsTests
         });
         var assetId = (string)uploaded["media"]!["id"]!;
         await PublishAsPersonAsync(agent, (string)uploaded["changeSet"]!["id"]!);
-        await agent.AsPersonAsync<ICheckDirectory, Check>(directory => directory.CreateAsync(new NewCheck("alt-text", AltTextCheck)));
-        await agent.AsPersonAsync<ICheckDirectory, Check>(directory => directory.ActivateAsync("alt-text", 1));
+        await ActiveAltTextCheckAsync(agent);
 
         var attached = await agent.CallAsync("attach_media", new()
         {
@@ -269,6 +420,12 @@ public sealed class MediaToolsTests
             new CheckExample("bare", CheckVerdict.Fail, JsonSerializer.Deserialize<JsonElement>("""{"headline": "![](/drill.jpg)"}"""), contentType: "product-page"),
         ],
         scope: new CheckScope(["product-page"]));
+
+    private static async Task ActiveAltTextCheckAsync(ConnectedAgent agent)
+    {
+        await agent.AsPersonAsync<ICheckDirectory, Check>(directory => directory.CreateAsync(new NewCheck("alt-text", AltTextCheck)));
+        await agent.AsPersonAsync<ICheckDirectory, Check>(directory => directory.ActivateAsync("alt-text", 1));
+    }
 
     private static async Task PublishAsPersonAsync(ConnectedAgent agent, string setId)
     {
