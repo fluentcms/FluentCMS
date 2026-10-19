@@ -8,6 +8,7 @@ using FluentCMS.Host.Identity;
 using FluentCMS.Host.Jobs;
 using FluentCMS.Host.Security;
 using FluentCMS.Infrastructure;
+using FluentCMS.Infrastructure.Media;
 using FluentCMS.Infrastructure.Persistence;
 using FluentCMS.Mcp;
 using Microsoft.AspNetCore.DataProtection;
@@ -197,6 +198,9 @@ public static class FluentCmsHost
         services.AddDataProtection()
             .SetApplicationName("FluentCMS")
             .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(environment.ContentRootPath, keyRing.KeysDirectory)));
+
+        // Media on local disk lives under the content root unless an absolute path is given, as the key ring does (MED-04).
+        services.PostConfigure<LocalDiskOptions>(disk => disk.Root = Path.Combine(environment.ContentRootPath, disk.Root));
 
         services.Configure<JobQueueOptions>(configuration.GetSection(JobQueueOptions.SectionName));
         services.AddHostedService<JobQueueWorker>();
