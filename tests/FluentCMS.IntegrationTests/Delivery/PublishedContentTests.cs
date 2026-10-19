@@ -158,6 +158,7 @@ public sealed class PublishedContentTests
         Assert.Equal(AgentPermissionErrorCodes.ScopeDenied, Code(await content.GetAsync(page)));
         Assert.Equal(AgentPermissionErrorCodes.ScopeDenied, Code(await content.ListAsync(new PublishedQuery("page"))));
         Assert.Equal([product], (await content.ListAsync(new PublishedQuery("product"))).Value.Items.Select(item => item.Id));
+        Assert.Equal([product], (await content.IndexAsync()).Select(summary => summary.Id));
     }
 
     [Theory]
