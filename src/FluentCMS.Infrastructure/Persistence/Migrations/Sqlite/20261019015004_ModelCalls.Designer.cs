@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
 {
     [DbContext(typeof(SqliteFluentCmsDbContext))]
-    [Migration("20261019014200_MediaAssets")]
-    partial class MediaAssets
+    [Migration("20261019015004_ModelCalls")]
+    partial class ModelCalls
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -633,106 +633,92 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                         });
                 });
 
-            modelBuilder.Entity("FluentCMS.Infrastructure.Media.MediaAssetRow", b =>
+            modelBuilder.Entity("FluentCMS.Infrastructure.Models.ModelCallRow", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("LatestVersion")
+                    b.Property<Guid?>("AgentCredentialId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("Cost")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("TEXT");
+
+                    b.Property<TimeSpan>("Duration")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Error")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("InitiatorId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("InitiatorKind")
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("InputTokens")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("PublishedVersion")
+                    b.Property<string>("Model")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ModelVersion")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Outcome")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("OutputTokens")
                         .HasColumnType("INTEGER");
 
-                    b.Property<Guid>("SiteId")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SiteId");
-
-                    b.ToTable("MediaAssets", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_MediaAssets_LatestVersion", "\"LatestVersion\" >= 1");
-
-                            t.HasCheckConstraint("CK_MediaAssets_PublishedVersion", "\"PublishedVersion\" IS NULL OR (\"PublishedVersion\" >= 1 AND \"PublishedVersion\" <= \"LatestVersion\")");
-                        });
-                });
-
-            modelBuilder.Entity("FluentCMS.Infrastructure.Media.MediaAssetVersionRow", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("AltText")
-                        .HasMaxLength(1000)
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("AssetId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Caption")
-                        .HasMaxLength(2000)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ContentType")
+                    b.Property<string>("Profile")
                         .IsRequired()
-                        .HasMaxLength(127)
+                        .HasMaxLength(128)
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTimeOffset>("CreatedAt")
+                    b.Property<string>("Prompt")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("FileName")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Folder")
-                        .IsRequired()
-                        .HasMaxLength(512)
-                        .HasColumnType("TEXT");
-
-                    b.Property<long>("Length")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Sha256")
+                    b.Property<string>("PromptHash")
                         .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("Storage")
+                    b.Property<string>("Provider")
                         .IsRequired()
-                        .HasMaxLength(64)
+                        .HasMaxLength(32)
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("StorageKey")
-                        .IsRequired()
-                        .HasMaxLength(256)
+                    b.Property<DateTimeOffset?>("PurgedAt")
                         .HasColumnType("TEXT");
 
-                    b.PrimitiveCollection<string>("Tags")
+                    b.Property<string>("Purpose")
                         .IsRequired()
+                        .HasMaxLength(128)
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("Version")
-                        .HasColumnType("INTEGER");
+                    b.Property<string>("Response")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("Timestamp")
+                        .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Folder");
+                    b.HasIndex("PromptHash");
 
-                    b.HasIndex("AssetId", "Version")
-                        .IsUnique();
+                    b.HasIndex("Timestamp");
 
-                    b.ToTable("MediaAssetVersions", null, t =>
-                        {
-                            t.HasTrigger("TR_MediaAssetVersions_NoUpdate");
+                    b.HasIndex("AgentCredentialId", "Timestamp");
 
-                            t.HasCheckConstraint("CK_MediaAssetVersions_Length", "\"Length\" > 0");
-
-                            t.HasCheckConstraint("CK_MediaAssetVersions_Version", "\"Version\" >= 1");
-                        });
+                    b.ToTable("ModelCalls", (string)null);
                 });
 
             modelBuilder.Entity("FluentCMS.Infrastructure.Persistence.FluentCmsRole", b =>
@@ -1111,22 +1097,12 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("FluentCMS.Infrastructure.Media.MediaAssetRow", b =>
+            modelBuilder.Entity("FluentCMS.Infrastructure.Models.ModelCallRow", b =>
                 {
-                    b.HasOne("FluentCMS.Infrastructure.Sites.SiteRow", null)
+                    b.HasOne("FluentCMS.Infrastructure.Agents.AgentCredentialRow", null)
                         .WithMany()
-                        .HasForeignKey("SiteId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("FluentCMS.Infrastructure.Media.MediaAssetVersionRow", b =>
-                {
-                    b.HasOne("FluentCMS.Infrastructure.Media.MediaAssetRow", null)
-                        .WithMany()
-                        .HasForeignKey("AssetId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .HasForeignKey("AgentCredentialId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("FluentCMS.Infrastructure.Schema.ContentTypeRow", b =>
