@@ -54,11 +54,35 @@ public sealed class EntryEditsTests
 
         var noReason = await SaveAsync(scenario, new EntryEdit("blog-post", null, null, Json("""{"title": "Hello"}"""), new NewChangeSet(" ", [])));
         var invalid = await SaveAsync(scenario, new EntryEdit("blog-post", null, null, Json("""{"title": 5}"""), new NewChangeSet("Why.", [])));
+        var blankSource = await SaveAsync(scenario, new EntryEdit("blog-post", null, null, Json("""{"title": "Hello"}"""), new NewChangeSet("Why.", ["a.csv", " "])));
 
         Assert.Equal(ChangeSetErrorCodes.RationaleMissing, Assert.Single(noReason.Errors).Code);
+        Assert.Equal(ChangeSetErrorCodes.SourceBlank, Assert.Single(blankSource.Errors).Code);
         Assert.NotEmpty(invalid.Errors);
         Assert.Empty(await scenario.EntryRowsAsync());
         Assert.Equal(0, await scenario.Schema.QueryAsync(context => context.ChangeSets.CountAsync(row => row.SessionId != TestChangeSetTargets.ContentModelSession)));
+    }
+
+    // The published version the values came from is checked before anything is written.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task An_update_from_a_published_version_that_is_not_the_published_one_is_a_conflict(string provider)
+    {
+        await using var scenario = await CreateAsync(provider);
+        var first = (await SaveAsync(scenario, new EntryEdit("blog-post", null, null, Json("""{"title": "Hello"}"""), new NewChangeSet("Draft.", [])))).Value;
+        var events = await scenario.Schema.QueryAsync(context => context.AuditEvents.CountAsync());
+
+        var refused = await SaveAsync(scenario, new EntryEdit("blog-post", first.Entry.Id, 1, Json("""{"title": "Old values"}"""), new NewChangeSet("Retitle.", []))
+        {
+            PublishedBase = 1,
+        });
+
+        Assert.Equal(ContentErrorCodes.VersionConflict, Assert.Single(refused.Errors).Code);
+        Assert.Single(await scenario.EntryRowsAsync());
+        Assert.Equal(1, await scenario.Schema.QueryAsync(context => context.EntryVersions.CountAsync(row => row.EntryId == first.Entry.Id)));
+        Assert.Equal(events, await scenario.Schema.QueryAsync(context => context.AuditEvents.CountAsync()));
+        Assert.Equal(1, await scenario.Schema.QueryAsync(context => context.ChangeSets.CountAsync(row => row.SessionId != TestChangeSetTargets.ContentModelSession)));
     }
 
     private static async Task<EntryScenario> CreateAsync(string provider)

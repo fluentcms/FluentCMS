@@ -1,8 +1,10 @@
 using Deque.AxeCore.Commons;
 using Deque.AxeCore.Playwright;
+using FluentCMS.Core.Agents;
 using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Media;
 using FluentCMS.Core.Schema;
+using FluentCMS.IntegrationTests.Mcp;
 using FluentCMS.IntegrationTests.Media;
 using Microsoft.Playwright;
 
@@ -25,9 +27,17 @@ public sealed class AccessibilityTests
             new MemoryStream(MediaFiles.Jpeg()),
             "image/jpeg",
             AssetMetadata.Create("drill.jpg", "products", ["hero"], null, null).Value))).Value.Id);
+
+        // Security events, so the security view is checked with its table, badges, links and pager.
+        var key = await McpAgents.IssueAsync(session.Host, session.OwnerId);
+        await session.Host.AsUserAsync<IAgentCredentialDirectory, bool>(session.OwnerId, async credentials => (await credentials.RevokeAsync(key.Credential.Id)).IsSuccess);
+        for (var user = 0; user < 50; user++)
+        {
+            await session.Host.AsUserAsync(session.OwnerId, async users => await users.CreateAsync(new FluentCMS.Core.Identity.NewUser($"editor{user}@example.com", $"Editor {user}", "An0ther!Passw0rd")));
+        }
         await session.SignInWithKeyboardAsync();
 
-        string[] paths = ["/ui", "/", "/?queue=stale-facts", $"/sets/{set.Id}?queue=awaiting-me", "/security", "/media", $"/media/{asset}", "/content", "/content/product", "/content/product/new", "/content/supplier/new"];
+        string[] paths = ["/ui", "/", "/?queue=stale-facts", $"/sets/{set.Id}?queue=awaiting-me", "/security", "/media", $"/media/{asset}", "/content", "/content/product", "/content/product/new", "/content/supplier/new", "/content/kitchen-sink/new"];
         var violations = new List<string>();
         foreach (var theme in new[] { "light", "dark" })
         {
@@ -47,7 +57,23 @@ public sealed class AccessibilityTests
             }
         }
 
+        // A refused submit, with its problems shown next to their fields.
+        await session.Page.GotoAsync($"{session.BaseUrl}/content/kitchen-sink/new");
+        await session.Page.Locator("input[name='Form.Values[title]']").FillAsync("Drill");
+        await session.Page.Locator("textarea[name='Form.Values[extra]']").FillAsync("{");
+        await session.Page.Locator("textarea[name='Form.Rationale']").FillAsync("Add the drill.");
+        await session.Page.Locator("[data-action=save]").ClickAsync();
+        await Assertions.Expect(session.Page.Locator("[data-slot=form-message]")).ToHaveCountAsync(1);
+        var refused = await session.Page.RunAxe(Wcag21AA);
+        violations.AddRange(refused.Violations.Select(violation => $"refused form: {violation.Id} ({violation.Impact}) {violation.Help}: "
+            + string.Join(" | ", violation.Nodes.Take(3).Select(node => node.Target + " " + node.Html))));
+
         Assert.True(violations.Count == 0, string.Join(Environment.NewLine, violations));
+    }
+
+    private static System.Text.Json.JsonElement Json(string json)
+    {
+        return System.Text.Json.JsonDocument.Parse(json).RootElement;
     }
 
     private static async Task<ChangeSet> AwaitingReviewAsync(BrowserSession session)
@@ -56,6 +82,23 @@ public sealed class AccessibilityTests
             (await directory.CreateAsync(new NewContentType("Product", "product", new ContentTypeDefinition([new FieldDefinition("title", "text")])), TestChangeSetTargets.ContentModel)).Value);
         await session.Host.AsUserAsync<IContentTypeDirectory, ContentType>(session.OwnerId, async directory =>
             (await directory.CreateAsync(new NewContentType("Supplier", "supplier", new ContentTypeDefinition([new FieldDefinition("name", "text")], isEntity: true)), TestChangeSetTargets.ContentModel)).Value);
+        await session.Host.AsUserAsync<IContentTypeDirectory, ContentType>(session.OwnerId, async directory => (await directory.CreateAsync(new NewContentType(
+            "Kitchen sink",
+            "kitchen-sink",
+            new ContentTypeDefinition(
+            [
+                new FieldDefinition("title", "text", required: true),
+                new FieldDefinition("body", "richText"),
+                new FieldDefinition("price", "number"),
+                new FieldDefinition("active", "boolean"),
+                new FieldDefinition("launch", "dateTime"),
+                new FieldDefinition("day", "dateTime", settings: Json("""{"dateOnly": true}""")),
+                new FieldDefinition("colour", "enum", settings: Json("""{"values": ["red", "blue"]}""")),
+                new FieldDefinition("product", "reference", settings: Json("""{"target": "product"}""")),
+                new FieldDefinition("hero", "media"),
+                new FieldDefinition("tags", "list", settings: Json("""{"itemType": "text"}""")),
+                new FieldDefinition("extra", "json"),
+            ])), TestChangeSetTargets.ContentModel)).Value);
 
         return await session.Host.AsUserAsync<IChangeSetDirectory, ChangeSet>(session.OwnerId, async directory =>
         {
