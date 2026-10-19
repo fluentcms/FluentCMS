@@ -7,6 +7,7 @@ using FluentCMS.Core.Entities;
 using FluentCMS.Core.Persistence;
 using FluentCMS.Core.Results;
 using FluentCMS.Core.Schema;
+using FluentCMS.Core.Search;
 using FluentCMS.Core.Sites;
 using FluentCMS.Infrastructure.Entities;
 using FluentCMS.Infrastructure.Persistence;
@@ -26,7 +27,8 @@ internal sealed class EntryDirectory(
     FieldTypeRegistry fieldTypes,
     TimeProvider clock,
     IOptions<ContentOptions> options,
-    IAgentPermissions permissions) : IEntryDirectory
+    IAgentPermissions permissions,
+    ISearchIndex searchIndex) : IEntryDirectory
 {
     // Until multi-site (MST-01), every entry belongs to the one site (SCH-07).
     private static readonly Guid SiteId = Site.Default.Id;
@@ -176,6 +178,7 @@ internal sealed class EntryDirectory(
         context.EntryVersions.Add(VersionRow(stored.Latest));
         context.EntryReferences.AddRange(ReferenceRows(stored.Latest, references));
         context.EntityFacts.AddRange(FactRows(stored.Latest, type.Value.Definition));
+        await searchIndex.IndexAsync(new SearchDocument(stored.Id, SearchText.From(stored.Latest.Fields)), cancellationToken);
         var subject = Subject(type.Value.Definition);
         await auditLog.AppendAsync(new NewAuditEvent($"{subject}.created") { SubjectType = subject, SubjectId = stored.Id }, cancellationToken);
 
@@ -245,6 +248,7 @@ internal sealed class EntryDirectory(
         context.EntryVersions.Add(VersionRow(entry.Latest));
         context.EntryReferences.AddRange(ReferenceRows(entry.Latest, references));
         context.EntityFacts.AddRange(FactRows(entry.Latest, type.Value.Definition));
+        await searchIndex.IndexAsync(new SearchDocument(id, SearchText.From(entry.Latest.Fields)), cancellationToken);
         var subject = Subject(type.Value.Definition);
         await auditLog.AppendAsync(
             new NewAuditEvent($"{subject}.updated") { SubjectType = subject, SubjectId = id, PreviousVersionId = baseRow.Id },

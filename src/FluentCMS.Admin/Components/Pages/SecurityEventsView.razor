@@ -1,0 +1,148 @@
+@page "/security"
+@using System.Globalization
+@using FluentCMS.Core.Audit
+@inject IAuditEventLists AuditLists
+@inject IStringLocalizer<SecurityEventsView> L
+
+<PageTitle>@L["Security events"]</PageTitle>
+
+<h1 id="security-heading" class="text-2xl font-semibold tracking-tight">@L["Security events"]</h1>
+<p class="mt-1 text-sm text-muted-foreground">@L["Agent keys issued and revoked, caps exceeded, refused moves, changes to people's accounts and to routing rules, the newest first. Every one is also in the audit log."]</p>
+
+@if (_error is not null)
+{
+    <p role="alert" class="mt-4 text-sm text-destructive" data-testid="security-error">@_error</p>
+}
+else if (_total == 0)
+{
+    <p class="mt-6 rounded-md border px-3 py-6 text-center text-sm text-muted-foreground" data-testid="security-empty">@L["No security event is recorded."]</p>
+}
+else if (_events.Count == 0)
+{
+    <p class="mt-6 rounded-md border px-3 py-6 text-center text-sm text-muted-foreground" data-testid="security-past-end">
+        @L["This page is past the end of the list."]
+        <a href="security" class="underline underline-offset-4">@L["Go to the first page"]</a>
+    </p>
+}
+else
+{
+    <div class="mt-6 rounded-md border">
+        <Table aria-labelledby="security-heading">
+            <TableHeader>
+                <TableRow>
+                    <TableHead>@L["When"]</TableHead>
+                    <TableHead>@L["What"]</TableHead>
+                    <TableHead>@L["Who"]</TableHead>
+                    <TableHead>@L["About"]</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody data-ui="rove">
+                @foreach (var (auditEvent, index) in _events.Select((auditEvent, index) => (auditEvent, index)))
+                {
+                    <TableRow data-event="@auditEvent.Operation">
+                        <TableCell>
+                            <time datetime="@auditEvent.Timestamp.ToString("O", CultureInfo.InvariantCulture)" dir="ltr" class="text-muted-foreground">@auditEvent.Timestamp.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) UTC</time>
+                        </TableCell>
+                        <TableCell Class="whitespace-normal font-medium">@Describe(auditEvent.Operation)</TableCell>
+                        <TableCell>
+                            <span class="flex items-center gap-2">
+                                @switch (auditEvent.Initiator)
+                                {
+                                    case AgentInitiator:
+                                        <Badge data-initiator="agent">@L["Agent"]</Badge>
+                                        break;
+                                    case SystemInitiator:
+                                        <Badge Variant="outline" data-initiator="system">@L["System"]</Badge>
+                                        break;
+                                    default:
+                                        <Badge Variant="secondary" data-initiator="user">@L["User"]</Badge>
+                                        break;
+                                }
+                                <bdi>@auditEvent.Initiator.DisplayName</bdi>
+                            </span>
+                        </TableCell>
+                        <TableCell>
+                            @if (auditEvent.SubjectType is { } type && auditEvent.SubjectId is { } id)
+                            {
+                                <a href="@($"audit?type={Uri.EscapeDataString(type)}&id={id}")" data-ui="rove-item" tabindex="@(index == 0 ? null : "-1")" class="underline-offset-4 hover:underline">
+                                    <bdi>@type</bdi> <bdi class="font-mono text-xs text-muted-foreground" dir="ltr">@id.ToString("N")[..8]</bdi>
+                                </a>
+                            }
+                        </TableCell>
+                    </TableRow>
+                }
+            </TableBody>
+        </Table>
+    </div>
+
+    <nav class="mt-4 flex flex-wrap items-center justify-between gap-4" aria-label="@L["Pages"]" data-testid="security-pages">
+        <p class="text-sm text-muted-foreground">@L["{0} to {1} of {2}", _offset + 1, _offset + _events.Count, _total]</p>
+        <span class="flex gap-2">
+            @if (_page > 1)
+            {
+                <a href="@Href(_page - 1)" rel="prev" class="@ButtonVariants.Classes("outline", "sm")">@L["Previous"]</a>
+            }
+            @if (_offset + PageSize < _total)
+            {
+                <a href="@Href(_page + 1)" rel="next" class="@ButtonVariants.Classes("outline", "sm")">@L["Next"]</a>
+            }
+        </span>
+    </nav>
+}
+
+@code {
+    public const int PageSize = 50;
+
+    private IReadOnlyList<AuditEvent> _events = [];
+    private int _total;
+    private int _page;
+    private int _offset;
+    private string? _error;
+
+    [SupplyParameterFromQuery(Name = "page")]
+    private int? PageNumber { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _page = Math.Max(1, PageNumber ?? 1);
+        _offset = (int)Math.Min((_page - 1L) * PageSize, int.MaxValue - PageSize);
+
+        var listed = await AuditLists.ListAsync(new AuditEventListQuery { Operations = SecurityEvents.Operations, Offset = _offset, Limit = PageSize });
+        if (listed.IsSuccess)
+        {
+            (_events, _total) = (listed.Value.Items, listed.Value.Total);
+        }
+        else
+        {
+            // The error code is the resource key; the reader's own message is the text until a resource exists.
+            _error = string.Join(" ", listed.Errors.Select(error =>
+            {
+                var localized = L[error.Code];
+                return localized.ResourceNotFound ? error.Message : localized.Value;
+            }));
+        }
+    }
+
+    private static string Href(int page) => page > 1 ? $"security?page={page}" : "security";
+
+    private string Describe(string operation) => operation switch
+    {
+        "agent_credential.issued" => L["An agent key was issued"],
+        "agent_credential.revoked" => L["An agent key was revoked"],
+        "agent.calls_per_period_exceeded" => L["An agent went over its calls cap"],
+        "agent.change_sets_per_day_exceeded" => L["An agent went over its change sets per day"],
+        "agent.items_per_change_set_exceeded" => L["An agent went over its items per change set"],
+        "agent.transition_refused" => L["An agent tried a move only people make"],
+        "user.created" => L["A person was added"],
+        "user.disabled" => L["A person was disabled"],
+        "user.enabled" => L["A person was enabled again"],
+        "user.password_reset_issued" => L["A password reset link was issued"],
+        "user.password_reset" => L["A password was reset"],
+        "user.login_linked" => L["An external sign-in was linked"],
+        "routing_rule.created" => L["A routing rule was created"],
+        "routing_rule.revised" => L["A routing rule was revised"],
+        "routing_rule.activated" => L["A routing rule was activated"],
+        "routing_rule.deactivated" => L["A routing rule was deactivated"],
+        _ => operation,
+    };
+}

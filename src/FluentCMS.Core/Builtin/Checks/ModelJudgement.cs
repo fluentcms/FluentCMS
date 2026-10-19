@@ -72,7 +72,7 @@ internal static class ModelJudgement
         data.AddRange(settings);
 
         var asked = await gateway.AskAsync(
-            new ModelRequest(Profile, $"check:{checkType}", task + "\n\n" + AnswerRules, data) { AnswerSchema = AnswerSchema },
+            new ModelRequest(Profile, $"check:{checkType}", task + "\n\n" + AnswerRules, data) { AnswerSchema = AnswerSchema, OnBehalfOf = input.OnBehalfOf },
             cancellationToken);
         if (!asked.IsSuccess)
         {

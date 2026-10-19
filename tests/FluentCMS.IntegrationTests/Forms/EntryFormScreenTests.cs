@@ -1,0 +1,189 @@
+using System.Net;
+using System.Text.Json;
+using FluentCMS.Core.ChangeSets;
+using FluentCMS.Core.Content;
+using FluentCMS.Core.Media;
+using FluentCMS.Core.Schema;
+using FluentCMS.IntegrationTests.Media;
+
+namespace FluentCMS.IntegrationTests.Forms;
+
+public sealed class EntryFormScreenTests
+{
+    [Fact]
+    public async Task A_person_creates_an_entry_with_every_field_type_and_lands_on_its_open_set()
+    {
+        using var install = new TemporaryInstall();
+        await using var host = await AdminHost.StartAsync(install);
+        var ownerId = await host.CreateFirstAdministratorAsync();
+        var (category, asset) = await KitchenSinkAsync(host, ownerId);
+        await host.SignInAsync(AdminHost.Owner);
+
+        var form = await host.Client.GetStringAsync("/content/kitchen-sink/new");
+        Assert.Contains("name=\"Form.Values[title]\"", form);
+        Assert.Contains("type=\"datetime-local\"", form);
+        Assert.Contains("type=\"date\"", form);
+        Assert.Contains($"<option value=\"{category}\"", form);
+        Assert.Contains($"<option value=\"{asset}\">hero.jpg</option>", form);
+
+        var saved = await host.SubmitAsync("/content/kitchen-sink/new", "entry", new Dictionary<string, string>
+        {
+            ["Form.Values[title]"] = "Cordless drill",
+            ["Form.Values[body]"] = "A **light** drill.",
+            ["Form.Values[price]"] = "129.5",
+            ["Form.Values[active]"] = "true",
+            ["Form.Values[launch]"] = "2026-11-01T09:30",
+            ["Form.Values[day]"] = "2026-11-02",
+            ["Form.Values[colour]"] = "red",
+            ["Form.Values[category]"] = category.ToString(),
+            ["Form.Values[hero]"] = asset.ToString(),
+            ["Form.Values[tags]"] = """["power", "tools"]""",
+            ["Form.Values[extra]"] = """{"warranty": 2}""",
+            ["Form.Rationale"] = "Add the drill for the launch.",
+            ["Form.Sources"] = "https://example.com/catalog\nexports/drills.csv",
+            ["Form.BaseVersion"] = "0",
+        });
+
+        Assert.Equal(HttpStatusCode.Redirect, saved.StatusCode);
+        var location = host.LocationOf(saved)!;
+        Assert.Matches("^/sets/[0-9a-f-]{36}\\?done=saved$", location);
+        var set = await host.AsUserAsync<IChangeSetDirectory, ChangeSet>(ownerId, async sets => (await sets.GetAsync(Guid.Parse(location[6..42]))).Value);
+        Assert.Equal((ChangeSetState.Open, "Add the drill for the launch."), (set.State, set.Rationale));
+        Assert.Equal(["https://example.com/catalog", "exports/drills.csv"], set.Sources);
+        var operation = Assert.Single(set.Operations);
+        Assert.Equal((OperationKind.Create, ItemKind.Entry), (operation.Kind, operation.ItemKind));
+        var entry = await host.AsUserAsync<IEntryDirectory, Entry>(ownerId, async entries => (await entries.GetAsync(operation.ItemId)).Value);
+        var fields = entry.Latest.Fields;
+        Assert.Equal(129.5m, fields.GetProperty("price").GetDecimal());
+        Assert.True(fields.GetProperty("active").GetBoolean());
+        Assert.Equal("2026-11-01T09:30:00Z", fields.GetProperty("launch").GetString());
+        Assert.Equal("2026-11-02", fields.GetProperty("day").GetString());
+        Assert.Equal(["power", "tools"], fields.GetProperty("tags").EnumerateArray().Select(tag => tag.GetString()));
+        Assert.Equal(2, fields.GetProperty("extra").GetProperty("warranty").GetInt32());
+        Assert.Contains("data-testid=\"review-done\"", await host.Client.GetStringAsync(location));
+
+        // Editing shows the stored values, and the save opens a second set with the next version.
+        var edit = await host.Client.GetStringAsync($"/content/kitchen-sink/{entry.Id}");
+        Assert.Contains("value=\"2026-11-01T09:30\"", edit);
+        Assert.Contains("value=\"129.5\"", edit);
+        Assert.Contains("<option value=\"red\" selected", edit);
+        var edited = await host.SubmitAsync($"/content/kitchen-sink/{entry.Id}", "entry", new Dictionary<string, string>
+        {
+            ["Form.Values[title]"] = "Cordless drill, 18 V",
+            ["Form.Rationale"] = "Name the voltage.",
+            ["Form.BaseVersion"] = "1",
+        });
+        var second = await host.AsUserAsync<IChangeSetDirectory, ChangeSet>(ownerId, async sets => (await sets.GetAsync(Guid.Parse(host.LocationOf(edited)![6..42]))).Value);
+        Assert.Equal((OperationKind.Create, (int?)2), (Assert.Single(second.Operations).Kind, second.Operations[0].ProposedVersion));
+    }
+
+    [Fact]
+    public async Task Problems_show_next_to_their_fields_and_nothing_is_stored()
+    {
+        using var install = new TemporaryInstall();
+        await using var host = await AdminHost.StartAsync(install);
+        var ownerId = await host.CreateFirstAdministratorAsync();
+        await KitchenSinkAsync(host, ownerId);
+        await host.SignInAsync(AdminHost.Owner);
+
+        var refused = await host.SubmitAsync("/content/kitchen-sink/new", "entry", new Dictionary<string, string>
+        {
+            ["Form.Values[title]"] = "",
+            ["Form.Values[price]"] = "cheap",
+            ["Form.Values[launch]"] = "soon",
+            ["Form.Values[colour]"] = "purple",
+            ["Form.Values[extra]"] = "{",
+            ["Form.Rationale"] = "",
+            ["Form.BaseVersion"] = "0",
+        });
+        var page = await refused.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, refused.StatusCode);
+        Assert.Contains("Fill in title.", page);
+        Assert.Contains("Enter a number", page);
+        Assert.Contains("Enter a date and a time.", page);
+        Assert.Contains("Enter valid JSON", page);
+        Assert.Contains("Say why you are making this change.", page);
+        Assert.Contains("value=\"cheap\"", page);
+        Assert.True(System.Text.RegularExpressions.Regex.Count(page, "aria-invalid=\"true\"") >= 5);
+        Assert.Empty((await host.AsUserAsync<IEntryDirectory, IReadOnlyList<EntrySummary>>(ownerId, async entries => (await entries.ListAsync("kitchen-sink")).Value)));
+    }
+
+    [Fact]
+    public async Task A_form_from_an_older_version_is_refused_and_shows_the_entry_as_it_is_now()
+    {
+        using var install = new TemporaryInstall();
+        await using var host = await AdminHost.StartAsync(install);
+        var ownerId = await host.CreateFirstAdministratorAsync();
+        await KitchenSinkAsync(host, ownerId);
+        var entry = await host.AsUserAsync<IEntryDirectory, Entry>(ownerId, async entries =>
+            (await entries.CreateAsync(new NewEntry("kitchen-sink", Json("""{"title": "First"}""")))).Value);
+        await host.AsUserAsync<IEntryDirectory, Entry>(ownerId, async entries =>
+            (await entries.UpdateAsync(entry.Id, 1, Json("""{"title": "Second"}"""))).Value);
+        await host.SignInAsync(AdminHost.Owner);
+
+        var stale = await host.SubmitAsync($"/content/kitchen-sink/{entry.Id}", "entry", new Dictionary<string, string>
+        {
+            ["Form.Values[title]"] = "Mine",
+            ["Form.Rationale"] = "Retitle.",
+            ["Form.BaseVersion"] = "1",
+        });
+        var page = await stale.Content.ReadAsStringAsync();
+
+        Assert.Contains("data-testid=\"entry-form-error\"", page);
+        Assert.Contains("value=\"Second\"", page);
+        Assert.Contains("data-version=\"2\"", page);
+    }
+
+    [Fact]
+    public async Task The_content_pages_list_types_and_entries_and_need_a_signed_in_person()
+    {
+        using var install = new TemporaryInstall();
+        await using var host = await AdminHost.StartAsync(install);
+        var ownerId = await host.CreateFirstAdministratorAsync();
+        await KitchenSinkAsync(host, ownerId);
+
+        Assert.StartsWith("/sign-in?ReturnUrl=", host.LocationOf(await host.Client.GetAsync("/content/kitchen-sink/new")));
+        await host.SignInAsync(AdminHost.Owner);
+
+        Assert.Contains("data-type=\"kitchen-sink\"", await host.Client.GetStringAsync("/content"));
+        var entries = await host.Client.GetStringAsync("/content/category");
+        Assert.Contains("data-entry=", entries);
+        Assert.Equal(HttpStatusCode.NotFound, (await host.Client.GetAsync("/content/nothing")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await host.Client.GetAsync($"/content/kitchen-sink/{Guid.NewGuid()}")).StatusCode);
+    }
+
+    // A type with one field of every built-in type, a category entry to reference and an asset to show.
+    private static async Task<(Guid Category, Guid Asset)> KitchenSinkAsync(AdminHost host, Guid ownerId)
+    {
+        await host.AsUserAsync<IContentTypeDirectory, ContentType>(ownerId, async types => (await types.CreateAsync(new NewContentType(
+            "Category", "category", new ContentTypeDefinition([new FieldDefinition("name", "text", required: true)])), TestChangeSetTargets.ContentModel)).Value);
+        await host.AsUserAsync<IContentTypeDirectory, ContentType>(ownerId, async types => (await types.CreateAsync(new NewContentType(
+            "Kitchen sink",
+            "kitchen-sink",
+            new ContentTypeDefinition(
+            [
+                new FieldDefinition("title", "text", required: true, settings: Json("""{"maxLength": 80}""")),
+                new FieldDefinition("body", "richText"),
+                new FieldDefinition("price", "number"),
+                new FieldDefinition("active", "boolean"),
+                new FieldDefinition("launch", "dateTime"),
+                new FieldDefinition("day", "dateTime", settings: Json("""{"dateOnly": true}""")),
+                new FieldDefinition("colour", "enum", settings: Json("""{"values": ["red", "blue"]}""")),
+                new FieldDefinition("category", "reference", settings: Json("""{"target": "category"}""")),
+                new FieldDefinition("hero", "media"),
+                new FieldDefinition("tags", "list", settings: Json("""{"itemType": "text"}""")),
+                new FieldDefinition("extra", "json"),
+            ])), TestChangeSetTargets.ContentModel)).Value);
+        var category = await host.AsUserAsync<IEntryDirectory, Entry>(ownerId, async entries =>
+            (await entries.CreateAsync(new NewEntry("category", Json("""{"name": "Tools"}""")))).Value);
+        var asset = await host.AsUserAsync<IMediaLibrary, MediaAsset>(ownerId, async library => (await library.UploadAsync(new NewAsset(
+            new MemoryStream(MediaFiles.Jpeg()), "image/jpeg", AssetMetadata.Create("hero.jpg", null, null, "A drill.", null).Value))).Value);
+        return (category.Id, asset.Id);
+    }
+
+    private static JsonElement Json(string json)
+    {
+        return JsonSerializer.Deserialize<JsonElement>(json);
+    }
+}

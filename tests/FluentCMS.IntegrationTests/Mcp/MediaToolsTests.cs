@@ -120,6 +120,11 @@ public sealed class MediaToolsTests
         Assert.Equal("fail", (string?)before["status"]);
         Assert.Equal("/hero", (string?)before["results"]![0]!["findings"]![0]!["pointer"]);
         Assert.Equal("pass", (string?)after["status"]);
+
+        // Submitted, the set's own checks read the version it proposes too.
+        var submitted = await agent.CallAsync("submit_change_set", new() { ["id"] = setId });
+        var altText = submitted["checks"]!["items"]!.AsArray().Single()!["results"]!.AsArray().Single(result => (string?)result!["check"] == "alt-text")!;
+        Assert.Equal("pass", (string?)altText["status"]);
     }
 
     [Theory]
@@ -236,7 +241,7 @@ public sealed class MediaToolsTests
         Assert.Equal("field_not_media", Code(notMedia));
         Assert.Equal(ContentErrorCodes.ReferenceNotFound, Code(missingAsset));
         Assert.Equal(0, await agent.QueryAsync(context => context.MediaAssets.CountAsync()));
-        Assert.Equal(0, await agent.QueryAsync(context => context.ChangeSets.CountAsync()));
+        Assert.Equal(0, await agent.QueryAsync(context => context.ChangeSets.CountAsync(row => row.SessionId != TestChangeSetTargets.ContentModelSession)));
     }
 
     // A published product page with a headline and an empty hero image, defined and written by a person.
@@ -245,7 +250,8 @@ public sealed class MediaToolsTests
         await agent.AsPersonAsync<IContentTypeDirectory, ContentType>(directory => directory.CreateAsync(new NewContentType(
             "Product page",
             "product-page",
-            new ContentTypeDefinition([new FieldDefinition("headline", "text"), new FieldDefinition("hero", "media")]))));
+            new ContentTypeDefinition([new FieldDefinition("headline", "text"), new FieldDefinition("hero", "media")])),
+            TestChangeSetTargets.ContentModel));
         var page = await agent.AsPersonAsync<IEntryDirectory, Entry>(entries =>
             entries.CreateAsync(new NewEntry("product-page", JsonSerializer.Deserialize<JsonElement>("""{"headline": "The Widget"}"""))));
         await agent.QueryAsync(context => context.Entries

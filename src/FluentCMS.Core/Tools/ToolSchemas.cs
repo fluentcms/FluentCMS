@@ -60,17 +60,17 @@ public static class ToolSchemas
             });
     }
 
+    public static ToolArgument Flag(string name, string description)
+    {
+        return new ToolArgument(name, description, Required: false, new JsonObject { ["type"] = "boolean", ["examples"] = new JsonArray(true) });
+    }
+
     // An argument that is itself a JSON object, with its own schema and one example that satisfies it.
     public static ToolArgument Json(string name, string description, JsonObject schema, JsonNode example, bool required = true)
     {
         var copy = schema.DeepClone().AsObject();
         copy["examples"] = new JsonArray(example.DeepClone());
         return new ToolArgument(name, description, required, copy);
-    }
-
-    public static ToolArgument Boolean(string name, string description, bool required = true)
-    {
-        return new ToolArgument(name, description, required, new JsonObject { ["type"] = "boolean", ["examples"] = new JsonArray(true) });
     }
 
     public static ToolArgument PositiveInteger(string name, string description, int example, bool required = true)

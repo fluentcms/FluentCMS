@@ -88,6 +88,9 @@ internal sealed class AgentPermissions(
             return Result.Success();
         }
 
+        // Called inside the unit of work that opens the set, so concurrent opens by one agent are counted one at a time.
+        await activity.HoldAsync(credential.Id, cancellationToken);
+
         var cap = credential.Caps.ChangeSetsPerDay;
         var opened = await activity.ChangeSetsOpenedSinceAsync(credential.Id, clock.GetUtcNow() - Day, cancellationToken);
         if (opened < cap)
@@ -103,6 +106,28 @@ internal sealed class AgentPermissions(
             AgentPermissionErrorCodes.CapExceeded,
             $"The credential '{credential.DisplayName}' has opened {opened} change sets in the last 24 hours, and its cap is {cap} "
             + $"(change sets per day). Add the operation to a change set that is still open, or wait until fewer than {cap} were opened in the last 24 hours.");
+    }
+
+    public async Task<Result> CheckChangeSetReadAsync(ChangeSet changeSet, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(changeSet);
+
+        if (currentInitiator.Current is SystemInitiator)
+        {
+            return Result.Success();
+        }
+
+        var agent = await AgentAsync(cancellationToken);
+        if (!agent.IsSuccess)
+        {
+            return Result.Failure(agent.Errors);
+        }
+
+        return agent.Value is { } credential && !(changeSet.Initiator is AgentInitiator owner && owner.CredentialId == credential.Id)
+            ? Result.Failure(
+                AgentPermissionErrorCodes.NotOwner,
+                $"Change set {changeSet.Id} is not one the credential '{credential.DisplayName}' opened; an agent reads its own change sets only.")
+            : Result.Success();
     }
 
     public async Task<Result> CheckChangeSetSizeAsync(ChangeSet changeSet, int adding = 0, CancellationToken cancellationToken = default)
@@ -272,34 +297,48 @@ internal sealed class AgentPermissions(
         return scope.AllowsOperation(AgentOperation.Read) ? scope.AllowsType : _ => false;
     }
 
-    public async Task<Result> CheckToolCallAsync(CancellationToken cancellationToken = default)
+    public async Task<Result> ClaimToolCallAsync(ToolCall call, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(call);
+
         if (currentInitiator.Current is SystemInitiator system)
         {
             return SystemRefused(system, "call a tool");
         }
 
+        await using var scope = await unitOfWork.BeginAsync(cancellationToken);
+
         var agent = await AgentAsync(cancellationToken);
         if (!agent.IsSuccess)
         {
+            await activity.StartToolCallAsync(call with { Outcome = ToolCallOutcome.Refused }, cancellationToken);
+            await scope.CommitAsync(cancellationToken);
             return Result.Failure(agent.Errors);
         }
 
         if (agent.Value is not { } credential)
         {
+            await scope.CommitAsync(cancellationToken);
             return Result.Success();
         }
+
+        // One credential's calls take turns from here to the commit, so each count sees every call admitted before it.
+        await activity.HoldAsync(credential.Id, cancellationToken);
 
         var caps = credential.Caps;
         var made = await activity.ToolCallsSinceAsync(credential.Id, clock.GetUtcNow() - caps.CallPeriod, cancellationToken);
         if (made < caps.CallsPerPeriod)
         {
+            await activity.StartToolCallAsync(call with { Outcome = ToolCallOutcome.Running }, cancellationToken);
+            await scope.CommitAsync(cancellationToken);
             return Result.Success();
         }
 
-        await RecordAsync(
+        await activity.StartToolCallAsync(call with { Outcome = ToolCallOutcome.Refused }, cancellationToken);
+        await auditLog.AppendAsync(
             new NewAuditEvent("agent.calls_per_period_exceeded") { SubjectType = "agent_credential", SubjectId = credential.Id },
             cancellationToken);
+        await scope.CommitAsync(cancellationToken);
 
         return Result.Failure(
             AgentPermissionErrorCodes.CapExceeded,
@@ -409,10 +448,17 @@ internal sealed class AgentPermissions(
         return Result<AgentCredential?>.Success(credential.Value);
     }
 
-    // The refused write leaves nothing, so the event commits on its own, or with the caller's unit of work when there is one.
+    // The refused write leaves nothing, so the event commits on its own, or with the caller's unit of work when there is one. That
+    // unit of work usually rolls back because of the refusal, so the event is appended again once it has, in a unit of work of its own.
     private async Task RecordAsync(NewAuditEvent refusal, CancellationToken cancellationToken)
     {
         await using var scope = await unitOfWork.BeginAsync(cancellationToken);
+        unitOfWork.AfterRollback(async afterwards =>
+        {
+            await using var again = await unitOfWork.BeginAsync(afterwards);
+            await auditLog.AppendAsync(refusal, afterwards);
+            await again.CommitAsync(afterwards);
+        });
         await auditLog.AppendAsync(refusal, cancellationToken);
         await scope.CommitAsync(cancellationToken);
     }

@@ -311,6 +311,99 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
                         });
                 });
 
+            modelBuilder.Entity("FluentCMS.Infrastructure.Checks.CheckResultRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Check")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("CheckId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CheckType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("CheckVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<decimal>("Cost")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Findings")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("ItemId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ItemKind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<int>("ItemVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("Model")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<Guid?>("ModelCallId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PromptHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Provider")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<Guid>("RunId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Severity")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RunId", "Position")
+                        .IsUnique();
+
+                    b.ToTable("CheckResults", (string)null);
+                });
+
             modelBuilder.Entity("FluentCMS.Infrastructure.Checks.CheckRow", b =>
                 {
                     b.Property<Guid>("Id")
@@ -340,6 +433,55 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
                             t.HasCheckConstraint("CK_Checks_ActiveVersion", "\"ActiveVersion\" IS NULL OR (\"ActiveVersion\" >= 1 AND \"ActiveVersion\" <= \"Version\")");
 
                             t.HasCheckConstraint("CK_Checks_Version", "\"Version\" >= 1");
+                        });
+                });
+
+            modelBuilder.Entity("FluentCMS.Infrastructure.Checks.CheckRunRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ChangeSetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Cost")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
+                    b.Property<DateTimeOffset>("FinishedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Mode")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<int>("Number")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Problems")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChangeSetId", "Number")
+                        .IsUnique();
+
+                    b.ToTable("CheckRuns", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_CheckRuns_Number", "\"Number\" >= 1");
                         });
                 });
 
@@ -484,6 +626,42 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
 
                             t.HasCheckConstraint("CK_EntryVersions_Version", "\"Version\" >= 1");
                         });
+                });
+
+            modelBuilder.Entity("FluentCMS.Infrastructure.Delivery.PreviewTokenRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ChangeSetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("SiteId")
+                        .HasColumnType("uuid");
+
+                    b.Property<byte[]>("TokenHash")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChangeSetId");
+
+                    b.HasIndex("SiteId");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.ToTable("PreviewTokens", (string)null);
                 });
 
             modelBuilder.Entity("FluentCMS.Infrastructure.Entities.EntityFactRow", b =>
@@ -640,9 +818,6 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
-
-                    b.Property<DateTimeOffset?>("DeletedAt")
-                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("LatestVersion")
                         .HasColumnType("integer");
@@ -1014,6 +1189,43 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
                         });
                 });
 
+            modelBuilder.Entity("FluentCMS.Infrastructure.Webhooks.WebhookSubscriptionRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("AddedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("AddedById")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AddedByName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<DateTimeOffset?>("DisabledAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.PrimitiveCollection<List<string>>("Events")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.Property<string>("ProtectedSecret")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("WebhookSubscriptions", (string)null);
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
                 {
                     b.Property<int>("Id")
@@ -1149,11 +1361,29 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("FluentCMS.Infrastructure.Checks.CheckResultRow", b =>
+                {
+                    b.HasOne("FluentCMS.Infrastructure.Checks.CheckRunRow", null)
+                        .WithMany()
+                        .HasForeignKey("RunId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("FluentCMS.Infrastructure.Checks.CheckRow", b =>
                 {
                     b.HasOne("FluentCMS.Infrastructure.Sites.SiteRow", null)
                         .WithMany()
                         .HasForeignKey("SiteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FluentCMS.Infrastructure.Checks.CheckRunRow", b =>
+                {
+                    b.HasOne("FluentCMS.Infrastructure.ChangeSets.ChangeSetRow", null)
+                        .WithMany()
+                        .HasForeignKey("ChangeSetId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
@@ -1196,6 +1426,21 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
                     b.HasOne("FluentCMS.Infrastructure.Content.EntryRow", null)
                         .WithMany()
                         .HasForeignKey("EntryId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FluentCMS.Infrastructure.Delivery.PreviewTokenRow", b =>
+                {
+                    b.HasOne("FluentCMS.Infrastructure.ChangeSets.ChangeSetRow", null)
+                        .WithMany()
+                        .HasForeignKey("ChangeSetId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FluentCMS.Infrastructure.Sites.SiteRow", null)
+                        .WithMany()
+                        .HasForeignKey("SiteId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
