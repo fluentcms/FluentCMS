@@ -25,6 +25,9 @@ public sealed class CheckOutcome
 
     public IReadOnlyList<CheckFinding> Findings { get; }
 
+    // The model call an LLM-judged outcome rests on, so the result names its model, prompt and cost (CHK-05); null for every other.
+    public CheckModelUse? Model { get; private init; }
+
     public static CheckOutcome Pass()
     {
         return new CheckOutcome(CheckVerdict.Pass, []);
@@ -54,4 +57,14 @@ public sealed class CheckOutcome
         ArgumentException.ThrowIfNullOrWhiteSpace(reason);
         return new CheckOutcome(CheckVerdict.NeedsReview, [new CheckFinding(reason)]);
     }
+
+    public CheckOutcome WithModel(CheckModelUse model)
+    {
+        ArgumentNullException.ThrowIfNull(model);
+        return new CheckOutcome(Verdict, Findings) { Model = model };
+    }
 }
+
+// Which model call judged the content: the record that keeps its verbatim prompt and response, the model and version that answered,
+// the prompt's hash that audit events carry, and what the call cost (MDL-04, CHK-05).
+public sealed record CheckModelUse(Guid CallId, string Provider, string Model, string PromptHash, decimal Cost);

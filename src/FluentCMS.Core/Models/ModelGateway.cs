@@ -58,6 +58,12 @@ internal sealed class ModelGateway(
             ResponseFormat = request.AnswerSchema is { } schema ? ChatResponseFormat.ForJsonSchema(schema, "answer") : null,
         };
 
+        // Providers that can hold an answer to its schema, rather than try to, are asked to.
+        if (request.AnswerSchema is not null)
+        {
+            options.AdditionalProperties = new AdditionalPropertiesDictionary { ["strict"] = true };
+        }
+
         try
         {
             var response = await client.GetResponseAsync(prompt.Messages, options, cancellationToken);

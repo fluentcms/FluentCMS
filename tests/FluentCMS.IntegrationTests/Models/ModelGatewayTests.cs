@@ -44,6 +44,22 @@ public sealed class ModelGatewayTests
         Assert.Equal([0.012m, 0m, 0.009m], rows.Select(row => row.Cost));
     }
 
+    // A provider that can hold an answer to its schema is asked to, so a check's answer comes back in the shape it asked for.
+    [Fact]
+    public async Task An_answer_schema_reaches_the_provider_as_a_strict_json_schema()
+    {
+        await using var scenario = await ModelScenario.CreateAsync(DatabaseProviders.Sqlite);
+        var schema = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(
+            """{"type": "object", "properties": {"verdict": {"type": "string"}}, "required": ["verdict"], "additionalProperties": false}""");
+
+        await scenario.AskAsync(Tone with { AnswerSchema = schema });
+
+        var body = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(Assert.Single(scenario.Providers.Requests).Body);
+        var format = body.GetProperty("response_format");
+        Assert.Equal("json_schema", format.GetProperty("type").GetString());
+        Assert.True(format.GetProperty("json_schema").GetProperty("strict").GetBoolean());
+    }
+
     // CHK-05: an audit event's promptHash leads back to the verbatim prompt and response.
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
