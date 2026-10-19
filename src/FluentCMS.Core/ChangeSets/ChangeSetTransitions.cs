@@ -17,6 +17,9 @@ public static class ChangeSetTransitions
         (ChangeSetState.AwaitingReview, ChangeSetState.Approved),
         (ChangeSetState.AwaitingReview, ChangeSetState.Rejected),
         (ChangeSetState.Approved, ChangeSetState.Published),
+
+        // An approved set that can no longer publish, such as one whose base another set published first, is cleared by a person.
+        (ChangeSetState.Approved, ChangeSetState.Rejected),
         (ChangeSetState.Published, ChangeSetState.Reverted),
     ];
 
