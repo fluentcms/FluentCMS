@@ -409,6 +409,16 @@ function onRoveKeydown(event) {
         return true;
     }
 
+    // From a search box that controls a list, ArrowDown enters the list at its first item.
+    if (target.matches('[data-ui="rove-input"]') && event.key === "ArrowDown") {
+        const list = document.getElementById(target.getAttribute("aria-controls"));
+        const items = list ? roveItems(list) : [];
+        if (items.length === 0) return false;
+        event.preventDefault();
+        rove(items, 0);
+        return true;
+    }
+
     if (!inside || !target.closest('[data-ui="rove-item"]')) return false;
     const items = roveItems(inside);
     const next = roveIndex(event, items.indexOf(target.closest('[data-ui="rove-item"]')), items.length, "vertical");

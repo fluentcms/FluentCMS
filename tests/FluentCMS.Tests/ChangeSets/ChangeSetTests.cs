@@ -251,6 +251,68 @@ public sealed class ChangeSetTests
     }
 
     [Fact]
+    public void A_later_write_of_an_item_extends_its_operation_and_keeps_its_kind_and_base()
+    {
+        var created = Guid.NewGuid();
+        var updated = Guid.NewGuid();
+        var changeSet = TestChangeSets.Open();
+
+        Assert.True(changeSet.Record(Operation(OperationKind.Create, created, null, 1)).IsSuccess);
+        Assert.True(changeSet.Record(Operation(OperationKind.Update, updated, 2, 3)).IsSuccess);
+        Assert.True(changeSet.Record(Operation(OperationKind.Update, created, 1, 2)).IsSuccess);
+        Assert.True(changeSet.Record(Operation(OperationKind.Update, updated, 3, 5)).IsSuccess);
+
+        Assert.Equal([Operation(OperationKind.Create, created, null, 2), Operation(OperationKind.Update, updated, 2, 5)], changeSet.Operations);
+    }
+
+    [Fact]
+    public void An_update_of_an_item_that_is_not_published_is_recorded_as_a_create()
+    {
+        var rejected = Guid.NewGuid();
+        var created = Guid.NewGuid();
+        var changeSet = TestChangeSets.Open();
+
+        Assert.True(changeSet.Record(Operation(OperationKind.Update, rejected, 1, 2), itemPublished: false).IsSuccess);
+        Assert.True(changeSet.Record(Operation(OperationKind.Create, created, null, 1), itemPublished: false).IsSuccess);
+        Assert.True(changeSet.Record(Operation(OperationKind.Update, rejected, 2, 3), itemPublished: false).IsSuccess);
+
+        Assert.Equal([Operation(OperationKind.Create, rejected, null, 3), Operation(OperationKind.Create, created, null, 1)], changeSet.Operations);
+    }
+
+    [Fact]
+    public void A_later_write_that_is_not_based_on_the_proposed_version_is_refused()
+    {
+        var item = Guid.NewGuid();
+        var deleted = Guid.NewGuid();
+        var changeSet = TestChangeSets.Open();
+        Assert.True(changeSet.Record(Operation(OperationKind.Update, item, 1, 2)).IsSuccess);
+        Assert.True(changeSet.Record(Operation(OperationKind.Delete, deleted, 1, null)).IsSuccess);
+
+        var errors = new[]
+        {
+            changeSet.Record(Operation(OperationKind.Update, item, 1, 3)),
+            changeSet.Record(Operation(OperationKind.Delete, item, 2, null)),
+            changeSet.Record(Operation(OperationKind.Update, deleted, 1, 2)),
+        };
+
+        Assert.All(errors, result => Assert.Equal(ChangeSetErrorCodes.ItemDuplicate, Assert.Single(result.Errors).Code));
+        Assert.Equal([Operation(OperationKind.Update, item, 1, 2), Operation(OperationKind.Delete, deleted, 1, null)], changeSet.Operations);
+    }
+
+    [Theory]
+    [InlineData(ChangeSetState.ChecksRunning)]
+    [InlineData(ChangeSetState.Published)]
+    public void A_write_is_recorded_only_while_the_set_is_open(ChangeSetState state)
+    {
+        var changeSet = TestChangeSets.InState(state);
+        var item = changeSet.Operations[0];
+
+        var extended = changeSet.Record(ChangeOperation.Create(OperationKind.Update, item.ItemKind, item.ItemId, 2, 3).Value);
+
+        Assert.Equal(ChangeSetErrorCodes.NotOpen, Assert.Single(extended.Errors).Code);
+    }
+
+    [Fact]
     public void A_stored_set_is_restored_as_it_was()
     {
         var id = Guid.NewGuid();
@@ -335,5 +397,10 @@ public sealed class ChangeSetTests
         Assert.Equal(ChangeSetErrorCodes.RationaleMissing, Assert.Single(blank.Errors).Code);
         Assert.Equal(ChangeSetErrorCodes.RevertFixed, Assert.Single(added.Errors).Code);
         Assert.Single(revert.Operations);
+    }
+
+    private static ChangeOperation Operation(OperationKind kind, Guid item, int? baseVersion, int? proposedVersion)
+    {
+        return ChangeOperation.Create(kind, ItemKind.Schema, item, baseVersion, proposedVersion).Value;
     }
 }

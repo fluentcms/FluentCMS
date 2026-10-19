@@ -328,7 +328,7 @@ public sealed class WebhookDeliveryTests
         public async Task<(ChangeSet Published, ContentType Type)> PublishTypeAsync(string slug)
         {
             var type = await AsOwnerAsync<IContentTypeDirectory, ContentType>(directory =>
-                directory.CreateAsync(new NewContentType(slug, slug, new ContentTypeDefinition([new FieldDefinition("title", "text")]))));
+                directory.CreateAsync(new NewContentType(slug, slug, new ContentTypeDefinition([new FieldDefinition("title", "text")])), TestChangeSetTargets.ContentModel));
             var published = await AsOwnerAsync<IChangeSetDirectory, ChangeSet>(async directory =>
             {
                 var opened = (await directory.OpenAsync(new NewChangeSet("Add the type.", []))).Value;
