@@ -93,6 +93,11 @@ internal sealed class ContentTypeDirectory(
         }
 
         await using var scope = await unitOfWork.BeginAsync(cancellationToken);
+        var begun = await changeSets.BeginWriteAsync(pending.Value, cancellationToken);
+        if (!begun.IsSuccess)
+        {
+            return Result<ContentType>.Failure(begun.Errors);
+        }
 
         context.ContentTypes.Add(new ContentTypeRow
         {
@@ -106,11 +111,7 @@ internal sealed class ContentTypeDirectory(
         await auditLog.AppendAsync(
             new NewAuditEvent("content_type.created") { SubjectType = SubjectType, SubjectId = type.Id, ChangeSetId = pending.Value.ChangeSet.Id },
             cancellationToken);
-
-        if (!await changeSets.WriteAsync(pending.Value, null, cancellationToken))
-        {
-            return Result<ContentType>.Failure([SetConflict(pending.Value)]);
-        }
+        await changeSets.RecordAsync(pending.Value, null, cancellationToken);
 
         return await CommitAsync(scope, type, CommitConflict(changeSet, pending.Value, SlugTaken(type.Slug)), cancellationToken);
     }
@@ -178,18 +179,29 @@ internal sealed class ContentTypeDirectory(
             return revised;
         }
 
-        // A revision from the published version drops the latest draft's fields too, so other types must not reference those either.
+        // A revision from the published version sets aside the latest draft, which an open set may still publish and other drafts may
+        // build on, so it must not take away what that draft gives them either: its fields and its entity flag (SCH-03, SCH-04).
         var dropped = new List<ContentTypeDefinition> { previous.Definition };
-        if (baseVersion != row.Version)
+        var errors = new List<Error>();
+        if (baseVersion != row.Version && await changeSets.ProposesAsync(ItemKind.Schema, row.Id, row.Version, cancellationToken))
         {
             var latest = await context.ContentTypeVersions
                 .AsNoTracking()
                 .SingleAsync(version => version.ContentTypeId == row.Id && version.Version == row.Version, cancellationToken);
-            dropped.Add(ReadDefinition(row.Slug, latest.Version, latest.Definition));
+            var draft = ReadDefinition(row.Slug, latest.Version, latest.Definition);
+            dropped.Add(draft);
+
+            if (draft.IsEntity && !definition.IsEntity)
+            {
+                errors.Add(new Error(
+                    SchemaErrorCodes.EntityFlagRemoved,
+                    $"The latest draft of the content type '{slug}', version {row.Version}, makes it an entity type, and an open change set "
+                    + "may still publish it, so a revision must keep \"entity\": true."));
+            }
         }
 
         var type = revised.Value;
-        var errors = await ReferenceErrorsAsync(type, cancellationToken);
+        errors.AddRange(await ReferenceErrorsAsync(type, cancellationToken));
         errors.AddRange(await RemovedFieldsInUseAsync(type, dropped, cancellationToken));
         if (errors.Count > 0)
         {
@@ -207,6 +219,11 @@ internal sealed class ContentTypeDirectory(
         }
 
         await using var scope = await unitOfWork.BeginAsync(cancellationToken);
+        var begun = await changeSets.BeginWriteAsync(pending.Value, cancellationToken);
+        if (!begun.IsSuccess)
+        {
+            return Result<ContentType>.Failure(begun.Errors);
+        }
 
         // Moves the pointer only from the latest version this call read; a concurrent revision that committed first leaves nothing to move.
         var moved = await context.ContentTypes
@@ -214,7 +231,7 @@ internal sealed class ContentTypeDirectory(
             .ExecuteUpdateAsync(setters => setters.SetProperty(stored => stored.Version, type.Version), cancellationToken);
         if (moved == 0)
         {
-            return Result<ContentType>.Failure([VersionConflict(row, baseVersion)]);
+            return Result<ContentType>.Failure([RevisedMeanwhile(row)]);
         }
 
         context.ContentTypeVersions.Add(VersionRow(type));
@@ -228,12 +245,10 @@ internal sealed class ContentTypeDirectory(
             },
             cancellationToken);
 
-        if (!await changeSets.WriteAsync(pending.Value, based.Id, cancellationToken))
-        {
-            return Result<ContentType>.Failure([SetConflict(pending.Value)]);
-        }
+        await changeSets.RecordAsync(pending.Value, based.Id, cancellationToken);
 
-        return await CommitAsync(scope, type, CommitConflict(changeSet, pending.Value, VersionConflict(row, baseVersion)), cancellationToken);
+
+        return await CommitAsync(scope, type, CommitConflict(changeSet, pending.Value, RevisedMeanwhile(row)), cancellationToken);
     }
 
     private async Task<Result<ContentType>> ReadAsync(string slug, Func<ContentTypeRow, int?> version, CancellationToken cancellationToken)
@@ -278,6 +293,8 @@ internal sealed class ContentTypeDirectory(
     }
 
     // A reference to the type being written is checked against the definition being written, so a category can have a parent category.
+    // Another type is checked against what is live or may become so (LiveDefinitionsAsync): a field only a rejected draft has is no
+    // target.
     private async Task<List<Error>> ReferenceErrorsAsync(ContentType type, CancellationToken cancellationToken)
     {
         var references = type.Definition.References(fieldTypes);
@@ -287,13 +304,13 @@ internal sealed class ContentTypeDirectory(
         }
 
         var others = references.Select(reference => reference.Target.Type).Where(slug => slug != type.Slug).Distinct().ToList();
-        var targets = others.Count == 0 ? [] : await CurrentDefinitionsAsync(others, cancellationToken);
-        targets[type.Slug] = type.Definition;
+        var targets = others.Count == 0 ? [] : await LiveDefinitionsAsync(others, cancellationToken);
+        targets[type.Slug] = [type.Definition];
 
         var errors = new List<Error>();
         foreach (var (field, target) in references)
         {
-            if (!targets.TryGetValue(target.Type, out var definition))
+            if (!targets.TryGetValue(target.Type, out var definitions) || definitions.Count == 0)
             {
                 errors.Add(new Error(
                     SchemaErrorCodes.ReferenceTargetUnknown,
@@ -303,14 +320,14 @@ internal sealed class ContentTypeDirectory(
             {
                 continue;
             }
-            else if (!definition.IsEntity)
+            else if (!definitions.Any(definition => definition.IsEntity))
             {
                 // Only facts are referenced field by field (SCH-04); anything else is referenced as a whole entry.
                 errors.Add(new Error(
                     SchemaErrorCodes.ReferenceTargetNotEntity,
                     $"Field '{field}': '{target.Type}' is not an entity type, so its fields cannot be referenced; reference its entries instead."));
             }
-            else if (!definition.HasField(target.Field))
+            else if (!definitions.Any(definition => definition.IsEntity && definition.HasField(target.Field)))
             {
                 errors.Add(new Error(
                     SchemaErrorCodes.ReferenceFieldUnknown,
@@ -321,7 +338,8 @@ internal sealed class ContentTypeDirectory(
         return errors;
     }
 
-    // A field another type points at cannot go, or that reference would dangle (SCH-04).
+    // A field another type points at cannot go, or that reference would dangle (SCH-04), whether it points from that type's live
+    // version or from a draft an open set may still publish.
     private async Task<List<Error>> RemovedFieldsInUseAsync(ContentType type, IEnumerable<ContentTypeDefinition> previous, CancellationToken cancellationToken)
     {
         var removed = previous.SelectMany(definition => definition.Fields).Select(field => field.Name).Where(name => !type.Definition.HasField(name)).ToHashSet();
@@ -330,12 +348,15 @@ internal sealed class ContentTypeDirectory(
             return [];
         }
 
-        var definitions = await CurrentDefinitionsAsync(slugs: null, cancellationToken);
+        var definitions = await LiveDefinitionsAsync(slugs: null, cancellationToken);
 
         return definitions
             .Where(other => other.Key != type.Slug)
             .OrderBy(other => other.Key, StringComparer.Ordinal)
-            .SelectMany(other => other.Value.References(fieldTypes).Select(reference => (Type: other.Key, Reference: reference)))
+            .SelectMany(other => other.Value
+                .SelectMany(definition => definition.References(fieldTypes))
+                .DistinctBy(reference => (reference.Field, reference.Target.Type, reference.Target.Field))
+                .Select(reference => (Type: other.Key, Reference: reference)))
             .Where(use => use.Reference.Target.Type == type.Slug && use.Reference.Target.Field is { } field && removed.Contains(field))
             .Select(use => new Error(
                 SchemaErrorCodes.FieldReferenced,
@@ -343,27 +364,37 @@ internal sealed class ContentTypeDirectory(
             .ToList();
     }
 
-    // The current definition of every type in the site, or of the given slugs only.
-    private async Task<Dictionary<string, ContentTypeDefinition>> CurrentDefinitionsAsync(
+    // What each type is live as or may become: its published definition, and its latest one while a set that can still publish
+    // proposes it. Every type in the site, or the given slugs only; a type with neither, such as one whose create was rejected, has none.
+    private async Task<Dictionary<string, List<ContentTypeDefinition>>> LiveDefinitionsAsync(
         IReadOnlyCollection<string>? slugs,
         CancellationToken cancellationToken)
     {
-        var query =
-            from type in context.ContentTypes.AsNoTracking()
-            join version in context.ContentTypeVersions.AsNoTracking()
-                on new { ContentTypeId = type.Id, type.Version } equals new { version.ContentTypeId, version.Version }
-            where type.SiteId == SiteId
-            select new { type.Slug, version.Version, version.Definition };
-
+        var types = context.ContentTypes.AsNoTracking().Where(type => type.SiteId == SiteId);
         if (slugs is not null)
         {
-            query = query.Where(row => slugs.Contains(row.Slug));
+            types = types.Where(type => slugs.Contains(type.Slug));
         }
 
-        var rows = await query.ToListAsync(cancellationToken);
-        return rows.ToDictionary(row => row.Slug, row => ReadDefinition(row.Slug, row.Version, row.Definition));
-    }
+        var rows = await (
+                from type in types
+                join version in context.ContentTypeVersions.AsNoTracking() on type.Id equals version.ContentTypeId
+                where version.Version == type.Version || version.Version == type.PublishedVersion
+                select new { type.Id, type.Slug, type.PublishedVersion, version.Version, version.Definition })
+            .ToListAsync(cancellationToken);
 
+        var proposed = await changeSets.LiveProposalsAsync(ItemKind.Schema, rows.Select(row => row.Id).Distinct().ToList(), cancellationToken);
+
+        return rows
+            .GroupBy(row => row.Slug, StringComparer.Ordinal)
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .Where(row => row.Version == row.PublishedVersion || proposed.Contains((row.Id, row.Version)))
+                    .Select(row => ReadDefinition(row.Slug, row.Version, row.Definition))
+                    .ToList(),
+                StringComparer.Ordinal);
+    }
     private static async Task<Result<ContentType>> CommitAsync(
         IUnitOfWorkScope scope,
         ContentType type,
@@ -422,24 +453,24 @@ internal sealed class ContentTypeDirectory(
 
     private static Error VersionConflict(ContentTypeRow row, int baseVersion)
     {
-        var published = row.PublishedVersion is { } version ? $" or the published version {version}" : string.Empty;
+        var published = row.PublishedVersion is { } version && version != row.Version ? $" nor the published version {version}" : string.Empty;
 
         return new Error(
             SchemaErrorCodes.VersionConflict,
-            $"Version {baseVersion} is not the latest version of the content type '{row.Slug}'{published}; read it again and revise one of those.");
+            $"Version {baseVersion} is neither the latest version {row.Version} of the content type '{row.Slug}'{published}; revise one of those.");
     }
 
+    private static Error RevisedMeanwhile(ContentTypeRow row)
+    {
+        return new Error(
+            SchemaErrorCodes.VersionConflict,
+            $"Another call revised the content type '{row.Slug}' at the same time; read its latest version again and revise that one.");
+    }
     private static ChangeOperation Operation(OperationKind kind, Guid contentTypeId, int? baseVersion, int proposedVersion)
     {
         return ChangeOperation.Create(kind, ItemKind.Schema, contentTypeId, baseVersion, proposedVersion).Value;
     }
 
-    private static Error SetConflict(ChangeSetDirectory.PendingOperation pending)
-    {
-        return new Error(
-            ChangeSetErrorCodes.Conflict,
-            $"Change set {pending.ChangeSet.Id} was changed by another call at the same time; read it again and retry.");
-    }
 
     // A unique index at commit is this write's own conflict or, when the write opened its session's set, possibly a concurrent
     // first write of the same session.

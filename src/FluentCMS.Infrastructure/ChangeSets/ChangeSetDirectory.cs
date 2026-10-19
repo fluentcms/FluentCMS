@@ -310,8 +310,8 @@ internal sealed class ChangeSetDirectory(
 
     // A write of an item in another directory that is also an operation of a change set, such as a content type revision
     // (SCH-05), joins its set in two steps, so the item's rows and the operation commit together. PrepareAsync finds every
-    // expected failure before the caller's unit of work begins; WriteAsync runs inside it, with the row of the version the write
-    // was based on.
+    // expected failure before the caller's unit of work begins; BeginWriteAsync and RecordAsync run inside it, around the item's own
+    // rows and event.
     // ItemPublished says whether a change set has published the item, so an update of one that is not live records a create.
     internal async Task<Result<PendingOperation>> PrepareAsync(
         ChangeSetTarget target,
@@ -351,56 +351,76 @@ internal sealed class ChangeSetDirectory(
             return Result<PendingOperation>.Failure(recorded.Errors);
         }
 
-        var allowed = await permissions.CheckNewChangeSetAsync(cancellationToken);
-        return allowed.IsSuccess
-            ? Result<PendingOperation>.Success(new PendingOperation(set, null, 0, Extends: false))
-            : Result<PendingOperation>.Failure(allowed.Errors);
+        // The daily cap is counted when the set is written, inside the caller's unit of work, as for OpenAsync.
+        return Result<PendingOperation>.Success(new PendingOperation(set, null, 0, Extends: false));
     }
 
     // Whether a set that can still publish, one not yet published, rejected or reverted, proposes this version of the item.
     internal Task<bool> ProposesAsync(ItemKind itemKind, Guid itemId, int version, CancellationToken cancellationToken)
     {
-        return (
-                from operation in context.ChangeSetOperations.AsNoTracking()
-                join set in context.ChangeSets.AsNoTracking() on operation.ChangeSetId equals set.Id
-                where set.SiteId == SiteId
-                    && operation.ItemKind == itemKind
-                    && operation.ItemId == itemId
-                    && operation.ProposedVersion == version
-                    && set.State != ChangeSetState.Published
-                    && set.State != ChangeSetState.Rejected
-                    && set.State != ChangeSetState.Reverted
-                select operation.Id)
-            .AnyAsync(cancellationToken);
+        return LiveOperations(itemKind)
+            .AnyAsync(operation => operation.ItemId == itemId && operation.ProposedVersion == version, cancellationToken);
     }
 
-    // False when another call changed the set since PrepareAsync read it; the caller rolls back and answers with a conflict.
-    internal async Task<bool> WriteAsync(PendingOperation pending, Guid? previousVersionId, CancellationToken cancellationToken)
+    // The versions of these items that sets which can still publish propose, as (item, version).
+    internal async Task<HashSet<(Guid ItemId, int Version)>> LiveProposalsAsync(
+        ItemKind itemKind,
+        IReadOnlyCollection<Guid> itemIds,
+        CancellationToken cancellationToken)
+    {
+        var rows = await LiveOperations(itemKind)
+            .Where(operation => itemIds.Contains(operation.ItemId) && operation.ProposedVersion != null)
+            .Select(operation => new { operation.ItemId, Version = operation.ProposedVersion!.Value })
+            .ToListAsync(cancellationToken);
+
+        return rows.Select(row => (row.ItemId, row.Version)).ToHashSet();
+    }
+
+    private IQueryable<ChangeSetOperationRow> LiveOperations(ItemKind itemKind)
+    {
+        return
+            from operation in context.ChangeSetOperations.AsNoTracking()
+            join set in context.ChangeSets.AsNoTracking() on operation.ChangeSetId equals set.Id
+            where set.SiteId == SiteId
+                && operation.ItemKind == itemKind
+                && set.State != ChangeSetState.Published
+                && set.State != ChangeSetState.Rejected
+                && set.State != ChangeSetState.Reverted
+            select operation;
+    }
+
+    // The first step inside the caller's unit of work, before the item's own rows and event: it opens the set or moves its revision.
+    // It fails when an agent's daily cap refuses the set the write opens, counted here with the agent's credential held so concurrent
+    // opens take turns, or when another call changed the set since PrepareAsync read it. Either way the caller rolls back.
+    internal async Task<Result> BeginWriteAsync(PendingOperation pending, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(pending);
 
         var set = pending.ChangeSet;
-        if (pending.Revision is not { } revision)
+        if (pending.Revision is { } revision)
         {
-            await InsertAsync(set, cancellationToken);
-        }
-        else if (!await UpdateAsync(revision, set, cancellationToken))
-        {
-            return false;
+            return await UpdateAsync(revision, set, cancellationToken) ? Result.Success() : Result.Failure(Conflict(set.Id).Errors);
         }
 
-        if (pending.Extends)
+        var allowed = await permissions.CheckNewChangeSetAsync(cancellationToken);
+        if (!allowed.IsSuccess)
         {
-            await ExtendOperationAsync(set, pending.Position, previousVersionId, cancellationToken);
-        }
-        else
-        {
-            await InsertOperationAsync(set, pending.Position, previousVersionId, cancellationToken);
+            return allowed;
         }
 
-        return true;
+        await InsertAsync(set, cancellationToken);
+        return Result.Success();
     }
 
+    // The last step, after the item's own rows and event: the operation, with the row of the version the write was based on.
+    internal Task RecordAsync(PendingOperation pending, Guid? previousVersionId, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(pending);
+
+        return pending.Extends
+            ? ExtendOperationAsync(pending.ChangeSet, pending.Position, previousVersionId, cancellationToken)
+            : InsertOperationAsync(pending.ChangeSet, pending.Position, previousVersionId, cancellationToken);
+    }
     private async Task<Result<PendingOperation>> PrepareJoinAsync(
         StoredChangeSet stored,
         ChangeOperation operation,
@@ -595,7 +615,7 @@ internal sealed class ChangeSetDirectory(
             .ExecuteUpdateAsync(setters => setters.SetProperty(row => row.ProposedVersion, operation.ProposedVersion), cancellationToken);
 
         await auditLog.AppendAsync(
-            new NewAuditEvent("change_set.operation_revised")
+            new NewAuditEvent("change_set.operation_updated")
             {
                 SubjectType = ItemSubjectType(operation.ItemKind),
                 SubjectId = operation.ItemId,

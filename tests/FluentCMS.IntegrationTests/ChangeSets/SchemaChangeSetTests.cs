@@ -67,7 +67,7 @@ public sealed class SchemaChangeSetTests
 
         var events = await scenario.ChangeSetEventsAsync(changeSet.Id);
         Assert.Equal(
-            ["change_set.opened", "content_type.created", "change_set.operation_added", "content_type.revised", "change_set.operation_revised"],
+            ["change_set.opened", "content_type.created", "change_set.operation_added", "content_type.revised", "change_set.operation_updated"],
             events.Select(row => row.Operation));
         var firstVersion = await VersionRowAsync(scenario, created.Id, 1);
         Assert.Equal([firstVersion, firstVersion], events.Skip(3).Select(row => row.PreviousVersionId));
@@ -150,6 +150,9 @@ public sealed class SchemaChangeSetTests
 
         var stored = Assert.Single(await scenario.ChangeSetRowsAsync(), row => row.SessionId == "schema-session");
         Assert.Equal(CatalogSync.Rationale, stored.Rationale);
+        Assert.Equal(
+            ["change_set.opened", "content_type.created", "change_set.operation_added", "content_type.created", "change_set.operation_added"],
+            (await scenario.ChangeSetEventsAsync(stored.Id)).Select(row => row.Operation));
         Assert.Equal(Amir.UserId, stored.InitiatorId);
         Assert.Equal([Create(product), Create(category)], (await scenario.RunAsync(directory => directory.GetAsync(stored.Id))).Value.Operations);
     }
@@ -299,6 +302,62 @@ public sealed class SchemaChangeSetTests
         Assert.Single(await scenario.QueryAsync(context => context.ContentTypeVersions.AsNoTracking().Where(row => row.ContentTypeId == created.Id).ToListAsync()));
         Assert.Equal(1, Assert.Single(await scenario.OperationRowsAsync(changeSet.Id)).ProposedVersion);
         Assert.Equal(events, (await scenario.ChangeSetEventsAsync()).Count);
+    }
+    // An open set may still publish the latest draft, so a revision from the published version keeps what the draft adds; once the
+    // draft's set is rejected, the draft no longer counts.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_revision_from_the_published_version_keeps_the_entity_flag_of_a_draft_an_open_set_proposes(string provider)
+    {
+        await using var scenario = await ScenarioAsync(provider);
+        var name = new FieldDefinition("name", "text");
+        await PublishedProductAsync(scenario);
+        var draft = await scenario.OpenAsync();
+        await scenario.RunSchemaAsync(directory => directory.ReviseAsync("product", 1, new ContentTypeDefinition([Title, name], isEntity: true), ChangeSetTarget.Existing(draft.Id)));
+        var other = ChangeSetTarget.Existing((await scenario.OpenAsync()).Id);
+
+        var plain = await scenario.RunSchemaAsync(directory => directory.ReviseAsync("product", 1, new ContentTypeDefinition([Title, name]), other));
+
+        Assert.Equal(SchemaErrorCodes.EntityFlagRemoved, Assert.Single(plain.Errors).Code);
+
+        await scenario.RunAsync(directory => directory.TransitionAsync(draft.Id, ChangeSetState.ChecksRunning));
+        await scenario.RunAsync(directory => directory.TransitionAsync(draft.Id, ChangeSetState.AwaitingReview));
+        await scenario.RunAsync(directory => directory.RejectAsync(draft.Id, "Products are not facts."));
+        Assert.True((await scenario.RunSchemaAsync(directory => directory.ReviseAsync("product", 1, new ContentTypeDefinition([Title, name]), other))).IsSuccess);
+    }
+
+    // References are checked against what is live or an open set may still publish: the live version keeps its references after a
+    // rejected draft drops them, and a field only a rejected draft has is no target (SCH-04).
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task References_follow_the_live_and_open_versions_and_not_rejected_drafts(string provider)
+    {
+        await using var scenario = await ScenarioAsync(provider);
+        var name = new FieldDefinition("name", "text");
+        var country = new FieldDefinition("country", "text");
+        var brandCountry = new FieldDefinition("brandCountry", "reference", settings: Json("""{"target": "brand", "field": "country"}"""));
+        var brandLogo = new FieldDefinition("brandLogo", "reference", settings: Json("""{"target": "brand", "field": "logo"}"""));
+        var live = await scenario.OpenAsync();
+        await scenario.RunSchemaAsync(directory => directory.CreateAsync(new NewContentType("Brand", "brand", new ContentTypeDefinition([name, country], isEntity: true)), ChangeSetTarget.Existing(live.Id)));
+        await scenario.RunSchemaAsync(directory => directory.CreateAsync(new NewContentType("Page", "page", new ContentTypeDefinition([Title, brandCountry])), ChangeSetTarget.Existing(live.Id)));
+        await scenario.PublishAsync(live.Id);
+
+        var rejected = await scenario.OpenAsync();
+        await scenario.RunSchemaAsync(directory => directory.ReviseAsync("page", 1, new ContentTypeDefinition([Title]), ChangeSetTarget.Existing(rejected.Id)));
+        await scenario.RunSchemaAsync(directory => directory.ReviseAsync("brand", 1, new ContentTypeDefinition([name, country, new FieldDefinition("logo", "text")], isEntity: true), ChangeSetTarget.Existing(rejected.Id)));
+        await scenario.RunAsync(directory => directory.TransitionAsync(rejected.Id, ChangeSetState.ChecksRunning));
+        await scenario.RunAsync(directory => directory.TransitionAsync(rejected.Id, ChangeSetState.AwaitingReview));
+        await scenario.RunAsync(directory => directory.RejectAsync(rejected.Id, "Not now."));
+        var next = ChangeSetTarget.Existing((await scenario.OpenAsync()).Id);
+
+        var dropCountry = await scenario.RunSchemaAsync(directory => directory.ReviseAsync("brand", 1, new ContentTypeDefinition([name], isEntity: true), next));
+        var toRejectedField = await scenario.RunSchemaAsync(directory => directory.CreateAsync(new NewContentType("Ad", "ad", new ContentTypeDefinition([Title, brandLogo])), next));
+
+        Assert.Equal(SchemaErrorCodes.FieldReferenced, Assert.Single(dropCountry.Errors).Code);
+        Assert.Contains("'brandCountry' of 'page'", dropCountry.Errors[0].Message);
+        Assert.Equal(SchemaErrorCodes.ReferenceFieldUnknown, Assert.Single(toRejectedField.Errors).Code);
     }
     // A rejected create leaves a type no set has published, and a reverted one takes it offline; either way the next revision
     // records a create, so the type can be published again.

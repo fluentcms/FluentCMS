@@ -243,10 +243,13 @@ public sealed class ContentTypeDirectoryTests
         await scenario.CreateAsync("product", ProductFields);
         var definition = new ContentTypeDefinition([.. ProductFields, Field("summary", "text")]);
 
+        // Each writer has its own set, so the two meet only on the version.
+        var first = await scenario.OpenChangeSetAsync();
+        var second = await scenario.OpenChangeSetAsync();
         var lost = await RaceAsync(
             scenario,
-            directory => directory.ReviseAsync("product", 1, definition, TestChangeSetTargets.ContentModel),
-            directory => directory.ReviseAsync("product", 1, definition, TestChangeSetTargets.ContentModel));
+            directory => directory.ReviseAsync("product", 1, definition, first),
+            directory => directory.ReviseAsync("product", 1, definition, second));
 
         Assert.Equal(SchemaErrorCodes.VersionConflict, Assert.Single(lost.Errors).Code);
         Assert.Equal(2, Assert.Single(await scenario.ContentTypeRowsAsync()).Version);

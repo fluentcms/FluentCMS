@@ -47,7 +47,7 @@ internal static class ProposedWrite
     {
         return errors.FirstOrDefault()?.Code switch
         {
-            SchemaErrorCodes.VersionConflict => "Call get_content_type for the current version and its fields, then revise from that version.",
+            SchemaErrorCodes.VersionConflict => "The message names the version to revise; call get_content_type with that version for its fields, then revise from it.",
             SchemaErrorCodes.ContentTypeNotFound => "Call list_content_types for the slugs of the site's content types.",
             _ => null,
         };
