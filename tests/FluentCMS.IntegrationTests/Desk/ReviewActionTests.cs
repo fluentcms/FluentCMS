@@ -38,6 +38,25 @@ public sealed partial class ReviewActionTests
     }
 
     [Fact]
+    public async Task Reviewing_from_a_queue_moves_on_to_its_next_set_and_back_to_the_queue_once_it_is_empty()
+    {
+        using var install = new TemporaryInstall();
+        await using var host = await AdminHost.StartAsync(install);
+        var ownerId = await host.CreateFirstAdministratorAsync();
+        var first = await AwaitingReviewAsync(host, ownerId, "product");
+        var second = await AwaitingReviewAsync(host, ownerId, "category");
+        await host.SignInAsync(AdminHost.Owner);
+
+        var approved = await ActAsync(host, first.Id, "approve", "?queue=awaiting-me");
+        Assert.Equal(HttpStatusCode.Redirect, approved.StatusCode);
+        Assert.Equal($"/sets/{second.Id}?queue=awaiting-me&done=approved", host.LocationOf(approved));
+
+        var rejected = await ActAsync(host, second.Id, "reject", "?queue=awaiting-me", ("Reject.Reason", "Not needed."));
+        Assert.Equal("/?queue=awaiting-me&done=rejected", host.LocationOf(rejected));
+        Assert.Contains("data-testid=\"desk-done\"", await host.Client.GetStringAsync(host.LocationOf(rejected)!));
+    }
+
+    [Fact]
     public async Task A_rejection_needs_a_reason_which_the_view_then_shows()
     {
         using var install = new TemporaryInstall();
@@ -137,9 +156,14 @@ public sealed partial class ReviewActionTests
         Assert.Empty(Actions(await host.Client.GetStringAsync($"/sets/{running.Id}")));
     }
 
-    private static async Task<HttpResponseMessage> ActAsync(AdminHost host, Guid id, string action, params (string Name, string Value)[] fields)
+    private static Task<HttpResponseMessage> ActAsync(AdminHost host, Guid id, string action, params (string Name, string Value)[] fields)
     {
-        var path = $"/sets/{id}";
+        return ActAsync(host, id, action, string.Empty, fields);
+    }
+
+    private static async Task<HttpResponseMessage> ActAsync(AdminHost host, Guid id, string action, string query, params (string Name, string Value)[] fields)
+    {
+        var path = $"/sets/{id}{query}";
         var form = fields.ToDictionary(field => field.Name, field => field.Value);
         form[$"{char.ToUpperInvariant(action[0])}{action[1..]}.Seen"] = Seen(await host.Client.GetStringAsync(path), action);
         return await host.SubmitAsync(path, action, form);
