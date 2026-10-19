@@ -21,13 +21,15 @@ These run inside a request or as a job (ADR-0010), and a job runs as whoever enq
   - It is never a change set's initiator. `ChangeSet.Open` refuses it, and so do session grouping and revert, which open sets through it.
   - `AgentPermissions` treats it as not an agent and lets it make only the moves its component owns. `checks` moves a set from checks running to checks failed or awaiting review; routing will add auto-publish.
   - It reads content, and never creates, edits or deletes content, opens or adds to a change set, or calls a tool.
-  - What only a person may do, such as issuing credentials or activating checks, refuses a system initiator as it refuses an agent.
+  - What only a person may do refuses a system initiator as it refuses an agent: managing users, issuing credentials, and activating, writing or revising checks.
   - Maintenance names what it may do: the prompt purge accepts `retention` as well as a person.
-- A job can run as a system initiator instead of whoever enqueued it (`NewJob.RunAs`). The check run is enqueued in the submitting agent's call and runs as `checks`.
+  - It spends no model budget of its own. A model call it makes for an agent's change set is charged to that agent (SEC-04).
+- A job type can run as a system initiator, whoever enqueued the job (`IJobHandler.RunAs`). The job still records who enqueued it. The check run is enqueued in the submitting agent's call and runs as `checks`. The job type decides this, not the code that enqueues it, so no caller can borrow an engine's permissions.
 
 ## Consequences
 
 - The log tells what an agent did apart from what the product did: an agent submits its set, and the check engine, not the agent, moves it on.
+- The audit log stores a system initiator by its component and its derived id, and refuses a row where the two disagree, as it refuses an unknown kind.
 - Exports and the audit screen show a third initiator kind. Readers of the export handle `system`.
 - A new engine moves nothing until its moves are written into `AgentPermissions`, and none writes content.
 - AUD-01 and CHG-01 read "agent/user". The system kind covers only engine-driven moves and maintenance, and the maintainer updates that wording in the decision record.

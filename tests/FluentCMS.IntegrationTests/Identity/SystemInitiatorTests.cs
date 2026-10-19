@@ -53,13 +53,17 @@ public sealed class SystemInitiatorTests
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
     [PostgresData]
-    public async Task An_engine_cannot_activate_a_check_or_issue_a_credential(string provider)
+    public async Task An_engine_cannot_write_or_activate_a_check_issue_a_credential_or_manage_users(string provider)
     {
         await using var scenario = await CheckScenario.CreateAsync(provider);
         await scenario.CreateAsync("no-superlatives", CheckScenario.NoSuperlatives());
         scenario.Initiator = SystemInitiator.Checks;
 
+        var create = await scenario.CreateAsync("more-checks", CheckScenario.NoSuperlatives());
+        var revise = await scenario.RunAsync(directory => directory.ReviseAsync("no-superlatives", 1, CheckScenario.NoSuperlatives("finest")));
         var activate = await scenario.RunAsync(directory => directory.ActivateAsync("no-superlatives", 1));
+        await using var users = scenario.Services.CreateAsyncScope();
+        var user = await users.ServiceProvider.GetRequiredService<IUserDirectory>().CreateAsync(new NewUser("engine@example.com", "Engine", "a-long-enough-password-1"));
         await using var scope = scenario.Services.CreateAsyncScope();
         var issue = await scope.ServiceProvider.GetRequiredService<IAgentCredentialDirectory>().IssueAsync(new NewAgentCredential(
             "engine-made",
@@ -67,8 +71,11 @@ public sealed class SystemInitiatorTests
             AgentScope.Create([Site.Default.Id], null, null, [AgentOperation.Read]).Value,
             AgentCaps.Create(10, TimeSpan.FromHours(1), 1m, TimeSpan.FromDays(1), 10, 10).Value));
 
+        Assert.Equal(CheckErrorCodes.PeopleOnly, Assert.Single(create.Errors).Code);
+        Assert.Equal(CheckErrorCodes.PeopleOnly, Assert.Single(revise.Errors).Code);
         Assert.Equal(CheckErrorCodes.PeopleOnly, Assert.Single(activate.Errors).Code);
         Assert.Equal(AgentCredentialErrorCodes.PeopleOnly, Assert.Single(issue.Errors).Code);
+        Assert.Equal(UserErrorCodes.PeopleOnly, Assert.Single(user.Errors).Code);
     }
 
     // AUD-04: the retention purge runs as the retention engine, and no other engine may purge.
@@ -92,56 +99,72 @@ public sealed class SystemInitiatorTests
         Assert.Equal((old.CallId, "system", "retention"), (purge.SubjectId!.Value, purge.InitiatorKind, purge.InitiatorName));
     }
 
-    // A submission enqueues the check run, which must run as the check engine rather than as the agent that submitted.
+    // A job an engine enqueues, such as the retention purge scheduling its next run, records that engine.
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
     [PostgresData]
-    public async Task A_job_enqueued_to_run_as_an_engine_is_stored_as_that_engine(string provider)
+    public async Task A_job_an_engine_enqueues_is_stored_as_that_engine(string provider)
     {
-        await using var scenario = await AuditScenario.CreateAsync(provider);
-        await using var scope = scenario.CreateScope();
+        await using var scenario = await CheckScenario.CreateAsync(provider);
+        scenario.Initiator = SystemInitiator.Retention;
+        await using var scope = scenario.Services.CreateAsyncScope();
         var services = scope.ServiceProvider;
 
         Job enqueued;
         await using (var work = await services.GetRequiredService<IUnitOfWork>().BeginAsync())
         {
-            enqueued = await services.GetRequiredService<IJobQueue>().EnqueueAsync(
-                new NewJob("checks.run", JsonDocument.Parse("{}").RootElement.Clone()) { RunAs = SystemInitiator.Checks });
+            enqueued = await services.GetRequiredService<IJobQueue>().EnqueueAsync(new NewJob("retention.purge", JsonDocument.Parse("{}").RootElement.Clone()));
             await work.CommitAsync();
         }
 
-        var read = (await services.GetRequiredService<IJobQueue>().GetAsync(enqueued.Id)).Value;
-
-        Assert.Equal(SystemInitiator.Checks, enqueued.Initiator);
-        Assert.Equal(SystemInitiator.Checks, read.Initiator);
+        Assert.Equal(SystemInitiator.Retention, (await services.GetRequiredService<IJobQueue>().GetAsync(enqueued.Id)).Value.Initiator);
     }
 
+    // A submission enqueues the check run in the agent's call; the job type, not whoever enqueued it, decides that it runs as the
+    // check engine, and the job still records who enqueued it.
     [Fact]
-    public async Task The_worker_runs_a_job_as_the_engine_it_names()
+    public async Task The_worker_runs_a_job_as_the_engine_its_handler_names()
     {
         using var install = new TemporaryInstall();
         await using var host = await AdminHost.StartAsync(
             install,
             settings: new Dictionary<string, string?> { ["JobQueue:PollingInterval"] = "00:00:00.050" },
-            configure: builder => builder.Services.AddFluentCmsExtension<IJobHandler, WhoRunsHandler>());
+            configure: builder => builder.Services.AddFluentCmsExtension<IJobHandler, EngineHandler>());
         var administrator = await host.CreateFirstAdministratorAsync();
 
         var job = await host.AsUserAsync<IServiceProvider, Job>(administrator, async services =>
         {
             await using var work = await services.GetRequiredService<IUnitOfWork>().BeginAsync();
-            var enqueued = await services.GetRequiredService<IJobQueue>().EnqueueAsync(
-                new NewJob(WhoRunsHandler.Name, JsonDocument.Parse("{}").RootElement.Clone()) { RunAs = SystemInitiator.Checks });
+            var enqueued = await services.GetRequiredService<IJobQueue>().EnqueueAsync(new NewJob(EngineHandler.Name, JsonDocument.Parse("{}").RootElement.Clone()));
             await work.CommitAsync();
             return enqueued;
         });
 
         var deadline = DateTime.UtcNow.AddSeconds(30);
-        while (!WhoRunsHandler.RanAs.ContainsKey(job.Id) && DateTime.UtcNow < deadline)
+        while (!EngineHandler.RanAs.ContainsKey(job.Id) && DateTime.UtcNow < deadline)
         {
             await Task.Delay(50);
         }
 
-        Assert.Equal(SystemInitiator.Checks, WhoRunsHandler.RanAs[job.Id]);
+        Assert.Equal(SystemInitiator.Checks, EngineHandler.RanAs[job.Id]);
+        Assert.IsType<UserInitiator>(job.Initiator);
+    }
+
+    // A component's name and id are stored together, and a row whose id is not its component's is refused as a fault.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task An_engine_is_stored_by_its_component_whatever_its_display_name(string provider)
+    {
+        await using var scenario = await AuditScenario.CreateAsync(provider);
+        var renamed = SystemInitiator.Checks with { DisplayName = "The check engine" };
+
+        await scenario.AppendAsync(DateTimeOffset.UnixEpoch.AddDays(1), new NewAuditEvent("checks.renamed") { SubjectType = Set.Type, SubjectId = Set.Id }, renamed);
+
+        var read = Assert.Single(await scenario.ReadAsync(new AuditQuery { Subject = Set }));
+        Assert.Equal("checks", Assert.IsType<SystemInitiator>(read.Initiator).Component);
+        Assert.Throws<InvalidOperationException>(() => InitiatorKinds.RestoreSystem("checks", SystemInitiator.Retention.Id));
+        Assert.Throws<InvalidOperationException>(() => InitiatorKinds.RestoreSystem("Not A Component", Guid.NewGuid()));
     }
 
     private static async Task<T> QueryAsync<T>(AuditScenario scenario, Func<FluentCmsDbContext, Task<T>> query)
@@ -150,13 +173,15 @@ public sealed class SystemInitiatorTests
         return await query(scope.ServiceProvider.GetRequiredService<FluentCmsDbContext>());
     }
 
-    private sealed class WhoRunsHandler : IJobHandler
+    private sealed class EngineHandler : IJobHandler
     {
-        public const string Name = "test.who-runs";
+        public const string Name = "test.engine";
 
         public static ConcurrentDictionary<Guid, Initiator?> RanAs { get; } = new();
 
         public string Type => Name;
+
+        public SystemInitiator RunAs => SystemInitiator.Checks;
 
         public Task<Result> RunAsync(JobContext context, CancellationToken cancellationToken)
         {

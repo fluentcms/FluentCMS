@@ -67,7 +67,7 @@ public sealed class JobRow
             {
                 InitiatorKinds.User => new UserInitiator(InitiatorId!.Value, InitiatorName!),
                 InitiatorKinds.Agent => new AgentInitiator(InitiatorId!.Value, InitiatorName!),
-                InitiatorKinds.System => new SystemInitiator(InitiatorName!),
+                InitiatorKinds.System => InitiatorKinds.RestoreSystem(InitiatorName!, InitiatorId!.Value),
                 null => null,
                 _ => throw new InvalidOperationException($"Job {Id} names an unknown initiator kind '{InitiatorKind}'."),
             },

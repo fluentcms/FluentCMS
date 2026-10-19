@@ -64,6 +64,11 @@ internal sealed class CheckDirectory(
     {
         ArgumentNullException.ThrowIfNull(check);
 
+        if (RefuseEngine("create") is { } refused)
+        {
+            return refused;
+        }
+
         var created = Check.Create(SiteId, check.Name, check.Definition, checkTypes);
         if (!created.IsSuccess)
         {
@@ -89,6 +94,11 @@ internal sealed class CheckDirectory(
     {
         ArgumentNullException.ThrowIfNull(name);
         ArgumentNullException.ThrowIfNull(definition);
+
+        if (RefuseEngine("revise") is { } refused)
+        {
+            return refused;
+        }
 
         var row = await FindAsync(name, cancellationToken);
         if (row is null)
@@ -270,6 +280,14 @@ internal sealed class CheckDirectory(
     }
 
     // Activating decides what guards content, which only a person does (D17, SEC-02): no agent, whatever its scope, and no engine.
+    // A check says what guards content, which a person or an agent proposes and the product's engines only run (ADR-0012).
+    private Result<Check>? RefuseEngine(string action)
+    {
+        return currentInitiator.Current is SystemInitiator system
+            ? Result<Check>.Failure(CheckErrorCodes.PeopleOnly, $"The '{system.Component}' engine cannot {action} a check; a person or an agent does.")
+            : null;
+    }
+
     private Result<Check>? RefuseAgent(string action)
     {
         return currentInitiator.Current is AgentInitiator or SystemInitiator
