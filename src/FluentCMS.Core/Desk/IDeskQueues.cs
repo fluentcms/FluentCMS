@@ -21,6 +21,9 @@ public interface IDeskQueues
     // How many sets or facts each of the six queues holds now.
     Task<Result<IReadOnlyDictionary<DeskQueue, int>>> CountAsync(CancellationToken cancellationToken = default);
 
+    // How many one queue holds, for a count shown on every page, such as awaiting me in the header (DSK-05).
+    Task<Result<int>> CountAsync(DeskQueue queue, CancellationToken cancellationToken = default);
+
     // A page of a queue of change sets; stale facts is listed by ListStaleFactsAsync.
     Task<Result<ChangeSetList>> ListChangeSetsAsync(DeskQueue queue, int offset, int limit, CancellationToken cancellationToken = default);
 

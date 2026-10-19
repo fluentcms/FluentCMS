@@ -80,6 +80,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IAuditLog, AuditLog>();
         services.AddScoped<IAuditReader, AuditReader>();
+        services.AddScoped<IAuditEventLists, AuditEventLists>();
     }
 
     // FieldTypeRegistry comes from AddFluentCmsCore, so built-in and plugin field types reach the directory the same way.

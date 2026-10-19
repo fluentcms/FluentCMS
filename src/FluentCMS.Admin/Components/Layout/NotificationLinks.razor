@@ -1,0 +1,43 @@
+@using System.Globalization
+@using FluentCMS.Core.Audit
+@using FluentCMS.Core.Desk
+@inject IDeskQueues Queues
+@inject IAuditEventLists AuditLists
+@inject TimeProvider Clock
+@inject IStringLocalizer<NotificationLinks> L
+
+@* The in-app notification counts (DSK-05), read on each page load: sets awaiting the person, and security events of the last day. *@
+<a href="" class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground" data-testid="nav-desk">
+    @L["Desk"]
+    @if (_awaiting is > 0)
+    {
+        <Badge Class="tabular-nums" data-count="@_awaiting">@_awaiting.Value.ToString(CultureInfo.CurrentCulture)<span class="sr-only"> @L["awaiting you"]</span></Badge>
+    }
+</a>
+<a href="security" class="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground" data-testid="nav-security">
+    @L["Security"]
+    @if (_security is > 0)
+    {
+        <Badge Variant="secondary" Class="tabular-nums" data-count="@_security">@_security.Value.ToString(CultureInfo.CurrentCulture)<span class="sr-only"> @L["in the last day"]</span></Badge>
+    }
+</a>
+
+@code {
+    public static readonly TimeSpan SecurityWithin = TimeSpan.FromDays(1);
+
+    private int? _awaiting;
+    private int? _security;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var awaiting = await Queues.CountAsync(DeskQueue.AwaitingMe);
+        _awaiting = awaiting.IsSuccess ? awaiting.Value : null;
+
+        var security = await AuditLists.CountAsync(new AuditEventListQuery
+        {
+            Operations = SecurityEvents.Operations,
+            Since = Clock.GetUtcNow() - SecurityWithin,
+        });
+        _security = security.IsSuccess ? security.Value : null;
+    }
+}
