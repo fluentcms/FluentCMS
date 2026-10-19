@@ -6,6 +6,9 @@ using FluentCMS.Core.Entities;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Schema;
 
+using FluentCMS.Core.Checks;
+using FluentCMS.Core.Jobs;
+
 namespace FluentCMS.Core.Builtin.Tools;
 
 // How the built-in tools show the model to an agent. Names of states and kinds are snake_case, as the audit log's operations are.
@@ -25,6 +28,64 @@ internal static class ToolJson
             ["slug"] = type.Slug,
             ["name"] = type.Name,
             ["version"] = type.Version,
+        };
+    }
+
+    public static JsonObject CheckResult(CheckResult result)
+    {
+        return new JsonObject
+        {
+            ["check"] = result.Check,
+            ["version"] = result.Version,
+            ["type"] = result.Type,
+            ["kind"] = Name(result.Kind),
+            ["severity"] = Name(result.Severity),
+            ["description"] = result.Description,
+            ["status"] = Name(result.Status),
+            ["findings"] = new JsonArray([.. result.Findings.Select(finding => new JsonObject
+            {
+                ["message"] = finding.Message,
+                ["pointer"] = finding.Pointer,
+                ["excerpt"] = finding.Excerpt,
+            })]),
+            ["model"] = result.Model is { } model
+                ? new JsonObject { ["callId"] = model.CallId.ToString(), ["provider"] = model.Provider, ["model"] = model.Model, ["cost"] = model.Cost }
+                : null,
+        };
+    }
+
+    public static JsonObject CheckRun(ChangeSetCheckRun run)
+    {
+        return new JsonObject
+        {
+            ["number"] = run.Number,
+            ["mode"] = Name(run.Mode),
+            ["status"] = Name(run.Status),
+            ["cost"] = run.Cost,
+            ["startedAt"] = run.StartedAt.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
+            ["finishedAt"] = run.FinishedAt.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
+            ["items"] = new JsonArray([.. run.Items.Select(item => new JsonObject
+            {
+                ["itemKind"] = Name(item.ItemKind),
+                ["itemId"] = item.ItemId.ToString(),
+                ["version"] = item.Version,
+                ["contentType"] = item.ContentType,
+                ["results"] = new JsonArray([.. item.Results.Select(CheckResult)]),
+            })]),
+            ["problems"] = new JsonArray([.. run.Problems.Select(problem => JsonValue.Create(problem))]),
+        };
+    }
+
+    public static JsonObject Job(Job job)
+    {
+        return new JsonObject
+        {
+            ["id"] = job.Id.ToString(),
+            ["state"] = Name(job.State),
+            ["done"] = job.Progress.Done,
+            ["total"] = job.Progress.Total,
+            ["message"] = job.Progress.Message,
+            ["lastError"] = job.LastError,
         };
     }
 

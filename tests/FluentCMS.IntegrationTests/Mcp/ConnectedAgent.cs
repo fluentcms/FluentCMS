@@ -1,8 +1,10 @@
 using System.Text.Json.Nodes;
 using FluentCMS.Core.Agents;
+using FluentCMS.Core.Identity;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Sites;
 using FluentCMS.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
@@ -25,11 +27,16 @@ internal sealed class ConnectedAgent(
         string provider,
         int itemsPerChangeSet = 200,
         IReadOnlyList<string>? types = null,
-        AgentOperation[]? operations = null)
+        AgentOperation[]? operations = null,
+        IDictionary<string, string?>? settings = null,
+        Action<WebApplicationBuilder>? configure = null)
     {
         var install = new TemporaryInstall();
         var database = await TemporaryDatabase.CreateAsync(provider);
-        var host = await AdminHost.StartAsync(install, settings: database.Configuration);
+        var host = await AdminHost.StartAsync(
+            install,
+            settings: new Dictionary<string, string?>(database.Configuration.Concat(settings ?? new Dictionary<string, string?>())),
+            configure: configure);
         var administrator = await host.CreateFirstAdministratorAsync();
         var issued = await McpAgents.IssueAsync(host, administrator, new NewAgentCredential(
             "schema-agent",
@@ -58,6 +65,20 @@ internal sealed class ConnectedAgent(
         where TService : notnull
     {
         return (await host.AsUserAsync<TService, Core.Results.Result<T>>(administrator, action)).Value;
+    }
+
+    public Task<Core.Results.Result> AsPersonAsync<TService>(Func<TService, Task<Core.Results.Result>> action)
+        where TService : notnull
+    {
+        return host.AsUserAsync<TService, Core.Results.Result>(administrator, action);
+    }
+
+    // As the check engine, for what only it does (ADR-0012).
+    public async Task<T> AsEngineAsync<TService, T>(Func<TService, Task<T>> action)
+        where TService : notnull
+    {
+        await using var scope = host.App.Services.GetRequiredService<IServiceScopeFactory>().CreateScopeActingAs(SystemInitiator.Checks);
+        return await action(scope.ServiceProvider.GetRequiredService<TService>());
     }
 
     public Task<ContentType> CreateAsPersonAsync(string slug)

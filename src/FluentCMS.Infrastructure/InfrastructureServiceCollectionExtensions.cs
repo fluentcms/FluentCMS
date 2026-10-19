@@ -124,6 +124,7 @@ public static class InfrastructureServiceCollectionExtensions
     private static void AddChecks(IServiceCollection services)
     {
         services.AddScoped<ICheckDirectory, CheckDirectory>();
+        services.AddScoped<ICheckRuns, CheckRuns>();
     }
 
     // The worker in Host claims and finishes jobs through IJobLeases; everything else enqueues and reads through IJobQueue.

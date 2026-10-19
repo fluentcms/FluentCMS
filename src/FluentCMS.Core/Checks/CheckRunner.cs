@@ -7,13 +7,25 @@ internal sealed class CheckRunner(ICheckDirectory checks, CheckTypeRegistry chec
     public async Task<CheckRun> RunAsync(
         CheckSubject subject,
         CheckSelection selection = CheckSelection.All,
+        Guid? chargedTo = null,
+        CancellationToken cancellationToken = default)
+    {
+        return await RunAsync(subject, await checks.ListActiveAsync(cancellationToken), selection, chargedTo, cancellationToken);
+    }
+
+    public async Task<CheckRun> RunAsync(
+        CheckSubject subject,
+        IReadOnlyList<Check> active,
+        CheckSelection selection = CheckSelection.All,
+        Guid? chargedTo = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(subject);
+        ArgumentNullException.ThrowIfNull(active);
 
         var results = new List<CheckResult>();
         var skipped = new List<string>();
-        foreach (var check in await checks.ListActiveAsync(cancellationToken))
+        foreach (var check in active)
         {
             var definition = check.Definition;
             var kind = checkTypes.Find(definition.Type)?.Kind ?? CheckKind.Deterministic;
@@ -30,7 +42,7 @@ internal sealed class CheckRunner(ICheckDirectory checks, CheckTypeRegistry chec
 
             var outcome = await checkTypes.EvaluateAsync(
                 definition.Type,
-                new CheckInput(definition.Settings, definition.Scope.Narrow(subject), services),
+                new CheckInput(definition.Settings, definition.Scope.Narrow(subject), services, chargedTo),
                 cancellationToken);
 
             results.Add(new CheckResult(
