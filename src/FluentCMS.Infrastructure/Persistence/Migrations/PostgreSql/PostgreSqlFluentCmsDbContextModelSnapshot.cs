@@ -195,6 +195,8 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
 
                     b.HasIndex("Timestamp");
 
+                    b.HasIndex("Operation", "Timestamp");
+
                     b.HasIndex("SubjectType", "SubjectId");
 
                     b.ToTable("AuditEvents", null, t =>

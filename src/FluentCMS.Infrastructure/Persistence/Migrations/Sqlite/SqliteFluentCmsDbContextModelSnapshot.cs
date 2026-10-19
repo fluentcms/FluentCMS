@@ -189,6 +189,8 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
 
                     b.HasIndex("Timestamp");
 
+                    b.HasIndex("Operation", "Timestamp");
+
                     b.HasIndex("SubjectType", "SubjectId");
 
                     b.ToTable("AuditEvents", null, t =>
