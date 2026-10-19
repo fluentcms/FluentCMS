@@ -70,6 +70,22 @@ public sealed class DeskToolsTests
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
     [PostgresData]
+    public async Task An_agent_reads_who_approved_its_set_and_how_many_approvals_it_needs(string provider)
+    {
+        await using var agent = await ConnectedAgent.StartAsync(provider);
+        var set = await SubmitAsync(agent, "product");
+        await agent.AsPersonAsync<IChangeSetDirectory, ChangeSet>(directory => directory.ApproveAsync(set));
+
+        var review = await agent.CallAsync("get_change_set_review", new() { ["id"] = set.ToString() });
+
+        Assert.Equal(("approved", 1), ((string?)review["state"], (int)review["requiredApprovals"]!));
+        var approval = Assert.Single(review["approvals"]!.AsArray());
+        Assert.Equal(("user", "Test administrator"), ((string?)approval!["by"]!["kind"], (string?)approval["by"]!["name"]));
+    }
+
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
     public async Task Bad_arguments_and_an_unknown_set_are_refused_with_what_to_do(string provider)
     {
         await using var agent = await ConnectedAgent.StartAsync(provider);

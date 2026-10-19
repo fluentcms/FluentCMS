@@ -29,4 +29,7 @@ public static class ChangeSetErrorCodes
     public const string ListStatesMissing = "list_states_missing";
     public const string OffsetInvalid = "offset_invalid";
     public const string LimitInvalid = "limit_invalid";
+    public const string ApprovalDuplicate = "approval_duplicate";
+    public const string ApprovalsNeeded = "approvals_needed";
+    public const string RequiredApprovalsInvalid = "required_approvals_invalid";
 }

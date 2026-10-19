@@ -54,7 +54,7 @@ internal sealed class ChangeSetScenario : IAsyncDisposable
         set => _initiator.Current = value;
     }
 
-    public static async Task<ChangeSetScenario> CreateAsync(string provider)
+    public static async Task<ChangeSetScenario> CreateAsync(string provider, Action<IServiceCollection>? configure = null)
     {
         var database = await TemporaryDatabase.CreateAsync(provider);
         var initiator = new SwitchableInitiator { Current = Agent };
@@ -62,9 +62,13 @@ internal sealed class ChangeSetScenario : IAsyncDisposable
         var auditFailure = new AuditFailure();
         var services = TestServices.Build(
             database.Configuration,
-            collection => collection
-                .AddSingleton<ICurrentInitiator>(initiator)
-                .AddSingleton<TimeProvider>(clock),
+            collection =>
+            {
+                collection
+                    .AddSingleton<ICurrentInitiator>(initiator)
+                    .AddSingleton<TimeProvider>(clock);
+                configure?.Invoke(collection);
+            },
             collection => FailingAuditLog.Wrap(collection, auditFailure));
 
         await TestServices.MigrateAsync(services);

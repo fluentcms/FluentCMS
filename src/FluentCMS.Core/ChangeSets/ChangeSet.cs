@@ -9,8 +9,11 @@ public sealed class ChangeSet
 {
     public const int MaxSessionIdLength = 128;
 
+    public const int MaxApprovals = 10;
+
     private readonly List<string> _sources;
     private readonly List<ChangeOperation> _operations = [];
+    private readonly List<ChangeSetApproval> _approvals = [];
 
     private ChangeSet(Guid id, Guid siteId, string rationale, IEnumerable<string> sources, Initiator initiator, string? sessionId)
     {
@@ -44,6 +47,12 @@ public sealed class ChangeSet
 
     // The published set this one undoes (CHG-06); null for every other set.
     public Guid? RevertsChangeSetId { get; private set; }
+
+    // How many people must approve the set before it is approved, set as it enters review (RTE-05).
+    public int RequiredApprovals { get; private set; } = 1;
+
+    // A set reaches review once, and leaves it only for approved or rejected, so these all belong to its one review.
+    public IReadOnlyList<ChangeSetApproval> Approvals => _approvals.AsReadOnly();
 
     // Operations come later, while the set is open, so an agent can open a set before its first write (CHG-02). An empty
     // list of sources is allowed here: requiring one is a check (CHK-01), not a rule of the model.
@@ -99,7 +108,9 @@ public sealed class ChangeSet
         IEnumerable<ChangeOperation> operations,
         ChangeSetState state,
         string? rejectionReason,
-        Guid? revertsChangeSetId = null)
+        Guid? revertsChangeSetId = null,
+        int requiredApprovals = 1,
+        IEnumerable<ChangeSetApproval>? approvals = null)
     {
         ArgumentNullException.ThrowIfNull(rationale);
         ArgumentNullException.ThrowIfNull(sources);
@@ -111,8 +122,10 @@ public sealed class ChangeSet
             State = state,
             RejectionReason = rejectionReason,
             RevertsChangeSetId = revertsChangeSetId,
+            RequiredApprovals = requiredApprovals,
         };
         changeSet._operations.AddRange(operations);
+        changeSet._approvals.AddRange(approvals ?? []);
 
         return changeSet;
     }
@@ -247,7 +260,60 @@ public sealed class ChangeSet
                 "A rejection needs a reason, which the change set stores; reject it with one.");
         }
 
+        // A set in review is approved by its approvals, never moved there directly.
+        if (State == ChangeSetState.AwaitingReview && target == ChangeSetState.Approved)
+        {
+            return Result.Failure(ChangeSetErrorCodes.ApprovalsNeeded, ApprovalsNeededMessage());
+        }
+
         State = target;
+        return Result.Success();
+    }
+
+    // Moves the set into review, needing this many approvals by as many people.
+    public Result EnterReview(int requiredApprovals)
+    {
+        if (requiredApprovals is < 1 or > MaxApprovals)
+        {
+            return Result.Failure(
+                ChangeSetErrorCodes.RequiredApprovalsInvalid,
+                $"A set in review needs from 1 to {MaxApprovals} approvals, and {requiredApprovals} were asked for.");
+        }
+
+        var moved = TransitionTo(ChangeSetState.AwaitingReview);
+        if (moved.IsSuccess)
+        {
+            RequiredApprovals = requiredApprovals;
+        }
+
+        return moved;
+    }
+
+    // Records a person's approval, and approves the set once enough different people have.
+    public Result Approve(UserInitiator person, DateTimeOffset at)
+    {
+        ArgumentNullException.ThrowIfNull(person);
+
+        if (State != ChangeSetState.AwaitingReview)
+        {
+            return CanMoveTo(ChangeSetState.Approved) is { IsSuccess: false } refused
+                ? refused
+                : Result.Failure(ChangeSetErrorCodes.TransitionNotAllowed, $"A change set is approved while it awaits review, and this one is {Describe(State)}.");
+        }
+
+        if (_approvals.Any(approval => approval.Approver.UserId == person.UserId))
+        {
+            return Result.Failure(
+                ChangeSetErrorCodes.ApprovalDuplicate,
+                $"{person.DisplayName} has already approved this change set; {ApprovalsNeededMessage()}");
+        }
+
+        _approvals.Add(new ChangeSetApproval(person, at));
+        if (_approvals.Count >= RequiredApprovals)
+        {
+            State = ChangeSetState.Approved;
+        }
+
         return Result.Success();
     }
 
@@ -270,6 +336,12 @@ public sealed class ChangeSet
         State = ChangeSetState.Rejected;
         RejectionReason = trimmedReason;
         return Result.Success();
+    }
+
+    private string ApprovalsNeededMessage()
+    {
+        var needed = RequiredApprovals == 1 ? "1 approval" : $"{RequiredApprovals} approvals";
+        return $"It needs {needed} by different people and has {_approvals.Count}; approve it to add one.";
     }
 
     private Result CanTakeOperations()

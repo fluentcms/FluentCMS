@@ -12,6 +12,7 @@ using FluentCMS.Core.Sites;
 using FluentCMS.Infrastructure.Media;
 using FluentCMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace FluentCMS.Infrastructure.ChangeSets;
 
@@ -23,7 +24,9 @@ internal sealed class ChangeSetDirectory(
     IUnitOfWork unitOfWork,
     IAuditLog auditLog,
     ICurrentInitiator currentInitiator,
-    IAgentPermissions permissions) : IChangeSetDirectory
+    IAgentPermissions permissions,
+    IOptions<ApprovalOptions> approvalOptions,
+    TimeProvider clock) : IChangeSetDirectory
 {
     // AgentActivity counts these events for the change-sets-per-day cap.
     internal const string OpenedOperation = "change_set.opened";
@@ -184,8 +187,66 @@ internal sealed class ChangeSetDirectory(
             ChangeSetState.Reverted => MoveAsync(changeSetId, target, _ => Result.Failure(
                 ChangeSetErrorCodes.TransitionNotAllowed,
                 "A change set is reverted by publishing the change set that reverting it opens; revert it instead."), cancellationToken),
+            ChangeSetState.AwaitingReview => MoveAsync(changeSetId, target, set => set.EnterReview(approvalOptions.Value.Required), cancellationToken),
+            ChangeSetState.Approved => ApproveAsync(changeSetId, cancellationToken),
             _ => MoveAsync(changeSetId, target, set => set.TransitionTo(target), cancellationToken),
         };
+    }
+
+    // A person's approval of a set in review counts toward the approvals it needs, and the one that completes them approves the
+    // set in the same unit of work (RTE-05). A set that skips review, as routing's auto-publish does, moves to approved directly.
+    public async Task<Result<ChangeSet>> ApproveAsync(Guid changeSetId, CancellationToken cancellationToken = default)
+    {
+        var stored = await ReadAsync(changeSetId, cancellationToken);
+        if (stored is null)
+        {
+            return NotFound(changeSetId);
+        }
+
+        if (stored.ChangeSet.State != ChangeSetState.AwaitingReview)
+        {
+            return await MoveAsync(changeSetId, ChangeSetState.Approved, set => set.TransitionTo(ChangeSetState.Approved), cancellationToken);
+        }
+
+        var allowed = await permissions.CheckTransitionAsync(stored.ChangeSet, ChangeSetState.Approved, cancellationToken);
+        if (!allowed.IsSuccess)
+        {
+            return Result<ChangeSet>.Failure(allowed.Errors);
+        }
+
+        // Agents and engines are refused above, so whoever is left is a person.
+        var person = Initiator() as UserInitiator
+            ?? throw new InvalidOperationException("Only a person approves a change set in review (MCP-06).");
+        var set = stored.ChangeSet;
+        var approved = set.Approve(person, clock.GetUtcNow());
+        if (!approved.IsSuccess)
+        {
+            return Result<ChangeSet>.Failure(approved.Errors);
+        }
+
+        var approval = set.Approvals[^1];
+        await using var scope = await unitOfWork.BeginAsync(cancellationToken);
+        if (!await UpdateAsync(stored.Revision, set, cancellationToken))
+        {
+            return Conflict(set.Id);
+        }
+
+        context.ChangeSetApprovals.Add(new ChangeSetApprovalRow
+        {
+            ChangeSetId = set.Id,
+            UserId = person.UserId,
+            ApproverName = person.DisplayName,
+            ApprovedAt = approval.ApprovedAt,
+        });
+        await auditLog.AppendAsync(
+            new NewAuditEvent("change_set.approval_recorded") { SubjectType = SubjectType, SubjectId = set.Id, ChangeSetId = set.Id },
+            cancellationToken);
+        if (set.State == ChangeSetState.Approved)
+        {
+            await AppendTransitionAsync(set, cancellationToken);
+        }
+
+        return await CommitAsync(scope, set, Conflict(set.Id), cancellationToken);
     }
 
     public async Task<Result<ChangeSet>> PublishAsync(Guid changeSetId, CancellationToken cancellationToken = default)
@@ -617,6 +678,7 @@ internal sealed class ChangeSetDirectory(
             SessionId = set.SessionId,
             State = set.State,
             RevertsChangeSetId = set.RevertsChangeSetId,
+            RequiredApprovals = set.RequiredApprovals,
         });
 
         await auditLog.AppendAsync(
@@ -686,6 +748,7 @@ internal sealed class ChangeSetDirectory(
                     .SetProperty(row => row.Revision, revision + 1)
                     .SetProperty(row => row.State, set.State)
                     .SetProperty(row => row.RejectionReason, set.RejectionReason)
+                    .SetProperty(row => row.RequiredApprovals, set.RequiredApprovals)
                     .SetProperty(row => row.Sources, sources),
                 cancellationToken);
 
@@ -1207,6 +1270,12 @@ internal sealed class ChangeSetDirectory(
             .Where(operation => operation.ChangeSetId == id)
             .OrderBy(operation => operation.Position)
             .ToListAsync(cancellationToken);
+        var approvals = await context.ChangeSetApprovals
+            .AsNoTracking()
+            .Where(approval => approval.ChangeSetId == id)
+            .OrderBy(approval => approval.ApprovedAt)
+            .ThenBy(approval => approval.UserId)
+            .ToListAsync(cancellationToken);
 
         var set = ChangeSet.Restore(
             row.Id,
@@ -1223,7 +1292,9 @@ internal sealed class ChangeSetDirectory(
                 operation.ProposedVersion)),
             row.State,
             row.RejectionReason,
-            row.RevertsChangeSetId);
+            row.RevertsChangeSetId,
+            row.RequiredApprovals,
+            approvals.Select(approval => new ChangeSetApproval(new UserInitiator(approval.UserId, approval.ApproverName), approval.ApprovedAt)));
 
         return new StoredChangeSet(set, row.Revision);
     }

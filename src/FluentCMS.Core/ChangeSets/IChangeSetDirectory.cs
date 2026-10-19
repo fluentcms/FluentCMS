@@ -40,4 +40,8 @@ public interface IChangeSetDirectory
     Task<Result<ChangeSet>> RevertAsync(Guid changeSetId, string rationale, CancellationToken cancellationToken = default);
 
     Task<Result<ChangeSet>> RejectAsync(Guid changeSetId, string reason, CancellationToken cancellationToken = default);
+
+    // A person's approval of a set in review, which approves the set once it has as many as it needs (RTE-05). Moving a set in
+    // review to approved through TransitionAsync approves it the same way.
+    Task<Result<ChangeSet>> ApproveAsync(Guid changeSetId, CancellationToken cancellationToken = default);
 }
