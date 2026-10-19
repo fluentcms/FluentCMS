@@ -1,0 +1,247 @@
+@page "/media"
+@using System.Globalization
+@using FluentCMS.Admin.Media
+@using FluentCMS.Core.Media
+@inject IMediaLibrary Library
+@inject IStringLocalizer<MediaLibraryView> L
+
+<PageTitle>@L["Media"]</PageTitle>
+
+<h1 id="media-heading" class="text-2xl font-semibold tracking-tight">@L["Media"]</h1>
+<p class="mt-1 text-sm text-muted-foreground">@L["Images, documents and videos the site's pages use, with their alt text and where each is used."]</p>
+
+<div class="mt-6 grid gap-6 lg:grid-cols-[14rem_1fr]">
+    <nav aria-label="@L["Folders and tags"]" class="grid content-start gap-4 text-sm" data-testid="media-filters">
+        <div>
+            <h2 class="mb-2 font-medium">@L["Folders"]</h2>
+            <ul class="grid gap-1">
+                <li>
+                    <a href="media" aria-current="@(Folder is null && Tag is null ? "page" : null)" class="@Filter(Folder is null && Tag is null)" data-folder="">@L["All media"]</a>
+                </li>
+                @foreach (var folder in _folders.Where(folder => folder.Length > 0))
+                {
+                    <li>
+                        <a href="@($"media?folder={Uri.EscapeDataString(folder)}&sub=true")" aria-current="@(folder == Folder ? "page" : null)" class="@Filter(folder == Folder)" data-folder="@folder">
+                            <bdi dir="ltr">@folder</bdi>
+                        </a>
+                    </li>
+                }
+            </ul>
+        </div>
+        @if (_tags.Count > 0)
+        {
+            <div>
+                <h2 class="mb-2 font-medium">@L["Tags"]</h2>
+                <ul class="flex flex-wrap gap-1">
+                    @foreach (var tag in _tags)
+                    {
+                        <li>
+                            <a href="@($"media?tag={Uri.EscapeDataString(tag)}")" aria-current="@(tag == Tag ? "page" : null)" data-tag="@tag">
+                                <Badge Variant="@(tag == Tag ? "default" : "outline")">@tag</Badge>
+                            </a>
+                        </li>
+                    }
+                </ul>
+            </div>
+        }
+    </nav>
+
+    <div class="grid content-start gap-6">
+        <Card data-testid="media-upload">
+            <CardHeader>
+                <CardTitle><h2>@L["Upload"]</h2></CardTitle>
+                <CardDescription>@L["JPEG, PNG, GIF, WebP, PDF, MP4 or WebM. Describe an image in its alt text for people who cannot see it."]</CardDescription>
+            </CardHeader>
+            <CardContent>
+                @* Posts to the host's upload endpoint, which goes to the new asset or sends a refused upload back here. *@
+                <form method="post" action="media/upload" enctype="multipart/form-data" class="grid gap-4">
+                    <AntiforgeryToken />
+                    <FormField Label="@L["File"]" Error="@UploadError(MediaUploadForm.FileMissing, MediaErrorCodes.FileNameInvalid, MediaErrorCodes.ContentTypeInvalid, MediaErrorCodes.MediaEmpty, MediaErrorCodes.MediaTooLarge, MediaErrorCodes.ContentMismatch)">
+                        <Input Type="file" name="file" accept="@string.Join(",", MediaTypes.Allowed)" required />
+                    </FormField>
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <FormField Label="@L["Folder"]" Description="@L["Optional, such as products/drills."]" Error="@UploadError(MediaErrorCodes.FolderInvalid)">
+                            <Input name="Folder" value="@(UploadFolder ?? Folder)" dir="ltr" />
+                        </FormField>
+                        <FormField Label="@L["Tags"]" Description="@L["Optional, separated by commas, such as product-shot, hero."]" Error="@UploadError(MediaErrorCodes.TagInvalid)">
+                            <Input name="Tags" value="@UploadTags" dir="ltr" />
+                        </FormField>
+                    </div>
+                    <FormField Label="@L["Alt text"]" Error="@UploadError(MediaErrorCodes.AltTextInvalid)">
+                        <Textarea name="AltText" rows="2" value="@UploadAltText" />
+                    </FormField>
+                    <FormField Label="@L["Caption"]" Error="@UploadError(MediaErrorCodes.CaptionInvalid)">
+                        <Textarea name="Caption" rows="2" value="@UploadCaption" />
+                    </FormField>
+                    @if (UploadFormError is { } formError)
+                    {
+                        <p role="alert" class="text-sm text-destructive" data-testid="media-upload-error">@formError</p>
+                    }
+                    <div>
+                        <Button Type="submit">@L["Upload"]</Button>
+                    </div>
+                </form>
+            </CardContent>
+        </Card>
+
+        <section aria-labelledby="media-list-heading">
+            <h2 id="media-list-heading" class="text-lg font-semibold">
+                @(Tag is not null ? L["Tagged {0}", Tag] : Folder is not null ? L["In {0}", Folder] : L["All media"])
+                <span class="text-muted-foreground">(@_assets.Count.ToString(CultureInfo.CurrentCulture))</span>
+            </h2>
+            @if (_assets.Count == 0)
+            {
+                <p class="mt-4 rounded-md border px-3 py-6 text-center text-sm text-muted-foreground" data-testid="media-empty">@L["No media here yet."]</p>
+            }
+            else
+            {
+                <div class="mt-4 rounded-md border">
+                    <Table aria-labelledby="media-list-heading">
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead><span class="sr-only">@L["Preview"]</span></TableHead>
+                                <TableHead>@L["File"]</TableHead>
+                                <TableHead>@L["Folder"]</TableHead>
+                                <TableHead>@L["Tags"]</TableHead>
+                                <TableHead Class="text-end">@L["Size"]</TableHead>
+                                <TableHead>@L["Status"]</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody data-ui="rove">
+                            @foreach (var (asset, index) in _assets.Select((asset, index) => (asset, index)))
+                            {
+                                <TableRow data-asset="@asset.Id.ToString("N")">
+                                    <TableCell Class="w-16">
+                                        @if (IsImage(asset.ContentType))
+                                        {
+                                            @* The file name beside it names the image, so the preview is decorative. *@
+                                            <img src="@AdminRoutes.MediaFile(asset.Id)" alt="" loading="lazy" class="size-12 rounded-md border object-cover" />
+                                        }
+                                    </TableCell>
+                                    <TableCell Class="whitespace-normal">
+                                        <a href="@($"media/{asset.Id}")" data-ui="rove-item" tabindex="@(index == 0 ? null : "-1")" class="font-medium underline-offset-4 hover:underline"><bdi>@asset.FileName</bdi></a>
+                                        <span class="block text-xs text-muted-foreground" dir="ltr">@asset.ContentType</span>
+                                    </TableCell>
+                                    <TableCell><bdi dir="ltr">@asset.Folder</bdi></TableCell>
+                                    <TableCell Class="whitespace-normal">
+                                        <span class="flex flex-wrap gap-1">
+                                            @foreach (var tag in asset.Tags)
+                                            {
+                                                <Badge Variant="outline">@tag</Badge>
+                                            }
+                                        </span>
+                                    </TableCell>
+                                    <TableCell Class="text-end tabular-nums">@Size(asset.Length)</TableCell>
+                                    <TableCell>
+                                        <span class="flex flex-wrap gap-1">
+                                            @if (asset.PublishedVersion is not null)
+                                            {
+                                                <Badge Variant="secondary" data-status="published">@L["Published"]</Badge>
+                                            }
+                                            @if (IsImage(asset.ContentType) && !asset.HasAltText)
+                                            {
+                                                <Badge Variant="destructive" data-status="no-alt-text">@L["No alt text"]</Badge>
+                                            }
+                                        </span>
+                                    </TableCell>
+                                </TableRow>
+                            }
+                        </TableBody>
+                    </Table>
+                </div>
+            }
+        </section>
+    </div>
+</div>
+
+@code {
+    private IReadOnlyList<string> _folders = [];
+    private IReadOnlyList<string> _tags = [];
+    private IReadOnlyList<MediaAssetSummary> _assets = [];
+
+    [SupplyParameterFromQuery(Name = "folder")]
+    private string? Folder { get; set; }
+
+    [SupplyParameterFromQuery(Name = "sub")]
+    private bool Subfolders { get; set; }
+
+    [SupplyParameterFromQuery(Name = "tag")]
+    private string? Tag { get; set; }
+
+    // What a refused upload sends back, so each problem shows next to its field and nothing typed is lost.
+    [SupplyParameterFromQuery(Name = MediaUploadForm.ErrorName)]
+    private string? UploadErrors { get; set; }
+
+    [SupplyParameterFromQuery(Name = MediaUploadForm.FolderName)]
+    private string? UploadFolder { get; set; }
+
+    [SupplyParameterFromQuery(Name = MediaUploadForm.TagsName)]
+    private string? UploadTags { get; set; }
+
+    [SupplyParameterFromQuery(Name = MediaUploadForm.AltTextName)]
+    private string? UploadAltText { get; set; }
+
+    [SupplyParameterFromQuery(Name = MediaUploadForm.CaptionName)]
+    private string? UploadCaption { get; set; }
+
+    private static readonly HashSet<string> FieldCodes =
+    [
+        MediaUploadForm.FileMissing,
+        MediaErrorCodes.FileNameInvalid,
+        MediaErrorCodes.ContentTypeInvalid,
+        MediaErrorCodes.MediaEmpty,
+        MediaErrorCodes.MediaTooLarge,
+        MediaErrorCodes.ContentMismatch,
+        MediaErrorCodes.FolderInvalid,
+        MediaErrorCodes.TagInvalid,
+        MediaErrorCodes.AltTextInvalid,
+        MediaErrorCodes.CaptionInvalid,
+    ];
+
+    private IReadOnlyList<string> ErrorCodes => (UploadErrors ?? string.Empty).Split(',', StringSplitOptions.RemoveEmptyEntries);
+
+    private string? UploadFormError => ErrorCodes.Any(code => !FieldCodes.Contains(code))
+        ? L["The upload could not be stored. Try again."].Value
+        : null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // The library lists the oldest asset first; the newest is what someone looks for after an upload.
+        _folders = await Library.FoldersAsync();
+        var all = await Library.ListAsync(new MediaQuery());
+        _tags = [.. all.SelectMany(asset => asset.Tags).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal)];
+        var listed = Folder is null && Tag is null ? all : await Library.ListAsync(new MediaQuery(Folder, Subfolders, Tag));
+        _assets = [.. listed.Reverse()];
+    }
+
+    private string? UploadError(params string[] codes)
+    {
+        return codes.FirstOrDefault(ErrorCodes.Contains) switch
+        {
+            null => null,
+            MediaUploadForm.FileMissing => L["Choose a file to upload."].Value,
+            MediaErrorCodes.FileNameInvalid => L["The file name must not contain slashes and must be at most 255 characters."].Value,
+            MediaErrorCodes.ContentTypeInvalid => L["This type of file cannot be uploaded. Choose a JPEG, PNG, GIF, WebP, PDF, MP4 or WebM file."].Value,
+            MediaErrorCodes.MediaEmpty => L["The file is empty."].Value,
+            MediaErrorCodes.MediaTooLarge => L["The file is larger than the library accepts."].Value,
+            MediaErrorCodes.ContentMismatch => L["The file's content does not match its type. Check that it is the file you meant."].Value,
+            MediaErrorCodes.FolderInvalid => L["A folder is lowercase words joined by hyphens, with slashes between levels, such as products/drills."].Value,
+            MediaErrorCodes.TagInvalid => L["Each tag is lowercase words joined by hyphens, such as product-shot, and there are at most 32."].Value,
+            MediaErrorCodes.AltTextInvalid => L["Alt text is at most 1000 characters."].Value,
+            _ => L["A caption is at most 2000 characters."].Value,
+        };
+    }
+
+    private static string Filter(bool current) => ClassNames.Cn(
+        "block rounded-md px-2 py-1 hover:bg-accent hover:text-accent-foreground",
+        current ? "bg-secondary font-medium text-secondary-foreground" : "text-muted-foreground");
+
+    private static bool IsImage(string contentType) => contentType.StartsWith("image/", StringComparison.Ordinal);
+
+    private static string Size(long bytes) => bytes switch
+    {
+        < 1024 => $"{bytes.ToString(CultureInfo.CurrentCulture)} B",
+        < 1024 * 1024 => $"{(bytes / 1024.0).ToString("0.#", CultureInfo.CurrentCulture)} KB",
+        _ => $"{(bytes / (1024.0 * 1024)).ToString("0.#", CultureInfo.CurrentCulture)} MB",
+    };
+}

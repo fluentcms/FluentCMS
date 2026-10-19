@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
 {
     [DbContext(typeof(SqliteFluentCmsDbContext))]
-    [Migration("20261019055323_PreviewTokens")]
-    partial class PreviewTokens
+    [Migration("20261019054608_SearchDocuments")]
+    partial class SearchDocuments
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -481,42 +481,6 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
 
                             t.HasCheckConstraint("CK_EntryVersions_Version", "\"Version\" >= 1");
                         });
-                });
-
-            modelBuilder.Entity("FluentCMS.Infrastructure.Delivery.PreviewTokenRow", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("ChangeSetId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTimeOffset>("ExpiresAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTimeOffset?>("RevokedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("SiteId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<byte[]>("TokenHash")
-                        .IsRequired()
-                        .HasColumnType("BLOB");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ChangeSetId");
-
-                    b.HasIndex("SiteId");
-
-                    b.HasIndex("TokenHash")
-                        .IsUnique();
-
-                    b.ToTable("PreviewTokens", (string)null);
                 });
 
             modelBuilder.Entity("FluentCMS.Infrastructure.Entities.EntityFactRow", b =>
@@ -1222,21 +1186,6 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                     b.HasOne("FluentCMS.Infrastructure.Content.EntryRow", null)
                         .WithMany()
                         .HasForeignKey("EntryId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("FluentCMS.Infrastructure.Delivery.PreviewTokenRow", b =>
-                {
-                    b.HasOne("FluentCMS.Infrastructure.ChangeSets.ChangeSetRow", null)
-                        .WithMany()
-                        .HasForeignKey("ChangeSetId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("FluentCMS.Infrastructure.Sites.SiteRow", null)
-                        .WithMany()
-                        .HasForeignKey("SiteId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

@@ -242,7 +242,8 @@ public sealed class EntryTools : IToolProvider
             target!,
             entries => entries.UpdateAsync(id!.Value, baseVersion!.Value, fields!.Value, cancellationToken),
             ProposedEntryWrite.Update,
-            cancellationToken);
+            cancellationToken,
+            id);
     }
 
     private static async Task<ToolResult> DeleteAsync(ToolInvocation call, CancellationToken cancellationToken)
