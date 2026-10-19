@@ -50,6 +50,90 @@
         }
     </div>
 
+    <Card Class="mt-6" data-testid="change-set-review">
+        <CardHeader>
+            <CardTitle><h2>@L["Review"]</h2></CardTitle>
+            <CardDescription>@ReviewHint(set.State)</CardDescription>
+        </CardHeader>
+        <CardContent Class="grid gap-4">
+            @if (_message is not null)
+            {
+                <p role="status" class="rounded-md border bg-muted/50 px-3 py-2 text-sm" data-testid="review-message">@_message</p>
+            }
+            @if (_refusal is not null)
+            {
+                <p role="alert" class="rounded-md border border-destructive/50 px-3 py-2 text-sm text-destructive" data-testid="review-refusal">@_refusal</p>
+            }
+            <div class="flex flex-wrap gap-2">
+                @if (set.State == ChangeSetState.AwaitingReview)
+                {
+                    <form method="post" @onsubmit="ApproveAsync" @formname="approve">
+                        <AntiforgeryToken />
+                        <input type="hidden" name="Approve.Seen" value="@_seen" />
+                        <Button Type="submit" data-action="approve">@L["Approve"]</Button>
+                    </form>
+                }
+                @if (set.State == ChangeSetState.Approved)
+                {
+                    <form method="post" @onsubmit="PublishAsync" @formname="publish">
+                        <AntiforgeryToken />
+                        <input type="hidden" name="Publish.Seen" value="@_seen" />
+                        <Button Type="submit" data-action="publish">@L["Publish"]</Button>
+                    </form>
+                }
+                @if (set.State is ChangeSetState.AwaitingReview or ChangeSetState.ChecksFailed)
+                {
+                    <Dialog>
+                        <DialogTrigger Variant="outline" data-action="reject">@L["Reject"]</DialogTrigger>
+                        <DialogContent Class="text-start whitespace-normal">
+                            <DialogHeader>
+                                <DialogTitle>@L["Reject this change set?"]</DialogTitle>
+                                <DialogDescription>@L["Say what is wrong, so whoever opened the set can fix it. The reason is stored with the set."]</DialogDescription>
+                            </DialogHeader>
+                            <form method="post" @onsubmit="RejectAsync" @formname="reject" class="grid gap-4">
+                                <AntiforgeryToken />
+                                <input type="hidden" name="Reject.Seen" value="@_seen" />
+                                <FormField Label="@L["Reason"]">
+                                    <Textarea name="Reject.Reason" required rows="4" />
+                                </FormField>
+                                <DialogFooter>
+                                    <DialogClose>@L["Cancel"]</DialogClose>
+                                    <Button Type="submit" Variant="destructive">@L["Reject"]</Button>
+                                </DialogFooter>
+                            </form>
+                        </DialogContent>
+                    </Dialog>
+                }
+                @if (set.State == ChangeSetState.Published)
+                {
+                    @* One click (S3): the revert set it opens is reviewed like any other before anything changes. *@
+                    <form method="post" @onsubmit="RevertAsync" @formname="revert">
+                        <AntiforgeryToken />
+                        <input type="hidden" name="Revert.Seen" value="@_seen" />
+                        <Button Type="submit" Variant="outline" data-action="revert">@L["Revert"]</Button>
+                    </form>
+                }
+            </div>
+            @* A form posted from a page shown before the set moved on must still find its handler, which then says the set moved on. *@
+            @if (set.State != ChangeSetState.AwaitingReview)
+            {
+                <form method="post" @onsubmit="ApproveAsync" @formname="approve" hidden></form>
+            }
+            @if (set.State != ChangeSetState.Approved)
+            {
+                <form method="post" @onsubmit="PublishAsync" @formname="publish" hidden></form>
+            }
+            @if (set.State is not (ChangeSetState.AwaitingReview or ChangeSetState.ChecksFailed))
+            {
+                <form method="post" @onsubmit="RejectAsync" @formname="reject" hidden></form>
+            }
+            @if (set.State != ChangeSetState.Published)
+            {
+                <form method="post" @onsubmit="RevertAsync" @formname="revert" hidden></form>
+            }
+        </CardContent>
+    </Card>
+
     <div class="mt-6 grid gap-6 lg:grid-cols-3">
         <Card Class="lg:col-span-2" data-testid="change-set-sources">
             <CardHeader>
@@ -159,39 +243,144 @@
     private bool _historyTruncated;
     private DateTimeOffset? _openedAt;
     private DateTimeOffset? _stateSince;
+    private string? _seen;
+    private string? _message;
+    private string? _refusal;
 
     [Parameter] public Guid Id { get; set; }
 
+    [SupplyParameterFromForm(FormName = "approve")]
+    private ReviewForm? Approve { get; set; }
+
+    [SupplyParameterFromForm(FormName = "publish")]
+    private ReviewForm? Publish { get; set; }
+
+    [SupplyParameterFromForm(FormName = "reject")]
+    private RejectForm? Reject { get; set; }
+
+    [SupplyParameterFromForm(FormName = "revert")]
+    private ReviewForm? Revert { get; set; }
+
     protected override async Task OnInitializedAsync()
+    {
+        if (!await LoadAsync())
+        {
+            Navigation.NotFound();
+        }
+    }
+
+    private async Task<bool> LoadAsync()
     {
         var read = await Directory.GetAsync(Id);
         if (!read.IsSuccess)
         {
-            Navigation.NotFound();
-            return;
+            _set = null;
+            return false;
         }
 
         _set = read.Value;
+        _history = [];
+        _historyTruncated = false;
+        AuditEvent? opened = null;
+        AuditEvent? lastMove = null;
 
+        // Every event is read for the last move, which the actions are checked against; the page lists the first ones.
         var history = Audit.Read(new AuditQuery { Subject = new AuditSubject("change_set", Id) });
         if (history.IsSuccess)
         {
             await foreach (var auditEvent in history.Value)
             {
-                if (_history.Count == HistoryLimit)
+                if (Moves.Contains(auditEvent.Operation))
                 {
-                    _historyTruncated = true;
-                    break;
+                    opened ??= auditEvent.Operation == "change_set.opened" ? auditEvent : null;
+                    lastMove = auditEvent;
                 }
 
-                _history.Add(auditEvent);
+                if (_history.Count < HistoryLimit)
+                {
+                    _history.Add(auditEvent);
+                }
+                else
+                {
+                    _historyTruncated = true;
+                }
             }
         }
 
-        var moves = _history.Where(auditEvent => Moves.Contains(auditEvent.Operation)).ToList();
-        _openedAt = moves.FirstOrDefault(auditEvent => auditEvent.Operation == "change_set.opened")?.Timestamp;
-        _stateSince = _historyTruncated ? null : moves.LastOrDefault()?.Timestamp;
+        _openedAt = opened?.Timestamp;
+        _stateSince = lastMove?.Timestamp;
+        _seen = lastMove?.Id.ToString("N");
+        return true;
     }
+
+    private Task ApproveAsync()
+    {
+        return ActAsync(Approve, () => Directory.TransitionAsync(Id, ChangeSetState.Approved), L["Approved. Publish the set to make its items live."]);
+    }
+
+    private Task PublishAsync()
+    {
+        return ActAsync(Publish, () => Directory.PublishAsync(Id), L["Published. Its items are live."]);
+    }
+
+    private Task RejectAsync()
+    {
+        return ActAsync(Reject, () => Directory.RejectAsync(Id, Reject?.Reason ?? string.Empty), L["Rejected. The reason is stored with the set."]);
+    }
+
+    private async Task RevertAsync()
+    {
+        var rationale = _set is { } set ? L["Revert change set {0}: {1}", set.Id, set.Rationale].Value : string.Empty;
+        if (await ActAsync(Revert, () => Directory.RevertAsync(Id, rationale), null) is { } opened)
+        {
+            Navigation.NavigateTo($"sets/{opened.Id}");
+        }
+    }
+
+    // A decision is saved by the call itself; the page then shows the set as it is now, whatever the outcome.
+    private async Task<ChangeSet?> ActAsync(ReviewForm? form, Func<Task<FluentCMS.Core.Results.Result<ChangeSet>>> action, string? done)
+    {
+        if (_set is null)
+        {
+            return null;
+        }
+
+        if (form?.Seen is null || form.Seen != _seen)
+        {
+            _refusal = L["The set has moved on since this page was shown. Review it as it is now."];
+            return null;
+        }
+
+        var result = await action();
+        if (result.IsSuccess)
+        {
+            _message = done;
+        }
+        else
+        {
+            // The error code is the resource key; the directory's own message is the text until a resource exists.
+            _refusal = string.Join(" ", result.Errors.Select(error =>
+            {
+                var localized = L[error.Code];
+                return localized.ResourceNotFound ? error.Message : localized.Value;
+            }));
+        }
+
+        await LoadAsync();
+        return result.IsSuccess ? result.Value : null;
+    }
+
+    private string ReviewHint(ChangeSetState state) => state switch
+    {
+        ChangeSetState.AwaitingReview => L["Approve the set, or reject it with a reason."],
+        ChangeSetState.ChecksFailed => L["The checks failed. Whoever opened the set can fix and resubmit it, or you can reject it with a reason."],
+        ChangeSetState.Approved => L["The set is approved. Publishing it makes all its items live together."],
+        ChangeSetState.Published => L["The set is live. Reverting it opens a set that undoes it, which is reviewed like any other."],
+        ChangeSetState.Open => L["The set is still open, so it cannot be reviewed yet."],
+        ChangeSetState.ChecksRunning => L["The checks are running, so it cannot be reviewed yet."],
+        ChangeSetState.Rejected => L["The set was rejected. Nothing more can be done with it."],
+        _ => L["The set was reverted. Nothing more can be done with it."],
+    };
 
     // Only a web address becomes a link, so a source such as "javascript:" or a file path is never followed.
     public static string? Openable(string source)
