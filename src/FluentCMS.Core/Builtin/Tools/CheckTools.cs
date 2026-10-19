@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Checks;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Results;
@@ -84,6 +85,23 @@ public sealed class CheckTools : IToolProvider
         if (!type.IsSuccess)
         {
             return ToolResult.Failure(type.Errors, type.Errors.Any(error => error.Code == SchemaErrorCodes.ContentTypeNotFound) ? FindContentTypes : null);
+        }
+
+        // Checks read what the set proposes, so it must be a set the agent may read and one that can still go live.
+        if (changeSetId is { } setId)
+        {
+            var set = await services.GetRequiredService<IChangeSetDirectory>().GetAsync(setId, cancellationToken);
+            if (!set.IsSuccess)
+            {
+                return ToolResult.Failure(set.Errors);
+            }
+
+            if (set.Value.State is ChangeSetState.Published or ChangeSetState.Rejected or ChangeSetState.Reverted)
+            {
+                return ToolResult.Failure([new Error(
+                    ToolErrorCodes.ArgumentInvalid,
+                    $"Change set {setId} is {ToolJson.Name(set.Value.State)}, so nothing goes live with it any more; give the set the draft goes into.")]);
+            }
         }
 
         IReadOnlyList<string>? changed = null;

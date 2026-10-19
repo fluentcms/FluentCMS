@@ -329,7 +329,6 @@ public sealed class MediaTools : IToolProvider
         return await entries.UpdateAsync(entryId, baseVersion, JsonSerializer.SerializeToElement(fields), cancellationToken);
     }
 
-    // A single media field or a list of media.
     // The version an agent writes and its operation commit together or not at all; uploaded bytes that end up in no asset are deleted
     // again, so a refused upload leaves nothing in the storage.
     private static async Task<ToolResult> ProposeAsync(

@@ -97,15 +97,17 @@ public sealed class ChangeSetTests
     // A set reopened to fix an item takes the item's newer draft: the same change from the same published version, proposing the
     // later draft, so the item still has one diff and one version to restore (CHG-03, CHG-06).
     [Theory]
-    [InlineData(OperationKind.Create, null, 1)]
-    [InlineData(OperationKind.Update, 3, 4)]
-    public void An_update_from_the_version_a_set_proposes_moves_the_item_s_operation_on(OperationKind kind, int? baseVersion, int proposed)
+    [InlineData(ItemKind.Entry, OperationKind.Create, null, 1)]
+    [InlineData(ItemKind.Entry, OperationKind.Update, 3, 4)]
+    [InlineData(ItemKind.Media, OperationKind.Create, null, 1)]
+    [InlineData(ItemKind.Media, OperationKind.Update, 3, 4)]
+    public void An_update_from_the_version_a_set_proposes_moves_the_item_s_operation_on(ItemKind itemKind, OperationKind kind, int? baseVersion, int proposed)
     {
         var changeSet = TestChangeSets.Open();
         var item = Guid.NewGuid();
-        changeSet.AddOperation(ChangeOperation.Create(kind, ItemKind.Entry, item, baseVersion, proposed).Value);
+        changeSet.AddOperation(ChangeOperation.Create(kind, itemKind, item, baseVersion, proposed).Value);
 
-        var result = changeSet.AddOperation(ChangeOperation.Create(kind, ItemKind.Entry, item, baseVersion, proposed + 1).Value);
+        var result = changeSet.AddOperation(ChangeOperation.Create(kind, itemKind, item, baseVersion, proposed + 1).Value);
 
         Assert.True(result.IsSuccess);
         var operation = Assert.Single(changeSet.Operations);
