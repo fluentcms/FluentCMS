@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using FluentCMS.Core.Agents;
 using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Content;
+using FluentCMS.Core.Media;
 using FluentCMS.Core.Schema;
 using FluentCMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -11,7 +12,7 @@ namespace FluentCMS.IntegrationTests.Mcp;
 
 public sealed class MediaToolsTests
 {
-    private static readonly string Image = Convert.ToBase64String([0x89, 0x50, 0x4E, 0x47, 1, 2, 3, 4]);
+    private static readonly string Image = Convert.ToBase64String([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3, 4]);
 
     // S2 in the F-MED acceptance, as far as media goes: the image and the page that shows it arrive in one set.
     [Theory]
@@ -98,6 +99,36 @@ public sealed class MediaToolsTests
         var altText = Assert.Single(diff["items"]![0]!["fields"]!.AsArray(), field => (string?)field!["name"] == "altText")!;
         Assert.Equal(("added", "A cordless drill on a workbench."), ((string)altText["change"]!, (string)altText["after"]!));
         Assert.Equal(("drill.png", "product-shot"), ((string)media["fileName"]!, (string)media["tags"]![0]!));
+    }
+
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task An_upload_over_the_limit_or_unlike_its_type_is_refused_and_stores_nothing(string provider)
+    {
+        await using var agent = await ConnectedAgent.StartAsync(provider, settings: new Dictionary<string, string?> { ["Media:MaxBytes"] = "8" });
+
+        var large = await agent.FailAsync("upload_media", new()
+        {
+            ["content_base64"] = Image,
+            ["content_type"] = "image/png",
+            ["file_name"] = "drill.png",
+            ["session_id"] = "upload",
+            ["rationale"] = "Upload.",
+        });
+        var disguised = await agent.FailAsync("upload_media", new()
+        {
+            ["content_base64"] = Convert.ToBase64String("<html>"u8),
+            ["content_type"] = "image/png",
+            ["file_name"] = "drill.png",
+            ["session_id"] = "upload",
+            ["rationale"] = "Upload.",
+        });
+
+        Assert.Equal(MediaErrorCodes.MediaTooLarge, Code(large));
+        Assert.Equal(MediaErrorCodes.ContentMismatch, Code(disguised));
+        Assert.Equal(0, await agent.QueryAsync(context => context.MediaAssets.CountAsync()));
+        Assert.Equal(0, await agent.QueryAsync(context => context.ChangeSets.CountAsync()));
     }
 
     [Theory]

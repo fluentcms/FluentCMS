@@ -21,9 +21,27 @@ internal sealed class AgentPermissions(
 
     private static readonly TimeSpan Day = TimeSpan.FromDays(1);
 
+    // The moves each part of the product owns (ADR-0012); routing adds auto-publish when it lands. Anything else an engine tries is
+    // refused, so a new engine moves nothing until someone writes down what it owns.
+    private static readonly Dictionary<string, (ChangeSetState From, ChangeSetState To)[]> SystemMoves = new(StringComparer.Ordinal)
+    {
+        [SystemInitiator.Checks.Component] =
+        [
+            (ChangeSetState.ChecksRunning, ChangeSetState.ChecksFailed),
+            (ChangeSetState.ChecksRunning, ChangeSetState.AwaitingReview),
+        ],
+    };
+
     public async Task<Result> CheckTransitionAsync(ChangeSet changeSet, ChangeSetState target, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(changeSet);
+
+        if (currentInitiator.Current is SystemInitiator system)
+        {
+            return SystemMoves.GetValueOrDefault(system.Component, []).Contains((changeSet.State, target))
+                ? Result.Success()
+                : SystemRefused(system, $"move change set {changeSet.Id} from {Describe(changeSet.State)} to {Describe(target)}");
+        }
 
         var agent = await AgentAsync(cancellationToken);
         if (!agent.IsSuccess)
@@ -54,6 +72,11 @@ internal sealed class AgentPermissions(
 
     public async Task<Result> CheckNewChangeSetAsync(CancellationToken cancellationToken = default)
     {
+        if (currentInitiator.Current is SystemInitiator system)
+        {
+            return SystemRefused(system, "open a change set");
+        }
+
         var agent = await AgentAsync(cancellationToken);
         if (!agent.IsSuccess)
         {
@@ -85,6 +108,11 @@ internal sealed class AgentPermissions(
     public async Task<Result> CheckChangeSetSizeAsync(ChangeSet changeSet, int adding = 0, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(changeSet);
+
+        if (currentInitiator.Current is SystemInitiator system)
+        {
+            return SystemRefused(system, $"add to change set {changeSet.Id}");
+        }
 
         var agent = await AgentAsync(cancellationToken);
         if (!agent.IsSuccess)
@@ -127,6 +155,12 @@ internal sealed class AgentPermissions(
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(contentType);
+
+        // An engine reads what it judges, and never writes content (ADR-0012).
+        if (currentInitiator.Current is SystemInitiator system)
+        {
+            return operation == AgentOperation.Read ? Result.Success() : SystemRefused(system, $"{Verb(operation)} entries of '{contentType}'");
+        }
 
         var agent = await AgentAsync(cancellationToken);
         if (!agent.IsSuccess)
@@ -185,6 +219,11 @@ internal sealed class AgentPermissions(
     {
         ArgumentNullException.ThrowIfNull(contentType);
 
+        if (currentInitiator.Current is SystemInitiator system)
+        {
+            return operation == AgentOperation.Read ? Result.Success() : SystemRefused(system, $"{Verb(operation)} the content type '{contentType}'");
+        }
+
         var agent = await AgentAsync(cancellationToken);
         if (!agent.IsSuccess)
         {
@@ -213,6 +252,11 @@ internal sealed class AgentPermissions(
 
     public async Task<Func<string, bool>> ReadableTypesAsync(CancellationToken cancellationToken = default)
     {
+        if (currentInitiator.Current is SystemInitiator)
+        {
+            return _ => true;
+        }
+
         var agent = await AgentAsync(cancellationToken);
         if (!agent.IsSuccess)
         {
@@ -230,6 +274,11 @@ internal sealed class AgentPermissions(
 
     public async Task<Result> CheckToolCallAsync(CancellationToken cancellationToken = default)
     {
+        if (currentInitiator.Current is SystemInitiator system)
+        {
+            return SystemRefused(system, "call a tool");
+        }
+
         var agent = await AgentAsync(cancellationToken);
         if (!agent.IsSuccess)
         {
@@ -256,6 +305,14 @@ internal sealed class AgentPermissions(
             AgentPermissionErrorCodes.CapExceeded,
             $"The credential '{credential.DisplayName}' has made {made} tool calls {Within(caps.CallPeriod)}, and its cap is "
             + $"{caps.CallsPerPeriod} (calls per period). Wait until fewer than {caps.CallsPerPeriod} calls fall {Within(caps.CallPeriod)}, then call again.");
+    }
+
+    // A refusal here is a fault in the product, not in what a caller asked, so it is not recorded as a security event.
+    private static Result SystemRefused(SystemInitiator system, string action)
+    {
+        return Result.Failure(
+            AgentPermissionErrorCodes.SystemNotPermitted,
+            $"The '{system.Component}' engine cannot {action}: it makes only the moves it owns and never writes content (ADR-0012).");
     }
 
     // The operation first, then the type, so the message names the first part of the scope that refuses.
@@ -364,6 +421,7 @@ internal sealed class AgentPermissions(
     {
         return state switch
         {
+            ChangeSetState.ChecksRunning => "checks running",
             ChangeSetState.ChecksFailed => "checks failed",
             ChangeSetState.AwaitingReview => "awaiting review",
             _ => state.ToString().ToLowerInvariant(),
