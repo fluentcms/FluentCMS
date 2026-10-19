@@ -27,7 +27,8 @@ public static class EntryMarkdown
 
     // Plain text as Markdown that reads as written; CommonMark lets a backslash escape any punctuation. Escaped wherever they are:
     // what opens code, emphasis, links, autolinks, HTML and strikethrough, an underscore that is not inside a word, and an ampersand
-    // that starts an entity. Escaped where a line starts: what opens a heading, a list, a quote, a table or a heading underline.
+    // that starts an entity. Escaped where a line starts: what opens a heading, a list, a quote, a table, a heading underline, or the
+    // math and figure blocks of common extensions.
     // Lines lose their indentation, so none becomes a code block; breaks stay. URLs and words keep their characters.
     public static string Text(string text)
     {
@@ -121,7 +122,7 @@ public static class EntryMarkdown
             return true;
         }
 
-        if (position == 0 && character is '#' or '-' or '+' or '=' or '|' or ':')
+        if (position == 0 && character is '#' or '-' or '+' or '=' or '|' or ':' or '$' or '^')
         {
             return true;
         }
@@ -238,7 +239,7 @@ public static class EntryMarkdown
             // Each item keeps its own block, indented under its bullet so paragraphs and fences stay inside the item.
             return string.Join('\n', value.EnumerateArray()
                 .Where(element => element.ValueKind != JsonValueKind.Null)
-                .Select(element => "- " + Block(itemType, itemSettings, element, entryUrl).Replace("\n", "\n  ", StringComparison.Ordinal).Replace("\n  \n", "\n\n", StringComparison.Ordinal)));
+                .Select(element => "- " + Block(itemType, itemSettings, element, entryUrl).TrimStart().Replace("\n", "\n  ", StringComparison.Ordinal).Replace("\n  \n", "\n\n", StringComparison.Ordinal)));
         }
 
         // A reference to an entity field already holds the resolved value; a reference to a whole entry holds its id.
