@@ -24,4 +24,5 @@ public sealed record FactFlag(Guid EntityId, string Type, string Field, int Vers
 public static class EntityErrorCodes
 {
     public const string TypeNotEntity = "type_not_entity";
+    public const string FieldNotRelation = "field_not_relation";
 }
