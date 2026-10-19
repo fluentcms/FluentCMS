@@ -90,6 +90,6 @@ public sealed class EntityFormScreenTests
         return host.AsUserAsync<IContentTypeDirectory, ContentType>(ownerId, async types => (await types.CreateAsync(new NewContentType(
             "Product",
             "product",
-            new ContentTypeDefinition([new FieldDefinition("name", "text", required: true), new FieldDefinition("price", "number")], isEntity: true)))).Value);
+            new ContentTypeDefinition([new FieldDefinition("name", "text", required: true), new FieldDefinition("price", "number")], isEntity: true)), TestChangeSetTargets.ContentModel)).Value);
     }
 }

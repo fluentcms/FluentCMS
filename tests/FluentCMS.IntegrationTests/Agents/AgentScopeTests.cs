@@ -80,9 +80,9 @@ public sealed class AgentScopeTests
             ("delete", await scenario.RunAsync<IEntryDirectory, Result>(directory => directory.DeleteAsync(category, 1))),
             ("delete", Plain(await scenario.RunAsync<IEntryDirectory, Result<Entry>>(directory => directory.RestoreAsync(category)))),
             ("create", Plain(await scenario.RunAsync<IContentTypeDirectory, Result<ContentType>>(directory => directory.CreateAsync(
-                new NewContentType("Region", "region", new ContentTypeDefinition([new FieldDefinition("name", "text")])))))),
+                new NewContentType("Region", "region", new ContentTypeDefinition([new FieldDefinition("name", "text")])), TestChangeSetTargets.ContentModel)))),
             ("update", Plain(await scenario.RunAsync<IContentTypeDirectory, Result<ContentType>>(directory => directory.ReviseAsync(
-                "category", 1, new ContentTypeDefinition([new FieldDefinition("name", "text"), new FieldDefinition("slug", "text")]))))),
+                "category", 1, new ContentTypeDefinition([new FieldDefinition("name", "text"), new FieldDefinition("slug", "text")]), TestChangeSetTargets.ContentModel)))),
         ];
 
         Assert.All(refused, refusal =>
@@ -107,7 +107,7 @@ public sealed class AgentScopeTests
         Assert.True((await scenario.RunAsync<IEntryDirectory, Result>(directory => directory.DeleteAsync(category, 2))).IsSuccess);
         Assert.True((await scenario.RunAsync<IEntryDirectory, Result<Entry>>(directory => directory.RestoreAsync(category))).IsSuccess);
         Assert.True((await scenario.RunAsync<IContentTypeDirectory, Result<ContentType>>(directory => directory.ReviseAsync(
-            "category", 1, new ContentTypeDefinition([new FieldDefinition("name", "text"), new FieldDefinition("slug", "text")])))).IsSuccess);
+            "category", 1, new ContentTypeDefinition([new FieldDefinition("name", "text"), new FieldDefinition("slug", "text")]), TestChangeSetTargets.ContentModel))).IsSuccess);
     }
 
     [Theory]
@@ -125,14 +125,14 @@ public sealed class AgentScopeTests
         Assert.True((await scenario.RunAsync<IEntryDirectory, Result<Entry>>(directory => directory.CreateAsync(new NewEntry("product", Json("""{"price":5}"""))))).IsSuccess);
         Assert.True((await scenario.RunAsync<IEntryDirectory, Result<Entry>>(directory => directory.UpdateAsync(scenario.Category.Id, 1, Json("""{"name":"Home"}""")))).IsSuccess);
         Assert.True((await scenario.RunAsync<IContentTypeDirectory, Result<ContentType>>(directory => directory.ReviseAsync(
-            "category", 1, new ContentTypeDefinition([new FieldDefinition("name", "text"), new FieldDefinition("slug", "text")])))).IsSuccess);
+            "category", 1, new ContentTypeDefinition([new FieldDefinition("name", "text"), new FieldDefinition("slug", "text")]), TestChangeSetTargets.ContentModel))).IsSuccess);
         var counts = await scenario.CountsAsync();
 
         var renamed = await scenario.RunAsync<IEntryDirectory, Result<Entry>>(directory => directory.UpdateAsync(product, 2, Json("""{"name":"Teapot","price":25}""")));
         var dropped = await scenario.RunAsync<IEntryDirectory, Result<Entry>>(directory => directory.UpdateAsync(product, 2, Json("""{"price":25}""")));
         var named = await scenario.RunAsync<IEntryDirectory, Result<Entry>>(directory => directory.CreateAsync(new NewEntry("product", Json("""{"name":"Mug","price":5}"""))));
         var definition = await scenario.RunAsync<IContentTypeDirectory, Result<ContentType>>(directory => directory.ReviseAsync(
-            "product", 1, new ContentTypeDefinition([new FieldDefinition("name", "text"), new FieldDefinition("price", "number", required: true)])));
+            "product", 1, new ContentTypeDefinition([new FieldDefinition("name", "text"), new FieldDefinition("price", "number", required: true)]), TestChangeSetTargets.ContentModel));
         var proposed = await scenario.RunAsync<IChangeSetDirectory, Result<ChangeSet>>(async directory =>
         {
             var changeSet = (await directory.OpenAsync(new NewChangeSet("Make the price required.", []))).Value;
