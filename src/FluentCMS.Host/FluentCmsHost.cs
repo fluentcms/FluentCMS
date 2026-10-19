@@ -191,7 +191,7 @@ public static class FluentCmsHost
     {
         services.AddFluentCmsCore();
         services.AddFluentCmsInfrastructure(configuration);
-        services.AddFluentCmsApi();
+        services.AddFluentCmsApi(configuration);
         services.AddFluentCmsAdmin();
 
         // Both modes share one key ring, so whatever the web host protects the stdio host can read.

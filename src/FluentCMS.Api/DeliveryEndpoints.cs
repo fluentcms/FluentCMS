@@ -21,7 +21,7 @@ public static class DeliveryEndpoints
 
     public static RouteGroupBuilder MapFluentCmsApi(this IEndpointRouteBuilder endpoints)
     {
-        var api = endpoints.MapGroup(Prefix).AllowAnonymous();
+        var api = endpoints.MapGroup(Prefix).AllowAnonymous().RequireRateLimiting(DeliveryRateLimit.PolicyName);
         api.MapGet("/content/{type}", ListAsync);
         api.MapGet("/entries/{id:guid}", GetAsync);
         api.MapGet("/entries/{id:guid}.md", GetMarkdownAsync);
@@ -31,7 +31,7 @@ public static class DeliveryEndpoints
         api.MapGet("/preview/changes", PreviewChangesAsync);
 
         // Where agents look for a site's index first, by the llms.txt convention.
-        endpoints.MapGet("/llms.txt", IndexMarkdownAsync).AllowAnonymous();
+        endpoints.MapGet("/llms.txt", IndexMarkdownAsync).AllowAnonymous().RequireRateLimiting(DeliveryRateLimit.PolicyName);
         return api;
     }
 
@@ -53,6 +53,12 @@ public static class DeliveryEndpoints
         IPublishedContent content,
         CancellationToken cancellationToken)
     {
+        // Not a slug, so no content type has it, and the database is not asked.
+        if (!SchemaNames.IsSlug(type))
+        {
+            return Problem([new Error(SchemaErrorCodes.ContentTypeNotFound, $"There is no content type '{type}' in this site.")]);
+        }
+
         var errors = new List<Error>();
         var size = PublishedQuery.DefaultLimit;
         if (limit is not null && !int.TryParse(limit, NumberStyles.None, CultureInfo.InvariantCulture, out size))
