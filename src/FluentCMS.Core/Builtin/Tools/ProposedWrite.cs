@@ -20,7 +20,7 @@ internal static class ProposedWrite
         CancellationToken cancellationToken)
     {
         var services = call.Services;
-        var ready = await target.CheckAsync(services, cancellationToken);
+        var ready = await target.CheckAsync(services, null, cancellationToken);
         if (!ready.IsSuccess)
         {
             return ToolResult.Failure(ready.Errors);

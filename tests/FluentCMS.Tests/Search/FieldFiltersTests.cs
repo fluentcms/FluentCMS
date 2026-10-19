@@ -10,7 +10,9 @@ public sealed class FieldFiltersTests
     [
         new FieldDefinition("name", "text"),
         new FieldDefinition("price", "number"),
+        new FieldDefinition("big", "number"),
         new FieldDefinition("launch", "dateTime"),
+        new FieldDefinition("released", "dateTime", settings: Json("""{"dateOnly": true}""")),
         new FieldDefinition("active", "boolean"),
         new FieldDefinition("category", "reference", settings: Json("""{"target": "category"}""")),
         new FieldDefinition("tags", "list", settings: Json("""{"itemType": "text"}""")),
@@ -26,6 +28,9 @@ public sealed class FieldFiltersTests
                 Filter("price", FieldOperator.Contains, "\"19\""),
                 Filter("price", FieldOperator.LessThan, "\"20\""),
                 Filter("launch", FieldOperator.AtLeast, "\"next spring\""),
+                Filter("launch", FieldOperator.AtLeast, "\"10/19/2026\""),
+                Filter("launch", FieldOperator.AtLeast, "\"2026-10-19T09:00:00\""),
+                Filter("released", FieldOperator.AtLeast, "\"2026-10-19T09:00:00Z\""),
                 Filter("active", FieldOperator.EqualTo, "\"yes\""),
                 Filter("category", FieldOperator.EqualTo, "\"not-an-id\""),
                 Filter("name", FieldOperator.Contains, "\"\""),
@@ -43,9 +48,12 @@ public sealed class FieldFiltersTests
                 SearchErrorCodes.FilterValueInvalid,
                 SearchErrorCodes.FilterValueInvalid,
                 SearchErrorCodes.FilterValueInvalid,
+                SearchErrorCodes.FilterValueInvalid,
+                SearchErrorCodes.FilterValueInvalid,
+                SearchErrorCodes.FilterValueInvalid,
             ],
             refused.Errors.Select(error => error.Code));
-        Assert.Contains("use equal_to, less_than, at_most, greater_than, at_least", refused.Errors[2].Message, StringComparison.Ordinal);
+        Assert.Contains("use equals, less_than, at_most, greater_than, at_least", refused.Errors[2].Message, StringComparison.Ordinal);
     }
 
     [Theory]
@@ -58,6 +66,10 @@ public sealed class FieldFiltersTests
     [InlineData("price", FieldOperator.AtLeast, "19.99", true)]
     [InlineData("launch", FieldOperator.LessThan, "\"2026-11-01T00:00:00Z\"", true)]
     [InlineData("launch", FieldOperator.GreaterThan, "\"2026-11-01T00:00:00+02:00\"", false)]
+    [InlineData("price", FieldOperator.EqualTo, "19.990", true)]
+    [InlineData("big", FieldOperator.EqualTo, "9007199254740993", false)]
+    [InlineData("released", FieldOperator.AtMost, "\"2026-10-19\"", true)]
+    [InlineData("released", FieldOperator.LessThan, "\"2026-10-19\"", false)]
     [InlineData("active", FieldOperator.EqualTo, "true", true)]
     [InlineData("active", FieldOperator.EqualTo, "false", false)]
     [InlineData("category", FieldOperator.EqualTo, "\"0192F3A1-7C2E-7A4B-9D3E-1F2A3B4C5D6E\"", true)]
@@ -70,6 +82,8 @@ public sealed class FieldFiltersTests
                 "name": "Widget Pro",
                 "price": 19.99,
                 "launch": "2026-10-19T09:00:00Z",
+                "released": "2026-10-19",
+                "big": 9007199254740992,
                 "active": true,
                 "category": "0192f3a1-7c2e-7a4b-9d3e-1f2a3b4c5d6e",
                 "tags": ["sale"]

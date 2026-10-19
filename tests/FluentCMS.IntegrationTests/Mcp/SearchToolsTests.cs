@@ -82,6 +82,7 @@ public sealed class SearchToolsTests
         Assert.Equal([(product, (Guid?)null), (page, product)], person.Hits.Select(hit => (hit.EntryId, hit.Via)));
     }
 
+    // Products are entities, so their price is a fact and the filter compares the fact's value.
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
     [PostgresData]
@@ -90,19 +91,28 @@ public sealed class SearchToolsTests
         await using var agent = await ConnectedAgent.StartAsync(provider);
         await agent.AsPersonAsync<IContentTypeDirectory, ContentType>(directory =>
             directory.CreateAsync(new NewContentType("product", "product", new ContentTypeDefinition(
-                [new FieldDefinition("title", "text"), new FieldDefinition("price", "number")]))));
+                [new FieldDefinition("title", "text"), new FieldDefinition("price", "number")],
+                isEntity: true))));
         await agent.AsPersonAsync<IContentTypeDirectory, ContentType>(directory =>
             directory.CreateAsync(new NewContentType("page", "page", new ContentTypeDefinition(
                 [new FieldDefinition("title", "text"), new FieldDefinition("product", "reference", settings: JsonSerializer.SerializeToElement(new { target = "product" }))]))));
-        var cheap = await CreateAsync(agent, "product", new { title = "Part 4411", price = 19.99 });
-        await CreateAsync(agent, "product", new { title = "Part 4412", price = 25 });
+        var cheap = await CreateAsync(agent, "product", new { title = Fact("Part 4411"), price = Fact(19.99) });
+        var dear = await CreateAsync(agent, "product", new { title = Fact("Part 4412"), price = Fact(25) });
         var page = await CreateAsync(agent, "page", new { title = "Spring sale", product = cheap.ToString() });
+        var earlier = await CreateAsync(agent, "page", new { title = "Last season", product = cheap.ToString() });
+        await agent.AsPersonAsync<IEntryDirectory, Entry>(entries =>
+            entries.UpdateAsync(earlier, 1, JsonSerializer.SerializeToElement(new { title = "Last season", product = (string?)null })));
 
         var underTwenty = await agent.CallAsync("search_entries", new()
         {
             ["query"] = "part",
             ["types"] = new[] { "product" },
             ["fields"] = new[] { new { field = "price", @operator = "less_than", value = 20 } },
+        });
+        var noWords = await agent.CallAsync("search_entries", new()
+        {
+            ["types"] = new[] { "product" },
+            ["fields"] = new[] { new { field = "title", @operator = "contains", value = "PART" } },
         });
         var referencing = await agent.CallAsync("search_entries", new() { ["types"] = new[] { "page" }, ["references"] = cheap.ToString() });
         var refused = await agent.FailAsync("search_entries", new()
@@ -112,9 +122,49 @@ public sealed class SearchToolsTests
         });
 
         Assert.Equal([cheap.ToString()], underTwenty["hits"]!.AsArray().Select(hit => (string?)hit!["id"]));
+        Assert.Equal(new[] { cheap, dear }.Order().Select(id => id.ToString()), noWords["hits"]!.AsArray().Select(hit => (string?)hit!["id"]));
         Assert.Equal([page.ToString()], referencing["hits"]!.AsArray().Select(hit => (string?)hit!["id"]));
         Assert.Equal([ToolErrorCodes.ArgumentInvalid, ToolErrorCodes.ArgumentInvalid], refused["errors"]!.AsArray().Select(error => (string?)error!["code"]));
         Assert.Contains("'below' is not an operator", (string?)refused["errors"]![0]!["message"]);
+    }
+
+    [Fact]
+    public async Task Field_filters_that_do_not_fit_one_type_are_tool_errors_with_their_codes()
+    {
+        await using var agent = await ConnectedAgent.StartAsync(DatabaseProviders.Sqlite);
+        await agent.AsPersonAsync<IContentTypeDirectory, ContentType>(directory =>
+            directory.CreateAsync(new NewContentType("product", "product", new ContentTypeDefinition(
+                [new FieldDefinition("title", "text"), new FieldDefinition("price", "number")]))));
+        await agent.CreateAsPersonAsync("page");
+
+        async Task<string?> CodeAsync(Dictionary<string, object?> arguments)
+        {
+            return (string?)(await agent.FailAsync("search_entries", arguments))["errors"]![0]!["code"];
+        }
+
+        var byPrice = new[] { new { field = "price", @operator = "less_than", value = 20 } };
+        Assert.Equal(SearchErrorCodes.FilterNeedsOneType, await CodeAsync(new() { ["query"] = "part", ["fields"] = byPrice }));
+        Assert.Equal(SearchErrorCodes.FilterNeedsOneType, await CodeAsync(new() { ["query"] = "part", ["types"] = new[] { "product", "page" }, ["fields"] = byPrice }));
+        Assert.Equal(SearchErrorCodes.FieldNotFound, await CodeAsync(new()
+        {
+            ["types"] = new[] { "product" },
+            ["fields"] = new[] { new { field = "colour", @operator = "equals", value = "red" } },
+        }));
+        Assert.Equal(SearchErrorCodes.OperatorNotSupported, await CodeAsync(new()
+        {
+            ["types"] = new[] { "product" },
+            ["fields"] = new[] { new { field = "price", @operator = "contains", value = "19" } },
+        }));
+        Assert.Equal(SearchErrorCodes.FilterValueInvalid, await CodeAsync(new()
+        {
+            ["types"] = new[] { "product" },
+            ["fields"] = new[] { new { field = "price", @operator = "less_than", value = "twenty" } },
+        }));
+    }
+
+    private static object Fact(object value)
+    {
+        return new { value, source = (string?)null, owner = (string?)null, validFrom = (string?)null, validUntil = (string?)null, lastVerified = (string?)null };
     }
 
     [Fact]

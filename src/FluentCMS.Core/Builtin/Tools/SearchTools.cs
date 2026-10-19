@@ -54,8 +54,8 @@ public sealed class SearchTools : IToolProvider
                 ToolSchemas.Json(
                     "fields",
                     $"Filters on the latest version's field values, all of which must hold; they need exactly one type in types. Operators: "
-                    + $"{OperatorNames}. Text, rich text and enum fields take equal_to and contains, numbers and date-times the comparisons, "
-                    + "booleans and references equal_to. An entity's field is compared by its fact's value.",
+                    + $"{OperatorNames}. Text, rich text and enum fields take equals and contains, numbers and date-times the comparisons, "
+                    + "booleans and references equals. An entity's field is compared by its fact's value.",
                     FieldsSchema,
                     JsonNode.Parse(FieldsForm)!,
                     required: false),

@@ -225,12 +225,25 @@ public sealed class SearchTests
             ContentTypes = ["product"],
             Fields = [new FieldFilter("colour", FieldOperator.EqualTo, Json("\"red\""))],
         });
+        await scenario.Entries.Schema.CreateAsync("event", Field("seats", "number"), Field("starts", "dateTime"));
+        var containsOnNumber = await RunAsync(scenario.Entries, new SearchQuery(string.Empty)
+        {
+            ContentTypes = ["event"],
+            Fields = [new FieldFilter("seats", FieldOperator.Contains, Json("\"10\""))],
+        });
+        var wrongKind = await RunAsync(scenario.Entries, new SearchQuery(string.Empty)
+        {
+            ContentTypes = ["event"],
+            Fields = [new FieldFilter("seats", FieldOperator.LessThan, Json("\"ten\"")), new FieldFilter("starts", FieldOperator.AtLeast, Json("\"10/19/2026\""))],
+        });
 
         Assert.Equal(SearchErrorCodes.FilterNeedsOneType, Assert.Single(noType.Errors).Code);
         Assert.Equal(SearchErrorCodes.FilterNeedsOneType, Assert.Single(twoTypes.Errors).Code);
         Assert.Equal(SearchErrorCodes.FilterNeedsOneType, Assert.Single(noWordsNoType.Errors).Code);
         Assert.Equal(SearchErrorCodes.FilterEmpty, Assert.Single(emptyFields.Errors).Code);
         Assert.Equal(SearchErrorCodes.FieldNotFound, Assert.Single(unknownField.Errors).Code);
+        Assert.Equal(SearchErrorCodes.OperatorNotSupported, Assert.Single(containsOnNumber.Errors).Code);
+        Assert.Equal([SearchErrorCodes.FilterValueInvalid, SearchErrorCodes.FilterValueInvalid], wrongKind.Errors.Select(error => error.Code));
     }
 
     [Theory]

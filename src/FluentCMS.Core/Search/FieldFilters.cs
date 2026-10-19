@@ -41,7 +41,12 @@ public sealed class FieldFilters
                 continue;
             }
 
-            if (Operators(field.Type) is not { } operators)
+            // A date-time field set to dateOnly holds calendar dates, and its filters take one.
+            var kind = field.Type == "dateTime" && field.Settings.TryGetProperty("dateOnly", out var dateOnly) && dateOnly.ValueKind == JsonValueKind.True
+                ? "date"
+                : field.Type;
+
+            if (Operators(kind) is not { } operators)
             {
                 errors.Add(new Error(
                     SearchErrorCodes.FieldNotFilterable,
@@ -58,15 +63,15 @@ public sealed class FieldFilters
                 continue;
             }
 
-            if (!ValueFits(field.Type, filter.Value))
+            if (!ValueFits(kind, filter.Value))
             {
                 errors.Add(new Error(
                     SearchErrorCodes.FilterValueInvalid,
-                    $"The value for the {field.Type} field '{field.Name}' must be {Expected(field.Type)}."));
+                    $"The value for the {field.Type} field '{field.Name}' must be {Expected(kind)}."));
                 continue;
             }
 
-            checkedFilters.Add((filter, field.Type));
+            checkedFilters.Add((filter, kind));
         }
 
         return errors.Count == 0
@@ -103,7 +108,7 @@ public sealed class FieldFilters
     {
         return op switch
         {
-            FieldOperator.EqualTo => "equal_to",
+            FieldOperator.EqualTo => "equals",
             FieldOperator.Contains => "contains",
             FieldOperator.LessThan => "less_than",
             FieldOperator.AtMost => "at_most",
@@ -117,7 +122,7 @@ public sealed class FieldFilters
         return type switch
         {
             "text" or "richText" or "enum" => [FieldOperator.EqualTo, FieldOperator.Contains],
-            "number" or "dateTime" => Ordering,
+            "number" or "dateTime" or "date" => Ordering,
             "boolean" or "reference" => [FieldOperator.EqualTo],
             _ => null,
         };
@@ -128,7 +133,8 @@ public sealed class FieldFilters
         return type switch
         {
             "number" => value.ValueKind == JsonValueKind.Number,
-            "dateTime" => value.ValueKind == JsonValueKind.String && Moment(value.GetString()) is not null,
+            "dateTime" => value.ValueKind == JsonValueKind.String && IsoDateTimes.IsPointInTime(value.GetString()),
+            "date" => value.ValueKind == JsonValueKind.String && IsoDateTimes.IsDate(value.GetString()),
             "boolean" => value.ValueKind is JsonValueKind.True or JsonValueKind.False,
             "reference" => value.ValueKind == JsonValueKind.String && Guid.TryParse(value.GetString(), out _),
             _ => value.ValueKind == JsonValueKind.String && value.GetString()!.Length > 0,
@@ -140,7 +146,8 @@ public sealed class FieldFilters
         return type switch
         {
             "number" => "a number, such as 19.99",
-            "dateTime" => "an ISO 8601 date and time, such as \"2026-10-19T09:00:00Z\"",
+            "dateTime" => "a point in time in ISO 8601 with an offset, such as \"2026-10-19T09:00:00Z\"",
+            "date" => "a calendar date as YYYY-MM-DD, such as \"2026-10-19\"",
             "boolean" => "true or false",
             "reference" => "the id of an entry or entity, such as \"0192f3a1-7c2e-7a4b-9d3e-1f2a3b4c5d6e\"",
             _ => "a non-empty string",
@@ -151,12 +158,20 @@ public sealed class FieldFilters
     {
         switch (type)
         {
+            // Numbers are stored as decimals, so they are compared as decimals, as the number field type does.
             case "number":
-                return actual.ValueKind == JsonValueKind.Number && Compare(filter.Operator, actual.GetDouble().CompareTo(filter.Value.GetDouble()));
+                return actual.ValueKind == JsonValueKind.Number
+                    && Compare(filter.Operator, actual.TryGetDecimal(out var number) && filter.Value.TryGetDecimal(out var limit)
+                        ? number.CompareTo(limit)
+                        : actual.GetDouble().CompareTo(filter.Value.GetDouble()));
             case "dateTime":
                 return actual.ValueKind == JsonValueKind.String
-                    && Moment(actual.GetString()) is { } moment
-                    && Compare(filter.Operator, moment.CompareTo(Moment(filter.Value.GetString())!.Value));
+                    && DateTimeOffset.TryParse(actual.GetString(), CultureInfo.InvariantCulture, DateTimeStyles.None, out var moment)
+                    && Compare(filter.Operator, moment.CompareTo(DateTimeOffset.Parse(filter.Value.GetString()!, CultureInfo.InvariantCulture)));
+            case "date":
+                return actual.ValueKind == JsonValueKind.String
+                    && DateOnly.TryParseExact(actual.GetString(), "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var day)
+                    && Compare(filter.Operator, day.CompareTo(DateOnly.ParseExact(filter.Value.GetString()!, "yyyy-MM-dd", CultureInfo.InvariantCulture)));
             case "boolean":
                 return actual.ValueKind == filter.Value.ValueKind;
             case "reference":
@@ -187,10 +202,5 @@ public sealed class FieldFilters
             FieldOperator.GreaterThan => comparison > 0,
             _ => comparison >= 0,
         };
-    }
-
-    private static DateTimeOffset? Moment(string? text)
-    {
-        return DateTimeOffset.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var moment) ? moment : null;
     }
 }
