@@ -1,3 +1,4 @@
+using FluentCMS.Core.Identity;
 using FluentCMS.Core.Results;
 
 namespace FluentCMS.Core.ChangeSets;
@@ -10,6 +11,9 @@ public sealed record ChangeSetListQuery
     public required IReadOnlyCollection<ChangeSetState> States { get; init; }
 
     public DateTimeOffset? EnteredSince { get; init; }
+
+    // Only the sets this person or agent opened; null for every set.
+    public Initiator? OpenedBy { get; init; }
 
     // Newest first puts the set that entered its state last first; otherwise the set that has waited longest comes first.
     public bool NewestFirst { get; init; }

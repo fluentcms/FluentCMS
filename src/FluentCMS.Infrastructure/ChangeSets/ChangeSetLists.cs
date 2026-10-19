@@ -17,19 +17,6 @@ internal sealed class ChangeSetLists(FluentCmsDbContext context) : IChangeSetLis
 {
     private const string SubjectType = "change_set";
 
-    private static readonly string[] Moves =
-    [
-        ChangeSetDirectory.OpenedOperation,
-        "change_set.reopened",
-        "change_set.submitted",
-        "change_set.checks_failed",
-        "change_set.awaiting_review",
-        "change_set.approved",
-        "change_set.published",
-        "change_set.rejected",
-        "change_set.reverted",
-    ];
-
     public async Task<Result<ChangeSetList>> ListAsync(ChangeSetListQuery query, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
@@ -76,9 +63,9 @@ internal sealed class ChangeSetLists(FluentCmsDbContext context) : IChangeSetLis
     {
         var parameters = new List<object>();
         var openedSubject = Parameter(parameters, SubjectType);
-        var opened = Parameter(parameters, ChangeSetDirectory.OpenedOperation);
+        var opened = Parameter(parameters, ChangeSetMoves.Opened);
         var movedSubject = Parameter(parameters, SubjectType);
-        var moves = string.Join(", ", Moves.Select(move => Parameter(parameters, move)));
+        var moves = string.Join(", ", ChangeSetMoves.Operations.Select(move => Parameter(parameters, move)));
         var site = Parameter(parameters, Site.Default.Id);
         var states = string.Join(", ", query.States.Distinct().Select(state => Parameter(parameters, state.ToString())));
 
@@ -91,7 +78,7 @@ internal sealed class ChangeSetLists(FluentCmsDbContext context) : IChangeSetLis
                     (SELECT MAX(e."Timestamp") FROM "AuditEvents" e
                         WHERE e."SubjectType" = {movedSubject} AND e."SubjectId" = s."Id" AND e."Operation" IN ({moves})) AS "StateSince"
                 FROM "ChangeSets" s
-                WHERE s."SiteId" = {site} AND s."State" IN ({states})
+                WHERE s."SiteId" = {site} AND s."State" IN ({states}){OpenedBy(query, parameters)}
             ) AS "Listed"
             """;
 
@@ -101,6 +88,17 @@ internal sealed class ChangeSetLists(FluentCmsDbContext context) : IChangeSetLis
         }
 
         return (sql, parameters);
+    }
+
+    private static string OpenedBy(ChangeSetListQuery query, List<object> parameters)
+    {
+        if (query.OpenedBy is not { } initiator)
+        {
+            return string.Empty;
+        }
+
+        var (kind, id) = InitiatorKinds.Describe(initiator);
+        return $" AND s.\"InitiatorKind\" = {Parameter(parameters, kind)} AND s.\"InitiatorId\" = {Parameter(parameters, id)}";
     }
 
     private static string Parameter(List<object> parameters, object value)
