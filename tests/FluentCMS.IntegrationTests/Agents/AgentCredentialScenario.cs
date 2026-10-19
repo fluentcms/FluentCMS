@@ -1,12 +1,9 @@
-using System.Collections.Concurrent;
-using System.Text;
 using FluentCMS.Core.Agents;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Sites;
 using FluentCMS.Infrastructure.Agents;
 using FluentCMS.Infrastructure.Audit;
 using FluentCMS.Infrastructure.Persistence;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -23,20 +20,17 @@ internal sealed class AgentCredentialScenario : IAsyncDisposable
 
     public static readonly DateTimeOffset Start = new(2026, 10, 18, 12, 0, 0, TimeSpan.Zero);
 
-    private readonly string _provider;
     private readonly TemporaryDatabase _database;
     private readonly SwitchableInitiator _initiator;
     private readonly CapturedLogs _logs;
 
     private AgentCredentialScenario(
-        string provider,
         TemporaryDatabase database,
         ServiceProvider services,
         SwitchableInitiator initiator,
         ManualClock clock,
         CapturedLogs logs)
     {
-        _provider = provider;
         _database = database;
         Services = services;
         _initiator = initiator;
@@ -70,7 +64,7 @@ internal sealed class AgentCredentialScenario : IAsyncDisposable
                 .AddSingleton<TimeProvider>(clock));
 
         await TestServices.MigrateAsync(services);
-        return new AgentCredentialScenario(provider, database, services, initiator, clock, logs);
+        return new AgentCredentialScenario(database, services, initiator, clock, logs);
     }
 
     public static NewAgentCredential CatalogSync(DateTimeOffset? expiresAt = null)
@@ -110,50 +104,9 @@ internal sealed class AgentCredentialScenario : IAsyncDisposable
         return await query(scope.ServiceProvider.GetRequiredService<FluentCmsDbContext>());
     }
 
-    // Whether any value stored anywhere holds the text: the bytes of the SQLite file, or every row of every table on PostgreSQL.
-    public async Task<bool> StoresTextAsync(string text)
+    public Task<bool> StoresTextAsync(string text)
     {
-        if (_provider == DatabaseProviders.Sqlite)
-        {
-            SqliteConnection.ClearAllPools();
-            var path = new SqliteConnectionStringBuilder(_database.Configuration["Database:ConnectionString"]).DataSource;
-            var bytes = await File.ReadAllBytesAsync(path);
-            return bytes.AsSpan().IndexOf(Encoding.UTF8.GetBytes(text)) >= 0;
-        }
-
-        return await QueryAsync(async context =>
-        {
-            var connection = context.Database.GetDbConnection();
-            await connection.OpenAsync();
-
-            var tables = new List<string>();
-            await using (var list = connection.CreateCommand())
-            {
-                list.CommandText = "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'";
-                await using var reader = await list.ExecuteReaderAsync();
-                while (await reader.ReadAsync())
-                {
-                    tables.Add(reader.GetString(0));
-                }
-            }
-
-            foreach (var table in tables)
-            {
-                await using var search = connection.CreateCommand();
-                search.CommandText = $"SELECT EXISTS (SELECT 1 FROM \"{table}\" AS stored WHERE strpos(stored::text, @text) > 0)";
-                var parameter = search.CreateParameter();
-                parameter.ParameterName = "text";
-                parameter.Value = text;
-                search.Parameters.Add(parameter);
-
-                if ((bool)(await search.ExecuteScalarAsync())!)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        });
+        return _database.StoresTextAsync(Services, text);
     }
 
     public async ValueTask DisposeAsync()
@@ -165,40 +118,5 @@ internal sealed class AgentCredentialScenario : IAsyncDisposable
     private sealed class SwitchableInitiator : ICurrentInitiator
     {
         public Initiator? Current { get; set; }
-    }
-
-    private sealed class CapturedLogs : ILoggerProvider
-    {
-        private readonly ConcurrentQueue<string> _messages = new();
-
-        public IReadOnlyCollection<string> Messages => _messages;
-
-        public ILogger CreateLogger(string categoryName)
-        {
-            return new Logger(this);
-        }
-
-        public void Dispose()
-        {
-        }
-
-        private sealed class Logger(CapturedLogs owner) : ILogger
-        {
-            public IDisposable? BeginScope<TState>(TState state)
-                where TState : notnull
-            {
-                return null;
-            }
-
-            public bool IsEnabled(LogLevel logLevel)
-            {
-                return true;
-            }
-
-            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
-            {
-                owner._messages.Enqueue(formatter(state, exception) + exception);
-            }
-        }
     }
 }
