@@ -2,6 +2,7 @@ using FluentCMS.Infrastructure.Agents;
 using FluentCMS.Infrastructure.Audit;
 using FluentCMS.Infrastructure.ChangeSets;
 using FluentCMS.Infrastructure.Checks;
+using FluentCMS.Infrastructure.Routing;
 using FluentCMS.Infrastructure.Content;
 using FluentCMS.Infrastructure.Entities;
 using FluentCMS.Infrastructure.Jobs;
@@ -45,6 +46,10 @@ public abstract class FluentCmsDbContext(DbContextOptions options) : IdentityDbC
 
     public DbSet<CheckVersionRow> CheckVersions => Set<CheckVersionRow>();
 
+    public DbSet<RoutingRuleRow> RoutingRules => Set<RoutingRuleRow>();
+
+    public DbSet<RoutingRuleVersionRow> RoutingRuleVersions => Set<RoutingRuleVersionRow>();
+
     public DbSet<JobRow> Jobs => Set<JobRow>();
 
     public DbSet<ModelCallRow> ModelCalls => Set<ModelCallRow>();
@@ -67,6 +72,8 @@ public abstract class FluentCmsDbContext(DbContextOptions options) : IdentityDbC
         builder.ApplyConfiguration(new EntityFactConfiguration());
         builder.ApplyConfiguration(new CheckConfiguration());
         builder.ApplyConfiguration(new CheckVersionConfiguration());
+        builder.ApplyConfiguration(new RoutingRuleConfiguration());
+        builder.ApplyConfiguration(new RoutingRuleVersionConfiguration());
         builder.ApplyConfiguration(new JobConfiguration());
         builder.ApplyConfiguration(new ModelCallConfiguration());
 
@@ -96,5 +103,6 @@ public sealed class PostgreSqlFluentCmsDbContext(DbContextOptions<PostgreSqlFlue
         builder.Entity<ContentTypeVersionRow>().Property(version => version.Definition).HasColumnType("jsonb");
         builder.Entity<EntryVersionRow>().Property(version => version.Fields).HasColumnType("jsonb");
         builder.Entity<CheckVersionRow>().Property(version => version.Definition).HasColumnType("jsonb");
+        builder.Entity<RoutingRuleVersionRow>().Property(version => version.Definition).HasColumnType("jsonb");
     }
 }

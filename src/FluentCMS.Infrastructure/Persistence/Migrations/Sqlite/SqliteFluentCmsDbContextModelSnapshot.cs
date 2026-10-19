@@ -818,6 +818,64 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                     b.ToTable("Users", (string)null);
                 });
 
+            modelBuilder.Entity("FluentCMS.Infrastructure.Routing.RoutingRuleRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("ActiveVersion")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("SiteId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SiteId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("RoutingRules", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_RoutingRules_ActiveVersion", "\"ActiveVersion\" IS NULL OR (\"ActiveVersion\" >= 1 AND \"ActiveVersion\" <= \"Version\")");
+
+                            t.HasCheckConstraint("CK_RoutingRules_Version", "\"Version\" >= 1");
+                        });
+                });
+
+            modelBuilder.Entity("FluentCMS.Infrastructure.Routing.RoutingRuleVersionRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Definition")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("RoutingRuleId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoutingRuleId", "Version")
+                        .IsUnique();
+
+                    b.ToTable("RoutingRuleVersions", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_RoutingRuleVersions_Version", "\"Version\" >= 1");
+                        });
+                });
+
             modelBuilder.Entity("FluentCMS.Infrastructure.Schema.ContentTypeRow", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1100,6 +1158,24 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                         .WithMany()
                         .HasForeignKey("AgentCredentialId")
                         .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("FluentCMS.Infrastructure.Routing.RoutingRuleRow", b =>
+                {
+                    b.HasOne("FluentCMS.Infrastructure.Sites.SiteRow", null)
+                        .WithMany()
+                        .HasForeignKey("SiteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FluentCMS.Infrastructure.Routing.RoutingRuleVersionRow", b =>
+                {
+                    b.HasOne("FluentCMS.Infrastructure.Routing.RoutingRuleRow", null)
+                        .WithMany()
+                        .HasForeignKey("RoutingRuleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("FluentCMS.Infrastructure.Schema.ContentTypeRow", b =>
