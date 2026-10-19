@@ -1,5 +1,3 @@
-using System.Buffers;
-using System.Collections.Concurrent;
 using System.Collections.Frozen;
 using System.Globalization;
 using System.Text;
@@ -82,11 +80,9 @@ internal sealed class InstructionsCheckType : ICheckType
     // kept as written; it also keeps the folded text within a few characters of each one read.
     private const int MaxExpansion = 3;
 
-    // How each character other than ASCII folds, kept across texts so a field of many different characters costs no more than v2's
-    // reading did; bounded, since a text can hold any of them.
-    private const int MaxCachedFolds = 1 << 16;
-
-    private static readonly ConcurrentDictionary<int, (string Plain, string Latin)> Folds = new();
+    // How each character of the Basic Multilingual Plane folds, worked out once per process. One slot per character, so it needs no
+    // lock and no bound; a character outside the plane is folded each time it is read, which costs about as much as reading it.
+    private static readonly FoldedRune?[] BmpFolds = new FoldedRune?[0x10000];
 
     public string Name => "instructions";
 
@@ -105,11 +101,12 @@ internal sealed class InstructionsCheckType : ICheckType
 
     public Task<CheckOutcome> EvaluateAsync(CheckInput input, CancellationToken cancellationToken)
     {
-        // A phrase with nothing left once folded matches nothing, as when it was saved before phrases were folded. A site phrase is
-        // matched in its own script, either case, and as Latin look-alikes when it is written in Latin.
+        // A phrase with nothing left once folded matches nothing, as when it was saved before phrases were folded. A phrase written
+        // in Latin letters is matched on the Latin copy, so look-alike spellings of it count; any other is matched in its own script,
+        // in either case.
         var phrases = (new CheckSettingsReader(Name, input.Settings).OptionalStringList("phrases") ?? [])
             .Select(Fold)
-            .SelectMany(phrase => new[] { (Latin: false, Words: Words(phrase.Plain)), (Latin: true, Words: Words(phrase.Latin)) })
+            .Select(phrase => (Latin: Ascii.IsValid(phrase.Plain), Words: Words(phrase.Plain)))
             .Where(phrase => phrase.Words.Count > 0)
             .Select(phrase => (phrase.Latin, Pattern: new Regex(string.Join(@"\s+", phrase.Words), Linear, MatchTimeout)))
             .ToList();
@@ -142,7 +139,9 @@ internal sealed class InstructionsCheckType : ICheckType
             }
         }
 
-        return Task.FromResult(findings.Count == 0 ? CheckOutcome.Pass() : CheckOutcome.Fail(findings));
+        // A key and its value point at the same place, so the same quote in both is one finding.
+        var distinct = findings.Distinct().ToList();
+        return Task.FromResult(distinct.Count == 0 ? CheckOutcome.Pass() : CheckOutcome.Fail(distinct));
     }
 
     // The text as a model may read it, so a look-alike spelling hides nothing: compatibility forms such as fullwidth or mathematical
@@ -171,14 +170,7 @@ internal sealed class InstructionsCheckType : ICheckType
             }
             else
             {
-                if (!Folds.TryGetValue(rune.Value, out var folded))
-                {
-                    folded = FoldRune(rune);
-                    if (Folds.Count < MaxCachedFolds)
-                    {
-                        Folds.TryAdd(rune.Value, folded);
-                    }
-                }
+                var folded = rune.IsBmp ? BmpFolds[rune.Value] ??= FoldRune(rune) : FoldRune(rune);
 
                 plain.Append(folded.Plain);
                 latin.Append(folded.Latin);
@@ -194,16 +186,16 @@ internal sealed class InstructionsCheckType : ICheckType
         return new FoldedText(plain.ToString(), latin.ToString(), [.. origins]);
     }
 
-    private static (string Plain, string Latin) FoldRune(Rune rune)
+    private static FoldedRune FoldRune(Rune rune)
     {
         if (Rune.GetUnicodeCategory(rune) == UnicodeCategory.Format || IsVariationSelector(rune))
         {
-            return (string.Empty, string.Empty);
+            return new FoldedRune(string.Empty, string.Empty);
         }
 
         if (BlankLetters.Contains(rune.Value))
         {
-            return (" ", " ");
+            return new FoldedRune(" ", " ");
         }
 
         var written = rune.ToString();
@@ -211,7 +203,7 @@ internal sealed class InstructionsCheckType : ICheckType
         // A look-alike the table names is read as its Latin letter before any decomposition, such as U+03F2 before it becomes a sigma.
         if (rune.IsBmp && LatinLookalikes.TryGetValue(rune.Value, out var lookalike))
         {
-            return (written, lookalike.ToString());
+            return new FoldedRune(written, lookalike.ToString());
         }
 
         string decomposed;
@@ -246,13 +238,16 @@ internal sealed class InstructionsCheckType : ICheckType
             }
         }
 
-        return (plain.ToString(), latin.ToString());
+        return new FoldedRune(plain.ToString(), latin.ToString());
     }
 
     private static List<string> Words(string text)
     {
         return [.. text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Select(Regex.Escape)];
     }
+
+    // A class, so a slot of the shared table is written and read whole by any thread.
+    private sealed record FoldedRune(string Plain, string Latin);
 
     private readonly record struct FoldedText(string Plain, string Latin, int[]? Origins)
     {
