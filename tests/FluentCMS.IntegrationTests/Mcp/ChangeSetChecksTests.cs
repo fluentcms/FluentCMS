@@ -261,6 +261,39 @@ public sealed class ChangeSetChecksTests
             (judgement.ChangeSetId!.Value, judgement.Model, judgement.PromptHash, judgement.InitiatorKind, judgement.InitiatorName));
     }
 
+    // SEC-04: the engine judges a person's set on that person's behalf, so its LLM-judged checks run, uncapped as people are, rather
+    // than being refused for naming no one.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_person_s_set_is_judged_on_that_person_s_behalf(string provider)
+    {
+        await using var agent = await ConnectedAgent.StartAsync(
+            provider,
+            settings: FastQueue,
+            configure: builder => builder.Services.AddFluentCmsExtension<ICheckType, RecordingJudge>());
+        await ProductChecksAsync(agent);
+        await ActivateAsync(agent, "calm", Definition(RecordingJudge.Name, "{}", "A kettle", "BUY!!!"));
+
+        var set = await agent.AsPersonAsync<IChangeSetDirectory, ChangeSet>(directory => directory.OpenAsync(new NewChangeSet("Launch the kettle.", ["exports/catalog.csv"])));
+        var entry = await agent.AsPersonAsync<IEntryDirectory, Entry>(directory => directory.CreateAsync(new NewEntry("product-page", Title("BUY THIS KETTLE!!!"))));
+        await agent.AsPersonAsync<IChangeSetDirectory, ChangeSet>(directory =>
+            directory.AddOperationAsync(set.Id, ChangeOperation.Create(OperationKind.Create, ItemKind.Entry, entry.Id, null, 1).Value));
+        await agent.AsPersonAsync<IChangeSetChecks, ChangeSetSubmission>(checks => checks.SubmitAsync(set.Id));
+
+        var deadline = DateTime.UtcNow.AddSeconds(60);
+        ChangeSetChecksState state;
+        do
+        {
+            await Task.Delay(100);
+            state = await agent.AsPersonAsync<IChangeSetChecks, ChangeSetChecksState>(checks => checks.GetAsync(set.Id));
+        }
+        while (state.Job?.State is not (JobState.Succeeded or JobState.Failed or JobState.Dead) && DateTime.UtcNow < deadline);
+
+        Assert.Equal(ChangeSetState.ChecksFailed, state.ChangeSet.State);
+        Assert.Contains(RecordingJudge.Calls, call => call.OnBehalfOf is UserInitiator && call.RanAs == SystemInitiator.Checks);
+    }
+
     // PERF-02: deterministic checks over a 200-item set finish in under ten seconds; a set that large runs as a job.
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
