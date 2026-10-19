@@ -137,7 +137,19 @@ public sealed partial class RuleDefinition
                 scope = new RuleScope(ReadList(stored, "contentTypes"), ReadList(stored, "fields"), ReadList(stored, "locales"));
             }
 
-            var parsedSeverity = severity.GetString() == "warn" ? CheckSeverity.Warn : CheckSeverity.Block;
+            CheckSeverity parsedSeverity;
+            switch (severity.GetString())
+            {
+                case "block":
+                    parsedSeverity = CheckSeverity.Block;
+                    break;
+                case "warn":
+                    parsedSeverity = CheckSeverity.Warn;
+                    break;
+                default:
+                    return Malformed($"the severity '{severity.GetString()}' is not block or warn");
+            }
+
             return Result<RuleDefinition>.Success(new RuleDefinition(parsedKind, text.GetString()!, parsedSeverity, scope));
         }
         catch (Exception exception) when (exception is JsonException or InvalidOperationException)

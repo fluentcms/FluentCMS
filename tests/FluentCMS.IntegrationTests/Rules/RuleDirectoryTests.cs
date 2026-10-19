@@ -73,6 +73,8 @@ public sealed class RuleDirectoryTests
         Assert.Equal(["scope.fields", "severity", "text"], diff.Properties.Select(property => property.Name).Order(StringComparer.Ordinal));
         var text = diff.Properties.Single(property => property.Name == "text");
         Assert.Equal(("Never claim best in class.", "Avoid superlatives such as best in class."), (text.Before!.Value.GetString(), text.After!.Value.GetString()));
+        var fields = diff.Properties.Single(property => property.Name == "scope.fields");
+        Assert.Equal(("""["headline"]""", (string?)null), (fields.Before!.Value.GetRawText(), fields.After?.GetRawText()));
 
         await scenario.PublishAsync(revising.Id);
 
@@ -106,6 +108,24 @@ public sealed class RuleDirectoryTests
         Assert.Equal((RuleState.Active, 1), (restored.State, restored.Version));
     }
 
+    // A revert restores what its set changed: reverting a rule's creation makes it the draft it was, not a retired rule.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task Reverting_a_rules_creation_makes_it_a_draft_again(string provider)
+    {
+        await using var scenario = await ScenarioAsync(provider);
+        var changeSet = await scenario.OpenAsync();
+        await RulesAsync(scenario, rules => rules.CreateAsync(new NewRule("no-superlatives", NoSuperlatives), ChangeSetTarget.Existing(changeSet.Id)));
+        await scenario.PublishAsync(changeSet.Id);
+
+        var revert = (await scenario.AsPersonAsync(directory => directory.RevertAsync(changeSet.Id, "Not yet."))).Value;
+        await scenario.PublishAsync(revert.Id);
+
+        var rule = (await RulesAsync(scenario, rules => rules.GetAsync("no-superlatives"))).Value;
+        Assert.Equal((RuleState.Draft, (int?)null), (rule.State, rule.ActiveVersion));
+    }
+
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
     [PostgresData]
@@ -116,12 +136,12 @@ public sealed class RuleDirectoryTests
         var changeSet = await scenario.OpenAsync();
         var target = ChangeSetTarget.Existing(changeSet.Id);
 
-        var invalid = await RulesAsync(scenario, rules => rules.CreateAsync(new NewRule("loud", new RuleDefinition((RuleKind)9, " ")), target));
+        var invalid = await RulesAsync(scenario, rules => rules.CreateAsync(new NewRule("loud", new RuleDefinition((RuleKind)9, " ", (CheckSeverity)5)), target));
         var taken = await RulesAsync(scenario, rules => rules.CreateAsync(new NewRule("no-superlatives", NoSuperlatives), target));
         var unknown = await RulesAsync(scenario, rules => rules.ReviseAsync("no-such-rule", 1, NoSuperlatives, target));
         var stale = await RulesAsync(scenario, rules => rules.ReviseAsync("no-superlatives", 5, NoSuperlatives, target));
 
-        Assert.Equal([RuleErrorCodes.KindUnknown, RuleErrorCodes.TextInvalid], invalid.Errors.Select(error => error.Code));
+        Assert.Equal([RuleErrorCodes.KindUnknown, RuleErrorCodes.TextInvalid, RuleErrorCodes.SeverityUnknown], invalid.Errors.Select(error => error.Code));
         Assert.Equal(RuleErrorCodes.SlugTaken, Assert.Single(taken.Errors).Code);
         Assert.Equal(RuleErrorCodes.NotFound, Assert.Single(unknown.Errors).Code);
         Assert.Equal(RuleErrorCodes.VersionConflict, Assert.Single(stale.Errors).Code);

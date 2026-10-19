@@ -1004,9 +1004,9 @@ internal sealed class ChangeSetDirectory(
 
         if (operation.ItemKind == ItemKind.Rule)
         {
-            // A retirement published from here, or a revert of the rule's creation, takes it out of the rule book; its versions stay,
-            // and a revert of the retirement makes it active again (RUL-03).
-            var state = operation.ProposedVersion is null ? RuleState.Retired : RuleState.Active;
+            // A retirement published from here retires the rule, and a revert of the retirement makes it active again. A revert of the
+            // rule's creation puts it back as the draft it was before that set, since no set retired it (RUL-03). Its versions stay.
+            var state = operation.ProposedVersion is not null ? RuleState.Active : revert ? RuleState.Draft : RuleState.Retired;
             return await context.Rules
                 .Where(rule => rule.Id == operation.ItemId && rule.ActiveVersion == operation.BaseVersion)
                 .ExecuteUpdateAsync(

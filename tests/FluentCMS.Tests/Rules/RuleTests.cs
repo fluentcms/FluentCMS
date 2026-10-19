@@ -80,6 +80,7 @@ public sealed class RuleTests
     [Theory]
     [InlineData("""{"kind":"voice_and_style","text":"x"}""")]
     [InlineData("""{"kind":"style","text":"x","severity":"block"}""")]
+    [InlineData("""{"kind":"factual","text":"x","severity":"Warn"}""")]
     [InlineData("""{"kind":"factual","text":"x","severity":"block","scope":{"fields":"body"}}""")]
     [InlineData("""{"kind":"factual","kind":"factual","text":"x","severity":"block"}""")]
     public void A_stored_document_that_is_not_a_rule_says_why(string json)
