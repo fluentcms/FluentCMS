@@ -1,5 +1,7 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Entities;
 using FluentCMS.Core.Schema;
@@ -79,6 +81,48 @@ public sealed class EntityToolsTests
 
         Assert.True((bool)facts["facts"]!.AsArray().Single(fact => (string?)fact!["field"] == "price")!["unsourced"]!);
         Assert.Contains(unsourced["facts"]!.AsArray(), flag => (string?)flag!["field"] == "price" && (int)flag["version"]! == 2);
+    }
+
+    // ENT-03: a price last verified long ago is listed until a re-verified version publishes.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_stale_price_is_listed_until_its_re_verification_publishes(string provider)
+    {
+        await using var agent = await ConnectedAgent.StartAsync(provider);
+        await CatalogAsync(agent);
+        var verified = new DateTimeOffset(2025, 1, 2, 3, 4, 5, TimeSpan.Zero);
+        var drill = await CreateAsync(
+            agent,
+            "product",
+            $$"""{"name": {{Fact("\"Drill\"")}}, "price": {"value": 99, "source": {"kind": "system", "reference": "seed"}, "owner": null, "validFrom": null, "validUntil": null, "lastVerified": "2025-01-02T03:04:05Z"} }""");
+        await PublishAsync(agent, drill);
+
+        var before = await agent.CallAsync("list_stale_facts", new() { ["content_type"] = "product" });
+        var proposed = await agent.CallAsync("set_entity_fact", new()
+        {
+            ["id"] = drill.ToString(),
+            ["base_version"] = 1,
+            ["field"] = "price",
+            ["value"] = 99,
+            ["source"] = Export,
+            ["last_verified"] = DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture),
+            ["session_id"] = "verify-prices",
+            ["rationale"] = "Checked against the export.",
+        });
+        var proposedOnly = await agent.CallAsync("list_stale_facts", new());
+        var setId = (string)proposed["changeSet"]!["id"]!;
+        await agent.CallAsync("submit_change_set", new() { ["id"] = setId });
+        await PublishAsPersonAsync(agent, setId);
+        var after = await agent.CallAsync("list_stale_facts", new());
+
+        var fact = Assert.Single(before["facts"]!.AsArray())!;
+        Assert.Equal(
+            (drill.ToString(), "price", 1, "unverified", true),
+            ((string?)fact["entityId"], (string?)fact["field"], (int)fact["version"]!, (string?)fact["reason"], (bool)fact["isPublished"]!));
+        Assert.Equal(verified.AddDays(180), DateTimeOffset.Parse((string)fact["staleSince"]!, CultureInfo.InvariantCulture));
+        Assert.Equal(1, (int)Assert.Single(proposedOnly["facts"]!.AsArray())!["version"]!);
+        Assert.Empty(after["facts"]!.AsArray());
     }
 
     [Theory]
@@ -185,6 +229,13 @@ public sealed class EntityToolsTests
         return agent.QueryAsync(context => context.Entries
             .Where(row => entries.Contains(row.Id))
             .ExecuteUpdateAsync(setters => setters.SetProperty(row => row.PublishedVersion, 1)));
+    }
+
+    private static async Task PublishAsPersonAsync(ConnectedAgent agent, string setId)
+    {
+        var id = Guid.Parse(setId);
+        await agent.AsPersonAsync<IChangeSetDirectory, ChangeSet>(directory => directory.TransitionAsync(id, ChangeSetState.Approved));
+        await agent.AsPersonAsync<IChangeSetDirectory, ChangeSet>(directory => directory.PublishAsync(id));
     }
 
     private static string Fact(string value)

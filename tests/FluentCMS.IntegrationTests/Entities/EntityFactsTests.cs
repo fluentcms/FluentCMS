@@ -1,15 +1,18 @@
+using System.Globalization;
 using FluentCMS.Core.Agents;
 using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Entities;
 using FluentCMS.Core.Results;
 using FluentCMS.Core.Schema;
+using FluentCMS.Infrastructure.Entities;
 using FluentCMS.Infrastructure.Persistence;
 using FluentCMS.IntegrationTests.ChangeSets;
 using FluentCMS.IntegrationTests.Content;
 using FluentCMS.IntegrationTests.Schema;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using static FluentCMS.IntegrationTests.Content.EntryScenario;
 
 namespace FluentCMS.IntegrationTests.Entities;
@@ -141,7 +144,7 @@ public sealed class EntityFactsTests
                 Assert.True((await types.CreateAsync(new NewContentType(slug, slug, new ContentTypeDefinition(fields, isEntity)), TestChangeSetTargets.ContentModel)).IsSuccess);
             }
 
-            Assert.True((await entries.CreateAsync(new NewEntry("category", Json($$"""{"name": {{Fact("\"Tools\"")}}}""")))).IsSuccess);
+            Assert.True((await entries.CreateAsync(new NewEntry("category", Json("""{"name": {"value": "Tools", "source": null, "owner": null, "validFrom": null, "validUntil": "2020-01-01T00:00:00Z", "lastVerified": null}}""")))).IsSuccess);
             Assert.True((await entries.CreateAsync(new NewEntry("product", Json(ProductFields("null", "99"))))).IsSuccess);
         }
 
@@ -152,10 +155,89 @@ public sealed class EntityFactsTests
         var facts = agentScope.ServiceProvider.GetRequiredService<IEntityFacts>();
         var visible = (await facts.UnsourcedAsync()).Value;
         var refused = await facts.UnsourcedAsync("category");
+        var stale = (await facts.StaleAsync()).Value;
+        var staleRefused = await facts.StaleAsync("category");
 
         Assert.All(visible, flag => Assert.Equal("product", flag.Type));
         Assert.Single(visible);
         Assert.Equal(AgentPermissionErrorCodes.ScopeDenied, Assert.Single(refused.Errors).Code);
+        Assert.DoesNotContain(stale, fact => fact.Type == "category");
+        Assert.Equal(AgentPermissionErrorCodes.ScopeDenied, Assert.Single(staleRefused.Errors).Code);
+    }
+
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task Facts_past_valid_until_or_verified_too_long_ago_are_listed_as_stale(string provider)
+    {
+        await using var scenario = await CreateAsync(provider);
+        var now = Now();
+        var expired = await PricedAsync(scenario, validUntil: Time(new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.Zero)), lastVerified: "null");
+        var unverified = await PricedAsync(scenario, validUntil: "null", lastVerified: Time(now.AddDays(-400)));
+        var both = await PricedAsync(scenario, validUntil: Time(new DateTimeOffset(2021, 1, 1, 0, 0, 0, TimeSpan.Zero)), lastVerified: Time(now.AddDays(-400)));
+        var current = await PricedAsync(scenario, validUntil: Time(now.AddDays(30)), lastVerified: Time(now.AddDays(-10)));
+        var neverVerified = await PricedAsync(scenario, validUntil: "null", lastVerified: "null");
+        var deleted = await PricedAsync(scenario, validUntil: Time(new DateTimeOffset(2019, 1, 1, 0, 0, 0, TimeSpan.Zero)), lastVerified: "null");
+        await scenario.Schema.QueryAsync(context => context.Entries
+            .Where(row => row.Id == unverified)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(row => row.PublishedVersion, 1)));
+        await scenario.UpdateAsync(unverified, 1, PricedFields("null", Time(now.AddDays(-400)), price: "109"));
+        await scenario.RunAsync(entries => entries.DeleteAsync(deleted, 1));
+        await scenario.CreateAsync("blog-post", """{"title": "No facts here"}""");
+
+        var stale = (await FactsAsync(scenario, facts => facts.StaleAsync())).Value;
+        var products = (await FactsAsync(scenario, facts => facts.StaleAsync("product"))).Value;
+
+        Assert.Equal(
+            new[]
+            {
+                new StaleFact(expired, "product", "price", 1, true, false, StaleReason.Expired, new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.Zero)),
+                new StaleFact(both, "product", "price", 1, true, false, StaleReason.Expired, new DateTimeOffset(2021, 1, 1, 0, 0, 0, TimeSpan.Zero)),
+            },
+            stale.Take(2));
+        Assert.Equal(
+            [(unverified, 1, false, true), (unverified, 2, true, false)],
+            stale.Skip(2).Select(fact => (fact.EntityId, fact.Version, fact.IsLatest, fact.IsPublished)));
+        Assert.All(stale.Skip(2), fact => Assert.Equal((StaleReason.Unverified, now.AddDays(-400 + 180)), (fact.Reason, fact.StaleSince)));
+        Assert.DoesNotContain(stale, fact => fact.EntityId == current || fact.EntityId == neverVerified || fact.EntityId == deleted);
+        Assert.Equal(stale, products);
+        Assert.Equal(EntityErrorCodes.TypeNotEntity, Assert.Single((await FactsAsync(scenario, facts => facts.StaleAsync("blog-post"))).Errors).Code);
+        Assert.Equal(SchemaErrorCodes.ContentTypeNotFound, Assert.Single((await FactsAsync(scenario, facts => facts.StaleAsync("news"))).Errors).Code);
+    }
+
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task The_verification_period_is_read_from_the_settings_when_facts_are_listed(string provider)
+    {
+        await using var scenario = await EntryScenario.CreateAsync(
+            provider,
+            services => services.PostConfigure<EntityOptions>(entities => entities.VerifyWithin = TimeSpan.FromDays(500)));
+        await scenario.Schema.CreateReferenceModelAsync();
+        var now = Now();
+        await PricedAsync(scenario, validUntil: "null", lastVerified: Time(now.AddDays(-400)));
+        var older = await PricedAsync(scenario, validUntil: "null", lastVerified: Time(now.AddDays(-600)));
+
+        var stale = Assert.Single((await FactsAsync(scenario, facts => facts.StaleAsync())).Value);
+
+        Assert.Equal((older, StaleReason.Unverified, now.AddDays(-100)), (stale.EntityId, stale.Reason, stale.StaleSince));
+    }
+
+    [Theory]
+    [InlineData("00:00:00")]
+    [InlineData("-1.00:00:00")]
+    [InlineData("36501.00:00:00")]
+    public void A_verification_period_that_is_not_positive_or_too_long_is_refused(string verifyWithin)
+    {
+        using var services = TestServices.Build(new Dictionary<string, string?>
+        {
+            ["Database:ConnectionString"] = "Data Source=unused.db",
+            ["Entities:VerifyWithin"] = verifyWithin,
+        });
+
+        var exception = Assert.Throws<OptionsValidationException>(() => services.GetRequiredService<IOptions<EntityOptions>>().Value);
+
+        Assert.Contains("Entities__VerifyWithin", exception.Message);
     }
 
     private static async Task<EntryScenario> CreateAsync(string provider)
@@ -184,6 +266,36 @@ public sealed class EntityFactsTests
               "price": {"value": {{priceValue}}, "source": {{priceSource}}, "owner": null, "validFrom": null, "validUntil": "2026-12-31T23:59:59+01:00", "lastVerified": null}
             }
             """;
+    }
+
+    private static async Task<Guid> PricedAsync(EntryScenario scenario, string validUntil, string lastVerified)
+    {
+        var created = await scenario.CreateAsync("product", PricedFields(validUntil, lastVerified));
+        Assert.True(created.IsSuccess, string.Join("; ", created.Errors.Select(error => error.Message)));
+        return created.Value.Id;
+    }
+
+    // A name that was never verified, and a sourced price with the validity given.
+    private static string PricedFields(string validUntil, string lastVerified, string price = "99")
+    {
+        return $$"""
+            {
+              "name": {"value": "Drill", "source": {{Sourced}}, "owner": null, "validFrom": null, "validUntil": null, "lastVerified": null},
+              "price": {"value": {{price}}, "source": {{Sourced}}, "owner": null, "validFrom": null, "validUntil": {{validUntil}}, "lastVerified": {{lastVerified}}}
+            }
+            """;
+    }
+
+    // Whole seconds, so the times read back from either provider compare equal.
+    private static DateTimeOffset Now()
+    {
+        var now = DateTimeOffset.UtcNow;
+        return new DateTimeOffset(now.Year, now.Month, now.Day, now.Hour, now.Minute, now.Second, TimeSpan.Zero);
+    }
+
+    private static string Time(DateTimeOffset time)
+    {
+        return $"\"{time.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture)}\"";
     }
 
     private static async Task<Guid> ChangeSetAsync(EntryScenario scenario, params ChangeOperation[] operations)
