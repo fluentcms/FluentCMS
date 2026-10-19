@@ -1,8 +1,11 @@
+using FluentCMS.Core.ChangeSets;
+
 namespace FluentCMS.Core.Routing;
 
 // Explicit routing rules applied to a set (RTE-01, D09). The order of the rules never matters: the strictest disposition that applies
 // wins, and a set auto-publishes only when auto-publish rules cover every change of every item, so a routine rule can never let a
-// risky change through. A rule with a field condition covers the fields it names; only one without covers the item as a whole.
+// risky change through. A rule with a field condition covers the fields an update changes; only one without covers a change to the
+// item as a whole, which a create and a delete always are.
 public static class RoutingEvaluator
 {
     public static RoutingDecision Evaluate(IEnumerable<RoutingRule> rules, RoutingFacts facts)
@@ -59,7 +62,8 @@ public static class RoutingEvaluator
 
         covered.UnionWith(facts.Items
             .Where(item => autoPublished.TryGetValue(item.ItemId, out var fields)
-                && (fields is null || (item.ChangedProperties is not { Count: > 0 } && item.ChangedFields.IsSubsetOf(fields))))
+                && (fields is null
+                    || (item.ChangeKind == OperationKind.Update && item.ChangedProperties is not { Count: > 0 } && item.ChangedFields.IsSubsetOf(fields))))
             .Select(item => item.ItemId));
 
         var unmatched = facts.Items.Select(item => item.ItemId).Where(id => !covered.Contains(id)).ToList();

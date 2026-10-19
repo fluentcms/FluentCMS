@@ -89,6 +89,20 @@ public sealed class RoutingEvaluatorTests
         Assert.Equal(RoutingDisposition.AutoPublish, RoutingEvaluator.Evaluate([SpecNames, whole], Facts(item)).Disposition);
     }
 
+    // A create or a delete lists every field it adds or removes, but it changes the item as a whole, so naming those fields is not enough.
+    [Fact]
+    public void A_create_or_delete_needs_a_rule_without_a_field_condition()
+    {
+        var titles = Rule("category-titles", new RoutingConditions { ContentTypes = ["category"], Fields = ["title"] }, RoutingDisposition.AutoPublish);
+        var categories = Rule("categories", new RoutingConditions { ContentTypes = ["category"] }, RoutingDisposition.AutoPublish);
+        var created = Item("category", OperationKind.Create, "title");
+        var deleted = Item("category", OperationKind.Delete, "title");
+
+        Assert.Equal([created.ItemId, deleted.ItemId], RoutingEvaluator.Evaluate([titles], Facts(created, deleted)).UnmatchedItems);
+        Assert.Equal(RoutingDisposition.AutoPublish, RoutingEvaluator.Evaluate([titles, categories], Facts(created, deleted)).Disposition);
+        Assert.Equal(RoutingDisposition.AutoPublish, RoutingEvaluator.Evaluate([titles], Facts(Item("category", OperationKind.Update, "title"))).Disposition);
+    }
+
     [Fact]
     public void Block_beats_review_and_review_takes_the_highest_count()
     {
