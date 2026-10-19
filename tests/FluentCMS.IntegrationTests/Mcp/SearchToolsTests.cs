@@ -1,5 +1,7 @@
 using System.Text.Json;
+using FluentCMS.Core.Agents;
 using FluentCMS.Core.Content;
+using FluentCMS.Core.Schema;
 using FluentCMS.Core.Search;
 using FluentCMS.Core.Tools;
 using FluentCMS.Infrastructure.Persistence;
@@ -54,6 +56,44 @@ public sealed class SearchToolsTests
         var found = await agent.CallAsync("search_entries", new() { ["query"] = "4411", ["limit"] = 1 });
 
         Assert.Equal(page.ToString(), (string?)Assert.Single(found["hits"]!.AsArray())!["id"]);
+    }
+
+    // Only matches the agent may read lead to the entries that reference them, so a page found through a product would show the
+    // product's id to an agent that may not read products.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_page_is_not_found_through_a_match_the_agent_may_not_read(string provider)
+    {
+        await using var agent = await ConnectedAgent.StartAsync(provider, types: ["page"]);
+        await agent.AsPersonAsync<IContentTypeDirectory, ContentType>(directory =>
+            directory.CreateAsync(new NewContentType("product", "product", new ContentTypeDefinition([new FieldDefinition("title", "text")]))));
+        await agent.AsPersonAsync<IContentTypeDirectory, ContentType>(directory =>
+            directory.CreateAsync(new NewContentType("page", "page", new ContentTypeDefinition(
+                [new FieldDefinition("title", "text"), new FieldDefinition("product", "reference", settings: JsonSerializer.SerializeToElement(new { target = "product" }))]))));
+        var product = await CreateAsync(agent, "product", "Part 4411");
+        var page = (await agent.AsPersonAsync<IEntryDirectory, Entry>(entries =>
+            entries.CreateAsync(new NewEntry("page", JsonSerializer.SerializeToElement(new { title = "Spring sale", product = product.ToString() }))))).Id;
+
+        var found = await agent.CallAsync("search_entries", new() { ["query"] = "4411" });
+        var person = await agent.AsPersonAsync<ISearch, SearchResults>(search => search.SearchAsync(new SearchQuery("4411")));
+
+        Assert.Empty(found["hits"]!.AsArray());
+        Assert.Equal([(product, (Guid?)null), (page, product)], person.Hits.Select(hit => (hit.EntryId, hit.Via)));
+    }
+
+    [Fact]
+    public async Task A_type_filter_naming_an_unknown_type_or_one_outside_the_scope_is_a_tool_error()
+    {
+        await using var agent = await ConnectedAgent.StartAsync(DatabaseProviders.Sqlite, types: ["page"]);
+        await agent.CreateAsPersonAsync("page");
+        await agent.CreateAsPersonAsync("product");
+
+        var refused = await agent.FailAsync("search_entries", new() { ["query"] = "4411", ["types"] = new[] { "page", "prodcut", "product" } });
+
+        Assert.Equal(
+            [SchemaErrorCodes.ContentTypeNotFound, AgentPermissionErrorCodes.ScopeDenied],
+            refused["errors"]!.AsArray().Select(error => (string?)error!["code"]));
     }
 
     [Fact]

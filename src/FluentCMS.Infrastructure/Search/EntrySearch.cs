@@ -1,6 +1,7 @@
 using FluentCMS.Core.Agents;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Results;
+using FluentCMS.Core.Schema;
 using FluentCMS.Core.Search;
 using FluentCMS.Core.Sites;
 using FluentCMS.Infrastructure.Content;
@@ -28,6 +29,12 @@ internal sealed class EntrySearch(FluentCmsDbContext context, ISearchIndex index
         }
 
         var readable = await permissions.ReadableTypesAsync(cancellationToken);
+        var types = await CheckTypesAsync(query.ContentTypes, readable, cancellationToken);
+        if (types.Count > 0)
+        {
+            return Result<SearchResults>.Failure(types);
+        }
+
         var (matched, ranks, complete) = await MatchedAsync(terms, readable, query, cancellationToken);
         var direct = matched
             .Where(entry => Passes(entry, query))
@@ -107,6 +114,38 @@ internal sealed class EntrySearch(FluentCmsDbContext context, ISearchIndex index
         // Whether anything is left past the last match read.
         var more = await index.MatchAsync(terms, read, 1, cancellationToken);
         return (matched, ranks, more.Count == 0);
+    }
+
+    // Each type a filter names exists and is one the caller may read, as list_entries asks, so a typo or a type outside the scope is
+    // not taken for a search that matched nothing.
+    private async Task<List<Error>> CheckTypesAsync(IReadOnlyList<string>? slugs, Func<string, bool> readable, CancellationToken cancellationToken)
+    {
+        if (slugs is not { Count: > 0 })
+        {
+            return [];
+        }
+
+        var siteId = Site.Default.Id;
+        var known = await context.ContentTypes
+            .AsNoTracking()
+            .Where(type => type.SiteId == siteId && slugs.Contains(type.Slug))
+            .Select(type => type.Slug)
+            .ToListAsync(cancellationToken);
+
+        var errors = new List<Error>();
+        foreach (var slug in slugs.Distinct(StringComparer.Ordinal))
+        {
+            if (!known.Contains(slug, StringComparer.Ordinal))
+            {
+                errors.Add(new Error(SchemaErrorCodes.ContentTypeNotFound, $"There is no content type '{slug}' in this site; list_content_types shows the types there are."));
+            }
+            else if (!readable(slug))
+            {
+                errors.Add(new Error(AgentPermissionErrorCodes.ScopeDenied, $"'{slug}' is not among the content types this credential may read, so it cannot be searched."));
+            }
+        }
+
+        return errors;
     }
 
     // In review is read from the change sets holding the entry, as the entry tools read it (CNT-01).
