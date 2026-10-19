@@ -111,6 +111,9 @@ public sealed class DeskTests
     [InlineData("/?queue=nonsense", DeskQueue.AwaitingMe, 0)]
     [InlineData("/?queue=reverted&page=0", DeskQueue.Reverted, 0)]
     [InlineData("/?queue=reverted&page=-3", DeskQueue.Reverted, 0)]
+    [InlineData("/?queue=reverted&page=abc", DeskQueue.Reverted, 0)]
+    [InlineData("/?queue=reverted&page=99999999999", DeskQueue.Reverted, 0)]
+    [InlineData("/?queue=reverted&page=", DeskQueue.Reverted, 0)]
     public void An_unknown_queue_or_page_falls_back_to_the_first(string address, DeskQueue queue, int offset)
     {
         var queues = new FakeQueues();
