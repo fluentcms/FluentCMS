@@ -1,4 +1,5 @@
 using FluentCMS.Core.Content;
+using FluentCMS.Core.Media;
 using FluentCMS.Core.Results;
 using FluentCMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -99,7 +100,7 @@ public sealed class WhereUsedTests
     {
         await using var scenario = await CreateAsync(provider);
         var category = (await scenario.CreateAsync("category", $$"""{"name": {{Fact("\"Tools\"")}}}""")).Value.Id;
-        var hero = Guid.CreateVersion7();
+        var hero = await HeroAsync(scenario);
 
         var product = (await scenario.CreateAsync("product", $$"""
             {"name": {{Fact("\"Widget\"")}}, "price": {{Fact("10")}}, "category": {{Fact($"\"{category}\"")}}, "hero": {{Fact($"\"{hero}\"")}}}
@@ -135,6 +136,14 @@ public sealed class WhereUsedTests
         Assert.Equal(ContentErrorCodes.EntryNotEntity, Assert.Single(notEntity.Errors).Code);
         Assert.Equal(ContentErrorCodes.FieldUnknown, Assert.Single(unknownField.Errors).Code);
         Assert.Empty((await RunResultAsync(scenario, whereUsed => whereUsed.ForEntryAsync(post))).Value);
+    }
+
+    private static async Task<Guid> HeroAsync(EntryScenario scenario)
+    {
+        await using var scope = scenario.Services.CreateAsyncScope();
+        var metadata = AssetMetadata.Create("drill.jpg", null, null, "A cordless drill.", null).Value;
+        var asset = await scope.ServiceProvider.GetRequiredService<IMediaLibrary>().UploadAsync(new NewAsset(new MemoryStream([1, 2, 3]), "image/jpeg", metadata));
+        return asset.Value.Id;
     }
 
     private static async Task<EntryScenario> CreateAsync(string provider)

@@ -10,6 +10,9 @@ public sealed class MediaOptions
     // The storage new uploads go to (MED-04). Assets keep the name of the storage that holds their bytes, so changing it moves new
     // uploads only.
     public string Storage { get; set; } = LocalDiskMediaStorage.StorageName;
+
+    // The largest upload accepted, in bytes.
+    public long MaxBytes { get; set; } = 50 * 1024 * 1024;
 }
 
 // Its own options, bound to Media:LocalDisk, so the storage does not depend on the choice of storage that is checked against it.
