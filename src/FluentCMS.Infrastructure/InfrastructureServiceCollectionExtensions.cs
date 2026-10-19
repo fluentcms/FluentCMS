@@ -11,6 +11,7 @@ using FluentCMS.Core.Media;
 using FluentCMS.Core.Models;
 using FluentCMS.Core.Persistence;
 using FluentCMS.Core.Schema;
+using FluentCMS.Core.Webhooks;
 using FluentCMS.Infrastructure.Agents;
 using FluentCMS.Infrastructure.Audit;
 using FluentCMS.Infrastructure.ChangeSets;
@@ -23,6 +24,7 @@ using FluentCMS.Infrastructure.Media;
 using FluentCMS.Infrastructure.Models;
 using FluentCMS.Infrastructure.Persistence;
 using FluentCMS.Infrastructure.Schema;
+using FluentCMS.Infrastructure.Webhooks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -49,6 +51,7 @@ public static class InfrastructureServiceCollectionExtensions
         AddChecks(services);
         AddJobs(services);
         AddModels(services, configuration);
+        AddWebhooks(services);
 
         services.AddHostedService<DatabaseMigrator>();
 
@@ -133,6 +136,12 @@ public static class InfrastructureServiceCollectionExtensions
     {
         services.AddScoped<IJobQueue, JobQueue>();
         services.AddScoped<IJobLeases, JobLeases>();
+    }
+
+    // Subscriptions share the outbound allow-list with the model gateway (SEC-05); the host provides the secret protector (SEC-07).
+    private static void AddWebhooks(IServiceCollection services)
+    {
+        services.AddScoped<IWebhookDirectory, WebhookDirectory>();
     }
 
     // The provider wiring behind the gateway in Core (ADR-0008). A profile the host cannot use stops it at startup.
