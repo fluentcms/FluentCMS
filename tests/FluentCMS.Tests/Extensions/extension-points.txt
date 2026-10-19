@@ -1,0 +1,28 @@
+FluentCMS.Core.Checks.ICheckType
+  EvaluateAsync(CheckInput input, CancellationToken cancellationToken): Task<CheckOutcome>
+  Kind: CheckKind { get; }
+  Name: String { get; }
+  ValidateSettings(JsonElement settings): IReadOnlyList<Error>
+FluentCMS.Core.Jobs.IJobHandler
+  RunAs: SystemInitiator? { get; } (default)
+  RunAsync(JobContext context, CancellationToken cancellationToken): Task<Result>
+  Type: String { get; }
+FluentCMS.Core.Media.IMediaStorage
+  DeleteAsync(String key, CancellationToken cancellationToken = default): Task<Boolean>
+  Name: String { get; }
+  OpenReadAsync(String key, CancellationToken cancellationToken = default): Task<Stream?>
+  SaveAsync(Stream content, CancellationToken cancellationToken = default): Task<StoredMedia>
+FluentCMS.Core.Schema.IFieldType
+  DescribeValue(JsonElement settings, FieldTypeRegistry fieldTypes): FieldValueDescription
+  Name: String { get; }
+  ReferenceTargets(JsonElement settings, FieldTypeRegistry fieldTypes): IReadOnlyList<ReferenceTarget> (default)
+  References(JsonElement value, JsonElement settings, FieldTypeRegistry fieldTypes): IReadOnlyList<ValueReference> (default)
+  ValidateSettings(JsonElement settings, FieldTypeRegistry fieldTypes): IReadOnlyList<Error>
+  ValidateValue(JsonElement value, JsonElement settings, FieldTypeRegistry fieldTypes): IReadOnlyList<Error>
+FluentCMS.Core.Search.ISearchIndex
+  IndexAsync(SearchDocument document, CancellationToken cancellationToken = default): Task
+  MatchAsync(IReadOnlyList<String> terms, Int32 skip, Int32 limit, CancellationToken cancellationToken = default): Task<IReadOnlyList<SearchMatch>>
+FluentCMS.Core.Tools.IResourceProvider
+  Resources: IReadOnlyList<AgentResource> { get; }
+FluentCMS.Core.Tools.IToolProvider
+  Tools: IReadOnlyList<AgentTool> { get; }
