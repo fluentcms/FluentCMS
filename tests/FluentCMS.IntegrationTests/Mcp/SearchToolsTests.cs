@@ -128,10 +128,12 @@ public sealed class SearchToolsTests
         Assert.Contains("'below' is not an operator", (string?)refused["errors"]![0]!["message"]);
     }
 
-    [Fact]
-    public async Task Field_filters_that_do_not_fit_one_type_are_tool_errors_with_their_codes()
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task Field_filters_that_do_not_fit_one_type_are_tool_errors_with_their_codes(string provider)
     {
-        await using var agent = await ConnectedAgent.StartAsync(DatabaseProviders.Sqlite);
+        await using var agent = await ConnectedAgent.StartAsync(provider);
         await agent.AsPersonAsync<IContentTypeDirectory, ContentType>(directory =>
             directory.CreateAsync(new NewContentType("product", "product", new ContentTypeDefinition(
                 [new FieldDefinition("title", "text"), new FieldDefinition("price", "number")]))));
