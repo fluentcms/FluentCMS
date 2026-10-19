@@ -52,6 +52,7 @@ public static class MediaErrorCodes
     public const string ContentTypeInvalid = "content_type_invalid";
     public const string MediaEmpty = "media_empty";
     public const string MediaTooLarge = "media_too_large";
+    public const string ContentMismatch = "media_content_mismatch";
     public const string AssetNotFound = "asset_not_found";
     public const string VersionNotFound = "version_not_found";
     public const string VersionConflict = "version_conflict";

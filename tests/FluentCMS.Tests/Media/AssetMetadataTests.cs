@@ -51,17 +51,4 @@ public sealed class AssetMetadataTests
 
         Assert.Equal(MediaErrorCodes.TagInvalid, Assert.Single(AssetMetadata.Create("a.png", null, tags, null, null).Errors).Code);
     }
-
-    [Theory]
-    [InlineData("image/jpeg", true)]
-    [InlineData("image/svg+xml", true)]
-    [InlineData("application/vnd.ms-excel", true)]
-    [InlineData("image", false)]
-    [InlineData("Image/JPEG", false)]
-    [InlineData("image/jpeg; charset=x", false)]
-    [InlineData("", false)]
-    public void A_content_type_is_a_media_type(string contentType, bool valid)
-    {
-        Assert.Equal(valid, AssetMetadata.IsContentType(contentType));
-    }
 }

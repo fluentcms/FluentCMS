@@ -2,6 +2,7 @@ using FluentCMS.Core.Content;
 using FluentCMS.Core.Media;
 using FluentCMS.Core.Results;
 using FluentCMS.Infrastructure.Persistence;
+using FluentCMS.IntegrationTests.Media;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using static FluentCMS.IntegrationTests.Content.EntryScenario;
@@ -142,7 +143,7 @@ public sealed class WhereUsedTests
     {
         await using var scope = scenario.Services.CreateAsyncScope();
         var metadata = AssetMetadata.Create("drill.jpg", null, null, "A cordless drill.", null).Value;
-        var asset = await scope.ServiceProvider.GetRequiredService<IMediaLibrary>().UploadAsync(new NewAsset(new MemoryStream([1, 2, 3]), "image/jpeg", metadata));
+        var asset = await scope.ServiceProvider.GetRequiredService<IMediaLibrary>().UploadAsync(new NewAsset(new MemoryStream(MediaFiles.Jpeg()), "image/jpeg", metadata));
         return asset.Value.Id;
     }
 

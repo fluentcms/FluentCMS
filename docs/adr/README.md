@@ -15,5 +15,6 @@ Technical decisions for FluentCMS v2. Product decisions live in `docs/requiremen
 | [0009](0009-identity-aspnet-core-identity-agents-not-users.md) | Human sign-in with ASP.NET Core Identity; agents are not users | accepted |
 | [0010](0010-in-database-search-and-job-queue.md) | In-database full-text search and a durable job queue | accepted |
 | [0011](0011-admin-component-set-and-styling.md) | Admin component set and styling | accepted |
+| [0012](0012-system-initiator-for-engine-driven-actions.md) | A system initiator for actions the product takes on its own | accepted |
 
 Deferred to their own ADR when the work starts: CI and release pipeline, container image layout.

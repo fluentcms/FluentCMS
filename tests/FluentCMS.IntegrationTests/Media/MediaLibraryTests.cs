@@ -20,7 +20,7 @@ public sealed class MediaLibraryTests
     public async Task An_upload_stores_the_bytes_in_the_configured_storage_and_version_one(string provider)
     {
         await using var scenario = await EntryScenario.CreateAsync(provider);
-        var bytes = RandomNumberGenerator.GetBytes(2048);
+        var bytes = MediaFiles.Jpeg(2048);
 
         var asset = (await UploadAsync(scenario, bytes, Metadata("drill.jpg", "products/drills", ["product-shot"], "A cordless drill."))).Value;
         var read = (await LibraryAsync(scenario, library => library.GetAsync(asset.Id))).Value;
@@ -41,7 +41,7 @@ public sealed class MediaLibraryTests
     public async Task A_metadata_update_stores_the_next_version_with_the_same_bytes(string provider)
     {
         await using var scenario = await EntryScenario.CreateAsync(provider);
-        var bytes = RandomNumberGenerator.GetBytes(64);
+        var bytes = MediaFiles.Jpeg(64);
         var asset = (await UploadAsync(scenario, bytes, Metadata("drill.jpg"))).Value;
 
         var updated = (await LibraryAsync(scenario, library => library.UpdateAsync(asset.Id, 1, Metadata("drill.jpg", "products", ["hero"], "A drill on a bench.", "Our best seller.")))).Value;
@@ -70,7 +70,7 @@ public sealed class MediaLibraryTests
         await using var scenario = await EntryScenario.CreateAsync(provider, services => services.PostConfigure<MediaOptions>(media => media.MaxBytes = 100));
 
         var empty = await UploadAsync(scenario, [], Metadata("empty.png"));
-        var large = await UploadAsync(scenario, new byte[100_000], Metadata("large.png"));
+        var large = await UploadAsync(scenario, MediaFiles.Jpeg(100_000), Metadata("large.jpg"));
         var mistyped = await UploadAsync(scenario, new byte[10], Metadata("text.png"), contentType: "png");
 
         Assert.Equal(MediaErrorCodes.MediaEmpty, Assert.Single(empty.Errors).Code);
@@ -86,12 +86,36 @@ public sealed class MediaLibraryTests
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
     [PostgresData]
+    public async Task Documents_a_browser_runs_and_files_that_lie_about_their_type_are_refused_and_leave_no_bytes(string provider)
+    {
+        await using var scenario = await EntryScenario.CreateAsync(provider);
+        var page = "<html><script>alert(1)</script></html>"u8.ToArray();
+
+        var html = await UploadAsync(scenario, page, Metadata("page.html"), contentType: "text/html");
+        var svg = await UploadAsync(scenario, "<svg onload=\"alert(1)\"/>"u8.ToArray(), Metadata("logo.svg"), contentType: "image/svg+xml");
+        var disguised = await UploadAsync(scenario, page, Metadata("photo.jpg"));
+        var wrongImage = await UploadAsync(scenario, MediaFiles.Jpeg(), Metadata("photo.png"), contentType: "image/png");
+
+        Assert.Equal(MediaErrorCodes.ContentTypeInvalid, Assert.Single(html.Errors).Code);
+        Assert.Contains("image/jpeg", html.Errors[0].Message);
+        Assert.Equal(MediaErrorCodes.ContentTypeInvalid, Assert.Single(svg.Errors).Code);
+        Assert.Equal(MediaErrorCodes.ContentMismatch, Assert.Single(disguised.Errors).Code);
+        Assert.Equal(MediaErrorCodes.ContentMismatch, Assert.Single(wrongImage.Errors).Code);
+        Assert.Equal(0, await scenario.Schema.QueryAsync(context => context.MediaAssets.CountAsync()));
+
+        var root = scenario.Services.GetRequiredService<IOptions<LocalDiskOptions>>().Value.Root;
+        Assert.Empty(Directory.Exists(root) ? Directory.GetFiles(root, "*", SearchOption.AllDirectories) : []);
+    }
+
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
     public async Task Assets_list_by_folder_and_tag(string provider)
     {
         await using var scenario = await EntryScenario.CreateAsync(provider);
-        var root = (await UploadAsync(scenario, [1], Metadata("logo.png", tags: ["brand"]))).Value.Id;
-        var drills = (await UploadAsync(scenario, [2], Metadata("drill.png", "products/drills", ["product-shot"]))).Value.Id;
-        var products = (await UploadAsync(scenario, [3], Metadata("range.png", "products", ["product-shot", "brand"]))).Value.Id;
+        var root = (await UploadAsync(scenario, MediaFiles.Jpeg(), Metadata("logo.png", tags: ["brand"]))).Value.Id;
+        var drills = (await UploadAsync(scenario, MediaFiles.Jpeg(), Metadata("drill.png", "products/drills", ["product-shot"]))).Value.Id;
+        var products = (await UploadAsync(scenario, MediaFiles.Jpeg(), Metadata("range.png", "products", ["product-shot", "brand"]))).Value.Id;
 
         async Task<IReadOnlyList<Guid>> ListAsync(MediaQuery query) =>
             (await LibraryAsync(scenario, library => library.ListAsync(query))).Select(asset => asset.Id).ToList();
@@ -112,7 +136,7 @@ public sealed class MediaLibraryTests
     {
         await using var scenario = await EntryScenario.CreateAsync(provider);
         await scenario.Schema.CreateReferenceModelAsync();
-        var hero = (await UploadAsync(scenario, [1, 2, 3], Metadata("drill.jpg"))).Value.Id;
+        var hero = (await UploadAsync(scenario, MediaFiles.Jpeg(), Metadata("drill.jpg"))).Value.Id;
         var missing = Guid.CreateVersion7();
 
         var refused = await scenario.CreateAsync("product", $$"""{"name": {{Fact("\"Drill\"")}}, "price": {{Fact("99")}}, "hero": {{Fact($"\"{missing}\"")}}}""");
@@ -131,7 +155,7 @@ public sealed class MediaLibraryTests
     public async Task A_stored_version_cannot_be_overwritten_and_unknown_assets_fail(string provider)
     {
         await using var scenario = await EntryScenario.CreateAsync(provider);
-        await UploadAsync(scenario, [1], Metadata("drill.jpg"));
+        await UploadAsync(scenario, MediaFiles.Jpeg(), Metadata("drill.jpg"));
         var unknown = Guid.CreateVersion7();
 
         await scenario.Schema.QueryAsync(async context =>

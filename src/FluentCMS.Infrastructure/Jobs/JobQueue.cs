@@ -40,7 +40,7 @@ internal sealed class JobQueue(FluentCmsDbContext context, ICurrentInitiator cur
             SubjectId = job.Subject?.Id,
             InitiatorKind = described?.Kind,
             InitiatorId = described?.Id,
-            InitiatorName = initiator?.DisplayName,
+            InitiatorName = initiator is null ? null : InitiatorKinds.NameOf(initiator),
             State = JobState.Queued,
             MaxAttempts = job.MaxAttempts,
             CreatedAt = now,

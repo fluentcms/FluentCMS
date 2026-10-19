@@ -50,6 +50,23 @@ public sealed class LocalDiskMediaStorageTests : MediaStorageConformanceTests
         Assert.Equal("local", services.GetRequiredService<MediaStorageRegistry>().Names.Single());
     }
 
+    [Theory]
+    [InlineData("0")]
+    [InlineData("-1")]
+    [InlineData("9223372036854775807")]
+    public void The_upload_limit_must_be_one_an_upload_can_meet(string maxBytes)
+    {
+        using var services = TestServices.Build(new Dictionary<string, string?>
+        {
+            ["Database:ConnectionString"] = "Data Source=unused.db",
+            ["Media:MaxBytes"] = maxBytes,
+        });
+
+        var exception = Assert.Throws<OptionsValidationException>(() => services.GetRequiredService<IOptions<MediaOptions>>().Value);
+
+        Assert.Contains($"Media__MaxBytes is {maxBytes}", exception.Message);
+    }
+
     [Fact]
     public async Task An_unknown_storage_stops_the_host_from_starting()
     {
