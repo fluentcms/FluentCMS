@@ -58,7 +58,7 @@ public sealed class EntryEditsTests
         Assert.Equal(ChangeSetErrorCodes.RationaleMissing, Assert.Single(noReason.Errors).Code);
         Assert.NotEmpty(invalid.Errors);
         Assert.Empty(await scenario.EntryRowsAsync());
-        Assert.Equal(0, await scenario.Schema.QueryAsync(context => context.ChangeSets.CountAsync(row => row.Rationale != "content-model")));
+        Assert.Equal(0, await scenario.Schema.QueryAsync(context => context.ChangeSets.CountAsync(row => row.SessionId != TestChangeSetTargets.ContentModelSession)));
     }
 
     private static async Task<EntryScenario> CreateAsync(string provider)
