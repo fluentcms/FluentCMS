@@ -6,6 +6,9 @@ namespace FluentCMS.Core.Media;
 // afterwards, and appends its audit event in the same unit of work (CNT-02, AUD-N1).
 public interface IMediaLibrary
 {
+    // The largest upload accepted, in bytes, so a caller can refuse a larger one before reading it.
+    long MaxBytes { get; }
+
     // The bytes go to the configured storage before anything is written; a refused upload deletes them again.
     Task<Result<MediaAsset>> UploadAsync(NewAsset asset, CancellationToken cancellationToken = default);
 
@@ -57,4 +60,5 @@ public static class MediaErrorCodes
     public const string VersionNotFound = "version_not_found";
     public const string VersionConflict = "version_conflict";
     public const string ContentMissing = "media_content_missing";
+    public const string FieldNotMedia = "field_not_media";
 }
