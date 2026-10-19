@@ -178,6 +178,10 @@ public sealed class SystemInitiatorTests
     [PostgresData]
     public async Task Code_running_as_an_engine_cannot_issue_a_reset_link_or_pass_the_engine_to_a_job(string provider)
     {
+        // The probe's records are shared by both providers' runs, which run one after the other.
+        EngineProbe.Refusals.Clear();
+        EngineProbe.Enqueued.Clear();
+        Follower.Ran.Clear();
         await using var agent = await ConnectedAgent.StartAsync(
             provider,
             settings: FastQueue,
@@ -299,7 +303,7 @@ public sealed class SystemInitiatorTests
     // A check type that, run as the check engine, tries what only a person does and to enqueue a job for a handler Core does not list.
     private sealed class EngineProbe : ICheckType
     {
-        public const string Name = "sample.engine-probe";
+        public const string Name = "sample.engineProbe";
 
         public static ConcurrentQueue<string> Refusals { get; } = new();
 
