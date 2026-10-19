@@ -122,6 +122,16 @@ Every model call goes through `IModelGateway` in `FluentCMS.Core.Models` (ADR-00
 - **Records.** Every call is kept in `ModelCalls` with its provider, model and version, verbatim prompt and response, tokens, cost and outcome (MDL-04, CHK-05). Audit events carry its prompt hash, and `IModelCallLog.FindByPromptHashAsync` finds the prompt again. A provider's error stays in the record; the caller gets the record's id. A call is made outside a unit of work, so the database is not held while a provider answers, and making one inside one throws.
 - **Retention.** Prompts and responses are kept for `Models__PromptRetention`, 90 days by default. A person runs `IModelCallLog.PurgeAsync`, which clears the prompt, response and error of older calls, keeps the rest of each record, and appends a `model_call.purged` event for each call (AUD-04, AUD-N2).
 
+## Webhooks
+
+An administrator adds a webhook on `/webhooks` with the URL of an endpoint and the events it is told about, `change_set.published` and `change_set.reverted` (API-05). Only a person lists, adds or disables one; an agent is refused (SEC-02).
+
+- **URL.** It is https, or http to an endpoint on the same machine, and its host is on `Outbound__AllowedHosts`, the allow-list the model gateway uses. Nothing can be added until an administrator names a host (SEC-05). A URL with a user name or password in it is refused. A URL is never edited: disable the webhook and add a new one.
+- **Secret.** Each webhook gets a signing secret, 32 random bytes written as `whsec_` and base64, shown once in the response that adds it. It is stored encrypted with the Data Protection key ring, so losing `DataProtection__KeysDirectory` loses the secrets too. It never appears in a list, a log or the audit log (SEC-07).
+- **Audit.** Adding and disabling append `webhook.added` and `webhook.disabled`, which name the subscription.
+
+Deliveries, their signature and how a receiver checks it come with the next slice.
+
 ## Extension points
 
 Every pluggable part of the product is an interface in `FluentCMS.Core` marked `[ExtensionPoint]`. Implementations register through dependency injection, either explicitly with `AddFluentCmsExtension<TContract, TImplementation>()` or by discovery with `AddFluentCmsExtensions(assembly)`, which picks up every concrete class implementing an extension-point interface in that assembly. Both paths produce the same `IExtensionCatalog` entry and the same `IEnumerable<TContract>` resolution, so built-ins under `FluentCMS.Core.Builtin` and future plugins look identical to the rest of the product. Each interface is documented where it is defined, together with the conformance tests an implementation must pass.

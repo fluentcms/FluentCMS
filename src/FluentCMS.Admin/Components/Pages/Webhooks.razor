@@ -1,0 +1,197 @@
+@page "/webhooks"
+@using System.Globalization
+@using FluentCMS.Admin.Components.Webhooks
+@using FluentCMS.Core.Webhooks
+@inject IWebhookDirectory Directory
+@inject IStringLocalizer<Webhooks> L
+
+<PageTitle>@L["Webhooks"]</PageTitle>
+
+<div>
+    <h1 id="webhooks-heading" class="text-2xl font-semibold tracking-tight">@L["Webhooks"]</h1>
+    <p class="mt-1 text-sm text-muted-foreground">@L["Each endpoint is told when a change set is published or reverted. Its host must be on the outbound allow-list."]</p>
+</div>
+
+@if (_message is not null)
+{
+    <p role="status" class="mt-4 rounded-md border bg-muted/50 px-3 py-2 text-sm" data-testid="webhooks-message">@_message</p>
+}
+
+@* Shown in the response to the post that added it and nowhere else, so the secret never sits in a URL, a redirect or the
+   browser's history, and no later page can show it again. *@
+@if (_added is { } added)
+{
+    <Card Class="mt-6 max-w-xl">
+        <CardHeader>
+            <CardTitle><h2>@L["Signing secret for {0}", added.Subscription.Url]</h2></CardTitle>
+            <CardDescription>@L["Copy the secret now and store it with the endpoint, which checks each delivery's signature with it. It is stored encrypted and cannot be shown again."]</CardDescription>
+        </CardHeader>
+        <CardContent>
+            <div role="status" data-testid="webhook-secret">
+                <FormField Label="@L["Secret"]">
+                    <Input value="@added.Secret" readonly dir="ltr" autocomplete="off" spellcheck="false" Class="font-mono" />
+                </FormField>
+            </div>
+        </CardContent>
+    </Card>
+}
+
+<Card Class="mt-6 max-w-xl">
+    <CardHeader>
+        <CardTitle><h2>@L["Add webhook"]</h2></CardTitle>
+    </CardHeader>
+    <CardContent>
+        <form method="post" @onsubmit="AddAsync" @formname="add-webhook" class="grid gap-6">
+            <AntiforgeryToken />
+            @if (_errors.Form is not null)
+            {
+                <p role="alert" class="text-sm text-destructive">@_errors.Form</p>
+            }
+            <FormField Label="@L["URL"]" Description="@L["The endpoint's full https address, such as https://hooks.example.com/fluentcms."]" Error="@_errors.For(nameof(NewWebhookForm.Url))">
+                <Input Type="url" name="Form.Url" value="@Form.Url" autocomplete="off" dir="ltr" required />
+            </FormField>
+            <fieldset class="grid gap-3" aria-describedby="@(_errors.For(NewWebhookErrors.Events) is null ? null : "events-error")">
+                <legend class="mb-2 text-sm leading-none font-medium">@L["Events"]</legend>
+                <div class="flex flex-wrap gap-x-6 gap-y-3">
+                    <label class="flex items-center gap-2 text-sm">
+                        <Checkbox name="Form.Published" value="true" checked="@Form.Published" />
+                        @L["A change set is published"]
+                    </label>
+                    <label class="flex items-center gap-2 text-sm">
+                        <Checkbox name="Form.Reverted" value="true" checked="@Form.Reverted" />
+                        @L["A change set is reverted"]
+                    </label>
+                </div>
+                @if (_errors.For(NewWebhookErrors.Events) is { } eventsError)
+                {
+                    <p id="events-error" class="text-sm text-destructive">@eventsError</p>
+                }
+            </fieldset>
+            <div>
+                <Button Type="submit">@L["Add webhook"]</Button>
+            </div>
+        </form>
+    </CardContent>
+</Card>
+
+<div class="mt-6 rounded-md border">
+    <Table aria-labelledby="webhooks-heading">
+        <TableHeader>
+            <TableRow>
+                <TableHead>@L["URL"]</TableHead>
+                <TableHead>@L["Events"]</TableHead>
+                <TableHead>@L["Added"]</TableHead>
+                <TableHead>@L["Status"]</TableHead>
+                <TableHead Class="text-end"><span class="sr-only">@L["Actions"]</span></TableHead>
+            </TableRow>
+        </TableHeader>
+        <TableBody>
+            @if (_subscriptions.Count == 0)
+            {
+                <TableRow>
+                    <TableCell colspan="5" Class="text-muted-foreground">@L["No webhook is set up yet."]</TableCell>
+                </TableRow>
+            }
+            @foreach (var subscription in _subscriptions)
+            {
+                <TableRow data-webhook="@subscription.Id.ToString("N")">
+                    <TableCell Class="font-medium break-all"><span dir="ltr">@subscription.Url</span></TableCell>
+                    <TableCell>@string.Join(", ", subscription.Events.Select(name => L[name].Value))</TableCell>
+                    <TableCell>
+                        <time datetime="@subscription.AddedAt.ToString("O", CultureInfo.InvariantCulture)" dir="ltr">@subscription.AddedAt.UtcDateTime.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture) UTC</time>
+                        <span class="text-muted-foreground">@L["by {0}", subscription.AddedBy.DisplayName]</span>
+                    </TableCell>
+                    <TableCell>
+                        @if (subscription.Enabled)
+                        {
+                            <Badge Variant="secondary" data-status="enabled">@L["Enabled"]</Badge>
+                        }
+                        else
+                        {
+                            <Badge Variant="outline" data-status="disabled">@L["Disabled"]</Badge>
+                        }
+                    </TableCell>
+                    <TableCell Class="text-end">
+                        @if (subscription.Enabled)
+                        {
+                            @* Disabling cannot be undone, so the posted form sits in a dialog that asks first. The form is named after the
+                               subscription, so the action reaches the subscription it was rendered for. *@
+                            <Dialog>
+                                <DialogTrigger Variant="outline" Size="sm">@L["Disable"]<span class="sr-only"> @subscription.Url</span></DialogTrigger>
+                                <DialogContent Class="text-start whitespace-normal">
+                                    <DialogHeader>
+                                        <DialogTitle>@L["Disable the webhook to {0}?", subscription.Url]</DialogTitle>
+                                        <DialogDescription>@L["The endpoint is told about nothing from now on. This cannot be undone; add the webhook again to start over, with a new secret."]</DialogDescription>
+                                    </DialogHeader>
+                                    <form method="post" @onsubmit="() => DisableAsync(subscription)" @formname="@($"disable-{subscription.Id:N}")">
+                                        <AntiforgeryToken />
+                                        <DialogFooter>
+                                            <DialogClose>@L["Cancel"]</DialogClose>
+                                            <Button Type="submit" Variant="destructive">@L["Disable"]</Button>
+                                        </DialogFooter>
+                                    </form>
+                                </DialogContent>
+                            </Dialog>
+                        }
+                    </TableCell>
+                </TableRow>
+            }
+        </TableBody>
+    </Table>
+</div>
+
+@code {
+    private readonly NewWebhookErrors _errors = new();
+    private IReadOnlyList<WebhookSubscription> _subscriptions = [];
+    private AddedWebhookSubscription? _added;
+    private string? _message;
+
+    [SupplyParameterFromForm(FormName = "add-webhook")]
+    private NewWebhookForm Form { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Form ??= NewWebhookForm.Defaults();
+        await LoadAsync();
+    }
+
+    private async Task AddAsync()
+    {
+        var added = await Directory.AddAsync(Form.ToSubscription());
+        if (!added.IsSuccess)
+        {
+            _errors.Report(added.Errors, L);
+            return;
+        }
+
+        _added = added.Value;
+        Form = NewWebhookForm.Defaults();
+        await LoadAsync();
+    }
+
+    private async Task DisableAsync(WebhookSubscription subscription)
+    {
+        var disabled = await Directory.DisableAsync(subscription.Id);
+        _message = disabled.IsSuccess
+            ? L["The webhook to {0} is disabled. It is told about nothing from now on.", subscription.Url]
+            : string.Join(" ", disabled.Errors.Select(Describe));
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        var listed = await Directory.ListAsync();
+        _subscriptions = listed.IsSuccess ? listed.Value : [];
+        if (!listed.IsSuccess)
+        {
+            _message = string.Join(" ", listed.Errors.Select(Describe));
+        }
+    }
+
+    // The error code is the resource key; the directory's own message is the text until a resource exists.
+    private string Describe(FluentCMS.Core.Results.Error error)
+    {
+        var localized = L[error.Code];
+        return localized.ResourceNotFound ? error.Message : localized.Value;
+    }
+}
