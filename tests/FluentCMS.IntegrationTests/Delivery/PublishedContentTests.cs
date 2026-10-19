@@ -1,8 +1,11 @@
+using FluentCMS.Core.Agents;
+using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Delivery;
 using FluentCMS.Core.Results;
 using FluentCMS.Core.Schema;
 using FluentCMS.Infrastructure.Persistence;
+using FluentCMS.IntegrationTests.ChangeSets;
 using FluentCMS.IntegrationTests.Content;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -50,12 +53,19 @@ public sealed class PublishedContentTests
         await PublishAsync(scenario, deleted, 1);
         await scenario.RunAsync(entries => entries.DeleteAsync(deleted, 1));
 
+        var archived = await PageAsync(scenario, product, "Archived");
+        await scenario.Schema.QueryAsync(context => context.Entries
+            .Where(row => row.Id == archived)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(row => row.PublishedVersion, (int?)null).SetProperty(row => row.State, EntryState.Archived)));
+
         var listed = (await ContentAsync(scenario, content => content.ListAsync(new PublishedQuery("product-page")))).Value;
+        var products = (await ContentAsync(scenario, content => content.ListAsync(new PublishedQuery("product")))).Value;
 
         Assert.Equal([live], listed.Items.Select(item => item.Id));
         Assert.Null(listed.Next);
+        Assert.Empty(products.Items);
         Assert.Equal("/price", Assert.Single(listed.Items[0].Unresolved).Path);
-        foreach (var hidden in new[] { draft, deleted, product, Guid.CreateVersion7() })
+        foreach (var hidden in new[] { draft, deleted, archived, product, Guid.CreateVersion7() })
         {
             Assert.Equal(ContentErrorCodes.EntryNotFound, Code(await ContentAsync(scenario, content => content.GetAsync(hidden))));
         }
@@ -125,6 +135,28 @@ public sealed class PublishedContentTests
         Assert.Equal(DeliveryErrorCodes.LimitInvalid, Code(await ContentAsync(scenario, content => content.ListAsync(new PublishedQuery("product-page", 101)))));
         Assert.Equal(SchemaErrorCodes.ContentTypeNotFound, Code(await ContentAsync(scenario, content => content.ListAsync(new PublishedQuery("news")))));
         Assert.Empty((await ContentAsync(scenario, content => content.ListAsync(new PublishedQuery("product-page", 100)))).Value.Items);
+    }
+
+    // An agent that reads through these services keeps to its scope (MCP-05).
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task An_agent_reads_only_published_content_of_types_it_may_read(string provider)
+    {
+        await using var scenario = await EntryChangeSetTests.ScenarioAsync(provider);
+        var (page, product) = await EntryChangeSetTests.CatalogAsync(scenario);
+        await scenario.PublishAsync(
+            ChangeOperation.Create(OperationKind.Create, ItemKind.Entity, product, null, 1).Value,
+            ChangeOperation.Create(OperationKind.Create, ItemKind.Entry, page, null, 1).Value);
+        await scenario.UpdateAgentAsync(row => row.Types = ["product"]);
+        scenario.Initiator = ChangeSetScenario.Agent;
+
+        await using var scope = scenario.Services.CreateAsyncScope();
+        var content = scope.ServiceProvider.GetRequiredService<IPublishedContent>();
+
+        Assert.Equal(AgentPermissionErrorCodes.ScopeDenied, Code(await content.GetAsync(page)));
+        Assert.Equal(AgentPermissionErrorCodes.ScopeDenied, Code(await content.ListAsync(new PublishedQuery("page"))));
+        Assert.Equal([product], (await content.ListAsync(new PublishedQuery("product"))).Value.Items.Select(item => item.Id));
     }
 
     [Theory]

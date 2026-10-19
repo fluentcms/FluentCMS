@@ -32,4 +32,18 @@ internal sealed class AgentActivity(FluentCmsDbContext context) : IAgentActivity
                 """)
             .CountAsync(cancellationToken);
     }
+
+    // A write to the credential's row: PostgreSQL holds the row lock and SQLite the write lock until the transaction ends.
+    public async Task HoldAsync(Guid credentialId, CancellationToken cancellationToken = default)
+    {
+        await context.Database.ExecuteSqlAsync($"""UPDATE "AgentCredentials" SET "DisplayName" = "DisplayName" WHERE "Id" = {credentialId}""", cancellationToken);
+    }
+
+    public Task StartToolCallAsync(ToolCall call, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(call);
+
+        context.ToolCalls.Add(ToolCallRow.From(call));
+        return Task.CompletedTask;
+    }
 }

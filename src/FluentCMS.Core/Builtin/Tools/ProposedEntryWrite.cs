@@ -89,7 +89,7 @@ internal static class ProposedEntryWrite
             ContentErrorCodes.VersionNotFound => "Call get_entry_history for the versions the entry has.",
             ContentErrorCodes.FieldsMalformed or ContentErrorCodes.FieldUnknown or ContentErrorCodes.FieldRequired or SchemaErrorCodes.ValueInvalid => ReadSchema,
             ContentErrorCodes.ReferenceNotFound or ContentErrorCodes.ReferenceTypeMismatch =>
-                "Call list_entries with the referenced content type's slug for the ids a reference field can take.",
+                "Call list_entries with the referenced content type's slug for the ids a reference field can take; a media field takes the id of an uploaded asset.",
             ContentErrorCodes.EntryNotPublished => "Only a published entry can be taken offline; get_entry shows its publishedVersion.",
             EntityErrorCodes.FieldNotRelation => "Call get_content_type for the entity type's reference fields and the types they point at.",
             ContentErrorCodes.EntryNotEntity => "Only entities have facts and relations; get_content_type shows whether a type is an entity type.",

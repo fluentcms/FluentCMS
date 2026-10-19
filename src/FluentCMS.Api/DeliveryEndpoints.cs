@@ -23,12 +23,15 @@ public static class DeliveryEndpoints
     {
         var api = endpoints.MapGroup(Prefix).AllowAnonymous();
         api.MapGet("/content/{type}", ListAsync);
-        api.MapGet("/entries/{id:guid}", GetAsync);
-        api.MapGet("/entries/{id:guid}.md", GetMarkdownAsync);
+        api.MapGet("/entries/{id}", GetAsync);
+        api.MapGet("/entries/{id}.md", GetMarkdownAsync);
         api.MapGet("/index", IndexAsync);
         api.MapGet("/index.md", IndexMarkdownAsync);
-        api.MapGet("/preview/entries/{id:guid}", PreviewEntryAsync);
-        api.MapGet("/preview/changes", PreviewChangesAsync);
+
+        // Ids are parsed by the handlers and every other path under the prefix is answered here, so no API call falls through to the
+        // admin's not-found page.
+        api.MapGet("/{**path}", (string? path) => Problem(
+            [new Error(DeliveryErrorCodes.EndpointNotFound, $"There is no delivery endpoint at {Prefix}/{path}; see docs/api/delivery.md.")]));
 
         // Where agents look for a site's index first, by the llms.txt convention.
         endpoints.MapGet("/llms.txt", IndexMarkdownAsync).AllowAnonymous();
@@ -73,42 +76,30 @@ public static class DeliveryEndpoints
             : Problem(page.Errors);
     }
 
-    // Unpublished content is never cached on the way, so it disappears with the token (API-04).
-    private static async Task<IResult> PreviewEntryAsync(Guid id, HttpContext http, IPreviewContent preview, CancellationToken cancellationToken)
+    private static async Task<IResult> GetAsync(string id, IPublishedContent content, CancellationToken cancellationToken)
     {
-        http.Response.Headers.CacheControl = "no-store";
-        var item = await preview.GetAsync(BearerToken(http), id, cancellationToken);
-        return item.IsSuccess ? Results.Json(Item(item.Value)) : Problem(item.Errors);
-    }
+        var errors = new List<Error>();
+        if (Id(id, "id", "the id of an entry", errors) is not { } entryId)
+        {
+            return Problem(errors);
+        }
 
-    private static async Task<IResult> PreviewChangesAsync(HttpContext http, IPreviewContent preview, CancellationToken cancellationToken)
-    {
-        http.Response.Headers.CacheControl = "no-store";
-        var changes = await preview.ChangesAsync(BearerToken(http), cancellationToken);
-        return changes.IsSuccess
-            ? Results.Json(new ChangesResponse(changes.Value.ChangeSetId, [.. changes.Value.Items.Select(Item)]))
-            : Problem(changes.Errors);
-    }
-
-    // The token travels in the Authorization header, never in the URL, so it stays out of logs and browser history.
-    private static string BearerToken(HttpContext http)
-    {
-        var header = http.Request.Headers.Authorization.ToString();
-        return header.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) ? header["Bearer ".Length..].Trim() : string.Empty;
-    }
-
-    private static async Task<IResult> GetAsync(Guid id, IPublishedContent content, CancellationToken cancellationToken)
-    {
-        var item = await content.GetAsync(id, cancellationToken);
+        var item = await content.GetAsync(entryId, cancellationToken);
         return item.IsSuccess ? Results.Json(Item(item.Value)) : Problem(item.Errors);
     }
 
     // The URL is the entry's id, so it stays the same across versions and always shows the published one (API-03).
-    private static async Task<IResult> GetMarkdownAsync(Guid id, IPublishedContent content, CancellationToken cancellationToken)
+    private static async Task<IResult> GetMarkdownAsync(string id, IPublishedContent content, CancellationToken cancellationToken)
     {
-        var item = await content.GetAsync(id, cancellationToken);
+        var errors = new List<Error>();
+        if (Id(id, "id", "the id of an entry", errors) is not { } entryId)
+        {
+            return Problem(errors);
+        }
+
+        var item = await content.GetAsync(entryId, cancellationToken);
         return item.IsSuccess
-            ? Results.Text(EntryMarkdown.Render(item.Value, MarkdownUrl(id), MarkdownUrl), Markdown)
+            ? Results.Text(EntryMarkdown.Render(item.Value, MarkdownUrl(entryId), MarkdownUrl), Markdown)
             : Problem(item.Errors);
     }
 
@@ -180,9 +171,8 @@ public static class DeliveryEndpoints
     {
         var status = errors[0].Code switch
         {
-            ContentErrorCodes.EntryNotFound or SchemaErrorCodes.ContentTypeNotFound => StatusCodes.Status404NotFound,
+            ContentErrorCodes.EntryNotFound or SchemaErrorCodes.ContentTypeNotFound or DeliveryErrorCodes.EndpointNotFound => StatusCodes.Status404NotFound,
             AgentPermissionErrorCodes.ScopeDenied => StatusCodes.Status403Forbidden,
-            DeliveryErrorCodes.PreviewTokenInvalid => StatusCodes.Status401Unauthorized,
             _ => StatusCodes.Status400BadRequest,
         };
 
@@ -196,8 +186,6 @@ public static class DeliveryEndpoints
     }
 
     private sealed record PageResponse(IReadOnlyList<ItemResponse> Items, Guid? Next);
-
-    private sealed record ChangesResponse(Guid ChangeSet, IReadOnlyList<ItemResponse> Items);
 
     private sealed record ItemResponse(Guid Id, string Type, int Version, JsonElement Fields, string Markdown, IReadOnlyList<UnresolvedResponse> Unresolved);
 
