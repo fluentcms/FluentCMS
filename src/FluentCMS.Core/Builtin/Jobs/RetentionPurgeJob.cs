@@ -25,14 +25,26 @@ internal sealed class RetentionPurgeJob : IJobHandler
 
     public async Task<Result> RunAsync(JobContext context, CancellationToken cancellationToken)
     {
+        // The worker runs this job as the retention engine (EngineJobs); a run as anyone else purges nothing and schedules nothing.
+        if (context.Services.GetRequiredService<ICurrentInitiator>().Current != SystemInitiator.Retention)
+        {
+            return Result.Failure(ModelErrorCodes.PeopleOnly, "The retention purge runs only as the retention engine, and this run is not, so it purges nothing.");
+        }
+
         var clock = context.Services.GetRequiredService<TimeProvider>();
         await context.Services.GetRequiredService<RetentionSchedule>().ScheduleAsync(context.Job.Id, clock.GetUtcNow() + Every, cancellationToken);
 
-        var log = context.Services.GetRequiredService<IModelCallLog>();
+        // Each batch in a scope of its own, so what one batch tracks is gone before the next, however long the backlog.
+        var scopes = context.Services.GetRequiredService<IServiceScopeFactory>();
         var total = 0;
         while (true)
         {
-            var purged = await log.PurgeAsync(cancellationToken);
+            Result<int> purged;
+            await using (var batch = scopes.CreateEngineScope(SystemInitiator.Retention))
+            {
+                purged = await batch.ServiceProvider.GetRequiredService<IModelCallLog>().PurgeAsync(cancellationToken);
+            }
+
             if (!purged.IsSuccess)
             {
                 return Result.Failure(purged.Errors);
@@ -52,8 +64,9 @@ internal sealed class RetentionPurgeJob : IJobHandler
     }
 }
 
-// Keeps one retention run scheduled: a host that starts enqueues one, and each run enqueues the next, unless another run is queued
-// or running already, so hosts that start together end with one.
+// Keeps a retention run scheduled: a host that starts enqueues one, and each run enqueues the next, unless another run is queued.
+// A run enqueues its successor before it purges, so a running run always leaves one queued; two that start together may both
+// enqueue one, which the next day's runs fold back into one chain, and none can leave the schedule empty.
 internal sealed class RetentionSchedule(IServiceScopeFactory scopes, TimeProvider clock) : IRetentionSchedule
 {
     public Task EnsureScheduledAsync(CancellationToken cancellationToken = default)
@@ -69,7 +82,7 @@ internal sealed class RetentionSchedule(IServiceScopeFactory scopes, TimeProvide
         var jobs = services.GetRequiredService<IJobQueue>();
 
         var scheduled = (await jobs.ListForSubjectAsync(RetentionPurgeJob.Subject, cancellationToken))
-            .Any(job => job.Type == RetentionPurgeJob.JobType && job.Id != current && job.State is JobState.Queued or JobState.Running);
+            .Any(job => job.Type == RetentionPurgeJob.JobType && job.Id != current && job.State == JobState.Queued);
         if (scheduled)
         {
             return;
