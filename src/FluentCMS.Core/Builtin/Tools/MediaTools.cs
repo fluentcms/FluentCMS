@@ -272,12 +272,12 @@ public sealed class MediaTools : IToolProvider
 
         var definition = type.Value.Definition;
         var media = definition.Fields.FirstOrDefault(candidate => candidate.Name == field);
-        if (media is null || !IsMediaField(media))
+        if (media is null || !MediaFields.Holds(media))
         {
             return Result<Entry>.Failure(
                 MediaErrorCodes.FieldNotMedia,
                 $"'{field}' is not a media field of '{entry.Value.ContentType}'; its media fields are "
-                + string.Join(", ", definition.Fields.Where(IsMediaField).Select(candidate => candidate.Name))
+                + string.Join(", ", definition.Fields.Where(MediaFields.Holds).Select(candidate => candidate.Name))
                 + ".");
         }
 
@@ -328,12 +328,6 @@ public sealed class MediaTools : IToolProvider
     }
 
     // A single media field or a list of media.
-    private static bool IsMediaField(FieldDefinition field)
-    {
-        return field.Type == "media"
-            || (field.Type == "list" && field.Settings.TryGetProperty("itemType", out var itemType) && itemType.GetString() == "media");
-    }
-
     // The version an agent writes and its operation commit together or not at all; uploaded bytes that end up in no asset are deleted
     // again, so a refused upload leaves nothing in the storage.
     private static async Task<ToolResult> ProposeAsync(

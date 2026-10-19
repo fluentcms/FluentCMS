@@ -1,12 +1,15 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using FluentCMS.Core.Checks;
+using FluentCMS.Core.Media;
 using FluentCMS.Core.Results;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Core.Builtin.Checks;
 
 // Every image in the text has alt text that describes it (CHK-01): Markdown images, inline or by reference, and HTML img elements.
-// Alt text of assets in the media library is checked there (F-MED).
+// A media field passes when the asset it names has alt text in its latest version, the one a change proposes; an asset the
+// library does not hold is left to the reference checks of entries.
 internal sealed class AltTextCheckType : ICheckType
 {
     private const RegexOptions Linear = RegexOptions.NonBacktracking | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase;
@@ -29,7 +32,7 @@ internal sealed class AltTextCheckType : ICheckType
         return new CheckSettingsReader(Name, settings).Errors();
     }
 
-    public Task<CheckOutcome> EvaluateAsync(CheckInput input, CancellationToken cancellationToken)
+    public async Task<CheckOutcome> EvaluateAsync(CheckInput input, CancellationToken cancellationToken)
     {
         var findings = new List<CheckFinding>();
 
@@ -46,7 +49,39 @@ internal sealed class AltTextCheckType : ICheckType
                 image.Value)));
         }
 
-        return Task.FromResult(findings.Count == 0 ? CheckOutcome.Pass() : CheckOutcome.Fail(findings));
+        findings.AddRange(await MediaFindingsAsync(input, cancellationToken));
+
+        return findings.Count == 0 ? CheckOutcome.Pass() : CheckOutcome.Fail(findings);
+    }
+
+    private static async Task<List<CheckFinding>> MediaFindingsAsync(CheckInput input, CancellationToken cancellationToken)
+    {
+        var findings = new List<CheckFinding>();
+        if (input.Subject.Definition is not { } definition || input.Services.GetService<IMediaLibrary>() is not { } library)
+        {
+            return findings;
+        }
+
+        foreach (var (pointer, value) in CheckContent.FieldValues(input.Subject))
+        {
+            var field = definition.Fields.FirstOrDefault(candidate => candidate.Name == CheckContent.FieldOf(pointer));
+            if (field is null
+                || !MediaFields.Holds(field)
+                || value.ValueKind != JsonValueKind.String
+                || !Guid.TryParse(value.GetString(), out var id)
+                || await library.GetAsync(id, cancellationToken) is not { IsSuccess: true } asset
+                || !string.IsNullOrWhiteSpace(asset.Value.Latest.Metadata.AltText))
+            {
+                continue;
+            }
+
+            findings.Add(new CheckFinding(
+                $"Add alt text to the image '{asset.Value.Latest.Metadata.FileName}' in {field.Name} that says what it shows; set it with update_media.",
+                pointer,
+                id.ToString()));
+        }
+
+        return findings;
     }
 
     // The value of the element's alt attribute, read attribute by attribute so a quoted value or a data-alt is not taken for it.
