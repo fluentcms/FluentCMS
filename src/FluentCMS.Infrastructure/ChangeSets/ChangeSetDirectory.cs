@@ -23,7 +23,8 @@ internal sealed class ChangeSetDirectory(
     IUnitOfWork unitOfWork,
     IAuditLog auditLog,
     ICurrentInitiator currentInitiator,
-    IAgentPermissions permissions) : IChangeSetDirectory
+    IAgentPermissions permissions,
+    IEnumerable<IChangeSetEvents> events) : IChangeSetDirectory
 {
     // AgentActivity counts these events for the change-sets-per-day cap.
     internal const string OpenedOperation = "change_set.opened";
@@ -286,6 +287,12 @@ internal sealed class ChangeSetDirectory(
         if (reverted is not null)
         {
             await AppendTransitionAsync(reverted.ChangeSet, cancellationToken);
+        }
+
+        // Listeners such as webhooks queue their work in this unit of work, so it commits with the publish or not at all.
+        foreach (var listener in events)
+        {
+            await listener.PublishedAsync(set, reverted?.ChangeSet, cancellationToken);
         }
 
         return await CommitAsync(scope, set, Conflict(set.Id), cancellationToken);
