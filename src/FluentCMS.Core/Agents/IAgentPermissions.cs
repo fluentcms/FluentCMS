@@ -14,7 +14,7 @@ public interface IAgentPermissions
     Task<Result> CheckTransitionAsync(ChangeSet changeSet, ChangeSetState target, CancellationToken cancellationToken = default);
 
     // Called inside the unit of work that opens the set: it holds the agent's credential until that unit of work ends, so concurrent
-    // opens by one agent are counted one at a time.
+    // opens by one agent are counted one at a time. Outside one it is only a pre-check, and the open counts again.
     Task<Result> CheckNewChangeSetAsync(CancellationToken cancellationToken = default);
 
     // An agent reads the change sets it opened, as it writes only those; people and the system read every set.
