@@ -53,6 +53,7 @@ public static class FluentCmsHost
         builder.Services.AddHealthChecks();
         builder.Services.AddLocalization();
         builder.Services.AddRazorComponents().AddInteractiveServerComponents();
+        RunJobsAsTheirInitiator(builder.Services);
 
         var app = builder.Build();
         app.UseSecurityHeaders(provider.IsConfigured ? [provider.AuthorityOrigin] : []);
@@ -165,8 +166,22 @@ public static class FluentCmsHost
         ConfigureLogging(builder.Logging, logToStandardError: true);
         AddFluentCms(builder.Services, builder.Configuration, builder.Environment);
         builder.Services.AddFluentCmsMcpStdio(agentKey ?? Environment.GetEnvironmentVariable(StdioAgentAuthentication.KeyVariable), standardInput, standardOutput);
+        RunJobsAsTheirInitiator(builder.Services);
 
         return builder.Build();
+    }
+
+    // A job runs as whoever enqueued it, whatever the host's own caller is, so the initiator each host registered is wrapped.
+    private static void RunJobsAsTheirInitiator(IServiceCollection services)
+    {
+        var registered = services.Last(descriptor => descriptor.ServiceType == typeof(ICurrentInitiator));
+        services.Remove(registered);
+        services.AddScoped<JobRun>();
+        services.AddScoped<ICurrentInitiator>(provider => new JobAwareInitiator(
+            provider.GetRequiredService<JobRun>(),
+            registered.ImplementationInstance as ICurrentInitiator
+                ?? registered.ImplementationFactory?.Invoke(provider) as ICurrentInitiator
+                ?? (ICurrentInitiator)ActivatorUtilities.CreateInstance(provider, registered.ImplementationType!)));
     }
 
     // One composition for both entry modes, so the stdio host opens the same database and runs the same services.

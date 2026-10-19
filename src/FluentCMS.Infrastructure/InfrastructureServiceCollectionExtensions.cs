@@ -5,6 +5,7 @@ using FluentCMS.Core.Checks;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Entities;
 using FluentCMS.Core.Identity;
+using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Persistence;
 using FluentCMS.Core.Schema;
 using FluentCMS.Infrastructure.Agents;
@@ -14,6 +15,7 @@ using FluentCMS.Infrastructure.Checks;
 using FluentCMS.Infrastructure.Content;
 using FluentCMS.Infrastructure.Entities;
 using FluentCMS.Infrastructure.Identity;
+using FluentCMS.Infrastructure.Jobs;
 using FluentCMS.Infrastructure.Persistence;
 using FluentCMS.Infrastructure.Schema;
 using Microsoft.EntityFrameworkCore;
@@ -38,6 +40,7 @@ public static class InfrastructureServiceCollectionExtensions
         AddAgents(services);
         AddContent(services, configuration);
         AddChecks(services);
+        AddJobs(services);
 
         services.AddHostedService<DatabaseMigrator>();
 
@@ -102,6 +105,13 @@ public static class InfrastructureServiceCollectionExtensions
     private static void AddChecks(IServiceCollection services)
     {
         services.AddScoped<ICheckDirectory, CheckDirectory>();
+    }
+
+    // The worker in Host claims and finishes jobs through IJobLeases; everything else enqueues and reads through IJobQueue.
+    private static void AddJobs(IServiceCollection services)
+    {
+        services.AddScoped<IJobQueue, JobQueue>();
+        services.AddScoped<IJobLeases, JobLeases>();
     }
 
     private static void AddIdentity(IServiceCollection services)
