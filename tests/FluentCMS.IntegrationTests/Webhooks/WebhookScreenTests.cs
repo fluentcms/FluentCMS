@@ -117,6 +117,41 @@ public sealed partial class WebhookScreenTests
         Assert.Equal((ownerId, id), (disabling.InitiatorId, disabling.SubjectId!.Value));
     }
 
+    [Fact]
+    public async Task A_test_sent_from_the_list_reaches_the_endpoint_and_shows_under_recent_deliveries()
+    {
+        await using var receiver = await WebhookReceiver.StartAsync();
+        using var install = new TemporaryInstall();
+        await using var host = await AdminHost.StartAsync(install, settings: new Dictionary<string, string?>
+        {
+            ["Outbound:AllowedHosts:0"] = receiver.Host,
+            ["JobQueue:PollingInterval"] = "00:00:00.050",
+        });
+        await host.CreateFirstAdministratorAsync();
+        await host.SignInAsync(AdminHost.Owner);
+        var fields = Frontend();
+        fields["Form.Url"] = receiver.Url.ToString();
+        await host.SubmitAsync("/webhooks", "add-webhook", fields);
+        Guid id;
+        await using (var scope = host.App.Services.CreateAsyncScope())
+        {
+            id = (await scope.ServiceProvider.GetRequiredService<FluentCmsDbContext>().WebhookSubscriptions.SingleAsync()).Id;
+        }
+
+        var queued = await (await host.SubmitAsync("/webhooks", $"test-{id:N}", new Dictionary<string, string>())).Content.ReadAsStringAsync();
+        await receiver.WaitForAsync(1);
+        var deadline = DateTime.UtcNow.AddSeconds(30);
+        string list;
+        while (!(list = await host.Client.GetStringAsync("/webhooks")).Contains("data-delivery=\"delivered\"", StringComparison.Ordinal))
+        {
+            Assert.True(DateTime.UtcNow < deadline, "The delivery did not show in time.");
+            await Task.Delay(50);
+        }
+
+        Assert.Contains("A test delivery to", queued);
+        Assert.Contains("delivered (200)", list);
+    }
+
     private static Dictionary<string, string> Frontend()
     {
         return new Dictionary<string, string>

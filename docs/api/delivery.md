@@ -86,6 +86,12 @@ References to entity fields resolve to the values the set proposes, so a page pr
 
 A token stops working when it is revoked or expires (`Delivery__PreviewTokenLifetime`, 7 days by default), and when its set is published, rejected or reverted. Every one of these is the same 401 with `preview_token_invalid`. Preview responses carry `Cache-Control: no-store`.
 
+## Limits
+
+Each client address may make 600 requests a minute to the delivery API, `/llms.txt` included (`Delivery__RateLimit__PermitLimit` and `Delivery__RateLimit__Window`). A request beyond that gets a 429 problem with `Retry-After`.
+
+An IPv6 client is counted by its /64 prefix. Behind a reverse proxy, list the proxy in `ReverseProxy__KnownProxies__0` or its network in `ReverseProxy__KnownNetworks__0`, so each client is counted by the address the proxy forwards. Without that, every client shares the proxy's address. `X-Forwarded-For` from anyone else is ignored. Only the address the nearest listed proxy forwards is read, so with a chain such as a CDN in front of nginx, have nginx pass the real client address in its own `X-Forwarded-For`.
+
 ## Errors
 
 Errors are [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem details (`application/problem+json`). `errors` lists each error with a stable `code`:
@@ -95,3 +101,4 @@ Errors are [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem details (`
 | 400 | `limit_invalid`, `parameter_invalid` |
 | 401 | `preview_token_invalid` |
 | 404 | `entry_not_found`, `content_type_not_found`, `endpoint_not_found` |
+| 429 | `rate_limited` |
