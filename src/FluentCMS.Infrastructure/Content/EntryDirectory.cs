@@ -442,7 +442,7 @@ internal sealed class EntryDirectory(
             var ids = media.Select(reference => reference.TargetId).Distinct().ToList();
             var assets = await context.MediaAssets
                 .AsNoTracking()
-                .Where(asset => asset.SiteId == SiteId && ids.Contains(asset.Id))
+                .Where(asset => asset.SiteId == SiteId && asset.DeletedAt == null && ids.Contains(asset.Id))
                 .Select(asset => asset.Id)
                 .ToListAsync(cancellationToken);
 

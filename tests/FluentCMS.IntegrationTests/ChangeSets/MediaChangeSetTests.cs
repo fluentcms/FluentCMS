@@ -103,6 +103,57 @@ public sealed class MediaChangeSetTests
         Assert.True((await scenario.RunAsync(directory => directory.AddOperationAsync(agentSet.Id, Operation(OperationKind.Create, ItemKind.Media, asset, null, 1)))).IsSuccess);
     }
 
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_deleted_asset_fails_the_publish_of_its_set_and_joins_no_other(string provider)
+    {
+        await using var scenario = await ScenarioAsync(provider);
+        var asset = await UploadAsync(scenario, Metadata(null));
+        var approved = await scenario.ApproveAsync(Operation(OperationKind.Create, ItemKind.Media, asset, null, 1));
+
+        Assert.True((await LibraryAsync(scenario, library => library.DeleteAsync(asset, 1))).IsSuccess);
+        var publish = await scenario.RunAsync(directory => directory.PublishAsync(approved.Id));
+        var set = await scenario.OpenAsync();
+        var added = await scenario.RunAsync(directory => directory.AddOperationAsync(set.Id, Operation(OperationKind.Create, ItemKind.Media, asset, null, 1)));
+
+        Assert.Equal(ChangeSetErrorCodes.ItemNotFound, Assert.Single(publish.Errors).Code);
+        Assert.Contains("restore it first", publish.Errors[0].Message);
+        Assert.Null(await PublishedMediaVersionAsync(scenario, asset));
+        Assert.Equal(ChangeSetErrorCodes.ItemNotFound, Assert.Single(added.Errors).Code);
+
+        Assert.True((await LibraryAsync(scenario, library => library.RestoreAsync(asset))).IsSuccess);
+        Assert.True((await scenario.RunAsync(directory => directory.PublishAsync(approved.Id))).IsSuccess);
+        Assert.Equal(1, await PublishedMediaVersionAsync(scenario, asset));
+    }
+
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task An_agent_deletes_and_restores_media_only_with_the_delete_operation(string provider)
+    {
+        await using var scenario = await ScenarioAsync(provider);
+        var asset = await UploadAsync(scenario, Metadata(null));
+        await scenario.UpdateAgentAsync(row => row.Operations = [AgentOperation.Read, AgentOperation.Create, AgentOperation.Update]);
+        scenario.Initiator = Agent;
+
+        var refused = await LibraryAsync(scenario, library => library.DeleteAsync(asset, 1));
+        await scenario.UpdateAgentAsync(row => row.Operations = [AgentOperation.Read, AgentOperation.Delete]);
+        var deleted = await LibraryAsync(scenario, library => library.DeleteAsync(asset, 1));
+        await scenario.UpdateAgentAsync(row => row.Operations = [AgentOperation.Read]);
+        var refusedRestore = await LibraryAsync(scenario, library => library.RestoreAsync(asset));
+
+        Assert.Equal(AgentPermissionErrorCodes.ScopeDenied, Assert.Single(refused.Errors).Code);
+        Assert.True(deleted.IsSuccess);
+        Assert.Equal(AgentPermissionErrorCodes.ScopeDenied, Assert.Single(refusedRestore.Errors).Code);
+    }
+
+    private static async Task<T> LibraryAsync<T>(ChangeSetScenario scenario, Func<IMediaLibrary, Task<T>> action)
+    {
+        await using var scope = scenario.Services.CreateAsyncScope();
+        return await action(scope.ServiceProvider.GetRequiredService<IMediaLibrary>());
+    }
+
     private static AssetMetadata Metadata(string? altText)
     {
         return AssetMetadata.Create("drill.jpg", "products", ["product-shot"], altText, null).Value;
