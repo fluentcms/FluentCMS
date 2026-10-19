@@ -450,6 +450,8 @@ internal sealed class ChangeSetDirectory(
     {
         var set = stored.ChangeSet;
 
+        // An operation that moves the item's operation on to a newer version takes its place rather than joining the set.
+        var position = set.Operations.ToList().FindIndex(existing => existing.ItemKind == operation.ItemKind && existing.ItemId == operation.ItemId);
         var added = set.AddOperation(operation);
         if (!added.IsSuccess)
         {
@@ -482,7 +484,14 @@ internal sealed class ChangeSetDirectory(
             return Conflict(set.Id);
         }
 
-        await InsertOperationAsync(set, set.Operations.Count - 1, previousVersion.Value, cancellationToken);
+        if (position >= 0)
+        {
+            await ExtendOperationAsync(set, position, previousVersion.Value, cancellationToken);
+        }
+        else
+        {
+            await InsertOperationAsync(set, set.Operations.Count - 1, previousVersion.Value, cancellationToken);
+        }
 
         return await CommitAsync(scope, set, Conflict(set.Id), cancellationToken);
     }

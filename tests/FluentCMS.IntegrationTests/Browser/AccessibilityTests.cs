@@ -1,7 +1,9 @@
 using Deque.AxeCore.Commons;
 using Deque.AxeCore.Playwright;
 using FluentCMS.Core.ChangeSets;
+using FluentCMS.Core.Media;
 using FluentCMS.Core.Schema;
+using FluentCMS.IntegrationTests.Media;
 using Microsoft.Playwright;
 
 namespace FluentCMS.IntegrationTests.Browser;
@@ -19,9 +21,13 @@ public sealed class AccessibilityTests
     {
         await using var session = await BrowserSession.StartAsync();
         var set = await AwaitingReviewAsync(session);
+        var asset = await session.Host.AsUserAsync<IMediaLibrary, Guid>(session.OwnerId, async library => (await library.UploadAsync(new NewAsset(
+            new MemoryStream(MediaFiles.Jpeg()),
+            "image/jpeg",
+            AssetMetadata.Create("drill.jpg", "products", ["hero"], null, null).Value))).Value.Id);
         await session.SignInWithKeyboardAsync();
 
-        string[] paths = ["/ui", "/", "/?queue=stale-facts", $"/sets/{set.Id}?queue=awaiting-me", "/security"];
+        string[] paths = ["/ui", "/", "/?queue=stale-facts", $"/sets/{set.Id}?queue=awaiting-me", "/security", "/media", $"/media/{asset}"];
         var violations = new List<string>();
         foreach (var theme in new[] { "light", "dark" })
         {
