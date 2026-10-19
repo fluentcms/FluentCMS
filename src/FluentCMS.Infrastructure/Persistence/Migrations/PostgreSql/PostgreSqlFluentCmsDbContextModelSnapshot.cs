@@ -371,6 +371,11 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
                     b.Property<Guid>("SiteId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ContentTypeId");
@@ -382,6 +387,8 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
                             t.HasCheckConstraint("CK_Entries_LatestVersion", "\"LatestVersion\" >= 1");
 
                             t.HasCheckConstraint("CK_Entries_PublishedVersion", "\"PublishedVersion\" IS NULL OR (\"PublishedVersion\" >= 1 AND \"PublishedVersion\" <= \"LatestVersion\")");
+
+                            t.HasCheckConstraint("CK_Entries_State", "\"State\" IN ('Draft', 'Published', 'Reverted', 'Archived')");
                         });
                 });
 
