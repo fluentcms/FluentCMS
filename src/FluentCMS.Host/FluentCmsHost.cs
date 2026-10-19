@@ -175,7 +175,8 @@ public static class FluentCmsHost
         return builder.Build();
     }
 
-    // A job runs as whoever enqueued it, whatever the host's own caller is, so the initiator each host registered is wrapped.
+    // A job runs as whoever enqueued it, whatever the host's own caller is, so the initiator each host registered is wrapped; so is
+    // the scope in which Core's engines work as themselves (ADR-0012).
     private static void RunJobsAsTheirInitiator(IServiceCollection services)
     {
         var registered = services.Last(descriptor => descriptor.ServiceType == typeof(ICurrentInitiator));
@@ -186,6 +187,7 @@ public static class FluentCmsHost
             registered.ImplementationInstance as ICurrentInitiator
                 ?? registered.ImplementationFactory?.Invoke(provider) as ICurrentInitiator
                 ?? (ICurrentInitiator)ActivatorUtilities.CreateInstance(provider, registered.ImplementationType!)));
+        services.AddEngineScopes();
     }
 
     // One composition for both entry modes, so the stdio host opens the same database and runs the same services.
