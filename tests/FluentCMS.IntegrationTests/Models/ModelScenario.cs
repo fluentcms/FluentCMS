@@ -70,6 +70,9 @@ internal sealed class ModelScenario : IAsyncDisposable
             ["Models:Profiles:anthropic:ApiKey"] = "sk-test-anthropic",
             ["Models:Profiles:anthropic:InputCostPerMillionTokens"] = "3",
             ["Models:Profiles:anthropic:OutputCostPerMillionTokens"] = "15",
+            ["Models:Profiles:broken:Provider"] = "openai",
+            ["Models:Profiles:broken:Model"] = "gpt-broken",
+            ["Models:Profiles:broken:OutputCostPerMillionTokens"] = "20",
             ["Outbound:AllowedHosts:0"] = "api.openai.com",
             ["Outbound:AllowedHosts:1"] = "localhost",
             ["Outbound:AllowedHosts:2"] = "anthropic.com",
@@ -155,6 +158,14 @@ internal sealed class FakeProviders : HttpMessageHandler
         Requests.Enqueue((request.Method, request.RequestUri!, headers, body));
 
         var path = request.RequestUri!.AbsolutePath;
+        if (body.Contains("gpt-broken", StringComparison.Ordinal))
+        {
+            return new HttpResponseMessage(HttpStatusCode.InternalServerError)
+            {
+                Content = new StringContent("""{"error": {"message": "Upstream failure, request id secret-123."}}""", Encoding.UTF8, "application/json"),
+            };
+        }
+
         var json = path.EndsWith("/chat/completions", StringComparison.Ordinal)
             ? """
                 {"id": "chatcmpl-1", "object": "chat.completion", "created": 1760000000, "model": "MODEL",

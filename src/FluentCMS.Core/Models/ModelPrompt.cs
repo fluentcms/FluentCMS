@@ -33,9 +33,10 @@ public sealed partial class ModelPrompt
 
         foreach (var section in data)
         {
-            if (!SectionName().IsMatch(section.Name))
+            // "end" is the closing line's word, so a section of that name would open with the line that closes one.
+            if (!SectionName().IsMatch(section.Name) || section.Name == "end")
             {
-                throw new ArgumentException($"'{section.Name}' is not a section name; use lowercase letters, digits, '-' and '_'.", nameof(data));
+                throw new ArgumentException($"'{section.Name}' is not a section name; use lowercase letters, digits, '-' and '_', other than 'end'.", nameof(data));
             }
 
             ArgumentNullException.ThrowIfNull(section.Text);

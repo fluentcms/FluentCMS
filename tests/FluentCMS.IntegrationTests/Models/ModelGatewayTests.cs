@@ -1,5 +1,7 @@
+using System.Text;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Models;
+using FluentCMS.Core.Persistence;
 using FluentCMS.Infrastructure.Persistence;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
@@ -80,7 +82,7 @@ public sealed class ModelGatewayTests
         Assert.False(gateway.IsAvailable("rogue"));
         Assert.Equal(ModelErrorCodes.EndpointNotAllowed, Assert.Single(refused.Errors).Code);
         Assert.NotNull(direct);
-        Assert.Contains("Requests to models.evil.test are not allowed", direct.ToString());
+        Assert.Contains("Requests to https://models.evil.test are not allowed", direct.ToString());
         Assert.Empty(scenario.Providers.Requests);
         Assert.Empty(await scenario.CallRowsAsync());
     }
@@ -89,10 +91,14 @@ public sealed class ModelGatewayTests
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
     [PostgresData]
-    public async Task An_agent_is_refused_once_its_calls_in_the_period_reach_its_spend_cap(string provider)
+    public async Task An_agent_is_refused_once_its_calls_in_the_period_leave_no_room_for_another(string provider)
     {
         await using var scenario = await ModelScenario.CreateAsync(provider);
-        var agent = await scenario.IssueAgentAsync(spendCap: 0.02m);
+        var profile = scenario.Services.GetRequiredService<IModelProfiles>().Find("openai")!;
+        var reserved = profile.Cost(Encoding.UTF8.GetByteCount(ModelPrompt.Build(Tone.Instructions, Tone.Data).Text), profile.MaxOutputTokens);
+
+        // Each call costs 0.012 and reserves more, so two fit and a third does not.
+        var agent = await scenario.IssueAgentAsync(spendCap: 0.018m + reserved);
         scenario.Initiator = new AgentInitiator(agent.Id, agent.DisplayName);
 
         var first = await scenario.AskAsync(Tone);
@@ -145,6 +151,67 @@ public sealed class ModelGatewayTests
         Assert.Equal(("model_call", old.CallId, old.PromptHash, "gpt-fake-2026-01-01", Amir.UserId), (purge.SubjectType, purge.SubjectId!.Value, purge.PromptHash, purge.Model, purge.InitiatorId));
     }
 
+    // A provider can take a minute to answer, which no unit of work may hold the database for; the call is refused before it is sent.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_call_inside_a_unit_of_work_is_refused_before_it_is_sent(string provider)
+    {
+        await using var scenario = await ModelScenario.CreateAsync(provider);
+
+        var exception = await scenario.RunAsync(async services =>
+        {
+            await using var work = await services.GetRequiredService<IUnitOfWork>().BeginAsync();
+            return await Record.ExceptionAsync(() => services.GetRequiredService<IModelGateway>().AskAsync(Tone));
+        });
+
+        Assert.Contains("outside a unit of work", Assert.IsType<InvalidOperationException>(exception).Message);
+        Assert.Empty(scenario.Providers.Requests);
+        Assert.Empty(await scenario.CallRowsAsync());
+    }
+
+    // Each attempt the SDK made on its own would be a call the record and the spend cap never saw, so there is one request per call.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_provider_error_is_one_request_on_record_at_its_reserved_cost_and_its_detail_stays_there(string provider)
+    {
+        await using var scenario = await ModelScenario.CreateAsync(provider);
+
+        var failed = await scenario.AskAsync(Tone with { Profile = "broken" });
+
+        var row = Assert.Single(await scenario.CallRowsAsync());
+        var error = Assert.Single(failed.Errors);
+        Assert.Equal(ModelErrorCodes.CallFailed, error.Code);
+        Assert.Equal($"The call to the 'broken' model failed; model call {row.Id} records the provider's error.", error.Message);
+        Assert.Single(scenario.Providers.Requests);
+        Assert.Equal(ModelCallOutcome.Failed, row.Outcome);
+        Assert.Contains("secret-123", row.Error);
+        Assert.True(row.Cost >= 1024 * 20 / 1_000_000m, $"{row.Cost} is less than the output the call could have used.");
+    }
+
+    // The profile's key is the only credential Anthropic receives, whatever the host's environment holds.
+    [Fact]
+    public async Task The_Anthropic_wiring_ignores_a_token_in_the_environment()
+    {
+        var previous = Environment.GetEnvironmentVariable("ANTHROPIC_AUTH_TOKEN");
+        Environment.SetEnvironmentVariable("ANTHROPIC_AUTH_TOKEN", "token-from-the-environment");
+        try
+        {
+            await using var scenario = await ModelScenario.CreateAsync(DatabaseProviders.Sqlite);
+
+            Assert.True((await scenario.AskAsync(Tone with { Profile = "anthropic" })).IsSuccess);
+
+            var request = Assert.Single(scenario.Providers.Requests);
+            Assert.Equal("sk-test-anthropic", request.Headers["x-api-key"]);
+            Assert.DoesNotContain(request.Headers, header => header.Value.Contains("token-from-the-environment", StringComparison.Ordinal));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("ANTHROPIC_AUTH_TOKEN", previous);
+        }
+    }
+
     [Fact]
     public void Without_profiles_there_is_no_model()
     {
@@ -166,6 +233,12 @@ public sealed class ModelGatewayTests
             ["Models:Profiles:checks:Provider"] = "gemini",
             ["Models:Profiles:checks:Endpoint"] = "ftp://models.example.com",
             ["Models:Profiles:checks:InputCostPerMillionTokens"] = "-1",
+            ["Models:Profiles:Risk_Scoring:Provider"] = "anthropic",
+            ["Models:Profiles:Risk_Scoring:Model"] = "claude-fake",
+            ["Models:Profiles:Risk_Scoring:Endpoint"] = "http://models.example.com",
+            ["Models:Profiles:Risk_Scoring:MaxOutputTokens"] = "0",
+            ["Models:Profiles:Risk_Scoring:Temperature"] = "3",
+            ["Models:Profiles:Risk_Scoring:Timeout"] = "2.00:00:00",
         });
 
         var exception = Assert.Throws<OptionsValidationException>(() => services.GetRequiredService<IModelProfiles>());
@@ -173,9 +246,15 @@ public sealed class ModelGatewayTests
         Assert.Equal(
             [
                 "Models:Profiles:checks:Provider must be one of openai, anthropic.",
-                "Models:Profiles:checks:Model must name the model, such as the one the provider lists.",
-                "Models:Profiles:checks:Endpoint must be an absolute http or https URL, such as http://localhost:11434/v1.",
+                "Models:Profiles:checks:Model must name the model as the provider lists it, in at most 128 characters.",
+                "Models:Profiles:checks:Endpoint must be an absolute https URL, or http to this machine, such as http://localhost:11434/v1.",
                 "Models:Profiles:checks: token prices cannot be negative.",
+                "Models:Profiles:Risk_Scoring: a profile is named in lowercase words joined by hyphens, such as risk-scoring.",
+                "Models:Profiles:Risk_Scoring:ApiKey is required for Anthropic, so the SDK never falls back to credentials it finds on the machine.",
+                "Models:Profiles:Risk_Scoring:Endpoint must be an absolute https URL, or http to this machine, such as http://localhost:11434/v1.",
+                "Models:Profiles:Risk_Scoring:MaxOutputTokens must be from 1 to 200000.",
+                "Models:Profiles:Risk_Scoring:Temperature must be from 0 to 2, or left out for the provider's default.",
+                "Models:Profiles:Risk_Scoring:Timeout must be from 1 second to 1 hour, such as 00:01:00.",
             ],
             exception.Failures);
     }

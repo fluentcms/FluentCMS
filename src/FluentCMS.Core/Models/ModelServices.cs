@@ -17,8 +17,9 @@ public interface IModelClients
     IChatClient Create(ModelProfile profile);
 }
 
-// The hosts the administrator allows outbound requests to (SEC-05): model endpoints now, and the links checks follow later.
+// The hosts, and optionally ports, the administrator allows outbound requests to (SEC-05): model endpoints now, and the links checks
+// follow later.
 public interface IOutboundHosts
 {
-    bool IsAllowed(string host);
+    bool IsAllowed(Uri uri);
 }

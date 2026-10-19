@@ -1,5 +1,6 @@
 using System.Globalization;
 using FluentCMS.Core.Models;
+using FluentCMS.Core.Schema;
 using Microsoft.Extensions.Options;
 
 namespace FluentCMS.Infrastructure.Models;
@@ -35,6 +36,8 @@ internal sealed class ModelProfiles(IOptions<ModelOptions> options) : IModelProf
 // A profile the host cannot use stops it at startup with what to change, rather than failing at the first check.
 internal sealed class ModelOptionsValidation : IValidateOptions<ModelOptions>
 {
+    private const int MaxOutputTokens = 200_000;
+
     public ValidateOptionsResult Validate(string? name, ModelOptions options)
     {
         var failures = new List<string>();
@@ -47,20 +50,29 @@ internal sealed class ModelOptionsValidation : IValidateOptions<ModelOptions>
         foreach (var (profile, settings) in options.Profiles)
         {
             var prefix = $"Models:Profiles:{profile}";
+            if (!SchemaNames.IsSlug(profile))
+            {
+                failures.Add($"{prefix}: a profile is named in lowercase words joined by hyphens, such as risk-scoring.");
+            }
+
             if (settings.Provider is null || !ModelProviders.All.Contains(settings.Provider))
             {
                 failures.Add($"{prefix}:Provider must be one of {string.Join(", ", ModelProviders.All)}.");
             }
 
-            if (string.IsNullOrWhiteSpace(settings.Model))
+            if (string.IsNullOrWhiteSpace(settings.Model) || settings.Model.Length > ModelCall.MaxNameLength)
             {
-                failures.Add($"{prefix}:Model must name the model, such as the one the provider lists.");
+                failures.Add($"{prefix}:Model must name the model as the provider lists it, in at most {ModelCall.MaxNameLength} characters.");
             }
 
-            if (settings.Endpoint is { Length: > 0 } endpoint
-                && (!Uri.TryCreate(endpoint, UriKind.Absolute, out var uri) || uri.Scheme is not ("https" or "http")))
+            if (settings.Provider == ModelProviders.Anthropic && string.IsNullOrWhiteSpace(settings.ApiKey))
             {
-                failures.Add($"{prefix}:Endpoint must be an absolute http or https URL, such as http://localhost:11434/v1.");
+                failures.Add($"{prefix}:ApiKey is required for Anthropic, so the SDK never falls back to credentials it finds on the machine.");
+            }
+
+            if (settings.Endpoint is { Length: > 0 } endpoint && !IsEndpoint(endpoint))
+            {
+                failures.Add($"{prefix}:Endpoint must be an absolute https URL, or http to this machine, such as http://localhost:11434/v1.");
             }
 
             if (settings.InputCostPerMillionTokens < 0 || settings.OutputCostPerMillionTokens < 0)
@@ -68,17 +80,29 @@ internal sealed class ModelOptionsValidation : IValidateOptions<ModelOptions>
                 failures.Add($"{prefix}: token prices cannot be negative.");
             }
 
-            if (settings.MaxOutputTokens < 1)
+            if (settings.MaxOutputTokens is < 1 or > MaxOutputTokens)
             {
-                failures.Add($"{prefix}:MaxOutputTokens must be at least 1.");
+                failures.Add($"{prefix}:MaxOutputTokens must be from 1 to {MaxOutputTokens}.");
             }
 
-            if (settings.Timeout <= TimeSpan.Zero)
+            if (settings.Temperature is < 0 or > 2)
             {
-                failures.Add($"{prefix}:Timeout must be a positive duration, such as {TimeSpan.FromSeconds(60).ToString("c", CultureInfo.InvariantCulture)}.");
+                failures.Add($"{prefix}:Temperature must be from 0 to 2, or left out for the provider's default.");
+            }
+
+            if (settings.Timeout < TimeSpan.FromSeconds(1) || settings.Timeout > TimeSpan.FromHours(1))
+            {
+                failures.Add($"{prefix}:Timeout must be from 1 second to 1 hour, such as {TimeSpan.FromSeconds(60).ToString("c", CultureInfo.InvariantCulture)}.");
             }
         }
 
         return failures.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(failures);
+    }
+
+    // A key travels in every request, so it goes over plain http only to a server on this machine.
+    private static bool IsEndpoint(string endpoint)
+    {
+        return Uri.TryCreate(endpoint, UriKind.Absolute, out var uri)
+            && (uri.Scheme == Uri.UriSchemeHttps || (uri.Scheme == Uri.UriSchemeHttp && uri.IsLoopback));
     }
 }

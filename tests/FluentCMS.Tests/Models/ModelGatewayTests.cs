@@ -59,10 +59,10 @@ public sealed class ModelGatewayTests
         var call = Assert.Single(scenario.Log.Calls);
         var (messages, options) = Assert.Single(scenario.Client.Calls);
         var prompt = ModelPrompt.Build(Request.Instructions, Request.Data);
-        Assert.Equal(new ModelAnswer(call.Id, "openai", "gpt-test-2026-01-01", """{"verdict": "pass"}""", prompt.Hash, 0.006m), answer);
+        Assert.Equal(new ModelAnswer(call.Id, "openai", "gpt-test-2026-01-01", """{"verdict": "pass"}""", prompt.Hash, 0.0006m), answer);
         Assert.Equal(("checks", "openai", "gpt-test", "gpt-test-2026-01-01", "check:tone"), (call.Profile, call.Provider, call.Model, call.ModelVersion, call.Purpose));
         Assert.Equal((prompt.Hash, prompt.Text, """{"verdict": "pass"}"""), (call.PromptHash, call.Prompt, call.Response));
-        Assert.Equal((1000L, 500L, 0.006m, ModelCallOutcome.Succeeded), (call.InputTokens, call.OutputTokens, call.Cost, call.Outcome));
+        Assert.Equal((100L, 50L, 0.0006m, ModelCallOutcome.Succeeded), (call.InputTokens, call.OutputTokens, call.Cost, call.Outcome));
         Assert.Equal(("user", (Guid?)person.UserId, (Guid?)null), (call.InitiatorKind, call.InitiatorId, call.AgentCredentialId));
         Assert.Equal(scenario.Clock.Now, call.Timestamp);
         Assert.Equal([ChatRole.System, ChatRole.User], messages.Select(message => message.Role));
@@ -82,33 +82,52 @@ public sealed class ModelGatewayTests
         Assert.Equal(schema.GetRawText(), format.Schema!.Value.GetRawText());
     }
 
+    // The provider's error stays on record for an administrator; the caller learns which record holds it.
     [Fact]
-    public async Task A_call_the_provider_fails_is_recorded_as_failed_and_returned_as_an_error()
+    public async Task A_call_the_provider_fails_is_recorded_as_failed_at_its_reserved_cost()
     {
         using var scenario = new ModelScenario();
-        scenario.Client.Answer = () => throw new HttpRequestException("The service is unavailable.");
+        scenario.Client.Answer = () => throw new HttpRequestException("Upstream said: secret detail.");
 
         var answer = await scenario.Gateway.AskAsync(Request);
 
+        var call = Assert.Single(scenario.Log.Calls);
         var error = Assert.Single(answer.Errors);
         Assert.Equal(ModelErrorCodes.CallFailed, error.Code);
-        Assert.Equal("The call to the 'checks' model failed, and it is on record: The service is unavailable.", error.Message);
-        var call = Assert.Single(scenario.Log.Calls);
-        Assert.Equal((ModelCallOutcome.Failed, "The service is unavailable.", (string?)null), (call.Outcome, call.Error, call.Response));
+        Assert.Equal($"The call to the 'checks' model failed; model call {call.Id} records the provider's error.", error.Message);
+        Assert.Equal((ModelCallOutcome.Failed, "Upstream said: secret detail.", (string?)null), (call.Outcome, call.Error, call.Response));
+        Assert.Equal(Reserved(ModelScenario.Checks), call.Cost);
         Assert.NotNull(call.Prompt);
     }
 
-    // SEC-04: over its cap an agent's call fails closed before anything is sent.
+    // A call is on record before it is sent, at the most it can cost, so one that never comes back still counts.
     [Fact]
-    public async Task An_agent_over_its_spend_cap_for_the_period_is_refused_before_anything_is_sent()
+    public async Task A_call_in_flight_is_on_record_as_pending_at_its_reserved_cost()
     {
         using var scenario = new ModelScenario();
-        var agent = scenario.AddAgent(spendCap: 0.01m, period: TimeSpan.FromDays(1));
+        scenario.Client.Gate = new TaskCompletionSource();
+
+        var asking = scenario.Gateway.AskAsync(Request);
+        var pending = Assert.Single(scenario.Log.Calls);
+        scenario.Client.Gate.SetResult();
+        await asking;
+
+        Assert.Equal((ModelCallOutcome.Pending, Reserved(ModelScenario.Checks)), (pending.Outcome, pending.Cost));
+        Assert.Equal(ModelCallOutcome.Succeeded, Assert.Single(scenario.Log.Calls).Outcome);
+    }
+
+    // SEC-04: an agent's call goes out only if the most it can cost fits under what is left of its cap for the period.
+    [Fact]
+    public async Task An_agent_is_refused_a_call_that_could_take_it_over_its_spend_cap_before_anything_is_sent()
+    {
+        using var scenario = new ModelScenario();
+        var reserved = Reserved(ModelScenario.Checks);
+        var agent = scenario.AddAgent(spendCap: reserved + 0.001m, period: TimeSpan.FromDays(1));
         scenario.Initiator = new AgentInitiator(agent.Id, agent.DisplayName);
 
         var first = await scenario.Gateway.AskAsync(Request);
         var second = await scenario.Gateway.AskAsync(Request);
-        scenario.Log.Calls.Add(scenario.Log.Calls[0] with { Id = Guid.NewGuid(), Cost = 0.01m });
+        scenario.Log.Calls.Add(scenario.Log.Calls[0] with { Id = Guid.NewGuid(), Cost = 0.001m });
         var third = await scenario.Gateway.AskAsync(Request);
         scenario.Clock.Now = scenario.Clock.Now.AddDays(2);
         var nextDay = await scenario.Gateway.AskAsync(Request);
@@ -118,12 +137,30 @@ public sealed class ModelGatewayTests
         var refused = Assert.Single(third.Errors);
         Assert.Equal(ModelErrorCodes.SpendCapExceeded, refused.Code);
         Assert.Equal(
-            "The credential 'example-agent' has spent $0.022 of its $0.01 model spend in the last 1.00:00:00, so no model call is made for it; "
-            + "an administrator can raise the cap.",
+            $"The credential 'example-agent' has spent $0.0022 of its ${reserved + 0.001m:0.######} model spend in the last 1.00:00:00, "
+            + $"and this call can cost up to ${reserved:0.######}, so it is not made; an administrator can raise the cap.",
             refused.Message);
         Assert.True(nextDay.IsSuccess);
         Assert.Equal(3, scenario.Client.Calls.Count);
         Assert.All(scenario.Log.Calls, call => Assert.Equal(agent.Id, call.AgentCredentialId));
+    }
+
+    // Calls made at once each reserve before they are sent, so they cannot all pass a cap only one of them fits under.
+    [Fact]
+    public async Task A_call_in_flight_counts_against_the_cap_of_the_next_one()
+    {
+        using var scenario = new ModelScenario();
+        var agent = scenario.AddAgent(spendCap: Reserved(ModelScenario.Checks) * 1.5m, period: TimeSpan.FromDays(1));
+        scenario.Initiator = new AgentInitiator(agent.Id, agent.DisplayName);
+        scenario.Client.Gate = new TaskCompletionSource();
+
+        var slow = scenario.Gateway.AskAsync(Request);
+        var meanwhile = await scenario.Gateway.AskAsync(Request);
+        scenario.Client.Gate.SetResult();
+
+        Assert.True((await slow).IsSuccess);
+        Assert.Equal(ModelErrorCodes.SpendCapExceeded, Assert.Single(meanwhile.Errors).Code);
+        Assert.Single(scenario.Client.Calls);
     }
 
     [Fact]
@@ -138,6 +175,11 @@ public sealed class ModelGatewayTests
         Assert.Equal(ModelErrorCodes.SpendCapExceeded, Assert.Single(zeroCap.Errors).Code);
         Assert.Equal(ModelErrorCodes.SpendUnknown, Assert.Single(unknown.Errors).Code);
         Assert.Empty(scenario.Client.Calls);
+    }
+
+    private static decimal Reserved(ModelProfile profile)
+    {
+        return profile.Cost(Encoding.UTF8.GetByteCount(ModelPrompt.Build(Request.Instructions, Request.Data).Text), profile.MaxOutputTokens);
     }
 }
 
@@ -191,6 +233,7 @@ public sealed class ModelPromptTests
     [InlineData("Content")]
     [InlineData("has space")]
     [InlineData("name>>>")]
+    [InlineData("end")]
     public void A_section_name_is_a_simple_lowercase_word(string name)
     {
         Assert.Throws<ArgumentException>(() => ModelPrompt.Build("Judge.", [new ModelData(name, "x")]));

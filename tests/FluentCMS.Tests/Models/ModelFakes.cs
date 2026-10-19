@@ -73,13 +73,21 @@ internal sealed class FakeChatClient : IChatClient
     public Func<ChatResponse> Answer { get; set; } = () => new ChatResponse(new ChatMessage(ChatRole.Assistant, """{"verdict": "pass"}"""))
     {
         ModelId = "gpt-test-2026-01-01",
-        Usage = new UsageDetails { InputTokenCount = 1000, OutputTokenCount = 500 },
+        Usage = new UsageDetails { InputTokenCount = 100, OutputTokenCount = 50 },
     };
 
-    public Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
+    // Set to hold every call until it completes, as a slow provider would.
+    public TaskCompletionSource? Gate { get; set; }
+
+    public async Task<ChatResponse> GetResponseAsync(IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
     {
         Calls.Add((messages.ToList(), options));
-        return Task.FromResult(Answer());
+        if (Gate is { } gate)
+        {
+            await gate.Task;
+        }
+
+        return Answer();
     }
 
     public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
@@ -107,6 +115,12 @@ internal sealed class MemoryCallLog : IModelCallLog
     public Task AppendAsync(ModelCall call, CancellationToken cancellationToken = default)
     {
         Calls.Add(call);
+        return Task.CompletedTask;
+    }
+
+    public Task CompleteAsync(ModelCall call, CancellationToken cancellationToken = default)
+    {
+        Calls[Calls.FindIndex(stored => stored.Id == call.Id)] = call;
         return Task.CompletedTask;
     }
 
@@ -156,9 +170,9 @@ file sealed class FakeClients(IChatClient client) : IModelClients
 
 file sealed class FakeOutbound(List<string> hosts) : IOutboundHosts
 {
-    public bool IsAllowed(string host)
+    public bool IsAllowed(Uri uri)
     {
-        return hosts.Contains(host);
+        return hosts.Contains(uri.Host);
     }
 }
 

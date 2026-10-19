@@ -6,14 +6,21 @@ public enum ModelCallOutcome
 {
     Succeeded,
 
-    // The provider answered with an error, the call timed out or it was cancelled; it may still have been charged.
+    // The provider answered with an error, the call timed out or it was cancelled; it may still have been charged, so it keeps the
+    // cost reserved for it.
     Failed,
+
+    // Recorded before the call is sent, at the most it can cost, so a call is on record and counted against the spend cap even if
+    // nothing about it is heard again.
+    Pending,
 }
 
 // One call to a model, kept with its verbatim prompt and response (MDL-04, CHK-05, AUD-04). The prompt and response are cleared
 // once the call is older than the retention; the rest of the record stays, since spend caps and the audit log count on it.
 public sealed record ModelCall
 {
+    public const int MaxNameLength = 128;
+
     public required Guid Id { get; init; }
 
     public required DateTimeOffset Timestamp { get; init; }
@@ -65,9 +72,12 @@ public sealed record ModelCall
 // The prompt and response store (AUD-04).
 public interface IModelCallLog
 {
-    // Writes in a transaction of its own, never in a caller's unit of work, so a call whose caller rolled back is still on record and
-    // still counts against the spend cap.
+    // Writes in a transaction of its own, so a call whose caller rolled back is still on record and still counts against the spend
+    // cap. A model call is never made inside a unit of work, which would hold the database while a provider answers: this throws there.
     Task AppendAsync(ModelCall call, CancellationToken cancellationToken = default);
+
+    // Replaces a pending call's record with what happened, in a transaction of its own.
+    Task CompleteAsync(ModelCall call, CancellationToken cancellationToken = default);
 
     // The cost of the agent's calls since the given time (SEC-04).
     Task<decimal> SpendAsync(Guid agentCredentialId, DateTimeOffset since, CancellationToken cancellationToken = default);
@@ -75,7 +85,7 @@ public interface IModelCallLog
     // The calls an audit event's promptHash names, so its prompt can be read back (CHK-05).
     Task<IReadOnlyList<ModelCall>> FindByPromptHashAsync(string promptHash, CancellationToken cancellationToken = default);
 
-    // Clears the prompt and response of calls older than the retention and appends one audit event per call (AUD-N2). Only a person
+    // Clears the prompt, response and error of calls older than the retention and appends one audit event per call (AUD-N2). Only a person
     // purges; the result is how many calls were purged.
     Task<Result<int>> PurgeAsync(CancellationToken cancellationToken = default);
 }

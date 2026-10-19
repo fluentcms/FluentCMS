@@ -30,10 +30,37 @@ internal sealed class ModelCallLog(
     {
         ArgumentNullException.ThrowIfNull(call);
 
+        // The record commits on its own connection, which a caller's open transaction would block on SQLite until it timed out.
+        if (context.Database.CurrentTransaction is not null)
+        {
+            throw new InvalidOperationException(
+                "A model call is made outside a unit of work, so the database is not held while a provider answers; make it before the unit of work begins.");
+        }
+
         await using var scope = scopes.CreateAsyncScope();
         var own = scope.ServiceProvider.GetRequiredService<FluentCmsDbContext>();
         own.ModelCalls.Add(ModelCallRow.From(call));
         await own.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task CompleteAsync(ModelCall call, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(call);
+
+        await using var scope = scopes.CreateAsyncScope();
+        await scope.ServiceProvider.GetRequiredService<FluentCmsDbContext>().ModelCalls
+            .Where(row => row.Id == call.Id && row.Outcome == ModelCallOutcome.Pending)
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(row => row.Outcome, call.Outcome)
+                    .SetProperty(row => row.ModelVersion, call.ModelVersion)
+                    .SetProperty(row => row.Response, call.Response)
+                    .SetProperty(row => row.InputTokens, call.InputTokens)
+                    .SetProperty(row => row.OutputTokens, call.OutputTokens)
+                    .SetProperty(row => row.Cost, call.Cost)
+                    .SetProperty(row => row.Duration, call.Duration)
+                    .SetProperty(row => row.Error, call.Error),
+                cancellationToken);
     }
 
     public async Task<decimal> SpendAsync(Guid agentCredentialId, DateTimeOffset since, CancellationToken cancellationToken = default)
@@ -86,6 +113,7 @@ internal sealed class ModelCallLog(
                     setters => setters
                         .SetProperty(row => row.Prompt, (string?)null)
                         .SetProperty(row => row.Response, (string?)null)
+                        .SetProperty(row => row.Error, (string?)null)
                         .SetProperty(row => row.PurgedAt, now),
                     cancellationToken);
             if (cleared == 0)

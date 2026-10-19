@@ -35,16 +35,28 @@ internal sealed class ModelClients(IOptions<ModelOptions> options, IOutboundHost
 
         return profile.Provider switch
         {
+            // No retries inside the SDKs: each attempt would be a call the record and the spend cap never saw.
             ModelProviders.OpenAi => new OpenAIClient(
                     new ApiKeyCredential(settings.ApiKey is { Length: > 0 } key ? key : "none"),
-                    new OpenAIClientOptions { Endpoint = profile.Endpoint, Transport = new HttpClientPipelineTransport(http) })
+                    new OpenAIClientOptions
+                    {
+                        Endpoint = profile.Endpoint,
+                        Transport = new HttpClientPipelineTransport(http),
+                        RetryPolicy = new ClientRetryPolicy(maxRetries: 0),
+                        NetworkTimeout = settings.Timeout,
+                    })
                 .GetChatClient(profile.Model)
                 .AsIChatClient(),
+
+            // The profile's key is the only credential: AuthToken is cleared, so the SDK adds no token it finds in the environment.
             ModelProviders.Anthropic => new AnthropicClient
                 {
                     ApiKey = settings.ApiKey,
+                    AuthToken = null,
                     BaseUrl = profile.Endpoint.ToString(),
                     HttpClient = http,
+                    MaxRetries = 0,
+                    Timeout = settings.Timeout,
                 }
                 .AsIChatClient(profile.Model, profile.MaxOutputTokens),
             _ => throw new InvalidOperationException($"The provider '{profile.Provider}' of the '{profile.Name}' model has no wiring."),
