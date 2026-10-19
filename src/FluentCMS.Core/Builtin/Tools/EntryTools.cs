@@ -302,8 +302,13 @@ public sealed class EntryTools : IToolProvider
             return ToolResult.Failure(entry.Errors, Hint(entry.Errors));
         }
 
-        // Types are never deleted, so the type of a stored entry is always there.
+        // Types are never deleted, but reading one is scope-checked, so an agent that may write a type's entries without reading it is refused here.
         var type = await services.GetRequiredService<IContentTypeDirectory>().GetAsync(entry.Value.ContentType, cancellationToken);
+        if (!type.IsSuccess)
+        {
+            return ToolResult.Failure(type.Errors);
+        }
+
         var kind = type.Value.Definition.IsEntity ? ItemKind.Entity : ItemKind.Entry;
         var proposed = operation(entry.Value, kind);
         if (!proposed.IsSuccess)
