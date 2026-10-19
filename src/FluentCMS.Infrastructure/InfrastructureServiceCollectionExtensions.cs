@@ -95,6 +95,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IResolvedEntries, ResolvedEntries>();
         services.AddScoped<IEntityRelations, EntityRelationsReader>();
         services.AddScoped<IEntityFacts, EntityFactsReader>();
+        services.AddScoped<IBlastRadius, BlastRadiusReader>();
     }
 
     // CheckTypeRegistry comes from AddFluentCmsCore, so built-in and plugin check types reach the directory the same way.
