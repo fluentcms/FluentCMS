@@ -3,6 +3,7 @@ using FluentCMS.Core.Agents;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Sites;
 using FluentCMS.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol.Client;
@@ -27,11 +28,15 @@ internal sealed class ConnectedAgent(
         int itemsPerChangeSet = 200,
         IReadOnlyList<string>? types = null,
         AgentOperation[]? operations = null,
-        IReadOnlyDictionary<string, string?>? settings = null)
+        IDictionary<string, string?>? settings = null,
+        Action<WebApplicationBuilder>? configure = null)
     {
         var install = new TemporaryInstall();
         var database = await TemporaryDatabase.CreateAsync(provider);
-        var host = await AdminHost.StartAsync(install, settings: new Dictionary<string, string?>(database.Configuration.Concat(settings ?? new Dictionary<string, string?>())));
+        var host = await AdminHost.StartAsync(
+            install,
+            settings: new Dictionary<string, string?>(database.Configuration.Concat(settings ?? new Dictionary<string, string?>())),
+            configure: configure);
         var administrator = await host.CreateFirstAdministratorAsync();
         var issued = await McpAgents.IssueAsync(host, administrator, new NewAgentCredential(
             "schema-agent",
@@ -60,6 +65,12 @@ internal sealed class ConnectedAgent(
         where TService : notnull
     {
         return (await host.AsUserAsync<TService, Core.Results.Result<T>>(administrator, action)).Value;
+    }
+
+    public Task<Core.Results.Result> AsPersonAsync<TService>(Func<TService, Task<Core.Results.Result>> action)
+        where TService : notnull
+    {
+        return host.AsUserAsync<TService, Core.Results.Result>(administrator, action);
     }
 
     // Runs as the agent, as a call over MCP would, for work a test drives without a tool.

@@ -4,9 +4,12 @@ using FluentCMS.Infrastructure.ChangeSets;
 using FluentCMS.Infrastructure.Checks;
 using FluentCMS.Infrastructure.Content;
 using FluentCMS.Infrastructure.Entities;
+using FluentCMS.Infrastructure.Media;
 using FluentCMS.Infrastructure.Jobs;
+using FluentCMS.Infrastructure.Models;
 using FluentCMS.Infrastructure.Schema;
 using FluentCMS.Infrastructure.Sites;
+using FluentCMS.Infrastructure.Webhooks;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -40,11 +43,23 @@ public abstract class FluentCmsDbContext(DbContextOptions options) : IdentityDbC
 
     public DbSet<EntityFactRow> EntityFacts => Set<EntityFactRow>();
 
+    public DbSet<MediaAssetRow> MediaAssets => Set<MediaAssetRow>();
+
+    public DbSet<MediaAssetVersionRow> MediaAssetVersions => Set<MediaAssetVersionRow>();
+
     public DbSet<CheckRow> Checks => Set<CheckRow>();
 
     public DbSet<CheckVersionRow> CheckVersions => Set<CheckVersionRow>();
 
     public DbSet<JobRow> Jobs => Set<JobRow>();
+
+    public DbSet<ModelCallRow> ModelCalls => Set<ModelCallRow>();
+
+    public DbSet<CheckRunRow> CheckRuns => Set<CheckRunRow>();
+
+    public DbSet<CheckResultRow> CheckResults => Set<CheckResultRow>();
+
+    public DbSet<WebhookSubscriptionRow> WebhookSubscriptions => Set<WebhookSubscriptionRow>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -62,9 +77,15 @@ public abstract class FluentCmsDbContext(DbContextOptions options) : IdentityDbC
         builder.ApplyConfiguration(new EntryVersionConfiguration());
         builder.ApplyConfiguration(new EntryReferenceConfiguration());
         builder.ApplyConfiguration(new EntityFactConfiguration());
+        builder.ApplyConfiguration(new MediaAssetConfiguration());
+        builder.ApplyConfiguration(new MediaAssetVersionConfiguration());
         builder.ApplyConfiguration(new CheckConfiguration());
         builder.ApplyConfiguration(new CheckVersionConfiguration());
         builder.ApplyConfiguration(new JobConfiguration());
+        builder.ApplyConfiguration(new ModelCallConfiguration());
+        builder.ApplyConfiguration(new CheckRunConfiguration());
+        builder.ApplyConfiguration(new CheckResultConfiguration());
+        builder.ApplyConfiguration(new WebhookSubscriptionConfiguration());
 
         builder.Entity<FluentCmsUser>(user =>
         {

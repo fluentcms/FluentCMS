@@ -46,11 +46,12 @@ public sealed class WriteToolsTests
         Assert.Equal(1, (int)created["contentType"]!["version"]!);
         Assert.Equal(2, (int)revised["contentType"]!["version"]!);
         Assert.Contains("submit_change_set", (string?)revised["next"]);
-        Assert.Equal("checks_running", (string?)submitted["changeSet"]!["state"]);
+        // No check reads a content type change, so the set passes its checks at once and waits for review.
+        Assert.Equal("awaiting_review", (string?)submitted["changeSet"]!["state"]);
 
         var stored = await agent.AsPersonAsync<IChangeSetDirectory, ChangeSet>(directory => directory.GetAsync(Guid.Parse(id)));
         var category = await agent.AsPersonAsync<IContentTypeDirectory, ContentType>(directory => directory.GetAsync("category"));
-        Assert.Equal(ChangeSetState.ChecksRunning, stored.State);
+        Assert.Equal(ChangeSetState.AwaitingReview, stored.State);
         Assert.Equal(agent.Credential.Initiator, stored.Initiator);
         Assert.Equal(
             [

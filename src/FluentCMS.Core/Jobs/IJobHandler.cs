@@ -1,4 +1,5 @@
 using FluentCMS.Core.Extensions;
+using FluentCMS.Core.Identity;
 using FluentCMS.Core.Results;
 
 namespace FluentCMS.Core.Jobs;
@@ -11,6 +12,10 @@ public interface IJobHandler
 {
     // Stored in every job of the type, so it never changes once released.
     string Type { get; }
+
+    // The engine the type's jobs run as, whoever enqueued them, for work no person or agent does, such as the check run a submission
+    // starts (ADR-0012). The job still records who enqueued it. Null runs each job as whoever enqueued it.
+    SystemInitiator? RunAs => null;
 
     Task<Result> RunAsync(JobContext context, CancellationToken cancellationToken);
 }

@@ -7,7 +7,9 @@
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Deque.AxeCore.Playwright" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="Microsoft.Playwright" />
     <PackageReference Include="NJsonSchema" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />

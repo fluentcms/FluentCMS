@@ -1,7 +1,11 @@
 using FluentCMS.Core.Agents;
 using FluentCMS.Core.Audit;
 using FluentCMS.Core.Checks;
+using FluentCMS.Core.Content;
+using FluentCMS.Core.Desk;
 using FluentCMS.Core.Extensions;
+using FluentCMS.Core.Media;
+using FluentCMS.Core.Models;
 using FluentCMS.Core.Schema;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -18,6 +22,7 @@ public static class CoreServiceCollectionExtensions
 
         services.TryAddSingleton<FieldTypeRegistry>();
         services.TryAddSingleton<CheckTypeRegistry>();
+        services.TryAddSingleton<MediaStorageRegistry>();
 
         // Reads through IAuditReader, which Infrastructure provides.
         services.AddScoped<IAuditExporter, AuditExporter>();
@@ -27,6 +32,21 @@ public static class CoreServiceCollectionExtensions
 
         // Reads through IAgentCredentialDirectory and IAgentActivity, which Infrastructure provides.
         services.AddScoped<IAgentPermissions, AgentPermissions>();
+
+        // Reads through IModelProfiles, IModelClients, IModelCallLog and IOutboundHosts, which Infrastructure provides (ADR-0008).
+        services.AddScoped<IModelGateway, ModelGateway>();
+
+        // Reads the active checks through ICheckDirectory, which Infrastructure provides.
+        services.AddScoped<ICheckRunner, CheckRunner>();
+
+        // Reads and writes through IChangeSetDirectory, IEntryDirectory, ICheckRuns and IJobQueue, which Infrastructure provides.
+        services.AddScoped<IChangeSetChecks, ChangeSetChecks>();
+
+        // Reads through IChangeSetLists and IEntityFacts, which Infrastructure provides.
+        services.AddScoped<IDeskQueues, DeskQueues>();
+
+        // Writes through IEntryDirectory, IContentTypeDirectory and IChangeSetDirectory in one unit of work, which Infrastructure provides.
+        services.AddScoped<IEntryEdits, EntryEdits>();
 
         return services;
     }

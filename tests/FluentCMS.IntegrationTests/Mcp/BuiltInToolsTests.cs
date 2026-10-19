@@ -1,13 +1,16 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using FluentCMS.Core.Agents;
 using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Extensions;
 using FluentCMS.Core.Results;
 using FluentCMS.Core.Schema;
+using FluentCMS.Core.Sites;
 using FluentCMS.Core.Tools;
 using FluentCMS.Host;
 using FluentCMS.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol;
@@ -37,7 +40,7 @@ public sealed class BuiltInToolsTests
         {
             Assert.False(string.IsNullOrWhiteSpace(tool.Description));
             Assert.Equal("object", tool.ProtocolTool.InputSchema.GetProperty("type").GetString());
-            Assert.Equal(tool.Name.StartsWith("get_", StringComparison.Ordinal) || tool.Name.StartsWith("list_", StringComparison.Ordinal), tool.ProtocolTool.Annotations?.ReadOnlyHint);
+            Assert.Equal(new[] { "get_", "list_", "search_" }.Any(verb => tool.Name.StartsWith(verb, StringComparison.Ordinal)), tool.ProtocolTool.Annotations?.ReadOnlyHint);
         });
 
         var list = await CallAsync(client, "list_content_types");
@@ -70,21 +73,30 @@ public sealed class BuiltInToolsTests
         await using var host = await AdminHost.StartAsync(install, settings: database.Configuration);
         var administrator = await host.CreateFirstAdministratorAsync();
         var product = await CreateTypesAsync(host, administrator);
-        var changeSet = await host.AsUserAsync<IChangeSetDirectory, ChangeSet>(administrator, async directory =>
+        var issued = await McpAgents.IssueAsync(host, administrator, McpAgents.Credential(DateTimeOffset.UtcNow) with
+        {
+            Scope = AgentScope.Create([Site.Default.Id], null, null, [AgentOperation.Read, AgentOperation.Update]).Value,
+        });
+        var changeSet = await AsAgentAsync(host, issued.Credential, async directory =>
         {
             var opened = (await directory.OpenAsync(new NewChangeSet("Add a price to products.", ["https://example.com/spec"]))).Value;
             var update = ChangeOperation.Create(OperationKind.Update, ItemKind.Schema, product.Id, 1, 2).Value;
             return (await directory.AddOperationAsync(opened.Id, update)).Value;
         });
-        var issued = await McpAgents.IssueAsync(host, administrator);
+        var personsSet = await host.AsUserAsync<IChangeSetDirectory, ChangeSet>(administrator, async directory =>
+            (await directory.OpenAsync(new NewChangeSet("A person's set.", []))).Value);
         await using var client = await McpAgents.ConnectOverHttpAsync(host, issued.Key);
 
         var set = await CallAsync(client, "get_change_set", new() { ["id"] = changeSet.Id.ToString() });
         var diff = await CallAsync(client, "get_change_set_diff", new() { ["id"] = changeSet.Id.ToString() });
+        var notOwn = await FailAsync(client, "get_change_set", new() { ["id"] = personsSet.Id.ToString() });
+        var notOwnDiff = await FailAsync(client, "get_change_set_diff", new() { ["id"] = personsSet.Id.ToString() });
 
+        Assert.Equal(AgentPermissionErrorCodes.NotOwner, Code(notOwn));
+        Assert.Equal(AgentPermissionErrorCodes.NotOwner, Code(notOwnDiff));
         Assert.Equal("open", (string?)set["state"]);
         Assert.Equal("Add a price to products.", (string?)set["rationale"]);
-        Assert.Equal(("user", "Test administrator"), ((string?)set["initiator"]!["kind"], (string?)set["initiator"]!["name"]));
+        Assert.Equal(("agent", "pipeline-agent"), ((string?)set["initiator"]!["kind"], (string?)set["initiator"]!["name"]));
         var operation = Assert.Single(set["operations"]!.AsArray())!;
         Assert.Equal(("update", "schema", product.Id.ToString(), 1, 2), ((string?)operation["kind"], (string?)operation["itemKind"], (string?)operation["itemId"], (int)operation["baseVersion"]!, (int)operation["proposedVersion"]!));
 
@@ -180,6 +192,22 @@ public sealed class BuiltInToolsTests
         {
             var failure = await Assert.ThrowsAnyAsync<Exception>(() => app.StartAsync());
             Assert.Contains("Two tools are named 'list_content_types'", failure.ToString());
+        }
+    }
+
+    // As the agent, outside a tool, for setup a test needs to own: the directories see the credential as they would over MCP.
+    private static async Task<T> AsAgentAsync<T>(AdminHost host, AgentCredential credential, Func<IChangeSetDirectory, Task<T>> action)
+    {
+        var accessor = host.App.Services.GetRequiredService<IHttpContextAccessor>();
+        await using var scope = host.App.Services.CreateAsyncScope();
+        accessor.HttpContext = new DefaultHttpContext { RequestServices = scope.ServiceProvider, User = AgentPrincipal.For(credential, "test") };
+        try
+        {
+            return await action(scope.ServiceProvider.GetRequiredService<IChangeSetDirectory>());
+        }
+        finally
+        {
+            accessor.HttpContext = null;
         }
     }
 

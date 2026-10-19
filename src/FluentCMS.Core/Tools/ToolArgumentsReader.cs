@@ -111,6 +111,38 @@ public sealed class ToolArgumentsReader
         return null;
     }
 
+    public JsonElement? OptionalArray(string name, string form)
+    {
+        if (Read(name) is not { } value)
+        {
+            return null;
+        }
+
+        if (value.ValueKind == JsonValueKind.Array)
+        {
+            return value;
+        }
+
+        Invalid(name, $"must be a JSON array: {form}");
+        return null;
+    }
+
+    public bool Flag(string name)
+    {
+        if (Read(name) is not { } value)
+        {
+            return false;
+        }
+
+        if (value.ValueKind is JsonValueKind.True or JsonValueKind.False)
+        {
+            return value.GetBoolean();
+        }
+
+        Invalid(name, "must be true or false");
+        return false;
+    }
+
     public Guid? OptionalGuid(string name)
     {
         return Read(name) is null ? null : GuidOf(name);

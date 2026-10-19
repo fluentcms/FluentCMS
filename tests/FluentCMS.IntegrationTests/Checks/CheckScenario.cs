@@ -38,16 +38,23 @@ internal sealed class CheckScenario : IAsyncDisposable
         set => _initiator.Current = value;
     }
 
-    public static async Task<CheckScenario> CreateAsync(string provider)
+    public static async Task<CheckScenario> CreateAsync(
+        string provider,
+        Dictionary<string, string?>? settings = null,
+        Action<IServiceCollection>? configure = null)
     {
         var database = await TemporaryDatabase.CreateAsync(provider);
         var initiator = new SwitchableInitiator { Current = Amir };
         var services = TestServices.Build(
-            database.Configuration,
-            collection => collection
-                .AddSingleton<ICurrentInitiator>(initiator)
-                .AddFluentCmsExtension<ICheckType, BannedWordsCheckType>()
-                .AddFluentCmsExtension<ICheckType, DefinedFieldsCheckType>());
+            new Dictionary<string, string?>(database.Configuration.Concat(settings ?? [])),
+            collection =>
+            {
+                collection
+                    .AddSingleton<ICurrentInitiator>(initiator)
+                    .AddFluentCmsExtension<ICheckType, BannedWordsCheckType>()
+                    .AddFluentCmsExtension<ICheckType, DefinedFieldsCheckType>();
+                configure?.Invoke(collection);
+            });
 
         await TestServices.MigrateAsync(services);
         return new CheckScenario(database, services, initiator);

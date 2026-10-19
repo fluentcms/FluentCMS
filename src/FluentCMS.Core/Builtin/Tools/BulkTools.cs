@@ -115,7 +115,7 @@ public sealed class BulkTools : IToolProvider
         return ToolResult.Success(new JsonObject
         {
             ["changeSet"] = ToolJson.ChangeSet(set.Value),
-            ["job"] = ToolJson.Job(job),
+            ["job"] = ToolJson.JobRecord(job),
             ["next"] = $"The {items.Count} updates are applied in the background. Call get_job with id {job.Id} until it has succeeded, "
                 + $"then submit_change_set with id {set.Value.Id}.",
         });

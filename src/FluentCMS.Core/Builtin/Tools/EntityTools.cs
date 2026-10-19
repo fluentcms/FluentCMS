@@ -45,6 +45,15 @@ public sealed class EntityTools : IToolProvider
             readOnly: true,
             UnsourcedAsync),
         new AgentTool(
+            "list_stale_facts",
+            "List stale facts",
+            "Lists the facts in the entities' latest drafts and published versions that are past their validUntil (expired), or were "
+            + "last verified longer ago than the site's verification period (unverified), the longest stale first. Re-verify each "
+            + "with set_entity_fact and a new last_verified, or a new value and valid_until.",
+            ToolSchemas.Object(ToolSchemas.String("content_type", "An entity type's slug, to list only its facts.", "product", required: false)),
+            readOnly: true,
+            StaleAsync),
+        new AgentTool(
             "get_blast_radius",
             "Get a change set's blast radius",
             "Lists the published entries that show a fact the change set's entity changes change, such as every product page that "
@@ -146,9 +155,30 @@ public sealed class EntityTools : IToolProvider
         return ToolResult.From(
             flags,
             list => new JsonObject { ["facts"] = new JsonArray([.. list.Select(ToolJson.Flag)]) },
-            flags.Errors.FirstOrDefault()?.Code == EntityErrorCodes.TypeNotEntity
-                ? "Only entity types have facts; get_content_type shows whether a type is one."
-                : ProposedEntryWrite.Hint(flags.Errors));
+            TypeHint(flags.Errors));
+    }
+
+    private static string? TypeHint(IReadOnlyList<Error> errors)
+    {
+        return errors.FirstOrDefault()?.Code == EntityErrorCodes.TypeNotEntity
+            ? "Only entity types have facts; get_content_type shows whether a type is one."
+            : ProposedEntryWrite.Hint(errors);
+    }
+
+    private static async Task<ToolResult> StaleAsync(ToolInvocation call, CancellationToken cancellationToken)
+    {
+        var arguments = new ToolArgumentsReader(call.Arguments);
+        var contentType = arguments.OptionalString("content_type", "product");
+        if (arguments.Errors() is { Count: > 0 } errors)
+        {
+            return ToolResult.Failure(errors);
+        }
+
+        var stale = await call.Services.GetRequiredService<IEntityFacts>().StaleAsync(contentType, cancellationToken);
+        return ToolResult.From(
+            stale,
+            list => new JsonObject { ["facts"] = new JsonArray([.. list.Select(ToolJson.Stale)]) },
+            TypeHint(stale.Errors));
     }
 
     private static async Task<ToolResult> BlastRadiusAsync(ToolInvocation call, CancellationToken cancellationToken)
@@ -203,7 +233,8 @@ public sealed class EntityTools : IToolProvider
                 return Result.Success();
             }, cancellationToken),
             ProposedEntryWrite.Update,
-            cancellationToken);
+            cancellationToken,
+            id);
     }
 
     private static async Task<ToolResult> RelateAsync(ToolInvocation call, CancellationToken cancellationToken)
@@ -260,7 +291,8 @@ public sealed class EntityTools : IToolProvider
                 return Result.Success();
             }, cancellationToken),
             ProposedEntryWrite.Update,
-            cancellationToken);
+            cancellationToken,
+            id);
     }
 
     // Reads the entity at the version the agent read, changes its fields in a copy and writes the next version; a stale base version

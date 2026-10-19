@@ -37,7 +37,7 @@ public sealed class JobTools : IToolProvider
 
         // Another caller's job reads as missing, so its existence says nothing about someone else's work.
         return job.IsSuccess && job.Value.Initiator == caller
-            ? ToolResult.Success(ToolJson.Job(job.Value))
+            ? ToolResult.Success(ToolJson.JobRecord(job.Value))
             : ToolResult.Failure(
                 [new Error(JobErrorCodes.JobNotFound, $"You have no job {id}.")],
                 "A job's id comes back from the call that started it, such as bulk_update_entries.");

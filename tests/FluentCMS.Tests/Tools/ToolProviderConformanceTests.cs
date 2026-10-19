@@ -115,6 +115,11 @@ public sealed class EntryToolsConformanceTests : ToolProviderConformanceTests
     protected override object Provider { get; } = new EntryTools();
 }
 
+public sealed class CheckToolsConformanceTests : ToolProviderConformanceTests
+{
+    protected override object Provider { get; } = new CheckTools();
+}
+
 public sealed class BulkToolsConformanceTests : ToolProviderConformanceTests
 {
     protected override object Provider { get; } = new BulkTools();
@@ -128,4 +133,14 @@ public sealed class JobToolsConformanceTests : ToolProviderConformanceTests
 public sealed class EntityToolsConformanceTests : ToolProviderConformanceTests
 {
     protected override object Provider { get; } = new EntityTools();
+}
+
+public sealed class SearchToolsConformanceTests : ToolProviderConformanceTests
+{
+    protected override object Provider { get; } = new SearchTools();
+}
+
+public sealed class DeskToolsConformanceTests : ToolProviderConformanceTests
+{
+    protected override object Provider { get; } = new DeskTools();
 }

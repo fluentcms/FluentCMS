@@ -61,6 +61,14 @@ public sealed class ChangeSet
             errors.Add(new Error(ChangeSetErrorCodes.SiteMissing, "A change set belongs to a site, and the site id is empty."));
         }
 
+        // A set always has a person or an agent behind it (CHG-01); the product's own engines move sets, never open them (ADR-0012).
+        if (initiator is SystemInitiator system)
+        {
+            errors.Add(new Error(
+                ChangeSetErrorCodes.InitiatorNotAllowed,
+                $"A change set is opened by a person or an agent, and '{system.Component}' is part of the product."));
+        }
+
         if (trimmedRationale.Length == 0)
         {
             errors.Add(new Error(ChangeSetErrorCodes.RationaleMissing, "A change set needs a rationale that says why the changes are made."));
@@ -176,12 +184,19 @@ public sealed class ChangeSet
                 $"This change set reverts change set {reverted} and holds exactly what undoes it, so no operation can be added.");
         }
 
-        // One operation per item keeps one diff per item and one version to restore on revert (CHG-03, CHG-06).
-        if (_operations.Any(existing => existing.ItemKind == operation.ItemKind && existing.ItemId == operation.ItemId))
+        // One operation per item keeps one diff per item and one version to restore on revert (CHG-03, CHG-06). A newer version of an
+        // entry or entity the set already proposes, as when a reopened set is fixed, moves that operation on to it.
+        var position = _operations.FindIndex(existing => existing.ItemKind == operation.ItemKind && existing.ItemId == operation.ItemId);
+        if (position >= 0)
         {
-            return Result.Failure(
-                ChangeSetErrorCodes.ItemDuplicate,
-                $"The {Describe(operation.ItemKind)} {operation.ItemId} already has an operation in this change set.");
+            var existing = _operations[position];
+            if (!Supersedes(existing, operation))
+            {
+                return Result.Failure(ChangeSetErrorCodes.ItemDuplicate, Duplicate(existing, operation));
+            }
+
+            _operations[position] = ChangeOperation.Restore(existing.Kind, existing.ItemKind, existing.ItemId, existing.BaseVersion, operation.ProposedVersion);
+            return Result.Success();
         }
 
         _operations.Add(operation);
@@ -276,6 +291,30 @@ public sealed class ChangeSet
             ChangeSetState.AwaitingReview => "awaiting review",
             _ => state.ToString().ToLowerInvariant(),
         };
+    }
+
+    // An item published by another set since this one proposed it changes kind or base, and this set can no longer change it.
+    private static string Duplicate(ChangeOperation existing, ChangeOperation operation)
+    {
+        var item = $"The {Describe(operation.ItemKind)} {operation.ItemId}";
+        if (operation.ItemKind is not (ItemKind.Entry or ItemKind.Entity) || existing.ProposedVersion is not { } proposed)
+        {
+            return $"{item} already has an operation in this change set.";
+        }
+
+        return operation.Kind != existing.Kind || operation.BaseVersion != existing.BaseVersion
+            ? $"{item} was published by another change set after this one proposed it, so this set can no longer change it; propose the change in a new change set."
+            : $"{item} already has an operation in this change set; update it from version {proposed}, which the set proposes, to change what it proposes.";
+    }
+
+    // The same change from the same published version, proposing a later draft.
+    private static bool Supersedes(ChangeOperation existing, ChangeOperation operation)
+    {
+        return operation.ItemKind is ItemKind.Entry or ItemKind.Entity
+            && operation.Kind is OperationKind.Create or OperationKind.Update
+            && operation.Kind == existing.Kind
+            && operation.BaseVersion == existing.BaseVersion
+            && operation.ProposedVersion > existing.ProposedVersion;
     }
 
     private static string Describe(ItemKind kind)
