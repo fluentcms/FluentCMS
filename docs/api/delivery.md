@@ -20,9 +20,6 @@ Entities are content too, so their fields hold facts as stored: each value with 
 | --- | --- |
 | `GET /api/v1/content/{type}` | The published entries of a content type, in the order they were created. |
 | `GET /api/v1/entries/{id}` | One published entry. |
-| `GET /api/v1/entries/{id}.md` | The same entry as Markdown. |
-| `GET /api/v1/index` | Every published entry with its type, title and URLs, as JSON. |
-| `GET /api/v1/index.md` and `GET /llms.txt` | The same index as Markdown, grouped by content type. |
 
 `GET /api/v1/content/{type}` takes these query parameters:
 
@@ -42,7 +39,6 @@ A list looks like this:
       "type": "product-page",
       "version": 3,
       "fields": { "product": "0192f3a1-0000-7000-8000-000000000001", "price": 99, "headline": "A sturdy drill" },
-      "markdown": "/api/v1/entries/0192f3a1-7c2e-7a4b-9d3e-1f2a3b4c5d6e.md",
       "unresolved": []
     }
   ],
@@ -51,20 +47,6 @@ A list looks like this:
 ```
 
 `next` is `null` on the last page. Pages are keyed by id, so entries added while a client pages through do not shift the pages it has not read yet.
-
-## Markdown and the site index
-
-Each published entry has a Markdown representation at `/api/v1/entries/{id}.md` (API-03). The URL is the entry's id, so it stays the same across versions and always shows the published version.
-
-- Front matter gives the id, type, version and URL.
-- The heading is the entry's title: its first text field that holds text.
-- Each other field follows under its name, in the order its content type defines them:
-  - rich text as written, since it is stored as Markdown;
-  - lists as bullets, and JSON in a fenced block;
-  - references to whole entries as links to their Markdown.
-- On an entity, each fact's value is followed by its source.
-
-The site index lists every published entry for agents. `/llms.txt` serves it where agents look for it first.
 
 ## Errors
 

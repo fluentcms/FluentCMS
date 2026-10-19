@@ -91,6 +91,7 @@ public static class InfrastructureServiceCollectionExtensions
     private static void AddChangeSets(IServiceCollection services)
     {
         services.AddScoped<IChangeSetDirectory, ChangeSetDirectory>();
+        services.AddScoped<IChangeSetLists, ChangeSetLists>();
     }
 
     private static void AddAgents(IServiceCollection services)
@@ -107,6 +108,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddFluentCmsExtension<IMediaStorage, LocalDiskMediaStorage>();
         services.AddOptions<MediaOptions>().Bind(configuration.GetSection(MediaOptions.SectionName)).ValidateOnStart();
         services.AddSingleton<IValidateOptions<MediaOptions>, MediaOptionsValidation>();
+        services.AddScoped<IMediaLibrary, MediaLibrary>();
     }
 
     private static void AddContent(IServiceCollection services, IConfiguration configuration)

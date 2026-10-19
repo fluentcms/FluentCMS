@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Text;
 using System.Text.Json;
 using FluentCMS.Core.Agents;
 using FluentCMS.Core.Content;
@@ -17,30 +16,17 @@ public static class DeliveryEndpoints
 {
     public const string Prefix = "/api/v1";
 
-    private const string Markdown = EntryMarkdown.MediaType + "; charset=utf-8";
-
     public static RouteGroupBuilder MapFluentCmsApi(this IEndpointRouteBuilder endpoints)
     {
         var api = endpoints.MapGroup(Prefix).AllowAnonymous();
         api.MapGet("/content/{type}", ListAsync);
-        api.MapGet("/entries/{id:guid}", GetAsync);
-        api.MapGet("/entries/{id:guid}.md", GetMarkdownAsync);
-        api.MapGet("/index", IndexAsync);
-        api.MapGet("/index.md", IndexMarkdownAsync);
+        api.MapGet("/entries/{id}", GetAsync);
 
-        // Where agents look for a site's index first, by the llms.txt convention.
-        endpoints.MapGet("/llms.txt", IndexMarkdownAsync).AllowAnonymous();
+        // Ids are parsed by the handlers and every other path under the prefix is answered here, so no API call falls through to the
+        // admin's not-found page.
+        api.MapGet("/{**path}", (string? path) => Problem(
+            [new Error(DeliveryErrorCodes.EndpointNotFound, $"There is no delivery endpoint at {Prefix}/{path}; see docs/api/delivery.md.")]));
         return api;
-    }
-
-    public static string EntryUrl(Guid id)
-    {
-        return $"{Prefix}/entries/{id}";
-    }
-
-    public static string MarkdownUrl(Guid id)
-    {
-        return $"{Prefix}/entries/{id}.md";
     }
 
     private static async Task<IResult> ListAsync(
@@ -71,51 +57,16 @@ public static class DeliveryEndpoints
             : Problem(page.Errors);
     }
 
-    private static async Task<IResult> GetAsync(Guid id, IPublishedContent content, CancellationToken cancellationToken)
+    private static async Task<IResult> GetAsync(string id, IPublishedContent content, CancellationToken cancellationToken)
     {
-        var item = await content.GetAsync(id, cancellationToken);
-        return item.IsSuccess ? Results.Json(Item(item.Value)) : Problem(item.Errors);
-    }
-
-    // The URL is the entry's id, so it stays the same across versions and always shows the published one (API-03).
-    private static async Task<IResult> GetMarkdownAsync(Guid id, IPublishedContent content, CancellationToken cancellationToken)
-    {
-        var item = await content.GetAsync(id, cancellationToken);
-        return item.IsSuccess
-            ? Results.Text(EntryMarkdown.Render(item.Value, MarkdownUrl(id), MarkdownUrl), Markdown)
-            : Problem(item.Errors);
-    }
-
-    private static async Task<IResult> IndexAsync(IPublishedContent content, CancellationToken cancellationToken)
-    {
-        var index = await content.IndexAsync(cancellationToken);
-        return Results.Json(new IndexResponse([.. index.Select(entry => new IndexEntryResponse(
-            entry.Id,
-            entry.ContentType,
-            entry.Version,
-            entry.Title,
-            EntryUrl(entry.Id),
-            MarkdownUrl(entry.Id)))]));
-    }
-
-    private static async Task<IResult> IndexMarkdownAsync(IPublishedContent content, CancellationToken cancellationToken)
-    {
-        var index = await content.IndexAsync(cancellationToken);
-        var markdown = new StringBuilder()
-            .Append("# Site index\n\n")
-            .Append(CultureInfo.InvariantCulture, $"Every published entry of this site, by content type, linked to its Markdown. The same index in JSON is at {Prefix}/index.\n");
-
-        foreach (var type in index.GroupBy(entry => (entry.ContentType, entry.ContentTypeName)))
+        var errors = new List<Error>();
+        if (Id(id, "id", "the id of an entry", errors) is not { } entryId)
         {
-            markdown.Append(CultureInfo.InvariantCulture, $"\n## {type.Key.ContentTypeName}\n\n");
-            foreach (var entry in type)
-            {
-                var title = (entry.Title ?? $"{entry.ContentTypeName} {entry.Id}").Replace("[", @"\[", StringComparison.Ordinal).Replace("]", @"\]", StringComparison.Ordinal);
-                markdown.Append(CultureInfo.InvariantCulture, $"- [{title}]({MarkdownUrl(entry.Id)})\n");
-            }
+            return Problem(errors);
         }
 
-        return Results.Text(markdown.ToString(), Markdown);
+        var item = await content.GetAsync(entryId, cancellationToken);
+        return item.IsSuccess ? Results.Json(Item(item.Value)) : Problem(item.Errors);
     }
 
     private static Guid? Id(string? value, string name, string form, List<Error> errors)
@@ -141,7 +92,6 @@ public static class DeliveryEndpoints
             item.ContentType,
             item.Version,
             item.Fields,
-            MarkdownUrl(item.Id),
             [.. item.Unresolved.Select(reference => new UnresolvedResponse(
                 reference.Path,
                 reference.EntityId,
@@ -154,7 +104,7 @@ public static class DeliveryEndpoints
     {
         var status = errors[0].Code switch
         {
-            ContentErrorCodes.EntryNotFound or SchemaErrorCodes.ContentTypeNotFound => StatusCodes.Status404NotFound,
+            ContentErrorCodes.EntryNotFound or SchemaErrorCodes.ContentTypeNotFound or DeliveryErrorCodes.EndpointNotFound => StatusCodes.Status404NotFound,
             AgentPermissionErrorCodes.ScopeDenied => StatusCodes.Status403Forbidden,
             _ => StatusCodes.Status400BadRequest,
         };
@@ -170,11 +120,7 @@ public static class DeliveryEndpoints
 
     private sealed record PageResponse(IReadOnlyList<ItemResponse> Items, Guid? Next);
 
-    private sealed record ItemResponse(Guid Id, string Type, int Version, JsonElement Fields, string Markdown, IReadOnlyList<UnresolvedResponse> Unresolved);
-
-    private sealed record IndexResponse(IReadOnlyList<IndexEntryResponse> Items);
-
-    private sealed record IndexEntryResponse(Guid Id, string Type, int Version, string? Title, string Url, string Markdown);
+    private sealed record ItemResponse(Guid Id, string Type, int Version, JsonElement Fields, IReadOnlyList<UnresolvedResponse> Unresolved);
 
     private sealed record UnresolvedResponse(string Path, Guid EntityId, string Field, string Reason);
 }
