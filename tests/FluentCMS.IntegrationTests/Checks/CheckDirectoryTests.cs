@@ -248,7 +248,8 @@ public sealed class CheckDirectoryTests
             directory => directory.ActivateAsync("no-superlatives", 1),
             directory => directory.ActivateAsync("no-superlatives", 1));
 
-        Assert.Equal(CheckErrorCodes.VersionConflict, Assert.Single(lost.Errors).Code);
+        // Under load the second may read only after the first commits, and then finds the version already active.
+        Assert.Contains(Assert.Single(lost.Errors).Code, new[] { CheckErrorCodes.VersionConflict, CheckErrorCodes.AlreadyActive });
         Assert.Single(await scenario.AuditRowsAsync(), row => row.Operation == "check.activated");
         Assert.Equal(1, await scenario.QueryAsync(context => context.Checks.Select(row => row.ActiveVersion).SingleAsync()));
     }

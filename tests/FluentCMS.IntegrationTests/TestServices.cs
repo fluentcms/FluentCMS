@@ -1,4 +1,5 @@
 using FluentCMS.Core;
+using FluentCMS.Core.Identity;
 using FluentCMS.Infrastructure;
 using FluentCMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -20,6 +21,12 @@ internal static class TestServices
         services.AddLogging();
         // Test doubles go in first so a test clock wins over the TimeProvider Infrastructure adds with TryAdd.
         configure?.Invoke(services);
+
+        // As the hosts do, so a scope can act as an engine (ADR-0012).
+        if (services.Any(descriptor => descriptor.ServiceType == typeof(ICurrentInitiator)))
+        {
+            services.AddEngineScopes();
+        }
         services.AddFluentCmsCore();
         services.AddFluentCmsInfrastructure(configuration);
 
