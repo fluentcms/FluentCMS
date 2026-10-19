@@ -227,6 +227,35 @@ public sealed class ChangeSetPublishTests
         Assert.Equal(loserEvents, (await scenario.ChangeSetEventsAsync(loser.Id)).Count);
     }
 
+    // Items move in one order whatever order the sets list them in, so the later publish waits for the earlier one and finds its
+    // base gone, instead of the two deadlocking on each other's rows.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task Two_sets_that_list_the_same_items_in_opposite_orders_publish_at_once_and_one_is_stale(string provider)
+    {
+        await using var scenario = await ScenarioAsync(provider);
+        for (var round = 0; round < 5; round++)
+        {
+            var product = await scenario.ContentTypeAsync($"product-{round}", revised: true);
+            var category = await scenario.ContentTypeAsync($"category-{round}", revised: true);
+            await scenario.PublishAsync(Create(product), Create(category));
+            var forward = await scenario.ApproveAsync(Update(product), Update(category));
+            var backward = await scenario.ApproveAsync(Update(category), Update(product));
+
+            var results = await Task.WhenAll(
+                Task.Run(() => scenario.RunAsync(directory => directory.PublishAsync(forward.Id))),
+                Task.Run(() => scenario.RunAsync(directory => directory.PublishAsync(backward.Id))));
+
+            Assert.Single(results, result => result.IsSuccess);
+            var lost = Assert.Single(results, result => !result.IsSuccess);
+            Assert.NotEmpty(lost.Errors);
+            Assert.All(lost.Errors, error => Assert.Equal(ChangeSetErrorCodes.BaseVersionStale, error.Code));
+            Assert.Equal(2, await scenario.PublishedVersionAsync(product.Id));
+            Assert.Equal(2, await scenario.PublishedVersionAsync(category.Id));
+        }
+    }
+
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
     [PostgresData]
