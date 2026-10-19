@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Admin.Forms;
+using FluentCMS.Core.Schema;
 
 namespace FluentCMS.Tests.Admin;
 
@@ -59,6 +60,41 @@ public sealed class FactValuesTests
         Assert.Equal(10, value!.Value.GetInt32());
         Assert.Equal(("file", "prices.csv", Owner.ToString(), "2026-12-31T22:59"), (facts["price.kind"], facts["price.reference"], facts["price.owner"], facts["price.validUntil"]));
         Assert.False(FactValues.IsUnsourced(stored));
+    }
+
+    [Fact]
+    public void Parts_that_show_as_the_stored_fact_keep_its_text()
+    {
+        var stored = JsonDocument.Parse($$"""{"value": 10, "source": null, "owner": "{{Owner.ToString().ToUpperInvariant()}}", "validFrom": null, "validUntil": null, "lastVerified": "2026-03-04T05:06:07.89+01:00"}""").RootElement;
+        var shown = new Dictionary<string, string?>();
+        FactValues.Show("price", stored, shown);
+        var problems = new Dictionary<string, string>();
+
+        var fact = FactValues.Read("price", JsonValue.Create(10), shown, problems, stored, new HashSet<Guid> { Owner });
+
+        Assert.Empty(problems);
+        Assert.Equal(Owner.ToString(), shown["price.owner"]);
+        Assert.Equal(Owner.ToString().ToUpperInvariant(), fact![FactMetadata.Owner]!.GetValue<string>());
+        Assert.Equal("2026-03-04T05:06:07.89+01:00", fact[FactMetadata.LastVerified]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void An_owner_who_is_not_a_known_user_is_a_problem()
+    {
+        var problems = new Dictionary<string, string>();
+
+        Assert.Null(FactValues.Read("price", JsonValue.Create(10m), Posted(("price.owner", Guid.NewGuid().ToString())), problems, owners: new HashSet<Guid> { Owner }));
+        Assert.Equal("owner", problems["owner"]);
+    }
+
+    [Theory]
+    [InlineData("price.reference", "prices.csv", true)]
+    [InlineData("price.validFrom", "2026-01-01T00:00", true)]
+    [InlineData("other.kind", "url", false)]
+    [InlineData("price.owner", " ", false)]
+    public void Details_are_given_when_any_part_of_the_field_has_text(string key, string posted, bool expected)
+    {
+        Assert.Equal(expected, FactValues.HasDetails("price", Posted((key, posted))));
     }
 
     private static Dictionary<string, string?> Posted(params (string Key, string Value)[] parts)

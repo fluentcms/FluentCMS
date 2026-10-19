@@ -14,7 +14,6 @@ public sealed class GeneratedFormTests
     [InlineData("number", "{}", "129.5", "129.5")]
     [InlineData("number", "{}", "-3", "-3")]
     [InlineData("boolean", "{}", "true", "true")]
-    [InlineData("boolean", "{}", null, "false")]
     [InlineData("dateTime", "{}", "2026-11-01T09:30", "\"2026-11-01T09:30:00Z\"")]
     [InlineData("dateTime", """{"dateOnly": true}""", "2026-11-02", "\"2026-11-02\"")]
     [InlineData("enum", """{"values": ["red"]}""", "red", "\"red\"")]
@@ -48,6 +47,42 @@ public sealed class GeneratedFormTests
     {
         Assert.Null(FieldValues.Read(Field(type, "{}"), "  ", out var problem));
         Assert.Null(problem);
+    }
+
+    [Theory]
+    [InlineData("dateTime", "{}", "\"2026-11-01T09:30:45.5+02:00\"", "2026-11-01T07:30")]
+    [InlineData("number", "{}", "4.50", "4.50")]
+    [InlineData("text", "{}", "\"one\\ntwo\"", "one\r\ntwo")]
+    [InlineData("json", "{}", """{"k":[1,2]}""", "{\r\n  \"k\": [\r\n    1,\r\n    2\r\n  ]\r\n}")]
+    [InlineData("boolean", "{}", "true", "true")]
+    public void A_posted_text_that_shows_as_the_stored_value_keeps_it_exactly(string type, string settings, string stored, string posted)
+    {
+        var value = FieldValues.Read(Field(type, settings), posted, out var problem, JsonDocument.Parse(stored).RootElement);
+
+        Assert.Null(problem);
+        Assert.Equal(stored, value!.ToJsonString(Unescaped));
+    }
+
+    [Fact]
+    public void A_changed_text_replaces_the_stored_value()
+    {
+        var value = FieldValues.Read(Field("dateTime", "{}"), "2026-11-01T07:31", out _, JsonDocument.Parse("\"2026-11-01T09:30:45+02:00\"").RootElement);
+
+        Assert.Equal("\"2026-11-01T07:31:00Z\"", value!.ToJsonString());
+    }
+
+    [Theory]
+    [InlineData(null, false, null)]
+    [InlineData("true", false, "false")]
+    [InlineData(null, true, "false")]
+    public void An_unchecked_box_is_false_only_when_the_field_is_required_or_had_a_value(string? stored, bool required, string? expected)
+    {
+        var storedValue = stored is null ? (JsonElement?)null : JsonDocument.Parse(stored).RootElement;
+
+        var value = FieldValues.Read(Field("boolean", "{}", required), null, out var problem, storedValue);
+
+        Assert.Null(problem);
+        Assert.Equal(expected, value?.ToJsonString());
     }
 
     [Theory]
@@ -102,6 +137,8 @@ public sealed class GeneratedFormTests
         Assert.Equal(["", "red", "blue"], cut.FindAll("option").Select(option => option.GetAttribute("value")));
         Assert.True(cut.Find("option[value=blue]").HasAttribute("selected"));
     }
+
+    private static readonly JsonSerializerOptions Unescaped = new() { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
     private static FieldDefinition Field(string type, string settings, bool required = false)
     {

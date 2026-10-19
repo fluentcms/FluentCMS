@@ -36,15 +36,29 @@ public static class FieldValues
                 : [];
     }
 
-    // Null when the field was left empty. A problem is set when the text cannot be the field's value at all.
-    public static JsonNode? Read(FieldDefinition field, string? posted, out string? problem)
+    // Null when the field was left empty. A problem is set when the text cannot be the field's value at all. A text that shows the
+    // same as the stored value keeps the stored value, so a field the person did not touch is not rewritten by the widget's precision,
+    // such as the seconds a date-time input drops.
+    public static JsonNode? Read(FieldDefinition field, string? posted, out string? problem, JsonElement? stored = null)
     {
         problem = null;
+
+        // Browsers send a textarea's line breaks as CRLF; stored text keeps LF.
+        posted = posted?.ReplaceLineEndings("\n");
+        if (stored is { ValueKind: not JsonValueKind.Null } kept && posted is not null && posted == Show(field, kept)?.ReplaceLineEndings("\n"))
+        {
+            return JsonNode.Parse(kept.GetRawText());
+        }
+
         var text = posted?.Trim() ?? string.Empty;
 
+        // An unchecked box posts nothing: it is false for a stored value or a required field, and leaves an optional field that had
+        // no value empty.
         if (field.Type == "boolean")
         {
-            return JsonValue.Create(text == "true");
+            return text == "true" ? JsonValue.Create(true)
+                : field.Required || stored is { ValueKind: JsonValueKind.True or JsonValueKind.False } ? JsonValue.Create(false)
+                : null;
         }
 
         if (text.Length == 0)

@@ -34,9 +34,26 @@
     {
         <p class="mt-2 text-sm text-muted-foreground">@L["An entity type: every field is a fact with its source, owner and validity."]</p>
     }
+    @if (_entry is { PublishedVersion: { } published } entry && entry.LatestVersion != published && entry.State != EntryState.InReview)
+    {
+        <p role="status" class="mt-4 rounded-md border bg-muted/50 px-3 py-2 text-sm" data-testid="entry-draft-note">
+            @if (FromPublished)
+            {
+                @L["The form shows the published version {0}. The latest draft, version {1}, is not published; saving proposes this version's values with your changes.", published, entry.LatestVersion]
+                <a href="@($"content/{Slug}/{entry.Id}")" class="ms-1 underline underline-offset-4">@L["Show the latest draft"]</a>
+            }
+            else
+            {
+                @L["The form shows the latest draft, version {0}, which is not published; a rejected or reverted change can leave such a draft. Version {1} is published.", entry.LatestVersion, published]
+                <a href="@($"content/{Slug}/{entry.Id}?from=published")" class="ms-1 underline underline-offset-4" data-testid="from-published">@L["Start from the published version"]</a>
+            }
+        </p>
+    }
     <form method="post" @onsubmit="SaveAsync" @formname="entry" class="mt-6 grid gap-6" data-testid="entry-form">
         <AntiforgeryToken />
-        <input type="hidden" name="Form.BaseVersion" value="@(_entry?.LatestVersion ?? 0)" />
+        @* The version the shown values were made from: after a refused save it is still the one the person started from, so a change
+           someone saved meanwhile is refused as a conflict rather than overwritten. *@
+        <input type="hidden" name="Form.BaseVersion" value="@Shown.BaseVersion" />
         @if (_formError is not null)
         {
             <p role="alert" class="rounded-md border border-destructive/50 px-3 py-2 text-sm text-destructive" data-testid="entry-form-error">@_formError</p>
@@ -84,6 +101,7 @@
     private Dictionary<string, Dictionary<string, string>> _factProblems = new(StringComparer.Ordinal);
     private HashSet<string> _unsourced = new(StringComparer.Ordinal);
     private IReadOnlyList<FieldOption> _owners = [];
+    private HashSet<Guid> _ownerIds = [];
     private string? _rationaleError;
     private string? _formError;
 
@@ -93,6 +111,15 @@
 
     [SupplyParameterFromForm(FormName = "entry")]
     private EntryFormModel? Form { get; set; }
+
+    // Start from the published version instead of a latest draft no set is reviewing, such as a rejected or reverted one.
+    [SupplyParameterFromQuery(Name = "from")]
+    private string? From { get; set; }
+
+    private bool FromPublished => From == "published" && _entry?.PublishedVersion is not null;
+
+    // The stored values the form was filled from, by field, so a value the person left as it was is saved exactly as stored.
+    private Dictionary<string, JsonElement> _stored = new(StringComparer.Ordinal);
 
     // What the form shows: what was posted after a refused save, the stored values otherwise.
     private EntryFormModel Shown { get; set; } = new();
@@ -131,11 +158,25 @@
             _entry = entry.Value;
         }
 
+        var shownFields = _entry?.Latest.Fields;
+        if (FromPublished)
+        {
+            var published = await Entries.GetVersionAsync(_entry!.Id, _entry.PublishedVersion!.Value);
+            shownFields = published.IsSuccess ? published.Value.Fields : shownFields;
+        }
+
+        // An update is always made from the latest version, so the version check holds whichever version the values come from.
         Shown = new EntryFormModel { BaseVersion = _entry?.LatestVersion ?? 0 };
         _unsourced.Clear();
+        _stored.Clear();
         foreach (var field in _type.Definition.Fields)
         {
-            JsonElement? stored = _entry is not null && _entry.Latest.Fields.TryGetProperty(field.Name, out var value) ? value : null;
+            JsonElement? stored = shownFields is { } document && document.TryGetProperty(field.Name, out var value) ? value.Clone() : null;
+            if (stored is { } kept)
+            {
+                _stored[field.Name] = kept;
+            }
+
             if (_type.Definition.IsEntity)
             {
                 if (FactValues.IsUnsourced(stored))
@@ -157,7 +198,10 @@
     {
         if (_type!.Definition.IsEntity)
         {
-            _owners = [.. (await Users.ListAsync()).Where(user => !user.IsDisabled).Select(user => new FieldOption(user.Id.ToString(), user.DisplayName))];
+            // Every user, so a fact owned by someone since disabled keeps its owner when it is saved again.
+            var users = await Users.ListAsync();
+            _owners = [.. users.Select(user => new FieldOption(user.Id.ToString(), user.IsDisabled ? L["{0} (disabled)", user.DisplayName] : user.DisplayName))];
+            _ownerIds = [.. users.Select(user => user.Id)];
         }
 
         foreach (var field in _type!.Definition.Fields)
@@ -186,7 +230,15 @@
         var fields = new JsonObject();
         foreach (var field in _type.Definition.Fields)
         {
-            var value = FieldValues.Read(field, Form.Values.GetValueOrDefault(field.Name), out var problem);
+            var stored = _stored.TryGetValue(field.Name, out var storedValue) ? storedValue : (JsonElement?)null;
+            var storedValueOnly = _type.Definition.IsEntity ? FactValues.Show(field.Name, stored, new Dictionary<string, string?>()) : stored;
+            var value = FieldValues.Read(field, Form.Values.GetValueOrDefault(field.Name), out var problem, storedValueOnly);
+            if (value is null && field.Type == "boolean" && _type.Definition.IsEntity && FactValues.HasDetails(field.Name, Form.Facts))
+            {
+                // A sourced fact that a box is unchecked is the fact that it is false.
+                value = JsonValue.Create(false);
+            }
+
             if (problem is not null)
             {
                 _fieldErrors[field.Name] = Problem(problem);
@@ -195,7 +247,11 @@
 
             if (value is null)
             {
-                if (field.Required)
+                if (_type.Definition.IsEntity && FactValues.HasDetails(field.Name, Form.Facts))
+                {
+                    _fieldErrors[field.Name] = L["Give the value too, or clear its fact details."];
+                }
+                else if (field.Required)
                 {
                     _fieldErrors[field.Name] = L["Fill in {0}.", field.Name];
                 }
@@ -218,7 +274,7 @@
             }
 
             var problems = new Dictionary<string, string>();
-            var fact = FactValues.Read(field.Name, value, Form.Facts, problems);
+            var fact = FactValues.Read(field.Name, value, Form.Facts, problems, stored, _ownerIds);
             if (fact is null)
             {
                 _factProblems[field.Name] = problems;
@@ -263,7 +319,7 @@
         Shown = Form;
         foreach (var error in saved.Errors)
         {
-            if (FieldOf(error.Message) is { } field && _type.Definition.HasField(field))
+            if (FieldOf(error.Message) is { } field && _type.Definition.HasField(field) && !_fieldErrors.ContainsKey(field))
             {
                 _fieldErrors[field] = error.Message[(error.Message.IndexOf(':') + 1)..].Trim();
             }

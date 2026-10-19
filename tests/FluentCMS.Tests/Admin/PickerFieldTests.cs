@@ -36,6 +36,7 @@ public sealed class PickerFieldTests
 
         var cut = context.Render<PickerField>(EntryPicker(chosen: false));
         Assert.Equal("", cut.Find("input[type=hidden]").GetAttribute("value") ?? "");
+        Assert.False(cut.Find("input[type=search]").HasAttribute("aria-controls"));
         cut.Find("input[type=search]").Input("dri");
 
         Assert.Equal(("dri", "product"), (search.Queries[0].Text, search.Queries[0].ContentTypes!.Single()));

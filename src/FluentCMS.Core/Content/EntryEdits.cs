@@ -22,6 +22,17 @@ internal sealed class EntryEdits(
             return Result<SavedEntryEdit>.Failure(ContentErrorCodes.VersionConflict, "An update names the version it was made from.");
         }
 
+        // The set's own expected failures are found before anything is written, as the directories find theirs.
+        if (string.IsNullOrWhiteSpace(edit.ChangeSet.Rationale))
+        {
+            return Result<SavedEntryEdit>.Failure(ChangeSetErrorCodes.RationaleMissing, "A change set needs a rationale that says why the changes are made.");
+        }
+
+        if (edit.ChangeSet.Sources.Any(string.IsNullOrWhiteSpace))
+        {
+            return Result<SavedEntryEdit>.Failure(ChangeSetErrorCodes.SourceBlank, "A source is blank. A source names where a change came from, such as a URL, a file, an export or a person.");
+        }
+
         await using var scope = await unitOfWork.BeginAsync(cancellationToken);
 
         var entry = edit.EntryId is { } id

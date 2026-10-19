@@ -103,6 +103,7 @@ public sealed class EntryFormScreenTests
         Assert.Contains("Enter a number", page);
         Assert.Contains("Enter a date and a time.", page);
         Assert.Contains("Enter valid JSON", page);
+        Assert.Contains("The value must be one of: red, blue.", page);
         Assert.Contains("Say why you are making this change.", page);
         Assert.Contains("value=\"cheap\"", page);
         Assert.True(System.Text.RegularExpressions.Regex.Count(page, "aria-invalid=\"true\"") >= 5);
@@ -133,6 +134,123 @@ public sealed class EntryFormScreenTests
         Assert.Contains("data-testid=\"entry-form-error\"", page);
         Assert.Contains("value=\"Second\"", page);
         Assert.Contains("data-version=\"2\"", page);
+    }
+
+    // A refused save comes back with the version the person started from, so their next save cannot overwrite a change made meanwhile.
+    [Fact]
+    public async Task A_form_refused_for_its_own_problems_keeps_its_base_version_and_its_next_save_is_a_conflict()
+    {
+        using var install = new TemporaryInstall();
+        await using var host = await AdminHost.StartAsync(install);
+        var ownerId = await host.CreateFirstAdministratorAsync();
+        await KitchenSinkAsync(host, ownerId);
+        var entry = await host.AsUserAsync<IEntryDirectory, Entry>(ownerId, async entries =>
+            (await entries.CreateAsync(new NewEntry("kitchen-sink", Json("""{"title": "First"}""")))).Value);
+        await host.SignInAsync(AdminHost.Owner);
+        var form = await host.Client.GetStringAsync($"/content/kitchen-sink/{entry.Id}");
+        Assert.Contains("name=\"Form.BaseVersion\" value=\"1\"", form);
+        await host.AsUserAsync<IEntryDirectory, Entry>(ownerId, async entries =>
+            (await entries.UpdateAsync(entry.Id, 1, Json("""{"title": "Theirs"}"""))).Value);
+
+        var refused = await host.SubmitAsync($"/content/kitchen-sink/{entry.Id}", "entry", new Dictionary<string, string>
+        {
+            ["Form.Values[title]"] = "Mine",
+            ["Form.Values[extra]"] = "{",
+            ["Form.Rationale"] = "Retitle.",
+            ["Form.BaseVersion"] = "1",
+        });
+        Assert.Contains("name=\"Form.BaseVersion\" value=\"1\"", await refused.Content.ReadAsStringAsync());
+
+        var again = await host.SubmitAsync($"/content/kitchen-sink/{entry.Id}", "entry", new Dictionary<string, string>
+        {
+            ["Form.Values[title]"] = "Mine",
+            ["Form.Rationale"] = "Retitle.",
+            ["Form.BaseVersion"] = "1",
+        });
+
+        Assert.Contains("data-testid=\"entry-form-error\"", await again.Content.ReadAsStringAsync());
+        var stored = await host.AsUserAsync<IEntryDirectory, Entry>(ownerId, async entries => (await entries.GetAsync(entry.Id)).Value);
+        Assert.Equal((2, "Theirs"), (stored.LatestVersion, stored.Latest.Fields.GetProperty("title").GetString()));
+    }
+
+    [Fact]
+    public async Task An_edit_of_one_field_leaves_every_other_stored_value_exactly_as_it_was()
+    {
+        using var install = new TemporaryInstall();
+        await using var host = await AdminHost.StartAsync(install);
+        var ownerId = await host.CreateFirstAdministratorAsync();
+        await KitchenSinkAsync(host, ownerId);
+        var entry = await host.AsUserAsync<IEntryDirectory, Entry>(ownerId, async entries => (await entries.CreateAsync(new NewEntry(
+            "kitchen-sink",
+            Json("""{"title": "Drill", "body": "First line.\nSecond line.", "launch": "2026-11-01T09:30:45.5+02:00", "price": 4.50}""")))).Value);
+        await host.SignInAsync(AdminHost.Owner);
+
+        // What a browser posts back for the untouched fields: the widgets' text, with CRLF line breaks and minutes only.
+        var saved = await host.SubmitAsync($"/content/kitchen-sink/{entry.Id}", "entry", new Dictionary<string, string>
+        {
+            ["Form.Values[title]"] = "Cordless drill",
+            ["Form.Values[body]"] = "First line.\r\nSecond line.",
+            ["Form.Values[launch]"] = "2026-11-01T07:30",
+            ["Form.Values[price]"] = "4.50",
+            ["Form.Rationale"] = "Retitle.",
+            ["Form.BaseVersion"] = "1",
+        });
+
+        var set = await host.AsUserAsync<IChangeSetDirectory, ChangeSet>(ownerId, async sets => (await sets.GetAsync(Guid.Parse(host.LocationOf(saved)![6..42]))).Value);
+        var fields = (await host.AsUserAsync<IEntryDirectory, Entry>(ownerId, async entries => (await entries.GetAsync(entry.Id)).Value)).Latest.Fields;
+        Assert.Equal("Cordless drill", fields.GetProperty("title").GetString());
+        Assert.Equal("First line.\nSecond line.", fields.GetProperty("body").GetString());
+        Assert.Equal(DateTimeOffset.Parse("2026-11-01T09:30:45.5+02:00", System.Globalization.CultureInfo.InvariantCulture), fields.GetProperty("launch").GetDateTimeOffset());
+        Assert.Equal("4.50", fields.GetProperty("price").GetRawText());
+        Assert.False(fields.TryGetProperty("active", out _));
+        Assert.Equal(2, set.Operations[0].ProposedVersion);
+    }
+
+    [Fact]
+    public async Task Editing_a_published_entry_proposes_an_update_from_the_published_version_and_a_stray_draft_is_named()
+    {
+        using var install = new TemporaryInstall();
+        await using var host = await AdminHost.StartAsync(install);
+        var ownerId = await host.CreateFirstAdministratorAsync();
+        await KitchenSinkAsync(host, ownerId);
+        var entry = await host.AsUserAsync<IEntryDirectory, Entry>(ownerId, async entries =>
+            (await entries.CreateAsync(new NewEntry("kitchen-sink", Json("""{"title": "Published"}""")))).Value);
+        await host.AsUserAsync<IChangeSetDirectory, ChangeSet>(ownerId, async sets =>
+        {
+            var set = (await sets.OpenAsync(new NewChangeSet("Publish it.", []))).Value;
+            await sets.AddOperationAsync(set.Id, ChangeOperation.Create(OperationKind.Create, ItemKind.Entry, entry.Id, null, 1).Value);
+            await sets.TransitionAsync(set.Id, ChangeSetState.ChecksRunning);
+            await sets.TransitionAsync(set.Id, ChangeSetState.Approved);
+            return (await sets.PublishAsync(set.Id)).Value;
+        });
+
+        // A draft no set reviews, as a rejected change leaves one.
+        await host.AsUserAsync<IEntryDirectory, Entry>(ownerId, async entries => (await entries.UpdateAsync(entry.Id, 1, Json("""{"title": "Stray draft"}"""))).Value);
+        await host.SignInAsync(AdminHost.Owner);
+
+        var latest = await host.Client.GetStringAsync($"/content/kitchen-sink/{entry.Id}");
+        Assert.Contains("data-testid=\"entry-draft-note\"", latest);
+        Assert.Contains("value=\"Stray draft\"", latest);
+        var published = await host.Client.GetStringAsync($"/content/kitchen-sink/{entry.Id}?from=published");
+        Assert.Contains("value=\"Published\"", published);
+        Assert.Contains("name=\"Form.BaseVersion\" value=\"2\"", published);
+
+        var saved = await host.SubmitAsync($"/content/kitchen-sink/{entry.Id}?from=published", "entry", new Dictionary<string, string>
+        {
+            ["Form.Values[title]"] = "Published, retitled",
+            ["Form.Rationale"] = "Retitle.",
+            ["Form.BaseVersion"] = "2",
+        });
+
+        var set = await host.AsUserAsync<IChangeSetDirectory, ChangeSet>(ownerId, async sets => (await sets.GetAsync(Guid.Parse(host.LocationOf(saved)![6..42]))).Value);
+        var operation = Assert.Single(set.Operations);
+        Assert.Equal((OperationKind.Update, (int?)1, (int?)3), (operation.Kind, operation.BaseVersion, operation.ProposedVersion));
+
+        // The saved set goes through the checks from the set view like any other.
+        var page = await host.Client.GetStringAsync($"/sets/{set.Id}");
+        var seen = System.Text.RegularExpressions.Regex.Match(page, "name=\"Submit.Seen\" value=\"([0-9a-f]+)\"").Groups[1].Value;
+        var submitted = await host.SubmitAsync($"/sets/{set.Id}", "submit", new Dictionary<string, string> { ["Submit.Seen"] = seen });
+        Assert.Contains("data-state=\"awaiting-review\"", await submitted.Content.ReadAsStringAsync());
     }
 
     [Fact]
