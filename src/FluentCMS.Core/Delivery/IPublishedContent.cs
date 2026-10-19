@@ -33,4 +33,5 @@ public static class DeliveryErrorCodes
 {
     public const string LimitInvalid = "limit_invalid";
     public const string ParameterInvalid = "parameter_invalid";
+    public const string EndpointNotFound = "endpoint_not_found";
 }

@@ -20,7 +20,12 @@ public static class DeliveryEndpoints
     {
         var api = endpoints.MapGroup(Prefix).AllowAnonymous();
         api.MapGet("/content/{type}", ListAsync);
-        api.MapGet("/entries/{id:guid}", GetAsync);
+        api.MapGet("/entries/{id}", GetAsync);
+
+        // Ids are parsed by the handlers and every other path under the prefix is answered here, so no API call falls through to the
+        // admin's not-found page.
+        api.MapGet("/{**path}", (string? path) => Problem(
+            [new Error(DeliveryErrorCodes.EndpointNotFound, $"There is no delivery endpoint at {Prefix}/{path}; see docs/api/delivery.md.")]));
         return api;
     }
 
@@ -52,9 +57,15 @@ public static class DeliveryEndpoints
             : Problem(page.Errors);
     }
 
-    private static async Task<IResult> GetAsync(Guid id, IPublishedContent content, CancellationToken cancellationToken)
+    private static async Task<IResult> GetAsync(string id, IPublishedContent content, CancellationToken cancellationToken)
     {
-        var item = await content.GetAsync(id, cancellationToken);
+        var errors = new List<Error>();
+        if (Id(id, "id", "the id of an entry", errors) is not { } entryId)
+        {
+            return Problem(errors);
+        }
+
+        var item = await content.GetAsync(entryId, cancellationToken);
         return item.IsSuccess ? Results.Json(Item(item.Value)) : Problem(item.Errors);
     }
 
@@ -93,7 +104,7 @@ public static class DeliveryEndpoints
     {
         var status = errors[0].Code switch
         {
-            ContentErrorCodes.EntryNotFound or SchemaErrorCodes.ContentTypeNotFound => StatusCodes.Status404NotFound,
+            ContentErrorCodes.EntryNotFound or SchemaErrorCodes.ContentTypeNotFound or DeliveryErrorCodes.EndpointNotFound => StatusCodes.Status404NotFound,
             AgentPermissionErrorCodes.ScopeDenied => StatusCodes.Status403Forbidden,
             _ => StatusCodes.Status400BadRequest,
         };

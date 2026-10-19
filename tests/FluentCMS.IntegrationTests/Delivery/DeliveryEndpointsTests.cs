@@ -81,6 +81,20 @@ public sealed class DeliveryEndpointsTests
         await AssertProblemAsync(badLimit, HttpStatusCode.BadRequest, DeliveryErrorCodes.LimitInvalid);
     }
 
+    // The admin's not-found page answers every other path of the host, so the API answers each of its own.
+    [Theory]
+    [InlineData("/api/v1/entries/not-a-guid", HttpStatusCode.BadRequest, DeliveryErrorCodes.ParameterInvalid)]
+    [InlineData("/api/v1/entries/", HttpStatusCode.NotFound, DeliveryErrorCodes.EndpointNotFound)]
+    [InlineData("/api/v1/content/", HttpStatusCode.NotFound, DeliveryErrorCodes.EndpointNotFound)]
+    [InlineData("/api/v1/nothing/here", HttpStatusCode.NotFound, DeliveryErrorCodes.EndpointNotFound)]
+    public async Task A_path_or_id_the_api_does_not_know_is_a_problem_never_the_admin_page(string path, HttpStatusCode status, string code)
+    {
+        using var install = new TemporaryInstall();
+        await using var host = await AdminHost.StartAsync(install);
+
+        await AssertProblemAsync(await host.Client.GetAsync(path), status, code);
+    }
+
     private static async Task<JsonObject> AssertProblemAsync(HttpResponseMessage response, HttpStatusCode status, string code)
     {
         Assert.Equal(status, response.StatusCode);
