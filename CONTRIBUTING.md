@@ -99,6 +99,14 @@ Nothing in the code updates or deletes an audit row. On PostgreSQL the `AuditEve
 
 The admin's `/audit` page offers the export and an item's history. A page cannot answer with a file, so its export form posts to `POST /audit/export` in the host, which maps the form, calls the exporter and streams the result; it needs a signed-in user and an anti-forgery token like every form, and sends a rejected form back to the page.
 
+## Background jobs
+
+Work that outlives a request, such as a bulk operation or a check run, is a job in the `Jobs` table (ADR-0010). Enqueue it with `IJobQueue.EnqueueAsync(new NewJob(type, payload) { Subject = ..., RunAt = ..., MaxAttempts = ... })` inside the unit of work of the change that needs it, so the job commits with the change or not at all; outside a unit of work it throws, as the audit log does. The job records the current initiator, and its handler runs as them, so what it changes names whoever asked for it. `IJobQueue.GetAsync` and `ListForSubjectAsync` read a job's state (`queued`, `running`, `succeeded`, `failed` or `dead`), attempts, progress and last error.
+
+A handler implements `IJobHandler` (an extension point) with the type name its jobs store, which never changes once released. It reads the payload from `JobContext.Job`, resolves services from `JobContext.Services`, a scope of its own, and reports progress with `ReportProgressAsync`, which also keeps its lease; when that returns false another worker has the job, and the handler stops. A returned failure ends the job as `failed`. An exception retries it after `JobQueue__RetryDelay`, doubled for each attempt up to `JobQueue__MaxRetryDelay`, and after its last attempt the job is `dead`. Work in a handler therefore has to be safe to run again.
+
+`JobQueue__WorkerCount` workers in the host claim due jobs every `JobQueue__PollingInterval`. A claim holds a job for `JobQueue__LeaseDuration`, renewed by progress, and a job whose worker stopped is claimed again once the lease runs out, counting another attempt. Claims are conditional updates on the row, so with any number of workers, in one host or several, each job runs once at a time.
+
 ## Extension points
 
 Every pluggable part of the product is an interface in `FluentCMS.Core` marked `[ExtensionPoint]`. Implementations register through dependency injection, either explicitly with `AddFluentCmsExtension<TContract, TImplementation>()` or by discovery with `AddFluentCmsExtensions(assembly)`, which picks up every concrete class implementing an extension-point interface in that assembly. Both paths produce the same `IExtensionCatalog` entry and the same `IEnumerable<TContract>` resolution, so built-ins under `FluentCMS.Core.Builtin` and future plugins look identical to the rest of the product. Each interface is documented where it is defined, together with the conformance tests an implementation must pass.

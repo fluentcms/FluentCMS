@@ -480,6 +480,96 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                         });
                 });
 
+            modelBuilder.Entity("FluentCMS.Infrastructure.Jobs.JobRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("FinishedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("InitiatorId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("InitiatorKind")
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("InitiatorName")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LastError")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LeaseOwner")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("LeaseUntil")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("MaxAttempts")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ProgressDone")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ProgressMessage")
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("ProgressTotal")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Revision")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset>("ScheduledAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("StartedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("SubjectId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SubjectType")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("State", "ScheduledAt");
+
+                    b.HasIndex("SubjectType", "SubjectId");
+
+                    b.ToTable("Jobs", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Jobs_Attempts", "\"Attempts\" >= 0 AND \"MaxAttempts\" >= 1");
+                        });
+                });
+
             modelBuilder.Entity("FluentCMS.Infrastructure.Persistence.FluentCmsRole", b =>
                 {
                     b.Property<Guid>("Id")
