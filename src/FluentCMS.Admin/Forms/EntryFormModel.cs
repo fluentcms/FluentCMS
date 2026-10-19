@@ -5,6 +5,9 @@ public sealed class EntryFormModel
 {
     public Dictionary<string, string?> Values { get; set; } = new(StringComparer.Ordinal);
 
+    // For an entity type, each field's source, owner and validity by "field.part" (FactValues).
+    public Dictionary<string, string?> Facts { get; set; } = new(StringComparer.Ordinal);
+
     public string? Rationale { get; set; }
 
     // One per line, such as a URL or a file name.

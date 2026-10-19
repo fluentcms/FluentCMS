@@ -1,0 +1,75 @@
+@using FluentCMS.Admin.Forms
+@using FluentCMS.Core.Schema
+@inject IStringLocalizer<FactFields> L
+
+@* The fact around an entity field's value (SCH-03): its source, owner and validity, each posted under the field's name. *@
+<fieldset class="grid gap-4 rounded-md border p-4 sm:col-span-2" data-fact="@Field">
+    <legend class="px-1 text-sm font-medium">@L["Fact details for {0}", Field]</legend>
+    @if (Unsourced)
+    {
+        <p class="text-sm text-destructive" data-testid="fact-unsourced">@L["This fact has no source, so it is flagged unsourced. Say where the value comes from."]</p>
+    }
+    <div class="grid gap-4 sm:grid-cols-[12rem_1fr]">
+        <FormField Label="@L["Source kind"]" Error="@Error(FactValues.Kind)">
+            <Select name="@Name(FactValues.Kind)">
+                <option value="">@L["None"]</option>
+                @foreach (var kind in FactMetadata.SourceKinds)
+                {
+                    <option value="@kind" selected="@(Value(FactValues.Kind) == kind)">@KindLabel(kind)</option>
+                }
+            </Select>
+        </FormField>
+        <FormField Label="@L["Source"]" Description="@L["The URL, file, person or system the value comes from."]" Error="@Error(FactValues.Reference)">
+            <Input name="@Name(FactValues.Reference)" value="@Value(FactValues.Reference)" dir="ltr" />
+        </FormField>
+    </div>
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <FormField Label="@L["Owner"]" Error="@Error(FactValues.Owner)">
+            <Select name="@Name(FactValues.Owner)">
+                <option value="">@L["None"]</option>
+                @foreach (var owner in Owners)
+                {
+                    <option value="@owner.Value" selected="@(Value(FactValues.Owner) == owner.Value)">@owner.Label</option>
+                }
+            </Select>
+        </FormField>
+        <FormField Label="@L["Valid from (UTC)"]" Error="@Error(FactMetadata.ValidFrom)">
+            <Input Type="datetime-local" name="@Name(FactMetadata.ValidFrom)" value="@Value(FactMetadata.ValidFrom)" dir="ltr" />
+        </FormField>
+        <FormField Label="@L["Valid until (UTC)"]" Error="@Error(FactMetadata.ValidUntil)">
+            <Input Type="datetime-local" name="@Name(FactMetadata.ValidUntil)" value="@Value(FactMetadata.ValidUntil)" dir="ltr" />
+        </FormField>
+        <FormField Label="@L["Last verified (UTC)"]" Error="@Error(FactMetadata.LastVerified)">
+            <Input Type="datetime-local" name="@Name(FactMetadata.LastVerified)" value="@Value(FactMetadata.LastVerified)" dir="ltr" />
+        </FormField>
+    </div>
+</fieldset>
+
+@code {
+    [Parameter, EditorRequired] public string Field { get; set; } = string.Empty;
+    [Parameter] public IReadOnlyDictionary<string, string?> Values { get; set; } = new Dictionary<string, string?>();
+    [Parameter] public IReadOnlyDictionary<string, string> Problems { get; set; } = new Dictionary<string, string>();
+    [Parameter] public IReadOnlyList<FieldOption> Owners { get; set; } = [];
+    [Parameter] public bool Unsourced { get; set; }
+
+    private string Name(string part) => $"Form.Facts[{FactValues.Key(Field, part)}]";
+
+    private string? Value(string part) => Values.GetValueOrDefault(FactValues.Key(Field, part));
+
+    private string? Error(string part) => Problems.GetValueOrDefault(part) switch
+    {
+        null => null,
+        "kind" => L["Choose a kind of source."].Value,
+        "source" => L["Give both the kind of source and the source, or neither."].Value,
+        "owner" => L["Choose an owner from the list."].Value,
+        _ => L["Enter a date and a time."].Value,
+    };
+
+    private string KindLabel(string kind) => kind switch
+    {
+        "url" => L["URL"],
+        "file" => L["File"],
+        "person" => L["Person"],
+        _ => L["System"],
+    };
+}
