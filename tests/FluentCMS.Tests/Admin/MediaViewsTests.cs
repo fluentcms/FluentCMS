@@ -90,7 +90,9 @@ public sealed class MediaViewsTests
         var usage = cut.Find("[data-entry]");
         Assert.Contains("/hero", usage.TextContent);
         Assert.Contains("product-page", usage.TextContent);
-        Assert.StartsWith("audit?type=entry&id=", usage.QuerySelector("[data-testid=usage-history]")!.GetAttribute("href"));
+        Assert.Equal(
+            ["audit?type=entry&id=", "audit?type=entity&id="],
+            cut.FindAll("[data-testid=usage-history]").Select(link => link.GetAttribute("href")![..(link.GetAttribute("href")!.IndexOf("id=", StringComparison.Ordinal) + 3)]));
         Assert.Empty(cut.FindAll("[data-testid=media-no-alt-text]"));
     }
 
@@ -232,7 +234,7 @@ public sealed class MediaViewsTests
     {
         public Task<Result<ContentType>> GetAsync(string slug, CancellationToken cancellationToken = default)
         {
-            return Task.FromResult(ContentType.Create(Guid.NewGuid(), slug, slug, new ContentTypeDefinition([]), new FieldTypeRegistry([])));
+            return Task.FromResult(ContentType.Create(Guid.NewGuid(), slug, slug, new ContentTypeDefinition([], isEntity: slug == "supplier"), new FieldTypeRegistry([])));
         }
 
         public Task<IReadOnlyList<ContentTypeSummary>> ListAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
@@ -250,7 +252,9 @@ public sealed class MediaViewsTests
     {
         public Task<IReadOnlyList<EntryUsage>> ForMediaAsync(Guid assetId, CancellationToken cancellationToken = default)
         {
-            IReadOnlyList<EntryUsage> usage = assetId == library.Drill.Id ? [new EntryUsage(Guid.NewGuid(), "product-page", 3, true, true, ["/hero"])] : [];
+            IReadOnlyList<EntryUsage> usage = assetId == library.Drill.Id
+                ? [new EntryUsage(Guid.NewGuid(), "product-page", 3, true, true, ["/hero"]), new EntryUsage(Guid.NewGuid(), "supplier", 1, true, false, ["/logo/value"])]
+                : [];
             return Task.FromResult(usage);
         }
 

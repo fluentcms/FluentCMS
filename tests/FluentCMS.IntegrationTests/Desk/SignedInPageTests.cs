@@ -36,10 +36,19 @@ public sealed class SignedInPageTests
         {
             foreach (var path in paths)
             {
-                var response = await host.Client.GetAsync(path);
-                if (response.StatusCode != HttpStatusCode.OK)
+                // A query that collides can hang the request rather than fail it, so each has a deadline that names the page.
+                using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                try
                 {
-                    failures.Add($"{path}: {(int)response.StatusCode}");
+                    var response = await host.Client.GetAsync(path, deadline.Token);
+                    if (response.StatusCode != HttpStatusCode.OK)
+                    {
+                        failures.Add($"{path}: {(int)response.StatusCode}");
+                    }
+                }
+                catch (OperationCanceledException) when (deadline.IsCancellationRequested)
+                {
+                    failures.Add($"{path}: no answer in 30 seconds, round {round + 1}");
                 }
             }
         }

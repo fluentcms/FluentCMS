@@ -201,6 +201,13 @@ public sealed partial class MediaScreenTests
             Assert.StartsWith("/sign-in?ReturnUrl=", host.LocationOf(response));
         }
 
+        using (var anonymousForm = new MultipartFormDataContent { { File("drill.png", "image/png", Png), "file" } })
+        {
+            var anonymous = await host.Client.PostAsync("/media/upload", anonymousForm);
+            Assert.Equal(HttpStatusCode.Redirect, anonymous.StatusCode);
+            Assert.StartsWith("/sign-in?ReturnUrl=", host.LocationOf(anonymous));
+        }
+
         await host.SignInAsync(AdminHost.Owner);
         using var form = new MultipartFormDataContent { { File("drill.png", "image/png", Png), "file" } };
         var forged = await host.Client.PostAsync("/media/upload", form);
@@ -209,11 +216,14 @@ public sealed partial class MediaScreenTests
         Assert.Equal(1, await QueryAsync(host, context => context.Set<FluentCMS.Infrastructure.Media.MediaAssetRow>().CountAsync()));
     }
 
-    [Fact]
-    public async Task A_pdf_downloads_as_an_attachment()
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_pdf_downloads_as_an_attachment(string provider)
     {
         using var install = new TemporaryInstall();
-        await using var host = await AdminHost.StartAsync(install);
+        await using var database = await TemporaryDatabase.CreateAsync(provider);
+        await using var host = await AdminHost.StartAsync(install, settings: database.Configuration);
         await host.CreateFirstAdministratorAsync();
         await host.SignInAsync(AdminHost.Owner);
 
@@ -227,11 +237,14 @@ public sealed partial class MediaScreenTests
     }
 
     // A body declared over the limit is answered before it is read, with the library's own message.
-    [Fact]
-    public async Task An_upload_declared_over_the_limit_comes_back_with_the_too_large_message()
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task An_upload_declared_over_the_limit_comes_back_with_the_too_large_message(string provider)
     {
         using var install = new TemporaryInstall();
-        await using var host = await AdminHost.StartAsync(install, settings: new Dictionary<string, string?> { ["Media:MaxBytes"] = "1024" });
+        await using var database = await TemporaryDatabase.CreateAsync(provider);
+        await using var host = await AdminHost.StartAsync(install, settings: new Dictionary<string, string?>(database.Configuration) { ["Media:MaxBytes"] = "1024" });
         await host.CreateFirstAdministratorAsync();
         await host.SignInAsync(AdminHost.Owner);
 
