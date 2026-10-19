@@ -36,7 +36,7 @@ public sealed class McpCoverageTests
         Missing("CHK", "Read the check results of a change set", "#2420"),
         Missing("DSK", "Read review decisions, read-only", "#2422"),
         Missing("MED", "Upload and describe media", "#2427"),
-        Missing("Search", "Search entries and entities", "#2430"),
+        new("Search", "Search entries and entities by their words", ["search_entries"]),
         Missing("MCP-08", "Bulk operations that return a change set id and report progress", "#2423"),
     ];
 

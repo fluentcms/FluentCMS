@@ -37,7 +37,7 @@ public sealed class BuiltInToolsTests
         {
             Assert.False(string.IsNullOrWhiteSpace(tool.Description));
             Assert.Equal("object", tool.ProtocolTool.InputSchema.GetProperty("type").GetString());
-            Assert.Equal(tool.Name.StartsWith("get_", StringComparison.Ordinal) || tool.Name.StartsWith("list_", StringComparison.Ordinal), tool.ProtocolTool.Annotations?.ReadOnlyHint);
+            Assert.Equal(new[] { "get_", "list_", "search_" }.Any(verb => tool.Name.StartsWith(verb, StringComparison.Ordinal)), tool.ProtocolTool.Annotations?.ReadOnlyHint);
         });
 
         var list = await CallAsync(client, "list_content_types");
