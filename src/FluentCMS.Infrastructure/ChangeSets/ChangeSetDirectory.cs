@@ -1277,12 +1277,13 @@ internal sealed class ChangeSetDirectory(
             .Where(operation => operation.ChangeSetId == id)
             .OrderBy(operation => operation.Position)
             .ToListAsync(cancellationToken);
-        var approvals = await context.ChangeSetApprovals
-            .AsNoTracking()
-            .Where(approval => approval.ChangeSetId == id)
+        // Ordered here, since SQLite cannot order by a DateTimeOffset; a set has at most ten.
+        var approvals = (await context.ChangeSetApprovals
+                .AsNoTracking()
+                .Where(approval => approval.ChangeSetId == id)
+                .ToListAsync(cancellationToken))
             .OrderBy(approval => approval.ApprovedAt)
-            .ThenBy(approval => approval.UserId)
-            .ToListAsync(cancellationToken);
+            .ThenBy(approval => approval.UserId);
 
         var set = ChangeSet.Restore(
             row.Id,

@@ -203,6 +203,27 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
                         });
                 });
 
+            modelBuilder.Entity("FluentCMS.Infrastructure.ChangeSets.ChangeSetApprovalRow", b =>
+                {
+                    b.Property<Guid>("ChangeSetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("ApprovedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ApproverName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.HasKey("ChangeSetId", "UserId");
+
+                    b.ToTable("ChangeSetApprovals", (string)null);
+                });
+
             modelBuilder.Entity("FluentCMS.Infrastructure.ChangeSets.ChangeSetOperationRow", b =>
                 {
                     b.Property<Guid>("Id")
@@ -271,6 +292,11 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
                     b.Property<string>("RejectionReason")
                         .HasColumnType("text");
 
+                    b.Property<int>("RequiredApprovals")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
+
                     b.Property<Guid?>("RevertsChangeSetId")
                         .HasColumnType("uuid");
 
@@ -308,6 +334,8 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
                     b.ToTable("ChangeSets", null, t =>
                         {
                             t.HasCheckConstraint("CK_ChangeSets_RejectionReason", "(\"State\" = 'Rejected') = (\"RejectionReason\" IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_ChangeSets_RequiredApprovals", "\"RequiredApprovals\" BETWEEN 1 AND 10");
                         });
                 });
 
@@ -1436,6 +1464,15 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
                     b.HasOne("FluentCMS.Infrastructure.Agents.AgentCredentialRow", null)
                         .WithMany()
                         .HasForeignKey("AgentCredentialId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FluentCMS.Infrastructure.ChangeSets.ChangeSetApprovalRow", b =>
+                {
+                    b.HasOne("FluentCMS.Infrastructure.ChangeSets.ChangeSetRow", null)
+                        .WithMany()
+                        .HasForeignKey("ChangeSetId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
