@@ -9,6 +9,7 @@ using FluentCMS.Core.Webhooks;
 using FluentCMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.IntegrationTests.Webhooks;
 
@@ -134,6 +135,91 @@ public sealed class WebhookDeliveryTests
         Assert.Contains("no longer on the outbound allow-list", Assert.Single(await later.DeliveriesAsync(subscription)).Error);
     }
 
+    // The retry waits long enough to disable the webhook first; the next attempt then sends nothing and says why.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_webhook_disabled_while_a_retry_waits_gets_nothing_more(string provider)
+    {
+        await using var receiver = await WebhookReceiver.StartAsync();
+        receiver.Answer(500);
+        await using var site = await Site.StartAsync(provider, receiver, retryDelay: "00:00:03");
+        var added = await site.AddAsync(receiver.Url, WebhookEvents.ChangeSetPublished);
+
+        await site.PublishTypeAsync("product");
+        await site.UntilDeliveredAsync(added.Subscription.Id, 1);
+        await site.AsOwnerAsync<IWebhookDirectory, WebhookSubscription>(directory => directory.DisableAsync(added.Subscription.Id));
+        await site.UntilDeliveredAsync(added.Subscription.Id, 2);
+        var job = await site.UntilJobEndsAsync(added.Subscription.Id);
+
+        var skipped = (await site.DeliveriesAsync(added.Subscription.Id))[0];
+        Assert.Single(receiver.Requests);
+        Assert.Equal((2, (int?)null), (skipped.Attempt, skipped.StatusCode));
+        Assert.Contains("disabled before this delivery was sent", skipped.Error);
+        Assert.Equal(JobState.Succeeded, job.State);
+    }
+
+    // The worker logs each failed attempt; the secret, unprotected only to sign, is in none of what it logs.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task The_secret_reaches_no_log_while_deliveries_fail_and_succeed(string provider)
+    {
+        await using var receiver = await WebhookReceiver.StartAsync();
+        receiver.Answer(500);
+        await using var site = await Site.StartAsync(provider, receiver);
+        var logs = site.CaptureLogs();
+        var added = await site.AddAsync(receiver.Url, WebhookEvents.ChangeSetPublished);
+
+        await site.PublishTypeAsync("product");
+        await site.UntilDeliveredAsync(added.Subscription.Id, 2);
+
+        var secret = added.Secret[WebhookSecrets.Prefix.Length..];
+        Assert.Contains(logs.Messages, line => line.Contains("failed on attempt 1", StringComparison.Ordinal));
+        Assert.DoesNotContain(logs.Messages, line => line.Contains(secret, StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task An_endpoint_that_does_not_answer_in_time_is_a_failed_attempt(string provider)
+    {
+        await using var receiver = await WebhookReceiver.StartAsync();
+        receiver.Delay = TimeSpan.FromSeconds(5);
+        await using var site = await Site.StartAsync(provider, receiver, maxAttempts: 1, timeout: "00:00:01");
+        var added = await site.AddAsync(receiver.Url, WebhookEvents.ChangeSetPublished);
+
+        await site.PublishTypeAsync("product");
+        await site.UntilDeliveredAsync(added.Subscription.Id, 1);
+
+        var delivery = Assert.Single(await site.DeliveriesAsync(added.Subscription.Id));
+        Assert.Equal("The endpoint did not answer in time.", delivery.Error);
+        Assert.Null(delivery.StatusCode);
+        Assert.InRange(delivery.Duration, TimeSpan.FromSeconds(0.9), TimeSpan.FromSeconds(4));
+    }
+
+    // Nothing listens on the endpoint's port once it is stopped, so each attempt fails to connect, a longer wait after each.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task An_endpoint_that_cannot_be_reached_is_retried_with_a_growing_delay_until_the_job_is_dead(string provider)
+    {
+        var receiver = await WebhookReceiver.StartAsync();
+        await using var site = await Site.StartAsync(provider, receiver, retryDelay: "00:00:00.300");
+        var added = await site.AddAsync(receiver.Url, WebhookEvents.ChangeSetPublished);
+        await receiver.DisposeAsync();
+
+        await site.PublishTypeAsync("product");
+        await site.UntilDeliveredAsync(added.Subscription.Id, 3);
+        var job = await site.UntilJobEndsAsync(added.Subscription.Id);
+
+        var attempts = (await site.DeliveriesAsync(added.Subscription.Id)).Reverse().ToList();
+        Assert.All(attempts, attempt => Assert.StartsWith("The request failed", attempt.Error, StringComparison.Ordinal));
+        Assert.True(attempts[1].AttemptedAt - attempts[0].AttemptedAt >= TimeSpan.FromMilliseconds(250), "The first retry did not wait.");
+        Assert.True(attempts[2].AttemptedAt - attempts[1].AttemptedAt >= TimeSpan.FromMilliseconds(550), "The second retry did not wait longer.");
+        Assert.Equal((JobState.Dead, 3), (job.State, job.Attempts));
+    }
+
     // Deliveries are queued in the publish's unit of work, so what is queued is known as soon as the publish returns.
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
@@ -199,11 +285,19 @@ public sealed class WebhookDeliveryTests
 
         public Guid Owner { get; }
 
-        public static async Task<Site> StartAsync(string provider, WebhookReceiver receiver, int maxAttempts = 3)
+        public static async Task<Site> StartAsync(
+            string provider,
+            WebhookReceiver receiver,
+            int maxAttempts = 3,
+            string retryDelay = "00:00:00.050",
+            string timeout = "00:00:10")
         {
             var install = new TemporaryInstall();
             var database = await TemporaryDatabase.CreateAsync(provider);
-            var host = await AdminHost.StartAsync(install, settings: Settings(database, receiver, allowReceiver: true, maxAttempts));
+            var settings = Settings(database, receiver, allowReceiver: true, maxAttempts);
+            settings["JobQueue:RetryDelay"] = retryDelay;
+            settings["Webhooks:Timeout"] = timeout;
+            var host = await AdminHost.StartAsync(install, settings: settings);
             return new Site(host, await host.CreateFirstAdministratorAsync(), install, database);
         }
 
@@ -216,6 +310,14 @@ public sealed class WebhookDeliveryTests
         {
             var host = await AdminHost.StartAsync(install, settings: Settings(database, receiver, allowReceiver, maxAttempts: 3));
             return new Site(host, owner ?? await host.CreateFirstAdministratorAsync(), install: null, database: null);
+        }
+
+        // Added to the running host's loggers, since the host replaces the providers a test could register before it starts.
+        public CapturedLogs CaptureLogs()
+        {
+            var logs = new CapturedLogs();
+            _host.App.Services.GetRequiredService<ILoggerFactory>().AddProvider(logs);
+            return logs;
         }
 
         public Task<AddedWebhookSubscription> AddAsync(Uri url, params string[] events)

@@ -29,6 +29,9 @@ internal sealed class WebhookReceiver : IAsyncDisposable
 
     public IReadOnlyCollection<Received> Requests => _requests;
 
+    // How long every answer waits, for an endpoint that is too slow.
+    public TimeSpan Delay { get; set; }
+
     public static async Task<WebhookReceiver> StartAsync()
     {
         var builder = WebApplication.CreateSlimBuilder();
@@ -45,6 +48,7 @@ internal sealed class WebhookReceiver : IAsyncDisposable
                 context.Request.Headers.ToDictionary(header => header.Key.ToLowerInvariant(), header => header.Value.ToString()),
                 body));
 
+            await Task.Delay(receiver.Delay);
             var status = receiver._answers.TryDequeue(out var next) ? next : StatusCodes.Status200OK;
             if (status is >= 300 and < 400)
             {

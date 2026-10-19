@@ -11,9 +11,9 @@ internal static class WebhookDeliveries
 
     public const string SubjectType = "webhook_subscription";
 
-    public static NewJob Job(Guid subscriptionId, string eventName, Guid? changeSetId, string body, int maxAttempts)
+    public static NewJob Job(Guid subscriptionId, string deliveryId, string eventName, Guid? changeSetId, string body, int maxAttempts)
     {
-        var payload = JsonSerializer.SerializeToElement(new DeliveryPayload(subscriptionId, $"msg_{Guid.CreateVersion7():N}", eventName, changeSetId, body));
+        var payload = JsonSerializer.SerializeToElement(new DeliveryPayload(subscriptionId, deliveryId, eventName, changeSetId, body));
         return new NewJob(JobType, payload) { Subject = new JobSubject(SubjectType, subscriptionId), MaxAttempts = maxAttempts };
     }
 

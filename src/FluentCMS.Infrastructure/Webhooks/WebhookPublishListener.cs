@@ -32,10 +32,12 @@ internal sealed class WebhookPublishListener(
         }
 
         var settings = options.Value;
-        var body = WebhookPayloads.ForPublish(clock.GetUtcNow(), published, reverted, settings.AdminUrl);
+        var at = clock.GetUtcNow();
         foreach (var subscription in subscriptions)
         {
-            await jobs.EnqueueAsync(WebhookDeliveries.Job(subscription, eventName, published.Id, body, settings.MaxAttempts), cancellationToken);
+            var id = WebhookPayloads.NewDeliveryId();
+            var body = WebhookPayloads.ForPublish(id, at, published, reverted, settings.AdminUrl);
+            await jobs.EnqueueAsync(WebhookDeliveries.Job(subscription, id, eventName, published.Id, body, settings.MaxAttempts), cancellationToken);
         }
     }
 }

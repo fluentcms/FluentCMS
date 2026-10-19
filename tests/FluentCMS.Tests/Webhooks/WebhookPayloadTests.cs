@@ -32,10 +32,11 @@ public sealed class WebhookPayloadTests
         var published = Published("Sync prices from the catalog export.");
         var reverted = Published("The first sync.");
 
-        using var publish = JsonDocument.Parse(WebhookPayloads.ForPublish(At, published, null, "https://cms.example.com/admin/"));
-        using var revert = JsonDocument.Parse(WebhookPayloads.ForPublish(At, published, reverted, null));
+        using var publish = JsonDocument.Parse(WebhookPayloads.ForPublish("msg_1", At, published, null, "https://cms.example.com/admin/"));
+        using var revert = JsonDocument.Parse(WebhookPayloads.ForPublish("msg_2", At, published, reverted, null));
 
         Assert.Equal("change_set.published", publish.RootElement.GetProperty("type").GetString());
+        Assert.Equal("msg_1", publish.RootElement.GetProperty("id").GetString());
         Assert.Equal("2026-10-19T09:30:15.000Z", publish.RootElement.GetProperty("timestamp").GetString());
         var set = publish.RootElement.GetProperty("data").GetProperty("changeSet");
         Assert.Equal(("Sync prices from the catalog export.", $"https://cms.example.com/admin/sets/{published.Id}"), (set.GetProperty("rationale").GetString(), set.GetProperty("link").GetString()));

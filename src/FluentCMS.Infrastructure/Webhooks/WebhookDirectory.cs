@@ -165,10 +165,11 @@ internal sealed class WebhookDirectory(
             return Result.Failure(WebhookErrorCodes.Disabled, $"The webhook to {row.Url} is disabled, so nothing is sent to it; add it again to test a new one.");
         }
 
-        var body = WebhookPayloads.ForTest(clock.GetUtcNow(), id);
+        var deliveryId = WebhookPayloads.NewDeliveryId();
+        var body = WebhookPayloads.ForTest(deliveryId, clock.GetUtcNow(), id);
 
         await using var scope = await unitOfWork.BeginAsync(cancellationToken);
-        await jobs.EnqueueAsync(WebhookDeliveries.Job(id, WebhookEvents.Test, null, body, options.Value.MaxAttempts), cancellationToken);
+        await jobs.EnqueueAsync(WebhookDeliveries.Job(id, deliveryId, WebhookEvents.Test, null, body, options.Value.MaxAttempts), cancellationToken);
         await auditLog.AppendAsync(new NewAuditEvent("webhook.test_requested") { SubjectType = SubjectType, SubjectId = id }, cancellationToken);
         await scope.CommitAsync(cancellationToken);
 

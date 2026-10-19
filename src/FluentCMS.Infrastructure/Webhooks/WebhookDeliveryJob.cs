@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Security.Cryptography;
 using System.Text;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Models;
@@ -44,7 +45,20 @@ internal sealed class WebhookDeliveryJob(
             return Result.Failure(WebhookErrorCodes.HostNotAllowed, refused);
         }
 
-        var (status, error, duration) = await SendAsync(url, delivery, protector.Unprotect(WebhookSecrets.ProtectionPurpose, subscription.ProtectedSecret), cancellationToken);
+        string secret;
+        try
+        {
+            secret = protector.Unprotect(WebhookSecrets.ProtectionPurpose, subscription.ProtectedSecret);
+        }
+        catch (CryptographicException)
+        {
+            // Another attempt reads the same keys, so it would fail the same way.
+            const string unreadable = "The signing secret could not be read, so nothing was sent; the Data Protection keys may have been replaced. Add the webhook again.";
+            await LogAsync(delivery, job.Job.Attempts, null, unreadable, TimeSpan.Zero);
+            return Result.Failure("webhook_secret_unreadable", unreadable);
+        }
+
+        var (status, error, duration) = await SendAsync(url, delivery, secret, cancellationToken);
         await LogAsync(delivery, job.Job.Attempts, status, error, duration);
 
         // Thrown so the job queue retries it; the log above already holds what happened.
