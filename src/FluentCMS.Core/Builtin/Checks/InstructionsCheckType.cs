@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
@@ -34,6 +35,55 @@ internal sealed class InstructionsCheckType : ICheckType
         Linear | RegexOptions.Multiline,
         MatchTimeout);
 
+    // Letters drawn like Latin ones that no decomposition reaches, after Unicode's confusables (UTS #39), mapped to the Latin letter
+    // they imitate: Cyrillic, Greek and Armenian look-alikes, small capitals, and Latin letters with a stroke.
+    private static readonly FrozenDictionary<int, char> LatinLookalikes = new Dictionary<int, char>
+    {
+        // Cyrillic
+        [0x0430] = 'a', [0x0435] = 'e', [0x0456] = 'i', [0x0458] = 'j', [0x043E] = 'o', [0x0440] = 'p', [0x0441] = 'c', [0x0443] = 'y',
+        [0x0445] = 'x', [0x0455] = 's', [0x0501] = 'd', [0x051B] = 'q', [0x051D] = 'w', [0x04BB] = 'h', [0x04CF] = 'l', [0x0475] = 'v',
+        [0x0433] = 'r', [0x043F] = 'n', [0x044C] = 'b', [0x0432] = 'b', [0x043D] = 'h', [0x043A] = 'k', [0x043C] = 'm', [0x0442] = 't',
+        [0x04C0] = 'I',
+        [0x0410] = 'A', [0x0412] = 'B', [0x0415] = 'E', [0x041A] = 'K', [0x041C] = 'M', [0x041D] = 'H', [0x041E] = 'O', [0x0420] = 'P',
+        [0x0421] = 'C', [0x0422] = 'T', [0x0425] = 'X', [0x0423] = 'Y', [0x0406] = 'I', [0x0408] = 'J', [0x0405] = 'S', [0x04AE] = 'Y',
+        [0x050C] = 'G', [0x051A] = 'Q', [0x051C] = 'W',
+
+        // Greek
+        [0x03B1] = 'a', [0x03BF] = 'o', [0x03BD] = 'v', [0x03C1] = 'p', [0x03B9] = 'i', [0x03BA] = 'k', [0x03C5] = 'u', [0x03F3] = 'j',
+        [0x0391] = 'A', [0x0392] = 'B', [0x0395] = 'E', [0x0396] = 'Z', [0x0397] = 'H', [0x0399] = 'I', [0x039A] = 'K', [0x039C] = 'M',
+        [0x039D] = 'N', [0x039F] = 'O', [0x03A1] = 'P', [0x03A4] = 'T', [0x03A5] = 'Y', [0x03A7] = 'X',
+        [0x03B7] = 'n', [0x03F2] = 'c', [0x03F9] = 'C', [0x03C4] = 't', [0x03BC] = 'u', [0x03B2] = 'b', [0x03C7] = 'x', [0x03B6] = 'z',
+        [0x03B5] = 'e',
+
+        // Armenian
+        [0x0585] = 'o', [0x057D] = 'u', [0x0570] = 'h', [0x0578] = 'n', [0x0581] = 'g',
+
+        // Cherokee
+        [0x13A5] = 'i', [0x13AA] = 'A', [0x13B3] = 'W', [0x13BB] = 'H', [0x13C2] = 'h', [0x13DA] = 'S', [0x13E2] = 'R', [0x13F4] = 'B',
+
+        // Small capitals
+        [0x1D00] = 'a', [0x0299] = 'b', [0x1D04] = 'c', [0x1D05] = 'd', [0x1D07] = 'e', [0xA730] = 'f', [0x0262] = 'g', [0x029C] = 'h',
+        [0x026A] = 'i', [0x1D0A] = 'j', [0x1D0B] = 'k', [0x029F] = 'l', [0x1D0D] = 'm', [0x0274] = 'n', [0x1D0F] = 'o', [0x1D18] = 'p',
+        [0x0280] = 'r', [0xA731] = 's', [0x1D1B] = 't', [0x1D1C] = 'u', [0x1D20] = 'v', [0x1D21] = 'w', [0x028F] = 'y', [0x1D22] = 'z',
+
+        // Latin letters with a stroke, and others outside ASCII
+        [0x00F8] = 'o', [0x00D8] = 'O', [0x0111] = 'd', [0x0110] = 'D', [0x0142] = 'l', [0x0141] = 'L', [0x0127] = 'h', [0x0126] = 'H',
+        [0x0167] = 't', [0x0166] = 'T', [0x0180] = 'b', [0x0268] = 'i', [0x0289] = 'u', [0x0247] = 'e', [0x0246] = 'E', [0x023C] = 'c',
+        [0x024D] = 'r', [0x024F] = 'y', [0x01B6] = 'z', [0x028B] = 'v',
+        [0x0131] = 'i', [0x0251] = 'a', [0x0261] = 'g', [0x0269] = 'i', [0x0237] = 'j',
+    }.ToFrozenDictionary();
+
+    // Letters that render as blank space, which a model reads as a space between words.
+    private static readonly FrozenSet<int> BlankLetters = new[] { 0x115F, 0x1160, 0x2800, 0x3164, 0xFFA0 }.ToFrozenSet();
+
+    // A decomposition longer than this, such as the 18 letters of the ligature U+FDFA, spells no Latin word, so the character is
+    // kept as written; it also keeps the folded text within a few characters of each one read.
+    private const int MaxExpansion = 3;
+
+    // How each character of the Basic Multilingual Plane folds, worked out once per process. One slot per character, so it needs no
+    // lock and no bound; a character outside the plane is folded each time it is read, which costs about as much as reading it.
+    private static readonly FoldedRune?[] BmpFolds = new FoldedRune?[0x10000];
+
     public string Name => "instructions";
 
     public CheckKind Kind => CheckKind.Deterministic;
@@ -41,30 +91,43 @@ internal sealed class InstructionsCheckType : ICheckType
     public IReadOnlyList<Error> ValidateSettings(JsonElement settings)
     {
         var reader = new CheckSettingsReader(Name, settings);
-        reader.OptionalStringList("phrases");
+        if (reader.OptionalStringList("phrases") is { } phrases && phrases.Any(phrase => string.IsNullOrWhiteSpace(Fold(phrase).Plain)))
+        {
+            reader.Invalid("phrases", "must hold phrases a reader can see, not only invisible characters or marks");
+        }
+
         return reader.Errors();
     }
 
     public Task<CheckOutcome> EvaluateAsync(CheckInput input, CancellationToken cancellationToken)
     {
+        // A phrase with nothing left once folded matches nothing, as when it was saved before phrases were folded. A phrase whose
+        // letters are all Latin, accented or not, is matched on the Latin copy, so look-alike spellings of it count; any other is
+        // matched in its own script, in either case.
         var phrases = (new CheckSettingsReader(Name, input.Settings).OptionalStringList("phrases") ?? [])
-            .Select(phrase => phrase.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Select(Regex.Escape))
-            .Select(words => new Regex(string.Join(@"\s+", words), Linear, MatchTimeout))
+            .Select(Fold)
+            .Select(phrase => IsLatin(phrase.Plain) ? (Latin: true, Words: Words(phrase.Latin)) : (Latin: false, Words: Words(phrase.Plain)))
+            .Where(phrase => phrase.Words.Count > 0)
+            .Select(phrase => (phrase.Latin, Pattern: new Regex(string.Join(@"\s+", phrase.Words), Linear, MatchTimeout)))
             .ToList();
         var findings = new List<CheckFinding>();
 
-        foreach (var (pointer, text) in CheckContent.Strings(input.Subject))
+        // A model reads the fields whole, property names and an entity's fact metadata included, so the check reads them all.
+        foreach (var (pointer, text) in CheckContent.AllText(input.Subject))
         {
             var field = CheckContent.FieldOf(pointer);
-
-            // Read without the characters that render as nothing, so a soft hyphen or zero-width space inside a word hides nothing.
-            var visible = Visible(text);
-            foreach (var match in phrases.SelectMany(phrase => phrase.Matches(visible)).Concat(Instruction.Matches(visible)).OrderBy(match => match.Index))
+            var folded = Fold(text);
+            var matches = phrases.SelectMany(phrase => phrase.Pattern.Matches(phrase.Latin ? folded.Latin : folded.Plain))
+                .Concat(Instruction.Matches(folded.Latin))
+                .DistinctBy(match => (match.Index, match.Length))
+                .OrderBy(match => match.Index);
+            foreach (var match in matches)
             {
+                var written = folded.Written(text, match.Index, match.Length);
                 findings.Add(new CheckFinding(
-                    $"Rewrite or remove '{CheckContent.Quote(match.Value, 80)}' in {field}; it reads as an instruction to an AI model, not as content.",
+                    $"Rewrite or remove '{CheckContent.Quote(written, 80)}' in {field}; it reads as an instruction to an AI model, not as content.",
                     pointer,
-                    match.Value));
+                    written));
             }
 
             foreach (var hidden in Hidden(text))
@@ -76,21 +139,138 @@ internal sealed class InstructionsCheckType : ICheckType
             }
         }
 
-        return Task.FromResult(findings.Count == 0 ? CheckOutcome.Pass() : CheckOutcome.Fail(findings));
+        // A key and its value point at the same place, so the same quote in both is one finding.
+        var distinct = findings.Distinct().ToList();
+        return Task.FromResult(distinct.Count == 0 ? CheckOutcome.Pass() : CheckOutcome.Fail(distinct));
     }
 
-    private static string Visible(string text)
+    // The text as a model may read it, so a look-alike spelling hides nothing: compatibility forms such as fullwidth or mathematical
+    // letters decomposed (NFKD), accents and other combining marks dropped, blank letters read as spaces, and characters that render
+    // as nothing, such as a soft hyphen or zero-width space, left out. The Latin copy also maps look-alikes to the Latin letter they
+    // imitate, one character for one, so both copies share where each character came from and a finding quotes the text as it was
+    // written. ASCII folds to itself.
+    private static FoldedText Fold(string text)
     {
-        var builder = new StringBuilder(text.Length);
+        if (Ascii.IsValid(text))
+        {
+            return new FoldedText(text, text, null);
+        }
+
+        var plain = new StringBuilder(text.Length);
+        var latin = new StringBuilder(text.Length);
+        var origins = new List<int>(text.Length);
+        var index = 0;
         foreach (var rune in text.EnumerateRunes())
         {
-            if (Rune.GetUnicodeCategory(rune) != UnicodeCategory.Format && !IsVariationSelector(rune))
+            if (rune.IsAscii)
             {
-                builder.Append(rune.ToString());
+                plain.Append((char)rune.Value);
+                latin.Append((char)rune.Value);
+                origins.Add(index);
+            }
+            else
+            {
+                var folded = rune.IsBmp ? BmpFolds[rune.Value] ??= FoldRune(rune) : FoldRune(rune);
+
+                plain.Append(folded.Plain);
+                latin.Append(folded.Latin);
+                for (var copy = 0; copy < folded.Plain.Length; copy++)
+                {
+                    origins.Add(index);
+                }
+            }
+
+            index += rune.Utf16SequenceLength;
+        }
+
+        return new FoldedText(plain.ToString(), latin.ToString(), [.. origins]);
+    }
+
+    private static FoldedRune FoldRune(Rune rune)
+    {
+        if (Rune.GetUnicodeCategory(rune) == UnicodeCategory.Format || IsVariationSelector(rune))
+        {
+            return new FoldedRune(string.Empty, string.Empty);
+        }
+
+        if (BlankLetters.Contains(rune.Value))
+        {
+            return new FoldedRune(" ", " ");
+        }
+
+        var written = rune.ToString();
+
+        // A look-alike the table names is read as its Latin letter before any decomposition, such as U+03F2 before it becomes a sigma.
+        if (rune.IsBmp && LatinLookalikes.TryGetValue(rune.Value, out var lookalike))
+        {
+            return new FoldedRune(written, lookalike.ToString());
+        }
+
+        string decomposed;
+        try
+        {
+            decomposed = written.Normalize(NormalizationForm.FormKD);
+        }
+        catch (ArgumentException)
+        {
+            // A noncharacter such as U+FFFE cannot be normalized; it decomposes into nothing else, so it is read as written.
+            decomposed = written;
+        }
+
+        var plain = new StringBuilder(MaxExpansion);
+        var latin = new StringBuilder(MaxExpansion);
+        foreach (var part in (decomposed.Length <= MaxExpansion ? decomposed : written).EnumerateRunes())
+        {
+            if (Rune.GetUnicodeCategory(part) is UnicodeCategory.NonSpacingMark or UnicodeCategory.SpacingCombiningMark or UnicodeCategory.EnclosingMark)
+            {
+                continue;
+            }
+
+            var text = part.ToString();
+            plain.Append(text);
+            if (part.IsBmp && LatinLookalikes.TryGetValue(part.Value, out var letter))
+            {
+                latin.Append(letter);
+            }
+            else
+            {
+                latin.Append(text);
             }
         }
 
-        return builder.ToString();
+        return new FoldedRune(plain.ToString(), latin.ToString());
+    }
+
+    // Latin letters of every block, such as ł, ß and ø; marks, digits and punctuation do not decide.
+    private static bool IsLatin(string phrase)
+    {
+        return phrase.EnumerateRunes().Where(Rune.IsLetter).All(letter =>
+            letter.Value is <= 0x02AF or (>= 0x1D00 and <= 0x1DBF) or (>= 0x1E00 and <= 0x1EFF) or (>= 0x2C60 and <= 0x2C7F)
+                or (>= 0xA720 and <= 0xA7FF) or (>= 0xAB30 and <= 0xAB6F));
+    }
+
+    private static List<string> Words(string text)
+    {
+        return [.. text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Select(Regex.Escape)];
+    }
+
+    // A class, so a slot of the shared table is written and read whole by any thread.
+    private sealed record FoldedRune(string Plain, string Latin);
+
+    private readonly record struct FoldedText(string Plain, string Latin, int[]? Origins)
+    {
+        // The written text a match on either copy came from, from the first character it read to the end of the last.
+        public string Written(string text, int index, int length)
+        {
+            if (Origins is null)
+            {
+                return text.Substring(index, length);
+            }
+
+            var start = Origins[index];
+            var last = Origins[index + length - 1];
+            return text[start..(last + (char.IsHighSurrogate(text[last]) ? 2 : 1))];
+        }
     }
 
     // Zero-width and direction-changing characters, tag characters, and runs of variation selectors, which can each spell text no

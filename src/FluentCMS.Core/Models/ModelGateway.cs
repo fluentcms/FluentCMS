@@ -40,7 +40,12 @@ internal sealed class ModelGateway(
 
         var profile = profiles.Find(request.Profile)!;
         var initiator = currentInitiator.Current;
-        var chargedTo = request.ChargedTo ?? (initiator as AgentInitiator)?.CredentialId;
+        if (Unaccounted(initiator, request) is { } unaccounted)
+        {
+            return Result<ModelAnswer>.Failure([unaccounted]);
+        }
+
+        var chargedTo = ((request.OnBehalfOf ?? initiator) as AgentInitiator)?.CredentialId;
         var prompt = ModelPrompt.Build(request.Instructions, request.Data);
 
         // Not disposed: disposing it would dispose the provider client, which the wiring keeps for the profile's next call.
@@ -77,6 +82,23 @@ internal sealed class ModelGateway(
                 ModelErrorCodes.CallFailed,
                 $"The call to the '{profile.Name}' model failed; model call {failed.Id} records the provider's error.");
         }
+    }
+
+    // Every call is made by someone who answers for it: a person, whose calls are not capped, an agent, whose are, or an engine doing
+    // a person's or an agent's work, which names them so an agent's call counts against its cap (SEC-04).
+    private static Error? Unaccounted(Initiator? initiator, ModelRequest request)
+    {
+        return (initiator, request.OnBehalfOf) switch
+        {
+            (null, _) => new Error(ModelErrorCodes.Unaccounted, "A model call is made for a person, an agent or one of the system's engines, and this one has none, so it is not made."),
+            (SystemInitiator system, null or SystemInitiator) => new Error(
+                ModelErrorCodes.Unaccounted,
+                $"The '{system.Component}' engine asks a model only for a person's or an agent's work and names them in OnBehalfOf; this call names neither, so it is not made."),
+            (not SystemInitiator, { } other) when other != initiator => new Error(
+                ModelErrorCodes.Unaccounted,
+                "Only one of the system's engines asks a model on someone else's behalf, so this call is not made."),
+            _ => null,
+        };
     }
 
     private Error? Refusal(string name)
