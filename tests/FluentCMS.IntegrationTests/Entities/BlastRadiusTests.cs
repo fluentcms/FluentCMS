@@ -133,7 +133,7 @@ public sealed class BlastRadiusTests
             var entries = scope.ServiceProvider.GetRequiredService<IEntryDirectory>();
             foreach (var (slug, isEntity, fields) in SchemaScenario.ReferenceModel)
             {
-                Assert.True((await types.CreateAsync(new NewContentType(slug, slug, new ContentTypeDefinition(fields, isEntity)))).IsSuccess);
+                Assert.True((await types.CreateAsync(new NewContentType(slug, slug, new ContentTypeDefinition(fields, isEntity)), TestChangeSetTargets.ContentModel)).IsSuccess);
             }
 
             var drill = (await entries.CreateAsync(new NewEntry("product", Json(ProductFields("99", Catalog))))).Value.Id;

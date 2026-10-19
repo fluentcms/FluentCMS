@@ -8,9 +8,13 @@
             <a href="" class="font-semibold">FluentCMS</a>
             @if (Initiator.Current is UserInitiator user)
             {
+                <NotificationLinks />
+                <a href="content" class="text-sm text-muted-foreground hover:text-foreground">@L["Content"]</a>
+                <a href="media" class="text-sm text-muted-foreground hover:text-foreground">@L["Media"]</a>
                 <a href="audit" class="text-sm text-muted-foreground hover:text-foreground">@L["Audit log"]</a>
                 <a href="users" class="text-sm text-muted-foreground hover:text-foreground">@L["Users"]</a>
                 <a href="agents" class="text-sm text-muted-foreground hover:text-foreground">@L["Agents"]</a>
+                <a href="webhooks" class="text-sm text-muted-foreground hover:text-foreground">@L["Webhooks"]</a>
                 @* A plain form, so it posts to the sign-out page's handler from any page, static or interactive. *@
                 <form method="post" action="sign-out" class="ms-auto flex items-center gap-3">
                     <AntiforgeryToken />

@@ -226,6 +226,82 @@ public sealed class AgentPermissionTests
         Assert.True((await scenario.RunAsync(directory => directory.OpenAsync(CatalogSync))).IsSuccess);
     }
 
+    // Each open holds the agent's credential before it counts, so concurrent opens take turns and only the cap's worth are stored.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task Of_ten_concurrent_opens_by_an_agent_with_a_daily_cap_of_two_two_are_stored(string provider)
+    {
+        await using var scenario = await ChangeSetScenario.CreateAsync(provider);
+        await scenario.UpdateAgentAsync(row => row.ChangeSetsPerDay = 2);
+
+        var opens = await Task.WhenAll(Enumerable.Range(0, 10).Select(_ => Task.Run(() => scenario.RunAsync(directory => directory.OpenAsync(CatalogSync)))));
+
+        Assert.Equal(2, opens.Count(open => open.IsSuccess));
+        Assert.Equal(
+            Enumerable.Repeat(AgentPermissionErrorCodes.CapExceeded, 8),
+            opens.Where(open => !open.IsSuccess).Select(open => Assert.Single(open.Errors).Code));
+        Assert.Equal(2, (await scenario.ChangeSetRowsAsync()).Count);
+        Assert.Equal(8, await scenario.QueryAsync(context => context.AuditEvents.CountAsync(row => row.Operation == "agent.change_sets_per_day_exceeded")));
+    }
+
+    // The refusal is a security event (SEC-08), so it outlives the caller's unit of work, which the refusal rolls back.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_cap_refused_inside_a_unit_of_work_that_rolls_back_keeps_its_event(string provider)
+    {
+        await using var scenario = await ChangeSetScenario.CreateAsync(provider);
+        await scenario.UpdateAgentAsync(row => row.ChangeSetsPerDay = 1);
+
+        await using (var scope = scenario.Services.CreateAsyncScope())
+        {
+            var work = await scope.ServiceProvider.GetRequiredService<IUnitOfWork>().BeginAsync();
+            var directory = scope.ServiceProvider.GetRequiredService<IChangeSetDirectory>();
+
+            Assert.True((await directory.OpenAsync(CatalogSync)).IsSuccess);
+            Assert.Equal(AgentPermissionErrorCodes.CapExceeded, Assert.Single((await directory.OpenAsync(CatalogSync)).Errors).Code);
+            await work.DisposeAsync();
+        }
+
+        Assert.Empty(await scenario.ChangeSetRowsAsync());
+        var refusal = Assert.Single(await scenario.QueryAsync(context => context.AuditEvents
+            .AsNoTracking()
+            .Where(row => row.Operation == "agent.change_sets_per_day_exceeded")
+            .ToListAsync()));
+        Assert.Equal(("agent_credential", Agent.CredentialId), (refusal.SubjectType, refusal.SubjectId!.Value));
+        Assert.Equal(Agent.CredentialId, refusal.AgentCredentialId);
+    }
+
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task An_agent_reads_its_own_change_sets_only_and_a_person_reads_every_set(string provider)
+    {
+        await using var scenario = await ChangeSetScenario.CreateAsync(provider);
+        var own = (await scenario.RunAsync(directory => directory.OpenAsync(CatalogSync))).Value;
+        var persons = (await scenario.AsPersonAsync(directory => directory.OpenAsync(CatalogSync))).Value;
+        var other = new AgentInitiator(Guid.NewGuid(), "other-agent");
+        await scenario.AddAgentAsync(other);
+        scenario.Initiator = other;
+        var others = (await scenario.RunAsync(directory => directory.OpenAsync(CatalogSync))).Value;
+        scenario.Initiator = Agent;
+
+        Assert.True((await scenario.RunAsync(directory => directory.GetAsync(own.Id))).IsSuccess);
+        Assert.True((await scenario.RunAsync(directory => directory.DiffAsync(own.Id))).IsSuccess);
+        foreach (var id in new[] { persons.Id, others.Id })
+        {
+            var read = await scenario.RunAsync(directory => directory.GetAsync(id));
+            var diff = await scenario.RunAsync(directory => directory.DiffAsync(id));
+
+            Assert.Equal(AgentPermissionErrorCodes.NotOwner, Assert.Single(read.Errors).Code);
+            Assert.Equal(AgentPermissionErrorCodes.NotOwner, Assert.Single(diff.Errors).Code);
+        }
+
+        Assert.True((await scenario.AsPersonAsync(directory => directory.GetAsync(others.Id))).IsSuccess);
+        Assert.True((await scenario.AsPersonAsync(directory => directory.DiffAsync(own.Id))).IsSuccess);
+    }
+
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
     [PostgresData]

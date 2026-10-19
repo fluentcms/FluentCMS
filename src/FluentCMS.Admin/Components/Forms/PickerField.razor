@@ -1,0 +1,201 @@
+@using System.Text.Json
+@using FluentCMS.Admin.Forms
+@using FluentCMS.Core.Content
+@using FluentCMS.Core.Media
+@using FluentCMS.Core.Search
+@inject ISearch Search
+@inject IEntryDirectory Entries
+@inject IMediaLibrary Library
+@inject IStringLocalizer<PickerField> L
+
+@* A reference or media field of a generated form (FRM-01). Over the circuit it searches as the person types and keeps the choice in a
+   hidden input the static form posts; before the circuit attaches, or once it is lost, it is the plain select, which posts the same. *@
+<FormField Label="@Label" Description="@Description" Error="@Error" Class="sm:col-span-2">
+    @if (!RendererInfo.IsInteractive)
+    {
+        <Select name="@Name" required="@Required" data-field="@Field">
+            <option value="">@L["Choose…"]</option>
+            @foreach (var option in Options)
+            {
+                <option value="@option.Value" selected="@(option.Value == _value)">@option.Label</option>
+            }
+        </Select>
+    }
+    else
+    {
+        <div class="grid gap-2" data-picker="@Field">
+            <input type="hidden" name="@Name" value="@_value" />
+            <div class="flex flex-wrap items-center gap-2 text-sm" data-testid="picker-choice">
+                @if (_value is null)
+                {
+                    <span class="text-muted-foreground">@L["Nothing chosen."]</span>
+                }
+                else
+                {
+                    <span><bdi>@(_chosenLabel ?? _value)</bdi></span>
+                    <Button Type="button" Variant="ghost" Size="sm" OnClick="Clear" data-action="clear">@L["Clear"]</Button>
+                }
+            </div>
+            <Input Type="search"
+                   value="@_text"
+                   @oninput="SearchAsync"
+                   @onkeydown="OnKeyDown"
+                   placeholder="@(Kind == MediaKind ? L["Search by file name or folder"] : L["Search by name"])"
+                   aria-controls="@ListId"
+                   aria-autocomplete="list"
+                   data-ui="rove-input"
+                   data-field="@Field" />
+            @if (_hits.Count > 0)
+            {
+                <div id="@ListId" role="listbox" aria-label="@L["Matches"]" data-ui="rove" class="grid gap-1 rounded-md border p-1" @onkeydown="OnKeyDown">
+                    @foreach (var (hit, index) in _hits.Select((hit, index) => (hit, index)))
+                    {
+                        <button type="button"
+                                role="option"
+                                aria-selected="@(hit.Value == _value ? "true" : "false")"
+                                data-ui="rove-item"
+                                tabindex="@(index == 0 ? null : "-1")"
+                                class="@ClassNames.Cn(ButtonVariants.Classes("ghost", "sm"), "h-auto justify-start py-1.5 text-start whitespace-normal")"
+                                @onclick="() => Choose(hit)">
+                            @if (hit.Preview is { } preview)
+                            {
+                                <img src="@preview" alt="" class="size-8 rounded border object-cover" />
+                            }
+                            <bdi>@hit.Label</bdi>
+                        </button>
+                    }
+                </div>
+            }
+            else if (_searched)
+            {
+                <p class="text-sm text-muted-foreground" role="status">@L["Nothing matches."]</p>
+            }
+        </div>
+    }
+</FormField>
+
+@code {
+    public const string EntryKind = "entry";
+    public const string MediaKind = "media";
+    private const int MaxHits = 10;
+
+    private readonly string _id = "picker-" + Guid.NewGuid().ToString("N")[..8];
+    private string? _value;
+    private string? _chosenLabel;
+    private string _text = string.Empty;
+    private bool _searched;
+    private List<PickerHit> _hits = [];
+
+    [Parameter, EditorRequired] public string Field { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string Kind { get; set; } = EntryKind;
+    [Parameter] public string? Target { get; set; }
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public string Label { get; set; } = string.Empty;
+    [Parameter] public string? Description { get; set; }
+    [Parameter] public string? Error { get; set; }
+    [Parameter] public bool Required { get; set; }
+    // An array, not an interface: parameters of an interactive island cross into the circuit as JSON, which an interface type cannot.
+    [Parameter] public FieldOption[] Options { get; set; } = [];
+
+    private string Name => $"Form.Values[{Field}]";
+
+    private string ListId => _id + "-list";
+
+    protected override void OnParametersSet()
+    {
+        _value = string.IsNullOrWhiteSpace(Value) ? null : Value;
+        _chosenLabel = Options.FirstOrDefault(option => option.Value == _value)?.Label;
+    }
+
+    private async Task SearchAsync(ChangeEventArgs change)
+    {
+        _text = change.Value?.ToString() ?? string.Empty;
+        _hits = _text.Trim().Length == 0 ? [] : Kind == MediaKind ? await MediaAsync(_text.Trim()) : await EntriesAsync(_text.Trim());
+        _searched = _text.Trim().Length > 0;
+    }
+
+    private async Task<List<PickerHit>> EntriesAsync(string text)
+    {
+        if (Target is null)
+        {
+            return [];
+        }
+
+        var found = await Search.SearchAsync(new SearchQuery(text) { ContentTypes = [Target], Limit = MaxHits });
+        if (!found.IsSuccess)
+        {
+            return [];
+        }
+
+        var hits = new List<PickerHit>();
+        foreach (var hit in found.Value.Hits.Where(hit => hit.Via is null).DistinctBy(hit => hit.EntryId))
+        {
+            var entry = await Entries.GetAsync(hit.EntryId);
+            var name = entry.IsSuccess ? FirstText(entry.Value.Latest.Fields) : null;
+            hits.Add(new PickerHit(hit.EntryId.ToString(), L["{0} ({1}, {2})", name ?? hit.ContentType, StateLabel(hit.State), hit.EntryId.ToString()[..8]], null));
+        }
+
+        return hits;
+    }
+
+    private async Task<List<PickerHit>> MediaAsync(string text)
+    {
+        var assets = await Library.ListAsync(new MediaQuery());
+        return
+        [
+            .. assets
+                .Where(asset => asset.FileName.Contains(text, StringComparison.CurrentCultureIgnoreCase) || asset.Folder.Contains(text, StringComparison.OrdinalIgnoreCase))
+                .Reverse()
+                .Take(MaxHits)
+                .Select(asset => new PickerHit(
+                    asset.Id.ToString(),
+                    asset.Folder.Length == 0 ? asset.FileName : $"{asset.FileName} ({asset.Folder})",
+                    asset.ContentType.StartsWith("image/", StringComparison.Ordinal) ? AdminRoutes.MediaFile(asset.Id) : null)),
+        ];
+    }
+
+    private void Choose(PickerHit hit)
+    {
+        (_value, _chosenLabel) = (hit.Value, hit.Label);
+        (_hits, _text, _searched) = ([], string.Empty, false);
+    }
+
+    private void Clear()
+    {
+        (_value, _chosenLabel) = (null, null);
+    }
+
+    private void OnKeyDown(KeyboardEventArgs key)
+    {
+        if (key.Key == "Escape")
+        {
+            (_hits, _searched) = ([], false);
+        }
+    }
+
+    // What names an entry for a person: its first text value, or an entity's first text fact.
+    private static string? FirstText(JsonElement fields)
+    {
+        foreach (var property in fields.EnumerateObject())
+        {
+            var value = property.Value.ValueKind == JsonValueKind.Object && property.Value.TryGetProperty("value", out var fact) ? fact : property.Value;
+            if (value.ValueKind == JsonValueKind.String && !Guid.TryParse(value.GetString(), out _))
+            {
+                return value.GetString();
+            }
+        }
+
+        return null;
+    }
+
+    private string StateLabel(EntryState state) => state switch
+    {
+        EntryState.Draft => L["draft"],
+        EntryState.InReview => L["in review"],
+        EntryState.Published => L["published"],
+        EntryState.Reverted => L["reverted"],
+        _ => L["archived"],
+    };
+
+    private sealed record PickerHit(string Value, string Label, string? Preview);
+}

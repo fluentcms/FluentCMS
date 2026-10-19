@@ -139,7 +139,7 @@ public sealed class SystemPermissionTests : IDisposable
             await Permissions.CheckDefinitionAsync("product-page", AgentOperation.Update),
             await Permissions.CheckNewChangeSetAsync(),
             await Permissions.CheckChangeSetSizeAsync(set, 1),
-            await Permissions.CheckToolCallAsync(),
+            await Permissions.ClaimToolCallAsync(new ToolCall { Id = Guid.NewGuid(), Timestamp = DateTimeOffset.UtcNow, AgentCredentialId = Guid.NewGuid(), AgentName = "none", Tool = "whoami", Outcome = ToolCallOutcome.Running, Duration = TimeSpan.Zero }),
         ];
 
         Assert.All(refused, result => Assert.Equal(AgentPermissionErrorCodes.SystemNotPermitted, Assert.Single(result.Errors).Code));
@@ -189,6 +189,10 @@ public sealed class SystemPermissionTests : IDisposable
 
     private sealed class NoUnitOfWork : IUnitOfWork
     {
+        public void AfterRollback(Func<CancellationToken, Task> step)
+        {
+        }
+
         public Task<IUnitOfWorkScope> BeginAsync(CancellationToken cancellationToken = default)
         {
             return Task.FromResult<IUnitOfWorkScope>(new Scope());
@@ -218,6 +222,16 @@ public sealed class SystemPermissionTests : IDisposable
         public Task<int> ToolCallsSinceAsync(Guid credentialId, DateTimeOffset since, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(0);
+        }
+
+        public Task HoldAsync(Guid credentialId, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task StartToolCallAsync(ToolCall call, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
         }
     }
 

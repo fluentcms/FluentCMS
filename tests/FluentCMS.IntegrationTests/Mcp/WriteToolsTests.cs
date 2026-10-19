@@ -46,16 +46,18 @@ public sealed class WriteToolsTests
         Assert.Equal(1, (int)created["contentType"]!["version"]!);
         Assert.Equal(2, (int)revised["contentType"]!["version"]!);
         Assert.Contains("submit_change_set", (string?)revised["next"]);
-        Assert.Equal("checks_running", (string?)submitted["changeSet"]!["state"]);
+        // No check reads a content type change, so the set passes its checks at once and waits for review.
+        Assert.Equal("awaiting_review", (string?)submitted["changeSet"]!["state"]);
 
         var stored = await agent.AsPersonAsync<IChangeSetDirectory, ChangeSet>(directory => directory.GetAsync(Guid.Parse(id)));
         var category = await agent.AsPersonAsync<IContentTypeDirectory, ContentType>(directory => directory.GetAsync("category"));
-        Assert.Equal(ChangeSetState.ChecksRunning, stored.State);
+        Assert.Equal(ChangeSetState.AwaitingReview, stored.State);
         Assert.Equal(agent.Credential.Initiator, stored.Initiator);
+        // No set has published the person's product yet, so the agent's revision of it is recorded as its create.
         Assert.Equal(
             [
                 ChangeOperation.Create(OperationKind.Create, ItemKind.Schema, category.Id, null, 1).Value,
-                ChangeOperation.Create(OperationKind.Update, ItemKind.Schema, product.Id, 1, 2).Value,
+                ChangeOperation.Create(OperationKind.Create, ItemKind.Schema, product.Id, null, 2).Value,
             ],
             stored.Operations);
 
@@ -144,7 +146,7 @@ public sealed class WriteToolsTests
         await agent.AsPersonAsync<IContentTypeDirectory, ContentType>(directory => directory.ReviseAsync(
             "product",
             1,
-            new ContentTypeDefinition([new FieldDefinition("title", "text"), new FieldDefinition("summary", "text")])));
+            new ContentTypeDefinition([new FieldDefinition("title", "text"), new FieldDefinition("summary", "text")]), TestChangeSetTargets.ContentModel));
 
         var stale = await agent.FailAsync("revise_content_type", new()
         {

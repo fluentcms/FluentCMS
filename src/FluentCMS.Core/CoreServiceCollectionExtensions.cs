@@ -1,6 +1,8 @@
 using FluentCMS.Core.Agents;
 using FluentCMS.Core.Audit;
 using FluentCMS.Core.Checks;
+using FluentCMS.Core.Content;
+using FluentCMS.Core.Desk;
 using FluentCMS.Core.Extensions;
 using FluentCMS.Core.Media;
 using FluentCMS.Core.Models;
@@ -36,6 +38,15 @@ public static class CoreServiceCollectionExtensions
 
         // Reads the active checks through ICheckDirectory, which Infrastructure provides.
         services.AddScoped<ICheckRunner, CheckRunner>();
+
+        // Reads and writes through IChangeSetDirectory, IEntryDirectory, ICheckRuns and IJobQueue, which Infrastructure provides.
+        services.AddScoped<IChangeSetChecks, ChangeSetChecks>();
+
+        // Reads through IChangeSetLists and IEntityFacts, which Infrastructure provides.
+        services.AddScoped<IDeskQueues, DeskQueues>();
+
+        // Writes through IEntryDirectory, IContentTypeDirectory and IChangeSetDirectory in one unit of work, which Infrastructure provides.
+        services.AddScoped<IEntryEdits, EntryEdits>();
 
         return services;
     }

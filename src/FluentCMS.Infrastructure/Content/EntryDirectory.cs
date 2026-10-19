@@ -7,6 +7,7 @@ using FluentCMS.Core.Entities;
 using FluentCMS.Core.Persistence;
 using FluentCMS.Core.Results;
 using FluentCMS.Core.Schema;
+using FluentCMS.Core.Search;
 using FluentCMS.Core.Sites;
 using FluentCMS.Infrastructure.Entities;
 using FluentCMS.Infrastructure.Persistence;
@@ -26,7 +27,8 @@ internal sealed class EntryDirectory(
     FieldTypeRegistry fieldTypes,
     TimeProvider clock,
     IOptions<ContentOptions> options,
-    IAgentPermissions permissions) : IEntryDirectory
+    IAgentPermissions permissions,
+    ISearchIndex searchIndex) : IEntryDirectory
 {
     // Until multi-site (MST-01), every entry belongs to the one site (SCH-07).
     private static readonly Guid SiteId = Site.Default.Id;
@@ -176,6 +178,7 @@ internal sealed class EntryDirectory(
         context.EntryVersions.Add(VersionRow(stored.Latest));
         context.EntryReferences.AddRange(ReferenceRows(stored.Latest, references));
         context.EntityFacts.AddRange(FactRows(stored.Latest, type.Value.Definition));
+        await searchIndex.IndexAsync(new SearchDocument(stored.Id, SearchText.From(stored.Latest.Fields)), cancellationToken);
         var subject = Subject(type.Value.Definition);
         await auditLog.AppendAsync(new NewAuditEvent($"{subject}.created") { SubjectType = subject, SubjectId = stored.Id }, cancellationToken);
 
@@ -245,6 +248,7 @@ internal sealed class EntryDirectory(
         context.EntryVersions.Add(VersionRow(entry.Latest));
         context.EntryReferences.AddRange(ReferenceRows(entry.Latest, references));
         context.EntityFacts.AddRange(FactRows(entry.Latest, type.Value.Definition));
+        await searchIndex.IndexAsync(new SearchDocument(id, SearchText.From(entry.Latest.Fields)), cancellationToken);
         var subject = Subject(type.Value.Definition);
         await auditLog.AppendAsync(
             new NewAuditEvent($"{subject}.updated") { SubjectType = subject, SubjectId = id, PreviousVersionId = baseRow.Id },
@@ -400,42 +404,57 @@ internal sealed class EntryDirectory(
             .SingleOrDefaultAsync(cancellationToken);
     }
 
-    // Every entry a version points at must exist in the site and be of the type its field names (CNT-03). Media assets are checked
-    // once the library exists (F-MED).
+    // Every entry a version points at must exist in the site and be of the type its field names, and every media asset must exist
+    // (CNT-03, MED-01).
     private async Task<List<Error>> ReferenceErrorsAsync(IReadOnlyList<ValueReference> references, CancellationToken cancellationToken)
     {
+        var errors = new List<Error>();
         var entries = references.Where(reference => reference.Kind == ReferenceKind.Entry).ToList();
-        if (entries.Count == 0)
+        if (entries.Count > 0)
         {
-            return [];
+            var ids = entries.Select(reference => reference.TargetId).Distinct().ToList();
+            var types = await (
+                from entry in context.Entries.AsNoTracking()
+                join type in context.ContentTypes.AsNoTracking() on entry.ContentTypeId equals type.Id
+                where entry.SiteId == SiteId && ids.Contains(entry.Id) && entry.DeletedAt == null
+                select new { entry.Id, type.Slug })
+                .ToDictionaryAsync(found => found.Id, found => found.Slug, cancellationToken);
+
+            foreach (var reference in entries)
+            {
+                var field = reference.Pointer.Split('/')[1];
+                var wanted = reference.Target!.Type;
+
+                if (!types.TryGetValue(reference.TargetId, out var slug))
+                {
+                    errors.Add(new Error(
+                        ContentErrorCodes.ReferenceNotFound,
+                        $"Field '{field}': {reference.Pointer} points at {reference.TargetId}, which is not an entry in this site."));
+                }
+                else if (slug != wanted)
+                {
+                    errors.Add(new Error(
+                        ContentErrorCodes.ReferenceTypeMismatch,
+                        $"Field '{field}': {reference.Pointer} points at {reference.TargetId}, which is a '{slug}', but the field references '{wanted}'."));
+                }
+            }
         }
 
-        var ids = entries.Select(reference => reference.TargetId).Distinct().ToList();
-        var types = await (
-            from entry in context.Entries.AsNoTracking()
-            join type in context.ContentTypes.AsNoTracking() on entry.ContentTypeId equals type.Id
-            where entry.SiteId == SiteId && ids.Contains(entry.Id) && entry.DeletedAt == null
-            select new { entry.Id, type.Slug })
-            .ToDictionaryAsync(found => found.Id, found => found.Slug, cancellationToken);
-
-        var errors = new List<Error>();
-        foreach (var reference in entries)
+        var media = references.Where(reference => reference.Kind == ReferenceKind.Media).ToList();
+        if (media.Count > 0)
         {
-            var field = reference.Pointer.Split('/')[1];
-            var wanted = reference.Target!.Type;
+            var ids = media.Select(reference => reference.TargetId).Distinct().ToList();
+            var assets = await context.MediaAssets
+                .AsNoTracking()
+                .Where(asset => asset.SiteId == SiteId && ids.Contains(asset.Id))
+                .Select(asset => asset.Id)
+                .ToListAsync(cancellationToken);
 
-            if (!types.TryGetValue(reference.TargetId, out var slug))
-            {
-                errors.Add(new Error(
+            errors.AddRange(media
+                .Where(reference => !assets.Contains(reference.TargetId))
+                .Select(reference => new Error(
                     ContentErrorCodes.ReferenceNotFound,
-                    $"Field '{field}': {reference.Pointer} points at {reference.TargetId}, which is not an entry in this site."));
-            }
-            else if (slug != wanted)
-            {
-                errors.Add(new Error(
-                    ContentErrorCodes.ReferenceTypeMismatch,
-                    $"Field '{field}': {reference.Pointer} points at {reference.TargetId}, which is a '{slug}', but the field references '{wanted}'."));
-            }
+                    $"Field '{reference.Pointer.Split('/')[1]}': {reference.Pointer} points at {reference.TargetId}, which is not a media asset in this site.")));
         }
 
         return errors;

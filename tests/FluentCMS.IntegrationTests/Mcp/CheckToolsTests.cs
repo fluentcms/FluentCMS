@@ -55,7 +55,7 @@ public sealed class CheckToolsTests
         Assert.All(fixedDraft["results"]!.AsArray(), result => Assert.Equal("pass", (string?)result!["status"]));
 
         // A check stores nothing and opens no set.
-        Assert.Equal(0, await agent.QueryAsync(context => Task.FromResult(context.ChangeSets.Count())));
+        Assert.Equal(0, await agent.QueryAsync(context => Task.FromResult(context.ChangeSets.Count(set => set.SessionId != TestChangeSetTargets.ContentModelSession))));
         Assert.Equal(0, await agent.QueryAsync(context => Task.FromResult(context.Entries.Count())));
     }
 
@@ -226,7 +226,7 @@ public sealed class CheckToolsTests
                 new FieldDefinition("headline", "text", required: true),
                 new FieldDefinition("body", "richText"),
                 new FieldDefinition("price", "number"),
-            ]))));
+            ])), TestChangeSetTargets.ContentModel));
 
         var checks = new Dictionary<string, CheckDefinition>
         {

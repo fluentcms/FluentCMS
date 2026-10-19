@@ -13,7 +13,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FluentCMS.Infrastructure.ChangeSets;
 
-// Expected failures are found before the unit of work begins, so they leave a caller's outer unit of work able to commit.
+// Expected failures are found before the unit of work begins, so they leave a caller's outer unit of work able to commit. An agent's
+// daily cap is the exception: it is counted inside, so concurrent opens take turns, and its refusal rolls the caller's unit of work back.
 // Reads never track rows, and updates go straight to the database, so a long-lived context always sees what is stored.
 internal sealed class ChangeSetDirectory(
     FluentCmsDbContext context,
@@ -33,8 +34,13 @@ internal sealed class ChangeSetDirectory(
     public async Task<Result<ChangeSet>> GetAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var stored = await ReadAsync(id, cancellationToken);
+        if (stored is null)
+        {
+            return NotFound(id);
+        }
 
-        return stored is null ? NotFound(id) : Result<ChangeSet>.Success(stored.ChangeSet);
+        var readable = await permissions.CheckChangeSetReadAsync(stored.ChangeSet, cancellationToken);
+        return readable.IsSuccess ? Result<ChangeSet>.Success(stored.ChangeSet) : Result<ChangeSet>.Failure(readable.Errors);
     }
 
     public async Task<Result<ChangeSetDiff>> DiffAsync(Guid id, CancellationToken cancellationToken = default)
@@ -43,6 +49,12 @@ internal sealed class ChangeSetDirectory(
         if (stored is null)
         {
             return Result<ChangeSetDiff>.Failure(NotFound(id).Errors);
+        }
+
+        var readable = await permissions.CheckChangeSetReadAsync(stored.ChangeSet, cancellationToken);
+        if (!readable.IsSuccess)
+        {
+            return Result<ChangeSetDiff>.Failure(readable.Errors);
         }
 
         var set = stored.ChangeSet;
@@ -85,13 +97,14 @@ internal sealed class ChangeSetDirectory(
             return opened;
         }
 
+        // Counted inside the unit of work, after holding the agent's credential, so concurrent opens cannot all pass the cap.
+        await using var scope = await unitOfWork.BeginAsync(cancellationToken);
         var allowed = await permissions.CheckNewChangeSetAsync(cancellationToken);
         if (!allowed.IsSuccess)
         {
             return Result<ChangeSet>.Failure(allowed.Errors);
         }
 
-        await using var scope = await unitOfWork.BeginAsync(cancellationToken);
         await InsertAsync(opened.Value, cancellationToken);
 
         return await CommitAsync(scope, opened.Value, Conflict(opened.Value.Id), cancellationToken);
@@ -138,13 +151,13 @@ internal sealed class ChangeSetDirectory(
             return Result<ChangeSet>.Failure(previousVersion.Errors);
         }
 
+        await using var scope = await unitOfWork.BeginAsync(cancellationToken);
         var allowed = await permissions.CheckNewChangeSetAsync(cancellationToken);
         if (!allowed.IsSuccess)
         {
             return Result<ChangeSet>.Failure(allowed.Errors);
         }
 
-        await using var scope = await unitOfWork.BeginAsync(cancellationToken);
         await InsertAsync(set, cancellationToken);
         await InsertOperationAsync(set, set.Operations.Count - 1, previousVersion.Value, cancellationToken);
 
@@ -295,6 +308,164 @@ internal sealed class ChangeSetDirectory(
         return MoveAsync(changeSetId, ChangeSetState.Rejected, set => set.Reject(reason), cancellationToken);
     }
 
+    // A write of an item in another directory that is also an operation of a change set, such as a content type revision
+    // (SCH-05), joins its set in two steps, so the item's rows and the operation commit together. PrepareAsync finds every
+    // expected failure before the caller's unit of work begins; BeginWriteAsync and RecordAsync run inside it, around the item's own
+    // rows and event.
+    // ItemPublished says whether a change set has published the item, so an update of one that is not live records a create.
+    internal async Task<Result<PendingOperation>> PrepareAsync(
+        ChangeSetTarget target,
+        ChangeOperation operation,
+        bool itemPublished,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        ArgumentNullException.ThrowIfNull(operation);
+
+        if (target.ChangeSetId is { } id)
+        {
+            var stored = await ReadAsync(id, cancellationToken);
+            return stored is null
+                ? Result<PendingOperation>.Failure(NotFound(id).Errors)
+                : await PrepareJoinAsync(stored, operation, itemPublished, [], cancellationToken);
+        }
+
+        var sessionId = target.SessionId!;
+        var initiator = Initiator();
+        var openId = await OpenSetOfSessionAsync(initiator, sessionId, cancellationToken);
+        if (openId is not null && await ReadAsync(openId.Value, cancellationToken) is { } open)
+        {
+            return await PrepareJoinAsync(open, operation, itemPublished, target.NewChangeSet!.Sources, cancellationToken);
+        }
+
+        var opened = ChangeSet.Open(SiteId, target.NewChangeSet!.Rationale, target.NewChangeSet.Sources, initiator, sessionId);
+        if (!opened.IsSuccess)
+        {
+            return Result<PendingOperation>.Failure(opened.Errors);
+        }
+
+        var set = opened.Value;
+        var recorded = set.Record(operation, itemPublished);
+        if (!recorded.IsSuccess)
+        {
+            return Result<PendingOperation>.Failure(recorded.Errors);
+        }
+
+        // The daily cap is counted when the set is written, inside the caller's unit of work, as for OpenAsync.
+        return Result<PendingOperation>.Success(new PendingOperation(set, null, 0, Extends: false));
+    }
+
+    // The version the set a write joins already proposes for the item, which a later write in that set builds on (SCH-05). Null when
+    // that set holds no operation proposing a version of the item, the write would open the set, or the set is not open, which the
+    // join then refuses.
+    internal async Task<int?> ProposedVersionAsync(ChangeSetTarget target, ItemKind itemKind, Guid itemId, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+
+        var setId = target.ChangeSetId ?? await OpenSetOfSessionAsync(Initiator(), target.SessionId!, cancellationToken);
+        if (setId is null)
+        {
+            return null;
+        }
+
+        return await (
+                from operation in context.ChangeSetOperations.AsNoTracking()
+                join set in context.ChangeSets.AsNoTracking() on operation.ChangeSetId equals set.Id
+                where set.Id == setId
+                    && set.State == ChangeSetState.Open
+                    && operation.ItemKind == itemKind
+                    && operation.ItemId == itemId
+                select operation.ProposedVersion)
+            .SingleOrDefaultAsync(cancellationToken);
+    }
+
+    // Whether a set that can still publish, one not yet published, rejected or reverted, proposes this version of the item.
+    internal Task<bool> ProposesAsync(ItemKind itemKind, Guid itemId, int version, CancellationToken cancellationToken)
+    {
+        return LiveOperations(itemKind)
+            .AnyAsync(operation => operation.ItemId == itemId && operation.ProposedVersion == version, cancellationToken);
+    }
+
+    // The operations of sets that can still publish, for a caller's query to join.
+    internal IQueryable<ChangeSetOperationRow> LiveOperations(ItemKind itemKind)
+    {
+        return
+            from operation in context.ChangeSetOperations.AsNoTracking()
+            join set in context.ChangeSets.AsNoTracking() on operation.ChangeSetId equals set.Id
+            where set.SiteId == SiteId
+                && operation.ItemKind == itemKind
+                && set.State != ChangeSetState.Published
+                && set.State != ChangeSetState.Rejected
+                && set.State != ChangeSetState.Reverted
+            select operation;
+    }
+
+    // The first step inside the caller's unit of work, before the item's own rows and event: it opens the set or moves its revision.
+    // It fails when an agent's daily cap refuses the set the write opens, counted here with the agent's credential held so concurrent
+    // opens take turns, or when another call changed the set since PrepareAsync read it. Either way the caller rolls back.
+    internal async Task<Result> BeginWriteAsync(PendingOperation pending, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(pending);
+
+        var set = pending.ChangeSet;
+        if (pending.Revision is { } revision)
+        {
+            return await UpdateAsync(revision, set, cancellationToken) ? Result.Success() : Result.Failure(Conflict(set.Id).Errors);
+        }
+
+        var allowed = await permissions.CheckNewChangeSetAsync(cancellationToken);
+        if (!allowed.IsSuccess)
+        {
+            return allowed;
+        }
+
+        await InsertAsync(set, cancellationToken);
+        return Result.Success();
+    }
+
+    // The last step, after the item's own rows and event: the operation, with the row of the version the write was based on.
+    internal Task RecordAsync(PendingOperation pending, Guid? previousVersionId, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(pending);
+
+        return pending.Extends
+            ? ExtendOperationAsync(pending.ChangeSet, pending.Position, previousVersionId, cancellationToken)
+            : InsertOperationAsync(pending.ChangeSet, pending.Position, previousVersionId, cancellationToken);
+    }
+
+    private async Task<Result<PendingOperation>> PrepareJoinAsync(
+        StoredChangeSet stored,
+        ChangeOperation operation,
+        bool itemPublished,
+        IReadOnlyList<string> sources,
+        CancellationToken cancellationToken)
+    {
+        var set = stored.ChangeSet;
+        var count = set.Operations.Count;
+
+        var recorded = set.Record(operation, itemPublished);
+        if (!recorded.IsSuccess)
+        {
+            return Result<PendingOperation>.Failure(recorded.Errors);
+        }
+
+        var sourcesAdded = set.AddSources(sources);
+        if (!sourcesAdded.IsSuccess)
+        {
+            return Result<PendingOperation>.Failure(sourcesAdded.Errors);
+        }
+
+        // Checked against the read whose revision guards the write, as for AddOperationAsync.
+        var allowed = await permissions.CheckChangeSetSizeAsync(set, cancellationToken: cancellationToken);
+        if (!allowed.IsSuccess)
+        {
+            return Result<PendingOperation>.Failure(allowed.Errors);
+        }
+
+        var position = set.Operations.ToList().FindIndex(existing => existing.ItemKind == operation.ItemKind && existing.ItemId == operation.ItemId);
+        return Result<PendingOperation>.Success(new PendingOperation(set, stored.Revision, position, Extends: set.Operations.Count == count));
+    }
+
     private async Task<Result<ChangeSet>> AddAsync(
         StoredChangeSet stored,
         ChangeOperation operation,
@@ -303,6 +474,8 @@ internal sealed class ChangeSetDirectory(
     {
         var set = stored.ChangeSet;
 
+        // An operation that moves the item's operation on to a newer version takes its place rather than joining the set.
+        var position = set.Operations.ToList().FindIndex(existing => existing.ItemKind == operation.ItemKind && existing.ItemId == operation.ItemId);
         var added = set.AddOperation(operation);
         if (!added.IsSuccess)
         {
@@ -335,7 +508,14 @@ internal sealed class ChangeSetDirectory(
             return Conflict(set.Id);
         }
 
-        await InsertOperationAsync(set, set.Operations.Count - 1, previousVersion.Value, cancellationToken);
+        if (position >= 0)
+        {
+            await ExtendOperationAsync(set, position, previousVersion.Value, cancellationToken);
+        }
+        else
+        {
+            await InsertOperationAsync(set, set.Operations.Count - 1, previousVersion.Value, cancellationToken);
+        }
 
         return await CommitAsync(scope, set, Conflict(set.Id), cancellationToken);
     }
@@ -435,6 +615,28 @@ internal sealed class ChangeSetDirectory(
 
         await auditLog.AppendAsync(
             new NewAuditEvent("change_set.operation_added")
+            {
+                SubjectType = ItemSubjectType(operation.ItemKind),
+                SubjectId = operation.ItemId,
+                ChangeSetId = set.Id,
+                Sources = set.Sources,
+                PreviousVersionId = previousVersionId,
+            },
+            cancellationToken);
+    }
+
+    // A later write of an item already in the set moves its operation to the write's version, with the version the write was
+    // based on as the event's previous version (AUD-01).
+    private async Task ExtendOperationAsync(ChangeSet set, int position, Guid? previousVersionId, CancellationToken cancellationToken)
+    {
+        var operation = set.Operations[position];
+
+        await context.ChangeSetOperations
+            .Where(row => row.ChangeSetId == set.Id && row.Position == position)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(row => row.ProposedVersion, operation.ProposedVersion), cancellationToken);
+
+        await auditLog.AppendAsync(
+            new NewAuditEvent("change_set.operation_updated")
             {
                 SubjectType = ItemSubjectType(operation.ItemKind),
                 SubjectId = operation.ItemId,
@@ -969,6 +1171,10 @@ internal sealed class ChangeSetDirectory(
     }
 
     private sealed record StoredChangeSet(ChangeSet ChangeSet, int Revision);
+
+    // Revision is null for a set the write opens. Position is the operation's place in the set, and Extends says whether the write
+    // extends an operation the set already holds.
+    internal sealed record PendingOperation(ChangeSet ChangeSet, int? Revision, int Position, bool Extends);
 
     // Name says which item it is in a message, such as "the content type 'product'".
     private sealed record PublishableItem(ChangeOperation Operation, string Name, Guid? PreviousVersionId);
