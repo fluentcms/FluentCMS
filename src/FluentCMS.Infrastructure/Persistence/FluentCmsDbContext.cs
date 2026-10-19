@@ -2,6 +2,7 @@ using FluentCMS.Infrastructure.Agents;
 using FluentCMS.Infrastructure.Audit;
 using FluentCMS.Infrastructure.ChangeSets;
 using FluentCMS.Infrastructure.Checks;
+using FluentCMS.Infrastructure.Routing;
 using FluentCMS.Infrastructure.Content;
 using FluentCMS.Infrastructure.Delivery;
 using FluentCMS.Infrastructure.Entities;
@@ -54,6 +55,10 @@ public abstract class FluentCmsDbContext(DbContextOptions options) : IdentityDbC
 
     public DbSet<CheckVersionRow> CheckVersions => Set<CheckVersionRow>();
 
+    public DbSet<RoutingRuleRow> RoutingRules => Set<RoutingRuleRow>();
+
+    public DbSet<RoutingRuleVersionRow> RoutingRuleVersions => Set<RoutingRuleVersionRow>();
+
     public DbSet<JobRow> Jobs => Set<JobRow>();
 
     public DbSet<ModelCallRow> ModelCalls => Set<ModelCallRow>();
@@ -65,6 +70,8 @@ public abstract class FluentCmsDbContext(DbContextOptions options) : IdentityDbC
     public DbSet<WebhookSubscriptionRow> WebhookSubscriptions => Set<WebhookSubscriptionRow>();
 
     public DbSet<PreviewTokenRow> PreviewTokens => Set<PreviewTokenRow>();
+
+    public DbSet<WebhookDeliveryRow> WebhookDeliveries => Set<WebhookDeliveryRow>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -87,12 +94,15 @@ public abstract class FluentCmsDbContext(DbContextOptions options) : IdentityDbC
         builder.ApplyConfiguration(new MediaAssetVersionConfiguration());
         builder.ApplyConfiguration(new CheckConfiguration());
         builder.ApplyConfiguration(new CheckVersionConfiguration());
+        builder.ApplyConfiguration(new RoutingRuleConfiguration());
+        builder.ApplyConfiguration(new RoutingRuleVersionConfiguration());
         builder.ApplyConfiguration(new JobConfiguration());
         builder.ApplyConfiguration(new ModelCallConfiguration());
         builder.ApplyConfiguration(new CheckRunConfiguration());
         builder.ApplyConfiguration(new CheckResultConfiguration());
         builder.ApplyConfiguration(new WebhookSubscriptionConfiguration());
         builder.ApplyConfiguration(new PreviewTokenConfiguration());
+        builder.ApplyConfiguration(new WebhookDeliveryConfiguration());
 
         builder.Entity<FluentCmsUser>(user =>
         {
@@ -120,5 +130,6 @@ public sealed class PostgreSqlFluentCmsDbContext(DbContextOptions<PostgreSqlFlue
         builder.Entity<ContentTypeVersionRow>().Property(version => version.Definition).HasColumnType("jsonb");
         builder.Entity<EntryVersionRow>().Property(version => version.Fields).HasColumnType("jsonb");
         builder.Entity<CheckVersionRow>().Property(version => version.Definition).HasColumnType("jsonb");
+        builder.Entity<RoutingRuleVersionRow>().Property(version => version.Definition).HasColumnType("jsonb");
     }
 }
