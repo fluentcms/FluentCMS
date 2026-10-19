@@ -16,7 +16,8 @@ public sealed record AgentInitiator(Guid CredentialId, string DisplayName) : Ini
 // make only the moves its component owns and read content, never write it.
 public sealed record SystemInitiator : Initiator
 {
-    public SystemInitiator(string component)
+    // Only Core names its engines, so no other code makes up one to act as.
+    internal SystemInitiator(string component)
         : base(component)
     {
         if (!SchemaNames.IsSlug(component))

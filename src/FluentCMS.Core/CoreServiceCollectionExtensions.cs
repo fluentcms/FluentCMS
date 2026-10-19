@@ -3,6 +3,8 @@ using FluentCMS.Core.Audit;
 using FluentCMS.Core.Checks;
 using FluentCMS.Core.Desk;
 using FluentCMS.Core.Extensions;
+using FluentCMS.Core.Identity;
+using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Media;
 using FluentCMS.Core.Models;
 using FluentCMS.Core.Schema;
@@ -40,6 +42,9 @@ public static class CoreServiceCollectionExtensions
 
         // Reads through IChangeSetLists and IEntityFacts, which Infrastructure provides.
         services.AddScoped<IDeskQueues, DeskQueues>();
+
+        // The handlers that run as an engine; a job worker runs any other handler as whoever enqueued its job (ADR-0012).
+        services.AddSingleton(new EngineJobs(new Dictionary<Type, SystemInitiator>()));
 
         return services;
     }
