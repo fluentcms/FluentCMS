@@ -2,6 +2,7 @@ using FluentCMS.Infrastructure.Agents;
 using FluentCMS.Infrastructure.Audit;
 using FluentCMS.Infrastructure.ChangeSets;
 using FluentCMS.Infrastructure.Checks;
+using FluentCMS.Infrastructure.Rules;
 using FluentCMS.Infrastructure.Routing;
 using FluentCMS.Infrastructure.Content;
 using FluentCMS.Infrastructure.Delivery;
@@ -69,6 +70,10 @@ public abstract class FluentCmsDbContext(DbContextOptions options) : IdentityDbC
 
     public DbSet<PreviewTokenRow> PreviewTokens => Set<PreviewTokenRow>();
 
+    public DbSet<RuleRow> Rules => Set<RuleRow>();
+
+    public DbSet<RuleVersionRow> RuleVersions => Set<RuleVersionRow>();
+
     public DbSet<WebhookDeliveryRow> WebhookDeliveries => Set<WebhookDeliveryRow>();
 
     protected override void OnModelCreating(ModelBuilder builder)
@@ -99,6 +104,8 @@ public abstract class FluentCmsDbContext(DbContextOptions options) : IdentityDbC
         builder.ApplyConfiguration(new CheckResultConfiguration());
         builder.ApplyConfiguration(new WebhookSubscriptionConfiguration());
         builder.ApplyConfiguration(new PreviewTokenConfiguration());
+        builder.ApplyConfiguration(new RuleConfiguration());
+        builder.ApplyConfiguration(new RuleVersionConfiguration());
         builder.ApplyConfiguration(new WebhookDeliveryConfiguration());
 
         builder.Entity<FluentCmsUser>(user =>
@@ -127,6 +134,7 @@ public sealed class PostgreSqlFluentCmsDbContext(DbContextOptions<PostgreSqlFlue
         builder.Entity<ContentTypeVersionRow>().Property(version => version.Definition).HasColumnType("jsonb");
         builder.Entity<EntryVersionRow>().Property(version => version.Fields).HasColumnType("jsonb");
         builder.Entity<CheckVersionRow>().Property(version => version.Definition).HasColumnType("jsonb");
+        builder.Entity<RuleVersionRow>().Property(version => version.Definition).HasColumnType("jsonb");
         builder.Entity<RoutingRuleVersionRow>().Property(version => version.Definition).HasColumnType("jsonb");
     }
 }
