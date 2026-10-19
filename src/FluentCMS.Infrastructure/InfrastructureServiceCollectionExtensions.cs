@@ -4,8 +4,10 @@ using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Checks;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Entities;
+using FluentCMS.Core.Extensions;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Jobs;
+using FluentCMS.Core.Media;
 using FluentCMS.Core.Persistence;
 using FluentCMS.Core.Schema;
 using FluentCMS.Infrastructure.Agents;
@@ -16,12 +18,14 @@ using FluentCMS.Infrastructure.Content;
 using FluentCMS.Infrastructure.Entities;
 using FluentCMS.Infrastructure.Identity;
 using FluentCMS.Infrastructure.Jobs;
+using FluentCMS.Infrastructure.Media;
 using FluentCMS.Infrastructure.Persistence;
 using FluentCMS.Infrastructure.Schema;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 
 namespace FluentCMS.Infrastructure;
 
@@ -39,6 +43,7 @@ public static class InfrastructureServiceCollectionExtensions
         AddChangeSets(services);
         AddAgents(services);
         AddContent(services, configuration);
+        AddMedia(services, configuration);
         AddChecks(services);
         AddJobs(services);
 
@@ -88,6 +93,15 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IAgentCredentialDirectory, AgentCredentialDirectory>();
         services.AddScoped<IAgentActivity, AgentActivity>();
         services.AddSingleton<IToolCallLog, ToolCallLog>();
+    }
+
+    // The configured storage is checked against the registered ones when the host starts (MED-04).
+    private static void AddMedia(IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<LocalDiskOptions>(configuration.GetSection(LocalDiskOptions.SectionName));
+        services.AddFluentCmsExtension<IMediaStorage, LocalDiskMediaStorage>();
+        services.AddOptions<MediaOptions>().Bind(configuration.GetSection(MediaOptions.SectionName)).ValidateOnStart();
+        services.AddSingleton<IValidateOptions<MediaOptions>, MediaOptionsValidation>();
     }
 
     private static void AddContent(IServiceCollection services, IConfiguration configuration)
