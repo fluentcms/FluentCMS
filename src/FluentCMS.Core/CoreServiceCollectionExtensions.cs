@@ -1,9 +1,12 @@
 using FluentCMS.Core.Agents;
 using FluentCMS.Core.Audit;
+using FluentCMS.Core.Builtin.Jobs;
 using FluentCMS.Core.Checks;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Desk;
 using FluentCMS.Core.Extensions;
+using FluentCMS.Core.Identity;
+using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Media;
 using FluentCMS.Core.Models;
 using FluentCMS.Core.Schema;
@@ -47,6 +50,9 @@ public static class CoreServiceCollectionExtensions
 
         // Writes through IEntryDirectory, IContentTypeDirectory and IChangeSetDirectory in one unit of work, which Infrastructure provides.
         services.AddScoped<IEntryEdits, EntryEdits>();
+
+        // The handlers that run as an engine; a job worker runs any other handler as whoever enqueued its job (ADR-0012).
+        services.AddSingleton(new EngineJobs(new Dictionary<Type, SystemInitiator> { [typeof(CheckRunJob)] = SystemInitiator.Checks }));
 
         return services;
     }

@@ -16,7 +16,8 @@ public sealed record AgentInitiator(Guid CredentialId, string DisplayName) : Ini
 // make only the moves its component owns and read content, never write it.
 public sealed record SystemInitiator : Initiator
 {
-    public SystemInitiator(string component)
+    // Only Core names its engines, so no other code makes up one to act as.
+    internal SystemInitiator(string component)
         : base(component)
     {
         if (!SchemaNames.IsSlug(component))
@@ -33,6 +34,9 @@ public sealed record SystemInitiator : Initiator
 
     // Maintenance that clears data past its retention, such as stored prompts (AUD-04).
     public static SystemInitiator Retention { get; } = new("retention");
+
+    // The product's engines; a stored row naming any other is a fault, not an engine.
+    internal static IReadOnlyList<SystemInitiator> Engines => [Checks, Retention];
 
     public string Component { get; }
 
