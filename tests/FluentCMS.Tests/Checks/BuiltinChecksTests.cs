@@ -18,11 +18,10 @@ public sealed class BuiltinChecksTests : IDisposable
     {
         Assert.Equal(
             ["altText", "instructions", "length", "links", "pattern", "range", "schema", "sources", "staleness", "terms"],
-            CheckTypes.Names);
-        Assert.All(CheckTypes.Names, name => Assert.Equal(CheckKind.Deterministic, CheckTypes.Find(name)!.Kind));
+            CheckTypes.Names.Where(name => CheckTypes.Find(name)!.Kind == CheckKind.Deterministic));
 
         var descriptors = _provider.GetRequiredService<IExtensionCatalog>().For<ICheckType>();
-        Assert.Equal(10, descriptors.Count);
+        Assert.Equal(13, descriptors.Count);
         Assert.All(descriptors, descriptor => Assert.True(descriptor.IsBuiltIn));
     }
 
