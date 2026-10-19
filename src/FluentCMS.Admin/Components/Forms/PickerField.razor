@@ -41,7 +41,7 @@
                    @oninput="SearchAsync"
                    @onkeydown="OnKeyDown"
                    placeholder="@(Kind == MediaKind ? L["Search by file name or folder"] : L["Search by name"])"
-                   aria-controls="@ListId"
+                   aria-controls="@(_hits.Count > 0 ? ListId : null)"
                    aria-autocomplete="list"
                    data-ui="rove-input"
                    data-field="@Field" />

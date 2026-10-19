@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Admin.Forms;
+using FluentCMS.Core.Schema;
 
 namespace FluentCMS.Tests.Admin;
 
@@ -59,6 +60,94 @@ public sealed class FactValuesTests
         Assert.Equal(10, value!.Value.GetInt32());
         Assert.Equal(("file", "prices.csv", Owner.ToString(), "2026-12-31T22:59"), (facts["price.kind"], facts["price.reference"], facts["price.owner"], facts["price.validUntil"]));
         Assert.False(FactValues.IsUnsourced(stored));
+    }
+
+    [Fact]
+    public void Parts_that_show_as_the_stored_fact_keep_its_text()
+    {
+        var stored = JsonDocument.Parse($$"""{"value": 10, "source": null, "owner": "{{Owner.ToString().ToUpperInvariant()}}", "validFrom": null, "validUntil": null, "lastVerified": "2026-03-04T05:06:07.89+01:00"}""").RootElement;
+        var shown = new Dictionary<string, string?>();
+        FactValues.Show("price", stored, shown);
+        var problems = new Dictionary<string, string>();
+
+        var fact = FactValues.Read("price", JsonValue.Create(10), shown, problems, stored, new HashSet<Guid> { Owner });
+
+        Assert.Empty(problems);
+        Assert.Equal(Owner.ToString(), shown["price.owner"]);
+        Assert.Equal(Owner.ToString().ToUpperInvariant(), fact![FactMetadata.Owner]!.GetValue<string>());
+        Assert.Equal("2026-03-04T05:06:07.89+01:00", fact[FactMetadata.LastVerified]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void A_fact_whose_value_and_parts_all_show_as_stored_is_kept_exactly()
+    {
+        var stored = JsonDocument.Parse($$"""{"value": 4.50, "source": {"reference": "prices.csv ", "kind": "file"}, "owner": "{{Owner.ToString().ToUpperInvariant()}}", "validFrom": null, "validUntil": null, "lastVerified": "2026-03-04T05:06:07+01:00", "note": "kept"}""").RootElement;
+        var shown = new Dictionary<string, string?>();
+        FactValues.Show("price", stored, shown);
+
+        var fact = FactValues.Read("price", JsonNode.Parse("4.50")!, shown, [], stored, new HashSet<Guid> { Owner });
+
+        var unescaped = new JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+        Assert.Equal(stored.GetRawText().Replace(" ", "", StringComparison.Ordinal), fact!.ToJsonString(unescaped).Replace(" ", "", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void A_stored_plain_value_is_read_as_no_fact_yet()
+    {
+        var problems = new Dictionary<string, string>();
+
+        var fact = FactValues.Read("price", JsonValue.Create(10m), Posted(("price.owner", Owner.ToString())), problems, JsonDocument.Parse("10").RootElement, new HashSet<Guid> { Owner });
+
+        Assert.Empty(problems);
+        Assert.Equal(Owner.ToString(), fact![FactMetadata.Owner]!.GetValue<string>());
+        Assert.Null(FactValues.OwnerOf(JsonDocument.Parse("10").RootElement));
+    }
+
+    [Fact]
+    public void A_json_object_without_a_value_is_a_plain_value_not_a_fact()
+    {
+        var facts = new Dictionary<string, string?>();
+        var plain = JsonDocument.Parse("""{"watts": 500}""").RootElement;
+
+        var shown = FactValues.Show("specs", plain, facts);
+
+        Assert.Equal(500, shown!.Value.GetProperty("watts").GetInt32());
+        Assert.Empty(facts);
+        Assert.False(FactValues.IsFact(plain));
+        Assert.True(FactValues.IsUnsourced(plain));
+    }
+
+    [Fact]
+    public void The_owner_a_fact_already_has_is_kept_though_no_user_has_that_id()
+    {
+        var stranger = Guid.NewGuid();
+        var stored = JsonDocument.Parse($$"""{"value": 10, "source": null, "owner": "{{stranger}}", "validFrom": null, "validUntil": null, "lastVerified": null}""").RootElement;
+        var problems = new Dictionary<string, string>();
+
+        var fact = FactValues.Read("price", JsonValue.Create(11m), Posted(("price.owner", stranger.ToString())), problems, stored, new HashSet<Guid> { Owner });
+
+        Assert.Empty(problems);
+        Assert.Equal(stranger.ToString(), fact![FactMetadata.Owner]!.GetValue<string>());
+        Assert.Equal(stranger, FactValues.OwnerOf(stored));
+    }
+
+    [Fact]
+    public void An_owner_who_is_not_a_known_user_is_a_problem()
+    {
+        var problems = new Dictionary<string, string>();
+
+        Assert.Null(FactValues.Read("price", JsonValue.Create(10m), Posted(("price.owner", Guid.NewGuid().ToString())), problems, owners: new HashSet<Guid> { Owner }));
+        Assert.Equal("owner", problems["owner"]);
+    }
+
+    [Theory]
+    [InlineData("price.reference", "prices.csv", true)]
+    [InlineData("price.validFrom", "2026-01-01T00:00", true)]
+    [InlineData("other.kind", "url", false)]
+    [InlineData("price.owner", " ", false)]
+    public void Details_are_given_when_any_part_of_the_field_has_text(string key, string posted, bool expected)
+    {
+        Assert.Equal(expected, FactValues.HasDetails("price", Posted((key, posted))));
     }
 
     private static Dictionary<string, string?> Posted(params (string Key, string Value)[] parts)
