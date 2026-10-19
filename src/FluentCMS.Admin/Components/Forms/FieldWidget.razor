@@ -1,0 +1,78 @@
+@using FluentCMS.Admin.Forms
+@using FluentCMS.Core.Schema
+@inject IStringLocalizer<FieldWidget> L
+
+@* One field of a generated form (FRM-01): the widget its type takes, inside a FormField with the field's description and error. *@
+<FormField Label="@Label" Description="@Description" Error="@Error" Class="@(Wide ? "sm:col-span-2" : null)">
+    @switch (Field.Type)
+    {
+        case "boolean":
+            <div class="flex items-center gap-2">
+                <Checkbox name="@Name" value="true" checked="@(Value == "true")" data-field="@Field.Name" />
+            </div>
+            break;
+        case "richText":
+            <Textarea name="@Name" rows="6" value="@Value" required="@Field.Required" maxlength="@MaxLength" data-field="@Field.Name" />
+            break;
+        case "list":
+        case "json":
+            <Textarea name="@Name" rows="5" value="@Value" required="@Field.Required" dir="ltr" Class="font-mono text-xs" data-field="@Field.Name" />
+            break;
+        case "number":
+            <Input Type="number" step="any" name="@Name" value="@Value" required="@Field.Required" dir="ltr" data-field="@Field.Name" />
+            break;
+        case "dateTime":
+            <Input Type="@(FieldValues.IsDateOnly(Field) ? "date" : "datetime-local")" name="@Name" value="@Value" required="@Field.Required" dir="ltr" data-field="@Field.Name" />
+            break;
+        case "enum":
+            <Select name="@Name" required="@Field.Required" data-field="@Field.Name">
+                <option value="">@L["Choose…"]</option>
+                @foreach (var choice in FieldValues.Strings(Field, "values"))
+                {
+                    <option value="@choice" selected="@(choice == Value)">@choice</option>
+                }
+            </Select>
+            break;
+        case "reference":
+        case "media":
+            <Select name="@Name" required="@Field.Required" data-field="@Field.Name">
+                <option value="">@L["Choose…"]</option>
+                @foreach (var option in Options)
+                {
+                    <option value="@option.Value" selected="@(option.Value == Value)">@option.Label</option>
+                }
+            </Select>
+            break;
+        default:
+            <Input name="@Name" value="@Value" required="@Field.Required" maxlength="@MaxLength" data-field="@Field.Name" />
+            break;
+    }
+</FormField>
+
+@code {
+    [Parameter, EditorRequired] public FieldDefinition Field { get; set; } = null!;
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public string? Error { get; set; }
+    [Parameter] public IReadOnlyList<FieldOption> Options { get; set; } = [];
+
+    private string Name => $"Form.Values[{Field.Name}]";
+
+    private string Label => Field.Required ? L["{0} (required)", Field.Name] : Field.Name;
+
+    private string? Description => Field.Type switch
+    {
+        "dateTime" when !FieldValues.IsDateOnly(Field) => Join(Field.Description, L["In UTC."]),
+        "list" or "json" => Join(Field.Description, L["As JSON."]),
+        _ => Field.Description,
+    };
+
+    private bool Wide => Field.Type is "richText" or "list" or "json";
+
+    private int? MaxLength => Field.Settings.ValueKind == System.Text.Json.JsonValueKind.Object
+        && Field.Settings.TryGetProperty("maxLength", out var max)
+        && max.TryGetInt32(out var length)
+            ? length
+            : null;
+
+    private static string? Join(string? description, string hint) => description is null ? hint : $"{description} {hint}";
+}
