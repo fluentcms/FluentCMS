@@ -1,0 +1,49 @@
+@page "/content"
+@using FluentCMS.Core.Schema
+@inject IContentTypeDirectory ContentTypes
+@inject IStringLocalizer<ContentTypesView> L
+
+<PageTitle>@L["Content"]</PageTitle>
+
+<h1 id="content-heading" class="text-2xl font-semibold tracking-tight">@L["Content"]</h1>
+<p class="mt-1 text-sm text-muted-foreground">@L["Create and edit entries by hand. Each save opens a change set that is checked and reviewed like an agent's."]</p>
+
+@if (_types.Count == 0)
+{
+    <p class="mt-6 rounded-md border px-3 py-6 text-center text-sm text-muted-foreground" data-testid="content-empty">@L["No content type is defined yet."]</p>
+}
+else
+{
+    <div class="mt-6 rounded-md border">
+        <Table aria-labelledby="content-heading">
+            <TableHeader>
+                <TableRow>
+                    <TableHead>@L["Content type"]</TableHead>
+                    <TableHead>@L["Slug"]</TableHead>
+                    <TableHead>@L["Version"]</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody data-ui="rove">
+                @foreach (var (type, index) in _types.Select((type, index) => (type, index)))
+                {
+                    <TableRow data-type="@type.Slug">
+                        <TableCell>
+                            <a href="@($"content/{type.Slug}")" data-ui="rove-item" tabindex="@(index == 0 ? null : "-1")" class="font-medium underline-offset-4 hover:underline"><bdi>@type.Name</bdi></a>
+                        </TableCell>
+                        <TableCell><bdi dir="ltr" class="font-mono text-xs">@type.Slug</bdi></TableCell>
+                        <TableCell>@type.Version</TableCell>
+                    </TableRow>
+                }
+            </TableBody>
+        </Table>
+    </div>
+}
+
+@code {
+    private IReadOnlyList<ContentTypeSummary> _types = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _types = [.. (await ContentTypes.ListAsync()).OrderBy(type => type.Name, StringComparer.CurrentCulture)];
+    }
+}

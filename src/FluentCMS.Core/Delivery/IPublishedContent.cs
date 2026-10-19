@@ -34,7 +34,7 @@ public sealed record PublishedPage(IReadOnlyList<PublishedItem> Items, Guid? Nex
 // Title is EntryMarkdown.Title of the published version, null when it has no text.
 public sealed record PublishedSummary(Guid Id, string ContentType, string ContentTypeName, int Version, string? Title);
 
-// The content type's name and current definition come along, since the published version is read against them.
+// The content type's name and the definition the version was written against come along, since the version is read against it.
 public sealed record PublishedItem(
     Guid Id,
     string ContentType,
@@ -52,5 +52,6 @@ public static class DeliveryErrorCodes
     public const string PreviewTokenInvalid = "preview_token_invalid";
     public const string PreviewByPeopleOnly = "preview_by_people_only";
     public const string PreviewTokenNotFound = "preview_token_not_found";
+    public const string PreviewTokenAlreadyRevoked = "preview_token_already_revoked";
     public const string ChangeSetNotPreviewable = "change_set_not_previewable";
 }

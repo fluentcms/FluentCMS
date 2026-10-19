@@ -1,11 +1,14 @@
 using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Delivery;
+using FluentCMS.Core.Persistence;
 using FluentCMS.Core.Results;
+using FluentCMS.Infrastructure.Delivery;
 using FluentCMS.Infrastructure.Persistence;
 using FluentCMS.IntegrationTests.ChangeSets;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using static FluentCMS.IntegrationTests.ChangeSets.ChangeSetScenario;
 using static FluentCMS.IntegrationTests.ChangeSets.EntryChangeSetTests;
 using static FluentCMS.IntegrationTests.Content.EntryScenario;
@@ -56,6 +59,18 @@ public sealed class PreviewTests
 
         Assert.True((await TokensAsync(scenario, tokens => tokens.RevokeAsync(revoked.Id))).IsSuccess);
         Assert.Equal(DeliveryErrorCodes.PreviewTokenInvalid, Code(await PreviewAsync(scenario, preview => preview.GetAsync(revoked.Token, page))));
+
+        // A second revoke is refused before the unit of work, so a caller's own unit of work still commits.
+        await using (var outer = scenario.Services.CreateAsyncScope())
+        {
+            var unitOfWork = outer.ServiceProvider.GetRequiredService<IUnitOfWork>();
+            await using var callerScope = await unitOfWork.BeginAsync();
+            var again = await outer.ServiceProvider.GetRequiredService<IPreviewTokens>().RevokeAsync(revoked.Id);
+
+            Assert.Equal(DeliveryErrorCodes.PreviewTokenAlreadyRevoked, Assert.Single(again.Errors).Code);
+            await callerScope.CommitAsync();
+        }
+
         Assert.True((await PreviewAsync(scenario, preview => preview.GetAsync(expiring.Token, page))).IsSuccess);
         Assert.Equal(DeliveryErrorCodes.PreviewTokenInvalid, Code(await PreviewAsync(scenario, preview => preview.GetAsync(PreviewTokenKeys.Generate(), page))));
 
@@ -119,6 +134,11 @@ public sealed class PreviewTests
         await using var scenario = await ScenarioAsync(provider);
         var (page, product) = await LiveCatalogAsync(scenario);
         var draft = (await EntriesAsync(scenario, entries => entries.CreateAsync(new NewEntry("page", Json("""{"title": "Draft"}"""))))).Value.Id;
+        var deleted = (await EntriesAsync(scenario, entries => entries.CreateAsync(new NewEntry("page", Json("""{"title": "Deleted"}"""))))).Value.Id;
+        var archived = (await EntriesAsync(scenario, entries => entries.CreateAsync(new NewEntry("page", Json("""{"title": "Archived"}"""))))).Value.Id;
+        await scenario.PublishAsync(Operation(OperationKind.Create, ItemKind.Entry, deleted, null, 1), Operation(OperationKind.Create, ItemKind.Entry, archived, null, 1));
+        await scenario.PublishAsync(Operation(OperationKind.Delete, ItemKind.Entry, archived, 1, null));
+        Assert.True((await EntriesAsync(scenario, entries => entries.DeleteAsync(deleted, 1))).IsSuccess);
         var set = await scenario.OpenAsync(Operation(OperationKind.Delete, ItemKind.Entity, product, 1, null));
         var token = (await TokensAsync(scenario, tokens => tokens.IssueAsync(set.Id))).Value;
 
@@ -132,7 +152,26 @@ public sealed class PreviewTests
         Assert.Equal(UnresolvedReason.NotPublished, Assert.Single(shown.Unresolved).Reason);
         Assert.Equal(ContentErrorCodes.EntryNotFound, Code(unpublished));
         Assert.Equal(ContentErrorCodes.EntryNotFound, Code(hidden));
+        Assert.Equal(ContentErrorCodes.EntryNotFound, Code(await PreviewAsync(scenario, preview => preview.GetAsync(token.Token, deleted))));
+        Assert.Equal(ContentErrorCodes.EntryNotFound, Code(await PreviewAsync(scenario, preview => preview.GetAsync(token.Token, archived))));
         Assert.Empty(changes.Items);
+    }
+
+    [Theory]
+    [InlineData("00:00:00")]
+    [InlineData("-1.00:00:00")]
+    [InlineData("366.00:00:00")]
+    public void A_token_lifetime_that_is_not_positive_or_over_a_year_is_refused(string lifetime)
+    {
+        using var services = TestServices.Build(new Dictionary<string, string?>
+        {
+            ["Database:ConnectionString"] = "Data Source=unused.db",
+            ["Delivery:PreviewTokenLifetime"] = lifetime,
+        });
+
+        var exception = Assert.Throws<OptionsValidationException>(() => services.GetRequiredService<IOptions<DeliveryOptions>>().Value);
+
+        Assert.Contains("Delivery__PreviewTokenLifetime", exception.Message);
     }
 
     // The catalog published at version 1, with version 2 of both stored: the product at 24.99 and the page with a new title.

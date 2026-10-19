@@ -161,6 +161,8 @@ public sealed class DeliveryEndpointsTests
 
         await AssertProblemAsync(missing, HttpStatusCode.Unauthorized, DeliveryErrorCodes.PreviewTokenInvalid);
         await AssertProblemAsync(refused, HttpStatusCode.Unauthorized, DeliveryErrorCodes.PreviewTokenInvalid);
+        Assert.Equal("Bearer", Assert.Single(missing.Headers.WwwAuthenticate).Scheme);
+        Assert.Equal("Bearer", Assert.Single(refused.Headers.WwwAuthenticate).Scheme);
     }
 
     private static async Task<JsonObject> AssertProblemAsync(HttpResponseMessage response, HttpStatusCode status, string code)

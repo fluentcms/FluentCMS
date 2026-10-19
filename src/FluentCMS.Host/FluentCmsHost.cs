@@ -3,6 +3,7 @@ using FluentCMS.Admin.Components;
 using FluentCMS.Api;
 using FluentCMS.Core;
 using FluentCMS.Core.Identity;
+using FluentCMS.Core.Security;
 using FluentCMS.Host.Audit;
 using FluentCMS.Host.Identity;
 using FluentCMS.Host.Jobs;
@@ -203,6 +204,7 @@ public static class FluentCmsHost
         services.AddDataProtection()
             .SetApplicationName("FluentCMS")
             .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(environment.ContentRootPath, keyRing.KeysDirectory)));
+        services.AddSingleton<ISecretProtector, DataProtectionSecretProtector>();
 
         // Media on local disk lives under the content root unless an absolute path is given, as the key ring does (MED-04).
         services.PostConfigure<LocalDiskOptions>(disk => disk.Root = Path.Combine(environment.ContentRootPath, disk.Root));
