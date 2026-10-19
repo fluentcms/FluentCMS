@@ -193,6 +193,21 @@ internal static class ToolJson
         };
     }
 
+    public static JsonObject Stale(StaleFact fact)
+    {
+        return new JsonObject
+        {
+            ["entityId"] = fact.EntityId.ToString(),
+            ["type"] = fact.Type,
+            ["field"] = fact.Field,
+            ["version"] = fact.Version,
+            ["isLatest"] = fact.IsLatest,
+            ["isPublished"] = fact.IsPublished,
+            ["reason"] = fact.Reason == StaleReason.Expired ? "expired" : "unverified",
+            ["staleSince"] = Time(fact.StaleSince),
+        };
+    }
+
     public static JsonObject Relations(EntityRelations relations)
     {
         return new JsonObject
