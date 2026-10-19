@@ -1,5 +1,6 @@
 using System.Buffers;
 using System.Text.Json;
+using FluentCMS.Core.Rules;
 using FluentCMS.Core.Schema;
 
 namespace FluentCMS.Core.ChangeSets;
@@ -46,6 +47,25 @@ public sealed class ItemDiff
         var fields = ValueDiff.Compare(FieldValues(baseDefinition), FieldValues(proposedDefinition));
 
         return new ItemDiff(operation, properties, fields);
+    }
+
+    // A rule's kind, text, severity and each list of its scope, so a reviewer sees what the rule says and where it applies before and
+    // after (RUL-01). The base definition is absent for a create and the proposed one for a retirement.
+    public static ItemDiff ForRule(ChangeOperation operation, RuleDefinition? baseDefinition, RuleDefinition? proposedDefinition)
+    {
+        ArgumentNullException.ThrowIfNull(operation);
+
+        if (operation.ItemKind != ItemKind.Rule)
+        {
+            throw new ArgumentException($"A rule diff is for a rule operation, and this one is on a {operation.ItemKind} item.", nameof(operation));
+        }
+
+        if ((operation.BaseVersion is null) != (baseDefinition is null) || (operation.ProposedVersion is null) != (proposedDefinition is null))
+        {
+            throw new ArgumentException("A rule diff takes a definition for each version the operation names, and only for those.");
+        }
+
+        return new ItemDiff(operation, ValueDiff.Compare(RuleProperties(baseDefinition), RuleProperties(proposedDefinition)), []);
     }
 
     // The base fields are absent for a create and the proposed ones for a delete, as the operation's versions say. A field's value is
@@ -131,6 +151,30 @@ public sealed class ItemDiff
             field.Settings.WriteTo(writer);
             writer.WriteEndObject();
         }))) ?? [];
+    }
+
+    private static List<KeyValuePair<string, JsonElement>> RuleProperties(RuleDefinition? definition)
+    {
+        if (definition is null)
+        {
+            return [];
+        }
+
+        using var document = JsonDocument.Parse(definition.ToJson());
+        var root = document.RootElement;
+        var properties = new List<KeyValuePair<string, JsonElement>>
+        {
+            new("kind", root.GetProperty("kind").Clone()),
+            new("text", root.GetProperty("text").Clone()),
+            new("severity", root.GetProperty("severity").Clone()),
+        };
+
+        if (root.TryGetProperty("scope", out var scope))
+        {
+            properties.AddRange(scope.EnumerateObject().Select(list => new KeyValuePair<string, JsonElement>($"scope.{list.Name}", list.Value.Clone())));
+        }
+
+        return properties;
     }
 
     private static JsonElement Write(Action<Utf8JsonWriter> write)
