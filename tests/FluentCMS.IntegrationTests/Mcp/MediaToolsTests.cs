@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Core.Agents;
 using FluentCMS.Core.ChangeSets;
+using FluentCMS.Core.Checks;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Media;
 using FluentCMS.Core.Schema;
@@ -63,6 +64,62 @@ public sealed class MediaToolsTests
         var listed = await agent.CallAsync("list_media", new() { ["folder"] = "products", ["include_subfolders"] = true });
         Assert.Equal(assetId, (string?)Assert.Single(listed["media"]!.AsArray())!["id"]);
         Assert.False((bool)listed["media"]![0]!["hasAltText"]!);
+    }
+
+    // S2 with the alt text check (MED-02): a page that will show a published image without alt text fails until the same set adds
+    // the alt text with update_media.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task The_alt_text_check_passes_once_the_pages_set_adds_alt_text_with_update_media(string provider)
+    {
+        await using var agent = await ConnectedAgent.StartAsync(provider);
+        var page = await PageAsync(agent);
+        var uploaded = await agent.CallAsync("upload_media", new()
+        {
+            ["content_base64"] = Image,
+            ["content_type"] = "image/png",
+            ["file_name"] = "drill.png",
+            ["session_id"] = "library",
+            ["rationale"] = "An image for the catalog.",
+        });
+        var assetId = (string)uploaded["media"]!["id"]!;
+        await PublishAsPersonAsync(agent, (string)uploaded["changeSet"]!["id"]!);
+        await agent.AsPersonAsync<ICheckDirectory, Check>(directory => directory.CreateAsync(new NewCheck("alt-text", AltTextCheck)));
+        await agent.AsPersonAsync<ICheckDirectory, Check>(directory => directory.ActivateAsync("alt-text", 1));
+
+        var attached = await agent.CallAsync("attach_media", new()
+        {
+            ["entry_id"] = page.ToString(),
+            ["base_version"] = 1,
+            ["field"] = "hero",
+            ["asset_id"] = assetId,
+            ["session_id"] = "launch",
+            ["rationale"] = "Show the drill on its page.",
+        });
+        var setId = (string)attached["changeSet"]!["id"]!;
+        Dictionary<string, object?> Draft() => new()
+        {
+            ["content_type"] = "product-page",
+            ["fields"] = JsonNode.Parse($$"""{"headline": "The Widget", "hero": "{{assetId}}"}"""),
+            ["id"] = page.ToString(),
+            ["change_set_id"] = setId,
+        };
+
+        var before = await agent.CallAsync("check_draft", Draft());
+        await agent.CallAsync("update_media", new()
+        {
+            ["id"] = assetId,
+            ["base_version"] = 1,
+            ["alt_text"] = "A cordless drill on a workbench.",
+            ["session_id"] = "launch",
+            ["rationale"] = "Describe the drill for people who cannot see it.",
+        });
+        var after = await agent.CallAsync("check_draft", Draft());
+
+        Assert.Equal("fail", (string?)before["status"]);
+        Assert.Equal("/hero", (string?)before["results"]![0]!["findings"]![0]!["pointer"]);
+        Assert.Equal("pass", (string?)after["status"]);
     }
 
     [Theory]
@@ -195,6 +252,24 @@ public sealed class MediaToolsTests
             .Where(row => row.Id == page.Id)
             .ExecuteUpdateAsync(setters => setters.SetProperty(row => row.PublishedVersion, 1)));
         return page.Id;
+    }
+
+    private static readonly CheckDefinition AltTextCheck = new(
+        "altText",
+        "Every image a product page shows has alt text.",
+        JsonSerializer.Deserialize<JsonElement>("{}"),
+        [
+            new CheckExample("described", CheckVerdict.Pass, JsonSerializer.Deserialize<JsonElement>("""{"headline": "A drill"}"""), contentType: "product-page"),
+            new CheckExample("bare", CheckVerdict.Fail, JsonSerializer.Deserialize<JsonElement>("""{"headline": "![](/drill.jpg)"}"""), contentType: "product-page"),
+        ],
+        scope: new CheckScope(["product-page"]));
+
+    private static async Task PublishAsPersonAsync(ConnectedAgent agent, string setId)
+    {
+        var id = Guid.Parse(setId);
+        await agent.CallAsync("submit_change_set", new() { ["id"] = setId });
+        await agent.AsPersonAsync<IChangeSetDirectory, ChangeSet>(directory => directory.TransitionAsync(id, ChangeSetState.Approved));
+        await agent.AsPersonAsync<IChangeSetDirectory, ChangeSet>(directory => directory.PublishAsync(id));
     }
 
     private static string? Code(JsonObject failure)
