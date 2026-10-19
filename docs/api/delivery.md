@@ -94,4 +94,4 @@ Errors are [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem details (`
 | --- | --- |
 | 400 | `limit_invalid`, `parameter_invalid` |
 | 401 | `preview_token_invalid` |
-| 404 | `entry_not_found`, `content_type_not_found` |
+| 404 | `entry_not_found`, `content_type_not_found`, `endpoint_not_found` |
