@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using FluentCMS.Core.Audit;
 using FluentCMS.Core.ChangeSets;
@@ -35,6 +36,67 @@ public sealed partial class ReviewActionTests
         Assert.Equal(["change_set.approved", "change_set.published"], moves.TakeLast(2).Select(row => row.Operation));
         Assert.All(moves.TakeLast(2), row => Assert.Equal((InitiatorKinds.User, ownerId), (row.InitiatorKind, row.InitiatorId)));
         Assert.Contains($"data-change-set=\"{set.Id:N}\"", await host.Client.GetStringAsync("/?queue=recently-published"));
+    }
+
+    [Fact]
+    public async Task Reviewing_from_a_queue_moves_on_to_its_next_set_and_back_to_the_queue_once_it_is_empty()
+    {
+        using var install = new TemporaryInstall();
+        await using var host = await AdminHost.StartAsync(install);
+        var ownerId = await host.CreateFirstAdministratorAsync();
+        var first = await AwaitingReviewAsync(host, ownerId, "product");
+        var second = await AwaitingReviewAsync(host, ownerId, "category");
+        await host.SignInAsync(AdminHost.Owner);
+
+        var approved = await ActAsync(host, first.Id, "approve", "?queue=awaiting-me");
+        Assert.Equal(HttpStatusCode.Redirect, approved.StatusCode);
+        Assert.Equal($"/sets/{second.Id}?queue=awaiting-me&done=approved", host.LocationOf(approved));
+
+        var rejected = await ActAsync(host, second.Id, "reject", "?queue=awaiting-me", ("Reject.Reason", "Not needed."));
+        Assert.Equal("/?queue=awaiting-me&done=rejected", host.LocationOf(rejected));
+        Assert.Contains("data-testid=\"desk-done\"", await host.Client.GetStringAsync(host.LocationOf(rejected)!));
+    }
+
+    [Fact]
+    public async Task Submitting_an_open_set_runs_its_checks_and_the_view_shows_each_result_with_its_evidence()
+    {
+        using var install = new TemporaryInstall();
+        await using var host = await AdminHost.StartAsync(install);
+        var ownerId = await host.CreateFirstAdministratorAsync();
+        await host.AsUserAsync<IContentTypeDirectory, ContentType>(ownerId, async types => (await types.CreateAsync(new NewContentType(
+            "Product page", "product-page", new ContentTypeDefinition([new FieldDefinition("headline", "text", required: true)])), TestChangeSetTargets.ContentModel)).Value);
+        await host.AsUserAsync<FluentCMS.Core.Checks.ICheckDirectory, bool>(ownerId, async checks =>
+        {
+            var definition = new FluentCMS.Core.Checks.CheckDefinition(
+                "terms",
+                "No superlatives.",
+                JsonDocument.Parse("""{"terms": ["best in class"]}""").RootElement,
+                [
+                    new FluentCMS.Core.Checks.CheckExample("passes", FluentCMS.Core.Checks.CheckVerdict.Pass, JsonDocument.Parse("""{"headline": "A kettle"}""").RootElement, contentType: "product-page"),
+                    new FluentCMS.Core.Checks.CheckExample("fails", FluentCMS.Core.Checks.CheckVerdict.Fail, JsonDocument.Parse("""{"headline": "Best in class"}""").RootElement, contentType: "product-page"),
+                ],
+                scope: new FluentCMS.Core.Checks.CheckScope(["product-page"]));
+            Assert.True((await checks.CreateAsync(new FluentCMS.Core.Checks.NewCheck("no-superlatives", definition))).IsSuccess);
+            return (await checks.ActivateAsync("no-superlatives", 1)).IsSuccess;
+        });
+        var entry = await host.AsUserAsync<FluentCMS.Core.Content.IEntryDirectory, FluentCMS.Core.Content.Entry>(ownerId, async entries => (await entries.CreateAsync(
+            new FluentCMS.Core.Content.NewEntry("product-page", JsonDocument.Parse("""{"headline": "The best in class kettle"}""").RootElement))).Value);
+        var set = await host.AsUserAsync<IChangeSetDirectory, ChangeSet>(ownerId, async directory =>
+        {
+            var opened = (await directory.OpenAsync(new NewChangeSet("Launch the kettle.", []))).Value;
+            return (await directory.AddOperationAsync(opened.Id, ChangeOperation.Create(OperationKind.Create, ItemKind.Entry, entry.Id, null, 1).Value)).Value;
+        });
+        await host.SignInAsync(AdminHost.Owner);
+        Assert.Equal(["submit"], Actions(await host.Client.GetStringAsync($"/sets/{set.Id}")));
+
+        var submitted = await (await ActAsync(host, set.Id, "submit")).Content.ReadAsStringAsync();
+
+        Assert.Contains("data-state=\"checks-failed\"", submitted);
+        Assert.Contains("data-testid=\"check-run-status\" data-status=\"fail\"", submitted);
+        var result = submitted[submitted.IndexOf("data-check=\"no-superlatives\"", StringComparison.Ordinal)..];
+        Assert.StartsWith("data-check=\"no-superlatives\" data-status=\"fail\"", result);
+        Assert.Contains("/headline", result);
+        Assert.Contains("best in class", result);
     }
 
     [Fact]
@@ -137,9 +199,14 @@ public sealed partial class ReviewActionTests
         Assert.Empty(Actions(await host.Client.GetStringAsync($"/sets/{running.Id}")));
     }
 
-    private static async Task<HttpResponseMessage> ActAsync(AdminHost host, Guid id, string action, params (string Name, string Value)[] fields)
+    private static Task<HttpResponseMessage> ActAsync(AdminHost host, Guid id, string action, params (string Name, string Value)[] fields)
     {
-        var path = $"/sets/{id}";
+        return ActAsync(host, id, action, string.Empty, fields);
+    }
+
+    private static async Task<HttpResponseMessage> ActAsync(AdminHost host, Guid id, string action, string query, params (string Name, string Value)[] fields)
+    {
+        var path = $"/sets/{id}{query}";
         var form = fields.ToDictionary(field => field.Name, field => field.Value);
         form[$"{char.ToUpperInvariant(action[0])}{action[1..]}.Seen"] = Seen(await host.Client.GetStringAsync(path), action);
         return await host.SubmitAsync(path, action, form);
@@ -171,7 +238,7 @@ public sealed partial class ReviewActionTests
     private static async Task<ChangeSet> OpenAsync(AdminHost host, Guid userId, string slug, params ChangeSetState[] moves)
     {
         var type = await host.AsUserAsync<IContentTypeDirectory, ContentType>(userId, async directory =>
-            (await directory.CreateAsync(new NewContentType(slug, slug, new ContentTypeDefinition([new FieldDefinition("title", "text")])))).Value);
+            (await directory.CreateAsync(new NewContentType(slug, slug, new ContentTypeDefinition([new FieldDefinition("title", "text")])), TestChangeSetTargets.ContentModel)).Value);
 
         return await host.AsUserAsync<IChangeSetDirectory, ChangeSet>(userId, async directory =>
         {

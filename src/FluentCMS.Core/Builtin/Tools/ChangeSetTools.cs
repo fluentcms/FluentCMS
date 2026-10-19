@@ -1,5 +1,6 @@
 using System.Text.Json.Nodes;
 using FluentCMS.Core.ChangeSets;
+using FluentCMS.Core.Checks;
 using FluentCMS.Core.Results;
 using FluentCMS.Core.Tools;
 using Microsoft.Extensions.DependencyInjection;
@@ -47,20 +48,23 @@ public sealed class ChangeSetTools : IToolProvider
         new AgentTool(
             "submit_change_set",
             "Submit a change set for checks and review",
-            "Submits one of your open change sets once it holds every operation it needs: checks run on it, and a person reviews "
-            + "it before anything is published. A submitted set takes no more operations. An agent never approves or publishes "
-            + "a set; if checks fail, reopen it with reopen_change_set, fix it and submit it again.",
+            "Submits one of your open change sets once it holds every operation it needs: the site's checks run on it, and a person "
+            + "reviews it before anything is published. A small set is checked at once and the answer holds its check results; a "
+            + "larger one, or any set while an LLM-judged check is active, is checked in the background, so follow it with get_change_set_checks. "
+            + "A submitted set takes no more operations. An agent never approves or publishes a set; if checks fail, reopen it with "
+            + "reopen_change_set, fix what they found and submit it again.",
             ToolSchemas.Object(ToolSchemas.Uuid("id", "The id of your open change set.")),
             readOnly: false,
-            (call, cancellationToken) => MoveAsync(call, ChangeSetState.ChecksRunning, cancellationToken)),
+            SubmitAsync),
         new AgentTool(
             "reopen_change_set",
             "Reopen a change set after failed checks",
-            "Reopens one of your change sets whose checks failed, so you can add operations that fix it and submit it again. "
-            + "Read the set with get_change_set first.",
+            "Reopens one of your change sets whose checks failed, so you can fix it and submit it again: update an item from the "
+            + "version the set proposes, with update_entry and the set's change_set_id, or add operations. Read what failed with "
+            + "get_change_set_checks first.",
             ToolSchemas.Object(ToolSchemas.Uuid("id", "The id of your change set whose checks failed.")),
             readOnly: false,
-            (call, cancellationToken) => MoveAsync(call, ChangeSetState.Open, cancellationToken)),
+            ReopenAsync),
     ];
 
     private static async Task<ToolResult> OpenAsync(ToolInvocation call, CancellationToken cancellationToken)
@@ -81,7 +85,7 @@ public sealed class ChangeSetTools : IToolProvider
         });
     }
 
-    private static async Task<ToolResult> MoveAsync(ToolInvocation call, ChangeSetState target, CancellationToken cancellationToken)
+    private static async Task<ToolResult> SubmitAsync(ToolInvocation call, CancellationToken cancellationToken)
     {
         var arguments = new ToolArgumentsReader(call.Arguments);
         var id = arguments.RequiredGuid("id");
@@ -90,15 +94,46 @@ public sealed class ChangeSetTools : IToolProvider
             return ToolResult.Failure(errors);
         }
 
-        var set = await call.Services.GetRequiredService<IChangeSetDirectory>().TransitionAsync(id!.Value, target, cancellationToken);
+        var submitted = await call.Services.GetRequiredService<IChangeSetChecks>().SubmitAsync(id!.Value, cancellationToken);
+        if (!submitted.IsSuccess)
+        {
+            return ToolResult.Failure(submitted.Errors, Hint(Result<ChangeSet>.Failure(submitted.Errors)));
+        }
+
+        var submission = submitted.Value;
+        var set = submission.ChangeSet;
+        return ToolResult.Success(new JsonObject
+        {
+            ["changeSet"] = ToolJson.ChangeSet(set),
+            ["checks"] = submission.Run is { } run ? ToolJson.CheckRun(run) : null,
+            ["job"] = submission.Run is null ? ToolJson.Job(submission.Job) : null,
+            ["next"] = set.State switch
+            {
+                ChangeSetState.ChecksFailed =>
+                    "Checks failed: each failing result and problem says what to change. Call reopen_change_set, update the items from the "
+                    + "versions the set proposes and submit the set again.",
+                ChangeSetState.AwaitingReview => "Checks passed, and a person reviews the set next. Follow its state with get_change_set.",
+                _ => $"Checks run in the background as job {submission.Job.Id}. Follow them with get_change_set_checks.",
+            },
+        });
+    }
+
+    private static async Task<ToolResult> ReopenAsync(ToolInvocation call, CancellationToken cancellationToken)
+    {
+        var arguments = new ToolArgumentsReader(call.Arguments);
+        var id = arguments.RequiredGuid("id");
+        if (arguments.Errors() is { Count: > 0 } errors)
+        {
+            return ToolResult.Failure(errors);
+        }
+
+        var set = await call.Services.GetRequiredService<IChangeSetDirectory>().TransitionAsync(id!.Value, ChangeSetState.Open, cancellationToken);
         return ToolResult.From(
             set,
             moved => new JsonObject
             {
                 ["changeSet"] = ToolJson.ChangeSet(moved),
-                ["next"] = target == ChangeSetState.Open
-                    ? "The set is open again: add the operations that fix it, then call submit_change_set."
-                    : "Checks run next, and a person reviews the set. Follow its state with get_change_set.",
+                ["next"] = "The set is open again: update its items from the versions it proposes, or add operations, then call submit_change_set.",
             },
             Hint(set));
     }

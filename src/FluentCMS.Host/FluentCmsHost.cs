@@ -3,9 +3,11 @@ using FluentCMS.Admin.Components;
 using FluentCMS.Api;
 using FluentCMS.Core;
 using FluentCMS.Core.Identity;
+using FluentCMS.Core.Security;
 using FluentCMS.Host.Audit;
 using FluentCMS.Host.Identity;
 using FluentCMS.Host.Jobs;
+using FluentCMS.Host.Media;
 using FluentCMS.Host.Security;
 using FluentCMS.Infrastructure;
 using FluentCMS.Infrastructure.Media;
@@ -67,8 +69,10 @@ public static class FluentCmsHost
         MapStaticAssets(app);
         app.MapHealthChecks("/health");
         app.MapFluentCmsMcp();
+        app.MapFluentCmsApi();
         app.MapExternalSignIn();
         app.MapAuditExport();
+        app.MapMediaLibrary();
 
         // Every admin page needs a signed-in user unless it allows anonymous access itself (setup, sign-in, not found).
         app.MapRazorComponents<App>()
@@ -172,7 +176,8 @@ public static class FluentCmsHost
         return builder.Build();
     }
 
-    // A job runs as whoever enqueued it, whatever the host's own caller is, so the initiator each host registered is wrapped.
+    // A job runs as whoever enqueued it, whatever the host's own caller is, so the initiator each host registered is wrapped; so is
+    // the scope in which Core's engines work as themselves (ADR-0012).
     private static void RunJobsAsTheirInitiator(IServiceCollection services)
     {
         var registered = services.Last(descriptor => descriptor.ServiceType == typeof(ICurrentInitiator));
@@ -183,6 +188,7 @@ public static class FluentCmsHost
             registered.ImplementationInstance as ICurrentInitiator
                 ?? registered.ImplementationFactory?.Invoke(provider) as ICurrentInitiator
                 ?? (ICurrentInitiator)ActivatorUtilities.CreateInstance(provider, registered.ImplementationType!)));
+        services.AddEngineScopes();
     }
 
     // One composition for both entry modes, so the stdio host opens the same database and runs the same services.
@@ -198,6 +204,7 @@ public static class FluentCmsHost
         services.AddDataProtection()
             .SetApplicationName("FluentCMS")
             .PersistKeysToFileSystem(new DirectoryInfo(Path.Combine(environment.ContentRootPath, keyRing.KeysDirectory)));
+        services.AddSingleton<ISecretProtector, DataProtectionSecretProtector>();
 
         // Media on local disk lives under the content root unless an absolute path is given, as the key ring does (MED-04).
         services.PostConfigure<LocalDiskOptions>(disk => disk.Root = Path.Combine(environment.ContentRootPath, disk.Root));

@@ -3,6 +3,8 @@ using FluentCMS.Core.Agents;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Sites;
 using FluentCMS.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using ModelContextProtocol.Client;
 using ModelContextProtocol.Protocol;
@@ -26,17 +28,15 @@ internal sealed class ConnectedAgent(
         int itemsPerChangeSet = 200,
         IReadOnlyList<string>? types = null,
         AgentOperation[]? operations = null,
-        IReadOnlyDictionary<string, string?>? settings = null)
+        IDictionary<string, string?>? settings = null,
+        Action<WebApplicationBuilder>? configure = null)
     {
         var install = new TemporaryInstall();
         var database = await TemporaryDatabase.CreateAsync(provider);
-        var configuration = new Dictionary<string, string?>(database.Configuration);
-        foreach (var (key, value) in settings ?? new Dictionary<string, string?>())
-        {
-            configuration[key] = value;
-        }
-
-        var host = await AdminHost.StartAsync(install, settings: configuration);
+        var host = await AdminHost.StartAsync(
+            install,
+            settings: new Dictionary<string, string?>(database.Configuration.Concat(settings ?? new Dictionary<string, string?>())),
+            configure: configure);
         var administrator = await host.CreateFirstAdministratorAsync();
         var issued = await McpAgents.IssueAsync(host, administrator, new NewAgentCredential(
             "schema-agent",
@@ -67,10 +67,32 @@ internal sealed class ConnectedAgent(
         return (await host.AsUserAsync<TService, Core.Results.Result<T>>(administrator, action)).Value;
     }
 
+    public Task<Core.Results.Result> AsPersonAsync<TService>(Func<TService, Task<Core.Results.Result>> action)
+        where TService : notnull
+    {
+        return host.AsUserAsync<TService, Core.Results.Result>(administrator, action);
+    }
+
+    // Runs as the agent, as a call over MCP would, for work a test drives without a tool.
+    public async Task<T> AsAgentAsync<T>(Func<IServiceProvider, Task<T>> action)
+    {
+        var accessor = host.App.Services.GetRequiredService<IHttpContextAccessor>();
+        await using var scope = host.App.Services.CreateAsyncScope();
+        accessor.HttpContext = new DefaultHttpContext { RequestServices = scope.ServiceProvider, User = AgentPrincipal.For(Credential, "test") };
+        try
+        {
+            return await action(scope.ServiceProvider);
+        }
+        finally
+        {
+            accessor.HttpContext = null;
+        }
+    }
+
     public Task<ContentType> CreateAsPersonAsync(string slug)
     {
         return AsPersonAsync<IContentTypeDirectory, ContentType>(directory =>
-            directory.CreateAsync(new NewContentType(slug, slug, new ContentTypeDefinition([new FieldDefinition("title", "text")]))));
+            directory.CreateAsync(new NewContentType(slug, slug, new ContentTypeDefinition([new FieldDefinition("title", "text")])), TestChangeSetTargets.ContentModel));
     }
 
     public async Task<T> QueryAsync<T>(Func<FluentCmsDbContext, Task<T>> query)

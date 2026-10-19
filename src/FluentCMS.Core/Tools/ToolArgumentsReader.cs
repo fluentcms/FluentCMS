@@ -94,11 +94,27 @@ public sealed class ToolArgumentsReader
         return null;
     }
 
-    public bool? OptionalFlag(string name)
+    public JsonElement? OptionalArray(string name, string form)
     {
         if (Read(name) is not { } value)
         {
             return null;
+        }
+
+        if (value.ValueKind == JsonValueKind.Array)
+        {
+            return value;
+        }
+
+        Invalid(name, $"must be a JSON array: {form}");
+        return null;
+    }
+
+    public bool Flag(string name)
+    {
+        if (Read(name) is not { } value)
+        {
+            return false;
         }
 
         if (value.ValueKind is JsonValueKind.True or JsonValueKind.False)
@@ -107,7 +123,7 @@ public sealed class ToolArgumentsReader
         }
 
         Invalid(name, "must be true or false");
-        return null;
+        return false;
     }
 
     public Guid? OptionalGuid(string name)

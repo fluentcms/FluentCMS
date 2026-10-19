@@ -188,7 +188,8 @@ public sealed class MediaToolsTests
         await agent.AsPersonAsync<IContentTypeDirectory, ContentType>(directory => directory.CreateAsync(new NewContentType(
             "Product page",
             "product-page",
-            new ContentTypeDefinition([new FieldDefinition("headline", "text"), new FieldDefinition("hero", "media")]))));
+            new ContentTypeDefinition([new FieldDefinition("headline", "text"), new FieldDefinition("hero", "media")])),
+            TestChangeSetTargets.ContentModel));
         var page = await agent.AsPersonAsync<IEntryDirectory, Entry>(entries =>
             entries.CreateAsync(new NewEntry("product-page", JsonSerializer.Deserialize<JsonElement>("""{"headline": "The Widget"}"""))));
         await agent.QueryAsync(context => context.Entries

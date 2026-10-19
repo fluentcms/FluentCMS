@@ -1,0 +1,246 @@
+@page "/media/{Id:guid}"
+@using System.Globalization
+@using FluentCMS.Admin.Media
+@using FluentCMS.Core.Content
+@using FluentCMS.Core.Media
+@inject IMediaLibrary Library
+@inject IWhereUsed WhereUsed
+@inject NavigationManager Navigation
+@inject IStringLocalizer<MediaAssetView> L
+
+<PageTitle>@L["Media"]</PageTitle>
+
+@if (_asset is { } asset)
+{
+    var latest = asset.Latest;
+    <nav class="mb-4" aria-label="@L["Media navigation"]">
+        <a href="media" aria-keyshortcuts="B" class="@ButtonVariants.Classes("outline", "sm")">@L["Back to the library"]</a>
+    </nav>
+
+    <h1 class="text-2xl font-semibold tracking-tight break-all" data-testid="media-asset" data-version="@asset.LatestVersion"><bdi>@latest.Metadata.FileName</bdi></h1>
+    <div class="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+        <span dir="ltr">@latest.Blob.ContentType</span>
+        <span>@L["Version {0}", asset.LatestVersion]</span>
+        @if (asset.PublishedVersion is { } published)
+        {
+            <Badge Variant="secondary">@L["Version {0} is published", published]</Badge>
+        }
+        else
+        {
+            <Badge Variant="outline">@L["Not published"]</Badge>
+        }
+        <a href="@AdminRoutes.MediaFile(asset.Id, asset.LatestVersion)" class="underline underline-offset-4">@L["Download"]</a>
+    </div>
+
+    @if (Uploaded)
+    {
+        <p role="status" class="mt-4 rounded-md border bg-muted/50 px-3 py-2 text-sm" data-testid="media-uploaded">@L["Uploaded. The file is stored as version 1."]</p>
+    }
+
+    <div class="mt-6 grid gap-6 lg:grid-cols-2">
+        <Card>
+            <CardHeader>
+                <CardTitle><h2>@L["Preview"]</h2></CardTitle>
+            </CardHeader>
+            <CardContent>
+                @if (latest.Blob.ContentType.StartsWith("image/", StringComparison.Ordinal))
+                {
+                    <img src="@AdminRoutes.MediaFile(asset.Id, asset.LatestVersion)" alt="@(latest.Metadata.AltText ?? string.Empty)" class="max-h-96 w-full rounded-md border object-contain" data-testid="media-preview" />
+                    @if (latest.Metadata.AltText is null)
+                    {
+                        <p class="mt-2 text-sm text-destructive" data-testid="media-no-alt-text">@L["This image has no alt text, so people who cannot see it do not know what it shows. Add it below."]</p>
+                    }
+                }
+                else
+                {
+                    <p class="text-sm text-muted-foreground">@L["No preview for this type. Download the file to see it."]</p>
+                }
+            </CardContent>
+        </Card>
+
+        <Card data-testid="media-metadata">
+            <CardHeader>
+                <CardTitle><h2>@L["Details"]</h2></CardTitle>
+                <CardDescription>@L["Saving stores a new version with these details; the file stays the same."]</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <form method="post" @onsubmit="SaveAsync" @formname="metadata" class="grid gap-4">
+                    <AntiforgeryToken />
+                    <input type="hidden" name="Form.BaseVersion" value="@asset.LatestVersion" />
+                    @if (_message is not null)
+                    {
+                        <p role="status" class="rounded-md border bg-muted/50 px-3 py-2 text-sm" data-testid="media-saved">@_message</p>
+                    }
+                    @if (_formError is not null)
+                    {
+                        <p role="alert" class="text-sm text-destructive" data-testid="media-save-error">@_formError</p>
+                    }
+                    <FormField Label="@L["File name"]" Error="@Error(MediaErrorCodes.FileNameInvalid)">
+                        <Input name="Form.FileName" value="@Shown.FileName" required />
+                    </FormField>
+                    <FormField Label="@L["Folder"]" Description="@L["Leave empty for the root, or such as products/drills."]" Error="@Error(MediaErrorCodes.FolderInvalid)">
+                        <Input name="Form.Folder" value="@Shown.Folder" dir="ltr" />
+                    </FormField>
+                    <FormField Label="@L["Tags"]" Description="@L["Separated by commas, such as product-shot, hero."]" Error="@Error(MediaErrorCodes.TagInvalid)">
+                        <Input name="Form.Tags" value="@Shown.Tags" dir="ltr" />
+                    </FormField>
+                    <FormField Label="@L["Alt text"]" Description="@L["What the image shows, for people who cannot see it."]" Error="@Error(MediaErrorCodes.AltTextInvalid)">
+                        <Textarea name="Form.AltText" rows="3" value="@Shown.AltText" />
+                    </FormField>
+                    <FormField Label="@L["Caption"]" Error="@Error(MediaErrorCodes.CaptionInvalid)">
+                        <Textarea name="Form.Caption" rows="2" value="@Shown.Caption" />
+                    </FormField>
+                    <div>
+                        <Button Type="submit">@L["Save"]</Button>
+                    </div>
+                </form>
+            </CardContent>
+        </Card>
+    </div>
+
+    <section class="mt-8" aria-labelledby="usage-heading" data-testid="media-usage">
+        <h2 id="usage-heading" class="text-lg font-semibold">@L["Where used"]</h2>
+        @if (_usage.Count == 0)
+        {
+            <p class="mt-2 text-sm text-muted-foreground" data-testid="media-unused">@L["No entry uses this file."]</p>
+        }
+        else
+        {
+            <div class="mt-4 rounded-md border">
+                <Table aria-labelledby="usage-heading">
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>@L["Entry"]</TableHead>
+                            <TableHead>@L["Version"]</TableHead>
+                            <TableHead>@L["Fields"]</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        @foreach (var usage in _usage)
+                        {
+                            <TableRow data-entry="@usage.EntryId.ToString("N")">
+                                <TableCell>
+                                    <bdi>@usage.ContentType</bdi> <bdi class="font-mono text-xs text-muted-foreground" dir="ltr">@usage.EntryId.ToString("N")[..8]</bdi>
+                                </TableCell>
+                                <TableCell>
+                                    <span class="flex flex-wrap items-center gap-1">
+                                        @usage.Version.ToString(CultureInfo.CurrentCulture)
+                                        @if (usage.IsPublished)
+                                        {
+                                            <Badge Variant="secondary">@L["Published"]</Badge>
+                                        }
+                                        @if (usage.IsLatest)
+                                        {
+                                            <Badge Variant="outline">@L["Latest draft"]</Badge>
+                                        }
+                                    </span>
+                                </TableCell>
+                                <TableCell Class="whitespace-normal font-mono text-xs" dir="ltr">@string.Join(", ", usage.Paths)</TableCell>
+                            </TableRow>
+                        }
+                    </TableBody>
+                </Table>
+            </div>
+        }
+    </section>
+}
+
+@code {
+    private MediaAsset? _asset;
+    private IReadOnlyList<EntryUsage> _usage = [];
+    private IReadOnlyList<string> _errors = [];
+    private string? _formError;
+    private string? _message;
+
+    [Parameter] public Guid Id { get; set; }
+
+    [SupplyParameterFromQuery(Name = "uploaded")]
+    private bool Uploaded { get; set; }
+
+    [SupplyParameterFromForm(FormName = "metadata")]
+    private MediaMetadataForm? Form { get; set; }
+
+    // What the form shows: what was posted after a refused save, the stored details otherwise.
+    private MediaMetadataForm Shown { get; set; } = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!await LoadAsync())
+        {
+            Navigation.NotFound();
+        }
+    }
+
+    private async Task<bool> LoadAsync()
+    {
+        var read = await Library.GetAsync(Id);
+        if (!read.IsSuccess)
+        {
+            _asset = null;
+            return false;
+        }
+
+        _asset = read.Value;
+        var metadata = _asset.Latest.Metadata;
+        Shown = new MediaMetadataForm
+        {
+            FileName = metadata.FileName,
+            Folder = metadata.Folder,
+            Tags = string.Join(", ", metadata.Tags),
+            AltText = metadata.AltText,
+            Caption = metadata.Caption,
+            BaseVersion = _asset.LatestVersion,
+        };
+        _usage = await WhereUsed.ForMediaAsync(Id);
+        return true;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_asset is null || Form is null)
+        {
+            return;
+        }
+
+        var metadata = Form.ToMetadata(Form.FileName ?? string.Empty);
+        var saved = metadata.IsSuccess
+            ? await Library.UpdateAsync(Id, Form.BaseVersion, metadata.Value)
+            : FluentCMS.Core.Results.Result<MediaAsset>.Failure(metadata.Errors);
+
+        if (saved.IsSuccess)
+        {
+            _message = L["Saved as version {0}.", saved.Value.LatestVersion];
+            await LoadAsync();
+            return;
+        }
+
+        await LoadAsync();
+        _errors = [.. saved.Errors.Select(error => error.Code)];
+        _formError = saved.Errors.Any(error => error.Code == MediaErrorCodes.VersionConflict)
+            ? L["Someone changed this file's details since the page was shown. Here are the details as they are now; make the change again."]
+            : saved.Errors.Any(error => Error(error.Code) is null) ? L["The details could not be saved."].Value : null;
+
+        if (!saved.Errors.Any(error => error.Code == MediaErrorCodes.VersionConflict))
+        {
+            Shown = Form;
+        }
+    }
+
+    private string? Error(string code)
+    {
+        if (!_errors.Contains(code))
+        {
+            return null;
+        }
+
+        return code switch
+        {
+            MediaErrorCodes.FileNameInvalid => L["Enter a file name without slashes, at most 255 characters."].Value,
+            MediaErrorCodes.FolderInvalid => L["A folder is lowercase words joined by hyphens, with slashes between levels, such as products/drills."].Value,
+            MediaErrorCodes.TagInvalid => L["Each tag is lowercase words joined by hyphens, such as product-shot, and there are at most 32."].Value,
+            MediaErrorCodes.AltTextInvalid => L["Alt text is at most 1000 characters."].Value,
+            MediaErrorCodes.CaptionInvalid => L["A caption is at most 2000 characters."].Value,
+            _ => null,
+        };
+    }
+}

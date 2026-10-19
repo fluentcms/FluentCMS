@@ -1,0 +1,88 @@
+@page "/content/{Slug}"
+@using FluentCMS.Core.Content
+@using FluentCMS.Core.Schema
+@inject IContentTypeDirectory ContentTypes
+@inject IEntryDirectory Entries
+@inject NavigationManager Navigation
+@inject IStringLocalizer<EntriesView> L
+
+<PageTitle>@L["Content"]</PageTitle>
+
+@if (_type is { } type)
+{
+    <nav class="mb-4" aria-label="@L["Content navigation"]">
+        <a href="content" aria-keyshortcuts="B" class="@ButtonVariants.Classes("outline", "sm")">@L["Back to content types"]</a>
+    </nav>
+    <div class="flex flex-wrap items-center justify-between gap-4">
+        <div>
+            <h1 id="entries-heading" class="text-2xl font-semibold tracking-tight"><bdi>@type.Name</bdi></h1>
+            <p class="mt-1 text-sm text-muted-foreground">
+                @(type.Definition.IsEntity ? L["An entity type: each field is a fact with its source, owner and validity."] : L["Entries of this content type."])
+            </p>
+        </div>
+        <a href="@($"content/{type.Slug}/new")" aria-keyshortcuts="N" class="@ButtonVariants.Classes()" data-testid="new-entry">@L["New entry"]</a>
+    </div>
+
+    @if (_entries.Count == 0)
+    {
+        <p class="mt-6 rounded-md border px-3 py-6 text-center text-sm text-muted-foreground" data-testid="entries-empty">@L["No entry yet."]</p>
+    }
+    else
+    {
+        <div class="mt-6 rounded-md border">
+            <Table aria-labelledby="entries-heading">
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>@L["Entry"]</TableHead>
+                        <TableHead>@L["State"]</TableHead>
+                        <TableHead>@L["Latest version"]</TableHead>
+                        <TableHead>@L["Published version"]</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody data-ui="rove">
+                    @foreach (var (entry, index) in _entries.Select((entry, index) => (entry, index)))
+                    {
+                        <TableRow data-entry="@entry.Id.ToString("N")">
+                            <TableCell>
+                                <a href="@($"content/{type.Slug}/{entry.Id}")" data-ui="rove-item" tabindex="@(index == 0 ? null : "-1")" class="font-mono text-xs underline-offset-4 hover:underline" dir="ltr">@entry.Id</a>
+                            </TableCell>
+                            <TableCell><Badge Variant="outline">@StateLabel(entry.State)</Badge></TableCell>
+                            <TableCell>@entry.LatestVersion</TableCell>
+                            <TableCell>@(entry.PublishedVersion?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? "–")</TableCell>
+                        </TableRow>
+                    }
+                </TableBody>
+            </Table>
+        </div>
+    }
+}
+
+@code {
+    private ContentType? _type;
+    private IReadOnlyList<EntrySummary> _entries = [];
+
+    [Parameter] public string Slug { get; set; } = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var type = await ContentTypes.GetAsync(Slug);
+        if (!type.IsSuccess)
+        {
+            Navigation.NotFound();
+            return;
+        }
+
+        _type = type.Value;
+        var entries = await Entries.ListAsync(Slug);
+        _entries = entries.IsSuccess ? [.. entries.Value.Reverse()] : [];
+    }
+
+    private string StateLabel(EntryState state) => state switch
+    {
+        EntryState.Draft => L["Draft"],
+        EntryState.InReview => L["In review"],
+        EntryState.Published => L["Published"],
+        EntryState.Reverted => L["Reverted"],
+        _ => L["Archived"],
+    };
+}

@@ -22,6 +22,9 @@ internal sealed class ChangeSetScenario : IAsyncDisposable
 
     public static readonly AgentInitiator Agent = new(Guid.NewGuid(), "example-agent");
 
+    // A second agent with its own stored credential, for what one agent may not do to another's sets.
+    public static readonly AgentInitiator OtherAgent = new(Guid.NewGuid(), "other-agent");
+
     public static readonly NewChangeSet CatalogSync = new("Sync prices from the catalog export.", ["exports/catalog-2026-10-18.csv"]);
 
     private readonly TemporaryDatabase _database;
@@ -68,11 +71,21 @@ internal sealed class ChangeSetScenario : IAsyncDisposable
         var scenario = new ChangeSetScenario(database, services, initiator, clock, auditFailure);
         await scenario.QueryAsync(async context =>
         {
-            context.AgentCredentials.Add(AgentCredential());
+            context.AgentCredentials.AddRange(AgentCredential(Agent), AgentCredential(OtherAgent));
             return await context.SaveChangesAsync();
         });
 
         return scenario;
+    }
+
+    // Stores a credential for another agent with the same scope and caps as Agent.
+    public Task<int> AddAgentAsync(AgentInitiator agent)
+    {
+        return QueryAsync(async context =>
+        {
+            context.AgentCredentials.Add(AgentCredential(agent));
+            return await context.SaveChangesAsync();
+        });
     }
 
     // As a person, who stands in for the checks, routing and the desk, whose moves an agent cannot make (MCP-06).
@@ -136,28 +149,50 @@ internal sealed class ChangeSetScenario : IAsyncDisposable
         return await second;
     }
 
-    // A content type at version 1, or at version 2 when revised, for operations to point at.
-    public async Task<ContentType> ContentTypeAsync(string slug, bool revised = false)
+    // A content type at version 1, or at version 2 when revised, for operations to point at. A person writes it in the content
+    // model's own set, which no test publishes and the change set reads below leave out.
+    public Task<ContentType> ContentTypeAsync(string slug, bool revised = false)
     {
-        await using var scope = Services.CreateAsyncScope();
-        var directory = scope.ServiceProvider.GetRequiredService<IContentTypeDirectory>();
+        return AsSchemaAuthorAsync(async directory =>
+        {
+            var title = new FieldDefinition("title", "text");
+            var type = (await directory.CreateAsync(new NewContentType(slug, slug, new ContentTypeDefinition([title])), TestChangeSetTargets.ContentModel)).Value;
 
-        var title = new FieldDefinition("title", "text");
-        var type = (await directory.CreateAsync(new NewContentType(slug, slug, new ContentTypeDefinition([title])))).Value;
-
-        return revised
-            ? (await directory.ReviseAsync(slug, 1, new ContentTypeDefinition([title, new FieldDefinition("summary", "text")]))).Value
-            : type;
+            return revised
+                ? (await directory.ReviseAsync(slug, 1, new ContentTypeDefinition([title, new FieldDefinition("summary", "text")]), TestChangeSetTargets.ContentModel)).Value
+                : type;
+        });
     }
 
     // The next version of a type, with one more field.
-    public async Task<ContentType> ReviseAsync(ContentType type)
+    public Task<ContentType> ReviseAsync(ContentType type)
     {
-        await using var scope = Services.CreateAsyncScope();
-        var directory = scope.ServiceProvider.GetRequiredService<IContentTypeDirectory>();
         var definition = new ContentTypeDefinition([.. type.Definition.Fields, new FieldDefinition($"note{type.Version + 1}", "text")]);
 
-        return (await directory.ReviseAsync(type.Slug, type.Version, definition)).Value;
+        return AsSchemaAuthorAsync(async directory =>
+            (await directory.ReviseAsync(type.Slug, type.Version, definition, TestChangeSetTargets.ContentModel)).Value);
+    }
+
+    // The content type directory as whoever Initiator names, in a scope of its own.
+    public async Task<T> RunSchemaAsync<T>(Func<IContentTypeDirectory, Task<T>> action)
+    {
+        await using var scope = Services.CreateAsyncScope();
+        return await action(scope.ServiceProvider.GetRequiredService<IContentTypeDirectory>());
+    }
+
+    private async Task<T> AsSchemaAuthorAsync<T>(Func<IContentTypeDirectory, Task<T>> action)
+    {
+        var initiator = Initiator;
+        Initiator = Amir;
+        try
+        {
+            await using var scope = Services.CreateAsyncScope();
+            return await action(scope.ServiceProvider.GetRequiredService<IContentTypeDirectory>());
+        }
+        finally
+        {
+            Initiator = initiator;
+        }
     }
 
     public async Task<ChangeSet> OpenAsync(params ChangeOperation[] operations)
@@ -215,7 +250,10 @@ internal sealed class ChangeSetScenario : IAsyncDisposable
 
     public Task<List<ChangeSetRow>> ChangeSetRowsAsync()
     {
-        return QueryAsync(context => context.ChangeSets.AsNoTracking().ToListAsync());
+        return QueryAsync(context => context.ChangeSets
+            .AsNoTracking()
+            .Where(row => row.SessionId != TestChangeSetTargets.ContentModelSession)
+            .ToListAsync());
     }
 
     public Task<List<ChangeSetOperationRow>> OperationRowsAsync(Guid changeSetId)
@@ -227,12 +265,13 @@ internal sealed class ChangeSetScenario : IAsyncDisposable
             .ToListAsync());
     }
 
-    // Events that carry a change set id, in the order they were appended; the content type directory's own events are left out.
+    // Events that carry a change set id, in the order they were appended; those of the content model's set are left out.
     public async Task<List<AuditEventRow>> ChangeSetEventsAsync(Guid? changeSetId = null)
     {
         var rows = await QueryAsync(context => context.AuditEvents
             .AsNoTracking()
             .Where(row => row.ChangeSetId != null && (changeSetId == null || row.ChangeSetId == changeSetId))
+            .Where(row => !context.ChangeSets.Any(set => set.Id == row.ChangeSetId && set.SessionId == TestChangeSetTargets.ContentModelSession))
             .ToListAsync());
 
         return [.. rows.OrderBy(row => row.Timestamp)];
@@ -270,13 +309,13 @@ internal sealed class ChangeSetScenario : IAsyncDisposable
         return ChangeOperation.Create(OperationKind.Delete, ItemKind.Schema, type.Id, baseVersion, null).Value;
     }
 
-    // The stored credential behind Agent, scoped to the site with room to spare, so only a test that lowers a cap meets one.
-    private static AgentCredentialRow AgentCredential()
+    // The stored credential behind an agent, scoped to the site with room to spare, so only a test that lowers a cap meets one.
+    private static AgentCredentialRow AgentCredential(AgentInitiator agent)
     {
         return new AgentCredentialRow
         {
-            Id = Agent.CredentialId,
-            DisplayName = Agent.DisplayName,
+            Id = agent.CredentialId,
+            DisplayName = agent.DisplayName,
             KeyHash = RandomNumberGenerator.GetBytes(32),
             IssuedAt = new DateTimeOffset(2026, 10, 1, 0, 0, 0, TimeSpan.Zero),
             ExpiresAt = new DateTimeOffset(2027, 10, 1, 0, 0, 0, TimeSpan.Zero),
