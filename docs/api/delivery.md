@@ -59,11 +59,11 @@ Each published entry has a Markdown representation at `/api/v1/entries/{id}.md` 
 - Front matter gives the id, type, version and URL, as quoted strings apart from the version number.
 - The heading is the entry's title: its first text field that holds text.
 - Each other field follows under its name, in the order of the content type definition that the published version was written against:
-  - rich text as written, since it is stored as Markdown;
-  - other text escaped so it reads as written, which means a value can never pose as a heading, a field, a link or HTML;
+  - rich text as written, since it is stored as Markdown, inside a block quote so that whatever it opens ends with its field;
+  - other text escaped where it could open structure, which means a value can never pose as a heading, a field, a link or HTML, while words and URLs keep their characters;
   - lists as bullets, each item keeping its own paragraphs, and JSON in a fenced block;
   - references to whole entries as links to their Markdown.
-- On an entity, each fact's value is followed by a `**Source:**` item, which also says when the fact is unsourced.
+- On an entity, every fact, the title's included, is followed by a `**Source:**` paragraph, which also says when the fact is unsourced. A source that is a web address is a link.
 - References that could not be resolved are listed under "Unresolved references", each with its reason.
 
 The site index lists every published entry for agents. `/llms.txt` serves it where agents look for it first.

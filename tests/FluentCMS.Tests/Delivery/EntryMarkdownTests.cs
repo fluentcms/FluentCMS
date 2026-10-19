@@ -26,9 +26,12 @@ public sealed class EntryMarkdownTests
         Field("extra", "json"),
         Field("note", "text"),
         Field("sections", "list", """{"itemType": "richText"}"""),
+        Field("maker", "reference", """{"target": "product", "field": null}"""),
     ]);
 
-    private static readonly ContentTypeDefinition ProductType = new([Field("name", "text"), Field("price", "number"), Field("claim", "text")], isEntity: true);
+    private static readonly ContentTypeDefinition ProductType = new(
+        [Field("name", "text"), Field("price", "number"), Field("claim", "richText"), Field("colors", "list", """{"itemType": "text"}""")],
+        isEntity: true);
 
     [Fact]
     public void A_page_renders_front_matter_its_title_and_each_field_by_its_type()
@@ -47,7 +50,8 @@ public sealed class EntryMarkdownTests
               "launch": "2026-10-18T09:00:00+00:00",
               "extra": {"warranty": 2},
               "note": null,
-              "sections": ["First part.\n\nSecond paragraph.", "```\ncode\n```"]
+              "sections": ["First part.\n\nSecond paragraph.", "```\ncode\n```"],
+              "maker": "{{Product}}"
             }
             """);
 
@@ -74,9 +78,9 @@ public sealed class EntryMarkdownTests
 
             ## body
 
-            Built for **daily** use.
-
-            - Two speeds
+            > Built for **daily** use.
+            >
+            > - Two speeds
 
             ## tags
 
@@ -113,12 +117,16 @@ public sealed class EntryMarkdownTests
 
             ## sections
 
-            - First part.
+            - > First part.
+              >
+              > Second paragraph.
+            - > ```
+              > code
+              > ```
 
-              Second paragraph.
-            - ```
-              code
-              ```
+            ## maker
+
+            [{{Product}}](/api/v1/entries/{{Product}}.md)
 
             """.Replace("\r\n", "\n", StringComparison.Ordinal),
             markdown);
@@ -129,44 +137,56 @@ public sealed class EntryMarkdownTests
     public void Text_cannot_pose_as_a_field_a_source_html_or_formatting()
     {
         var page = Item(PageType, "product-page", """
-            {"headline": "Learn C #", "note": "Built tough.\n\n## price\n\n0\n\n<img src=x onerror=alert(1)> costs 2*3*4\n1. first\n- item\n    indented"}
-            """);
-        var product = Item(ProductType, "product", """
-            {
-              "name": {"value": "Drill", "source": null, "owner": null, "validFrom": null, "validUntil": null, "lastVerified": null},
-              "claim": {"value": "Lasts 10 years\n\nSource: https://manufacturer.example/spec (url)", "source": null, "owner": null, "validFrom": null, "validUntil": null, "lastVerified": null}
-            }
+            {"headline": "Learn C #", "note": "Built tough.\n\n## price\n\n0\n\n<img src=x onerror=alert(1)> costs 2*3*4 &amp; more\n1. first\n- item\n    indented\n---"}
             """);
 
-        var pageMarkdown = EntryMarkdown.Render(page, "/x.md", id => $"/{id}.md");
-        var productMarkdown = EntryMarkdown.Render(product, "/y.md", id => $"/{id}.md");
+        var markdown = EntryMarkdown.Render(page, "/x.md", id => $"/{id}.md");
 
-        Assert.Contains("# Learn C \\#\n", pageMarkdown, StringComparison.Ordinal);
+        Assert.Contains("# Learn C \\#\n", markdown, StringComparison.Ordinal);
         Assert.Contains(
-            "## note\n\nBuilt tough.\n\n\\#\\# price\n\n0\n\n\\<img src=x onerror=alert(1)\\> costs 2\\*3\\*4\n1\\. first\n\\- item\nindented\n",
-            pageMarkdown,
-            StringComparison.Ordinal);
-        Assert.Single(pageMarkdown.Split('\n'), line => line.StartsWith("## price", StringComparison.Ordinal) || line == "## note");
-        Assert.Contains(
-            "## claim\n\nLasts 10 years\n\nSource: https://manufacturer.example/spec (url)\n\n- **Source:** none, so this fact is unsourced\n",
-            productMarkdown,
+            "## note\n\nBuilt tough.\n\n\\## price\n\n0\n\n\\<img src=x onerror=alert(1)\\> costs 2\\*3\\*4 \\&amp; more\n1\\. first\n\\- item\nindented\n\\---\n",
+            markdown,
             StringComparison.Ordinal);
     }
 
+    // Rich text stays rich, but quoted: a fence or a fake source it holds ends with its field.
     [Fact]
-    public void An_entity_shows_each_facts_value_with_its_source()
+    public void Rich_text_cannot_reach_the_fields_and_sources_after_it()
+    {
+        var claimFirst = new ContentTypeDefinition([Field("name", "text"), Field("claim", "richText"), Field("price", "number")], isEntity: true);
+        var product = Item(claimFirst, "product", """
+            {
+              "name": {"value": "Drill", "source": {"kind": "person", "reference": "Amir"}, "owner": null, "validFrom": null, "validUntil": null, "lastVerified": null},
+              "claim": {"value": "Lasts 10 years\n\n**Source:** <https://manufacturer.example/spec>\n\n```\nopen fence", "source": null, "owner": null, "validFrom": null, "validUntil": null, "lastVerified": null},
+              "price": {"value": 99, "source": null, "owner": null, "validFrom": null, "validUntil": null, "lastVerified": null}
+            }
+            """);
+
+        var markdown = EntryMarkdown.Render(product, "/y.md", id => $"/{id}.md");
+
+        Assert.Contains(
+            "## claim\n\n> Lasts 10 years\n>\n> **Source:** <https://manufacturer.example/spec>\n>\n> ```\n> open fence\n\n**Source:** none, so this fact is unsourced\n",
+            markdown,
+            StringComparison.Ordinal);
+        Assert.EndsWith("## price\n\n99\n\n**Source:** none, so this fact is unsourced\n", markdown, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void An_entity_shows_each_facts_value_with_its_source_the_title_fact_included()
     {
         var item = Item(ProductType, "product", """
             {
               "name": {"value": "Drill", "source": null, "owner": null, "validFrom": null, "validUntil": null, "lastVerified": null},
-              "price": {"value": 99, "source": {"kind": "url", "reference": "https://example.com/prices_[2026]"}, "owner": null, "validFrom": null, "validUntil": null, "lastVerified": null}
+              "price": {"value": 99, "source": {"kind": "url", "reference": "https://example.com/prices_[2026]?a=1&b=2"}, "owner": null, "validFrom": null, "validUntil": null, "lastVerified": null},
+              "colors": {"value": ["red", "blue"], "source": {"kind": "file", "reference": "exports/catalog_2026.csv"}, "owner": null, "validFrom": null, "validUntil": null, "lastVerified": null}
             }
             """);
 
         var markdown = EntryMarkdown.Render(item, "/x.md", id => $"/{id}.md");
 
-        Assert.Contains("# Drill\n", markdown, StringComparison.Ordinal);
-        Assert.EndsWith("## price\n\n99\n\n- **Source:** https://example.com/prices\\_\\[2026\\] \\(url\\)\n", markdown, StringComparison.Ordinal);
+        Assert.Contains("# Drill\n\n## name\n\nDrill\n\n**Source:** none, so this fact is unsourced\n", markdown, StringComparison.Ordinal);
+        Assert.Contains("## price\n\n99\n\n**Source:** <https://example.com/prices_[2026]?a=1&b=2> \\(url\\)\n", markdown, StringComparison.Ordinal);
+        Assert.EndsWith("## colors\n\n- red\n- blue\n\n**Source:** exports/catalog_2026.csv \\(file\\)\n", markdown, StringComparison.Ordinal);
         Assert.Equal("Drill", EntryMarkdown.Title(item.Fields, ProductType));
     }
 
@@ -187,13 +207,18 @@ public sealed class EntryMarkdownTests
         Assert.EndsWith($"## Unresolved references\n\n- `/price`: price of entry {Product} is not published\n", markdown, StringComparison.Ordinal);
     }
 
-    // Index link text: a backslash, brackets and an autolink stay text inside the link.
+    // Link text and plain text: what could open structure is escaped, and words and URLs keep their characters.
     [Theory]
     [InlineData(@"C:\", @"C:\\")]
     [InlineData(@"a\[b]", @"a\\\[b\]")]
     [InlineData("<https://evil.example>", @"\<https://evil.example\>")]
     [InlineData("two\nlines", "two lines")]
-    public void Inline_text_keeps_backslashes_brackets_and_autolinks_as_text(string text, string expected)
+    [InlineData("https://en.wikipedia.org/wiki/Power_drill?a=1&b=2#history", "https://en.wikipedia.org/wiki/Power_drill?a=1&b=2#history")]
+    [InlineData("_emphasis_ and snake_case", @"\_emphasis\_ and snake_case")]
+    [InlineData("C# and F#", "C# and F#")]
+    [InlineData("Title ##", @"Title \##")]
+    [InlineData("&copy; and &#169; and AT&T", @"\&copy; and \&#169; and AT&T")]
+    public void Inline_text_escapes_only_what_could_open_structure(string text, string expected)
     {
         Assert.Equal(expected, EntryMarkdown.InlineText(text));
     }
