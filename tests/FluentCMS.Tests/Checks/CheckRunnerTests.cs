@@ -81,6 +81,18 @@ public sealed class CheckRunnerTests : IDisposable
         Assert.Empty(_gateway.Requests);
     }
 
+    // SEC-04: a run the check engine makes for an agent's change set spends that agent's model budget, not the engine's.
+    [Fact]
+    public async Task An_LLM_judged_check_charges_its_model_call_to_the_agent_the_run_is_for()
+    {
+        var agent = Guid.NewGuid();
+
+        await Runner.RunAsync(Subject("product-page", """{"headline": "A kettle", "body": "Calm."}"""), chargedTo: agent);
+        await Runner.RunAsync(Subject("product-page", """{"headline": "A kettle", "body": "Calm."}"""));
+
+        Assert.Equal([agent, null], _gateway.Requests.Select(request => request.ChargedTo));
+    }
+
     // MDL-03: without a model an LLM-judged check needs review, which a pass elsewhere does not hide.
     [Fact]
     public async Task Without_a_model_the_run_needs_review_unless_something_fails()
