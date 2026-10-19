@@ -221,6 +221,25 @@ internal sealed class AgentPermissions(
                 + "credential that includes them.");
     }
 
+    public async Task<Result> CheckMediaAsync(AgentOperation operation, CancellationToken cancellationToken = default)
+    {
+        var agent = await AgentAsync(cancellationToken);
+        if (!agent.IsSuccess)
+        {
+            return Result.Failure(agent.Errors);
+        }
+
+        if (agent.Value is not { } credential || credential.Scope.AllowsOperation(operation))
+        {
+            return Result.Success();
+        }
+
+        return Result.Failure(
+            AgentPermissionErrorCodes.ScopeDenied,
+            $"The credential '{credential.DisplayName}' may not {Verb(operation)} media: its scope allows "
+            + $"{string.Join(", ", credential.Scope.Operations.Select(Verb))} only. Ask an administrator for a credential that allows {Verb(operation)}.");
+    }
+
     public async Task<Result> CheckDefinitionAsync(string contentType, AgentOperation operation, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(contentType);

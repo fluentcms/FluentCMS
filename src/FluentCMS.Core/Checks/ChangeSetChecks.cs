@@ -143,7 +143,7 @@ internal sealed class ChangeSetChecks(
         var started = clock.GetUtcNow();
         var active = await checks.ListActiveAsync(cancellationToken);
         var (subjects, problems) = await SubjectsAsync(set, cancellationToken);
-        var chargedTo = (set.Initiator as AgentInitiator)?.CredentialId;
+        var onBehalfOf = set.Initiator;
         var items = new List<ItemChecks>();
         var done = 0;
         var reported = started;
@@ -151,7 +151,7 @@ internal sealed class ChangeSetChecks(
         foreach (var (operation, contentType, subject) in subjects)
         {
             // An item no check applies to is left out, as it is when the run is read back.
-            var itemRun = await runner.RunAsync(subject, active, CheckSelection.All, chargedTo, cancellationToken);
+            var itemRun = await runner.RunAsync(subject, active, CheckSelection.All, onBehalfOf, cancellationToken);
             if (itemRun.Results.Count > 0)
             {
                 items.Add(new ItemChecks(operation.ItemKind, operation.ItemId, operation.ProposedVersion!.Value, contentType, itemRun.Results));

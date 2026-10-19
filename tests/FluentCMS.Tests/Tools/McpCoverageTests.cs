@@ -36,7 +36,9 @@ public sealed class McpCoverageTests
         new("CHK", "Read the check results of a change set", ["get_change_set_checks"]),
         new("DSK", "Read the review desk's queues and counts, read-only", ["get_desk_counts", "list_desk_queue"]),
         new("DSK", "Read a change set's review status and decisions, read-only", ["get_change_set_review"]),
-        Missing("MED", "Upload and describe media", "#2427"),
+        new("MED", "Upload and describe media", ["upload_media", "update_media"]),
+        new("MED", "Read and list media", ["get_media", "list_media"]),
+        new("MED", "Attach media to a field", ["attach_media"]),
         new("Search", "Search entries and entities by their words", ["search_entries"]),
         Missing("MCP-08", "Bulk operations that return a change set id and report progress", "#2423"),
     ];
