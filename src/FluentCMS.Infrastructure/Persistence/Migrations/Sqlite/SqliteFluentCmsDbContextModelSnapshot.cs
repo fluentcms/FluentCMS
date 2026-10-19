@@ -540,22 +540,18 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                         });
                 });
 
-            modelBuilder.Entity("FluentCMS.Infrastructure.Models.ModelCallRow", b =>
+            modelBuilder.Entity("FluentCMS.Infrastructure.Jobs.JobRow", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid?>("AgentCredentialId")
+                    b.Property<int>("Attempts")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<decimal>("Cost")
-                        .HasPrecision(18, 6)
-                        .HasColumnType("TEXT");
-
-                    b.Property<TimeSpan>("Duration")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Error")
+                    b.Property<DateTimeOffset?>("FinishedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<Guid?>("InitiatorId")
@@ -565,67 +561,73 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                         .HasMaxLength(16)
                         .HasColumnType("TEXT");
 
-                    b.Property<long>("InputTokens")
+                    b.Property<string>("InitiatorName")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LastError")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LeaseOwner")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("LeaseUntil")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("MaxAttempts")
                         .HasColumnType("INTEGER");
 
-                    b.Property<string>("Model")
+                    b.Property<string>("Payload")
                         .IsRequired()
-                        .HasMaxLength(128)
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("ModelVersion")
-                        .HasMaxLength(128)
+                    b.Property<int>("ProgressDone")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("ProgressMessage")
+                        .HasMaxLength(512)
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("Outcome")
+                    b.Property<int?>("ProgressTotal")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Revision")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset>("ScheduledAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("StartedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("State")
                         .IsRequired()
                         .HasMaxLength(16)
                         .HasColumnType("TEXT");
 
-                    b.Property<long>("OutputTokens")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Profile")
-                        .IsRequired()
-                        .HasMaxLength(128)
+                    b.Property<Guid?>("SubjectId")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("Prompt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("PromptHash")
-                        .IsRequired()
+                    b.Property<string>("SubjectType")
                         .HasMaxLength(64)
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("Provider")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTimeOffset?>("PurgedAt")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Purpose")
+                    b.Property<string>("Type")
                         .IsRequired()
                         .HasMaxLength(128)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Response")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTimeOffset>("Timestamp")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("PromptHash");
+                    b.HasIndex("State", "ScheduledAt");
 
-                    b.HasIndex("Timestamp");
+                    b.HasIndex("SubjectType", "SubjectId");
 
-                    b.HasIndex("AgentCredentialId", "Timestamp");
-
-                    b.ToTable("ModelCalls", (string)null);
+                    b.ToTable("Jobs", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Jobs_Attempts", "\"Attempts\" >= 0 AND \"MaxAttempts\" >= 1");
+                        });
                 });
 
             modelBuilder.Entity("FluentCMS.Infrastructure.Persistence.FluentCmsRole", b =>
@@ -1002,14 +1004,6 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                         .HasForeignKey("EntryId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-                });
-
-            modelBuilder.Entity("FluentCMS.Infrastructure.Models.ModelCallRow", b =>
-                {
-                    b.HasOne("FluentCMS.Infrastructure.Agents.AgentCredentialRow", null)
-                        .WithMany()
-                        .HasForeignKey("AgentCredentialId")
-                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("FluentCMS.Infrastructure.Schema.ContentTypeRow", b =>
