@@ -16,6 +16,15 @@ public sealed class EngineJobsTests
     }
 
     [Fact]
+    public void The_check_run_runs_as_the_check_engine()
+    {
+        using var provider = new ServiceCollection().AddFluentCmsCore().BuildServiceProvider();
+        var checkRun = provider.GetServices<IJobHandler>().Single(handler => handler.Type == "checks.run");
+
+        Assert.Equal(SystemInitiator.Checks, provider.GetRequiredService<EngineJobs>().RunAs(checkRun).Value);
+    }
+
+    [Fact]
     public void A_handler_Core_does_not_list_cannot_claim_an_engine()
     {
         var claimed = Engines().RunAs(new Handler(SystemInitiator.Checks));

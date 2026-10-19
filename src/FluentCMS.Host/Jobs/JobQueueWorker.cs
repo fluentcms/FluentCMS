@@ -74,7 +74,17 @@ public sealed class JobQueueWorker(
             return true;
         }
 
-        runScope.ServiceProvider.GetRequiredService<JobRun>().Initiator = handler.RunAs ?? job.Initiator;
+        // Only a handler Core lists runs as an engine; one that claims an engine it is not listed for fails, run as no one (ADR-0012).
+        var runAs = runScope.ServiceProvider.GetRequiredService<EngineJobs>().RunAs(handler);
+        if (!runAs.IsSuccess)
+        {
+            var refused = runAs.Errors[0];
+            logger.LogWarning("Job {JobId} of the type {JobType} was not run: {Reason}", job.Id, job.Type, refused.Message);
+            await leases.FailAsync(job.Id, owner, $"{refused.Code}: {refused.Message}", stoppingToken);
+            return true;
+        }
+
+        runScope.ServiceProvider.GetRequiredService<JobRun>().Initiator = runAs.Value ?? job.Initiator;
 
         var context = new JobContext(
             job,

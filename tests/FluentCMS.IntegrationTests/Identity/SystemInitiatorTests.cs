@@ -150,10 +150,10 @@ public sealed class SystemInitiatorTests
         Assert.Equal(SystemInitiator.Retention, (await services.GetRequiredService<IJobQueue>().GetAsync(enqueued.Id)).Value.Initiator);
     }
 
-    // A submission enqueues the check run in the agent's call; the job type, not whoever enqueued it, decides that it runs as the
-    // check engine, and the job still records who enqueued it.
+    // EXT-03: a handler Core does not list cannot borrow an engine's permissions by naming it in RunAs; its job fails without running,
+    // and says why. The check run, which Core lists, runs as the check engine (ChangeSetChecksTests).
     [Fact]
-    public async Task The_worker_runs_a_job_as_the_engine_its_handler_names()
+    public async Task A_handler_that_claims_an_engine_it_is_not_listed_for_fails_its_job_unrun()
     {
         using var install = new TemporaryInstall();
         await using var host = await AdminHost.StartAsync(
@@ -171,13 +171,17 @@ public sealed class SystemInitiatorTests
         });
 
         var deadline = DateTime.UtcNow.AddSeconds(30);
-        while (!EngineHandler.RanAs.ContainsKey(job.Id) && DateTime.UtcNow < deadline)
+        Job read;
+        do
         {
             await Task.Delay(50);
+            read = await host.AsUserAsync<IJobQueue, Job>(administrator, async queue => (await queue.GetAsync(job.Id)).Value);
         }
+        while (read.State is JobState.Queued or JobState.Running && DateTime.UtcNow < deadline);
 
-        Assert.Equal(SystemInitiator.Checks, EngineHandler.RanAs[job.Id]);
-        Assert.IsType<UserInitiator>(job.Initiator);
+        Assert.Equal(JobState.Failed, read.State);
+        Assert.StartsWith(JobErrorCodes.EngineNotAllowed, read.LastError);
+        Assert.False(EngineHandler.RanAs.ContainsKey(job.Id));
     }
 
     // A component's name and id are stored together, and a row whose id is not its component's is refused as a fault.

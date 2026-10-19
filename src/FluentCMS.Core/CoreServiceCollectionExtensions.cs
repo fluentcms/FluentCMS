@@ -1,5 +1,6 @@
 using FluentCMS.Core.Agents;
 using FluentCMS.Core.Audit;
+using FluentCMS.Core.Builtin.Jobs;
 using FluentCMS.Core.Checks;
 using FluentCMS.Core.Desk;
 using FluentCMS.Core.Extensions;
@@ -47,7 +48,7 @@ public static class CoreServiceCollectionExtensions
         services.AddScoped<IDeskQueues, DeskQueues>();
 
         // The handlers that run as an engine; a job worker runs any other handler as whoever enqueued its job (ADR-0012).
-        services.AddSingleton(new EngineJobs(new Dictionary<Type, SystemInitiator>()));
+        services.AddSingleton(new EngineJobs(new Dictionary<Type, SystemInitiator> { [typeof(CheckRunJob)] = SystemInitiator.Checks }));
 
         return services;
     }

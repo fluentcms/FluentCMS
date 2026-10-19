@@ -21,10 +21,11 @@ These run inside a request or as a job (ADR-0010), and a job runs as whoever enq
   - It is never a change set's initiator. `ChangeSet.Open` refuses it, and so do session grouping and revert, which open sets through it.
   - `AgentPermissions` treats it as not an agent and lets it make only the moves its component owns. `checks` moves a set from checks running to checks failed or awaiting review; routing will add auto-publish.
   - It reads content, and never creates, edits or deletes content, opens or adds to a change set, or calls a tool.
-  - What only a person may do refuses a system initiator as it refuses an agent: managing users, issuing credentials, and activating, writing or revising checks.
+  - What only a person may do refuses a system initiator as it refuses an agent: managing users and issuing their reset links, issuing and revoking credentials, and activating, deactivating, writing or revising checks.
   - Maintenance names what it may do: the prompt purge accepts `retention` as well as a person.
-  - It spends no model budget of its own. A model call it makes for an agent's change set is charged to that agent (SEC-04).
+  - It spends no model budget of its own. A model call it makes for a change set is made on behalf of whoever opened the set, and an agent's counts against that agent's cap (SEC-04).
 - A job type can run as a system initiator, whoever enqueued the job (`IJobHandler.RunAs`). The job still records who enqueued it. The check run is enqueued in the submitting agent's call and runs as `checks`. The job type decides this, not the code that enqueues it, so no caller can borrow an engine's permissions.
+- Only Core names its engines and the handlers that run as them. `SystemInitiator` has no public constructor, and Core lists each handler that may run as an engine with that engine (`EngineJobs`). The worker fails a job whose handler claims an engine it is not listed for, without running it. So a plugin's handler (EXT-03) runs as whoever enqueued its jobs, never as an engine, whatever its `RunAs` says. Inside a request, only Core opens a scope that acts as an engine, such as the check run of a small set.
 
 ## Consequences
 
