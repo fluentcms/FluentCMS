@@ -118,8 +118,19 @@ internal sealed class EntityRelationsReader(FluentCmsDbContext context, IAgentPe
             .ToListAsync(cancellationToken);
 
         return types
-            .Where(type => ContentTypeDefinition.Parse(type.Definition) is { IsSuccess: true } definition && definition.Value.IsEntity)
+            .Where(type => IsEntity(type.Slug, type.Definition))
             .ToDictionary(type => type.Id, type => type.Slug);
+    }
+
+    private static bool IsEntity(string slug, string json)
+    {
+        var definition = ContentTypeDefinition.Parse(json);
+
+        return definition.IsSuccess
+            ? definition.Value.IsEntity
+            : throw new InvalidOperationException(
+                $"The current definition of content type '{slug}' is stored in a form that cannot be read: "
+                + string.Join("; ", definition.Errors.Select(error => error.Message)));
     }
 
     // The index stores pointers from the document root, so the field is the first segment, such as category in /category/value.
