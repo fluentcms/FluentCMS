@@ -1,10 +1,12 @@
 using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Entities;
+using FluentCMS.Core.Identity;
 using FluentCMS.Core.Results;
 
 namespace FluentCMS.Core.Desk;
 
-internal sealed class DeskQueues(IChangeSetLists lists, IEntityFacts facts, TimeProvider clock) : IDeskQueues
+// An agent reads its own change sets only (IAgentPermissions.CheckChangeSetReadAsync), so an agent's queues hold the sets it opened.
+internal sealed class DeskQueues(IChangeSetLists lists, IEntityFacts facts, TimeProvider clock, ICurrentInitiator currentInitiator) : IDeskQueues
 {
     // How far back the recently published and reverted queues reach.
     public static readonly TimeSpan RecentWithin = TimeSpan.FromDays(7);
@@ -25,7 +27,7 @@ internal sealed class DeskQueues(IChangeSetLists lists, IEntityFacts facts, Time
 
         foreach (var queue in ChangeSetQueues.Where(queue => queue != DeskQueue.AwaitingMe))
         {
-            var counted = await lists.CountAsync(Query(queue, now), cancellationToken);
+            var counted = await lists.CountAsync(Scoped(Query(queue, now)), cancellationToken);
             if (!counted.IsSuccess)
             {
                 return Result<IReadOnlyDictionary<DeskQueue, int>>.Failure(counted.Errors);
@@ -55,7 +57,7 @@ internal sealed class DeskQueues(IChangeSetLists lists, IEntityFacts facts, Time
             return stale.IsSuccess ? Result<int>.Success(stale.Value.Count) : Result<int>.Failure(stale.Errors);
         }
 
-        return await lists.CountAsync(Query(queue, clock.GetUtcNow()), cancellationToken);
+        return await lists.CountAsync(Scoped(Query(queue, clock.GetUtcNow())), cancellationToken);
     }
 
     public Task<Result<ChangeSetList>> ListChangeSetsAsync(DeskQueue queue, int offset, int limit, CancellationToken cancellationToken = default)
@@ -67,7 +69,7 @@ internal sealed class DeskQueues(IChangeSetLists lists, IEntityFacts facts, Time
                 $"The {queue} queue does not list change sets; it is one of {string.Join(", ", ChangeSetQueues)}."));
         }
 
-        return lists.ListAsync(Query(queue, clock.GetUtcNow()) with { Offset = offset, Limit = limit }, cancellationToken);
+        return lists.ListAsync(Scoped(Query(queue, clock.GetUtcNow())) with { Offset = offset, Limit = limit }, cancellationToken);
     }
 
     public async Task<Result<StaleFactList>> ListStaleFactsAsync(int offset, int limit, CancellationToken cancellationToken = default)
@@ -82,6 +84,11 @@ internal sealed class DeskQueues(IChangeSetLists lists, IEntityFacts facts, Time
         return stale.IsSuccess
             ? Result<StaleFactList>.Success(new StaleFactList([.. stale.Value.Skip(offset).Take(limit)], stale.Value.Count))
             : Result<StaleFactList>.Failure(stale.Errors);
+    }
+
+    private ChangeSetListQuery Scoped(ChangeSetListQuery query)
+    {
+        return currentInitiator.Current is AgentInitiator agent ? query with { OpenedBy = agent } : query;
     }
 
     // Awaiting me lists every set awaiting review until routing records approvals (F-RTE); it will then leave out the sets the

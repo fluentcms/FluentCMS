@@ -84,7 +84,8 @@ internal sealed class ChangeSetTarget
 
     // Refuses ahead of the write what the change set would refuse after it, so no version is stored for nothing and a refused
     // cap keeps its security event (SEC-08), which a rolled-back write would take with it. The set checks again on the add.
-    public async Task<Result> CheckAsync(IServiceProvider services, CancellationToken cancellationToken)
+    // An item the set already holds takes no more room, since its operation moves on to the newer version.
+    public async Task<Result> CheckAsync(IServiceProvider services, Guid? itemId, CancellationToken cancellationToken)
     {
         var directory = services.GetRequiredService<IChangeSetDirectory>();
         var permissions = services.GetRequiredService<IAgentPermissions>();
@@ -95,7 +96,8 @@ internal sealed class ChangeSetTarget
 
         if (set.IsSuccess)
         {
-            return await permissions.CheckChangeSetSizeAsync(set.Value, adding: 1, cancellationToken);
+            var adding = itemId is { } item && set.Value.Operations.Any(operation => operation.ItemId == item) ? 0 : 1;
+            return await permissions.CheckChangeSetSizeAsync(set.Value, adding, cancellationToken);
         }
 
         return _changeSetId is null ? await permissions.CheckNewChangeSetAsync(cancellationToken) : Result.Failure(set.Errors);

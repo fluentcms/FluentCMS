@@ -1,9 +1,11 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Core.ChangeSets;
+using FluentCMS.Core.Checks;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Entities;
 using FluentCMS.Core.Identity;
+using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Schema;
 
 namespace FluentCMS.Core.Builtin.Tools;
@@ -25,6 +27,64 @@ internal static class ToolJson
             ["slug"] = type.Slug,
             ["name"] = type.Name,
             ["version"] = type.Version,
+        };
+    }
+
+    public static JsonObject CheckResult(CheckResult result)
+    {
+        return new JsonObject
+        {
+            ["check"] = result.Check,
+            ["version"] = result.Version,
+            ["type"] = result.Type,
+            ["kind"] = Name(result.Kind),
+            ["severity"] = Name(result.Severity),
+            ["description"] = result.Description,
+            ["status"] = Name(result.Status),
+            ["findings"] = new JsonArray([.. result.Findings.Select(finding => new JsonObject
+            {
+                ["message"] = finding.Message,
+                ["pointer"] = finding.Pointer,
+                ["excerpt"] = finding.Excerpt,
+            })]),
+            ["model"] = result.Model is { } model
+                ? new JsonObject { ["callId"] = model.CallId.ToString(), ["provider"] = model.Provider, ["model"] = model.Model, ["cost"] = model.Cost }
+                : null,
+        };
+    }
+
+    public static JsonObject CheckRun(ChangeSetCheckRun run)
+    {
+        return new JsonObject
+        {
+            ["number"] = run.Number,
+            ["mode"] = Name(run.Mode),
+            ["status"] = Name(run.Status),
+            ["cost"] = run.Cost,
+            ["startedAt"] = run.StartedAt.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
+            ["finishedAt"] = run.FinishedAt.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
+            ["items"] = new JsonArray([.. run.Items.Select(item => new JsonObject
+            {
+                ["itemKind"] = Name(item.ItemKind),
+                ["itemId"] = item.ItemId.ToString(),
+                ["version"] = item.Version,
+                ["contentType"] = item.ContentType,
+                ["results"] = new JsonArray([.. item.Results.Select(CheckResult)]),
+            })]),
+            ["problems"] = new JsonArray([.. run.Problems.Select(problem => JsonValue.Create(problem))]),
+        };
+    }
+
+    // Not the error a worker recorded, which can quote database or provider details; a failed run says what to do in its problems.
+    public static JsonObject Job(Job job)
+    {
+        return new JsonObject
+        {
+            ["id"] = job.Id.ToString(),
+            ["state"] = Name(job.State),
+            ["done"] = job.Progress.Done,
+            ["total"] = job.Progress.Total,
+            ["message"] = job.Progress.Message,
         };
     }
 
