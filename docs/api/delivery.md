@@ -68,6 +68,24 @@ Each published entry has a Markdown representation at `/api/v1/entries/{id}.md` 
 
 The site index lists every published entry for agents. `/llms.txt` serves it where agents look for it first.
 
+## Preview
+
+A preview token lets a frontend show a change set's content resolved as it would be published, before anyone approves it (API-04). A person issues one for a set; agents cannot. Send it in the `Authorization` header, never in the URL:
+
+```http
+GET /api/v1/preview/entries/0192f3a1-7c2e-7a4b-9d3e-1f2a3b4c5d6e
+Authorization: Bearer fcmsp_...
+```
+
+| Request | Returns |
+| --- | --- |
+| `GET /api/v1/preview/entries/{id}` | The entry as the set would publish it: the version the set proposes, or the published version when the set leaves the entry alone. An entry the set unpublishes is a 404. |
+| `GET /api/v1/preview/changes` | `changeSet` and the `items` the set creates or updates, in the set's order. |
+
+References to entity fields resolve to the values the set proposes, so a page previews the new price of its product.
+
+A token stops working when it is revoked or expires (`Delivery__PreviewTokenLifetime`, 7 days by default), and when its set is published, rejected or reverted. Every one of these is the same 401 with `preview_token_invalid`. Preview responses carry `Cache-Control: no-store`.
+
 ## Errors
 
 Errors are [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem details (`application/problem+json`). `errors` lists each error with a stable `code`:
@@ -75,4 +93,5 @@ Errors are [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem details (`
 | Status | Codes |
 | --- | --- |
 | 400 | `limit_invalid`, `parameter_invalid` |
-| 404 | `entry_not_found`, `content_type_not_found` |
+| 401 | `preview_token_invalid` |
+| 404 | `entry_not_found`, `content_type_not_found`, `endpoint_not_found` |
