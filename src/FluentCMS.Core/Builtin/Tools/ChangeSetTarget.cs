@@ -109,6 +109,7 @@ internal sealed class ChangeSetTarget
             ? directory.AddOperationAsync(id, operation, cancellationToken)
             : directory.AddToSessionAsync(_sessionId!, _opening!, operation, cancellationToken);
     }
+
     // The directories take the same target; they find every refusal, a cap included, before they write anything (SCH-05).
     public DirectoryTarget ToDirectoryTarget()
     {

@@ -43,11 +43,12 @@ internal static class ProposedWrite
                 + "operations. Call submit_change_set when it is complete; checks run and a person reviews it before it is published.",
         });
     }
+
     private static string? Hint(IReadOnlyList<Error> errors)
     {
         return errors.FirstOrDefault()?.Code switch
         {
-            SchemaErrorCodes.VersionConflict => "The message names the version to revise; call get_content_type with that version for its fields, then revise from it.",
+            SchemaErrorCodes.VersionConflict => "The message says which version to revise; read it with get_content_type, then revise from it.",
             SchemaErrorCodes.ContentTypeNotFound => "Call list_content_types for the slugs of the site's content types.",
             _ => null,
         };

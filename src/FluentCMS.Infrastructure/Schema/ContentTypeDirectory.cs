@@ -179,30 +179,22 @@ internal sealed class ContentTypeDirectory(
             return revised;
         }
 
-        // A revision from the published version sets aside the latest draft, which an open set may still publish and other drafts may
-        // build on, so it must not take away what that draft gives them either: its fields and its entity flag (SCH-03, SCH-04).
-        var dropped = new List<ContentTypeDefinition> { previous.Definition };
+        // A revision may set drafts aside, such as the latest one when it is based on the published version. An open set may still
+        // publish them and other drafts may build on them, so it must not take away what they give: their fields and their entity
+        // flag (SCH-03, SCH-04).
+        var live = (await LiveDefinitionsAsync([slug], cancellationToken)).GetValueOrDefault(slug) ?? [];
         var errors = new List<Error>();
-        if (baseVersion != row.Version && await changeSets.ProposesAsync(ItemKind.Schema, row.Id, row.Version, cancellationToken))
+        if (!definition.IsEntity && live.FirstOrDefault(candidate => !candidate.Published && candidate.Definition.IsEntity) is { } entity)
         {
-            var latest = await context.ContentTypeVersions
-                .AsNoTracking()
-                .SingleAsync(version => version.ContentTypeId == row.Id && version.Version == row.Version, cancellationToken);
-            var draft = ReadDefinition(row.Slug, latest.Version, latest.Definition);
-            dropped.Add(draft);
-
-            if (draft.IsEntity && !definition.IsEntity)
-            {
-                errors.Add(new Error(
-                    SchemaErrorCodes.EntityFlagRemoved,
-                    $"The latest draft of the content type '{slug}', version {row.Version}, makes it an entity type, and an open change set "
-                    + "may still publish it, so a revision must keep \"entity\": true."));
-            }
+            errors.Add(new Error(
+                SchemaErrorCodes.EntityFlagRemoved,
+                $"Version {entity.Version} of the content type '{slug}', which an open change set may still publish, makes it an entity "
+                + "type, so a revision must keep \"entity\": true."));
         }
 
         var type = revised.Value;
         errors.AddRange(await ReferenceErrorsAsync(type, cancellationToken));
-        errors.AddRange(await RemovedFieldsInUseAsync(type, dropped, cancellationToken));
+        errors.AddRange(await RemovedFieldsInUseAsync(type, [previous.Definition, .. live.Select(candidate => candidate.Definition)], cancellationToken));
         if (errors.Count > 0)
         {
             return Result<ContentType>.Failure(errors);
@@ -246,7 +238,6 @@ internal sealed class ContentTypeDirectory(
             cancellationToken);
 
         await changeSets.RecordAsync(pending.Value, based.Id, cancellationToken);
-
 
         return await CommitAsync(scope, type, CommitConflict(changeSet, pending.Value, RevisedMeanwhile(row)), cancellationToken);
     }
@@ -293,8 +284,8 @@ internal sealed class ContentTypeDirectory(
     }
 
     // A reference to the type being written is checked against the definition being written, so a category can have a parent category.
-    // Another type is checked against what is live or may become so (LiveDefinitionsAsync): a field only a rejected draft has is no
-    // target.
+    // Another type is checked against what it is heading to: every draft a set that can still publish proposes, or its published
+    // version while there is none. A field only a rejected draft has is no target, and neither is one a pending draft removes.
     private async Task<List<Error>> ReferenceErrorsAsync(ContentType type, CancellationToken cancellationToken)
     {
         var references = type.Definition.References(fieldTypes);
@@ -305,37 +296,56 @@ internal sealed class ContentTypeDirectory(
 
         var others = references.Select(reference => reference.Target.Type).Where(slug => slug != type.Slug).Distinct().ToList();
         var targets = others.Count == 0 ? [] : await LiveDefinitionsAsync(others, cancellationToken);
-        targets[type.Slug] = [type.Definition];
 
         var errors = new List<Error>();
         foreach (var (field, target) in references)
         {
-            if (!targets.TryGetValue(target.Type, out var definitions) || definitions.Count == 0)
+            if (target.Type == type.Slug)
+            {
+                errors.AddRange(FieldTargetErrors(field, target, type.Definition));
+            }
+            else if (!targets.TryGetValue(target.Type, out var definitions))
             {
                 errors.Add(new Error(
                     SchemaErrorCodes.ReferenceTargetUnknown,
                     $"Field '{field}': there is no content type '{target.Type}' in this site to reference."));
             }
-            else if (target.Field is null)
+            else
             {
-                continue;
-            }
-            else if (!definitions.Any(definition => definition.IsEntity))
-            {
-                // Only facts are referenced field by field (SCH-04); anything else is referenced as a whole entry.
-                errors.Add(new Error(
-                    SchemaErrorCodes.ReferenceTargetNotEntity,
-                    $"Field '{field}': '{target.Type}' is not an entity type, so its fields cannot be referenced; reference its entries instead."));
-            }
-            else if (!definitions.Any(definition => definition.IsEntity && definition.HasField(target.Field)))
-            {
-                errors.Add(new Error(
-                    SchemaErrorCodes.ReferenceFieldUnknown,
-                    $"Field '{field}': the entity type '{target.Type}' has no field '{target.Field}'."));
+                // A draft is named by its version when the published version may read differently.
+                var drafts = definitions.Where(candidate => !candidate.Published).ToList();
+                var published = drafts.Count < definitions.Count;
+                errors.AddRange((drafts.Count > 0 ? drafts : definitions)
+                    .Select(candidate => FieldTargetErrors(field, target, candidate.Definition, published && !candidate.Published ? candidate.Version : null))
+                    .FirstOrDefault(found => found.Count > 0) ?? []);
             }
         }
 
         return errors;
+    }
+
+    // Only facts are referenced field by field (SCH-04); anything else is referenced as a whole entry.
+    private static List<Error> FieldTargetErrors(string field, ReferenceTarget target, ContentTypeDefinition definition, int? draft = null)
+    {
+        if (target.Field is null)
+        {
+            return [];
+        }
+
+        string Name(string kind) => draft is { } version
+            ? $"version {version} of {kind}'{target.Type}', which an open change set may still publish,"
+            : $"{kind}'{target.Type}'";
+
+        if (!definition.IsEntity)
+        {
+            return [new Error(
+                SchemaErrorCodes.ReferenceTargetNotEntity,
+                $"Field '{field}': {Name(string.Empty)} is not an entity type, so its fields cannot be referenced; reference its entries instead.")];
+        }
+
+        return definition.HasField(target.Field)
+            ? []
+            : [new Error(SchemaErrorCodes.ReferenceFieldUnknown, $"Field '{field}': {Name("the entity type ")} has no field '{target.Field}'.")];
     }
 
     // A field another type points at cannot go, or that reference would dangle (SCH-04), whether it points from that type's live
@@ -354,7 +364,7 @@ internal sealed class ContentTypeDirectory(
             .Where(other => other.Key != type.Slug)
             .OrderBy(other => other.Key, StringComparer.Ordinal)
             .SelectMany(other => other.Value
-                .SelectMany(definition => definition.References(fieldTypes))
+                .SelectMany(candidate => candidate.Definition.References(fieldTypes))
                 .DistinctBy(reference => (reference.Field, reference.Target.Type, reference.Target.Field))
                 .Select(reference => (Type: other.Key, Reference: reference)))
             .Where(use => use.Reference.Target.Type == type.Slug && use.Reference.Target.Field is { } field && removed.Contains(field))
@@ -364,9 +374,10 @@ internal sealed class ContentTypeDirectory(
             .ToList();
     }
 
-    // What each type is live as or may become: its published definition, and its latest one while a set that can still publish
-    // proposes it. Every type in the site, or the given slugs only; a type with neither, such as one whose create was rejected, has none.
-    private async Task<Dictionary<string, List<ContentTypeDefinition>>> LiveDefinitionsAsync(
+    // What each type is live as or may become: its published definition, and every draft a set that can still publish proposes, in
+    // version order. Every type in the site, or the given slugs only; a type with neither, such as one whose create was rejected, is
+    // left out.
+    private async Task<Dictionary<string, List<LiveDefinition>>> LiveDefinitionsAsync(
         IReadOnlyCollection<string>? slugs,
         CancellationToken cancellationToken)
     {
@@ -376,25 +387,26 @@ internal sealed class ContentTypeDirectory(
             types = types.Where(type => slugs.Contains(type.Slug));
         }
 
+        var proposed = changeSets.LiveOperations(ItemKind.Schema);
         var rows = await (
                 from type in types
                 join version in context.ContentTypeVersions.AsNoTracking() on type.Id equals version.ContentTypeId
-                where version.Version == type.Version || version.Version == type.PublishedVersion
-                select new { type.Id, type.Slug, type.PublishedVersion, version.Version, version.Definition })
+                where version.Version == type.PublishedVersion
+                    || proposed.Any(operation => operation.ItemId == type.Id && operation.ProposedVersion == version.Version)
+                select new { type.Slug, type.PublishedVersion, version.Version, version.Definition })
             .ToListAsync(cancellationToken);
-
-        var proposed = await changeSets.LiveProposalsAsync(ItemKind.Schema, rows.Select(row => row.Id).Distinct().ToList(), cancellationToken);
 
         return rows
             .GroupBy(row => row.Slug, StringComparer.Ordinal)
             .ToDictionary(
                 group => group.Key,
                 group => group
-                    .Where(row => row.Version == row.PublishedVersion || proposed.Contains((row.Id, row.Version)))
-                    .Select(row => ReadDefinition(row.Slug, row.Version, row.Definition))
+                    .OrderBy(row => row.Version)
+                    .Select(row => new LiveDefinition(row.Version, row.Version == row.PublishedVersion, ReadDefinition(row.Slug, row.Version, row.Definition)))
                     .ToList(),
                 StringComparer.Ordinal);
     }
+
     private static async Task<Result<ContentType>> CommitAsync(
         IUnitOfWorkScope scope,
         ContentType type,
@@ -453,11 +465,12 @@ internal sealed class ContentTypeDirectory(
 
     private static Error VersionConflict(ContentTypeRow row, int baseVersion)
     {
-        var published = row.PublishedVersion is { } version && version != row.Version ? $" nor the published version {version}" : string.Empty;
-
         return new Error(
             SchemaErrorCodes.VersionConflict,
-            $"Version {baseVersion} is neither the latest version {row.Version} of the content type '{row.Slug}'{published}; revise one of those.");
+            row.PublishedVersion is { } published && published != row.Version
+                ? $"Version {baseVersion} is neither the latest version {row.Version} of the content type '{row.Slug}' nor the published "
+                    + $"version {published}; revise one of those."
+                : $"Version {baseVersion} is not the latest version {row.Version} of the content type '{row.Slug}'; revise that one.");
     }
 
     private static Error RevisedMeanwhile(ContentTypeRow row)
@@ -466,11 +479,11 @@ internal sealed class ContentTypeDirectory(
             SchemaErrorCodes.VersionConflict,
             $"Another call revised the content type '{row.Slug}' at the same time; read its latest version again and revise that one.");
     }
+
     private static ChangeOperation Operation(OperationKind kind, Guid contentTypeId, int? baseVersion, int proposedVersion)
     {
         return ChangeOperation.Create(kind, ItemKind.Schema, contentTypeId, baseVersion, proposedVersion).Value;
     }
-
 
     // A unique index at commit is this write's own conflict or, when the write opened its session's set, possibly a concurrent
     // first write of the same session.
@@ -482,4 +495,6 @@ internal sealed class ContentTypeDirectory(
                 $"Another call wrote this content type or opened a change set for session '{session}' at the same time; read it again and retry.")
             : own;
     }
+
+    private sealed record LiveDefinition(int Version, bool Published, ContentTypeDefinition Definition);
 }

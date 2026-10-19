@@ -22,6 +22,12 @@ public sealed class SchemaChangeSetTests
 
     private static readonly ContentTypeDefinition WithPrice = new([Title, new FieldDefinition("price", "number")]);
 
+    private static readonly FieldDefinition Name = new("name", "text");
+
+    private static readonly FieldDefinition Logo = new("logo", "text");
+
+    private static readonly FieldDefinition BrandLogo = new("brandLogo", "reference", settings: Json("""{"target": "brand", "field": "logo"}"""));
+
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
     [PostgresData]
@@ -303,6 +309,7 @@ public sealed class SchemaChangeSetTests
         Assert.Equal(1, Assert.Single(await scenario.OperationRowsAsync(changeSet.Id)).ProposedVersion);
         Assert.Equal(events, (await scenario.ChangeSetEventsAsync()).Count);
     }
+
     // An open set may still publish the latest draft, so a revision from the published version keeps what the draft adds; once the
     // draft's set is rejected, the draft no longer counts.
     [Theory]
@@ -359,6 +366,7 @@ public sealed class SchemaChangeSetTests
         Assert.Contains("'brandCountry' of 'page'", dropCountry.Errors[0].Message);
         Assert.Equal(SchemaErrorCodes.ReferenceFieldUnknown, Assert.Single(toRejectedField.Errors).Code);
     }
+
     // A rejected create leaves a type no set has published, and a reverted one takes it offline; either way the next revision
     // records a create, so the type can be published again.
     [Theory]
@@ -423,6 +431,95 @@ public sealed class SchemaChangeSetTests
         Assert.Contains("'country'", error.Message);
         Assert.Equal(2, (await scenario.RunSchemaAsync(directory => directory.GetAsync("brand"))).Value.Version);
     }
+
+    // A draft that removes a field is what its type is heading to, so the field is no target while an open set may still publish
+    // that draft, whichever set the reference is written into (SCH-04).
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_field_a_pending_draft_removes_cannot_be_referenced(string provider)
+    {
+        await using var scenario = await ScenarioAsync(provider);
+        await PublishedBrandAndPageAsync(scenario);
+        var draft = ChangeSetTarget.Existing((await scenario.OpenAsync()).Id);
+        await scenario.RunSchemaAsync(directory => directory.ReviseAsync("brand", 1, new ContentTypeDefinition([Name], isEntity: true), draft));
+        var other = ChangeSetTarget.Existing((await scenario.OpenAsync()).Id);
+
+        var sameSet = await scenario.RunSchemaAsync(directory => directory.ReviseAsync("page", 1, new ContentTypeDefinition([Title, BrandLogo]), draft));
+        var otherSet = await scenario.RunSchemaAsync(directory => directory.ReviseAsync("page", 1, new ContentTypeDefinition([Title, BrandLogo]), other));
+
+        foreach (var refused in new[] { sameSet, otherSet })
+        {
+            var error = Assert.Single(refused.Errors);
+            Assert.Equal(SchemaErrorCodes.ReferenceFieldUnknown, error.Code);
+            Assert.Contains("version 2 of the entity type 'brand'", error.Message);
+        }
+    }
+
+    // Every draft an open set proposes may still publish, not only the latest one, so a field any of them references stays.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_field_an_older_open_draft_references_cannot_be_removed(string provider)
+    {
+        await using var scenario = await ScenarioAsync(provider);
+        await PublishedBrandAndPageAsync(scenario);
+        var referencing = ChangeSetTarget.Existing((await scenario.OpenAsync()).Id);
+        await scenario.RunSchemaAsync(directory => directory.ReviseAsync("page", 1, new ContentTypeDefinition([Title, BrandLogo]), referencing));
+        var latest = ChangeSetTarget.Existing((await scenario.OpenAsync()).Id);
+        await scenario.RunSchemaAsync(directory => directory.ReviseAsync("page", 1, WithSummary, latest));
+        var next = ChangeSetTarget.Existing((await scenario.OpenAsync()).Id);
+
+        var dropLogo = await scenario.RunSchemaAsync(directory => directory.ReviseAsync("brand", 1, new ContentTypeDefinition([Name], isEntity: true), next));
+
+        var error = Assert.Single(dropLogo.Errors);
+        Assert.Equal(SchemaErrorCodes.FieldReferenced, error.Code);
+        Assert.Contains("'brandLogo' of 'page'", error.Message);
+    }
+
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_revision_keeps_the_entity_flag_of_an_older_open_draft(string provider)
+    {
+        await using var scenario = await ScenarioAsync(provider);
+        await PublishedProductAsync(scenario);
+        var open = ChangeSetTarget.Existing((await scenario.OpenAsync()).Id);
+        await scenario.RunSchemaAsync(directory => directory.ReviseAsync("product", 1, new ContentTypeDefinition([Title], isEntity: true), open));
+        var rejected = await scenario.OpenAsync();
+        await scenario.RunSchemaAsync(directory => directory.ReviseAsync("product", 1, new ContentTypeDefinition([Title, Name], isEntity: true), ChangeSetTarget.Existing(rejected.Id)));
+        await RejectAsync(scenario, rejected.Id);
+        var next = ChangeSetTarget.Existing((await scenario.OpenAsync()).Id);
+
+        var plain = await scenario.RunSchemaAsync(directory => directory.ReviseAsync("product", 1, WithPrice, next));
+
+        var error = Assert.Single(plain.Errors);
+        Assert.Equal(SchemaErrorCodes.EntityFlagRemoved, error.Code);
+        Assert.StartsWith("Version 2 of the content type 'product'", error.Message);
+    }
+
+    // The daily cap is counted inside the write's unit of work, so concurrent opens take turns; a refusal stores nothing but its
+    // security event (SEC-08).
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_write_that_would_open_a_set_past_the_agents_daily_cap_is_refused(string provider)
+    {
+        await using var scenario = await ChangeSetScenario.CreateAsync(provider);
+        await scenario.UpdateAgentAsync(row => row.ChangeSetsPerDay = 1);
+        await scenario.OpenAsync();
+
+        var refused = await scenario.RunSchemaAsync(directory => directory.CreateAsync(Product, ChangeSetTarget.Session("schema-session", CatalogSync)));
+
+        Assert.Equal(AgentPermissionErrorCodes.CapExceeded, Assert.Single(refused.Errors).Code);
+        Assert.Single(await scenario.ChangeSetRowsAsync());
+        Assert.False(await scenario.QueryAsync(context => context.ContentTypes.AnyAsync(row => row.Slug == "product")));
+        Assert.Single(await scenario.QueryAsync(context => context.AuditEvents
+            .AsNoTracking()
+            .Where(row => row.Operation == "agent.change_sets_per_day_exceeded")
+            .ToListAsync()));
+    }
+
     // A revision moves the latest version and the set's revision before its events are appended, so each failure point comes
     // after something reached the database.
     [Theory]
@@ -477,6 +574,7 @@ public sealed class SchemaChangeSetTests
         using var document = JsonDocument.Parse(json);
         return document.RootElement.Clone();
     }
+
     // Content type writes here are a person's, who also makes the review moves (MCP-06).
     private static async Task<ChangeSetScenario> ScenarioAsync(string provider)
     {
@@ -492,6 +590,23 @@ public sealed class SchemaChangeSetTests
         await scenario.PublishAsync(changeSet.Id);
 
         return created;
+    }
+
+    // An entity brand with a logo, and a page that references nothing yet, both live.
+    private static async Task PublishedBrandAndPageAsync(ChangeSetScenario scenario)
+    {
+        var changeSet = await scenario.OpenAsync();
+        var target = ChangeSetTarget.Existing(changeSet.Id);
+        await scenario.RunSchemaAsync(directory => directory.CreateAsync(new NewContentType("Brand", "brand", new ContentTypeDefinition([Name, Logo], isEntity: true)), target));
+        await scenario.RunSchemaAsync(directory => directory.CreateAsync(new NewContentType("Page", "page", new ContentTypeDefinition([Title])), target));
+        await scenario.PublishAsync(changeSet.Id);
+    }
+
+    private static async Task RejectAsync(ChangeSetScenario scenario, Guid changeSetId)
+    {
+        await scenario.RunAsync(directory => directory.TransitionAsync(changeSetId, ChangeSetState.ChecksRunning));
+        await scenario.RunAsync(directory => directory.TransitionAsync(changeSetId, ChangeSetState.AwaitingReview));
+        await scenario.RunAsync(directory => directory.RejectAsync(changeSetId, "Not now."));
     }
 
     private static Task<Guid?> VersionRowAsync(ChangeSetScenario scenario, Guid contentTypeId, int version)

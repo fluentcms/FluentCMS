@@ -362,21 +362,8 @@ internal sealed class ChangeSetDirectory(
             .AnyAsync(operation => operation.ItemId == itemId && operation.ProposedVersion == version, cancellationToken);
     }
 
-    // The versions of these items that sets which can still publish propose, as (item, version).
-    internal async Task<HashSet<(Guid ItemId, int Version)>> LiveProposalsAsync(
-        ItemKind itemKind,
-        IReadOnlyCollection<Guid> itemIds,
-        CancellationToken cancellationToken)
-    {
-        var rows = await LiveOperations(itemKind)
-            .Where(operation => itemIds.Contains(operation.ItemId) && operation.ProposedVersion != null)
-            .Select(operation => new { operation.ItemId, Version = operation.ProposedVersion!.Value })
-            .ToListAsync(cancellationToken);
-
-        return rows.Select(row => (row.ItemId, row.Version)).ToHashSet();
-    }
-
-    private IQueryable<ChangeSetOperationRow> LiveOperations(ItemKind itemKind)
+    // The operations of sets that can still publish, for a caller's query to join.
+    internal IQueryable<ChangeSetOperationRow> LiveOperations(ItemKind itemKind)
     {
         return
             from operation in context.ChangeSetOperations.AsNoTracking()
@@ -421,6 +408,7 @@ internal sealed class ChangeSetDirectory(
             ? ExtendOperationAsync(pending.ChangeSet, pending.Position, previousVersionId, cancellationToken)
             : InsertOperationAsync(pending.ChangeSet, pending.Position, previousVersionId, cancellationToken);
     }
+
     private async Task<Result<PendingOperation>> PrepareJoinAsync(
         StoredChangeSet stored,
         ChangeOperation operation,
