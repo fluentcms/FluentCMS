@@ -124,3 +124,8 @@ public sealed class EntityToolsConformanceTests : ToolProviderConformanceTests
 {
     protected override object Provider { get; } = new EntityTools();
 }
+
+public sealed class DeskToolsConformanceTests : ToolProviderConformanceTests
+{
+    protected override object Provider { get; } = new DeskTools();
+}
