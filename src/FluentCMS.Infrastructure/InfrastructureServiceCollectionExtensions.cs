@@ -60,7 +60,7 @@ public static class InfrastructureServiceCollectionExtensions
         AddRouting(services);
         AddJobs(services);
         AddModels(services, configuration);
-        AddWebhooks(services);
+        AddWebhooks(services, configuration);
 
         services.AddHostedService<DatabaseMigrator>();
 
@@ -182,9 +182,14 @@ public static class InfrastructureServiceCollectionExtensions
     }
 
     // Subscriptions share the outbound allow-list with the model gateway (SEC-05); the host provides the secret protector (SEC-07).
-    private static void AddWebhooks(IServiceCollection services)
+    private static void AddWebhooks(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddOptions<WebhookOptions>().Bind(configuration.GetSection(WebhookOptions.SectionName)).ValidateOnStart();
+        services.AddSingleton<IValidateOptions<WebhookOptions>, WebhookOptionsValidation>();
         services.AddScoped<IWebhookDirectory, WebhookDirectory>();
+        services.AddSingleton<WebhookClient>();
+        services.AddFluentCmsExtension<IChangeSetEvents, WebhookPublishListener>(ServiceLifetime.Scoped);
+        services.AddFluentCmsExtension<IJobHandler, WebhookDeliveryJob>(ServiceLifetime.Scoped);
     }
 
     // The provider wiring behind the gateway in Core (ADR-0008). A profile the host cannot use stops it at startup.

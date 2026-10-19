@@ -69,6 +69,8 @@ public abstract class FluentCmsDbContext(DbContextOptions options) : IdentityDbC
 
     public DbSet<PreviewTokenRow> PreviewTokens => Set<PreviewTokenRow>();
 
+    public DbSet<WebhookDeliveryRow> WebhookDeliveries => Set<WebhookDeliveryRow>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -97,6 +99,7 @@ public abstract class FluentCmsDbContext(DbContextOptions options) : IdentityDbC
         builder.ApplyConfiguration(new CheckResultConfiguration());
         builder.ApplyConfiguration(new WebhookSubscriptionConfiguration());
         builder.ApplyConfiguration(new PreviewTokenConfiguration());
+        builder.ApplyConfiguration(new WebhookDeliveryConfiguration());
 
         builder.Entity<FluentCmsUser>(user =>
         {
