@@ -1,0 +1,248 @@
+@page "/sets/{Id:guid}"
+@using System.Globalization
+@using FluentCMS.Admin.Components.Review
+@using FluentCMS.Core.Audit
+@using FluentCMS.Core.ChangeSets
+@inject IChangeSetDirectory Directory
+@inject IAuditReader Audit
+@inject NavigationManager Navigation
+@inject IStringLocalizer<ChangeSetView> L
+
+<PageTitle>@L["Change set"]</PageTitle>
+
+@if (_set is { } set)
+{
+    <div class="grid gap-2" data-testid="change-set" data-state="@StateSlug(set.State)">
+        <p class="text-sm text-muted-foreground">@L["Change set"] <bdi class="font-mono text-xs" dir="ltr">@set.Id</bdi></p>
+        <h1 class="text-2xl font-semibold tracking-tight whitespace-pre-line">@set.Rationale</h1>
+        <div class="flex flex-wrap items-center gap-2 text-sm">
+            <Badge Variant="@StateVariant(set.State)" data-testid="change-set-state">@StateLabel(set.State)</Badge>
+            @if (set.Initiator is AgentInitiator)
+            {
+                <Badge data-initiator="agent">@L["Agent"]</Badge>
+            }
+            else
+            {
+                <Badge Variant="secondary" data-initiator="user">@L["User"]</Badge>
+            }
+            <bdi>@set.Initiator.DisplayName</bdi>
+            @if (_openedAt is { } openedAt)
+            {
+                <span class="text-muted-foreground">@L["opened"] @Time(openedAt)</span>
+            }
+            @if (_stateSince is { } since && since != _openedAt)
+            {
+                <span class="text-muted-foreground">@L["in this state since"] @Time(since)</span>
+            }
+        </div>
+        @if (set.RevertsChangeSetId is { } reverted)
+        {
+            <p class="text-sm" data-testid="change-set-reverts">
+                @L["This set reverts"] <a href="@($"sets/{reverted}")" class="font-mono text-xs underline underline-offset-4" dir="ltr">@reverted</a>
+            </p>
+        }
+        @if (set.RejectionReason is { } reason)
+        {
+            <div class="rounded-md border border-destructive/50 px-3 py-2 text-sm" data-testid="change-set-rejection">
+                <p class="font-medium">@L["Rejected because"]</p>
+                <p class="whitespace-pre-line">@reason</p>
+            </div>
+        }
+    </div>
+
+    <div class="mt-6 grid gap-6 lg:grid-cols-3">
+        <Card Class="lg:col-span-2" data-testid="change-set-sources">
+            <CardHeader>
+                <CardTitle><h2 id="sources-heading">@L["Sources"]</h2></CardTitle>
+                <CardDescription>@L["Where the changes came from. A web address opens in a new tab."]</CardDescription>
+            </CardHeader>
+            <CardContent>
+                @if (set.Sources.Count == 0)
+                {
+                    <p class="text-sm text-muted-foreground">@L["This set cites no sources."]</p>
+                }
+                else
+                {
+                    <ul class="grid gap-1 text-sm" aria-labelledby="sources-heading">
+                        @foreach (var source in set.Sources)
+                        {
+                            <li class="break-all">
+                                @if (Openable(source) is { } address)
+                                {
+                                    <a href="@address" target="_blank" rel="noopener noreferrer" class="underline underline-offset-4" dir="ltr">@source</a>
+                                }
+                                else
+                                {
+                                    <bdi>@source</bdi>
+                                }
+                            </li>
+                        }
+                    </ul>
+                }
+            </CardContent>
+        </Card>
+
+        <div class="grid content-start gap-6">
+            <Card data-testid="change-set-checks">
+                <CardHeader>
+                    <CardTitle><h2>@L["Checks"]</h2></CardTitle>
+                    <CardDescription>
+                        @if (set.State == ChangeSetState.ChecksFailed)
+                        {
+                            @L["The checks failed for this set."]
+                        }
+                        else
+                        {
+                            @L["No check results are stored for this set."]
+                        }
+                        @L["Results per check appear here once checks run on every change set."]
+                    </CardDescription>
+                </CardHeader>
+            </Card>
+            <Card data-testid="change-set-routing">
+                <CardHeader>
+                    <CardTitle><h2>@L["Routing"]</h2></CardTitle>
+                    <CardDescription>@L["Routing has not decided on this set. Its decision, with the rules that applied and why, appears here once routing is available."]</CardDescription>
+                </CardHeader>
+            </Card>
+        </div>
+    </div>
+
+    <section class="mt-8" aria-labelledby="items-heading">
+        <h2 id="items-heading" class="text-lg font-semibold">@L["Items"] <span class="text-muted-foreground">(@set.Operations.Count.ToString(CultureInfo.CurrentCulture))</span></h2>
+        <div class="mt-4">
+            <ChangeSetItems ChangeSetId="set.Id" @rendermode="InteractiveServer" />
+        </div>
+    </section>
+
+    <section class="mt-8" aria-labelledby="history-heading" data-testid="change-set-history">
+        <h2 id="history-heading" class="text-lg font-semibold">@L["History"]</h2>
+        <ol class="mt-4 grid gap-2 text-sm">
+            @foreach (var auditEvent in _history)
+            {
+                <li class="flex flex-wrap items-center gap-2" data-operation="@auditEvent.Operation">
+                    <span class="font-medium">@EventLabel(auditEvent.Operation)</span>
+                    <bdi class="text-muted-foreground">@auditEvent.Initiator.DisplayName</bdi>
+                    <span class="ms-auto">@Time(auditEvent.Timestamp)</span>
+                </li>
+            }
+        </ol>
+        @if (_historyTruncated)
+        {
+            <p class="mt-2 text-sm text-muted-foreground">
+                @L["Only the first {0} events are shown.", HistoryLimit]
+                <a href="@($"audit?type=change_set&id={set.Id}")" class="underline underline-offset-4">@L["See the full history"]</a>
+            </p>
+        }
+    </section>
+}
+
+@code {
+    private const int HistoryLimit = 200;
+
+    // The events the directory appends when it opens a set and on each move; refusals and other events about the set are history too.
+    private static readonly HashSet<string> Moves =
+    [
+        "change_set.opened",
+        "change_set.reopened",
+        "change_set.submitted",
+        "change_set.checks_failed",
+        "change_set.awaiting_review",
+        "change_set.approved",
+        "change_set.published",
+        "change_set.rejected",
+        "change_set.reverted",
+    ];
+
+    private ChangeSet? _set;
+    private List<AuditEvent> _history = [];
+    private bool _historyTruncated;
+    private DateTimeOffset? _openedAt;
+    private DateTimeOffset? _stateSince;
+
+    [Parameter] public Guid Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var read = await Directory.GetAsync(Id);
+        if (!read.IsSuccess)
+        {
+            Navigation.NotFound();
+            return;
+        }
+
+        _set = read.Value;
+
+        var history = Audit.Read(new AuditQuery { Subject = new AuditSubject("change_set", Id) });
+        if (history.IsSuccess)
+        {
+            await foreach (var auditEvent in history.Value)
+            {
+                if (_history.Count == HistoryLimit)
+                {
+                    _historyTruncated = true;
+                    break;
+                }
+
+                _history.Add(auditEvent);
+            }
+        }
+
+        var moves = _history.Where(auditEvent => Moves.Contains(auditEvent.Operation)).ToList();
+        _openedAt = moves.FirstOrDefault(auditEvent => auditEvent.Operation == "change_set.opened")?.Timestamp;
+        _stateSince = _historyTruncated ? null : moves.LastOrDefault()?.Timestamp;
+    }
+
+    // Only a web address becomes a link, so a source such as "javascript:" or a file path is never followed.
+    public static string? Openable(string source)
+    {
+        return Uri.TryCreate(source, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp)
+            ? uri.AbsoluteUri
+            : null;
+    }
+
+    private static string StateSlug(ChangeSetState state) => state switch
+    {
+        ChangeSetState.ChecksRunning => "checks-running",
+        ChangeSetState.ChecksFailed => "checks-failed",
+        ChangeSetState.AwaitingReview => "awaiting-review",
+        _ => state.ToString().ToLowerInvariant(),
+    };
+
+    private string StateLabel(ChangeSetState state) => state switch
+    {
+        ChangeSetState.Open => L["Open"],
+        ChangeSetState.ChecksRunning => L["Checks running"],
+        ChangeSetState.ChecksFailed => L["Checks failed"],
+        ChangeSetState.AwaitingReview => L["Awaiting review"],
+        ChangeSetState.Approved => L["Approved"],
+        ChangeSetState.Published => L["Published"],
+        ChangeSetState.Rejected => L["Rejected"],
+        _ => L["Reverted"],
+    };
+
+    private static string StateVariant(ChangeSetState state) => state switch
+    {
+        ChangeSetState.ChecksFailed or ChangeSetState.Rejected => "destructive",
+        ChangeSetState.AwaitingReview or ChangeSetState.Approved => "default",
+        ChangeSetState.Published => "secondary",
+        _ => "outline",
+    };
+
+    private string EventLabel(string operation) => operation switch
+    {
+        "change_set.opened" => L["Opened"],
+        "change_set.reopened" => L["Reopened"],
+        "change_set.submitted" => L["Submitted for checks"],
+        "change_set.checks_failed" => L["Checks failed"],
+        "change_set.awaiting_review" => L["Awaiting review"],
+        "change_set.approved" => L["Approved"],
+        "change_set.published" => L["Published"],
+        "change_set.rejected" => L["Rejected"],
+        "change_set.reverted" => L["Reverted"],
+        _ => operation,
+    };
+
+    private static RenderFragment Time(DateTimeOffset time) =>
+        @<time datetime="@time.ToString("O", CultureInfo.InvariantCulture)" dir="ltr" class="text-muted-foreground">@time.UtcDateTime.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture) UTC</time>;
+}

@@ -34,7 +34,7 @@ public sealed class DeskTests
     }
 
     [Fact]
-    public void A_set_shows_its_rationale_initiator_items_and_time_and_links_to_its_history()
+    public void A_set_shows_its_rationale_initiator_items_and_time_and_links_to_its_view()
     {
         var queues = new FakeQueues();
         using var context = Context(queues);
@@ -46,7 +46,7 @@ public sealed class DeskTests
         Assert.Equal(queues.Agent.Id.ToString("N"), rows[0].GetAttribute("data-change-set"));
         var link = rows[0].QuerySelector("a")!;
         Assert.Equal("Sync prices from the catalog export.", link.TextContent);
-        Assert.Equal($"audit?type=change_set&id={queues.Agent.Id}", link.GetAttribute("href"));
+        Assert.Equal($"sets/{queues.Agent.Id}", link.GetAttribute("href"));
         Assert.Equal("agent", rows[0].QuerySelector("[data-initiator]")!.GetAttribute("data-initiator"));
         Assert.Contains("catalog-sync", rows[0].TextContent);
         Assert.Contains("12", rows[0].QuerySelectorAll("td")[2].TextContent);
