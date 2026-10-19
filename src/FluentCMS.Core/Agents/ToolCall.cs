@@ -13,6 +13,9 @@ public enum ToolCallOutcome
 
     // The tool never ran because the call was over the credential's calls per period; not counted toward that cap.
     Refused,
+
+    // The tool is running; the outcome replaces this when it ends. It counts toward the cap, so calls made at once take their places in turn.
+    Running,
 }
 
 // One tool call an agent made (MCP-07). Arguments and results are not kept: they hold content, and the audit log records every

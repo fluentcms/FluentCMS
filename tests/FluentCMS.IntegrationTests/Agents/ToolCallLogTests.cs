@@ -31,6 +31,25 @@ public sealed class ToolCallLogTests
         Assert.Equal(TimeSpan.FromMilliseconds(12), row.Duration);
     }
 
+    // Only a call still running gets an outcome, so a finish that arrives twice leaves the first one.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_running_call_is_finished_once(string provider)
+    {
+        await using var scenario = await AgentCredentialScenario.CreateAsync(provider);
+        var agent = (await scenario.IssueAsync()).Credential;
+        var call = Call(agent) with { Outcome = ToolCallOutcome.Running, Duration = TimeSpan.Zero };
+        var log = scenario.Services.GetRequiredService<IToolCallLog>();
+        await log.AppendAsync(call);
+
+        await log.FinishAsync(call.Id, ToolCallOutcome.Succeeded, TimeSpan.FromMilliseconds(30));
+        await log.FinishAsync(call.Id, ToolCallOutcome.Errored, TimeSpan.FromMilliseconds(40));
+
+        var row = Assert.Single(await scenario.QueryAsync(context => context.ToolCalls.AsNoTracking().ToListAsync()));
+        Assert.Equal((ToolCallOutcome.Succeeded, TimeSpan.FromMilliseconds(30)), (row.Outcome, row.Duration));
+    }
+
     private static ToolCall Call(AgentCredential agent)
     {
         return new ToolCall
