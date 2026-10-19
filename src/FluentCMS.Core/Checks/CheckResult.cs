@@ -1,3 +1,5 @@
+using FluentCMS.Core.Identity;
+
 namespace FluentCMS.Core.Checks;
 
 // What a check's verdict means for the content (CHK-03): a failure blocks or warns as the check's severity says.
@@ -61,11 +63,11 @@ public sealed record CheckRun(IReadOnlyList<CheckResult> Results, IReadOnlyList<
 // neither is a run that includes LLM-judged checks: the caller runs it before any unit of work begins.
 public interface ICheckRunner
 {
-    // ChargedTo names the agent whose spend cap LLM-judged checks count against, when the caller is not that agent (SEC-04).
+    // OnBehalfOf names whose work an engine judges, so LLM-judged checks count against that agent's spend cap (SEC-04).
     Task<CheckRun> RunAsync(
         CheckSubject subject,
         CheckSelection selection = CheckSelection.All,
-        Guid? chargedTo = null,
+        Initiator? onBehalfOf = null,
         CancellationToken cancellationToken = default);
 
     // Runs the given active checks, read once by a caller that checks many subjects, so each is judged by the same checks.
@@ -73,6 +75,6 @@ public interface ICheckRunner
         CheckSubject subject,
         IReadOnlyList<Check> active,
         CheckSelection selection = CheckSelection.All,
-        Guid? chargedTo = null,
+        Initiator? onBehalfOf = null,
         CancellationToken cancellationToken = default);
 }

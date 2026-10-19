@@ -12,7 +12,7 @@ public sealed class EngineJobsTests
     [Fact]
     public void A_handler_that_names_no_engine_runs_as_whoever_enqueued_its_job()
     {
-        Assert.Null(Engines().RunAs(new Handler(null)).Value);
+        Assert.Null(Engines().RunAs(new Handler(null), new UserInitiator(Guid.NewGuid(), "Amir")).Value);
     }
 
     [Fact]
@@ -21,17 +21,27 @@ public sealed class EngineJobsTests
         using var provider = new ServiceCollection().AddFluentCmsCore().BuildServiceProvider();
         var checkRun = provider.GetServices<IJobHandler>().Single(handler => handler.Type == "checks.run");
 
-        Assert.Equal(SystemInitiator.Checks, provider.GetRequiredService<EngineJobs>().RunAs(checkRun).Value);
+        Assert.Equal(SystemInitiator.Checks, provider.GetRequiredService<EngineJobs>().RunAs(checkRun, new AgentInitiator(Guid.NewGuid(), "agent")).Value);
     }
 
     [Fact]
     public void A_handler_Core_does_not_list_cannot_claim_an_engine()
     {
-        var claimed = Engines().RunAs(new Handler(SystemInitiator.Checks));
+        var claimed = Engines().RunAs(new Handler(SystemInitiator.Checks), null);
 
         var error = Assert.Single(claimed.Errors);
         Assert.Equal(JobErrorCodes.EngineNotAllowed, error.Code);
         Assert.Contains("'checks' engine", error.Message);
+    }
+
+    // Code running inside an engine's scope, such as a check type, enqueues as that engine; the job still runs only through a
+    // handler Core lists for the engine, so the engine is not passed on.
+    [Fact]
+    public void A_job_an_engine_enqueued_for_a_handler_Core_does_not_list_is_refused()
+    {
+        var passedOn = Engines().RunAs(new Handler(null), SystemInitiator.Checks);
+
+        Assert.Equal(JobErrorCodes.EngineNotAllowed, Assert.Single(passedOn.Errors).Code);
     }
 
     private static EngineJobs Engines()

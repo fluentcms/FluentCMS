@@ -13,6 +13,7 @@
 @inject IEntryDirectory Entries
 @inject IEntryEdits Edits
 @inject IMediaLibrary Media
+@inject FluentCMS.Core.Identity.IUserDirectory Users
 @inject FieldTypeRegistry FieldTypes
 @inject NavigationManager Navigation
 @inject IStringLocalizer<EntryEditor> L
@@ -31,47 +32,48 @@
 
     @if (type.Definition.IsEntity)
     {
-        <p class="mt-6 rounded-md border px-3 py-2 text-sm text-muted-foreground" data-testid="entity-form-note">@L["Entity forms, with a source, owner and validity on every fact, come with the next forms slice."]</p>
+        <p class="mt-2 text-sm text-muted-foreground">@L["An entity type: every field is a fact with its source, owner and validity."]</p>
     }
-    else
-    {
-        <form method="post" @onsubmit="SaveAsync" @formname="entry" class="mt-6 grid gap-6" data-testid="entry-form">
-            <AntiforgeryToken />
-            <input type="hidden" name="Form.BaseVersion" value="@(_entry?.LatestVersion ?? 0)" />
-            @if (_formError is not null)
-            {
-                <p role="alert" class="rounded-md border border-destructive/50 px-3 py-2 text-sm text-destructive" data-testid="entry-form-error">@_formError</p>
-            }
-            <Card>
-                <CardHeader>
-                    <CardTitle><h2>@L["Fields"]</h2></CardTitle>
-                </CardHeader>
-                <CardContent Class="grid gap-6 sm:grid-cols-2">
-                    @foreach (var field in type.Definition.Fields)
+    <form method="post" @onsubmit="SaveAsync" @formname="entry" class="mt-6 grid gap-6" data-testid="entry-form">
+        <AntiforgeryToken />
+        <input type="hidden" name="Form.BaseVersion" value="@(_entry?.LatestVersion ?? 0)" />
+        @if (_formError is not null)
+        {
+            <p role="alert" class="rounded-md border border-destructive/50 px-3 py-2 text-sm text-destructive" data-testid="entry-form-error">@_formError</p>
+        }
+        <Card>
+            <CardHeader>
+                <CardTitle><h2>@L["Fields"]</h2></CardTitle>
+            </CardHeader>
+            <CardContent Class="grid gap-6 sm:grid-cols-2">
+                @foreach (var field in type.Definition.Fields)
+                {
+                    <FieldWidget Field="field" Value="@Shown.Values.GetValueOrDefault(field.Name)" Error="@_fieldErrors.GetValueOrDefault(field.Name)" Options="@_options.GetValueOrDefault(field.Name, [])" />
+                    @if (type.Definition.IsEntity)
                     {
-                        <FieldWidget Field="field" Value="@Shown.Values.GetValueOrDefault(field.Name)" Error="@_fieldErrors.GetValueOrDefault(field.Name)" Options="@_options.GetValueOrDefault(field.Name, [])" />
+                        <FactFields Field="@field.Name" Values="Shown.Facts" Problems="@_factProblems.GetValueOrDefault(field.Name, new Dictionary<string, string>())" Owners="_owners" Unsourced="@_unsourced.Contains(field.Name)" />
                     }
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader>
-                    <CardTitle><h2>@L["Change set"]</h2></CardTitle>
-                    <CardDescription>@L["The reviewer reads why you made the change and where it comes from."]</CardDescription>
-                </CardHeader>
-                <CardContent Class="grid gap-6">
-                    <FormField Label="@L["Why (required)"]" Error="@_rationaleError">
-                        <Textarea name="Form.Rationale" rows="2" value="@Shown.Rationale" required />
-                    </FormField>
-                    <FormField Label="@L["Sources"]" Description="@L["Optional, one per line, such as a URL or a file name."]">
-                        <Textarea name="Form.Sources" rows="2" value="@Shown.Sources" dir="ltr" />
-                    </FormField>
-                </CardContent>
-            </Card>
-            <div>
-                <Button Type="submit" data-action="save">@L["Save to a change set"]</Button>
-            </div>
-        </form>
-    }
+                }
+            </CardContent>
+        </Card>
+        <Card>
+            <CardHeader>
+                <CardTitle><h2>@L["Change set"]</h2></CardTitle>
+                <CardDescription>@L["The reviewer reads why you made the change and where it comes from."]</CardDescription>
+            </CardHeader>
+            <CardContent Class="grid gap-6">
+                <FormField Label="@L["Why (required)"]" Error="@_rationaleError">
+                    <Textarea name="Form.Rationale" rows="2" value="@Shown.Rationale" required />
+                </FormField>
+                <FormField Label="@L["Sources"]" Description="@L["Optional, one per line, such as a URL or a file name."]">
+                    <Textarea name="Form.Sources" rows="2" value="@Shown.Sources" dir="ltr" />
+                </FormField>
+            </CardContent>
+        </Card>
+        <div>
+            <Button Type="submit" data-action="save">@L["Save to a change set"]</Button>
+        </div>
+    </form>
 }
 
 @code {
@@ -79,6 +81,9 @@
     private Entry? _entry;
     private Dictionary<string, IReadOnlyList<FieldOption>> _options = new(StringComparer.Ordinal);
     private Dictionary<string, string> _fieldErrors = new(StringComparer.Ordinal);
+    private Dictionary<string, Dictionary<string, string>> _factProblems = new(StringComparer.Ordinal);
+    private HashSet<string> _unsourced = new(StringComparer.Ordinal);
+    private IReadOnlyList<FieldOption> _owners = [];
     private string? _rationaleError;
     private string? _formError;
 
@@ -127,9 +132,20 @@
         }
 
         Shown = new EntryFormModel { BaseVersion = _entry?.LatestVersion ?? 0 };
+        _unsourced.Clear();
         foreach (var field in _type.Definition.Fields)
         {
             JsonElement? stored = _entry is not null && _entry.Latest.Fields.TryGetProperty(field.Name, out var value) ? value : null;
+            if (_type.Definition.IsEntity)
+            {
+                if (FactValues.IsUnsourced(stored))
+                {
+                    _unsourced.Add(field.Name);
+                }
+
+                stored = FactValues.Show(field.Name, stored, Shown.Facts);
+            }
+
             Shown.Values[field.Name] = FieldValues.Show(field, stored);
         }
 
@@ -139,6 +155,11 @@
     // Until the pickers search (F-SRC), a reference offers every entry of its target type and a media field every asset.
     private async Task LoadOptionsAsync()
     {
+        if (_type!.Definition.IsEntity)
+        {
+            _owners = [.. (await Users.ListAsync()).Where(user => !user.IsDisabled).Select(user => new FieldOption(user.Id.ToString(), user.DisplayName))];
+        }
+
         foreach (var field in _type!.Definition.Fields)
         {
             if (field.Type == "reference" && FieldValues.Setting(field, "target") is { } target)
@@ -157,7 +178,7 @@
 
     private async Task SaveAsync()
     {
-        if (_type is null || Form is null || _type.Definition.IsEntity)
+        if (_type is null || Form is null)
         {
             return;
         }
@@ -190,7 +211,21 @@
                 continue;
             }
 
-            fields[field.Name] = value;
+            if (!_type.Definition.IsEntity)
+            {
+                fields[field.Name] = value;
+                continue;
+            }
+
+            var problems = new Dictionary<string, string>();
+            var fact = FactValues.Read(field.Name, value, Form.Facts, problems);
+            if (fact is null)
+            {
+                _factProblems[field.Name] = problems;
+                continue;
+            }
+
+            fields[field.Name] = fact;
         }
 
         if (string.IsNullOrWhiteSpace(Form.Rationale))
@@ -198,7 +233,7 @@
             _rationaleError = L["Say why you are making this change."];
         }
 
-        if (_fieldErrors.Count > 0 || _rationaleError is not null)
+        if (_fieldErrors.Count > 0 || _factProblems.Count > 0 || _rationaleError is not null)
         {
             Shown = Form;
             return;

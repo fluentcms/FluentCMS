@@ -20,6 +20,7 @@ public sealed class SystemInitiatorTests
         Assert.Equal(("checks", "checks"), (SystemInitiator.Checks.Component, SystemInitiator.Checks.DisplayName));
         Assert.Equal(("system", SystemInitiator.Retention.Id), InitiatorKinds.Describe(SystemInitiator.Retention));
         Assert.Throws<InvalidOperationException>(() => InitiatorKinds.RestoreSystem("Check Engine", SystemInitiator.Checks.Id));
+        Assert.Throws<InvalidOperationException>(() => InitiatorKinds.RestoreSystem("billing", Guid.NewGuid()));
         Assert.DoesNotContain(typeof(SystemInitiator).GetConstructors(), constructor => constructor.GetParameters() is [{ ParameterType: var type }] && type == typeof(string));
     }
 

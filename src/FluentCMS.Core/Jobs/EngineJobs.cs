@@ -15,21 +15,27 @@ public sealed class EngineJobs
         _engines = engines.ToFrozenDictionary();
     }
 
-    // The engine a handler's jobs run as, null to run them as whoever enqueued them, or a failure when it names an engine it is not
-    // listed for, so the worker fails the job instead of running it as anyone.
-    public Result<SystemInitiator?> RunAs(IJobHandler handler)
+    // The engine a job runs as, null to run it as whoever enqueued it, or a failure, so the worker fails the job instead of running
+    // it as anyone: when its handler names an engine it is not listed for, or when an engine enqueued it for a handler not listed for
+    // that engine, as code running inside an engine's scope might, to pass the engine on.
+    public Result<SystemInitiator?> RunAs(IJobHandler handler, Initiator? enqueuedBy)
     {
         ArgumentNullException.ThrowIfNull(handler);
 
-        if (handler.RunAs is not { } claimed)
+        var listed = _engines.GetValueOrDefault(handler.GetType());
+        if (handler.RunAs is { } claimed)
         {
-            return Result<SystemInitiator?>.Success(null);
+            return listed == claimed
+                ? Result<SystemInitiator?>.Success(claimed)
+                : Result<SystemInitiator?>.Failure(
+                    JobErrorCodes.EngineNotAllowed,
+                    $"The handler of '{handler.Type}' jobs claims to run as the '{claimed.Component}' engine, which only Core's own handlers may.");
         }
 
-        return _engines.TryGetValue(handler.GetType(), out var engine) && engine == claimed
-            ? Result<SystemInitiator?>.Success(claimed)
-            : Result<SystemInitiator?>.Failure(
+        return enqueuedBy is SystemInitiator engine && listed != engine
+            ? Result<SystemInitiator?>.Failure(
                 JobErrorCodes.EngineNotAllowed,
-                $"The handler of '{handler.Type}' jobs claims to run as the '{claimed.Component}' engine, which only Core's own handlers may.");
+                $"The '{engine.Component}' engine enqueued a '{handler.Type}' job, and an engine's jobs run only through the handlers Core lists for it.")
+            : Result<SystemInitiator?>.Success(null);
     }
 }

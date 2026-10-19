@@ -74,8 +74,8 @@ public sealed class JobQueueWorker(
             return true;
         }
 
-        // Only a handler Core lists runs as an engine; one that claims an engine it is not listed for fails, run as no one (ADR-0012).
-        var runAs = runScope.ServiceProvider.GetRequiredService<EngineJobs>().RunAs(handler);
+        // Only a handler Core lists runs as an engine, or a job an engine enqueued; any other claim fails, run as no one (ADR-0012).
+        var runAs = runScope.ServiceProvider.GetRequiredService<EngineJobs>().RunAs(handler, job.Initiator);
         if (!runAs.IsSuccess)
         {
             var refused = runAs.Errors[0];

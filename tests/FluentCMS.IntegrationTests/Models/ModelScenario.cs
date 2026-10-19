@@ -72,6 +72,7 @@ internal sealed class ModelScenario : IAsyncDisposable
             ["Models:Profiles:anthropic:OutputCostPerMillionTokens"] = "15",
             ["Models:Profiles:broken:Provider"] = "openai",
             ["Models:Profiles:broken:Model"] = "gpt-broken",
+            ["Models:Profiles:broken:InputCostPerMillionTokens"] = "10",
             ["Models:Profiles:broken:OutputCostPerMillionTokens"] = "20",
             ["Outbound:AllowedHosts:0"] = "api.openai.com",
             ["Outbound:AllowedHosts:1"] = "localhost",
@@ -151,11 +152,18 @@ internal sealed class FakeProviders : HttpMessageHandler
 {
     public ConcurrentQueue<(HttpMethod Method, Uri Uri, Dictionary<string, string> Headers, string Body)> Requests { get; } = new();
 
+    // Set to hold every answer until it completes, as a slow provider would.
+    public TaskCompletionSource? Gate { get; set; }
+
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         var body = request.Content is null ? string.Empty : await request.Content.ReadAsStringAsync(cancellationToken);
         var headers = request.Headers.ToDictionary(header => header.Key.ToLowerInvariant(), header => string.Join(",", header.Value));
         Requests.Enqueue((request.Method, request.RequestUri!, headers, body));
+        if (Gate is { } gate)
+        {
+            await gate.Task.WaitAsync(cancellationToken);
+        }
 
         var path = request.RequestUri!.AbsolutePath;
         if (body.Contains("gpt-broken", StringComparison.Ordinal))

@@ -1,3 +1,5 @@
+using FluentCMS.Core.Media;
+
 namespace FluentCMS.Infrastructure.Media;
 
 // An asset and its pointers to the latest version and the published one; each version is its own MediaAssetVersionRow.
@@ -42,4 +44,14 @@ public sealed class MediaAssetVersionRow
     public string? Caption { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; }
+
+    internal MediaAssetVersion ToVersion()
+    {
+        return new MediaAssetVersion(
+            AssetId,
+            Version,
+            new MediaBlob(ContentType, Length, Sha256, Storage, StorageKey),
+            new AssetMetadata(FileName, Folder, Tags, AltText, Caption),
+            CreatedAt);
+    }
 }

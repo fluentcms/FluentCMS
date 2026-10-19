@@ -92,7 +92,7 @@ internal sealed class ConnectedAgent(
     public Task<ContentType> CreateAsPersonAsync(string slug)
     {
         return AsPersonAsync<IContentTypeDirectory, ContentType>(directory =>
-            directory.CreateAsync(new NewContentType(slug, slug, new ContentTypeDefinition([new FieldDefinition("title", "text")]))));
+            directory.CreateAsync(new NewContentType(slug, slug, new ContentTypeDefinition([new FieldDefinition("title", "text")])), TestChangeSetTargets.ContentModel));
     }
 
     public async Task<T> QueryAsync<T>(Func<FluentCmsDbContext, Task<T>> query)
