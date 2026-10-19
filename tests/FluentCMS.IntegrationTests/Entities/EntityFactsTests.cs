@@ -141,7 +141,7 @@ public sealed class EntityFactsTests
             var entries = scope.ServiceProvider.GetRequiredService<IEntryDirectory>();
             foreach (var (slug, isEntity, fields) in SchemaScenario.ReferenceModel)
             {
-                Assert.True((await types.CreateAsync(new NewContentType(slug, slug, new ContentTypeDefinition(fields, isEntity)))).IsSuccess);
+                Assert.True((await types.CreateAsync(new NewContentType(slug, slug, new ContentTypeDefinition(fields, isEntity)), TestChangeSetTargets.ContentModel)).IsSuccess);
             }
 
             Assert.True((await entries.CreateAsync(new NewEntry("category", Json("""{"name": {"value": "Tools", "source": null, "owner": null, "validFrom": null, "validUntil": "2020-01-01T00:00:00Z", "lastVerified": null}}""")))).IsSuccess);

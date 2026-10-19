@@ -161,6 +161,91 @@ public sealed class SearchTests
         Assert.Equal((5, true), (unfiltered.Value.Hits.Count, unfiltered.Value.Complete));
     }
 
+    // An entity's price is a fact, so the filter compares the fact's value; text and filters both have to hold.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task Field_filters_narrow_a_text_search_and_filter_one_type_without_words(string provider)
+    {
+        await using var scenario = await EntryScenario.CreateAsync(provider);
+        await scenario.Schema.CreateEntityAsync("product", Field("name", "text"), Field("price", "number"));
+        var cheap = (await scenario.CreateAsync("product", $$"""{"name": {{Fact("\"Widget\"")}}, "price": {{Fact("19.99")}}}""")).Value.Id;
+        await scenario.CreateAsync("product", $$"""{"name": {{Fact("\"Widget Pro\"")}}, "price": {{Fact("25")}}}""");
+        await scenario.CreateAsync("product", $$"""{"name": {{Fact("\"Gadget\"")}}, "price": {{Fact("5")}}}""");
+
+        var underTwenty = await SearchAsync(scenario, new SearchQuery("widget")
+        {
+            ContentTypes = ["product"],
+            Fields = [new FieldFilter("price", FieldOperator.LessThan, Json("20"))],
+        });
+        var noWords = await SearchAsync(scenario, new SearchQuery(string.Empty)
+        {
+            ContentTypes = ["product"],
+            Fields = [new FieldFilter("name", FieldOperator.Contains, Json("\"wid\""))],
+        });
+
+        Assert.Equal([cheap], underTwenty.Select(hit => hit.EntryId));
+        Assert.Equal(2, noWords.Count);
+        Assert.All(noWords, hit => Assert.Equal(0, hit.Rank));
+    }
+
+    // Only the latest version counts, so a page that referenced the product before an update is left out.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_reference_filter_keeps_the_entries_whose_latest_version_references_the_id(string provider)
+    {
+        await using var scenario = await CatalogAsync(provider);
+        var earlier = (await scenario.Entries.CreateAsync("page", $$"""{"title": "Last season", "product": "{{scenario.Product}}"}""")).Value.Id;
+        await scenario.Entries.UpdateAsync(earlier, 1, """{"title": "Last season", "product": null}""");
+
+        var referencing = await SearchAsync(scenario.Entries, new SearchQuery(string.Empty) { ContentTypes = ["page"], References = scenario.Product });
+        var withWords = await SearchAsync(scenario.Entries, new SearchQuery("seller") { References = scenario.Product });
+        var otherWords = await SearchAsync(scenario.Entries, new SearchQuery("hours") { References = scenario.Product });
+
+        Assert.Equal([scenario.Page], referencing.Select(hit => hit.EntryId));
+        Assert.Equal([scenario.Page], withWords.Select(hit => hit.EntryId));
+        Assert.Empty(otherWords);
+    }
+
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task Field_filters_that_name_no_single_type_or_do_not_fit_their_field_are_refused(string provider)
+    {
+        await using var scenario = await CatalogAsync(provider);
+        var byName = new FieldFilter("name", FieldOperator.Contains, Json("\"wid\""));
+
+        var noType = await RunAsync(scenario.Entries, new SearchQuery("widget") { Fields = [byName] });
+        var twoTypes = await RunAsync(scenario.Entries, new SearchQuery("widget") { ContentTypes = ["product", "page"], Fields = [byName] });
+        var noWordsNoType = await RunAsync(scenario.Entries, new SearchQuery(string.Empty) { References = scenario.Product });
+        var emptyFields = await RunAsync(scenario.Entries, new SearchQuery("widget") { ContentTypes = ["product"], Fields = [] });
+        var unknownField = await RunAsync(scenario.Entries, new SearchQuery("widget")
+        {
+            ContentTypes = ["product"],
+            Fields = [new FieldFilter("colour", FieldOperator.EqualTo, Json("\"red\""))],
+        });
+        await scenario.Entries.Schema.CreateAsync("event", Field("seats", "number"), Field("starts", "dateTime"));
+        var containsOnNumber = await RunAsync(scenario.Entries, new SearchQuery(string.Empty)
+        {
+            ContentTypes = ["event"],
+            Fields = [new FieldFilter("seats", FieldOperator.Contains, Json("\"10\""))],
+        });
+        var wrongKind = await RunAsync(scenario.Entries, new SearchQuery(string.Empty)
+        {
+            ContentTypes = ["event"],
+            Fields = [new FieldFilter("seats", FieldOperator.LessThan, Json("\"ten\"")), new FieldFilter("starts", FieldOperator.AtLeast, Json("\"10/19/2026\""))],
+        });
+
+        Assert.Equal(SearchErrorCodes.FilterNeedsOneType, Assert.Single(noType.Errors).Code);
+        Assert.Equal(SearchErrorCodes.FilterNeedsOneType, Assert.Single(twoTypes.Errors).Code);
+        Assert.Equal(SearchErrorCodes.FilterNeedsOneType, Assert.Single(noWordsNoType.Errors).Code);
+        Assert.Equal(SearchErrorCodes.FilterEmpty, Assert.Single(emptyFields.Errors).Code);
+        Assert.Equal(SearchErrorCodes.FieldNotFound, Assert.Single(unknownField.Errors).Code);
+        Assert.Equal(SearchErrorCodes.OperatorNotSupported, Assert.Single(containsOnNumber.Errors).Code);
+        Assert.Equal([SearchErrorCodes.FilterValueInvalid, SearchErrorCodes.FilterValueInvalid], wrongKind.Errors.Select(error => error.Code));
+    }
+
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
     [PostgresData]
