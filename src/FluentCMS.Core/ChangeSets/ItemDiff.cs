@@ -28,6 +28,15 @@ public sealed class ItemDiff
 
     public IReadOnlyList<ValueDiff> Fields { get; }
 
+    // A diff read back from where it was kept, such as the state the set view carries into its circuit.
+    public static ItemDiff Restore(ChangeOperation operation, IReadOnlyList<ValueDiff> properties, IReadOnlyList<ValueDiff> fields)
+    {
+        ArgumentNullException.ThrowIfNull(operation);
+        ArgumentNullException.ThrowIfNull(properties);
+        ArgumentNullException.ThrowIfNull(fields);
+        return new ItemDiff(operation, properties, fields);
+    }
+
     // The base definition is absent for a create and the proposed one for a delete, as the operation's versions say. A field's
     // value is its definition without the name.
     public static ItemDiff ForSchema(ChangeOperation operation, ContentTypeDefinition? baseDefinition, ContentTypeDefinition? proposedDefinition)

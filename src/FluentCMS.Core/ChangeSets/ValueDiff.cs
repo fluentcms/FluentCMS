@@ -23,6 +23,13 @@ public sealed class ValueDiff
 
     public JsonElement? After { get; }
 
+    // A diff read back from where it was kept, such as the state the set view carries into its circuit.
+    public static ValueDiff Restore(string name, ValueChange change, JsonElement? before, JsonElement? after)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(name);
+        return new ValueDiff(name, change, before, after);
+    }
+
     // Values are matched by exact name and compared as JSON, so property order and number formatting are not changes. The result
     // follows the order of the later version, then lists the removed values in the order of the earlier one.
     public static IReadOnlyList<ValueDiff> Compare(

@@ -185,6 +185,10 @@
                                 @if (Openable(source) is { } address)
                                 {
                                     <a href="@address" target="_blank" rel="noopener noreferrer" class="underline underline-offset-4" dir="ltr">@source</a>
+                                    @if (AsciiHost(address) is { } host)
+                                    {
+                                        <span class="ms-1 text-xs text-muted-foreground" dir="ltr" data-testid="source-host">@L["(host {0})", host]</span>
+                                    }
                                 }
                                 else
                                 {
@@ -607,6 +611,15 @@
         _ => L["The set was reverted. Nothing more can be done with it."],
     };
 
+    // A host written with other than ASCII letters, such as a Cyrillic "а" in a look-alike of apple.com, is shown as the host it
+    // resolves to, so a reader sees xn--pple-43d.com rather than what looks like apple.com.
+    public static string? AsciiHost(string address)
+    {
+        return Uri.TryCreate(address, UriKind.Absolute, out var uri) && uri.HostNameType == UriHostNameType.Dns && uri.Host != uri.IdnHost
+            ? uri.IdnHost
+            : null;
+    }
+
     // Only a web address becomes a link, so a source such as "javascript:" or a file path is never followed.
     public static string? Openable(string source)
     {
@@ -654,9 +667,9 @@
         "change_set.published" => L["Published"],
         "change_set.rejected" => L["Rejected"],
         "change_set.reverted" => L["Reverted"],
-        _ => operation,
+        _ => L["Other event ({0})", operation],
     };
 
-    private static RenderFragment Time(DateTimeOffset time) =>
-        @<time datetime="@time.ToString("O", CultureInfo.InvariantCulture)" dir="ltr" class="text-muted-foreground">@time.UtcDateTime.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture) UTC</time>;
+    private RenderFragment Time(DateTimeOffset time) =>
+        @<time datetime="@time.ToString("O", CultureInfo.InvariantCulture)" dir="ltr" class="text-muted-foreground">@L["{0} UTC", time.UtcDateTime.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)]</time>;
 }
