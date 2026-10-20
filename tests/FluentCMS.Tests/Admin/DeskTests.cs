@@ -72,7 +72,10 @@ public sealed class DeskTests
         Assert.Equal([null, "-1"], links.Select(link => link.GetAttribute("tabindex")));
         Assert.Equal(["1", "2", "3", "4", "5", "6"], cut.FindAll("[data-queue]").Select(link => link.GetAttribute("aria-keyshortcuts")));
         Assert.Equal("?", cut.Find("[data-testid=shortcut-help]").GetAttribute("aria-keyshortcuts"));
-        Assert.Equal(5, cut.FindAll("[data-testid=shortcut-list] dt").Count);
+        Assert.Equal(6, cut.FindAll("[data-testid=shortcut-list] dt").Count);
+        Assert.Equal("Home End", string.Join(" ", cut.FindAll("[data-testid=shortcut-list] dt")[3].QuerySelectorAll("kbd").Select(key => key.TextContent)));
+        Assert.Equal("single-key-shortcuts", cut.Find("[role=switch]").GetAttribute("data-ui"));
+        Assert.True(cut.Find("[role=switch]").HasAttribute("checked"));
     }
 
     [Theory]

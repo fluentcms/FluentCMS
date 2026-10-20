@@ -102,6 +102,115 @@ public sealed class KeyboardReviewTests
         await page.WaitForURLAsync(new Regex("/\\?queue=awaiting-me$"));
     }
 
+    // WCAG 2.1 SC 2.1.4: single-key shortcuts turn off in the help, and stay off in this browser after a reload.
+    [BrowserFact]
+    public async Task Single_key_shortcuts_turn_off_in_the_help_and_stay_off_after_a_reload()
+    {
+        await using var session = await BrowserSession.StartAsync();
+        var set = await AwaitingReviewAsync(session, "product", 2);
+        var page = session.Page;
+
+        await session.SignInWithKeyboardAsync();
+        await page.GotoAsync($"{session.BaseUrl}/sets/{set.Id}?queue=awaiting-me");
+        await Assertions.Expect(page.Locator("[data-testid=change-set-items][data-interactive=true]")).ToBeVisibleAsync();
+        await page.Keyboard.PressAsync("?");
+        var toggle = page.Locator("[data-ui=single-key-shortcuts]");
+        await Assertions.Expect(toggle).ToBeCheckedAsync();
+        await toggle.FocusAsync();
+        await page.Keyboard.PressAsync("Space");
+        await Assertions.Expect(toggle).Not.ToBeCheckedAsync();
+        await page.Keyboard.PressAsync("Escape");
+
+        await page.Keyboard.PressAsync("j");
+        await page.Keyboard.PressAsync("a");
+        Assert.Equal(-1, await page.EvaluateAsync<int>("[...document.querySelectorAll('[data-slot=diff-view-item-summary]')].indexOf(document.activeElement)"));
+        Assert.Equal(ChangeSetState.AwaitingReview, await StateAsync(session, set.Id));
+
+        await page.ReloadAsync();
+        await Assertions.Expect(page.Locator("[data-action=approve]")).ToBeVisibleAsync();
+        await page.Keyboard.PressAsync("a");
+        await page.Keyboard.PressAsync("?");
+        Assert.Equal(ChangeSetState.AwaitingReview, await StateAsync(session, set.Id));
+        await Assertions.Expect(page.GetByTestId("shortcut-list")).Not.ToBeVisibleAsync();
+        await page.GetByTestId("shortcut-help").ClickAsync();
+        await Assertions.Expect(page.Locator("[data-ui=single-key-shortcuts]")).Not.ToBeCheckedAsync();
+    }
+
+    [BrowserFact]
+    public async Task Arrow_keys_home_and_end_move_through_desk_rows_and_set_items()
+    {
+        await using var session = await BrowserSession.StartAsync();
+        var large = await AwaitingReviewAsync(session, "large", 5);
+        await AwaitingReviewAsync(session, "second", 1);
+        await AwaitingReviewAsync(session, "third", 1);
+        var page = session.Page;
+
+        await session.SignInWithKeyboardAsync();
+        var rows = "[...document.querySelectorAll('[data-change-set]')].findIndex(row => row.contains(document.activeElement))";
+        await page.Keyboard.PressAsync("j");
+        Assert.Equal(0, await page.EvaluateAsync<int>(rows));
+        await page.Keyboard.PressAsync("ArrowDown");
+        Assert.Equal(1, await page.EvaluateAsync<int>(rows));
+        await page.Keyboard.PressAsync("End");
+        Assert.Equal(2, await page.EvaluateAsync<int>(rows));
+        await page.Keyboard.PressAsync("ArrowUp");
+        Assert.Equal(1, await page.EvaluateAsync<int>(rows));
+        await page.Keyboard.PressAsync("Home");
+        Assert.Equal(0, await page.EvaluateAsync<int>(rows));
+
+        await page.GotoAsync($"{session.BaseUrl}/sets/{large.Id}");
+        await Assertions.Expect(page.Locator("[data-testid=change-set-items][data-interactive=true]")).ToBeVisibleAsync();
+        var items = "[...document.querySelectorAll('[data-slot=diff-view-item-summary]')].indexOf(document.activeElement)";
+        await page.Keyboard.PressAsync("j");
+        Assert.Equal(0, await page.EvaluateAsync<int>(items));
+        await page.Keyboard.PressAsync("ArrowDown");
+        Assert.Equal(1, await page.EvaluateAsync<int>(items));
+        await page.Keyboard.PressAsync("End");
+        Assert.Equal(4, await page.EvaluateAsync<int>(items));
+        await page.Keyboard.PressAsync("Home");
+        Assert.Equal(0, await page.EvaluateAsync<int>(items));
+    }
+
+    // Outside any dialog, a key typed into a field types: B in a generated form's title does not go back.
+    [BrowserFact]
+    public async Task A_shortcut_key_typed_into_a_form_field_types_and_does_not_act()
+    {
+        await using var session = await BrowserSession.StartAsync();
+        await session.Host.AsUserAsync<IContentTypeDirectory, ContentType>(session.OwnerId, async types => (await types.CreateAsync(
+            new NewContentType("Note", "note", new ContentTypeDefinition([new FieldDefinition("title", "text")])), TestChangeSetTargets.ContentModel)).Value);
+        var page = session.Page;
+
+        await session.SignInWithKeyboardAsync();
+        await page.GotoAsync($"{session.BaseUrl}/content/note/new");
+        await page.Locator("input[name='Form.Values[title]']").FocusAsync();
+        await page.Keyboard.TypeAsync("Big bold jab");
+
+        Assert.Equal("Big bold jab", await page.Locator("input[name='Form.Values[title]']").InputValueAsync());
+        Assert.EndsWith("/content/note/new", page.Url);
+    }
+
+    // After a decision the next set is the one that followed this one, not the head of the queue the reviewer skipped past.
+    [BrowserFact]
+    public async Task Skipping_a_set_and_approving_the_next_lands_on_the_set_after_it()
+    {
+        await using var session = await BrowserSession.StartAsync();
+        var first = await AwaitingReviewAsync(session, "first", 1);
+        var second = await AwaitingReviewAsync(session, "second", 1);
+        var third = await AwaitingReviewAsync(session, "third", 1);
+        var page = session.Page;
+
+        await session.SignInWithKeyboardAsync();
+        await page.GotoAsync($"{session.BaseUrl}/sets/{first.Id}?queue=awaiting-me");
+        await Assertions.Expect(page.Locator("[data-action=approve]")).ToBeVisibleAsync();
+        await page.Keyboard.PressAsync("n");
+        await page.WaitForURLAsync(new Regex($"/sets/{second.Id}\\?queue=awaiting-me$"));
+        await Assertions.Expect(page.Locator($"[data-testid=next-in-queue][href*='{third.Id}']")).ToBeAttachedAsync();
+        await page.Keyboard.PressAsync("a");
+
+        await page.WaitForURLAsync(new Regex($"/sets/{third.Id}\\?queue=awaiting-me&done=approved$"));
+        Assert.Equal((ChangeSetState.AwaitingReview, ChangeSetState.Approved), (await StateAsync(session, first.Id), await StateAsync(session, second.Id)));
+    }
+
     private static async Task<string?> FocusedTextAsync(IPage page)
     {
         return (await page.EvaluateAsync<string?>("document.activeElement?.textContent"))?.Trim();

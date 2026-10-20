@@ -172,7 +172,8 @@ public sealed class ChangeSetViewTests
         Assert.Equal($"sets/{next}?queue=awaiting-anyone", cut.Find("[data-testid=next-in-queue]").GetAttribute("href"));
         Assert.Equal("N", cut.Find("[data-testid=next-in-queue]").GetAttribute("aria-keyshortcuts"));
         Assert.Equal("The previous set was approved.", cut.Find("[data-testid=review-done]").TextContent);
-        Assert.Equal(9, cut.FindAll("[data-testid=shortcut-list] dt").Count);
+        Assert.Equal(11, cut.FindAll("[data-testid=shortcut-list] dt").Count);
+        Assert.Contains("Space", cut.Find("[data-testid=shortcut-list]").TextContent);
     }
 
     [Fact]

@@ -328,7 +328,9 @@ const observer = new MutationObserver((mutations) => {
         const { input } = commandParts(mutation.target);
         if (input) inputs.add(input);
         for (const node of mutation.addedNodes) {
-            if (node instanceof Element) node.querySelectorAll('[data-ui="command-input"]').forEach((added) => inputs.add(added));
+            if (!(node instanceof Element)) continue;
+            node.querySelectorAll('[data-ui="command-input"]').forEach((added) => inputs.add(added));
+            showSingleKeys(node);
         }
     }
     inputs.forEach(filterCommand);
@@ -343,6 +345,34 @@ const observer = new MutationObserver((mutations) => {
 // shortcuts inside it apply.
 
 const modifiers = { control: "ctrlKey", alt: "altKey", shift: "shiftKey", meta: "metaKey" };
+
+// WCAG 2.1 SC 2.1.4: a person can turn off every shortcut without Control, Alt or Meta, in the shortcuts dialog
+// (ShortcutHelp.razor). The choice is kept in this browser, and storage that refuses leaves them on.
+const singleKeysStorage = "fluentcms-single-key-shortcuts";
+
+function singleKeysOn() {
+    try {
+        return localStorage.getItem(singleKeysStorage) !== "off";
+    } catch {
+        return true;
+    }
+}
+
+function chooseSingleKeys(on) {
+    try {
+        if (on) localStorage.removeItem(singleKeysStorage);
+        else localStorage.setItem(singleKeysStorage, "off");
+    } catch {
+        // The choice lasts for this page only.
+    }
+}
+
+// The page renders the switch on; it shows the stored choice, again whenever Blazor renders it anew.
+function showSingleKeys(root) {
+    const toggles = [...(root.querySelectorAll?.('[data-ui="single-key-shortcuts"]') ?? [])];
+    if (root.matches?.('[data-ui="single-key-shortcuts"]')) toggles.push(root);
+    toggles.forEach((toggle) => { toggle.checked = singleKeysOn(); });
+}
 const editable = (element) => element.isContentEditable
     || element.matches('input:not([type="checkbox"], [type="radio"], [type="button"], [type="submit"], [type="reset"]), textarea, select');
 const shown = (element) => (element.checkVisibility ? element.checkVisibility() : visible(element)) && !element.closest("[inert]");
@@ -364,7 +394,7 @@ function matchesShortcut(event, shortcut) {
 function onShortcutKeydown(event) {
     if (event.defaultPrevented || event.isComposing || event.repeat || ["Control", "Alt", "Shift", "Meta"].includes(event.key)) return false;
     const chord = event.ctrlKey || event.altKey || event.metaKey;
-    if (!chord && (editable(event.target) || event.target.closest('[data-ui="menu"]'))) return false;
+    if (!chord && (!singleKeysOn() || editable(event.target) || event.target.closest('[data-ui="menu"]'))) return false;
     const modal = document.querySelector("dialog:modal");
     for (const element of document.querySelectorAll("[aria-keyshortcuts]")) {
         if ((modal && !modal.contains(element)) || element.matches(":disabled") || !shown(element)) continue;
@@ -390,11 +420,12 @@ function onRoveKeydown(event) {
     if (event.ctrlKey || event.altKey || event.metaKey || event.isComposing) return false;
     const target = event.target;
     const inside = target.closest('[data-ui="rove"]');
+    // J and K also match their physical keys, as the other letters do, so they work on any layout.
     const key = event.key.toLowerCase();
-    const step = key === "j" ? 1 : key === "k" ? -1 : 0;
+    const step = key === "j" || event.code === "KeyJ" ? 1 : key === "k" || event.code === "KeyK" ? -1 : 0;
 
     if (step !== 0) {
-        if (event.shiftKey || editable(target) || target.closest('[data-ui="menu"]')) return false;
+        if (!singleKeysOn() || event.shiftKey || editable(target) || target.closest('[data-ui="menu"]')) return false;
         const modal = document.querySelector("dialog:modal");
         const list = inside ?? [...document.querySelectorAll('[data-ui="rove"]')].find((candidate) => (!modal || modal.contains(candidate)) && roveItems(candidate).length > 0);
         if (!list || (modal && !modal.contains(list))) return false;
@@ -536,6 +567,10 @@ document.addEventListener("keydown", (event) => {
     if (trap) trapFocus(event, trap);
 });
 
+document.addEventListener("change", (event) => {
+    if (event.target.matches?.('[data-ui="single-key-shortcuts"]')) chooseSingleKeys(event.target.checked);
+});
+
 document.addEventListener("input", (event) => {
     if (event.target.matches?.('[data-ui="command-input"]')) filterCommand(event.target);
 });
@@ -549,4 +584,5 @@ document.addEventListener("toggle", onMenuToggle, true);
 document.addEventListener("toggle", onPopoverToggle, true);
 document.addEventListener("components-reconnect-state-changed", onReconnectStateChanged, true);
 document.querySelectorAll('[data-ui="command-input"]').forEach(filterCommand);
+showSingleKeys(document);
 observer.observe(document.body, { childList: true, subtree: true });
