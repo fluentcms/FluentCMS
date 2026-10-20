@@ -1017,7 +1017,7 @@ internal sealed class ChangeSetDirectory(
         {
             // A delete published from here unpublishes the asset; its versions and its bytes stay.
             return await context.MediaAssets
-                .Where(asset => asset.Id == operation.ItemId && asset.PublishedVersion == operation.BaseVersion)
+                .Where(asset => asset.Id == operation.ItemId && asset.PublishedVersion == operation.BaseVersion && asset.DeletedAt == null)
                 .ExecuteUpdateAsync(setters => setters.SetProperty(asset => asset.PublishedVersion, operation.ProposedVersion), cancellationToken) == 1;
         }
 
@@ -1234,9 +1234,21 @@ internal sealed class ChangeSetDirectory(
     // operation on media.
     private async Task<Result<Guid?>> ResolveMediaAsync(ChangeOperation operation, CancellationToken cancellationToken)
     {
-        if (!await context.MediaAssets.AnyAsync(asset => asset.Id == operation.ItemId && asset.SiteId == SiteId, cancellationToken))
+        var asset = await context.MediaAssets
+            .AsNoTracking()
+            .Where(row => row.Id == operation.ItemId && row.SiteId == SiteId)
+            .Select(row => new { row.DeletedAt })
+            .SingleOrDefaultAsync(cancellationToken);
+        if (asset is null)
         {
             return Result<Guid?>.Failure(ChangeSetErrorCodes.ItemNotFound, $"There is no media asset {operation.ItemId} in this site.");
+        }
+
+        if (asset.DeletedAt is not null)
+        {
+            return Result<Guid?>.Failure(
+                ChangeSetErrorCodes.ItemNotFound,
+                $"Media asset {operation.ItemId} is deleted; restore it before a change set points at it.");
         }
 
         var allowed = await permissions.CheckMediaAsync(AgentOperationOf(operation.Kind), cancellationToken);
@@ -1312,7 +1324,7 @@ internal sealed class ChangeSetDirectory(
         var assets = await context.MediaAssets
             .AsNoTracking()
             .Where(asset => asset.SiteId == SiteId && ids.Contains(asset.Id))
-            .Select(asset => new { asset.Id, asset.PublishedVersion })
+            .Select(asset => new { asset.Id, asset.PublishedVersion, Deleted = asset.DeletedAt != null })
             .ToListAsync(cancellationToken);
         var versionIds = (await context.MediaAssetVersions
             .AsNoTracking()
@@ -1323,7 +1335,7 @@ internal sealed class ChangeSetDirectory(
 
         return assets.ToDictionary(
             asset => asset.Id,
-            asset => new PublishedEntry(asset.PublishedVersion, Deleted: false, versionIds[asset.Id].ToDictionary(version => version.Version, version => version.Id)));
+            asset => new PublishedEntry(asset.PublishedVersion, asset.Deleted, versionIds[asset.Id].ToDictionary(version => version.Version, version => version.Id)));
     }
 
     private static string Capitalize(string text)

@@ -12,6 +12,9 @@ public sealed class MediaAssetRow
     public int LatestVersion { get; set; }
 
     public int? PublishedVersion { get; set; }
+
+    // Set by a soft delete and cleared by a restore; every read leaves a deleted asset out (CNT-06).
+    public DateTimeOffset? DeletedAt { get; set; }
 }
 
 // One version of an asset's metadata with the bytes it points at; inserted once and never changed, which a trigger enforces.

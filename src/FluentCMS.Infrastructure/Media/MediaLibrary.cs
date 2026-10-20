@@ -1,8 +1,10 @@
+using FluentCMS.Core.Agents;
 using FluentCMS.Core.Audit;
 using FluentCMS.Core.Media;
 using FluentCMS.Core.Persistence;
 using FluentCMS.Core.Results;
 using FluentCMS.Core.Sites;
+using FluentCMS.Infrastructure.Content;
 using FluentCMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -15,8 +17,10 @@ internal sealed class MediaLibrary(
     FluentCmsDbContext context,
     IUnitOfWork unitOfWork,
     IAuditLog auditLog,
+    IAgentPermissions permissions,
     MediaStorageRegistry storages,
     IOptions<MediaOptions> options,
+    IOptions<ContentOptions> contentOptions,
     TimeProvider clock) : IMediaLibrary
 {
     private const string SubjectType = "media";
@@ -127,7 +131,7 @@ internal sealed class MediaLibrary(
 
         // Moves the pointer only from the version the caller read; a concurrent update that committed first leaves nothing to move.
         var moved = await context.MediaAssets
-            .Where(asset => asset.Id == id && asset.LatestVersion == baseVersion)
+            .Where(asset => asset.Id == id && asset.LatestVersion == baseVersion && asset.DeletedAt == null)
             .ExecuteUpdateAsync(setters => setters.SetProperty(asset => asset.LatestVersion, version.Version), cancellationToken);
         if (moved == 0)
         {
@@ -270,13 +274,121 @@ internal sealed class MediaLibrary(
             : Result<MediaContent>.Success(new MediaContent(content, stored.ContentType, stored.FileName, stored.Length));
     }
 
+    public async Task<Result> DeleteAsync(Guid id, int baseVersion, CancellationToken cancellationToken = default)
+    {
+        var row = await FindAsync(id, cancellationToken);
+        if (row is null)
+        {
+            return Result.Failure([NotFound(id)]);
+        }
+
+        var allowed = await permissions.CheckMediaAsync(AgentOperation.Delete, cancellationToken);
+        if (!allowed.IsSuccess)
+        {
+            return allowed;
+        }
+
+        if (row.LatestVersion != baseVersion)
+        {
+            return Result.Failure([Conflict(id, baseVersion)]);
+        }
+
+        var latest = await VersionRowAsync(id, baseVersion, cancellationToken)
+            ?? throw new InvalidOperationException($"Media asset {id} points at version {baseVersion}, which is not stored.");
+
+        await using var scope = await unitOfWork.BeginAsync(cancellationToken);
+
+        // Only from the version the caller read, and only once: a concurrent update or delete that committed first wins.
+        var deletedAt = clock.GetUtcNow();
+        var deleted = await context.MediaAssets
+            .Where(asset => asset.Id == id && asset.LatestVersion == baseVersion && asset.DeletedAt == null)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(asset => asset.DeletedAt, deletedAt), cancellationToken);
+        if (deleted == 0)
+        {
+            return Result.Failure([Conflict(id, baseVersion)]);
+        }
+
+        await auditLog.AppendAsync(
+            new NewAuditEvent("media.deleted") { SubjectType = SubjectType, SubjectId = id, PreviousVersionId = latest.Id },
+            cancellationToken);
+        await scope.CommitAsync(cancellationToken);
+
+        return Result.Success();
+    }
+
+    public async Task<Result<MediaAsset>> RestoreAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var row = await FindAsync(id, cancellationToken, includeDeleted: true);
+        if (row is null)
+        {
+            return Result<MediaAsset>.Failure([NotFound(id)]);
+        }
+
+        // Restoring undoes a delete, so it takes the same operation.
+        var allowed = await permissions.CheckMediaAsync(AgentOperation.Delete, cancellationToken);
+        if (!allowed.IsSuccess)
+        {
+            return Result<MediaAsset>.Failure(allowed.Errors);
+        }
+
+        if (row.DeletedAt is not { } deletedAt)
+        {
+            return Result<MediaAsset>.Failure([NotDeleted(id)]);
+        }
+
+        var until = deletedAt + contentOptions.Value.DeletedRetention;
+        if (clock.GetUtcNow() >= until)
+        {
+            return Result<MediaAsset>.Failure(
+                MediaErrorCodes.RetentionExpired,
+                $"Media asset {id} was deleted at {deletedAt:O} and could be restored until {until:O}; that window has closed.");
+        }
+
+        var latest = await VersionRowAsync(id, row.LatestVersion, cancellationToken)
+            ?? throw new InvalidOperationException($"Media asset {id} points at version {row.LatestVersion}, which is not stored.");
+
+        await using var scope = await unitOfWork.BeginAsync(cancellationToken);
+
+        // A concurrent restore that committed first leaves nothing to restore.
+        var restored = await context.MediaAssets
+            .Where(asset => asset.Id == id && asset.DeletedAt != null)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(asset => asset.DeletedAt, (DateTimeOffset?)null), cancellationToken);
+        if (restored == 0)
+        {
+            return Result<MediaAsset>.Failure([NotDeleted(id)]);
+        }
+
+        await auditLog.AppendAsync(new NewAuditEvent("media.restored") { SubjectType = SubjectType, SubjectId = id }, cancellationToken);
+        await scope.CommitAsync(cancellationToken);
+
+        return Result<MediaAsset>.Success(new MediaAsset(id, row.SiteId, row.LatestVersion, row.PublishedVersion, latest.ToVersion()));
+    }
+
+    public async Task<IReadOnlyList<DeletedAsset>> ListDeletedAsync(CancellationToken cancellationToken = default)
+    {
+        var rows = await (
+            from asset in context.MediaAssets.AsNoTracking()
+            join version in context.MediaAssetVersions.AsNoTracking()
+                on new { AssetId = asset.Id, Version = asset.LatestVersion } equals new { version.AssetId, version.Version }
+            where asset.SiteId == SiteId && asset.DeletedAt != null
+            select new { asset.Id, version.FileName, asset.LatestVersion, asset.DeletedAt })
+            .ToListAsync(cancellationToken);
+
+        // Ordered here, because SQLite cannot order by the stored offsets.
+        return rows
+            .Select(row => new DeletedAsset(row.Id, row.FileName, row.LatestVersion, row.DeletedAt!.Value, row.DeletedAt.Value + contentOptions.Value.DeletedRetention))
+            .OrderByDescending(asset => asset.DeletedAt)
+            .ThenBy(asset => asset.Id)
+            .ToList();
+    }
+
     // The latest version of every asset of the site, which lists and folders read.
     private IQueryable<MediaAssetVersionRow> LatestVersions()
     {
         return
             from version in context.MediaAssetVersions.AsNoTracking()
             join asset in context.MediaAssets.AsNoTracking() on version.AssetId equals asset.Id
-            where asset.SiteId == SiteId && version.Version == asset.LatestVersion
+            where asset.SiteId == SiteId && asset.DeletedAt == null && version.Version == asset.LatestVersion
             select version;
     }
 
@@ -287,9 +399,11 @@ internal sealed class MediaLibrary(
             ?? throw new InvalidOperationException($"Media__Storage is '{options.Value.Storage}', which is no registered media storage.");
     }
 
-    private Task<MediaAssetRow?> FindAsync(Guid id, CancellationToken cancellationToken)
+    private Task<MediaAssetRow?> FindAsync(Guid id, CancellationToken cancellationToken, bool includeDeleted = false)
     {
-        return context.MediaAssets.AsNoTracking().SingleOrDefaultAsync(asset => asset.Id == id && asset.SiteId == SiteId, cancellationToken);
+        return context.MediaAssets
+            .AsNoTracking()
+            .SingleOrDefaultAsync(asset => asset.Id == id && asset.SiteId == SiteId && (includeDeleted || asset.DeletedAt == null), cancellationToken);
     }
 
     private Task<MediaAssetVersionRow?> VersionRowAsync(Guid id, int version, CancellationToken cancellationToken)
@@ -331,6 +445,11 @@ internal sealed class MediaLibrary(
     private static Error NotFound(Guid id)
     {
         return new Error(MediaErrorCodes.AssetNotFound, $"There is no media asset {id} in this site.");
+    }
+
+    private static Error NotDeleted(Guid id)
+    {
+        return new Error(MediaErrorCodes.AssetNotDeleted, $"Media asset {id} is not deleted, so there is nothing to restore.");
     }
 
     private static Error Conflict(Guid id, int baseVersion)

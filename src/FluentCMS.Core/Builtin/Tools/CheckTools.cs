@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Checks;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Results;
@@ -39,7 +40,11 @@ public sealed class CheckTools : IToolProvider
                     "exports/catalog-2026-10-18.csv",
                     required: false),
                 ToolSchemas.String("checks", "Which checks to run: \"all\", the default, or \"deterministic\".", "deterministic", required: false),
-                ToolSchemas.Uuid("id", "For a draft of an update: the entry it updates, so checks that ask about changes see only what differs.", required: false)),
+                ToolSchemas.Uuid("id", "For a draft of an update: the entry it updates, so checks that ask about changes see only what differs.", required: false),
+                ToolSchemas.Uuid(
+                    "change_set_id",
+                    "The change set the draft will go into, so checks read the media versions it proposes, such as alt text added with update_media.",
+                    required: false)),
 
             // Not read-only: it stores nothing, but an LLM-judged check spends the agent's model budget.
             readOnly: false,
@@ -63,6 +68,7 @@ public sealed class CheckTools : IToolProvider
         var sources = arguments.OptionalStrings("sources", "exports/catalog-2026-10-18.csv") ?? [];
         var checks = arguments.OptionalString("checks", "deterministic");
         var id = arguments.OptionalGuid("id");
+        var changeSetId = arguments.OptionalGuid("change_set_id");
         var errors = arguments.Errors().ToList();
         if (checks is not (null or "all" or "deterministic"))
         {
@@ -79,6 +85,23 @@ public sealed class CheckTools : IToolProvider
         if (!type.IsSuccess)
         {
             return ToolResult.Failure(type.Errors, type.Errors.Any(error => error.Code == SchemaErrorCodes.ContentTypeNotFound) ? FindContentTypes : null);
+        }
+
+        // Checks read what the set proposes, so it must be a set the agent may read and one that can still go live.
+        if (changeSetId is { } setId)
+        {
+            var set = await services.GetRequiredService<IChangeSetDirectory>().GetAsync(setId, cancellationToken);
+            if (!set.IsSuccess)
+            {
+                return ToolResult.Failure(set.Errors);
+            }
+
+            if (set.Value.State is ChangeSetState.Published or ChangeSetState.Rejected or ChangeSetState.Reverted)
+            {
+                return ToolResult.Failure([new Error(
+                    ToolErrorCodes.ArgumentInvalid,
+                    $"Change set {setId} is {ToolJson.Name(set.Value.State)}, so nothing goes live with it any more; give the set the draft goes into.")]);
+            }
         }
 
         IReadOnlyList<string>? changed = null;
@@ -103,7 +126,7 @@ public sealed class CheckTools : IToolProvider
         var definition = type.Value.Definition;
         var refused = EntryFields.Validate(fields!.Value, definition, services.GetRequiredService<FieldTypeRegistry>()).Errors;
         var run = await services.GetRequiredService<ICheckRunner>().RunAsync(
-            new CheckSubject(fields.Value, sources, slug, definition, changed),
+            new CheckSubject(fields.Value, sources, slug, definition, changed, changeSetId),
             checks == "deterministic" ? CheckSelection.Deterministic : CheckSelection.All,
             cancellationToken: cancellationToken);
 
