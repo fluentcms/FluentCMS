@@ -1,0 +1,58 @@
+using System.Text.RegularExpressions;
+using FluentCMS.Core.ChangeSets;
+using FluentCMS.Core.Schema;
+using FluentCMS.Infrastructure.Persistence;
+
+namespace FluentCMS.IntegrationTests.Desk;
+
+public sealed class CheckCardTests
+{
+    // A check job that ended without moving its set leaves the set in checks running; the person who opened it recovers it from the
+    // set view, which fails the set so it can be reopened.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_set_whose_check_job_ended_says_so_and_its_opener_recovers_it(string provider)
+    {
+        using var install = new TemporaryInstall();
+        await using var database = await TemporaryDatabase.CreateAsync(provider);
+        await using var host = await AdminHost.StartAsync(install, settings: database.Configuration);
+        var ownerId = await host.CreateFirstAdministratorAsync();
+        var type = await host.AsUserAsync<IContentTypeDirectory, ContentType>(ownerId, async types => (await types.CreateAsync(
+            new NewContentType("Brand", "brand", new ContentTypeDefinition([new FieldDefinition("name", "text")])), TestChangeSetTargets.ContentModel)).Value);
+        var setId = await CheckedSets.DeadJobAsync(host, ownerId, type);
+        await host.SignInAsync(AdminHost.Owner);
+
+        var page = await host.Client.GetStringAsync($"/sets/{setId}");
+        Assert.Contains("data-testid=\"check-job-ended\"", page);
+        Assert.DoesNotContain("items done", page);
+        Assert.Contains("Run the checks again", page);
+
+        var seen = Regex.Match(page, "name=\"Submit.Seen\" value=\"([0-9a-f]+)\"").Groups[1].Value;
+        var recovered = await host.SubmitAsync($"/sets/{setId}", "submit", new Dictionary<string, string> { ["Submit.Seen"] = seen });
+
+        Assert.Contains("data-state=\"checks-failed\"", await recovered.Content.ReadAsStringAsync());
+        var set = await host.AsUserAsync<IChangeSetDirectory, ChangeSet>(ownerId, async sets => (await sets.GetAsync(setId)).Value);
+        Assert.Equal(ChangeSetState.ChecksFailed, set.State);
+    }
+
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_failing_run_shows_its_findings_and_each_severity(string provider)
+    {
+        using var install = new TemporaryInstall();
+        await using var database = await TemporaryDatabase.CreateAsync(provider);
+        await using var host = await AdminHost.StartAsync(install, settings: database.Configuration);
+        var ownerId = await host.CreateFirstAdministratorAsync();
+        var setId = await CheckedSets.FailingAsync(host, ownerId);
+        await host.SignInAsync(AdminHost.Owner);
+
+        var page = await host.Client.GetStringAsync($"/sets/{setId}");
+
+        Assert.Contains("data-state=\"checks-failed\"", page);
+        Assert.Contains("data-check=\"no-superlatives\" data-status=\"fail\"", page);
+        Assert.Contains("blocks", page[page.IndexOf("data-check=\"no-superlatives\"", StringComparison.Ordinal)..]);
+        Assert.Contains("<bdi>", page[page.IndexOf("data-finding", StringComparison.Ordinal)..]);
+    }
+}
