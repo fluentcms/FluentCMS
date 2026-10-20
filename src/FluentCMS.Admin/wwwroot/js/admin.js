@@ -495,13 +495,14 @@ function reloadOrKeepForm() {
         return;
     }
 
-    document.querySelectorAll('[data-picker] [data-ui="rove-input"]').forEach((box) => { box.disabled = true; });
+    document.querySelectorAll('[data-picker] [data-ui="rove-input"], [data-picker] [role="option"]').forEach((control) => { control.disabled = true; });
     // Without a circuit nothing can render the next page's islands, so an enhanced navigation would keep this page's: every link
     // now loads its page in full, and so do Back and Forward, which Blazor handles without looking at that attribute.
     document.documentElement.setAttribute("data-enhance-nav", "false");
+    // Loaded with GET, so going back to an entry a form's post made never asks to post it again.
     window.addEventListener("popstate", (event) => {
         event.stopImmediatePropagation();
-        location.reload();
+        location.replace(location.href);
     }, { capture: true });
     showReconnectState("lost");
 }

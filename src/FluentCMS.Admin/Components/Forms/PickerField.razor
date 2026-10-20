@@ -135,7 +135,12 @@
         {
             if (Choice is { Value: { } chosen, Label: null })
             {
-                Choice = Choice with { Label = await LabelAsync(services, chosen) };
+                // The person may choose again while the name is read; a name for an earlier choice is not applied.
+                var label = await LabelAsync(services, chosen);
+                if (Choice?.Value == chosen)
+                {
+                    Choice = Choice with { Label = label };
+                }
             }
 
             return;
