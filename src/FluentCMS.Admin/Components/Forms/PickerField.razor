@@ -19,22 +19,22 @@
             <option value="">@L["Choose…"]</option>
             @foreach (var option in _fallback)
             {
-                <option value="@option.Value" selected="@(option.Value == _value)">@option.Label</option>
+                <option value="@option.Value" selected="@(option.Value == Value)">@option.Label</option>
             }
         </Select>
     }
     else
     {
         <div class="grid gap-2" data-picker="@Field">
-            <input type="hidden" name="@Name" value="@_value" />
+            <input type="hidden" name="@Name" value="@Choice?.Value" />
             <div class="flex flex-wrap items-center gap-2 text-sm" data-testid="picker-choice">
-                @if (_value is null)
+                @if (Choice?.Value is null)
                 {
                     <span class="text-muted-foreground">@L["Nothing chosen."]</span>
                 }
                 else
                 {
-                    <span><bdi>@(_chosenLabel ?? _value)</bdi></span>
+                    <span><bdi>@(Choice.Label ?? Choice.Value)</bdi></span>
                     <Button Type="button" Variant="ghost" Size="sm" OnClick="Clear" data-action="clear">@L["Clear"]</Button>
                 }
             </div>
@@ -50,13 +50,13 @@
                    data-field="@Field" />
             @if (_hits.Count > 0)
             {
-                @* data-input names the keystroke these matches answer: admin.js lets Enter choose only when it is the box's latest one. *@
-                <div id="@ListId" role="listbox" aria-label="@L["Matches"]" data-ui="rove" data-input="@_shown" class="grid gap-1 rounded-md border p-1" @onkeydown="OnKeyDown">
+                @* data-for names the text these matches answer: admin.js lets Enter choose only when the box still holds it. *@
+                <div id="@ListId" role="listbox" aria-label="@L["Matches"]" data-ui="rove" data-for="@_shownText" class="grid gap-1 rounded-md border p-1" @onkeydown="OnKeyDown">
                     @foreach (var (hit, index) in _hits.Select((hit, index) => (hit, index)))
                     {
                         <button type="button"
                                 role="option"
-                                aria-selected="@(hit.Value == _value ? "true" : "false")"
+                                aria-selected="@(hit.Value == Choice?.Value ? "true" : "false")"
                                 data-ui="rove-item"
                                 tabindex="@(index == 0 ? null : "-1")"
                                 class="@ClassNames.Cn(ButtonVariants.Classes("ghost", "sm"), "h-auto justify-start py-1.5 text-start whitespace-normal")"
@@ -91,11 +91,8 @@
 
     private readonly string _id = "picker-" + Guid.NewGuid().ToString("N")[..8];
     private readonly CancellationTokenSource _disposed = new();
-    private string? _value;
-    private string? _chosenLabel;
     private int _search;
-    private int _inputs;
-    private int _shown;
+    private string? _shownText;
     private bool _searched;
     private List<PickerHit> _hits = [];
     private IReadOnlyList<FieldOption> _fallback = [];
@@ -109,6 +106,11 @@
     [Parameter] public string? Error { get; set; }
     [Parameter] public bool Required { get; set; }
 
+    // The choice and its name. Kept with the circuit, so a circuit paused and resumed, as after a laptop sleeps, keeps what the person
+    // chose rather than going back to the stored value.
+    [PersistentState]
+    public PickerChoice? Choice { get; set; }
+
     private string Name => $"Form.Values[{Field}]";
 
     private string ListId => _id + "-list";
@@ -117,12 +119,16 @@
     // while a DbContext takes one query at a time.
     protected override async Task OnParametersSetAsync()
     {
-        _value = string.IsNullOrWhiteSpace(Value) ? null : Value;
+        Choice ??= new PickerChoice(string.IsNullOrWhiteSpace(Value) ? null : Value, null);
         await using var scope = Scopes.CreateAsyncScope();
         var services = scope.ServiceProvider;
         if (RendererInfo.IsInteractive)
         {
-            _chosenLabel = _value is null ? null : await LabelAsync(services, _value);
+            if (Choice is { Value: { } chosen, Label: null })
+            {
+                Choice = Choice with { Label = await LabelAsync(services, chosen) };
+            }
+
             return;
         }
 
@@ -132,7 +138,6 @@
     private async Task SearchAsync(ChangeEventArgs change)
     {
         var search = ++_search;
-        var input = ++_inputs;
         var text = (change.Value?.ToString() ?? string.Empty).Trim();
         try
         {
@@ -152,7 +157,7 @@
             // Only the newest search shows its results, whatever order the searches end in.
             if (search == _search)
             {
-                (_hits, _searched, _shown) = (hits, text.Length > 0, input);
+                (_hits, _searched, _shownText) = (hits, text.Length > 0, text);
             }
         }
         catch (OperationCanceledException) when (_disposed.IsCancellationRequested)
@@ -231,10 +236,10 @@
     // The chosen value is always among the select's options, named as the search names it.
     private async Task<IReadOnlyList<FieldOption>> WithChosenAsync(IServiceProvider services, List<FieldOption> choices)
     {
-        if (_value is not null)
+        if (Choice?.Value is { } chosen)
         {
-            choices.RemoveAll(choice => choice.Value == _value);
-            choices.Insert(0, new FieldOption(_value, await LabelAsync(services, _value) ?? _value));
+            choices.RemoveAll(choice => choice.Value == chosen);
+            choices.Insert(0, new FieldOption(chosen, await LabelAsync(services, chosen) ?? chosen));
         }
 
         return choices;
@@ -266,13 +271,13 @@
 
     private void Choose(PickerHit hit)
     {
-        (_value, _chosenLabel) = (hit.Value, hit.Label);
+        Choice = new PickerChoice(hit.Value, hit.Label);
         Reset();
     }
 
     private void Clear()
     {
-        (_value, _chosenLabel) = (null, null);
+        Choice = new PickerChoice(null, null);
     }
 
     private void Reset()
@@ -303,4 +308,6 @@
     public void Dispose() => _disposed.Cancel();
 
     private sealed record PickerHit(string Value, string Label, string? Preview);
+
+    public sealed record PickerChoice(string? Value, string? Label);
 }

@@ -413,8 +413,8 @@ function onRoveKeydown(event) {
     // the box: it chooses the only match, or enters the list when there are more.
     if (target.matches('[data-ui="rove-input"]') && (event.key === "ArrowDown" || event.key === "Enter")) {
         const list = document.getElementById(target.getAttribute("aria-controls"));
-        // Matches for an earlier keystroke are not the answer to what the box holds now, so Enter waits for the new ones.
-        const fresh = !list?.dataset.input || list.dataset.input === target.dataset.inputs;
+        // Matches for an earlier text are not the answer to what the box holds now, so Enter waits for the new ones.
+        const fresh = list?.dataset.for === undefined || list.dataset.for === target.value.trim();
         const items = list && fresh ? roveItems(list) : [];
         if (event.key === "Enter") event.preventDefault();
         if (items.length === 0) return event.key === "Enter";
@@ -586,8 +586,6 @@ document.addEventListener("keydown", (event) => {
 
 document.addEventListener("input", (event) => {
     if (event.target.matches?.('[data-ui="command-input"]')) filterCommand(event.target);
-    // Counted as the server counts them (PickerField.razor), so a list can say which keystroke it answers.
-    if (event.target.matches?.('[data-picker] [data-ui="rove-input"]')) event.target.dataset.inputs = String(Number(event.target.dataset.inputs ?? 0) + 1);
 });
 
 document.addEventListener("pointermove", onCommandPointerMove);

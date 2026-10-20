@@ -115,6 +115,40 @@ public sealed class FormPickerTests
         }
     }
 
+    // A circuit paused and resumed, as after a laptop sleeps, keeps the choice; keys typed while it was paused never reach the server,
+    // and Enter still chooses afterwards because it compares the text the matches answer, not a count of keys.
+    [BrowserFact]
+    public async Task A_paused_and_resumed_circuit_keeps_the_choice_and_enter_still_chooses()
+    {
+        await using var session = await BrowserSession.StartAsync();
+        var drill = await ModelAsync(session, products: 3);
+        var page = session.Page;
+
+        await session.SignInWithKeyboardAsync();
+        await page.GotoAsync($"{session.BaseUrl}/content/product-page/new");
+        var search = page.Locator("[data-picker=product] input[type=search]");
+        var choice = page.Locator("[data-picker=product] input[type=hidden]");
+        await search.PressSequentiallyAsync("cordless");
+        await Assertions.Expect(page.Locator("[data-picker=product] [role=option]")).ToHaveCountAsync(1);
+        await search.PressAsync("Enter");
+        await Assertions.Expect(choice).ToHaveValueAsync(drill.ToString());
+
+        await page.EvaluateAsync("Blazor.pauseCircuit()");
+        await search.PressSequentiallyAsync("product");
+        await page.EvaluateAsync("Blazor.resumeCircuit()");
+        await Assertions.Expect(search).ToBeEnabledAsync();
+        await Assertions.Expect(choice).ToHaveValueAsync(drill.ToString());
+        await Assertions.Expect(page.Locator("[data-testid=picker-choice]")).ToContainTextAsync("Cordless drill");
+
+        await page.Locator("[data-picker=product] [data-action=clear]").ClickAsync();
+        await Assertions.Expect(choice).ToHaveValueAsync("");
+        await search.FillAsync("");
+        await search.PressSequentiallyAsync("cordless");
+        await Assertions.Expect(page.Locator("[data-picker=product] [role=option]")).ToHaveCountAsync(1);
+        await search.PressAsync("Enter");
+        await Assertions.Expect(choice).ToHaveValueAsync(drill.ToString());
+    }
+
     // A circuit the server no longer knows ends the search, not the form: nothing reloads, what was typed stays, and the choice made
     // before the loss is saved with the form.
     [BrowserFact]
