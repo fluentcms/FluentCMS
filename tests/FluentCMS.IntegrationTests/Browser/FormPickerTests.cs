@@ -195,6 +195,16 @@ public sealed class FormPickerTests
         await browser.GetByTestId("from-published").ClickAsync();
         await Assertions.Expect(browser.Locator("input[name='Form.Values[title]']")).ToHaveValueAsync("Published");
         await Assertions.Expect(browser.Locator("[data-picker=product] input[type=hidden]")).ToHaveValueAsync(drill.ToString());
+
+        // Back after an enhanced move made while the circuit was live, then lost: the draft loads in full, its title and its own choice.
+        await browser.GotoAsync($"{session.BaseUrl}/content/product-page/{page.Id}");
+        await Assertions.Expect(browser.Locator("[data-picker=product] input[type=search]")).ToBeVisibleAsync();
+        await browser.GetByTestId("from-published").ClickAsync();
+        await Assertions.Expect(browser.Locator("[data-picker=product] input[type=hidden]")).ToHaveValueAsync(drill.ToString());
+        await LoseCircuitAsync(browser);
+        await browser.GoBackAsync();
+        await Assertions.Expect(browser.Locator("input[name='Form.Values[title]']")).ToHaveValueAsync("Another draft");
+        await Assertions.Expect(browser.Locator("[data-picker=product] input[type=hidden]")).ToHaveValueAsync(hammer.Id.ToString());
     }
 
     // As when the server no longer knows the circuit: it is paused, and Blazor reports the reconnect refused.
@@ -259,6 +269,20 @@ public sealed class FormPickerTests
         await page.WaitForURLAsync(new Regex($"/sets/{next.Id}\\?queue=awaiting-me$"));
         await Assertions.Expect(page.Locator("h1")).ToContainTextAsync("Add the store types.");
         await Assertions.Expect(page.Locator("[data-slot=diff-view-item]")).ToHaveCountAsync(1);
+
+        // From the first set with a live circuit, N moves on by enhanced navigation; a reason typed there and the circuit lost, Back
+        // loads the first set in full, with its own two items.
+        await page.GotoAsync($"{session.BaseUrl}/sets/{set.Id}?queue=awaiting-me");
+        await Assertions.Expect(page.Locator("[data-testid=change-set-items][data-interactive=true]")).ToBeVisibleAsync();
+        await page.Keyboard.PressAsync("n");
+        await Assertions.Expect(page.Locator("h1")).ToContainTextAsync("Add the store types.");
+        await Assertions.Expect(page.Locator("[data-testid=change-set-items][data-interactive=true]")).ToBeVisibleAsync();
+        await page.Locator("[data-action=reject]").ClickAsync();
+        await page.Locator("textarea[name='Reject.Reason']").FillAsync("Typed on the next set");
+        await LoseCircuitAsync(page);
+        await page.GoBackAsync();
+        await Assertions.Expect(page.Locator("h1")).ToContainTextAsync("Add the brand types.");
+        await Assertions.Expect(page.Locator("[data-slot=diff-view-item]")).ToHaveCountAsync(2);
     }
 
     private static async Task<ChangeSet> AwaitingReviewAsync(BrowserSession session, string name, int items)
