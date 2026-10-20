@@ -37,6 +37,40 @@ public sealed class SetViewBrowserTests
         Assert.True(await page.EvaluateAsync<double>("window.fewestItems") >= 25, "The list emptied when the circuit attached.");
     }
 
+    // A set whose diff is too large to carry into the circuit still gets its circuit: the circuit reads the diff again.
+    [BrowserFact]
+    public async Task A_set_whose_diff_is_too_large_to_keep_still_attaches_and_shows_every_item()
+    {
+        await using var session = await BrowserSession.StartAsync();
+        await session.Host.AsUserAsync<IContentTypeDirectory, ContentType>(session.OwnerId, async directory => (await directory.CreateAsync(
+            new NewContentType("Page", "page", new ContentTypeDefinition([new FieldDefinition("body", "richText")])), TestChangeSetTargets.ContentModel)).Value);
+        var body = new string('x', 6500);
+        var entries = new List<Guid>();
+        for (var index = 0; index < 100; index++)
+        {
+            entries.Add(await session.Host.AsUserAsync<FluentCMS.Core.Content.IEntryDirectory, Guid>(session.OwnerId, async directory => (await directory.CreateAsync(
+                new FluentCMS.Core.Content.NewEntry("page", System.Text.Json.JsonSerializer.SerializeToElement(new { body = $"{index} {body}" })))).Value.Id));
+        }
+
+        var set = await session.Host.AsUserAsync<IChangeSetDirectory, ChangeSet>(session.OwnerId, async directory =>
+        {
+            var opened = (await directory.OpenAsync(new NewChangeSet("Add a hundred long pages.", []))).Value;
+            foreach (var entry in entries)
+            {
+                await directory.AddOperationAsync(opened.Id, ChangeOperation.Create(OperationKind.Create, ItemKind.Entry, entry, null, 1).Value);
+            }
+
+            await directory.TransitionAsync(opened.Id, ChangeSetState.ChecksRunning);
+            return (await directory.TransitionAsync(opened.Id, ChangeSetState.AwaitingReview)).Value;
+        });
+        await session.SignInWithKeyboardAsync();
+
+        await session.Page.GotoAsync($"{session.BaseUrl}/sets/{set.Id}");
+
+        await Assertions.Expect(session.Page.Locator("[data-testid=change-set-items][data-interactive=true]")).ToBeVisibleAsync();
+        await Assertions.Expect(session.Page.Locator("[data-slot=diff-view-item]")).ToHaveCountAsync(100);
+    }
+
     private static async Task<ChangeSet> AwaitingReviewAsync(BrowserSession session, int items)
     {
         var types = new List<ContentType>();

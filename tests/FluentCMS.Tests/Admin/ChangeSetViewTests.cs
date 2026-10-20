@@ -247,6 +247,22 @@ public sealed class ChangeSetViewTests
         Assert.Equal([sets.Set.Id], sets.Diffed);
     }
 
+    // A diff too large for the circuit's first message is not kept, so the circuit reads it again rather than failing to start.
+    [Fact]
+    public void A_diff_too_large_to_keep_is_read_again_by_the_circuit()
+    {
+        var sets = new FakeSets { Huge = true };
+        using var context = Context(sets);
+        context.Render<ChangeSetItems>(items => items.Add(p => p.ChangeSetId, sets.Set.Id));
+        context.State.TriggerOnPersisting();
+
+        context.Renderer.SetRendererInfo(new RendererInfo("Server", isInteractive: true));
+        var live = context.Render<ChangeSetItems>(items => items.Add(p => p.ChangeSetId, sets.Set.Id));
+
+        Assert.Equal(2, live.FindAll("[data-slot=diff-view-item]").Count);
+        Assert.Equal([sets.Set.Id, sets.Set.Id], sets.Diffed);
+    }
+
     [Fact]
     public void The_items_island_reports_a_refused_diff()
     {
@@ -294,6 +310,9 @@ public sealed class ChangeSetViewTests
 
         public List<Guid> Diffed { get; } = [];
 
+        // A diff larger than the island keeps for its circuit.
+        public bool Huge { get; init; }
+
         public ChangeSet Set => ChangeSet.Restore(
             _id,
             Guid.NewGuid(),
@@ -331,6 +350,12 @@ public sealed class ChangeSetViewTests
                 operation,
                 operation.BaseVersion is null ? null : new FluentCMS.Core.Schema.ContentTypeDefinition([new("title", "text")]),
                 new FluentCMS.Core.Schema.ContentTypeDefinition([new("title", "text"), new("summary", "text")]))).ToList();
+            if (Huge)
+            {
+                var body = System.Text.Json.JsonSerializer.SerializeToElement(new string('x', FluentCMS.Admin.AdminLimits.KeptStateBytes));
+                items[0] = ItemDiff.Restore(items[0].Operation, items[0].Properties, [ValueDiff.Restore("body", ValueChange.Added, null, body)]);
+            }
+
             return Task.FromResult(Result<ChangeSetDiff>.Success(new ChangeSetDiff(id, items)));
         }
 
@@ -445,6 +470,7 @@ public sealed class ChangeSetViewTests
     [Theory]
     [InlineData("https://аpple.com/prices", "xn--pple-43d.com")]
     [InlineData("https://example.com/spec", null)]
+    [InlineData("https://[::1]:8080/spec", null)]
     public void A_source_host_that_is_not_ascii_is_shown_as_the_host_it_resolves_to(string source, string? shown)
     {
         Assert.Equal(shown, ChangeSetView.AsciiHost(ChangeSetView.Openable(source)!));

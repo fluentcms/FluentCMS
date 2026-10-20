@@ -615,7 +615,9 @@
     // resolves to, so a reader sees xn--pple-43d.com rather than what looks like apple.com.
     public static string? AsciiHost(string address)
     {
-        return Uri.TryCreate(address, UriKind.Absolute, out var uri) && uri.Host != uri.IdnHost ? uri.IdnHost : null;
+        return Uri.TryCreate(address, UriKind.Absolute, out var uri) && uri.HostNameType == UriHostNameType.Dns && uri.Host != uri.IdnHost
+            ? uri.IdnHost
+            : null;
     }
 
     // Only a web address becomes a link, so a source such as "javascript:" or a file path is never followed.
