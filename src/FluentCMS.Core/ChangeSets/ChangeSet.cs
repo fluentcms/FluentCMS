@@ -177,7 +177,7 @@ public sealed class ChangeSet
         }
 
         // One operation per item keeps one diff per item and one version to restore on revert (CHG-03, CHG-06). A newer version of an
-        // entry or entity the set already proposes, as when a reopened set is fixed, moves that operation on to it.
+        // entry, entity or media asset the set already proposes, as when a reopened set is fixed, moves that operation on to it.
         var position = _operations.FindIndex(existing => existing.ItemKind == operation.ItemKind && existing.ItemId == operation.ItemId);
         if (position >= 0)
         {
@@ -358,7 +358,7 @@ public sealed class ChangeSet
     // The same change from the same published version, proposing a later draft.
     private static bool Supersedes(ChangeOperation existing, ChangeOperation operation)
     {
-        return operation.ItemKind is ItemKind.Entry or ItemKind.Entity
+        return operation.ItemKind is ItemKind.Entry or ItemKind.Entity or ItemKind.Media
             && operation.Kind is OperationKind.Create or OperationKind.Update
             && operation.Kind == existing.Kind
             && operation.BaseVersion == existing.BaseVersion

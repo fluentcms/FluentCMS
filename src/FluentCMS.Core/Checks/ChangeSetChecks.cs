@@ -363,7 +363,7 @@ internal sealed class ChangeSetChecks(
             }
 
             var changed = before is null ? null : Changed(proposed.Value.Fields, before.Value.Fields);
-            subjects.Add((operation, entry.Value.ContentType, new CheckSubject(proposed.Value.Fields, set.Sources, entry.Value.ContentType, type.Definition, changed)));
+            subjects.Add((operation, entry.Value.ContentType, new CheckSubject(proposed.Value.Fields, set.Sources, entry.Value.ContentType, type.Definition, changed, set.Id)));
         }
 
         return (subjects, problems);
