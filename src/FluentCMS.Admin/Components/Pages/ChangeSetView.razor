@@ -74,7 +74,7 @@
     <Card Class="mt-6" data-testid="change-set-review">
         <CardHeader>
             <CardTitle><h2>@L["Review"]</h2></CardTitle>
-            <CardDescription>@ReviewHint(set.State)</CardDescription>
+            <CardDescription>@(CheckJobEnded ? L["The check run ended without a result, so the set cannot be reviewed yet. Whoever opened it can run the checks again."] : ReviewHint(set.State))</CardDescription>
         </CardHeader>
         <CardContent Class="grid gap-4">
             @if (_message is not null)
@@ -484,13 +484,17 @@
 
     private async Task SubmitAsync()
     {
+        // Running the checks again on a set whose job ended recovers it, which fails the set rather than submitting it.
+        var done = CheckJobEnded
+            ? L["The check run had ended without a result, so the set now shows its checks as failed."]
+            : L["Submitted. The checks run on the set before it is reviewed."];
         await ActAsync(Submit, OffersSubmit && _set is { } set ? [set.State] : [], async () =>
         {
             var submitted = await Checks.SubmitAsync(Id);
             return submitted.IsSuccess
                 ? FluentCMS.Core.Results.Result<ChangeSet>.Success(submitted.Value.ChangeSet)
                 : FluentCMS.Core.Results.Result<ChangeSet>.Failure(submitted.Errors);
-        }, L["Submitted. The checks run on the set before it is reviewed."]);
+        }, done);
     }
 
     private async Task ApproveAsync()
