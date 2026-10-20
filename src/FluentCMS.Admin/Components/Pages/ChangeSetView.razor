@@ -5,6 +5,7 @@
 @using FluentCMS.Core.ChangeSets
 @using FluentCMS.Core.Desk
 @inject IChangeSetDirectory Directory
+@inject IChangeSetLists Lists
 @inject IDeskQueues Queues
 @inject FluentCMS.Core.Checks.IChangeSetChecks Checks
 @inject IAuditReader Audit
@@ -461,7 +462,7 @@
 
     private async Task SubmitAsync()
     {
-        await ActAsync(Submit, async () =>
+        await ActAsync(Submit, [ChangeSetState.Open], async () =>
         {
             var submitted = await Checks.SubmitAsync(Id);
             return submitted.IsSuccess
@@ -472,7 +473,7 @@
 
     private async Task ApproveAsync()
     {
-        if (await ActAsync(Approve, () => Directory.TransitionAsync(Id, ChangeSetState.Approved), L["Approved. Publish the set to make its items live."]) is not null)
+        if (await ActAsync(Approve, [ChangeSetState.AwaitingReview], () => Directory.TransitionAsync(Id, ChangeSetState.Approved), L["Approved. Publish the set to make its items live."]) is not null)
         {
             MoveOn("approved");
         }
@@ -480,12 +481,12 @@
 
     private Task PublishAsync()
     {
-        return ActAsync(Publish, () => Directory.PublishAsync(Id), L["Published. Its items are live."]);
+        return ActAsync(Publish, [ChangeSetState.Approved], () => Directory.PublishAsync(Id), L["Published. Its items are live."]);
     }
 
     private async Task RejectAsync()
     {
-        if (await ActAsync(Reject, () => Directory.RejectAsync(Id, Reject?.Reason ?? string.Empty), L["Rejected. The reason is stored with the set."]) is not null)
+        if (await ActAsync(Reject, RejectableStates, () => Directory.RejectAsync(Id, Reject?.Reason ?? string.Empty), L["Rejected. The reason is stored with the set."]) is not null)
         {
             MoveOn("rejected");
         }
@@ -503,24 +504,44 @@
         Navigation.NavigateTo(_next is { } next ? $"sets/{next}?queue={slug}&done={done}" : $"?queue={slug}&done={done}");
     }
 
+    // A revert already in progress is where a second click lands, so a resubmitted page or a later click opens no second set. Two
+    // posts at the same instant can still both open one, until the directory refuses it (#2646).
     private async Task RevertAsync()
     {
         var rationale = _set is { } set ? L["Revert change set {0}: {1}", set.Id, set.Rationale].Value : string.Empty;
-        if (await ActAsync(Revert, () => Directory.RevertAsync(Id, rationale), null) is { } opened)
+        var opened = await ActAsync(Revert, [ChangeSetState.Published], async () =>
+        {
+            var inProgress = await Lists.ListAsync(new ChangeSetListQuery { States = RevertInProgress, Reverts = Id, Limit = 1 });
+            return inProgress is { IsSuccess: true, Value.Items: [var existing, ..] }
+                ? await Directory.GetAsync(existing.Id)
+                : await Directory.RevertAsync(Id, rationale);
+        }, null);
+        if (opened is not null)
         {
             Navigation.NavigateTo($"sets/{opened.Id}");
         }
     }
 
+    private static readonly ChangeSetState[] RejectableStates = [ChangeSetState.AwaitingReview, ChangeSetState.ChecksFailed, ChangeSetState.Approved];
+
+    // A revert set that may still publish; a rejected one leaves room for another.
+    private static readonly ChangeSetState[] RevertInProgress =
+        [ChangeSetState.Open, ChangeSetState.ChecksRunning, ChangeSetState.ChecksFailed, ChangeSetState.AwaitingReview, ChangeSetState.Approved];
+
     // A decision is saved by the call itself; the page then shows the set as it is now, whatever the outcome.
-    private async Task<ChangeSet?> ActAsync(ReviewForm? form, Func<Task<FluentCMS.Core.Results.Result<ChangeSet>>> action, string? done)
+    // An action is taken only from a state the panel offers it in, whatever a post claims, so no set skips its checks or review.
+    private async Task<ChangeSet?> ActAsync(
+        ReviewForm? form,
+        IReadOnlyCollection<ChangeSetState> offeredIn,
+        Func<Task<FluentCMS.Core.Results.Result<ChangeSet>>> action,
+        string? done)
     {
         if (_set is null)
         {
             return null;
         }
 
-        if (form?.Seen is null || form.Seen != _seen)
+        if (form?.Seen is null || form.Seen != _seen || !offeredIn.Contains(_set.State))
         {
             _refusal = L["The set has moved on since this page was shown. Review it as it is now."];
             return null;
