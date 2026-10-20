@@ -136,7 +136,6 @@ public sealed class GeneratedFormTests
 
         var cut = context.Render<FieldWidget>(widget => widget
             .Add(w => w.Field, Field(type, type == "enum" ? """{"values": ["red", "blue"]}""" : "{}", required: true))
-            .Add(w => w.Options, [new FieldOption("0192f3a1-7c2e-7a4b-9d3e-1f2a3b4c5d6e", "Tools")])
             .Add(w => w.Error, "Wrong."));
 
         var control = cut.Find(selector);
