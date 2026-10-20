@@ -1,4 +1,5 @@
 using Bunit;
+using Bunit.TestDoubles;
 using FluentCMS.Admin;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
@@ -12,7 +13,11 @@ internal sealed class AdminTestContext : BunitContext
     {
         Services.AddSingleton(typeof(IStringLocalizer<>), typeof(KeyLocalizer<>));
         Services.AddFluentCmsAdmin();
+        State = this.AddBunitPersistentComponentState();
     }
+
+    // What prerendered components keep for the circuit, as the page carries it.
+    public BunitPersistentComponentState State { get; }
 
     private sealed class KeyLocalizer<T> : IStringLocalizer<T>
     {

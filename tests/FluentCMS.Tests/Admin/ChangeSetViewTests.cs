@@ -230,6 +230,23 @@ public sealed class ChangeSetViewTests
         Assert.Equal("true", live.Find("[data-testid=change-set-items]").GetAttribute("data-interactive"));
     }
 
+    // The circuit starts from the diff the page was prerendered with, so it neither reads the diff again nor shows the list empty.
+    [Fact]
+    public void The_circuit_takes_the_prerendered_diff_without_reading_it_again()
+    {
+        var sets = new FakeSets();
+        using var context = Context(sets);
+        context.Render<ChangeSetItems>(items => items.Add(p => p.ChangeSetId, sets.Set.Id));
+        context.State.TriggerOnPersisting();
+
+        context.Renderer.SetRendererInfo(new RendererInfo("Server", isInteractive: true));
+        var live = context.Render<ChangeSetItems>(items => items.Add(p => p.ChangeSetId, sets.Set.Id));
+
+        Assert.Equal(2, live.FindAll("[data-slot=diff-view-item]").Count);
+        Assert.Empty(live.FindAll("[aria-busy=true]"));
+        Assert.Equal([sets.Set.Id], sets.Diffed);
+    }
+
     [Fact]
     public void The_items_island_reports_a_refused_diff()
     {
@@ -423,5 +440,13 @@ public sealed class ChangeSetViewTests
         }
 
         public Task<Result<int>> CountAsync(ChangeSetListQuery query, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    }
+
+    [Theory]
+    [InlineData("https://аpple.com/prices", "xn--pple-43d.com")]
+    [InlineData("https://example.com/spec", null)]
+    public void A_source_host_that_is_not_ascii_is_shown_as_the_host_it_resolves_to(string source, string? shown)
+    {
+        Assert.Equal(shown, ChangeSetView.AsciiHost(ChangeSetView.Openable(source)!));
     }
 }

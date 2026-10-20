@@ -56,7 +56,10 @@ public static class FluentCmsHost
         builder.Services.AddReverseProxy(builder.Configuration);
         builder.Services.AddHealthChecks();
         builder.Services.AddLocalization();
-        builder.Services.AddRazorComponents().AddInteractiveServerComponents();
+        // The set view carries its prerendered diff into the circuit, and the circuit's first message holds it; the hub requires a
+        // signed-in person.
+        builder.Services.AddRazorComponents().AddInteractiveServerComponents()
+            .AddHubOptions(hub => hub.MaximumReceiveMessageSize = AdminLimits.CircuitStartBytes);
         RunJobsAsTheirInitiator(builder.Services);
 
         var app = builder.Build();
