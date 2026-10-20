@@ -202,11 +202,27 @@ internal sealed class MediaLibrary(
             latest = latest.Where(version => version.Tags.Contains(wanted));
         }
 
-        var rows = await (
+        // Matched here rather than in SQL: SQLite's lower() folds ASCII letters only, so "Ärzte.jpg" would miss "ärzte". Only the names
+        // are read for it, and only the matching assets after.
+        if (query.Text?.Trim() is { Length: > 0 } text)
+        {
+            var names = await latest.Select(version => new { version.AssetId, version.FileName, version.Folder }).ToListAsync(cancellationToken);
+            var matching = names
+                .Where(name => name.FileName.Contains(text, StringComparison.CurrentCultureIgnoreCase) || name.Folder.Contains(text, StringComparison.OrdinalIgnoreCase))
+                .Select(name => name.AssetId)
+                .OrderDescending()
+                .Take(query.Newest ?? int.MaxValue)
+                .ToList();
+            latest = latest.Where(version => matching.Contains(version.AssetId));
+        }
+
+        var joined =
             from version in latest
             join asset in context.MediaAssets.AsNoTracking() on version.AssetId equals asset.Id
-            orderby asset.Id
-            select new { asset.PublishedVersion, Version = version })
+            select new { asset.Id, asset.PublishedVersion, Version = version };
+        var rows = await (query.Newest is { } newest
+            ? joined.OrderByDescending(row => row.Id).Take(newest)
+            : joined.OrderBy(row => row.Id))
             .ToListAsync(cancellationToken);
 
         return rows
