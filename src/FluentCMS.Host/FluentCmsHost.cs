@@ -214,6 +214,7 @@ public static class FluentCmsHost
 
         services.Configure<JobQueueOptions>(configuration.GetSection(JobQueueOptions.SectionName));
         services.AddHostedService<JobQueueWorker>();
+        services.AddHostedService<RetentionStartup>();
     }
 
     private static void ConfigureLogging(ILoggingBuilder logging, bool logToStandardError)

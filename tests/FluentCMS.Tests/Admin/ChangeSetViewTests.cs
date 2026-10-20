@@ -260,6 +260,7 @@ public sealed class ChangeSetViewTests
         context.Services.AddSingleton<IAuditReader>(new FakeHistory(sets));
         context.Services.AddSingleton<IDeskQueues>(new QueueAfter(sets));
         context.Services.AddSingleton<IChangeSetChecks>(new FakeChecks(sets));
+        context.Services.AddSingleton<IChangeSetLists>(new NoReverts());
         context.Renderer.SetRendererInfo(new RendererInfo("Static", isInteractive: false));
         return context;
     }
@@ -411,5 +412,16 @@ public sealed class ChangeSetViewTests
         {
             return new AuditEvent { Id = Guid.NewGuid(), Timestamp = Opened.AddMinutes(minutes), Initiator = initiator, Operation = operation };
         }
+    }
+
+    // No revert is in progress, so a revert opens one.
+    private sealed class NoReverts : IChangeSetLists
+    {
+        public Task<Result<ChangeSetList>> ListAsync(ChangeSetListQuery query, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(Result<ChangeSetList>.Success(new ChangeSetList([], 0)));
+        }
+
+        public Task<Result<int>> CountAsync(ChangeSetListQuery query, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 }

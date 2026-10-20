@@ -85,7 +85,13 @@ public interface IModelCallLog
     // The calls an audit event's promptHash names, so its prompt can be read back (CHK-05).
     Task<IReadOnlyList<ModelCall>> FindByPromptHashAsync(string promptHash, CancellationToken cancellationToken = default);
 
-    // Clears the prompt, response and error of calls older than the retention and appends one audit event per call (AUD-N2). Only a person
-    // purges; the result is how many calls were purged.
+    // Clears the prompt, response and error of up to a batch of calls older than the retention and appends one audit event per call
+    // (AUD-N2). A person purges, or the retention engine, which runs it daily; the result is how many calls were purged.
     Task<Result<int>> PurgeAsync(CancellationToken cancellationToken = default);
+}
+
+// Keeps the daily retention purge of stored prompts scheduled (AUD-04); a host calls it as it starts.
+public interface IRetentionSchedule
+{
+    Task EnsureScheduledAsync(CancellationToken cancellationToken = default);
 }
