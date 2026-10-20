@@ -397,7 +397,9 @@
     private IReadOnlyList<KeyboardShortcut> Shortcuts =>
     [
         new(["J", "K"], L["Move to the next or previous item"]),
-        new(["Enter"], L["Fold or unfold the item that has focus"]),
+        new(["↓", "↑"], L["Move between items while one has focus"]),
+        new(["Home", "End"], L["Move to the first or last item while one has focus"]),
+        new(["Enter", "Space"], L["Fold or unfold the item that has focus"]),
         new(["S"], L["Submit an open set for checks"]),
         new(["A"], L["Approve the set and move to the next one"]),
         new(["R"], L["Reject the set with a reason"]),
@@ -574,6 +576,8 @@
             return null;
         }
 
+        // The next set is the one that followed this one before the decision, which may take this one out of the queue.
+        var next = _next;
         if (form?.Seen is null || form.Seen != _seen || !offeredIn.Contains(_set.State))
         {
             _refusal = L["The set has moved on since this page was shown. Review it as it is now."];
@@ -596,6 +600,11 @@
         }
 
         await LoadAsync();
+        if (result.IsSuccess)
+        {
+            _next = next;
+        }
+
         return result.IsSuccess ? result.Value : null;
     }
 
