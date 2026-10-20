@@ -185,6 +185,24 @@ public sealed class FormPickerTests
         await browser.WaitForURLAsync(new Regex("/sets/[0-9a-f-]{36}\\?done=saved$"));
         var saved = await session.Host.AsUserAsync<IEntryDirectory, Entry>(session.OwnerId, async entries => (await entries.GetAsync(page.Id)).Value);
         Assert.Equal(drill.ToString(), saved.Latest.Fields.GetProperty("product").GetString());
+
+        // The same with the circuit lost: the link loads the published version in full, rather than keeping the draft's island.
+        await session.Host.AsUserAsync<IEntryDirectory, Entry>(session.OwnerId, async entries => (await entries.UpdateAsync(
+            page.Id, 3, JsonDocument.Parse($$"""{"title": "Another draft", "product": "{{hammer.Id}}"}""").RootElement)).Value);
+        await browser.GotoAsync($"{session.BaseUrl}/content/product-page/{page.Id}");
+        await Assertions.Expect(choice).ToHaveValueAsync(hammer.Id.ToString());
+        await LoseCircuitAsync(browser);
+        await browser.GetByTestId("from-published").ClickAsync();
+        await Assertions.Expect(browser.Locator("input[name='Form.Values[title]']")).ToHaveValueAsync("Published");
+        await Assertions.Expect(browser.Locator("[data-picker=product] input[type=hidden]")).ToHaveValueAsync(drill.ToString());
+    }
+
+    // As when the server no longer knows the circuit: it is paused, and Blazor reports the reconnect refused.
+    internal static async Task LoseCircuitAsync(IPage page)
+    {
+        await page.EvaluateAsync("Blazor.pauseCircuit()");
+        await page.EvaluateAsync("document.dispatchEvent(new CustomEvent('components-reconnect-state-changed', { detail: { state: 'rejected' } }))");
+        await Assertions.Expect(page.Locator("[data-testid=reconnect-lost]")).ToBeVisibleAsync();
     }
 
     // A circuit the server no longer knows ends the search, not the form: nothing reloads, what was typed stays, and the choice made
@@ -203,9 +221,8 @@ public sealed class FormPickerTests
         await page.Locator("[data-picker=product] [role=option]").ClickAsync();
         await Assertions.Expect(page.Locator("[data-picker=product] input[type=hidden]")).ToHaveValueAsync(drill.ToString());
         await page.Locator("input[name='Form.Values[title]']").FillAsync("Typed before the loss");
-        await page.EvaluateAsync("document.dispatchEvent(new CustomEvent('components-reconnect-state-changed', { detail: { state: 'rejected' } }))");
+        await LoseCircuitAsync(page);
 
-        await Assertions.Expect(page.Locator("[data-testid=reconnect-lost]")).ToBeVisibleAsync();
         await Assertions.Expect(page.Locator("input[name='Form.Values[title]']")).ToHaveValueAsync("Typed before the loss");
         await Assertions.Expect(search).ToBeDisabledAsync();
 
@@ -224,24 +241,47 @@ public sealed class FormPickerTests
     {
         await using var session = await BrowserSession.StartAsync();
         var page = session.Page;
-        var type = await session.Host.AsUserAsync<IContentTypeDirectory, ContentType>(session.OwnerId, async types => (await types.CreateAsync(new NewContentType(
-            "Brand", "brand", new ContentTypeDefinition([new FieldDefinition("name", "text")])), TestChangeSetTargets.ContentModel)).Value);
-        var set = await session.Host.AsUserAsync<IChangeSetDirectory, ChangeSet>(session.OwnerId, async sets =>
+        var set = await AwaitingReviewAsync(session, "brand", 2);
+        var next = await AwaitingReviewAsync(session, "store", 1);
+
+        await session.SignInWithKeyboardAsync();
+        await page.GotoAsync($"{session.BaseUrl}/sets/{set.Id}?queue=awaiting-me");
+        await Assertions.Expect(page.Locator("[data-testid=change-set-items][data-interactive=true]")).ToBeVisibleAsync();
+        await page.Locator("[data-action=reject]").ClickAsync();
+        await page.Locator("textarea[name='Reject.Reason']").FillAsync("Typed before the loss");
+        await LoseCircuitAsync(page);
+
+        await Assertions.Expect(page.Locator("textarea[name='Reject.Reason']")).ToHaveValueAsync("Typed before the loss");
+
+        // The next set loads in full, with its own items rather than the dead island of this one.
+        await page.Keyboard.PressAsync("Escape");
+        await page.Keyboard.PressAsync("n");
+        await page.WaitForURLAsync(new Regex($"/sets/{next.Id}\\?queue=awaiting-me$"));
+        await Assertions.Expect(page.Locator("h1")).ToContainTextAsync("Add the store types.");
+        await Assertions.Expect(page.Locator("[data-slot=diff-view-item]")).ToHaveCountAsync(1);
+    }
+
+    private static async Task<ChangeSet> AwaitingReviewAsync(BrowserSession session, string name, int items)
+    {
+        var types = new List<ContentType>();
+        for (var index = 0; index < items; index++)
         {
-            var opened = (await sets.OpenAsync(new NewChangeSet("Add the brand type.", []))).Value;
-            await sets.AddOperationAsync(opened.Id, ChangeOperation.Create(OperationKind.Create, ItemKind.Schema, type.Id, null, 1).Value);
+            var slug = $"{name}-{index}";
+            types.Add(await session.Host.AsUserAsync<IContentTypeDirectory, ContentType>(session.OwnerId, async directory =>
+                (await directory.CreateAsync(new NewContentType(slug, slug, new ContentTypeDefinition([new FieldDefinition("name", "text")])), TestChangeSetTargets.ContentModel)).Value));
+        }
+
+        return await session.Host.AsUserAsync<IChangeSetDirectory, ChangeSet>(session.OwnerId, async sets =>
+        {
+            var opened = (await sets.OpenAsync(new NewChangeSet($"Add the {name} types.", []))).Value;
+            foreach (var type in types)
+            {
+                await sets.AddOperationAsync(opened.Id, ChangeOperation.Create(OperationKind.Create, ItemKind.Schema, type.Id, null, 1).Value);
+            }
+
             await sets.TransitionAsync(opened.Id, ChangeSetState.ChecksRunning);
             return (await sets.TransitionAsync(opened.Id, ChangeSetState.AwaitingReview)).Value;
         });
-
-        await session.SignInWithKeyboardAsync();
-        await page.GotoAsync($"{session.BaseUrl}/sets/{set.Id}");
-        await page.Locator("[data-action=reject]").ClickAsync();
-        await page.Locator("textarea[name='Reject.Reason']").FillAsync("Typed before the loss");
-        await page.EvaluateAsync("document.dispatchEvent(new CustomEvent('components-reconnect-state-changed', { detail: { state: 'rejected' } }))");
-
-        await Assertions.Expect(page.Locator("[data-testid=reconnect-lost]")).ToBeVisibleAsync();
-        await Assertions.Expect(page.Locator("textarea[name='Reject.Reason']")).ToHaveValueAsync("Typed before the loss");
     }
 
     private static string Provider => string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(PostgresFactAttribute.VariableName))
