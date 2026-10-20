@@ -409,13 +409,18 @@ function onRoveKeydown(event) {
         return true;
     }
 
-    // From a search box that controls a list, ArrowDown enters the list at its first item.
-    if (target.matches('[data-ui="rove-input"]') && event.key === "ArrowDown") {
+    // From a search box that controls a list, ArrowDown enters the list at its first item. Enter never submits the form around
+    // the box: it chooses the only match, or enters the list when there are more.
+    if (target.matches('[data-ui="rove-input"]') && (event.key === "ArrowDown" || event.key === "Enter")) {
         const list = document.getElementById(target.getAttribute("aria-controls"));
-        const items = list ? roveItems(list) : [];
-        if (items.length === 0) return false;
+        // Matches for an earlier text are not the answer to what the box holds now, so Enter waits for the new ones.
+        const fresh = list?.dataset.for === undefined || list.dataset.for === target.value.trim();
+        const items = list && fresh ? roveItems(list) : [];
+        if (event.key === "Enter") event.preventDefault();
+        if (items.length === 0) return event.key === "Enter";
         event.preventDefault();
-        rove(items, 0);
+        if (event.key === "Enter" && items.length === 1) items[0].click();
+        else rove(items, 0);
         return true;
     }
 
@@ -426,6 +431,27 @@ function onRoveKeydown(event) {
     event.preventDefault();
     rove(items, Math.min(Math.max(next, 0), items.length - 1)).scrollIntoView({ block: "nearest" });
     return true;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Pickers (PickerField.razor): the search box owns its text, so a choice empties it here, and focus goes back to the box after a
+// choice, Clear or Escape, before Blazor removes the element that had it.
+
+const pickerBox = (element) => element.closest?.("[data-picker]")?.querySelector('[data-ui="rove-input"]');
+
+function onPickerClick(event) {
+    const option = event.target.closest?.('[data-picker] [role="option"]');
+    const clear = event.target.closest?.('[data-picker] [data-action="clear"]');
+    const box = pickerBox(option ?? clear ?? document.body);
+    if (!box) return;
+    if (option) box.value = "";
+    box.focus();
+}
+
+function onPickerEscape(event) {
+    if (event.key !== "Escape") return;
+    const box = pickerBox(event.target);
+    if (box && event.target !== box) box.focus();
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -445,8 +471,10 @@ function chooseTheme(theme) {
 // ---------------------------------------------------------------------------------------------
 // Reconnect: Blazor reports its state as a class on #components-reconnect-modal (ReconnectModal.razor)
 // and leaves the buttons, and the reload after a rejected circuit, to the page, as its default display does.
+// A page whose form holds typed input is not reloaded, which would lose it: pickers stop searching, every field
+// still posts, and the person saves the form or reloads it themselves.
 
-const reconnectStates = ["show", "hide", "retrying", "failed", "rejected", "paused", "resume-failed"].map((state) => `components-reconnect-${state}`);
+const reconnectStates = ["show", "hide", "retrying", "failed", "rejected", "paused", "resume-failed", "lost"].map((state) => `components-reconnect-${state}`);
 
 function showReconnectState(state) {
     const modal = document.getElementById("components-reconnect-modal");
@@ -454,12 +482,37 @@ function showReconnectState(state) {
     modal?.classList.add(`components-reconnect-${state}`);
 }
 
+const typed = (field) => field.type === "checkbox" || field.type === "radio"
+    ? field.checked !== field.defaultChecked
+    : field instanceof HTMLSelectElement
+        ? [...field.options].some((option) => option.selected !== option.defaultSelected)
+        : field.type !== "hidden" && field.value !== field.defaultValue;
+
+function reloadOrKeepForm() {
+    const fields = [...document.querySelectorAll("form input, form textarea, form select")];
+    if (!document.querySelector("form [data-picker]") && !fields.some(typed)) {
+        location.reload();
+        return;
+    }
+
+    document.querySelectorAll('[data-picker] [data-ui="rove-input"], [data-picker] [role="option"]').forEach((control) => { control.disabled = true; });
+    // Without a circuit nothing can render the next page's islands, so an enhanced navigation would keep this page's: every link
+    // now loads its page in full, and so do Back and Forward, which Blazor handles without looking at that attribute.
+    document.documentElement.setAttribute("data-enhance-nav", "false");
+    // Loaded with GET, so going back to an entry a form's post made never asks to post it again.
+    window.addEventListener("popstate", (event) => {
+        event.stopImmediatePropagation();
+        location.replace(location.href);
+    }, { capture: true });
+    showReconnectState("lost");
+}
+
 async function retryConnection() {
     document.removeEventListener("visibilitychange", retryWhenVisible);
     showReconnectState("show");
     try {
         if (await Blazor.reconnect() || await Blazor.resumeCircuit()) showReconnectState("hide");
-        else location.reload();
+        else reloadOrKeepForm();
     } catch {
         showReconnectState("failed");
         document.addEventListener("visibilitychange", retryWhenVisible);
@@ -469,7 +522,7 @@ async function retryConnection() {
 async function resumeConnection() {
     try {
         if (await Blazor.resumeCircuit()) showReconnectState("hide");
-        else location.reload();
+        else reloadOrKeepForm();
     } catch {
         showReconnectState("resume-failed");
     }
@@ -480,7 +533,7 @@ function retryWhenVisible() {
 }
 
 function onReconnectStateChanged(event) {
-    if (event.detail?.state === "rejected") location.reload();
+    if (event.detail?.state === "rejected") reloadOrKeepForm();
     if (event.detail?.state === "failed") document.addEventListener("visibilitychange", retryWhenVisible);
 }
 
@@ -510,6 +563,8 @@ document.addEventListener("click", (event) => {
     const reconnect = event.target.closest?.("[data-reconnect]");
     if (reconnect) onReconnectClick(reconnect);
 
+    onPickerClick(event);
+
     closeOnBackdropClick(event);
 });
 
@@ -520,6 +575,7 @@ document.addEventListener("keydown", (event) => {
     if (!(target instanceof Element)) return;
 
     if (event.key === "Escape") hideTooltips();
+    onPickerEscape(event);
     if (onShortcutKeydown(event)) return;
     if (onRoveKeydown(event)) return;
 

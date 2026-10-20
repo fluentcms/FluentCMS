@@ -7,12 +7,10 @@
 @using FluentCMS.Admin.Forms
 @using FluentCMS.Core.ChangeSets
 @using FluentCMS.Core.Content
-@using FluentCMS.Core.Media
 @using FluentCMS.Core.Schema
 @inject IContentTypeDirectory ContentTypes
 @inject IEntryDirectory Entries
 @inject IEntryEdits Edits
-@inject IMediaLibrary Media
 @inject FluentCMS.Core.Identity.IUserDirectory Users
 @inject FieldTypeRegistry FieldTypes
 @inject NavigationManager Navigation
@@ -80,7 +78,7 @@
             <CardContent Class="grid gap-6 sm:grid-cols-2">
                 @foreach (var field in type.Definition.Fields)
                 {
-                    <FieldWidget Field="field" Value="@Shown.Values.GetValueOrDefault(field.Name)" Error="@_fieldErrors.GetValueOrDefault(field.Name)" Options="@_options.GetValueOrDefault(field.Name, [])" />
+                    <FieldWidget Field="field" Value="@Shown.Values.GetValueOrDefault(field.Name)" Error="@_fieldErrors.GetValueOrDefault(field.Name)" />
                     @if (type.Definition.IsEntity)
                     {
                         <FactFields Field="@field.Name" Values="Shown.Facts" Problems="@_factProblems.GetValueOrDefault(field.Name, new Dictionary<string, string>())" Owners="@OwnersFor(field.Name)" Unsourced="@_unsourced.Contains(field.Name)" />
@@ -111,7 +109,6 @@
 @code {
     private ContentType? _type;
     private Entry? _entry;
-    private Dictionary<string, IReadOnlyList<FieldOption>> _options = new(StringComparer.Ordinal);
     private Dictionary<string, string> _fieldErrors = new(StringComparer.Ordinal);
     private Dictionary<string, Dictionary<string, string>> _factProblems = new(StringComparer.Ordinal);
     private HashSet<string> _unsourced = new(StringComparer.Ordinal);
@@ -222,7 +219,7 @@
         return true;
     }
 
-    // Until the pickers search (F-SRC), a reference offers every entry of its target type and a media field every asset.
+    // A reference or media field's picker loads its own choices.
     private async Task LoadOptionsAsync()
     {
         if (_type!.Definition.IsEntity)
@@ -231,21 +228,6 @@
             var users = await Users.ListAsync();
             _ownerIds = [.. users.Select(user => user.Id)];
             _owners = [.. users.Select(user => new FieldOption(user.Id.ToString(), user.IsDisabled ? L["{0} (disabled)", user.DisplayName] : user.DisplayName))];
-        }
-
-        foreach (var field in _type!.Definition.Fields)
-        {
-            if (field.Type == "reference" && FieldValues.Setting(field, "target") is { } target)
-            {
-                var entries = await Entries.ListAsync(target);
-                _options[field.Name] = entries.IsSuccess
-                    ? [.. entries.Value.Select(entry => new FieldOption(entry.Id.ToString(), L["{0} (version {1})", entry.Id.ToString()[..8], entry.LatestVersion]))]
-                    : [];
-            }
-            else if (field.Type == "media")
-            {
-                _options[field.Name] = [.. (await Media.ListAsync(new MediaQuery())).Select(asset => new FieldOption(asset.Id.ToString(), asset.FileName))];
-            }
         }
     }
 

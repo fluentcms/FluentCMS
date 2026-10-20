@@ -5,7 +5,9 @@
 @* One field of a generated form (FRM-01): the widget its type takes, inside a FormField with the field's description and error. *@
 @if (Field.Type is "reference" or "media")
 {
-    <PickerField Field="@Field.Name"
+    @* Keyed by field, so each picker of a form keeps its own state with the circuit. *@
+    <PickerField @key="Field.Name"
+                 Field="@Field.Name"
                  Kind="@(Field.Type == "media" ? PickerField.MediaKind : PickerField.EntryKind)"
                  Target="@FieldValues.Setting(Field, "target")"
                  Value="@Value"
@@ -13,7 +15,6 @@
                  Description="@Description"
                  Error="@Error"
                  Required="@Field.Required"
-                 Options="@Options.ToArray()"
                  @rendermode="InteractiveServer" />
     return;
 }
@@ -65,7 +66,6 @@
     [Parameter, EditorRequired] public FieldDefinition Field { get; set; } = null!;
     [Parameter] public string? Value { get; set; }
     [Parameter] public string? Error { get; set; }
-    [Parameter] public IReadOnlyList<FieldOption> Options { get; set; } = [];
 
     private string Name => $"Form.Values[{Field.Name}]";
 
