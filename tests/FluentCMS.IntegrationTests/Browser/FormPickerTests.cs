@@ -149,6 +149,44 @@ public sealed class FormPickerTests
         await Assertions.Expect(choice).ToHaveValueAsync(drill.ToString());
     }
 
+    // Enhanced navigation to another version of the entry gives the picker that version's value: starting from the published version
+    // saves its reference, not the rejected draft's the picker showed before.
+    [BrowserFact]
+    public async Task Starting_from_the_published_version_gives_the_picker_its_value()
+    {
+        await using var session = await BrowserSession.StartAsync();
+        var drill = await ModelAsync(session, products: 1);
+        var hammer = await session.Host.AsUserAsync<IEntryDirectory, Entry>(session.OwnerId, async entries =>
+            (await entries.CreateAsync(new NewEntry("product", JsonDocument.Parse("""{"name": "Hammer"}""").RootElement))).Value);
+        var page = await session.Host.AsUserAsync<IEntryDirectory, Entry>(session.OwnerId, async entries => (await entries.CreateAsync(new NewEntry(
+            "product-page", JsonDocument.Parse($$"""{"title": "Published", "product": "{{drill}}"}""").RootElement))).Value);
+        await session.Host.AsUserAsync<IChangeSetDirectory, ChangeSet>(session.OwnerId, async sets =>
+        {
+            var set = (await sets.OpenAsync(new NewChangeSet("Publish the page.", []))).Value;
+            await sets.AddOperationAsync(set.Id, ChangeOperation.Create(OperationKind.Create, ItemKind.Entry, page.Id, null, 1).Value);
+            await sets.TransitionAsync(set.Id, ChangeSetState.ChecksRunning);
+            await sets.TransitionAsync(set.Id, ChangeSetState.Approved);
+            return (await sets.PublishAsync(set.Id)).Value;
+        });
+        await session.Host.AsUserAsync<IEntryDirectory, Entry>(session.OwnerId, async entries => (await entries.UpdateAsync(
+            page.Id, 1, JsonDocument.Parse($$"""{"title": "Rejected draft", "product": "{{hammer.Id}}"}""").RootElement)).Value);
+        var browser = session.Page;
+
+        await session.SignInWithKeyboardAsync();
+        await browser.GotoAsync($"{session.BaseUrl}/content/product-page/{page.Id}");
+        var choice = browser.Locator("[data-picker=product] input[type=hidden]");
+        await Assertions.Expect(choice).ToHaveValueAsync(hammer.Id.ToString());
+        await browser.GetByTestId("from-published").ClickAsync();
+        await Assertions.Expect(browser.Locator("input[name='Form.Values[title]']")).ToHaveValueAsync("Published");
+        await Assertions.Expect(choice).ToHaveValueAsync(drill.ToString());
+
+        await browser.Locator("textarea[name='Form.Rationale']").FillAsync("Back to the published page.");
+        await browser.Locator("[data-action=save]").ClickAsync();
+        await browser.WaitForURLAsync(new Regex("/sets/[0-9a-f-]{36}\\?done=saved$"));
+        var saved = await session.Host.AsUserAsync<IEntryDirectory, Entry>(session.OwnerId, async entries => (await entries.GetAsync(page.Id)).Value);
+        Assert.Equal(drill.ToString(), saved.Latest.Fields.GetProperty("product").GetString());
+    }
+
     // A circuit the server no longer knows ends the search, not the form: nothing reloads, what was typed stays, and the choice made
     // before the loss is saved with the form.
     [BrowserFact]

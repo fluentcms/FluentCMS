@@ -93,6 +93,8 @@
     private readonly CancellationTokenSource _disposed = new();
     private int _search;
     private string? _shownText;
+    private bool _set;
+    private string? _lastValue;
     private bool _searched;
     private List<PickerHit> _hits = [];
     private IReadOnlyList<FieldOption> _fallback = [];
@@ -119,7 +121,14 @@
     // while a DbContext takes one query at a time.
     protected override async Task OnParametersSetAsync()
     {
-        Choice ??= new PickerChoice(string.IsNullOrWhiteSpace(Value) ? null : Value, null);
+        // A new stored value, as when enhanced navigation shows another version of the entry, replaces the choice; the same one keeps
+        // the choice the person made, and a resumed circuit starts from the choice it kept.
+        if (Choice is null || (_set && Value != _lastValue))
+        {
+            Choice = new PickerChoice(string.IsNullOrWhiteSpace(Value) ? null : Value, null);
+        }
+
+        (_set, _lastValue) = (true, Value);
         await using var scope = Scopes.CreateAsyncScope();
         var services = scope.ServiceProvider;
         if (RendererInfo.IsInteractive)
@@ -206,7 +215,7 @@
         if (Kind == MediaKind)
         {
             var asset = await services.GetRequiredService<IMediaLibrary>().GetAsync(id, _disposed.Token);
-            return asset.IsSuccess ? asset.Value.Latest.Metadata.FileName : null;
+            return asset.IsSuccess ? MediaLabel(asset.Value.Latest.Metadata.FileName, asset.Value.Latest.Metadata.Folder) : null;
         }
 
         var entry = await services.GetRequiredService<IEntryDirectory>().GetAsync(id, _disposed.Token);
@@ -267,7 +276,9 @@
         ? L["{0} ({1})", id.ToString()[..8], StateLabel(state)]
         : L["{0} ({1}, {2})", name, StateLabel(state), id.ToString()[..8]];
 
-    private static string MediaLabel(MediaAssetSummary asset) => asset.Folder.Length == 0 ? asset.FileName : $"{asset.FileName} ({asset.Folder})";
+    private static string MediaLabel(MediaAssetSummary asset) => MediaLabel(asset.FileName, asset.Folder);
+
+    private static string MediaLabel(string fileName, string folder) => folder.Length == 0 ? fileName : $"{fileName} ({folder})";
 
     private void Choose(PickerHit hit)
     {
