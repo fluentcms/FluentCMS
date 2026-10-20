@@ -4,6 +4,8 @@
 @using FluentCMS.Core.Audit
 @using FluentCMS.Core.ChangeSets
 @using FluentCMS.Core.Desk
+@using FluentCMS.Core.Identity
+@using FluentCMS.Core.Jobs
 @inject IChangeSetDirectory Directory
 @inject IChangeSetLists Lists
 @inject IDeskQueues Queues
@@ -72,7 +74,7 @@
     <Card Class="mt-6" data-testid="change-set-review">
         <CardHeader>
             <CardTitle><h2>@L["Review"]</h2></CardTitle>
-            <CardDescription>@ReviewHint(set.State)</CardDescription>
+            <CardDescription>@(CheckJobEnded ? L["The check run ended without a result, so the set cannot be reviewed yet. Whoever opened it can run the checks again."] : ReviewHint(set.State))</CardDescription>
         </CardHeader>
         <CardContent Class="grid gap-4">
             @if (_message is not null)
@@ -92,12 +94,19 @@
                         <Button Type="submit" data-action="approve" aria-keyshortcuts="A">@L["Approve"] <Kbd Class="bg-primary-foreground/20 text-primary-foreground" aria-hidden="true">A</Kbd></Button>
                     </form>
                 }
-                @if (set.State == ChangeSetState.Open)
+                @if (OffersSubmit)
                 {
                     <form method="post" @onsubmit="SubmitAsync" @formname="submit">
                         <AntiforgeryToken />
                         <input type="hidden" name="Submit.Seen" value="@_seen" />
-                        <Button Type="submit" data-action="submit" aria-keyshortcuts="S">@L["Submit for checks"] <Kbd Class="bg-primary-foreground/20 text-primary-foreground" aria-hidden="true">S</Kbd></Button>
+                        @if (set.State == ChangeSetState.Open)
+                        {
+                            <Button Type="submit" data-action="submit" aria-keyshortcuts="S">@L["Submit for checks"] <Kbd Class="bg-primary-foreground/20 text-primary-foreground" aria-hidden="true">S</Kbd></Button>
+                        }
+                        else
+                        {
+                            <Button Type="submit" data-action="submit">@L["Run the checks again"]</Button>
+                        }
                     </form>
                 }
                 @if (set.State == ChangeSetState.Approved)
@@ -142,7 +151,7 @@
                 }
             </div>
             @* A form posted from a page shown before the set moved on must still find its handler, which then says the set moved on. *@
-            @if (set.State != ChangeSetState.Open)
+            @if (!OffersSubmit)
             {
                 <form method="post" @onsubmit="SubmitAsync" @formname="submit" hidden></form>
             }
@@ -218,13 +227,21 @@
                                 }
                             </span>
                         }
-                        else if (_checks?.Job is { } job)
+                        else if (CheckJobEnded)
+                        {
+                            <span data-testid="check-job-ended">@L["The check run ended without a result. Whoever opened the set can run the checks again."]</span>
+                        }
+                        else if (_checks?.Job is { State: JobState.Queued or JobState.Running } job)
                         {
                             @L["The checks are running: {0} of {1} items done.", job.Progress.Done, job.Progress.Total?.ToString(CultureInfo.CurrentCulture) ?? "?"]
                         }
-                        else
+                        else if (set.State == ChangeSetState.Open)
                         {
                             @L["The checks run when the set is submitted."]
+                        }
+                        else
+                        {
+                            @L["No check results are stored for this set."]
                         }
                     </CardDescription>
                 </CardHeader>
@@ -255,15 +272,16 @@
                                             </span>
                                             @foreach (var finding in result.Findings)
                                             {
+                                                @* Each part is isolated, so a right-to-left override in a judgement's text cannot reorder the others. *@
                                                 <span class="ps-2 text-muted-foreground" data-finding>
-                                                    @finding.Message
+                                                    <bdi>@finding.Message</bdi>
                                                     @if (finding.Pointer.Length > 0)
                                                     {
-                                                        <code class="ms-1 font-mono text-xs" dir="ltr">@finding.Pointer</code>
+                                                        <bdi><code class="ms-1 font-mono text-xs" dir="ltr">@finding.Pointer</code></bdi>
                                                     }
                                                     @if (finding.Excerpt is { } excerpt)
                                                     {
-                                                        <q class="ms-1">@excerpt</q>
+                                                        <q class="ms-1"><bdi>@excerpt</bdi></q>
                                                     }
                                                 </span>
                                             }
@@ -466,13 +484,17 @@
 
     private async Task SubmitAsync()
     {
-        await ActAsync(Submit, [ChangeSetState.Open], async () =>
+        // Running the checks again on a set whose job ended recovers it, which fails the set rather than submitting it.
+        var done = CheckJobEnded
+            ? L["The check run had ended without a result, so the set now shows its checks as failed."]
+            : L["Submitted. The checks run on the set before it is reviewed."];
+        await ActAsync(Submit, OffersSubmit && _set is { } set ? [set.State] : [], async () =>
         {
             var submitted = await Checks.SubmitAsync(Id);
             return submitted.IsSuccess
                 ? FluentCMS.Core.Results.Result<ChangeSet>.Success(submitted.Value.ChangeSet)
                 : FluentCMS.Core.Results.Result<ChangeSet>.Failure(submitted.Errors);
-        }, L["Submitted. The checks run on the set before it is reviewed."]);
+        }, done);
     }
 
     private async Task ApproveAsync()
@@ -525,6 +547,13 @@
             Navigation.NavigateTo($"sets/{opened.Id}");
         }
     }
+
+    // A person submits a set they opened, and runs its checks again when its check job ended without moving it; an agent submits its
+    // own sets by tool, and a person pressing S on one would split its work in two.
+    private bool OffersSubmit => _set is { Initiator: UserInitiator } set
+        && (set.State == ChangeSetState.Open || (set.State == ChangeSetState.ChecksRunning && CheckJobEnded));
+
+    private bool CheckJobEnded => _set?.State == ChangeSetState.ChecksRunning && _checks is { Run: null, Job.State: JobState.Succeeded or JobState.Failed or JobState.Dead };
 
     private static readonly ChangeSetState[] RejectableStates = [ChangeSetState.AwaitingReview, ChangeSetState.ChecksFailed, ChangeSetState.Approved];
 
