@@ -350,7 +350,11 @@ const modifiers = { control: "ctrlKey", alt: "altKey", shift: "shiftKey", meta: 
 // (ShortcutHelp.razor). The choice is kept in this browser, and storage that refuses leaves them on.
 const singleKeysStorage = "fluentcms-single-key-shortcuts";
 
+// The choice made on this page when storage refuses to keep it.
+let singleKeysChosen;
+
 function singleKeysOn() {
+    if (singleKeysChosen !== undefined) return singleKeysChosen;
     try {
         return localStorage.getItem(singleKeysStorage) !== "off";
     } catch {
@@ -362,8 +366,9 @@ function chooseSingleKeys(on) {
     try {
         if (on) localStorage.removeItem(singleKeysStorage);
         else localStorage.setItem(singleKeysStorage, "off");
+        singleKeysChosen = undefined;
     } catch {
-        // The choice lasts for this page only.
+        singleKeysChosen = on;
     }
 }
 
@@ -625,6 +630,17 @@ document.addEventListener("keydown", (event) => {
 
 document.addEventListener("change", (event) => {
     if (event.target.matches?.('[data-ui="single-key-shortcuts"]')) chooseSingleKeys(event.target.checked);
+});
+
+// Enhanced navigation keeps the switch and sets it back to the page's "on", so the stored choice is shown again after each one,
+// and again whenever the switch takes focus.
+try {
+    window.Blazor?.addEventListener?.("enhancedload", () => showSingleKeys(document));
+} catch {
+    // A page without enhanced navigation has nothing to listen to; focus still shows the choice.
+}
+document.addEventListener("focusin", (event) => {
+    if (event.target.matches?.('[data-ui="single-key-shortcuts"]')) showSingleKeys(event.target);
 });
 
 document.addEventListener("input", (event) => {

@@ -127,11 +127,22 @@ public sealed class KeyboardReviewTests
         Assert.Equal(ChangeSetState.AwaitingReview, await StateAsync(session, set.Id));
 
         await page.ReloadAsync();
-        await Assertions.Expect(page.Locator("[data-action=approve]")).ToBeVisibleAsync();
-        await page.Keyboard.PressAsync("a");
+        await Assertions.Expect(page.Locator("[data-testid=change-set-items][data-interactive=true]")).ToBeVisibleAsync();
+        await page.Keyboard.PressAsync("j");
         await page.Keyboard.PressAsync("?");
-        Assert.Equal(ChangeSetState.AwaitingReview, await StateAsync(session, set.Id));
+        Assert.Equal(-1, await page.EvaluateAsync<int>("[...document.querySelectorAll('[data-slot=diff-view-item-summary]')].indexOf(document.activeElement)"));
         await Assertions.Expect(page.GetByTestId("shortcut-list")).Not.ToBeVisibleAsync();
+        await page.Keyboard.PressAsync("a");
+        await page.WaitForTimeoutAsync(1500);
+        Assert.EndsWith($"/sets/{set.Id}?queue=awaiting-me", page.Url);
+        Assert.Equal(ChangeSetState.AwaitingReview, await StateAsync(session, set.Id));
+        await page.GetByTestId("shortcut-help").ClickAsync();
+        await Assertions.Expect(page.Locator("[data-ui=single-key-shortcuts]")).Not.ToBeCheckedAsync();
+
+        // After an enhanced navigation to another page, the switch still shows the stored choice.
+        await page.Keyboard.PressAsync("Escape");
+        await page.Locator("a[aria-keyshortcuts=B]").ClickAsync();
+        await page.WaitForURLAsync(new Regex("/\\?queue=awaiting-me$"));
         await page.GetByTestId("shortcut-help").ClickAsync();
         await Assertions.Expect(page.Locator("[data-ui=single-key-shortcuts]")).Not.ToBeCheckedAsync();
     }
@@ -167,8 +178,14 @@ public sealed class KeyboardReviewTests
         Assert.Equal(1, await page.EvaluateAsync<int>(items));
         await page.Keyboard.PressAsync("End");
         Assert.Equal(4, await page.EvaluateAsync<int>(items));
+        await page.Keyboard.PressAsync("ArrowUp");
+        Assert.Equal(3, await page.EvaluateAsync<int>(items));
         await page.Keyboard.PressAsync("Home");
         Assert.Equal(0, await page.EvaluateAsync<int>(items));
+
+        // J and K match their physical keys too, as on a Persian layout where the J key types "ت".
+        await page.EvaluateAsync("document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'ت', code: 'KeyJ', bubbles: true }))");
+        Assert.Equal(1, await page.EvaluateAsync<int>(items));
     }
 
     // Outside any dialog, a key typed into a field types: B in a generated form's title does not go back.
