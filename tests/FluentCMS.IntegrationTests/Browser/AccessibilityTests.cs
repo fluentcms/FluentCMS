@@ -35,9 +35,10 @@ public sealed class AccessibilityTests
         {
             await session.Host.AsUserAsync(session.OwnerId, async users => await users.CreateAsync(new FluentCMS.Core.Identity.NewUser($"editor{user}@example.com", $"Editor {user}", "An0ther!Passw0rd")));
         }
+        var failing = await Desk.CheckedSets.FailingAsync(session.Host, session.OwnerId);
         await session.SignInWithKeyboardAsync();
 
-        string[] paths = ["/ui", "/", "/?queue=stale-facts", $"/sets/{set.Id}?queue=awaiting-me", "/security", "/media", $"/media/{asset}", "/content", "/content/product", "/content/product/new", "/content/supplier/new", "/content/kitchen-sink/new"];
+        string[] paths = ["/ui", "/", "/?queue=stale-facts", $"/sets/{set.Id}?queue=awaiting-me", $"/sets/{failing}", "/security", "/media", $"/media/{asset}", "/content", "/content/product", "/content/product/new", "/content/supplier/new", "/content/kitchen-sink/new"];
         var violations = new List<string>();
         foreach (var theme in new[] { "light", "dark" })
         {

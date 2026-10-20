@@ -132,6 +132,31 @@ public sealed class MediaLibraryTests
         Assert.Equal(["", "products", "products/drills"], await LibraryAsync(scenario, library => library.FoldersAsync()));
     }
 
+    // The pickers search by text: any letter matches whatever its case, as SQLite's own lower() would not do, and Newest keeps the
+    // newest few, newest first.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task Assets_list_by_text_in_their_name_or_folder_whatever_its_case_and_the_newest_first(string provider)
+    {
+        await using var scenario = await EntryScenario.CreateAsync(provider);
+        var doctors = (await UploadAsync(scenario, MediaFiles.Jpeg(), Metadata("Ärzte.png"))).Value.Id;
+        var drill = (await UploadAsync(scenario, MediaFiles.Jpeg(), Metadata("drill.png", "products/drills"))).Value.Id;
+        var saw = (await UploadAsync(scenario, MediaFiles.Jpeg(), Metadata("saw.png", "products"))).Value.Id;
+        var range = (await UploadAsync(scenario, MediaFiles.Jpeg(), Metadata("range.png", "products"))).Value.Id;
+
+        async Task<IReadOnlyList<Guid>> ListAsync(MediaQuery query) =>
+            (await LibraryAsync(scenario, library => library.ListAsync(query))).Select(asset => asset.Id).ToList();
+
+        Assert.Equal([doctors], await ListAsync(new MediaQuery { Text = "ärzte" }));
+        Assert.Equal([doctors], await ListAsync(new MediaQuery { Text = "ÄRZTE" }));
+        Assert.Equal([drill], await ListAsync(new MediaQuery { Text = "DRILL" }));
+        Assert.Equal(new[] { drill, saw, range }.Order(), await ListAsync(new MediaQuery { Text = "Products" }));
+        Assert.Equal([range, saw], await ListAsync(new MediaQuery { Text = "products", Newest = 2 }));
+        Assert.Equal([range, saw], await ListAsync(new MediaQuery { Newest = 2 }));
+        Assert.Empty(await ListAsync(new MediaQuery { Text = "hammer" }));
+    }
+
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
     [PostgresData]
