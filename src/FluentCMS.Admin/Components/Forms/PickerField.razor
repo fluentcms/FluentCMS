@@ -50,7 +50,8 @@
                    data-field="@Field" />
             @if (_hits.Count > 0)
             {
-                <div id="@ListId" role="listbox" aria-label="@L["Matches"]" data-ui="rove" class="grid gap-1 rounded-md border p-1" @onkeydown="OnKeyDown">
+                @* data-input names the keystroke these matches answer: admin.js lets Enter choose only when it is the box's latest one. *@
+                <div id="@ListId" role="listbox" aria-label="@L["Matches"]" data-ui="rove" data-input="@_shown" class="grid gap-1 rounded-md border p-1" @onkeydown="OnKeyDown">
                     @foreach (var (hit, index) in _hits.Select((hit, index) => (hit, index)))
                     {
                         <button type="button"
@@ -93,6 +94,8 @@
     private string? _value;
     private string? _chosenLabel;
     private int _search;
+    private int _inputs;
+    private int _shown;
     private bool _searched;
     private List<PickerHit> _hits = [];
     private IReadOnlyList<FieldOption> _fallback = [];
@@ -129,6 +132,7 @@
     private async Task SearchAsync(ChangeEventArgs change)
     {
         var search = ++_search;
+        var input = ++_inputs;
         var text = (change.Value?.ToString() ?? string.Empty).Trim();
         try
         {
@@ -148,7 +152,7 @@
             // Only the newest search shows its results, whatever order the searches end in.
             if (search == _search)
             {
-                (_hits, _searched) = (hits, text.Length > 0);
+                (_hits, _searched, _shown) = (hits, text.Length > 0, input);
             }
         }
         catch (OperationCanceledException) when (_disposed.IsCancellationRequested)
@@ -295,11 +299,8 @@
         _ => L["archived"],
     };
 
-    public void Dispose()
-    {
-        _disposed.Cancel();
-        _disposed.Dispose();
-    }
+    // Cancelled, not disposed: a search still running reads the token after the component is gone.
+    public void Dispose() => _disposed.Cancel();
 
     private sealed record PickerHit(string Value, string Label, string? Preview);
 }

@@ -84,23 +84,92 @@ public sealed class FormPickerTests
         }
     }
 
-    // A circuit the server no longer knows ends the search, not the form: nothing reloads and what was typed stays.
+    // Enter answers what the box holds now: matches still shown for an earlier word are not chosen while the new search runs.
+    [BrowserFact]
+    public async Task Enter_never_chooses_a_match_from_an_earlier_search()
+    {
+        await using var session = await BrowserSession.StartAsync();
+        await ModelAsync(session, products: 3);
+        var page = session.Page;
+        var pause = PickerField.SearchPause;
+        PickerField.SearchPause = TimeSpan.FromSeconds(2);
+        try
+        {
+            await session.SignInWithKeyboardAsync();
+            await page.GotoAsync($"{session.BaseUrl}/content/product-page/new");
+            var search = page.Locator("[data-picker=product] input[type=search]");
+            await search.PressSequentiallyAsync("cordless");
+            await Assertions.Expect(page.Locator("[data-picker=product] [role=option]")).ToHaveCountAsync(1);
+
+            await search.PressAsync("Control+a");
+            await search.PressSequentiallyAsync("product number");
+            await search.PressAsync("Enter");
+
+            await Assertions.Expect(page.Locator("[data-picker=product] input[type=hidden]")).ToHaveValueAsync("");
+            await Assertions.Expect(search).ToHaveValueAsync("product number");
+            Assert.EndsWith("/content/product-page/new", page.Url);
+        }
+        finally
+        {
+            PickerField.SearchPause = pause;
+        }
+    }
+
+    // A circuit the server no longer knows ends the search, not the form: nothing reloads, what was typed stays, and the choice made
+    // before the loss is saved with the form.
     [BrowserFact]
     public async Task A_lost_circuit_keeps_the_form_and_what_was_typed()
     {
         await using var session = await BrowserSession.StartAsync();
-        await ModelAsync(session, products: 1);
+        var drill = await ModelAsync(session, products: 1);
         var page = session.Page;
 
         await session.SignInWithKeyboardAsync();
         await page.GotoAsync($"{session.BaseUrl}/content/product-page/new");
-        await Assertions.Expect(page.Locator("[data-picker=product] input[type=search]")).ToBeVisibleAsync();
+        var search = page.Locator("[data-picker=product] input[type=search]");
+        await search.PressSequentiallyAsync("cordless");
+        await page.Locator("[data-picker=product] [role=option]").ClickAsync();
+        await Assertions.Expect(page.Locator("[data-picker=product] input[type=hidden]")).ToHaveValueAsync(drill.ToString());
         await page.Locator("input[name='Form.Values[title]']").FillAsync("Typed before the loss");
         await page.EvaluateAsync("document.dispatchEvent(new CustomEvent('components-reconnect-state-changed', { detail: { state: 'rejected' } }))");
 
         await Assertions.Expect(page.Locator("[data-testid=reconnect-lost]")).ToBeVisibleAsync();
         await Assertions.Expect(page.Locator("input[name='Form.Values[title]']")).ToHaveValueAsync("Typed before the loss");
-        await Assertions.Expect(page.Locator("[data-picker=product] input[type=search]")).ToBeDisabledAsync();
+        await Assertions.Expect(search).ToBeDisabledAsync();
+
+        await page.Locator("textarea[name='Form.Rationale']").FillAsync("Saved after the loss.");
+        await page.Locator("[data-action=save]").ClickAsync();
+        await page.WaitForURLAsync(new Regex("/sets/[0-9a-f-]{36}\\?done=saved$"));
+        var setId = Guid.Parse(new Uri(page.Url).AbsolutePath["/sets/".Length..]);
+        var set = await session.Host.AsUserAsync<IChangeSetDirectory, ChangeSet>(session.OwnerId, async sets => (await sets.GetAsync(setId)).Value);
+        var entry = await session.Host.AsUserAsync<IEntryDirectory, Entry>(session.OwnerId, async entries => (await entries.GetAsync(set.Operations[0].ItemId)).Value);
+        Assert.Equal(("Typed before the loss", drill.ToString()), (entry.Latest.Fields.GetProperty("title").GetString(), entry.Latest.Fields.GetProperty("product").GetString()));
+    }
+
+    // Any page with typed input is kept, such as a rejection reason on the set view, whose diff is an island too.
+    [BrowserFact]
+    public async Task A_lost_circuit_keeps_a_page_with_typed_input_even_without_a_picker()
+    {
+        await using var session = await BrowserSession.StartAsync();
+        var page = session.Page;
+        var type = await session.Host.AsUserAsync<IContentTypeDirectory, ContentType>(session.OwnerId, async types => (await types.CreateAsync(new NewContentType(
+            "Brand", "brand", new ContentTypeDefinition([new FieldDefinition("name", "text")])), TestChangeSetTargets.ContentModel)).Value);
+        var set = await session.Host.AsUserAsync<IChangeSetDirectory, ChangeSet>(session.OwnerId, async sets =>
+        {
+            var opened = (await sets.OpenAsync(new NewChangeSet("Add the brand type.", []))).Value;
+            await sets.AddOperationAsync(opened.Id, ChangeOperation.Create(OperationKind.Create, ItemKind.Schema, type.Id, null, 1).Value);
+            await sets.TransitionAsync(opened.Id, ChangeSetState.ChecksRunning);
+            return (await sets.TransitionAsync(opened.Id, ChangeSetState.AwaitingReview)).Value;
+        });
+
+        await session.SignInWithKeyboardAsync();
+        await page.GotoAsync($"{session.BaseUrl}/sets/{set.Id}");
+        await page.Locator("[data-action=reject]").ClickAsync();
+        await page.Locator("textarea[name='Reject.Reason']").FillAsync("Typed before the loss");
+        await page.EvaluateAsync("document.dispatchEvent(new CustomEvent('components-reconnect-state-changed', { detail: { state: 'rejected' } }))");
+
+        await Assertions.Expect(page.Locator("[data-testid=reconnect-lost]")).ToBeVisibleAsync();
+        await Assertions.Expect(page.Locator("textarea[name='Reject.Reason']")).ToHaveValueAsync("Typed before the loss");
     }
 
     private static string Provider => string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(PostgresFactAttribute.VariableName))

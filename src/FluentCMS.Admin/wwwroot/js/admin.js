@@ -413,7 +413,9 @@ function onRoveKeydown(event) {
     // the box: it chooses the only match, or enters the list when there are more.
     if (target.matches('[data-ui="rove-input"]') && (event.key === "ArrowDown" || event.key === "Enter")) {
         const list = document.getElementById(target.getAttribute("aria-controls"));
-        const items = list ? roveItems(list) : [];
+        // Matches for an earlier keystroke are not the answer to what the box holds now, so Enter waits for the new ones.
+        const fresh = !list?.dataset.input || list.dataset.input === target.dataset.inputs;
+        const items = list && fresh ? roveItems(list) : [];
         if (event.key === "Enter") event.preventDefault();
         if (items.length === 0) return event.key === "Enter";
         event.preventDefault();
@@ -469,8 +471,8 @@ function chooseTheme(theme) {
 // ---------------------------------------------------------------------------------------------
 // Reconnect: Blazor reports its state as a class on #components-reconnect-modal (ReconnectModal.razor)
 // and leaves the buttons, and the reload after a rejected circuit, to the page, as its default display does.
-// A page whose form holds a picker is not reloaded, which would lose what was typed: its searches stop, the
-// choices still post, and the person saves the form or reloads it themselves.
+// A page whose form holds typed input is not reloaded, which would lose it: pickers stop searching, every field
+// still posts, and the person saves the form or reloads it themselves.
 
 const reconnectStates = ["show", "hide", "retrying", "failed", "rejected", "paused", "resume-failed", "lost"].map((state) => `components-reconnect-${state}`);
 
@@ -480,8 +482,15 @@ function showReconnectState(state) {
     modal?.classList.add(`components-reconnect-${state}`);
 }
 
+const typed = (field) => field.type === "checkbox" || field.type === "radio"
+    ? field.checked !== field.defaultChecked
+    : field instanceof HTMLSelectElement
+        ? [...field.options].some((option) => option.selected !== option.defaultSelected)
+        : field.type !== "hidden" && field.value !== field.defaultValue;
+
 function reloadOrKeepForm() {
-    if (!document.querySelector("form [data-picker]")) {
+    const fields = [...document.querySelectorAll("form input, form textarea, form select")];
+    if (!document.querySelector("form [data-picker]") && !fields.some(typed)) {
         location.reload();
         return;
     }
@@ -577,6 +586,8 @@ document.addEventListener("keydown", (event) => {
 
 document.addEventListener("input", (event) => {
     if (event.target.matches?.('[data-ui="command-input"]')) filterCommand(event.target);
+    // Counted as the server counts them (PickerField.razor), so a list can say which keystroke it answers.
+    if (event.target.matches?.('[data-picker] [data-ui="rove-input"]')) event.target.dataset.inputs = String(Number(event.target.dataset.inputs ?? 0) + 1);
 });
 
 document.addEventListener("pointermove", onCommandPointerMove);
