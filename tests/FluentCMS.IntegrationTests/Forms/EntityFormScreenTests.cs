@@ -3,6 +3,7 @@ using System.Text.Json;
 using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Entities;
+using FluentCMS.Core.Identity;
 using FluentCMS.Core.Schema;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -73,16 +74,153 @@ public sealed class EntityFormScreenTests
             ["Form.Values[price]"] = "10",
             ["Form.Facts[name.kind]"] = "url",
             ["Form.Facts[price.validUntil]"] = "next year",
+            ["Form.Facts[price.owner]"] = Guid.NewGuid().ToString(),
             ["Form.Rationale"] = "Add the drill.",
             ["Form.BaseVersion"] = "0",
         });
         var page = await refused.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, refused.StatusCode);
-        Assert.Contains("Give both the kind of source and the source, or neither.", page);
-        Assert.Contains("Enter a date and a time.", page);
+        Assert.Contains("Give both the kind of source and the source, or neither.", Fieldset(page, "name"));
+        Assert.Contains("Enter a date and a time.", Fieldset(page, "price"));
+        Assert.Contains("Choose an owner from the list.", Fieldset(page, "price"));
         Assert.Contains("value=\"next year\"", page);
         Assert.Empty(await host.AsUserAsync<IEntryDirectory, IReadOnlyList<EntrySummary>>(ownerId, async entries => (await entries.ListAsync("product")).Value));
+    }
+
+    [Fact]
+    public async Task Fact_details_for_an_empty_value_are_reported_next_to_the_field()
+    {
+        using var install = new TemporaryInstall();
+        await using var host = await AdminHost.StartAsync(install);
+        var ownerId = await host.CreateFirstAdministratorAsync();
+        await ProductTypeAsync(host, ownerId);
+        await host.SignInAsync(AdminHost.Owner);
+
+        var refused = await host.SubmitAsync("/content/product/new", "entry", new Dictionary<string, string>
+        {
+            ["Form.Values[name]"] = "Drill",
+            ["Form.Facts[price.kind]"] = "file",
+            ["Form.Facts[price.reference]"] = "prices.csv",
+            ["Form.Rationale"] = "Add the drill.",
+            ["Form.BaseVersion"] = "0",
+        });
+
+        Assert.Contains("Give the value too, or clear its fact details.", await refused.Content.ReadAsStringAsync());
+        Assert.Empty(await host.AsUserAsync<IEntryDirectory, IReadOnlyList<EntrySummary>>(ownerId, async entries => (await entries.ListAsync("product")).Value));
+    }
+
+    [Fact]
+    public async Task A_name_only_edit_changes_only_the_name_fact_and_keeps_every_other_fact_as_stored()
+    {
+        using var install = new TemporaryInstall();
+        await using var host = await AdminHost.StartAsync(install);
+        var ownerId = await host.CreateFirstAdministratorAsync();
+        await ProductTypeAsync(host, ownerId);
+        var leaverId = await host.AsUserAsync(ownerId, async users =>
+        {
+            var id = (await users.CreateAsync(new NewUser("leaver@example.com", "Leaver", "An0ther!Passw0rd"))).Value;
+            await users.DisableAsync(id);
+            return id;
+        });
+
+        // As an agent may store them: an owner who is no user, a source with its properties in another order and a trailing space,
+        // an upper-case owner id, and times with seconds and offsets.
+        var stranger = Guid.NewGuid();
+        var created = await host.AsUserAsync<IEntryDirectory, Entry>(ownerId, async entries => (await entries.CreateAsync(new NewEntry("product", Json($$"""
+            {
+                "name": {"value": "Drill", "source": null, "owner": "{{stranger}}", "validFrom": null, "validUntil": null, "lastVerified": null},
+                "price": {"value": 4.50, "source": {"reference": "prices.csv ", "kind": "file"}, "owner": "{{leaverId.ToString().ToUpperInvariant()}}", "validFrom": "2026-01-01T00:00:00Z", "validUntil": "2026-12-31T23:59:59+01:00", "lastVerified": "2026-10-18T09:00:45.5+02:00"}
+            }
+            """)))).Value);
+        var before = (await host.AsUserAsync<IEntryDirectory, Entry>(ownerId, async entries => (await entries.GetAsync(created.Id)).Value)).Latest.Fields;
+        await host.SignInAsync(AdminHost.Owner);
+
+        // The disabled owner and the owner who is no user stay selected, and the times show to the minute in UTC.
+        var edit = await host.Client.GetStringAsync($"/content/product/{created.Id}");
+        Assert.Contains($"<option value=\"{leaverId}\" selected>Leaver (disabled)</option>", Fieldset(edit, "price"));
+        Assert.Contains($"<option value=\"{stranger}\" selected>Unknown user {stranger.ToString()[..8]}</option>", Fieldset(edit, "name"));
+        Assert.DoesNotContain("Unknown user", Fieldset(edit, "price"));
+        Assert.Contains("value=\"2026-10-18T07:00\"", Fieldset(edit, "price"));
+        Assert.Contains("value=\"2026-12-31T22:59\"", Fieldset(edit, "price"));
+        Assert.Contains("data-testid=\"fact-unsourced\"", Fieldset(edit, "name"));
+        Assert.DoesNotContain("data-testid=\"fact-unsourced\"", Fieldset(edit, "price"));
+
+        // What the browser posts back: the widgets' text for every untouched part, and nothing for the unchecked box.
+        var saved = await host.SubmitAsync($"/content/product/{created.Id}", "entry", new Dictionary<string, string>
+        {
+            ["Form.Values[name]"] = "Cordless drill",
+            ["Form.Facts[name.owner]"] = stranger.ToString(),
+            ["Form.Values[price]"] = "4.50",
+            ["Form.Facts[price.kind]"] = "file",
+            ["Form.Facts[price.reference]"] = "prices.csv ",
+            ["Form.Facts[price.owner]"] = leaverId.ToString(),
+            ["Form.Facts[price.validFrom]"] = "2026-01-01T00:00",
+            ["Form.Facts[price.validUntil]"] = "2026-12-31T22:59",
+            ["Form.Facts[price.lastVerified]"] = "2026-10-18T07:00",
+            ["Form.Rationale"] = "Rename.",
+            ["Form.BaseVersion"] = "1",
+        });
+
+        Assert.StartsWith("/sets/", host.LocationOf(saved));
+        var fields = (await host.AsUserAsync<IEntryDirectory, Entry>(ownerId, async entries => (await entries.GetAsync(created.Id)).Value)).Latest.Fields;
+        Assert.Equal(("Cordless drill", stranger.ToString()), (fields.GetProperty("name").GetProperty("value").GetString(), fields.GetProperty("name").GetProperty("owner").GetString()));
+        Assert.Equal(JsonSerializer.Serialize(before.GetProperty("price")), JsonSerializer.Serialize(fields.GetProperty("price")));
+        Assert.False(fields.TryGetProperty("inStock", out _));
+    }
+
+    // A type made an entity type after entries were written keeps their plain values until they are edited.
+    [Fact]
+    public async Task An_edit_of_an_entry_written_before_its_type_held_facts_saves_its_facts()
+    {
+        using var install = new TemporaryInstall();
+        await using var host = await AdminHost.StartAsync(install);
+        var ownerId = await host.CreateFirstAdministratorAsync();
+        IReadOnlyList<FieldDefinition> fields = [new FieldDefinition("name", "text", required: true), new FieldDefinition("price", "number"), new FieldDefinition("specs", "json")];
+        await host.AsUserAsync<IContentTypeDirectory, ContentType>(ownerId, async types => (await types.CreateAsync(
+            new NewContentType("Product", "product", new ContentTypeDefinition(fields)), TestChangeSetTargets.ContentModel)).Value);
+        var entry = await host.AsUserAsync<IEntryDirectory, Entry>(ownerId, async entries =>
+            (await entries.CreateAsync(new NewEntry("product", Json("""{"name": "Drill", "price": 4.5, "specs": {"watts": 500}}""")))).Value);
+        await host.AsUserAsync<IContentTypeDirectory, ContentType>(ownerId, async types => (await types.ReviseAsync(
+            "product", 1, new ContentTypeDefinition(fields, isEntity: true), TestChangeSetTargets.ContentModel)).Value);
+        await host.SignInAsync(AdminHost.Owner);
+
+        // The plain value shows as the fact's value, flagged unsourced, so an untouched one is not dropped.
+        var form = await host.Client.GetStringAsync($"/content/product/{entry.Id}");
+        Assert.Contains("value=\"4.5\"", form);
+        Assert.Contains("data-testid=\"fact-unsourced\"", Fieldset(form, "price"));
+        Assert.Contains("&quot;watts&quot;: 500", form);
+        Assert.Contains("data-testid=\"fact-unsourced\"", Fieldset(form, "specs"));
+
+        var saved = await host.SubmitAsync($"/content/product/{entry.Id}", "entry", new Dictionary<string, string>
+        {
+            ["Form.Values[name]"] = "Cordless drill",
+            ["Form.Facts[name.owner]"] = ownerId.ToString(),
+            ["Form.Values[price]"] = "4.5",
+            ["Form.Values[specs]"] = "{\r\n  \"watts\": 500\r\n}",
+            ["Form.Rationale"] = "Record the facts.",
+            ["Form.BaseVersion"] = "1",
+        });
+
+        Assert.StartsWith("/sets/", host.LocationOf(saved));
+        var stored = (await host.AsUserAsync<IEntryDirectory, Entry>(ownerId, async entries => (await entries.GetAsync(entry.Id)).Value)).Latest.Fields;
+        var name = stored.GetProperty("name");
+        Assert.Equal(("Cordless drill", ownerId.ToString()), (name.GetProperty("value").GetString(), name.GetProperty("owner").GetString()));
+        Assert.Equal("4.5", stored.GetProperty("price").GetProperty("value").GetRawText());
+        Assert.Equal(500, stored.GetProperty("specs").GetProperty("value").GetProperty("watts").GetInt32());
+    }
+
+    private static JsonElement Json(string json)
+    {
+        return JsonSerializer.Deserialize<JsonElement>(json);
+    }
+
+    // The fact details fieldset of one field, where its problems and its unsourced marker are shown.
+    private static string Fieldset(string page, string field)
+    {
+        var start = page.IndexOf($"data-fact=\"{field}\"", StringComparison.Ordinal);
+        Assert.True(start >= 0, $"No fact details for {field}.");
+        return page[start..page.IndexOf("</fieldset>", start, StringComparison.Ordinal)];
     }
 
     private static Task<ContentType> ProductTypeAsync(AdminHost host, Guid ownerId)
@@ -90,6 +228,8 @@ public sealed class EntityFormScreenTests
         return host.AsUserAsync<IContentTypeDirectory, ContentType>(ownerId, async types => (await types.CreateAsync(new NewContentType(
             "Product",
             "product",
-            new ContentTypeDefinition([new FieldDefinition("name", "text", required: true), new FieldDefinition("price", "number")], isEntity: true)), TestChangeSetTargets.ContentModel)).Value);
+            new ContentTypeDefinition(
+                [new FieldDefinition("name", "text", required: true), new FieldDefinition("price", "number"), new FieldDefinition("inStock", "boolean")],
+                isEntity: true)), TestChangeSetTargets.ContentModel)).Value);
     }
 }

@@ -29,17 +29,12 @@ public static class InitiatorKinds
         return initiator is SystemInitiator system ? system.Component : initiator.DisplayName;
     }
 
-    // A stored system initiator, refused when its id is not the one its component derives, as a stored kind nobody knows is.
+    // A stored system initiator: one of the product's engines, with the id its component derives. Any other is refused as a fault,
+    // as a stored kind nobody knows is, so reading a row never makes up an engine.
     public static SystemInitiator RestoreSystem(string component, Guid id)
     {
-        try
-        {
-            var system = new SystemInitiator(component);
-            return system.Id == id ? system : throw new InvalidOperationException($"The system component '{component}' is stored with an id that is not its own.");
-        }
-        catch (ArgumentException exception)
-        {
-            throw new InvalidOperationException($"'{component}' is stored as a system component, and it is not a component name.", exception);
-        }
+        var system = SystemInitiator.Engines.FirstOrDefault(engine => engine.Component == component)
+            ?? throw new InvalidOperationException($"'{component}' is stored as a system component, and the product has no engine of that name.");
+        return system.Id == id ? system : throw new InvalidOperationException($"The system component '{component}' is stored with an id that is not its own.");
     }
 }

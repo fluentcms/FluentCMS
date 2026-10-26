@@ -1,8 +1,8 @@
 @using System.Globalization
 @using FluentCMS.Core.Audit
 @using FluentCMS.Core.Desk
-@inject IDeskQueues Queues
-@inject IAuditEventLists AuditLists
+@using Microsoft.Extensions.DependencyInjection
+@inject IServiceScopeFactory Scopes
 @inject TimeProvider Clock
 @inject IStringLocalizer<NotificationLinks> L
 
@@ -30,10 +30,14 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var awaiting = await Queues.CountAsync(DeskQueue.AwaitingMe);
+        // The layout renders while the page loads its own data, and two queries cannot share the request's DbContext, so the counts
+        // read through a scope of their own. The caller is still the request's, since the initiator comes from the HttpContext.
+        await using var scope = Scopes.CreateAsyncScope();
+
+        var awaiting = await scope.ServiceProvider.GetRequiredService<IDeskQueues>().CountAsync(DeskQueue.AwaitingMe);
         _awaiting = awaiting.IsSuccess ? awaiting.Value : null;
 
-        var security = await AuditLists.CountAsync(new AuditEventListQuery
+        var security = await scope.ServiceProvider.GetRequiredService<IAuditEventLists>().CountAsync(new AuditEventListQuery
         {
             Operations = SecurityEvents.Operations,
             Since = Clock.GetUtcNow() - SecurityWithin,
