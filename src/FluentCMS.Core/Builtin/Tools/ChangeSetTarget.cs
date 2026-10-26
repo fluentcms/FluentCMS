@@ -117,10 +117,4 @@ internal sealed class ChangeSetTarget
     {
         return _changeSetId is { } id ? DirectoryTarget.Existing(id) : DirectoryTarget.Session(_sessionId!, _opening!);
     }
-
-    // The set the write went into, read after it to answer the call.
-    public Task<Result<ChangeSet>> ReadAsync(IChangeSetDirectory directory, CancellationToken cancellationToken)
-    {
-        return _changeSetId is { } id ? directory.GetAsync(id, cancellationToken) : directory.GetSessionSetAsync(_sessionId!, cancellationToken);
-    }
 }
