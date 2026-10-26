@@ -12,17 +12,21 @@ namespace FluentCMS.IntegrationTests.Desk;
 
 public sealed partial class ReviewActionTests
 {
-    [Fact]
-    public async Task A_reviewer_approves_and_then_publishes_a_set_and_each_step_names_them()
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_reviewer_approves_and_then_publishes_a_set_and_each_step_names_them(string provider)
     {
         using var install = new TemporaryInstall();
-        await using var host = await AdminHost.StartAsync(install);
+        await using var database = await TemporaryDatabase.CreateAsync(provider);
+        await using var host = await AdminHost.StartAsync(install, settings: database.Configuration);
         var ownerId = await host.CreateFirstAdministratorAsync();
         var set = await AwaitingReviewAsync(host, ownerId, "product");
         await host.SignInAsync(AdminHost.Owner);
 
         var approved = await ActAsync(host, set.Id, "approve");
         Assert.Equal(HttpStatusCode.OK, approved.StatusCode);
+        Assert.Equal(ChangeSetState.Approved, await StateAsync(host, ownerId, set.Id));
         var page = await approved.Content.ReadAsStringAsync();
         Assert.Contains("data-testid=\"review-message\"", page);
         Assert.Contains("data-state=\"approved\"", page);
@@ -38,11 +42,14 @@ public sealed partial class ReviewActionTests
         Assert.Contains($"data-change-set=\"{set.Id:N}\"", await host.Client.GetStringAsync("/?queue=recently-published"));
     }
 
-    [Fact]
-    public async Task Reviewing_from_a_queue_moves_on_to_its_next_set_and_back_to_the_queue_once_it_is_empty()
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task Reviewing_from_a_queue_moves_on_to_its_next_set_and_back_to_the_queue_once_it_is_empty(string provider)
     {
         using var install = new TemporaryInstall();
-        await using var host = await AdminHost.StartAsync(install);
+        await using var database = await TemporaryDatabase.CreateAsync(provider);
+        await using var host = await AdminHost.StartAsync(install, settings: database.Configuration);
         var ownerId = await host.CreateFirstAdministratorAsync();
         var first = await AwaitingReviewAsync(host, ownerId, "product");
         var second = await AwaitingReviewAsync(host, ownerId, "category");
@@ -57,11 +64,14 @@ public sealed partial class ReviewActionTests
         Assert.Contains("data-testid=\"desk-done\"", await host.Client.GetStringAsync(host.LocationOf(rejected)!));
     }
 
-    [Fact]
-    public async Task Submitting_an_open_set_runs_its_checks_and_the_view_shows_each_result_with_its_evidence()
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task Submitting_an_open_set_runs_its_checks_and_the_view_shows_each_result_with_its_evidence(string provider)
     {
         using var install = new TemporaryInstall();
-        await using var host = await AdminHost.StartAsync(install);
+        await using var database = await TemporaryDatabase.CreateAsync(provider);
+        await using var host = await AdminHost.StartAsync(install, settings: database.Configuration);
         var ownerId = await host.CreateFirstAdministratorAsync();
         await host.AsUserAsync<IContentTypeDirectory, ContentType>(ownerId, async types => (await types.CreateAsync(new NewContentType(
             "Product page", "product-page", new ContentTypeDefinition([new FieldDefinition("headline", "text", required: true)])), TestChangeSetTargets.ContentModel)).Value);
@@ -99,11 +109,14 @@ public sealed partial class ReviewActionTests
         Assert.Contains("best in class", result);
     }
 
-    [Fact]
-    public async Task A_rejection_needs_a_reason_which_the_view_then_shows()
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_rejection_needs_a_reason_which_the_view_then_shows(string provider)
     {
         using var install = new TemporaryInstall();
-        await using var host = await AdminHost.StartAsync(install);
+        await using var database = await TemporaryDatabase.CreateAsync(provider);
+        await using var host = await AdminHost.StartAsync(install, settings: database.Configuration);
         var ownerId = await host.CreateFirstAdministratorAsync();
         var set = await AwaitingReviewAsync(host, ownerId, "product");
         await host.SignInAsync(AdminHost.Owner);
@@ -119,11 +132,14 @@ public sealed partial class ReviewActionTests
         Assert.Equal(ChangeSetState.Rejected, (await host.AsUserAsync<IChangeSetDirectory, ChangeSet>(ownerId, async sets => (await sets.GetAsync(set.Id)).Value)).State);
     }
 
-    [Fact]
-    public async Task Revert_opens_the_set_that_undoes_a_published_one_in_one_click_and_lands_on_it()
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task Revert_opens_the_set_that_undoes_a_published_one_in_one_click_and_lands_on_it(string provider)
     {
         using var install = new TemporaryInstall();
-        await using var host = await AdminHost.StartAsync(install);
+        await using var database = await TemporaryDatabase.CreateAsync(provider);
+        await using var host = await AdminHost.StartAsync(install, settings: database.Configuration);
         var ownerId = await host.CreateFirstAdministratorAsync();
         var set = await AwaitingReviewAsync(host, ownerId, "product");
         await host.SignInAsync(AdminHost.Owner);
@@ -141,13 +157,63 @@ public sealed partial class ReviewActionTests
         Assert.Contains($"Revert change set {set.Id}: Add the product type.", page);
         var revert = await host.AsUserAsync<IChangeSetDirectory, ChangeSet>(ownerId, async sets => (await sets.GetAsync(revertId)).Value);
         Assert.Equal(set.Id, revert.RevertsChangeSetId);
+
+        // Back and click again lands on the revert already in progress.
+        var again = await ActAsync(host, set.Id, "revert");
+        Assert.Equal(location, host.LocationOf(again));
+        Assert.Equal(1, await QueryAsync(host, context => context.ChangeSets.CountAsync(row => row.RevertsChangeSetId == set.Id)));
     }
 
-    [Fact]
-    public async Task An_action_on_a_set_that_moved_on_since_the_page_was_shown_is_refused()
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task An_action_posted_for_a_state_that_does_not_offer_it_is_refused_and_changes_nothing(string provider)
     {
         using var install = new TemporaryInstall();
-        await using var host = await AdminHost.StartAsync(install);
+        await using var database = await TemporaryDatabase.CreateAsync(provider);
+        await using var host = await AdminHost.StartAsync(install, settings: database.Configuration);
+        var ownerId = await host.CreateFirstAdministratorAsync();
+        var open = await OpenAsync(host, ownerId, "product");
+        var running = await OpenAsync(host, ownerId, "category", ChangeSetState.ChecksRunning);
+        var failed = await OpenAsync(host, ownerId, "brand", ChangeSetState.ChecksRunning, ChangeSetState.ChecksFailed);
+        var waiting = await AwaitingReviewAsync(host, ownerId, "region");
+        var approved = await OpenAsync(host, ownerId, "store", ChangeSetState.ChecksRunning, ChangeSetState.AwaitingReview, ChangeSetState.Approved);
+        var published = await OpenAsync(host, ownerId, "tag", ChangeSetState.ChecksRunning, ChangeSetState.AwaitingReview, ChangeSetState.Approved);
+        await host.AsUserAsync<IChangeSetDirectory, ChangeSet>(ownerId, async sets => (await sets.PublishAsync(published.Id)).Value);
+        await host.SignInAsync(AdminHost.Owner);
+
+        // Each post carries the set's current Seen, as someone could read it from the audit page.
+        (ChangeSet Set, string Action)[] refused =
+        [
+            (running, "approve"), (failed, "approve"), (open, "approve"), (published, "approve"),
+            (waiting, "publish"), (approved, "revert"), (failed, "submit"), (open, "reject"),
+        ];
+        foreach (var (set, action) in refused)
+        {
+            var before = await StateAsync(host, ownerId, set.Id);
+            var form = new Dictionary<string, string> { [$"{char.ToUpperInvariant(action[0])}{action[1..]}.Seen"] = await LastMoveAsync(host, set.Id) };
+            if (action == "reject")
+            {
+                form["Reject.Reason"] = "Not now.";
+            }
+
+            var page = await (await host.SubmitAsync($"/sets/{set.Id}", action, form)).Content.ReadAsStringAsync();
+
+            Assert.True(page.Contains("data-testid=\"review-refusal\"", StringComparison.Ordinal), $"{action} on a {before} set was not refused.");
+            Assert.Equal(before, await StateAsync(host, ownerId, set.Id));
+        }
+
+        Assert.Equal(0, await QueryAsync(host, context => context.ChangeSets.CountAsync(row => row.RevertsChangeSetId != null)));
+    }
+
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task An_action_on_a_set_that_moved_on_since_the_page_was_shown_is_refused(string provider)
+    {
+        using var install = new TemporaryInstall();
+        await using var database = await TemporaryDatabase.CreateAsync(provider);
+        await using var host = await AdminHost.StartAsync(install, settings: database.Configuration);
         var ownerId = await host.CreateFirstAdministratorAsync();
         var set = await AwaitingReviewAsync(host, ownerId, "product");
         await host.SignInAsync(AdminHost.Owner);
@@ -164,30 +230,46 @@ public sealed partial class ReviewActionTests
         Assert.Single(await MovesAsync(host, set.Id), row => row.Operation == "change_set.approved");
     }
 
-    [Fact]
-    public async Task A_post_without_the_anti_forgery_token_changes_nothing_and_an_anonymous_one_goes_to_sign_in()
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_post_without_the_anti_forgery_token_changes_nothing_and_an_anonymous_one_goes_to_sign_in(string provider)
     {
         using var install = new TemporaryInstall();
-        await using var host = await AdminHost.StartAsync(install);
+        await using var database = await TemporaryDatabase.CreateAsync(provider);
+        await using var host = await AdminHost.StartAsync(install, settings: database.Configuration);
         var ownerId = await host.CreateFirstAdministratorAsync();
         var set = await AwaitingReviewAsync(host, ownerId, "product");
 
-        var anonymous = await host.Client.PostAsync($"/sets/{set.Id}", Form(("_handler", "approve")));
-        await host.SignInAsync(AdminHost.Owner);
-        var seen = Seen(await host.Client.GetStringAsync($"/sets/{set.Id}"), "Approve");
-        var forged = await host.Client.PostAsync($"/sets/{set.Id}", Form(("_handler", "approve"), ("Approve.Seen", seen)));
+        string[] actions = ["submit", "approve", "publish", "reject", "revert"];
+        foreach (var action in actions)
+        {
+            var anonymous = await host.Client.PostAsync($"/sets/{set.Id}", Form(("_handler", action)));
+            Assert.Equal(HttpStatusCode.Redirect, anonymous.StatusCode);
+            Assert.StartsWith("/sign-in?", host.LocationOf(anonymous));
+        }
 
-        Assert.Equal(HttpStatusCode.Redirect, anonymous.StatusCode);
-        Assert.StartsWith("/sign-in?", host.LocationOf(anonymous));
-        Assert.Equal(HttpStatusCode.BadRequest, forged.StatusCode);
-        Assert.DoesNotContain(await MovesAsync(host, set.Id), row => row.Operation == "change_set.approved");
+        await host.SignInAsync(AdminHost.Owner);
+        var seen = await LastMoveAsync(host, set.Id);
+        var events = (await MovesAsync(host, set.Id)).Count;
+        foreach (var action in actions)
+        {
+            var name = $"{char.ToUpperInvariant(action[0])}{action[1..]}";
+            var forged = await host.Client.PostAsync($"/sets/{set.Id}", Form(("_handler", action), ($"{name}.Seen", seen), ("Reject.Reason", "Forged.")));
+            Assert.Equal(HttpStatusCode.BadRequest, forged.StatusCode);
+        }
+
+        Assert.Equal(events, (await MovesAsync(host, set.Id)).Count);
     }
 
-    [Fact]
-    public async Task Only_the_actions_the_state_allows_are_offered()
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task Only_the_actions_the_state_allows_are_offered(string provider)
     {
         using var install = new TemporaryInstall();
-        await using var host = await AdminHost.StartAsync(install);
+        await using var database = await TemporaryDatabase.CreateAsync(provider);
+        await using var host = await AdminHost.StartAsync(install, settings: database.Configuration);
         var ownerId = await host.CreateFirstAdministratorAsync();
         var waiting = await AwaitingReviewAsync(host, ownerId, "product");
         var failed = await OpenAsync(host, ownerId, "category", ChangeSetState.ChecksRunning, ChangeSetState.ChecksFailed);
@@ -251,6 +333,23 @@ public sealed partial class ReviewActionTests
 
             return set;
         });
+    }
+
+    private static Task<ChangeSetState> StateAsync(AdminHost host, Guid userId, Guid id)
+    {
+        return host.AsUserAsync<IChangeSetDirectory, ChangeSetState>(userId, async sets => (await sets.GetAsync(id)).Value.State);
+    }
+
+    // The Seen of a set as the page computes it: the id of its last move.
+    private static async Task<string> LastMoveAsync(AdminHost host, Guid id)
+    {
+        return (await MovesAsync(host, id)).Last(row => ChangeSetMoves.Operations.Contains(row.Operation)).Id.ToString("N");
+    }
+
+    private static async Task<T> QueryAsync<T>(AdminHost host, Func<FluentCmsDbContext, Task<T>> query)
+    {
+        await using var scope = host.App.Services.CreateAsyncScope();
+        return await query(scope.ServiceProvider.GetRequiredService<FluentCmsDbContext>());
     }
 
     private static async Task<List<Infrastructure.Audit.AuditEventRow>> MovesAsync(AdminHost host, Guid id)

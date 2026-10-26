@@ -60,6 +60,9 @@ public sealed partial class ExternalSignInTests
             Assert.Equal(AdminHost.Owner.DisplayName, row.InitiatorName);
             Assert.Equal(ownerId, row.SubjectId);
         });
+
+        // The linked sign-in reaches the security view with who it was (SEC-08).
+        Assert.Contains(("user.login_linked", "user", AdminHost.Owner.DisplayName), Desk.SecurityRows.Parse(await host.Client.GetStringAsync("/security")));
     }
 
     [Fact]
