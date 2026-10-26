@@ -32,6 +32,15 @@ public interface IMediaLibrary
 
     // The bytes of the latest version, or of the version named. The caller disposes the stream.
     Task<Result<MediaContent>> OpenAsync(Guid id, int? version = null, CancellationToken cancellationToken = default);
+
+    // A soft delete: versions, bytes and pointers stay, so restore brings the asset back as it was (CNT-06).
+    Task<Result> DeleteAsync(Guid id, int baseVersion, CancellationToken cancellationToken = default);
+
+    // Only within the retention window after the delete (REL-03).
+    Task<Result<MediaAsset>> RestoreAsync(Guid id, CancellationToken cancellationToken = default);
+
+    // Most recently deleted first.
+    Task<IReadOnlyList<DeletedAsset>> ListDeletedAsync(CancellationToken cancellationToken = default);
 }
 
 public sealed record NewAsset(Stream Content, string ContentType, AssetMetadata Metadata);
@@ -57,6 +66,9 @@ public sealed record MediaAssetSummary(Guid Id, int LatestVersion, int? Publishe
 
 public sealed record MediaContent(Stream Content, string ContentType, string FileName, long Length);
 
+// A soft-deleted asset, which restore brings back with its versions and bytes until RestorableUntil.
+public sealed record DeletedAsset(Guid Id, string FileName, int LatestVersion, DateTimeOffset DeletedAt, DateTimeOffset RestorableUntil);
+
 public static class MediaErrorCodes
 {
     public const string FileNameInvalid = "file_name_invalid";
@@ -73,4 +85,6 @@ public static class MediaErrorCodes
     public const string VersionConflict = "version_conflict";
     public const string ContentMissing = "media_content_missing";
     public const string FieldNotMedia = "field_not_media";
+    public const string AssetNotDeleted = "asset_not_deleted";
+    public const string RetentionExpired = "retention_expired";
 }
