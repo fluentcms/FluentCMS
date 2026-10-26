@@ -263,7 +263,9 @@ public sealed class ChangeSet
         // A set in review is approved by its approvals, never moved there directly.
         if (State == ChangeSetState.AwaitingReview && target == ChangeSetState.Approved)
         {
-            return Result.Failure(ChangeSetErrorCodes.ApprovalsNeeded, ApprovalsNeededMessage());
+            return Result.Failure(
+                ChangeSetErrorCodes.ApprovalsNeeded,
+                $"A change set in review is approved by its approvals. {ApprovalCount()}; approve it to add one.");
         }
 
         State = target;
@@ -305,7 +307,7 @@ public sealed class ChangeSet
         {
             return Result.Failure(
                 ChangeSetErrorCodes.ApprovalDuplicate,
-                $"{person.DisplayName} has already approved this change set; {ApprovalsNeededMessage()}");
+                $"{person.DisplayName} has already approved this change set. {ApprovalCount()}, so another person approves it next.");
         }
 
         _approvals.Add(new ChangeSetApproval(person, at));
@@ -338,10 +340,10 @@ public sealed class ChangeSet
         return Result.Success();
     }
 
-    private string ApprovalsNeededMessage()
+    private string ApprovalCount()
     {
-        var needed = RequiredApprovals == 1 ? "1 approval" : $"{RequiredApprovals} approvals";
-        return $"It needs {needed} by different people and has {_approvals.Count}; approve it to add one.";
+        var needed = RequiredApprovals == 1 ? "1 approval" : $"{RequiredApprovals} approvals, each by a different person,";
+        return $"It needs {needed} and has {_approvals.Count}";
     }
 
     private Result CanTakeOperations()

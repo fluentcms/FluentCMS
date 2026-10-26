@@ -54,7 +54,7 @@ public sealed class ChangeSetApprovalTests
             (await EventsAsync(scenario, set.Id)).Skip(events));
     }
 
-    // A person's approval while the set is being checked, or after it was approved, is no approval at all.
+    // An approval of a set that was already approved, or of an unknown set, is refused and stores nothing.
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
     [PostgresData]

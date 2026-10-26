@@ -426,7 +426,8 @@ public sealed class ChangeSetTests
         Assert.True(first.IsSuccess);
         Assert.Equal(ChangeSetErrorCodes.ApprovalDuplicate, Assert.Single(again.Errors).Code);
         Assert.Equal(ChangeSetErrorCodes.ApprovalsNeeded, Assert.Single(direct.Errors).Code);
-        Assert.Contains("needs 2 approvals by different people and has 1", direct.Errors[0].Message);
+        Assert.Contains("needs 2 approvals, each by a different person, and has 1; approve it", direct.Errors[0].Message);
+        Assert.EndsWith("Dana has already approved this change set. It needs 2 approvals, each by a different person, and has 1, so another person approves it next.", again.Errors[0].Message);
         Assert.Equal(ChangeSetState.AwaitingReview, changeSet.State);
 
         Assert.True(changeSet.Approve(amir, DateTimeOffset.UnixEpoch.AddMinutes(2)).IsSuccess);
