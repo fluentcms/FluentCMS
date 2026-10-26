@@ -120,16 +120,21 @@ public sealed class ChangeSetTests
         var changeSet = TestChangeSets.Open();
         var entry = Guid.NewGuid();
         var type = Guid.NewGuid();
+        var asset = Guid.NewGuid();
         changeSet.AddOperation(TestChangeSets.Update(ItemKind.Entry, entry));
         changeSet.AddOperation(TestChangeSets.Update(ItemKind.Schema, type));
+        changeSet.AddOperation(TestChangeSets.Update(ItemKind.Media, asset));
 
         var stale = changeSet.AddOperation(ChangeOperation.Create(OperationKind.Update, ItemKind.Entry, entry, 1, 2).Value);
         var schema = changeSet.AddOperation(ChangeOperation.Create(OperationKind.Update, ItemKind.Schema, type, 2, 3).Value);
+        var media = changeSet.AddOperation(ChangeOperation.Create(OperationKind.Update, ItemKind.Media, asset, 1, 2).Value);
 
         Assert.Equal(ChangeSetErrorCodes.ItemDuplicate, Assert.Single(stale.Errors).Code);
         Assert.Contains("update it from version 2", stale.Errors[0].Message);
         Assert.Equal(ChangeSetErrorCodes.ItemDuplicate, Assert.Single(schema.Errors).Code);
-        Assert.Equal([2, 2], changeSet.Operations.Select(operation => operation.ProposedVersion!.Value));
+        Assert.Contains("The media " + asset, media.Errors[0].Message);
+        Assert.Contains("update it from version 2", media.Errors[0].Message);
+        Assert.Equal([2, 2, 2], changeSet.Operations.Select(operation => operation.ProposedVersion!.Value));
     }
 
     // An item another set published after this one proposed it comes back as an update from that published version, which this set

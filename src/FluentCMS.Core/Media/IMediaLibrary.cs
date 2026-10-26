@@ -19,6 +19,10 @@ public interface IMediaLibrary
 
     Task<Result<MediaAssetVersion>> GetVersionAsync(Guid id, int version, CancellationToken cancellationToken = default);
 
+    // The version readers see now: the newest a person wrote in the library after the published one, since those take effect at
+    // once, else the published one. A version a change set proposes goes live only when the set publishes it. Null when none is live.
+    Task<Result<MediaAssetVersion?>> LiveVersionAsync(Guid id, CancellationToken cancellationToken = default);
+
     // By the latest versions' metadata; oldest asset first.
     Task<IReadOnlyList<MediaAssetSummary>> ListAsync(MediaQuery query, CancellationToken cancellationToken = default);
 

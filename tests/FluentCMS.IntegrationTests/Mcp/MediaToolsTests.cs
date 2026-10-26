@@ -66,8 +66,6 @@ public sealed class MediaToolsTests
         Assert.False((bool)listed["media"]![0]!["hasAltText"]!);
     }
 
-    // S2 with the alt text check (MED-02): a page that will show a published image without alt text fails until the same set adds
-    // the alt text with update_media.
     // S2 in one set (MED-02): the agent uploads an image without alt text and attaches it to a page, the check names the field, the
     // agent adds alt text to the image in the same set, and the set passes the check it runs when submitted.
     [Theory]

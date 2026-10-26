@@ -88,6 +88,7 @@ public sealed class CheckTools : IToolProvider
         }
 
         // Checks read what the set proposes, so it must be a set the agent may read and one that can still go live.
+        IReadOnlyList<ChangeOperation>? setOperations = null;
         if (changeSetId is { } setId)
         {
             var set = await services.GetRequiredService<IChangeSetDirectory>().GetAsync(setId, cancellationToken);
@@ -102,6 +103,8 @@ public sealed class CheckTools : IToolProvider
                     ToolErrorCodes.ArgumentInvalid,
                     $"Change set {setId} is {ToolJson.Name(set.Value.State)}, so nothing goes live with it any more; give the set the draft goes into.")]);
             }
+
+            setOperations = set.Value.Operations;
         }
 
         IReadOnlyList<string>? changed = null;
@@ -126,7 +129,7 @@ public sealed class CheckTools : IToolProvider
         var definition = type.Value.Definition;
         var refused = EntryFields.Validate(fields!.Value, definition, services.GetRequiredService<FieldTypeRegistry>()).Errors;
         var run = await services.GetRequiredService<ICheckRunner>().RunAsync(
-            new CheckSubject(fields.Value, sources, slug, definition, changed, changeSetId),
+            new CheckSubject(fields.Value, sources, slug, definition, changed, setOperations),
             checks == "deterministic" ? CheckSelection.Deterministic : CheckSelection.All,
             cancellationToken: cancellationToken);
 

@@ -226,6 +226,8 @@ public sealed class MediaViewsTests
 
         public Task<Result<MediaAssetVersion>> GetVersionAsync(Guid id, int version, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
+        public Task<Result<MediaAssetVersion?>> LiveVersionAsync(Guid id, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
         public Task<Result<MediaContent>> OpenAsync(Guid id, int? version = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 
