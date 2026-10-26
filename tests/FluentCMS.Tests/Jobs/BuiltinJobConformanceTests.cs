@@ -6,6 +6,11 @@ public sealed class CheckRunJobConformanceTests : JobHandlerConformanceTests
     protected override string JobType => "checks.run";
 }
 
+public sealed class BulkEntryUpdatesConformanceTests : JobHandlerConformanceTests
+{
+    protected override string JobType => "bulk.entry_updates";
+}
+
 public sealed class RetentionPurgeJobConformanceTests : JobHandlerConformanceTests
 {
     protected override string JobType => "retention.purge";
