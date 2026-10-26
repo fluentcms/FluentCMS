@@ -13,6 +13,7 @@ public static class ChangeSetErrorCodes
     public const string SourceBlank = "source_blank";
     public const string SessionIdInvalid = "session_id_invalid";
     public const string NotOpen = "change_set_not_open";
+    public const string Busy = "change_set_busy";
     public const string OperationsMissing = "operations_missing";
     public const string TransitionNotAllowed = "transition_not_allowed";
     public const string RejectionReasonMissing = "rejection_reason_missing";

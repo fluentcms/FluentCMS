@@ -49,6 +49,23 @@ public sealed class ToolArgumentsReader
         return null;
     }
 
+    public JsonElement? RequiredArray(string name, string form)
+    {
+        if (Read(name) is not { } value)
+        {
+            Missing(name, form);
+            return null;
+        }
+
+        if (value.ValueKind == JsonValueKind.Array)
+        {
+            return value;
+        }
+
+        Invalid(name, $"must be a JSON array: {form}");
+        return null;
+    }
+
     public JsonElement? RequiredObject(string name, string form)
     {
         if (Read(name) is not { } value)

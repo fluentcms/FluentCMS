@@ -821,6 +821,9 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<int>("LatestVersion")
                         .HasColumnType("integer");
 
@@ -915,6 +918,33 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
                             t.HasCheckConstraint("CK_MediaAssetVersions_Length", "\"Length\" > 0");
 
                             t.HasCheckConstraint("CK_MediaAssetVersions_Version", "\"Version\" >= 1");
+                        });
+                });
+
+            modelBuilder.Entity("FluentCMS.Infrastructure.Media.ProposedMediaVersionRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AssetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ChangeSetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChangeSetId");
+
+                    b.HasIndex("AssetId", "Version", "ChangeSetId")
+                        .IsUnique();
+
+                    b.ToTable("ProposedMediaVersions", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_ProposedMediaVersions_Version", "\"Version\" >= 1");
                         });
                 });
 
@@ -1635,6 +1665,21 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
                     b.HasOne("FluentCMS.Infrastructure.Media.MediaAssetRow", null)
                         .WithMany()
                         .HasForeignKey("AssetId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FluentCMS.Infrastructure.Media.ProposedMediaVersionRow", b =>
+                {
+                    b.HasOne("FluentCMS.Infrastructure.Media.MediaAssetRow", null)
+                        .WithMany()
+                        .HasForeignKey("AssetId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FluentCMS.Infrastructure.ChangeSets.ChangeSetRow", null)
+                        .WithMany()
+                        .HasForeignKey("ChangeSetId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

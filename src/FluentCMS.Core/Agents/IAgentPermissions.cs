@@ -24,6 +24,9 @@ public interface IAgentPermissions
     // or ahead of a write with the number of operations it will add.
     Task<Result> CheckChangeSetSizeAsync(ChangeSet changeSet, int adding = 0, CancellationToken cancellationToken = default);
 
+    // Ahead of opening a set for that many items at once, as a bulk write does, before the set exists.
+    Task<Result> CheckNewChangeSetSizeAsync(int items, CancellationToken cancellationToken = default);
+
     // The operation on items of the content type (MCP-05). A write names the fields it changes, which a field list in the scope can
     // narrow; a read names none, so an agent reads whole entries of a type in its scope.
     Task<Result> CheckContentAsync(

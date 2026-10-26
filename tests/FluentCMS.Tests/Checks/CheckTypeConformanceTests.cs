@@ -5,6 +5,7 @@ using FluentCMS.Core.Checks;
 using FluentCMS.Core.Extensions;
 using FluentCMS.Core.Results;
 using FluentCMS.Core.Schema;
+using FluentCMS.Testing;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Tests.Checks;
@@ -12,6 +13,7 @@ namespace FluentCMS.Tests.Checks;
 // The contract every check type meets, built in or not (EXT-N1). Derive one class per type: name the type, list settings it must
 // accept and settings it must reject, list content it must pass and content it must fail under given settings, and override
 // AddServices to register a type that lives outside Core or a service the type reads, such as a model.
+[ConformanceFor(typeof(ICheckType))]
 public abstract class CheckTypeConformanceTests : IDisposable
 {
     private static readonly string[] ValuesOfEveryKind =

@@ -6,7 +6,8 @@ namespace FluentCMS.Core.Jobs;
 
 // Runs the jobs of one type (ADR-0010, EXT-01). The worker runs it in a scope of its own as the job's initiator. A returned
 // failure ends the job as failed; an exception is retried after a growing delay until the job's attempts run out, so a handler
-// throws only for what another attempt can fix, and its work must be safe to repeat.
+// throws only for what another attempt can fix, and its work must be safe to repeat. Every implementation must pass
+// JobHandlerConformanceTests in tests/FluentCMS.Tests/Jobs.
 [ExtensionPoint]
 public interface IJobHandler
 {

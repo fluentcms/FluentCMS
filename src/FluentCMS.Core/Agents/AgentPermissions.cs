@@ -173,6 +173,34 @@ internal sealed class AgentPermissions(
             + $"{cap} (items per change set). Submit this change set and add the rest to a new one.");
     }
 
+    public async Task<Result> CheckNewChangeSetSizeAsync(int items, CancellationToken cancellationToken = default)
+    {
+        if (currentInitiator.Current is SystemInitiator system)
+        {
+            return SystemRefused(system, "open a change set");
+        }
+
+        var agent = await AgentAsync(cancellationToken);
+        if (!agent.IsSuccess)
+        {
+            return Result.Failure(agent.Errors);
+        }
+
+        if (agent.Value is not { } credential || items <= credential.Caps.ItemsPerChangeSet)
+        {
+            return Result.Success();
+        }
+
+        await RecordAsync(
+            new NewAuditEvent("agent.items_per_change_set_exceeded") { SubjectType = "agent_credential", SubjectId = credential.Id },
+            cancellationToken);
+
+        return Result.Failure(
+            AgentPermissionErrorCodes.CapExceeded,
+            $"{items} items are more than the credential '{credential.DisplayName}' allows in one change set: {credential.Caps.ItemsPerChangeSet} "
+            + "(items per change set). Split them over several calls of at most that many.");
+    }
+
     public async Task<Result> CheckContentAsync(
         string contentType,
         AgentOperation operation,
