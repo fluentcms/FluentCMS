@@ -1,5 +1,4 @@
 using FluentCMS.Core.Audit;
-using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Media;
 using FluentCMS.Core.Persistence;
 using FluentCMS.Core.Results;
@@ -182,7 +181,7 @@ internal sealed class MediaLibrary(
             : Result<MediaAssetVersion>.Success(stored.ToVersion());
     }
 
-    public async Task<Result<MediaAssetVersion?>> LiveVersionAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<Result<MediaAssetVersion?>> LiveVersionAsync(Guid id, int? publishing = null, CancellationToken cancellationToken = default)
     {
         var row = await FindAsync(id, cancellationToken);
         if (row is null)
@@ -190,24 +189,32 @@ internal sealed class MediaLibrary(
             return Result<MediaAssetVersion?>.Failure([NotFound(id)]);
         }
 
-        // Every other write names its version in a change set, whatever state the set is in now, so a version no set names is a
-        // person's write in the library.
-        var published = row.PublishedVersion ?? 0;
+        // Every other write is proposed in a change set, and kept as proposed whatever becomes of the set, so a version no set has
+        // proposed is a person's write in the library.
+        var published = publishing ?? row.PublishedVersion;
+        var after = published ?? 0;
         var written = await context.MediaAssetVersions
             .AsNoTracking()
             .Where(version => version.AssetId == id
-                && version.Version > published
-                && !context.ChangeSetOperations.Any(operation =>
-                    operation.ItemKind == ItemKind.Media && operation.ItemId == id && operation.ProposedVersion == version.Version))
+                && version.Version > after
+                && !context.ProposedMediaVersions.Any(proposed => proposed.AssetId == id && proposed.Version == version.Version))
             .OrderByDescending(version => version.Version)
             .FirstOrDefaultAsync(cancellationToken);
-        if (written is not null || row.PublishedVersion is null)
+        if (written is not null || published is not { } number)
         {
             return Result<MediaAssetVersion?>.Success(written?.ToVersion());
         }
 
-        var stored = await VersionRowAsync(id, published, cancellationToken)
-            ?? throw new InvalidOperationException($"Media asset {id} points at version {published}, which is not stored.");
+        var stored = await VersionRowAsync(id, number, cancellationToken);
+        if (stored is null)
+        {
+            return publishing is null
+                ? throw new InvalidOperationException($"Media asset {id} points at version {number}, which is not stored.")
+                : Result<MediaAssetVersion?>.Failure(
+                    MediaErrorCodes.VersionNotFound,
+                    $"Media asset {id} has no version {number}; its latest version is {row.LatestVersion}.");
+        }
+
         return Result<MediaAssetVersion?>.Success(stored.ToVersion());
     }
 

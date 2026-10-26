@@ -279,7 +279,7 @@ public sealed class AltTextCheckTypeTests : CheckTypeConformanceTests
         public Task<Result<MediaAssetVersion>> GetVersionAsync(Guid id, int version, CancellationToken cancellationToken = default) =>
             Task.FromResult(Result<MediaAssetVersion>.Failure(MediaErrorCodes.VersionNotFound, "No such version."));
 
-        public Task<Result<MediaAssetVersion?>> LiveVersionAsync(Guid id, CancellationToken cancellationToken = default) =>
+        public Task<Result<MediaAssetVersion?>> LiveVersionAsync(Guid id, int? publishing = null, CancellationToken cancellationToken = default) =>
             Task.FromResult(Result<MediaAssetVersion?>.Success(null));
 
         public Task<Result<MediaAsset>> UploadAsync(NewAsset asset, CancellationToken cancellationToken = default) => throw new NotSupportedException();

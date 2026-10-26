@@ -276,6 +276,145 @@ public sealed class MediaToolsTests
         Assert.Equal("pass", (string?)altText["status"]);
     }
 
+    // A version a set moved past within the set is still the set's, so outside it the alt text never counts, also once the set is
+    // rejected: readers keep seeing the published version without alt text, or no version at all.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task Versions_a_set_moved_past_do_not_count_outside_it_while_pending_or_once_rejected(string provider)
+    {
+        await using var agent = await ConnectedAgent.StartAsync(provider);
+        await PageAsync(agent);
+        await ActiveAltTextCheckAsync(agent);
+        var library = await agent.CallAsync("upload_media", new()
+        {
+            ["content_base64"] = Image,
+            ["content_type"] = "image/png",
+            ["file_name"] = "drill.png",
+            ["session_id"] = "library",
+            ["rationale"] = "An image for the catalog.",
+        });
+        var published = (string)library["media"]!["id"]!;
+        await PublishAsPersonAsync(agent, (string)library["changeSet"]!["id"]!);
+
+        var fresh = (string)(await agent.CallAsync("upload_media", new()
+        {
+            ["content_base64"] = Image,
+            ["content_type"] = "image/png",
+            ["file_name"] = "saw.png",
+            ["alt_text"] = "A circular saw.",
+            ["session_id"] = "describe",
+            ["rationale"] = "A new image.",
+        }))["media"]!["id"]!;
+        var described = await agent.CallAsync("update_media", new()
+        {
+            ["id"] = published,
+            ["base_version"] = 1,
+            ["alt_text"] = "A cordless drill on a workbench.",
+            ["session_id"] = "describe",
+            ["rationale"] = "Describe the drill.",
+        });
+        foreach (var (id, baseVersion) in new[] { (published, 2), (fresh, 1) })
+        {
+            await agent.CallAsync("update_media", new()
+            {
+                ["id"] = id,
+                ["base_version"] = baseVersion,
+                ["caption"] = "From the spring catalog.",
+                ["session_id"] = "describe",
+                ["rationale"] = "Caption the image.",
+            });
+        }
+
+        var setId = Guid.Parse((string)described["changeSet"]!["id"]!);
+        async Task<JsonObject> CheckAsync(string assetId, Guid? changeSetId = null)
+        {
+            var draft = new Dictionary<string, object?>
+            {
+                ["content_type"] = "product-page",
+                ["fields"] = JsonNode.Parse($$"""{"headline": "The Widget", "hero": "{{assetId}}"}"""),
+            };
+            if (changeSetId is { } id)
+            {
+                draft["change_set_id"] = id.ToString();
+            }
+
+            return await agent.CallAsync("check_draft", draft);
+        }
+
+        string? Finding(JsonObject result) => (string?)result["results"]![0]!["findings"]![0]!["message"];
+
+        var pending = await CheckAsync(published);
+        var pendingFresh = await CheckAsync(fresh);
+        var inTheSet = await CheckAsync(published, setId);
+        await agent.AsPersonAsync<IChangeSetDirectory, ChangeSet>(directory => directory.TransitionAsync(setId, ChangeSetState.ChecksRunning));
+        await agent.AsPersonAsync<IChangeSetDirectory, ChangeSet>(directory => directory.TransitionAsync(setId, ChangeSetState.AwaitingReview));
+        await agent.AsPersonAsync<IChangeSetDirectory, ChangeSet>(directory => directory.RejectAsync(setId, "Not now."));
+        var rejected = await CheckAsync(published);
+        var rejectedFresh = await CheckAsync(fresh);
+
+        Assert.Equal("Add alt text to the image 'drill.png' in hero that says what it shows; set it with update_media.", Finding(pending));
+        Assert.StartsWith("The image 'saw.png' in hero is not published", Finding(pendingFresh));
+        Assert.Equal("pass", (string?)inTheSet["status"]);
+        Assert.Equal(Finding(pending), Finding(rejected));
+        Assert.Equal(Finding(pendingFresh), Finding(rejectedFresh));
+    }
+
+    // A person who describes an image in the library while an agent's set holds it changes what goes live with that set, at once.
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_person_s_alt_text_in_the_library_counts_for_the_set_that_holds_the_image(string provider)
+    {
+        await using var agent = await ConnectedAgent.StartAsync(provider);
+        var page = await PageAsync(agent);
+        await ActiveAltTextCheckAsync(agent);
+        var uploaded = await agent.CallAsync("upload_media", new()
+        {
+            ["content_base64"] = Image,
+            ["content_type"] = "image/png",
+            ["file_name"] = "drill.png",
+            ["session_id"] = "launch",
+            ["rationale"] = "Show the drill on its page.",
+        });
+        var assetId = (string)uploaded["media"]!["id"]!;
+        var setId = (string)uploaded["changeSet"]!["id"]!;
+        await agent.CallAsync("attach_media", new()
+        {
+            ["entry_id"] = page.ToString(),
+            ["base_version"] = 1,
+            ["field"] = "hero",
+            ["asset_id"] = assetId,
+            ["session_id"] = "launch",
+            ["rationale"] = "Ignored once the set is open.",
+        });
+        async Task<string?> StatusAsync(string? changeSetId)
+        {
+            var draft = new Dictionary<string, object?>
+            {
+                ["content_type"] = "product-page",
+                ["fields"] = JsonNode.Parse($$"""{"headline": "The Widget", "hero": "{{assetId}}"}"""),
+            };
+            if (changeSetId is not null)
+            {
+                draft["change_set_id"] = changeSetId;
+            }
+
+            return (string?)(await agent.CallAsync("check_draft", draft))["status"];
+        }
+
+
+        var before = await StatusAsync(setId);
+        await agent.AsPersonAsync<IMediaLibrary, MediaAsset>(media =>
+            media.UpdateAsync(Guid.Parse(assetId), 1, AssetMetadata.Create("drill.png", null, [], "A cordless drill on a workbench.", null).Value));
+        var after = await StatusAsync(setId);
+        await PublishAsPersonAsync(agent, setId);
+        var live = await StatusAsync(null);
+
+        Assert.Equal(("fail", "pass", "pass"), (before, after, live));
+        Assert.Equal(1, await agent.QueryAsync(context => context.MediaAssets.Select(row => row.PublishedVersion).SingleAsync()));
+    }
+
     [Theory]
     [InlineData(DatabaseProviders.Sqlite)]
     [PostgresData]

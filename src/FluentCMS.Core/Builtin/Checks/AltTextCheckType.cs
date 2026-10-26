@@ -9,10 +9,10 @@ using Microsoft.Extensions.DependencyInjection;
 namespace FluentCMS.Core.Builtin.Checks;
 
 // Every image in the text has alt text that describes it (CHK-01): Markdown images, inline or by reference, and HTML img elements.
-// A media field that names an image passes when the version readers will see has alt text (MED-02): the one the content's change set
-// proposes, else the live one, which a person's write in the library is at once. An image only another set proposes fails, since
-// nothing checks what goes live with it later. Other media, such as a PDF, needs no alt text. An asset the library does not hold is
-// left to the reference checks of entries.
+// A media field that names an image passes when the version readers will see has alt text (MED-02): the live one once the content's
+// change set publishes what it proposes, so a person's later write in the library counts too. An image only another set proposes
+// fails, since nothing checks what goes live with it later. Other media, such as a PDF, needs no alt text. An asset the library does
+// not hold is left to the reference checks of entries.
 internal sealed class AltTextCheckType : ICheckType
 {
     private const RegexOptions Linear = RegexOptions.NonBacktracking | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase;
@@ -82,10 +82,14 @@ internal sealed class AltTextCheckType : ICheckType
                 continue;
             }
 
+            // A set that takes the asset offline leaves nothing to show with this content.
             var held = proposals.TryGetValue(id, out var proposed);
-            var shown = held
-                ? await ProposedAsync(library, asset.Value, proposed, cancellationToken)
-                : (await library.LiveVersionAsync(id, cancellationToken)) is { IsSuccess: true } live ? live.Value : null;
+            if (held && proposed is null)
+            {
+                continue;
+            }
+
+            var shown = (await library.LiveVersionAsync(id, proposed, cancellationToken)) is { IsSuccess: true } live ? live.Value : null;
             if (shown is null)
             {
                 // Only a change set proposes it: whichever version some other set publishes later, this content is not checked
@@ -112,19 +116,6 @@ internal sealed class AltTextCheckType : ICheckType
         }
 
         return findings;
-    }
-
-    // The version the subject's change set proposes, which goes live with the content; null when the set takes the asset offline.
-    private static async Task<MediaAssetVersion?> ProposedAsync(IMediaLibrary library, MediaAsset asset, int? proposed, CancellationToken cancellationToken)
-    {
-        if (proposed is not { } number)
-        {
-            return null;
-        }
-
-        return number == asset.LatestVersion
-            ? asset.Latest
-            : (await library.GetVersionAsync(asset.Id, number, cancellationToken)) is { IsSuccess: true } stored ? stored.Value : null;
     }
 
     // The value of the element's alt attribute, read attribute by attribute so a quoted value or a data-alt is not taken for it.
