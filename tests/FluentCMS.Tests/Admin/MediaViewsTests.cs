@@ -254,6 +254,10 @@ public sealed class MediaViewsTests
         public Task<Result<ContentType>> CreateAsync(NewContentType contentType, ChangeSetTarget changeSet, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
         public Task<Result<ContentType>> ReviseAsync(string slug, int baseVersion, ContentTypeDefinition definition, ChangeSetTarget changeSet, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<Result<ContentTypeWrite>> CreateInChangeSetAsync(NewContentType contentType, ChangeSetTarget changeSet, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<Result<ContentTypeWrite>> ReviseInChangeSetAsync(string slug, int baseVersion, ContentTypeDefinition definition, ChangeSetTarget changeSet, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 
     private sealed class FakeUsage(FakeLibrary library) : IWhereUsed
