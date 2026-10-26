@@ -27,6 +27,7 @@ public sealed class MediaSoftDeleteTests
 
         Assert.Equal(MediaErrorCodes.AssetNotFound, Code(await LibraryAsync(scenario, library => library.GetAsync(drill))));
         Assert.Equal(MediaErrorCodes.AssetNotFound, Code(await LibraryAsync(scenario, library => library.GetVersionAsync(drill, 1))));
+        Assert.Equal(MediaErrorCodes.AssetNotFound, Code(await LibraryAsync(scenario, library => library.LiveVersionAsync(drill))));
         Assert.Equal(MediaErrorCodes.AssetNotFound, Code(await LibraryAsync(scenario, library => library.OpenAsync(drill))));
         Assert.Equal(MediaErrorCodes.AssetNotFound, Code(await LibraryAsync(scenario, library => library.UpdateAsync(drill, 1, Metadata("drill.jpg", "products")))));
         Assert.Equal([kept], (await LibraryAsync(scenario, library => library.ListAsync(new MediaQuery()))).Select(asset => asset.Id));
