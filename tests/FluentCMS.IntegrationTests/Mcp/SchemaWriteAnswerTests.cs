@@ -56,6 +56,27 @@ public sealed class SchemaWriteAnswerTests
         Assert.NotEqual(joined, (await scenario.SessionSetAsync()).Id);
     }
 
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_revision_whose_set_is_submitted_before_the_answer_answers_with_that_set_in_its_new_state(string provider)
+    {
+        await using var scenario = await Scenario.CreateAsync(provider, async (services, joined) =>
+            Assert.True((await services.GetRequiredService<IChangeSetDirectory>().TransitionAsync(joined, ChangeSetState.ChecksRunning)).IsSuccess));
+        scenario.Racing = false;
+        var created = await scenario.CreateAsync("product");
+        scenario.Racing = true;
+
+        var answer = await scenario.ReviseAsync("product", 1);
+
+        var joined = Assert.Single(scenario.Joined);
+        Assert.Equal((string?)created["changeSet"]!["id"], joined.ToString());
+        Assert.Equal(joined.ToString(), (string?)answer["changeSet"]!["id"]);
+        Assert.Equal("checks_running", (string?)answer["changeSet"]!["state"]);
+        Assert.Equal(2, (int?)answer["contentType"]!["version"]);
+        Assert.Contains("submitted since", (string?)answer["next"], StringComparison.Ordinal);
+    }
+
     private sealed class Scenario : IAsyncDisposable
     {
         private readonly TemporaryDatabase _database;
@@ -70,6 +91,13 @@ public sealed class SchemaWriteAnswerTests
         }
 
         public IReadOnlyList<Guid> Joined => _shared.Joined;
+
+        // Whether the next write lets the other call in.
+        public bool Racing
+        {
+            get => _shared.Racing;
+            set => _shared.Racing = value;
+        }
 
         // What another call does right after the tool's write commits and before the tool answers, in a scope of its own.
         public static async Task<Scenario> CreateAsync(string provider, Func<IServiceProvider, Guid, Task> meanwhile)
@@ -92,11 +120,9 @@ public sealed class SchemaWriteAnswerTests
             return new Scenario(database, services, shared);
         }
 
-        public async Task<JsonObject> CreateAsync(string slug)
+        public Task<JsonObject> CreateAsync(string slug)
         {
-            await using var scope = _services.CreateAsyncScope();
-            var tool = new SchemaTools().Tools.Single(candidate => candidate.Name == "create_content_type");
-            var arguments = JsonSerializer.SerializeToElement(new Dictionary<string, object>
+            return CallAsync("create_content_type", new Dictionary<string, object>
             {
                 ["name"] = slug,
                 ["slug"] = slug,
@@ -104,8 +130,26 @@ public sealed class SchemaWriteAnswerTests
                 ["session_id"] = Session,
                 ["rationale"] = "Model the catalog.",
             });
+        }
 
-            var result = await tool.InvokeAsync(new ToolInvocation(arguments, scope.ServiceProvider));
+        public Task<JsonObject> ReviseAsync(string slug, int baseVersion)
+        {
+            return CallAsync("revise_content_type", new Dictionary<string, object>
+            {
+                ["slug"] = slug,
+                ["base_version"] = baseVersion,
+                ["definition"] = new { fields = new[] { new { name = "title", type = "text" }, new { name = "sku", type = "text" } } },
+                ["session_id"] = Session,
+                ["rationale"] = "Give products a SKU.",
+            });
+        }
+
+        private async Task<JsonObject> CallAsync(string name, Dictionary<string, object> arguments)
+        {
+            await using var scope = _services.CreateAsyncScope();
+            var tool = new SchemaTools().Tools.Single(candidate => candidate.Name == name);
+
+            var result = await tool.InvokeAsync(new ToolInvocation(JsonSerializer.SerializeToElement(arguments), scope.ServiceProvider));
 
             Assert.True(result.IsSuccess, string.Join("; ", result.Errors.Select(error => error.Message)));
             return result.Value!.AsObject();
@@ -124,7 +168,7 @@ public sealed class SchemaWriteAnswerTests
         }
     }
 
-    // The directory as the product registers it, with another call let in after the first write of a test commits.
+    // The directory as the product registers it, with another call let in after the first racing write of a test commits.
     private sealed class RacingContentTypes(IContentTypeDirectory inner, IServiceScopeFactory scopes, RacingContentTypes.Shared shared) : IContentTypeDirectory
     {
         public Task<IReadOnlyList<ContentTypeSummary>> ListAsync(CancellationToken cancellationToken = default) => inner.ListAsync(cancellationToken);
@@ -144,8 +188,22 @@ public sealed class SchemaWriteAnswerTests
 
         public async Task<Result<ContentTypeWrite>> CreateInChangeSetAsync(NewContentType contentType, ChangeSetTarget changeSet, CancellationToken cancellationToken = default)
         {
-            var written = await inner.CreateInChangeSetAsync(contentType, changeSet, cancellationToken);
-            if (written.IsSuccess && shared.Joined.Count == 0)
+            return await RaceAsync(await inner.CreateInChangeSetAsync(contentType, changeSet, cancellationToken));
+        }
+
+        public async Task<Result<ContentTypeWrite>> ReviseInChangeSetAsync(
+            string slug,
+            int baseVersion,
+            ContentTypeDefinition definition,
+            ChangeSetTarget changeSet,
+            CancellationToken cancellationToken = default)
+        {
+            return await RaceAsync(await inner.ReviseInChangeSetAsync(slug, baseVersion, definition, changeSet, cancellationToken));
+        }
+
+        private async Task<Result<ContentTypeWrite>> RaceAsync(Result<ContentTypeWrite> written)
+        {
+            if (written.IsSuccess && shared.Racing && shared.Joined.Count == 0)
             {
                 shared.Joined.Add(written.Value.ChangeSetId);
                 await using var scope = scopes.CreateAsyncScope();
@@ -155,17 +213,11 @@ public sealed class SchemaWriteAnswerTests
             return written;
         }
 
-        public Task<Result<ContentTypeWrite>> ReviseInChangeSetAsync(
-            string slug,
-            int baseVersion,
-            ContentTypeDefinition definition,
-            ChangeSetTarget changeSet,
-            CancellationToken cancellationToken = default) =>
-            inner.ReviseInChangeSetAsync(slug, baseVersion, definition, changeSet, cancellationToken);
-
         public sealed class Shared(Func<IServiceProvider, Guid, Task> meanwhile)
         {
             public Func<IServiceProvider, Guid, Task> Meanwhile { get; } = meanwhile;
+
+            public bool Racing { get; set; } = true;
 
             public List<Guid> Joined { get; } = [];
         }
