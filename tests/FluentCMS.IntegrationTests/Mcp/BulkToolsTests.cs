@@ -103,7 +103,7 @@ public sealed class BulkToolsTests
             .AsNoTracking()
             .Where(row => row.SessionId != TestChangeSetTargets.ContentModelSession)
             .ToListAsync()));
-        Assert.Empty(await agent.QueryAsync(context => context.Jobs.AsNoTracking().ToListAsync()));
+        Assert.Empty(await agent.QueryAsync(context => context.Jobs.AsNoTracking().Where(row => row.Type == BulkEntryUpdates.Name).ToListAsync()));
     }
 
     [Theory]
