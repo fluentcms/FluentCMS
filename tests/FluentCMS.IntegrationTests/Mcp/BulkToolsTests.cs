@@ -5,9 +5,11 @@ using FluentCMS.Core.Builtin.Jobs;
 using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Jobs;
+using FluentCMS.Core.Results;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Tools;
 using FluentCMS.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -37,10 +39,13 @@ public sealed class BulkToolsTests
         });
         var changeSetId = (string)started["changeSet"]!["id"]!;
         var jobId = (string)started["job"]!["id"]!;
-        var finished = await FinishedAsync(agent, jobId);
+        var seen = new List<int>();
+        var finished = await FinishedAsync(agent, jobId, seen);
 
         Assert.Equal("open", (string?)started["changeSet"]!["state"]);
+        Assert.Equal(("queued", 0), ((string?)started["job"]!["state"], (int)started["job"]!["progress"]!["done"]!));
         Assert.Equal(changeSetId, (string?)started["job"]!["subject"]!["id"]);
+        Assert.Equal(seen.Order(), seen);
         Assert.Equal("succeeded", (string?)finished["state"]);
         Assert.Equal((180, 180), ((int)finished["progress"]!["done"]!, (int)finished["progress"]!["total"]!));
         Assert.Equal("Updated 180 of 180.", (string?)finished["progress"]!["message"]);
@@ -60,11 +65,13 @@ public sealed class BulkToolsTests
     public async Task An_item_that_fails_is_listed_by_its_id_and_the_rest_go_into_the_set(string provider)
     {
         await using var agent = await ConnectedAgent.StartAsync(provider, settings: FastQueue);
-        var products = await CreateProductsAsync(agent, 3);
+        var products = await CreateProductsAsync(agent, 4);
+        // Plain values where the entity's fields take facts: one item with a problem in every field.
+        var withoutFacts = new Dictionary<string, object?> { ["id"] = products[2].ToString(), ["base_version"] = 1, ["fields"] = new { name = "Widget", price = 3 } };
 
         var started = await agent.CallAsync("bulk_update_entries", new()
         {
-            ["items"] = new[] { Item(products[0], 1, 1m), Item(products[1], 5, 2m), Item(products[2], 1, 3m) },
+            ["items"] = new[] { Item(products[0], 1, 1m), Item(products[1], 5, 2m), withoutFacts, Item(products[3], 1, 4m) },
             ["rationale"] = "Sync prices.",
         });
         var finished = await FinishedAsync(agent, (string)started["job"]!["id"]!);
@@ -72,15 +79,18 @@ public sealed class BulkToolsTests
         Assert.Equal("failed", (string?)finished["state"]);
         Assert.Equal(1, (int)finished["attempts"]!);
         Assert.Contains($"items[1] {products[1]}", (string?)finished["lastError"]);
-        Assert.Equal("Updated 2 of 3; 1 failed.", (string?)finished["progress"]!["message"]);
+        Assert.Contains($"items[2] {products[2]}", (string?)finished["lastError"]);
+        Assert.Equal("Updated 2 of 4; 2 failed.", (string?)finished["progress"]!["message"]);
         var set = await agent.AsPersonAsync<IChangeSetDirectory, ChangeSet>(directory => directory.GetAsync(Guid.Parse((string)started["changeSet"]!["id"]!)));
-        Assert.Equal([products[0], products[2]], set.Operations.Select(operation => operation.ItemId));
+        Assert.Equal([products[0], products[3]], set.Operations.Select(operation => operation.ItemId));
     }
 
-    [Fact]
-    public async Task A_list_past_the_cap_or_with_a_malformed_item_is_refused_before_a_set_is_opened()
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_list_past_the_cap_or_with_a_malformed_item_is_refused_before_a_set_is_opened(string provider)
     {
-        await using var agent = await ConnectedAgent.StartAsync(DatabaseProviders.Sqlite, itemsPerChangeSet: 2, settings: FastQueue);
+        await using var agent = await ConnectedAgent.StartAsync(provider, itemsPerChangeSet: 2, settings: FastQueue);
         var products = await CreateProductsAsync(agent, 3);
 
         var overCap = await agent.FailAsync("bulk_update_entries", new()
@@ -95,6 +105,12 @@ public sealed class BulkToolsTests
         });
 
         Assert.Equal(AgentPermissionErrorCodes.CapExceeded, (string?)overCap["errors"]![0]!["code"]);
+        Assert.StartsWith("3 items are more than", (string?)overCap["errors"]![0]!["message"], StringComparison.Ordinal);
+        var refusal = Assert.Single(await agent.QueryAsync(context => context.AuditEvents
+            .AsNoTracking()
+            .Where(row => row.Operation == "agent.items_per_change_set_exceeded")
+            .ToListAsync()));
+        Assert.Equal(("agent_credential", agent.Credential.Id), (refusal.SubjectType, refusal.SubjectId));
         Assert.Equal(
             [(ToolErrorCodes.ArgumentInvalid, "items[1]"), (ToolErrorCodes.ArgumentMissing, "items[1]"), (ToolErrorCodes.ArgumentInvalid, "items[2]")],
             malformed["errors"]!.AsArray().Select(error => ((string)error!["code"]!, ((string)error["message"]!).Split(':')[0])));
@@ -143,22 +159,82 @@ public sealed class BulkToolsTests
         }
     }
 
-    [Fact]
-    public async Task Get_job_shows_an_agent_its_own_jobs_only()
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_job_that_fails_partway_is_retried_by_the_worker_and_adds_each_item_once(string provider)
     {
-        await using var agent = await ConnectedAgent.StartAsync(DatabaseProviders.Sqlite, settings: FastQueue);
-        var products = await CreateProductsAsync(agent, 1);
-        var started = await agent.CallAsync("bulk_update_entries", new() { ["items"] = new[] { Item(products[0], 1, 1m) }, ["rationale"] = "One price." });
-        var someoneElses = await agent.AsPersonAsync<IServiceProvider, Job>(async services =>
+        var failed = 0;
+        var handler = new SteppedBulkUpdates((context, run) => Interlocked.Exchange(ref failed, 1) == 0
+            ? run(new JobContext(context.Job, context.Services, (progress, token) => progress.Done == 2
+                ? throw new InvalidOperationException("The host stopped after the second item.")
+                : context.ReportProgressAsync(progress.Done, progress.Total, progress.Message, token)))
+            : run(context));
+        await using var agent = await ConnectedAgent.StartAsync(provider, settings: FastQueue, configure: handler.Register);
+        var products = await CreateProductsAsync(agent, 3);
+
+        var started = await agent.CallAsync("bulk_update_entries", new()
         {
-            await using var work = await services.GetRequiredService<Core.Persistence.IUnitOfWork>().BeginAsync();
-            var job = await services.GetRequiredService<IJobQueue>().EnqueueAsync(new NewJob("test.someone-else", default) { RunAt = DateTimeOffset.UtcNow.AddDays(1) });
-            await work.CommitAsync();
-            return Core.Results.Result<Job>.Success(job);
+            ["items"] = products.Select(id => Item(id, 1, 5m)).ToArray(),
+            ["rationale"] = "Sync prices.",
         });
+        var finished = await FinishedAsync(agent, (string)started["job"]!["id"]!);
+
+        Assert.Equal(("succeeded", 2), ((string?)finished["state"], (int)finished["attempts"]!));
+        Assert.Equal("Updated 3 of 3.", (string?)finished["progress"]!["message"]);
+        var set = await agent.AsPersonAsync<IChangeSetDirectory, ChangeSet>(directory => directory.GetAsync(Guid.Parse((string)started["changeSet"]!["id"]!)));
+        Assert.Equal(products, set.Operations.Select(operation => operation.ItemId));
+        foreach (var id in products)
+        {
+            Assert.Equal(2, (await agent.AsPersonAsync<IEntryDirectory, Entry>(entries => entries.GetAsync(id))).Latest.Version);
+        }
+    }
+
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task A_set_is_not_submitted_while_its_bulk_job_is_still_filling_it(string provider)
+    {
+        var release = new TaskCompletionSource();
+        var handler = new SteppedBulkUpdates(async (context, run) =>
+        {
+            await release.Task;
+            return await run(context);
+        });
+        await using var agent = await ConnectedAgent.StartAsync(provider, settings: FastQueue, configure: handler.Register);
+        var products = await CreateProductsAsync(agent, 2);
+        var started = await agent.CallAsync("bulk_update_entries", new()
+        {
+            ["items"] = products.Select(id => Item(id, 1, 5m)).ToArray(),
+            ["rationale"] = "Sync prices.",
+        });
+        var changeSetId = (string)started["changeSet"]!["id"]!;
+
+        var early = await agent.FailAsync("submit_change_set", new() { ["id"] = changeSetId });
+        release.SetResult();
+        var finished = await FinishedAsync(agent, (string)started["job"]!["id"]!);
+        var submitted = await agent.CallAsync("submit_change_set", new() { ["id"] = changeSetId });
+
+        Assert.Equal(ChangeSetErrorCodes.Busy, (string?)early["errors"]![0]!["code"]);
+        Assert.Equal("succeeded", (string?)finished["state"]);
+        Assert.NotEqual("open", (string?)submitted["changeSet"]!["state"]);
+        var set = await agent.AsPersonAsync<IChangeSetDirectory, ChangeSet>(directory => directory.GetAsync(Guid.Parse(changeSetId)));
+        Assert.Equal(products, set.Operations.Select(operation => operation.ItemId));
+    }
+
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task Get_job_shows_an_agent_its_own_jobs_only(string provider)
+    {
+        await using var agent = await ConnectedAgent.StartAsync(provider, settings: FastQueue);
+        await using var another = await agent.AnotherAgentAsync("another-agent");
+        var products = await CreateProductsAsync(agent, 2);
+        var started = await agent.CallAsync("bulk_update_entries", new() { ["items"] = new[] { Item(products[0], 1, 1m) }, ["rationale"] = "One price." });
+        var anothers = await another.CallAsync("bulk_update_entries", new() { ["items"] = new[] { Item(products[1], 1, 2m) }, ["rationale"] = "Another price." });
 
         var own = await agent.CallAsync("get_job", new() { ["id"] = (string)started["job"]!["id"]! });
-        var other = await agent.FailAsync("get_job", new() { ["id"] = someoneElses.Id.ToString() });
+        var other = await agent.FailAsync("get_job", new() { ["id"] = (string)anothers["job"]!["id"]! });
 
         Assert.Equal(BulkEntryUpdates.Name, (string?)own["type"]);
         Assert.Equal(JobErrorCodes.JobNotFound, (string?)other["errors"]![0]!["code"]);
@@ -197,19 +273,38 @@ public sealed class BulkToolsTests
         return $$"""{"value": {{value}}, "source": null, "owner": null, "validFrom": null, "validUntil": null, "lastVerified": null}""";
     }
 
-    private static async Task<JsonObject> FinishedAsync(ConnectedAgent agent, string jobId)
+    // Each read's progress goes into seen, when given.
+    private static async Task<JsonObject> FinishedAsync(ConnectedAgent agent, string jobId, List<int>? seen = null)
     {
         // The job takes a few seconds for 180 items on its own; a loaded test machine can take far longer.
         var deadline = DateTime.UtcNow.AddMinutes(3);
         while (true)
         {
             var job = await agent.CallAsync("get_job", new() { ["id"] = jobId });
+            seen?.Add((int)job["progress"]!["done"]!);
             if ((string?)job["state"] is "succeeded" or "failed" or "dead" || DateTime.UtcNow > deadline)
             {
                 return job;
             }
 
             await Task.Delay(100);
+        }
+    }
+
+    // The product's bulk handler with a test's step around each attempt, run by the real worker. It is registered before the
+    // product's handlers, and the worker takes the first handler of a job's type.
+    private sealed class SteppedBulkUpdates(Func<JobContext, Func<JobContext, Task<Result>>, Task<Result>> attempt) : IJobHandler
+    {
+        public string Type => BulkEntryUpdates.Name;
+
+        public Task<Result> RunAsync(JobContext context, CancellationToken cancellationToken)
+        {
+            return attempt(context, inner => new BulkEntryUpdates().RunAsync(inner, cancellationToken));
+        }
+
+        public void Register(WebApplicationBuilder builder)
+        {
+            builder.Services.AddSingleton<IJobHandler>(this);
         }
     }
 }

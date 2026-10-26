@@ -69,6 +69,18 @@ internal sealed class ChangeSetChecks(
                 : Result<ChangeSetSubmission>.Failure(abandoned.IsSuccess ? recovered.Errors : abandoned.Errors);
         }
 
+        // A job still adding items to the set, such as a bulk update, ends first, so a reviewer never gets part of its work. The job
+        // is enqueued with the set, so an open set cannot be read before it.
+        if (read.Value.State == ChangeSetState.Open
+            && MaySubmit(read.Value)
+            && (await jobs.ListForSubjectAsync(new JobSubject(SubjectType, changeSetId), cancellationToken))
+                .FirstOrDefault(job => job.Type != JobType && job.State is JobState.Queued or JobState.Running) is { } busy)
+        {
+            return Result<ChangeSetSubmission>.Failure(
+                ChangeSetErrorCodes.Busy,
+                $"Change set {changeSetId} is still being filled by job {busy.Id} ({busy.Type}). Follow it with get_job and submit the set once it has ended.");
+        }
+
         var inline = read.Value.Operations.Count <= InlineItems && !await AnyJudgedAsync(cancellationToken);
 
         // Opened before the set moves, so a host that cannot run the engine says so instead of leaving every set to its job.

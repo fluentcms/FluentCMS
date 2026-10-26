@@ -16,7 +16,7 @@ public sealed class BulkEntryUpdates : IJobHandler
 {
     public const string Name = "bulk.entry_updates";
 
-    private const int MaxErrorsListed = 20;
+    private const int MaxFailuresListed = 20;
 
     public string Type => Name;
 
@@ -65,11 +65,14 @@ public sealed class BulkEntryUpdates : IJobHandler
         for (var index = 0; index < total; index++)
         {
             var item = request.Items[index];
-            if (!applied.Contains(item.Id))
+            if (applied.Add(item.Id))
             {
                 var updated = await ApplyAsync(services, request.ChangeSetId, item, cancellationToken);
-                failures.AddRange(updated.Errors.Select(error => new Error(error.Code, $"items[{index}] {item.Id}: {error.Message}")));
-                applied.Add(item.Id);
+                if (!updated.IsSuccess && !await AppliedMeanwhileAsync(changeSets, request.ChangeSetId, item.Id, cancellationToken))
+                {
+                    // One entry per item, however many problems it has, so the counts and the list are of items.
+                    failures.Add(new Error(updated.Errors[0].Code, $"items[{index}] {item.Id}: {string.Join(" ", updated.Errors.Select(error => error.Message))}"));
+                }
             }
 
             var message = $"Updated {index + 1 - failures.Count} of {total}" + (failures.Count > 0 ? $"; {failures.Count} failed." : ".");
@@ -85,13 +88,20 @@ public sealed class BulkEntryUpdates : IJobHandler
             return Result.Success();
         }
 
-        var listed = failures.Take(MaxErrorsListed).ToList();
-        if (failures.Count > MaxErrorsListed)
+        var listed = failures.Take(MaxFailuresListed).ToList();
+        if (failures.Count > MaxFailuresListed)
         {
-            listed.Add(new Error("bulk_items_failed", $"{failures.Count - MaxErrorsListed} more items failed."));
+            listed.Add(new Error("bulk_items_failed", $"{failures.Count - MaxFailuresListed} more items failed."));
         }
 
         return Result.Failure(listed);
+    }
+
+    // A worker that lost its lease can commit an item after this run read the set; the item is in the set, so it has not failed.
+    private static async Task<bool> AppliedMeanwhileAsync(IChangeSetDirectory changeSets, Guid changeSetId, Guid itemId, CancellationToken cancellationToken)
+    {
+        var set = await changeSets.GetAsync(changeSetId, cancellationToken);
+        return set.IsSuccess && set.Value.Operations.Any(operation => operation.ItemId == itemId);
     }
 
     // The update and its operation commit together or not at all; leaving the unit of work uncommitted undoes both.

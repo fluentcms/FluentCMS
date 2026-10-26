@@ -87,7 +87,7 @@ public sealed class BulkTools : IToolProvider
         foreach (var check in new Func<Task<Result>>[]
         {
             () => permissions.CheckNewChangeSetAsync(cancellationToken),
-            () => permissions.CheckChangeSetSizeAsync(planned.Value, adding: items.Count, cancellationToken),
+            () => permissions.CheckNewChangeSetSizeAsync(items.Count, cancellationToken),
         })
         {
             var allowed = await check();
