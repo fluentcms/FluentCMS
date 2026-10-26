@@ -78,7 +78,7 @@ internal sealed class ChangeSetChecks(
         {
             return Result<ChangeSetSubmission>.Failure(
                 ChangeSetErrorCodes.Busy,
-                $"Change set {changeSetId} is still being filled by job {busy.Id} ({busy.Type}). Follow it with get_job and submit the set once it has ended.");
+                $"Change set {changeSetId} is still being filled by job {busy.Id} ({busy.Type}); submit it once the job has ended.");
         }
 
         var inline = read.Value.Operations.Count <= InlineItems && !await AnyJudgedAsync(cancellationToken);

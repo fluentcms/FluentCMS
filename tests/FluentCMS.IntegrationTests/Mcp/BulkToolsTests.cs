@@ -78,11 +78,34 @@ public sealed class BulkToolsTests
 
         Assert.Equal("failed", (string?)finished["state"]);
         Assert.Equal(1, (int)finished["attempts"]!);
+        Assert.StartsWith("bulk_items_failed: 2 of 4 items failed. ", (string?)finished["lastError"], StringComparison.Ordinal);
         Assert.Contains($"items[1] {products[1]}", (string?)finished["lastError"]);
         Assert.Contains($"items[2] {products[2]}", (string?)finished["lastError"]);
         Assert.Equal("Updated 2 of 4; 2 failed.", (string?)finished["progress"]!["message"]);
         var set = await agent.AsPersonAsync<IChangeSetDirectory, ChangeSet>(directory => directory.GetAsync(Guid.Parse((string)started["changeSet"]!["id"]!)));
         Assert.Equal([products[0], products[3]], set.Operations.Select(operation => operation.ItemId));
+    }
+
+    [Theory]
+    [InlineData(DatabaseProviders.Sqlite)]
+    [PostgresData]
+    public async Task Many_failed_items_keep_their_count_and_the_first_twenty_in_the_jobs_last_error(string provider)
+    {
+        await using var agent = await ConnectedAgent.StartAsync(provider, settings: FastQueue);
+        var products = await CreateProductsAsync(agent, 30);
+
+        var started = await agent.CallAsync("bulk_update_entries", new()
+        {
+            ["items"] = products.Select(id => new Dictionary<string, object?> { ["id"] = id.ToString(), ["base_version"] = 1, ["fields"] = new { name = "Widget", price = 3 } }).ToArray(),
+            ["rationale"] = "Sync prices.",
+        });
+        var finished = await FinishedAsync(agent, (string)started["job"]!["id"]!);
+
+        var lastError = (string)finished["lastError"]!;
+        Assert.StartsWith("bulk_items_failed: 30 of 30 items failed; the first 20 are listed. ", lastError, StringComparison.Ordinal);
+        Assert.Contains($"items[19] {products[19]}", lastError);
+        Assert.DoesNotContain("items[20]", lastError);
+        Assert.Equal("Updated 0 of 30; 30 failed.", (string?)finished["progress"]!["message"]);
     }
 
     [Theory]

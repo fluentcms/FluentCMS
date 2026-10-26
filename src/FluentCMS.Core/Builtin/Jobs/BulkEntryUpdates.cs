@@ -18,6 +18,9 @@ public sealed class BulkEntryUpdates : IJobHandler
 
     private const int MaxFailuresListed = 20;
 
+    // Short enough that the count and every listed item fit in the job's last error, which the queue keeps to 4000 characters.
+    private const int MaxReasonLength = 100;
+
     public string Type => Name;
 
     public static JsonElement Payload(Guid changeSetId, IReadOnlyList<BulkEntryUpdate> items)
@@ -71,7 +74,8 @@ public sealed class BulkEntryUpdates : IJobHandler
                 if (!updated.IsSuccess && !await AppliedMeanwhileAsync(changeSets, request.ChangeSetId, item.Id, cancellationToken))
                 {
                     // One entry per item, however many problems it has, so the counts and the list are of items.
-                    failures.Add(new Error(updated.Errors[0].Code, $"items[{index}] {item.Id}: {string.Join(" ", updated.Errors.Select(error => error.Message))}"));
+                    var reason = string.Join(" ", updated.Errors.Select(error => error.Message));
+                    failures.Add(new Error(updated.Errors[0].Code, $"items[{index}] {item.Id}: {Shorten(reason)}"));
                 }
             }
 
@@ -88,13 +92,14 @@ public sealed class BulkEntryUpdates : IJobHandler
             return Result.Success();
         }
 
-        var listed = failures.Take(MaxFailuresListed).ToList();
-        if (failures.Count > MaxFailuresListed)
-        {
-            listed.Add(new Error("bulk_items_failed", $"{failures.Count - MaxFailuresListed} more items failed."));
-        }
+        // The count first, so it is kept whatever follows.
+        var counted = $"{failures.Count} of {total} items failed" + (failures.Count > MaxFailuresListed ? $"; the first {MaxFailuresListed} are listed." : ".");
+        return Result.Failure([new Error("bulk_items_failed", counted), .. failures.Take(MaxFailuresListed)]);
+    }
 
-        return Result.Failure(listed);
+    private static string Shorten(string reason)
+    {
+        return reason.Length <= MaxReasonLength ? reason : string.Concat(reason.AsSpan(0, MaxReasonLength - 1), "…");
     }
 
     // A worker that lost its lease can commit an item after this run read the set; the item is in the set, so it has not failed.
