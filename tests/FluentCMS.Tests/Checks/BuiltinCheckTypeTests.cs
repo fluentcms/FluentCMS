@@ -1,5 +1,8 @@
 using System.Text.Json;
+using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Checks;
+using FluentCMS.Core.Media;
+using FluentCMS.Core.Results;
 using FluentCMS.Core.Schema;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -212,6 +215,89 @@ public sealed class AltTextCheckTypeTests : CheckTypeConformanceTests
         ("{}", Subject("""{"body": "<img title=\"alt='a'\" src=\"a.png\">"}""")),
         ("{}", Subject("""{"body": "![][logo]"}""")),
     ];
+
+    private static readonly Guid Image = Guid.Parse("0199f0a0-0000-7000-8000-000000000001");
+
+    // A media field comes from an agent too, so it can hold anything, and the set it goes live with can name the image in any way.
+    [Fact]
+    public async Task Never_throws_whatever_a_media_field_holds()
+    {
+        var type = Registry.Find(CheckTypeName)!;
+        var page = new ContentTypeDefinition(
+            [new FieldDefinition("hero", "media"), new FieldDefinition("gallery", "list", settings: Parse("""{"itemType": "media"}"""))]);
+        var entity = new ContentTypeDefinition([new FieldDefinition("photo", "media")], isEntity: true);
+        string[] values = ["null", "1", "\"\"", "\"not-an-id\"", $"\"{Guid.Empty}\"", $"\"{Image}\"", $$"""["{{Image}}", 1, null, {}]""", "{}", """{"value": []}"""];
+        IReadOnlyList<ChangeOperation>?[] sets =
+        [
+            null,
+            [ChangeOperation.Create(OperationKind.Create, ItemKind.Media, Image, null, 1).Value],
+            [ChangeOperation.Create(OperationKind.Delete, ItemKind.Media, Image, 1, null).Value, ChangeOperation.Create(OperationKind.Create, ItemKind.Media, Image, null, 9).Value],
+        ];
+        var subjects = values.SelectMany(value => new[]
+        {
+            (page, $$"""{"hero": {{value}}, "gallery": {{value}}}"""),
+            (entity, $$"""{"photo": {{value}}}"""),
+            (entity, $$$"""{"photo": {"value": {{{value}}}}}"""),
+        });
+
+        foreach (var (definition, fields) in subjects)
+        {
+            foreach (var operations in sets)
+            {
+                var subject = new CheckSubject(Parse(fields), [], "product-page", definition, SetOperations: operations);
+
+                var exception = await Record.ExceptionAsync(() => type.EvaluateAsync(new CheckInput(Parse("{}"), subject, Provider), CancellationToken.None));
+
+                Assert.True(exception is null, $"{fields} threw {exception}");
+            }
+        }
+    }
+
+    protected override void AddServices(IServiceCollection services)
+    {
+        services.AddSingleton<IMediaLibrary, OneImage>();
+    }
+
+    // One unpublished image at version 2, with no older version stored.
+    private sealed class OneImage : IMediaLibrary
+    {
+        public long MaxBytes => 1;
+
+        public Task<Result<MediaAsset>> GetAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            var version = new MediaAssetVersion(
+                Image,
+                2,
+                new MediaBlob("image/png", 1, "00", "local", "key"),
+                AssetMetadata.Create("drill.png", null, [], null, null).Value,
+                DateTimeOffset.UnixEpoch);
+            return Task.FromResult(id == Image
+                ? Result<MediaAsset>.Success(new MediaAsset(Image, Guid.Empty, 2, null, version))
+                : Result<MediaAsset>.Failure(MediaErrorCodes.AssetNotFound, "No such asset."));
+        }
+
+        public Task<Result<MediaAssetVersion>> GetVersionAsync(Guid id, int version, CancellationToken cancellationToken = default) =>
+            Task.FromResult(Result<MediaAssetVersion>.Failure(MediaErrorCodes.VersionNotFound, "No such version."));
+
+        public Task<Result<MediaAssetVersion?>> LiveVersionAsync(Guid id, int? publishing = null, CancellationToken cancellationToken = default) =>
+            Task.FromResult(Result<MediaAssetVersion?>.Success(null));
+
+        public Task<Result<MediaAsset>> UploadAsync(NewAsset asset, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<Result<MediaAsset>> UpdateAsync(Guid id, int baseVersion, AssetMetadata metadata, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<IReadOnlyList<MediaAssetSummary>> ListAsync(MediaQuery query, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<IReadOnlyList<string>> FoldersAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<Result<MediaContent>> OpenAsync(Guid id, int? version = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<Result> DeleteAsync(Guid id, int baseVersion, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<Result<MediaAsset>> RestoreAsync(Guid id, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<IReadOnlyList<DeletedAsset>> ListDeletedAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    }
 }
 
 public sealed class SourcesCheckTypeTests : CheckTypeConformanceTests

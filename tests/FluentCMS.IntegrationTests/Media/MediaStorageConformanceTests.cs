@@ -3,12 +3,14 @@ using FluentCMS.Core;
 using FluentCMS.Core.Extensions;
 using FluentCMS.Core.Media;
 using FluentCMS.Core.Schema;
+using FluentCMS.Testing;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.IntegrationTests.Media;
 
 // The contract every media storage meets, built in or not (MED-04, EXT-N1). Derive one class per storage: name it, and register it in
 // AddStorage the way the application would.
+[ConformanceFor(typeof(IMediaStorage))]
 public abstract class MediaStorageConformanceTests : IDisposable
 {
     private ServiceProvider? _provider;

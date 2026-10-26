@@ -65,7 +65,11 @@ internal sealed class TemporaryDatabase : IAsyncDisposable
         {
             SqliteConnection.ClearAllPools();
             var path = new SqliteConnectionStringBuilder(Configuration["Database:ConnectionString"]).DataSource;
-            var bytes = await File.ReadAllBytesAsync(path);
+
+            // A running host's job worker may hold a connection open, so the file is read without asking for sole access.
+            await using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+            var bytes = new byte[file.Length];
+            await file.ReadExactlyAsync(bytes);
             return bytes.AsSpan().IndexOf(Encoding.UTF8.GetBytes(text)) >= 0;
         }
 

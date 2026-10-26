@@ -221,6 +221,24 @@ internal static class ToolJson
         };
     }
 
+    // The whole job, for get_job and bulk updates: what it works on, its progress, attempts and last error.
+    public static JsonObject JobRecord(Job job)
+    {
+        return new JsonObject
+        {
+            ["id"] = job.Id.ToString(),
+            ["type"] = job.Type,
+            ["state"] = Name(job.State),
+            ["subject"] = job.Subject is { } subject ? new JsonObject { ["type"] = subject.Type, ["id"] = subject.Id.ToString() } : null,
+            ["progress"] = new JsonObject { ["done"] = job.Progress.Done, ["total"] = job.Progress.Total, ["message"] = job.Progress.Message },
+            ["attempts"] = job.Attempts,
+            ["maxAttempts"] = job.MaxAttempts,
+            ["lastError"] = job.LastError,
+            ["createdAt"] = Time(job.CreatedAt),
+            ["finishedAt"] = Time(job.FinishedAt),
+        };
+    }
+
     public static JsonObject Facts(EntityFactSheet sheet)
     {
         return new JsonObject

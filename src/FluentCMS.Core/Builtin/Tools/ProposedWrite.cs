@@ -15,32 +15,39 @@ internal static class ProposedWrite
     public static async Task<ToolResult> RunAsync(
         ToolInvocation call,
         ChangeSetTarget target,
-        Func<IContentTypeDirectory, DirectoryTarget, Task<Result<ContentType>>> write,
+        Func<IContentTypeDirectory, DirectoryTarget, Task<Result<ContentTypeWrite>>> write,
         CancellationToken cancellationToken)
     {
         var services = call.Services;
 
-        var type = await write(services.GetRequiredService<IContentTypeDirectory>(), target.ToDirectoryTarget());
-        if (!type.IsSuccess)
+        var written = await write(services.GetRequiredService<IContentTypeDirectory>(), target.ToDirectoryTarget());
+        if (!written.IsSuccess)
         {
-            return ToolResult.Failure(type.Errors, Hint(type.Errors));
+            return ToolResult.Failure(written.Errors, Hint(written.Errors));
         }
 
-        var set = await target.ReadAsync(services.GetRequiredService<IChangeSetDirectory>(), cancellationToken);
+        // The set the write joined, read by its id: one submitted since still answers, in its new state, and a session's next set
+        // opened since is not mistaken for it.
+        var type = written.Value.ContentType;
+        var set = await services.GetRequiredService<IChangeSetDirectory>().GetAsync(written.Value.ChangeSetId, cancellationToken);
         if (!set.IsSuccess)
         {
             return ToolResult.Failure(set.Errors);
         }
 
         // The set says what the write became: a revision of a type with nothing live is recorded as its create.
-        var recorded = set.Value.Operations.Single(operation => operation.ItemKind == ItemKind.Schema && operation.ItemId == type.Value.Id);
+        var recorded = set.Value.Operations.Single(operation => operation.ItemKind == ItemKind.Schema && operation.ItemId == type.Id);
+        var open = set.Value.State == ChangeSetState.Open;
 
         return ToolResult.Success(new JsonObject
         {
-            ["contentType"] = ToolJson.ContentType(type.Value),
+            ["contentType"] = ToolJson.ContentType(type),
             ["changeSet"] = ToolJson.ChangeSet(set.Value),
-            ["next"] = $"The {ToolJson.Name(recorded.Kind)} is in change set {set.Value.Id}, which stays open for more "
-                + "operations. Call submit_change_set when it is complete; checks run and a person reviews it before it is published.",
+            ["next"] = open
+                ? $"The {ToolJson.Name(recorded.Kind)} is in change set {set.Value.Id}, which stays open for more "
+                    + "operations. Call submit_change_set when it is complete; checks run and a person reviews it before it is published."
+                : $"The {ToolJson.Name(recorded.Kind)} is in change set {set.Value.Id}, which was submitted since; read it with "
+                    + "get_change_set, and write further changes into a new set.",
         });
     }
 

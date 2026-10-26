@@ -30,4 +30,17 @@ public interface IContentTypeDirectory
         ContentTypeDefinition definition,
         ChangeSetTarget changeSet,
         CancellationToken cancellationToken = default);
+
+    // As CreateAsync and ReviseAsync, with the change set the write joined, so a caller such as a tool answers from that set instead of
+    // looking it up again by session, which a submit or the session's next set could change in between.
+    Task<Result<ContentTypeWrite>> CreateInChangeSetAsync(NewContentType contentType, ChangeSetTarget changeSet, CancellationToken cancellationToken = default);
+
+    Task<Result<ContentTypeWrite>> ReviseInChangeSetAsync(
+        string slug,
+        int baseVersion,
+        ContentTypeDefinition definition,
+        ChangeSetTarget changeSet,
+        CancellationToken cancellationToken = default);
 }
+
+public sealed record ContentTypeWrite(ContentType ContentType, Guid ChangeSetId);

@@ -13,8 +13,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
 {
     [DbContext(typeof(PostgreSqlFluentCmsDbContext))]
-    [Migration("20261019223914_RuleCompilations")]
-    partial class RuleCompilations
+    [Migration("20261026010604_MediaAssetDeletion")]
+    partial class MediaAssetDeletion
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -197,6 +197,8 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
                     b.HasIndex("ChangeSetId");
 
                     b.HasIndex("Timestamp");
+
+                    b.HasIndex("Operation", "Timestamp");
 
                     b.HasIndex("SubjectType", "SubjectId");
 
@@ -822,6 +824,9 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<int>("LatestVersion")
                         .HasColumnType("integer");
 
@@ -916,6 +921,33 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
                             t.HasCheckConstraint("CK_MediaAssetVersions_Length", "\"Length\" > 0");
 
                             t.HasCheckConstraint("CK_MediaAssetVersions_Version", "\"Version\" >= 1");
+                        });
+                });
+
+            modelBuilder.Entity("FluentCMS.Infrastructure.Media.ProposedMediaVersionRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AssetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ChangeSetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChangeSetId");
+
+                    b.HasIndex("AssetId", "Version", "ChangeSetId")
+                        .IsUnique();
+
+                    b.ToTable("ProposedMediaVersions", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_ProposedMediaVersions_Version", "\"Version\" >= 1");
                         });
                 });
 
@@ -1162,89 +1194,6 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
                     b.ToTable("RoutingRuleVersions", null, t =>
                         {
                             t.HasCheckConstraint("CK_RoutingRuleVersions_Version", "\"Version\" >= 1");
-                        });
-                });
-
-            modelBuilder.Entity("FluentCMS.Infrastructure.Rules.RuleCheckProposalRow", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid?>("CheckId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("CheckName")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<string>("Definition")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
-
-                    b.Property<int>("Number")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid>("RuleId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("RuleVersion")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("State")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CheckId")
-                        .IsUnique();
-
-                    b.HasIndex("RuleId", "Number")
-                        .IsUnique();
-
-                    b.HasIndex("RuleId", "RuleVersion");
-
-                    b.ToTable("RuleCheckProposals", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_RuleCheckProposals_Number", "\"Number\" >= 1");
-
-                            t.HasCheckConstraint("CK_RuleCheckProposals_RuleVersion", "\"RuleVersion\" >= 1");
-                        });
-                });
-
-            modelBuilder.Entity("FluentCMS.Infrastructure.Rules.RuleCompilationRow", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid?>("JobId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Message")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<Guid>("RuleId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)");
-
-                    b.Property<int>("Version")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RuleId", "Version")
-                        .IsUnique();
-
-                    b.ToTable("RuleCompilations", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_RuleCompilations_Version", "\"Version\" >= 1");
                         });
                 });
 
@@ -1723,6 +1672,21 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("FluentCMS.Infrastructure.Media.ProposedMediaVersionRow", b =>
+                {
+                    b.HasOne("FluentCMS.Infrastructure.Media.MediaAssetRow", null)
+                        .WithMany()
+                        .HasForeignKey("AssetId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FluentCMS.Infrastructure.ChangeSets.ChangeSetRow", null)
+                        .WithMany()
+                        .HasForeignKey("ChangeSetId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("FluentCMS.Infrastructure.Models.ModelCallRow", b =>
                 {
                     b.HasOne("FluentCMS.Infrastructure.Agents.AgentCredentialRow", null)
@@ -1745,29 +1709,6 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.PostgreSql
                     b.HasOne("FluentCMS.Infrastructure.Routing.RoutingRuleRow", null)
                         .WithMany()
                         .HasForeignKey("RoutingRuleId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("FluentCMS.Infrastructure.Rules.RuleCheckProposalRow", b =>
-                {
-                    b.HasOne("FluentCMS.Infrastructure.Checks.CheckRow", null)
-                        .WithMany()
-                        .HasForeignKey("CheckId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("FluentCMS.Infrastructure.Rules.RuleRow", null)
-                        .WithMany()
-                        .HasForeignKey("RuleId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("FluentCMS.Infrastructure.Rules.RuleCompilationRow", b =>
-                {
-                    b.HasOne("FluentCMS.Infrastructure.Rules.RuleRow", null)
-                        .WithMany()
-                        .HasForeignKey("RuleId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

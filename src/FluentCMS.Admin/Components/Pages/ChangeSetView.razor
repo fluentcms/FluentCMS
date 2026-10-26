@@ -4,7 +4,10 @@
 @using FluentCMS.Core.Audit
 @using FluentCMS.Core.ChangeSets
 @using FluentCMS.Core.Desk
+@using FluentCMS.Core.Identity
+@using FluentCMS.Core.Jobs
 @inject IChangeSetDirectory Directory
+@inject IChangeSetLists Lists
 @inject IDeskQueues Queues
 @inject FluentCMS.Core.Checks.IChangeSetChecks Checks
 @inject IAuditReader Audit
@@ -71,7 +74,7 @@
     <Card Class="mt-6" data-testid="change-set-review">
         <CardHeader>
             <CardTitle><h2>@L["Review"]</h2></CardTitle>
-            <CardDescription>@ReviewHint(set.State)</CardDescription>
+            <CardDescription>@(CheckJobEnded ? L["The check run ended without a result, so the set cannot be reviewed yet. Whoever opened it can run the checks again."] : ReviewHint(set.State))</CardDescription>
         </CardHeader>
         <CardContent Class="grid gap-4">
             @if (_message is not null)
@@ -91,12 +94,19 @@
                         <Button Type="submit" data-action="approve" aria-keyshortcuts="A">@L["Approve"] <Kbd Class="bg-primary-foreground/20 text-primary-foreground" aria-hidden="true">A</Kbd></Button>
                     </form>
                 }
-                @if (set.State == ChangeSetState.Open)
+                @if (OffersSubmit)
                 {
                     <form method="post" @onsubmit="SubmitAsync" @formname="submit">
                         <AntiforgeryToken />
                         <input type="hidden" name="Submit.Seen" value="@_seen" />
-                        <Button Type="submit" data-action="submit" aria-keyshortcuts="S">@L["Submit for checks"] <Kbd Class="bg-primary-foreground/20 text-primary-foreground" aria-hidden="true">S</Kbd></Button>
+                        @if (set.State == ChangeSetState.Open)
+                        {
+                            <Button Type="submit" data-action="submit" aria-keyshortcuts="S">@L["Submit for checks"] <Kbd Class="bg-primary-foreground/20 text-primary-foreground" aria-hidden="true">S</Kbd></Button>
+                        }
+                        else
+                        {
+                            <Button Type="submit" data-action="submit">@L["Run the checks again"]</Button>
+                        }
                     </form>
                 }
                 @if (set.State == ChangeSetState.Approved)
@@ -141,7 +151,7 @@
                 }
             </div>
             @* A form posted from a page shown before the set moved on must still find its handler, which then says the set moved on. *@
-            @if (set.State != ChangeSetState.Open)
+            @if (!OffersSubmit)
             {
                 <form method="post" @onsubmit="SubmitAsync" @formname="submit" hidden></form>
             }
@@ -184,6 +194,10 @@
                                 @if (Openable(source) is { } address)
                                 {
                                     <a href="@address" target="_blank" rel="noopener noreferrer" class="underline underline-offset-4" dir="ltr">@source</a>
+                                    @if (AsciiHost(address) is { } host)
+                                    {
+                                        <span class="ms-1 text-xs text-muted-foreground" dir="ltr" data-testid="source-host">@L["(host {0})", host]</span>
+                                    }
                                 }
                                 else
                                 {
@@ -213,13 +227,21 @@
                                 }
                             </span>
                         }
-                        else if (_checks?.Job is { } job)
+                        else if (CheckJobEnded)
+                        {
+                            <span data-testid="check-job-ended">@L["The check run ended without a result. Whoever opened the set can run the checks again."]</span>
+                        }
+                        else if (_checks?.Job is { State: JobState.Queued or JobState.Running } job)
                         {
                             @L["The checks are running: {0} of {1} items done.", job.Progress.Done, job.Progress.Total?.ToString(CultureInfo.CurrentCulture) ?? "?"]
                         }
-                        else
+                        else if (set.State == ChangeSetState.Open)
                         {
                             @L["The checks run when the set is submitted."]
+                        }
+                        else
+                        {
+                            @L["No check results are stored for this set."]
                         }
                     </CardDescription>
                 </CardHeader>
@@ -250,15 +272,16 @@
                                             </span>
                                             @foreach (var finding in result.Findings)
                                             {
+                                                @* Each part is isolated, so a right-to-left override in a judgement's text cannot reorder the others. *@
                                                 <span class="ps-2 text-muted-foreground" data-finding>
-                                                    @finding.Message
+                                                    <bdi>@finding.Message</bdi>
                                                     @if (finding.Pointer.Length > 0)
                                                     {
-                                                        <code class="ms-1 font-mono text-xs" dir="ltr">@finding.Pointer</code>
+                                                        <bdi><code class="ms-1 font-mono text-xs" dir="ltr">@finding.Pointer</code></bdi>
                                                     }
                                                     @if (finding.Excerpt is { } excerpt)
                                                     {
-                                                        <q class="ms-1">@excerpt</q>
+                                                        <q class="ms-1"><bdi>@excerpt</bdi></q>
                                                     }
                                                 </span>
                                             }
@@ -374,7 +397,9 @@
     private IReadOnlyList<KeyboardShortcut> Shortcuts =>
     [
         new(["J", "K"], L["Move to the next or previous item"]),
-        new(["Enter"], L["Fold or unfold the item that has focus"]),
+        new(["↓", "↑"], L["Move between items while one has focus"]),
+        new(["Home", "End"], L["Move to the first or last item while one has focus"]),
+        new(["Enter", "Space"], L["Fold or unfold the item that has focus"]),
         new(["S"], L["Submit an open set for checks"]),
         new(["A"], L["Approve the set and move to the next one"]),
         new(["R"], L["Reject the set with a reason"]),
@@ -461,18 +486,22 @@
 
     private async Task SubmitAsync()
     {
-        await ActAsync(Submit, async () =>
+        // Running the checks again on a set whose job ended recovers it, which fails the set rather than submitting it.
+        var done = CheckJobEnded
+            ? L["The check run had ended without a result, so the set now shows its checks as failed."]
+            : L["Submitted. The checks run on the set before it is reviewed."];
+        await ActAsync(Submit, OffersSubmit && _set is { } set ? [set.State] : [], async () =>
         {
             var submitted = await Checks.SubmitAsync(Id);
             return submitted.IsSuccess
                 ? FluentCMS.Core.Results.Result<ChangeSet>.Success(submitted.Value.ChangeSet)
                 : FluentCMS.Core.Results.Result<ChangeSet>.Failure(submitted.Errors);
-        }, L["Submitted. The checks run on the set before it is reviewed."]);
+        }, done);
     }
 
     private async Task ApproveAsync()
     {
-        if (await ActAsync(Approve, () => Directory.TransitionAsync(Id, ChangeSetState.Approved), L["Approved. Publish the set to make its items live."]) is not null)
+        if (await ActAsync(Approve, [ChangeSetState.AwaitingReview], () => Directory.TransitionAsync(Id, ChangeSetState.Approved), L["Approved. Publish the set to make its items live."]) is not null)
         {
             MoveOn("approved");
         }
@@ -480,12 +509,12 @@
 
     private Task PublishAsync()
     {
-        return ActAsync(Publish, () => Directory.PublishAsync(Id), L["Published. Its items are live."]);
+        return ActAsync(Publish, [ChangeSetState.Approved], () => Directory.PublishAsync(Id), L["Published. Its items are live."]);
     }
 
     private async Task RejectAsync()
     {
-        if (await ActAsync(Reject, () => Directory.RejectAsync(Id, Reject?.Reason ?? string.Empty), L["Rejected. The reason is stored with the set."]) is not null)
+        if (await ActAsync(Reject, RejectableStates, () => Directory.RejectAsync(Id, Reject?.Reason ?? string.Empty), L["Rejected. The reason is stored with the set."]) is not null)
         {
             MoveOn("rejected");
         }
@@ -503,24 +532,53 @@
         Navigation.NavigateTo(_next is { } next ? $"sets/{next}?queue={slug}&done={done}" : $"?queue={slug}&done={done}");
     }
 
+    // A revert already in progress is where a second click lands, so a resubmitted page or a later click opens no second set. Two
+    // posts at the same instant can still both open one, until the directory refuses it (#2646).
     private async Task RevertAsync()
     {
         var rationale = _set is { } set ? L["Revert change set {0}: {1}", set.Id, set.Rationale].Value : string.Empty;
-        if (await ActAsync(Revert, () => Directory.RevertAsync(Id, rationale), null) is { } opened)
+        var opened = await ActAsync(Revert, [ChangeSetState.Published], async () =>
+        {
+            var inProgress = await Lists.ListAsync(new ChangeSetListQuery { States = RevertInProgress, Reverts = Id, Limit = 1 });
+            return inProgress is { IsSuccess: true, Value.Items: [var existing, ..] }
+                ? await Directory.GetAsync(existing.Id)
+                : await Directory.RevertAsync(Id, rationale);
+        }, null);
+        if (opened is not null)
         {
             Navigation.NavigateTo($"sets/{opened.Id}");
         }
     }
 
+    // A person submits a set they opened, and runs its checks again when its check job ended without moving it; an agent submits its
+    // own sets by tool, and a person pressing S on one would split its work in two.
+    private bool OffersSubmit => _set is { Initiator: UserInitiator } set
+        && (set.State == ChangeSetState.Open || (set.State == ChangeSetState.ChecksRunning && CheckJobEnded));
+
+    private bool CheckJobEnded => _set?.State == ChangeSetState.ChecksRunning && _checks is { Run: null, Job.State: JobState.Succeeded or JobState.Failed or JobState.Dead };
+
+    private static readonly ChangeSetState[] RejectableStates = [ChangeSetState.AwaitingReview, ChangeSetState.ChecksFailed, ChangeSetState.Approved];
+
+    // A revert set that may still publish; a rejected one leaves room for another.
+    private static readonly ChangeSetState[] RevertInProgress =
+        [ChangeSetState.Open, ChangeSetState.ChecksRunning, ChangeSetState.ChecksFailed, ChangeSetState.AwaitingReview, ChangeSetState.Approved];
+
     // A decision is saved by the call itself; the page then shows the set as it is now, whatever the outcome.
-    private async Task<ChangeSet?> ActAsync(ReviewForm? form, Func<Task<FluentCMS.Core.Results.Result<ChangeSet>>> action, string? done)
+    // An action is taken only from a state the panel offers it in, whatever a post claims, so no set skips its checks or review.
+    private async Task<ChangeSet?> ActAsync(
+        ReviewForm? form,
+        IReadOnlyCollection<ChangeSetState> offeredIn,
+        Func<Task<FluentCMS.Core.Results.Result<ChangeSet>>> action,
+        string? done)
     {
         if (_set is null)
         {
             return null;
         }
 
-        if (form?.Seen is null || form.Seen != _seen)
+        // The next set is the one that followed this one before the decision, which may take this one out of the queue.
+        var next = _next;
+        if (form?.Seen is null || form.Seen != _seen || !offeredIn.Contains(_set.State))
         {
             _refusal = L["The set has moved on since this page was shown. Review it as it is now."];
             return null;
@@ -542,6 +600,11 @@
         }
 
         await LoadAsync();
+        if (result.IsSuccess)
+        {
+            _next = next;
+        }
+
         return result.IsSuccess ? result.Value : null;
     }
 
@@ -585,6 +648,15 @@
         ChangeSetState.Rejected => L["The set was rejected. Nothing more can be done with it."],
         _ => L["The set was reverted. Nothing more can be done with it."],
     };
+
+    // A host written with other than ASCII letters, such as a Cyrillic "а" in a look-alike of apple.com, is shown as the host it
+    // resolves to, so a reader sees xn--pple-43d.com rather than what looks like apple.com.
+    public static string? AsciiHost(string address)
+    {
+        return Uri.TryCreate(address, UriKind.Absolute, out var uri) && uri.HostNameType == UriHostNameType.Dns && uri.Host != uri.IdnHost
+            ? uri.IdnHost
+            : null;
+    }
 
     // Only a web address becomes a link, so a source such as "javascript:" or a file path is never followed.
     public static string? Openable(string source)
@@ -633,9 +705,9 @@
         "change_set.published" => L["Published"],
         "change_set.rejected" => L["Rejected"],
         "change_set.reverted" => L["Reverted"],
-        _ => operation,
+        _ => L["Other event ({0})", operation],
     };
 
-    private static RenderFragment Time(DateTimeOffset time) =>
-        @<time datetime="@time.ToString("O", CultureInfo.InvariantCulture)" dir="ltr" class="text-muted-foreground">@time.UtcDateTime.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture) UTC</time>;
+    private RenderFragment Time(DateTimeOffset time) =>
+        @<time datetime="@time.ToString("O", CultureInfo.InvariantCulture)" dir="ltr" class="text-muted-foreground">@L["{0} UTC", time.UtcDateTime.ToString("yyyy-MM-dd HH:mm", CultureInfo.InvariantCulture)]</time>;
 }

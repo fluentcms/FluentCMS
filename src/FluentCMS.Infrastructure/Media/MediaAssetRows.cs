@@ -12,6 +12,22 @@ public sealed class MediaAssetRow
     public int LatestVersion { get; set; }
 
     public int? PublishedVersion { get; set; }
+
+    // Set by a soft delete and cleared by a restore; every read leaves a deleted asset out (CNT-06).
+    public DateTimeOffset? DeletedAt { get; set; }
+}
+
+// A version of an asset that a change set proposed, kept when the set moves on to a newer version, so a version no set ever proposed
+// is known to be a person's write in the library (MED-02). Version rows cannot record it themselves, since they never change.
+public sealed class ProposedMediaVersionRow
+{
+    public Guid Id { get; set; }
+
+    public Guid ChangeSetId { get; set; }
+
+    public Guid AssetId { get; set; }
+
+    public int Version { get; set; }
 }
 
 // One version of an asset's metadata with the bytes it points at; inserted once and never changed, which a trigger enforces.

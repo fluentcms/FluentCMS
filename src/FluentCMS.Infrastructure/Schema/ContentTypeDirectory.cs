@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using FluentCMS.Core.Agents;
 using FluentCMS.Core.Audit;
 using FluentCMS.Core.ChangeSets;
@@ -54,7 +55,51 @@ internal sealed class ContentTypeDirectory(
         return ReadAsync(slug, _ => version, cancellationToken);
     }
 
-    public async Task<Result<ContentType>> CreateAsync(NewContentType contentType, ChangeSetTarget changeSet, CancellationToken cancellationToken = default)
+    public Task<Result<ContentType>> CreateAsync(NewContentType contentType, ChangeSetTarget changeSet, CancellationToken cancellationToken = default)
+    {
+        return CreateAsync(contentType, changeSet, joined: null, cancellationToken);
+    }
+
+    public async Task<Result<ContentTypeWrite>> CreateInChangeSetAsync(NewContentType contentType, ChangeSetTarget changeSet, CancellationToken cancellationToken = default)
+    {
+        var joined = new StrongBox<Guid>();
+        return Written(await CreateAsync(contentType, changeSet, joined, cancellationToken), joined);
+    }
+
+    public Task<Result<ContentType>> ReviseAsync(
+        string slug,
+        int baseVersion,
+        ContentTypeDefinition definition,
+        ChangeSetTarget changeSet,
+        CancellationToken cancellationToken = default)
+    {
+        return ReviseAsync(slug, baseVersion, definition, changeSet, joined: null, cancellationToken);
+    }
+
+    public async Task<Result<ContentTypeWrite>> ReviseInChangeSetAsync(
+        string slug,
+        int baseVersion,
+        ContentTypeDefinition definition,
+        ChangeSetTarget changeSet,
+        CancellationToken cancellationToken = default)
+    {
+        var joined = new StrongBox<Guid>();
+        return Written(await ReviseAsync(slug, baseVersion, definition, changeSet, joined, cancellationToken), joined);
+    }
+
+    private static Result<ContentTypeWrite> Written(Result<ContentType> written, StrongBox<Guid> joined)
+    {
+        return written.IsSuccess
+            ? Result<ContentTypeWrite>.Success(new ContentTypeWrite(written.Value, joined.Value))
+            : Result<ContentTypeWrite>.Failure(written.Errors);
+    }
+
+    // The set the write joined is put in joined once it has committed.
+    private async Task<Result<ContentType>> CreateAsync(
+        NewContentType contentType,
+        ChangeSetTarget changeSet,
+        StrongBox<Guid>? joined,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(contentType);
         ArgumentNullException.ThrowIfNull(changeSet);
@@ -113,15 +158,16 @@ internal sealed class ContentTypeDirectory(
             cancellationToken);
         await changeSets.RecordAsync(pending.Value, null, cancellationToken);
 
-        return await CommitAsync(scope, type, CommitConflict(changeSet, pending.Value, SlugTaken(type.Slug)), cancellationToken);
+        return Joined(await CommitAsync(scope, type, CommitConflict(changeSet, pending.Value, SlugTaken(type.Slug)), cancellationToken), pending.Value, joined);
     }
 
-    public async Task<Result<ContentType>> ReviseAsync(
+    private async Task<Result<ContentType>> ReviseAsync(
         string slug,
         int baseVersion,
         ContentTypeDefinition definition,
         ChangeSetTarget changeSet,
-        CancellationToken cancellationToken = default)
+        StrongBox<Guid>? joined,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(slug);
         ArgumentNullException.ThrowIfNull(definition);
@@ -241,7 +287,17 @@ internal sealed class ContentTypeDirectory(
 
         await changeSets.RecordAsync(pending.Value, based.Id, cancellationToken);
 
-        return await CommitAsync(scope, type, CommitConflict(changeSet, pending.Value, RevisedMeanwhile(row)), cancellationToken);
+        return Joined(await CommitAsync(scope, type, CommitConflict(changeSet, pending.Value, RevisedMeanwhile(row)), cancellationToken), pending.Value, joined);
+    }
+
+    private static Result<ContentType> Joined(Result<ContentType> committed, ChangeSetDirectory.PendingOperation pending, StrongBox<Guid>? joined)
+    {
+        if (committed.IsSuccess && joined is not null)
+        {
+            joined.Value = pending.ChangeSet.Id;
+        }
+
+        return committed;
     }
 
     private async Task<Result<ContentType>> ReadAsync(string slug, Func<ContentTypeRow, int?> version, CancellationToken cancellationToken)

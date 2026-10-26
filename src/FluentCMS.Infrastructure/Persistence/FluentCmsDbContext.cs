@@ -50,6 +50,8 @@ public abstract class FluentCmsDbContext(DbContextOptions options) : IdentityDbC
 
     public DbSet<MediaAssetVersionRow> MediaAssetVersions => Set<MediaAssetVersionRow>();
 
+    public DbSet<ProposedMediaVersionRow> ProposedMediaVersions => Set<ProposedMediaVersionRow>();
+
     public DbSet<CheckRow> Checks => Set<CheckRow>();
 
     public DbSet<CheckVersionRow> CheckVersions => Set<CheckVersionRow>();
@@ -98,6 +100,7 @@ public abstract class FluentCmsDbContext(DbContextOptions options) : IdentityDbC
         builder.ApplyConfiguration(new EntityFactConfiguration());
         builder.ApplyConfiguration(new MediaAssetConfiguration());
         builder.ApplyConfiguration(new MediaAssetVersionConfiguration());
+        builder.ApplyConfiguration(new ProposedMediaVersionConfiguration());
         builder.ApplyConfiguration(new CheckConfiguration());
         builder.ApplyConfiguration(new CheckVersionConfiguration());
         builder.ApplyConfiguration(new RoutingRuleConfiguration());

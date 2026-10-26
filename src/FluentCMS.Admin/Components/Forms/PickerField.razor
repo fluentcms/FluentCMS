@@ -2,57 +2,61 @@
 @using FluentCMS.Admin.Forms
 @using FluentCMS.Core.Content
 @using FluentCMS.Core.Media
+@using FluentCMS.Core.Schema
 @using FluentCMS.Core.Search
-@inject ISearch Search
-@inject IEntryDirectory Entries
-@inject IMediaLibrary Library
+@using Microsoft.Extensions.DependencyInjection
+@implements IDisposable
+@inject IServiceScopeFactory Scopes
 @inject IStringLocalizer<PickerField> L
 
 @* A reference or media field of a generated form (FRM-01). Over the circuit it searches as the person types and keeps the choice in a
-   hidden input the static form posts; before the circuit attaches, or once it is lost, it is the plain select, which posts the same. *@
+   hidden input the static form posts; before the circuit attaches it is the plain select, which posts the same. Once the circuit is
+   lost the search stops, the choice still posts, and the page keeps what was typed (admin.js). *@
 <FormField Label="@Label" Description="@Description" Error="@Error" Class="sm:col-span-2">
     @if (!RendererInfo.IsInteractive)
     {
         <Select name="@Name" required="@Required" data-field="@Field">
             <option value="">@L["Choose…"]</option>
-            @foreach (var option in Options)
+            @foreach (var option in _fallback)
             {
-                <option value="@option.Value" selected="@(option.Value == _value)">@option.Label</option>
+                <option value="@option.Value" selected="@(option.Value == Value)">@option.Label</option>
             }
         </Select>
     }
     else
     {
         <div class="grid gap-2" data-picker="@Field">
-            <input type="hidden" name="@Name" value="@_value" />
+            <input type="hidden" name="@Name" value="@Choice?.Value" />
             <div class="flex flex-wrap items-center gap-2 text-sm" data-testid="picker-choice">
-                @if (_value is null)
+                @if (Choice?.Value is null)
                 {
                     <span class="text-muted-foreground">@L["Nothing chosen."]</span>
                 }
                 else
                 {
-                    <span><bdi>@(_chosenLabel ?? _value)</bdi></span>
+                    <span><bdi>@(Choice.Label ?? Choice.Value)</bdi></span>
                     <Button Type="button" Variant="ghost" Size="sm" OnClick="Clear" data-action="clear">@L["Clear"]</Button>
                 }
             </div>
+            @* The box owns its text: the server never writes it back, so a key typed while a search runs is never lost. admin.js empties it
+               after a choice and keeps focus in it. *@
             <Input Type="search"
-                   value="@_text"
                    @oninput="SearchAsync"
                    @onkeydown="OnKeyDown"
                    placeholder="@(Kind == MediaKind ? L["Search by file name or folder"] : L["Search by name"])"
-                   aria-controls="@ListId"
+                   aria-controls="@(_hits.Count > 0 ? ListId : null)"
                    aria-autocomplete="list"
                    data-ui="rove-input"
                    data-field="@Field" />
             @if (_hits.Count > 0)
             {
-                <div id="@ListId" role="listbox" aria-label="@L["Matches"]" data-ui="rove" class="grid gap-1 rounded-md border p-1" @onkeydown="OnKeyDown">
+                @* data-for names the text these matches answer: admin.js lets Enter choose only when the box still holds it. *@
+                <div id="@ListId" role="listbox" aria-label="@L["Matches"]" data-ui="rove" data-for="@_shownText" class="grid gap-1 rounded-md border p-1" @onkeydown="OnKeyDown">
                     @foreach (var (hit, index) in _hits.Select((hit, index) => (hit, index)))
                     {
                         <button type="button"
                                 role="option"
-                                aria-selected="@(hit.Value == _value ? "true" : "false")"
+                                aria-selected="@(hit.Value == Choice?.Value ? "true" : "false")"
                                 data-ui="rove-item"
                                 tabindex="@(index == 0 ? null : "-1")"
                                 class="@ClassNames.Cn(ButtonVariants.Classes("ghost", "sm"), "h-auto justify-start py-1.5 text-start whitespace-normal")"
@@ -79,12 +83,21 @@
     public const string MediaKind = "media";
     private const int MaxHits = 10;
 
+    // The select before the circuit lists this many of the newest choices, and the chosen one.
+    public const int FallbackChoices = 200;
+
+    // A search waits for this pause in typing, so a word typed at full speed runs one search, not one per key.
+    public static TimeSpan SearchPause { get; set; } = TimeSpan.FromMilliseconds(250);
+
     private readonly string _id = "picker-" + Guid.NewGuid().ToString("N")[..8];
-    private string? _value;
-    private string? _chosenLabel;
-    private string _text = string.Empty;
+    private readonly CancellationTokenSource _disposed = new();
+    private int _search;
+    private string? _shownText;
+    private bool _set;
+    private string? _lastValue;
     private bool _searched;
     private List<PickerHit> _hits = [];
+    private IReadOnlyList<FieldOption> _fallback = [];
 
     [Parameter, EditorRequired] public string Field { get; set; } = string.Empty;
     [Parameter, EditorRequired] public string Kind { get; set; } = EntryKind;
@@ -94,75 +107,199 @@
     [Parameter] public string? Description { get; set; }
     [Parameter] public string? Error { get; set; }
     [Parameter] public bool Required { get; set; }
-    // An array, not an interface: parameters of an interactive island cross into the circuit as JSON, which an interface type cannot.
-    [Parameter] public FieldOption[] Options { get; set; } = [];
+
+    // The choice and its name. Kept with the circuit, so a circuit paused and resumed, as after a laptop sleeps, keeps what the person
+    // chose rather than going back to the stored value.
+    [PersistentState]
+    public PickerChoice? Choice { get; set; }
 
     private string Name => $"Form.Values[{Field}]";
 
     private string ListId => _id + "-list";
 
-    protected override void OnParametersSet()
+    // Every read goes through a scope of its own: the pickers of one form load at once, and searches overlap as the person types,
+    // while a DbContext takes one query at a time.
+    protected override async Task OnParametersSetAsync()
     {
-        _value = string.IsNullOrWhiteSpace(Value) ? null : Value;
-        _chosenLabel = Options.FirstOrDefault(option => option.Value == _value)?.Label;
+        // A new stored value, as when enhanced navigation shows another version of the entry, replaces the choice; the same one keeps
+        // the choice the person made, and a resumed circuit starts from the choice it kept.
+        if (Choice is null || (_set && Value != _lastValue))
+        {
+            Choice = new PickerChoice(string.IsNullOrWhiteSpace(Value) ? null : Value, null);
+        }
+
+        (_set, _lastValue) = (true, Value);
+        await using var scope = Scopes.CreateAsyncScope();
+        var services = scope.ServiceProvider;
+        if (RendererInfo.IsInteractive)
+        {
+            if (Choice is { Value: { } chosen, Label: null })
+            {
+                // The person may choose again while the name is read; a name for an earlier choice is not applied.
+                var label = await LabelAsync(services, chosen);
+                if (Choice?.Value == chosen)
+                {
+                    Choice = Choice with { Label = label };
+                }
+            }
+
+            return;
+        }
+
+        _fallback = Kind == MediaKind ? await MediaChoicesAsync(services) : await EntryChoicesAsync(services);
     }
 
     private async Task SearchAsync(ChangeEventArgs change)
     {
-        _text = change.Value?.ToString() ?? string.Empty;
-        _hits = _text.Trim().Length == 0 ? [] : Kind == MediaKind ? await MediaAsync(_text.Trim()) : await EntriesAsync(_text.Trim());
-        _searched = _text.Trim().Length > 0;
+        var search = ++_search;
+        var text = (change.Value?.ToString() ?? string.Empty).Trim();
+        try
+        {
+            await Task.Delay(SearchPause, _disposed.Token);
+            if (search != _search)
+            {
+                return;
+            }
+
+            List<PickerHit> hits = [];
+            if (text.Length > 0)
+            {
+                await using var scope = Scopes.CreateAsyncScope();
+                hits = Kind == MediaKind ? await MediaAsync(scope.ServiceProvider, text) : await EntriesAsync(scope.ServiceProvider, text);
+            }
+
+            // Only the newest search shows its results, whatever order the searches end in.
+            if (search == _search)
+            {
+                (_hits, _searched, _shownText) = (hits, text.Length > 0, text);
+            }
+        }
+        catch (OperationCanceledException) when (_disposed.IsCancellationRequested)
+        {
+        }
     }
 
-    private async Task<List<PickerHit>> EntriesAsync(string text)
+    private async Task<List<PickerHit>> EntriesAsync(IServiceProvider services, string text)
     {
         if (Target is null)
         {
             return [];
         }
 
-        var found = await Search.SearchAsync(new SearchQuery(text) { ContentTypes = [Target], Limit = MaxHits });
+        var found = await services.GetRequiredService<ISearch>().SearchAsync(new SearchQuery(text) { ContentTypes = [Target], Limit = MaxHits }, _disposed.Token);
         if (!found.IsSuccess)
         {
             return [];
         }
 
+        var nameField = await NameFieldAsync(services);
+        var entries = services.GetRequiredService<IEntryDirectory>();
         var hits = new List<PickerHit>();
         foreach (var hit in found.Value.Hits.Where(hit => hit.Via is null).DistinctBy(hit => hit.EntryId))
         {
-            var entry = await Entries.GetAsync(hit.EntryId);
-            var name = entry.IsSuccess ? FirstText(entry.Value.Latest.Fields) : null;
-            hits.Add(new PickerHit(hit.EntryId.ToString(), L["{0} ({1}, {2})", name ?? hit.ContentType, StateLabel(hit.State), hit.EntryId.ToString()[..8]], null));
+            var entry = await entries.GetAsync(hit.EntryId, _disposed.Token);
+            hits.Add(new PickerHit(hit.EntryId.ToString(), EntryLabel(entry.IsSuccess ? NameOf(entry.Value, nameField) : null, hit.State, hit.EntryId), null));
         }
 
         return hits;
     }
 
-    private async Task<List<PickerHit>> MediaAsync(string text)
+    private async Task<List<PickerHit>> MediaAsync(IServiceProvider services, string text)
     {
-        var assets = await Library.ListAsync(new MediaQuery());
-        return
-        [
-            .. assets
-                .Where(asset => asset.FileName.Contains(text, StringComparison.CurrentCultureIgnoreCase) || asset.Folder.Contains(text, StringComparison.OrdinalIgnoreCase))
-                .Reverse()
-                .Take(MaxHits)
-                .Select(asset => new PickerHit(
-                    asset.Id.ToString(),
-                    asset.Folder.Length == 0 ? asset.FileName : $"{asset.FileName} ({asset.Folder})",
-                    asset.ContentType.StartsWith("image/", StringComparison.Ordinal) ? AdminRoutes.MediaFile(asset.Id) : null)),
-        ];
+        var assets = await services.GetRequiredService<IMediaLibrary>().ListAsync(new MediaQuery { Text = text, Newest = MaxHits }, _disposed.Token);
+        return [.. assets.Select(asset => new PickerHit(asset.Id.ToString(), MediaLabel(asset), asset.ContentType.StartsWith("image/", StringComparison.Ordinal) ? AdminRoutes.MediaFile(asset.Id) : null))];
     }
+
+    private async Task<string?> LabelAsync(IServiceProvider services, string value)
+    {
+        if (!Guid.TryParse(value, out var id))
+        {
+            return null;
+        }
+
+        if (Kind == MediaKind)
+        {
+            var asset = await services.GetRequiredService<IMediaLibrary>().GetAsync(id, _disposed.Token);
+            return asset.IsSuccess ? MediaLabel(asset.Value.Latest.Metadata.FileName, asset.Value.Latest.Metadata.Folder) : null;
+        }
+
+        var entry = await services.GetRequiredService<IEntryDirectory>().GetAsync(id, _disposed.Token);
+        return entry.IsSuccess ? EntryLabel(NameOf(entry.Value, await NameFieldAsync(services)), entry.Value.State, id) : null;
+    }
+
+    private async Task<IReadOnlyList<FieldOption>> EntryChoicesAsync(IServiceProvider services)
+    {
+        if (Target is null)
+        {
+            return [];
+        }
+
+        var listed = await services.GetRequiredService<IEntryDirectory>().ListAsync(Target, _disposed.Token);
+        var choices = listed.IsSuccess
+            ? listed.Value.OrderByDescending(entry => entry.Id).Take(FallbackChoices).Select(entry => new FieldOption(entry.Id.ToString(), EntryLabel(null, entry.State, entry.Id))).ToList()
+            : [];
+        return await WithChosenAsync(services, choices);
+    }
+
+    private async Task<IReadOnlyList<FieldOption>> MediaChoicesAsync(IServiceProvider services)
+    {
+        var assets = await services.GetRequiredService<IMediaLibrary>().ListAsync(new MediaQuery { Newest = FallbackChoices }, _disposed.Token);
+        return await WithChosenAsync(services, [.. assets.Select(asset => new FieldOption(asset.Id.ToString(), MediaLabel(asset)))]);
+    }
+
+    // The chosen value is always among the select's options, named as the search names it.
+    private async Task<IReadOnlyList<FieldOption>> WithChosenAsync(IServiceProvider services, List<FieldOption> choices)
+    {
+        if (Choice?.Value is { } chosen)
+        {
+            choices.RemoveAll(choice => choice.Value == chosen);
+            choices.Insert(0, new FieldOption(chosen, await LabelAsync(services, chosen) ?? chosen));
+        }
+
+        return choices;
+    }
+
+    // An entry is named by the first text field of its type, in the order the type defines them.
+    private async Task<string?> NameFieldAsync(IServiceProvider services)
+    {
+        var type = Target is null ? null : await services.GetRequiredService<IContentTypeDirectory>().GetAsync(Target, _disposed.Token);
+        return type is { IsSuccess: true } ? type.Value.Definition.Fields.FirstOrDefault(field => field.Type == "text")?.Name : null;
+    }
+
+    private static string? NameOf(Entry entry, string? nameField)
+    {
+        if (nameField is null || !entry.Latest.Fields.TryGetProperty(nameField, out var value))
+        {
+            return null;
+        }
+
+        var text = FactValues.IsFact(value) ? value.GetProperty(FluentCMS.Core.Schema.FactMetadata.Value) : value;
+        return text.ValueKind == JsonValueKind.String ? text.GetString() : null;
+    }
+
+    private string EntryLabel(string? name, EntryState state, Guid id) => name is null
+        ? L["{0} ({1})", id.ToString()[..8], StateLabel(state)]
+        : L["{0} ({1}, {2})", name, StateLabel(state), id.ToString()[..8]];
+
+    private static string MediaLabel(MediaAssetSummary asset) => MediaLabel(asset.FileName, asset.Folder);
+
+    private static string MediaLabel(string fileName, string folder) => folder.Length == 0 ? fileName : $"{fileName} ({folder})";
 
     private void Choose(PickerHit hit)
     {
-        (_value, _chosenLabel) = (hit.Value, hit.Label);
-        (_hits, _text, _searched) = ([], string.Empty, false);
+        Choice = new PickerChoice(hit.Value, hit.Label);
+        Reset();
     }
 
     private void Clear()
     {
-        (_value, _chosenLabel) = (null, null);
+        Choice = new PickerChoice(null, null);
+    }
+
+    private void Reset()
+    {
+        (_hits, _searched) = ([], false);
+        _search++;
     }
 
     private void OnKeyDown(KeyboardEventArgs key)
@@ -170,22 +307,8 @@
         if (key.Key == "Escape")
         {
             (_hits, _searched) = ([], false);
+            _search++;
         }
-    }
-
-    // What names an entry for a person: its first text value, or an entity's first text fact.
-    private static string? FirstText(JsonElement fields)
-    {
-        foreach (var property in fields.EnumerateObject())
-        {
-            var value = property.Value.ValueKind == JsonValueKind.Object && property.Value.TryGetProperty("value", out var fact) ? fact : property.Value;
-            if (value.ValueKind == JsonValueKind.String && !Guid.TryParse(value.GetString(), out _))
-            {
-                return value.GetString();
-            }
-        }
-
-        return null;
     }
 
     private string StateLabel(EntryState state) => state switch
@@ -197,5 +320,10 @@
         _ => L["archived"],
     };
 
+    // Cancelled, not disposed: a search still running reads the token after the component is gone.
+    public void Dispose() => _disposed.Cancel();
+
     private sealed record PickerHit(string Value, string Label, string? Preview);
+
+    public sealed record PickerChoice(string? Value, string? Label);
 }

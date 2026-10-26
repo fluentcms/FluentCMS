@@ -4,6 +4,7 @@ using FluentCMS.Core;
 using FluentCMS.Core.Extensions;
 using FluentCMS.Core.Results;
 using FluentCMS.Core.Schema;
+using FluentCMS.Testing;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Tests.Schema;
@@ -11,6 +12,7 @@ namespace FluentCMS.Tests.Schema;
 // The contract every field type meets, built in or not (EXT-N1). Derive one class per type: name the type, list settings it must
 // accept and settings it must reject, list values it must accept and reject under given settings, and override AddFieldTypes to
 // register a type that lives outside Core.
+[ConformanceFor(typeof(IFieldType))]
 public abstract class FieldTypeConformanceTests : IDisposable
 {
     private static readonly string[] ValuesOfEveryKind =

@@ -35,6 +35,15 @@ public sealed class EngineJobsTests
     }
 
     [Fact]
+    public void The_retention_purge_runs_as_the_retention_engine()
+    {
+        using var provider = new ServiceCollection().AddFluentCmsCore().BuildServiceProvider();
+        var purge = provider.GetServices<IJobHandler>().Single(handler => handler.Type == "retention.purge");
+
+        Assert.Equal(SystemInitiator.Retention, provider.GetRequiredService<EngineJobs>().RunAs(purge, SystemInitiator.Retention).Value);
+    }
+
+    [Fact]
     public void A_handler_Core_does_not_list_cannot_claim_an_engine()
     {
         var claimed = Engines().RunAs(new Handler(SystemInitiator.Checks), null);

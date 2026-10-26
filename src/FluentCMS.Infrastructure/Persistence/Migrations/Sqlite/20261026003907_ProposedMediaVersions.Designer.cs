@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
 {
     [DbContext(typeof(SqliteFluentCmsDbContext))]
-    [Migration("20261019223901_RuleCompilations")]
-    partial class RuleCompilations
+    [Migration("20261026003907_ProposedMediaVersions")]
+    partial class ProposedMediaVersions
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -191,6 +191,8 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                     b.HasIndex("ChangeSetId");
 
                     b.HasIndex("Timestamp");
+
+                    b.HasIndex("Operation", "Timestamp");
 
                     b.HasIndex("SubjectType", "SubjectId");
 
@@ -913,6 +915,33 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                         });
                 });
 
+            modelBuilder.Entity("FluentCMS.Infrastructure.Media.ProposedMediaVersionRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("AssetId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ChangeSetId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChangeSetId");
+
+                    b.HasIndex("AssetId", "Version", "ChangeSetId")
+                        .IsUnique();
+
+                    b.ToTable("ProposedMediaVersions", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_ProposedMediaVersions_Version", "\"Version\" >= 1");
+                        });
+                });
+
             modelBuilder.Entity("FluentCMS.Infrastructure.Models.ModelCallRow", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1156,89 +1185,6 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                     b.ToTable("RoutingRuleVersions", null, t =>
                         {
                             t.HasCheckConstraint("CK_RoutingRuleVersions_Version", "\"Version\" >= 1");
-                        });
-                });
-
-            modelBuilder.Entity("FluentCMS.Infrastructure.Rules.RuleCheckProposalRow", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid?>("CheckId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("CheckName")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Definition")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("Number")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<Guid>("RuleId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("RuleVersion")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("State")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CheckId")
-                        .IsUnique();
-
-                    b.HasIndex("RuleId", "Number")
-                        .IsUnique();
-
-                    b.HasIndex("RuleId", "RuleVersion");
-
-                    b.ToTable("RuleCheckProposals", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_RuleCheckProposals_Number", "\"Number\" >= 1");
-
-                            t.HasCheckConstraint("CK_RuleCheckProposals_RuleVersion", "\"RuleVersion\" >= 1");
-                        });
-                });
-
-            modelBuilder.Entity("FluentCMS.Infrastructure.Rules.RuleCompilationRow", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid?>("JobId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Message")
-                        .HasMaxLength(2000)
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("RuleId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("TEXT");
-
-                    b.Property<int>("Version")
-                        .HasColumnType("INTEGER");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RuleId", "Version")
-                        .IsUnique();
-
-                    b.ToTable("RuleCompilations", null, t =>
-                        {
-                            t.HasCheckConstraint("CK_RuleCompilations_Version", "\"Version\" >= 1");
                         });
                 });
 
@@ -1713,6 +1659,21 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("FluentCMS.Infrastructure.Media.ProposedMediaVersionRow", b =>
+                {
+                    b.HasOne("FluentCMS.Infrastructure.Media.MediaAssetRow", null)
+                        .WithMany()
+                        .HasForeignKey("AssetId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FluentCMS.Infrastructure.ChangeSets.ChangeSetRow", null)
+                        .WithMany()
+                        .HasForeignKey("ChangeSetId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("FluentCMS.Infrastructure.Models.ModelCallRow", b =>
                 {
                     b.HasOne("FluentCMS.Infrastructure.Agents.AgentCredentialRow", null)
@@ -1735,29 +1696,6 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                     b.HasOne("FluentCMS.Infrastructure.Routing.RoutingRuleRow", null)
                         .WithMany()
                         .HasForeignKey("RoutingRuleId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("FluentCMS.Infrastructure.Rules.RuleCheckProposalRow", b =>
-                {
-                    b.HasOne("FluentCMS.Infrastructure.Checks.CheckRow", null)
-                        .WithMany()
-                        .HasForeignKey("CheckId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("FluentCMS.Infrastructure.Rules.RuleRow", null)
-                        .WithMany()
-                        .HasForeignKey("RuleId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("FluentCMS.Infrastructure.Rules.RuleCompilationRow", b =>
-                {
-                    b.HasOne("FluentCMS.Infrastructure.Rules.RuleRow", null)
-                        .WithMany()
-                        .HasForeignKey("RuleId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

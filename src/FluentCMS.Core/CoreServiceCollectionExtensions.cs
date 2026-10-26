@@ -60,7 +60,12 @@ public static class CoreServiceCollectionExtensions
         {
             [typeof(CheckRunJob)] = SystemInitiator.Checks,
             [typeof(RuleCompileJob)] = SystemInitiator.Checks,
+            [typeof(RetentionPurgeJob)] = SystemInitiator.Retention,
         }));
+
+        // Enqueues through IJobQueue, which Infrastructure provides.
+        services.AddScoped<RetentionSchedule>();
+        services.AddScoped<IRetentionSchedule>(provider => provider.GetRequiredService<RetentionSchedule>());
 
         return services;
     }
