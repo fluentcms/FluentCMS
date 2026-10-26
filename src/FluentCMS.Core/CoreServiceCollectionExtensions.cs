@@ -52,7 +52,15 @@ public static class CoreServiceCollectionExtensions
         services.AddScoped<IEntryEdits, EntryEdits>();
 
         // The handlers that run as an engine; a job worker runs any other handler as whoever enqueued its job (ADR-0012).
-        services.AddSingleton(new EngineJobs(new Dictionary<Type, SystemInitiator> { [typeof(CheckRunJob)] = SystemInitiator.Checks }));
+        services.AddSingleton(new EngineJobs(new Dictionary<Type, SystemInitiator>
+        {
+            [typeof(CheckRunJob)] = SystemInitiator.Checks,
+            [typeof(RetentionPurgeJob)] = SystemInitiator.Retention,
+        }));
+
+        // Enqueues through IJobQueue, which Infrastructure provides.
+        services.AddScoped<RetentionSchedule>();
+        services.AddScoped<IRetentionSchedule>(provider => provider.GetRequiredService<RetentionSchedule>());
 
         return services;
     }

@@ -5,6 +5,7 @@
 @using FluentCMS.Core.Media
 @inject IMediaLibrary Library
 @inject IWhereUsed WhereUsed
+@inject FluentCMS.Core.Schema.IContentTypeDirectory ContentTypes
 @inject NavigationManager Navigation
 @inject IStringLocalizer<MediaAssetView> L
 
@@ -66,7 +67,8 @@
             <CardContent>
                 <form method="post" @onsubmit="SaveAsync" @formname="metadata" class="grid gap-4">
                     <AntiforgeryToken />
-                    <input type="hidden" name="Form.BaseVersion" value="@asset.LatestVersion" />
+                    @* The version the shown details were made from: a refused save keeps it, so a change saved meanwhile is a conflict. *@
+                    <input type="hidden" name="Form.BaseVersion" value="@Shown.BaseVersion" />
                     @if (_message is not null)
                     {
                         <p role="status" class="rounded-md border bg-muted/50 px-3 py-2 text-sm" data-testid="media-saved">@_message</p>
@@ -120,7 +122,9 @@
                         {
                             <TableRow data-entry="@usage.EntryId.ToString("N")">
                                 <TableCell>
-                                    <bdi>@usage.ContentType</bdi> <bdi class="font-mono text-xs text-muted-foreground" dir="ltr">@usage.EntryId.ToString("N")[..8]</bdi>
+                                    <a href="@($"audit?type={_subjects.GetValueOrDefault(usage.ContentType, "entry")}&id={usage.EntryId}")" class="underline-offset-4 hover:underline" data-testid="usage-history">
+                                        <bdi>@usage.ContentType</bdi> <bdi class="font-mono text-xs text-muted-foreground" dir="ltr">@usage.EntryId.ToString("N")[..8]</bdi>
+                                    </a>
                                 </TableCell>
                                 <TableCell>
                                     <span class="flex flex-wrap items-center gap-1">
@@ -148,14 +152,20 @@
 @code {
     private MediaAsset? _asset;
     private IReadOnlyList<EntryUsage> _usage = [];
+
+    // The audit subject of each using type's items: an entity type's items are entities in the log, every other type's are entries.
+    private Dictionary<string, string> _subjects = new(StringComparer.Ordinal);
     private IReadOnlyList<string> _errors = [];
     private string? _formError;
     private string? _message;
 
     [Parameter] public Guid Id { get; set; }
 
+    // Read as text, as the library's sub flag is, so a value that is not true or false shows the page rather than failing it.
     [SupplyParameterFromQuery(Name = "uploaded")]
-    private bool Uploaded { get; set; }
+    private string? UploadedText { get; set; }
+
+    private bool Uploaded => bool.TryParse(UploadedText, out var uploaded) && uploaded;
 
     [SupplyParameterFromForm(FormName = "metadata")]
     private MediaMetadataForm? Form { get; set; }
@@ -192,6 +202,12 @@
             BaseVersion = _asset.LatestVersion,
         };
         _usage = await WhereUsed.ForMediaAsync(Id);
+        foreach (var slug in _usage.Select(usage => usage.ContentType).Distinct())
+        {
+            var type = await ContentTypes.GetAsync(slug);
+            _subjects[slug] = type.IsSuccess && type.Value.Definition.IsEntity ? "entity" : "entry";
+        }
+
         return true;
     }
 

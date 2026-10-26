@@ -19,4 +19,18 @@ public static class ChangeSetMoves
         "change_set.rejected",
         "change_set.reverted",
     ];
+
+    // The state a move leaves its set in, or null for an operation that is not a move.
+    public static ChangeSetState? StateAfter(string operation) => operation switch
+    {
+        Opened or "change_set.reopened" => ChangeSetState.Open,
+        "change_set.submitted" => ChangeSetState.ChecksRunning,
+        "change_set.checks_failed" => ChangeSetState.ChecksFailed,
+        "change_set.awaiting_review" => ChangeSetState.AwaitingReview,
+        "change_set.approved" => ChangeSetState.Approved,
+        "change_set.published" => ChangeSetState.Published,
+        "change_set.rejected" => ChangeSetState.Rejected,
+        "change_set.reverted" => ChangeSetState.Reverted,
+        _ => null,
+    };
 }

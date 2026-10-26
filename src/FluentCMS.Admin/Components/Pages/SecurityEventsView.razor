@@ -99,12 +99,13 @@ else
     private int _offset;
     private string? _error;
 
+    // Read as text, so a page that is not a number, or too large for one, shows the first page rather than failing the request.
     [SupplyParameterFromQuery(Name = "page")]
-    private int? PageNumber { get; set; }
+    private string? PageText { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
-        _page = Math.Max(1, PageNumber ?? 1);
+        _page = int.TryParse(PageText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var page) ? Math.Max(1, page) : 1;
         _offset = (int)Math.Min((_page - 1L) * PageSize, int.MaxValue - PageSize);
 
         var listed = await AuditLists.ListAsync(new AuditEventListQuery { Operations = SecurityEvents.Operations, Offset = _offset, Limit = PageSize });

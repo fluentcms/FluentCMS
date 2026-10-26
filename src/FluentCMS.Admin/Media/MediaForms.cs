@@ -31,27 +31,48 @@ public class MediaMetadataFields
 }
 
 // The library's upload form as it posts to the host's upload endpoint; the file arrives beside it. A refused upload comes back to the
-// library with ReturnQuery, so the page can show each problem next to its field and keep what was typed.
+// library with ReturnQuery, so the page can show each problem next to its field and keep what was typed. The names are the upload's
+// own, so they never filter the list the library shows.
 public sealed class MediaUploadForm : MediaMetadataFields
 {
     public const string FileMissing = "media_file_missing";
 
-    public const string ErrorName = "error";
-    public const string FolderName = "folder";
-    public const string TagsName = "tags";
-    public const string AltTextName = "alt";
-    public const string CaptionName = "caption";
+    public const string ErrorName = "upload-error";
+    public const string FolderName = "upload-folder";
+    public const string TagsName = "upload-tags";
+    public const string AltTextName = "upload-alt";
+    public const string CaptionName = "upload-caption";
+    public const string DroppedName = "upload-dropped";
+
+    // Past this, a field is not carried back, so the redirect stays well inside the server's request line limit.
+    public const int MaxReturnedLength = 1500;
 
     public Dictionary<string, string?> ReturnQuery(IEnumerable<Error> errors)
     {
-        return new Dictionary<string, string?>
+        var query = new Dictionary<string, string?> { [ErrorName] = string.Join(",", errors.Select(error => error.Code).Distinct()) };
+        var dropped = new List<string>();
+        foreach (var (name, text) in new[] { (FolderName, Folder), (TagsName, Tags), (AltTextName, AltText), (CaptionName, Caption) })
         {
-            [ErrorName] = string.Join(",", errors.Select(error => error.Code).Distinct()),
-            [FolderName] = Folder,
-            [TagsName] = Tags,
-            [AltTextName] = AltText,
-            [CaptionName] = Caption,
-        };
+            if (text is null)
+            {
+                continue;
+            }
+
+            if (Uri.EscapeDataString(text).Length > MaxReturnedLength)
+            {
+                dropped.Add(name);
+                continue;
+            }
+
+            query[name] = text;
+        }
+
+        if (dropped.Count > 0)
+        {
+            query[DroppedName] = string.Join(",", dropped);
+        }
+
+        return query;
     }
 }
 
