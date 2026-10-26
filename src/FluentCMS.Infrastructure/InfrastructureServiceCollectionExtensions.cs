@@ -54,7 +54,7 @@ public static class InfrastructureServiceCollectionExtensions
         AddIdentity(services);
         AddAudit(services);
         AddSchema(services);
-        AddChangeSets(services);
+        AddChangeSets(services, configuration);
         AddAgents(services);
         AddContent(services, configuration);
         AddMedia(services, configuration);
@@ -120,8 +120,11 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<IRuleDirectory, RuleDirectory>();
     }
 
-    private static void AddChangeSets(IServiceCollection services)
+    private static void AddChangeSets(IServiceCollection services, IConfiguration configuration)
     {
+        services.AddOptions<ApprovalOptions>().Bind(configuration.GetSection(ApprovalOptions.SectionName)).ValidateOnStart();
+        services.AddSingleton<IValidateOptions<ApprovalOptions>, ApprovalOptionsValidation>();
+
         // The content type directory writes its operations through the same instance (SCH-05).
         services.AddScoped<ChangeSetDirectory>();
         services.AddScoped<IChangeSetDirectory>(provider => provider.GetRequiredService<ChangeSetDirectory>());

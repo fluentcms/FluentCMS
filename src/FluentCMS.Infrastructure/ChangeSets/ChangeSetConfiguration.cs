@@ -10,9 +10,15 @@ internal sealed class ChangeSetConfiguration : IEntityTypeConfiguration<ChangeSe
     public void Configure(EntityTypeBuilder<ChangeSetRow> row)
     {
         // A set carries a rejection reason exactly when it is rejected, whatever the mapping code does (CHG-08).
-        row.ToTable("ChangeSets", table => table.HasCheckConstraint(
-            "CK_ChangeSets_RejectionReason",
-            $"(\"State\" = '{ChangeSetState.Rejected}') = (\"RejectionReason\" IS NOT NULL)"));
+        row.ToTable("ChangeSets", table =>
+        {
+            table.HasCheckConstraint(
+                "CK_ChangeSets_RejectionReason",
+                $"(\"State\" = '{ChangeSetState.Rejected}') = (\"RejectionReason\" IS NOT NULL)");
+            table.HasCheckConstraint(
+                "CK_ChangeSets_RequiredApprovals",
+                $"\"RequiredApprovals\" BETWEEN 1 AND {ChangeSet.MaxApprovals}");
+        });
 
         row.HasKey(set => set.Id);
         row.Property(set => set.Id).ValueGeneratedNever();
@@ -21,6 +27,7 @@ internal sealed class ChangeSetConfiguration : IEntityTypeConfiguration<ChangeSe
         row.Property(set => set.InitiatorName).HasMaxLength(256).IsRequired();
         row.Property(set => set.SessionId).HasMaxLength(ChangeSet.MaxSessionIdLength);
         row.Property(set => set.State).HasConversion<string>().HasMaxLength(32);
+        row.Property(set => set.RequiredApprovals).HasDefaultValue(1);
 
         row.HasOne<SiteRow>().WithMany().HasForeignKey(set => set.SiteId).OnDelete(DeleteBehavior.Restrict);
         row.HasOne<ChangeSetRow>().WithMany().HasForeignKey(set => set.RevertsChangeSetId).OnDelete(DeleteBehavior.Restrict);

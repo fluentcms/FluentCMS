@@ -1,4 +1,5 @@
 using FluentCMS.Core.ChangeSets;
+using FluentCMS.Core.Identity;
 
 namespace FluentCMS.Tests.ChangeSets;
 
@@ -80,7 +81,13 @@ public sealed class ChangeSetTransitionTests
     {
         var changeSet = TestChangeSets.InState(from);
 
-        var result = to == ChangeSetState.Rejected ? changeSet.Reject("The price has no source.") : changeSet.TransitionTo(to);
+        // A set in review is approved by its approvals (RTE-05).
+        var result = (from, to) switch
+        {
+            (_, ChangeSetState.Rejected) => changeSet.Reject("The price has no source."),
+            (ChangeSetState.AwaitingReview, ChangeSetState.Approved) => changeSet.Approve(new UserInitiator(Guid.NewGuid(), "Amir"), DateTimeOffset.UnixEpoch),
+            _ => changeSet.TransitionTo(to),
+        };
 
         Assert.True(result.IsSuccess);
         Assert.Equal(to, changeSet.State);

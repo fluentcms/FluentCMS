@@ -199,6 +199,27 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                         });
                 });
 
+            modelBuilder.Entity("FluentCMS.Infrastructure.ChangeSets.ChangeSetApprovalRow", b =>
+                {
+                    b.Property<Guid>("ChangeSetId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("ApprovedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ApproverName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("ChangeSetId", "UserId");
+
+                    b.ToTable("ChangeSetApprovals", (string)null);
+                });
+
             modelBuilder.Entity("FluentCMS.Infrastructure.ChangeSets.ChangeSetOperationRow", b =>
                 {
                     b.Property<Guid>("Id")
@@ -267,6 +288,11 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                     b.Property<string>("RejectionReason")
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("RequiredApprovals")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(1);
+
                     b.Property<Guid?>("RevertsChangeSetId")
                         .HasColumnType("TEXT");
 
@@ -304,6 +330,8 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                     b.ToTable("ChangeSets", null, t =>
                         {
                             t.HasCheckConstraint("CK_ChangeSets_RejectionReason", "(\"State\" = 'Rejected') = (\"RejectionReason\" IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_ChangeSets_RequiredApprovals", "\"RequiredApprovals\" BETWEEN 1 AND 10");
                         });
                 });
 
@@ -1521,6 +1549,15 @@ namespace FluentCMS.Infrastructure.Persistence.Migrations.Sqlite
                     b.HasOne("FluentCMS.Infrastructure.Agents.AgentCredentialRow", null)
                         .WithMany()
                         .HasForeignKey("AgentCredentialId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FluentCMS.Infrastructure.ChangeSets.ChangeSetApprovalRow", b =>
+                {
+                    b.HasOne("FluentCMS.Infrastructure.ChangeSets.ChangeSetRow", null)
+                        .WithMany()
+                        .HasForeignKey("ChangeSetId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

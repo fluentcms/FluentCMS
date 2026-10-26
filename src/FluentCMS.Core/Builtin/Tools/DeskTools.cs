@@ -61,9 +61,10 @@ public sealed class DeskTools : IToolProvider
         new AgentTool(
             "get_change_set_review",
             "Get a change set's review status",
-            "Returns where a change set this agent opened stands in review: its state and since when, the reason if a person "
-            + "rejected it, the set it reverts, and every move it made, in order, with who made it and when. Use it to learn whether "
-            + "your set was approved, published or rejected and why; a rejected set's reason says what to change in a new set.",
+            "Returns where a change set this agent opened stands in review: its state and since when, the approvals it has and how "
+            + "many it needs, the reason if a person rejected it, the set it reverts, and every move it made, in order, with who made "
+            + "it and when. Use it to learn whether your set was approved, published or rejected and why; a rejected set's reason "
+            + "says what to change in a new set.",
             ToolSchemas.Object(ToolSchemas.Uuid("id", "The change set's id.")),
             readOnly: true,
             ReviewAsync),
@@ -166,6 +167,12 @@ public sealed class DeskTools : IToolProvider
             ["stateSince"] = moves.Count > 0 ? moves[^1].Timestamp.ToUniversalTime().ToString("O") : null,
             ["rejectionReason"] = set.RejectionReason,
             ["revertsChangeSetId"] = set.RevertsChangeSetId?.ToString(),
+            ["requiredApprovals"] = set.RequiredApprovals,
+            ["approvals"] = new JsonArray([.. set.Approvals.Select(approval => (JsonNode)new JsonObject
+            {
+                ["by"] = Initiator(approval.Approver),
+                ["at"] = approval.ApprovedAt.ToUniversalTime().ToString("O"),
+            })]),
             ["moves"] = new JsonArray([.. moves.Select(move => (JsonNode)new JsonObject
             {
                 ["move"] = move.Operation["change_set.".Length..],

@@ -34,6 +34,8 @@ public abstract class FluentCmsDbContext(DbContextOptions options) : IdentityDbC
 
     public DbSet<ChangeSetOperationRow> ChangeSetOperations => Set<ChangeSetOperationRow>();
 
+    public DbSet<ChangeSetApprovalRow> ChangeSetApprovals => Set<ChangeSetApprovalRow>();
+
     public DbSet<AgentCredentialRow> AgentCredentials => Set<AgentCredentialRow>();
 
     public DbSet<ToolCallRow> ToolCalls => Set<ToolCallRow>();
@@ -88,6 +90,7 @@ public abstract class FluentCmsDbContext(DbContextOptions options) : IdentityDbC
         builder.ApplyConfiguration(new ContentTypeVersionConfiguration());
         builder.ApplyConfiguration(new ChangeSetConfiguration());
         builder.ApplyConfiguration(new ChangeSetOperationConfiguration());
+        builder.ApplyConfiguration(new ChangeSetApprovalConfiguration());
         builder.ApplyConfiguration(new AgentCredentialConfiguration());
         builder.ApplyConfiguration(new ToolCallConfiguration());
         builder.ApplyConfiguration(new EntryConfiguration());
