@@ -7,12 +7,10 @@
 @using FluentCMS.Admin.Forms
 @using FluentCMS.Core.ChangeSets
 @using FluentCMS.Core.Content
-@using FluentCMS.Core.Media
 @using FluentCMS.Core.Schema
 @inject IContentTypeDirectory ContentTypes
 @inject IEntryDirectory Entries
 @inject IEntryEdits Edits
-@inject IMediaLibrary Media
 @inject FluentCMS.Core.Identity.IUserDirectory Users
 @inject FieldTypeRegistry FieldTypes
 @inject NavigationManager Navigation
@@ -34,9 +32,41 @@
     {
         <p class="mt-2 text-sm text-muted-foreground">@L["An entity type: every field is a fact with its source, owner and validity."]</p>
     }
+    @if (_entry is { State: EntryState.Reverted, PublishedVersion: null } revertedCreate)
+    {
+        <p role="status" class="mt-4 rounded-md border bg-muted/50 px-3 py-2 text-sm" data-testid="entry-draft-note">
+            @L["The form shows version {0}, whose creation was reverted. Nothing of this entry is published; saving proposes it again.", revertedCreate.LatestVersion]
+        </p>
+    }
+    @if (_entry is { PublishedVersion: { } published } entry && entry.LatestVersion != published && entry.State != EntryState.InReview)
+    {
+        <p role="status" class="mt-4 rounded-md border bg-muted/50 px-3 py-2 text-sm" data-testid="entry-draft-note">
+            @if (FromPublished)
+            {
+                @L["The form shows the published version {0}. The latest draft, version {1}, is not published; saving proposes this version's values with your changes.", published, entry.LatestVersion]
+                <a href="@($"content/{Slug}/{entry.Id}")" class="ms-1 underline underline-offset-4">@L["Show the latest draft"]</a>
+            }
+            else if (entry.State == EntryState.Reverted)
+            {
+                @L["The form shows the reverted draft, version {0}. Version {1} is published.", entry.LatestVersion, published]
+                <a href="@($"content/{Slug}/{entry.Id}?from=published")" class="ms-1 underline underline-offset-4" data-testid="from-published">@L["Start from the published version"]</a>
+            }
+            else
+            {
+                @L["The form shows the latest draft, version {0}, which is not published; a rejected change can leave such a draft. Version {1} is published.", entry.LatestVersion, published]
+                <a href="@($"content/{Slug}/{entry.Id}?from=published")" class="ms-1 underline underline-offset-4" data-testid="from-published">@L["Start from the published version"]</a>
+            }
+        </p>
+    }
     <form method="post" @onsubmit="SaveAsync" @formname="entry" class="mt-6 grid gap-6" data-testid="entry-form">
         <AntiforgeryToken />
-        <input type="hidden" name="Form.BaseVersion" value="@(_entry?.LatestVersion ?? 0)" />
+        @* The version the shown values were made from: after a refused save it is still the one the person started from, so a change
+           someone saved meanwhile is refused as a conflict rather than overwritten. *@
+        <input type="hidden" name="Form.BaseVersion" value="@Shown.BaseVersion" />
+        @if (Shown.FromPublished is { } fromPublished)
+        {
+            <input type="hidden" name="Form.FromPublished" value="@fromPublished" />
+        }
         @if (_formError is not null)
         {
             <p role="alert" class="rounded-md border border-destructive/50 px-3 py-2 text-sm text-destructive" data-testid="entry-form-error">@_formError</p>
@@ -48,10 +78,10 @@
             <CardContent Class="grid gap-6 sm:grid-cols-2">
                 @foreach (var field in type.Definition.Fields)
                 {
-                    <FieldWidget Field="field" Value="@Shown.Values.GetValueOrDefault(field.Name)" Error="@_fieldErrors.GetValueOrDefault(field.Name)" Options="@_options.GetValueOrDefault(field.Name, [])" />
+                    <FieldWidget Field="field" Value="@Shown.Values.GetValueOrDefault(field.Name)" Error="@_fieldErrors.GetValueOrDefault(field.Name)" />
                     @if (type.Definition.IsEntity)
                     {
-                        <FactFields Field="@field.Name" Values="Shown.Facts" Problems="@_factProblems.GetValueOrDefault(field.Name, new Dictionary<string, string>())" Owners="_owners" Unsourced="@_unsourced.Contains(field.Name)" />
+                        <FactFields Field="@field.Name" Values="Shown.Facts" Problems="@_factProblems.GetValueOrDefault(field.Name, new Dictionary<string, string>())" Owners="@OwnersFor(field.Name)" Unsourced="@_unsourced.Contains(field.Name)" />
                     }
                 }
             </CardContent>
@@ -79,11 +109,19 @@
 @code {
     private ContentType? _type;
     private Entry? _entry;
-    private Dictionary<string, IReadOnlyList<FieldOption>> _options = new(StringComparer.Ordinal);
     private Dictionary<string, string> _fieldErrors = new(StringComparer.Ordinal);
     private Dictionary<string, Dictionary<string, string>> _factProblems = new(StringComparer.Ordinal);
     private HashSet<string> _unsourced = new(StringComparer.Ordinal);
     private IReadOnlyList<FieldOption> _owners = [];
+    private HashSet<Guid> _ownerIds = [];
+
+    // A field's stored owner who is no user, such as one an agent set, is offered on that field alone, so it stays selected.
+    private IReadOnlyList<FieldOption> OwnersFor(string field)
+    {
+        return FactValues.OwnerOf(_stored.TryGetValue(field, out var stored) ? stored : null) is { } owner && !_ownerIds.Contains(owner)
+            ? [.. _owners, new FieldOption(owner.ToString(), L["Unknown user {0}", owner.ToString()[..8]])]
+            : _owners;
+    }
     private string? _rationaleError;
     private string? _formError;
 
@@ -93,6 +131,15 @@
 
     [SupplyParameterFromForm(FormName = "entry")]
     private EntryFormModel? Form { get; set; }
+
+    // Start from the published version instead of a latest draft no set is reviewing, such as a rejected or reverted one.
+    [SupplyParameterFromQuery(Name = "from")]
+    private string? From { get; set; }
+
+    private bool FromPublished => From == "published" && _entry?.PublishedVersion is not null;
+
+    // The stored values the form was filled from, by field, so a value the person left as it was is saved exactly as stored.
+    private Dictionary<string, JsonElement> _stored = new(StringComparer.Ordinal);
 
     // What the form shows: what was posted after a refused save, the stored values otherwise.
     private EntryFormModel Shown { get; set; } = new();
@@ -131,11 +178,31 @@
             _entry = entry.Value;
         }
 
-        Shown = new EntryFormModel { BaseVersion = _entry?.LatestVersion ?? 0 };
+        var shownFields = _entry?.Latest.Fields;
+        if (FromPublished)
+        {
+            var published = await Entries.GetVersionAsync(_entry!.Id, _entry.PublishedVersion!.Value);
+            shownFields = published.IsSuccess ? published.Value.Fields : shownFields;
+        }
+
+        // An update is always made from the latest version, so the version check holds whichever version the values come from.
+        // The published version the values came from: the one asked for, or the latest when it is the published one, so a revert or a
+        // publish while the form is open is caught when it is saved.
+        Shown = new EntryFormModel
+        {
+            BaseVersion = _entry?.LatestVersion ?? 0,
+            FromPublished = FromPublished || _entry?.LatestVersion == _entry?.PublishedVersion ? _entry?.PublishedVersion : null,
+        };
         _unsourced.Clear();
+        _stored.Clear();
         foreach (var field in _type.Definition.Fields)
         {
-            JsonElement? stored = _entry is not null && _entry.Latest.Fields.TryGetProperty(field.Name, out var value) ? value : null;
+            JsonElement? stored = shownFields is { } document && document.TryGetProperty(field.Name, out var value) ? value.Clone() : null;
+            if (stored is { } kept)
+            {
+                _stored[field.Name] = kept;
+            }
+
             if (_type.Definition.IsEntity)
             {
                 if (FactValues.IsUnsourced(stored))
@@ -152,27 +219,15 @@
         return true;
     }
 
-    // Until the pickers search (F-SRC), a reference offers every entry of its target type and a media field every asset.
+    // A reference or media field's picker loads its own choices.
     private async Task LoadOptionsAsync()
     {
         if (_type!.Definition.IsEntity)
         {
-            _owners = [.. (await Users.ListAsync()).Where(user => !user.IsDisabled).Select(user => new FieldOption(user.Id.ToString(), user.DisplayName))];
-        }
-
-        foreach (var field in _type!.Definition.Fields)
-        {
-            if (field.Type == "reference" && FieldValues.Setting(field, "target") is { } target)
-            {
-                var entries = await Entries.ListAsync(target);
-                _options[field.Name] = entries.IsSuccess
-                    ? [.. entries.Value.Select(entry => new FieldOption(entry.Id.ToString(), L["{0} (version {1})", entry.Id.ToString()[..8], entry.LatestVersion]))]
-                    : [];
-            }
-            else if (field.Type == "media")
-            {
-                _options[field.Name] = [.. (await Media.ListAsync(new MediaQuery())).Select(asset => new FieldOption(asset.Id.ToString(), asset.FileName))];
-            }
+            // Every user, so a fact owned by someone since disabled keeps its owner when it is saved again.
+            var users = await Users.ListAsync();
+            _ownerIds = [.. users.Select(user => user.Id)];
+            _owners = [.. users.Select(user => new FieldOption(user.Id.ToString(), user.IsDisabled ? L["{0} (disabled)", user.DisplayName] : user.DisplayName))];
         }
     }
 
@@ -186,7 +241,22 @@
         var fields = new JsonObject();
         foreach (var field in _type.Definition.Fields)
         {
-            var value = FieldValues.Read(field, Form.Values.GetValueOrDefault(field.Name), out var problem);
+            var stored = _stored.TryGetValue(field.Name, out var storedValue) ? storedValue : (JsonElement?)null;
+            var storedValueOnly = _type.Definition.IsEntity ? FactValues.Show(field.Name, stored, new Dictionary<string, string?>()) : stored;
+
+            // A stored value its field's type no longer takes, as after a number field became text, is read from what was posted.
+            if (storedValueOnly is { } keptValue && FieldTypes.ValidateValue(field.Type, field.Settings, keptValue).Count > 0)
+            {
+                storedValueOnly = null;
+            }
+
+            var value = FieldValues.Read(field, Form.Values.GetValueOrDefault(field.Name), out var problem, storedValueOnly);
+            if (value is null && field.Type == "boolean" && _type.Definition.IsEntity && FactValues.HasDetails(field.Name, Form.Facts))
+            {
+                // A sourced fact that a box is unchecked is the fact that it is false.
+                value = JsonValue.Create(false);
+            }
+
             if (problem is not null)
             {
                 _fieldErrors[field.Name] = Problem(problem);
@@ -195,7 +265,11 @@
 
             if (value is null)
             {
-                if (field.Required)
+                if (_type.Definition.IsEntity && FactValues.HasDetails(field.Name, Form.Facts))
+                {
+                    _fieldErrors[field.Name] = L["Give the value too, or clear its fact details."];
+                }
+                else if (field.Required)
                 {
                     _fieldErrors[field.Name] = L["Fill in {0}.", field.Name];
                 }
@@ -218,7 +292,7 @@
             }
 
             var problems = new Dictionary<string, string>();
-            var fact = FactValues.Read(field.Name, value, Form.Facts, problems);
+            var fact = FactValues.Read(field.Name, value, Form.Facts, problems, stored, _ownerIds);
             if (fact is null)
             {
                 _factProblems[field.Name] = problems;
@@ -244,7 +318,10 @@
             _entry?.Id,
             _entry is null ? null : Form.BaseVersion,
             JsonSerializer.SerializeToElement(fields),
-            new NewChangeSet(Form.Rationale!, Form.SourceList())));
+            new NewChangeSet(Form.Rationale!, Form.SourceList()))
+        {
+            PublishedBase = Form.FromPublished,
+        });
 
         if (saved.IsSuccess)
         {
@@ -263,7 +340,7 @@
         Shown = Form;
         foreach (var error in saved.Errors)
         {
-            if (FieldOf(error.Message) is { } field && _type.Definition.HasField(field))
+            if (FieldOf(error.Message) is { } field && _type.Definition.HasField(field) && !_fieldErrors.ContainsKey(field))
             {
                 _fieldErrors[field] = error.Message[(error.Message.IndexOf(':') + 1)..].Trim();
             }

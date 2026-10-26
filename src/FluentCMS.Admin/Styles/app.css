@@ -183,7 +183,7 @@
   /* Blazor reports a lost circuit as a state class on this element (ReconnectModal.razor); each part names the state it shows in. */
   #components-reconnect-modal {
     display: none;
-    &:is(.components-reconnect-show, .components-reconnect-failed, .components-reconnect-paused, .components-reconnect-resume-failed) {
+    &:is(.components-reconnect-show, .components-reconnect-failed, .components-reconnect-paused, .components-reconnect-resume-failed, .components-reconnect-lost) {
       display: flex;
     }
     & [data-reconnect-when] {
@@ -193,7 +193,8 @@
     &.components-reconnect-retrying [data-reconnect-when="retrying"],
     &.components-reconnect-failed [data-reconnect-when="failed"],
     &.components-reconnect-paused [data-reconnect-when="paused"],
-    &.components-reconnect-resume-failed [data-reconnect-when="resume-failed"] {
+    &.components-reconnect-resume-failed [data-reconnect-when="resume-failed"],
+    &.components-reconnect-lost [data-reconnect-when="lost"] {
       display: block;
     }
   }

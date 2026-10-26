@@ -31,7 +31,14 @@ public interface IMediaLibrary
 
 public sealed record NewAsset(Stream Content, string ContentType, AssetMetadata Metadata);
 
-public sealed record MediaQuery(string? Folder = null, bool IncludeSubfolders = false, string? Tag = null);
+public sealed record MediaQuery(string? Folder = null, bool IncludeSubfolders = false, string? Tag = null)
+{
+    // Only assets whose file name or folder holds the text, whatever its case.
+    public string? Text { get; init; }
+
+    // Only this many of the newest assets, newest first; every asset, oldest first, when null.
+    public int? Newest { get; init; }
+}
 
 // An asset with its pointers and the latest version.
 public sealed record MediaAsset(Guid Id, Guid SiteId, int LatestVersion, int? PublishedVersion, MediaAssetVersion Latest);

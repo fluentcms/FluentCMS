@@ -22,6 +22,24 @@ internal sealed class EntryEdits(
             return Result<SavedEntryEdit>.Failure(ContentErrorCodes.VersionConflict, "An update names the version it was made from.");
         }
 
+        // Publishing that moved on since the values were read is found before anything is written, as the directories find theirs.
+        if (edit.PublishedBase is { } expected && edit.EntryId is { } entryId
+            && await entries.GetAsync(entryId, cancellationToken) is { IsSuccess: true } current && current.Value.PublishedVersion != expected)
+        {
+            return PublishedMoved(expected, current.Value.PublishedVersion);
+        }
+
+        // The set's own expected failures are found before anything is written, as the directories find theirs.
+        if (string.IsNullOrWhiteSpace(edit.ChangeSet.Rationale))
+        {
+            return Result<SavedEntryEdit>.Failure(ChangeSetErrorCodes.RationaleMissing, "A change set needs a rationale that says why the changes are made.");
+        }
+
+        if (edit.ChangeSet.Sources.Any(string.IsNullOrWhiteSpace))
+        {
+            return Result<SavedEntryEdit>.Failure(ChangeSetErrorCodes.SourceBlank, "A source is blank. A source names where a change came from, such as a URL, a file, an export or a person.");
+        }
+
         await using var scope = await unitOfWork.BeginAsync(cancellationToken);
 
         var entry = edit.EntryId is { } id
@@ -30,6 +48,12 @@ internal sealed class EntryEdits(
         if (!entry.IsSuccess)
         {
             return Result<SavedEntryEdit>.Failure(entry.Errors);
+        }
+
+        // Checked again against the published version the operation is based on below, for a publish since the check above.
+        if (edit.PublishedBase is { } publishedBase && entry.Value.PublishedVersion != publishedBase)
+        {
+            return PublishedMoved(publishedBase, entry.Value.PublishedVersion);
         }
 
         var type = await contentTypes.GetAsync(entry.Value.ContentType, cancellationToken);
@@ -62,5 +86,12 @@ internal sealed class EntryEdits(
 
         await scope.CommitAsync(cancellationToken);
         return Result<SavedEntryEdit>.Success(new SavedEntryEdit(entry.Value, set.Value));
+    }
+
+    private static Result<SavedEntryEdit> PublishedMoved(int expected, int? published)
+    {
+        return Result<SavedEntryEdit>.Failure(
+            ContentErrorCodes.VersionConflict,
+            $"The values came from published version {expected}, and {(published is { } version ? $"version {version}" : "no version")} is published now.");
     }
 }

@@ -223,8 +223,9 @@
     [SupplyParameterFromQuery(Name = "queue")]
     private string? QueueSlug { get; set; }
 
+    // Read as text, so a page that is not a number, or too large for one, shows the first page rather than failing the request.
     [SupplyParameterFromQuery(Name = "page")]
-    private int? PageNumber { get; set; }
+    private string? PageText { get; set; }
 
     // What the set view did before it came back here, because the queue it was reviewing is now empty.
     [SupplyParameterFromQuery(Name = "done")]
@@ -242,6 +243,7 @@
         new(["1–6"], L["Switch to a queue by its number"]),
         new(["J", "K"], L["Move to the next or previous row"]),
         new(["↓", "↑"], L["Move between rows while one has focus"]),
+        new(["Home", "End"], L["Move to the first or last row while one has focus"]),
         new(["Enter"], L["Open the row's change set"]),
         new(["?"], L["Show these shortcuts"]),
     ];
@@ -250,7 +252,7 @@
     {
         // An unknown queue shows the default one rather than an error, as a mistyped link would otherwise land nowhere.
         _queue = Slugs.FirstOrDefault(pair => pair.Value == QueueSlug).Key;
-        _page = Math.Max(1, PageNumber ?? 1);
+        _page = int.TryParse(PageText, NumberStyles.Integer, CultureInfo.InvariantCulture, out var page) ? Math.Max(1, page) : 1;
         _offset = (int)Math.Min((_page - 1L) * PageSize, int.MaxValue - PageSize);
 
         var counts = await Queues.CountAsync();

@@ -10,6 +10,10 @@
             <DialogTitle>@L["Keyboard shortcuts"]</DialogTitle>
             <DialogDescription>@L["Keys work anywhere on the page except while you type in a field."]</DialogDescription>
         </DialogHeader>
+        @* WCAG 2.1 SC 2.1.4: keys without Control, Alt or Meta can be turned off. admin.js keeps the choice in this browser. *@
+        <FormField Label="@L["Single-key shortcuts"]" Description="@L["Keys without Control, Alt or Meta, such as A, J or 1. Turn them off if they act when you do not mean them to, as with voice control."]" Class="rounded-md border p-3">
+            <Switch checked data-ui="single-key-shortcuts" />
+        </FormField>
         <dl class="grid grid-cols-[max-content_1fr] items-center gap-x-4 gap-y-2 text-sm" data-testid="shortcut-list">
             @foreach (var shortcut in Shortcuts)
             {

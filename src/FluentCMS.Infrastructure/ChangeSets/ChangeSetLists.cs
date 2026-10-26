@@ -78,7 +78,7 @@ internal sealed class ChangeSetLists(FluentCmsDbContext context) : IChangeSetLis
                     (SELECT MAX(e."Timestamp") FROM "AuditEvents" e
                         WHERE e."SubjectType" = {movedSubject} AND e."SubjectId" = s."Id" AND e."Operation" IN ({moves})) AS "StateSince"
                 FROM "ChangeSets" s
-                WHERE s."SiteId" = {site} AND s."State" IN ({states}){OpenedBy(query, parameters)}
+                WHERE s."SiteId" = {site} AND s."State" IN ({states}){OpenedBy(query, parameters)}{Reverts(query, parameters)}
             ) AS "Listed"
             """;
 
@@ -99,6 +99,11 @@ internal sealed class ChangeSetLists(FluentCmsDbContext context) : IChangeSetLis
 
         var (kind, id) = InitiatorKinds.Describe(initiator);
         return $" AND s.\"InitiatorKind\" = {Parameter(parameters, kind)} AND s.\"InitiatorId\" = {Parameter(parameters, id)}";
+    }
+
+    private static string Reverts(ChangeSetListQuery query, List<object> parameters)
+    {
+        return query.Reverts is { } reverted ? $" AND s.\"RevertsChangeSetId\" = {Parameter(parameters, reverted)}" : string.Empty;
     }
 
     private static string Parameter(List<object> parameters, object value)
