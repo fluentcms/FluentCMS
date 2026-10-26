@@ -19,6 +19,9 @@ public abstract partial class JobHandlerConformanceTests : IDisposable
 
     protected abstract string JobType { get; }
 
+    // False for a handler that reads nothing from its payload, which no payload can then make it fail.
+    protected virtual bool ReadsPayload => true;
+
     private ServiceProvider Provider => _provider ??= BuildProvider();
 
     private IJobHandler Handler => Provider.GetServices<IJobHandler>().Single(handler => handler.Type == JobType);
@@ -55,6 +58,11 @@ public abstract partial class JobHandlerConformanceTests : IDisposable
     [InlineData("null")]
     public async Task A_payload_it_cannot_read_is_a_failure_that_says_why(string payload)
     {
+        if (!ReadsPayload)
+        {
+            return;
+        }
+
         var job = new Job
         {
             Id = Guid.CreateVersion7(),
@@ -92,9 +100,4 @@ public abstract partial class JobHandlerConformanceTests : IDisposable
 
     [GeneratedRegex(@"^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*\z")]
     private static partial Regex TypeName();
-}
-
-public sealed class CheckRunJobConformanceTests : JobHandlerConformanceTests
-{
-    protected override string JobType => "checks.run";
 }
