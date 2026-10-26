@@ -328,7 +328,9 @@ const observer = new MutationObserver((mutations) => {
         const { input } = commandParts(mutation.target);
         if (input) inputs.add(input);
         for (const node of mutation.addedNodes) {
-            if (node instanceof Element) node.querySelectorAll('[data-ui="command-input"]').forEach((added) => inputs.add(added));
+            if (!(node instanceof Element)) continue;
+            node.querySelectorAll('[data-ui="command-input"]').forEach((added) => inputs.add(added));
+            showSingleKeys(node);
         }
     }
     inputs.forEach(filterCommand);
@@ -343,6 +345,39 @@ const observer = new MutationObserver((mutations) => {
 // shortcuts inside it apply.
 
 const modifiers = { control: "ctrlKey", alt: "altKey", shift: "shiftKey", meta: "metaKey" };
+
+// WCAG 2.1 SC 2.1.4: a person can turn off every shortcut without Control, Alt or Meta, in the shortcuts dialog
+// (ShortcutHelp.razor). The choice is kept in this browser, and storage that refuses leaves them on.
+const singleKeysStorage = "fluentcms-single-key-shortcuts";
+
+// The choice made on this page when storage refuses to keep it.
+let singleKeysChosen;
+
+function singleKeysOn() {
+    if (singleKeysChosen !== undefined) return singleKeysChosen;
+    try {
+        return localStorage.getItem(singleKeysStorage) !== "off";
+    } catch {
+        return true;
+    }
+}
+
+function chooseSingleKeys(on) {
+    try {
+        if (on) localStorage.removeItem(singleKeysStorage);
+        else localStorage.setItem(singleKeysStorage, "off");
+        singleKeysChosen = undefined;
+    } catch {
+        singleKeysChosen = on;
+    }
+}
+
+// The page renders the switch on; it shows the stored choice, again whenever Blazor renders it anew.
+function showSingleKeys(root) {
+    const toggles = [...(root.querySelectorAll?.('[data-ui="single-key-shortcuts"]') ?? [])];
+    if (root.matches?.('[data-ui="single-key-shortcuts"]')) toggles.push(root);
+    toggles.forEach((toggle) => { toggle.checked = singleKeysOn(); });
+}
 const editable = (element) => element.isContentEditable
     || element.matches('input:not([type="checkbox"], [type="radio"], [type="button"], [type="submit"], [type="reset"]), textarea, select');
 const shown = (element) => (element.checkVisibility ? element.checkVisibility() : visible(element)) && !element.closest("[inert]");
@@ -364,7 +399,7 @@ function matchesShortcut(event, shortcut) {
 function onShortcutKeydown(event) {
     if (event.defaultPrevented || event.isComposing || event.repeat || ["Control", "Alt", "Shift", "Meta"].includes(event.key)) return false;
     const chord = event.ctrlKey || event.altKey || event.metaKey;
-    if (!chord && (editable(event.target) || event.target.closest('[data-ui="menu"]'))) return false;
+    if (!chord && (!singleKeysOn() || editable(event.target) || event.target.closest('[data-ui="menu"]'))) return false;
     const modal = document.querySelector("dialog:modal");
     for (const element of document.querySelectorAll("[aria-keyshortcuts]")) {
         if ((modal && !modal.contains(element)) || element.matches(":disabled") || !shown(element)) continue;
@@ -390,11 +425,12 @@ function onRoveKeydown(event) {
     if (event.ctrlKey || event.altKey || event.metaKey || event.isComposing) return false;
     const target = event.target;
     const inside = target.closest('[data-ui="rove"]');
+    // J and K also match their physical keys, as the other letters do, so they work on any layout.
     const key = event.key.toLowerCase();
-    const step = key === "j" ? 1 : key === "k" ? -1 : 0;
+    const step = key === "j" || event.code === "KeyJ" ? 1 : key === "k" || event.code === "KeyK" ? -1 : 0;
 
     if (step !== 0) {
-        if (event.shiftKey || editable(target) || target.closest('[data-ui="menu"]')) return false;
+        if (!singleKeysOn() || event.shiftKey || editable(target) || target.closest('[data-ui="menu"]')) return false;
         const modal = document.querySelector("dialog:modal");
         const list = inside ?? [...document.querySelectorAll('[data-ui="rove"]')].find((candidate) => (!modal || modal.contains(candidate)) && roveItems(candidate).length > 0);
         if (!list || (modal && !modal.contains(list))) return false;
@@ -409,13 +445,18 @@ function onRoveKeydown(event) {
         return true;
     }
 
-    // From a search box that controls a list, ArrowDown enters the list at its first item.
-    if (target.matches('[data-ui="rove-input"]') && event.key === "ArrowDown") {
+    // From a search box that controls a list, ArrowDown enters the list at its first item. Enter never submits the form around
+    // the box: it chooses the only match, or enters the list when there are more.
+    if (target.matches('[data-ui="rove-input"]') && (event.key === "ArrowDown" || event.key === "Enter")) {
         const list = document.getElementById(target.getAttribute("aria-controls"));
-        const items = list ? roveItems(list) : [];
-        if (items.length === 0) return false;
+        // Matches for an earlier text are not the answer to what the box holds now, so Enter waits for the new ones.
+        const fresh = list?.dataset.for === undefined || list.dataset.for === target.value.trim();
+        const items = list && fresh ? roveItems(list) : [];
+        if (event.key === "Enter") event.preventDefault();
+        if (items.length === 0) return event.key === "Enter";
         event.preventDefault();
-        rove(items, 0);
+        if (event.key === "Enter" && items.length === 1) items[0].click();
+        else rove(items, 0);
         return true;
     }
 
@@ -426,6 +467,27 @@ function onRoveKeydown(event) {
     event.preventDefault();
     rove(items, Math.min(Math.max(next, 0), items.length - 1)).scrollIntoView({ block: "nearest" });
     return true;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Pickers (PickerField.razor): the search box owns its text, so a choice empties it here, and focus goes back to the box after a
+// choice, Clear or Escape, before Blazor removes the element that had it.
+
+const pickerBox = (element) => element.closest?.("[data-picker]")?.querySelector('[data-ui="rove-input"]');
+
+function onPickerClick(event) {
+    const option = event.target.closest?.('[data-picker] [role="option"]');
+    const clear = event.target.closest?.('[data-picker] [data-action="clear"]');
+    const box = pickerBox(option ?? clear ?? document.body);
+    if (!box) return;
+    if (option) box.value = "";
+    box.focus();
+}
+
+function onPickerEscape(event) {
+    if (event.key !== "Escape") return;
+    const box = pickerBox(event.target);
+    if (box && event.target !== box) box.focus();
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -445,8 +507,10 @@ function chooseTheme(theme) {
 // ---------------------------------------------------------------------------------------------
 // Reconnect: Blazor reports its state as a class on #components-reconnect-modal (ReconnectModal.razor)
 // and leaves the buttons, and the reload after a rejected circuit, to the page, as its default display does.
+// A page whose form holds typed input is not reloaded, which would lose it: pickers stop searching, every field
+// still posts, and the person saves the form or reloads it themselves.
 
-const reconnectStates = ["show", "hide", "retrying", "failed", "rejected", "paused", "resume-failed"].map((state) => `components-reconnect-${state}`);
+const reconnectStates = ["show", "hide", "retrying", "failed", "rejected", "paused", "resume-failed", "lost"].map((state) => `components-reconnect-${state}`);
 
 function showReconnectState(state) {
     const modal = document.getElementById("components-reconnect-modal");
@@ -454,12 +518,37 @@ function showReconnectState(state) {
     modal?.classList.add(`components-reconnect-${state}`);
 }
 
+const typed = (field) => field.type === "checkbox" || field.type === "radio"
+    ? field.checked !== field.defaultChecked
+    : field instanceof HTMLSelectElement
+        ? [...field.options].some((option) => option.selected !== option.defaultSelected)
+        : field.type !== "hidden" && field.value !== field.defaultValue;
+
+function reloadOrKeepForm() {
+    const fields = [...document.querySelectorAll("form input, form textarea, form select")];
+    if (!document.querySelector("form [data-picker]") && !fields.some(typed)) {
+        location.reload();
+        return;
+    }
+
+    document.querySelectorAll('[data-picker] [data-ui="rove-input"], [data-picker] [role="option"]').forEach((control) => { control.disabled = true; });
+    // Without a circuit nothing can render the next page's islands, so an enhanced navigation would keep this page's: every link
+    // now loads its page in full, and so do Back and Forward, which Blazor handles without looking at that attribute.
+    document.documentElement.setAttribute("data-enhance-nav", "false");
+    // Loaded with GET, so going back to an entry a form's post made never asks to post it again.
+    window.addEventListener("popstate", (event) => {
+        event.stopImmediatePropagation();
+        location.replace(location.href);
+    }, { capture: true });
+    showReconnectState("lost");
+}
+
 async function retryConnection() {
     document.removeEventListener("visibilitychange", retryWhenVisible);
     showReconnectState("show");
     try {
         if (await Blazor.reconnect() || await Blazor.resumeCircuit()) showReconnectState("hide");
-        else location.reload();
+        else reloadOrKeepForm();
     } catch {
         showReconnectState("failed");
         document.addEventListener("visibilitychange", retryWhenVisible);
@@ -469,7 +558,7 @@ async function retryConnection() {
 async function resumeConnection() {
     try {
         if (await Blazor.resumeCircuit()) showReconnectState("hide");
-        else location.reload();
+        else reloadOrKeepForm();
     } catch {
         showReconnectState("resume-failed");
     }
@@ -480,7 +569,7 @@ function retryWhenVisible() {
 }
 
 function onReconnectStateChanged(event) {
-    if (event.detail?.state === "rejected") location.reload();
+    if (event.detail?.state === "rejected") reloadOrKeepForm();
     if (event.detail?.state === "failed") document.addEventListener("visibilitychange", retryWhenVisible);
 }
 
@@ -510,6 +599,8 @@ document.addEventListener("click", (event) => {
     const reconnect = event.target.closest?.("[data-reconnect]");
     if (reconnect) onReconnectClick(reconnect);
 
+    onPickerClick(event);
+
     closeOnBackdropClick(event);
 });
 
@@ -520,6 +611,7 @@ document.addEventListener("keydown", (event) => {
     if (!(target instanceof Element)) return;
 
     if (event.key === "Escape") hideTooltips();
+    onPickerEscape(event);
     if (onShortcutKeydown(event)) return;
     if (onRoveKeydown(event)) return;
 
@@ -536,6 +628,21 @@ document.addEventListener("keydown", (event) => {
     if (trap) trapFocus(event, trap);
 });
 
+document.addEventListener("change", (event) => {
+    if (event.target.matches?.('[data-ui="single-key-shortcuts"]')) chooseSingleKeys(event.target.checked);
+});
+
+// Enhanced navigation keeps the switch and sets it back to the page's "on", so the stored choice is shown again after each one,
+// and again whenever the switch takes focus.
+try {
+    window.Blazor?.addEventListener?.("enhancedload", () => showSingleKeys(document));
+} catch {
+    // A page without enhanced navigation has nothing to listen to; focus still shows the choice.
+}
+document.addEventListener("focusin", (event) => {
+    if (event.target.matches?.('[data-ui="single-key-shortcuts"]')) showSingleKeys(event.target);
+});
+
 document.addEventListener("input", (event) => {
     if (event.target.matches?.('[data-ui="command-input"]')) filterCommand(event.target);
 });
@@ -549,4 +656,5 @@ document.addEventListener("toggle", onMenuToggle, true);
 document.addEventListener("toggle", onPopoverToggle, true);
 document.addEventListener("components-reconnect-state-changed", onReconnectStateChanged, true);
 document.querySelectorAll('[data-ui="command-input"]').forEach(filterCommand);
+showSingleKeys(document);
 observer.observe(document.body, { childList: true, subtree: true });

@@ -23,6 +23,9 @@ internal sealed class AuditEventConfiguration : IEntityTypeConfiguration<AuditEv
         row.Property(e => e.PromptHash).HasMaxLength(128);
 
         row.HasIndex(e => e.Timestamp);
+
+        // The security view lists and counts a few operations across the whole log, newest first.
+        row.HasIndex(e => new { e.Operation, e.Timestamp });
         row.HasIndex(e => e.ChangeSetId);
         row.HasIndex(e => e.AgentCredentialId);
         row.HasIndex(e => new { e.SubjectType, e.SubjectId });

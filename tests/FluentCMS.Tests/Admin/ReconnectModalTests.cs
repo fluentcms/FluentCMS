@@ -18,7 +18,7 @@ public sealed class ReconnectModalTests
         Assert.Equal("status", modal.GetAttribute("role"));
         Assert.Equal("polite", modal.GetAttribute("aria-live"));
         Assert.True(modal.HasAttribute("data-permanent"));
-        Assert.Equal(["show", "retrying", "failed", "paused", "resume-failed"], parts.Select(part => part.GetAttribute("data-reconnect-when")));
+        Assert.Equal(["show", "retrying", "failed", "paused", "lost", "resume-failed"], parts.Select(part => part.GetAttribute("data-reconnect-when")));
         Assert.Equal("Connection lost. Rejoining the server…", parts[0].TextContent);
     }
 
@@ -45,6 +45,7 @@ public sealed class ReconnectModalTests
         Assert.Equal("retry", cut.Find("[data-reconnect-when=failed] button").GetAttribute("data-reconnect"));
         Assert.Equal("resume", cut.Find("[data-reconnect-when=paused] button").GetAttribute("data-reconnect"));
         Assert.Equal("reload", cut.Find("[data-reconnect-when=resume-failed] button").GetAttribute("data-reconnect"));
+        Assert.Equal("reload", cut.Find("[data-reconnect-when=lost] button").GetAttribute("data-reconnect"));
         Assert.All(cut.FindAll("button"), button => Assert.Equal("button", button.GetAttribute("type")));
     }
 

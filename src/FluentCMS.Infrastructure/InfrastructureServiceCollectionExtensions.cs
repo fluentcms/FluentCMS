@@ -2,6 +2,7 @@ using FluentCMS.Core.Agents;
 using FluentCMS.Core.Audit;
 using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Checks;
+using FluentCMS.Core.Routing;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Delivery;
 using FluentCMS.Core.Entities;
@@ -11,6 +12,7 @@ using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Media;
 using FluentCMS.Core.Models;
 using FluentCMS.Core.Persistence;
+using FluentCMS.Core.Rules;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Search;
 using FluentCMS.Core.Webhooks;
@@ -18,6 +20,7 @@ using FluentCMS.Infrastructure.Agents;
 using FluentCMS.Infrastructure.Audit;
 using FluentCMS.Infrastructure.ChangeSets;
 using FluentCMS.Infrastructure.Checks;
+using FluentCMS.Infrastructure.Routing;
 using FluentCMS.Infrastructure.Content;
 using FluentCMS.Infrastructure.Delivery;
 using FluentCMS.Infrastructure.Entities;
@@ -26,6 +29,7 @@ using FluentCMS.Infrastructure.Jobs;
 using FluentCMS.Infrastructure.Media;
 using FluentCMS.Infrastructure.Models;
 using FluentCMS.Infrastructure.Persistence;
+using FluentCMS.Infrastructure.Rules;
 using FluentCMS.Infrastructure.Schema;
 using FluentCMS.Infrastructure.Search;
 using FluentCMS.Infrastructure.Webhooks;
@@ -55,6 +59,7 @@ public static class InfrastructureServiceCollectionExtensions
         AddContent(services, configuration);
         AddMedia(services, configuration);
         AddChecks(services);
+        AddRouting(services);
         AddJobs(services);
         AddModels(services, configuration);
         AddWebhooks(services, configuration);
@@ -112,6 +117,7 @@ public static class InfrastructureServiceCollectionExtensions
     private static void AddSchema(IServiceCollection services)
     {
         services.AddScoped<IContentTypeDirectory, ContentTypeDirectory>();
+        services.AddScoped<IRuleDirectory, RuleDirectory>();
     }
 
     private static void AddChangeSets(IServiceCollection services)
@@ -163,6 +169,12 @@ public static class InfrastructureServiceCollectionExtensions
     {
         services.AddScoped<ICheckDirectory, CheckDirectory>();
         services.AddScoped<ICheckRuns, CheckRuns>();
+    }
+
+    private static void AddRouting(IServiceCollection services)
+    {
+        services.AddScoped<IRoutingRuleDirectory, RoutingRuleDirectory>();
+        services.AddScoped<IChangeSetRouting, ChangeSetRouting>();
     }
 
     // The worker in Host claims and finishes jobs through IJobLeases; everything else enqueues and reads through IJobQueue.

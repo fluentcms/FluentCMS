@@ -50,6 +50,21 @@ public sealed class SecurityEventsViewTests
         Assert.Equal("security?page=3", cut.Find("a[rel=next]").GetAttribute("href"));
     }
 
+    [Theory]
+    [InlineData("/security?page=abc")]
+    [InlineData("/security?page=99999999999")]
+    [InlineData("/security?page=")]
+    public void A_page_that_is_not_a_number_shows_the_first(string address)
+    {
+        var lists = new FakeLists { Total = 160 };
+        using var context = Context(lists);
+        context.Services.GetRequiredService<NavigationManager>().NavigateTo(address);
+
+        context.Render<SecurityEventsView>();
+
+        Assert.Equal(0, lists.Queries[0].Offset);
+    }
+
     [Fact]
     public void An_empty_log_says_so()
     {

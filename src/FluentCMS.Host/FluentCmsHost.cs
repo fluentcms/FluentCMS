@@ -56,7 +56,10 @@ public static class FluentCmsHost
         builder.Services.AddReverseProxy(builder.Configuration);
         builder.Services.AddHealthChecks();
         builder.Services.AddLocalization();
-        builder.Services.AddRazorComponents().AddInteractiveServerComponents();
+        // The set view carries its prerendered diff into the circuit, and the circuit's first message holds it; the hub requires a
+        // signed-in person.
+        builder.Services.AddRazorComponents().AddInteractiveServerComponents()
+            .AddHubOptions(hub => hub.MaximumReceiveMessageSize = AdminLimits.CircuitStartBytes);
         RunJobsAsTheirInitiator(builder.Services);
 
         var app = builder.Build();
@@ -67,6 +70,7 @@ public static class FluentCmsHost
         app.UseRateLimiter();
         app.UseAuthentication();
         app.UseAuthorization();
+        app.UseMediaUploadLimit();
         app.UseAntiforgery();
         MapStaticAssets(app);
         app.MapHealthChecks("/health");
@@ -213,6 +217,7 @@ public static class FluentCmsHost
 
         services.Configure<JobQueueOptions>(configuration.GetSection(JobQueueOptions.SectionName));
         services.AddHostedService<JobQueueWorker>();
+        services.AddHostedService<RetentionStartup>();
     }
 
     private static void ConfigureLogging(ILoggingBuilder logging, bool logToStandardError)

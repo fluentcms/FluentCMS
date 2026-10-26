@@ -19,6 +19,10 @@
         <p>@L["The session has been paused."]</p>
         <Button Size="sm" data-reconnect="resume">@L["Resume"]</Button>
     </div>
+    <div data-reconnect-when="lost" class="space-y-3" data-testid="reconnect-lost">
+        <p>@L["The connection to the server was lost. What you typed stays on the page: save the form as it is, or reload the page, which loses what you typed. Searches in the form stopped."]</p>
+        <Button Size="sm" Variant="outline" data-reconnect="reload">@L["Reload"]</Button>
+    </div>
     <div data-reconnect-when="resume-failed" class="space-y-3">
         <p>@L["Could not resume the session."]</p>
         <Button Size="sm" data-reconnect="reload">@L["Reload"]</Button>

@@ -244,6 +244,22 @@ public sealed class ItemDiffTests
         return JsonSerializer.Deserialize<JsonElement>(json);
     }
 
+    [Fact]
+    public void A_restored_diff_holds_what_it_was_restored_from()
+    {
+        var diff = ItemDiff.ForSchema(Update(), Product, WithPrice("""{"name":"price","type":"number","required":true,"settings":{"min":1}}"""));
+
+        var restored = ItemDiff.Restore(
+            diff.Operation,
+            [.. diff.Properties.Select(value => ValueDiff.Restore(value.Name, value.Change, value.Before, value.After))],
+            [.. diff.Fields.Select(value => ValueDiff.Restore(value.Name, value.Change, value.Before, value.After))]);
+
+        Assert.Equal(diff.Operation, restored.Operation);
+        Assert.Equal(diff.Fields.Select(value => (value.Name, value.Change)), restored.Fields.Select(value => (value.Name, value.Change)));
+        Assert.All(diff.Fields.Zip(restored.Fields), pair => Assert.Equal(pair.First.After?.GetRawText(), pair.Second.After?.GetRawText()));
+        Assert.Throws<ArgumentException>(() => ValueDiff.Restore("", ValueChange.Added, null, null));
+    }
+
     private static ChangeOperation Update()
     {
         return ChangeOperation.Create(OperationKind.Update, ItemKind.Schema, Item, 1, 2).Value;

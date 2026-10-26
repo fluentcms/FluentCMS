@@ -72,6 +72,11 @@ public sealed partial class PasswordResetTests
         Assert.Equal(Editor.DisplayName, resetEvent.InitiatorName);
         Assert.Equal("user", resetEvent.SubjectType);
         Assert.Equal(editorId, resetEvent.SubjectId);
+
+        // Both steps reach the security view with who took them (SEC-08).
+        var security = Desk.SecurityRows.Parse(await host.Client.GetStringAsync("/security"));
+        Assert.Contains(("user.password_reset_issued", "user", AdminHost.Owner.DisplayName), security);
+        Assert.Contains(("user.password_reset", "user", Editor.DisplayName), security);
     }
 
     [Fact]
