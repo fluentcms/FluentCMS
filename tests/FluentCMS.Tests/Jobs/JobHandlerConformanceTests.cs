@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using FluentCMS.Core;
+using FluentCMS.Core.Identity;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -40,14 +41,16 @@ public abstract partial class JobHandlerConformanceTests : IDisposable
         Assert.Equal(Handler.Type, Handler.Type);
     }
 
-    // A handler runs as whoever enqueued the job, or as one named engine whatever enqueued it (ADR-0012), the same on every read.
+    // A handler runs as whoever enqueued the job, or as the one engine Core lists it for (ADR-0012), the same on every read. The worker
+    // fails every job of a handler that names any other engine.
     [Fact]
-    public void It_runs_as_the_enqueuer_or_as_one_named_engine()
+    public void It_runs_as_the_enqueuer_or_as_the_engine_core_lists_it_for()
     {
-        var runAs = Handler.RunAs;
+        var runAs = Provider.GetRequiredService<EngineJobs>().RunAs(Handler, new UserInitiator(Guid.NewGuid(), "Amir"));
 
-        Assert.Equal(runAs, Handler.RunAs);
-        Assert.True(runAs is null || !string.IsNullOrWhiteSpace(runAs.Component));
+        Assert.True(runAs.IsSuccess, string.Join(" ", runAs.Errors.Select(error => error.Message)));
+        Assert.Equal(Handler.RunAs, runAs.Value);
+        Assert.Equal(Handler.RunAs, Handler.RunAs);
     }
 
     // Another attempt cannot fix a payload the handler cannot read, so it is a failure with a code and a message, not an exception.

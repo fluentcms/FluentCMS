@@ -37,18 +37,13 @@ public sealed partial class ExtensionPointRulesTests
     [Fact]
     public void Every_extension_point_matches_its_baseline()
     {
-        var actual = Surface();
+        var actual = Surface(ExtensionPoints);
         if (Environment.GetEnvironmentVariable(UpdateVariable) == "1")
         {
             File.WriteAllText(BaselinePath, actual);
         }
 
-        var expected = File.ReadAllText(BaselinePath).ReplaceLineEndings("\n");
-        var expectedLines = expected.Split('\n');
-        var actualLines = actual.Split('\n');
-        var removed = expectedLines.Except(actualLines, StringComparer.Ordinal).Select(line => $"- {line}");
-        var added = actualLines.Except(expectedLines, StringComparer.Ordinal).Select(line => $"+ {line}");
-        var changes = removed.Concat(added).ToList();
+        var changes = Changes(File.ReadAllText(BaselinePath), actual);
 
         Assert.True(
             changes.Count == 0,
@@ -57,11 +52,55 @@ public sealed partial class ExtensionPointRulesTests
             + $"additive or breaking (ADR-0013). Running the tests with {UpdateVariable}=1 rewrites it.");
     }
 
+    // Several extension points have a member of the same name, so a member moved from one to another is a change too.
+    [Fact]
+    public void A_member_is_compared_within_the_extension_point_it_belongs_to()
+    {
+        const string Expected = "First\n  Name: String { get; }\nSecond\n  Name: String { get; }\nThird\n";
+        const string Actual = "First\n  Name: String { get; }\nSecond\nThird\n  Name: String { get; }\n";
+
+        Assert.Equal(["- Second  Name: String { get; }", "+ Third  Name: String { get; }"], Changes(Expected, Actual));
+    }
+
+    [Fact]
+    public void An_event_is_a_member_of_the_surface()
+    {
+        Assert.Contains("  event Changed: EventHandler\n", Surface([typeof(IWithAnEvent)]), StringComparison.Ordinal);
+    }
+
+    // Each member line is read with the extension point above it, and each change names both.
+    private static List<string> Changes(string expected, string actual)
+    {
+        var before = Qualified(expected);
+        var after = Qualified(actual);
+        return [.. before.Except(after, StringComparer.Ordinal).Select(line => $"- {line}"), .. after.Except(before, StringComparer.Ordinal).Select(line => $"+ {line}")];
+    }
+
+    private static List<string> Qualified(string surface)
+    {
+        var lines = new List<string>();
+        var owner = string.Empty;
+        foreach (var line in surface.ReplaceLineEndings("\n").Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (line.StartsWith("  ", StringComparison.Ordinal))
+            {
+                lines.Add(owner + line);
+            }
+            else
+            {
+                owner = line;
+                lines.Add(line);
+            }
+        }
+
+        return lines;
+    }
+
     // One line per extension point and one per member, in a stable order, with the nullability of each type.
-    private static string Surface()
+    private static string Surface(IEnumerable<Type> extensionPoints)
     {
         var text = new StringBuilder();
-        foreach (var type in ExtensionPoints)
+        foreach (var type in extensionPoints)
         {
             text.Append(type.FullName).Append('\n');
 
@@ -91,6 +130,8 @@ public sealed partial class ExtensionPointRulesTests
                     $"{Name(Nullability.Create(parameter))} {parameter.Name}" + (parameter.HasDefaultValue ? $" = {parameter.DefaultValue ?? "default"}" : string.Empty)));
                 var generics = method.IsGenericMethodDefinition ? $"<{string.Join(", ", method.GetGenericArguments().Select(argument => argument.Name))}>" : string.Empty;
                 return $"{method.Name}{generics}({parameters}): {Name(Nullability.Create(method.ReturnParameter))}{(method.IsAbstract ? string.Empty : " (default)")}";
+            case EventInfo @event:
+                return $"event {@event.Name}: {Name(Nullability.Create(@event))}{(@event.AddMethod is { IsAbstract: false } ? " (default)" : string.Empty)}";
             default:
                 return null;
         }
@@ -130,4 +171,9 @@ public sealed partial class ExtensionPointRulesTests
 
     [GeneratedRegex(@"typeof\((\w+)\)")]
     private static partial Regex TypeOf();
+
+    private interface IWithAnEvent
+    {
+        event EventHandler Changed;
+    }
 }

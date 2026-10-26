@@ -4,7 +4,8 @@ namespace FluentCMS.Core.Search;
 
 // The full-text index over entries and entities (SRC-01, ADR-0010): PostgreSQL full-text search or SQLite FTS5 in the application
 // database, or an external engine a plugin adds later. IndexAsync is called inside the unit of work of the write it reflects, so an
-// entry is found the moment its write commits and never when the write rolled back.
+// entry is found the moment its write commits and never when the write rolled back. Every implementation must pass
+// SearchIndexConformanceTests in tests/FluentCMS.IntegrationTests/Search, on both databases.
 [ExtensionPoint]
 public interface ISearchIndex
 {
