@@ -54,14 +54,18 @@ internal sealed class ChangeSetScenario : IAsyncDisposable
         set => _initiator.Current = value;
     }
 
-    public static async Task<ChangeSetScenario> CreateAsync(string provider, Action<IServiceCollection>? configure = null)
+    // configure adds test doubles, such as a model's transport, and settings add to the database's configuration, such as a model profile.
+    public static async Task<ChangeSetScenario> CreateAsync(
+        string provider,
+        Action<IServiceCollection>? configure = null,
+        IReadOnlyDictionary<string, string?>? settings = null)
     {
         var database = await TemporaryDatabase.CreateAsync(provider);
         var initiator = new SwitchableInitiator { Current = Agent };
         var clock = new TickingClock();
         var auditFailure = new AuditFailure();
         var services = TestServices.Build(
-            database.Configuration,
+            database.Configuration.Concat(settings ?? new Dictionary<string, string?>()),
             collection =>
             {
                 collection

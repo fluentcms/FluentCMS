@@ -118,6 +118,8 @@ public static class InfrastructureServiceCollectionExtensions
     {
         services.AddScoped<IContentTypeDirectory, ContentTypeDirectory>();
         services.AddScoped<IRuleDirectory, RuleDirectory>();
+        services.AddScoped<RuleChecks>();
+        services.AddScoped<IRuleChecks>(provider => provider.GetRequiredService<RuleChecks>());
     }
 
     private static void AddChangeSets(IServiceCollection services, IConfiguration configuration)
@@ -170,7 +172,8 @@ public static class InfrastructureServiceCollectionExtensions
     // CheckTypeRegistry comes from AddFluentCmsCore, so built-in and plugin check types reach the directory the same way.
     private static void AddChecks(IServiceCollection services)
     {
-        services.AddScoped<ICheckDirectory, CheckDirectory>();
+        services.AddScoped<CheckDirectory>();
+        services.AddScoped<ICheckDirectory>(provider => provider.GetRequiredService<CheckDirectory>());
         services.AddScoped<ICheckRuns, CheckRuns>();
     }
 

@@ -147,7 +147,7 @@ internal static class ModelJudgement
 
     // Models often wrap JSON in a Markdown code fence even when asked for JSON alone. Only a fence around the whole answer is taken
     // off; anything said after it leaves the answer as it is, which then does not read as JSON.
-    private static string Unfenced(string text)
+    internal static string Unfenced(string text)
     {
         var trimmed = text.Trim();
         if (!trimmed.StartsWith("```", StringComparison.Ordinal) || !trimmed.EndsWith("```", StringComparison.Ordinal))

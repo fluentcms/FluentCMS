@@ -3,6 +3,7 @@ using FluentCMS.Core.Checks;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Persistence;
 using FluentCMS.Core.Results;
+using FluentCMS.Core.Rules;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Sites;
 using FluentCMS.Infrastructure.Persistence;
@@ -53,6 +54,9 @@ internal sealed class CheckDirectory(
                 from check in context.Checks.AsNoTracking()
                 join version in context.CheckVersions.AsNoTracking() on check.Id equals version.CheckId
                 where check.SiteId == SiteId && check.ActiveVersion == version.Version
+                // A check confirmed from a rule's proposal guards content only while the rule is active at that version (RUL-04).
+                where !context.RuleCheckProposals.Any(proposal => proposal.CheckId == check.Id
+                    && !context.Rules.Any(rule => rule.Id == proposal.RuleId && rule.State == RuleState.Active && rule.ActiveVersion == proposal.RuleVersion))
                 orderby check.Name
                 select new { Check = check, Version = version })
             .ToListAsync(cancellationToken);
@@ -244,6 +248,54 @@ internal sealed class CheckDirectory(
         return Result<Check>.Success(check);
     }
 
+    // A check a person confirms from a rule's proposal (RUL-04) is created and activated at once. Every expected failure is found
+    // here, before the caller's unit of work: the definition, the name, and the examples, which must get their verdicts.
+    internal async Task<Result<Check>> PrepareActiveAsync(NewCheck check, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(check);
+
+        if (RefuseAgent("activate") is { } refused)
+        {
+            return refused;
+        }
+
+        var created = Check.Create(SiteId, check.Name, check.Definition, checkTypes);
+        if (!created.IsSuccess)
+        {
+            return created;
+        }
+
+        if (await context.Checks.AnyAsync(row => row.SiteId == SiteId && row.Name == check.Name, cancellationToken))
+        {
+            return Result<Check>.Failure([NameTaken(check.Name)]);
+        }
+
+        var definitions = await ExampleContentTypesAsync(check.Definition, cancellationToken);
+        if (!definitions.IsSuccess)
+        {
+            return Result<Check>.Failure(definitions.Errors);
+        }
+
+        var examples = await check.Definition.RunExamplesAsync(checkTypes, definitions.Value, services, cancellationToken);
+        return examples.IsSuccess ? Result<Check>.Success(created.Value.WithActiveVersion(created.Value.Version)) : Result<Check>.Failure(examples.Errors);
+    }
+
+    // Writes a check PrepareActiveAsync returned, with its events, inside the caller's unit of work.
+    internal async Task AddActiveAsync(Check check, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(check);
+
+        context.Checks.Add(new CheckRow { Id = check.Id, SiteId = check.SiteId, Name = check.Name, Version = check.Version, ActiveVersion = check.Version });
+        context.CheckVersions.Add(VersionRow(check));
+        await auditLog.AppendAsync(new NewAuditEvent("check.created") { SubjectType = SubjectType, SubjectId = check.Id }, cancellationToken);
+        await auditLog.AppendAsync(new NewAuditEvent("check.activated") { SubjectType = SubjectType, SubjectId = check.Id }, cancellationToken);
+    }
+
+    internal static Error NameTaken(string name)
+    {
+        return new Error(CheckErrorCodes.NameTaken, $"There is already a check named '{name}' in this site; revise it or choose another name.");
+    }
+
     // The current definition of each content type the examples name, so types that read the definition see the one entries use.
     private async Task<Result<IReadOnlyDictionary<string, ContentTypeDefinition>>> ExampleContentTypesAsync(
         CheckDefinition definition,
@@ -371,11 +423,6 @@ internal sealed class CheckDirectory(
         return Result<Check>.Failure(
             CheckErrorCodes.VersionNotFound,
             $"The check '{row.Name}' has no version {version}; its latest version is {row.Version}.");
-    }
-
-    private static Error NameTaken(string name)
-    {
-        return new Error(CheckErrorCodes.NameTaken, $"There is already a check named '{name}' in this site; revise it or choose another name.");
     }
 
     private static Error VersionConflict(string name, int baseVersion)

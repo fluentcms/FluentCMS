@@ -18,3 +18,8 @@ public sealed class RetentionPurgeJobConformanceTests : JobHandlerConformanceTes
     // It purges whatever is past its retention, so it reads nothing from its payload.
     protected override bool ReadsPayload => false;
 }
+
+public sealed class RuleCompileJobConformanceTests : JobHandlerConformanceTests
+{
+    protected override string JobType => "rules.compile";
+}

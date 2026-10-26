@@ -12,7 +12,8 @@ public interface ICheckDirectory
 
     Task<Result<Check>> GetVersionAsync(string name, int version, CancellationToken cancellationToken = default);
 
-    // Every active check at the version that runs, by name.
+    // Every active check at the version that runs, by name. A check confirmed from a rule's proposal is left out while the rule is not
+    // active at the version it was proposed for (RUL-04).
     Task<IReadOnlyList<Check>> ListActiveAsync(CancellationToken cancellationToken = default);
 
     // Creates version 1, not active.

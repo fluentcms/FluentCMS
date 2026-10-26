@@ -110,4 +110,8 @@ public static class RuleErrorCodes
     public const string VersionConflict = "rule_version_conflict";
     public const string NotActive = "rule_not_active";
     public const string PeopleOnly = "rule_people_only";
+    public const string EngineOnly = "rule_engine_only";
+    public const string ProposalNotFound = "rule_proposal_not_found";
+    public const string ProposalDecided = "rule_proposal_decided";
+    public const string CompileReplaced = "rule_compile_replaced";
 }

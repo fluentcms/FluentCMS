@@ -9,6 +9,7 @@ using FluentCMS.Core.Identity;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Media;
 using FluentCMS.Core.Models;
+using FluentCMS.Core.Rules;
 using FluentCMS.Core.Schema;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -51,10 +52,14 @@ public static class CoreServiceCollectionExtensions
         // Writes through IEntryDirectory, IContentTypeDirectory and IChangeSetDirectory in one unit of work, which Infrastructure provides.
         services.AddScoped<IEntryEdits, EntryEdits>();
 
+        // Asks the model through IModelGateway; the compile job records what it proposes through IRuleChecks, which Infrastructure provides.
+        services.AddScoped<RuleCompiler>();
+
         // The handlers that run as an engine; a job worker runs any other handler as whoever enqueued its job (ADR-0012).
         services.AddSingleton(new EngineJobs(new Dictionary<Type, SystemInitiator>
         {
             [typeof(CheckRunJob)] = SystemInitiator.Checks,
+            [typeof(RuleCompileJob)] = SystemInitiator.Checks,
             [typeof(RetentionPurgeJob)] = SystemInitiator.Retention,
         }));
 
