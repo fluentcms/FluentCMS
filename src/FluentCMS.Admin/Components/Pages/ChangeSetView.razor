@@ -11,6 +11,7 @@
 @inject IDeskQueues Queues
 @inject FluentCMS.Core.Checks.IChangeSetChecks Checks
 @inject IAuditReader Audit
+@inject ICurrentInitiator Initiator
 @inject NavigationManager Navigation
 @inject IStringLocalizer<ChangeSetView> L
 
@@ -85,8 +86,23 @@
             {
                 <p role="alert" class="rounded-md border border-destructive/50 px-3 py-2 text-sm text-destructive" data-testid="review-refusal">@_refusal</p>
             }
+            @if (set.State == ChangeSetState.AwaitingReview || set.Approvals.Count > 0)
+            {
+                <div class="text-sm" data-testid="change-set-approvals">
+                    <p>@L["{0} of {1} approvals", set.Approvals.Count, set.RequiredApprovals]</p>
+                    @if (set.Approvals.Count > 0)
+                    {
+                        <ul class="text-muted-foreground">
+                            @foreach (var approval in set.Approvals)
+                            {
+                                <li>@L["Approved by {0}", approval.Approver.DisplayName]</li>
+                            }
+                        </ul>
+                    }
+                </div>
+            }
             <div class="flex flex-wrap gap-2">
-                @if (set.State == ChangeSetState.AwaitingReview)
+                @if (set.State == ChangeSetState.AwaitingReview && !ApprovedByMe(set))
                 {
                     <form method="post" @onsubmit="ApproveAsync" @formname="approve">
                         <AntiforgeryToken />
@@ -155,7 +171,7 @@
             {
                 <form method="post" @onsubmit="SubmitAsync" @formname="submit" hidden></form>
             }
-            @if (set.State != ChangeSetState.AwaitingReview)
+            @if (set.State != ChangeSetState.AwaitingReview || ApprovedByMe(set))
             {
                 <form method="post" @onsubmit="ApproveAsync" @formname="approve" hidden></form>
             }
@@ -501,10 +517,25 @@
 
     private async Task ApproveAsync()
     {
-        if (await ActAsync(Approve, [ChangeSetState.AwaitingReview], () => Directory.TransitionAsync(Id, ChangeSetState.Approved), L["Approved. Publish the set to make its items live."]) is not null)
+        if (await ActAsync(Approve, [ChangeSetState.AwaitingReview], () => Directory.ApproveAsync(Id), null) is not { } approved)
         {
-            MoveOn("approved");
+            return;
         }
+
+        if (approved.State == ChangeSetState.Approved)
+        {
+            _message = L["Approved. Publish the set to make its items live."];
+            MoveOn("approved");
+            return;
+        }
+
+        // The set stays in review until enough other people approve it (RTE-05).
+        _message = L["Your approval is recorded. The set needs {0} more, from other people.", approved.RequiredApprovals - approved.Approvals.Count];
+    }
+
+    private bool ApprovedByMe(ChangeSet set)
+    {
+        return Initiator.Current is UserInitiator person && set.Approvals.Any(approval => approval.Approver.UserId == person.UserId);
     }
 
     private Task PublishAsync()

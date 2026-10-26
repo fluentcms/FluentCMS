@@ -339,6 +339,28 @@ public sealed class ChangeSetViewTests
         Assert.Empty(cut.FindAll("[data-slot=diff-view]"));
     }
 
+    // A set that needs more than one approval shows who has approved, and offers Approve only to someone who has not.
+    [Fact]
+    public void The_review_panel_counts_approvals_and_offers_approve_only_to_someone_who_has_not_approved()
+    {
+        var dana = new ChangeSetApproval(new UserInitiator(Guid.NewGuid(), "Dana"), DateTimeOffset.UnixEpoch);
+        var mine = new ChangeSetApproval(Reviewer, DateTimeOffset.UnixEpoch);
+        var others = new FakeSets { RequiredApprovals = 2, Approvals = [dana] };
+        var own = new FakeSets { RequiredApprovals = 3, Approvals = [dana, mine] };
+        using var othersContext = Context(others);
+        using var ownContext = Context(own);
+
+        var awaiting = othersContext.Render<ChangeSetView>(page => page.Add(p => p.Id, others.Set.Id));
+        var approved = ownContext.Render<ChangeSetView>(page => page.Add(p => p.Id, own.Set.Id));
+
+        Assert.Contains("1 of 2 approvals", awaiting.Find("[data-testid=change-set-approvals]").TextContent);
+        Assert.Contains("Approved by Dana", awaiting.Find("[data-testid=change-set-approvals]").TextContent);
+        Assert.Equal(["approve", "reject"], awaiting.FindAll("[data-testid=change-set-review] [data-action]").Select(action => action.GetAttribute("data-action")));
+        Assert.Contains("2 of 3 approvals", approved.Find("[data-testid=change-set-approvals]").TextContent);
+        Assert.Equal(["reject"], approved.FindAll("[data-testid=change-set-review] [data-action]").Select(action => action.GetAttribute("data-action")));
+        Assert.Equal(5, approved.FindAll("[data-testid=change-set-review] form").Count);
+    }
+
     [Fact]
     public void Uses_logical_utilities_only()
     {
@@ -357,9 +379,17 @@ public sealed class ChangeSetViewTests
         context.Services.AddSingleton<IAuditReader>(new FakeHistory(sets));
         context.Services.AddSingleton<IDeskQueues>(new QueueAfter(sets));
         context.Services.AddSingleton<IChangeSetChecks>(new FakeChecks(sets));
+        context.Services.AddSingleton<ICurrentInitiator>(new Signedin());
         context.Services.AddSingleton<IChangeSetLists>(new NoReverts());
         context.Renderer.SetRendererInfo(new RendererInfo("Static", isInteractive: false));
         return context;
+    }
+
+    private static readonly UserInitiator Reviewer = new(Guid.NewGuid(), "Reviewer");
+
+    private sealed class Signedin : ICurrentInitiator
+    {
+        public Initiator? Current => Reviewer;
     }
 
     private sealed class FakeSets : IChangeSetDirectory
@@ -379,6 +409,10 @@ public sealed class ChangeSetViewTests
 
         public string? RejectionReason { get; init; }
 
+        public int RequiredApprovals { get; init; } = 1;
+
+        public IReadOnlyList<ChangeSetApproval> Approvals { get; init; } = [];
+
         public List<Guid> Diffed { get; } = [];
 
         // A diff larger than the island keeps for its circuit.
@@ -394,7 +428,9 @@ public sealed class ChangeSetViewTests
             Operations,
             State,
             RejectionReason,
-            RevertsChangeSetId);
+            RevertsChangeSetId,
+            RequiredApprovals,
+            Approvals);
 
         private static ChangeOperation[] Operations =>
         [
@@ -445,6 +481,8 @@ public sealed class ChangeSetViewTests
         public Task<Result<ChangeSet>> RevertAsync(Guid changeSetId, string rationale, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
         public Task<Result<ChangeSet>> RejectAsync(Guid changeSetId, string reason, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<Result<ChangeSet>> ApproveAsync(Guid changeSetId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 
     // A queue holding the set and one more after it.

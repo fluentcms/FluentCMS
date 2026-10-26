@@ -410,4 +410,43 @@ public sealed class ChangeSetTests
     {
         return ChangeOperation.Create(kind, ItemKind.Schema, item, baseVersion, proposedVersion).Value;
     }
+
+    [Fact]
+    public void A_set_in_review_is_approved_once_as_many_people_as_it_needs_have_approved_it()
+    {
+        var changeSet = TestChangeSets.InState(ChangeSetState.ChecksRunning);
+        var dana = new UserInitiator(Guid.NewGuid(), "Dana");
+        var amir = new UserInitiator(Guid.NewGuid(), "Amir");
+        Assert.True(changeSet.EnterReview(2).IsSuccess);
+
+        var first = changeSet.Approve(dana, DateTimeOffset.UnixEpoch);
+        var again = changeSet.Approve(dana, DateTimeOffset.UnixEpoch.AddMinutes(1));
+        var direct = changeSet.TransitionTo(ChangeSetState.Approved);
+
+        Assert.True(first.IsSuccess);
+        Assert.Equal(ChangeSetErrorCodes.ApprovalDuplicate, Assert.Single(again.Errors).Code);
+        Assert.Equal(ChangeSetErrorCodes.ApprovalsNeeded, Assert.Single(direct.Errors).Code);
+        Assert.Contains("needs 2 approvals, each by a different person, and has 1; approve it", direct.Errors[0].Message);
+        Assert.EndsWith("Dana has already approved this change set. It needs 2 approvals, each by a different person, and has 1, so another person approves it next.", again.Errors[0].Message);
+        Assert.Equal(ChangeSetState.AwaitingReview, changeSet.State);
+
+        Assert.True(changeSet.Approve(amir, DateTimeOffset.UnixEpoch.AddMinutes(2)).IsSuccess);
+        Assert.Equal(ChangeSetState.Approved, changeSet.State);
+        Assert.Equal([dana, amir], changeSet.Approvals.Select(approval => approval.Approver));
+        Assert.Equal(ChangeSetErrorCodes.TransitionNotAllowed, Assert.Single(changeSet.Approve(new UserInitiator(Guid.NewGuid(), "Lee"), DateTimeOffset.UnixEpoch).Errors).Code);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(11)]
+    public void A_set_enters_review_needing_from_one_to_ten_approvals(int required)
+    {
+        var changeSet = TestChangeSets.InState(ChangeSetState.ChecksRunning);
+
+        var result = changeSet.EnterReview(required);
+
+        Assert.Equal(ChangeSetErrorCodes.RequiredApprovalsInvalid, Assert.Single(result.Errors).Code);
+        Assert.Equal(ChangeSetState.ChecksRunning, changeSet.State);
+        Assert.Equal(1, changeSet.RequiredApprovals);
+    }
 }

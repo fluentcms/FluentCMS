@@ -332,14 +332,17 @@ public sealed class RuleCheckTests
     // The handlers are resolved together, as the worker does, and the webhook handler among them needs the host's secret protector.
     private static async Task<ChangeSetScenario> ScenarioAsync(string provider, CompilingProvider? model)
     {
-        var scenario = await ChangeSetScenario.CreateAsync(provider, model is null ? null : Model, services =>
-        {
-            services.AddSingleton<ISecretProtector, NoSecrets>();
-            if (model is not null)
+        var scenario = await ChangeSetScenario.CreateAsync(
+            provider,
+            services =>
             {
-                services.AddSingleton(new ModelTransport(() => model));
-            }
-        });
+                services.AddSingleton<ISecretProtector, NoSecrets>();
+                if (model is not null)
+                {
+                    services.AddSingleton(new ModelTransport(() => model));
+                }
+            },
+            model is null ? null : Model);
         scenario.Initiator = Amir;
         await scenario.ContentTypeAsync("product-page");
         return scenario;
