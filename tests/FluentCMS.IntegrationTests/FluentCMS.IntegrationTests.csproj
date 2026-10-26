@@ -16,6 +16,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\ConformanceForAttribute.cs" Link="ConformanceForAttribute.cs" />
+    <Compile Include="..\FluentCMS.Tests\Jobs\JobHandlerConformanceTests.cs" Link="Jobs\JobHandlerConformanceTests.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
 
