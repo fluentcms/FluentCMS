@@ -84,10 +84,12 @@ internal sealed class RuleChecks(
 
         await using (var scope = await unitOfWork.BeginAsync(cancellationToken))
         {
+            // The compile moves to the new job first: that waits for a compile recording at the same time, whose proposals are then
+            // committed and replaced with the rest.
+            await ScheduleAsync(rule.Id, version, replace: true, cancellationToken);
             await context.RuleCheckProposals
                 .Where(row => row.RuleId == rule.Id && row.RuleVersion == version && row.State == RuleProposalState.Proposed)
                 .ExecuteUpdateAsync(setters => setters.SetProperty(row => row.State, RuleProposalState.Replaced), cancellationToken);
-            await ScheduleAsync(rule.Id, version, replace: true, cancellationToken);
             await auditLog.AppendAsync(new NewAuditEvent("rule.compile_requested") { SubjectType = SubjectType, SubjectId = rule.Id }, cancellationToken);
 
             try
