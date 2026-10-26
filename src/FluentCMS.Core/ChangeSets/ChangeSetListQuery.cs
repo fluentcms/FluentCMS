@@ -15,6 +15,9 @@ public sealed record ChangeSetListQuery
     // Only the sets this person or agent opened; null for every set.
     public Initiator? OpenedBy { get; init; }
 
+    // Only the sets that revert this set; null for every set.
+    public Guid? Reverts { get; init; }
+
     // Newest first puts the set that entered its state last first; otherwise the set that has waited longest comes first.
     public bool NewestFirst { get; init; }
 

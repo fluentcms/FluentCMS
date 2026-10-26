@@ -18,7 +18,8 @@ internal sealed class ConnectedAgent(
     AdminHost host,
     Guid administrator,
     AgentCredential credential,
-    McpClient client) : IAsyncDisposable
+    McpClient client,
+    bool ownsHost = true) : IAsyncDisposable
 {
     public AgentCredential Credential { get; } = credential;
 
@@ -101,12 +102,27 @@ internal sealed class ConnectedAgent(
         return await query(scope.ServiceProvider.GetRequiredService<FluentCmsDbContext>());
     }
 
+    // Another agent on the same host, with a credential of its own, for what one agent must not see of another's work. Disposing it
+    // leaves the host running.
+    public async Task<ConnectedAgent> AnotherAgentAsync(string displayName)
+    {
+        var issued = await McpAgents.IssueAsync(host, administrator, McpAgents.Credential(DateTimeOffset.UtcNow, displayName) with
+        {
+            Scope = AgentScope.Create([Site.Default.Id], null, null, [AgentOperation.Read, AgentOperation.Create, AgentOperation.Update]).Value,
+        });
+        var other = await McpAgents.ConnectOverHttpAsync(host, issued.Key);
+        return new ConnectedAgent(install, database, host, administrator, issued.Credential, other, ownsHost: false);
+    }
+
     public async ValueTask DisposeAsync()
     {
         await client.DisposeAsync();
-        await host.DisposeAsync();
-        await database.DisposeAsync();
-        install.Dispose();
+        if (ownsHost)
+        {
+            await host.DisposeAsync();
+            await database.DisposeAsync();
+            install.Dispose();
+        }
     }
 
     private static string Text(CallToolResult result)

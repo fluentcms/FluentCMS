@@ -60,17 +60,17 @@
                         <Input Type="file" name="file" accept="@string.Join(",", MediaTypes.Allowed)" required />
                     </FormField>
                     <div class="grid gap-4 sm:grid-cols-2">
-                        <FormField Label="@L["Folder"]" Description="@L["Optional, such as products/drills."]" Error="@UploadError(MediaErrorCodes.FolderInvalid)">
-                            <Input name="Folder" value="@(UploadFolder ?? Folder)" dir="ltr" />
+                        <FormField Label="@L["Folder"]" Description="@L["Optional, such as products/drills."]" Error="@(UploadError(MediaErrorCodes.FolderInvalid) ?? Dropped(MediaUploadForm.FolderName))">
+                            <Input name="Folder" value="@(UploadErrors is null ? Folder : UploadFolder)" dir="ltr" />
                         </FormField>
-                        <FormField Label="@L["Tags"]" Description="@L["Optional, separated by commas, such as product-shot, hero."]" Error="@UploadError(MediaErrorCodes.TagInvalid)">
+                        <FormField Label="@L["Tags"]" Description="@L["Optional, separated by commas, such as product-shot, hero."]" Error="@(UploadError(MediaErrorCodes.TagInvalid) ?? Dropped(MediaUploadForm.TagsName))">
                             <Input name="Tags" value="@UploadTags" dir="ltr" />
                         </FormField>
                     </div>
-                    <FormField Label="@L["Alt text"]" Error="@UploadError(MediaErrorCodes.AltTextInvalid)">
+                    <FormField Label="@L["Alt text"]" Error="@(UploadError(MediaErrorCodes.AltTextInvalid) ?? Dropped(MediaUploadForm.AltTextName))">
                         <Textarea name="AltText" rows="2" value="@UploadAltText" />
                     </FormField>
-                    <FormField Label="@L["Caption"]" Error="@UploadError(MediaErrorCodes.CaptionInvalid)">
+                    <FormField Label="@L["Caption"]" Error="@(UploadError(MediaErrorCodes.CaptionInvalid) ?? Dropped(MediaUploadForm.CaptionName))">
                         <Textarea name="Caption" rows="2" value="@UploadCaption" />
                     </FormField>
                     @if (UploadFormError is { } formError)
@@ -162,8 +162,11 @@
     [SupplyParameterFromQuery(Name = "folder")]
     private string? Folder { get; set; }
 
+    // Read as text: a link may say 1 or 0 as well as true or false, and an unknown value means no subfolders rather than an error.
     [SupplyParameterFromQuery(Name = "sub")]
-    private bool Subfolders { get; set; }
+    private string? Sub { get; set; }
+
+    private bool Subfolders => Sub == "1" || (bool.TryParse(Sub, out var subfolders) && subfolders);
 
     [SupplyParameterFromQuery(Name = "tag")]
     private string? Tag { get; set; }
@@ -183,6 +186,9 @@
 
     [SupplyParameterFromQuery(Name = MediaUploadForm.CaptionName)]
     private string? UploadCaption { get; set; }
+
+    [SupplyParameterFromQuery(Name = MediaUploadForm.DroppedName)]
+    private string? UploadDropped { get; set; }
 
     private static readonly HashSet<string> FieldCodes =
     [
@@ -230,6 +236,11 @@
             MediaErrorCodes.AltTextInvalid => L["Alt text is at most 1000 characters."].Value,
             _ => L["A caption is at most 2000 characters."].Value,
         };
+    }
+
+    private string? Dropped(string name)
+    {
+        return (UploadDropped ?? string.Empty).Split(',').Contains(name) ? L["This was too long to bring back here. Type it again."].Value : null;
     }
 
     private static string Filter(bool current) => ClassNames.Cn(

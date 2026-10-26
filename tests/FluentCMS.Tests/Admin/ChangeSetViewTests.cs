@@ -107,13 +107,76 @@ public sealed class ChangeSetViewTests
 
         var card = cut.Find("[data-testid=change-set-checks]");
         Assert.Equal("fail", card.QuerySelector("[data-testid=check-run-status]")!.GetAttribute("data-status"));
-        Assert.Equal(["no-superlatives", "short-headline"], card.QuerySelectorAll("[data-check]").Select(check => check.GetAttribute("data-check")));
+        Assert.Equal(["no-superlatives", "plain-words", "short-headline"], card.QuerySelectorAll("[data-check]").Select(check => check.GetAttribute("data-check")));
+        Assert.Contains("blocks", card.QuerySelector("[data-check=no-superlatives]")!.TextContent);
+        Assert.Contains("warns", card.QuerySelector("[data-check=plain-words]")!.TextContent);
         var finding = card.QuerySelector("[data-check=no-superlatives] [data-finding]")!;
-        Assert.Contains("Remove 'best in class'.", finding.TextContent);
+        Assert.Equal(["Remove 'best in class'.", "/headline", "Best in class"], finding.QuerySelectorAll("bdi").Select(part => part.TextContent));
         Assert.Equal("/headline", finding.QuerySelector("code")!.TextContent);
         Assert.Equal("Best in class", finding.QuerySelector("q")!.TextContent);
         Assert.Contains("The engine could not read one item.", card.QuerySelector("[data-testid=check-problems]")!.TextContent);
         Assert.Contains("Routing has not decided on this set.", cut.Find("[data-testid=change-set-routing]").TextContent);
+    }
+
+    [Fact]
+    public void A_person_submits_a_set_they_opened_while_an_agents_open_set_offers_no_submit()
+    {
+        var personal = new FakeSets { State = ChangeSetState.Open, Opener = new UserInitiator(Guid.NewGuid(), "Dana") };
+        var agents = new FakeSets { State = ChangeSetState.Open };
+        using var personalContext = Context(personal);
+        using var agentsContext = Context(agents);
+
+        var offered = personalContext.Render<ChangeSetView>(page => page.Add(p => p.Id, personal.Set.Id));
+        var notOffered = agentsContext.Render<ChangeSetView>(page => page.Add(p => p.Id, agents.Set.Id));
+
+        Assert.Equal("Submit for checks S", offered.Find("[data-action=submit]").TextContent.Trim());
+        Assert.Empty(notOffered.FindAll("[data-action=submit]"));
+        Assert.Contains("The checks run when the set is submitted.", notOffered.Find("[data-testid=change-set-checks]").TextContent);
+    }
+
+    [Theory]
+    [InlineData(FluentCMS.Core.Jobs.JobState.Dead)]
+    [InlineData(FluentCMS.Core.Jobs.JobState.Failed)]
+    [InlineData(FluentCMS.Core.Jobs.JobState.Succeeded)]
+    public void A_check_job_that_ended_without_moving_the_set_reads_as_ended_and_its_opener_can_run_the_checks_again(FluentCMS.Core.Jobs.JobState ended)
+    {
+        var personal = new FakeSets { State = ChangeSetState.ChecksRunning, JobState = ended, Opener = new UserInitiator(Guid.NewGuid(), "Dana") };
+        var agents = new FakeSets { State = ChangeSetState.ChecksRunning, JobState = ended };
+        using var personalContext = Context(personal);
+        using var agentsContext = Context(agents);
+
+        var mine = personalContext.Render<ChangeSetView>(page => page.Add(p => p.Id, personal.Set.Id));
+        var theirs = agentsContext.Render<ChangeSetView>(page => page.Add(p => p.Id, agents.Set.Id));
+
+        Assert.NotNull(mine.Find("[data-testid=check-job-ended]"));
+        Assert.DoesNotContain("items done", mine.Find("[data-testid=change-set-checks]").TextContent);
+        Assert.Equal("Run the checks again", mine.Find("[data-action=submit]").TextContent.Trim());
+        Assert.NotNull(theirs.Find("[data-testid=check-job-ended]"));
+        Assert.Empty(theirs.FindAll("[data-action=submit]"));
+    }
+
+    [Fact]
+    public void A_passed_run_without_results_shows_that_it_passed()
+    {
+        var sets = new FakeSets { State = ChangeSetState.AwaitingReview, Passed = true };
+        using var context = Context(sets);
+
+        var cut = context.Render<ChangeSetView>(page => page.Add(p => p.Id, sets.Set.Id));
+
+        var card = cut.Find("[data-testid=change-set-checks]");
+        Assert.Equal("pass", card.QuerySelector("[data-testid=check-run-status]")!.GetAttribute("data-status"));
+        Assert.Empty(card.QuerySelectorAll("[data-check]"));
+    }
+
+    [Fact]
+    public void A_set_past_open_with_no_stored_run_says_so()
+    {
+        var sets = new FakeSets { State = ChangeSetState.Approved };
+        using var context = Context(sets);
+
+        var cut = context.Render<ChangeSetView>(page => page.Add(p => p.Id, sets.Set.Id));
+
+        Assert.Contains("No check results are stored for this set.", cut.Find("[data-testid=change-set-checks]").TextContent);
     }
 
     [Fact]
@@ -132,7 +195,7 @@ public sealed class ChangeSetViewTests
     [InlineData(ChangeSetState.ChecksFailed, new[] { "reject" })]
     [InlineData(ChangeSetState.Approved, new[] { "publish", "reject" })]
     [InlineData(ChangeSetState.Published, new[] { "revert" })]
-    [InlineData(ChangeSetState.Open, new[] { "submit" })]
+    [InlineData(ChangeSetState.Open, new string[0])]
     [InlineData(ChangeSetState.ChecksRunning, new string[0])]
     [InlineData(ChangeSetState.Rejected, new string[0])]
     [InlineData(ChangeSetState.Reverted, new string[0])]
@@ -172,7 +235,8 @@ public sealed class ChangeSetViewTests
         Assert.Equal($"sets/{next}?queue=awaiting-anyone", cut.Find("[data-testid=next-in-queue]").GetAttribute("href"));
         Assert.Equal("N", cut.Find("[data-testid=next-in-queue]").GetAttribute("aria-keyshortcuts"));
         Assert.Equal("The previous set was approved.", cut.Find("[data-testid=review-done]").TextContent);
-        Assert.Equal(9, cut.FindAll("[data-testid=shortcut-list] dt").Count);
+        Assert.Equal(11, cut.FindAll("[data-testid=shortcut-list] dt").Count);
+        Assert.Contains("Space", cut.Find("[data-testid=shortcut-list]").TextContent);
     }
 
     [Fact]
@@ -230,6 +294,39 @@ public sealed class ChangeSetViewTests
         Assert.Equal("true", live.Find("[data-testid=change-set-items]").GetAttribute("data-interactive"));
     }
 
+    // The circuit starts from the diff the page was prerendered with, so it neither reads the diff again nor shows the list empty.
+    [Fact]
+    public void The_circuit_takes_the_prerendered_diff_without_reading_it_again()
+    {
+        var sets = new FakeSets();
+        using var context = Context(sets);
+        context.Render<ChangeSetItems>(items => items.Add(p => p.ChangeSetId, sets.Set.Id));
+        context.State.TriggerOnPersisting();
+
+        context.Renderer.SetRendererInfo(new RendererInfo("Server", isInteractive: true));
+        var live = context.Render<ChangeSetItems>(items => items.Add(p => p.ChangeSetId, sets.Set.Id));
+
+        Assert.Equal(2, live.FindAll("[data-slot=diff-view-item]").Count);
+        Assert.Empty(live.FindAll("[aria-busy=true]"));
+        Assert.Equal([sets.Set.Id], sets.Diffed);
+    }
+
+    // A diff too large for the circuit's first message is not kept, so the circuit reads it again rather than failing to start.
+    [Fact]
+    public void A_diff_too_large_to_keep_is_read_again_by_the_circuit()
+    {
+        var sets = new FakeSets { Huge = true };
+        using var context = Context(sets);
+        context.Render<ChangeSetItems>(items => items.Add(p => p.ChangeSetId, sets.Set.Id));
+        context.State.TriggerOnPersisting();
+
+        context.Renderer.SetRendererInfo(new RendererInfo("Server", isInteractive: true));
+        var live = context.Render<ChangeSetItems>(items => items.Add(p => p.ChangeSetId, sets.Set.Id));
+
+        Assert.Equal(2, live.FindAll("[data-slot=diff-view-item]").Count);
+        Assert.Equal([sets.Set.Id, sets.Set.Id], sets.Diffed);
+    }
+
     [Fact]
     public void The_items_island_reports_a_refused_diff()
     {
@@ -283,6 +380,7 @@ public sealed class ChangeSetViewTests
         context.Services.AddSingleton<IDeskQueues>(new QueueAfter(sets));
         context.Services.AddSingleton<IChangeSetChecks>(new FakeChecks(sets));
         context.Services.AddSingleton<ICurrentInitiator>(new Signedin());
+        context.Services.AddSingleton<IChangeSetLists>(new NoReverts());
         context.Renderer.SetRendererInfo(new RendererInfo("Static", isInteractive: false));
         return context;
     }
@@ -300,6 +398,13 @@ public sealed class ChangeSetViewTests
 
         public ChangeSetState State { get; init; } = ChangeSetState.AwaitingReview;
 
+        public Initiator Opener { get; init; } = new AgentInitiator(Guid.NewGuid(), "catalog-sync");
+
+        public FluentCMS.Core.Jobs.JobState JobState { get; init; } = FluentCMS.Core.Jobs.JobState.Running;
+
+        // A passed run with no results, rather than the failing run checks failed shows.
+        public bool Passed { get; init; }
+
         public Guid? RevertsChangeSetId { get; init; }
 
         public string? RejectionReason { get; init; }
@@ -310,12 +415,15 @@ public sealed class ChangeSetViewTests
 
         public List<Guid> Diffed { get; } = [];
 
+        // A diff larger than the island keeps for its circuit.
+        public bool Huge { get; init; }
+
         public ChangeSet Set => ChangeSet.Restore(
             _id,
             Guid.NewGuid(),
             "Sync prices from the catalog export.",
             ["https://example.com/catalog", "exports/catalog-2026-10-18.csv", "javascript:alert(1)", "Dana in sales"],
-            new AgentInitiator(Guid.NewGuid(), "catalog-sync"),
+            Opener,
             null,
             Operations,
             State,
@@ -349,6 +457,12 @@ public sealed class ChangeSetViewTests
                 operation,
                 operation.BaseVersion is null ? null : new FluentCMS.Core.Schema.ContentTypeDefinition([new("title", "text")]),
                 new FluentCMS.Core.Schema.ContentTypeDefinition([new("title", "text"), new("summary", "text")]))).ToList();
+            if (Huge)
+            {
+                var body = System.Text.Json.JsonSerializer.SerializeToElement(new string('x', FluentCMS.Admin.AdminLimits.KeptStateBytes));
+                items[0] = ItemDiff.Restore(items[0].Operation, items[0].Properties, [ValueDiff.Restore("body", ValueChange.Added, null, body)]);
+            }
+
             return Task.FromResult(Result<ChangeSetDiff>.Success(new ChangeSetDiff(id, items)));
         }
 
@@ -398,24 +512,31 @@ public sealed class ChangeSetViewTests
                 Id = Guid.NewGuid(),
                 Type = "checks.run",
                 Payload = default,
-                State = FluentCMS.Core.Jobs.JobState.Running,
+                State = sets.JobState,
                 Attempts = 1,
                 MaxAttempts = 6,
                 CreatedAt = Opened,
                 ScheduledAt = Opened,
                 Progress = new FluentCMS.Core.Jobs.JobProgress(3, 10, null),
             };
+            if (sets.Passed)
+            {
+                var passed = new ChangeSetCheckRun(Guid.NewGuid(), sets.Set.Id, job.Id, 1, CheckRunMode.Inline, Opened, Opened, CheckStatus.Pass, 0m, [], []);
+                return Task.FromResult(Result<ChangeSetChecksState>.Success(new ChangeSetChecksState(sets.Set, passed, job)));
+            }
+
             if (sets.State is not ChangeSetState.ChecksFailed)
             {
                 return Task.FromResult(Result<ChangeSetChecksState>.Success(new ChangeSetChecksState(sets.Set, null, sets.State == ChangeSetState.ChecksRunning ? job : null)));
             }
 
-            CheckResult Result(string check, CheckStatus status, params CheckFinding[] findings) =>
-                new(Guid.NewGuid(), check, 1, "terms", CheckKind.Deterministic, CheckSeverity.Block, "A check.", status, findings, null);
+            CheckResult Result(string check, CheckStatus status, CheckSeverity severity, params CheckFinding[] findings) =>
+                new(Guid.NewGuid(), check, 1, "terms", CheckKind.Deterministic, severity, "A check.", status, findings, null);
             var item = new ItemChecks(ItemKind.Entry, Guid.NewGuid(), 1, "product-page",
             [
-                Result("short-headline", CheckStatus.Pass),
-                Result("no-superlatives", CheckStatus.Fail, new CheckFinding("Remove 'best in class'.", "/headline", "Best in class")),
+                Result("short-headline", CheckStatus.Pass, CheckSeverity.Block),
+                Result("no-superlatives", CheckStatus.Fail, CheckSeverity.Block, new CheckFinding("Remove 'best in class'.", "/headline", "Best in class")),
+                Result("plain-words", CheckStatus.Warn, CheckSeverity.Warn, new CheckFinding("Prefer 'use' to 'utilize'.", "/body", "utilize")),
             ]);
             var run = new ChangeSetCheckRun(Guid.NewGuid(), sets.Set.Id, job.Id, 1, CheckRunMode.Inline, Opened, Opened, CheckStatus.Fail, 0m, [item], ["The engine could not read one item."]);
             return Task.FromResult(Result<ChangeSetChecksState>.Success(new ChangeSetChecksState(sets.Set, run, job)));
@@ -449,5 +570,25 @@ public sealed class ChangeSetViewTests
         {
             return new AuditEvent { Id = Guid.NewGuid(), Timestamp = Opened.AddMinutes(minutes), Initiator = initiator, Operation = operation };
         }
+    }
+
+    // No revert is in progress, so a revert opens one.
+    private sealed class NoReverts : IChangeSetLists
+    {
+        public Task<Result<ChangeSetList>> ListAsync(ChangeSetListQuery query, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(Result<ChangeSetList>.Success(new ChangeSetList([], 0)));
+        }
+
+        public Task<Result<int>> CountAsync(ChangeSetListQuery query, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    }
+
+    [Theory]
+    [InlineData("https://аpple.com/prices", "xn--pple-43d.com")]
+    [InlineData("https://example.com/spec", null)]
+    [InlineData("https://[::1]:8080/spec", null)]
+    public void A_source_host_that_is_not_ascii_is_shown_as_the_host_it_resolves_to(string source, string? shown)
+    {
+        Assert.Equal(shown, ChangeSetView.AsciiHost(ChangeSetView.Openable(source)!));
     }
 }

@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Core.Builtin.Tools;
 using FluentCMS.Core.Tools;
+using FluentCMS.Testing;
 using FluentCMS.Tests.Schema;
 
 namespace FluentCMS.Tests.Tools;
@@ -9,6 +10,7 @@ namespace FluentCMS.Tests.Tools;
 // The contract every tool and resource provider meets, built in or not (EXT-N1, MCP-02): an agent can read what each tool does
 // and what each argument takes, and an argument the tool does not know comes back as an error before anything is read.
 // Derive one class per provider and return it from Provider.
+[ConformanceFor(typeof(IToolProvider), typeof(IResourceProvider))]
 public abstract class ToolProviderConformanceTests
 {
     protected abstract object Provider { get; }
@@ -118,6 +120,16 @@ public sealed class EntryToolsConformanceTests : ToolProviderConformanceTests
 public sealed class CheckToolsConformanceTests : ToolProviderConformanceTests
 {
     protected override object Provider { get; } = new CheckTools();
+}
+
+public sealed class BulkToolsConformanceTests : ToolProviderConformanceTests
+{
+    protected override object Provider { get; } = new BulkTools();
+}
+
+public sealed class JobToolsConformanceTests : ToolProviderConformanceTests
+{
+    protected override object Provider { get; } = new JobTools();
 }
 
 public sealed class EntityToolsConformanceTests : ToolProviderConformanceTests

@@ -1,9 +1,11 @@
 using Bunit;
 using FluentCMS.Admin.Components.Pages;
 using FluentCMS.Admin.Media;
+using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Media;
 using FluentCMS.Core.Results;
+using FluentCMS.Core.Schema;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -50,8 +52,9 @@ public sealed class MediaViewsTests
     [Fact]
     public void The_upload_form_posts_to_the_endpoint_and_shows_a_refused_upload_next_to_its_fields()
     {
-        using var context = Context(new FakeLibrary());
-        context.Services.GetRequiredService<NavigationManager>().NavigateTo("/media?error=media_content_mismatch,folder_invalid&folder=Bad&alt=A%20drill.");
+        var library = new FakeLibrary();
+        using var context = Context(library);
+        context.Services.GetRequiredService<NavigationManager>().NavigateTo("/media?upload-error=media_content_mismatch,folder_invalid&upload-folder=Bad&upload-alt=A%20drill.&upload-dropped=upload-caption");
 
         var cut = context.Render<MediaLibraryView>();
 
@@ -63,7 +66,11 @@ public sealed class MediaViewsTests
         Assert.Contains("A folder is lowercase words", form.TextContent);
         Assert.Equal("Bad", cut.Find("input[name=Folder]").GetAttribute("value"));
         Assert.Equal("A drill.", cut.Find("textarea[name=AltText]").GetAttribute("value"));
+        Assert.Contains("This was too long to bring back here.", form.TextContent);
         Assert.Empty(cut.FindAll("[data-testid=media-upload-error]"));
+
+        // The upload's fields never filter the list.
+        Assert.Equal(new MediaQuery(), Assert.Single(library.Queries));
     }
 
     [Fact]
@@ -83,6 +90,9 @@ public sealed class MediaViewsTests
         var usage = cut.Find("[data-entry]");
         Assert.Contains("/hero", usage.TextContent);
         Assert.Contains("product-page", usage.TextContent);
+        Assert.Equal(
+            ["audit?type=entry&id=", "audit?type=entity&id="],
+            cut.FindAll("[data-testid=usage-history]").Select(link => link.GetAttribute("href")![..(link.GetAttribute("href")!.IndexOf("id=", StringComparison.Ordinal) + 3)]));
         Assert.Empty(cut.FindAll("[data-testid=media-no-alt-text]"));
     }
 
@@ -128,9 +138,40 @@ public sealed class MediaViewsTests
         var query = form.ReturnQuery([new Error("folder_invalid", "x"), new Error("folder_invalid", "y"), new Error("tag_invalid", "z")]);
         var metadata = new MediaUploadForm { Folder = "products", Tags = "Hero", AltText = " " }.ToMetadata("drill.jpg").Value;
 
-        Assert.Equal("folder_invalid,tag_invalid", query["error"]);
-        Assert.Equal(("Bad", "a, b", " ", "Shown."), (query["folder"], query["tags"], query["alt"], query["caption"]));
+        Assert.Equal("folder_invalid,tag_invalid", query["upload-error"]);
+        Assert.Equal(("Bad", "a, b", " ", "Shown."), (query["upload-folder"], query["upload-tags"], query["upload-alt"], query["upload-caption"]));
+        Assert.False(query.ContainsKey("upload-dropped"));
         Assert.Equal(("products", "hero", null), (metadata.Folder, Assert.Single(metadata.Tags), metadata.AltText));
+    }
+
+    [Fact]
+    public void A_text_too_long_for_the_return_address_is_dropped_and_named()
+    {
+        var form = new MediaUploadForm { Folder = "ok", AltText = new string('ä', 1000) };
+
+        var query = form.ReturnQuery([new Error("tag_invalid", "x")]);
+
+        Assert.Equal("ok", query["upload-folder"]);
+        Assert.False(query.ContainsKey("upload-alt"));
+        Assert.Equal("upload-alt", query["upload-dropped"]);
+    }
+
+    [Theory]
+    [InlineData("1", true)]
+    [InlineData("true", true)]
+    [InlineData("True", true)]
+    [InlineData("0", false)]
+    [InlineData("false", false)]
+    [InlineData("yes", false)]
+    public void The_subfolder_flag_takes_one_or_true(string sub, bool subfolders)
+    {
+        var library = new FakeLibrary();
+        using var context = Context(library);
+        context.Services.GetRequiredService<NavigationManager>().NavigateTo($"/media?folder=products&sub={sub}");
+
+        context.Render<MediaLibraryView>();
+
+        Assert.Equal(new MediaQuery("products", subfolders, null), library.Queries[^1]);
     }
 
     private static AdminTestContext Context(FakeLibrary library)
@@ -138,6 +179,7 @@ public sealed class MediaViewsTests
         var context = new AdminTestContext();
         context.Services.AddSingleton<IMediaLibrary>(library);
         context.Services.AddSingleton<IWhereUsed>(new FakeUsage(library));
+        context.Services.AddSingleton<IContentTypeDirectory>(new FakeContentTypes());
         return context;
     }
 
@@ -184,14 +226,43 @@ public sealed class MediaViewsTests
 
         public Task<Result<MediaAssetVersion>> GetVersionAsync(Guid id, int version, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
+        public Task<Result<MediaAssetVersion?>> LiveVersionAsync(Guid id, int? publishing = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
         public Task<Result<MediaContent>> OpenAsync(Guid id, int? version = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<Result> DeleteAsync(Guid id, int baseVersion, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<Result<MediaAsset>> RestoreAsync(Guid id, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<IReadOnlyList<DeletedAsset>> ListDeletedAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    }
+
+    // Every type is a plain content type, so its items are entries in the audit log.
+    private sealed class FakeContentTypes : IContentTypeDirectory
+    {
+        public Task<Result<ContentType>> GetAsync(string slug, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(ContentType.Create(Guid.NewGuid(), slug, slug, new ContentTypeDefinition([], isEntity: slug == "supplier"), new FieldTypeRegistry([])));
+        }
+
+        public Task<IReadOnlyList<ContentTypeSummary>> ListAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<Result<ContentType>> GetPublishedAsync(string slug, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<Result<ContentType>> GetVersionAsync(string slug, int version, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<Result<ContentType>> CreateAsync(NewContentType contentType, ChangeSetTarget changeSet, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<Result<ContentType>> ReviseAsync(string slug, int baseVersion, ContentTypeDefinition definition, ChangeSetTarget changeSet, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 
     private sealed class FakeUsage(FakeLibrary library) : IWhereUsed
     {
         public Task<IReadOnlyList<EntryUsage>> ForMediaAsync(Guid assetId, CancellationToken cancellationToken = default)
         {
-            IReadOnlyList<EntryUsage> usage = assetId == library.Drill.Id ? [new EntryUsage(Guid.NewGuid(), "product-page", 3, true, true, ["/hero"])] : [];
+            IReadOnlyList<EntryUsage> usage = assetId == library.Drill.Id
+                ? [new EntryUsage(Guid.NewGuid(), "product-page", 3, true, true, ["/hero"]), new EntryUsage(Guid.NewGuid(), "supplier", 1, true, false, ["/logo/value"])]
+                : [];
             return Task.FromResult(usage);
         }
 

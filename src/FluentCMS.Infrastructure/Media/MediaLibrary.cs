@@ -1,8 +1,10 @@
+using FluentCMS.Core.Agents;
 using FluentCMS.Core.Audit;
 using FluentCMS.Core.Media;
 using FluentCMS.Core.Persistence;
 using FluentCMS.Core.Results;
 using FluentCMS.Core.Sites;
+using FluentCMS.Infrastructure.Content;
 using FluentCMS.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -15,8 +17,10 @@ internal sealed class MediaLibrary(
     FluentCmsDbContext context,
     IUnitOfWork unitOfWork,
     IAuditLog auditLog,
+    IAgentPermissions permissions,
     MediaStorageRegistry storages,
     IOptions<MediaOptions> options,
+    IOptions<ContentOptions> contentOptions,
     TimeProvider clock) : IMediaLibrary
 {
     private const string SubjectType = "media";
@@ -127,7 +131,7 @@ internal sealed class MediaLibrary(
 
         // Moves the pointer only from the version the caller read; a concurrent update that committed first leaves nothing to move.
         var moved = await context.MediaAssets
-            .Where(asset => asset.Id == id && asset.LatestVersion == baseVersion)
+            .Where(asset => asset.Id == id && asset.LatestVersion == baseVersion && asset.DeletedAt == null)
             .ExecuteUpdateAsync(setters => setters.SetProperty(asset => asset.LatestVersion, version.Version), cancellationToken);
         if (moved == 0)
         {
@@ -181,6 +185,43 @@ internal sealed class MediaLibrary(
             : Result<MediaAssetVersion>.Success(stored.ToVersion());
     }
 
+    public async Task<Result<MediaAssetVersion?>> LiveVersionAsync(Guid id, int? publishing = null, CancellationToken cancellationToken = default)
+    {
+        var row = await FindAsync(id, cancellationToken);
+        if (row is null)
+        {
+            return Result<MediaAssetVersion?>.Failure([NotFound(id)]);
+        }
+
+        // Every other write is proposed in a change set, and kept as proposed whatever becomes of the set, so a version no set has
+        // proposed is a person's write in the library.
+        var published = publishing ?? row.PublishedVersion;
+        var after = published ?? 0;
+        var written = await context.MediaAssetVersions
+            .AsNoTracking()
+            .Where(version => version.AssetId == id
+                && version.Version > after
+                && !context.ProposedMediaVersions.Any(proposed => proposed.AssetId == id && proposed.Version == version.Version))
+            .OrderByDescending(version => version.Version)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (written is not null || published is not { } number)
+        {
+            return Result<MediaAssetVersion?>.Success(written?.ToVersion());
+        }
+
+        var stored = await VersionRowAsync(id, number, cancellationToken);
+        if (stored is null)
+        {
+            return publishing is null
+                ? throw new InvalidOperationException($"Media asset {id} points at version {number}, which is not stored.")
+                : Result<MediaAssetVersion?>.Failure(
+                    MediaErrorCodes.VersionNotFound,
+                    $"Media asset {id} has no version {number}; its latest version is {row.LatestVersion}.");
+        }
+
+        return Result<MediaAssetVersion?>.Success(stored.ToVersion());
+    }
+
     public async Task<IReadOnlyList<MediaAssetSummary>> ListAsync(MediaQuery query, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
@@ -202,11 +243,27 @@ internal sealed class MediaLibrary(
             latest = latest.Where(version => version.Tags.Contains(wanted));
         }
 
-        var rows = await (
+        // Matched here rather than in SQL: SQLite's lower() folds ASCII letters only, so "Ärzte.jpg" would miss "ärzte". Only the names
+        // are read for it, and only the matching assets after.
+        if (query.Text?.Trim() is { Length: > 0 } text)
+        {
+            var names = await latest.Select(version => new { version.AssetId, version.FileName, version.Folder }).ToListAsync(cancellationToken);
+            var matching = names
+                .Where(name => name.FileName.Contains(text, StringComparison.CurrentCultureIgnoreCase) || name.Folder.Contains(text, StringComparison.OrdinalIgnoreCase))
+                .Select(name => name.AssetId)
+                .OrderDescending()
+                .Take(query.Newest ?? int.MaxValue)
+                .ToList();
+            latest = latest.Where(version => matching.Contains(version.AssetId));
+        }
+
+        var joined =
             from version in latest
             join asset in context.MediaAssets.AsNoTracking() on version.AssetId equals asset.Id
-            orderby asset.Id
-            select new { asset.PublishedVersion, Version = version })
+            select new { asset.Id, asset.PublishedVersion, Version = version };
+        var rows = await (query.Newest is { } newest
+            ? joined.OrderByDescending(row => row.Id).Take(newest)
+            : joined.OrderBy(row => row.Id))
             .ToListAsync(cancellationToken);
 
         return rows
@@ -254,13 +311,121 @@ internal sealed class MediaLibrary(
             : Result<MediaContent>.Success(new MediaContent(content, stored.ContentType, stored.FileName, stored.Length));
     }
 
+    public async Task<Result> DeleteAsync(Guid id, int baseVersion, CancellationToken cancellationToken = default)
+    {
+        var row = await FindAsync(id, cancellationToken);
+        if (row is null)
+        {
+            return Result.Failure([NotFound(id)]);
+        }
+
+        var allowed = await permissions.CheckMediaAsync(AgentOperation.Delete, cancellationToken);
+        if (!allowed.IsSuccess)
+        {
+            return allowed;
+        }
+
+        if (row.LatestVersion != baseVersion)
+        {
+            return Result.Failure([Conflict(id, baseVersion)]);
+        }
+
+        var latest = await VersionRowAsync(id, baseVersion, cancellationToken)
+            ?? throw new InvalidOperationException($"Media asset {id} points at version {baseVersion}, which is not stored.");
+
+        await using var scope = await unitOfWork.BeginAsync(cancellationToken);
+
+        // Only from the version the caller read, and only once: a concurrent update or delete that committed first wins.
+        var deletedAt = clock.GetUtcNow();
+        var deleted = await context.MediaAssets
+            .Where(asset => asset.Id == id && asset.LatestVersion == baseVersion && asset.DeletedAt == null)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(asset => asset.DeletedAt, deletedAt), cancellationToken);
+        if (deleted == 0)
+        {
+            return Result.Failure([Conflict(id, baseVersion)]);
+        }
+
+        await auditLog.AppendAsync(
+            new NewAuditEvent("media.deleted") { SubjectType = SubjectType, SubjectId = id, PreviousVersionId = latest.Id },
+            cancellationToken);
+        await scope.CommitAsync(cancellationToken);
+
+        return Result.Success();
+    }
+
+    public async Task<Result<MediaAsset>> RestoreAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var row = await FindAsync(id, cancellationToken, includeDeleted: true);
+        if (row is null)
+        {
+            return Result<MediaAsset>.Failure([NotFound(id)]);
+        }
+
+        // Restoring undoes a delete, so it takes the same operation.
+        var allowed = await permissions.CheckMediaAsync(AgentOperation.Delete, cancellationToken);
+        if (!allowed.IsSuccess)
+        {
+            return Result<MediaAsset>.Failure(allowed.Errors);
+        }
+
+        if (row.DeletedAt is not { } deletedAt)
+        {
+            return Result<MediaAsset>.Failure([NotDeleted(id)]);
+        }
+
+        var until = deletedAt + contentOptions.Value.DeletedRetention;
+        if (clock.GetUtcNow() >= until)
+        {
+            return Result<MediaAsset>.Failure(
+                MediaErrorCodes.RetentionExpired,
+                $"Media asset {id} was deleted at {deletedAt:O} and could be restored until {until:O}; that window has closed.");
+        }
+
+        var latest = await VersionRowAsync(id, row.LatestVersion, cancellationToken)
+            ?? throw new InvalidOperationException($"Media asset {id} points at version {row.LatestVersion}, which is not stored.");
+
+        await using var scope = await unitOfWork.BeginAsync(cancellationToken);
+
+        // A concurrent restore that committed first leaves nothing to restore.
+        var restored = await context.MediaAssets
+            .Where(asset => asset.Id == id && asset.DeletedAt != null)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(asset => asset.DeletedAt, (DateTimeOffset?)null), cancellationToken);
+        if (restored == 0)
+        {
+            return Result<MediaAsset>.Failure([NotDeleted(id)]);
+        }
+
+        await auditLog.AppendAsync(new NewAuditEvent("media.restored") { SubjectType = SubjectType, SubjectId = id }, cancellationToken);
+        await scope.CommitAsync(cancellationToken);
+
+        return Result<MediaAsset>.Success(new MediaAsset(id, row.SiteId, row.LatestVersion, row.PublishedVersion, latest.ToVersion()));
+    }
+
+    public async Task<IReadOnlyList<DeletedAsset>> ListDeletedAsync(CancellationToken cancellationToken = default)
+    {
+        var rows = await (
+            from asset in context.MediaAssets.AsNoTracking()
+            join version in context.MediaAssetVersions.AsNoTracking()
+                on new { AssetId = asset.Id, Version = asset.LatestVersion } equals new { version.AssetId, version.Version }
+            where asset.SiteId == SiteId && asset.DeletedAt != null
+            select new { asset.Id, version.FileName, asset.LatestVersion, asset.DeletedAt })
+            .ToListAsync(cancellationToken);
+
+        // Ordered here, because SQLite cannot order by the stored offsets.
+        return rows
+            .Select(row => new DeletedAsset(row.Id, row.FileName, row.LatestVersion, row.DeletedAt!.Value, row.DeletedAt.Value + contentOptions.Value.DeletedRetention))
+            .OrderByDescending(asset => asset.DeletedAt)
+            .ThenBy(asset => asset.Id)
+            .ToList();
+    }
+
     // The latest version of every asset of the site, which lists and folders read.
     private IQueryable<MediaAssetVersionRow> LatestVersions()
     {
         return
             from version in context.MediaAssetVersions.AsNoTracking()
             join asset in context.MediaAssets.AsNoTracking() on version.AssetId equals asset.Id
-            where asset.SiteId == SiteId && version.Version == asset.LatestVersion
+            where asset.SiteId == SiteId && asset.DeletedAt == null && version.Version == asset.LatestVersion
             select version;
     }
 
@@ -271,9 +436,11 @@ internal sealed class MediaLibrary(
             ?? throw new InvalidOperationException($"Media__Storage is '{options.Value.Storage}', which is no registered media storage.");
     }
 
-    private Task<MediaAssetRow?> FindAsync(Guid id, CancellationToken cancellationToken)
+    private Task<MediaAssetRow?> FindAsync(Guid id, CancellationToken cancellationToken, bool includeDeleted = false)
     {
-        return context.MediaAssets.AsNoTracking().SingleOrDefaultAsync(asset => asset.Id == id && asset.SiteId == SiteId, cancellationToken);
+        return context.MediaAssets
+            .AsNoTracking()
+            .SingleOrDefaultAsync(asset => asset.Id == id && asset.SiteId == SiteId && (includeDeleted || asset.DeletedAt == null), cancellationToken);
     }
 
     private Task<MediaAssetVersionRow?> VersionRowAsync(Guid id, int version, CancellationToken cancellationToken)
@@ -315,6 +482,11 @@ internal sealed class MediaLibrary(
     private static Error NotFound(Guid id)
     {
         return new Error(MediaErrorCodes.AssetNotFound, $"There is no media asset {id} in this site.");
+    }
+
+    private static Error NotDeleted(Guid id)
+    {
+        return new Error(MediaErrorCodes.AssetNotDeleted, $"Media asset {id} is not deleted, so there is nothing to restore.");
     }
 
     private static Error Conflict(Guid id, int baseVersion)

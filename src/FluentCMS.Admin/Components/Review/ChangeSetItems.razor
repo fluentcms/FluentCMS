@@ -1,9 +1,14 @@
+@using System.Text.Json
 @using FluentCMS.Core.ChangeSets
-@inject IChangeSetDirectory Directory
+@using Microsoft.Extensions.DependencyInjection
+@implements IDisposable
+@inject IServiceScopeFactory Scopes
+@inject PersistentComponentState State
 @inject IStringLocalizer<ChangeSetItems> L
 
 @* The set view's interactive island: DiffView adds items in batches over the circuit (PERF-04) while the rest of the page stays static. *@
-@* The circuit replaces the prerendered items when it attaches; data-interactive says it has, for tests that drive the keyboard. *@
+@* The prerendered diff is carried into the circuit, so the circuit shows the same items without reading them again or emptying the
+   list. data-interactive says the circuit has attached, for tests that drive the keyboard. *@
 <div data-testid="change-set-items" data-interactive="@(RendererInfo.IsInteractive ? "true" : "false")">
     @if (_error is not null)
     {
@@ -22,8 +27,11 @@
 @code {
     private ChangeSetDiff? _diff;
     private string? _error;
+    private PersistingComponentStateSubscription? _persisting;
 
     [Parameter, EditorRequired] public Guid ChangeSetId { get; set; }
+
+    private string Key => $"change-set-items-{ChangeSetId:N}";
 
     protected override async Task OnParametersSetAsync()
     {
@@ -32,10 +40,20 @@
             return;
         }
 
-        var diff = await Directory.DiffAsync(ChangeSetId);
+        if (State.TryTakeFromJson<KeptDiff>(Key, out var kept) && kept is not null)
+        {
+            _diff = kept.ToDiff();
+            return;
+        }
+
+        // Prerendered while the set view may still be loading: an async read on PostgreSQL can finish at once, so the view renders the
+        // island before its own reads are done. Its own scope keeps the two off one DbContext.
+        await using var scope = Scopes.CreateAsyncScope();
+        var diff = await scope.ServiceProvider.GetRequiredService<IChangeSetDirectory>().DiffAsync(ChangeSetId);
         if (diff.IsSuccess)
         {
             (_diff, _error) = (diff.Value, null);
+            _persisting ??= State.RegisterOnPersisting(Keep, RenderMode.InteractiveServer);
         }
         else
         {
@@ -46,5 +64,60 @@
                 return localized.ResourceNotFound ? error.Message : localized.Value;
             }));
         }
+    }
+
+    // A diff too large for the circuit's first message is left for the circuit to read again.
+    private Task Keep()
+    {
+        if (_diff is { } diff)
+        {
+            var kept = KeptDiff.From(diff);
+            if (JsonSerializer.SerializeToUtf8Bytes(kept).Length <= AdminLimits.KeptStateBytes)
+            {
+                State.PersistAsJson(Key, kept);
+            }
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public void Dispose() => _persisting?.Dispose();
+
+    private sealed record KeptDiff(Guid ChangeSetId, KeptItem[] Items)
+    {
+        public static KeptDiff From(ChangeSetDiff diff) => new(diff.ChangeSetId, [.. diff.Items.Select(KeptItem.From)]);
+
+        public ChangeSetDiff ToDiff() => new(ChangeSetId, [.. Items.Select(item => item.ToDiff())]);
+    }
+
+    private sealed record KeptItem(
+        OperationKind Kind,
+        ItemKind ItemKind,
+        Guid ItemId,
+        int? BaseVersion,
+        int? ProposedVersion,
+        KeptValue[] Properties,
+        KeptValue[] Fields)
+    {
+        public static KeptItem From(ItemDiff item) => new(
+            item.Operation.Kind,
+            item.Operation.ItemKind,
+            item.Operation.ItemId,
+            item.Operation.BaseVersion,
+            item.Operation.ProposedVersion,
+            [.. item.Properties.Select(KeptValue.From)],
+            [.. item.Fields.Select(KeptValue.From)]);
+
+        public ItemDiff ToDiff() => ItemDiff.Restore(
+            ChangeOperation.Restore(Kind, ItemKind, ItemId, BaseVersion, ProposedVersion),
+            [.. Properties.Select(value => value.ToDiff())],
+            [.. Fields.Select(value => value.ToDiff())]);
+    }
+
+    private sealed record KeptValue(string Name, ValueChange Change, JsonElement? Before, JsonElement? After)
+    {
+        public static KeptValue From(ValueDiff value) => new(value.Name, value.Change, value.Before, value.After);
+
+        public ValueDiff ToDiff() => ValueDiff.Restore(Name, Change, Before, After);
     }
 }

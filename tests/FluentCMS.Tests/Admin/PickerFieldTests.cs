@@ -2,9 +2,12 @@ using System.Text.Json;
 using Bunit;
 using FluentCMS.Admin.Components.Forms;
 using FluentCMS.Admin.Forms;
+using FluentCMS.Core;
+using FluentCMS.Core.ChangeSets;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Media;
 using FluentCMS.Core.Results;
+using FluentCMS.Core.Schema;
 using FluentCMS.Core.Search;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,6 +18,7 @@ public sealed class PickerFieldTests
 {
     internal static readonly Guid Drill = Guid.Parse("0192f3a1-7c2e-7a4b-9d3e-1f2a3b4c5d6e");
     internal static readonly Guid Hero = Guid.Parse("0192f3a1-7c2e-7a4b-9d3e-1f2a3b4c5d6f");
+    internal static readonly Guid Other = Guid.Parse("0192f3a1-7c2e-7a4b-9d3e-1f2a3b4c5d70");
 
     [Fact]
     public void Before_the_circuit_attaches_a_picker_is_the_plain_select()
@@ -25,7 +29,35 @@ public sealed class PickerFieldTests
 
         Assert.Equal("Form.Values[product]", cut.Find("select").GetAttribute("name"));
         Assert.True(cut.Find($"option[value='{Drill}']").HasAttribute("selected"));
+        Assert.Contains("Cordless drill (published, 0192f3a1)", cut.Find($"option[value='{Drill}']").TextContent);
+        Assert.Contains("0192f3a1 (draft)", cut.Find($"option[value='{Other}']").TextContent);
         Assert.Empty(cut.FindAll("input[type=search]"));
+    }
+
+    [Fact]
+    public void The_island_takes_no_list_of_choices_so_its_start_stays_small_however_many_there_are()
+    {
+        var parameters = typeof(PickerField).GetProperties().Where(property => property.IsDefined(typeof(ParameterAttribute), inherit: false)).Select(property => property.PropertyType);
+
+        Assert.All(parameters, type => Assert.True(type == typeof(string) || type == typeof(bool), $"{type} is not a scalar."));
+    }
+
+    [Fact]
+    public void Only_the_newest_search_shows_its_results()
+    {
+        using var context = Context(interactive: true);
+        var search = (FakeSearch)context.Services.GetRequiredService<ISearch>();
+        search.Hold = new TaskCompletionSource();
+
+        var cut = context.Render<PickerField>(EntryPicker(chosen: false));
+        cut.Find("input[type=search]").Input("dri");
+        search.Hold = null;
+        cut.Find("input[type=search]").Input("saw");
+        Assert.Contains("Nothing matches.", cut.Markup);
+
+        search.Release();
+        Assert.Empty(cut.FindAll("[role=option]"));
+        Assert.Contains("Nothing matches.", cut.Markup);
     }
 
     [Fact]
@@ -36,6 +68,7 @@ public sealed class PickerFieldTests
 
         var cut = context.Render<PickerField>(EntryPicker(chosen: false));
         Assert.Equal("", cut.Find("input[type=hidden]").GetAttribute("value") ?? "");
+        Assert.False(cut.Find("input[type=search]").HasAttribute("aria-controls"));
         cut.Find("input[type=search]").Input("dri");
 
         Assert.Equal(("dri", "product"), (search.Queries[0].Text, search.Queries[0].ContentTypes!.Single()));
@@ -79,6 +112,8 @@ public sealed class PickerFieldTests
             .Add(p => p.Label, "hero"));
         cut.Find("input[type=search]").Input("HERO");
 
+        var media = (FakeMedia)context.Services.GetRequiredService<IMediaLibrary>();
+        Assert.Equal(new MediaQuery { Text = "HERO", Newest = 10 }, media.Queries[^1]);
         var option = cut.Find("[role=option]");
         Assert.Contains("hero.jpg (products)", option.TextContent);
         Assert.Equal($"media/{Hero}/file", option.QuerySelector("img")!.GetAttribute("src"));
@@ -88,6 +123,7 @@ public sealed class PickerFieldTests
 
     internal static AdminTestContext Context(bool interactive)
     {
+        PickerField.SearchPause = TimeSpan.Zero;
         var context = new AdminTestContext();
         AddServices(context);
         context.Renderer.SetRendererInfo(new RendererInfo(interactive ? "Server" : "Static", interactive));
@@ -99,6 +135,7 @@ public sealed class PickerFieldTests
         context.Services.AddSingleton<ISearch>(new FakeSearch());
         context.Services.AddSingleton<IEntryDirectory>(new FakeEntries());
         context.Services.AddSingleton<IMediaLibrary>(new FakeMedia());
+        context.Services.AddSingleton<IContentTypeDirectory>(new FakeTypes());
     }
 
     private static Action<ComponentParameterCollectionBuilder<PickerField>> EntryPicker(bool chosen = true)
@@ -108,31 +145,67 @@ public sealed class PickerFieldTests
             .Add(p => p.Kind, PickerField.EntryKind)
             .Add(p => p.Target, "product")
             .Add(p => p.Value, chosen ? Drill.ToString() : null)
-            .Add(p => p.Label, "product")
-            .Add(p => p.Options, [new FieldOption(Drill.ToString(), "Cordless drill")]);
+            .Add(p => p.Label, "product");
     }
 
     private sealed class FakeSearch : ISearch
     {
+        private readonly List<TaskCompletionSource> _held = [];
+
         public List<SearchQuery> Queries { get; } = [];
 
-        public Task<Result<SearchResults>> SearchAsync(SearchQuery query, CancellationToken cancellationToken = default)
+        // While set, a search waits until Release, as a slow query would.
+        public TaskCompletionSource? Hold { get; set; }
+
+        public async Task<Result<SearchResults>> SearchAsync(SearchQuery query, CancellationToken cancellationToken = default)
         {
             Queries.Add(query);
+            if (Hold is { } hold)
+            {
+                _held.Add(hold);
+                await hold.Task;
+            }
+
             IReadOnlyList<SearchHit> hits = query.Text == "dri" ? [new SearchHit(Drill, "product", EntryState.Published, 2, 2, 1.0, null)] : [];
-            return Task.FromResult(Result<SearchResults>.Success(new SearchResults(hits)));
+            return Result<SearchResults>.Success(new SearchResults(hits));
         }
+
+        public void Release() => _held.ForEach(hold => hold.TrySetResult());
+    }
+
+    private sealed class FakeTypes : IContentTypeDirectory
+    {
+        private static readonly FieldTypeRegistry Registry = new ServiceCollection().AddFluentCmsCore().BuildServiceProvider().GetRequiredService<FieldTypeRegistry>();
+
+        public Task<Result<ContentType>> GetAsync(string slug, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(ContentType.Create(Guid.NewGuid(), slug, slug, new ContentTypeDefinition([new FieldDefinition("sku", "number"), new FieldDefinition("name", "text")], isEntity: true), Registry));
+        }
+
+        public Task<IReadOnlyList<ContentTypeSummary>> ListAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<Result<ContentType>> GetPublishedAsync(string slug, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<Result<ContentType>> GetVersionAsync(string slug, int version, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<Result<ContentType>> CreateAsync(NewContentType contentType, ChangeSetTarget changeSet, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<Result<ContentType>> ReviseAsync(string slug, int baseVersion, ContentTypeDefinition definition, ChangeSetTarget changeSet, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 
     private sealed class FakeEntries : IEntryDirectory
     {
         public Task<Result<Entry>> GetAsync(Guid id, CancellationToken cancellationToken = default)
         {
-            var fields = JsonDocument.Parse("""{"name": {"value": "Cordless drill", "source": null}}""").RootElement;
+            var fields = JsonDocument.Parse("""{"sku": {"value": 1234, "source": null}, "name": {"value": "Cordless drill", "source": null}}""").RootElement;
             return Task.FromResult(Result<Entry>.Success(FluentCMS.Core.Content.Entry.Restore(id, Guid.NewGuid(), Guid.NewGuid(), "product", 2, EntryState.Published, new EntryVersion(id, 2, 1, fields, DateTimeOffset.UnixEpoch))));
         }
 
-        public Task<Result<IReadOnlyList<EntrySummary>>> ListAsync(string contentType, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<Result<IReadOnlyList<EntrySummary>>> ListAsync(string contentType, CancellationToken cancellationToken = default)
+        {
+            IReadOnlyList<EntrySummary> entries = [new EntrySummary(Drill, 2, 2, EntryState.Published), new EntrySummary(Other, 1, null, EntryState.Draft)];
+            return Task.FromResult(Result<IReadOnlyList<EntrySummary>>.Success(entries));
+        }
 
         public Task<Result<EntryVersion>> GetVersionAsync(Guid id, int version, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
@@ -153,14 +226,18 @@ public sealed class PickerFieldTests
     {
         public long MaxBytes => 50 * 1024 * 1024;
 
+        public List<MediaQuery> Queries { get; } = [];
+
         public Task<IReadOnlyList<MediaAssetSummary>> ListAsync(MediaQuery query, CancellationToken cancellationToken = default)
         {
-            IReadOnlyList<MediaAssetSummary> assets =
+            Queries.Add(query);
+            MediaAssetSummary[] assets =
             [
                 new(Hero, 1, null, "hero.jpg", "image/jpeg", 10, "products", [], true),
                 new(Guid.NewGuid(), 1, null, "manual.pdf", "application/pdf", 10, "", [], false),
             ];
-            return Task.FromResult(assets);
+            IReadOnlyList<MediaAssetSummary> matching = [.. assets.Where(asset => query.Text is null || asset.FileName.Contains(query.Text, StringComparison.OrdinalIgnoreCase))];
+            return Task.FromResult(matching);
         }
 
         public Task<Result<MediaAsset>> UploadAsync(NewAsset asset, CancellationToken cancellationToken = default) => throw new NotSupportedException();
@@ -171,8 +248,16 @@ public sealed class PickerFieldTests
 
         public Task<Result<MediaAssetVersion>> GetVersionAsync(Guid id, int version, CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
+        public Task<Result<MediaAssetVersion?>> LiveVersionAsync(Guid id, int? publishing = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
         public Task<IReadOnlyList<string>> FoldersAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
         public Task<Result<MediaContent>> OpenAsync(Guid id, int? version = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<Result> DeleteAsync(Guid id, int baseVersion, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<Result<MediaAsset>> RestoreAsync(Guid id, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+
+        public Task<IReadOnlyList<DeletedAsset>> ListDeletedAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 }

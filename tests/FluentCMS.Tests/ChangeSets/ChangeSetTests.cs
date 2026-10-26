@@ -97,15 +97,17 @@ public sealed class ChangeSetTests
     // A set reopened to fix an item takes the item's newer draft: the same change from the same published version, proposing the
     // later draft, so the item still has one diff and one version to restore (CHG-03, CHG-06).
     [Theory]
-    [InlineData(OperationKind.Create, null, 1)]
-    [InlineData(OperationKind.Update, 3, 4)]
-    public void An_update_from_the_version_a_set_proposes_moves_the_item_s_operation_on(OperationKind kind, int? baseVersion, int proposed)
+    [InlineData(ItemKind.Entry, OperationKind.Create, null, 1)]
+    [InlineData(ItemKind.Entry, OperationKind.Update, 3, 4)]
+    [InlineData(ItemKind.Media, OperationKind.Create, null, 1)]
+    [InlineData(ItemKind.Media, OperationKind.Update, 3, 4)]
+    public void An_update_from_the_version_a_set_proposes_moves_the_item_s_operation_on(ItemKind itemKind, OperationKind kind, int? baseVersion, int proposed)
     {
         var changeSet = TestChangeSets.Open();
         var item = Guid.NewGuid();
-        changeSet.AddOperation(ChangeOperation.Create(kind, ItemKind.Entry, item, baseVersion, proposed).Value);
+        changeSet.AddOperation(ChangeOperation.Create(kind, itemKind, item, baseVersion, proposed).Value);
 
-        var result = changeSet.AddOperation(ChangeOperation.Create(kind, ItemKind.Entry, item, baseVersion, proposed + 1).Value);
+        var result = changeSet.AddOperation(ChangeOperation.Create(kind, itemKind, item, baseVersion, proposed + 1).Value);
 
         Assert.True(result.IsSuccess);
         var operation = Assert.Single(changeSet.Operations);
@@ -118,16 +120,21 @@ public sealed class ChangeSetTests
         var changeSet = TestChangeSets.Open();
         var entry = Guid.NewGuid();
         var type = Guid.NewGuid();
+        var asset = Guid.NewGuid();
         changeSet.AddOperation(TestChangeSets.Update(ItemKind.Entry, entry));
         changeSet.AddOperation(TestChangeSets.Update(ItemKind.Schema, type));
+        changeSet.AddOperation(TestChangeSets.Update(ItemKind.Media, asset));
 
         var stale = changeSet.AddOperation(ChangeOperation.Create(OperationKind.Update, ItemKind.Entry, entry, 1, 2).Value);
         var schema = changeSet.AddOperation(ChangeOperation.Create(OperationKind.Update, ItemKind.Schema, type, 2, 3).Value);
+        var media = changeSet.AddOperation(ChangeOperation.Create(OperationKind.Update, ItemKind.Media, asset, 1, 2).Value);
 
         Assert.Equal(ChangeSetErrorCodes.ItemDuplicate, Assert.Single(stale.Errors).Code);
         Assert.Contains("update it from version 2", stale.Errors[0].Message);
         Assert.Equal(ChangeSetErrorCodes.ItemDuplicate, Assert.Single(schema.Errors).Code);
-        Assert.Equal([2, 2], changeSet.Operations.Select(operation => operation.ProposedVersion!.Value));
+        Assert.Contains("The media " + asset, media.Errors[0].Message);
+        Assert.Contains("update it from version 2", media.Errors[0].Message);
+        Assert.Equal([2, 2, 2], changeSet.Operations.Select(operation => operation.ProposedVersion!.Value));
     }
 
     // An item another set published after this one proposed it comes back as an update from that published version, which this set

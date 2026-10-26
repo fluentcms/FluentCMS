@@ -1,5 +1,6 @@
 using FluentCMS.Core.Media;
 using FluentCMS.Core.Schema;
+using FluentCMS.Infrastructure.ChangeSets;
 using FluentCMS.Infrastructure.Sites;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -52,5 +53,20 @@ internal sealed class MediaAssetVersionConfiguration : IEntityTypeConfiguration<
 
         row.HasIndex(version => new { version.AssetId, version.Version }).IsUnique();
         row.HasIndex(version => version.Folder);
+    }
+}
+
+internal sealed class ProposedMediaVersionConfiguration : IEntityTypeConfiguration<ProposedMediaVersionRow>
+{
+    public void Configure(EntityTypeBuilder<ProposedMediaVersionRow> row)
+    {
+        row.ToTable("ProposedMediaVersions", table => table.HasCheckConstraint("CK_ProposedMediaVersions_Version", "\"Version\" >= 1"));
+        row.HasKey(proposed => proposed.Id);
+        row.Property(proposed => proposed.Id).ValueGeneratedNever();
+
+        row.HasOne<ChangeSetRow>().WithMany().HasForeignKey(proposed => proposed.ChangeSetId).OnDelete(DeleteBehavior.Restrict);
+        row.HasOne<MediaAssetRow>().WithMany().HasForeignKey(proposed => proposed.AssetId).OnDelete(DeleteBehavior.Restrict);
+
+        row.HasIndex(proposed => new { proposed.AssetId, proposed.Version, proposed.ChangeSetId }).IsUnique();
     }
 }
