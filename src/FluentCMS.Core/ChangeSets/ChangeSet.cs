@@ -345,7 +345,7 @@ public sealed class ChangeSet
     private static string Duplicate(ChangeOperation existing, ChangeOperation operation)
     {
         var item = $"The {Describe(operation.ItemKind)} {operation.ItemId}";
-        if (operation.ItemKind is not (ItemKind.Entry or ItemKind.Entity) || existing.ProposedVersion is not { } proposed)
+        if (operation.ItemKind is not (ItemKind.Entry or ItemKind.Entity or ItemKind.Media) || existing.ProposedVersion is not { } proposed)
         {
             return $"{item} already has an operation in this change set.";
         }

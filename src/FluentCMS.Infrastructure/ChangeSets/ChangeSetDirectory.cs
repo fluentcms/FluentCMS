@@ -653,6 +653,7 @@ internal sealed class ChangeSetDirectory(
             BaseVersion = operation.BaseVersion,
             ProposedVersion = operation.ProposedVersion,
         });
+        KeepProposedMedia(set.Id, operation);
 
         await auditLog.AppendAsync(
             new NewAuditEvent("change_set.operation_added")
@@ -675,6 +676,7 @@ internal sealed class ChangeSetDirectory(
         await context.ChangeSetOperations
             .Where(row => row.ChangeSetId == set.Id && row.Position == position)
             .ExecuteUpdateAsync(setters => setters.SetProperty(row => row.ProposedVersion, operation.ProposedVersion), cancellationToken);
+        KeepProposedMedia(set.Id, operation);
 
         await auditLog.AppendAsync(
             new NewAuditEvent("change_set.operation_updated")
@@ -686,6 +688,22 @@ internal sealed class ChangeSetDirectory(
                 PreviousVersionId = previousVersionId,
             },
             cancellationToken);
+    }
+
+    // The operation keeps only the version a set proposes last; the media library tells a person's write from a set's by every
+    // version a set has proposed (IMediaLibrary.LiveVersionAsync).
+    private void KeepProposedMedia(Guid setId, ChangeOperation operation)
+    {
+        if (operation.ItemKind == ItemKind.Media && operation.ProposedVersion is { } version)
+        {
+            context.ProposedMediaVersions.Add(new ProposedMediaVersionRow
+            {
+                Id = Guid.CreateVersion7(),
+                ChangeSetId = setId,
+                AssetId = operation.ItemId,
+                Version = version,
+            });
+        }
     }
 
     // Writes only over the revision this call read, so a concurrent writer that committed first leaves nothing to update.
