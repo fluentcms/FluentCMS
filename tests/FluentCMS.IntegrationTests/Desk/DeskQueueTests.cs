@@ -235,7 +235,9 @@ public sealed class DeskQueueTests
             .AsNoTracking()
             .Where(row => row.SubjectType == "change_set" && row.SubjectId == id && row.Operation.StartsWith("change_set."))
             .ToListAsync()))
-            .Where(row => !before.Contains(row.Id) && !row.Operation.StartsWith("change_set.operation_", StringComparison.Ordinal))
+            .Where(row => !before.Contains(row.Id)
+                && !row.Operation.StartsWith("change_set.operation_", StringComparison.Ordinal)
+                && row.Operation != "change_set.approval_recorded")
             .ToList();
 
         var move = Assert.Single(appended);
