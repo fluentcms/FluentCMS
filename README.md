@@ -6,7 +6,7 @@
 </p>
 
 <h3 align="center">FluentCMS v2: a headless CMS built for AI agents to operate and for a team to govern</h3>
-<p align="center">Created by <a href="https://momentaj.com/">Momentaj</a>, a Toronto AI engineering firm.</p>
+<p align="center">Created by <a href="https://pournasserian.com/open-source/fluentcms">Amir Pournasserian</a> and <a href="https://momentaj.com/">Momentaj</a>, a Toronto AI engineering firm.</p>
 
 > **Status: pre-alpha.** v2 is a rewrite from scratch, in progress on this branch. Nothing runs yet.
 > The previous version lives on the [`dev` branch](https://github.com/FluentCMS/fluentcms/tree/dev) and receives security fixes only. There is no migration path from v1 to v2.
@@ -47,6 +47,10 @@ Delivery is headless: frontends read a delivery API. There is no built-in render
 
 - [Discord](https://discord.gg/WyqYuC6YbY)
 - [Announcement](https://github.com/FluentCMS/fluentcms/issues/2414): what v2 is, why the restart, and how to get involved.
+
+## NuGet packages
+
+FluentCMS packages are published on nuget.org under the [FluentCMS profile](https://www.nuget.org/profiles/FluentCMS), with the `FluentCMS.*` prefix. The package named just [`FluentCMS`](https://www.nuget.org/packages/FluentCMS) on nuget.org belongs to a different project.
 
 ## License
 
