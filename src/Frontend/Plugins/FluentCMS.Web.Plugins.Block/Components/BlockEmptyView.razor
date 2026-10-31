@@ -1,9 +1,0 @@
-@inherits BasePlugin
-@rendermode InteractiveServer
-@namespace FluentCMS.Web.Plugins.Block
-
-<div class="f-block-empty-button">
-    <Button @onclick="OpenBlockModal" Color="Color.Primary">Select</Button>
-</div>
-
-<BlockSelectModal Open="BlockModalOpen" OnClose="CloseBlockModal" OnBlockSelected="ChooseBlockType"/>

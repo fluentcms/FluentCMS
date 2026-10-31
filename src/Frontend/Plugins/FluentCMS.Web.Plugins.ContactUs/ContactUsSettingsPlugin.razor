@@ -1,6 +1,0 @@
-@inherits BaseEditPlugin
-@namespace FluentCMS.Web.Plugins.ContactUs
-
-<PluginModalForm Open="Open" Model="@Model" Name="@PLUGIN_SETTINGS_FORM" OnSubmit="@HandleSubmit" OnCancel="OnCancel" Title="Contact Us Settings">
-    <FormInput Placeholder="Enter the email address for recipient" @bind-Value="@Model!.EmailAddress" Label="Your Email" />
-</PluginModalForm>

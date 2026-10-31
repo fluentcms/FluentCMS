@@ -1,6 +1,0 @@
-@inherits BaseEditPlugin
-@namespace FluentCMS.Web.Plugins.TextHTML
-
-<PluginModalForm Open="Open" Title="Edit TextHTML Content" Model="@Model" OnSubmit="HandleSubmit" OnCancel="OnCancel" Name="@CONTENT_TYPE_NAME">
-    <FormTextarea  Hint="Use data-inline-editable attribute for text elements to enable Inline edit!" Placeholder="Enter HTML Content" Rows="20" @bind-Value="@Model!.Content" Label="Content" />
-</PluginModalForm>

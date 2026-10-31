@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Announcement
+    url: https://github.com/fluentcms/FluentCMS/issues/2675
+    about: Read the current state of the project before proposing work.
+  - name: Discord
+    url: https://discord.gg/WyqYuC6YbY
+    about: Questions and discussion.
+  - name: Security vulnerabilities
+    url: https://github.com/fluentcms/FluentCMS/security/advisories/new
+    about: Report privately, never in a public issue.

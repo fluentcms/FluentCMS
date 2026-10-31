@@ -1,2 +1,0 @@
-# FluentCMS.Docs
-FluentCMS documentation 

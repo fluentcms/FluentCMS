@@ -1,6 +1,45 @@
-﻿################################################################################
-# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
-################################################################################
+# Build output
+bin/
+obj/
+out/
+artifacts/
 
-/.vs
-src/FluentCMS/temp
+# IDE and tooling state
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.swp
+*.DotSettings.user
+
+# Local SQLite databases
+*.db
+*.db-shm
+*.db-wal
+
+# Tests and coverage
+TestResults/
+*.trx
+coverage/
+*.coverage
+*.coveragexml
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+project.lock.json
+
+# Local configuration and secrets
+.env
+.env.*
+*.pfx
+appsettings.*.local.json
+
+# Operating system
+.DS_Store
+Thumbs.db
+
+# Data Protection keys of a local run
+data-protection-keys/
