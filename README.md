@@ -8,8 +8,8 @@
 <h3 align="center">FluentCMS v2: a headless CMS built for AI agents to operate and for a team to govern</h3>
 <p align="center">Created by <a href="https://pournasserian.com/open-source/fluentcms">Amir Pournasserian</a> and <a href="https://momentaj.com/">Momentaj</a>, a Toronto AI engineering firm.</p>
 
-> **Status: pre-alpha.** v2 is a rewrite from scratch, in progress on this branch. Nothing runs yet.
-> The previous version lives on the [`dev` branch](https://github.com/FluentCMS/fluentcms/tree/dev) and receives security fixes only. There is no migration path from v1 to v2.
+> **Archived.** This branch is read-only and no longer maintained, and it receives no security fixes.
+> Development continues on the [`main` branch](https://github.com/FluentCMS/fluentcms/tree/main).
 
 ## What v2 is
 
