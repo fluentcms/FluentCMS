@@ -465,13 +465,13 @@ Rows 2.3 to 2.8, 2.14, 2.15, 2.19, 1.7, 1.8.
 | `PatchAsync(id, patch, expectedVersion)` | partial update of the draft with a JSON merge patch; a null removes a field. Its own method, because a class cannot express absence |
 | `DeleteAsync(id)` | trash, in every locale |
 | `RestoreAsync(id)` | from trash, in every locale |
-| `PublishAsync(id, locale?)`, `UnpublishAsync`, `DiscardDraftAsync` | publishing transitions (4.5) |
+| `PublishAsync(id, locale?, expectedVersion?)`, `UnpublishAsync(id, locale?)`, `DiscardDraftAsync(id, locale?, expectedVersion?)` | publishing transitions (4.5); publish returns the entry and `warnings` |
 | `ScheduleAsync(id, ScheduleRequest)`, `CancelScheduleAsync` | per locale |
-| `GetVersionsAsync(id, locale)`, `RestoreVersionAsync(id, number)`, `DiffAsync(id, a, b)` | versions |
+| `GetVersionsAsync(id, locale?)`, `GetVersionAsync(id, number, locale?)`, `RestoreVersionAsync(id, number, locale?, expectedVersion?)`, `DiffAsync(id, a, b, locale?)` | versions |
 | `BulkAsync(BulkRequest)` | create many; update, publish, unpublish, delete by id list or by filter with a required cap; per-item result |
 | `CountAsync(filter)` | |
 
-**Contract as built.** Every method of `IContentService` takes the type name first. `expectedVersion` is a required `int`, so no caller skips it.
+**Contract as built.** Every method of `IContentService` takes the type name first. On a save `expectedVersion` is a required `int`, so no caller skips it; on publish, discard and version restore it is optional, for a caller that wants to act only on what it reviewed.
 
 - **Refusals.** A principal that lacks the permission on the type gets `ContentAccessDeniedException` (HTTP 401 or 403). An entry that does not exist, is in another site or of another type, or is refused by its row rule gives `EntryNotFoundException` (404), so a client cannot probe; a read returns null. Delete and restore need the operation on every locale of the entry: none reached is not found, some reached is denied. An unreadable type on a read stays the engine's `ValidationException` on `type`, the same as an unknown type.
 - **System operations.** An operation with no ambient `OperationContext` throws. `Principal.System` is accepted only from `Origin.Job`, `Origin.Cli` and `Origin.Seed`, entered through `SystemOperation.Begin`; from `Api`, `Admin` or `Mcp` it throws.
