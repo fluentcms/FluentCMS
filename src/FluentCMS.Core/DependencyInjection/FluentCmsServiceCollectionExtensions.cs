@@ -4,9 +4,13 @@ using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Content.Query;
+using FluentCMS.Core.Localization;
 using FluentCMS.Core.Schema;
+using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
+using FluentCMS.Localization;
 using FluentCMS.Schema;
+using FluentCMS.Sites;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -69,6 +73,13 @@ public static class FluentCmsServiceCollectionExtensions
         services.TryAddScoped<IAuthorizationEvaluator, AuthorizationEvaluator>();
         services.TryAddScoped<IContentQueryAccess, ContentQueryAccess>();
         services.AddScoped<ContentQueryEngine>();
+
+        services.TryAddSingleton(TimeProvider.System);
+        services.TryAddScoped<ISiteResolver, SiteResolver>();
+        services.TryAddScoped<ILocaleResolver, LocaleResolver>();
+        services.AddScoped<LocaleRegistry>();
+        services.AddScoped<LocaleFallbackReader>();
+        services.AddScoped<SiteManager>();
 
         return services;
     }

@@ -37,7 +37,7 @@ internal static class RoleSeed
         Built(BuiltInRoles.SuperAdmin, BuiltInRoles.SuperAdminName, "Holds every permission."),
         Built(BuiltInRoles.Editor, BuiltInRoles.EditorName, "Creates, edits, publishes and removes any content."),
         Built(BuiltInRoles.Author, BuiltInRoles.AuthorName, "Creates content, and reads, edits or removes only their own entries."),
-        Built(BuiltInRoles.Public, BuiltInRoles.PublicName, "The anonymous visitor. Grants here open public Delivery access."),
+        PublicOf(BuiltInRoles.Public, siteId: null),
         Built(BuiltInRoles.Member, BuiltInRoles.MemberName, "The default role of a registered member."),
     ];
 
@@ -49,6 +49,14 @@ internal static class RoleSeed
             Permission = grant.Permission,
             Constraints = grant.Constraints,
         });
+
+    // The anonymous visitor of one site, or of every site without a Public role of its own.
+    public static Role PublicOf(Guid id, Guid? siteId)
+    {
+        var role = Built(id, BuiltInRoles.PublicName, "The anonymous visitor. Grants here open public Delivery access.");
+        role.SiteId = siteId;
+        return role;
+    }
 
     private static Role Built(Guid id, string name, string description) =>
         new() { Id = id, Name = name, Description = description, BuiltIn = true, PermissionsVersion = 1 };

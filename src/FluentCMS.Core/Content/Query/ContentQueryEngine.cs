@@ -10,7 +10,7 @@ namespace FluentCMS.Core.Content.Query;
 
 // Runs a ContentQuery. IContentService (#2693) is its caller, and resolves the locale and site first. Bad input is a
 // ValidationException, before anything runs. RichTextFormat and Fallback are carried, not applied: this returns the
-// stored rich text and the requested locale's values (#2691).
+// stored rich text and the requested locale's values. LocaleFallbackReader fills the fields that fall back.
 internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schema, IJsonSqlDialect dialect, IContentQueryAccess access, ContentQueryOptions options)
 {
     private const string All = "*";

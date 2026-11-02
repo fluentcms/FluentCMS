@@ -8,6 +8,8 @@ internal static class StorageNames
 {
     public const string Prefix = "cms_";
     public const string HistoryTableSuffix = "__migrations";
+    public const string Site = "cms_site";
+    public const string SiteLocale = "cms_site_locale";
     public const string Document = "cms_document";
     public const string Reference = "cms_reference";
     public const string Version = "cms_version";

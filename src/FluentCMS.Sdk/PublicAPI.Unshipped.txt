@@ -248,6 +248,24 @@ FluentCMS.Hooks.IBeforeUpdateHook<T>
 FluentCMS.Hooks.IBeforeUpdateHook<T>.BeforeUpdateAsync(FluentCMS.Hooks.HookContext<T>! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
 FluentCMS.Hooks.IBeforeValidateHook<T>
 FluentCMS.Hooks.IBeforeValidateHook<T>.BeforeValidateAsync(FluentCMS.Hooks.HookContext<T>! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
+FluentCMS.Localization.FallbackChain
+FluentCMS.Localization.FallbackChain.FallbackChain(System.Collections.Generic.IEnumerable<string!>! locales) -> void
+FluentCMS.Localization.FallbackChain.Fallbacks.get -> System.Collections.Generic.IEnumerable<string!>!
+FluentCMS.Localization.FallbackChain.Locales.get -> System.Collections.Generic.IReadOnlyList<string!>!
+FluentCMS.Localization.FallbackChain.Requested.get -> string!
+FluentCMS.Localization.ILocaleResolver
+FluentCMS.Localization.ILocaleResolver.ResolveAsync(FluentCMS.Localization.LocaleRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<string!>
+FluentCMS.Localization.LocaleRequest
+FluentCMS.Localization.LocaleRequest.<Clone>$() -> FluentCMS.Localization.LocaleRequest!
+FluentCMS.Localization.LocaleRequest.Deconstruct(out FluentCMS.Sites.SiteId Site) -> void
+FluentCMS.Localization.LocaleRequest.Equals(FluentCMS.Localization.LocaleRequest? other) -> bool
+FluentCMS.Localization.LocaleRequest.Header.get -> string?
+FluentCMS.Localization.LocaleRequest.Header.init -> void
+FluentCMS.Localization.LocaleRequest.LocaleRequest(FluentCMS.Sites.SiteId Site) -> void
+FluentCMS.Localization.LocaleRequest.Parameter.get -> string?
+FluentCMS.Localization.LocaleRequest.Parameter.init -> void
+FluentCMS.Localization.LocaleRequest.Site.get -> FluentCMS.Sites.SiteId
+FluentCMS.Localization.LocaleRequest.Site.init -> void
 FluentCMS.Media.MediaRef
 FluentCMS.Media.MediaRef.Deconstruct(out System.Guid Id) -> void
 FluentCMS.Media.MediaRef.Equals(FluentCMS.Media.MediaRef other) -> bool
@@ -610,6 +628,10 @@ FluentCMS.Schema.UrlAttribute.UrlAttribute() -> void
 FluentCMS.Schema.VisibleWhenAttribute
 FluentCMS.Schema.VisibleWhenAttribute.ConditionName.get -> string!
 FluentCMS.Schema.VisibleWhenAttribute.VisibleWhenAttribute(string! conditionName) -> void
+FluentCMS.Sites.ISiteHostResolver
+FluentCMS.Sites.ISiteHostResolver.ResolveAsync(string! host, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<FluentCMS.Sites.SiteId?>
+FluentCMS.Sites.ISiteResolver
+FluentCMS.Sites.ISiteResolver.ResolveAsync(FluentCMS.Sites.SiteRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<FluentCMS.Sites.SiteId>
 FluentCMS.Sites.SiteId
 FluentCMS.Sites.SiteId.Deconstruct(out System.Guid Value) -> void
 FluentCMS.Sites.SiteId.Equals(FluentCMS.Sites.SiteId other) -> bool
@@ -618,6 +640,18 @@ FluentCMS.Sites.SiteId.SiteId() -> void
 FluentCMS.Sites.SiteId.SiteId(System.Guid Value) -> void
 FluentCMS.Sites.SiteId.Value.get -> System.Guid
 FluentCMS.Sites.SiteId.Value.init -> void
+FluentCMS.Sites.SiteRequest
+FluentCMS.Sites.SiteRequest.<Clone>$() -> FluentCMS.Sites.SiteRequest!
+FluentCMS.Sites.SiteRequest.ApiKeySite.get -> FluentCMS.Sites.SiteId?
+FluentCMS.Sites.SiteRequest.ApiKeySite.init -> void
+FluentCMS.Sites.SiteRequest.Equals(FluentCMS.Sites.SiteRequest? other) -> bool
+FluentCMS.Sites.SiteRequest.Header.get -> string?
+FluentCMS.Sites.SiteRequest.Header.init -> void
+FluentCMS.Sites.SiteRequest.Host.get -> string?
+FluentCMS.Sites.SiteRequest.Host.init -> void
+FluentCMS.Sites.SiteRequest.Parameter.get -> string?
+FluentCMS.Sites.SiteRequest.Parameter.init -> void
+FluentCMS.Sites.SiteRequest.SiteRequest() -> void
 abstract FluentCMS.Content.ContentFilter.<Clone>$() -> FluentCMS.Content.ContentFilter!
 const FluentCMS.Authorization.Permission.ContentPrefix = "content" -> string!
 const FluentCMS.Content.ValidationErrorCodes.AboveMaximum = "FCMS2105" -> string!
@@ -630,6 +664,7 @@ const FluentCMS.Content.ValidationErrorCodes.NotAnAllowedOption = "FCMS2107" -> 
 const FluentCMS.Content.ValidationErrorCodes.PatternMismatch = "FCMS2106" -> string!
 const FluentCMS.Content.ValidationErrorCodes.Required = "FCMS2101" -> string!
 const FluentCMS.Content.ValidationErrorCodes.RequiredByCondition = "FCMS2110" -> string!
+const FluentCMS.Localization.ILocaleResolver.All = "all" -> string!
 const FluentCMS.Schema.FieldSettings.Blocks = "blocks" -> string!
 const FluentCMS.Schema.FieldSettings.Component = "component" -> string!
 const FluentCMS.Schema.FieldSettings.Options = "options" -> string!
@@ -676,6 +711,9 @@ override FluentCMS.Content.SortField.ToString() -> string!
 override FluentCMS.Content.ValidationError.Equals(object? obj) -> bool
 override FluentCMS.Content.ValidationError.GetHashCode() -> int
 override FluentCMS.Content.ValidationError.ToString() -> string!
+override FluentCMS.Localization.LocaleRequest.Equals(object? obj) -> bool
+override FluentCMS.Localization.LocaleRequest.GetHashCode() -> int
+override FluentCMS.Localization.LocaleRequest.ToString() -> string!
 override FluentCMS.Media.MediaRef.GetHashCode() -> int
 override FluentCMS.Media.MediaRef.ToString() -> string!
 override FluentCMS.Media.MediaRefList.Equals(object? obj) -> bool
@@ -698,6 +736,9 @@ override FluentCMS.Schema.RichText.GetHashCode() -> int
 override FluentCMS.Schema.RichText.ToString() -> string!
 override FluentCMS.Sites.SiteId.GetHashCode() -> int
 override FluentCMS.Sites.SiteId.ToString() -> string!
+override FluentCMS.Sites.SiteRequest.Equals(object? obj) -> bool
+override FluentCMS.Sites.SiteRequest.GetHashCode() -> int
+override FluentCMS.Sites.SiteRequest.ToString() -> string!
 override sealed FluentCMS.Content.And.Equals(FluentCMS.Content.ContentFilter? other) -> bool
 override sealed FluentCMS.Content.FieldFilter.Equals(FluentCMS.Content.ContentFilter? other) -> bool
 override sealed FluentCMS.Content.Not.Equals(FluentCMS.Content.ContentFilter? other) -> bool
@@ -726,6 +767,9 @@ static FluentCMS.Content.SortField.operator ==(FluentCMS.Content.SortField? left
 static FluentCMS.Content.ValidationError.operator !=(FluentCMS.Content.ValidationError? left, FluentCMS.Content.ValidationError? right) -> bool
 static FluentCMS.Content.ValidationError.operator ==(FluentCMS.Content.ValidationError? left, FluentCMS.Content.ValidationError? right) -> bool
 static FluentCMS.Content.ValidationResult.Success.get -> FluentCMS.Content.ValidationResult!
+static FluentCMS.Localization.FallbackChain.Only(string! locale) -> FluentCMS.Localization.FallbackChain!
+static FluentCMS.Localization.LocaleRequest.operator !=(FluentCMS.Localization.LocaleRequest? left, FluentCMS.Localization.LocaleRequest? right) -> bool
+static FluentCMS.Localization.LocaleRequest.operator ==(FluentCMS.Localization.LocaleRequest? left, FluentCMS.Localization.LocaleRequest? right) -> bool
 static FluentCMS.Media.MediaRef.operator !=(FluentCMS.Media.MediaRef left, FluentCMS.Media.MediaRef right) -> bool
 static FluentCMS.Media.MediaRef.operator ==(FluentCMS.Media.MediaRef left, FluentCMS.Media.MediaRef right) -> bool
 static FluentCMS.Media.MediaRefList.Create(System.ReadOnlySpan<FluentCMS.Media.MediaRef> items) -> FluentCMS.Media.MediaRefList!
@@ -745,6 +789,8 @@ static FluentCMS.Schema.RichText.operator ==(FluentCMS.Schema.RichText? left, Fl
 static FluentCMS.Sites.SiteId.Empty.get -> FluentCMS.Sites.SiteId
 static FluentCMS.Sites.SiteId.operator !=(FluentCMS.Sites.SiteId left, FluentCMS.Sites.SiteId right) -> bool
 static FluentCMS.Sites.SiteId.operator ==(FluentCMS.Sites.SiteId left, FluentCMS.Sites.SiteId right) -> bool
+static FluentCMS.Sites.SiteRequest.operator !=(FluentCMS.Sites.SiteRequest? left, FluentCMS.Sites.SiteRequest? right) -> bool
+static FluentCMS.Sites.SiteRequest.operator ==(FluentCMS.Sites.SiteRequest? left, FluentCMS.Sites.SiteRequest? right) -> bool
 virtual FluentCMS.Content.ContentFilter.EqualityContract.get -> System.Type!
 virtual FluentCMS.Content.ContentFilter.Equals(FluentCMS.Content.ContentFilter? other) -> bool
 virtual FluentCMS.Content.ContentFilter.PrintMembers(System.Text.StringBuilder! builder) -> bool

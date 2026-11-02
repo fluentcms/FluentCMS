@@ -317,6 +317,15 @@ namespace FluentCMS.Data.Sqlite.Migrations
                             Description = "The default role of a registered member.",
                             Name = "Member",
                             PermissionsVersion = 1L
+                        },
+                        new
+                        {
+                            Id = new Guid("00000000-0000-7000-8000-000000000006"),
+                            BuiltIn = true,
+                            Description = "The anonymous visitor. Grants here open public Delivery access.",
+                            Name = "Public",
+                            PermissionsVersion = 1L,
+                            SiteId = new Guid("00000000-0000-7000-8002-000000000001")
                         });
                 });
 
@@ -441,11 +450,121 @@ namespace FluentCMS.Data.Sqlite.Migrations
                         });
                 });
 
+            modelBuilder.Entity("FluentCMS.Core.Storage.Entities.Site", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("DefaultLocale")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("default_locale");
+
+                    b.Property<bool>("IsDefault")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("is_default");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("slug");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Slug")
+                        .IsUnique()
+                        .HasDatabaseName("uq_cms_site_slug");
+
+                    b.ToTable("cms_site", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new Guid("00000000-0000-7000-8002-000000000001"),
+                            CreatedAt = 639291744000000000L,
+                            DefaultLocale = "en",
+                            IsDefault = true,
+                            Name = "Default",
+                            Slug = "default"
+                        });
+                });
+
+            modelBuilder.Entity("FluentCMS.Core.Storage.Entities.SiteLocale", b =>
+                {
+                    b.Property<Guid>("SiteId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("site_id");
+
+                    b.Property<string>("Code")
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("code");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("enabled");
+
+                    b.Property<string>("Fallbacks")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("fallbacks");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("position");
+
+                    b.HasKey("SiteId", "Code");
+
+                    b.ToTable("cms_site_locale", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_cms_site_locale_fallbacks_json", "json_valid(\"fallbacks\")");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            SiteId = new Guid("00000000-0000-7000-8002-000000000001"),
+                            Code = "en",
+                            Enabled = true,
+                            Position = 0
+                        });
+                });
+
+            modelBuilder.Entity("FluentCMS.Core.Storage.Entities.Role", b =>
+                {
+                    b.HasOne("FluentCMS.Core.Storage.Entities.Site", null)
+                        .WithMany()
+                        .HasForeignKey("SiteId")
+                        .OnDelete(DeleteBehavior.Cascade);
+                });
+
             modelBuilder.Entity("FluentCMS.Core.Storage.Entities.RoleGrant", b =>
                 {
                     b.HasOne("FluentCMS.Core.Storage.Entities.Role", null)
                         .WithMany()
                         .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FluentCMS.Core.Storage.Entities.SiteLocale", b =>
+                {
+                    b.HasOne("FluentCMS.Core.Storage.Entities.Site", null)
+                        .WithMany()
+                        .HasForeignKey("SiteId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

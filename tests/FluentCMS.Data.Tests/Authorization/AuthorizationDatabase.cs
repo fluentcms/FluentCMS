@@ -83,6 +83,11 @@ internal sealed class AuthorizationDatabase(Action<FluentCmsBuilder>? configure 
         using var scope = Database.NewScope();
         var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
         var role = new Role { Name = name, SiteId = site };
+        if (site is { } id && !context.Set<Site>().Any(item => item.Id == id))
+        {
+            context.Add(new Site { Id = id, Name = "Site", Slug = id.ToString("N"), DefaultLocale = "en", CreatedAt = DateTimeOffset.UtcNow });
+        }
+
         context.Add(role);
         context.SaveChanges();
 
