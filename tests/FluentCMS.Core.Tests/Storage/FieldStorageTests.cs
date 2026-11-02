@@ -43,7 +43,7 @@ public class FieldStorageTests
         var fields = ArticleFields();
 
         fields.Where(field => field.Localized).Select(field => field.Column).ShouldBe(["title", "slug", "body"]);
-        fields.Where(field => !field.Localized && field.Kind != StorageKind.Reference).Select(field => field.Column)
+        fields.Where(field => !field.Localized && field.Kind != FieldStorageKind.Reference).Select(field => field.Column)
             .ShouldBe(["sections", "seo_meta_title", "seo_meta_description", "category", "published_on", "video_url"]);
     }
 
@@ -52,12 +52,12 @@ public class FieldStorageTests
     {
         var kinds = ArticleFields().ToDictionary(field => field.Column, field => field.Kind);
 
-        kinds["title"].ShouldBe(StorageKind.Column);
-        kinds["body"].ShouldBe(StorageKind.Json);
-        kinds["sections"].ShouldBe(StorageKind.Json);
-        kinds["author"].ShouldBe(StorageKind.Reference);
-        kinds["tags"].ShouldBe(StorageKind.Reference);
-        kinds["hero"].ShouldBe(StorageKind.Reference);
+        kinds["title"].ShouldBe(FieldStorageKind.Column);
+        kinds["body"].ShouldBe(FieldStorageKind.Json);
+        kinds["sections"].ShouldBe(FieldStorageKind.Json);
+        kinds["author"].ShouldBe(FieldStorageKind.Reference);
+        kinds["tags"].ShouldBe(FieldStorageKind.Reference);
+        kinds["hero"].ShouldBe(FieldStorageKind.Reference);
     }
 
     [Fact]
@@ -76,12 +76,21 @@ public class FieldStorageTests
     }
 
     [Fact]
-    public void FieldTypeWithoutAMappingIsAnError()
+    public void MediaFieldIsStoredAsReferences()
     {
         var schema = SampleSchema.NewBuilder().AddCollection("page", type => type.Field("hero", "media", field => field.Multiple())).Build();
-        FieldStorage.Of(schema, schema.FindContentType("page")!).ShouldHaveSingleItem().Kind.ShouldBe(StorageKind.Reference);
 
+        FieldStorage.Of(schema, schema.FindContentType("page")!).ShouldHaveSingleItem().Kind.ShouldBe(FieldStorageKind.Reference);
+    }
+
+    [Fact]
+    public void PluginFieldTypeIsStoredWhereItsStorageKindSays()
+    {
         var custom = new SchemaBuilder(new FieldTypeRegistry([new FreeFormFieldType()])).AddCollection("page", type => type.Field("tint", "freeform")).Build();
-        Should.Throw<InvalidOperationException>(() => FieldStorage.Of(custom, custom.FindContentType("page")!).ToList()).Message.ShouldContain("page.tint");
+
+        var field = FieldStorage.Of(custom, custom.FindContentType("page")!).ShouldHaveSingleItem();
+
+        field.Kind.ShouldBe(FieldStorageKind.Column);
+        field.ClrType.ShouldBe(typeof(string));
     }
 }

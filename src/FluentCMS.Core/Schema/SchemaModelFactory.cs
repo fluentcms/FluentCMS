@@ -6,7 +6,7 @@ namespace FluentCMS.Core.Schema;
 internal static class SchemaModelFactory
 {
     // Expects drafts that passed validation: unique names, relation targets that exist.
-    public static SchemaModel Create(IReadOnlyList<TypeDraft> drafts)
+    public static SchemaModel Create(IReadOnlyList<TypeDraft> drafts, IFieldTypeRegistry fieldTypes)
     {
         var reverseRelations = drafts
             .Where(type => type.IsContentType)
@@ -24,10 +24,10 @@ internal static class SchemaModelFactory
             ClrType = draft.ClrType,
             Fields = draft.Fields.Select(Create).ToList().AsReadOnly(),
             ReverseRelations = (draft.IsContentType ? reverseRelations[draft.Name] : []).OrderBy(relation => relation.Name, StringComparer.Ordinal).ToList().AsReadOnly(),
-        }));
+        }), fieldTypes);
     }
 
-    private static SchemaField Create(FieldDraft draft) => new()
+    public static SchemaField Create(FieldDraft draft) => new()
     {
         Name = draft.Name,
         FieldType = draft.FieldType,

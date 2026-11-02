@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
 using FluentCMS.Core.Schema.FieldTypes;
+using FluentCMS.Core.Storage;
 using FluentCMS.Schema;
 
 namespace FluentCMS.Core.Schema;
@@ -51,6 +52,12 @@ internal sealed class SchemaValidator(IFieldTypeRegistry fieldTypes)
 
         ValidateReverseRelations(unique.Where(type => type.IsContentType), contentTypes);
         ValidateNesting(unique, components, blocks);
+        ValidateTables(unique.Where(type => type.IsContentType));
+
+        foreach (var type in unique.Where(type => type.IsContentType))
+        {
+            ValidateColumns(type, components);
+        }
 
         return [.. _errors];
     }
@@ -366,6 +373,99 @@ internal sealed class SchemaValidator(IFieldTypeRegistry fieldTypes)
                     Report(SchemaErrorCodes.DuplicateReverseRelation, $"reverse relation name '{reverse}' on {relation.Target} is declared by both {declared[(relation.Target, reverse.ToUpperInvariant())]} and {location}");
                 }
             }
+        }
+    }
+
+    // A type's tables must not be a system table, nor the locale table of another type: 'page-i18n' beside a localized 'page'.
+    private void ValidateTables(IEnumerable<TypeDraft> contentTypes)
+    {
+        var types = contentTypes.Where(type => SchemaNaming.IsValidTypeName(type.Name)).ToList();
+        var localeTables = types.Where(type => type.Localized).ToDictionary(type => StorageNames.LocaleTable(type.Name), StringComparer.Ordinal);
+
+        foreach (var type in types)
+        {
+            var table = StorageNames.Table(type.Name);
+            if (StorageNames.SystemTables.Contains(table))
+            {
+                Report(SchemaErrorCodes.ReservedName, $"{Describe(type)} needs table {table}, which a system table already uses");
+            }
+            else if (localeTables.TryGetValue(table, out var owner))
+            {
+                Report(SchemaErrorCodes.ReservedName, $"{Describe(type)} needs table {table}, which is the locale table of {Describe(owner)}");
+            }
+        }
+    }
+
+    // Walks the fields that become columns, single components flattened, as the storage mapping does.
+    private void ValidateColumns(TypeDraft type, Dictionary<string, TypeDraft> components)
+    {
+        Dictionary<(bool Localized, string Column), string> holders = [];
+
+        foreach (var field in DistinctFields(type))
+        {
+            ValidateColumn(type, field, type.Name, "", type.Localized && field.Localizable, holders, components, []);
+        }
+    }
+
+    // A repeated name is reported once, by ValidateType; the repeat would only add a second error about the same column.
+    private static IEnumerable<FieldDraft> DistinctFields(TypeDraft type) =>
+        type.Fields.DistinctBy(field => field.Name, StringComparer.OrdinalIgnoreCase);
+
+    private void ValidateColumn(TypeDraft type, FieldDraft field, string owner, string prefix, bool localized, Dictionary<(bool Localized, string Column), string> holders, Dictionary<string, TypeDraft> components, HashSet<string> path)
+    {
+        var fieldType = fieldTypes.Find(field.FieldType);
+        if (fieldType is null || !SchemaNaming.IsValidFieldName(field.Name))
+        {
+            return;
+        }
+
+        var location = $"{owner}.{field.Name}";
+        var column = prefix + StorageNames.Column(field.Name);
+        var kind = fieldType.StorageKind(SchemaModelFactory.Create(field));
+
+        if (field.FieldType == FieldTypeNames.Component && kind == FieldStorageKind.Column)
+        {
+            if (SettingText(field, FieldSettings.Component) is { } name && components.TryGetValue(name, out var component) && path.Add(name))
+            {
+                foreach (var inner in DistinctFields(component))
+                {
+                    ValidateColumn(type, inner, location, column + "_", localized, holders, components, path);
+                }
+
+                path.Remove(name);
+            }
+
+            return;
+        }
+
+        if (field.Unique && kind != FieldStorageKind.Column)
+        {
+            Report(SchemaErrorCodes.InvalidField, kind == FieldStorageKind.Reference
+                ? $"field {location} is unique, but a {field.FieldType} field has no column to index"
+                : $"field {location} is unique, but a {field.FieldType} field is stored as JSON");
+        }
+
+        if (kind == FieldStorageKind.Reference)
+        {
+            return;
+        }
+
+        var table = localized ? StorageNames.LocaleTable(type.Name) : StorageNames.Table(type.Name);
+        var systemColumns = localized ? StorageNames.LocaleTableColumns : StorageNames.SystemColumns;
+
+        // A top-level field named like a system field was reported already, by name.
+        var reportedByName = prefix.Length == 0 && ContentItem.ReservedFieldNames.Contains(field.Name);
+
+        if (systemColumns.Contains(column))
+        {
+            if (!reportedByName)
+            {
+                Report(SchemaErrorCodes.ReservedName, $"field {location} maps to column {column} of {table}, which is a system column");
+            }
+        }
+        else if (!holders.TryAdd((localized, column), location))
+        {
+            Report(SchemaErrorCodes.DuplicateField, $"fields {holders[(localized, column)]} and {location} both map to column {column} of {table}");
         }
     }
 
