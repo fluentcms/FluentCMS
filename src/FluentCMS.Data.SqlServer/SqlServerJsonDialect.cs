@@ -90,6 +90,15 @@ public sealed class SqlServerJsonDialect : IJsonSqlDialect
             Expression.Equal(Binary(Expression.Property(element, nameof(SqlServerJsonEntry.Value))), value))));
     }
 
+    public Expression ListContains(Expression json, Expression value)
+    {
+        JsonScalar.CheckValue(JsonScalarType.Text, value);
+
+        return Any(Expression.Call(OpenJson, json), element => Expression.AndAlso(
+            Expression.Equal(Expression.Property(element, nameof(SqlServerJsonEntry.Type)), Expression.Constant(JsonString)),
+            Expression.Equal(Binary(Expression.Property(element, nameof(SqlServerJsonEntry.Value))), value)));
+    }
+
     private Expression BlockTypeIs(Expression block, Expression blockType) =>
         ScalarEquals(block, BlockTypeField, JsonScalarType.Text, blockType);
 

@@ -96,6 +96,13 @@ public sealed class PostgreSqlJsonDialect : IJsonSqlDialect
         return Contains(json, Expression.Call(ObjectOfJson, Key(field), Expression.Call(ArrayOfText, value)));
     }
 
+    public Expression ListContains(Expression json, Expression value)
+    {
+        JsonScalar.CheckValue(JsonScalarType.Text, value);
+
+        return Contains(json, Expression.Call(ArrayOfText, value));
+    }
+
     private static MethodCallExpression BlockOfType(Expression blockType) =>
         Expression.Call(ObjectOfText, Key(BlockTypeField), blockType);
 

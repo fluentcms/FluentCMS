@@ -80,6 +80,15 @@ public sealed class SqliteJsonDialect : IJsonSqlDialect
                 Expression.Equal(EntryValue(element), value))));
     }
 
+    public Expression ListContains(Expression json, Expression value)
+    {
+        JsonScalar.CheckValue(JsonScalarType.Text, value);
+
+        return Any<SqliteJsonPathEntry>(Expression.Call(EachAt, json, Expression.Constant("$")), element => Expression.AndAlso(
+            Expression.Equal(Expression.Property(element, nameof(SqliteJsonPathEntry.Type)), Expression.Constant("text")),
+            Expression.Equal(EntryValue(element), value)));
+    }
+
     private BinaryExpression BlockTypeIs(Expression block, Expression blockType) =>
         (BinaryExpression)ScalarEquals(block, BlockTypeField, JsonScalarType.Text, blockType);
 
