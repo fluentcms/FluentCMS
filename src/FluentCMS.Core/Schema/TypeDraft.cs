@@ -12,6 +12,8 @@ internal sealed class TypeDraft(string name, SchemaTypeKind kind, Type? clrType)
 
     public bool Localized { get; set; }
 
+    public ContentScope Scope { get; set; }
+
     public List<FieldDraft> Fields { get; } = [];
 
     public bool IsContentType => Kind is SchemaTypeKind.Collection or SchemaTypeKind.Singleton;

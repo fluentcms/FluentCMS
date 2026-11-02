@@ -287,7 +287,7 @@ Rows 8.3, 8.11, 8.14, 8.16 and every attribute and interface named below.
 
 | Namespace | Holds |
 | --- | --- |
-| `FluentCMS.Schema` | content type and field attributes, `ContentItem` base class, `RichText`, `BlockList`, `Ref<T>`, `RefList<T>`, `IFieldType`, fluent `ISchemaBuilder` |
+| `FluentCMS.Schema` | content type and field attributes, `ContentItem` base class, `RichText`, `BlockList`, `Ref<T>`, `RefList<T>`, `IFieldType`, fluent `ISchemaBuilder`, rich text contracts `IRichTextRenderer`, `IRichTextNodeRenderer`, `IRichTextNodeContext`, `RichTextRenderOptions`, `RichTextFormats` |
 | `FluentCMS.Content` | `IContentService`, `IContentService<T>`, `ContentDocument`, `ContentQuery`, filter AST, `PagedResult<T>`, `OperationContext`, `Origin`, `Principal` |
 | `FluentCMS.Publishing` | `EntryStatus`, `VersionInfo`, `ScheduleRequest`, `IPublishingService` |
 | `FluentCMS.Hooks` | hook interfaces and `HookContext` |
@@ -323,7 +323,7 @@ public sealed class Article : ContentItem
     [RichText, Localizable]
     public RichText Body { get; set; } = RichText.Empty;
 
-    [Relation(Reverse = nameof(Author.Articles))]
+    [Relation(Reverse = "articles")]
     public Ref<Author> Author { get; set; }
 
     [Relation(Ordered = true)]
@@ -369,6 +369,12 @@ public sealed class HeroBlock { [Text] public string Heading { get; set; } = "";
 
 **Blocks.** `[Block("name")]` classes form the union of a `BlockList` field. Blocks may contain components and nested block lists up to depth 3 (decision 20), validated at startup. Every block schema is emitted in OpenAPI as a `oneOf` with a `type` discriminator.
 
+**Rich text editor contract.** A `RichText` value is a ProseMirror JSON document whose node and mark names follow Tiptap, which is what the admin editor emits. Stored node types are `doc`, `paragraph`, `heading` (`level` 1 to 6), `bulletList`, `orderedList` (optional `start`), `listItem`, `blockquote`, `codeBlock` (optional `language`), `horizontalRule`, `hardBreak`, `text`, `media` and `inlineBlock`. Stored mark types are `bold`, `italic`, `underline`, `strike`, `code`, `link` (`href`, optional `title` and `target`) and `entryLink`. Validation reports any other name, including the stock ProseMirror basic schema names `image`, `bullet_list`, `ordered_list`, `code_block`, `hard_break`, `horizontal_rule` and `strong`, with the JSON path; nothing is dropped silently. FluentCMS adds three types to Tiptap:
+
+- `media` node: `mediaId` (GUID), optional `alt` and `title`. It replaces `image`.
+- `inlineBlock` node: `blockType` (the name of a registered block) and `data` (an object), the typed embed rendered by a plugin `IRichTextNodeRenderer`.
+- `entryLink` mark: `entryId` (GUID) and `entryType` (content type name), a link to an entry that is resolved when rendered.
+
 **Validation.** Declarative: `Required`, `Length`, `Range`, `RegularExpression`, `Unique`, enum membership. Custom: `IFieldValidator<TField>` and `IEntryValidator<T>` receive a `ValidationContext` (entry, sibling values, principal, operation, locale). Draft saves skip `Required` and `RequiredWhen`; publish runs everything.
 
 **Conditions.** `VisibleWhen` and `RequiredWhen` reference a static `Condition` expressed with a small fluent API (`Field(...).Equals/In/IsEmpty/And/Or/Not`). Being data rather than arbitrary C#, a condition is serialised into the introspection document so the admin and agents can evaluate it, and the server enforces `RequiredWhen` at publish. Arbitrary C# predicates stay available through `IEntryValidator<T>` for server-only rules.
@@ -379,7 +385,7 @@ public sealed class HeroBlock { [Text] public string Heading { get; set; } = "";
 
 **Introspection.** `GET /api/management/v1/schema` and `GET /api/management/v1/schema/types/{type}` return the model filtered by the caller's permissions (4.17 in the identity category): types, fields, field types, validation, conditions, metadata, relations, block unions, localized flags. The same DTOs feed the MCP schema resources and the CLI's schema diff.
 
-**Snapshot and evolution.** `SchemaModel` serialises to a deterministic JSON snapshot; its SHA-256 is the schema hash. The hash is stored in `cms_schema_history` whenever content migrations are applied, so startup can report drift. Field renames are declared (`[Field(FormerNames = ["subtitle"])]`) so the migration generator emits a rename instead of drop and add.
+**Snapshot and evolution.** `SchemaModel` serialises to a deterministic JSON snapshot; its SHA-256 is the schema hash. The hash is stored in `cms_schema_history` whenever content migrations are applied, so startup can report drift. Field renames are declared (`[FormerNames("subtitle")]`) so the migration generator emits a rename instead of drop and add.
 
 Related decisions: Q2 (schema file for the reference host), Q6b (component storage).
 
@@ -1252,6 +1258,7 @@ CREATE TABLE cms_article (
     state           smallint NOT NULL,           -- 0 draft, 1 published
     category        varchar(64),
     published_on    timestamptz,
+    video_url       varchar(2048),
     sections        jsonb NOT NULL DEFAULT '[]',
     seo_meta_title  varchar(70),
     seo_meta_description varchar(160),
@@ -1268,7 +1275,6 @@ CREATE TABLE cms_article_i18n (
     title           varchar(200) NOT NULL,
     slug            varchar(200) NOT NULL,
     body            jsonb NOT NULL,
-    video_url       varchar(2048),
     UNIQUE (document_id, locale, state)
 );
 CREATE UNIQUE INDEX ux_cms_article_i18n_slug

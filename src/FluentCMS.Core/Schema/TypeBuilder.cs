@@ -10,6 +10,17 @@ internal sealed class TypeBuilder(TypeDraft draft) : ITypeBuilder
         return this;
     }
 
+    public ITypeBuilder Scope(ContentScope scope)
+    {
+        if (scope != ContentScope.Site && !draft.IsContentType)
+        {
+            throw new ArgumentException($"{draft.Kind.ToString().ToLowerInvariant()} '{draft.Name}' cannot have a scope; only collections and singletons do.", nameof(scope));
+        }
+
+        draft.Scope = scope;
+        return this;
+    }
+
     public ITypeBuilder Field(string name, string fieldType, Action<IFieldBuilder>? configure = null)
     {
         ArgumentException.ThrowIfNullOrEmpty(name);
