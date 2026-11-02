@@ -41,7 +41,13 @@ With `MigrateOnStartup` set to `false`, startup changes nothing in the database,
 
 ## Startup validation
 
-Unless schema sync ran, startup compares the content model with the database and stops with `FCMS1301` if a table or column is missing:
+With `MigrateOnStartup` set to `false`, startup first stops with `FCMS1305` if the system or a plugin stream has a pending migration, which is what an upgrade to a new FluentCMS version can bring:
+
+```text
+FCMS1305: stream system has not applied 20270101000000_AddSites; run 'fluentcms migrate'
+```
+
+Unless schema sync ran, startup then compares the content model with the database and stops with `FCMS1301` if a table or column is missing:
 
 ```text
 FCMS1301: table cms_article is missing column subtitle; run 'fluentcms migrations add AddSubtitle'

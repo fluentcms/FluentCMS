@@ -6,4 +6,5 @@ internal static class StorageErrorCodes
     public const string NoDataProvider = "FCMS1302";
     public const string SeveralDataProviders = "FCMS1303";
     public const string InvalidDatabaseSetting = "FCMS1304";
+    public const string PendingStreamMigrations = "FCMS1305";
 }

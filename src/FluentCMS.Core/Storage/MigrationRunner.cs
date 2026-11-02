@@ -54,6 +54,10 @@ public sealed class MigrationRunner(
 
             await ApplyAsync([Content], cancellationToken);
         }
+        else
+        {
+            await ValidateSystemAndPluginStreamsAsync(cancellationToken);
+        }
 
         await ValidateContentSchemaAsync(cancellationToken);
     }
@@ -62,18 +66,8 @@ public sealed class MigrationRunner(
     public Task<IReadOnlyList<StreamMigration>> MigrateAsync(CancellationToken cancellationToken = default) =>
         ApplyAsync([.. SystemAndPlugins, Content], cancellationToken);
 
-    public async Task<IReadOnlyList<StreamMigration>> GetPendingMigrationsAsync(CancellationToken cancellationToken = default)
-    {
-        var pending = new List<StreamMigration>();
-        foreach (var stream in (Stream[])[.. SystemAndPlugins, Content])
-        {
-            await using var scope = scopes.CreateAsyncScope();
-            var context = stream.ResolveContext(scope.ServiceProvider);
-            pending.AddRange((await context.Database.GetPendingMigrationsAsync(cancellationToken)).Select(id => new StreamMigration(stream.Name, id)));
-        }
-
-        return pending;
-    }
+    public Task<IReadOnlyList<StreamMigration>> GetPendingMigrationsAsync(CancellationToken cancellationToken = default) =>
+        GetPendingAsync([.. SystemAndPlugins, Content], cancellationToken);
 
     // Applies the additive changes a schema needs and reports the rest. Startup calls this for the host's schema;
     // passing another applies a changed schema without a restart. Refuses outside Development on SQLite.
@@ -107,6 +101,36 @@ public sealed class MigrationRunner(
     }
 
     private DatabaseOptions ResolveOptions() => DatabaseOptions.Resolve(provider, configuration, environment, logger);
+
+    // An upgrade can bring a system migration with no content change, and the first query would then fail on a raw
+    // missing relation. Content has its own check, which also looks at the database.
+    private async Task ValidateSystemAndPluginStreamsAsync(CancellationToken cancellationToken)
+    {
+        var pending = await GetPendingAsync(SystemAndPlugins, cancellationToken);
+        if (pending.Count == 0)
+        {
+            return;
+        }
+
+        var streams = pending
+            .GroupBy(migration => migration.Stream)
+            .Select(stream => $"stream {stream.Key} has not applied {string.Join(", ", stream.Select(migration => migration.Id))}");
+
+        throw new FluentCmsConfigurationException(StorageErrorCodes.PendingStreamMigrations, $"{string.Join("; ", streams)}; run 'fluentcms migrate'");
+    }
+
+    private async Task<IReadOnlyList<StreamMigration>> GetPendingAsync(IEnumerable<Stream> streams, CancellationToken cancellationToken)
+    {
+        var pending = new List<StreamMigration>();
+        foreach (var stream in streams)
+        {
+            await using var scope = scopes.CreateAsyncScope();
+            var context = stream.ResolveContext(scope.ServiceProvider);
+            pending.AddRange((await context.Database.GetPendingMigrationsAsync(cancellationToken)).Select(id => new StreamMigration(stream.Name, id)));
+        }
+
+        return pending;
+    }
 
     private async Task<IReadOnlyList<StreamMigration>> ApplyAsync(IEnumerable<Stream> streams, CancellationToken cancellationToken)
     {

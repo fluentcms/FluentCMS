@@ -46,6 +46,7 @@ public sealed class SchemaSyncTests : IDisposable
         _database.Tables().ShouldContain("cms_article");
         _database.Tables().ShouldContain("cms__migrations");
         _database.Tables().ShouldNotContain("cms_content__migrations");
+        _database.ReadStrings("select name from cms_role").Count.ShouldBe(5);
     }
 
     [Fact]

@@ -46,6 +46,20 @@ public sealed class ContentMigrationGeneratorTests : IDisposable
     }
 
     [Fact]
+    public void TheContentStreamCarriesNoSystemSeedData()
+    {
+        var first = GeneratedMigrations.Scaffold(ArticleSchemas.Titled, "Initial");
+
+        first.MigrationCode.ShouldNotContain("InsertData");
+        first.MigrationCode.ShouldNotContain("cms_role");
+
+        var second = GeneratedMigrations.Scaffold(ArticleSchemas.WithSubtitle, "AddSubtitle", GeneratedMigrations.CompileFirst(ArticleSchemas.Titled));
+
+        second.MigrationCode.ShouldNotContain("InsertData");
+        second.MigrationCode.ShouldNotContain("cms_role");
+    }
+
+    [Fact]
     public void ASecondGenerationScaffoldsOnlyTheChangeEvenAfterAPendingChangesCheck()
     {
         var migrations = GeneratedMigrations.CompileFirst(ArticleSchemas.Titled);

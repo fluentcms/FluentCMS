@@ -1,5 +1,7 @@
+using FluentCMS.Core.Authorization;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Storage;
+using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Data.Tests.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -32,9 +34,9 @@ public sealed class MigrationRunnerTests : IDisposable
         await host.StartAsync(Token);
 
         _database.Tables().ShouldBe(
-            ["__EFMigrationsLock", "cms__migrations", "cms_article", "cms_content__migrations", "cms_document", "cms_reference", "cms_version"],
+            ["__EFMigrationsLock", "cms__migrations", "cms_article", "cms_content__migrations", "cms_document", "cms_reference", "cms_role", "cms_role_permission", "cms_version"],
             ignoreOrder: true);
-        _database.ReadStrings("select MigrationId from cms__migrations").ShouldHaveSingleItem().ShouldEndWith("_InitialSystem");
+        _database.ReadStrings("select MigrationId from cms__migrations").ShouldContain(id => id.EndsWith("_InitialSystem", StringComparison.Ordinal));
         _database.ReadStrings("select MigrationId from cms_content__migrations").ShouldHaveSingleItem().ShouldEndWith("_Initial");
         (await host.Services.GetRequiredService<MigrationRunner>().GetPendingMigrationsAsync(Token)).ShouldBeEmpty();
     }
@@ -51,7 +53,7 @@ public sealed class MigrationRunnerTests : IDisposable
         var runner = host.Services.GetRequiredService<MigrationRunner>();
 
         var pending = await runner.GetPendingMigrationsAsync(Token);
-        pending.Select(migration => migration.Stream).ShouldBe(["system", DemoPlugin.PluginName, "content"]);
+        pending.Select(migration => migration.Stream).Distinct().ShouldBe(["system", DemoPlugin.PluginName, "content"]);
 
         var applied = await runner.MigrateAsync(Token);
 
@@ -115,13 +117,50 @@ public sealed class MigrationRunnerTests : IDisposable
     }
 
     [Fact]
-    public async Task AMigrationThatIsOnlyPendingAsksToMigrate()
+    public async Task AContentMigrationThatIsOnlyPendingAsksToMigrate()
     {
+        await StartAndStopAsync(_database.CreateHost(ArticleSchemas.NoTypes, Production));
+
         using var host = _database.CreateHost(ArticleSchemas.Titled, Production, GeneratedMigrations.CompileFirst(ArticleSchemas.Titled), NoMigrationOnStartup);
 
         var exception = await Should.ThrowAsync<FluentCmsConfigurationException>(() => host.StartAsync(Token));
 
         exception.Message.ShouldBe("FCMS1301: table cms_article is missing; run 'fluentcms migrate'");
+    }
+
+    [Fact]
+    public async Task APendingSystemMigrationFailsStartupWhenStartupDoesNotMigrate()
+    {
+        using var host = _database.CreateHost(ArticleSchemas.NoTypes, Production, settings: NoMigrationOnStartup);
+        var pending = await host.Services.GetRequiredService<MigrationRunner>().GetPendingMigrationsAsync(Token);
+
+        var exception = await Should.ThrowAsync<FluentCmsConfigurationException>(() => host.StartAsync(Token));
+
+        exception.Code.ShouldBe("FCMS1305");
+        exception.Message.ShouldBe($"FCMS1305: stream system has not applied {string.Join(", ", pending.Select(migration => migration.Id))}; run 'fluentcms migrate'");
+    }
+
+    [Fact]
+    public async Task APendingPluginMigrationFailsStartupWhenStartupDoesNotMigrate()
+    {
+        await StartAndStopAsync(_database.CreateHost(ArticleSchemas.NoTypes, Production));
+
+        using var host = _database.CreateHost(ArticleSchemas.NoTypes, Production, settings: NoMigrationOnStartup, services: AddDemoPlugin);
+
+        var exception = await Should.ThrowAsync<FluentCmsConfigurationException>(() => host.StartAsync(Token));
+
+        exception.Message.ShouldBe($"FCMS1305: stream {DemoPlugin.PluginName} has not applied {DemoPlugin.MigrationId}; run 'fluentcms migrate'");
+    }
+
+    [Fact]
+    public async Task MigrateOnStartupFalseStartsWhenTheDatabaseIsUpToDate()
+    {
+        var migrations = GeneratedMigrations.CompileFirst(ArticleSchemas.Titled);
+        await StartAndStopAsync(_database.CreateHost(ArticleSchemas.Titled, Production, migrations));
+
+        await StartAndStopAsync(_database.CreateHost(ArticleSchemas.Titled, Production, migrations, NoMigrationOnStartup));
+
+        _database.ReadStrings("select MigrationId from cms_content__migrations").ShouldHaveSingleItem();
     }
 
     [Fact]
@@ -135,13 +174,35 @@ public sealed class MigrationRunnerTests : IDisposable
     }
 
     [Fact]
-    public async Task MigrateOnStartupFalseWithNoContentTypesStartsAndCreatesNothing()
+    public async Task SystemThenContentOnAFreshDatabaseLeavesExactlyTheSeededRoles()
     {
-        using var host = _database.CreateHost(ArticleSchemas.NoTypes, Production, settings: NoMigrationOnStartup);
+        using var host = _database.CreateHost(ArticleSchemas.Titled, Production, GeneratedMigrations.CompileFirst(ArticleSchemas.Titled));
 
         await host.StartAsync(Token);
 
-        _database.Tables().ShouldBeEmpty();
+        _database.ReadStrings("select name from cms_role").ShouldBe(["Super Admin", "Editor", "Author", "Public", "Member"], ignoreOrder: true);
+    }
+
+    [Fact]
+    public async Task AHostContextRaisesTheRoleStamp()
+    {
+        using var host = _database.CreateHost(ArticleSchemas.Titled, Production, GeneratedMigrations.CompileFirst(ArticleSchemas.Titled));
+        await host.StartAsync(Token);
+
+        using (var scope = host.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+            var role = context.Set<Role>().Single(role => role.Id == BuiltInRoles.Editor);
+            role.PermissionsVersion.ShouldBe(1);
+
+            role.Description = "Changed";
+            await context.SaveChangesAsync(Token);
+        }
+
+        using (var scope = host.Services.CreateScope())
+        {
+            scope.ServiceProvider.GetRequiredService<CmsDbContext>().Set<Role>().AsNoTracking().Single(role => role.Id == BuiltInRoles.Editor).PermissionsVersion.ShouldBe(2);
+        }
     }
 
     [Fact]
@@ -189,7 +250,7 @@ public sealed class MigrationRunnerTests : IDisposable
 
         var tables = context.GetService<IDesignTimeModel>().Model.GetRelationalModel().Tables;
         tables.Where(table => !table.IsExcludedFromMigrations).Select(table => table.Name).ShouldBe(["cms_article"]);
-        tables.Where(table => table.IsExcludedFromMigrations).Select(table => table.Name).ShouldBe(["cms_document", "cms_reference", "cms_version"], ignoreOrder: true);
+        tables.Where(table => table.IsExcludedFromMigrations).Select(table => table.Name).ShouldBe(["cms_document", "cms_reference", "cms_role", "cms_role_permission", "cms_version"], ignoreOrder: true);
     }
 
     [Fact]
