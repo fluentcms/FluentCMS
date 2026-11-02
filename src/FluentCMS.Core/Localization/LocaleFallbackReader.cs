@@ -12,7 +12,7 @@ namespace FluentCMS.Core.Localization;
 // (#2693) reads in the requested locale and then calls ApplyAsync on the entries; a list filters on the requested
 // locale only (decision 44), so only the fields of the entries it returned can fall back. Every read goes through
 // the engine, so a fallback locale is checked and field-filtered like the requested one.
-internal sealed class LocaleFallbackReader(ContentQueryEngine engine, SchemaModel schema, LocaleRegistry registry)
+internal sealed class LocaleFallbackReader(ContentQueryEngine engine, SchemaModel schema, LocaleRegistry registry, ContentQueryOptions options)
 {
     public const string FallbacksKey = "fallbacks";
 
@@ -105,35 +105,46 @@ internal sealed class LocaleFallbackReader(ContentQueryEngine engine, SchemaMode
         return byEntry;
     }
 
+    // The filter names the ids, and counts against MaxFilterNodes, so a long list is read in batches that stay under it.
     private async Task<IReadOnlyList<ContentDocument>> ReadAsync(string typeName, ContentQuery query, string locale, IReadOnlyList<Guid> ids, List<string> select, CancellationToken cancellationToken)
     {
-        if (ids.Count == 0)
+        var batchSize = Math.Max(1, Math.Min(options.MaxPageSize, options.MaxFilterNodes - 1));
+        List<ContentDocument> found = [];
+        foreach (var batch in ids.Chunk(batchSize))
         {
-            return [];
+            ContentFilter filter = batch.Length == 1
+                ? new FieldFilter("id", FilterOperator.Equal, batch[0])
+                : new FieldFilter("id", FilterOperator.In, batch.ToList());
+
+            var other = query with
+            {
+                Filter = filter,
+                Sort = [],
+                Page = new PageRequest { Size = batch.Length, WithTotal = false },
+                Cursor = null,
+                Select = select,
+                Populate = select.Count == 0 ? query.Populate : [.. query.Populate.Where(path => path == "*" || select.Contains(path.Split('.')[0]))],
+                Locale = locale,
+                Fallback = LocaleFallback.None,
+            };
+
+            try
+            {
+                found.AddRange((await engine.ExecuteAsync(typeName, other, cancellationToken)).Items);
+            }
+            catch (ValidationException exception) when (exception.Errors.All(RefusesTheLocale))
+            {
+                // The query was valid in the requested locale, so the principal may not read this one. Any other
+                // refusal, such as a limit, is the caller's to see.
+                return [];
+            }
         }
 
-        var other = query with
-        {
-            Filter = new FieldFilter("id", FilterOperator.In, ids.ToList()),
-            Sort = [],
-            Page = new PageRequest { Size = ids.Count, WithTotal = false },
-            Cursor = null,
-            Select = select,
-            Populate = select.Count == 0 ? query.Populate : [.. query.Populate.Where(path => path == "*" || select.Contains(path.Split('.')[0]))],
-            Locale = locale,
-            Fallback = LocaleFallback.None,
-        };
-
-        try
-        {
-            return (await engine.ExecuteAsync(typeName, other, cancellationToken)).Items;
-        }
-        catch (ValidationException)
-        {
-            // The query was valid in the requested locale, so this is a locale that the principal may not read.
-            return [];
-        }
+        return found;
     }
+
+    private static bool RefusesTheLocale(ValidationError error) =>
+        (error.Path, error.Code) is ("type", QueryErrorCodes.UnknownField) or ("status", QueryErrorCodes.DraftNotAllowed);
 
     // A draft writes '' and the empty rich text document for what it lacks (spec 4.3), so those count as no value.
     private static bool IsMissing(object? value) => value switch

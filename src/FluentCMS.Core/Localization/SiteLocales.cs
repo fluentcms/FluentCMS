@@ -72,7 +72,7 @@ internal sealed class SiteLocales
 
         try
         {
-            return JsonSerializer.Deserialize<List<string>>(row.Fallbacks);
+            return JsonSerializer.Deserialize<List<string?>>(row.Fallbacks)?.OfType<string>().ToList();
         }
         catch (JsonException)
         {

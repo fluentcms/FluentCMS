@@ -38,6 +38,8 @@ public sealed class LocaleTagTests
     [InlineData("12")]
     [InlineData("en-a-b")]
     [InlineData("en-US; drop table")]
+    [InlineData("en\n")]
+    [InlineData("fr-CA\n")]
     [InlineData("en-Latn-US-variant-too-long-for-the-column")]
     public void MalformedTagsAreRejected(string? tag) => LocaleTag.TryNormalize(tag, out _).ShouldBeFalse();
 

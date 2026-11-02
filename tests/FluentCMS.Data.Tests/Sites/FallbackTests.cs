@@ -39,14 +39,14 @@ public sealed class FallbackTests : IDisposable
 
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
-    private LocaleFallbackReader Reader(IContentQueryAccess? access = null) =>
-        new(_database.Engine(access), QueryDatabase.Schema, new LocaleRegistry(_database.Context));
+    private LocaleFallbackReader Reader(IContentQueryAccess? access = null, ContentQueryOptions? options = null) =>
+        new(_database.Engine(access, options), QueryDatabase.Schema, new LocaleRegistry(_database.Context), options ?? new ContentQueryOptions());
 
-    private async Task<IReadOnlyList<ContentDocument>> ReadAsync(string query, IContentQueryAccess? access = null)
+    private async Task<IReadOnlyList<ContentDocument>> ReadAsync(string query, IContentQueryAccess? access = null, ContentQueryOptions? options = null, LocaleFallbackReader? reader = null)
     {
         var parsed = BracketQueryParser.Parse(query) with { Site = Site };
-        var reader = Reader(access);
-        var result = await _database.Engine(access).ExecuteAsync("article", parsed, Token);
+        reader ??= Reader(access, options);
+        var result = await _database.Engine(access, options).ExecuteAsync("article", parsed, Token);
 
         var chain = await reader.ChainAsync(Site, parsed.Locale!, parsed.Fallback, Token);
         await reader.ApplyAsync("article", parsed, result.Items, chain, Token);
@@ -145,6 +145,48 @@ public sealed class FallbackTests : IDisposable
 
         entry["subtitle"].ShouldBe("Sub en");
         FallbacksOf(entry)["subtitle"].ShouldBe("en");
+    }
+
+    [Fact]
+    public async Task AFullPageOfEntriesAllFallBack()
+    {
+        for (var index = 1; index < 100; index++)
+        {
+            var id = _database.AddArticle($"English {index}", new() { ["subtitle"] = $"Sub {index}" });
+            _database.AddArticle($"Salut {index}", null, locale: "fr-CA", id: id);
+        }
+
+        var page = await ReadAsync("locale=fr-CA&pageSize=100");
+
+        page.Count.ShouldBe(100);
+        page.ShouldAllBe(entry => entry.ContainsKey("fallbacks") && entry["subtitle"] != null);
+    }
+
+    [Fact]
+    public async Task ASmallFilterCapStillReadsEveryEntryOfThePage()
+    {
+        for (var index = 1; index < 12; index++)
+        {
+            var id = _database.AddArticle($"English {index}", new() { ["subtitle"] = $"Sub {index}" });
+            _database.AddArticle($"Salut {index}", null, locale: "fr-CA", id: id);
+        }
+
+        var page = await ReadAsync("locale=fr-CA", options: new ContentQueryOptions { MaxFilterNodes = 4 });
+
+        page.Count.ShouldBe(12);
+        page.ShouldAllBe(entry => entry["subtitle"] != null);
+    }
+
+    [Fact]
+    public async Task ALimitErrorInAFallbackReadReachesTheCaller()
+    {
+        var author = _database.AddAuthor("Ann");
+        _database.Relate("article", _hello, "sponsor", "author", author, locale: "fr");
+        var strict = new ContentQueryOptions { MaxPopulatedEntries = 0 };
+
+        var error = await Should.ThrowAsync<ValidationException>(() => ReadAsync("locale=fr-CA&populate=sponsor", reader: Reader(options: strict)));
+
+        error.Errors.ShouldContain(item => item.Code == "FCMS2207");
     }
 
     [Fact]

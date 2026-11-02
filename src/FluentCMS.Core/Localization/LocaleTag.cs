@@ -23,7 +23,7 @@ internal static partial class LocaleTag
         + $"(?<extensions>(?:-[0-9A-WY-Za-wy-z](?:-{AlphaNum}{{2,8}})+)*)"
         + $"(?<privateuse>-x(?:-{AlphaNum}{{1,8}})+)?"
         + $"|x(?:-{AlphaNum}{{1,8}})+"
-        + ")$";
+        + ")\\z";
 
     [GeneratedRegex(Pattern, RegexOptions.CultureInvariant)]
     private static partial Regex Tag();

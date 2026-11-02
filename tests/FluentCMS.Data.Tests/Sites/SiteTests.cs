@@ -89,6 +89,7 @@ public sealed class SiteTests : IDisposable
     [Theory]
     [InlineData("Docs", "Not A Slug", "en", "slug")]
     [InlineData("Docs", "default", "en", "slug")]
+    [InlineData("Docs", "abc\n", "en", "slug")]
     [InlineData("", "docs", "en", "name")]
     [InlineData("Docs", "docs", "en_US", "defaultLocale")]
     public async Task ASiteWithABadNameSlugOrLocaleIsRejectedAndLeavesNothingBehind(string name, string slug, string locale, string path)

@@ -57,6 +57,25 @@ public sealed class SiteLocalesTests
         Site(Locale("en"), Locale("fr", 1), Locale("fr-CA", 2, "{not json")).Chain("fr-CA").Locales.ShouldBe(["fr-CA", "fr", "en"]);
     }
 
+    [Theory]
+    [InlineData("""["fr", null]""")]
+    [InlineData("""[null, "fr"]""")]
+    public void ANullInTheListIsDroppedAndDoesNotTakeTheChainDown(string fallbacks)
+    {
+        var site = Site(Locale("en"), Locale("fr", 1), Locale("fr-CA", 2, fallbacks));
+
+        site.Chain("fr-CA").Locales.ShouldBe(["fr-CA", "fr"]);
+    }
+
+    [Theory]
+    [InlineData("[1, 2]")]
+    [InlineData("null")]
+    [InlineData("{}")]
+    public void AListOfTheWrongShapeFallsBackToTheImplicitChain(string fallbacks)
+    {
+        Site(Locale("en"), Locale("fr", 1), Locale("fr-CA", 2, fallbacks)).Chain("fr-CA").Locales.ShouldBe(["fr-CA", "fr", "en"]);
+    }
+
     [Fact]
     public void ValidateReturnsTheCodeAsTheSiteListsIt()
     {

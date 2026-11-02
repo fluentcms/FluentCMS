@@ -12,7 +12,7 @@ internal sealed partial class SiteManager(CmsDbContext context, TimeProvider tim
 {
     private const int SlugLength = 64;
 
-    [GeneratedRegex("^[a-z0-9]+(?:-[a-z0-9]+)*$", RegexOptions.CultureInvariant)]
+    [GeneratedRegex("^[a-z0-9]+(?:-[a-z0-9]+)*\\z", RegexOptions.CultureInvariant)]
     private static partial Regex SlugPattern();
 
     // The site, its default locale and its Public role go in one save, so a site never exists without its Public role.
