@@ -504,10 +504,11 @@ internal sealed partial class ContentService
     {
         var isSystem = write.Permissions.IsSystem;
         var snapshot = ParseSnapshot(version);
+        var taken = write.Type.Fields.Where(field => isSystem || !Keeps(write, field, writable, addsLocale: false)).ToList();
         JsonObject fields = [];
-        foreach (var field in write.Type.Fields)
+        foreach (var field in taken)
         {
-            if ((isSystem || !Keeps(write, field, writable, addsLocale: false)) && snapshot[field.Name] is { } value)
+            if (snapshot[field.Name] is { } value)
             {
                 var kept = value.DeepClone();
                 HiddenFields.RemoveWhere(schema, kept, field, inner => !isSystem && (inner.Hidden || inner.ReadOnly));
@@ -517,12 +518,9 @@ internal sealed partial class ContentService
 
         await DropUnreadableTargetsAsync(write, fields, cancellationToken);
         ContentDocument restored = [];
-        foreach (var field in write.Type.Fields)
+        foreach (var field in taken)
         {
-            if (isSystem || !Keeps(write, field, writable, addsLocale: false))
-            {
-                restored[field.Name] = fields[field.Name]?.DeepClone();
-            }
+            restored[field.Name] = fields[field.Name]?.DeepClone();
         }
 
         return restored;
