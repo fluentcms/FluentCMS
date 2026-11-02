@@ -22,15 +22,16 @@ internal static class HiddenFields
         switch (field.FieldType)
         {
             case FieldTypeNames.Blocks when value is JsonArray blocks:
-                foreach (var block in blocks.OfType<JsonObject>())
+                foreach (var block in blocks.OfType<JsonObject>().ToList())
                 {
-                    if (block[Discriminator] is JsonValue name && name.TryGetValue<string>(out var blockName) && schema.FindBlock(blockName) is { } type)
+                    var known = block[Discriminator] is JsonValue name && name.TryGetValue<string>(out var blockName) ? schema.FindBlock(blockName) : null;
+                    if (dropUnknown && (known is null || !SettingValues.List(field, FieldSettings.Blocks).Contains(known.Name)))
                     {
-                        Remove(schema, block, type, dropUnknown, remove);
+                        blocks.Remove(block);
                     }
-                    else if (dropUnknown)
+                    else if (known is not null)
                     {
-                        block.Clear();
+                        Remove(schema, block, known, dropUnknown, remove);
                     }
                 }
 

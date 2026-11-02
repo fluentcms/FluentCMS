@@ -9,14 +9,14 @@ using FluentCMS.Core.Localization;
 using FluentCMS.Core.Schema.FieldTypes;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
+using FluentCMS.Hooks;
 using FluentCMS.Publishing;
 using FluentCMS.Schema;
 
 namespace FluentCMS.Core.Content;
 
-// The transitions of spec 4.5 and the versions behind them. Each is a write like any other: the permission, the entry and
-// its row rule, then in one transaction the field limits, the hooks, validation and the write, and the sink and the
-// response only after the commit. What a version holds is read and restored as this principal may, not as it was saved.
+// The transitions of spec 4.5 and the versions behind them. Each is a write like any other, and what a version holds is
+// read and restored as this principal may today, not as it was saved.
 internal sealed partial class ContentService
 {
     public async Task<PublishResult<ContentDocument>> PublishAsync(string type, Guid id, string? locale = null, int? expectedVersion = null, CancellationToken cancellationToken = default)
@@ -38,13 +38,13 @@ internal sealed partial class ContentService
                 // Publishing moves a shared field for every locale published with it, so those are the ones a grant must cover.
                 var moved = target with { EntryLocales = [.. documents.Where(other => other.PublishedVersion is not null || other.Id == document.Id).Select(other => other.Locale)] };
                 var writable = await evaluator.WritableFieldsAsync(write.Operation, write.Type, ContentOperation.Publish, id, moved, cancellationToken);
-                ThrowIfMovesWhatItMayNotWrite(write, draft, published, writable, ContentOperation.Publish);
+                await ThrowIfBeyondThePublishGrantAsync(write, id, target, draft, published, writable, cancellationToken);
 
                 var original = EntryJson.Fields(write.Type, draft);
                 var working = ContentCopy.Of(draft);
                 await hooks.RunAsync(HookKind.BeforeValidate, write.Type, write.Operation, working, CopyOf(previous), cancellationToken);
                 working = Settle(write, working, original, draft, writable);
-                await ValidateForPublishAsync(write, working, document, warnings, cancellationToken);
+                await ValidateForPublishAsync(write, working, document, target, warnings, cancellationToken);
 
                 var validated = EntryJson.Fields(write.Type, working);
                 await hooks.RunAsync(HookKind.BeforePublish, write.Type, write.Operation, working, CopyOf(previous), cancellationToken);
@@ -52,10 +52,15 @@ internal sealed partial class ContentService
                 var settled = EntryJson.Fields(write.Type, working);
                 if (!JsonNode.DeepEquals(validated, settled))
                 {
-                    await ValidateForPublishAsync(write, working, document, warnings, cancellationToken);
+                    await ValidateForPublishAsync(write, working, document, target, warnings, cancellationToken);
                 }
 
-                // What a hook changed is a new draft version, so that the published state is a version like any other.
+                // A hook can call the service. What it saved, in another locale too, would go out with the shared row unvalidated.
+                if (!SameFields(write.Type, draft, await store.ReadAsync(write.Type, document, ContentState.Draft, cancellationToken)))
+                {
+                    throw new HookRejectedException(ContentErrorCodes.DraftMovedByHook, "A hook changed the draft being published.");
+                }
+
                 if (!JsonNode.DeepEquals(original, settled))
                 {
                     var status = document.Status == EntryStatus.Published ? EntryStatus.Modified : document.Status;
@@ -104,8 +109,12 @@ internal sealed partial class ContentService
                 await hooks.RunAsync(HookKind.BeforeUnpublish, write.Type, write.Operation, working, ContentCopy.Of(published), cancellationToken);
 
                 var isLast = !documents.Any(other => other.Id != document.Id && other.PublishedVersion is not null);
+                if (!await store.MarkUnpublishedAsync(document, write.Operation.Timestamp, write.Operation.AuditPrincipal.Id, cancellationToken))
+                {
+                    throw await ConflictAsync(write, id, document.DraftVersion, await store.DraftVersionAsync(id, document.Locale, cancellationToken), cancellationToken);
+                }
+
                 await store.DeletePublishedAsync(write.Type, document, isLast, cancellationToken);
-                await store.MarkUnpublishedAsync(document, write.Operation.Timestamp, write.Operation.AuditPrincipal.Id, cancellationToken);
 
                 await hooks.RunAsync(HookKind.AfterUnpublish, write.Type, write.Operation, working, ContentCopy.Of(published), cancellationToken);
                 _pending.Add(new EntryChange(EntryChangeKind.Unpublished, write.Type.Name, id, document.Locale, document.DraftVersion, write.Operation));
@@ -132,19 +141,21 @@ internal sealed partial class ContentService
                 var published = await store.ReadAsync(write.Type, document, ContentState.Published, cancellationToken);
                 if (SameFields(write.Type, stored, published))
                 {
+                    if (document.Status != EntryStatus.Published)
+                    {
+                        await store.SetStatusAsync(id, document.Locale, EntryStatus.Published, cancellationToken);
+                    }
+
                     return document;
                 }
 
-                // The published values go back whole for a principal that may write all of them. For one that may not, it is
-                // as an update: only what it may write changes, and the hidden and read-only values stay with what it left.
                 var writable = await evaluator.WritableFieldsAsync(write.Operation, write.Type, ContentOperation.Update, id, target, cancellationToken);
-                ContentDocument incoming = [];
-                foreach (var field in write.Type.Fields.Where(field => writable.Allowed && (writable.Fields is null || (!field.Hidden && !field.ReadOnly && writable.Includes(field.Name)))))
+                var working = Prepare(write, EntryComposer.Replace(write.Type, stored, DiscardedValues(write, published, writable), static _ => true), document, stored);
+                if (writable.Fields is not null)
                 {
-                    incoming[field.Name] = published.GetValueOrDefault(field.Name);
+                    composer.CarryProtected(write.Type, stored, working, includingGroups: true);
                 }
 
-                var working = Prepare(write, EntryComposer.Replace(write.Type, stored, incoming, static _ => true), document, stored);
                 working = await RunBeforeHooksAsync(write, HookKind.BeforeUpdate, working, new SaveContext(stored, [], writable, document), cancellationToken);
 
                 await WriteOverDraftAsync(write, id, document, working, SameFields(write.Type, working, published) ? EntryStatus.Published : EntryStatus.Modified, "Discarded the draft.", cancellationToken);
@@ -159,6 +170,28 @@ internal sealed partial class ContentService
             cancellationToken);
 
         return await RespondAsync(write, row);
+    }
+
+    // Whole for a principal that may write every field. Otherwise as an update: only what it may write, without the hidden
+    // and read-only values inside, which stay as the draft holds them.
+    private ContentDocument DiscardedValues(WriteScope write, ContentDocument published, WritableFields writable)
+    {
+        ContentDocument values = [];
+        foreach (var field in write.Type.Fields)
+        {
+            if (writable.Allowed && writable.Fields is null)
+            {
+                values[field.Name] = published.GetValueOrDefault(field.Name);
+            }
+            else if (!field.Hidden && !field.ReadOnly && writable.Includes(field.Name))
+            {
+                var value = EntryJson.ToNode(published.GetValueOrDefault(field.Name));
+                HiddenFields.RemoveWhere(schema, value, field, static inner => inner.Hidden || inner.ReadOnly);
+                values[field.Name] = value;
+            }
+        }
+
+        return values;
     }
 
     public async Task<IReadOnlyList<VersionInfo>> GetVersionsAsync(string type, Guid id, string? locale = null, CancellationToken cancellationToken = default)
@@ -224,8 +257,8 @@ internal sealed partial class ContentService
                 var working = Prepare(write, composed, document, stored);
                 if (!isSystem)
                 {
-                    composer.CarryProtected(write.Type, stored, working, includingGroups: true);
                     var shown = await ReadShownAsync(write, id, documents, addsLocale: false, cancellationToken);
+                    composer.CarryProtected(write.Type, stored, working, includingGroups: true, await UnseenNestedTargetsAsync(write, stored, shown, cancellationToken));
                     await KeepUnreadableTargetsAsync(write, stored, shown, working, isPatch: false, cancellationToken);
                 }
 
@@ -268,10 +301,18 @@ internal sealed partial class ContentService
         return VersionDiff.Between(await ReadableFieldsOfAsync(write, before, cancellationToken), await ReadableFieldsOfAsync(write, after, cancellationToken));
     }
 
-    // Versions are a draft's history, so they need what a draft read needs, and they are for those who manage content: a
-    // preview key shows the draft as it is, not everything it has been.
+    // A preview key shows the draft as it is, not everything it has been, so versions also need the Management scope. An
+    // unknown type and an unreadable one give the engine's one error, so that type names cannot be tried. Access goes by the
+    // current row (spec 4.5): history is part of the entry.
     private async Task<(WriteScope Write, Document Document)> BeginVersionReadAsync(string type, Guid id, string? locale, CancellationToken cancellationToken)
     {
+        var operation = Current();
+        var resolved = await ResolveLocaleAsync(operation.Site, locale ?? operation.Locale, cancellationToken);
+        if (schema.FindContentType(type) is not { } known || !(await evaluator.ResolveAsync(operation, cancellationToken)).Allows(known, ContentOperation.Read, new AccessTarget(operation.Site, resolved)))
+        {
+            throw new ValidationException([new ValidationError("type", QueryErrorCodes.UnknownField, $"'{type}' is not a content type that can be read.")]);
+        }
+
         var write = await BeginAsync(type, ContentOperation.Read, cancellationToken, locale);
         if (!write.Permissions.CanManage)
         {
@@ -282,7 +323,6 @@ internal sealed partial class ContentService
         return (write, document);
     }
 
-    // No row in the locale, in another site or of another type, or refused by the row rule all read as no entry.
     private async Task<(List<Document> Documents, Document Document, AccessTarget Target)> ReachLocaleAsync(WriteScope write, ContentOperation operation, Guid id, CancellationToken cancellationToken)
     {
         var documents = await store.DocumentsAsync(write.Type, id, write.Site, trashed: false, cancellationToken);
@@ -314,22 +354,29 @@ internal sealed partial class ContentService
         }
     }
 
-    // A grant limited to some fields publishes only what stays within them, and it does not say which it was not, since it
-    // may not be able to read that field. A hidden or read-only field has no grant to ask; a hook is what fills it.
-    private static void ThrowIfMovesWhatItMayNotWrite(WriteScope write, ContentDocument draft, ContentDocument published, WritableFields writable, ContentOperation operation)
+    // A grant limited to some fields publishes only what stays within them. A field it can write but not read is refused
+    // whatever it holds: otherwise it could save a guess and let this answer say whether it equals the published value.
+    private async Task ThrowIfBeyondThePublishGrantAsync(WriteScope write, Guid id, AccessTarget target, ContentDocument draft, ContentDocument published, WritableFields writable, CancellationToken cancellationToken)
     {
+        if (writable.Allowed && writable.Fields is null)
+        {
+            return;
+        }
+
+        var updatable = await evaluator.WritableFieldsAsync(write.Operation, write.Type, ContentOperation.Update, id, target, cancellationToken);
         foreach (var field in write.Type.Fields.Where(field => !field.Hidden && !field.ReadOnly && !writable.Includes(field.Name)))
         {
             var from = published.GetValueOrDefault(field.Name);
             var to = draft.GetValueOrDefault(field.Name);
-            if (!(EntryJson.Same(from, to) || (LocaleFallbackReader.IsMissing(from) && LocaleFallbackReader.IsMissing(to))))
+            var isSame = EntryJson.Same(from, to) || (LocaleFallbackReader.IsMissing(from) && LocaleFallbackReader.IsMissing(to));
+            if (!isSame || (updatable.Includes(field.Name) && !write.Permissions.CanReadField(write.Type, field.Name, write.Target)))
             {
-                throw new ContentAccessDeniedException(write.Type.Name, CorePermissions.OperationName(operation));
+                throw new ContentAccessDeniedException(write.Type.Name, CorePermissions.OperationName(ContentOperation.Publish));
             }
         }
     }
 
-    // A publish makes no slug: the draft's values are what was reviewed. A hook may set one, and answers to the same limits as on a save.
+    // A publish makes no slug: the draft's values are what was reviewed.
     private ContentDocument Settle(WriteScope write, ContentDocument working, JsonObject baseline, ContentDocument stored, WritableFields writable)
     {
         var canonical = canonicalizer.Canonicalize(write.Type, working, static (_, _) => false, stored);
@@ -338,7 +385,7 @@ internal sealed partial class ContentService
         return canonical;
     }
 
-    private async Task ValidateForPublishAsync(WriteScope write, ContentDocument working, Document document, List<PublishWarning> warnings, CancellationToken cancellationToken)
+    private async Task ValidateForPublishAsync(WriteScope write, ContentDocument working, Document document, AccessTarget target, List<PublishWarning> warnings, CancellationToken cancellationToken)
     {
         warnings.Clear();
         var entry = write.Type.ClrType is { } clrType ? mapper.ToEntry(clrType, working) : null;
@@ -352,7 +399,7 @@ internal sealed partial class ContentService
             async (context, token) =>
             {
                 await store.CheckUniqueAsync(write.Type, working, document.DocumentId, write.Site, write.Locale, context, token, publishing: true);
-                await CheckReferencesAsync(write, working, context, warnings, token);
+                await CheckReferencesAsync(write, working, document.DocumentId, target, context, warnings, token);
             });
 
         var errors = new EntryErrors(schema, write.Type, write.Permissions, write.Target).ForPublish(result.Errors, EntryJson.Fields(write.Type, working));
@@ -362,54 +409,57 @@ internal sealed partial class ContentService
         }
     }
 
-    // Reference integrity, on what is about to be published. The answer must not be how a principal learns of what it may
-    // not read: a write takes any id without looking, so a warning or a refusal that told a missing target from a published
-    // one would be a way to ask about any entry. So a target of a type it may not read is never confirmed, and is no warning
-    // and, where the type blocks, always a refusal; and one its row rule refuses reads the same as one that is not there.
-    // A reference in a field it may not read is decided on what is true, and says nothing of where.
-    private async Task CheckReferencesAsync(WriteScope write, ContentDocument working, ValidationContext context, List<PublishWarning> warnings, CancellationToken cancellationToken)
+    // A write takes any id without looking, so a warning or a refusal that told a missing target from a published one would
+    // be a way to ask about any entry. What a principal could have chosen is therefore never confirmed to it (spec 4.5).
+    // A self-reference is exempt: it is what is being published.
+    private async Task CheckReferencesAsync(WriteScope write, ContentDocument working, Guid id, AccessTarget entryTarget, ValidationContext context, List<PublishWarning> warnings, CancellationToken cancellationToken)
     {
         var blocks = write.Type.UnpublishedReferences == UnpublishedReferencePolicy.Block;
         var locales = (await fallback.ChainAsync(write.Site, write.Locale, LocaleFallback.Chain, cancellationToken)).Locales;
         var isSystem = write.Permissions.IsSystem;
         HashSet<(string Path, string Code, Guid? Id)> told = [];
+        WritableFields? updatable = null;
+        WritableFields? creatable = null;
+
+        void Refuse() => context.AddError("", PublishWarningCodes.UnavailableReference, "The entry refers to an entry the principal cannot confirm.");
 
         foreach (var reference in store.TargetsOf(write.Type, working))
         {
-            var visible = isSystem || (reference.IsShown && write.Permissions.CanReadField(write.Type, reference.Field, write.Target));
+            if (reference.Id == id && reference.TargetType == write.Type.Name)
+            {
+                continue;
+            }
+
             var target = schema.FindContentType(reference.TargetType);
-            if (target is not null && !write.Permissions.Allows(target, ContentOperation.Read, write.Target))
+            if (!isSystem && !(reference.IsShown && write.Permissions.CanReadField(write.Type, reference.Field, write.Target)))
             {
                 if (blocks)
                 {
-                    context.AddError("", PublishWarningCodes.UnavailableReference, "The entry refers to an entry the principal cannot confirm.");
+                    updatable ??= await evaluator.WritableFieldsAsync(write.Operation, write.Type, ContentOperation.Update, id, entryTarget, cancellationToken);
+                    creatable ??= await evaluator.WritableFieldsAsync(write.Operation, write.Type, ContentOperation.Create, id, entryTarget, cancellationToken);
+                    var chose = reference.IsShown && (updatable.Includes(reference.Field) || creatable.Includes(reference.Field));
+                    if (chose || !await IsPublishedTargetAsync(write, target, reference.Id, locales, cancellationToken))
+                    {
+                        Refuse();
+                    }
                 }
 
                 continue;
             }
 
-            var state = target is null
-                ? ReferenceTargetState.Unavailable
-                : await store.TargetStateAsync(target, reference.Id, write.Site, locales, cancellationToken);
-
-            if (visible && state != ReferenceTargetState.Unavailable
-                && !await evaluator.CanAccessEntryAsync(write.Operation, target!, ContentOperation.Read, reference.Id, write.Target, QueryStatus.Draft, cancellationToken))
+            if (!isSystem && (target is null || !write.Permissions.Allows(target, ContentOperation.Read, write.Target)))
             {
-                state = ReferenceTargetState.Unavailable;
+                if (blocks)
+                {
+                    Refuse();
+                }
+
+                continue;
             }
 
+            var state = await TargetStateAsync(write, target, reference.Id, locales, cancellationToken);
             if (state == ReferenceTargetState.Published)
             {
-                continue;
-            }
-
-            if (!visible)
-            {
-                if (blocks)
-                {
-                    context.AddError("", PublishWarningCodes.UnavailableReference, "The entry refers to an entry the principal cannot confirm.");
-                }
-
                 continue;
             }
 
@@ -431,7 +481,47 @@ internal sealed partial class ContentService
         }
     }
 
-    // The save at the end of a transition: the version moves as on any save, under the same swap.
+    private async Task<bool> IsPublishedTargetAsync(WriteScope write, SchemaType? target, Guid id, IReadOnlyList<string> locales, CancellationToken cancellationToken) =>
+        target is not null && IsPublishedIn(target, await store.TargetRowsAsync(target, id, write.Site, cancellationToken), locales);
+
+    private static bool IsPublishedIn(SchemaType target, List<ReferenceTargetRow> rows, IReadOnlyList<string> locales) =>
+        rows.Any(row => row.IsPublished && (!target.Localized || locales.Contains(row.Locale, StringComparer.OrdinalIgnoreCase)));
+
+    // What a principal that may read the type may know of a target. A row only in locales its grant does not cover, and a
+    // row its rule refuses, read the same as no row. The rule is asked of the locale that serves the target, not the entry's.
+    private async Task<ReferenceTargetState> TargetStateAsync(WriteScope write, SchemaType? target, Guid id, IReadOnlyList<string> locales, CancellationToken cancellationToken)
+    {
+        if (target is null)
+        {
+            return ReferenceTargetState.Unavailable;
+        }
+
+        var rows = await store.TargetRowsAsync(target, id, write.Site, cancellationToken);
+        if (!write.Permissions.IsSystem)
+        {
+            rows = [.. rows.Where(row => !target.Localized || write.Permissions.Allows(target, ContentOperation.Read, write.Target with { Locale = row.Locale }))];
+        }
+
+        if (rows.Count == 0)
+        {
+            return ReferenceTargetState.Unavailable;
+        }
+
+        if (!write.Permissions.IsSystem)
+        {
+            var serving = locales.Select(locale => rows.Find(row => row.IsPublished && string.Equals(row.Locale, locale, StringComparison.OrdinalIgnoreCase))).FirstOrDefault(row => row is not null)
+                ?? locales.Select(locale => rows.Find(row => string.Equals(row.Locale, locale, StringComparison.OrdinalIgnoreCase))).FirstOrDefault(row => row is not null)
+                ?? rows[0];
+            var asked = target.Localized ? write.Target with { Locale = serving.Locale } : write.Target;
+            if (!await evaluator.CanAccessEntryAsync(write.Operation, target, ContentOperation.Read, id, asked, QueryStatus.Draft, cancellationToken))
+            {
+                return ReferenceTargetState.Unavailable;
+            }
+        }
+
+        return IsPublishedIn(target, rows, locales) ? ReferenceTargetState.Published : ReferenceTargetState.Unpublished;
+    }
+
     private async Task WriteOverDraftAsync(WriteScope write, Guid id, Document document, ContentDocument working, EntryStatus status, string? message, CancellationToken cancellationToken)
     {
         var expected = document.DraftVersion;
@@ -478,8 +568,7 @@ internal sealed partial class ContentService
     private static bool SameFields(SchemaType type, ContentDocument left, ContentDocument right) =>
         JsonNode.DeepEquals(EntryJson.Fields(type, left), EntryJson.Fields(type, right));
 
-    // A version as this principal may read it today: no hidden value at any depth, no field its grants leave out, no key
-    // the schema has since lost, and no relation target it may not read. Hidden fields show to no one, the system principal included.
+    // Hidden fields show to no one, the system principal included.
     private async Task<JsonObject> ReadableFieldsOfAsync(WriteScope write, ContentVersion version, CancellationToken cancellationToken)
     {
         var snapshot = ParseSnapshot(version);
@@ -498,8 +587,7 @@ internal sealed partial class ContentService
         return fields;
     }
 
-    // What a restore may take from a version. The system principal takes all of it; anyone else only what it could send
-    // itself, so that an old version is no way past the limits of a write.
+    // Anyone but the system principal takes only what it could send itself, so that an old version is no way past the limits of a write.
     private async Task<ContentDocument> RestorableFieldsAsync(WriteScope write, ContentVersion version, WritableFields writable, CancellationToken cancellationToken)
     {
         var isSystem = write.Permissions.IsSystem;
@@ -529,8 +617,7 @@ internal sealed partial class ContentService
     private static JsonObject ParseSnapshot(ContentVersion version) =>
         JsonNode.Parse(version.Snapshot) as JsonObject ?? [];
 
-    // A read does not name these targets, and a version does not either. Fails closed on one since trashed, which only a
-    // draft read of the entry itself would show. References inside blocks and rich text stay as a draft read shows them.
+    // Fails closed on a target since trashed, which only a draft read of the entry itself would show.
     private async Task DropUnreadableTargetsAsync(WriteScope write, JsonObject fields, CancellationToken cancellationToken)
     {
         if (write.Permissions.IsSystem)
@@ -538,51 +625,27 @@ internal sealed partial class ContentService
             return;
         }
 
-        foreach (var item in FieldStorage.Of(schema, write.Type).Where(item => item.Kind == FieldStorageKind.Reference))
+        var nested = new NestedTargets(schema);
+        HashSet<(string Type, Guid Id)> readable = [];
+        foreach (var (name, ids) in nested.Collect(write.Type, fields))
         {
-            if (schema.FindContentType(EntryPaths.ReferenceTarget(item.Field)) is not { } target)
+            if (schema.FindContentType(name) is not { } target || !write.Permissions.Allows(target, ContentOperation.Read, write.Target))
             {
                 continue;
             }
 
-            var names = QueryPaths.ApiPath(write.Type, item).Split('.');
-            var holder = fields;
-            foreach (var name in names[..^1])
+            foreach (var id in ids)
             {
-                holder = holder?[name] as JsonObject;
-            }
-
-            if (holder is null)
-            {
-                continue;
-            }
-
-            switch (holder[names[^1]])
-            {
-                case JsonArray ids:
-                    JsonArray kept = [];
-                    foreach (var value in ids)
-                    {
-                        if (await CanReadTargetAsync(write, target, value, cancellationToken))
-                        {
-                            kept.Add(value?.DeepClone());
-                        }
-                    }
-
-                    holder[names[^1]] = kept;
-                    break;
-                case { } single when !await CanReadTargetAsync(write, target, single, cancellationToken):
-                    holder[names[^1]] = null;
-                    break;
+                if (await evaluator.CanAccessEntryAsync(write.Operation, target, ContentOperation.Read, id, write.Target, QueryStatus.Draft, cancellationToken))
+                {
+                    readable.Add((name, id));
+                }
             }
         }
+
+        nested.Filter(write.Type, fields, (name, id) => readable.Contains((name, id)));
     }
 
-    private async Task<bool> CanReadTargetAsync(WriteScope write, SchemaType target, JsonNode? value, CancellationToken cancellationToken) =>
-        EntryCanonicalizer.TryReadId(RawValue.Unwrap(value), out var id)
-            && await evaluator.CanAccessEntryAsync(write.Operation, target, ContentOperation.Read, id, write.Target, QueryStatus.Draft, cancellationToken);
-
-    // A relation in the shape a read gives it, so that a version reads like the entry it was.
     private object? AsRead(SchemaField field, object? value)
     {
         var name = EntryPaths.ReferenceTarget(field);

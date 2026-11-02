@@ -108,6 +108,7 @@ public interface IContentService
     /// <returns>The entry with its system fields, without what the principal may not read.</returns>
     /// <exception cref="ContentAccessDeniedException">The principal may not unpublish the whole entry in the locale.</exception>
     /// <exception cref="EntryNotFoundException">The entry has no row in the locale, is in the trash, or the principal may not reach it.</exception>
+    /// <exception cref="VersionConflictException">Another write published or withdrew this locale first.</exception>
     /// <exception cref="ValidationException">The entry is not published in the locale.</exception>
     Task<ContentDocument> UnpublishAsync(string type, Guid id, string? locale = null, CancellationToken cancellationToken = default);
 
@@ -130,7 +131,8 @@ public interface IContentService
     /// <param name="locale">The locale, or <see langword="null"/> for that of the operation.</param>
     /// <param name="cancellationToken">A token to cancel the work.</param>
     /// <returns>The versions, without their values.</returns>
-    /// <exception cref="ContentAccessDeniedException">The principal may not read versions of the type in the locale.</exception>
+    /// <exception cref="ValidationException">The type does not exist or the principal may not read it in the locale; the two read the same.</exception>
+    /// <exception cref="ContentAccessDeniedException">The principal may read the type but does not manage content.</exception>
     /// <exception cref="EntryNotFoundException">The entry has no row in the locale, is in the trash, or the principal may not reach it.</exception>
     Task<IReadOnlyList<VersionInfo>> GetVersionsAsync(string type, Guid id, string? locale = null, CancellationToken cancellationToken = default);
 
@@ -141,7 +143,8 @@ public interface IContentService
     /// <param name="locale">The locale, or <see langword="null"/> for that of the operation.</param>
     /// <param name="cancellationToken">A token to cancel the work.</param>
     /// <returns>The version, or <see langword="null"/> when there is no such version.</returns>
-    /// <exception cref="ContentAccessDeniedException">The principal may not read versions of the type in the locale.</exception>
+    /// <exception cref="ValidationException">The type does not exist or the principal may not read it in the locale; the two read the same.</exception>
+    /// <exception cref="ContentAccessDeniedException">The principal may read the type but does not manage content.</exception>
     /// <exception cref="EntryNotFoundException">The entry has no row in the locale, is in the trash, or the principal may not reach it.</exception>
     Task<ContentDocument?> GetVersionAsync(string type, Guid id, int number, string? locale = null, CancellationToken cancellationToken = default);
 
@@ -170,7 +173,8 @@ public interface IContentService
     /// <param name="locale">The locale, or <see langword="null"/> for that of the operation.</param>
     /// <param name="cancellationToken">A token to cancel the work.</param>
     /// <returns>The differences.</returns>
-    /// <exception cref="ContentAccessDeniedException">The principal may not read versions of the type in the locale.</exception>
+    /// <exception cref="ValidationException">The type does not exist or the principal may not read it in the locale; the two read the same.</exception>
+    /// <exception cref="ContentAccessDeniedException">The principal may read the type but does not manage content.</exception>
     /// <exception cref="EntryNotFoundException">The entry or a version does not exist in the locale, or the principal may not reach it.</exception>
     Task<IReadOnlyList<VersionChange>> DiffAsync(string type, Guid id, int fromVersion, int toVersion, string? locale = null, CancellationToken cancellationToken = default);
 

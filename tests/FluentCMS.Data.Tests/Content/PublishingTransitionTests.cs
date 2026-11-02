@@ -193,6 +193,45 @@ public sealed class PublishingTransitionTests : IDisposable
     }
 
     [Fact]
+    public async Task DiscardingADraftThatWasEditedBackPutsTheStatusRightAndWritesNoVersion()
+    {
+        var id = await PublishedAsync("One");
+        await _database.PatchAsync(Editor, id, Titled("Two"), 1);
+        await _database.PatchAsync(Editor, id, Titled("One"), 2);
+        _database.Document(id).Status.ShouldBe(EntryStatus.Modified);
+
+        var entry = await _database.DiscardAsync(Editor, id);
+
+        entry["status"].ShouldBe(EntryStatus.Published);
+        entry["version"].ShouldBe(3);
+        _database.Document(id).Status.ShouldBe(EntryStatus.Published);
+        _database.Versions(id).Count.ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task OnlyPublishingMarksAVersionPublishedSoDiscardsCannotPassTheCap()
+    {
+        var schema = SampleSchema.NewBuilder().AddCollection("note", type => type.PublishPolicy(maxVersions: 2).Field("title", "text")).Build();
+        using var database = new ServiceDatabase(schema: schema);
+        var id = IdOf(await database.CreateAsync(Editor, Titled("published"), "note"));
+        await database.PublishAsync(Editor, id, type: "note");
+
+        var version = 1;
+        for (var round = 0; round < 10; round++)
+        {
+            version = VersionOf(await database.PatchAsync(Editor, id, Titled($"edit {round}"), version, "note"));
+            var discarded = await database.DiscardAsync(Editor, id, type: "note");
+            discarded["status"].ShouldBe(EntryStatus.Published);
+            version = VersionOf(discarded);
+        }
+
+        var versions = await database.VersionsAsync(Editor, id, type: "note");
+        versions.Count.ShouldBe(2);
+        versions.Count(item => item.Status == EntryStatus.Published).ShouldBe(1);
+        versions.Single(item => item.Status == EntryStatus.Published).Number.ShouldBe(1);
+    }
+
+    [Fact]
     public async Task RestoringAVersionMakesANewDraftAndLeavesThePublishedRows()
     {
         var id = await PublishedAsync("One");

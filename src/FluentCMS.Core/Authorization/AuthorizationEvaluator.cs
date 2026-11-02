@@ -137,7 +137,8 @@ internal sealed class AuthorizationEvaluator(
         }
 
         IQueryable<Document> documents = ReachesTrash(operation) ? database.Documents.IgnoreQueryFilters() : database.Documents;
-        return await documents.AsNoTracking().AnyAsync(document => document.DocumentId == entry && document.SiteId == site.Value, cancellationToken);
+        var typeName = type.Name;
+        return await documents.AsNoTracking().AnyAsync(document => document.DocumentId == entry && document.Type == typeName && document.SiteId == site.Value, cancellationToken);
     }
 
     private async Task<bool> MatchesAsync(SchemaType type, ContentOperation operation, Guid entry, AccessTarget target, QueryStatus status, ContentFilter rule, CancellationToken cancellationToken)

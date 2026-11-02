@@ -6,6 +6,7 @@ using FluentCMS.Core.Content.Hooks;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.Content.Validation;
 using FluentCMS.Core.Localization;
+using FluentCMS.Core.Schema.FieldTypes;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Localization;
@@ -554,7 +555,8 @@ internal sealed partial class ContentService(
                 }
 
                 // A write answers what a read showed, so what that read left out is not the client's to change.
-                var shown = NeedsWhatARead(write, sent, isPatch) ? await ReadShownAsync(write, id, documents, addsLocale, cancellationToken) : null;
+                var needsRead = NeedsWhatARead(write, sent, isPatch);
+                var shown = needsRead ? await ReadShownAsync(write, id, documents, addsLocale, cancellationToken) : null;
                 var refused = isPatch ? sent : WithoutUnchanged(write, sent, shown, writable, addsLocale);
                 Reject(write, refused, writable);
 
@@ -562,7 +564,7 @@ internal sealed partial class ContentService(
                     ? composer.Patch(type, stored, sent)
                     : EntryComposer.Replace(type, stored, refused, field => Keeps(write, field, writable, addsLocale));
                 var working = Prepare(write, composed, document, stored);
-                composer.CarryProtected(type, stored, working, includingGroups: !isPatch || !write.Permissions.IsSystem);
+                composer.CarryProtected(type, stored, working, includingGroups: !isPatch || !write.Permissions.IsSystem, needsRead ? await UnseenNestedTargetsAsync(write, stored, shown, cancellationToken) : null);
                 await KeepUnreadableTargetsAsync(write, stored, shown, working, isPatch, cancellationToken);
 
                 working = await RunBeforeHooksAsync(write, HookKind.BeforeUpdate, working, new SaveContext(stored, Client(refused), writable, document), cancellationToken);
@@ -637,7 +639,27 @@ internal sealed partial class ContentService(
 
     private bool NeedsWhatARead(WriteScope write, ContentDocument sent, bool isPatch) =>
         !write.Permissions.IsSystem
-        && (!isPatch || FieldStorage.Of(schema, write.Type).Any(item => item.Kind == FieldStorageKind.Reference && item.Field.Multiple && sent.ContainsKey(QueryPaths.ApiPath(write.Type, item).Split('.')[0])));
+        && (!isPatch
+            || FieldStorage.Of(schema, write.Type).Any(item => item.Kind == FieldStorageKind.Reference && item.Field.Multiple && sent.ContainsKey(QueryPaths.ApiPath(write.Type, item).Split('.')[0]))
+            || sent.Keys.Any(key => write.Type.FindField(key)?.FieldType is FieldTypeNames.Blocks or FieldTypeNames.Component or FieldTypeNames.RichText));
+
+    // A nested target that the read left out and that still exists. One no longer there is nothing to keep.
+    private async Task<HashSet<Guid>> UnseenNestedTargetsAsync(WriteScope write, ContentDocument stored, ContentDocument? shown, CancellationToken cancellationToken)
+    {
+        var nested = new NestedTargets(schema);
+        var ids = nested.Collect(write.Type, stored).Values.SelectMany(found => found).ToHashSet();
+        if (ids.Count == 0)
+        {
+            return ids;
+        }
+
+        if (shown is not null)
+        {
+            ids.ExceptWith(nested.Collect(write.Type, shown).Values.SelectMany(found => found));
+        }
+
+        return ids.Count == 0 ? ids : await store.ExistingEntriesAsync([.. ids], cancellationToken);
+    }
 
     // A locale being added has no row to read, so this reads a locale it has for the shared fields. One that has since
     // been disabled cannot be read, and the next one may.

@@ -129,7 +129,7 @@ public sealed class PublishingAccessTests : IDisposable
             await Should.ThrowAsync<ContentAccessDeniedException>(() => _database.DiffAsync(token, id, 1, 2));
         }
 
-        await Should.ThrowAsync<ContentAccessDeniedException>(() => _database.VersionsAsync(Principal.Anonymous, id));
+        (await Should.ThrowAsync<ValidationException>(() => _database.VersionsAsync(Principal.Anonymous, id))).Errors.ShouldHaveSingleItem().Path.ShouldBe("type");
     }
 
     [Fact]
@@ -160,7 +160,7 @@ public sealed class PublishingAccessTests : IDisposable
         var publisher = Limited(("content.article.publish", null), ("content.article.unpublish", null), ("content.article.restore", null));
         await Should.ThrowAsync<ContentAccessDeniedException>(() => _database.DiscardAsync(publisher, id));
         await Should.ThrowAsync<ContentAccessDeniedException>(() => _database.RestoreVersionAsync(publisher, id, 1));
-        await Should.ThrowAsync<ContentAccessDeniedException>(() => _database.VersionsAsync(publisher, id));
+        await Should.ThrowAsync<ValidationException>(() => _database.VersionsAsync(publisher, id));
 
         _database.Trace(id).ShouldBe(before);
 
@@ -209,6 +209,103 @@ public sealed class PublishingAccessTests : IDisposable
         public string? Region { get; set; }
     }
 
+    private sealed class MoveToUs : IBeforePublishHook<ContentDocument>
+    {
+        public ValueTask BeforePublishAsync(HookContext<ContentDocument> context, CancellationToken cancellationToken)
+        {
+            context.Entry["region"] = "us";
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    [Fact]
+    public async Task APublishHookThatTakesTheEntryOutOfTheRowRuleIsRolledBack()
+    {
+        using var database = new ServiceDatabase(cms =>
+        {
+            cms.Authorization.AddRowRule<Regional>("region", ctx => article => article.Region == ctx.Principal.Claim("region"));
+            cms.Services.AddSingleton<IBeforePublishHook<ContentDocument>, MoveToUs>();
+        });
+        var inRegion = new PermissionConstraints { RowRule = "region" };
+        var role = database.Database.AddRoleForTest("Regional", ("content.article.read", inRegion), ("content.article.publish", inRegion));
+        var eu = AuthorizationDatabase.User([role], [TokenScopes.Management], claims: new() { ["region"] = "eu" });
+        var id = IdOf(await database.CreateAsync(Editor, new() { ["title"] = "One", ["region"] = "eu" }));
+        var before = database.Trace(id);
+
+        await Should.ThrowAsync<ContentAccessDeniedException>(() => database.PublishAsync(eu, id));
+
+        database.Trace(id).ShouldBe(before);
+    }
+
+    private sealed class SaveAnotherLocale : IBeforePublishHook<ContentDocument>
+    {
+        private readonly IServiceProvider _services;
+
+        public SaveAnotherLocale(IServiceProvider services) => _services = services;
+
+        public async ValueTask BeforePublishAsync(HookContext<ContentDocument> context, CancellationToken cancellationToken)
+        {
+            var accessor = _services.GetRequiredService<IOperationContextAccessor>();
+            var operation = accessor.Current!;
+            accessor.Current = operation with { Locale = "fr" };
+            try
+            {
+                await _services.GetRequiredService<IContentService>().PatchAsync("article", (Guid)context.Entry["id"]!, new() { ["views"] = 7 }, 1, cancellationToken);
+            }
+            finally
+            {
+                accessor.Current = operation;
+            }
+        }
+    }
+
+    [Fact]
+    public async Task AHookThatSavesTheDraftDuringAPublishIsRefusedSoNothingGoesOutUnvalidated()
+    {
+        using var database = new ServiceDatabase(cms => cms.Services.AddScoped<IBeforePublishHook<ContentDocument>, SaveAnotherLocale>());
+        var id = IdOf(await database.CreateAsync(Editor, new() { ["title"] = "One", ["views"] = 1 }));
+        await database.PatchAsync(Editor, id, Titled("Un"), 0, locale: "fr");
+        var before = database.Trace(id);
+
+        await Should.ThrowAsync<HookRejectedException>(() => database.PublishAsync(Editor, id));
+
+        database.Trace(id).ShouldBe(before);
+    }
+
+    [Fact]
+    public async Task AnUnpublishThatLostTheSwapChangesNothing()
+    {
+        var id = IdOf(await _database.CreateAsync(Editor, Titled("One")));
+        await _database.PublishAsync(Editor, id);
+        var before = _database.Trace(id);
+
+        var stale = _database.Document(id);
+        stale.PublishedVersion = 99;
+        await _database.AsAsync(Editor, async services =>
+        {
+            (await services.GetRequiredService<EntryStore>().MarkUnpublishedAsync(stale, DateTimeOffset.UtcNow, Editor.Id, Token)).ShouldBeFalse();
+            return true;
+        });
+
+        _database.Trace(id).ShouldBe(before);
+    }
+
+    [Fact]
+    public async Task AnUnknownTypeAndAnUnreadableOneReadTheSameOnAVersion()
+    {
+        var schema = SampleSchema.NewBuilder().AddCollection("vault", type => type.Field("name", "text")).AddCollection("page", type => type.Field("name", "text")).Build();
+        using var database = new ServiceDatabase(schema: schema);
+        var principal = WithRole(database.Database.AddRoleForTest("Pages", ("content.page.read", null)));
+
+        var unreadable = await Should.ThrowAsync<ValidationException>(() => database.VersionsAsync(principal, Guid.CreateVersion7(), type: "vault"));
+        var unknown = await Should.ThrowAsync<ValidationException>(() => database.VersionsAsync(principal, Guid.CreateVersion7(), type: "nosuch"));
+        var read = await Should.ThrowAsync<ValidationException>(() => database.GetAsync(principal, Guid.CreateVersion7(), type: "vault"));
+
+        unreadable.Errors.ShouldHaveSingleItem().Code.ShouldBe(unknown.Errors.ShouldHaveSingleItem().Code);
+        unreadable.Errors[0].Code.ShouldBe(read.Errors.ShouldHaveSingleItem().Code);
+        unreadable.Errors[0].Path.ShouldBe("type");
+    }
+
     [Fact]
     public async Task ARestoreOrDiscardThatTakesTheEntryOutOfTheRowRuleIsRolledBack()
     {
@@ -251,9 +348,9 @@ public sealed class PublishingAccessTests : IDisposable
         }
 
         await Should.ThrowAsync<ContentAccessDeniedException>(() => _database.RestoreVersionAsync(translator, id, 1, "en"));
-        await Should.ThrowAsync<ContentAccessDeniedException>(() => _database.VersionsAsync(translator, id, "en"));
-        await Should.ThrowAsync<ContentAccessDeniedException>(() => _database.VersionAsync(translator, id, 1, "en"));
-        await Should.ThrowAsync<ContentAccessDeniedException>(() => _database.DiffAsync(translator, id, 1, 2, "en"));
+        await Should.ThrowAsync<ValidationException>(() => _database.VersionsAsync(translator, id, "en"));
+        await Should.ThrowAsync<ValidationException>(() => _database.VersionAsync(translator, id, 1, "en"));
+        await Should.ThrowAsync<ValidationException>(() => _database.DiffAsync(translator, id, 1, 2, "en"));
         await Should.ThrowAsync<ValidationException>(() => _database.PublishAsync(translator, id, "all"));
 
         _database.Trace(id).ShouldBe(before);
@@ -310,6 +407,31 @@ public sealed class PublishingAccessTests : IDisposable
     }
 
     [Fact]
+    public async Task AFieldItCanWriteButNotReadCannotBeGuessedThroughAPublish()
+    {
+        var id = IdOf(await _database.CreateAsync(Editor, new() { ["title"] = "One", ["code"] = "SECRET" }));
+        await _database.PublishAsync(Editor, id);
+        var guesser = Limited(
+            ("content.article.read", new PermissionConstraints { Fields = ["title"] }),
+            ("content.article.update", new PermissionConstraints { Fields = ["title", "code"] }),
+            ("content.article.publish", new PermissionConstraints { Fields = ["title"] }));
+
+        var version = 1;
+        foreach (var guess in new[] { "WRONG", "SECRET" })
+        {
+            version = VersionOf(await _database.PatchAsync(guesser, id, new() { ["code"] = guess }, version));
+            await Should.ThrowAsync<ContentAccessDeniedException>(() => _database.PublishAsync(guesser, id));
+        }
+
+        // A field it cannot write is not its guess, so the comparison stands.
+        await _database.PatchAsync(Editor, id, new() { ["code"] = "SECRET", ["title"] = "Two" }, version);
+        var titles = Limited(
+            ("content.article.read", new PermissionConstraints { Fields = ["title"] }),
+            ("content.article.publish", new PermissionConstraints { Fields = ["title", "slug", "category"] }));
+        await Should.NotThrowAsync(() => _database.PublishAsync(titles, id));
+    }
+
+    [Fact]
     public async Task AGrantLimitedToSomeFieldsCannotWithdrawTheWholeEntry()
     {
         var id = IdOf(await _database.CreateAsync(Editor, Titled("One")));
@@ -336,6 +458,29 @@ public sealed class PublishingAccessTests : IDisposable
         entry["status"].ShouldBe(EntryStatus.Modified);
         _database.Row("cms_article", id)["region"].ShouldBe("us");
         _database.Document(id).Status.ShouldBe(EntryStatus.Modified);
+    }
+
+    [Fact]
+    public async Task APartialDiscardLeavesHiddenValuesAtEveryDepth()
+    {
+        var id = IdOf(await _database.AsAsync(Principal.System, services => services.GetRequiredService<IContentService>().CreateAsync("article", Secretive("One", "published-top", heading: "H1", inner: "published-block"), Token), origin: Origin.Seed));
+        await _database.AsAsync(Principal.System, services => services.GetRequiredService<IContentService>().PublishAsync("article", id, null, null, Token), origin: Origin.Seed);
+        var draft = Secretive("Two", "draft-top", heading: "H2", inner: "draft-block");
+        draft["seo"] = new ContentDocument { ["metaTitle"] = "Meta2", ["internal"] = "draft-group" };
+        await _database.AsAsync(Principal.System, services => services.GetRequiredService<IContentService>().UpdateAsync("article", id, draft, 1, Token), origin: Origin.Seed);
+        var fields = new PermissionConstraints { Fields = ["sections", "seo"] };
+        var limited = Limited(("content.article.read", null), ("content.article.update", fields));
+
+        var entry = await _database.DiscardAsync(limited, id);
+
+        entry["status"].ShouldBe(EntryStatus.Modified);
+        var snapshot = System.Text.Json.Nodes.JsonNode.Parse(_database.Versions(id)[^1].Snapshot)!;
+        snapshot["sections"]![0]!["heading"]!.GetValue<string>().ShouldBe("H1");
+        snapshot["sections"]![0]!["internal"]!.GetValue<string>().ShouldBe("draft-block");
+        snapshot["seo"]!["metaTitle"]!.GetValue<string>().ShouldBe("Meta");
+        snapshot["seo"]!["internal"]!.GetValue<string>().ShouldBe("draft-group");
+        snapshot["secret"]!.GetValue<string>().ShouldBe("draft-top");
+        snapshot["title"]!.GetValue<string>().ShouldBe("Two");
     }
 
     [Fact]
@@ -461,7 +606,7 @@ public sealed class PublishingAccessTests : IDisposable
         (await _database.RestoreVersionAsync(writer, id, 1)).Keys.ShouldBe(["id", "version"]);
         await _database.PatchAsync(Editor, id, Titled("Three"), 3);
         (await _database.DiscardAsync(writer, id)).Keys.ShouldBe(["id", "version"]);
-        await Should.ThrowAsync<ContentAccessDeniedException>(() => _database.VersionAsync(writer, id, 1));
+        await Should.ThrowAsync<ValidationException>(() => _database.VersionAsync(writer, id, 1));
     }
 
     [Fact]

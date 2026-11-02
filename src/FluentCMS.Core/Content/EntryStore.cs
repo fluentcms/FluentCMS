@@ -199,7 +199,7 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
                     Locale = row.Locale,
                     Number = row.DraftVersion,
                     Snapshot = EntryJson.Text(EntryJson.Fields(type, entry)),
-                    StatusAfter = row.Status,
+                    StatusAfter = row.Status == EntryStatus.Published ? EntryStatus.Modified : row.Status,
                     AuthorId = row.UpdatedBy,
                     Origin = origin,
                     ClientId = clientId,
@@ -292,12 +292,13 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
         return true;
     }
 
-    public async Task MarkUnpublishedAsync(Document row, DateTimeOffset at, Guid by, CancellationToken cancellationToken)
+    public async Task<bool> MarkUnpublishedAsync(Document row, DateTimeOffset at, Guid by, CancellationToken cancellationToken)
     {
         var id = row.DocumentId;
         var locale = row.Locale;
-        await context.Documents
-            .Where(document => document.DocumentId == id && document.Locale == locale)
+        var version = row.PublishedVersion;
+        var affected = await context.Documents
+            .Where(document => document.DocumentId == id && document.Locale == locale && document.PublishedVersion == version)
             .ExecuteUpdateAsync(
                 set => set
                     .SetProperty(document => document.Status, EntryStatus.Unpublished)
@@ -307,11 +308,17 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
                     .SetProperty(document => document.UpdatedBy, by),
                 cancellationToken);
 
+        if (affected != 1)
+        {
+            return false;
+        }
+
         row.Status = EntryStatus.Unpublished;
         row.PublishedVersion = null;
         row.PublishedAt = null;
         row.UpdatedAt = at;
         row.UpdatedBy = by;
+        return true;
     }
 
     public Task SetStatusAsync(Guid id, string locale, EntryStatus status, CancellationToken cancellationToken) =>
@@ -332,9 +339,9 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
         context.Versions.AsNoTracking()
             .FirstOrDefaultAsync(version => version.DocumentId == id && version.Locale == locale && version.Number == number, cancellationToken);
 
-    // Whether a target is there and published in one of these locales. The query filter on Document leaves out the trash,
-    // and a target of another type or another site is not there either.
-    public async Task<ReferenceTargetState> TargetStateAsync(SchemaType target, Guid id, SiteId site, IReadOnlyList<string> locales, CancellationToken cancellationToken)
+    // The rows of a target, one per locale. The query filter on Document leaves out the trash, and a target of another type
+    // or another site has none.
+    public async Task<List<ReferenceTargetRow>> TargetRowsAsync(SchemaType target, Guid id, SiteId site, CancellationToken cancellationToken)
     {
         var typeName = target.Name;
         var siteId = (Guid?)site.Value;
@@ -344,16 +351,15 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
             rows = rows.Where(document => document.SiteId == siteId);
         }
 
-        var found = await rows.Select(document => new { document.Locale, document.PublishedVersion }).ToListAsync(cancellationToken);
-        if (found.Count == 0)
-        {
-            return ReferenceTargetState.Unavailable;
-        }
-
-        return found.Any(row => row.PublishedVersion is not null && (!target.Localized || locales.Contains(row.Locale, StringComparer.OrdinalIgnoreCase)))
-            ? ReferenceTargetState.Published
-            : ReferenceTargetState.Unpublished;
+        return await rows.Select(document => new ReferenceTargetRow(document.Locale, document.PublishedVersion != null)).ToListAsync(cancellationToken);
     }
+
+    // Which of these ids are entries, in the trash too.
+    public async Task<HashSet<Guid>> ExistingEntriesAsync(List<Guid> ids, CancellationToken cancellationToken) =>
+        [.. await context.Documents.IgnoreQueryFilters().AsNoTracking()
+            .Where(document => ids.Contains(document.DocumentId))
+            .Select(document => document.DocumentId)
+            .ToListAsync(cancellationToken)];
 
     // What an entry refers to, with whether the reference is outside what hidden fields hide. Media has no row here to check.
     public List<EntryTarget> TargetsOf(SchemaType type, ContentDocument entry)
@@ -768,6 +774,8 @@ internal enum ReferenceTargetState
     Unpublished,
     Published,
 }
+
+internal sealed record ReferenceTargetRow(string Locale, bool IsPublished);
 
 // One reference of an entry. Path is the stored field, Field the top-level field that holds it.
 internal sealed record EntryTarget(string Path, string Field, string TargetType, Guid Id, bool IsShown);

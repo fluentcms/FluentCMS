@@ -50,6 +50,7 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
 
         var entries = rows.Select(row => Materialize(compiled.Plan, row, new ContentDocument(), parent: null)).ToList();
         await FillReferencesAsync(compiled.Scope, compiled.Plan, entries, cancellationToken);
+        await FilterNestedTargetsAsync(compiled.Scope, compiled.Type, entries, cancellationToken);
 
         var last = hasMore ? rows[^1] : null;
         var nextCursor = last is null ? null : SortKeys.Encode(compiled.Keys, compiled.KeyColumns.Select(column => last[column]).ToList());
@@ -374,6 +375,40 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
             return null;
         }
 
+        var ids = references.Where(reference => reference.Field == output.ApiPath).Select(reference => reference.TargetId).Distinct().ToList();
+        return await ReadableIdsAsync(query, target, ids, cancellationToken);
+    }
+
+    private async Task FilterNestedTargetsAsync(QueryScope query, SchemaType type, List<Materialized> entries, CancellationToken cancellationToken)
+    {
+        var nested = new NestedTargets(schema);
+        Dictionary<string, HashSet<Guid>?> readable = new(StringComparer.Ordinal);
+        foreach (var entry in entries)
+        {
+            foreach (var (name, ids) in nested.Collect(type, entry.Document))
+            {
+                readable[name] = readable.TryGetValue(name, out var known) ? [.. known ?? [], .. ids] : ids;
+            }
+        }
+
+        foreach (var (name, ids) in readable.ToList())
+        {
+            readable[name] = schema.FindContentType(name) is { } target
+                ? await ReadableIdsAsync(query, target, [.. ids!], cancellationToken)
+                : [];
+        }
+
+        if (readable.Count > 0)
+        {
+            foreach (var entry in entries)
+            {
+                nested.Filter(type, entry.Document, (name, id) => readable[name]?.Contains(id) != false);
+            }
+        }
+    }
+
+    private async Task<HashSet<Guid>?> ReadableIdsAsync(QueryScope query, SchemaType target, List<Guid> ids, CancellationToken cancellationToken)
+    {
         if (!query.Access.CanReadType(target))
         {
             return [];
@@ -387,14 +422,14 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
             return null;
         }
 
-        var ids = references.Where(reference => reference.Field == output.ApiPath).Select(reference => reference.TargetId).Distinct().ToList();
         if (!hasRule)
         {
             // In a draft a trashed target stays a reference, so this looks past the query filter.
             var documents = isPublished
                 ? context.Documents.AsNoTracking().Where(document => document.PublishedVersion != null)
                 : context.Documents.IgnoreQueryFilters().AsNoTracking();
-            documents = documents.Where(document => ids.Contains(document.DocumentId));
+            var typeName = target.Name;
+            documents = documents.Where(document => ids.Contains(document.DocumentId) && document.Type == typeName);
             if (inOneSite)
             {
                 var site = query.Site!.Value.Value;

@@ -222,6 +222,159 @@ public sealed class ReferenceIntegrityTests : IDisposable
         first.TargetId.ShouldBeNull();
     }
 
+    // A write-only field is where it chooses the id: the answer must not depend on the target at all.
+    [Fact]
+    public async Task UnderBlockAFieldItCanWriteButNotReadIsAlwaysTheSameRefusal()
+    {
+        var fields = new PermissionConstraints { Fields = ["title", "author"] };
+        var publisher = WithRole(_blocking.Database.AddRoleForTest(
+            "Write only",
+            ("content.article.create", fields),
+            ("content.article.update", fields),
+            ("content.article.read", new PermissionConstraints { Fields = ["title"] }),
+            ("content.article.publish", null),
+            ("content.author.read", new PermissionConstraints { RowRule = BuiltInRoles.OwnEntriesRule })));
+        List<string> answers = [];
+
+        foreach (var target in new[] { await PublishedAuthorAsync(_blocking), await AuthorAsync(_blocking), await TrashedAuthorAsync(_blocking), Guid.CreateVersion7() })
+        {
+            var id = IdOf(await _blocking.CreateAsync(publisher, new() { ["title"] = "One", ["author"] = target }));
+            var error = (await Should.ThrowAsync<ValidationException>(() => _blocking.PublishAsync(publisher, id))).Errors.ShouldHaveSingleItem();
+            error.Path.ShouldBe("");
+            answers.Add($"{error.Code}|{error.Message}");
+        }
+
+        answers.Distinct().ShouldHaveSingleItem();
+    }
+
+    [Fact]
+    public async Task UnderBlockAFieldItCanNeitherReadNorWriteIsDecidedOnWhatIsTrue()
+    {
+        var published = await PublishedAuthorAsync(_blocking);
+        var draft = await AuthorAsync(_blocking);
+        var publisher = WithRole(_blocking.Database.AddRoleForTest(
+            "Publisher",
+            ("content.article.read", new PermissionConstraints { Fields = ["title"] }),
+            ("content.article.publish", null)));
+
+        var good = await ArticleAsync(_blocking, new() { ["title"] = "One", ["author"] = published });
+        (await _blocking.PublishAsync(publisher, good)).Warnings.ShouldBeEmpty();
+
+        var bad = await ArticleAsync(_blocking, new() { ["title"] = "Two", ["author"] = draft });
+        (await Should.ThrowAsync<ValidationException>(() => _blocking.PublishAsync(publisher, bad))).Errors.ShouldHaveSingleItem().Path.ShouldBe("");
+    }
+
+    [Theory]
+    [InlineData(UnpublishedReferencePolicy.Warn)]
+    [InlineData(UnpublishedReferencePolicy.Block)]
+    public async Task ATargetOnlyInALocaleItsGrantDoesNotCoverReadsTheSameAsOneThatIsNotThere(UnpublishedReferencePolicy policy)
+    {
+        var database = policy == UnpublishedReferencePolicy.Warn ? _warning : _blocking;
+        var publisher = WithRole(database.Database.AddRoleForTest(
+            "English",
+            ("content.article.read", null),
+            ("content.article.publish", null),
+            ("content.author.read", new PermissionConstraints { Locales = ["en"] })));
+        List<string> answers = [];
+
+        var french = await AuthorAsync(database, "fr");
+        var publishedFrench = await AuthorAsync(database, "fr");
+        await database.PublishAsync(Editor, publishedFrench, "fr", type: "author", operationLocale: "fr");
+        foreach (var target in new[] { french, publishedFrench, Guid.CreateVersion7() })
+        {
+            var id = await ArticleAsync(database, new() { ["title"] = "One", ["author"] = target });
+            if (policy == UnpublishedReferencePolicy.Warn)
+            {
+                var warning = (await database.PublishAsync(publisher, id)).Warnings.ShouldHaveSingleItem();
+                warning.TargetId.ShouldBeNull();
+                answers.Add($"{warning.Path}|{warning.Code}|{warning.Message}");
+            }
+            else
+            {
+                var error = (await Should.ThrowAsync<ValidationException>(() => database.PublishAsync(publisher, id))).Errors.ShouldHaveSingleItem();
+                answers.Add($"{error.Path}|{error.Code}|{error.Message}");
+            }
+        }
+
+        answers.Distinct().ShouldHaveSingleItem();
+    }
+
+    [Theory]
+    [InlineData(UnpublishedReferencePolicy.Warn)]
+    [InlineData(UnpublishedReferencePolicy.Block)]
+    public async Task TheRuleOnATargetIsAskedOfTheLocaleThatServesIt(UnpublishedReferencePolicy policy)
+    {
+        var database = policy == UnpublishedReferencePolicy.Warn ? _warning : _blocking;
+        var publisher = WithRole(database.Database.AddRoleForTest(
+            "Own authors",
+            ("content.article.read", null),
+            ("content.article.publish", null),
+            ("content.author.create", null),
+            ("content.author.read", new PermissionConstraints { RowRule = BuiltInRoles.OwnEntriesRule })));
+        var mine = IdOf(await database.CreateAsync(publisher, new() { ["name"] = "Ann" }, "author", "fr"));
+        await database.PublishAsync(Editor, mine, "fr", type: "author", operationLocale: "fr");
+        var id = IdOf(await database.CreateAsync(Editor, new() { ["title"] = "x", ["author"] = mine }, locale: "fr-CA"));
+
+        (await database.PublishAsync(publisher, id, "fr-CA", operationLocale: "fr-CA")).Warnings.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task AnUnknownTypeInALinkIsTheSameAsOneItMayNotRead()
+    {
+        foreach (var (database, blocks) in new[] { (_warning, false), (_blocking, true) })
+        {
+            var publisher = WithRole(database.Database.AddRoleForTest(
+                "Articles",
+                ("content.article.read", null),
+                ("content.article.publish", null),
+                ("content.author.read", null)));
+            List<string> answers = [];
+
+            foreach (var type in new[] { "vault", "nosuchtype" })
+            {
+                var body = new RichText("{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"x\",\"marks\":[{\"type\":\"entryLink\",\"attrs\":{\"entryType\":\"" + type + "\",\"entryId\":\"" + Guid.CreateVersion7() + "\"}}]}]}]}");
+                var id = await ArticleAsync(database, new() { ["title"] = type, ["body"] = body });
+                if (blocks)
+                {
+                    var error = (await Should.ThrowAsync<ValidationException>(() => database.PublishAsync(publisher, id))).Errors.ShouldHaveSingleItem();
+                    answers.Add($"{error.Path}|{error.Code}|{error.Message}");
+                }
+                else
+                {
+                    (await database.PublishAsync(publisher, id)).Warnings.ShouldBeEmpty();
+                    answers.Add("none");
+                }
+            }
+
+            answers.Distinct().ShouldHaveSingleItem();
+        }
+    }
+
+    [Fact]
+    public async Task ASelfReferenceIsNoProblemAndACycleStaysBlockedUntilOneSideIsSetAfterwards()
+    {
+        var schema = SampleSchema.NewBuilder()
+            .AddCollection("page", type => type.PublishPolicy(UnpublishedReferencePolicy.Block).Field("title", "text").Field("next", "relation", field => field.Relation("page")))
+            .Build();
+        using var database = new ServiceDatabase(schema: schema);
+
+        var self = IdOf(await database.CreateAsync(Editor, new() { ["title"] = "a" }, "page"));
+        await database.PatchAsync(Editor, self, new() { ["next"] = self }, 1, "page");
+        (await database.PublishAsync(Editor, self, type: "page")).Warnings.ShouldBeEmpty();
+
+        var first = IdOf(await database.CreateAsync(Editor, new() { ["title"] = "b" }, "page"));
+        var second = IdOf(await database.CreateAsync(Editor, new() { ["title"] = "c", ["next"] = first }, "page"));
+        await database.PatchAsync(Editor, first, new() { ["next"] = second }, 1, "page");
+        await Should.ThrowAsync<ValidationException>(() => database.PublishAsync(Editor, first, type: "page"));
+        await Should.ThrowAsync<ValidationException>(() => database.PublishAsync(Editor, second, type: "page"));
+
+        await database.PatchAsync(Editor, first, new() { ["next"] = null }, 2, "page");
+        await database.PublishAsync(Editor, first, type: "page");
+        await database.PublishAsync(Editor, second, type: "page");
+        await database.PatchAsync(Editor, first, new() { ["next"] = second }, 3, "page");
+        (await database.PublishAsync(Editor, first, type: "page")).Warnings.ShouldBeEmpty();
+    }
+
     [Fact]
     public async Task AReferenceInAFieldItMayNotReadIsNoWarningAndUnderBlockSaysNotWhere()
     {
