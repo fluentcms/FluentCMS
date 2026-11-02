@@ -144,6 +144,9 @@ FluentCMS.Content.Not.Filter.init -> void
 FluentCMS.Content.Not.Not(FluentCMS.Content.ContentFilter! Filter) -> void
 FluentCMS.Content.OperationContext
 FluentCMS.Content.OperationContext.<Clone>$() -> FluentCMS.Content.OperationContext!
+FluentCMS.Content.OperationContext.Actor.get -> FluentCMS.Content.Principal?
+FluentCMS.Content.OperationContext.Actor.init -> void
+FluentCMS.Content.OperationContext.AuditPrincipal.get -> FluentCMS.Content.Principal!
 FluentCMS.Content.OperationContext.ClientId.get -> string?
 FluentCMS.Content.OperationContext.ClientId.init -> void
 FluentCMS.Content.OperationContext.CorrelationId.get -> string!
@@ -305,6 +308,69 @@ FluentCMS.Hooks.IBeforeUpdateHook<T>
 FluentCMS.Hooks.IBeforeUpdateHook<T>.BeforeUpdateAsync(FluentCMS.Hooks.HookContext<T>! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
 FluentCMS.Hooks.IBeforeValidateHook<T>
 FluentCMS.Hooks.IBeforeValidateHook<T>.BeforeValidateAsync(FluentCMS.Hooks.HookContext<T>! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
+FluentCMS.Jobs.DeadLetteredJob
+FluentCMS.Jobs.DeadLetteredJob.<Clone>$() -> FluentCMS.Jobs.DeadLetteredJob!
+FluentCMS.Jobs.DeadLetteredJob.Attempts.get -> int
+FluentCMS.Jobs.DeadLetteredJob.Attempts.init -> void
+FluentCMS.Jobs.DeadLetteredJob.DeadLetteredAt.get -> System.DateTimeOffset?
+FluentCMS.Jobs.DeadLetteredJob.DeadLetteredAt.init -> void
+FluentCMS.Jobs.DeadLetteredJob.DeadLetteredJob(System.Guid Id, string! Type, string! Queue, int Attempts, string? LastError, System.DateTimeOffset? DeadLetteredAt) -> void
+FluentCMS.Jobs.DeadLetteredJob.Deconstruct(out System.Guid Id, out string! Type, out string! Queue, out int Attempts, out string? LastError, out System.DateTimeOffset? DeadLetteredAt) -> void
+FluentCMS.Jobs.DeadLetteredJob.Equals(FluentCMS.Jobs.DeadLetteredJob? other) -> bool
+FluentCMS.Jobs.DeadLetteredJob.Id.get -> System.Guid
+FluentCMS.Jobs.DeadLetteredJob.Id.init -> void
+FluentCMS.Jobs.DeadLetteredJob.LastError.get -> string?
+FluentCMS.Jobs.DeadLetteredJob.LastError.init -> void
+FluentCMS.Jobs.DeadLetteredJob.Queue.get -> string!
+FluentCMS.Jobs.DeadLetteredJob.Queue.init -> void
+FluentCMS.Jobs.DeadLetteredJob.Type.get -> string!
+FluentCMS.Jobs.DeadLetteredJob.Type.init -> void
+FluentCMS.Jobs.IJob<TPayload>
+FluentCMS.Jobs.IJob<TPayload>.ExecuteAsync(TPayload payload, FluentCMS.Jobs.JobContext! context) -> System.Threading.Tasks.Task!
+FluentCMS.Jobs.IJobActorPayload
+FluentCMS.Jobs.IJobActorPayload.Actor.get -> FluentCMS.Jobs.JobActor?
+FluentCMS.Jobs.IJobDeadLetters
+FluentCMS.Jobs.IJobDeadLetters.ListAsync(int offset = 0, int limit = 50, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<FluentCMS.Jobs.DeadLetteredJob!>!>!
+FluentCMS.Jobs.IJobDeadLetters.RetryAsync(System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+FluentCMS.Jobs.IJobRunner
+FluentCMS.Jobs.IJobRunner.StartAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+FluentCMS.Jobs.IJobRunner.StopAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+FluentCMS.Jobs.IJobScheduler
+FluentCMS.Jobs.IJobScheduler.AddRecurringAsync<TJob, TPayload>(string! name, string! cron, TPayload payload, string? queue = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+FluentCMS.Jobs.IJobScheduler.EnqueueAsync<TJob, TPayload>(TPayload payload, FluentCMS.Jobs.JobOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Guid>!
+FluentCMS.Jobs.IJobScheduler.ScheduleAsync<TJob, TPayload>(TPayload payload, System.DateTimeOffset runAt, FluentCMS.Jobs.JobOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Guid>!
+FluentCMS.Jobs.JobActor
+FluentCMS.Jobs.JobActor.<Clone>$() -> FluentCMS.Jobs.JobActor!
+FluentCMS.Jobs.JobActor.Deconstruct(out FluentCMS.Content.PrincipalKind Kind, out System.Guid Id, out string! Name) -> void
+FluentCMS.Jobs.JobActor.Equals(FluentCMS.Jobs.JobActor? other) -> bool
+FluentCMS.Jobs.JobActor.Id.get -> System.Guid
+FluentCMS.Jobs.JobActor.Id.init -> void
+FluentCMS.Jobs.JobActor.JobActor(FluentCMS.Content.PrincipalKind Kind, System.Guid Id, string! Name) -> void
+FluentCMS.Jobs.JobActor.Kind.get -> FluentCMS.Content.PrincipalKind
+FluentCMS.Jobs.JobActor.Kind.init -> void
+FluentCMS.Jobs.JobActor.Name.get -> string!
+FluentCMS.Jobs.JobActor.Name.init -> void
+FluentCMS.Jobs.JobContext
+FluentCMS.Jobs.JobContext.Attempt.get -> int
+FluentCMS.Jobs.JobContext.CancellationToken.get -> System.Threading.CancellationToken
+FluentCMS.Jobs.JobContext.JobContext(System.Guid jobId, string! type, string! queue, int attempt, int maxAttempts, FluentCMS.Content.OperationContext! operation, System.Threading.CancellationToken cancellationToken) -> void
+FluentCMS.Jobs.JobContext.JobId.get -> System.Guid
+FluentCMS.Jobs.JobContext.MaxAttempts.get -> int
+FluentCMS.Jobs.JobContext.Operation.get -> FluentCMS.Content.OperationContext!
+FluentCMS.Jobs.JobContext.Queue.get -> string!
+FluentCMS.Jobs.JobContext.Type.get -> string!
+FluentCMS.Jobs.JobOptions
+FluentCMS.Jobs.JobOptions.<Clone>$() -> FluentCMS.Jobs.JobOptions!
+FluentCMS.Jobs.JobOptions.Equals(FluentCMS.Jobs.JobOptions? other) -> bool
+FluentCMS.Jobs.JobOptions.JobOptions() -> void
+FluentCMS.Jobs.JobOptions.MaxAttempts.get -> int?
+FluentCMS.Jobs.JobOptions.MaxAttempts.init -> void
+FluentCMS.Jobs.JobOptions.Priority.get -> int
+FluentCMS.Jobs.JobOptions.Priority.init -> void
+FluentCMS.Jobs.JobOptions.Queue.get -> string?
+FluentCMS.Jobs.JobOptions.Queue.init -> void
+FluentCMS.Jobs.JobOptions.Site.get -> FluentCMS.Sites.SiteId?
+FluentCMS.Jobs.JobOptions.Site.init -> void
 FluentCMS.Localization.FallbackChain
 FluentCMS.Localization.FallbackChain.FallbackChain(System.Collections.Generic.IEnumerable<string!>! locales) -> void
 FluentCMS.Localization.FallbackChain.Fallbacks.get -> System.Collections.Generic.IEnumerable<string!>!
@@ -772,6 +838,15 @@ override FluentCMS.Content.SortField.ToString() -> string!
 override FluentCMS.Content.ValidationError.Equals(object? obj) -> bool
 override FluentCMS.Content.ValidationError.GetHashCode() -> int
 override FluentCMS.Content.ValidationError.ToString() -> string!
+override FluentCMS.Jobs.DeadLetteredJob.Equals(object? obj) -> bool
+override FluentCMS.Jobs.DeadLetteredJob.GetHashCode() -> int
+override FluentCMS.Jobs.DeadLetteredJob.ToString() -> string!
+override FluentCMS.Jobs.JobActor.Equals(object? obj) -> bool
+override FluentCMS.Jobs.JobActor.GetHashCode() -> int
+override FluentCMS.Jobs.JobActor.ToString() -> string!
+override FluentCMS.Jobs.JobOptions.Equals(object? obj) -> bool
+override FluentCMS.Jobs.JobOptions.GetHashCode() -> int
+override FluentCMS.Jobs.JobOptions.ToString() -> string!
 override FluentCMS.Localization.LocaleRequest.Equals(object? obj) -> bool
 override FluentCMS.Localization.LocaleRequest.GetHashCode() -> int
 override FluentCMS.Localization.LocaleRequest.ToString() -> string!
@@ -832,6 +907,12 @@ static FluentCMS.Content.SystemOperation.Begin(FluentCMS.Content.IOperationConte
 static FluentCMS.Content.ValidationError.operator !=(FluentCMS.Content.ValidationError? left, FluentCMS.Content.ValidationError? right) -> bool
 static FluentCMS.Content.ValidationError.operator ==(FluentCMS.Content.ValidationError? left, FluentCMS.Content.ValidationError? right) -> bool
 static FluentCMS.Content.ValidationResult.Success.get -> FluentCMS.Content.ValidationResult!
+static FluentCMS.Jobs.DeadLetteredJob.operator !=(FluentCMS.Jobs.DeadLetteredJob? left, FluentCMS.Jobs.DeadLetteredJob? right) -> bool
+static FluentCMS.Jobs.DeadLetteredJob.operator ==(FluentCMS.Jobs.DeadLetteredJob? left, FluentCMS.Jobs.DeadLetteredJob? right) -> bool
+static FluentCMS.Jobs.JobActor.operator !=(FluentCMS.Jobs.JobActor? left, FluentCMS.Jobs.JobActor? right) -> bool
+static FluentCMS.Jobs.JobActor.operator ==(FluentCMS.Jobs.JobActor? left, FluentCMS.Jobs.JobActor? right) -> bool
+static FluentCMS.Jobs.JobOptions.operator !=(FluentCMS.Jobs.JobOptions? left, FluentCMS.Jobs.JobOptions? right) -> bool
+static FluentCMS.Jobs.JobOptions.operator ==(FluentCMS.Jobs.JobOptions? left, FluentCMS.Jobs.JobOptions? right) -> bool
 static FluentCMS.Localization.FallbackChain.Only(string! locale) -> FluentCMS.Localization.FallbackChain!
 static FluentCMS.Localization.LocaleRequest.operator !=(FluentCMS.Localization.LocaleRequest? left, FluentCMS.Localization.LocaleRequest? right) -> bool
 static FluentCMS.Localization.LocaleRequest.operator ==(FluentCMS.Localization.LocaleRequest? left, FluentCMS.Localization.LocaleRequest? right) -> bool

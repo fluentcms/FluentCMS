@@ -178,6 +178,183 @@ namespace FluentCMS.Data.SqlServer.Migrations
                     b.ToTable("cms_document", (string)null);
                 });
 
+            modelBuilder.Entity("FluentCMS.Core.Storage.Entities.Job", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("int")
+                        .HasColumnName("attempts");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("completed_at");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)")
+                        .HasColumnName("last_error");
+
+                    b.Property<string>("LeaseOwner")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)")
+                        .HasColumnName("lease_owner");
+
+                    b.Property<DateTimeOffset?>("LeaseUntil")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("lease_until");
+
+                    b.Property<int>("MaxAttempts")
+                        .HasColumnType("int")
+                        .HasColumnName("max_attempts");
+
+                    b.Property<string>("Origin")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)")
+                        .HasColumnName("origin");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("payload");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("int")
+                        .HasColumnName("priority");
+
+                    b.Property<string>("Queue")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)")
+                        .HasColumnName("queue");
+
+                    b.Property<DateTimeOffset>("RunAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("run_at");
+
+                    b.Property<Guid?>("SiteId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("site_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status", "LeaseUntil")
+                        .HasDatabaseName("ix_cms_job_status_lease");
+
+                    b.HasIndex("Queue", "Priority", "RunAt", "Id")
+                        .IsDescending(false, true, false, false)
+                        .HasDatabaseName("ix_cms_job_claim")
+                        .HasFilter("status IN ('pending', 'running')");
+
+                    b.ToTable("cms_job", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_cms_job_payload_json", "ISJSON([payload]) = 1");
+                        });
+                });
+
+            modelBuilder.Entity("FluentCMS.Core.Storage.Entities.JobAttempt", b =>
+                {
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("job_id");
+
+                    b.Property<int>("Attempt")
+                        .HasColumnType("int")
+                        .HasColumnName("attempt");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)")
+                        .HasColumnName("error");
+
+                    b.Property<DateTimeOffset?>("FinishedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("finished_at");
+
+                    b.Property<string>("Outcome")
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)")
+                        .HasColumnName("outcome");
+
+                    b.Property<DateTimeOffset>("StartedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("started_at");
+
+                    b.HasKey("JobId", "Attempt");
+
+                    b.ToTable("cms_job_attempt", (string)null);
+                });
+
+            modelBuilder.Entity("FluentCMS.Core.Storage.Entities.RecurringJob", b =>
+                {
+                    b.Property<string>("Name")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Cron")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)")
+                        .HasColumnName("cron");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("bit")
+                        .HasColumnName("enabled");
+
+                    b.Property<DateTimeOffset>("NextRunAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("next_run_at");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("payload");
+
+                    b.Property<string>("Queue")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)")
+                        .HasColumnName("queue");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)")
+                        .HasColumnName("type");
+
+                    b.HasKey("Name");
+
+                    b.ToTable("cms_recurring_job", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_cms_recurring_job_payload_json", "ISJSON([payload]) = 1");
+                        });
+                });
+
             modelBuilder.Entity("FluentCMS.Core.Storage.Entities.Reference", b =>
                 {
                     b.Property<Guid>("Id")
@@ -546,6 +723,15 @@ namespace FluentCMS.Data.SqlServer.Migrations
                             Enabled = true,
                             Position = 0
                         });
+                });
+
+            modelBuilder.Entity("FluentCMS.Core.Storage.Entities.JobAttempt", b =>
+                {
+                    b.HasOne("FluentCMS.Core.Storage.Entities.Job", null)
+                        .WithMany()
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("FluentCMS.Core.Storage.Entities.Role", b =>

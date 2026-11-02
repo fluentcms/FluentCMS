@@ -6,11 +6,13 @@ using FluentCMS.Core.Content;
 using FluentCMS.Core.Content.Hooks;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.Content.Validation;
+using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Localization;
 using FluentCMS.Core.ProseMirror;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
+using FluentCMS.Jobs;
 using FluentCMS.Localization;
 using FluentCMS.Schema;
 using FluentCMS.Sites;
@@ -96,6 +98,17 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddScoped<ContentService>();
         services.TryAddScoped<IContentService>(serviceProvider => serviceProvider.GetRequiredService<ContentService>());
         services.TryAddScoped(typeof(IContentService<>), typeof(TypedContentService<>));
+
+        services.AddSingleton(builder.Jobs.Options);
+        services.AddSingleton<JobRegistry>();
+        services.AddSingleton<JobStore>();
+        services.AddSingleton<JobExecutor>();
+        services.AddSingleton<RecurringJobs>();
+        services.TryAddSingleton<IJobEventSink, NullJobEventSink>();
+        services.TryAddSingleton<IJobScheduler, JobScheduler>();
+        services.TryAddSingleton<IJobRunner, JobRunner>();
+        services.TryAddSingleton<IJobDeadLetters, JobDeadLetters>();
+        services.AddHostedService<JobRunnerHostedService>();
 
         return services;
     }

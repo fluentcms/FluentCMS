@@ -1,0 +1,65 @@
+using FluentCMS.Core.DependencyInjection;
+
+namespace FluentCMS.Core.Jobs;
+
+public sealed class JobRunnerOptions
+{
+    public const string DefaultQueue = "default";
+
+    private static readonly TimeSpan LongestWait = TimeSpan.FromDays(49);
+
+    // Workers per queue on this instance, which is also the concurrency limit of the queue here. A queue left out has
+    // no worker on this instance.
+    public IDictionary<string, int> Queues { get; } = new Dictionary<string, int>(StringComparer.Ordinal) { [DefaultQueue] = 2 };
+
+    public int DefaultMaxAttempts { get; set; } = 5;
+
+    public TimeSpan PollInterval { get; set; } = TimeSpan.FromSeconds(5);
+
+    public TimeSpan LeaseDuration { get; set; } = TimeSpan.FromMinutes(5);
+
+    public TimeSpan HeartbeatInterval { get; set; } = TimeSpan.FromMinutes(1);
+
+    public TimeSpan MaintenanceInterval { get; set; } = TimeSpan.FromSeconds(15);
+
+    public TimeSpan RetryBaseDelay { get; set; } = TimeSpan.FromSeconds(30);
+
+    public TimeSpan RetryMaxDelay { get; set; } = TimeSpan.FromHours(1);
+
+    // A retry waits up to this fraction longer, so that jobs failing together do not return together.
+    public double RetryJitter { get; set; } = 0.2;
+
+    public TimeSpan ShutdownGracePeriod { get; set; } = TimeSpan.FromSeconds(20);
+
+    public TimeSpan ReleaseTimeout { get; set; } = TimeSpan.FromSeconds(5);
+
+    internal void Validate()
+    {
+        foreach (var (queue, workers) in Queues)
+        {
+            Require(!string.IsNullOrEmpty(queue) && queue.Length <= JobScheduler.QueueMaxLength, $"The queue name '{queue}' is not valid.");
+            Require(workers >= 0, $"Queue '{queue}' has {workers} workers.");
+        }
+
+        Require(DefaultMaxAttempts >= 1, $"{nameof(DefaultMaxAttempts)} is {DefaultMaxAttempts}; it must be at least 1.");
+        Require(PollInterval > TimeSpan.Zero, $"{nameof(PollInterval)} must be positive.");
+        Require(MaintenanceInterval > TimeSpan.Zero, $"{nameof(MaintenanceInterval)} must be positive.");
+        Require(HeartbeatInterval > TimeSpan.Zero, $"{nameof(HeartbeatInterval)} must be positive.");
+        Require(LeaseDuration > HeartbeatInterval, $"{nameof(LeaseDuration)} must be longer than {nameof(HeartbeatInterval)}, or a live job loses its lease.");
+        Require(RetryBaseDelay >= TimeSpan.Zero && RetryMaxDelay >= RetryBaseDelay, $"{nameof(RetryMaxDelay)} must be at least {nameof(RetryBaseDelay)}, which must not be negative.");
+        Require(RetryJitter >= 0, $"{nameof(RetryJitter)} must not be negative.");
+        Require(ShutdownGracePeriod >= TimeSpan.Zero && ReleaseTimeout >= TimeSpan.Zero, "The shutdown periods must not be negative.");
+
+        // Longer than a timer can wait, these would throw only when the loop first waits, or at shutdown.
+        TimeSpan[] waits = [PollInterval, MaintenanceInterval, HeartbeatInterval, ShutdownGracePeriod, ReleaseTimeout];
+        Require(waits.All(wait => wait <= LongestWait), $"The intervals and shutdown periods must not be longer than {LongestWait.TotalDays} days.");
+    }
+
+    private static void Require(bool condition, string message)
+    {
+        if (!condition)
+        {
+            throw new FluentCmsConfigurationException(JobErrorCodes.InvalidRunnerOptions, message);
+        }
+    }
+}

@@ -127,9 +127,9 @@ internal sealed class ContentService(
                     Status = EntryStatus.Draft,
                     DraftVersion = 1,
                     CreatedAt = write.Operation.Timestamp,
-                    CreatedBy = write.Operation.Principal.Id,
+                    CreatedBy = write.Operation.AuditPrincipal.Id,
                     UpdatedAt = write.Operation.Timestamp,
-                    UpdatedBy = write.Operation.Principal.Id,
+                    UpdatedBy = write.Operation.AuditPrincipal.Id,
                 };
 
                 ContentDocument composed = new(sent);
@@ -196,7 +196,7 @@ internal sealed class ContentService(
 
                 var working = ContentCopy.Of(stored);
                 await hooks.RunAsync(HookKind.BeforeDelete, write.Type, write.Operation, working, ContentCopy.Of(stored), cancellationToken);
-                await store.SetTrashedAsync(id, write.Operation.Timestamp, write.Operation.Principal.Id, cancellationToken);
+                await store.SetTrashedAsync(id, write.Operation.Timestamp, write.Operation.AuditPrincipal.Id, cancellationToken);
                 await hooks.RunAsync(HookKind.AfterDelete, write.Type, write.Operation, working, ContentCopy.Of(stored), cancellationToken);
 
                 _pending.AddRange(documents.Select(document => new EntryChange(EntryChangeKind.Trashed, write.Type.Name, id, document.Locale, document.DraftVersion, write.Operation)));
@@ -537,7 +537,7 @@ internal sealed class ContentService(
                     CreatedAt = write.Operation.Timestamp,
                     CreatedBy = documents[0].CreatedBy,
                     UpdatedAt = write.Operation.Timestamp,
-                    UpdatedBy = write.Operation.Principal.Id,
+                    UpdatedBy = write.Operation.AuditPrincipal.Id,
                 };
 
                 if (document.DraftVersion != expectedVersion)
@@ -574,12 +574,12 @@ internal sealed class ContentService(
                 {
                     document.DraftVersion = next;
                 }
-                else if (await store.AdvanceVersionAsync(id, document.Locale, expectedVersion, status, write.Operation.Timestamp, write.Operation.Principal.Id, cancellationToken))
+                else if (await store.AdvanceVersionAsync(id, document.Locale, expectedVersion, status, write.Operation.Timestamp, write.Operation.AuditPrincipal.Id, cancellationToken))
                 {
                     document.DraftVersion = next;
                     document.Status = status;
                     document.UpdatedAt = write.Operation.Timestamp;
-                    document.UpdatedBy = write.Operation.Principal.Id;
+                    document.UpdatedBy = write.Operation.AuditPrincipal.Id;
                 }
                 else
                 {

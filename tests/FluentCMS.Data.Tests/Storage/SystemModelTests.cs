@@ -4,6 +4,7 @@ using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Tests.Schema;
 using FluentCMS.Publishing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Shouldly;
 using Xunit;
@@ -75,6 +76,35 @@ public class SystemModelTests
         entity.GetProperties().Select(property => property.GetColumnName()).Order(StringComparer.Ordinal).ShouldBe(
             ["author_id", "client_id", "created_at", "document_id", "id", "locale", "message", "number", "origin", "snapshot", "status_after"]);
         IndexColumns(entity, "uq_cms_version_document_locale_number").ShouldBe(["document_id", "locale", "number"]);
+    }
+
+    [Fact]
+    public void JobTablesHaveTheColumnsOfTheSpecification()
+    {
+        using var database = NewDatabase();
+        using var context = database.CreateContext();
+
+        var job = context.Model.FindEntityType(typeof(Job))!;
+        job.GetTableName().ShouldBe("cms_job");
+        job.GetProperties().Select(property => property.GetColumnName()).Order(StringComparer.Ordinal).ShouldBe(
+            ["attempts", "completed_at", "created_at", "created_by", "id", "last_error", "lease_owner", "lease_until", "max_attempts", "origin", "payload", "priority", "queue", "run_at", "site_id", "status", "type"]);
+        var claim = context.GetService<IDesignTimeModel>().Model.FindEntityType(typeof(Job))!.GetIndexes().Single(index => index.GetDatabaseName() == "ix_cms_job_claim");
+        claim.Properties.Select(property => property.GetColumnName()).ShouldBe(["queue", "priority", "run_at", "id"]);
+        claim.IsDescending.ShouldNotBeNull().ShouldBe([false, true, false, false]);
+        claim.GetFilter().ShouldBe("status IN ('pending', 'running')");
+        IndexColumns(job, "ix_cms_job_status_lease").ShouldBe(["status", "lease_until"]);
+
+        var attempt = context.Model.FindEntityType(typeof(JobAttempt))!;
+        attempt.GetTableName().ShouldBe("cms_job_attempt");
+        attempt.GetProperties().Select(property => property.GetColumnName()).Order(StringComparer.Ordinal).ShouldBe(
+            ["attempt", "error", "finished_at", "job_id", "outcome", "started_at"]);
+        attempt.FindPrimaryKey()!.Properties.Select(property => property.GetColumnName()).ShouldBe(["job_id", "attempt"]);
+
+        // The specification lists no type, but a schedule has to say which job it fires.
+        var recurring = context.Model.FindEntityType(typeof(RecurringJob))!;
+        recurring.GetTableName().ShouldBe("cms_recurring_job");
+        recurring.GetProperties().Select(property => property.GetColumnName()).Order(StringComparer.Ordinal).ShouldBe(
+            ["cron", "enabled", "name", "next_run_at", "payload", "queue", "type"]);
     }
 
     [Fact]
