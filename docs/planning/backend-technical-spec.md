@@ -1258,6 +1258,7 @@ CREATE TABLE cms_article (
     state           smallint NOT NULL,           -- 0 draft, 1 published
     category        varchar(64),
     published_on    timestamptz,
+    video_url       varchar(2048),
     sections        jsonb NOT NULL DEFAULT '[]',
     seo_meta_title  varchar(70),
     seo_meta_description varchar(160),
@@ -1274,7 +1275,6 @@ CREATE TABLE cms_article_i18n (
     title           varchar(200) NOT NULL,
     slug            varchar(200) NOT NULL,
     body            jsonb NOT NULL,
-    video_url       varchar(2048),
     UNIQUE (document_id, locale, state)
 );
 CREATE UNIQUE INDEX ux_cms_article_i18n_slug
