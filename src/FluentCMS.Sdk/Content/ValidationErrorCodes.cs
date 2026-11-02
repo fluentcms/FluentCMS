@@ -32,4 +32,7 @@ public static class ValidationErrorCodes
 
     /// <summary>The field's <c>RequiredWhen</c> condition holds and the field has no value.</summary>
     public const string RequiredByCondition = "FCMS2110";
+
+    /// <summary>Another entry in the same site and locale holds the value of a unique field, as a draft or published.</summary>
+    public const string NotUnique = "FCMS2111";
 }

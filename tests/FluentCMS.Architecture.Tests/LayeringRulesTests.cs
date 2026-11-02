@@ -16,6 +16,8 @@ public class LayeringRulesTests
     private const string ApiNamespace = "FluentCMS.Core.Api";
     private const string StorageNamespace = "FluentCMS.Core.Storage";
     private const string AuthorizationNamespace = "FluentCMS.Core.Authorization";
+    private const string ContentNamespace = "FluentCMS.Core.Content";
+    private const string SitesNamespace = "FluentCMS.Core.Sites";
 
     private static readonly Lazy<ArchUnitNET.Domain.Architecture> core = new(
         () => new ArchLoader().LoadAssemblies(Assembly.Load("FluentCMS.Core")).Build());
@@ -71,6 +73,58 @@ public class LayeringRulesTests
         Types().That().DoNotResideInNamespaceOrBelow(AuthorizationNamespace)
             .And().DoNotResideInNamespaceOrBelow(StorageNamespace)
             .Should().NotDependOnAnyTypesThat().HaveNameStartingWith("RoleGrant")
+            .Check(core.Value);
+    }
+
+    // Issue #2693. CmsDbContext also holds the system tables, so these may reach it for their own tables only, which the
+    // next rule checks: the evaluator for roles, Sites and LocaleRegistry for cms_site and cms_site_locale, and
+    // the extensions that register it.
+    [Fact]
+    public void OnlyTheServiceAndTheStorageLayerTouchCmsDbContext()
+    {
+        Types().That().DoNotResideInNamespaceOrBelow(ContentNamespace)
+            .And().DoNotResideInNamespaceOrBelow(StorageNamespace)
+            .And().DoNotResideInNamespaceOrBelow(SitesNamespace)
+            .And().DoNotHaveName("AuthorizationEvaluator")
+            .And().DoNotHaveName("LocaleRegistry")
+            .And().DoNotHaveName("FluentCmsServiceCollectionExtensions")
+            .Should().NotDependOnAnyTypesThat().HaveName("CmsDbContext")
+            .Check(core.Value);
+    }
+
+    // The evaluator asks whether an entry is in a site, and SiteManager whether a site has entries; neither reads content.
+    // Nothing outside Content and Storage reads a content table: Rows is the only way to one, and it is checked below.
+    [Fact]
+    public void OnlyTheServiceAndTheStorageLayerTouchTheContentSystemTables()
+    {
+        Types().That().DoNotResideInNamespaceOrBelow(ContentNamespace)
+            .And().DoNotResideInNamespaceOrBelow(StorageNamespace)
+            .And().DoNotHaveName("AuthorizationEvaluator")
+            .And().DoNotHaveName("SiteManager")
+            .Should().NotDependOnAnyTypesThat().HaveName("Document")
+            .AndShould().NotDependOnAnyTypesThat().HaveName("Reference")
+            .AndShould().NotDependOnAnyTypesThat().HaveName("ContentVersion")
+            .Check(core.Value);
+    }
+
+    [Fact]
+    public void OnlyTheServiceAndTheStorageLayerReadContentRows()
+    {
+        var rows = MethodMembers().That().AreDeclaredIn(typeof(FluentCMS.Core.Storage.CmsDbContext)).And().HaveName("Rows(System.String)");
+
+        Types().That().DoNotResideInNamespaceOrBelow(ContentNamespace)
+            .And().DoNotResideInNamespaceOrBelow(StorageNamespace)
+            .Should().NotCallAny(rows)
+            .Check(core.Value);
+    }
+
+    // Inside Content, the store and the query engine are what the service and the evaluator go through, not a way around them.
+    [Fact]
+    public void NothingOutsideContentUsesTheEntryStoreOrWritesAroundTheService()
+    {
+        Types().That().DoNotResideInNamespaceOrBelow(ContentNamespace)
+            .And().DoNotHaveName("FluentCmsServiceCollectionExtensions")
+            .Should().NotDependOnAnyTypesThat().HaveName("EntryStore")
             .Check(core.Value);
     }
 

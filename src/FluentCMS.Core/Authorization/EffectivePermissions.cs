@@ -6,8 +6,9 @@ using FluentCMS.Sites;
 namespace FluentCMS.Core.Authorization;
 
 // Where an operation applies. A null site is every site, so only a grant with no site limit holds for it; an empty
-// locale is no locale, so only a grant with no locale limit holds for it.
-internal readonly record struct AccessTarget(SiteId? Site, string? Locale);
+// locale is no locale, so only a grant with no locale limit holds for it. RowLocale is the row a row rule reads when
+// that is not Locale's: a write that adds a locale to an entry has no row of its own there yet.
+internal readonly record struct AccessTarget(SiteId? Site, string? Locale, string? RowLocale = null);
 
 // One row of cms_role_permission, with the site of its role: a role of one site grants nothing in another.
 internal sealed record EffectiveGrant(string Pattern, PermissionConstraints Constraints, Guid? RoleSite)

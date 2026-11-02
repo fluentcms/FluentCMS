@@ -1,4 +1,5 @@
 using FluentCMS.Content;
+using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Storage;
@@ -220,6 +221,34 @@ internal sealed class QueryDatabase : IDisposable
         Context.Documents.Where(document => document.DocumentId == id).ExecuteDelete();
         Context.Rows("cms_article").Where(row => EF.Property<Guid>(row, "document_id") == id).ExecuteDelete();
         Context.Rows("cms_article_i18n").Where(row => EF.Property<Guid>(row, "document_id") == id).ExecuteDelete();
+    }
+
+    public Guid AddRoleForTest(string name, params (string Permission, PermissionConstraints? Constraints)[] grants) =>
+        AddRoleForTest(name, null, grants);
+
+    public Guid AddRoleForTest(string name, Guid? site, params (string Permission, PermissionConstraints? Constraints)[] grants)
+    {
+        using var scope = NewScope();
+        var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+        var role = new Role { Name = name, SiteId = site };
+        context.Add(role);
+        context.SaveChanges();
+
+        foreach (var (permission, constraints) in grants)
+        {
+            context.Add(new RoleGrant { RoleId = role.Id, Permission = permission, Constraints = constraints?.ToJson() });
+        }
+
+        context.SaveChanges();
+        return role.Id;
+    }
+
+    public void GrantForTest(Guid role, string permission)
+    {
+        using var scope = NewScope();
+        var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+        context.Add(new RoleGrant { RoleId = role, Permission = permission });
+        context.SaveChanges();
     }
 
     public Task<ContentQueryResult> RunAsync(string queryString, IContentQueryAccess? access = null, ContentQueryOptions? options = null, string type = "article") =>

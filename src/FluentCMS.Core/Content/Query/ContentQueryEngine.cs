@@ -28,11 +28,16 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         int? PageNumber,
         bool WithTotal);
 
-    public async Task<ContentQueryResult> ExecuteAsync(string typeName, ContentQuery query, CancellationToken cancellationToken = default)
+    public Task<ContentQueryResult> ExecuteAsync(string typeName, ContentQuery query, CancellationToken cancellationToken = default) =>
+        ExecuteAsync(typeName, query, everySystemField: false, cancellationToken);
+
+    // everySystemField is for a content class, which has a property for each of them; a document leaves out the two that
+    // are not in the response shape. Field permissions still decide.
+    public async Task<ContentQueryResult> ExecuteAsync(string typeName, ContentQuery query, bool everySystemField, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(query);
 
-        var compiled = Compile(await access.ForQueryAsync(query.Site, query.Locale ?? "", cancellationToken), typeName, query);
+        var compiled = Compile(await access.ForQueryAsync(query.Site, query.Locale ?? "", cancellationToken), typeName, query, everySystemField);
 
         long? total = compiled.WithTotal ? await compiled.Filtered.LongCountAsync(cancellationToken) : null;
         var rows = await compiled.Rows.ToListAsync(cancellationToken);
@@ -55,7 +60,7 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
     // Separate from running it, so that a test can read the SQL.
     internal CompiledQuery Compile(string typeName, ContentQuery query) => Compile(access, typeName, query);
 
-    private CompiledQuery Compile(IContentQueryAccess access, string typeName, ContentQuery query)
+    private CompiledQuery Compile(IContentQueryAccess access, string typeName, ContentQuery query, bool everySystemField = false)
     {
         ArgumentNullException.ThrowIfNull(query);
 
@@ -85,7 +90,8 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
             rows = rows.Where(Lambda(filter, row));
         }
 
-        var plan = new EntryPlan(scope, type, Selection(scope, type, query.Select), Population(scope, type, query), level: 0, isRoot: true, row);
+        var select = everySystemField && query.Select.Count == 0 ? SelectNode.EverythingWithSystem : Selection(scope, type, query.Select);
+        var plan = new EntryPlan(scope, type, select, Population(scope, type, query), level: 0, isRoot: true, row);
         var keys = SortKeys.Build(scope, type, query.Sort, row);
         var keyColumns = keys.Select(key => plan.AddColumn(key.Value)).ToArray();
         var (skip, size, number, withTotal) = Page(scope, query);

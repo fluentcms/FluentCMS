@@ -11,6 +11,10 @@ FluentCMS.Content.And.Deconstruct(out System.Collections.Generic.IReadOnlyList<F
 FluentCMS.Content.And.Equals(FluentCMS.Content.And? other) -> bool
 FluentCMS.Content.And.Filters.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Content.ContentFilter!>!
 FluentCMS.Content.And.Filters.init -> void
+FluentCMS.Content.ContentAccessDeniedException
+FluentCMS.Content.ContentAccessDeniedException.ContentAccessDeniedException(string! type, string! operation) -> void
+FluentCMS.Content.ContentAccessDeniedException.Operation.get -> string!
+FluentCMS.Content.ContentAccessDeniedException.Type.get -> string!
 FluentCMS.Content.ContentDocument
 FluentCMS.Content.ContentDocument.Add(string! name, object? value) -> void
 FluentCMS.Content.ContentDocument.Clear() -> void
@@ -57,6 +61,10 @@ FluentCMS.Content.ContentQuery.Sort.get -> System.Collections.Generic.IReadOnlyL
 FluentCMS.Content.ContentQuery.Sort.init -> void
 FluentCMS.Content.ContentQuery.Status.get -> FluentCMS.Content.QueryStatus?
 FluentCMS.Content.ContentQuery.Status.init -> void
+FluentCMS.Content.EntryNotFoundException
+FluentCMS.Content.EntryNotFoundException.EntryNotFoundException(string! type, System.Guid id) -> void
+FluentCMS.Content.EntryNotFoundException.Id.get -> System.Guid
+FluentCMS.Content.EntryNotFoundException.Type.get -> string!
 FluentCMS.Content.FieldFilter
 FluentCMS.Content.FieldFilter.Deconstruct(out string! Path, out FluentCMS.Content.FilterOperator Operator, out object? Value) -> void
 FluentCMS.Content.FieldFilter.Equals(FluentCMS.Content.FieldFilter? other) -> bool
@@ -82,6 +90,42 @@ FluentCMS.Content.FilterOperator.LessThanOrEqual = 5 -> FluentCMS.Content.Filter
 FluentCMS.Content.FilterOperator.NotEqual = 1 -> FluentCMS.Content.FilterOperator
 FluentCMS.Content.FilterOperator.NotIn = 3 -> FluentCMS.Content.FilterOperator
 FluentCMS.Content.FilterOperator.StartsWith = 10 -> FluentCMS.Content.FilterOperator
+FluentCMS.Content.GetOptions
+FluentCMS.Content.GetOptions.<Clone>$() -> FluentCMS.Content.GetOptions!
+FluentCMS.Content.GetOptions.Equals(FluentCMS.Content.GetOptions? other) -> bool
+FluentCMS.Content.GetOptions.Fallback.get -> FluentCMS.Content.LocaleFallback
+FluentCMS.Content.GetOptions.Fallback.init -> void
+FluentCMS.Content.GetOptions.GetOptions() -> void
+FluentCMS.Content.GetOptions.Locale.get -> string?
+FluentCMS.Content.GetOptions.Locale.init -> void
+FluentCMS.Content.GetOptions.Populate.get -> System.Collections.Generic.IReadOnlyList<string!>!
+FluentCMS.Content.GetOptions.Populate.init -> void
+FluentCMS.Content.GetOptions.PopulateDepth.get -> int?
+FluentCMS.Content.GetOptions.PopulateDepth.init -> void
+FluentCMS.Content.GetOptions.RichTextFormat.get -> string?
+FluentCMS.Content.GetOptions.RichTextFormat.init -> void
+FluentCMS.Content.GetOptions.Select.get -> System.Collections.Generic.IReadOnlyList<string!>!
+FluentCMS.Content.GetOptions.Select.init -> void
+FluentCMS.Content.GetOptions.Status.get -> FluentCMS.Content.QueryStatus
+FluentCMS.Content.GetOptions.Status.init -> void
+FluentCMS.Content.IContentService
+FluentCMS.Content.IContentService.CountAsync(string! type, FluentCMS.Content.ContentFilter? filter = null, FluentCMS.Content.QueryStatus status = FluentCMS.Content.QueryStatus.Published, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<long>!
+FluentCMS.Content.IContentService.CreateAsync(string! type, FluentCMS.Content.ContentDocument! entry, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.ContentDocument!>!
+FluentCMS.Content.IContentService.DeleteAsync(string! type, System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+FluentCMS.Content.IContentService.GetAsync(string! type, System.Guid id, FluentCMS.Content.GetOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.ContentDocument?>!
+FluentCMS.Content.IContentService.PatchAsync(string! type, System.Guid id, FluentCMS.Content.ContentDocument! patch, int expectedVersion, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.ContentDocument!>!
+FluentCMS.Content.IContentService.QueryAsync(string! type, FluentCMS.Content.ContentQuery! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.PagedResult<FluentCMS.Content.ContentDocument!>!>!
+FluentCMS.Content.IContentService.RestoreAsync(string! type, System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.ContentDocument!>!
+FluentCMS.Content.IContentService.UpdateAsync(string! type, System.Guid id, FluentCMS.Content.ContentDocument! entry, int expectedVersion, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.ContentDocument!>!
+FluentCMS.Content.IContentService<T>
+FluentCMS.Content.IContentService<T>.CountAsync(FluentCMS.Content.ContentFilter? filter = null, FluentCMS.Content.QueryStatus status = FluentCMS.Content.QueryStatus.Published, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<long>!
+FluentCMS.Content.IContentService<T>.CreateAsync(T! entry, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
+FluentCMS.Content.IContentService<T>.DeleteAsync(System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+FluentCMS.Content.IContentService<T>.GetAsync(System.Guid id, FluentCMS.Content.GetOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T?>!
+FluentCMS.Content.IContentService<T>.PatchAsync(System.Guid id, FluentCMS.Content.ContentDocument! patch, int expectedVersion, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
+FluentCMS.Content.IContentService<T>.QueryAsync(FluentCMS.Content.ContentQuery! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.PagedResult<T!>!>!
+FluentCMS.Content.IContentService<T>.RestoreAsync(System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
+FluentCMS.Content.IContentService<T>.UpdateAsync(System.Guid id, T! entry, int expectedVersion, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
 FluentCMS.Content.IEntryValidator<T>
 FluentCMS.Content.IEntryValidator<T>.ValidateAsync(T entry, FluentCMS.Content.ValidationContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
 FluentCMS.Content.IFieldValidator<TField>
@@ -142,6 +186,13 @@ FluentCMS.Content.PageRequest.Size.get -> int?
 FluentCMS.Content.PageRequest.Size.init -> void
 FluentCMS.Content.PageRequest.WithTotal.get -> bool
 FluentCMS.Content.PageRequest.WithTotal.init -> void
+FluentCMS.Content.PagedResult<T>
+FluentCMS.Content.PagedResult<T>.Items.get -> System.Collections.Generic.IReadOnlyList<T>!
+FluentCMS.Content.PagedResult<T>.NextCursor.get -> string?
+FluentCMS.Content.PagedResult<T>.Page.get -> int?
+FluentCMS.Content.PagedResult<T>.PageSize.get -> int
+FluentCMS.Content.PagedResult<T>.PagedResult(System.Collections.Generic.IReadOnlyList<T>! items, long? total, int? page, int pageSize, string? nextCursor) -> void
+FluentCMS.Content.PagedResult<T>.Total.get -> long?
 FluentCMS.Content.Principal
 FluentCMS.Content.Principal.Claim(string! type) -> string?
 FluentCMS.Content.Principal.Claims.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
@@ -171,6 +222,7 @@ FluentCMS.Content.SortField.Equals(FluentCMS.Content.SortField? other) -> bool
 FluentCMS.Content.SortField.Path.get -> string!
 FluentCMS.Content.SortField.Path.init -> void
 FluentCMS.Content.SortField.SortField(string! Path, bool Descending = false) -> void
+FluentCMS.Content.SystemOperation
 FluentCMS.Content.ValidationContext
 FluentCMS.Content.ValidationContext.AddError(string! code, string! message) -> void
 FluentCMS.Content.ValidationContext.AddError(string! path, string! code, string! message) -> void
@@ -206,6 +258,11 @@ FluentCMS.Content.ValidationResult
 FluentCMS.Content.ValidationResult.Errors.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Content.ValidationError!>!
 FluentCMS.Content.ValidationResult.IsValid.get -> bool
 FluentCMS.Content.ValidationResult.ValidationResult(System.Collections.Generic.IEnumerable<FluentCMS.Content.ValidationError!>! errors) -> void
+FluentCMS.Content.VersionConflictException
+FluentCMS.Content.VersionConflictException.Current.get -> FluentCMS.Content.ContentDocument?
+FluentCMS.Content.VersionConflictException.CurrentVersion.get -> int
+FluentCMS.Content.VersionConflictException.ExpectedVersion.get -> int
+FluentCMS.Content.VersionConflictException.VersionConflictException(int expectedVersion, int currentVersion, FluentCMS.Content.ContentDocument? current) -> void
 FluentCMS.Hooks.HookContext<T>
 FluentCMS.Hooks.HookContext<T>.Cancel(string! code, string! message) -> void
 FluentCMS.Hooks.HookContext<T>.CancelCode.get -> string?
@@ -661,6 +718,7 @@ const FluentCMS.Content.ValidationErrorCodes.InvalidValue = "FCMS2108" -> string
 const FluentCMS.Content.ValidationErrorCodes.MaxLength = "FCMS2103" -> string!
 const FluentCMS.Content.ValidationErrorCodes.MinLength = "FCMS2102" -> string!
 const FluentCMS.Content.ValidationErrorCodes.NotAnAllowedOption = "FCMS2107" -> string!
+const FluentCMS.Content.ValidationErrorCodes.NotUnique = "FCMS2111" -> string!
 const FluentCMS.Content.ValidationErrorCodes.PatternMismatch = "FCMS2106" -> string!
 const FluentCMS.Content.ValidationErrorCodes.Required = "FCMS2101" -> string!
 const FluentCMS.Content.ValidationErrorCodes.RequiredByCondition = "FCMS2110" -> string!
@@ -688,6 +746,9 @@ override FluentCMS.Content.FieldFilter.<Clone>$() -> FluentCMS.Content.FieldFilt
 override FluentCMS.Content.FieldFilter.Equals(object? obj) -> bool
 override FluentCMS.Content.FieldFilter.GetHashCode() -> int
 override FluentCMS.Content.FieldFilter.ToString() -> string!
+override FluentCMS.Content.GetOptions.Equals(object? obj) -> bool
+override FluentCMS.Content.GetOptions.GetHashCode() -> int
+override FluentCMS.Content.GetOptions.ToString() -> string!
 override FluentCMS.Content.Not.<Clone>$() -> FluentCMS.Content.Not!
 override FluentCMS.Content.Not.Equals(object? obj) -> bool
 override FluentCMS.Content.Not.GetHashCode() -> int
@@ -752,6 +813,8 @@ static FluentCMS.Content.ContentQuery.operator !=(FluentCMS.Content.ContentQuery
 static FluentCMS.Content.ContentQuery.operator ==(FluentCMS.Content.ContentQuery? left, FluentCMS.Content.ContentQuery? right) -> bool
 static FluentCMS.Content.FieldFilter.operator !=(FluentCMS.Content.FieldFilter? left, FluentCMS.Content.FieldFilter? right) -> bool
 static FluentCMS.Content.FieldFilter.operator ==(FluentCMS.Content.FieldFilter? left, FluentCMS.Content.FieldFilter? right) -> bool
+static FluentCMS.Content.GetOptions.operator !=(FluentCMS.Content.GetOptions? left, FluentCMS.Content.GetOptions? right) -> bool
+static FluentCMS.Content.GetOptions.operator ==(FluentCMS.Content.GetOptions? left, FluentCMS.Content.GetOptions? right) -> bool
 static FluentCMS.Content.Not.operator !=(FluentCMS.Content.Not? left, FluentCMS.Content.Not? right) -> bool
 static FluentCMS.Content.Not.operator ==(FluentCMS.Content.Not? left, FluentCMS.Content.Not? right) -> bool
 static FluentCMS.Content.OperationContext.operator !=(FluentCMS.Content.OperationContext? left, FluentCMS.Content.OperationContext? right) -> bool
@@ -764,6 +827,8 @@ static FluentCMS.Content.Principal.Anonymous.get -> FluentCMS.Content.Principal!
 static FluentCMS.Content.Principal.System.get -> FluentCMS.Content.Principal!
 static FluentCMS.Content.SortField.operator !=(FluentCMS.Content.SortField? left, FluentCMS.Content.SortField? right) -> bool
 static FluentCMS.Content.SortField.operator ==(FluentCMS.Content.SortField? left, FluentCMS.Content.SortField? right) -> bool
+static FluentCMS.Content.SystemOperation.Allows(FluentCMS.Content.Origin origin) -> bool
+static FluentCMS.Content.SystemOperation.Begin(FluentCMS.Content.IOperationContextAccessor! accessor, FluentCMS.Content.Origin origin, FluentCMS.Sites.SiteId site, string! locale = "", string? correlationId = null) -> System.IDisposable!
 static FluentCMS.Content.ValidationError.operator !=(FluentCMS.Content.ValidationError? left, FluentCMS.Content.ValidationError? right) -> bool
 static FluentCMS.Content.ValidationError.operator ==(FluentCMS.Content.ValidationError? left, FluentCMS.Content.ValidationError? right) -> bool
 static FluentCMS.Content.ValidationResult.Success.get -> FluentCMS.Content.ValidationResult!

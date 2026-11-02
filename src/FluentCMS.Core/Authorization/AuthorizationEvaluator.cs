@@ -141,7 +141,7 @@ internal sealed class AuthorizationEvaluator(
     private async Task<bool> MatchesAsync(SchemaType type, ContentOperation operation, Guid entry, AccessTarget target, QueryStatus status, ContentFilter rule, CancellationToken cancellationToken)
     {
         var state = operation == ContentOperation.Read && status == QueryStatus.Published ? ContentState.Published : ContentState.Draft;
-        var scope = new QueryScope(database, schema, dialect, new ContentQueryAccess.RuleOnly(type, rule), options, state, target.Locale ?? "", target.Site);
+        var scope = new QueryScope(database, schema, dialect, new ContentQueryAccess.RuleOnly(type, rule), options, state, target.RowLocale ?? target.Locale ?? "", target.Site);
 
         var row = Expression.Parameter(typeof(QueryRow), "row");
         var condition = new FilterCompiler(scope).Where(type, null, row)!;

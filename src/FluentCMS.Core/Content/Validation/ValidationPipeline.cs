@@ -16,7 +16,8 @@ public sealed class ValidationPipeline(SchemaModel model, IServiceProvider servi
         object? entry,
         OperationContext operation,
         ValidationMode mode,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Func<ValidationContext, CancellationToken, ValueTask>? soundEntryCheck = null)
     {
         ArgumentNullException.ThrowIfNull(type);
         ArgumentNullException.ThrowIfNull(values);
@@ -37,8 +38,13 @@ public sealed class ValidationPipeline(SchemaModel model, IServiceProvider servi
             await RunEntryValidatorsAsync(entry, context, cancellationToken);
         }
 
-        // Uniqueness (a database query, #2693) and reference integrity on publish (#2695) slot in here, after the
+        // Uniqueness (a database query) and reference integrity on publish (#2695) come through here, after the
         // validators that need no I/O, so they only run for an entry that is otherwise sound.
+        if (context.Errors.Count == 0 && soundEntryCheck is not null)
+        {
+            await soundEntryCheck(context.ForEntry(), cancellationToken);
+        }
+
         return context.Errors.Count == 0 ? ValidationResult.Success : new ValidationResult(context.Errors);
     }
 

@@ -52,7 +52,7 @@ internal sealed class FieldAccess(EffectivePermissions permissions, SchemaModel 
             }
             else if (SystemField.Find(key) is null)
             {
-                if (type.FindField(key) is not { Hidden: false } field || !writable.Includes(key))
+                if (type.FindField(key) is not { Hidden: false, ReadOnly: false } field || !writable.Includes(key))
                 {
                     Refuse(errors, key, type);
                 }
@@ -60,6 +60,46 @@ internal sealed class FieldAccess(EffectivePermissions permissions, SchemaModel 
                 {
                     CheckInside(errors, key, value, field, type);
                 }
+            }
+        }
+
+        if (errors.Count > 0)
+        {
+            throw new ValidationException(errors);
+        }
+    }
+
+    // Whether a value of a field names nothing inside it that no client may write, whoever is asking.
+    public bool IsClean(SchemaField field, object? value, SchemaType type)
+    {
+        ArgumentNullException.ThrowIfNull(field);
+        ArgumentNullException.ThrowIfNull(type);
+
+        List<ValidationError> errors = [];
+        CheckInside(errors, field.Name, value, field, type);
+        return errors.Count == 0;
+    }
+
+    // What a before hook changed is held to the same grants as the client it runs for, so that a hook cannot be the way
+    // to a field the principal may not write. A hidden or read-only field is outside this: no client reaches it, and a
+    // hook is what fills it. Fields that are not there at all never get this far: the canonicalizer refuses them.
+    public void RejectHookChanges(IEnumerable<string> changed, SchemaType type, WritableFields writable)
+    {
+        ArgumentNullException.ThrowIfNull(changed);
+        ArgumentNullException.ThrowIfNull(type);
+        ArgumentNullException.ThrowIfNull(writable);
+
+        if (permissions.IsSystem)
+        {
+            return;
+        }
+
+        List<ValidationError> errors = [];
+        foreach (var name in changed)
+        {
+            if (type.FindField(name) is { Hidden: false, ReadOnly: false } && !writable.Includes(name))
+            {
+                Refuse(errors, name, type);
             }
         }
 
@@ -220,7 +260,7 @@ internal sealed class FieldAccess(EffectivePermissions permissions, SchemaModel 
                 continue;
             }
 
-            if (owner.FindField(key) is { Hidden: false } inner)
+            if (owner.FindField(key) is { Hidden: false, ReadOnly: false } inner)
             {
                 CheckInside(errors, $"{path}.{key}", value, inner, root);
             }
