@@ -3,10 +3,12 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace FluentCMS.Core.Storage;
 
-// What a data provider package adds to the provider-neutral model. The model cache key includes the
-// implementing type, so an implementation must always produce the same changes.
+// What a data provider package adds to the provider-neutral model.
 public interface IStorageConventions
 {
+    // Part of the model cache key: two instances that change the model differently need different keys.
+    string CacheKey { get; }
+
     // Model-wide conventions, such as storing DateTimeOffset as UTC ticks on SQLite.
     void ConfigureConventions(ModelConfigurationBuilder configurationBuilder);
 

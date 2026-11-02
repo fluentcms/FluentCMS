@@ -211,6 +211,34 @@ public class ContentRowTests
     }
 
     [Fact]
+    public void NonLocalizedUniqueIsScopedBySiteAndCoversOnlyPublishedRows()
+    {
+        var schema = SampleSchema.NewBuilder().AddCollection("page", type => type.Field("path", "text", field => field.Unique())).Build();
+        using var database = new StorageDatabase(schema);
+        using var context = database.CreateCreatedContext();
+
+        static Dictionary<string, object> Row(short state, Guid site) => new()
+        {
+            ["document_id"] = Guid.CreateVersion7(),
+            ["site_id"] = site,
+            ["state"] = state,
+            ["path"] = "/same",
+        };
+
+        context.Rows("cms_page").AddRange(
+            Row(ContentState.Draft, Site),
+            Row(ContentState.Draft, Site),
+            Row(ContentState.Published, Site),
+            Row(ContentState.Published, Guid.CreateVersion7()));
+        context.SaveChanges().ShouldBe(4);
+        context.ChangeTracker.Clear();
+
+        context.Rows("cms_page").Add(Row(ContentState.Published, Site));
+
+        Should.Throw<DbUpdateException>(() => context.SaveChanges());
+    }
+
+    [Fact]
     public void GlobalPublishedSlugIsUniqueDespiteTheNullSite()
     {
         using var database = NewDatabase();

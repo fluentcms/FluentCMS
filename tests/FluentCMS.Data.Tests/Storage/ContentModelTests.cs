@@ -39,7 +39,7 @@ public class ContentModelTests
         var table = Table(ModelOf(Sample), "cms_article");
 
         table.GetTableName().ShouldBe("cms_article");
-        
+
         // Appendix A has video_url in the locale table, but the sample of section 4.2 does not mark it [Localizable].
         Columns(table).ShouldBe(["category", "document_id", "id", "published_on", "sections", "seo_meta_description", "seo_meta_title", "site_id", "state", "video_url"]);
         table.FindPrimaryKey()!.Properties.Select(property => property.Name).ShouldBe(["id"]);
@@ -266,6 +266,24 @@ public class ContentModelTests
     }
 
     [Fact]
+    public void IndexesOnAComponentFieldUseItsFlattenedColumn()
+    {
+        var schema = SampleSchema.NewBuilder()
+            .AddComponent("seo", type => type.Field("metaTitle", "text", field => field.Indexed().Unique()))
+            .AddCollection("page", type => type.Field("seo", "component", field => field.Setting(FieldSettings.Component, "seo")))
+            .Build();
+
+        var table = Table(ModelOf(schema), "cms_page");
+
+        IndexColumns(Index(table, "ix_cms_page_seo_meta_title")).ShouldBe(["site_id", "state", "seo_meta_title"]);
+
+        var unique = Index(table, "ux_cms_page_seo_meta_title");
+        unique.IsUnique.ShouldBeTrue();
+        unique.GetFilter().ShouldBe("state = 1");
+        IndexColumns(unique).ShouldBe(["site_id", "seo_meta_title"]);
+    }
+
+    [Fact]
     public void FieldThatTakesASystemColumnIsReported()
     {
         var schema = SampleSchema.NewBuilder().AddCollection("page", type => type.Field("documentId", "text").Field("state", "integer")).Build();
@@ -275,6 +293,24 @@ public class ContentModelTests
         exception.Errors.Select(error => error.Code).ShouldBe([SchemaErrorCodes.ReservedName, SchemaErrorCodes.ReservedName]);
         exception.Message.ShouldContain("page.documentId");
         exception.Message.ShouldContain("page.state");
+    }
+
+    [Fact]
+    public void FieldsThatShareAColumnAreReportedByName()
+    {
+        var schema = SampleSchema.NewBuilder()
+            .AddComponent("seo", type => type.Field("metaTitle", "text"))
+            .AddCollection("page", type => type
+                .Field("seo", "component", field => field.Setting(FieldSettings.Component, "seo"))
+                .Field("seoMetaTitle", "text"))
+            .Build();
+
+        var error = Should.Throw<SchemaValidationException>(() => ModelOf(schema)).Errors.ShouldHaveSingleItem();
+
+        error.Code.ShouldBe(SchemaErrorCodes.DuplicateField);
+        error.Message.ShouldContain("page.seo.metaTitle");
+        error.Message.ShouldContain("page.seoMetaTitle");
+        error.Message.ShouldContain("seo_meta_title");
     }
 
     [Theory]

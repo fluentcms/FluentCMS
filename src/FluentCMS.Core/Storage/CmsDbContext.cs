@@ -23,7 +23,7 @@ public sealed class CmsDbContext : DbContext
 
     internal string ModelKey => SchemaModelKey.Of(_model.Schema);
 
-    internal Type ConventionsType => _model.Conventions.GetType();
+    internal string ConventionsKey => _model.Conventions.CacheKey;
 
     // The rows of a content table, such as cms_article or cms_article_i18n.
     public DbSet<Dictionary<string, object>> Rows(string table) => Set<Dictionary<string, object>>(table);

@@ -9,8 +9,6 @@ namespace FluentCMS.Core.Storage;
 // cms_{type}_i18n for a localized type. Property names are the column names.
 internal sealed class ContentModelBuilder(SchemaModel schema, IStorageConventions conventions)
 {
-    private const int LocaleLength = 16;
-
     private readonly List<SchemaError> _errors = [];
 
     // System entities must already be mapped, so a type whose table is taken is reported here.
@@ -55,12 +53,19 @@ internal sealed class ContentModelBuilder(SchemaModel schema, IStorageConvention
             entity.Property(type.Scope == ContentScope.Global ? typeof(Guid?) : typeof(Guid), StorageNames.SiteId);
             entity.Property<short>(StorageNames.State);
 
-            HashSet<string> columns = new(StringComparer.Ordinal) { StorageNames.Id, StorageNames.DocumentId, StorageNames.SiteId, StorageNames.State };
+            // Column to the field that holds it; a system column has no field.
+            Dictionary<string, string?> columns = new(StringComparer.Ordinal)
+            {
+                [StorageNames.Id] = null,
+                [StorageNames.DocumentId] = null,
+                [StorageNames.SiteId] = null,
+                [StorageNames.State] = null,
+            };
 
             if (hasLocale)
             {
-                entity.Property<string>(StorageNames.Locale).HasMaxLength(LocaleLength).IsRequired();
-                columns.Add(StorageNames.Locale);
+                entity.Property<string>(StorageNames.Locale).HasMaxLength(StorageNames.LocaleLength).IsRequired();
+                columns[StorageNames.Locale] = null;
                 entity.HasIndex(StorageNames.DocumentId, StorageNames.Locale, StorageNames.State).IsUnique().HasDatabaseName($"uq_{table}_document_locale_state");
             }
             else
@@ -75,7 +80,7 @@ internal sealed class ContentModelBuilder(SchemaModel schema, IStorageConvention
         });
     }
 
-    private void MapField(EntityTypeBuilder entity, SchemaType type, string table, StoredField field, HashSet<string> columns, bool hasLocale)
+    private void MapField(EntityTypeBuilder entity, SchemaType type, string table, StoredField field, Dictionary<string, string?> columns, bool hasLocale)
     {
         if (field.Kind == StorageKind.Reference)
         {
@@ -88,11 +93,21 @@ internal sealed class ContentModelBuilder(SchemaModel schema, IStorageConvention
             return;
         }
 
-        if (!columns.Add(field.Column))
+        if (columns.TryGetValue(field.Column, out var holder))
         {
-            Report(SchemaErrorCodes.ReservedName, $"field {field.Location} maps to column {field.Column} of {table}, which is already taken");
+            if (holder is null)
+            {
+                Report(SchemaErrorCodes.ReservedName, $"field {field.Location} maps to column {field.Column} of {table}, which is a system column");
+            }
+            else
+            {
+                Report(SchemaErrorCodes.DuplicateField, $"fields {holder} and {field.Location} both map to column {field.Column} of {table}");
+            }
+
             return;
         }
+
+        columns[field.Column] = field.Location;
 
         var property = entity.Property(field.ClrType!, field.Column);
         if (field.ClrType == typeof(string))

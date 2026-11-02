@@ -1,7 +1,9 @@
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Tests.Schema;
 using FluentCMS.Schema;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Shouldly;
 using Xunit;
 
@@ -60,5 +62,33 @@ public class ModelCacheTests
         var schema = PageSchema("cacheConventions");
 
         ModelOf(schema).ShouldNotBeSameAs(ModelOf(schema, new SqliteLikeConventions()));
+    }
+
+    [Fact]
+    public void InstancesOfOneConventionsClassShareAModelByTheirKey()
+    {
+        var schema = SampleSchema.NewBuilder().AddCollection("page", type => type.Field("data", "json", field => field.Indexed())).Build();
+
+        var plain = ModelOf(schema, new OptionalIndexConventions(index: false));
+        var indexed = ModelOf(schema, new OptionalIndexConventions(index: true));
+
+        ModelOf(schema, new OptionalIndexConventions(index: false)).ShouldBeSameAs(plain);
+        indexed.ShouldNotBeSameAs(plain);
+        plain.FindEntityType("cms_page")!.GetIndexes().Count().ShouldBe(1);
+        indexed.FindEntityType("cms_page")!.GetIndexes().Count().ShouldBe(2);
+    }
+
+    // A provider option that changes the model, such as the json column type on SQL Server.
+    private sealed class OptionalIndexConventions(bool index) : StorageConventions
+    {
+        public override string CacheKey => $"{base.CacheKey}|{index}";
+
+        public override void ConfigureJsonIndex(EntityTypeBuilder entity, string column)
+        {
+            if (index)
+            {
+                entity.HasIndex(column);
+            }
+        }
     }
 }

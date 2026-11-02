@@ -7,7 +7,6 @@ namespace FluentCMS.Core.Storage;
 // Maps the system tables that have a CLR class. Columns are the snake_case of the property names.
 internal sealed class SystemModelBuilder(IStorageConventions conventions)
 {
-    private const int LocaleLength = 16;
     private const int NameLength = 64;
     private const int StatusLength = 16;
 
@@ -23,7 +22,7 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         entity.ToTable(StorageNames.Document);
         MapColumnNames(entity);
         entity.Property(document => document.Id).HasValueGenerator<GuidV7ValueGenerator>();
-        entity.Property(document => document.Locale).HasMaxLength(LocaleLength);
+        entity.Property(document => document.Locale).HasMaxLength(StorageNames.LocaleLength);
         entity.Property(document => document.Type).HasMaxLength(NameLength);
         entity.Property(document => document.Status).HasConversion<string>().HasMaxLength(StatusLength);
 
@@ -41,7 +40,7 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         MapColumnNames(entity);
         entity.Property(reference => reference.Id).HasValueGenerator<GuidV7ValueGenerator>();
         entity.Property(reference => reference.SourceType).HasMaxLength(NameLength);
-        entity.Property(reference => reference.Locale).HasMaxLength(LocaleLength);
+        entity.Property(reference => reference.Locale).HasMaxLength(StorageNames.LocaleLength);
         entity.Property(reference => reference.Field).HasMaxLength(NameLength);
         entity.Property(reference => reference.TargetType).HasMaxLength(NameLength);
 
@@ -58,7 +57,7 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         entity.ToTable(StorageNames.Version);
         MapColumnNames(entity);
         entity.Property(version => version.Id).HasValueGenerator<GuidV7ValueGenerator>();
-        entity.Property(version => version.Locale).HasMaxLength(LocaleLength);
+        entity.Property(version => version.Locale).HasMaxLength(StorageNames.LocaleLength);
         entity.Property(version => version.StatusAfter).HasConversion<string>().HasMaxLength(StatusLength);
         entity.Property(version => version.Origin).HasConversion<string>().HasMaxLength(StatusLength);
         conventions.ConfigureJsonColumn(entity, entity.Property(version => version.Snapshot));

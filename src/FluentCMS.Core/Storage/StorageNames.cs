@@ -16,6 +16,8 @@ internal static class StorageNames
     public const string Locale = "locale";
     public const string State = "state";
 
+    public const int LocaleLength = 16;
+
     public const string PublishedOnly = "state = 1";
 
     public static string Table(SchemaType type) => Prefix + type.Name.Replace('-', '_');
