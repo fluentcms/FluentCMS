@@ -14,6 +14,8 @@ public sealed class MediaFieldType : IFieldType
 
     public IReadOnlySet<FilterOperator> FilterOperators { get; } = new HashSet<FilterOperator> { FilterOperator.Equal, FilterOperator.In };
 
+    public bool SupportsMultiple => true;
+
     public bool Sortable(SchemaField field) => false;
 
     public bool Indexable(SchemaField field) => false;

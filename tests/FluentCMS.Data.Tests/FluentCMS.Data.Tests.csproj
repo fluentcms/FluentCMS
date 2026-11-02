@@ -15,6 +15,7 @@
     <Compile Include="../FluentCMS.Core.Tests/Schema/SampleSchema.cs" Link="Schema/SampleSchema.cs" />
     <Compile Include="../FluentCMS.Core.Tests/Schema/Samples/*.cs" Link="Schema/Samples/%(Filename)%(Extension)" />
     <Compile Include="../FluentCMS.Core.Tests/Schema/FieldTypes/MediaFieldType.cs" Link="Schema/FieldTypes/MediaFieldType.cs" />
+    <Compile Include="../FluentCMS.Core.Tests/Schema/FieldTypes/ListFieldType.cs" Link="Schema/FieldTypes/ListFieldType.cs" />
   </ItemGroup>
 
   <ItemGroup>

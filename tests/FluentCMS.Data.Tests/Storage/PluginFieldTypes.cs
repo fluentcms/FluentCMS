@@ -15,6 +15,8 @@ internal abstract class PluginFieldType(string name, FieldStorageKind kind) : IF
 
     public IReadOnlyList<FieldSettingDescriptor> Settings { get; } = [];
 
+    public bool SupportsMultiple => kind == FieldStorageKind.Json;
+
     public bool Sortable(SchemaField field) => false;
 
     public bool Indexable(SchemaField field) => true;

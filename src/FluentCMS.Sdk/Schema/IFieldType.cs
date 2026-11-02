@@ -30,6 +30,12 @@ public interface IFieldType
     /// </summary>
     bool AcceptsAnySetting => false;
 
+    /// <summary>
+    /// Whether a field of this type may be marked <see cref="SchemaField.Multiple"/>. A type that answers <see langword="false"/>
+    /// fails schema validation when a field sets it, because a list needs a type that stores and coerces one. The default is <see langword="false"/>.
+    /// </summary>
+    bool SupportsMultiple => false;
+
     /// <summary>Whether a query may sort by the field. Core types answer <see langword="false"/> for a field stored as <see cref="FieldStorageKind.Json"/>, such as a multi select.</summary>
     /// <param name="field">The field.</param>
     /// <returns><see langword="true"/> if the field can be sorted.</returns>
