@@ -16,6 +16,8 @@ internal sealed class SelectFieldType()
         indexable: true,
         new FieldSettingDescriptor { Key = FieldSettings.Options, Kind = FieldSettingKind.StringList, Required = true })
 {
+    public override bool SupportsMultiple => true;
+
     public override FieldStorageKind StorageKind(SchemaField field) => field.Multiple ? FieldStorageKind.Json : FieldStorageKind.Column;
 
     public override bool Indexable(SchemaField field) => !field.Multiple;

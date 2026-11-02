@@ -12,7 +12,7 @@ Accepted. Confirmed on SQLite only. PostgreSQL and SQL Server stay unverified un
 
 Q5 in the [backend specification](../planning/backend-technical-spec.md) chose EF Core shared-type (property bag) entity types over source-generated row classes, subject to a spike. Q7 limits JSON filtering to block-type presence and scalar paths one level deep. [#2681](https://github.com/fluentcms/FluentCMS/issues/2681) is that spike, and Q19 reduced it to SQLite.
 
-The evidence is the 52 tests in `tests/FluentCMS.Storage.Spike.Tests`, run on an in-memory database with EF Core 10.0.14, Microsoft.Data.Sqlite 10.0.14 and the bundled SQLite 3.53.3. The SQL below is asserted by those tests unless it says otherwise.
+The evidence is the 52 tests in `tests/FluentCMS.Storage.Spike.Tests`, which [#2736](https://github.com/fluentcms/FluentCMS/issues/2736) removed once the real storage landed (see [Where the evidence lives now](#where-the-evidence-lives-now)). They ran on an in-memory database with EF Core 10.0.14, Microsoft.Data.Sqlite 10.0.14 and the bundled SQLite 3.53.3. The SQL below is asserted by those tests unless it says otherwise.
 
 ## Decision
 
@@ -122,7 +122,7 @@ Confirmed. A `ValueGenerator` assigns `Guid.CreateVersion7()` to `id` on all fou
 
 ## Changes to the specification
 
-These are required, and are not yet applied to the specification.
+These were required, and [#2722](https://github.com/fluentcms/FluentCMS/pull/2722) applied them to the specification.
 
 | Section | Change | Why |
 | --- | --- | --- |
@@ -168,13 +168,32 @@ Also not covered on SQLite:
 - `cms_version`, the plugin migration stream and `Database:SchemaSync = Auto`.
 - File databases, concurrent writers, and query performance at volume.
 
+## Where the evidence lives now
+
+The spike project was a throwaway. #2736 deleted it after the real provider tests in `tests/FluentCMS.Data.Tests` covered what it proved, and moved the rest there, rewritten against the real code. The spike's tests and the SQL they asserted stay in the git history before that change. Everything above is a record of what was run, not of what is in the tree.
+
+| Finding | Tests now |
+| --- | --- |
+| Property bags: round trip, omitted columns, one-column update, per-schema model, build time | `Storage/ContentRowTests`, `Storage/ContentModelTests`, `Storage/ModelCacheTests`, `Storage/ModelBuildTimeTests` |
+| JSON filters: block presence, scalar paths, containment, type-aware comparison, one-level paths, malformed JSON | `Sqlite/JsonFilterTests`, `Sqlite/ConventionsTests`, `Query/FilterTests`, `Query/CompiledSqlTests` |
+| JSON block filter is a full scan | `Storage/QueryPlanTests` |
+| Partial unique indexes: enforced, scoped by site and locale, global types, empty locale | `Storage/ContentRowTests`, `Storage/ContentModelTests`, `Storage/SystemModelTests` |
+| Query plans of the partial index and of the reference target index | `Storage/QueryPlanTests` |
+| Migration generation: auto-generated header, fresh context, `AddColumn` keeping rows, system and content streams, `__EFMigrationsLock`, the CLI path | `Migrations/ContentMigrationGeneratorTests`, `Migrations/MigrationRunnerTests`, `Migrations/MigrationsAddCommandTests`, `Migrations/SchemaSyncTests`, `Sqlite/SystemMigrationTests` |
+| Projection: only the requested columns, relation paths, paging and sorting | `Query/CompiledSqlTests`, `Query/FilterTests`, `Query/PaginationTests`, `Query/PopulationTests` |
+| GUID v7 keys: generated, stored as 36 characters of text, text order across milliseconds, keyset paging | `Storage/SystemModelTests`, `Storage/ContentRowTests`, `Query/PaginationTests` |
+| SQLite column types: dates compare and sort across offsets, decimals compare and sort numerically, `varchar(n)` is not enforced | `Sqlite/ConventionsTests`, `Query/FilterTests`, `Query/PaginationTests`, `Storage/ContentRowTests` |
+| Bundled SQLite is at least 3.45 | `Sqlite/HostTests` |
+
+Not carried over, because the real code no longer depends on them: that nulls are distinct in a unique index (the design answers it with `''` and a global scope, both tested), that a v7 key is not monotonic within one millisecond (the sort key falls back to `document_id`, tested in `Query/PaginationTests`), and that a plain `DateTimeOffset` cannot be compared (the UTC ticks convention is tested instead). The hand-run timings and the `dotnet ef` run in the records above were never tests.
+
 ## Consequences
 
 Attribute-defined and builder-defined types share one code path, and a user's class stays a plain projection. In exchange, column names are strings until the query compiler and mapper are written, and those are built from expression trees, so mistakes surface when a query runs and not at compile time.
 
 Follow-up work:
 
-- Apply the specification changes above.
-- Build on them in [#2688](https://github.com/fluentcms/FluentCMS/issues/2688) (model), [#2689](https://github.com/fluentcms/FluentCMS/issues/2689) (JSON dialect and SQLite conventions), [#2690](https://github.com/fluentcms/FluentCMS/issues/2690) (migration streams) and [#2692](https://github.com/fluentcms/FluentCMS/issues/2692) (query compiler).
-- Delete `tests/FluentCMS.Storage.Spike.Tests` once #2688 lands.
-- Run the [Not verified](#not-verified) list in #2711 and update this record with the results.
+- [x] Apply the specification changes above. Done in [#2722](https://github.com/fluentcms/FluentCMS/pull/2722) for [#2721](https://github.com/fluentcms/FluentCMS/issues/2721).
+- [x] Build on them in [#2688](https://github.com/fluentcms/FluentCMS/issues/2688) (model, [#2729](https://github.com/fluentcms/FluentCMS/pull/2729)), [#2689](https://github.com/fluentcms/FluentCMS/issues/2689) (JSON dialect and SQLite conventions, [#2737](https://github.com/fluentcms/FluentCMS/pull/2737)), [#2690](https://github.com/fluentcms/FluentCMS/issues/2690) (migration streams, [#2739](https://github.com/fluentcms/FluentCMS/pull/2739)) and [#2692](https://github.com/fluentcms/FluentCMS/issues/2692) (query compiler, [#2740](https://github.com/fluentcms/FluentCMS/pull/2740)).
+- [x] Delete `tests/FluentCMS.Storage.Spike.Tests` once #2688 lands. Done in [#2736](https://github.com/fluentcms/FluentCMS/issues/2736).
+- [ ] Run the [Not verified](#not-verified) list in #2711 and update this record with the results.

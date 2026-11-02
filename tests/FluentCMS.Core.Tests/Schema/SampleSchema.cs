@@ -11,8 +11,8 @@ internal static class SampleSchema
 {
     public static string FilePath { get; } = Path.Combine(AppContext.BaseDirectory, "Schema", "Samples", "blog.schema.json");
 
-    // The media plugin registers the media field type; here a stand-in descriptor is registered in its place.
-    public static SchemaBuilder NewBuilder() => new(new FieldTypeRegistry([new MediaFieldType()]));
+    // The media plugin registers the media field type; here a stand-in descriptor is registered in its place, beside a plugin type that holds lists.
+    public static SchemaBuilder NewBuilder() => new(new FieldTypeRegistry([new MediaFieldType(), new ListFieldType()]));
 
     public static SchemaBuilder FromClasses() => NewBuilder()
         .AddContentType<Article>()

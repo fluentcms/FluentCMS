@@ -295,6 +295,11 @@ internal sealed class AttributeSchemaReader(SchemaBuilder builder)
             case MediaAttribute when property.PropertyType == typeof(MediaRefList):
                 steps.Add(f => f.Multiple());
                 break;
+
+            // A collection stands for a list; the validator rejects it on a type that holds a single value. Json keeps its own shape.
+            case not JsonAttribute when multiple:
+                steps.Add(f => f.Multiple());
+                break;
         }
     }
 

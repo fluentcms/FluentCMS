@@ -75,6 +75,59 @@ public class ContentRowTests
     }
 
     [Fact]
+    public void AGeneratedKeyIsStoredAsTextAndFindsTheRow()
+    {
+        using var database = NewDatabase();
+        using var context = database.CreateCreatedContext();
+        var documentId = Guid.CreateVersion7();
+        context.Rows(Article).Add(new Dictionary<string, object> { ["document_id"] = documentId, ["site_id"] = Site, ["state"] = ContentState.Draft, ["category"] = "news" });
+        context.SaveChanges();
+        context.ChangeTracker.Clear();
+
+        var id = (Guid)Single(context, Article, documentId)["id"];
+
+        context.Database.SqlQueryRaw<string>("select typeof(id) || length(id) as Value from cms_article").Single().ShouldBe("text36");
+        context.ChangeTracker.Clear();
+        context.Rows(Article).Count(row => EF.Property<Guid>(row, "id") == id).ShouldBe(1);
+    }
+
+    [Fact]
+    public void TheTextOrderOfDocumentIdsFollowsCreationAcrossMilliseconds()
+    {
+        using var database = NewDatabase();
+        using var context = database.CreateCreatedContext();
+        var start = new DateTimeOffset(2026, 11, 1, 9, 0, 0, TimeSpan.Zero);
+        var created = Enumerable.Range(0, 200).Select(i => Guid.CreateVersion7(start.AddMilliseconds(i))).ToList();
+
+        foreach (var id in created.OrderBy(_ => Guid.NewGuid()))
+        {
+            context.Rows(Article).Add(new Dictionary<string, object> { ["document_id"] = id, ["site_id"] = Site, ["state"] = ContentState.Draft, ["category"] = "news" });
+        }
+
+        context.SaveChanges();
+
+        context.Rows(Article)
+            .OrderBy(row => EF.Property<Guid>(row, "document_id"))
+            .Select(row => EF.Property<Guid>(row, "document_id"))
+            .ToList()
+            .ShouldBe(created);
+    }
+
+    [Fact]
+    public void AMaxLengthIsNotEnforcedByTheDatabase()
+    {
+        using var database = NewDatabase();
+        using var context = database.CreateCreatedContext();
+        var documentId = Guid.CreateVersion7();
+        var title = new string('x', 500);
+        context.Rows(Article).Add(new Dictionary<string, object> { ["document_id"] = documentId, ["site_id"] = Site, ["state"] = ContentState.Draft, ["seo_meta_title"] = title });
+        context.SaveChanges();
+        context.ChangeTracker.Clear();
+
+        Single(context, Article, documentId)["seo_meta_title"].ShouldBe(title);
+    }
+
+    [Fact]
     public void OmittedColumnsReadBackAsDefaults()
     {
         using var database = NewDatabase();

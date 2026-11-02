@@ -361,9 +361,9 @@ public sealed class Seo { [Text(MaxLength = 70)] public string? MetaTitle { get;
 public sealed class HeroBlock { [Text] public string Heading { get; set; } = ""; [Media] public MediaRef? Image { get; set; } }
 ```
 
-`ContentItem` carries the system fields (`Id`, `Status`, `Locale`, `Version`, `CreatedAt`, `CreatedBy`, `UpdatedAt`, `UpdatedBy`, `PublishedAt`) with setters the engine uses. Their names are reserved; a field with a reserved name fails schema validation.
+`ContentItem` carries the system fields (`Id`, `Status`, `Locale`, `Version`, `CreatedAt`, `CreatedBy`, `UpdatedAt`, `UpdatedBy`, `PublishedAt`) with setters the engine uses. Their names are reserved; a field with a reserved name fails schema validation. The system tables of Appendix C are reserved too: a collection or singleton may not take a name that maps to one of them (`job`, `user`, `site`, `member`, `site-host` and the rest, the table name without `cms_` and with hyphens for underscores), and fails with `FCMS1206`. Components and blocks have no table and may use these names.
 
-**Field types.** Each field type is an `IFieldType` descriptor: CLR type(s), storage kind (`Column`, `Json`, `Reference`), default validation, OpenAPI schema fragment, supported filter operators, whether it can be sorted or indexed. Core registers text, longText, richText, integer, decimal, boolean, date, dateTime, email, url, slug, select (single and multi), json, relation, component and blocks. The media plugin registers `media`, which is the proof of the custom field type extension point (8.5): core without the media plugin reports `FCMS1203: field type 'media' used by article.hero is not registered`.
+**Field types.** Each field type is an `IFieldType` descriptor: CLR type(s), storage kind (`Column`, `Json`, `Reference`), whether it supports `Multiple` (`SupportsMultiple`, `false` unless the type says otherwise), default validation, OpenAPI schema fragment, supported filter operators, whether it can be sorted or indexed. Core types that support `Multiple` are select, relation and component; the media plugin's `media` does too. Core registers text, longText, richText, integer, decimal, boolean, date, dateTime, email, url, slug, select (single and multi), json, relation, component and blocks. The media plugin registers `media`, which is the proof of the custom field type extension point (8.5): core without the media plugin reports `FCMS1203: field type 'media' used by article.hero is not registered`.
 
 **Components.** `[Component]` classes are reusable field groups. A single component flattens to prefixed columns (`seo_metaTitle`) so its fields are filterable and indexable; a repeatable component (`List<Address>`) is stored as JSON (Q6b).
 
@@ -381,7 +381,7 @@ public sealed class HeroBlock { [Text] public string Heading { get; set; } = "";
 
 **Metadata.** `Display(Label, Help, Placeholder, Group, Tab, Width)`, `DefaultValue`, `ReadOnly`, `Hidden`, `Localizable`, `Indexed`, `Searchable`. All of it appears in introspection; none of it affects storage except `Indexed`, `Unique` and `Localizable`.
 
-**Validation at startup.** Reserved names, nesting depth, relation targets exist, slug sources exist, `Localizable` only on localized types, field types registered, duplicate type names, duplicate reverse relation names. Errors carry `FCMS12xx` codes and stop the host.
+**Validation at startup.** Reserved names, nesting depth, relation targets exist, slug sources exist, `Localizable` only on localized types, field types registered, `Multiple` only on field types that support it, duplicate type names, duplicate reverse relation names. Errors carry `FCMS12xx` codes and stop the host.
 
 **Introspection.** `GET /api/management/v1/schema` and `GET /api/management/v1/schema/types/{type}` return the model filtered by the caller's permissions (4.17 in the identity category): types, fields, field types, validation, conditions, metadata, relations, block unions, localized flags. The same DTOs feed the MCP schema resources and the CLI's schema diff.
 
@@ -412,7 +412,7 @@ Rows 1.12, 8.13, 10.1, 10.4, 10.10; decisions 8, 19, 39, 43, 48, 54, 55, 60.
 - `text` and `longText` are `NOT NULL` when `[Required]`; `''` stands in for a missing draft value.
 - `slug` is `NOT NULL` always, because it is derived.
 - `richText` is `NOT NULL` always; the empty document stands in for a missing value. There is no store default.
-- Lists (`blocks`, multi `select`, repeatable components and any other `Multiple` field) are `NOT NULL DEFAULT '[]'`.
+- Lists (`blocks`, multi `select`, repeatable components and any other field of a type that supports `Multiple` and stores JSON) are `NOT NULL DEFAULT '[]'`.
 - Everything else is nullable even when `[Required]`: `email`, `url`, single `select`, `integer`, `decimal`, `boolean`, `date`, `dateTime` and `json`. A draft has no honest placeholder for them, and format checks would reject `''`.
 - A column flattened from a single component is nullable even when its field is `[Required]`, `slug` or `richText`, because the whole component may be absent. A list inside a component keeps `NOT NULL DEFAULT '[]'`.
 - `site_id` is `NOT NULL` except on `ContentScope.Global` types, where it is null. `locale` is always `NOT NULL`.
