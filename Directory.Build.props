@@ -39,6 +39,15 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
+  <!-- NuGet rejects SVG icons, so packages carry a PNG rendering of the logo mark. -->
+  <PropertyGroup Condition="'$(IsPackable)' != 'false'">
+    <PackageIcon>icon.png</PackageIcon>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(IsPackable)' != 'false'">
+    <None Include="$(MSBuildThisFileDirectory)docs/resources/icon.png" Pack="true" PackagePath="" Visible="false" />
+  </ItemGroup>
+
   <!-- The test project stubs have no tests yet; exit code 8 means "zero tests ran". Remove this once each project has tests. -->
   <PropertyGroup Condition="$(RepoRelativeProjectDir.StartsWith('tests/'))">
     <TestingPlatformCommandLineArguments>--ignore-exit-code 8</TestingPlatformCommandLineArguments>
