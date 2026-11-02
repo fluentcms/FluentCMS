@@ -1,0 +1,83 @@
+{
+  // The sample types of FluentCMS.Core.Tests.Schema.Samples, written as a schema file.
+  "collections": [
+    {
+      "name": "article",
+      "localized": true,
+      "fields": [
+        { "name": "title", "type": "text", "maxLength": 200, "required": true, "localizable": true, "searchable": true },
+        { "name": "slug", "type": "slug", "source": "title", "localizable": true, "unique": true },
+        { "name": "body", "type": "richText", "localizable": true },
+        { "name": "author", "type": "relation", "target": "author", "reverse": "articles" },
+        { "name": "tags", "type": "relation", "target": "tag", "multiple": true, "ordered": true },
+        { "name": "hero", "type": "media" },
+        { "name": "sections", "type": "blocks", "blocks": ["hero", "quote", "gallery"] },
+        { "name": "seo", "type": "component", "component": "seo" },
+        { "name": "category", "type": "select", "options": ["news", "opinion", "video"], "indexed": true },
+        { "name": "publishedOn", "type": "dateTime", "indexed": true },
+        {
+          "name": "videoUrl",
+          "type": "url",
+          "visibleWhen": { "field": "category", "equals": "video" },
+          "requiredWhen": { "field": "category", "equals": "video" }
+        }
+      ]
+    },
+    {
+      "name": "author",
+      "fields": [
+        { "name": "name", "type": "text", "maxLength": 100, "required": true, "searchable": true },
+        { "name": "bio", "type": "richText" },
+        { "name": "avatar", "type": "media" }
+      ]
+    },
+    {
+      "name": "tag",
+      "fields": [
+        { "name": "name", "type": "text", "maxLength": 50, "required": true },
+        { "name": "slug", "type": "slug", "source": "name", "unique": true }
+      ]
+    }
+  ],
+  "singletons": [
+    {
+      "name": "site-settings",
+      "fields": [
+        { "name": "siteName", "type": "text", "maxLength": 100, "required": true },
+        { "name": "description", "type": "longText" },
+        { "name": "logo", "type": "media" }
+      ]
+    }
+  ],
+  "components": [
+    {
+      "name": "seo",
+      "fields": [
+        { "name": "metaTitle", "type": "text", "maxLength": 70 },
+        { "name": "metaDescription", "type": "text", "maxLength": 160 }
+      ]
+    }
+  ],
+  "blocks": [
+    {
+      "name": "gallery",
+      "fields": [
+        { "name": "images", "type": "media", "multiple": true }
+      ]
+    },
+    {
+      "name": "hero",
+      "fields": [
+        { "name": "heading", "type": "text" },
+        { "name": "image", "type": "media" }
+      ]
+    },
+    {
+      "name": "quote",
+      "fields": [
+        { "name": "text", "type": "longText", "required": true },
+        { "name": "attribution", "type": "text" }
+      ]
+    }
+  ]
+}

@@ -387,23 +387,23 @@ Related decisions: Q2 (schema file for the reference host), Q6b (component stora
 
 Rows 1.12, 8.13, 10.1, 10.4, 10.10; decisions 8, 19, 39, 43, 48, 54, 55, 60.
 
-**Model building.** The EF Core model is generated from `SchemaModel` using shared-type (property bag) entity types, so there is no CLR entity class per content type. This supports attribute-defined and builder-defined types alike, lets one typed `Article` project out of two tables (shared row plus locale row), and keeps the user's class a plain projection. Source-generated row classes were the alternative (Q5); the M1 storage spike (issue B-10) validates the choice on all three providers before the content tables are built.
+**Model building.** The EF Core model is generated from `SchemaModel` using shared-type (property bag) entity types, so there is no CLR entity class per content type. This supports attribute-defined and builder-defined types alike, lets one typed `Article` project out of two tables (shared row plus locale row), and keeps the user's class a plain projection. Source-generated row classes were the alternative (Q5); the M1 storage spike (issue B-10) validated the choice on SQLite only (Q19), and [#2711](https://github.com/fluentcms/FluentCMS/issues/2711) validates it on PostgreSQL and SQL Server.
 
 **Tables per content type.** For `article` (localized, prefix `cms_`):
 
 | Table | Key | Holds |
 | --- | --- | --- |
-| `cms_document` | `(document_id, locale)` unique; `id` v7 PK | One row per document and locale, any type: `type`, `site_id`, `status`, `draft_version`, `published_version`, `published_at`, `first_published_at`, `deleted_at`, `deleted_by`, `created_*`, `updated_*`, `schedule_publish_at`, `schedule_unpublish_at`. The type-independent state table used by lists across types, trash, scheduling and the MCP `query` tool. |
-| `cms_article` | `(document_id, state)` unique | Non-localized fields, one row per document and state (0 draft, 1 published). `site_id` denormalised for partial unique indexes and future partitioning. |
-| `cms_article_i18n` | `(document_id, locale, state)` unique | Localized fields, one row per document, locale and state. Absent for non-localized types, whose fields all live in `cms_article`. |
-| `cms_reference` | `(source_type, source_document_id, state, locale, field, position)` unique; index on `(target_type, target_id)` | Every relation and media reference in one polymorphic table. Gives "what references X" for media usage tracking, reference integrity at publish and delete warnings in one query. Polymorphic relations (1.14, Should) need no new table. |
+| `cms_document` | `(document_id, locale)` unique; `id` v7 PK | One row per document and locale, any type: `type`, `site_id`, `status`, `draft_version`, `published_version`, `published_at`, `first_published_at`, `deleted_at`, `deleted_by`, `created_*`, `updated_*`, `schedule_publish_at`, `schedule_unpublish_at`. `locale` is `''` for a non-localized document, never null, because a null `locale` defeats the unique key. The type-independent state table used by lists across types, trash, scheduling and the MCP `query` tool. |
+| `cms_article` | `(document_id, state)` unique; `id` v7 PK | Non-localized fields, one row per document and state (0 draft, 1 published). `site_id` denormalised for partial unique indexes and future partitioning. |
+| `cms_article_i18n` | `(document_id, locale, state)` unique; `id` v7 PK | Localized fields and `site_id`, one row per document, locale and state. `site_id` is repeated here because an index cannot span tables and a localized `[Unique]` field needs it beside the field. Absent for non-localized types, whose fields all live in `cms_article`. |
+| `cms_reference` | `(source_type, source_document_id, state, locale, field, position)` unique; index on `(target_type, target_id)` | Every relation and media reference in one polymorphic table. `locale` is `''` for non-localized values, never null, because a null `locale` defeats the unique key. Gives "what references X" for media usage tracking, reference integrity at publish and delete warnings in one query. Polymorphic relations (1.14, Should) need no new table. |
 | `cms_version` | `(document_id, locale, number)` unique | Full JSON snapshot per save plus `status_after`, `author_id`, `origin`, `client_id`, `message`, `created_at`. |
 
-**Column mapping.** text `varchar(n)`; longText `text`; richText, json, blocks, multi-select and repeatable components `jsonb` (PostgreSQL), `nvarchar(max)` or `json` (SQL Server), `text` with JSON1 (SQLite); integer `int` or `bigint`; decimal `numeric(p,s)`; boolean; date `date`; dateTime `timestamptz` or `datetimeoffset`; email, url, slug `varchar`; single select the enum name as `varchar`; relations and media as `cms_reference` rows only, no denormalised id column.
+**Column mapping.** text `varchar(n)` (unbounded `TEXT` on SQLite, which does not enforce `n`, so the validation pipeline is the only length limit); longText `text`; richText, json, blocks, multi-select and repeatable components `jsonb` (PostgreSQL), `nvarchar(max)` or `json` (SQL Server), `text` with JSON1 and `CHECK (json_valid(col))` (SQLite); integer `int` or `bigint`; decimal `numeric(p,s)` (text on SQLite, which EF compares and sorts numerically without a conversion); boolean; date `date`; dateTime `timestamptz` (PostgreSQL), `datetimeoffset` (SQL Server), UTC ticks in an `integer` column (SQLite, through a provider convention that also covers system columns such as `schedule_publish_at`, so that scheduling and `sort=-publishedOn` can compare and order; SQLite supports only equality on `DateTimeOffset`, and the conversion drops the offset); email, url, slug `varchar`; single select the enum name as `varchar`; relations and media as `cms_reference` rows only, no denormalised id column.
 
-**Indexes.** Primary and unique keys above; `[Indexed]` fields; `[Unique]` fields as a partial unique index `WHERE state = 1` per `(site_id, locale, field)` with the draft side checked in the validation pipeline; GIN indexes on `jsonb` columns on PostgreSQL when `[Indexed]` is set on a JSON field.
+**Indexes.** Primary and unique keys above; `[Indexed]` fields; `[Unique]` fields as a partial unique index `WHERE state = 1`, scoped by table with the draft side checked in the validation pipeline: `(site_id, locale, field)` on `cms_{type}_i18n` for localized fields, `(site_id, field)` on `cms_{type}` for non-localized fields (that table has no `locale`), and the same without `site_id` for `ContentScope.Global` types, whose `site_id` is null and would defeat the index; GIN indexes on `jsonb` columns on PostgreSQL when `[Indexed]` is set on a JSON field.
 
-**JSON dialect.** Filters on block and JSON paths compile through `IJsonSqlDialect`, implemented in each data provider package (`jsonb` operators, `JSON_VALUE`, `json_extract`). The supported set in the first release is: block list contains a block of type *X*, and equality or containment on a scalar path one level inside blocks or JSON, identical on all providers. Deeper paths are deferred and will be PostgreSQL-only when they come (Q7).
+**JSON dialect.** Filters on block and JSON paths compile to LINQ. `IJsonSqlDialect`, implemented in each data provider package (`jsonb` operators, `JSON_VALUE`, `json_extract`), contributes EF function mappings and LINQ expressions, not SQL text, with one comparison per field type, because a JSON extraction returns the value's own type (on SQLite a JSON number never equals the text `'12'`). The supported set in the first release is: block list contains a block of type *X*, and equality or containment on a scalar path one level inside blocks or JSON, identical on all providers. Deeper paths are deferred and will be PostgreSQL-only when they come (Q7).
 
 **Migration streams.** Three kinds of EF migration contexts share one database, each with its own history table:
 
@@ -414,6 +414,8 @@ Rows 1.12, 8.13, 10.1, 10.4, 10.10; decisions 8, 19, 39, 43, 48, 54, 55, 60.
 | Content type tables (`cms_article`, `cms_article_i18n`, ...) | the host project | `fluentcms migrations add <name>` using the host's `SchemaModel` and provider | `cms_content__migrations` |
 
 At runtime one `CmsDbContext` holds the union model for querying, with the system and plugin tables marked `ExcludeFromMigrations`. The migration runner applies the streams in order system, plugins (dependency order), content, at startup when `Database:MigrateOnStartup` is true (default true on SQLite, false otherwise) or through `fluentcms migrate`. `fluentcms migrate --check` lists pending migrations and exits non-zero.
+
+**Generation rules.** Each schema gets its own EF model, so `IModelCacheKeyFactory` is replaced with one keyed on the schema hash. Migrations are always scaffolded on a fresh context, because a context that has already called `HasPendingModelChanges()` silently emits `CreateTable` for every table. Generated migration files are marked `<auto-generated />`, because EF marks only the designer and snapshot files and the composite index columns in the migration file fail the build with CA1861. On SQLite, `Migrate()` creates `__EFMigrationsLock`, which all streams share; it is the one exception to the `cms_` prefix rule.
 
 **Development loop.** With `Database:SchemaSync = Auto` (default in Development on SQLite only) the content stream is skipped and additive changes (new tables, new nullable columns, new indexes) are applied by diffing the model against the database at startup. Destructive changes are reported, never applied. This gives "schema changes apply without restart" for new fields and keeps production on explicit migrations.
 
@@ -461,11 +463,11 @@ GET /api/delivery/v1/article
     &withTotal=false
 ```
 
-**Compilation.** The AST compiles to LINQ over the property-bag entities. Relation paths join through `cms_reference` to the target type's row in the same state and locale (decision 44: no fallback-aware filtering). Block and JSON paths go through `IJsonSqlDialect`. Row rules from the evaluator are appended as an `And` node before compilation, so authorization and filtering are one query.
+**Compilation.** The AST compiles to LINQ over the property-bag entities. Relation paths join through `cms_reference` to the target type's row in the same state and locale (decision 44: no fallback-aware filtering). Block and JSON paths go through `IJsonSqlDialect`. Row rules from the evaluator are appended as an `And` node before compilation, so authorization and filtering are one query. `state` is inlined as a literal and every user value is bound as a parameter, by reading a member of a holder object, because a bare expression constant becomes a SQL literal. SQLite does not need the inlined `state`, but a literal matches the `WHERE state = 1` index predicate as written, and [#2711](https://github.com/fluentcms/FluentCMS/issues/2711) checks the other providers.
 
 **Population.** Default depth 1, cap configurable (default 3). Beyond the depth a relation is returned as `{ "id": "...", "type": "author" }`. Cycles stop at the cap. Field selection applies to populated entries with dotted paths.
 
-**Pagination.** Offset and page with `total` (skip the count with `withTotal=false`). Keyset cursor: base64 of the sort key values plus the document id, which is always appended as the final sort key for stability.
+**Pagination.** Offset and page with `total` (skip the count with `withTotal=false`). Keyset cursor: base64 of the sort key values plus the document id, which is always appended as the final sort key for stability. A v7 `document_id` makes that key stable, but it does not give creation order within one millisecond.
 
 **Concurrency.** Each `(document, locale)` has an integer `version`. Writes carry `expectedVersion` (`If-Match: "7"` on REST). A mismatch is rejected with 412 and the current entry in the problem details `current` extension.
 
@@ -1203,7 +1205,7 @@ All eighteen questions were decided on 1 Nov 2026, and Q19 was added the same da
 | Q2 | How does a Docker-only user define content types? The image cannot load a DLL (decision 11) and types are code-first. | The fluent builder loads a `schema.json` mounted into the image. Schema in a file under version control is not a UI builder (1.24). Code-first stays primary; the sample pack stays for evaluation. |
 | Q3 | Argon2id (4.2) versus Identity's PBKDF2 default; 4.32 says Identity primitives only. | PBKDF2 behind the replaceable hasher. Argon2id as an optional package later if asked. Row 4.2 is amended. |
 | Q4 | Member login: OAuth 2.1 has no password grant. Hosted pages only, or also a first-party direct login? | Both: hosted pages by default, and an opt-in `member_password` custom grant for first-party apps, documented as the less secure option. |
-| Q5 | EF model from property bags (runtime) or from source-generated row classes (compile time)? | Property bags; spike B-10 validates them on all three providers before the content tables are built. |
+| Q5 | EF model from property bags (runtime) or from source-generated row classes (compile time)? | Property bags; spike B-10 validates them on all three providers before the content tables are built. The spike confirmed property bags on SQLite, the only provider verified so far, and [ADR 0001](../decisions/0001-storage-spike-outcome.md) records the outcome and the resulting changes to this document. |
 | Q6a | Core versus multi-site plugin boundary for site and locale management. | Sites and locales CRUD in core; hostnames, cross-site copy and per-site storage in the plugin. |
 | Q6b | Single components flattened to columns, or JSON for all components? | Flatten single components to prefixed columns; JSON for repeatable ones. |
 | Q7 | Block-field filtering depth across three providers (2.4 makes it Must). | Block-type presence and scalar paths one level deep, identical on all providers. Deeper paths deferred, PostgreSQL-only when they come. |
@@ -1273,8 +1275,8 @@ CREATE UNIQUE INDEX ux_cms_article_i18n_slug
     ON cms_article_i18n (site_id, locale, slug) WHERE state = 1;
 CREATE INDEX ix_cms_article_category ON cms_article (site_id, state, category);
 
--- author, tags and hero live in cms_reference:
--- (source_type='article', source_document_id, state, locale NULL, field='author', position 0,
+-- author, tags and hero live in cms_reference, with locale '' (never NULL) for non-localized values:
+-- (source_type='article', source_document_id, state, locale '', field='author', position 0,
 --  target_type='author', target_id)
 ```
 
