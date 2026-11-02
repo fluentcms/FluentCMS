@@ -161,10 +161,13 @@ public class CustomValidatorTests
 
         await ValidationFixtures.ValidateAsync(ValidationFixtures.Blog, "article", new() { ["title"] = "T", ["seo"] = seo }, ValidationMode.Publish, register: Register(seen));
 
-        var (_, path, value, context) = seen.Fields.Single(item => item.Path == "seo.metaTitle" && item.Field == "metaTitle*");
+        var (_, _, value, context) = seen.Fields.Single(item => item.Path == "seo.metaTitle" && item.Field == "metaTitle*");
         value.ShouldBe("Meta");
         context.Values.ShouldBeSameAs(seo);
         context.Type.ShouldBeSameAs(ValidationFixtures.Article);
+        context.Container.ShouldBeSameAs(ValidationFixtures.Blog.FindComponent("seo"));
+
+        seen.Fields.Single(item => item.Field == "title*").Context.Container.ShouldBeSameAs(ValidationFixtures.Article);
     }
 
     [Fact]

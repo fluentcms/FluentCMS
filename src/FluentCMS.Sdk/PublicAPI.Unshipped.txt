@@ -50,6 +50,7 @@ FluentCMS.Content.PrincipalKind.System = 5 -> FluentCMS.Content.PrincipalKind
 FluentCMS.Content.ValidationContext
 FluentCMS.Content.ValidationContext.AddError(string! code, string! message) -> void
 FluentCMS.Content.ValidationContext.AddError(string! path, string! code, string! message) -> void
+FluentCMS.Content.ValidationContext.Container.get -> FluentCMS.Schema.SchemaType!
 FluentCMS.Content.ValidationContext.Entry.get -> object?
 FluentCMS.Content.ValidationContext.Errors.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Content.ValidationError!>!
 FluentCMS.Content.ValidationContext.Field.get -> FluentCMS.Schema.SchemaField?
@@ -57,7 +58,7 @@ FluentCMS.Content.ValidationContext.Mode.get -> FluentCMS.Content.ValidationMode
 FluentCMS.Content.ValidationContext.Operation.get -> FluentCMS.Content.OperationContext!
 FluentCMS.Content.ValidationContext.Path.get -> string!
 FluentCMS.Content.ValidationContext.Type.get -> FluentCMS.Schema.SchemaType!
-FluentCMS.Content.ValidationContext.ValidationContext(FluentCMS.Schema.SchemaType! type, System.Collections.Generic.IReadOnlyDictionary<string!, object?>! values, FluentCMS.Content.OperationContext! operation, FluentCMS.Content.ValidationMode mode, object? entry = null, FluentCMS.Schema.SchemaField? field = null, string? path = null) -> void
+FluentCMS.Content.ValidationContext.ValidationContext(FluentCMS.Schema.SchemaType! type, System.Collections.Generic.IReadOnlyDictionary<string!, object?>! values, FluentCMS.Content.OperationContext! operation, FluentCMS.Content.ValidationMode mode, object? entry = null, FluentCMS.Schema.SchemaField? field = null, string? path = null, FluentCMS.Schema.SchemaType? container = null) -> void
 FluentCMS.Content.ValidationContext.Values.get -> System.Collections.Generic.IReadOnlyDictionary<string!, object?>!
 FluentCMS.Content.ValidationError
 FluentCMS.Content.ValidationError.<Clone>$() -> FluentCMS.Content.ValidationError!

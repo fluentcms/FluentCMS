@@ -236,15 +236,21 @@ internal sealed class DeclarativeValidator(SchemaModel model)
 
     private static bool IsList(SchemaField field) => field.Multiple || field.FieldType == ValidatedFieldTypes.Blocks;
 
-    // Numbers as they are; a date as days and a date-time as seconds since 1970-01-01, which the minimum and maximum then use.
+    // Only numbers have a range; the model does not say whether a bound on a date means days or seconds.
+    // A float beyond what a decimal holds counts as the nearest decimal bound, so it is out of range in its direction.
     private static decimal? RangeValue(object? value) => value switch
     {
         byte or sbyte or short or ushort or int or uint or long or ulong or decimal => Convert.ToDecimal(value, CultureInfo.InvariantCulture),
-        float or double => double.IsFinite(Convert.ToDouble(value, CultureInfo.InvariantCulture)) ? (decimal)Convert.ToDouble(value, CultureInfo.InvariantCulture) : null,
-        DateOnly day => day.DayNumber - DateOnly.FromDateTime(DateTime.UnixEpoch).DayNumber,
-        DateTimeOffset moment => moment.ToUnixTimeSeconds(),
-        DateTime moment => new DateTimeOffset(moment.ToUniversalTime()).ToUnixTimeSeconds(),
+        float or double => Clamp(Convert.ToDouble(value, CultureInfo.InvariantCulture)),
         _ => null,
+    };
+
+    private static decimal? Clamp(double number) => number switch
+    {
+        double.NaN => null,
+        >= (double)decimal.MaxValue => decimal.MaxValue,
+        <= (double)decimal.MinValue => decimal.MinValue,
+        _ => (decimal)number,
     };
 
     private static string Format(decimal number) => number.ToString("G29", CultureInfo.InvariantCulture);

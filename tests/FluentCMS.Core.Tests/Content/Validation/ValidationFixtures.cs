@@ -45,7 +45,7 @@ internal static class ValidationFixtures
     // A schema of one content type "thing", with the components and blocks the test adds.
     public static SchemaModel Model(Action<ITypeBuilder> thing, Action<SchemaBuilder>? others = null)
     {
-        var builder = new SchemaBuilder().AddCollection("thing", thing);
+        var builder = SampleSchema.NewBuilder().AddCollection("thing", thing);
         others?.Invoke(builder);
         return builder.Build();
     }

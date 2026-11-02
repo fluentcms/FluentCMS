@@ -15,6 +15,7 @@ public sealed class ValidationContext
     /// <param name="entry">The typed entry, if there is one.</param>
     /// <param name="field">The field being validated, or <see langword="null"/> for an entry validator.</param>
     /// <param name="path">The path of that field; defaults to its name.</param>
+    /// <param name="container">The type that declares the field; defaults to <paramref name="type"/>.</param>
     public ValidationContext(
         SchemaType type,
         IReadOnlyDictionary<string, object?> values,
@@ -22,8 +23,9 @@ public sealed class ValidationContext
         ValidationMode mode,
         object? entry = null,
         SchemaField? field = null,
-        string? path = null)
-        : this(type, values, operation, mode, entry, field, path, [])
+        string? path = null,
+        SchemaType? container = null)
+        : this(type, values, operation, mode, entry, field, path, container, [])
     {
     }
 
@@ -35,6 +37,7 @@ public sealed class ValidationContext
         object? entry,
         SchemaField? field,
         string? path,
+        SchemaType? container,
         List<ValidationError> errors)
     {
         ArgumentNullException.ThrowIfNull(type);
@@ -42,6 +45,7 @@ public sealed class ValidationContext
         ArgumentNullException.ThrowIfNull(operation);
 
         Type = type;
+        Container = container ?? type;
         Values = values;
         Operation = operation;
         Mode = mode;
@@ -53,6 +57,9 @@ public sealed class ValidationContext
 
     /// <summary>The type of the entry.</summary>
     public SchemaType Type { get; }
+
+    /// <summary>The type that declares <see cref="Field"/>: the entry type at the top level, the component or block type for a field inside one.</summary>
+    public SchemaType Container { get; }
 
     /// <summary>The field being validated, or <see langword="null"/> for an entry validator.</summary>
     public SchemaField? Field { get; }
@@ -101,10 +108,10 @@ public sealed class ValidationContext
     }
 
     // Shares the error list, so what a field validator reports lands in the result of the run.
-    internal ValidationContext ForField(SchemaField field, string path, IReadOnlyDictionary<string, object?> values) =>
-        new(Type, values, Operation, Mode, Entry, field, path, _errors);
+    internal ValidationContext ForField(SchemaType container, SchemaField field, string path, IReadOnlyDictionary<string, object?> values) =>
+        new(Type, values, Operation, Mode, Entry, field, path, container, _errors);
 
     // The entry-level view of the same run.
     internal ValidationContext ForEntry() =>
-        new(Type, Values, Operation, Mode, Entry, null, null, _errors);
+        new(Type, Values, Operation, Mode, Entry, null, null, null, _errors);
 }

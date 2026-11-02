@@ -45,7 +45,7 @@ public sealed class ValidationPipeline(SchemaModel model, IServiceProvider servi
     private async ValueTask RunFieldValidatorsAsync(FieldVisit visit, ValidationContext root, CancellationToken cancellationToken)
     {
         var fieldType = FieldClrType(visit);
-        var context = root.ForField(visit.Field, visit.Path, visit.Siblings);
+        var context = root.ForField(visit.Owner, visit.Field, visit.Path, visit.Siblings);
 
         if (fieldType is not null && fieldType != typeof(object))
         {

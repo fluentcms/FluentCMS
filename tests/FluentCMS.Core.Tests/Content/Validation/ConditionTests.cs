@@ -133,7 +133,7 @@ public class ConditionTests
     }
 
     [Fact]
-    public void AndAndOrShortCircuit()
+    public void AndOrAndNotCombineTheirOperands()
     {
         var values = Values(("a", 1));
         var holds = Condition.Field("a").Equals(1);
@@ -156,6 +156,7 @@ public class ConditionTests
         { "empty block list", new BlockList(), true },
         { "empty ref list", new RefList<Tag>(), true },
         { "empty media list", new MediaRefList(), true },
+        { "default media", default(MediaRef), true },
         { "default ref", default(Ref<Tag>), true },
         { "empty guid", Guid.Empty, true },
         { "text", "x", false },
@@ -165,6 +166,7 @@ public class ConditionTests
         { "block list", new BlockList([new HeroBlock()]), false },
         { "ref list", new RefList<Tag>([new Ref<Tag>(Guid.NewGuid())]), false },
         { "ref", new Ref<Tag>(Guid.NewGuid()), false },
+        { "media", new MediaRef(Guid.NewGuid()), false },
         { "enum", ArticleCategory.News, false },
     };
 

@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Reflection;
+using FluentCMS.Media;
 using FluentCMS.Schema;
 
 namespace FluentCMS.Core.Content.Validation;
@@ -16,6 +17,7 @@ internal static class FieldValue
         null => true,
         string text => string.IsNullOrWhiteSpace(text),
         Guid id => id == Guid.Empty,
+        MediaRef media => media.IsEmpty,
         IEnumerable items => !items.GetEnumerator().MoveNext(),
         _ => IsEmptyRef(value),
     };

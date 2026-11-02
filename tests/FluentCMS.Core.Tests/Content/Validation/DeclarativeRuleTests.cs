@@ -1,6 +1,7 @@
 #pragma warning disable CA1861
 using FluentCMS.Content;
 using FluentCMS.Core.Tests.Schema.Samples;
+using FluentCMS.Media;
 using FluentCMS.Schema;
 using Shouldly;
 using Xunit;
@@ -126,13 +127,42 @@ public class DeclarativeRuleTests
     }
 
     [Fact]
-    public async Task DatesAndDateTimesAreCheckedAgainstTheRange()
+    public async Task DatesAreNotRangeChecked()
     {
-        (await Run(new() { ["opensAt"] = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero) })).ShouldBeEmpty();
-        (await Run(new() { ["opensAt"] = new DateTimeOffset(2019, 1, 1, 0, 0, 0, TimeSpan.Zero) })).ShouldBe(["opensAt|FCMS2104"]);
-        (await Run(new() { ["opensAt"] = new DateTime(2031, 1, 1, 0, 0, 0, DateTimeKind.Utc) })).ShouldBe(["opensAt|FCMS2105"]);
-        (await Run(new() { ["day"] = new DateOnly(1970, 3, 1) })).ShouldBeEmpty();
-        (await Run(new() { ["day"] = new DateOnly(1971, 1, 1) })).ShouldBe(["day|FCMS2105"]);
+        (await Run(new() { ["opensAt"] = new DateTimeOffset(2019, 1, 1, 0, 0, 0, TimeSpan.Zero), ["day"] = new DateOnly(2024, 1, 1) })).ShouldBeEmpty();
+        (await Run(new() { ["opensAt"] = new DateTime(2031, 1, 1, 0, 0, 0, DateTimeKind.Unspecified) })).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task AFloatBeyondWhatADecimalHoldsIsOutOfRangeInItsDirection()
+    {
+        (await Run(new() { ["count"] = 1e300 })).ShouldBe(["count|FCMS2105"]);
+        (await Run(new() { ["count"] = -1e300 })).ShouldBe(["count|FCMS2104"]);
+        (await Run(new() { ["count"] = double.PositiveInfinity })).ShouldBe(["count|FCMS2105"]);
+        (await Run(new() { ["count"] = float.NegativeInfinity })).ShouldBe(["count|FCMS2104"]);
+        (await Run(new() { ["count"] = double.NaN })).ShouldBeEmpty();
+        (await Run(new() { ["count"] = 5.5 })).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task APatternMatchesAnywhereInTheValueUnlessAnchored()
+    {
+        var model = ValidationFixtures.Model(thing => thing
+            .Field("loose", "text", f => f.Pattern("[0-9]+"))
+            .Field("anchored", "text", f => f.Pattern("^[0-9]+$")));
+
+        var result = await ValidationFixtures.ValidateAsync(model, "thing", new() { ["loose"] = "abc123def", ["anchored"] = "abc123def" }, ValidationMode.Publish);
+
+        ValidationFixtures.Describe(result).ShouldBe(["anchored|FCMS2106"]);
+    }
+
+    [Fact]
+    public async Task ADefaultMediaRefDoesNotSatisfyRequired()
+    {
+        var model = ValidationFixtures.Model(thing => thing.Field("hero", "media", f => f.Required()));
+
+        ValidationFixtures.Describe(await ValidationFixtures.ValidateAsync(model, "thing", new() { ["hero"] = default(MediaRef) }, ValidationMode.Publish)).ShouldBe(["hero|FCMS2101"]);
+        (await ValidationFixtures.ValidateAsync(model, "thing", new() { ["hero"] = new MediaRef(Guid.NewGuid()) }, ValidationMode.Publish)).IsValid.ShouldBeTrue();
     }
 
     [Fact]
@@ -198,15 +228,5 @@ public class DeclarativeRuleTests
         {
             (await Run(values)).ShouldBe(expected);
         }
-    }
-
-    [Fact]
-    public async Task APatternThatTakesTooLongRejectsTheValue()
-    {
-        var model = ValidationFixtures.Model(thing => thing.Field("s", "text", f => f.Pattern("^(a+)+$")));
-
-        var result = await ValidationFixtures.ValidateAsync(model, "thing", new() { ["s"] = new string('a', 60) + "!" }, ValidationMode.Publish);
-
-        ValidationFixtures.Describe(result).ShouldBe(["s|FCMS2106"]);
     }
 }

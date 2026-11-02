@@ -26,7 +26,7 @@ public sealed class ConditionField
         return new(ConditionOperator.In, Name, values.Select(value => SchemaValue.Normalize(value)), []);
     }
 
-    /// <summary>Holds when the field has no value: <see langword="null"/>, an empty string or an empty list.</summary>
+    /// <summary>Holds when the field has no value: <see langword="null"/>, an empty or whitespace-only string, or an empty list.</summary>
     /// <returns>The condition.</returns>
     public Condition IsEmpty() => new(ConditionOperator.IsEmpty, Name, [], []);
 }
