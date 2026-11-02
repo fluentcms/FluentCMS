@@ -1,4 +1,6 @@
 using FluentCMS.Core.Schema;
+using FluentCMS.Core.Schema.FieldTypes;
+using FluentCMS.Core.Tests.Schema.FieldTypes;
 using FluentCMS.Schema;
 using Shouldly;
 using Xunit;
@@ -102,11 +104,11 @@ public class SchemaJsonTests
     {
         const string json = """
             { "collections": [ { "name": "article", "fields": [
-              { "name": "hero", "type": "text", "accepts": ["image", "video"], "maxSize": 5, "inline": true, "mode": "wide" }
+              { "name": "hero", "type": "freeform", "accepts": ["image", "video"], "maxSize": 5, "inline": true, "mode": "wide" }
             ] } ] }
             """;
 
-        var settings = Builder().AddSchemaJson(json).Build().FindContentType("article")!.FindField("hero")!.Settings;
+        var settings = new SchemaBuilder(new FieldTypeRegistry([new FreeFormFieldType()])).AddSchemaJson(json).Build().FindContentType("article")!.FindField("hero")!.Settings;
 
         settings.Keys.ShouldBe(["accepts", "inline", "maxSize", "mode"]);
         ((IEnumerable<string>)settings["accepts"]).ShouldBe(["image", "video"]);

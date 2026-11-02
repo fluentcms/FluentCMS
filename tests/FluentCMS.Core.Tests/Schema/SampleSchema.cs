@@ -1,5 +1,7 @@
 using System.Reflection;
 using FluentCMS.Core.Schema;
+using FluentCMS.Core.Schema.FieldTypes;
+using FluentCMS.Core.Tests.Schema.FieldTypes;
 using FluentCMS.Core.Tests.Schema.Samples;
 using FluentCMS.Schema;
 
@@ -9,8 +11,8 @@ internal static class SampleSchema
 {
     public static string FilePath { get; } = Path.Combine(AppContext.BaseDirectory, "Schema", "Samples", "blog.schema.json");
 
-    // The media plugin registers the media field type; here the builder is told it is there.
-    public static SchemaBuilder NewBuilder() => new(["media"]);
+    // The media plugin registers the media field type; here a stand-in descriptor is registered in its place.
+    public static SchemaBuilder NewBuilder() => new(new FieldTypeRegistry([new MediaFieldType()]));
 
     public static SchemaBuilder FromClasses() => NewBuilder()
         .AddContentType<Article>()

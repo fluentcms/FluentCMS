@@ -1,6 +1,8 @@
 using FluentCMS.Core.Schema;
+using FluentCMS.Core.Schema.FieldTypes;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Tests.Schema;
+using FluentCMS.Core.Tests.Schema.FieldTypes;
 using FluentCMS.Schema;
 using Shouldly;
 using Xunit;
@@ -79,7 +81,7 @@ public class FieldStorageTests
         var schema = SampleSchema.NewBuilder().AddCollection("page", type => type.Field("hero", "media", field => field.Multiple())).Build();
         FieldStorage.Of(schema, schema.FindContentType("page")!).ShouldHaveSingleItem().Kind.ShouldBe(StorageKind.Reference);
 
-        var custom = new SchemaBuilder(["color"]).AddCollection("page", type => type.Field("tint", "color")).Build();
+        var custom = new SchemaBuilder(new FieldTypeRegistry([new FreeFormFieldType()])).AddCollection("page", type => type.Field("tint", "freeform")).Build();
         Should.Throw<InvalidOperationException>(() => FieldStorage.Of(custom, custom.FindContentType("page")!).ToList()).Message.ShouldContain("page.tint");
     }
 }

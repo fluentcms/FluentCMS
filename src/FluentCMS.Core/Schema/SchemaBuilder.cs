@@ -1,5 +1,5 @@
-using System.Collections.Frozen;
 using System.Reflection;
+using FluentCMS.Core.Schema.FieldTypes;
 using FluentCMS.Schema;
 
 namespace FluentCMS.Core.Schema;
@@ -9,16 +9,17 @@ public sealed class SchemaBuilder : ISchemaBuilder
     private readonly List<TypeDraft> _types = [];
     private readonly List<SchemaError> _errors = [];
     private readonly HashSet<Type> _classes = [];
-    private readonly IReadOnlySet<string> _fieldTypes;
+    private readonly IFieldTypeRegistry _fieldTypes;
 
     public SchemaBuilder()
-        : this([])
+        : this(FieldTypeRegistry.Core)
     {
     }
 
-    internal SchemaBuilder(IEnumerable<string> additionalFieldTypes)
+    public SchemaBuilder(IFieldTypeRegistry fieldTypes)
     {
-        _fieldTypes = KnownFieldTypes.Core.Union(additionalFieldTypes).ToFrozenSet(StringComparer.Ordinal);
+        ArgumentNullException.ThrowIfNull(fieldTypes);
+        _fieldTypes = fieldTypes;
     }
 
     public SchemaBuilder AddContentType<T>() => AddContentType(typeof(T));
