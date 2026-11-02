@@ -11,6 +11,7 @@ using FluentCMS.Publishing;
 using FluentCMS.Schema;
 using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 
 namespace FluentCMS.Core.Content;
 
@@ -140,8 +141,6 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
         return stored.Field.FieldType == FieldTypeNames.RichText ? new RichText(json) : JsonNode.Parse(json);
     }
 
-    public void AddDocument(Document row) => context.Documents.Add(row);
-
     // The compare and swap that makes one of two concurrent writers lose. The filter on Document keeps trash out.
     public async Task<bool> AdvanceVersionAsync(Guid id, string locale, int expected, EntryStatus status, DateTimeOffset at, Guid by, CancellationToken cancellationToken)
     {
@@ -174,34 +173,100 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
                     .SetProperty(document => document.DeletedBy, by),
                 cancellationToken);
 
-    // Saves the draft of one locale: the shared row, the locale row, the references and the version, in one save.
-    public async Task WriteDraftAsync(SchemaType type, Document row, ContentDocument entry, Origin origin, string? clientId, CancellationToken cancellationToken)
+    // Saves the draft of one locale: the document when it is new, the shared row, the locale row, the references and the
+    // version, in one save. The context may hold what a caller has not saved, in a transaction of its own: that is not
+    // this write's to save, or to lose if this write is rolled back, so it stays pending and only this write's rows go.
+    public async Task WriteDraftAsync(SchemaType type, Document row, bool isNewDocument, ContentDocument entry, Origin origin, string? clientId, CancellationToken cancellationToken)
     {
-        var stored = FieldStorage.Of(schema, type).ToList();
-
-        await WriteRowAsync(StorageNames.Table(type), type, row, null, stored.Where(item => !item.Localized), entry, cancellationToken);
-        if (type.Localized)
+        context.ChangeTracker.DetectChanges();
+        var known = context.ChangeTracker.Entries().Select(item => item.Entity).ToHashSet(ReferenceEqualityComparer.Instance);
+        var held = context.ChangeTracker.Entries().Where(item => item.State != EntityState.Unchanged).Select(Hold).ToList();
+        try
         {
-            await WriteRowAsync(StorageNames.LocaleTable(type), type, row, row.Locale, stored.Where(item => item.Localized), entry, cancellationToken);
+            if (isNewDocument)
+            {
+                context.Documents.Add(row);
+            }
+
+            var stored = FieldStorage.Of(schema, type).ToList();
+            await WriteRowAsync(StorageNames.Table(type), type, row, null, stored.Where(item => !item.Localized), entry, cancellationToken);
+            if (type.Localized)
+            {
+                await WriteRowAsync(StorageNames.LocaleTable(type), type, row, row.Locale, stored.Where(item => item.Localized), entry, cancellationToken);
+            }
+
+            await ReplaceReferencesAsync(type, row, stored, entry, cancellationToken);
+
+            context.Versions.Add(new ContentVersion
+            {
+                DocumentId = row.DocumentId,
+                Locale = row.Locale,
+                Number = row.DraftVersion,
+                Snapshot = EntryJson.Text(EntryJson.Fields(type, entry)),
+                StatusAfter = row.Status,
+                AuthorId = row.UpdatedBy,
+                Origin = origin,
+                ClientId = clientId,
+                CreatedAt = row.UpdatedAt,
+            });
+
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        finally
+        {
+            foreach (var own in context.ChangeTracker.Entries().Where(item => !known.Contains(item.Entity)).ToList())
+            {
+                own.State = EntityState.Detached;
+            }
+
+            foreach (var pending in held)
+            {
+                pending.Restore();
+            }
+        }
+    }
+
+    private static HeldEntry Hold(EntityEntry entry)
+    {
+        var original = entry.State == EntityState.Modified ? entry.OriginalValues.Clone() : null;
+        var modified = entry.Properties.Where(property => property.IsModified).Select(property => property.Metadata.Name).ToList();
+        var state = entry.State;
+        entry.State = EntityState.Detached;
+        return new HeldEntry(entry, state, original, modified);
+    }
+
+    private sealed record HeldEntry(EntityEntry Entry, EntityState State, PropertyValues? Original, List<string> Modified)
+    {
+        public void Restore()
+        {
+            if (Original is null)
+            {
+                Entry.State = State;
+                return;
+            }
+
+            Entry.State = EntityState.Unchanged;
+            Entry.OriginalValues.SetValues(Original);
+            foreach (var name in Modified)
+            {
+                Entry.Property(name).IsModified = true;
+            }
+        }
+    }
+
+    // Which of these relation targets exist, in the trash too. A media target has no row here, so it counts.
+    public async Task<List<Guid>> ExistingTargetsAsync(SchemaField field, List<Guid> ids, CancellationToken cancellationToken)
+    {
+        if (schema.FindContentType(EntryPaths.ReferenceTarget(field)) is null)
+        {
+            return ids;
         }
 
-        await ReplaceReferencesAsync(type, row, stored, entry, cancellationToken);
-
-        context.Versions.Add(new ContentVersion
-        {
-            DocumentId = row.DocumentId,
-            Locale = row.Locale,
-            Number = row.DraftVersion,
-            Snapshot = EntryJson.Text(EntryJson.Fields(type, entry)),
-            StatusAfter = row.Status,
-            AuthorId = row.UpdatedBy,
-            Origin = origin,
-            ClientId = clientId,
-            CreatedAt = row.UpdatedAt,
-        });
-
-        await context.SaveChangesAsync(cancellationToken);
-        context.ChangeTracker.Clear();
+        return await context.Documents.IgnoreQueryFilters().AsNoTracking()
+            .Where(document => ids.Contains(document.DocumentId))
+            .Select(document => document.DocumentId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
     }
 
     private async Task WriteRowAsync(string table, SchemaType type, Document document, string? locale, IEnumerable<StoredField> fields, ContentDocument entry, CancellationToken cancellationToken)

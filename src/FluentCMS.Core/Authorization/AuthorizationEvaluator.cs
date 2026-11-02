@@ -97,7 +97,7 @@ internal sealed class AuthorizationEvaluator(
 
         foreach (var grant in permissions.GrantsOf(type, operation, target))
         {
-            if (operation != ContentOperation.Create && grant.Constraints.RowRule is { } name)
+            if ((operation != ContentOperation.Create || entry is not null) && grant.Constraints.RowRule is { } name)
             {
                 if (!matched.TryGetValue(name, out var matches))
                 {

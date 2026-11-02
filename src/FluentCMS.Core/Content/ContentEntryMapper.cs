@@ -55,13 +55,13 @@ internal sealed class ContentEntryMapper(SchemaModel schema) : IHookEntryMapper
 
     // The document of a typed write: a property with no value is not named, because a class cannot leave a field out.
     // Nor is one that include turns down, at the top level. A hidden property holds nothing a read gave it, and a
-    // read-only one is not the client's to send, at any level; only the system principal sends a read-only value.
+    // read-only one is not the client's to send, at any level. The system principal sends both.
     public ContentDocument ToDocument(object entry, Func<SchemaField, bool> include, bool isSystem)
     {
         ArgumentNullException.ThrowIfNull(entry);
         ArgumentNullException.ThrowIfNull(include);
 
-        bool Inside(SchemaField field) => !field.Hidden && (isSystem || !field.ReadOnly);
+        bool Inside(SchemaField field) => isSystem || (!field.Hidden && !field.ReadOnly);
         return ToFields(entry, field => Inside(field) && include(field), Inside);
     }
 

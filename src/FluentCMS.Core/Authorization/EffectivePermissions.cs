@@ -20,6 +20,9 @@ internal sealed record EffectiveGrant(string Pattern, PermissionConstraints Cons
         && (Constraints.Sites is null || (target.Site is { } site && Constraints.Sites.Contains(site)))
         && (Constraints.Locales is null || (!string.IsNullOrEmpty(target.Locale) && Constraints.Locales.Contains(target.Locale, StringComparer.OrdinalIgnoreCase)));
 
+    // A global entry is shared by every site, so what changes it must come from a grant that no site limits.
+    public bool IsInstanceWide => RoleSite is null && Constraints.Sites is null;
+
     // A field that is not localizable has one value for all the locales of an entry, so a grant limited to some of them
     // may change it only when that covers them all.
     public bool ReachesEveryLocale(AccessTarget target) =>
@@ -54,7 +57,7 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
     }
 
     public bool Allows(SchemaType type, ContentOperation operation, AccessTarget target) =>
-        Allows(CorePermissions.Content(type.Name, operation), target);
+        IsSystem || GrantsOf(type, operation, target).Count > 0;
 
     // The roles must allow reading the type. On top of that a Delivery principal needs a preview key or the draft
     // scope, and a managing one is bounded by its roles alone (spec 4.8).
@@ -66,7 +69,13 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
     public IReadOnlyList<EffectiveGrant> GrantsOf(SchemaType type, ContentOperation operation, AccessTarget target)
     {
         var permission = CorePermissions.Content(type.Name, operation);
-        return ScopeAllows(permission) ? [.. grants.Where(grant => grant.Applies(permission, target))] : [];
+        return ScopeAllows(permission) ? [.. Applying(type, operation, permission, target)] : [];
+    }
+
+    private IEnumerable<EffectiveGrant> Applying(SchemaType type, ContentOperation operation, string permission, AccessTarget target)
+    {
+        var writesEverySite = type.Scope == ContentScope.Global && operation != ContentOperation.Read;
+        return grants.Where(grant => grant.Applies(permission, target) && (!writesEverySite || grant.IsInstanceWide));
     }
 
     // Null when every field is readable. A response has one set of fields for all its rows, and rows are the union of
@@ -151,7 +160,7 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
         }
 
         SortedSet<string> names = new(StringComparer.Ordinal);
-        foreach (var grant in grants.Where(grant => grant.Applies(permission, target)))
+        foreach (var grant in Applying(type, operation, permission, target))
         {
             if (grant.Constraints.RowRule is not { } name)
             {

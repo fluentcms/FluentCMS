@@ -8,43 +8,45 @@ using FluentCMS.Schema;
 namespace FluentCMS.Core.Content;
 
 // Which validation errors a principal may hear of. An error names a field and tells something of its value, so one on a
-// field it cannot read is only for it if it wrote that value itself. If nobody changed the value, the error is not about
-// this write and does not block it. If a hook did, the write fails, without saying on what.
+// field it cannot read is only for it if it sent that value itself. Otherwise a hook or a rule across fields produced it:
+// a hook's value fails the write without saying on what. For the rest the stored entry decides: the same error there is
+// not about this write and does not block it, and an error that is new fails the write in the same way. A value the
+// client sent is always reported, or a refusal would say whether it equals the stored one.
 internal sealed class EntryErrors(SchemaModel schema, SchemaType type, EffectivePermissions permissions, AccessTarget target)
 {
     private const string Discriminator = "type";
 
-    private static readonly ValidationError ProducedValue = new("", ValidationErrorCodes.InvalidValue, "A value set while saving the entry is not valid.");
+    public static readonly ValidationError ProducedValue = new("", ValidationErrorCodes.InvalidValue, "A value set while saving the entry is not valid.");
 
-    public List<ValidationError> Reportable(IReadOnlyList<ValidationError> errors, JsonObject now, JsonObject? was, JsonObject sent)
+    public (List<ValidationError> Reportable, List<ValidationError> ToCompare, bool Produced) Sort(IReadOnlyList<ValidationError> errors, JsonObject now, JsonObject sent, IReadOnlySet<string> named)
     {
-        List<ValidationError> result = [];
+        List<ValidationError> reportable = [];
+        List<ValidationError> toCompare = [];
+        var produced = false;
         foreach (var error in errors)
         {
             if (permissions.IsSystem || Describe(error.Path, now) is not { } path || path.Readable)
             {
-                result.Add(error);
+                reportable.Add(error);
                 continue;
             }
 
-            var value = ValueAt(now, error.Path);
-            if (was is not null && JsonNode.DeepEquals(value, ValueAt(was, error.Path)))
+            var same = JsonNode.DeepEquals(ValueAt(now, error.Path), ValueAt(sent, error.Path));
+            if (same && !path.Hidden && named.Contains(Parse(error.Path)[0].Name))
             {
-                continue;
+                reportable.Add(error);
             }
-
-            var fromClient = JsonNode.DeepEquals(value, ValueAt(sent, error.Path));
-            if (fromClient && !path.Hidden)
+            else if (same)
             {
-                result.Add(error);
+                toCompare.Add(error);
             }
-            else if (!fromClient && !result.Contains(ProducedValue))
+            else
             {
-                result.Add(ProducedValue);
+                produced = true;
             }
         }
 
-        return result;
+        return (reportable, toCompare, produced);
     }
 
     // Null when the path is not a field, such as an error on the entry as a whole.

@@ -197,7 +197,7 @@ internal sealed class LocaleFallbackReader(ContentQueryEngine engine, SchemaMode
         (error.Path, error.Code) is ("type", QueryErrorCodes.UnknownField) or ("status", QueryErrorCodes.DraftNotAllowed);
 
     // A draft writes '' and the empty rich text document for what it lacks (spec 4.3), so those count as no value.
-    private static bool IsMissing(object? value) => value switch
+    public static bool IsMissing(object? value) => value switch
     {
         null => true,
         string text => text.Length == 0,

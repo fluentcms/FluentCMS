@@ -299,20 +299,6 @@ public sealed class ContentServiceLimitsTests : IDisposable
     }
 
     [Fact]
-    public async Task ARoleOfOneSiteWritesAGlobalTypeOnlyFromThatSite()
-    {
-        var role = _database.Database.AddRoleForTest("Site A", QueryDatabase.SiteA, ("content.tag.create", null), ("content.tag.read", null), ("content.tag.update", null), ("content.tag.delete", null));
-        var inA = WithRole(role);
-
-        var tag = await _database.CreateAsync(inA, new() { ["name"] = "Net" }, "tag");
-        await Should.ThrowAsync<ContentAccessDeniedException>(() => _database.CreateAsync(inA, new() { ["name"] = "Other" }, "tag", site: SiteB));
-        await Should.ThrowAsync<ContentAccessDeniedException>(() => _database.UpdateAsync(inA, IdOf(tag), new() { ["name"] = "x" }, 1, "tag", site: SiteB));
-
-        (await _database.UpdateAsync(inA, IdOf(tag), new() { ["name"] = "Changed" }, 1, "tag"))["name"].ShouldBe("Changed");
-        (await _database.GetAsync(Editor, IdOf(tag), type: "tag", site: SiteB))!["name"].ShouldBe("Changed");
-    }
-
-    [Fact]
     public void FallbacksIsAReservedFieldName()
     {
         Should.Throw<SchemaValidationException>(() => SampleSchema.NewBuilder().AddCollection("page", type => type.Field("fallbacks", "text")).Build());

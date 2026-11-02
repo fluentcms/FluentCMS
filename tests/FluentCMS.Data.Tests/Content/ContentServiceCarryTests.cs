@@ -68,7 +68,7 @@ public sealed class ContentServiceCarryTests : IDisposable
 
         await _database.UpdateAsync(principal, id, new() { ["title"] = "T", ["tags"] = new[] { newTag } }, 1);
 
-        _database.References(id).Where(row => row.Field == "tags").Select(row => row.TargetId).ShouldBe([newTag, hiddenTag]);
+        _database.References(id).Where(row => row.Field == "tags").Select(row => row.TargetId).ShouldBe([hiddenTag, newTag]);
     }
 
     [Fact]

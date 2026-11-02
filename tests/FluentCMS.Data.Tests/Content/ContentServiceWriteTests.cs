@@ -528,7 +528,7 @@ public sealed class ContentServiceWriteTests : IDisposable
         var first = await _database.CreateAsync(Editor, new() { ["title"] = "Hello", ["code"] = "c1" });
 
         await Should.NotThrowAsync(() => _database.CreateAsync(Editor, new() { ["title"] = "Hello", ["code"] = "c1" }, site: SiteB));
-        await Should.NotThrowAsync(() => _database.UpdateAsync(Editor, IdOf(first), new() { ["title"] = "Hello" }, 0, locale: "fr"));
+        await Should.NotThrowAsync(() => _database.PatchAsync(Editor, IdOf(first), new() { ["title"] = "Hello" }, 0, locale: "fr"));
         await Should.NotThrowAsync(() => _database.CreateAsync(Editor, new() { ["title"] = "Hello", ["code"] = "c2" }, locale: "fr-CA"));
 
         (await Should.ThrowAsync<ValidationException>(() => _database.CreateAsync(Editor, new() { ["title"] = "Hello" }, locale: "fr")))

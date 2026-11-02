@@ -113,8 +113,8 @@ internal sealed class EntryComposer(SchemaModel schema)
 
     // What a client cannot see or change inside a component or a block stays when it sends the rest back, even when it
     // sends no component at all. A list has no ids, so an incoming block keeps the values of the stored block of the
-    // same type whose visible content is identical, each used once, and what is left pairs up in order. A block both
-    // moved and edited can still pair with the wrong one. A single component is left alone on a patch only for the
+    // same type whose visible content is identical, each used once, and what is left pairs up in order within its type.
+    // A block both moved and edited can still pair with the wrong one. A single component is left alone on a patch only for the
     // system principal, which may be clearing a value, since a patch merged into a component already keeps the rest.
     public void CarryProtected(SchemaType type, ContentDocument stored, ContentDocument composed, bool includingGroups)
     {
@@ -207,11 +207,14 @@ internal sealed class EntryComposer(SchemaModel schema)
             }
         }
 
-        for (var index = 0; index < Math.Min(oldLeft.Count, newLeft.Count); index++)
+        foreach (var item in newLeft)
         {
-            if (OwnerOf(field, oldLeft[index]) is { } owner && OwnerOf(field, newLeft[index]) == owner)
+            var owner = OwnerOf(field, item);
+            var next = oldLeft.FindIndex(old => OwnerOf(field, old) == owner);
+            if (owner is not null && next >= 0)
             {
-                pairs.Add((oldLeft[index], newLeft[index]));
+                pairs.Add((oldLeft[next], item));
+                oldLeft.RemoveAt(next);
             }
         }
 

@@ -49,7 +49,7 @@ internal static class ContentTableReaches
         var declaring = called.DeclaringType.FullName;
         return called switch
         {
-            GenericInstanceMethod { ElementMethod.Name: "Set" } set => set.GenericArguments[0].FullName.StartsWith("System.Collections.Generic.Dictionary`2", StringComparison.Ordinal),
+            GenericInstanceMethod { ElementMethod.Name: "Set" } set => set.Parameters.Count > 0 || set.GenericArguments[0].FullName.StartsWith("System.Collections.Generic.Dictionary`2", StringComparison.Ordinal),
             { Name: "get_Database" } => true,
             { Name: "Rows" } => declaring == typeof(CmsDbContext).FullName,
             _ => declaring is "Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions" or "Microsoft.EntityFrameworkCore.Infrastructure.DatabaseFacade"
