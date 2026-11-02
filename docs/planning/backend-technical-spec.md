@@ -402,12 +402,33 @@ Rows 1.12, 8.13, 10.1, 10.4, 10.10; decisions 8, 19, 39, 43, 48, 54, 55, 60.
 | `cms_document` | `(document_id, locale)` unique; `id` v7 PK | One row per document and locale, any type: `type`, `site_id`, `status`, `draft_version`, `published_version`, `published_at`, `first_published_at`, `deleted_at`, `deleted_by`, `created_*`, `updated_*`, `schedule_publish_at`, `schedule_unpublish_at`. `locale` is `''` for a non-localized document, never null, because a null `locale` defeats the unique key. The type-independent state table used by lists across types, trash, scheduling and the MCP `query` tool. |
 | `cms_article` | `(document_id, state)` unique; `id` v7 PK | Non-localized fields, one row per document and state (0 draft, 1 published). `site_id` denormalised for partial unique indexes and future partitioning. |
 | `cms_article_i18n` | `(document_id, locale, state)` unique; `id` v7 PK | Localized fields and `site_id`, one row per document, locale and state. `site_id` is repeated here because an index cannot span tables and a localized `[Unique]` field needs it beside the field. Absent for non-localized types, whose fields all live in `cms_article`. |
-| `cms_reference` | `(source_type, source_document_id, state, locale, field, position)` unique; index on `(target_type, target_id)` | Every relation and media reference in one polymorphic table. `locale` is `''` for non-localized values, never null, because a null `locale` defeats the unique key. Gives "what references X" for media usage tracking, reference integrity at publish and delete warnings in one query. Polymorphic relations (1.14, Should) need no new table. |
-| `cms_version` | `(document_id, locale, number)` unique | Full JSON snapshot per save plus `status_after`, `author_id`, `origin`, `client_id`, `message`, `created_at`. |
+| `cms_reference` | `(source_type, source_document_id, state, locale, field, position)` unique; `id` v7 PK; index on `(target_type, target_id)` | Every relation and media reference in one polymorphic table. `locale` is `''` for non-localized values, never null, because a null `locale` defeats the unique key. Gives "what references X" for media usage tracking, reference integrity at publish and delete warnings in one query. Polymorphic relations (1.14, Should) need no new table. |
+| `cms_version` | `(document_id, locale, number)` unique; `id` v7 PK | Full JSON snapshot per save plus `status_after`, `author_id`, `origin`, `client_id`, `message`, `created_at`. |
 
-**Column mapping.** text `varchar(n)` (unbounded `TEXT` on SQLite, which does not enforce `n`, so the validation pipeline is the only length limit); longText `text`; richText, json, blocks, multi-select and repeatable components `jsonb` (PostgreSQL), `nvarchar(max)` or `json` (SQL Server), `text` with JSON1 and `CHECK (json_valid(col))` (SQLite); integer `int` or `bigint`; decimal `numeric(p,s)` (text on SQLite, which EF compares and sorts numerically without a conversion); boolean; date `date`; dateTime `timestamptz` (PostgreSQL), `datetimeoffset` (SQL Server), UTC ticks in an `integer` column (SQLite, through a provider convention that also covers system columns such as `schedule_publish_at`, so that scheduling and `sort=-publishedOn` can compare and order; SQLite supports only equality on `DateTimeOffset`, and the conversion drops the offset); email, url, slug `varchar`; single select the enum name as `varchar`; relations and media as `cms_reference` rows only, no denormalised id column.
+**Column mapping.** text `varchar(n)` (unbounded `TEXT` on SQLite, which does not enforce `n`, so the validation pipeline is the only length limit); longText `text`; richText, json, blocks, multi-select and repeatable components `jsonb` (PostgreSQL), `nvarchar(max)` or `json` (SQL Server), `text` with JSON1 and `CHECK (json_valid(col))` (SQLite); integer `bigint` (`long`, always, because widening a populated column later is a migration); decimal `numeric(p,s)` (text on SQLite, which EF compares and sorts numerically without a conversion); boolean; date `date`; dateTime `timestamptz` (PostgreSQL), `datetimeoffset` (SQL Server), UTC ticks in an `integer` column (SQLite, through a provider convention that also covers system columns such as `schedule_publish_at`, so that scheduling and `sort=-publishedOn` can compare and order; SQLite supports only equality on `DateTimeOffset`, and the conversion drops the offset); email, url, slug `varchar`; single select the enum name as `varchar`; relations and media as `cms_reference` rows only, no denormalised id column.
+
+**Nullability.** The storage model, the content service and the validation pipeline share these rules. A draft may be incomplete, so a column is `NOT NULL` only where there is an honest placeholder:
+
+- `text` and `longText` are `NOT NULL` when `[Required]`; `''` stands in for a missing draft value.
+- `slug` is `NOT NULL` always, because it is derived.
+- `richText` is `NOT NULL` always; the empty document stands in for a missing value. There is no store default.
+- Lists (`blocks`, multi `select`, repeatable components and any other `Multiple` field) are `NOT NULL DEFAULT '[]'`.
+- Everything else is nullable even when `[Required]`: `email`, `url`, single `select`, `integer`, `decimal`, `boolean`, `date`, `dateTime` and `json`. A draft has no honest placeholder for them, and format checks would reject `''`.
+- A column flattened from a single component is nullable even when its field is `[Required]`, `slug` or `richText`, because the whole component may be absent. A list inside a component keeps `NOT NULL DEFAULT '[]'`.
+- `site_id` is `NOT NULL` except on `ContentScope.Global` types, where it is null. `locale` is always `NOT NULL`.
+
+**Default lengths.** When a field declares no maximum length, `slug` is 200, `url` 2048, `email` 254 and a single `select` 64, or the length of its longest option if that is longer. `text` and `longText` without a limit stay unbounded. SQLite does not enforce these lengths and the validation pipeline does not know them, so [#2711](https://github.com/fluentcms/FluentCMS/issues/2711) checks what a longer value does on the other providers.
 
 **Indexes.** Primary and unique keys above; `[Indexed]` fields; `[Unique]` fields as a partial unique index `WHERE state = 1`, scoped by table with the draft side checked in the validation pipeline: `(site_id, locale, field)` on `cms_{type}_i18n` for localized fields, `(site_id, field)` on `cms_{type}` for non-localized fields (that table has no `locale`), and the same without `site_id` for `ContentScope.Global` types, whose `site_id` is null and would defeat the index; GIN indexes on `jsonb` columns on PostgreSQL when `[Indexed]` is set on a JSON field.
+
+`[Indexed]` on a column field is a plain index `ix_{table}_{column}`, named after the table that holds the column:
+
+- `(site_id, state, field)` on `cms_{type}` for a non-localized field.
+- `(site_id, locale, state, field)` on `cms_{type}_i18n` for a localized field, because lists always filter on one locale.
+- The same without `site_id` for `ContentScope.Global` types.
+- Nothing for a relation or media field, because `cms_reference` already indexes the target. On a JSON field it is the provider's JSON index above.
+
+Key indexes are named `uq_{table}_...`, which leaves `ux_{table}_{column}` for `[Unique]` fields and `ix_{table}_{column}` for `[Indexed]` fields. A column flattened from a single component is named by its prefixed column, and `[Indexed]` and `[Unique]` on the component's field index that column.
 
 **JSON dialect.** Filters on block and JSON paths compile to LINQ. `IJsonSqlDialect`, implemented in each data provider package (`jsonb` operators, `JSON_VALUE`, `json_extract`), contributes EF function mappings and LINQ expressions, not SQL text, with one comparison per field type, because a JSON extraction returns the value's own type (on SQLite a JSON number never equals the text `'12'`). The supported set in the first release is: block list contains a block of type *X*, and equality or containment on a scalar path one level inside blocks or JSON, identical on all providers. Deeper paths are deferred and will be PostgreSQL-only when they come (Q7).
 
@@ -477,7 +498,7 @@ GET /api/delivery/v1/article
 
 **Concurrency.** Each `(document, locale)` has an integer `version`. Writes carry `expectedVersion` (`If-Match: "7"` on REST). A mismatch is rejected with 412 and the current entry in the problem details `current` extension.
 
-**Validation pipeline.** Field type coercion and declarative rules, custom field validators, entry validators, uniqueness (both states, per site and locale), then, on publish, `Required`, `RequiredWhen` and reference integrity.
+**Validation pipeline.** Field type coercion and declarative rules, custom field validators, entry validators, uniqueness (both states, per site and locale), then, on publish, `Required`, `RequiredWhen` and reference integrity. On a draft the content service writes `''` and the empty rich text document for missing `NOT NULL` values (4.3), and publish treats `''` as missing.
 
 **Hook pipeline.** `Before` hooks run inside the transaction in `[HookOrder]` order and may mutate the entry or cancel (`HookRejectedException`, mapped to 422). `After` hooks run inside the transaction after the write so plugin tables stay consistent. Events (4.11) are dispatched after commit.
 
@@ -1280,6 +1301,7 @@ CREATE TABLE cms_article_i18n (
 CREATE UNIQUE INDEX ux_cms_article_i18n_slug
     ON cms_article_i18n (site_id, locale, slug) WHERE state = 1;
 CREATE INDEX ix_cms_article_category ON cms_article (site_id, state, category);
+CREATE INDEX ix_cms_article_published_on ON cms_article (site_id, state, published_on);
 
 -- author, tags and hero live in cms_reference, with locale '' (never NULL) for non-localized values:
 -- (source_type='article', source_document_id, state, locale '', field='author', position 0,
