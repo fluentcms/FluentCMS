@@ -2,7 +2,18 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>fluentcms</ToolCommandName>
+    <Description>The fluentcms command-line tool.</Description>
   </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="FluentCMS.Data.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="../FluentCMS.Core/FluentCMS.Core.csproj" />

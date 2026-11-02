@@ -6,6 +6,8 @@ namespace FluentCMS.Core.Storage;
 // The schema arrives through UseCmsModel on the options.
 public sealed class CmsDbContext : DbContext
 {
+    public const string HistoryTable = "cms_content__migrations";
+
     private readonly CmsModelOptionsExtension _model;
 
     public CmsDbContext(DbContextOptions<CmsDbContext> options)
@@ -36,6 +38,14 @@ public sealed class CmsDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         new SystemModelBuilder(_model.Conventions).Apply(modelBuilder);
+
+        // What is mapped before the content tables belongs to another stream: the system tables, and the plugin
+        // tables once the plugin host of M3 adds them here.
+        foreach (var entity in modelBuilder.Model.GetEntityTypes())
+        {
+            entity.SetIsTableExcludedFromMigrations(true);
+        }
+
         new ContentModelBuilder(_model.Schema, _model.Conventions).Apply(modelBuilder);
         _model.JsonDialect?.ConfigureFunctions(modelBuilder);
     }

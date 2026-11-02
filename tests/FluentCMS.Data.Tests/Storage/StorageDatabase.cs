@@ -2,6 +2,8 @@ using FluentCMS.Core.Storage;
 using FluentCMS.Schema;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace FluentCMS.Data.Tests.Storage;
 
@@ -25,10 +27,21 @@ internal sealed class StorageDatabase : IDisposable
             .UseCmsModel(_schema, _conventions)
             .Options);
 
+    // EnsureCreated on CmsDbContext would skip the system tables, because they are excluded from its migrations.
     public CmsDbContext CreateCreatedContext()
     {
+        using var system = new SystemDbContext(
+            new DbContextOptionsBuilder<SystemDbContext>()
+                .UseSqlite(_connection)
+                .UseSystemModel(_conventions ?? new StorageConventions())
+                .Options);
+
         var context = CreateContext();
-        context.Database.EnsureCreated();
+        if (system.Database.EnsureCreated())
+        {
+            context.GetService<IRelationalDatabaseCreator>().CreateTables();
+        }
+
         return context;
     }
 

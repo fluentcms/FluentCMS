@@ -1,7 +1,7 @@
+using System.Reflection;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Storage;
 using FluentCMS.Schema;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -29,17 +29,19 @@ public static class FluentCmsServiceCollectionExtensions
         // Until content types can be added to the builder, a schema comes from the container, and none means system tables only.
         services.TryAddSingleton(_ => new SchemaBuilder().Build());
 
+        var contentMigrations = builder.ContentMigrationsAssembly ?? Assembly.GetEntryAssembly() ?? typeof(CmsDbContext).Assembly;
         services.AddDbContext<CmsDbContext>((serviceProvider, options) =>
-        {
-            provider.ConfigureDbContext(options);
-            options.UseCmsModel(serviceProvider.GetRequiredService<SchemaModel>(), provider.Conventions, provider.JsonDialect);
-        });
+            ContentMigrations.Configure(options, provider, serviceProvider.GetRequiredService<SchemaModel>(), contentMigrations));
 
         services.AddDbContext<SystemDbContext>(options =>
         {
             provider.ConfigureSystemMigrations(options);
             options.UseSystemModel(provider.Conventions);
         });
+
+        services.AddLogging();
+        services.AddSingleton<MigrationRunner>();
+        services.AddHostedService<MigrationStartupService>();
 
         return services;
     }
