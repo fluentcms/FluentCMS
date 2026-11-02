@@ -9,12 +9,72 @@ Thank you for your interest. FluentCMS is starting over, so there is little to b
 | `main` | Development and the default branch. All pull requests target it. |
 | `archive/*` | Earlier code, kept for reference. Read-only and not maintained. |
 
+| Path | Role |
+| --- | --- |
+| `docs/planning/` | The plan: the [backend technical specification](docs/planning/backend-technical-spec.md) and the [specification](docs/planning/specification/README.md) it builds on, including the [decisions log](docs/planning/specification/12-decisions-log.md). |
+| `docs/decisions/` | Decision records for choices made during implementation. See its [README](docs/decisions/README.md). |
+
 ## Workflow: issue first
 
 1. **Every change starts from an issue.** For anything beyond a small fix, wait for a maintainer to confirm the approach before writing code.
-2. **Branch from `main`**, named `<issue-number>-<short-slug>`.
+2. **Branch from `main`**, named `<issue-number>-<short-slug>`, for example `2680-contributing-guide`.
 3. **Open a pull request against `main`.** Put `Closes #<issue-number>` in the description, and keep the pull request to its issue.
 4. **CI must pass.** Pull requests are squash-merged, so the pull request title becomes the commit title. Keep it short and imperative.
+
+## Labels
+
+Every issue has one `type:*` label. Issues that belong to a part of the codebase also have one `area:*` label.
+
+| Label | Meaning |
+| --- | --- |
+| `type:feature` | A new capability. |
+| `type:bug` | A defect. |
+| `type:chore` | Repository, tooling or housekeeping. |
+| `type:docs` | Documentation. |
+| `type:epic` | A milestone-level feature, sliced into issues. |
+| `type:adr` | A proposal for an architecture decision. |
+| `type:question` | A question or a request for clarification. |
+
+`area:*` labels name the part of the codebase: `build`, `sdk`, `schema`, `storage`, `content`, `publishing`, `localization`, `identity`, `authorization`, `jobs`, `events`, `settings` and `testing`.
+
+## Milestones and tracking issues
+
+Work is planned in milestones, `M0 Foundation` first. The goal and exit criteria of each are in section 8 of the [backend technical specification](docs/planning/backend-technical-spec.md). Each milestone has one tracking issue holding a checklist of its issues, for example [#2707](https://github.com/fluentcms/FluentCMS/issues/2707) for M0 and [#2708](https://github.com/fluentcms/FluentCMS/issues/2708) for M1. Issues are created milestone by milestone, so later milestones appear when they start. Tick the tracking issue when your pull request merges.
+
+## Dependencies
+
+A new NuGet package or GitHub Action is named in its issue, with the version, before it is added, so that it is visible in review. Package versions live in `Directory.Packages.props`. The pull request that adds the dependency repeats it in a "Dependencies" paragraph.
+
+## Pull requests
+
+The description contains, in this order:
+
+- `Closes #<issue-number>`.
+- A short paragraph on what changes and why.
+- A "Dependencies" paragraph naming every new package or GitHub Action with its version, or saying there are none.
+- The acceptance list from the issue as a checklist. Tick only what you verified.
+
+### Review and merge
+
+- Every pull request is reviewed before it merges. One approval is not required, but a review always happens.
+- Every required check must pass.
+- Pull requests are squash-merged into a linear history. The title becomes the commit title, so it is short and imperative, for example "Update the contributing guide and add decision records".
+
+## Local development
+
+You need the .NET 10 SDK, at the version in `global.json`. SQLite is the only database used during implementation, so no database server is needed and Docker is not required.
+
+Before opening a pull request, run what CI runs:
+
+```bash
+dotnet build -c Release -warnaserror
+dotnet test -c Release
+npx --yes markdownlint-cli2 "**/*.md"
+```
+
+## Decisions
+
+The plan lives in `docs/planning/`. When implementation needs a choice that the [decisions log](docs/planning/specification/12-decisions-log.md) and the backend specification do not already settle, record it in `docs/decisions/` as a short decision record. Open an issue labelled `type:adr` to propose it. The [README](docs/decisions/README.md) there has the details and the [template](docs/decisions/0000-template.md).
 
 ## Authorship
 

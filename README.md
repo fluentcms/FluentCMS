@@ -10,6 +10,7 @@
 
 > **Status: starting over.** FluentCMS is being rebuilt from scratch as v1, on this branch. There is no code yet.
 > Details of the new direction will be published in the [announcement](https://github.com/fluentcms/FluentCMS/issues/2675).
+> The plan is in [docs/planning](docs/planning/backend-technical-spec.md), and [CONTRIBUTING.md](CONTRIBUTING.md) explains how to take part.
 
 ## Earlier code
 
