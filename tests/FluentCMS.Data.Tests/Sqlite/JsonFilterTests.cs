@@ -166,6 +166,74 @@ public sealed class JsonFilterTests : IDisposable
         Ids(row => _dialect.ScalarEquals(Metadata(row), "flag", JsonScalarType.Boolean, Bind(true))).ShouldBeEmpty();
     }
 
+    private Guid AddShapes()
+    {
+        var id = Add("[]", """{"flag":true,"count":1,"name":"x","tags":["x"],"nested":[["x"]],"data":{"a":1}}""");
+        _context.SaveChanges();
+        return id;
+    }
+
+    [Fact]
+    public void ABooleanDoesNotEqualAWholeNumber()
+    {
+        AddShapes();
+
+        // The quote document holds the number 1 at flag, which still matches.
+        Ids(row => _dialect.ScalarEquals(Metadata(row), "flag", JsonScalarType.WholeNumber, Bind(1L))).ShouldBe([_quote]);
+    }
+
+    [Fact]
+    public void ABooleanDoesNotEqualADecimalNumber()
+    {
+        AddShapes();
+
+        Ids(row => _dialect.ScalarEquals(Metadata(row), "flag", JsonScalarType.DecimalNumber, Bind(1.0m))).ShouldBe([_quote]);
+    }
+
+    [Fact]
+    public void AnArrayDoesNotEqualItsJsonText()
+    {
+        AddShapes();
+
+        Ids(row => _dialect.ScalarEquals(Metadata(row), "tags", JsonScalarType.Text, Bind("""["x"]"""))).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void AnObjectDoesNotEqualItsJsonText()
+    {
+        AddShapes();
+
+        Ids(row => _dialect.ScalarEquals(Metadata(row), "data", JsonScalarType.Text, Bind("""{"a":1}"""))).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void ANestedArrayIsNotAnElementOfText()
+    {
+        AddShapes();
+
+        Ids(row => _dialect.ArrayContains(Metadata(row), "nested", Bind("""["x"]"""))).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void OrdinaryValuesStillMatchNextToTheOtherShapes()
+    {
+        var shapes = AddShapes();
+
+        Ids(row => _dialect.ScalarEquals(Metadata(row), "count", JsonScalarType.WholeNumber, Bind(1L))).ShouldBe([shapes]);
+        Ids(row => _dialect.ScalarEquals(Metadata(row), "count", JsonScalarType.DecimalNumber, Bind(1.0m))).ShouldBe([shapes]);
+        Ids(row => _dialect.ScalarEquals(Metadata(row), "name", JsonScalarType.Text, Bind("x"))).ShouldBe([shapes]);
+        Ids(row => _dialect.ArrayContains(Metadata(row), "tags", Bind("x"))).ShouldBe([shapes]);
+    }
+
+    [Fact]
+    public void AWholeNumberEqualsARealOfTheSameValue()
+    {
+        var real = Add("[]", """{"count":12.0}""");
+        _context.SaveChanges();
+
+        Ids(row => _dialect.ScalarEquals(Metadata(row), "count", JsonScalarType.WholeNumber, Bind(12L))).ShouldBe([real]);
+    }
+
     [Fact]
     public void ScalarContainsMatchesInsideTextCaseSensitively()
     {

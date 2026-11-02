@@ -32,25 +32,25 @@ public sealed class SqliteJsonDialect : IJsonSqlDialect
     }
 
     public Expression HasBlock(Expression json, Expression blockType) =>
-        Any<SqliteJsonEntry>(Expression.Call(Each, json), block => BlockTypeIs(block, blockType));
+        Any<SqliteJsonEntry>(Expression.Call(Each, json), entry => BlockTypeIs(EntryValue(entry), blockType));
 
     public Expression AnyBlock(Expression json, Expression blockType, Func<Expression, Expression> predicate) =>
-        Any<SqliteJsonEntry>(Expression.Call(Each, json), block => Expression.AndAlso(BlockTypeIs(block, blockType), predicate(block)));
+        Any<SqliteJsonEntry>(Expression.Call(Each, json), entry => Expression.AndAlso(BlockTypeIs(EntryValue(entry), blockType), predicate(EntryValue(entry))));
 
     public Expression ScalarEquals(Expression json, string field, JsonScalarType type, Expression value)
     {
         JsonScalar.CheckValue(type, value);
         var path = Path(field);
 
+        // json_extract alone is not enough: it gives 1 for true, which would equal the number 1, and an array or
+        // object as its JSON text, which would equal that text.
         return type switch
         {
-            JsonScalarType.Text => Expression.Equal(Expression.Call(ExtractText, json, path), value),
-            JsonScalarType.WholeNumber => Expression.Equal(Expression.Call(ExtractInteger, json, path), Expression.Convert(value, typeof(long?))),
+            JsonScalarType.Text => Expression.AndAlso(IsOfType(json, path, "text"), Expression.Equal(Expression.Call(ExtractText, json, path), value)),
+            JsonScalarType.WholeNumber => Expression.AndAlso(IsNumber(json, path), Expression.Equal(Expression.Call(ExtractInteger, json, path), Expression.Convert(value, typeof(long?)))),
 
             // A JSON number is INTEGER or REAL, while EF binds a decimal as text, which never equals a number.
-            JsonScalarType.DecimalNumber => Expression.Equal(Expression.Call(ExtractReal, json, path), Expression.Convert(value, typeof(double?))),
-
-            // json_extract gives 1 for true, which would also equal the number 1.
+            JsonScalarType.DecimalNumber => Expression.AndAlso(IsNumber(json, path), Expression.Equal(Expression.Call(ExtractReal, json, path), Expression.Convert(value, typeof(double?)))),
             JsonScalarType.Boolean => Expression.Equal(
                 Expression.Call(TypeAt, json, path),
                 Expression.Condition(value, Expression.Constant("true"), Expression.Constant("false"))),
@@ -75,7 +75,9 @@ public sealed class SqliteJsonDialect : IJsonSqlDialect
 
         return Expression.AndAlso(
             IsOfType(json, path, "array"),
-            Any<SqliteJsonPathEntry>(Expression.Call(EachAt, json, path), element => Expression.Equal(element, value)));
+            Any<SqliteJsonPathEntry>(Expression.Call(EachAt, json, path), element => Expression.AndAlso(
+                Expression.Equal(Expression.Property(element, nameof(SqliteJsonPathEntry.Type)), Expression.Constant("text")),
+                Expression.Equal(EntryValue(element), value))));
     }
 
     private BinaryExpression BlockTypeIs(Expression block, Expression blockType) =>
@@ -84,11 +86,15 @@ public sealed class SqliteJsonDialect : IJsonSqlDialect
     private static BinaryExpression IsOfType(Expression json, ConstantExpression path, string type) =>
         Expression.Equal(Expression.Call(TypeAt, json, path), Expression.Constant(type));
 
-    private static MethodCallExpression Any<TEntry>(Expression entries, Func<Expression, Expression> predicate)
+    private static BinaryExpression IsNumber(Expression json, ConstantExpression path) =>
+        Expression.OrElse(IsOfType(json, path, "integer"), IsOfType(json, path, "real"));
+
+    private static MemberExpression EntryValue(ParameterExpression entry) => Expression.Property(entry, nameof(SqliteJsonEntry.Value));
+
+    private static MethodCallExpression Any<TEntry>(Expression entries, Func<ParameterExpression, Expression> predicate)
     {
         var entry = Expression.Parameter(typeof(TEntry), "entry");
-        var body = predicate(Expression.Property(entry, nameof(SqliteJsonEntry.Value)));
-        return Expression.Call(AnyEntry.MakeGenericMethod(typeof(TEntry)), entries, Expression.Quote(Expression.Lambda<Func<TEntry, bool>>(body, entry)));
+        return Expression.Call(AnyEntry.MakeGenericMethod(typeof(TEntry)), entries, Expression.Quote(Expression.Lambda<Func<TEntry, bool>>(predicate(entry), entry)));
     }
 
     private static ConstantExpression Path(string field) => Expression.Constant($"$.{JsonScalar.CheckField(field)}");

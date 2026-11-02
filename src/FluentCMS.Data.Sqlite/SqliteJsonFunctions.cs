@@ -14,6 +14,9 @@ public sealed class SqliteJsonPathEntry
 {
     [Column("value")]
     public string? Value { get; set; }
+
+    [Column("type")]
+    public string? Type { get; set; }
 }
 
 // EF function mappings; SqliteJsonDialect declares them on the model. They run only as SQL.
