@@ -28,6 +28,7 @@
     <Project Path="tests/FluentCMS.Core.IntegrationTests/FluentCMS.Core.IntegrationTests.csproj" />
     <Project Path="tests/FluentCMS.Data.Tests/FluentCMS.Data.Tests.csproj" />
     <Project Path="tests/FluentCMS.Architecture.Tests/FluentCMS.Architecture.Tests.csproj" />
+    <Project Path="tests/FluentCMS.Storage.Spike.Tests/FluentCMS.Storage.Spike.Tests.csproj" />
   </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/Blog/Blog.csproj" />
