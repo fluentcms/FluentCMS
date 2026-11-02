@@ -1,4 +1,8 @@
 #nullable enable
+FluentCMS.Content.IEntryValidator<T>
+FluentCMS.Content.IEntryValidator<T>.ValidateAsync(T entry, FluentCMS.Content.ValidationContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
+FluentCMS.Content.IFieldValidator<TField>
+FluentCMS.Content.IFieldValidator<TField>.ValidateAsync(TField? value, FluentCMS.Content.ValidationContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
 FluentCMS.Content.IOperationContextAccessor
 FluentCMS.Content.IOperationContextAccessor.Current.get -> FluentCMS.Content.OperationContext?
 FluentCMS.Content.IOperationContextAccessor.Current.set -> void
@@ -43,6 +47,41 @@ FluentCMS.Content.PrincipalKind.ApiKey = 3 -> FluentCMS.Content.PrincipalKind
 FluentCMS.Content.PrincipalKind.Member = 2 -> FluentCMS.Content.PrincipalKind
 FluentCMS.Content.PrincipalKind.ServiceAccount = 4 -> FluentCMS.Content.PrincipalKind
 FluentCMS.Content.PrincipalKind.System = 5 -> FluentCMS.Content.PrincipalKind
+FluentCMS.Content.ValidationContext
+FluentCMS.Content.ValidationContext.AddError(string! code, string! message) -> void
+FluentCMS.Content.ValidationContext.AddError(string! path, string! code, string! message) -> void
+FluentCMS.Content.ValidationContext.Container.get -> FluentCMS.Schema.SchemaType!
+FluentCMS.Content.ValidationContext.Entry.get -> object?
+FluentCMS.Content.ValidationContext.Errors.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Content.ValidationError!>!
+FluentCMS.Content.ValidationContext.Field.get -> FluentCMS.Schema.SchemaField?
+FluentCMS.Content.ValidationContext.Mode.get -> FluentCMS.Content.ValidationMode
+FluentCMS.Content.ValidationContext.Operation.get -> FluentCMS.Content.OperationContext!
+FluentCMS.Content.ValidationContext.Path.get -> string!
+FluentCMS.Content.ValidationContext.Type.get -> FluentCMS.Schema.SchemaType!
+FluentCMS.Content.ValidationContext.ValidationContext(FluentCMS.Schema.SchemaType! type, System.Collections.Generic.IReadOnlyDictionary<string!, object?>! values, FluentCMS.Content.OperationContext! operation, FluentCMS.Content.ValidationMode mode, object? entry = null, FluentCMS.Schema.SchemaField? field = null, string? path = null, FluentCMS.Schema.SchemaType? container = null) -> void
+FluentCMS.Content.ValidationContext.Values.get -> System.Collections.Generic.IReadOnlyDictionary<string!, object?>!
+FluentCMS.Content.ValidationError
+FluentCMS.Content.ValidationError.<Clone>$() -> FluentCMS.Content.ValidationError!
+FluentCMS.Content.ValidationError.Code.get -> string!
+FluentCMS.Content.ValidationError.Code.init -> void
+FluentCMS.Content.ValidationError.Deconstruct(out string! Path, out string! Code, out string! Message) -> void
+FluentCMS.Content.ValidationError.Equals(FluentCMS.Content.ValidationError? other) -> bool
+FluentCMS.Content.ValidationError.Message.get -> string!
+FluentCMS.Content.ValidationError.Message.init -> void
+FluentCMS.Content.ValidationError.Path.get -> string!
+FluentCMS.Content.ValidationError.Path.init -> void
+FluentCMS.Content.ValidationError.ValidationError(string! Path, string! Code, string! Message) -> void
+FluentCMS.Content.ValidationErrorCodes
+FluentCMS.Content.ValidationException
+FluentCMS.Content.ValidationException.Errors.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Content.ValidationError!>!
+FluentCMS.Content.ValidationException.ValidationException(System.Collections.Generic.IEnumerable<FluentCMS.Content.ValidationError!>! errors) -> void
+FluentCMS.Content.ValidationMode
+FluentCMS.Content.ValidationMode.Draft = 1 -> FluentCMS.Content.ValidationMode
+FluentCMS.Content.ValidationMode.Publish = 2 -> FluentCMS.Content.ValidationMode
+FluentCMS.Content.ValidationResult
+FluentCMS.Content.ValidationResult.Errors.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Content.ValidationError!>!
+FluentCMS.Content.ValidationResult.IsValid.get -> bool
+FluentCMS.Content.ValidationResult.ValidationResult(System.Collections.Generic.IEnumerable<FluentCMS.Content.ValidationError!>! errors) -> void
 FluentCMS.Media.MediaRef
 FluentCMS.Media.MediaRef.Deconstruct(out System.Guid Id) -> void
 FluentCMS.Media.MediaRef.Equals(FluentCMS.Media.MediaRef other) -> bool
@@ -369,6 +408,16 @@ FluentCMS.Sites.SiteId.SiteId() -> void
 FluentCMS.Sites.SiteId.SiteId(System.Guid Value) -> void
 FluentCMS.Sites.SiteId.Value.get -> System.Guid
 FluentCMS.Sites.SiteId.Value.init -> void
+const FluentCMS.Content.ValidationErrorCodes.AboveMaximum = "FCMS2105" -> string!
+const FluentCMS.Content.ValidationErrorCodes.BelowMinimum = "FCMS2104" -> string!
+const FluentCMS.Content.ValidationErrorCodes.Custom = "FCMS2109" -> string!
+const FluentCMS.Content.ValidationErrorCodes.InvalidValue = "FCMS2108" -> string!
+const FluentCMS.Content.ValidationErrorCodes.MaxLength = "FCMS2103" -> string!
+const FluentCMS.Content.ValidationErrorCodes.MinLength = "FCMS2102" -> string!
+const FluentCMS.Content.ValidationErrorCodes.NotAnAllowedOption = "FCMS2107" -> string!
+const FluentCMS.Content.ValidationErrorCodes.PatternMismatch = "FCMS2106" -> string!
+const FluentCMS.Content.ValidationErrorCodes.Required = "FCMS2101" -> string!
+const FluentCMS.Content.ValidationErrorCodes.RequiredByCondition = "FCMS2110" -> string!
 const FluentCMS.Schema.FieldSettings.Blocks = "blocks" -> string!
 const FluentCMS.Schema.FieldSettings.Component = "component" -> string!
 const FluentCMS.Schema.FieldSettings.Options = "options" -> string!
@@ -383,6 +432,9 @@ override FluentCMS.Content.OperationContext.ToString() -> string!
 override FluentCMS.Content.Principal.Equals(object? obj) -> bool
 override FluentCMS.Content.Principal.GetHashCode() -> int
 override FluentCMS.Content.Principal.ToString() -> string!
+override FluentCMS.Content.ValidationError.Equals(object? obj) -> bool
+override FluentCMS.Content.ValidationError.GetHashCode() -> int
+override FluentCMS.Content.ValidationError.ToString() -> string!
 override FluentCMS.Media.MediaRef.GetHashCode() -> int
 override FluentCMS.Media.MediaRef.ToString() -> string!
 override FluentCMS.Media.MediaRefList.Equals(object? obj) -> bool
@@ -405,6 +457,9 @@ override FluentCMS.Sites.SiteId.ToString() -> string!
 static FluentCMS.Content.OperationContext.operator !=(FluentCMS.Content.OperationContext? left, FluentCMS.Content.OperationContext? right) -> bool
 static FluentCMS.Content.OperationContext.operator ==(FluentCMS.Content.OperationContext? left, FluentCMS.Content.OperationContext? right) -> bool
 static FluentCMS.Content.Principal.System.get -> FluentCMS.Content.Principal!
+static FluentCMS.Content.ValidationError.operator !=(FluentCMS.Content.ValidationError? left, FluentCMS.Content.ValidationError? right) -> bool
+static FluentCMS.Content.ValidationError.operator ==(FluentCMS.Content.ValidationError? left, FluentCMS.Content.ValidationError? right) -> bool
+static FluentCMS.Content.ValidationResult.Success.get -> FluentCMS.Content.ValidationResult!
 static FluentCMS.Media.MediaRef.operator !=(FluentCMS.Media.MediaRef left, FluentCMS.Media.MediaRef right) -> bool
 static FluentCMS.Media.MediaRef.operator ==(FluentCMS.Media.MediaRef left, FluentCMS.Media.MediaRef right) -> bool
 static FluentCMS.Media.MediaRefList.Create(System.ReadOnlySpan<FluentCMS.Media.MediaRef> items) -> FluentCMS.Media.MediaRefList!

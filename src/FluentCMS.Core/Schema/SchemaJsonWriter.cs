@@ -136,7 +136,7 @@ internal static class SchemaJsonWriter
         writer.WriteEndObject();
     }
 
-    private static void WriteCondition(Utf8JsonWriter writer, Condition condition)
+    internal static void WriteCondition(Utf8JsonWriter writer, Condition condition)
     {
         writer.WriteStartObject();
         switch (condition.Operator)
