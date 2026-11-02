@@ -60,7 +60,7 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         ArgumentNullException.ThrowIfNull(query);
 
         var state = query.Status == QueryStatus.Draft ? ContentState.Draft : ContentState.Published;
-        var scope = new QueryScope(context, schema, dialect, access, options, state, query.Locale ?? "");
+        var scope = new QueryScope(context, schema, dialect, access, options, state, query.Locale ?? "", query.Site);
 
         if (schema.FindContentType(typeName) is not { } type || !access.CanReadType(type))
         {
@@ -79,11 +79,6 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
 
         var row = Expression.Parameter(typeof(QueryRow), "row");
         var rows = scope.Rows(type);
-
-        if (query.Site is { } site && type.Scope == ContentScope.Site)
-        {
-            rows = rows.Where(Lambda(Expression.Equal(QueryExpressions.Column(Expression.Property(row, nameof(QueryRow.Shared)), StorageNames.SiteId, typeof(Guid)), QueryExpressions.Bind(site.Value)), row));
-        }
 
         if (new FilterCompiler(scope).Where(type, query.Filter, row) is { } filter)
         {
@@ -361,9 +356,9 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
 
     private static ContentDocument Stub(Reference reference) => new() { ["id"] = reference.TargetId, ["type"] = reference.TargetType };
 
-    // Which targets of a relation the principal may learn exist, or null for all of them. A target it cannot read by
-    // type or by row rule is not returned at all, even as a reference. Under a row rule, a target with no row in this
-    // state and locale cannot be shown to pass, so it goes too.
+    // Which targets of a relation to return, or null for all of them. A target the principal cannot read by type or by
+    // row rule is not returned, even as a reference, and neither is one in another site than the query's. Under a row
+    // rule, a target with no row in this state and locale cannot be shown to pass, so it goes too.
     private async Task<HashSet<Guid>?> ReadableTargetsAsync(QueryScope query, ReferenceOutput output, List<Reference> references, CancellationToken cancellationToken)
     {
         var target = output.Stored.Field.Relation is { } relation ? schema.FindContentType(relation.Target) : null;
@@ -377,12 +372,26 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
             return [];
         }
 
-        if (query.Access.RowRule(target) is null)
+        var inOneSite = target.Scope == ContentScope.Site && query.Site is not null;
+        var hasRule = query.Access.RowRule(target) is not null;
+        if (!inOneSite && !hasRule)
         {
             return null;
         }
 
         var ids = references.Where(reference => reference.Field == output.ApiPath).Select(reference => reference.TargetId).Distinct().ToList();
+        if (!hasRule)
+        {
+            // Trashed targets stay references, so this looks past the query filter.
+            var site = query.Site!.Value.Value;
+            var inSite = await context.Documents.IgnoreQueryFilters().AsNoTracking()
+                .Where(document => ids.Contains(document.DocumentId) && document.SiteId == site)
+                .Select(document => document.DocumentId)
+                .ToListAsync(cancellationToken);
+
+            return [.. inSite];
+        }
+
         var row = Expression.Parameter(typeof(QueryRow), "row");
         var rule = new FilterCompiler(query).Where(target, null, row)!;
         query.ThrowIfInvalid();

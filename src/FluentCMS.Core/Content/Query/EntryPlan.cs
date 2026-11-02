@@ -198,48 +198,8 @@ internal sealed class EntryPlan
         return value =>
         {
             var node = value is string json ? JsonNode.Parse(json) : null;
-            RemoveHidden(node, stored.Field);
+            HiddenFields.Remove(_query.Schema, node, stored.Field);
             return node;
         };
-    }
-
-    // JSON stores a block or repeated component whole, and a hidden field stays out of every response.
-    private void RemoveHidden(JsonNode? value, SchemaField field)
-    {
-        switch (field.FieldType)
-        {
-            case FieldTypeNames.Blocks when value is JsonArray blocks:
-                foreach (var block in blocks.OfType<JsonObject>())
-                {
-                    if (block["type"] is JsonValue name && name.TryGetValue<string>(out var blockName) && _query.Schema.FindBlock(blockName) is { } type)
-                    {
-                        RemoveHidden(block, type);
-                    }
-                }
-
-                break;
-            case FieldTypeNames.Component when _query.Schema.FindComponent((string)field.Settings[FieldSettings.Component]) is { } component:
-                foreach (var item in value is JsonArray items ? items.OfType<JsonObject>() : value is JsonObject single ? [single] : [])
-                {
-                    RemoveHidden(item, component);
-                }
-
-                break;
-        }
-    }
-
-    private void RemoveHidden(JsonObject entry, SchemaType type)
-    {
-        foreach (var field in type.Fields)
-        {
-            if (field.Hidden)
-            {
-                entry.Remove(field.Name);
-            }
-            else if (entry[field.Name] is { } inner)
-            {
-                RemoveHidden(inner, field);
-            }
-        }
     }
 }

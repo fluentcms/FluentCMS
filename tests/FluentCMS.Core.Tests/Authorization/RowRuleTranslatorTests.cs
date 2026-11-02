@@ -176,12 +176,41 @@ public class RowRuleTranslatorTests
         Filter<Regional>(ctx => article => article.CreatedBy == ctx.Principal.Id, anonymous).ShouldBe(RowRule.NoRows);
     }
 
+    [Fact]
+    public void EmptyTextMatchesNoRow()
+    {
+        var empty = Context(("tenant", ""));
+
+        Filter<Regional>(ctx => article => article.Region!.StartsWith(ctx.Principal.Claim("tenant")!), empty).ShouldBe(RowRule.NoRows);
+        Filter<Regional>(ctx => article => article.Region!.Contains(ctx.Principal.Claim("tenant")!), empty).ShouldBe(RowRule.NoRows);
+        Filter<Regional>(ctx => article => article.Region == ctx.Principal.Claim("tenant"), empty).ShouldBe(RowRule.NoRows);
+        Filter<Regional>(ctx => article => article.Region != ctx.Principal.Claim("tenant"), empty).ShouldBe(RowRule.NoRows);
+    }
+
+    [Fact]
+    public void AMissingValueInsideAListClosesTheRule()
+    {
+        var anonymous = Context() with { Principal = Principal.Anonymous };
+        string[] withEmpty = ["eu", ""];
+        string?[] withNull = ["eu", null];
+        Guid[] others = [Guid.CreateVersion7()];
+
+        Filter<Regional>(ctx => article => new List<Guid> { ctx.Principal.Id }.Contains(article.CreatedBy), anonymous).ShouldBe(RowRule.NoRows);
+        Filter<Regional>(ctx => article => new List<Guid> { others[0], ctx.Principal.Id }.Contains(article.CreatedBy), anonymous).ShouldBe(RowRule.NoRows);
+        Filter<Regional>(ctx => article => withEmpty.Contains(article.Region!)).ShouldBe(RowRule.NoRows);
+        Filter<Regional>(ctx => article => withNull.Contains(article.Region)).ShouldBe(RowRule.NoRows);
+        Filter<Regional>(ctx => article => !withEmpty.Contains(article.Region!)).ShouldBe(RowRule.NoRows);
+    }
+
     public static TheoryData<Expression<Func<OperationContext, Expression<Func<Regional, bool>>>>> Unsupported => new()
     {
         ctx => article => true,
         ctx => article => article.Region == article.Note,
         ctx => article => ctx.Principal.Id == Guid.Empty,
         ctx => article => article.Region!.Trim() == "EU",
+        ctx => article => ctx.Principal.Claim("regions")!.Contains(article.Region!),
+        ctx => article => !ctx.Principal.Claim("regions")!.Contains(article.Region!),
+        ctx => article => "eu,us".Contains(article.Region!),
         ctx => article => article.Views + 1 > 2,
         ctx => article => article.Region!.Contains("eu", StringComparison.Ordinal),
         ctx => article => article.Region!.StartsWith('e'),

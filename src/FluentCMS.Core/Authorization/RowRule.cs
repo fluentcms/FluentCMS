@@ -23,9 +23,10 @@ internal sealed class RowRule(
     public IReadOnlyList<RowRuleCondition> Conditions => conditions;
 
     // A value the operation does not have, such as a claim the principal lacks, matches no row instead of comparing
-    // with null, which would show that principal every row with no region. The empty id counts as missing because it
-    // is both the anonymous principal's id and the createdBy of what the system principal wrote. It closes the whole
-    // rule, not one comparison, so that a Not around the comparison cannot turn it into every row.
+    // with null, which would show that principal every row with no region. Empty text counts as missing, because every
+    // value contains and starts with it. The empty id counts because it is both the anonymous principal's id and the
+    // createdBy of what the system principal wrote. Each of them closes the whole rule, not one comparison, so that a
+    // Not around the comparison cannot turn it into every row, and one inside a list closes it the same way.
     public ContentFilter For(OperationContext context)
     {
         var resolved = new object?[values.Count];
@@ -34,10 +35,15 @@ internal sealed class RowRule(
             var value = values[index](context);
             if (value is IEnumerable items and not string)
             {
-                value = items.Cast<object?>().Where(item => item is not null).ToList();
-            }
+                var list = items.Cast<object?>().ToList();
+                if (list.Count == 0 || list.Exists(IsMissing))
+                {
+                    return NoRows;
+                }
 
-            if (value is null or ICollection { Count: 0 } || (value is Guid id && id == Guid.Empty))
+                value = list;
+            }
+            else if (IsMissing(value))
             {
                 return NoRows;
             }
@@ -47,6 +53,8 @@ internal sealed class RowRule(
 
         return build(resolved);
     }
+
+    private static bool IsMissing(object? value) => value is null or "" || (value is Guid id && id == Guid.Empty);
 }
 
 internal sealed record RowRuleCondition(string Path, FilterOperator Operator);

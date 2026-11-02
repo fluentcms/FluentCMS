@@ -22,8 +22,7 @@ internal sealed record EffectiveGrant(string Pattern, PermissionConstraints Cons
 // The answers of spec 2.3 for one principal: the union of its roles' grants, narrowed by its token's scopes. Scopes
 // only remove: nothing here allows what no grant does. Without a scope claim a principal has no scopes, so a token
 // that lost its scopes can read published content and nothing more. Site and locale limits are applied before the
-// union, so they stay tied to their grant. Field lists and row rules are not tied to each other: a field that only a
-// grant with a row rule allows is readable on every row the principal can see.
+// union, so they stay tied to their grant.
 internal sealed class EffectivePermissions(OperationContext context, IReadOnlyList<EffectiveGrant> grants, RowRuleRegistry rules)
 {
     private readonly HashSet<string> _scopes = (context.Principal.Claim(TokenScopes.Claim) ?? "")
@@ -48,37 +47,66 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
     public bool Allows(SchemaType type, ContentOperation operation, AccessTarget target) =>
         Allows(CorePermissions.Content(type.Name, operation), target);
 
-    // A preview key or the draft scope, and the roles must allow reading the type in the first place.
+    // The roles must allow reading the type. On top of that a Delivery principal needs a preview key or the draft
+    // scope, and a managing one is bounded by its roles alone (spec 4.8).
     public bool CanReadDraft(SchemaType type, AccessTarget target) =>
         Allows(type, ContentOperation.Read, target)
-        && (IsSystem || _scopes.Contains(TokenScopes.Draft) || _scopes.Contains(TokenScopes.Preview));
+        && (CanManage || _scopes.Contains(TokenScopes.Draft) || _scopes.Contains(TokenScopes.Preview));
 
-    // Null when every field is allowed. A grant with no list allows every field, and lists add up.
-    public IReadOnlySet<string>? FieldsOf(SchemaType type, ContentOperation operation, AccessTarget target)
+    // The grants behind an operation, with what the scopes leave. A caller that knows the entry decides per grant.
+    public IReadOnlyList<EffectiveGrant> GrantsOf(SchemaType type, ContentOperation operation, AccessTarget target)
+    {
+        var permission = CorePermissions.Content(type.Name, operation);
+        return ScopeAllows(permission) ? [.. grants.Where(grant => grant.Applies(permission, target))] : [];
+    }
+
+    // Null when every field is readable. A response has one set of fields for all its rows, and rows are the union of
+    // the grants, so a list that holds only on some rows cannot count on the others: a field is readable when a grant
+    // with no row rule allows it, or when every applying grant does. This fails closed until there is a per-row
+    // projection. The same answer serves select, filter, sort and population.
+    public IReadOnlySet<string>? ReadableFieldsOf(SchemaType type, AccessTarget target)
     {
         if (IsSystem)
         {
             return null;
         }
 
-        var permission = CorePermissions.Content(type.Name, operation);
-        if (!ScopeAllows(permission))
+        var applying = GrantsOf(type, ContentOperation.Read, target);
+        if (applying.Count == 0)
         {
             return new HashSet<string>();
         }
 
-        HashSet<string> fields = new(StringComparer.Ordinal);
-        foreach (var grant in grants.Where(grant => grant.Applies(permission, target)))
+        HashSet<string> withoutRule = new(StringComparer.Ordinal);
+        HashSet<string>? inEvery = null;
+        foreach (var constraints in applying.Select(grant => grant.Constraints))
         {
-            if (grant.Constraints.Fields is null)
+            if (constraints.Fields is null)
             {
-                return null;
+                if (constraints.RowRule is null)
+                {
+                    return null;
+                }
+
+                continue;
             }
 
-            fields.UnionWith(grant.Constraints.Fields);
+            if (constraints.RowRule is null)
+            {
+                withoutRule.UnionWith(constraints.Fields);
+            }
+
+            inEvery ??= new HashSet<string>(constraints.Fields, StringComparer.Ordinal);
+            inEvery.IntersectWith(constraints.Fields);
         }
 
-        return fields;
+        if (inEvery is null)
+        {
+            return null;
+        }
+
+        withoutRule.UnionWith(inEvery);
+        return withoutRule;
     }
 
     // An allow-list is about the fields of the type. System fields are the same for every type, and only the two that
@@ -95,7 +123,7 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
             return CanManage || !SystemField.NamesAPerson(field);
         }
 
-        return FieldsOf(type, ContentOperation.Read, target) is not { } fields || fields.Contains(field);
+        return ReadableFieldsOf(type, target) is not { } fields || fields.Contains(field);
     }
 
     // Null when the operation reaches every row: a grant with no rule does. Rules of several grants are a union. A rule
@@ -127,7 +155,7 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
         List<ContentFilter> filters = [];
         foreach (var name in names)
         {
-            if (rules.Find(name, type.Name)?.For(context) is { } filter && !ReferenceEquals(filter, RowRule.NoRows))
+            if (RuleFilter(name, type) is { } filter)
             {
                 filters.Add(filter);
             }
@@ -141,9 +169,23 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
         };
     }
 
+    // One rule for this operation, or null when it can match no row.
+    public ContentFilter? RuleFilter(string name, SchemaType type) =>
+        rules.Find(name, type.Name)?.For(context) is { } filter && !ReferenceEquals(filter, RowRule.NoRows) ? filter : null;
+
     private bool ScopeAllows(string permission) => CanManage || IsContentRead(permission);
 
     private static bool IsContentRead(string permission) =>
         permission.StartsWith(FluentCMS.Authorization.Permission.ContentPrefix + ".", StringComparison.Ordinal)
         && permission.EndsWith("." + CorePermissions.OperationName(ContentOperation.Read), StringComparison.Ordinal);
+}
+
+// What one write may touch, decided per grant against the entry. Null fields means every field.
+internal sealed record WritableFields(bool Allowed, IReadOnlySet<string>? Fields)
+{
+    public static readonly WritableFields None = new(false, null);
+
+    public static readonly WritableFields All = new(true, null);
+
+    public bool Includes(string field) => Allowed && (Fields is null || Fields.Contains(field));
 }

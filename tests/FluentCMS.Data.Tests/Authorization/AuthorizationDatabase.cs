@@ -71,6 +71,13 @@ internal sealed class AuthorizationDatabase(Action<FluentCmsBuilder>? configure 
             Operation(principal), Article, operation, entry, InSiteA, status, TestContext.Current.CancellationToken);
     }
 
+    public async Task<WritableFields> WritableAsync(Principal principal, ContentOperation operation, Guid? entry)
+    {
+        using var scope = Database.NewScope();
+        return await scope.ServiceProvider.GetRequiredService<IAuthorizationEvaluator>().WritableFieldsAsync(
+            Operation(principal), Article, operation, entry, InSiteA, TestContext.Current.CancellationToken);
+    }
+
     public Guid AddRole(string name, Guid? site = null, params (string Permission, PermissionConstraints? Constraints)[] grants)
     {
         using var scope = Database.NewScope();

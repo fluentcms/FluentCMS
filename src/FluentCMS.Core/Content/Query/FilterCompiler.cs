@@ -470,13 +470,27 @@ internal sealed class FilterCompiler(QueryScope query)
 
         if (query.Access.RowRule(target) is null)
         {
-            return null;
+            return InSite(target, targetId);
         }
 
         var row = Expression.Parameter(typeof(QueryRow), "target");
         var rule = Where(target, null, row, trusted: false, $"{scope.Prefix}{path.ApiPath}.", scope.Hops + 1, asked: null)!;
 
         return Any(query.Rows(target), row, Expression.AndAlso(Expression.Equal(DocumentId(row), targetId), rule));
+    }
+
+    // A row rule's own condition goes through the rows of the site already, so this is for a target without one.
+    private MethodCallExpression? InSite(SchemaType target, Expression targetId)
+    {
+        if (target.Scope != ContentScope.Site || query.Site is not { } site)
+        {
+            return null;
+        }
+
+        var document = Expression.Parameter(typeof(Document), "document");
+        return Any(query.Context.Documents, document, Expression.AndAlso(
+            Expression.Equal(Expression.Property(document, nameof(Document.DocumentId)), targetId),
+            Expression.Equal(Expression.Property(document, nameof(Document.SiteId)), Bind<Guid?>(site.Value))));
     }
 
     // The target's row in the same state and locale; decision 44 rules out fallback-aware filtering.

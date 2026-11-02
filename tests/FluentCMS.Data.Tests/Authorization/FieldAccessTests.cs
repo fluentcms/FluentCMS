@@ -1,8 +1,10 @@
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Data.Tests.Query;
+using FluentCMS.Schema;
 using Shouldly;
 using Xunit;
 
@@ -156,77 +158,169 @@ public sealed class FieldAccessTests : IDisposable
     }
 
     [Fact]
-    public async Task AWriteOfAFieldOutsideTheGrantsListIsRejected()
+    public async Task ReadsOmitHiddenValuesInsideBlocksComponentsAndFlatComponents()
     {
-        var role = _database.AddRole("Limited", null, ("content.article.update", new PermissionConstraints { Fields = ["title"] }));
-        var access = new FieldAccess(await _database.PermissionsAsync(Limited(role)), QueryDatabase.Schema);
+        var access = new FieldAccess(await _database.PermissionsAsync(AuthorizationDatabase.User([BuiltInRoles.Editor])), QueryDatabase.Schema);
+        var document = new ContentDocument
+        {
+            ["seo"] = new ContentDocument { ["metaTitle"] = "Seo", ["internal"] = "hush", ["extra"] = "hush" },
+            ["faq"] = JsonNode.Parse("""[{"metaTitle":"Q","internal":"hush","extra":"hush"}]"""),
+            ["sections"] = JsonSerializer.SerializeToElement(JsonNode.Parse("""[{"type":"hero","heading":"Hi","internal":"hush","extra":"hush"},{"type":"gone","text":"hush"}]""")),
+        };
 
-        access.RejectUnwritable(new ContentDocument { ["title"] = "New" }, AuthorizationDatabase.Article, ContentOperation.Update, AuthorizationDatabase.InSiteA);
+        access.OmitUnreadable(document, AuthorizationDatabase.Article, AuthorizationDatabase.InSiteA);
 
-        var refused = Should.Throw<ValidationException>(() => access.RejectUnwritable(
-            new ContentDocument { ["title"] = "New", ["views"] = 1L, ["slug"] = "new" },
-            AuthorizationDatabase.Article,
-            ContentOperation.Update,
-            AuthorizationDatabase.InSiteA));
+        document["seo"].ShouldBeOfType<ContentDocument>().Keys.ShouldBe(["metaTitle"]);
+        document["faq"]!.ToString()!.ShouldNotContain("hush");
+        document["faq"]!.ToString()!.ShouldContain("Q");
+        document["sections"]!.ToString()!.ShouldNotContain("hush");
+        document["sections"]!.ToString()!.ShouldContain("Hi");
+    }
 
-        refused.Errors.Select(error => error.Path).ShouldBe(["views", "slug"]);
+    [Fact]
+    public async Task ReadsDropAKeyThatIsNotAFieldAndJsonThatCannotBeRead()
+    {
+        var role = _database.AddRole("Limited", null, ("content.article.read", new PermissionConstraints { Fields = ["title", "sections"] }));
+        var access = new FieldAccess(await _database.PermissionsAsync(AuthorizationDatabase.User([role])), QueryDatabase.Schema);
+        var document = new ContentDocument
+        {
+            ["title"] = "Hello",
+            ["fromAHook"] = "hush",
+            ["sections"] = "{not json",
+        };
+
+        access.OmitUnreadable(document, AuthorizationDatabase.Article, AuthorizationDatabase.InSiteA);
+
+        document.Keys.ShouldBe(["title", "sections"]);
+        document["sections"].ShouldBeNull();
+    }
+
+    private async Task<FieldAccess> Editor() =>
+        new(await _database.PermissionsAsync(AuthorizationDatabase.User([BuiltInRoles.Editor], [TokenScopes.Management])), QueryDatabase.Schema);
+
+    private static string[] Refused(FieldAccess access, ContentDocument changes, WritableFields? writable = null) =>
+        [.. Should.Throw<ValidationException>(() => access.RejectUnwritable(changes, AuthorizationDatabase.Article, writable ?? WritableFields.All)).Errors.Select(error => error.Path)];
+
+    [Fact]
+    public async Task AWriteOfAFieldOutsideWhatTheGrantsAllowIsRejected()
+    {
+        var access = await Editor();
+        var writable = new WritableFields(true, new HashSet<string> { "title" });
+
+        access.RejectUnwritable(new ContentDocument { ["title"] = "New" }, AuthorizationDatabase.Article, writable);
+
+        Refused(access, new ContentDocument { ["title"] = "New", ["views"] = 1L, ["slug"] = "new" }, writable).ShouldBe(["views", "slug"]);
+
+        var refused = Should.Throw<ValidationException>(() => access.RejectUnwritable(new ContentDocument { ["views"] = 1L }, AuthorizationDatabase.Article, writable));
         refused.Errors.ShouldAllBe(error => error.Code == AuthorizationErrorCodes.FieldNotWritable);
     }
 
     [Fact]
     public async Task AHiddenFieldAndAFieldThatDoesNotExistAreRefusedAlike()
     {
-        var access = new FieldAccess(await _database.PermissionsAsync(AuthorizationDatabase.User([BuiltInRoles.Editor], [TokenScopes.Management])), QueryDatabase.Schema);
+        var access = await Editor();
 
         var refused = Should.Throw<ValidationException>(() => access.RejectUnwritable(
             new ContentDocument { ["secret"] = "x", ["missing"] = "x" },
             AuthorizationDatabase.Article,
-            ContentOperation.Update,
-            AuthorizationDatabase.InSiteA));
+            WritableFields.All));
 
         refused.Errors[0].Message.ShouldBe("'secret' is not a field of article that can be written.");
         refused.Errors[1].Message.ShouldBe("'missing' is not a field of article that can be written.");
         refused.Errors[0].Code.ShouldBe(refused.Errors[1].Code);
     }
 
-    [Fact]
-    public async Task AHiddenFieldInsideAComponentOrBlockIsRejected()
+    public static TheoryData<string, string, string> NestedJson => new()
     {
-        var access = new FieldAccess(await _database.PermissionsAsync(AuthorizationDatabase.User([BuiltInRoles.Editor], [TokenScopes.Management])), QueryDatabase.Schema);
+        { "seo", """{"metaTitle":"ok","internal":"x"}""", "seo.internal" },
+        { "seo", """{"metaTitle":"ok","nosuch":"x"}""", "seo.nosuch" },
+        { "faq", """[{"metaTitle":"ok"},{"internal":"x"}]""", "faq.internal" },
+        { "faq", """[{"nosuch":"x"}]""", "faq.nosuch" },
+        { "sections", """[{"type":"quote","text":"ok"},{"type":"hero","heading":"ok","internal":"x"}]""", "sections.internal" },
+        { "sections", """[{"type":"hero","nosuch":"x"}]""", "sections.nosuch" },
+        { "sections", """[{"type":"gone","internal":"x"}]""", "sections.type" },
+        { "sections", """[{"internal":"x"}]""", "sections.type" },
+    };
 
-        var refused = Should.Throw<ValidationException>(() => access.RejectUnwritable(
-            new ContentDocument
-            {
-                ["seo"] = new ContentDocument { ["metaTitle"] = "ok", ["internal"] = "x" },
-                ["faq"] = JsonNode.Parse("""[{"metaTitle":"ok"},{"internal":"x"}]"""),
-                ["sections"] = JsonNode.Parse("""[{"type":"quote","text":"ok"},{"type":"hero","heading":"ok","internal":"x"}]"""),
-            },
-            AuthorizationDatabase.Article,
-            ContentOperation.Update,
-            AuthorizationDatabase.InSiteA));
+    [Theory]
+    [MemberData(nameof(NestedJson))]
+    public async Task ANestedFieldIsRefusedInEveryFormTheCoercionAccepts(string field, string json, string path)
+    {
+        var access = await Editor();
+        var node = JsonNode.Parse(json);
 
-        refused.Errors.Select(error => error.Path).ShouldBe(["seo.internal", "faq.internal", "sections.internal"]);
+        Refused(access, new ContentDocument { [field] = node }).ShouldBe([path]);
+        Refused(access, new ContentDocument { [field] = JsonSerializer.SerializeToElement(node) }).ShouldBe([path]);
+        Refused(access, new ContentDocument { [field] = json }).ShouldBe([path]);
+    }
+
+    [Fact]
+    public async Task TheWholeOfADeserializedDocumentIsInspected()
+    {
+        var access = await Editor();
+        var document = JsonSerializer.Deserialize<ContentDocument>("""{"title":"ok","seo":{"internal":"x"},"faq":[{"internal":"x"}],"sections":[{"type":"hero","internal":"x"}]}""")!;
+
+        Refused(access, document).ShouldBe(["seo.internal", "faq.internal", "sections.internal"]);
+    }
+
+    [Fact]
+    public async Task DictionariesAndDocumentsAreInspected()
+    {
+        var access = await Editor();
+
+        Refused(access, new ContentDocument { ["seo"] = new ContentDocument { ["internal"] = "x" } }).ShouldBe(["seo.internal"]);
+        Refused(access, new ContentDocument { ["seo"] = new Dictionary<string, object?> { ["internal"] = "x" } }).ShouldBe(["seo.internal"]);
+        Refused(access, new ContentDocument { ["seo"] = new Dictionary<string, string> { ["internal"] = "x" } }).ShouldBe(["seo.internal"]);
+        Refused(access, new ContentDocument { ["faq"] = new List<Dictionary<string, object?>> { new() { ["internal"] = "x" } } }).ShouldBe(["faq.internal"]);
+        Refused(access, new ContentDocument { ["sections"] = new List<ContentDocument> { new() { ["type"] = "hero", ["internal"] = "x" } } }).ShouldBe(["sections.internal"]);
+    }
+
+    [Fact]
+    public async Task AShapeThatCannotBeInspectedIsRefused()
+    {
+        var access = await Editor();
+
+        Refused(access, new ContentDocument { ["seo"] = new FluentCMS.Core.Tests.Schema.Samples.Seo() }).ShouldBe(["seo"]);
+        Refused(access, new ContentDocument { ["seo"] = 5 }).ShouldBe(["seo"]);
+        Refused(access, new ContentDocument { ["seo"] = "{not json" }).ShouldBe(["seo"]);
+        Refused(access, new ContentDocument { ["seo"] = "\"text\"" }).ShouldBe(["seo"]);
+        Refused(access, new ContentDocument { ["seo"] = JsonSerializer.SerializeToElement("""{"internal":"x"}""") }).ShouldBe(["seo"]);
+        Refused(access, new ContentDocument { ["faq"] = new object[] { 5 } }).ShouldBe(["faq"]);
+        Refused(access, new ContentDocument { ["sections"] = new BlockList([new FluentCMS.Core.Tests.Schema.Samples.QuoteBlock()]) }).ShouldBe(["sections"]);
+        Refused(access, new ContentDocument { ["seo"] = new Dictionary<int, object?> { [1] = "x" } }).ShouldBe(["seo"]);
+    }
+
+    [Fact]
+    public async Task WhatIsAllowedPassesInEveryForm()
+    {
+        var access = await Editor();
+        var changes = JsonSerializer.Deserialize<ContentDocument>("""{"title":"ok","seo":{"metaTitle":"ok"},"faq":[{"metaTitle":"ok"}],"sections":[{"type":"quote","text":"ok"}]}""")!;
+
+        access.RejectUnwritable(changes, AuthorizationDatabase.Article, WritableFields.All);
+        access.RejectUnwritable(new ContentDocument { ["seo"] = null, ["faq"] = JsonDocument.Parse("null").RootElement, ["sections"] = "[]", ["version"] = 3 }, AuthorizationDatabase.Article, WritableFields.All);
+    }
+
+    [Fact]
+    public async Task TheSystemPrincipalMaySetAHiddenField()
+    {
+        var access = new FieldAccess(await _database.PermissionsAsync(Principal.System), QueryDatabase.Schema);
+
+        access.RejectUnwritable(new ContentDocument { ["secret"] = "x", ["seo"] = new ContentDocument { ["internal"] = "x" } }, AuthorizationDatabase.Article, WritableFields.All);
     }
 
     [Fact]
     public async Task TheAuthorFieldsCannotBeWritten()
     {
-        var access = new FieldAccess(await _database.PermissionsAsync(AuthorizationDatabase.User([BuiltInRoles.Editor], [TokenScopes.Management])), QueryDatabase.Schema);
+        var access = await Editor();
 
-        var refused = Should.Throw<ValidationException>(() => access.RejectUnwritable(
-            new ContentDocument { ["createdBy"] = Guid.CreateVersion7(), ["updatedBy"] = Guid.CreateVersion7(), ["version"] = 3 },
-            AuthorizationDatabase.Article,
-            ContentOperation.Update,
-            AuthorizationDatabase.InSiteA));
-
-        refused.Errors.Select(error => error.Path).ShouldBe(["createdBy", "updatedBy"]);
+        Refused(access, new ContentDocument { ["createdBy"] = Guid.CreateVersion7(), ["updatedBy"] = Guid.CreateVersion7(), ["version"] = 3 }).ShouldBe(["createdBy", "updatedBy"]);
     }
 
     [Fact]
     public async Task WithoutTheOperationNothingCanBeWritten()
     {
-        var access = new FieldAccess(await _database.PermissionsAsync(AuthorizationDatabase.User([BuiltInRoles.Editor])), QueryDatabase.Schema);
+        var access = await Editor();
 
-        Should.Throw<ValidationException>(() => access.RejectUnwritable(new ContentDocument { ["title"] = "New" }, AuthorizationDatabase.Article, ContentOperation.Update, AuthorizationDatabase.InSiteA));
+        Refused(access, new ContentDocument { ["title"] = "New" }, WritableFields.None).ShouldBe(["title"]);
     }
 }

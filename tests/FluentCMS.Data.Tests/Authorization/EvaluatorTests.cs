@@ -95,7 +95,7 @@ public sealed class EvaluatorTests : IDisposable
         bare.Allows(Article, ContentOperation.Update, target).ShouldBeFalse();
         bare.Allows(CorePermissions.SchemaRead, target).ShouldBeFalse();
         bare.CanReadDraft(Article, target).ShouldBeFalse();
-        bare.FieldsOf(Article, ContentOperation.Update, target).ShouldBeEmpty();
+        bare.GrantsOf(Article, ContentOperation.Update, target).ShouldBeEmpty();
         bare.RowRuleOf(Article, ContentOperation.Update, target).ShouldBe(RowRule.NoRows);
 
         var draftOnly = await _database.PermissionsAsync(AuthorizationDatabase.User([BuiltInRoles.Editor], [TokenScopes.Draft]));
@@ -109,7 +109,6 @@ public sealed class EvaluatorTests : IDisposable
 
         var management = await _database.PermissionsAsync(AuthorizationDatabase.User([BuiltInRoles.Editor], [TokenScopes.Management]));
         management.Allows(Article, ContentOperation.Update, target).ShouldBeTrue();
-        management.CanReadDraft(Article, target).ShouldBeFalse();
     }
 
     [Fact]
@@ -233,8 +232,8 @@ public sealed class EvaluatorTests : IDisposable
         var permissions = await _database.PermissionsAsync(Manager(role));
 
         permissions.Allows(Article, ContentOperation.Read, new AccessTarget(AuthorizationDatabase.SiteB, "en")).ShouldBeTrue();
-        permissions.FieldsOf(Article, ContentOperation.Read, new AccessTarget(AuthorizationDatabase.SiteA, "en")).ShouldBe(["title"], ignoreOrder: true);
-        permissions.FieldsOf(Article, ContentOperation.Read, new AccessTarget(AuthorizationDatabase.SiteB, "fr")).ShouldBe(["slug", "views"], ignoreOrder: true);
+        permissions.ReadableFieldsOf(Article, new AccessTarget(AuthorizationDatabase.SiteA, "en")).ShouldBe(["title"], ignoreOrder: true);
+        permissions.ReadableFieldsOf(Article, new AccessTarget(AuthorizationDatabase.SiteB, "fr")).ShouldBe(["slug", "views"], ignoreOrder: true);
     }
 
     [Fact]
@@ -419,10 +418,10 @@ public sealed class EvaluatorTests : IDisposable
     {
         var entry = Rows.AddArticle("Draft", state: ContentState.Draft);
 
-        var editor = AuthorizationDatabase.User([BuiltInRoles.Editor], [TokenScopes.Management]);
-        var refused = await Should.ThrowAsync<ValidationException>(() => _database.QueryAsync(editor, "locale=en&status=draft"));
+        var delivery = AuthorizationDatabase.User([BuiltInRoles.Editor], [TokenScopes.Delivery]);
+        var refused = await Should.ThrowAsync<ValidationException>(() => _database.QueryAsync(delivery, "locale=en&status=draft"));
         refused.Errors.Single().Code.ShouldBe(QueryErrorCodes.DraftNotAllowed);
-        (await _database.CanAccessEntryAsync(editor, ContentOperation.Read, entry, QueryStatus.Draft)).ShouldBeFalse();
+        (await _database.CanAccessEntryAsync(delivery, ContentOperation.Read, entry, QueryStatus.Draft)).ShouldBeFalse();
 
         var withDraft = AuthorizationDatabase.User([BuiltInRoles.Editor], [TokenScopes.Draft]);
         Titles(await _database.QueryAsync(withDraft, "locale=en&status=draft")).ShouldBe(["Draft"]);
@@ -430,6 +429,23 @@ public sealed class EvaluatorTests : IDisposable
 
         var previewKey = AuthorizationDatabase.User([BuiltInRoles.Editor], [TokenScopes.Preview]);
         Titles(await _database.QueryAsync(previewKey, "locale=en&status=draft")).ShouldBe(["Draft"]);
+    }
+
+    [Fact]
+    public async Task AManagingPrincipalReadsDraftsItsRolesAllow()
+    {
+        var entry = Rows.AddArticle("Draft", state: ContentState.Draft);
+        var editor = AuthorizationDatabase.User([BuiltInRoles.Editor], [TokenScopes.Management]);
+
+        Titles(await _database.QueryAsync(editor, "locale=en&status=draft")).ShouldBe(["Draft"]);
+        (await _database.CanAccessEntryAsync(editor, ContentOperation.Read, entry, QueryStatus.Draft)).ShouldBeTrue();
+
+        var throughMcp = AuthorizationDatabase.User([BuiltInRoles.Editor], [TokenScopes.Mcp]);
+        Titles(await _database.QueryAsync(throughMcp, "locale=en&status=draft", origin: Origin.Mcp)).ShouldBe(["Draft"]);
+        await Should.ThrowAsync<ValidationException>(() => _database.QueryAsync(throughMcp, "locale=en&status=draft"));
+
+        var member = AuthorizationDatabase.User([BuiltInRoles.Member], [TokenScopes.Management]);
+        (await _database.PermissionsAsync(member)).CanReadDraft(Article, InSiteA).ShouldBeFalse();
     }
 
     [Fact]
@@ -523,6 +539,238 @@ public sealed class EvaluatorTests : IDisposable
         var engine = scope.ServiceProvider.GetRequiredService<ContentQueryEngine>();
 
         await Should.ThrowAsync<ValidationException>(() => engine.ExecuteAsync("article", BracketQueryParser.Parse("locale=en"), TestContext.Current.CancellationToken));
+    }
+
+    // Role 1 reaches own rows with every field, role 2 every row with only the title.
+    private Principal RowsAndFieldsFromTwoRoles(Guid id)
+    {
+        var own = _database.AddRole(
+            "Own rows, every field",
+            null,
+            ("content.article.read", new PermissionConstraints { RowRule = BuiltInRoles.OwnEntriesRule }),
+            ("content.article.update", new PermissionConstraints { RowRule = BuiltInRoles.OwnEntriesRule }));
+        var titles = _database.AddRole(
+            "Every row, the title",
+            null,
+            ("content.article.read", new PermissionConstraints { Fields = ["title"] }),
+            ("content.article.update", new PermissionConstraints { Fields = ["title"] }));
+
+        return AuthorizationDatabase.User([own, titles], [TokenScopes.Management], id);
+    }
+
+    [Fact]
+    public async Task ReadsDoNotCombineTheRowsOfOneGrantWithTheFieldsOfAnother()
+    {
+        var ann = Guid.CreateVersion7();
+        Rows.AddArticle("Mine", new() { ["views"] = 7L }, createdBy: ann);
+        Rows.AddArticle("Theirs", new() { ["views"] = 7L }, createdBy: Guid.CreateVersion7());
+        var principal = RowsAndFieldsFromTwoRoles(ann);
+
+        var items = (await _database.QueryAsync(principal, "locale=en&sort=title")).Items;
+
+        items.Select(item => item["title"]).ShouldBe(["Mine", "Theirs"]);
+        items.ShouldAllBe(item => !item.ContainsKey("views"));
+
+        (await Should.ThrowAsync<ValidationException>(() => _database.QueryAsync(principal, "locale=en&filter[views][eq]=7"))).Errors.Single().Code.ShouldBe(QueryErrorCodes.UnknownField);
+        (await Should.ThrowAsync<ValidationException>(() => _database.QueryAsync(principal, "locale=en&sort=views"))).Errors.Single().Code.ShouldBe(QueryErrorCodes.NotSortable);
+        (await Should.ThrowAsync<ValidationException>(() => _database.QueryAsync(principal, "locale=en&fields=views"))).Errors.Single().Code.ShouldBe(QueryErrorCodes.UnknownField);
+    }
+
+    [Fact]
+    public async Task AFieldIsReadableWhenAGrantWithNoRuleOrEveryApplyingGrantAllowsIt()
+    {
+        var both = _database.AddRole(
+            "Rule lists",
+            null,
+            ("content.article.read", new PermissionConstraints { RowRule = BuiltInRoles.OwnEntriesRule, Fields = ["title", "slug"] }),
+            ("content.article.read", new PermissionConstraints { RowRule = "region", Fields = ["slug", "views"] }));
+        (await _database.PermissionsAsync(Manager(both))).ReadableFieldsOf(Article, InSiteA).ShouldBe(["slug"]);
+
+        var open = _database.AddRole(
+            "Open and limited",
+            null,
+            ("content.article.read", new PermissionConstraints { RowRule = BuiltInRoles.OwnEntriesRule, Fields = ["title"] }),
+            ("content.article.read", new PermissionConstraints { Fields = ["slug"] }));
+        (await _database.PermissionsAsync(Manager(open))).ReadableFieldsOf(Article, InSiteA).ShouldBe(["slug"]);
+
+        var noList = _database.AddRole(
+            "Rules with no list",
+            null,
+            ("content.article.read", new PermissionConstraints { RowRule = BuiltInRoles.OwnEntriesRule }),
+            ("content.article.read", new PermissionConstraints { RowRule = "region" }));
+        (await _database.PermissionsAsync(Manager(noList))).ReadableFieldsOf(Article, InSiteA).ShouldBeNull();
+
+        var withoutRule = _database.AddRole(
+            "No rule, no list",
+            null,
+            ("content.article.read", new PermissionConstraints { RowRule = BuiltInRoles.OwnEntriesRule, Fields = ["title"] }),
+            ("content.article.read", null));
+        (await _database.PermissionsAsync(Manager(withoutRule))).ReadableFieldsOf(Article, InSiteA).ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task AWriteIsDecidedPerGrantAgainstTheEntry()
+    {
+        var ann = Guid.CreateVersion7();
+        var mine = Rows.AddArticle("Mine", state: ContentState.Draft, createdBy: ann);
+        var theirs = Rows.AddArticle("Theirs", state: ContentState.Draft, createdBy: Guid.CreateVersion7());
+        var principal = RowsAndFieldsFromTwoRoles(ann);
+
+        var onMine = await _database.WritableAsync(principal, ContentOperation.Update, mine);
+        onMine.Includes("title").ShouldBeTrue();
+        onMine.Includes("views").ShouldBeTrue();
+
+        var onTheirs = await _database.WritableAsync(principal, ContentOperation.Update, theirs);
+        onTheirs.Includes("title").ShouldBeTrue();
+        onTheirs.Includes("views").ShouldBeFalse();
+
+        var noEntry = await _database.WritableAsync(principal, ContentOperation.Update, null);
+        noEntry.Includes("title").ShouldBeTrue();
+        noEntry.Includes("views").ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task AWriteTheOnlyGrantDoesNotReachIsNotAllowed()
+    {
+        var ann = Guid.CreateVersion7();
+        var theirs = Rows.AddArticle("Theirs", state: ContentState.Draft, createdBy: Guid.CreateVersion7());
+        var author = AuthorizationDatabase.User([BuiltInRoles.Author], [TokenScopes.Management], ann);
+
+        (await _database.WritableAsync(author, ContentOperation.Update, theirs)).Allowed.ShouldBeFalse();
+        (await _database.WritableAsync(author, ContentOperation.Create, null)).Includes("title").ShouldBeTrue();
+        (await _database.WritableAsync(author, ContentOperation.Purge, theirs)).Allowed.ShouldBeFalse();
+        (await _database.WritableAsync(Principal.System, ContentOperation.Purge, theirs)).Includes("secret").ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task AnEntryInAnotherSiteIsRefusedWithOrWithoutARowRule()
+    {
+        var ann = Guid.CreateVersion7();
+        var inB = Rows.AddArticle("In B", site: QueryDatabase.SiteB, state: ContentState.Draft, createdBy: ann);
+        var inA = Rows.AddArticle("In A", state: ContentState.Draft, createdBy: ann);
+        var limited = _database.AddRole("Site A", null, ("content.article.update", new PermissionConstraints { Sites = [AuthorizationDatabase.SiteA] }));
+        var ruled = _database.AddRole("Site A, own", null, ("content.article.update", new PermissionConstraints { Sites = [AuthorizationDatabase.SiteA], RowRule = BuiltInRoles.OwnEntriesRule }));
+
+        foreach (var role in new[] { limited, ruled })
+        {
+            var principal = AuthorizationDatabase.User([role], [TokenScopes.Management], ann);
+
+            (await _database.CanAccessEntryAsync(principal, ContentOperation.Update, inA)).ShouldBeTrue();
+            (await _database.CanAccessEntryAsync(principal, ContentOperation.Update, inB)).ShouldBeFalse();
+            (await _database.WritableAsync(principal, ContentOperation.Update, inA)).Allowed.ShouldBeTrue();
+            (await _database.WritableAsync(principal, ContentOperation.Update, inB)).Allowed.ShouldBeFalse();
+        }
+    }
+
+    [Fact]
+    public async Task AnEntryThatDoesNotExistIsRefused()
+    {
+        var editor = AuthorizationDatabase.User([BuiltInRoles.Editor], [TokenScopes.Management]);
+
+        (await _database.CanAccessEntryAsync(editor, ContentOperation.Update, Guid.CreateVersion7())).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task RelationTargetsStayInTheSiteOfTheQuery()
+    {
+        var other = Rows.AddArticle("In B", site: QueryDatabase.SiteB);
+        var entry = Rows.AddArticle("In A");
+        var tag = Rows.AddTag("shared");
+        Rows.Relate("article", entry, "related", "article", other);
+        Rows.Relate("article", entry, "tags", "tag", tag);
+        var role = _database.AddRole(
+            "Site A",
+            QueryDatabase.SiteA,
+            ("content.article.read", null),
+            ("content.tag.read", null));
+        var principal = Manager(role);
+
+        var populated = (await _database.QueryAsync(principal, "locale=en&populate=related,tags")).Items.Single();
+        populated["related"].ShouldBeAssignableTo<IReadOnlyList<ContentDocument>>()!.ShouldBeEmpty();
+        populated["tags"].ShouldBeAssignableTo<IReadOnlyList<ContentDocument>>()!.Single()["name"].ShouldBe("shared");
+
+        var stub = (await _database.QueryAsync(principal, "locale=en")).Items.Single();
+        stub["related"].ShouldBeAssignableTo<IReadOnlyList<ContentDocument>>()!.ShouldBeEmpty();
+        stub["tags"].ShouldBeAssignableTo<IReadOnlyList<ContentDocument>>()!.Single()["id"].ShouldBe(tag);
+
+        (await _database.QueryAsync(principal, "locale=en&filter[related.title][eq]=In B")).Items.ShouldBeEmpty();
+        (await _database.QueryAsync(principal, $"locale=en&filter[related][eq]={other}")).Items.ShouldBeEmpty();
+        (await _database.QueryAsync(principal, "locale=en&filter[related][notNull]=true")).Items.ShouldBeEmpty();
+        (await _database.QueryAsync(principal, "locale=en&filter[tags.name][eq]=shared")).Items.Single()["title"].ShouldBe("In A");
+    }
+
+    [Fact]
+    public async Task ATargetInTheSameSiteIsStillReturned()
+    {
+        var target = Rows.AddArticle("Target");
+        var entry = Rows.AddArticle("Entry");
+        Rows.Relate("article", entry, "related", "article", target);
+        var principal = AuthorizationDatabase.User([BuiltInRoles.Editor]);
+
+        var items = (await _database.QueryAsync(principal, $"locale=en&filter[id][eq]={entry}&populate=related")).Items;
+
+        items.Single()["related"].ShouldBeAssignableTo<IReadOnlyList<ContentDocument>>()!.Single()["title"].ShouldBe("Target");
+        (await _database.QueryAsync(principal, $"locale=en&filter[related][eq]={target}")).Items.Single()["title"].ShouldBe("Entry");
+    }
+
+    [Fact]
+    public async Task AnEmptyClaimDoesNotOpenEveryRow()
+    {
+        var database = new AuthorizationDatabase(cms => cms.Authorization
+            .AddRowRule<Regional>("prefix", ctx => article => article.Region!.StartsWith(ctx.Principal.Claim("tenant")!))
+            .AddRowRule<Regional>("fragment", ctx => article => article.Region!.Contains(ctx.Principal.Claim("tenant")!)));
+        using (database)
+        {
+            database.Database.AddArticle("Any", new() { ["region"] = "eu" });
+
+            foreach (var name in new[] { "prefix", "fragment" })
+            {
+                var role = database.AddRole(name, null, ("content.article.read", new PermissionConstraints { RowRule = name }));
+
+                (await database.QueryAsync(AuthorizationDatabase.User([role], claims: new() { ["tenant"] = "" }), "locale=en")).Items.ShouldBeEmpty();
+                (await database.QueryAsync(AuthorizationDatabase.User([role], claims: new() { ["tenant"] = "eu" }), "locale=en")).Items.Single()["title"].ShouldBe("Any");
+            }
+        }
+    }
+
+    [Fact]
+    public async Task TheEmptyIdInAListDoesNotOpenWhatTheSystemWrote()
+    {
+        var database = new AuthorizationDatabase(cms => cms.Authorization
+            .AddRowRule<Regional>("listed", ctx => article => new List<Guid> { ctx.Principal.Id }.Contains(article.CreatedBy)));
+        using (database)
+        {
+            database.Database.AddArticle("Written by the system", createdBy: Principal.System.Id);
+            database.Grant(BuiltInRoles.Public, "content.article.read", new PermissionConstraints { RowRule = "listed" });
+
+            (await database.QueryAsync(Principal.Anonymous, "locale=en")).Items.ShouldBeEmpty();
+        }
+    }
+
+    [Fact]
+    public async Task RestoreAndPurgeReachTrashedEntriesUnderARowRule()
+    {
+        var ann = Guid.CreateVersion7();
+        var mine = Rows.AddArticle("Mine", state: ContentState.Draft, createdBy: ann);
+        var theirs = Rows.AddArticle("Theirs", state: ContentState.Draft, createdBy: Guid.CreateVersion7());
+        Rows.Trash(mine);
+        Rows.Trash(theirs);
+        var role = _database.AddRole(
+            "Own trash",
+            null,
+            ("content.article.restore", new PermissionConstraints { RowRule = BuiltInRoles.OwnEntriesRule }),
+            ("content.article.purge", new PermissionConstraints { RowRule = BuiltInRoles.OwnEntriesRule }),
+            ("content.article.update", new PermissionConstraints { RowRule = BuiltInRoles.OwnEntriesRule }));
+        var principal = AuthorizationDatabase.User([role], [TokenScopes.Management], ann);
+
+        foreach (var operation in new[] { ContentOperation.Restore, ContentOperation.Purge })
+        {
+            (await _database.CanAccessEntryAsync(principal, operation, mine)).ShouldBeTrue();
+            (await _database.CanAccessEntryAsync(principal, operation, theirs)).ShouldBeFalse();
+            (await _database.WritableAsync(principal, operation, mine)).Allowed.ShouldBeTrue();
+        }
+
+        (await _database.CanAccessEntryAsync(principal, ContentOperation.Update, mine)).ShouldBeFalse();
     }
 
     [Fact]

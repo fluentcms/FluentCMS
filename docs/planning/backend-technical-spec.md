@@ -492,7 +492,7 @@ GET /api/delivery/v1/article
 
 **Compilation.** The AST compiles to LINQ over the property-bag entities. Relation paths join through `cms_reference` to the target type's row in the same state and locale (decision 44: no fallback-aware filtering). Block and JSON paths go through `IJsonSqlDialect`. Row rules from the evaluator are appended as an `And` node before compilation, so authorization and filtering are one query. `state` is inlined as a literal and every user value is bound as a parameter, by reading a member of a holder object, because a bare expression constant becomes a SQL literal. SQLite does not need the inlined `state`, but a literal matches the `WHERE state = 1` index predicate as written, and [#2711](https://github.com/fluentcms/FluentCMS/issues/2711) checks the other providers.
 
-**Population.** Default depth 1, cap configurable (default 3). Beyond the depth a relation is returned as `{ "id": "...", "type": "author" }`. A target the principal cannot read, by type or by row rule, is returned as null at any depth, and left out of a multiple relation, so that a reader cannot learn that it exists. Cycles stop at the cap. Field selection applies to populated entries with dotted paths.
+**Population.** Default depth 1, cap configurable (default 3). Beyond the depth a relation is returned as `{ "id": "...", "type": "author" }`. A target the principal cannot read, by type or by row rule, is returned as null at any depth, or left out of a multiple relation. Cycles stop at the cap. Field selection applies to populated entries with dotted paths.
 
 **Pagination.** Offset and page with `total` (skip the count with `withTotal=false`). Keyset cursor: base64 of the sort key values plus the document id, which is always appended as the final sort key for stability. A v7 `document_id` makes that key stable, but it does not give creation order within one millisecond.
 
@@ -594,7 +594,7 @@ Rows 4.3 to 4.8, 4.12, 4.17, 8.14; decisions 31, 32.
 
 **Permission catalogue.** Core permissions (`users.manage`, `roles.manage`, `apikeys.manage`, `sites.manage`, `settings.{area}.manage`, `jobs.manage`, `activity.read`, `schema.read`, `plugins.manage`, `transfer.manage`), generated per type (`content.{type}.create|read|update|delete|publish|unpublish|restore|purge`), and plugin-declared ones through `IPermissionProvider`. All stored in `cms_role_permission (role_id, permission, constraints json)`.
 
-**Constraints.** Additive only, no deny rules. A grant may be constrained to sites, locales, a field allow-list (`fields: ["title", "slug"]`, null means all) and a row rule name. A principal's effective permission set is the union of its roles' grants.
+**Constraints.** Additive only, no deny rules. A grant may be constrained to sites, locales, a field allow-list (`fields: ["title", "slug"]`, null means all) and a row rule name. A principal's effective permission set is the union of its roles' grants. Field lists and row rules are tied together where the union would otherwise give access no grant did: a write is decided per grant against the entry, and until responses can project per row, the rows of a read stay the union while a field is readable only if a grant with no row rule allows it or every applying grant does.
 
 **Roles.** `cms_role` has an optional `site_id` (null is instance-wide). Built-ins seeded by the first migration: Super Admin (everything), Editor, Author (own entries row rule), Public (the anonymous principal per site, which is how public access configuration is stored), Member (default for the member pool).
 

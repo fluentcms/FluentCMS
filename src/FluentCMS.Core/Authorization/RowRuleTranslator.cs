@@ -124,14 +124,18 @@ internal sealed class RowRuleTranslator
         {
             case nameof(string.Contains) when TryPath(source, out var list, out _) && IsValue(item) && item.Type != typeof(char):
                 return Bound(list, FilterOperator.Contains, item, typeof(object));
-            case nameof(string.Contains) when TryPath(item, out var field, out _) && IsValue(source):
+            case nameof(string.Contains) when TryPath(item, out var field, out _) && IsValue(source) && !IsText(source):
                 return Bound(field, FilterOperator.In, SpanSource(source), typeof(object));
             case nameof(string.StartsWith) when TryPath(source, out var text, out _) && IsValue(item) && item.Type != typeof(char):
                 return Bound(text, FilterOperator.StartsWith, item, typeof(object));
             default:
-                throw Refuse(_name, call, "only Contains and StartsWith with one value can be translated");
+                throw Refuse(_name, call, "only Contains and StartsWith with one value can be translated, and a list of values cannot be text");
         }
     }
+
+    // text.Contains(x.Field) looks for a fragment, where values.Contains(x.Field) looks for a member, and only the second
+    // is what In means. Reading text as a list of one would turn a deny-list into nothing.
+    private static bool IsText(Expression source) => typeof(IEnumerable<char>).IsAssignableFrom(Unwrap(source).Type);
 
     // C# 14 binds array.Contains(x) to MemoryExtensions over an implicit span, which cannot be boxed. The array can.
     private static Expression SpanSource(Expression source) =>
