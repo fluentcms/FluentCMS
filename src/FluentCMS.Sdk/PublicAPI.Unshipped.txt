@@ -1,4 +1,19 @@
 #nullable enable
+FluentCMS.Content.FilterOperator
+FluentCMS.Content.FilterOperator.Between = 8 -> FluentCMS.Content.FilterOperator
+FluentCMS.Content.FilterOperator.Contains = 9 -> FluentCMS.Content.FilterOperator
+FluentCMS.Content.FilterOperator.Equal = 0 -> FluentCMS.Content.FilterOperator
+FluentCMS.Content.FilterOperator.GreaterThan = 6 -> FluentCMS.Content.FilterOperator
+FluentCMS.Content.FilterOperator.GreaterThanOrEqual = 7 -> FluentCMS.Content.FilterOperator
+FluentCMS.Content.FilterOperator.HasBlock = 13 -> FluentCMS.Content.FilterOperator
+FluentCMS.Content.FilterOperator.In = 2 -> FluentCMS.Content.FilterOperator
+FluentCMS.Content.FilterOperator.IsNotNull = 12 -> FluentCMS.Content.FilterOperator
+FluentCMS.Content.FilterOperator.IsNull = 11 -> FluentCMS.Content.FilterOperator
+FluentCMS.Content.FilterOperator.LessThan = 4 -> FluentCMS.Content.FilterOperator
+FluentCMS.Content.FilterOperator.LessThanOrEqual = 5 -> FluentCMS.Content.FilterOperator
+FluentCMS.Content.FilterOperator.NotEqual = 1 -> FluentCMS.Content.FilterOperator
+FluentCMS.Content.FilterOperator.NotIn = 3 -> FluentCMS.Content.FilterOperator
+FluentCMS.Content.FilterOperator.StartsWith = 10 -> FluentCMS.Content.FilterOperator
 FluentCMS.Content.IOperationContextAccessor
 FluentCMS.Content.IOperationContextAccessor.Current.get -> FluentCMS.Content.OperationContext?
 FluentCMS.Content.IOperationContextAccessor.Current.set -> void
@@ -171,7 +186,28 @@ FluentCMS.Schema.FieldRelation
 FluentCMS.Schema.FieldRelation.Ordered.get -> bool
 FluentCMS.Schema.FieldRelation.Reverse.get -> string?
 FluentCMS.Schema.FieldRelation.Target.get -> string!
+FluentCMS.Schema.FieldSettingDescriptor
+FluentCMS.Schema.FieldSettingDescriptor.<Clone>$() -> FluentCMS.Schema.FieldSettingDescriptor!
+FluentCMS.Schema.FieldSettingDescriptor.Deconstruct(out string! Key, out FluentCMS.Schema.FieldSettingKind Kind, out bool Required) -> void
+FluentCMS.Schema.FieldSettingDescriptor.Equals(FluentCMS.Schema.FieldSettingDescriptor? other) -> bool
+FluentCMS.Schema.FieldSettingDescriptor.FieldSettingDescriptor(string! Key, FluentCMS.Schema.FieldSettingKind Kind, bool Required = false) -> void
+FluentCMS.Schema.FieldSettingDescriptor.Key.get -> string!
+FluentCMS.Schema.FieldSettingDescriptor.Key.init -> void
+FluentCMS.Schema.FieldSettingDescriptor.Kind.get -> FluentCMS.Schema.FieldSettingKind
+FluentCMS.Schema.FieldSettingDescriptor.Kind.init -> void
+FluentCMS.Schema.FieldSettingDescriptor.Required.get -> bool
+FluentCMS.Schema.FieldSettingDescriptor.Required.init -> void
+FluentCMS.Schema.FieldSettingKind
+FluentCMS.Schema.FieldSettingKind.Boolean = 1 -> FluentCMS.Schema.FieldSettingKind
+FluentCMS.Schema.FieldSettingKind.Decimal = 3 -> FluentCMS.Schema.FieldSettingKind
+FluentCMS.Schema.FieldSettingKind.Integer = 2 -> FluentCMS.Schema.FieldSettingKind
+FluentCMS.Schema.FieldSettingKind.String = 0 -> FluentCMS.Schema.FieldSettingKind
+FluentCMS.Schema.FieldSettingKind.StringList = 4 -> FluentCMS.Schema.FieldSettingKind
 FluentCMS.Schema.FieldSettings
+FluentCMS.Schema.FieldStorageKind
+FluentCMS.Schema.FieldStorageKind.Column = 0 -> FluentCMS.Schema.FieldStorageKind
+FluentCMS.Schema.FieldStorageKind.Json = 1 -> FluentCMS.Schema.FieldStorageKind
+FluentCMS.Schema.FieldStorageKind.Reference = 2 -> FluentCMS.Schema.FieldStorageKind
 FluentCMS.Schema.FormerNamesAttribute
 FluentCMS.Schema.FormerNamesAttribute.FormerNamesAttribute(params string![]! names) -> void
 FluentCMS.Schema.FormerNamesAttribute.Names.get -> System.Collections.Generic.IReadOnlyList<string!>!
@@ -196,6 +232,20 @@ FluentCMS.Schema.IFieldBuilder.Searchable(bool searchable = true) -> FluentCMS.S
 FluentCMS.Schema.IFieldBuilder.Setting(string! name, object! value) -> FluentCMS.Schema.IFieldBuilder!
 FluentCMS.Schema.IFieldBuilder.Unique(bool unique = true) -> FluentCMS.Schema.IFieldBuilder!
 FluentCMS.Schema.IFieldBuilder.VisibleWhen(FluentCMS.Schema.Condition! condition) -> FluentCMS.Schema.IFieldBuilder!
+FluentCMS.Schema.IFieldType
+FluentCMS.Schema.IFieldType.AcceptsAnySetting.get -> bool
+FluentCMS.Schema.IFieldType.ClrTypes.get -> System.Collections.Generic.IReadOnlyList<System.Type!>!
+FluentCMS.Schema.IFieldType.FilterOperators.get -> System.Collections.Generic.IReadOnlySet<FluentCMS.Content.FilterOperator>!
+FluentCMS.Schema.IFieldType.Indexable.get -> bool
+FluentCMS.Schema.IFieldType.Name.get -> string!
+FluentCMS.Schema.IFieldType.OpenApiSchema(FluentCMS.Schema.SchemaField! field) -> System.Text.Json.Nodes.JsonObject!
+FluentCMS.Schema.IFieldType.Settings.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Schema.FieldSettingDescriptor!>!
+FluentCMS.Schema.IFieldType.Sortable.get -> bool
+FluentCMS.Schema.IFieldType.StorageKind(FluentCMS.Schema.SchemaField! field) -> FluentCMS.Schema.FieldStorageKind
+FluentCMS.Schema.IFieldType.TryCoerce(object? value, FluentCMS.Schema.SchemaField! field, out object? result, out string? message) -> bool
+FluentCMS.Schema.IFieldTypeRegistry
+FluentCMS.Schema.IFieldTypeRegistry.All.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Schema.IFieldType!>!
+FluentCMS.Schema.IFieldTypeRegistry.Find(string! name) -> FluentCMS.Schema.IFieldType?
 FluentCMS.Schema.IRichTextNodeContext
 FluentCMS.Schema.IRichTextNodeContext.Attributes.get -> System.Collections.Generic.IReadOnlyDictionary<string!, System.Text.Json.JsonElement>!
 FluentCMS.Schema.IRichTextNodeContext.Format.get -> string!
@@ -392,6 +442,9 @@ override FluentCMS.Schema.BlockList.Equals(object? obj) -> bool
 override FluentCMS.Schema.BlockList.GetHashCode() -> int
 override FluentCMS.Schema.BlockList.ToString() -> string!
 override FluentCMS.Schema.Condition.ToString() -> string!
+override FluentCMS.Schema.FieldSettingDescriptor.Equals(object? obj) -> bool
+override FluentCMS.Schema.FieldSettingDescriptor.GetHashCode() -> int
+override FluentCMS.Schema.FieldSettingDescriptor.ToString() -> string!
 override FluentCMS.Schema.Ref<T>.GetHashCode() -> int
 override FluentCMS.Schema.Ref<T>.ToString() -> string!
 override FluentCMS.Schema.RefList<T>.Equals(object? obj) -> bool
@@ -415,6 +468,8 @@ static FluentCMS.Schema.BlockList.operator !=(FluentCMS.Schema.BlockList? left, 
 static FluentCMS.Schema.BlockList.operator ==(FluentCMS.Schema.BlockList? left, FluentCMS.Schema.BlockList? right) -> bool
 static FluentCMS.Schema.Condition.Field(string! name) -> FluentCMS.Schema.ConditionField!
 static FluentCMS.Schema.ContentItem.ReservedFieldNames.get -> System.Collections.Generic.IReadOnlySet<string!>!
+static FluentCMS.Schema.FieldSettingDescriptor.operator !=(FluentCMS.Schema.FieldSettingDescriptor? left, FluentCMS.Schema.FieldSettingDescriptor? right) -> bool
+static FluentCMS.Schema.FieldSettingDescriptor.operator ==(FluentCMS.Schema.FieldSettingDescriptor? left, FluentCMS.Schema.FieldSettingDescriptor? right) -> bool
 static FluentCMS.Schema.RefList.Create<T>(System.ReadOnlySpan<FluentCMS.Schema.Ref<T!>> items) -> FluentCMS.Schema.RefList<T!>!
 static FluentCMS.Schema.RichText.Empty.get -> FluentCMS.Schema.RichText!
 static FluentCMS.Schema.RichText.operator !=(FluentCMS.Schema.RichText? left, FluentCMS.Schema.RichText? right) -> bool

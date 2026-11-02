@@ -1,16 +1,20 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
+using FluentCMS.Core.Schema.FieldTypes;
 using FluentCMS.Schema;
 
 namespace FluentCMS.Core.Schema;
 
 // Checks the rules of section 4.2 of the backend specification and reports every violation, not only the first.
-internal sealed class SchemaValidator(IReadOnlySet<string> registeredFieldTypes)
+internal sealed class SchemaValidator(IFieldTypeRegistry fieldTypes)
 {
     // Components and blocks may nest this many levels below a content type (decision 20).
     private const int MaxNestingDepth = 3;
 
     private const string BlockDiscriminator = "type";
+
+    // A select, component or blocks field without its setting is reported by the type-specific checks, with a message of its own.
+    private static readonly HashSet<string> TypesThatReportMissingSettings = [FieldTypeNames.Select, FieldTypeNames.Component, FieldTypeNames.Blocks];
 
     private readonly List<SchemaError> _errors = [];
 
@@ -106,9 +110,14 @@ internal sealed class SchemaValidator(IReadOnlySet<string> registeredFieldTypes)
             Report(SchemaErrorCodes.ReservedName, $"field name '{field.Name}' of {location} is reserved for the block type discriminator");
         }
 
-        if (!registeredFieldTypes.Contains(field.FieldType))
+        var fieldType = fieldTypes.Find(field.FieldType);
+        if (fieldType is null)
         {
             Report(SchemaErrorCodes.FieldTypeNotRegistered, $"field type '{field.FieldType}' used by {location} is not registered");
+        }
+        else
+        {
+            ValidateSettingKeys(fieldType, field, location);
         }
 
         if (field.Localizable && !(type.IsContentType && type.Localized))
@@ -122,6 +131,55 @@ internal sealed class SchemaValidator(IReadOnlySet<string> registeredFieldTypes)
         ValidateSettings(type, field, location, contentTypes, components, blocks);
         ValidateConditions(type, field, location);
     }
+
+    private void ValidateSettingKeys(IFieldType fieldType, FieldDraft field, string location)
+    {
+        if (!fieldType.AcceptsAnySetting)
+        {
+            foreach (var (key, value) in field.Settings.OrderBy(setting => setting.Key, StringComparer.Ordinal))
+            {
+                var descriptor = fieldType.Settings.FirstOrDefault(setting => setting.Key == key);
+                if (descriptor is null)
+                {
+                    var accepted = fieldType.Settings.Count == 0 ? "it accepts none" : $"it accepts {string.Join(", ", fieldType.Settings.Select(setting => setting.Key))}";
+                    Report(SchemaErrorCodes.InvalidField, $"{fieldType.Name} field {location} has an unknown setting '{key}'; {accepted}");
+                }
+                else if (!HasKind(value, descriptor.Kind))
+                {
+                    Report(SchemaErrorCodes.InvalidField, $"setting '{key}' of {fieldType.Name} field {location} must be {Describe(descriptor.Kind)}");
+                }
+            }
+        }
+
+        if (TypesThatReportMissingSettings.Contains(fieldType.Name))
+        {
+            return;
+        }
+
+        foreach (var descriptor in fieldType.Settings.Where(setting => setting.Required && !field.Settings.ContainsKey(setting.Key)))
+        {
+            Report(SchemaErrorCodes.InvalidField, $"{fieldType.Name} field {location} is missing the required setting '{descriptor.Key}'");
+        }
+    }
+
+    private static bool HasKind(object value, FieldSettingKind kind) => kind switch
+    {
+        FieldSettingKind.String => value is string,
+        FieldSettingKind.Boolean => value is bool,
+        FieldSettingKind.Integer => value is long,
+        FieldSettingKind.Decimal => value is long or decimal,
+        FieldSettingKind.StringList => value is IReadOnlyList<string>,
+        _ => false,
+    };
+
+    private static string Describe(FieldSettingKind kind) => kind switch
+    {
+        FieldSettingKind.String => "a string",
+        FieldSettingKind.Boolean => "true or false",
+        FieldSettingKind.Integer => "a whole number",
+        FieldSettingKind.Decimal => "a number",
+        _ => "a list of strings",
+    };
 
     private void ValidateLimits(FieldDraft field, string location)
     {
@@ -150,7 +208,7 @@ internal sealed class SchemaValidator(IReadOnlySet<string> registeredFieldTypes)
 
     private void ValidateSettings(TypeDraft type, FieldDraft field, string location, Dictionary<string, TypeDraft> contentTypes, Dictionary<string, TypeDraft> components, Dictionary<string, TypeDraft> blocks)
     {
-        if (field.Relation is not null && field.FieldType != KnownFieldTypes.Relation)
+        if (field.Relation is not null && field.FieldType != FieldTypeNames.Relation)
         {
             Report(SchemaErrorCodes.InvalidField, $"field {location} has a relation target, but its type is '{field.FieldType}', not 'relation'");
         }
@@ -162,7 +220,7 @@ internal sealed class SchemaValidator(IReadOnlySet<string> registeredFieldTypes)
 
         switch (field.FieldType)
         {
-            case KnownFieldTypes.Select:
+            case FieldTypeNames.Select:
                 var options = SettingList(field, FieldSettings.Options);
                 if (options.Length == 0 || options.Distinct(StringComparer.Ordinal).Count() != options.Length)
                 {
@@ -171,7 +229,7 @@ internal sealed class SchemaValidator(IReadOnlySet<string> registeredFieldTypes)
 
                 break;
 
-            case KnownFieldTypes.Slug:
+            case FieldTypeNames.Slug:
                 if (SettingText(field, FieldSettings.Source) is { } source
                     && (string.Equals(source, field.Name, StringComparison.Ordinal) || type.Fields.All(other => other.Name != source)))
                 {
@@ -180,7 +238,7 @@ internal sealed class SchemaValidator(IReadOnlySet<string> registeredFieldTypes)
 
                 break;
 
-            case KnownFieldTypes.Relation:
+            case FieldTypeNames.Relation:
                 if (field.Relation is null)
                 {
                     Report(SchemaErrorCodes.InvalidField, $"relation field {location} has no target");
@@ -192,7 +250,7 @@ internal sealed class SchemaValidator(IReadOnlySet<string> registeredFieldTypes)
 
                 break;
 
-            case KnownFieldTypes.Component:
+            case FieldTypeNames.Component:
                 if (SettingText(field, FieldSettings.Component) is not { } component)
                 {
                     Report(SchemaErrorCodes.InvalidField, $"component field {location} has no component");
@@ -204,7 +262,7 @@ internal sealed class SchemaValidator(IReadOnlySet<string> registeredFieldTypes)
 
                 break;
 
-            case KnownFieldTypes.Blocks:
+            case FieldTypeNames.Blocks:
                 var allowed = SettingList(field, FieldSettings.Blocks);
                 if (allowed.Length == 0)
                 {
@@ -286,13 +344,13 @@ internal sealed class SchemaValidator(IReadOnlySet<string> registeredFieldTypes)
         {
             foreach (var field in type.Fields)
             {
-                if (field.FieldType == KnownFieldTypes.Component
+                if (field.FieldType == FieldTypeNames.Component
                     && SettingText(field, FieldSettings.Component) is { } name
                     && components.TryGetValue(name, out var component))
                 {
                     yield return component;
                 }
-                else if (field.FieldType == KnownFieldTypes.Blocks)
+                else if (field.FieldType == FieldTypeNames.Blocks)
                 {
                     foreach (var block in SettingList(field, FieldSettings.Blocks))
                     {
