@@ -83,4 +83,15 @@ public class HostTests
         services.GetRequiredService<IJsonSqlDialect>().ShouldBeOfType<SqliteJsonDialect>();
         services.GetRequiredService<IJobClaimDialect>().ShouldBeOfType<SqliteJobClaimDialect>();
     }
+
+    [Fact]
+    public void TheBundledSqliteSupportsTheJsonFunctionsTheDialectUses()
+    {
+        using var connection = new Microsoft.Data.Sqlite.SqliteConnection("Data Source=:memory:");
+        connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "select sqlite_version()";
+
+        Version.Parse((string)command.ExecuteScalar()!).ShouldBeGreaterThanOrEqualTo(new Version(3, 45));
+    }
 }
