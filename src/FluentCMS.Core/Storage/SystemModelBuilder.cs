@@ -12,9 +12,13 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
     private const int RoleNameLength = 128;
     private const int RoleDescriptionLength = 512;
     private const int PermissionLength = 128;
+    private const int SiteNameLength = 128;
+    private const int SlugLength = 64;
 
     public void Apply(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<Site>(MapSite);
+        modelBuilder.Entity<SiteLocale>(MapSiteLocale);
         modelBuilder.Entity<Document>(MapDocument);
         modelBuilder.Entity<Reference>(MapReference);
         modelBuilder.Entity<ContentVersion>(MapVersion);
@@ -26,8 +30,33 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
     // marked ExcludeFromMigrations, so on CmsDbContext it would insert the rows a second time.
     public static void ApplySeedData(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<Role>().HasData(RoleSeed.Roles());
+        modelBuilder.Entity<Site>().HasData(SiteSeed.Site());
+        modelBuilder.Entity<SiteLocale>().HasData(SiteSeed.Locale());
+        modelBuilder.Entity<Role>().HasData([.. RoleSeed.Roles(), SiteSeed.PublicRole()]);
         modelBuilder.Entity<RoleGrant>().HasData(RoleSeed.Permissions());
+    }
+
+    private static void MapSite(EntityTypeBuilder<Site> entity)
+    {
+        entity.ToTable(StorageNames.Site);
+        MapColumnNames(entity);
+        entity.Property(site => site.Id).HasValueGenerator<GuidV7ValueGenerator>();
+        entity.Property(site => site.Name).HasMaxLength(SiteNameLength);
+        entity.Property(site => site.Slug).HasMaxLength(SlugLength);
+        entity.Property(site => site.DefaultLocale).HasMaxLength(StorageNames.LocaleLength);
+
+        entity.HasIndex(site => site.Slug).IsUnique().HasDatabaseName("uq_cms_site_slug");
+    }
+
+    private void MapSiteLocale(EntityTypeBuilder<SiteLocale> entity)
+    {
+        entity.ToTable(StorageNames.SiteLocale);
+        MapColumnNames(entity);
+        entity.HasKey(locale => new { locale.SiteId, locale.Code });
+        entity.Property(locale => locale.Code).HasMaxLength(StorageNames.LocaleLength);
+        conventions.ConfigureJsonColumn(entity, entity.Property(locale => locale.Fallbacks));
+
+        entity.HasOne<Site>().WithMany().HasForeignKey(locale => locale.SiteId).OnDelete(DeleteBehavior.Cascade);
     }
 
     private static void MapDocument(EntityTypeBuilder<Document> entity)
@@ -88,6 +117,9 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         entity.Property(role => role.Name).HasMaxLength(RoleNameLength);
         entity.Property(role => role.Description).HasMaxLength(RoleDescriptionLength);
         entity.Property(role => role.PermissionsVersion).IsConcurrencyToken();
+
+        // A site's roles go with the site, and their grants with them.
+        entity.HasOne<Site>().WithMany().HasForeignKey(role => role.SiteId).OnDelete(DeleteBehavior.Cascade);
 
         // A unique index treats nulls as distinct on some databases, so instance-wide and site roles get one each.
         entity.HasIndex(role => role.Name)

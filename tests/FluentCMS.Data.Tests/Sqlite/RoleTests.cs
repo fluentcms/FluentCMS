@@ -1,4 +1,5 @@
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Tests.Schema;
@@ -35,6 +36,8 @@ public sealed class RoleTests : IDisposable
 
     private static Role NewRole(string name, Guid? siteId = null) => new() { Name = name, SiteId = siteId };
 
+    private static Site NewSite(Guid id) => new() { Id = id, Name = "Site", Slug = id.ToString("N"), DefaultLocale = "en", CreatedAt = DateTimeOffset.UtcNow };
+
     private static RoleGrant NewGrant(Guid roleId, string permission, PermissionConstraints? constraints = null) =>
         new() { RoleId = roleId, Permission = permission, Constraints = constraints?.ToJson() };
 
@@ -45,13 +48,14 @@ public sealed class RoleTests : IDisposable
         [.. context.Set<RoleGrant>().AsNoTracking().Where(grant => grant.RoleId == roleId).Select(grant => grant.Permission).OrderBy(permission => permission)];
 
     [Fact]
-    public void TheMigrationSeedsTheFiveBuiltInRolesWithFixedIds()
+    public void TheMigrationSeedsTheBuiltInRolesWithFixedIds()
     {
         using var scope = _services.CreateScope();
         var roles = scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<Role>().AsNoTracking().ToList();
 
         roles.Select(role => (role.Id, role.Name)).ShouldBe(
             [
+                (DefaultSite.PublicRole, "Public"),
                 (BuiltInRoles.SuperAdmin, "Super Admin"),
                 (BuiltInRoles.Editor, "Editor"),
                 (BuiltInRoles.Author, "Author"),
@@ -59,7 +63,7 @@ public sealed class RoleTests : IDisposable
                 (BuiltInRoles.Member, "Member"),
             ],
             ignoreOrder: true);
-        roles.ShouldAllBe(role => role.BuiltIn && role.SiteId == null);
+        roles.ShouldAllBe(role => role.BuiltIn && role.SiteId == (role.Id == DefaultSite.PublicRole ? DefaultSite.Id : null));
 
         // Author's seeded grants changed in a later migration, which raises its stamp.
         roles.ShouldAllBe(role => role.PermissionsVersion == (role.Id == BuiltInRoles.Author ? 2 : 1));
@@ -115,19 +119,20 @@ public sealed class RoleTests : IDisposable
             var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
             var migrator = context.GetInfrastructure().GetRequiredService<IMigrator>();
             var migrations = context.Database.GetMigrations().ToList();
-            migrator.Migrate(migrations[^2]);
+            var authorAt = migrations.FindIndex(name => name.EndsWith("_AuthorReadsOwnEntries", StringComparison.Ordinal));
+            migrator.Migrate(migrations[authorAt - 1]);
 
             context.Set<Role>().Where(role => role.Id == BuiltInRoles.Author).ExecuteUpdate(role => role.SetProperty(item => item.PermissionsVersion, 7));
             context.Set<RoleGrant>().AsNoTracking().Single(grant => grant.RoleId == BuiltInRoles.Author && grant.Permission == "content.*.read").Constraints.ShouldBeNull();
 
-            migrator.Migrate(migrations[^1]);
+            migrator.Migrate(migrations[authorAt]);
 
             var author = context.Set<Role>().AsNoTracking().Single(role => role.Id == BuiltInRoles.Author);
             author.PermissionsVersion.ShouldBe(8);
             author.Description.ShouldNotBeNull().ShouldContain("reads");
             PermissionConstraints.FromJson(context.Set<RoleGrant>().AsNoTracking().Single(grant => grant.RoleId == BuiltInRoles.Author && grant.Permission == "content.*.read").Constraints).RowRule.ShouldBe("own-entries");
 
-            migrator.Migrate(migrations[^2]);
+            migrator.Migrate(migrations[authorAt - 1]);
 
             context.Set<Role>().AsNoTracking().Single(role => role.Id == BuiltInRoles.Author).PermissionsVersion.ShouldBe(9);
             context.Set<RoleGrant>().AsNoTracking().Single(grant => grant.RoleId == BuiltInRoles.Author && grant.Permission == "content.*.read").Constraints.ShouldBeNull();
@@ -371,6 +376,10 @@ public sealed class RoleTests : IDisposable
     {
         using var scope = _services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+
+        context.Add(NewSite(SiteA));
+        context.Add(NewSite(SiteB));
+        context.SaveChanges();
 
         context.Add(NewRole("Public", SiteA));
         context.Add(NewRole("Public", SiteB));
