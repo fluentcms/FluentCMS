@@ -1,5 +1,6 @@
 using System.Reflection;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Events;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Storage;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,6 +13,7 @@ public sealed class FluentCmsBuilder
     {
         Services = services;
         Jobs = new JobsBuilder(services);
+        Events = new EventsBuilder(services);
     }
 
     public IServiceCollection Services { get; }
@@ -19,6 +21,8 @@ public sealed class FluentCmsBuilder
     public AuthorizationBuilder Authorization { get; } = new();
 
     public JobsBuilder Jobs { get; }
+
+    public EventsBuilder Events { get; }
 
     internal IDataProvider? DataProvider { get; private set; }
 

@@ -103,6 +103,9 @@ internal sealed class QueryDatabase : IDisposable
 
     public IServiceScope NewScope() => _services.CreateScope();
 
+    // Another process on the same database file, with its own container.
+    public ServiceProvider NewInstance(Action<FluentCmsBuilder>? configure = null) => _database.CreateServices(_schema, configure);
+
     public ContentQueryEngine Engine(IContentQueryAccess? access = null, ContentQueryOptions? options = null) => new(
         Context,
         _schema,

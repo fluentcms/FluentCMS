@@ -6,12 +6,14 @@ using FluentCMS.Core.Content;
 using FluentCMS.Core.Content.Hooks;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.Content.Validation;
+using FluentCMS.Core.Events;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Localization;
 using FluentCMS.Core.ProseMirror;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
+using FluentCMS.Events;
 using FluentCMS.Jobs;
 using FluentCMS.Localization;
 using FluentCMS.Schema;
@@ -104,11 +106,27 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddSingleton<JobStore>();
         services.AddSingleton<JobExecutor>();
         services.AddSingleton<RecurringJobs>();
-        services.TryAddSingleton<IJobEventSink, NullJobEventSink>();
+        services.TryAddSingleton<IJobEventSink, BusJobEventSink>();
         services.TryAddSingleton<IJobScheduler, JobScheduler>();
         services.TryAddSingleton<IJobRunner, JobRunner>();
         services.TryAddSingleton<IJobDeadLetters, JobDeadLetters>();
         services.AddHostedService<JobRunnerHostedService>();
+
+        builder.Events.Outbox.Validate();
+        builder.Jobs.AddJob<OutboxDrainJob, OutboxDrainPayload>(OutboxDrainJob.Type);
+        services.AddSingleton(builder.Events.Outbox);
+        services.AddSingleton<OutboxRegistry>();
+        services.AddSingleton<OutboxKick>();
+        services.AddSingleton<OutboxDrainer>();
+        services.AddHostedService<OutboxScheduleService>();
+        services.AddScoped<EventDispatcher>();
+        services.AddScoped<OutboxWriter>();
+        services.AddScoped<EventBuffer>();
+        services.AddScoped<ITransactionProbe, ContentTransactionProbe>();
+        services.TryAddScoped<IEventBus, EventBus>();
+        services.AddScoped<EntryChangeSink>();
+        services.AddScoped<IEntryChangeSink>(serviceProvider => serviceProvider.GetRequiredService<EntryChangeSink>());
+        services.AddScoped<IEntryChangeStager>(serviceProvider => serviceProvider.GetRequiredService<EntryChangeSink>());
 
         return services;
     }

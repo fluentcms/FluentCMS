@@ -6,4 +6,7 @@ internal static partial class ContentLog
 {
     [LoggerMessage(Level = LogLevel.Error, Message = "An entry change sink failed for {Kind} of {Type} {Id} in locale '{Locale}'; the write stands.")]
     public static partial void SinkFailed(ILogger logger, Exception exception, EntryChangeKind kind, string type, Guid id, string locale);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The events raised during a write could not be dispatched; the write stands.")]
+    public static partial void EventsFailed(ILogger logger, Exception exception);
 }
