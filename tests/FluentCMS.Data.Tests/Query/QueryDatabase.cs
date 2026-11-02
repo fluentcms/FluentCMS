@@ -80,12 +80,14 @@ internal sealed class QueryDatabase : IDisposable
         .Build();
 
     private readonly SqliteFileDatabase _database = new();
+    private readonly SchemaModel _schema;
     private readonly ServiceProvider _services;
     private readonly IServiceScope _scope;
 
-    public QueryDatabase(Action<FluentCmsBuilder>? configure = null)
+    public QueryDatabase(Action<FluentCmsBuilder>? configure = null, SchemaModel? schema = null)
     {
-        _services = _database.CreateServices(Schema, configure);
+        _schema = schema ?? Schema;
+        _services = _database.CreateServices(_schema, configure);
         _scope = _services.CreateScope();
         Context = _scope.ServiceProvider.GetRequiredService<CmsDbContext>();
 
@@ -102,7 +104,7 @@ internal sealed class QueryDatabase : IDisposable
 
     public ContentQueryEngine Engine(IContentQueryAccess? access = null, ContentQueryOptions? options = null) => new(
         Context,
-        Schema,
+        _schema,
         Services.GetRequiredService<IJsonSqlDialect>(),
         access ?? new OpenContentQueryAccess(),
         options ?? new ContentQueryOptions());
