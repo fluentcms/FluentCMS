@@ -77,7 +77,7 @@ public sealed class CompiledSqlTests : IDisposable
     [InlineData("status=draft", "\"state\" = 0")]
     public void TheStateIsInlinedAsALiteral(string status, string expected)
     {
-        var sql = Sql($"{status}&locale=en&filter[author.name][eq]=Ann");
+        var sql = Sql($"{status}&locale=en&filter[author.name][eq]=Ann", new QueryAccess());
 
         sql.ShouldContain(expected);
         sql.ShouldNotContain("@state");

@@ -58,16 +58,19 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         var state = query.Status == QueryStatus.Draft ? ContentState.Draft : ContentState.Published;
         var scope = new QueryScope(context, schema, dialect, access, options, state, query.Locale ?? "");
 
-        var type = schema.FindContentType(typeName);
-        if (type is null || !access.CanReadType(type))
+        if (schema.FindContentType(typeName) is not { } type || !access.CanReadType(type))
         {
-            scope.Report("type", QueryErrorCodes.UnknownField, $"'{typeName}' is not a content type that can be read.");
-            scope.ThrowIfInvalid();
+            throw new ValidationException([new ValidationError("type", QueryErrorCodes.UnknownField, $"'{typeName}' is not a content type that can be read.")]);
         }
 
-        if (type!.Localized && (string.IsNullOrEmpty(query.Locale) || query.Locale == EveryLocale))
+        if (query.Locale == EveryLocale || (type.Localized && string.IsNullOrEmpty(query.Locale)))
         {
-            scope.Report("locale", QueryErrorCodes.InvalidParameter, $"A list of {type.Name} needs one locale.");
+            scope.Report("locale", QueryErrorCodes.InvalidParameter, $"A list of {typeName} needs one locale.");
+        }
+
+        if (state == ContentState.Draft && !access.CanReadDraft(type))
+        {
+            scope.Report("status", QueryErrorCodes.DraftNotAllowed, $"Reading drafts of {typeName} is not allowed.");
         }
 
         var row = Expression.Parameter(typeof(QueryRow), "row");
@@ -343,6 +346,7 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
 
             if (output.Plan is { } child && wanted.Count > 0)
             {
+                query.CountPopulated(wanted.Count);
                 await PopulateAsync(query, child, wanted, cancellationToken);
             }
         }

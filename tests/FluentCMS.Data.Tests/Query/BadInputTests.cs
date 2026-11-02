@@ -1,4 +1,6 @@
+using System.Buffers.Text;
 using FluentCMS.Content;
+using FluentCMS.Core.Storage;
 using FluentCMS.Core.Content.Query;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
@@ -114,6 +116,11 @@ public sealed class BadInputTests : IDisposable
     [InlineData("filter[id][eq]=notaguid")]
     [InlineData("filter[status][eq]=notastatus")]
     [InlineData("filter[status][eq]=1")]
+    [InlineData("filter[status][eq]=")]
+    [InlineData("filter[status][in]=published,")]
+    [InlineData("filter[id][eq]=")]
+    [InlineData("filter[createdAt][gt]=")]
+    [InlineData("filter[version][eq]=")]
     [InlineData("filter[metadata][eq]=x")]
     [InlineData("filter[metadata.a.b][eq]=x")]
     [InlineData("filter[sections.heading][eq]=x")]
@@ -214,6 +221,16 @@ public sealed class BadInputTests : IDisposable
         (await Rejected($"cursor={cursor}")).Code.ShouldBe(QueryErrorCodes.InvalidCursor);
 
     [Fact]
+    public async Task ACursorHoldingInvalidTextIsRejected()
+    {
+        var utf16 = Base64Url.EncodeToString("""{"id":"\ud800"}"""u8);
+        var utf8 = Base64Url.EncodeToString([.. "{\""u8, 0xFF, .. "\":1}"u8]);
+
+        (await Rejected($"cursor={utf16}")).Code.ShouldBe(QueryErrorCodes.InvalidCursor);
+        (await Rejected($"cursor={utf8}")).Code.ShouldBe(QueryErrorCodes.InvalidCursor);
+    }
+
+    [Fact]
     public async Task ACursorOfAnotherOrderIsRejected()
     {
         _database.AddArticle("Beta");
@@ -240,6 +257,210 @@ public sealed class BadInputTests : IDisposable
         var exception = await Should.ThrowAsync<ValidationException>(() => _database.RunAsync(query));
 
         exception.Errors.Single().Path.ShouldBe("locale");
+    }
+
+    [Fact]
+    public async Task EveryLocaleIsRejectedOnANonLocalizedType() =>
+        (await Should.ThrowAsync<ValidationException>(() => _database.RunAsync("locale=all", type: "author"))).Errors.Single().Path.ShouldBe("locale");
+
+    [Theory]
+    [InlineData("filter[latest.title][eq]=x")]
+    [InlineData("filter[latest][notNull]=true&filter[latest.views][gt]=1")]
+    [InlineData("filter[company.owner.latest.title][eq]=x")]
+    [InlineData("populate=latest")]
+    [InlineData("populate=*")]
+    public async Task AGoingIntoALocalizedTargetNeedsALocale(string query)
+    {
+        var exception = await Should.ThrowAsync<ValidationException>(() => _database.RunAsync(query, type: "author"));
+
+        exception.Errors.Single().Path.ShouldBe("locale");
+    }
+
+    [Fact]
+    public async Task ANonLocalizedSourceReachesALocalizedTargetInTheGivenLocale()
+    {
+        var author = _database.AddAuthor("Ann");
+        _database.Relate("author", author, "latest", "article", _database.Context.Documents.Single(document => document.Type == "article").DocumentId);
+
+        (await _database.RunAsync("locale=en&filter[latest.title][eq]=Alpha", type: "author")).Items.Single()["name"].ShouldBe("Ann");
+
+        var entry = (await _database.RunAsync("locale=en&populate=latest", type: "author")).Items.Single();
+        entry["latest"].ShouldBeOfType<ContentDocument>()["title"].ShouldBe("Alpha");
+    }
+
+    [Theory]
+    [InlineData("status=draft")]
+    [InlineData("status=draft&populate=author")]
+    [InlineData("status=draft&filter[author.name][eq]=x")]
+    public async Task DraftsAreClosedByDefault(string query)
+    {
+        var exception = await Should.ThrowAsync<ValidationException>(() => _database.RunAsync($"locale=en&{query}"));
+
+        exception.Errors.ShouldAllBe(error => error.Code == QueryErrorCodes.DraftNotAllowed && error.Path == "status");
+    }
+
+    [Fact]
+    public async Task ADraftQueryNeedsAccessToTheType()
+    {
+        _database.AddArticle("Draft", state: ContentState.Draft);
+        var access = new QueryAccess();
+
+        (await _database.RunAsync("locale=en&status=draft", access)).Items.Single()["title"].ShouldBe("Draft");
+
+        access.DeniedDrafts.Add("article");
+
+        (await Rejected("status=draft", access)).Code.ShouldBe(QueryErrorCodes.DraftNotAllowed);
+    }
+
+    [Theory]
+    [InlineData("status=draft&filter[author.name][eq]=x")]
+    [InlineData("status=draft&filter[not][author.name][eq]=x")]
+    [InlineData("status=draft&populate=author")]
+    [InlineData("status=draft&populate=*")]
+    public async Task ADraftQueryNeedsAccessToEveryRelationTarget(string query)
+    {
+        var access = new QueryAccess();
+        access.DeniedDrafts.Add("author");
+
+        (await Rejected(query, access)).Code.ShouldBe(QueryErrorCodes.DraftNotAllowed);
+    }
+
+    [Fact]
+    public async Task APublishedQueryDoesNotNeedDraftAccess()
+    {
+        var access = new QueryAccess();
+        access.DeniedDrafts.Add("article");
+        access.DeniedDrafts.Add("author");
+
+        (await _database.RunAsync("locale=en&populate=author&filter[not][author.name][eq]=x", access)).Items.Single()["title"].ShouldBe("Alpha");
+    }
+
+    [Fact]
+    public async Task ADraftReadThroughARowRuleOnARelationIsNotTheClientsRead()
+    {
+        _database.AddArticle("Draft", state: ContentState.Draft);
+        var access = new QueryAccess();
+        access.DeniedDrafts.Add("author");
+        access.RowRules["article"] = new Not(new FieldFilter("author.name", FilterOperator.Equal, "x"));
+
+        (await _database.RunAsync("locale=en&status=draft", access)).Items.Single()["title"].ShouldBe("Draft");
+    }
+
+    [Fact]
+    public async Task TooManyPopulatedEntriesAreRejected()
+    {
+        var options = new ContentQueryOptions { MaxPopulatedEntries = 3 };
+        var article = _database.Context.Documents.Single(document => document.Type == "article").DocumentId;
+        for (var position = 0; position < 4; position++)
+        {
+            _database.Relate("article", article, "tags", "tag", _database.AddTag($"Tag {position}"), position);
+        }
+
+        var exception = await Should.ThrowAsync<ValidationException>(() => _database.RunAsync("locale=en&populate=tags", options: options));
+        var error = exception.Errors.Single();
+
+        error.Code.ShouldBe(QueryErrorCodes.LimitExceeded);
+        error.Path.ShouldBe("populate");
+
+        (await _database.RunAsync("locale=en&populate=tags", options: new ContentQueryOptions { MaxPopulatedEntries = 4 })).Items.Single()["tags"]
+            .ShouldBeAssignableTo<IReadOnlyList<ContentDocument>>()!.Count.ShouldBe(4);
+        (await _database.RunAsync("locale=en", options: options)).Items.Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task ThePopulatedEntriesOfEveryLevelCount()
+    {
+        var article = _database.Context.Documents.Single(document => document.Type == "article").DocumentId;
+        var author = _database.AddAuthor("Ann");
+        _database.Relate("article", article, "author", "author", author);
+        _database.Relate("author", author, "company", "company", _database.AddCompany("Acme"));
+
+        await Should.ThrowAsync<ValidationException>(() => _database.RunAsync("locale=en&populate=author.company", options: new ContentQueryOptions { MaxPopulatedEntries = 1 }));
+
+        (await _database.RunAsync("locale=en&populate=author.company", options: new ContentQueryOptions { MaxPopulatedEntries = 2 })).Items.Count.ShouldBe(1);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public async Task AnEmptyLogicalNodeIsRejected(int shape)
+    {
+        ContentFilter filter = shape switch
+        {
+            0 => new And(),
+            1 => new Or(),
+            2 => new Not(new And()),
+            _ => new Or(new FieldFilter("title", FilterOperator.Equal, "x"), new Not(new Or())),
+        };
+        var query = new ContentQuery { Locale = "en", Filter = filter };
+
+        var exception = await Should.ThrowAsync<ValidationException>(() => _database.Engine().ExecuteAsync("article", query, TestContext.Current.CancellationToken));
+        exception.Errors.Single().Code.ShouldBe(QueryErrorCodes.InvalidValue);
+
+        Should.Throw<ValidationException>(() => BracketQueryWriter.Write(query)).Errors.Single().Code.ShouldBe(QueryErrorCodes.InvalidValue);
+    }
+
+    [Theory]
+    [InlineData(FilterOperator.In)]
+    [InlineData(FilterOperator.NotIn)]
+    [InlineData(FilterOperator.Between)]
+    public void TheWriterRejectsAListOperandWithNoValues(FilterOperator filterOperator) =>
+        Should.Throw<ValidationException>(() => BracketQueryWriter.Write(new ContentQuery { Filter = new FieldFilter("title", filterOperator, Array.Empty<object?>()) }))
+            .Errors.Single().Code.ShouldBe(QueryErrorCodes.InvalidValue);
+
+    [Fact]
+    public async Task AFilterChainFarBeyondTheLimitIsRejectedWithoutWalkingIt()
+    {
+        ContentFilter filter = new FieldFilter("title", FilterOperator.Equal, "x");
+        for (var index = 0; index < 1_000_000; index++)
+        {
+            filter = new Not(filter);
+        }
+
+        var query = new ContentQuery { Locale = "en", Filter = filter };
+
+        var exception = await Should.ThrowAsync<ValidationException>(() => _database.Engine().ExecuteAsync("article", query, TestContext.Current.CancellationToken));
+        exception.Errors.Single().Code.ShouldBe(QueryErrorCodes.LimitExceeded);
+
+        Should.Throw<ValidationException>(() => BracketQueryWriter.Write(query)).Errors.Single().Code.ShouldBe(QueryErrorCodes.LimitExceeded);
+    }
+
+    [Fact]
+    public async Task ADeepChainWithinTheNodeCapIsStillRejected()
+    {
+        ContentFilter filter = new FieldFilter("title", FilterOperator.Equal, "x");
+        for (var index = 0; index < 80; index++)
+        {
+            filter = new Not(filter);
+        }
+
+        var query = new ContentQuery { Locale = "en", Filter = filter };
+
+        var exception = await Should.ThrowAsync<ValidationException>(() => _database.Engine().ExecuteAsync("article", query, TestContext.Current.CancellationToken));
+        exception.Errors.Single().Code.ShouldBe(QueryErrorCodes.LimitExceeded);
+    }
+
+    [Fact]
+    public async Task AWideFilterStopsAtTheCap()
+    {
+        var query = new ContentQuery
+        {
+            Locale = "en",
+            Filter = new And([.. Enumerable.Range(0, 200).Select(index => new FieldFilter("nothing", FilterOperator.Equal, index))]),
+        };
+
+        var exception = await Should.ThrowAsync<ValidationException>(() => _database.Engine().ExecuteAsync("article", query, TestContext.Current.CancellationToken));
+
+        exception.Errors.Single().Code.ShouldBe(QueryErrorCodes.LimitExceeded);
+    }
+
+    [Fact]
+    public async Task ANegativeOperatorThroughARelationMustBeOneTheFieldTypeAllows()
+    {
+        (await Rejected("filter[author.company][ne]=00000000-0000-0000-0000-000000000000")).Code.ShouldBe(QueryErrorCodes.OperatorNotAllowed);
+        (await Rejected("filter[author.company][nin]=00000000-0000-0000-0000-000000000000")).Code.ShouldBe(QueryErrorCodes.OperatorNotAllowed);
     }
 
     [Fact]

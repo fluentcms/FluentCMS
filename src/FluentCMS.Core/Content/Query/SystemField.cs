@@ -58,7 +58,7 @@ internal sealed record SystemField(string Name, Func<Expression, short, Expressi
         {
             result = number;
         }
-        else if (target == typeof(EntryStatus) && !char.IsAsciiDigit(text[0]) && Enum.TryParse<EntryStatus>(text, ignoreCase: true, out var status))
+        else if (target == typeof(EntryStatus) && text.Length > 0 && !char.IsAsciiDigit(text[0]) && Enum.TryParse<EntryStatus>(text, ignoreCase: true, out var status))
         {
             result = status;
         }

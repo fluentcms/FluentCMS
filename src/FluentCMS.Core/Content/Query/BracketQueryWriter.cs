@@ -16,6 +16,11 @@ internal static class BracketQueryWriter
         List<(string Key, string Value)> pairs = [];
         if (query.Filter is { } filter)
         {
+            if (!FilterTree.IsWithin(filter, int.MaxValue))
+            {
+                throw Rejected(QueryErrorCodes.LimitExceeded, $"The filter has more than the {FilterTree.MaxDepth} levels allowed.");
+            }
+
             WriteFilter(filter, "filter", pairs);
         }
 
@@ -87,10 +92,17 @@ internal static class BracketQueryWriter
         }
     }
 
+    // A node with no condition would write nothing, and the written query would match more than this one does.
+    private static ValidationException Rejected(string code, string message) => new([new ValidationError("filter", code, message)]);
+
     private static void WriteFilter(ContentFilter filter, string prefix, List<(string Key, string Value)> pairs)
     {
         switch (filter)
         {
+            case And { Filters.Count: 0 } or Or { Filters.Count: 0 }:
+                throw Rejected(QueryErrorCodes.InvalidValue, "An And or Or node needs at least one condition.");
+            case FieldFilter { Operator: FilterOperator.In or FilterOperator.NotIn or FilterOperator.Between, Value: null or ICollection { Count: 0 } } field:
+                throw Rejected(QueryErrorCodes.InvalidValue, $"The filter on '{field.Path}' needs at least one value.");
             case FieldFilter field:
                 pairs.Add(($"{prefix}[{field.Path}][{BracketQueryParser.OperatorName(field.Operator)}]", Operand(field)));
                 break;

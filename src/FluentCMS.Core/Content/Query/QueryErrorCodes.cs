@@ -10,4 +10,5 @@ internal static class QueryErrorCodes
     public const string InvalidCursor = "FCMS2206";
     public const string LimitExceeded = "FCMS2207";
     public const string NotARelation = "FCMS2208";
+    public const string DraftNotAllowed = "FCMS2209";
 }

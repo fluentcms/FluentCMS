@@ -8,6 +8,7 @@ namespace FluentCMS.Core.Content.Query;
 internal sealed class QueryScope(CmsDbContext context, SchemaModel schema, IJsonSqlDialect dialect, IContentQueryAccess access, ContentQueryOptions options, short state, string locale)
 {
     private readonly List<ValidationError> _errors = [];
+    private int _populated;
 
     public CmsDbContext Context => context;
 
@@ -27,7 +28,43 @@ internal sealed class QueryScope(CmsDbContext context, SchemaModel schema, IJson
 
     public IQueryable<QueryRow> Rows(SchemaType type) => QueryRows.Of(context, type, state, locale);
 
-    public void Report(string path, string code, string message) => _errors.Add(new(path, code, message));
+    public void Report(string path, string code, string message)
+    {
+        ValidationError error = new(path, code, message);
+        if (!_errors.Contains(error))
+        {
+            _errors.Add(error);
+        }
+    }
+
+    // Whether a query in this state and locale may read the rows of a type it reaches through a relation.
+    public bool CanEnter(SchemaType target, bool trusted = false)
+    {
+        var allowed = true;
+        if (state == ContentState.Draft && !trusted && !access.CanReadDraft(target))
+        {
+            Report("status", QueryErrorCodes.DraftNotAllowed, $"Reading drafts of {target.Name} is not allowed.");
+            allowed = false;
+        }
+
+        if (target.Localized && locale.Length == 0)
+        {
+            Report("locale", QueryErrorCodes.InvalidParameter, $"Reading {target.Name} through a relation needs one locale.");
+            allowed = false;
+        }
+
+        return allowed;
+    }
+
+    public void CountPopulated(int entries)
+    {
+        _populated += entries;
+        if (_populated > options.MaxPopulatedEntries)
+        {
+            Report("populate", QueryErrorCodes.LimitExceeded, $"The query inlines more than the {options.MaxPopulatedEntries} related entries allowed.");
+            ThrowIfInvalid();
+        }
+    }
 
     public void ThrowIfInvalid()
     {

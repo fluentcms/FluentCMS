@@ -178,7 +178,9 @@ internal sealed class EntryPlan
             return null;
         }
 
-        return new EntryPlan(_query, target, select, child, level + 1, isRoot: false, Expression.Parameter(typeof(QueryRow), "row"));
+        return _query.CanEnter(target)
+            ? new EntryPlan(_query, target, select, child, level + 1, isRoot: false, Expression.Parameter(typeof(QueryRow), "row"))
+            : null;
     }
 
     private Func<object?, object?> Reader(StoredField stored)

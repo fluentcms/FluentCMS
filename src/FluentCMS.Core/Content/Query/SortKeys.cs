@@ -124,7 +124,7 @@ internal static class SortKeys
 
             return values;
         }
-        catch (Exception exception) when (exception is FormatException or JsonException or OverflowException)
+        catch (Exception exception) when (exception is FormatException or JsonException or OverflowException or InvalidOperationException)
         {
             return null;
         }

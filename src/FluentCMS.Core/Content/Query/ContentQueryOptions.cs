@@ -11,4 +11,7 @@ public sealed class ContentQueryOptions
 
     // Conditions, logical nodes and the items of a list operand, all counted.
     public int MaxFilterNodes { get; init; } = 100;
+
+    // Entries inlined by population in one query, at every level: a page of 100 entries multiplies at each depth.
+    public int MaxPopulatedEntries { get; init; } = 1000;
 }

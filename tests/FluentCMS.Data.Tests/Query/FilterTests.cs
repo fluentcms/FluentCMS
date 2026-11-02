@@ -1,5 +1,6 @@
 using FluentCMS.Content;
 using FluentCMS.Core.Content.Query;
+using System.Globalization;
 using FluentCMS.Core.Storage;
 using Shouldly;
 using Xunit;
@@ -33,7 +34,7 @@ public sealed class FilterTests : IDisposable
             ["contact"] = "ann@example.org",
             ["link"] = "https://example.org/a",
             ["summary"] = "About net",
-            ["sections"] = """[{"type":"hero","heading":"Welcome","level":2,"score":1.5,"featured":true,"on":"2026-01-01","kinds":["wide"],"internal":"x"},{"type":"quote","text":"Hi"}]""",
+            ["sections"] = """[{"type":"hero","heading":"Welcome","level":2,"score":1.5,"featured":true,"on":"2026-01-01","at":"2026-01-01T10:00:00Z","kinds":["wide"],"internal":"x"},{"type":"quote","text":"Hi"}]""",
             ["seo_meta_title"] = "Seo alpha",
             ["metadata"] = """{"audience":"dev","minutes":12,"rating":4.5,"public":true,"code":"12","labels":["net"],"my-key":"x"}""",
             ["secret"] = "hush",
@@ -60,8 +61,8 @@ public sealed class FilterTests : IDisposable
         _database.AddArticle("Alpha en français", id: _alpha, locale: "fr");
 
         var acme = _database.AddCompany("Acme");
-        _ann = _database.AddAuthor("Ann");
-        _bob = _database.AddAuthor("Bob");
+        _ann = _database.AddAuthor("Ann", age: 30);
+        _bob = _database.AddAuthor("Bob", age: 40);
         _net = _database.AddTag("net");
         _sql = _database.AddTag("sql");
 
@@ -76,9 +77,9 @@ public sealed class FilterTests : IDisposable
 
     public void Dispose() => _database.Dispose();
 
-    private async Task<string[]> Titles(string filter, string locale = "en")
+    private async Task<string[]> Titles(string filter, string locale = "en", IContentQueryAccess? access = null)
     {
-        var result = await _database.RunAsync($"{filter}&locale={locale}&sort=title");
+        var result = await _database.RunAsync($"{filter}&locale={locale}&sort=title", access);
         return result.Items.Select(item => (string)item["title"]!).ToArray();
     }
 
@@ -163,7 +164,31 @@ public sealed class FilterTests : IDisposable
 
     [Theory]
     [InlineData("filter[author.name][eq]=Ann", "Alpha")]
-    [InlineData("filter[author.name][ne]=Ann", "Beta")]
+    [InlineData("filter[author.name][ne]=Ann", "Beta,Gamma")]
+    [InlineData("filter[author.name][nin]=Ann", "Beta,Gamma")]
+    [InlineData("filter[author.name][nin]=Ann,Bob", "Gamma")]
+    [InlineData("filter[author.name][null]=true", "Gamma")]
+    [InlineData("filter[author.name][notNull]=true", "Alpha,Beta")]
+    [InlineData("filter[author.age][eq]=30", "Alpha")]
+    [InlineData("filter[author.age][ne]=30", "Beta,Gamma")]
+    [InlineData("filter[author.age][in]=30,40", "Alpha,Beta")]
+    [InlineData("filter[author.age][nin]=30", "Beta,Gamma")]
+    [InlineData("filter[author.age][lt]=40", "Alpha")]
+    [InlineData("filter[author.age][lte]=40", "Alpha,Beta")]
+    [InlineData("filter[author.age][gt]=30", "Beta")]
+    [InlineData("filter[author.age][gte]=30", "Alpha,Beta")]
+    [InlineData("filter[author.age][between]=31,40", "Beta")]
+    [InlineData("filter[author.age][null]=true", "Gamma")]
+    [InlineData("filter[author.age][notNull]=true", "Alpha,Beta")]
+    [InlineData("filter[author.company.name][ne]=Acme", "Beta,Gamma")]
+    [InlineData("filter[author.company.name][null]=true", "Beta,Gamma")]
+    [InlineData("filter[author.company][null]=true", "Beta,Gamma")]
+    [InlineData("filter[author.company][notNull]=true", "Alpha")]
+    [InlineData("filter[tags.name][ne]=net", "Beta,Gamma")]
+    [InlineData("filter[tags.name][ne]=sql", "Gamma")]
+    [InlineData("filter[tags.name][nin]=net", "Beta,Gamma")]
+    [InlineData("filter[not][tags.name][eq]=net", "Beta,Gamma")]
+    [InlineData("filter[not][author.name][ne]=Ann", "Alpha")]
     [InlineData("filter[author.name][contains]=o", "Beta")]
     [InlineData("filter[author.name][startsWith]=A", "Alpha")]
     [InlineData("filter[author.name][in]=Ann,Bob", "Alpha,Beta")]
@@ -232,6 +257,34 @@ public sealed class FilterTests : IDisposable
     }
 
     [Fact]
+    public async Task AnEntryWithATargetThatHasNoValueIsMissingAValue()
+    {
+        var carol = _database.AddAuthor("Carol");
+        var delta = _database.AddArticle("Omega");
+        _database.Relate("article", delta, "author", "author", carol);
+
+        (await Titles("filter[author.age][null]=true")).ShouldBe(["Gamma", "Omega"]);
+    }
+
+    [Fact]
+    public async Task AnyOperatorOfTheTargetWorksThroughARelation()
+    {
+        var parent = _database.AddArticle("Parent");
+        _database.Relate("article", parent, "related", "article", _alpha);
+
+        (await Titles("filter[related.sections][hasBlock]=hero")).ShouldBe(["Parent"]);
+        (await Titles("filter[related.sections.hero.heading][eq]=Welcome")).ShouldBe(["Parent"]);
+        (await Titles("filter[related.metadata.audience][eq]=dev")).ShouldBe(["Parent"]);
+        (await Titles("filter[related.labels][contains]=net")).ShouldBe(["Parent"]);
+        (await Titles("filter[related.price][between]=1,2")).ShouldBe(["Parent"]);
+        (await Titles("filter[related.featured][eq]=true")).ShouldBe(["Parent"]);
+        (await Titles("filter[related.issued][lt]=2026-01-02")).ShouldBe(["Parent"]);
+        (await Titles("filter[related.publishedOn][gte]=2026-01-01T00:00:00Z")).ShouldBe(["Parent"]);
+        (await Titles("filter[related.title][startsWith]=Al")).ShouldBe(["Parent"]);
+        (await Titles("filter[related.title][contains]=lph")).ShouldBe(["Parent"]);
+    }
+
+    [Fact]
     public async Task ThreeRelationHopsAreAllowed()
     {
         var owner = _database.AddAuthor("Owner");
@@ -278,9 +331,41 @@ public sealed class FilterTests : IDisposable
     [InlineData("filter[sections.hero.score][eq]=1.5", "Alpha")]
     [InlineData("filter[sections.hero.featured][eq]=true", "Alpha")]
     [InlineData("filter[sections.hero.on][eq]=2026-01-01", "Alpha")]
+    [InlineData("filter[sections.hero.at][eq]=2026-01-01T10:00:00Z", "Alpha")]
+    [InlineData("filter[sections.hero.at][eq]=2026-01-01T12:00:00%2B02:00", "Alpha")]
+    [InlineData("filter[sections.hero.at][eq]=2026-01-01T10:00:00", "Alpha")]
+    [InlineData("filter[sections.hero.at][eq]=2026-01-01T10:00:01Z", "")]
     [InlineData("filter[sections.hero.kinds][contains]=wide", "Alpha")]
     public async Task BlockOperators(string filter, string expected) =>
         (await Titles(filter)).ShouldBe(Split(expected));
+
+    [Fact]
+    public async Task ATypedDateInABlockComparesAsTheStoredTextInAnyCulture()
+    {
+        var culture = CultureInfo.CurrentCulture;
+        CultureInfo.CurrentCulture = new CultureInfo("fa-IR");
+        try
+        {
+            var query = new ContentQuery { Locale = "en", Filter = new FieldFilter("sections.hero.on", FilterOperator.Equal, new DateOnly(2026, 1, 1)) };
+
+            (await _database.Engine().ExecuteAsync("article", query, TestContext.Current.CancellationToken)).Items.Single()["title"].ShouldBe("Alpha");
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = culture;
+        }
+    }
+
+    // Nothing writes a date and time into JSON yet. The compiler compares with the UTC form of the response shape, so
+    // the same instant in any other form is not found, and #2693 must store this one.
+    [Fact]
+    public async Task ADateAndTimeInABlockMatchesOnlyTheUtcFormOfTheResponseShape()
+    {
+        _database.AddArticle("Offset", new() { ["sections"] = """[{"type":"hero","at":"2026-03-01T10:00:00+00:00"}]""" });
+        _database.AddArticle("Utc", new() { ["sections"] = """[{"type":"hero","at":"2026-03-01T10:00:00Z"}]""" });
+
+        (await Titles("filter[sections.hero.at][eq]=2026-03-01T10:00:00%2B00:00")).ShouldBe(["Utc"]);
+    }
 
     [Theory]
     [InlineData("filter[metadata.audience][eq]=dev", "Alpha")]
@@ -347,7 +432,7 @@ public sealed class FilterTests : IDisposable
     [Fact]
     public async Task ReadsTheRequestedState()
     {
-        (await Titles("status=draft")).ShouldBe(["Delta"]);
+        (await Titles("status=draft", access: new QueryAccess())).ShouldBe(["Delta"]);
         (await Titles("status=published")).ShouldBe(["Alpha", "Beta", "Gamma"]);
     }
 

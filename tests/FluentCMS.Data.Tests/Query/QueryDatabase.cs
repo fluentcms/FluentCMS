@@ -7,6 +7,8 @@ using FluentCMS.Data.Tests.Sqlite;
 using FluentCMS.Publishing;
 using FluentCMS.Schema;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -31,6 +33,7 @@ internal sealed class QueryDatabase : IDisposable
             .Field("featured", "boolean")
             .Field("on", "date")
             .Field("kinds", "select", field => field.Multiple().Setting(FieldSettings.Options, new[] { "wide", "tall" }))
+            .Field("at", "dateTime")
             .Field("note", "richText")
             .Field("internal", "text", field => field.Hidden()))
         .AddBlock("quote", block => block.Field("text", "text"))
@@ -40,7 +43,9 @@ internal sealed class QueryDatabase : IDisposable
         .AddCollection("author", type => type
             .Field("name", "text", field => field.Required())
             .Field("secret", "text", field => field.Hidden())
-            .Field("company", "relation", field => field.Relation("company")))
+            .Field("age", "integer")
+            .Field("company", "relation", field => field.Relation("company"))
+            .Field("latest", "relation", field => field.Relation("article")))
         .AddCollection("tag", type => type
             .Scope(ContentScope.Global)
             .Field("name", "text"))
@@ -81,7 +86,10 @@ internal sealed class QueryDatabase : IDisposable
         _services = _database.CreateServices(Schema);
         _scope = _services.CreateScope();
         Context = _scope.ServiceProvider.GetRequiredService<CmsDbContext>();
-        Context.Database.EnsureCreated();
+
+        // EnsureCreated on CmsDbContext would skip the system tables, because they are excluded from its migrations.
+        Services.GetRequiredService<SystemDbContext>().Database.EnsureCreated();
+        Context.GetService<IRelationalDatabaseCreator>().CreateTables();
     }
 
     public CmsDbContext Context { get; }
@@ -137,7 +145,7 @@ internal sealed class QueryDatabase : IDisposable
         return documentId;
     }
 
-    public Guid AddAuthor(string name, string? secret = null, short state = ContentState.Published)
+    public Guid AddAuthor(string name, string? secret = null, short state = ContentState.Published, long? age = null)
     {
         var id = Guid.CreateVersion7();
         AddDocument("author", id, "", state, SiteA);
@@ -145,6 +153,11 @@ internal sealed class QueryDatabase : IDisposable
         if (secret is not null)
         {
             row["secret"] = secret;
+        }
+
+        if (age is not null)
+        {
+            row["age"] = age;
         }
 
         Context.Rows("cms_author").Add(row);
@@ -249,11 +262,15 @@ internal sealed class QueryAccess : IContentQueryAccess
 {
     public HashSet<string> DeniedTypes { get; } = [];
 
+    public HashSet<string> DeniedDrafts { get; } = [];
+
     public HashSet<string> DeniedFields { get; } = [];
 
     public Dictionary<string, ContentFilter> RowRules { get; } = [];
 
     public bool CanReadType(SchemaType type) => !DeniedTypes.Contains(type.Name);
+
+    public bool CanReadDraft(SchemaType type) => !DeniedDrafts.Contains(type.Name);
 
     public bool CanReadField(SchemaType type, string field) => !DeniedFields.Contains($"{type.Name}.{field}");
 

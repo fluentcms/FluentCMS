@@ -19,7 +19,8 @@ internal sealed class FilterCompiler(QueryScope query)
     private static readonly MethodInfo StringStartsWith = typeof(string).GetMethod(nameof(string.StartsWith), [typeof(string)])!;
     private static readonly MethodInfo StringIndexOf = typeof(string).GetMethod(nameof(string.IndexOf), [typeof(string)])!;
 
-    private sealed record Scope(SchemaType Type, Expression Row, ContentFilter? Rule, bool Trusted, string Prefix, int Hops)
+    // Asked is what the client wrote where a relation rewrites a negative operator, which the field type must allow.
+    private sealed record Scope(SchemaType Type, Expression Row, ContentFilter? Rule, bool Trusted, string Prefix, int Hops, FilterOperator? Asked = null)
     {
         public string PathOf(FieldFilter filter) => Prefix + filter.Path;
     }
@@ -28,11 +29,16 @@ internal sealed class FilterCompiler(QueryScope query)
     // is the one part of it compiled without the access checks.
     public Expression? Where(SchemaType type, ContentFilter? filter, Expression row)
     {
-        CheckSize(filter);
-        return Where(type, filter, row, trusted: false, prefix: "", hops: 0);
+        if (filter is not null && !FilterTree.IsWithin(filter, query.Options.MaxFilterNodes))
+        {
+            query.Report("filter", QueryErrorCodes.LimitExceeded, $"The filter has more than the {query.Options.MaxFilterNodes} nodes or the {FilterTree.MaxDepth} levels allowed.");
+            return Fail();
+        }
+
+        return Where(type, filter, row, trusted: false, prefix: "", hops: 0, asked: null);
     }
 
-    private Expression? Where(SchemaType type, ContentFilter? filter, Expression row, bool trusted, string prefix, int hops)
+    private Expression? Where(SchemaType type, ContentFilter? filter, Expression row, bool trusted, string prefix, int hops, FilterOperator? asked)
     {
         var rule = query.Access.RowRule(type);
         ContentFilter? combined = (rule, filter) switch
@@ -43,41 +49,31 @@ internal sealed class FilterCompiler(QueryScope query)
             _ => new And(rule!, filter!),
         };
 
-        return combined is null ? null : Compile(combined, new Scope(type, row, rule, trusted, prefix, hops));
+        return combined is null ? null : Compile(combined, new Scope(type, row, rule, trusted, prefix, hops, asked));
     }
-
-    private void CheckSize(ContentFilter? filter)
-    {
-        if (filter is not null && Count(filter) > query.Options.MaxFilterNodes)
-        {
-            query.Report("filter", QueryErrorCodes.LimitExceeded, $"The filter has more than the {query.Options.MaxFilterNodes} nodes allowed.");
-        }
-    }
-
-    private static int Count(ContentFilter filter) => filter switch
-    {
-        And every => 1 + every.Filters.Sum(Count),
-        Or any => 1 + any.Filters.Sum(Count),
-        Not negated => 1 + Count(negated.Filter),
-        FieldFilter { Value: IEnumerable items and not string } => 1 + items.Cast<object?>().Count(),
-        _ => 1,
-    };
 
     private Expression Compile(ContentFilter filter, Scope scope)
     {
         if (ReferenceEquals(filter, scope.Rule))
         {
-            scope = scope with { Trusted = true };
+            scope = scope with { Trusted = true, Asked = null };
         }
 
         return filter switch
         {
+            And { Filters.Count: 0 } or Or { Filters.Count: 0 } => Empty(),
             And every => every.Filters.Select(item => Compile(item, scope)).Aggregate((Expression)Expression.Constant(true), Expression.AndAlso),
             Or any => any.Filters.Select(item => Compile(item, scope)).Aggregate((Expression)Expression.Constant(false), Expression.OrElse),
             Not negated => Expression.Not(Compile(negated.Filter, scope)),
             FieldFilter field => Field(field, scope),
             _ => throw new ArgumentOutOfRangeException(nameof(filter), filter, null),
         };
+    }
+
+    private ConstantExpression Empty()
+    {
+        query.Report("filter", QueryErrorCodes.InvalidValue, "An And or Or node needs at least one condition.");
+        return Fail();
     }
 
     private Expression Field(FieldFilter filter, Scope scope)
@@ -373,9 +369,17 @@ internal sealed class FilterCompiler(QueryScope query)
             return null;
         }
 
-        // A date compares as the ISO 8601 text that the JSON holds.
-        return Bind(scalar == JsonScalarType.Text && value is not string ? filter.Value?.ToString() : value, clrType);
+        return Bind(scalar == JsonScalarType.Text ? StoredText(value) : value, clrType);
     }
+
+    // A date compares as the text that the JSON holds. A date has one form, the only one its field type reads. Nothing
+    // writes a date and time into JSON yet, so this is the UTC form of the response shape, which #2693 must store.
+    private static string StoredText(object value) => value switch
+    {
+        DateOnly day => day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+        DateTimeOffset moment => moment.ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss.FFFFFFF'Z'", CultureInfo.InvariantCulture),
+        _ => Convert.ToString(value, CultureInfo.InvariantCulture) ?? "",
+    };
 
     private Expression ReferenceFilter(FieldFilter filter, FieldPath path, Scope scope)
     {
@@ -395,7 +399,22 @@ internal sealed class FilterCompiler(QueryScope query)
 
         if (path.Rest.Length > 0)
         {
-            return Hop(filter, path, scope, targetId) is { } target ? References(target) : Fail();
+            // A negative condition holds when no target matches, as on a block, so an entry with no target counts as
+            // a missing value, as a null column does.
+            var positive = filter.Operator switch
+            {
+                FilterOperator.NotEqual => FilterOperator.Equal,
+                FilterOperator.NotIn => FilterOperator.In,
+                FilterOperator.IsNull => FilterOperator.IsNotNull,
+                _ => filter.Operator,
+            };
+
+            if (Hop(filter with { Operator = positive }, path, scope, targetId, scope.Asked ?? filter.Operator) is not { } target)
+            {
+                return Fail();
+            }
+
+            return positive == filter.Operator ? References(target) : Expression.Not(References(target));
         }
 
         var type = TypeOf(path.Stored);
@@ -423,7 +442,7 @@ internal sealed class FilterCompiler(QueryScope query)
     }
 
     // The target's row in the same state and locale; decision 44 rules out fallback-aware filtering.
-    private MethodCallExpression? Hop(FieldFilter filter, FieldPath path, Scope scope, Expression targetId)
+    private MethodCallExpression? Hop(FieldFilter filter, FieldPath path, Scope scope, Expression targetId, FilterOperator asked)
     {
         var target = path.Stored.Field.Relation is { } relation ? query.Schema.FindContentType(relation.Target) : null;
         if (target is null)
@@ -444,9 +463,14 @@ internal sealed class FilterCompiler(QueryScope query)
             return null;
         }
 
+        if (!query.CanEnter(target, scope.Trusted))
+        {
+            return null;
+        }
+
         var row = Expression.Parameter(typeof(QueryRow), "target");
         var rest = new FieldFilter(string.Join('.', path.Rest), filter.Operator, filter.Value);
-        var inner = Where(target, rest, row, scope.Trusted, $"{scope.Prefix}{path.ApiPath}.", scope.Hops + 1)!;
+        var inner = Where(target, rest, row, scope.Trusted, $"{scope.Prefix}{path.ApiPath}.", scope.Hops + 1, asked)!;
 
         return Any(query.Rows(target), row, Expression.AndAlso(Expression.Equal(DocumentId(row), targetId), inner));
     }
@@ -512,7 +536,7 @@ internal sealed class FilterCompiler(QueryScope query)
 
     private bool Allowed(FieldFilter filter, IEnumerable<FilterOperator> operators, Scope scope)
     {
-        if (operators.Contains(filter.Operator))
+        if (operators.Contains(scope.Asked ?? filter.Operator))
         {
             return true;
         }
@@ -523,7 +547,7 @@ internal sealed class FilterCompiler(QueryScope query)
 
     private ConstantExpression NotAllowed(FieldFilter filter, Scope scope)
     {
-        query.Report(scope.PathOf(filter), QueryErrorCodes.OperatorNotAllowed, $"'{scope.PathOf(filter)}' does not allow the operator {filter.Operator}.");
+        query.Report(scope.PathOf(filter), QueryErrorCodes.OperatorNotAllowed, $"'{scope.PathOf(filter)}' does not allow the operator {scope.Asked ?? filter.Operator}.");
         return Fail();
     }
 
