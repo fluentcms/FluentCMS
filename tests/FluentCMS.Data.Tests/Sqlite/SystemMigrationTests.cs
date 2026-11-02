@@ -46,11 +46,11 @@ public sealed class SystemMigrationTests : IDisposable
         using var scope = services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
 
-        context.Database.GetPendingMigrations().ShouldHaveSingleItem();
+        context.Database.GetPendingMigrations().Count().ShouldBe(2);
         context.Database.Migrate();
 
-        Tables(context).ShouldBe(["__EFMigrationsLock", "cms__migrations", "cms_document", "cms_reference", "cms_version"], ignoreOrder: true);
-        Count(context, SystemDbContext.HistoryTable).ShouldBe(1);
+        Tables(context).ShouldBe(["__EFMigrationsLock", "cms__migrations", "cms_document", "cms_reference", "cms_role", "cms_role_permission", "cms_version"], ignoreOrder: true);
+        Count(context, SystemDbContext.HistoryTable).ShouldBe(2);
         context.Database.GetPendingMigrations().ShouldBeEmpty();
     }
 
@@ -70,7 +70,7 @@ public sealed class SystemMigrationTests : IDisposable
         using var scope = services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
 
-        context.Model.GetEntityTypes().Select(type => type.GetTableName()).ShouldBe(["cms_document", "cms_reference", "cms_version"], ignoreOrder: true);
+        context.Model.GetEntityTypes().Select(type => type.GetTableName()).ShouldBe(["cms_document", "cms_reference", "cms_role", "cms_role_permission", "cms_version"], ignoreOrder: true);
     }
 
     [Fact]

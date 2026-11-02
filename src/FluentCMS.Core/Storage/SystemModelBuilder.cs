@@ -9,12 +9,17 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
 {
     private const int NameLength = 64;
     private const int StatusLength = 16;
+    private const int RoleNameLength = 128;
+    private const int RoleDescriptionLength = 512;
+    private const int PermissionLength = 128;
 
     public void Apply(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Document>(MapDocument);
         modelBuilder.Entity<Reference>(MapReference);
         modelBuilder.Entity<ContentVersion>(MapVersion);
+        modelBuilder.Entity<Role>(MapRole);
+        modelBuilder.Entity<RoleGrant>(MapRoleGrant);
     }
 
     private static void MapDocument(EntityTypeBuilder<Document> entity)
@@ -65,6 +70,44 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         entity.HasIndex(version => new { version.DocumentId, version.Locale, version.Number })
             .IsUnique()
             .HasDatabaseName("uq_cms_version_document_locale_number");
+    }
+
+    private static void MapRole(EntityTypeBuilder<Role> entity)
+    {
+        entity.ToTable(StorageNames.Role);
+        MapColumnNames(entity);
+        entity.Property(role => role.Id).HasValueGenerator<GuidV7ValueGenerator>();
+        entity.Property(role => role.Name).HasMaxLength(RoleNameLength);
+        entity.Property(role => role.Description).HasMaxLength(RoleDescriptionLength);
+        entity.Property(role => role.PermissionsVersion).IsConcurrencyToken();
+
+        // A unique index treats nulls as distinct on some databases, so instance-wide and site roles get one each.
+        entity.HasIndex(role => role.Name)
+            .IsUnique()
+            .HasFilter("site_id IS NULL")
+            .HasDatabaseName("uq_cms_role_name");
+
+        entity.HasIndex(role => new { role.SiteId, role.Name })
+            .IsUnique()
+            .HasFilter("site_id IS NOT NULL")
+            .HasDatabaseName("uq_cms_role_site_name");
+
+        entity.HasData(RoleSeed.Roles());
+    }
+
+    private void MapRoleGrant(EntityTypeBuilder<RoleGrant> entity)
+    {
+        entity.ToTable(StorageNames.RolePermission);
+        MapColumnNames(entity);
+        entity.Property(grant => grant.Id).HasValueGenerator<GuidV7ValueGenerator>();
+        entity.Property(grant => grant.Permission).HasMaxLength(PermissionLength);
+        conventions.ConfigureJsonColumn(entity, entity.Property(grant => grant.Constraints));
+
+        entity.HasOne<Role>().WithMany().HasForeignKey(grant => grant.RoleId).OnDelete(DeleteBehavior.Cascade);
+        entity.HasIndex(grant => new { grant.RoleId, grant.Permission })
+            .HasDatabaseName("ix_cms_role_permission_role_permission");
+
+        entity.HasData(RoleSeed.Permissions());
     }
 
     private static void MapColumnNames<T>(EntityTypeBuilder<T> entity)
