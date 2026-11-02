@@ -1,4 +1,10 @@
 #nullable enable
+FluentCMS.Authorization.IPermissionProvider
+FluentCMS.Authorization.IPermissionProvider.GetPermissions() -> System.Collections.Generic.IEnumerable<FluentCMS.Authorization.Permission!>!
+FluentCMS.Authorization.Permission
+FluentCMS.Authorization.Permission.Description.get -> string!
+FluentCMS.Authorization.Permission.Name.get -> string!
+FluentCMS.Authorization.Permission.Permission(string! name, string! description) -> void
 FluentCMS.Content.ContentDocument
 FluentCMS.Content.ContentDocument.Add(string! name, object? value) -> void
 FluentCMS.Content.ContentDocument.Clear() -> void
@@ -524,6 +530,7 @@ FluentCMS.Sites.SiteId.SiteId() -> void
 FluentCMS.Sites.SiteId.SiteId(System.Guid Value) -> void
 FluentCMS.Sites.SiteId.Value.get -> System.Guid
 FluentCMS.Sites.SiteId.Value.init -> void
+const FluentCMS.Authorization.Permission.ContentPrefix = "content" -> string!
 const FluentCMS.Content.ValidationErrorCodes.AboveMaximum = "FCMS2105" -> string!
 const FluentCMS.Content.ValidationErrorCodes.BelowMinimum = "FCMS2104" -> string!
 const FluentCMS.Content.ValidationErrorCodes.Custom = "FCMS2109" -> string!
@@ -542,6 +549,7 @@ const FluentCMS.Schema.FieldSettings.Scale = "scale" -> string!
 const FluentCMS.Schema.FieldSettings.Source = "source" -> string!
 const FluentCMS.Schema.RichTextFormats.Html = "html" -> string!
 const FluentCMS.Schema.RichTextFormats.Markdown = "markdown" -> string!
+override FluentCMS.Authorization.Permission.ToString() -> string!
 override FluentCMS.Content.OperationContext.Equals(object? obj) -> bool
 override FluentCMS.Content.OperationContext.GetHashCode() -> int
 override FluentCMS.Content.OperationContext.ToString() -> string!
@@ -573,6 +581,7 @@ override FluentCMS.Schema.RichText.GetHashCode() -> int
 override FluentCMS.Schema.RichText.ToString() -> string!
 override FluentCMS.Sites.SiteId.GetHashCode() -> int
 override FluentCMS.Sites.SiteId.ToString() -> string!
+static FluentCMS.Authorization.Permission.IsValidName(string? name) -> bool
 static FluentCMS.Content.OperationContext.operator !=(FluentCMS.Content.OperationContext? left, FluentCMS.Content.OperationContext? right) -> bool
 static FluentCMS.Content.OperationContext.operator ==(FluentCMS.Content.OperationContext? left, FluentCMS.Content.OperationContext? right) -> bool
 static FluentCMS.Content.Principal.System.get -> FluentCMS.Content.Principal!
