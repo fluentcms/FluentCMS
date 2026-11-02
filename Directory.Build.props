@@ -1,0 +1,47 @@
+<Project>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(CI)' != ''">
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Authors>FluentCMS</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/fluentcms/FluentCMS</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/fluentcms/FluentCMS</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>cms headless dotnet</PackageTags>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <!-- Only the library, tool and plugin projects ship as packages. -->
+  <PropertyGroup>
+    <RepoRelativeProjectDir>$([MSBuild]::MakeRelative('$(MSBuildThisFileDirectory)', '$(MSBuildProjectDirectory)').Replace('\', '/'))</RepoRelativeProjectDir>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$(RepoRelativeProjectDir.StartsWith('tests/')) Or $(RepoRelativeProjectDir.StartsWith('samples/')) Or $(RepoRelativeProjectDir.StartsWith('templates/')) Or '$(RepoRelativeProjectDir)' == 'src/FluentCMS.Host'">
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <!-- The test project stubs have no tests yet; exit code 8 means "zero tests ran". Remove this once each project has tests. -->
+  <PropertyGroup Condition="$(RepoRelativeProjectDir.StartsWith('tests/'))">
+    <TestingPlatformCommandLineArguments>--ignore-exit-code 8</TestingPlatformCommandLineArguments>
+  </PropertyGroup>
+
+</Project>

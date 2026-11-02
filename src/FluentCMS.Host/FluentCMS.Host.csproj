@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="../FluentCMS.Core/FluentCMS.Core.csproj" />
+    <ProjectReference Include="../FluentCMS.Data.PostgreSql/FluentCMS.Data.PostgreSql.csproj" />
+    <ProjectReference Include="../FluentCMS.Data.Sqlite/FluentCMS.Data.Sqlite.csproj" />
+    <ProjectReference Include="../FluentCMS.Data.SqlServer/FluentCMS.Data.SqlServer.csproj" />
+    <ProjectReference Include="../plugins/FluentCMS.Plugins.Media/FluentCMS.Plugins.Media.csproj" />
+    <ProjectReference Include="../plugins/FluentCMS.Plugins.Media.S3/FluentCMS.Plugins.Media.S3.csproj" />
+    <ProjectReference Include="../plugins/FluentCMS.Plugins.Media.AzureBlob/FluentCMS.Plugins.Media.AzureBlob.csproj" />
+    <ProjectReference Include="../plugins/FluentCMS.Plugins.Webhooks/FluentCMS.Plugins.Webhooks.csproj" />
+    <ProjectReference Include="../plugins/FluentCMS.Plugins.GraphQL/FluentCMS.Plugins.GraphQL.csproj" />
+    <ProjectReference Include="../plugins/FluentCMS.Plugins.Mcp/FluentCMS.Plugins.Mcp.csproj" />
+    <ProjectReference Include="../plugins/FluentCMS.Plugins.AiAssist/FluentCMS.Plugins.AiAssist.csproj" />
+    <ProjectReference Include="../plugins/FluentCMS.Plugins.MultiSite/FluentCMS.Plugins.MultiSite.csproj" />
+    <ProjectReference Include="../plugins/FluentCMS.Plugins.Search/FluentCMS.Plugins.Search.csproj" />
+  </ItemGroup>
+
+</Project>
