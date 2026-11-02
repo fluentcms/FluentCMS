@@ -15,4 +15,8 @@
     <ProjectReference Include="../../src/FluentCMS.Core/FluentCMS.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="ProseMirror/Snapshots/**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
