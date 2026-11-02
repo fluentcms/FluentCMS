@@ -40,10 +40,12 @@ public static class JsonScalar
     {
         ArgumentException.ThrowIfNullOrEmpty(field);
 
-        return field.All(character => char.IsAsciiLetterOrDigit(character) || character == '_')
-            ? field
-            : throw new ArgumentException($"'{field}' is not a one-level JSON path.", nameof(field));
+        return IsField(field) ? field : throw new ArgumentException($"'{field}' is not a one-level JSON path.", nameof(field));
     }
+
+    // For input from a client, where a bad name is a validation error and not an exception from the dialect.
+    public static bool IsField(string field) =>
+        field.Length > 0 && field.All(character => char.IsAsciiLetterOrDigit(character) || character == '_');
 
     public static void CheckValue(JsonScalarType type, Expression value)
     {

@@ -30,4 +30,7 @@ public interface IJsonSqlDialect
 
     // The value at the top-level key is an array holding the string value as an element.
     Expression ArrayContains(Expression json, string field, Expression value);
+
+    // The JSON is itself an array holding the string value as an element: a multi select column.
+    Expression ListContains(Expression json, Expression value);
 }

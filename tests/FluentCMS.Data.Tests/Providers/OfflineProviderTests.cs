@@ -160,6 +160,8 @@ public class OfflineProviderTests
 
         Sql(services, (dialect, row) => dialect.ArrayContains(Metadata(row), "labels", Bind("x")))
             .ShouldContain("@> jsonb_build_object('labels', jsonb_build_array(@");
+        Sql(services, (dialect, row) => dialect.ListContains(Metadata(row), Bind("x")))
+            .ShouldContain("c.metadata @> jsonb_build_array(@");
     }
 
     [Fact]
@@ -186,6 +188,8 @@ public class OfflineProviderTests
             .ShouldContain("COLLATE Latin1_General_100_BIN2");
         Sql(services, (dialect, row) => dialect.ArrayContains(Metadata(row), "labels", Bind("x")))
             .ShouldContain("[key] = N'labels'");
+        Sql(services, (dialect, row) => dialect.ListContains(Metadata(row), Bind("x")))
+            .ShouldContain("OPENJSON([c].[metadata])");
     }
 
     [Fact]

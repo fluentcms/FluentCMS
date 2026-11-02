@@ -1,6 +1,7 @@
 using System.Reflection;
 using FluentCMS.Authorization;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Storage;
 using FluentCMS.Schema;
@@ -53,6 +54,10 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddLogging();
         services.AddSingleton<MigrationRunner>();
         services.AddHostedService<MigrationStartupService>();
+
+        services.TryAddSingleton<ContentQueryOptions>();
+        services.TryAddScoped<IContentQueryAccess, OpenContentQueryAccess>();
+        services.AddScoped<ContentQueryEngine>();
 
         return services;
     }

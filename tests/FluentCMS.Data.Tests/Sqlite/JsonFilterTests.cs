@@ -256,6 +256,17 @@ public sealed class JsonFilterTests : IDisposable
     }
 
     [Fact]
+    public void ListContainsMatchesAWholeTextElementOfTheColumn()
+    {
+        var list = Add("""["net",12]""", null);
+        _context.SaveChanges();
+
+        Ids(row => _dialect.ListContains(Sections(row), Bind("net"))).ShouldBe([list]);
+        Ids(row => _dialect.ListContains(Sections(row), Bind("ne"))).ShouldBeEmpty();
+        Ids(row => _dialect.ListContains(Sections(row), Bind("12"))).ShouldBeEmpty();
+    }
+
+    [Fact]
     public void ArrayContainsLooksOnlyAtArraysOfText()
     {
         // In the quote document labels is the text "net", and mixed holds the number 12.
