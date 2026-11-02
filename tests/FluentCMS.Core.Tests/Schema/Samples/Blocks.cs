@@ -1,0 +1,31 @@
+using FluentCMS.Media;
+using FluentCMS.Schema;
+
+namespace FluentCMS.Core.Tests.Schema.Samples;
+
+[Block("hero")]
+public sealed class HeroBlock
+{
+    [Text]
+    public string Heading { get; set; } = "";
+
+    [Media]
+    public MediaRef? Image { get; set; }
+}
+
+[Block("quote")]
+public sealed class QuoteBlock
+{
+    [LongText, Required]
+    public string Text { get; set; } = "";
+
+    [Text]
+    public string? Attribution { get; set; }
+}
+
+[Block("gallery")]
+public sealed class GalleryBlock
+{
+    [Media]
+    public MediaRefList Images { get; set; } = [];
+}
