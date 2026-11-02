@@ -12,6 +12,12 @@
   <ItemGroup>
     <ProjectReference Include="../../src/FluentCMS.Sdk/FluentCMS.Sdk.csproj" />
     <ProjectReference Include="../../src/FluentCMS.Core/FluentCMS.Core.csproj" />
+    <!-- Here for their assemblies, which the content rules scan: the host references the providers and the plugins. -->
+    <ProjectReference Include="../../src/FluentCMS.Analyzers/FluentCMS.Analyzers.csproj" />
+    <ProjectReference Include="../../src/FluentCMS.Cli/FluentCMS.Cli.csproj" />
+    <ProjectReference Include="../../src/FluentCMS.Generators/FluentCMS.Generators.csproj" />
+    <ProjectReference Include="../../src/FluentCMS.Host/FluentCMS.Host.csproj" />
+    <ProjectReference Include="../../src/FluentCMS.Testing/FluentCMS.Testing.csproj" />
   </ItemGroup>
 
 </Project>

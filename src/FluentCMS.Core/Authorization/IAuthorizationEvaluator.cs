@@ -23,8 +23,8 @@ internal interface IAuthorizationEvaluator
         CancellationToken cancellationToken = default);
 
     // Which fields a write may touch: a field counts when a grant that allows it also matches the entry. A create has
-    // no entry yet, so a row rule on its grant cannot hold anything back; any other write without an entry gets only
-    // what grants with no row rule allow.
+    // no entry at first, so a row rule on its grant holds nothing back until it is asked again with the new entry; any
+    // other write without an entry gets only what grants with no row rule allow.
     ValueTask<WritableFields> WritableFieldsAsync(
         OperationContext context,
         SchemaType type,

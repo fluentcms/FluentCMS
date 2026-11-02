@@ -16,9 +16,16 @@ public class LayeringRulesTests
     private const string ApiNamespace = "FluentCMS.Core.Api";
     private const string StorageNamespace = "FluentCMS.Core.Storage";
     private const string AuthorizationNamespace = "FluentCMS.Core.Authorization";
+    private const string ContentNamespace = "FluentCMS.Core.Content";
+    private const string SitesNamespace = "FluentCMS.Core.Sites";
+    private const string ProvidersNamespace = "FluentCMS.Data";
+    private const string CliNamespace = "FluentCMS.Cli";
 
     private static readonly Lazy<ArchUnitNET.Domain.Architecture> core = new(
         () => new ArchLoader().LoadAssemblies(Assembly.Load("FluentCMS.Core")).Build());
+
+    private static readonly Lazy<ArchUnitNET.Domain.Architecture> everything = new(
+        () => new ArchLoader().LoadAssemblies([.. ContentTableReaches.SourceAssemblies().Select(Assembly.LoadFrom)]).Build());
 
     // FluentCMS.Core.Api does not exist until the Delivery API (B-47), so the rule has nothing to check yet and starts checking with the first type there.
     [Fact]
@@ -72,6 +79,78 @@ public class LayeringRulesTests
             .And().DoNotResideInNamespaceOrBelow(StorageNamespace)
             .Should().NotDependOnAnyTypesThat().HaveNameStartingWith("RoleGrant")
             .Check(core.Value);
+    }
+
+    // Issue #2693. CmsDbContext also holds the system tables, so these may reach it for their own tables only, which the
+    // next rules check: the evaluator for roles, Sites and LocaleRegistry for cms_site and cms_site_locale, the extensions
+    // that register it, and the provider packages and the tool, which are the storage layer's other half.
+    [Fact]
+    public void OnlyTheServiceAndTheStorageLayerTouchCmsDbContext()
+    {
+        Types().That().DoNotResideInNamespaceOrBelow(ContentNamespace)
+            .And().DoNotResideInNamespaceOrBelow(StorageNamespace)
+            .And().DoNotResideInNamespaceOrBelow(ProvidersNamespace)
+            .And().DoNotResideInNamespaceOrBelow(CliNamespace)
+            .And().DoNotResideInNamespaceOrBelow(SitesNamespace)
+            .And().DoNotHaveName("AuthorizationEvaluator")
+            .And().DoNotHaveName("LocaleRegistry")
+            .And().DoNotHaveName("FluentCmsServiceCollectionExtensions")
+            .Should().NotDependOnAnyTypesThat().HaveName("CmsDbContext")
+            .Check(everything.Value);
+    }
+
+    // The evaluator asks whether an entry is in a site, and SiteManager whether a site has entries; neither reads content.
+    [Fact]
+    public void OnlyTheServiceAndTheStorageLayerTouchTheContentSystemTables()
+    {
+        Types().That().DoNotResideInNamespaceOrBelow(ContentNamespace)
+            .And().DoNotResideInNamespaceOrBelow(StorageNamespace)
+            .And().DoNotResideInNamespaceOrBelow(ProvidersNamespace)
+            .And().DoNotHaveName("AuthorizationEvaluator")
+            .And().DoNotHaveName("SiteManager")
+            .Should().NotDependOnAnyTypesThat().HaveName("Document")
+            .AndShould().NotDependOnAnyTypesThat().HaveName("Reference")
+            .AndShould().NotDependOnAnyTypesThat().HaveName("ContentVersion")
+            .Check(everything.Value);
+    }
+
+    // Inside Content, the store and the query engine are what the service and the evaluator go through, not a way around them.
+    [Fact]
+    public void NothingOutsideContentUsesTheEntryStoreOrWritesAroundTheService()
+    {
+        Types().That().DoNotResideInNamespaceOrBelow(ContentNamespace)
+            .And().DoNotHaveName("FluentCmsServiceCollectionExtensions")
+            .Should().NotDependOnAnyTypesThat().HaveName("EntryStore")
+            .Check(everything.Value);
+    }
+
+    // A content table has no class to depend on, so these look at the calls: its rows by name, or SQL.
+    [Fact]
+    public void OnlyTheServiceAndTheStorageLayerReachContentTablesByNameOrBySql()
+    {
+        var violations = ContentTableReaches.InEveryAssembly().ToList();
+
+        violations.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void EveryProjectUnderSrcIsScanned()
+    {
+        var scanned = ContentTableReaches.SourceAssemblies().Select(Path.GetFileNameWithoutExtension).ToList();
+
+        scanned.ShouldBe(ProjectFile.SourceProjects.Select(project => project.Name), ignoreOrder: true);
+    }
+
+    [Fact]
+    public void TheCallScanFindsEveryWayToAContentTable()
+    {
+        var found = ContentTableReaches.In(typeof(CarelessCode).Assembly.Location).Where(violation => violation.Contains(nameof(CarelessCode), StringComparison.Ordinal)).ToList();
+
+        found.ShouldContain(violation => violation.Contains("Set", StringComparison.Ordinal));
+        found.ShouldContain(violation => violation.Contains("Rows", StringComparison.Ordinal));
+        found.ShouldContain(violation => violation.Contains("get_Database", StringComparison.Ordinal));
+        found.ShouldContain(violation => violation.Contains("ExecuteSqlRaw", StringComparison.Ordinal));
+        found.ShouldContain(violation => violation.Contains("FromSqlRaw", StringComparison.Ordinal));
     }
 
     private static IEnumerable<string> FluentCmsReferences(ProjectFile project) =>

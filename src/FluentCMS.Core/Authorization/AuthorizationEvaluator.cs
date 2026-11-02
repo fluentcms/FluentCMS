@@ -97,7 +97,7 @@ internal sealed class AuthorizationEvaluator(
 
         foreach (var grant in permissions.GrantsOf(type, operation, target))
         {
-            if (operation != ContentOperation.Create && grant.Constraints.RowRule is { } name)
+            if ((operation != ContentOperation.Create || entry is not null) && grant.Constraints.RowRule is { } name)
             {
                 if (!matched.TryGetValue(name, out var matches))
                 {
@@ -113,13 +113,15 @@ internal sealed class AuthorizationEvaluator(
                 }
             }
 
-            if (grant.Constraints.Fields is null)
+            var reachesShared = !type.Localized || grant.ReachesEveryLocale(target);
+            if (grant.Constraints.Fields is null && reachesShared)
             {
                 return WritableFields.All;
             }
 
             allowed = true;
-            fields.UnionWith(grant.Constraints.Fields);
+            var names = grant.Constraints.Fields ?? type.Fields.Select(field => field.Name);
+            fields.UnionWith(reachesShared ? names : names.Where(name => type.FindField(name) is not { Localizable: false }));
         }
 
         return allowed ? new WritableFields(true, fields) : WritableFields.None;
@@ -141,7 +143,7 @@ internal sealed class AuthorizationEvaluator(
     private async Task<bool> MatchesAsync(SchemaType type, ContentOperation operation, Guid entry, AccessTarget target, QueryStatus status, ContentFilter rule, CancellationToken cancellationToken)
     {
         var state = operation == ContentOperation.Read && status == QueryStatus.Published ? ContentState.Published : ContentState.Draft;
-        var scope = new QueryScope(database, schema, dialect, new ContentQueryAccess.RuleOnly(type, rule), options, state, target.Locale ?? "", target.Site);
+        var scope = new QueryScope(database, schema, dialect, new ContentQueryAccess.RuleOnly(type, rule), options, state, target.RowLocale ?? target.Locale ?? "", target.Site);
 
         var row = Expression.Parameter(typeof(QueryRow), "row");
         var condition = new FilterCompiler(scope).Where(type, null, row)!;

@@ -26,6 +26,7 @@ internal static class ContentCopy
         IReadOnlyDictionary<string, object?> map => map.ToDictionary(item => item.Key, item => Value(item.Value), StringComparer.Ordinal),
         List<object?> list => list.ConvertAll(Value),
         object?[] array => Array.ConvertAll(array, Value),
+        Guid[] ids => (Guid[])ids.Clone(),
         _ => value,
     };
 }

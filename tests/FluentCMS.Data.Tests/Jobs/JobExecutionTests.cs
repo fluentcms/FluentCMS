@@ -333,6 +333,7 @@ public sealed class JobExecutionTests : IDisposable
         operation.Origin.ShouldBe(Origin.Job);
         operation.Actor.ShouldBeNull();
         operation.AuditPrincipal.ShouldBeSameAs(Principal.System);
+        SystemOperation.Allows(operation.Origin).ShouldBeTrue();
         operation.Site.ShouldBe(new SiteId(DefaultSite.Id));
         operation.Locale.ShouldBe(DefaultSite.Locale);
         operation.CorrelationId.ShouldBe(id.ToString());

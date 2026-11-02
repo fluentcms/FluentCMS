@@ -84,6 +84,56 @@ internal sealed class LocaleFallbackReader(ContentQueryEngine engine, SchemaMode
         }
     }
 
+    // An entry by id that has no row in the requested locale: read from the first locale of the chain that has one, under
+    // the requested locale, with what that locale and the ones after it serve named under "fallbacks".
+    public async Task<ContentDocument?> ReadFromChainAsync(string typeName, ContentQuery query, Guid id, FallbackChain chain, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        ArgumentNullException.ThrowIfNull(chain);
+
+        var fallbacks = chain.Fallbacks.ToList();
+        for (var index = 0; index < fallbacks.Count; index++)
+        {
+            var read = await ReadAsync(typeName, query, fallbacks[index], [id], [.. query.Select], cancellationToken);
+            if (read.Count == 0)
+            {
+                continue;
+            }
+
+            var entry = read[0];
+            var served = new ContentDocument();
+            if (schema.FindContentType(typeName) is { } type)
+            {
+                foreach (var name in type.Fields.Where(field => field.Localizable && !field.Hidden).Select(field => field.Name))
+                {
+                    if (entry.TryGetValue(name, out var value) && !IsMissing(value))
+                    {
+                        served[name] = fallbacks[index];
+                    }
+                }
+            }
+
+            await ApplyAsync(typeName, query, read, new FallbackChain(fallbacks.Skip(index)), cancellationToken);
+            if (entry.TryGetValue(FallbacksKey, out var further) && further is ContentDocument map)
+            {
+                foreach (var (name, locale) in map)
+                {
+                    served[name] = locale;
+                }
+            }
+
+            entry["locale"] = chain.Requested;
+            if (served.Count > 0)
+            {
+                entry[FallbacksKey] = served;
+            }
+
+            return entry;
+        }
+
+        return null;
+    }
+
     // The locale=all read of entries already found: the stored values of each, by locale code, in the order the site
     // lists its locales. A locale the principal cannot read, or in which an entry has no row, is not in the map. A
     // type that is not localized has one document, under "".
@@ -147,7 +197,7 @@ internal sealed class LocaleFallbackReader(ContentQueryEngine engine, SchemaMode
         (error.Path, error.Code) is ("type", QueryErrorCodes.UnknownField) or ("status", QueryErrorCodes.DraftNotAllowed);
 
     // A draft writes '' and the empty rich text document for what it lacks (spec 4.3), so those count as no value.
-    private static bool IsMissing(object? value) => value switch
+    public static bool IsMissing(object? value) => value switch
     {
         null => true,
         string text => text.Length == 0,

@@ -6,8 +6,10 @@ using FluentCMS.Sites;
 namespace FluentCMS.Core.Authorization;
 
 // Where an operation applies. A null site is every site, so only a grant with no site limit holds for it; an empty
-// locale is no locale, so only a grant with no locale limit holds for it.
-internal readonly record struct AccessTarget(SiteId? Site, string? Locale);
+// locale is no locale, so only a grant with no locale limit holds for it. RowLocale is the row a row rule reads when
+// that is not Locale's: a write that adds a locale to an entry has no row of its own there yet. EntryLocales is every
+// locale the entry has or is about to have, for the fields they share; null means Locale alone.
+internal readonly record struct AccessTarget(SiteId? Site, string? Locale, string? RowLocale = null, IReadOnlyCollection<string>? EntryLocales = null);
 
 // One row of cms_role_permission, with the site of its role: a role of one site grants nothing in another.
 internal sealed record EffectiveGrant(string Pattern, PermissionConstraints Constraints, Guid? RoleSite)
@@ -17,6 +19,16 @@ internal sealed record EffectiveGrant(string Pattern, PermissionConstraints Cons
         && (RoleSite is null || target.Site?.Value == RoleSite)
         && (Constraints.Sites is null || (target.Site is { } site && Constraints.Sites.Contains(site)))
         && (Constraints.Locales is null || (!string.IsNullOrEmpty(target.Locale) && Constraints.Locales.Contains(target.Locale, StringComparer.OrdinalIgnoreCase)));
+
+    // A global entry is shared by every site, so what changes it must come from a grant that no site limits.
+    public bool IsInstanceWide => RoleSite is null && Constraints.Sites is null;
+
+    // A field that is not localizable has one value for all the locales of an entry, so a grant limited to some of them
+    // may change it only when that covers them all.
+    public bool ReachesEveryLocale(AccessTarget target) =>
+        Constraints.Locales is not { } locales
+        || target.EntryLocales is null
+        || target.EntryLocales.All(locale => locales.Contains(locale, StringComparer.OrdinalIgnoreCase));
 }
 
 // The answers of spec 2.3 for one principal: the union of its roles' grants, narrowed by its token's scopes. Scopes
@@ -45,7 +57,7 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
     }
 
     public bool Allows(SchemaType type, ContentOperation operation, AccessTarget target) =>
-        Allows(CorePermissions.Content(type.Name, operation), target);
+        IsSystem || GrantsOf(type, operation, target).Count > 0;
 
     // The roles must allow reading the type. On top of that a Delivery principal needs a preview key or the draft
     // scope, and a managing one is bounded by its roles alone (spec 4.8).
@@ -57,7 +69,13 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
     public IReadOnlyList<EffectiveGrant> GrantsOf(SchemaType type, ContentOperation operation, AccessTarget target)
     {
         var permission = CorePermissions.Content(type.Name, operation);
-        return ScopeAllows(permission) ? [.. grants.Where(grant => grant.Applies(permission, target))] : [];
+        return ScopeAllows(permission) ? [.. Applying(type, operation, permission, target)] : [];
+    }
+
+    private IEnumerable<EffectiveGrant> Applying(SchemaType type, ContentOperation operation, string permission, AccessTarget target)
+    {
+        var writesEverySite = type.Scope == ContentScope.Global && operation != ContentOperation.Read;
+        return grants.Where(grant => grant.Applies(permission, target) && (!writesEverySite || grant.IsInstanceWide));
     }
 
     // Null when every field is readable. A response has one set of fields for all its rows, and rows are the union of
@@ -142,7 +160,7 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
         }
 
         SortedSet<string> names = new(StringComparer.Ordinal);
-        foreach (var grant in grants.Where(grant => grant.Applies(permission, target)))
+        foreach (var grant in Applying(type, operation, permission, target))
         {
             if (grant.Constraints.RowRule is not { } name)
             {

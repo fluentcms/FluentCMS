@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Reflection;
 using FluentCMS.Content;
+using FluentCMS.Core.Content.Query;
 using FluentCMS.Hooks;
 using FluentCMS.Schema;
 
@@ -98,9 +99,13 @@ public sealed class HookPipeline(IServiceProvider services)
         IHookEntryMapper? mapper)
     {
         private object? _previousEntry;
-        private IReadOnlyList<string> _changedPaths = ContentChanges.Between(previous, entry);
+        private IReadOnlyList<string> _changedPaths = ChangedFields(previous, entry);
 
-        public void RefreshChangedPaths() => _changedPaths = ContentChanges.Between(previous, entry);
+        public void RefreshChangedPaths() => _changedPaths = ChangedFields(previous, entry);
+
+        // A save always moves the version and the update time, which say nothing about what changed.
+        private static List<string> ChangedFields(ContentDocument? previous, ContentDocument entry) =>
+            [.. ContentChanges.Between(previous, entry).Where(path => SystemField.Find(path) is null)];
 
         public HookContext<T> CreateContext<T>(out object? mapped)
         {

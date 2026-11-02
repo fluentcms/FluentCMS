@@ -12,7 +12,11 @@ internal sealed class SelectNode
 {
     public static readonly SelectNode Everything = new() { Whole = true };
 
+    public static readonly SelectNode EverythingWithSystem = new() { Whole = true, EverySystemField = true };
+
     public bool Whole { get; private set; }
+
+    public bool EverySystemField { get; private init; }
 
     public Dictionary<string, SelectNode> Children { get; } = new(StringComparer.Ordinal);
 
@@ -94,7 +98,7 @@ internal sealed class EntryPlan
         List<OutputNode> nodes = [];
         foreach (var system in SystemField.Fields)
         {
-            var wanted = select.Whole ? isRoot && system.Default : select.Includes(system.Name);
+            var wanted = select.Whole ? isRoot && (system.Default || select.EverySystemField) : select.Includes(system.Name);
             if (wanted && system.Name != "id" && query.Access.CanReadField(type, system.Name))
             {
                 nodes.Add(new ValueOutput(system.Name, AddColumn(system.ReadFrom(row, query.State)), value => value));

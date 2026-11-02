@@ -3,9 +3,12 @@ using FluentCMS.Authorization;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Content;
+using FluentCMS.Core.Content.Hooks;
 using FluentCMS.Core.Content.Query;
+using FluentCMS.Core.Content.Validation;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Localization;
+using FluentCMS.Core.ProseMirror;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
@@ -82,6 +85,19 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddScoped<LocaleRegistry>();
         services.AddScoped<LocaleFallbackReader>();
         services.AddScoped<SiteManager>();
+
+        services.TryAddSingleton<IRichTextRenderer, RichTextRenderer>();
+        services.TryAddSingleton<ContentEntryMapper>();
+        services.TryAddSingleton<IHookEntryMapper>(serviceProvider => serviceProvider.GetRequiredService<ContentEntryMapper>());
+        services.TryAddSingleton<EntryCanonicalizer>();
+        services.TryAddSingleton<EntryComposer>();
+        services.TryAddSingleton<ResponseRichText>();
+        services.AddScoped<HookPipeline>();
+        services.AddScoped<ValidationPipeline>();
+        services.AddScoped<EntryStore>();
+        services.AddScoped<ContentService>();
+        services.TryAddScoped<IContentService>(serviceProvider => serviceProvider.GetRequiredService<ContentService>());
+        services.TryAddScoped(typeof(IContentService<>), typeof(TypedContentService<>));
 
         services.AddSingleton(builder.Jobs.Options);
         services.AddSingleton<JobRegistry>();
