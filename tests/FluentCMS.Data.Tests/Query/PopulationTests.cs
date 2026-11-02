@@ -216,7 +216,7 @@ public sealed class PopulationTests : IDisposable
     }
 
     [Fact]
-    public async Task AnUnpublishedOrTrashedTargetStaysAReference()
+    public async Task AnUnpublishedOrTrashedTargetIsNotReturnedByAPublishedRead()
     {
         var draft = _database.AddAuthor("Draft", state: ContentState.Draft);
         var other = _database.AddArticle("Other");
@@ -227,8 +227,8 @@ public sealed class PopulationTests : IDisposable
 
         var items = (await _database.RunAsync("locale=en&populate=author&sort=title")).Items;
 
-        ShouldBeReference(items.Single(item => item["title"] as string == "Other")["author"], draft, "author");
-        ShouldBeReference(items.Single(item => item["title"] as string == "Third")["author"], _author, "author");
+        items.Single(item => item["title"] as string == "Other")["author"].ShouldBeNull();
+        items.Single(item => item["title"] as string == "Third")["author"].ShouldBeNull();
     }
 
     [Fact]

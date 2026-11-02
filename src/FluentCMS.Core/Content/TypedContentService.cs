@@ -1,6 +1,7 @@
 using FluentCMS.Content;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Localization;
+using FluentCMS.Publishing;
 using FluentCMS.Schema;
 
 namespace FluentCMS.Core.Content;
@@ -55,6 +56,30 @@ internal sealed class TypedContentService<T>(ContentService documents, SchemaMod
     public async Task<T> RestoreAsync(Guid id, CancellationToken cancellationToken = default) =>
         await ReadBackAsync(await documents.RestoreAsync(_type, id, cancellationToken));
 
+    public async Task<PublishResult<T>> PublishAsync(Guid id, string? locale = null, int? expectedVersion = null, CancellationToken cancellationToken = default)
+    {
+        var published = await documents.PublishAsync(_type, id, locale, expectedVersion, cancellationToken);
+        return new PublishResult<T>(await ReadBackAsync(published.Entry, locale), published.Warnings);
+    }
+
+    public async Task<T> UnpublishAsync(Guid id, string? locale = null, CancellationToken cancellationToken = default) =>
+        await ReadBackAsync(await documents.UnpublishAsync(_type, id, locale, cancellationToken), locale);
+
+    public async Task<T> DiscardDraftAsync(Guid id, string? locale = null, int? expectedVersion = null, CancellationToken cancellationToken = default) =>
+        await ReadBackAsync(await documents.DiscardDraftAsync(_type, id, locale, expectedVersion, cancellationToken), locale);
+
+    public Task<IReadOnlyList<VersionInfo>> GetVersionsAsync(Guid id, string? locale = null, CancellationToken cancellationToken = default) =>
+        documents.GetVersionsAsync(_type, id, locale, cancellationToken);
+
+    public async Task<T?> GetVersionAsync(Guid id, int number, string? locale = null, CancellationToken cancellationToken = default) =>
+        await documents.GetVersionAsync(_type, id, number, locale, cancellationToken) is { } entry ? Map(entry) : null;
+
+    public async Task<T> RestoreVersionAsync(Guid id, int number, string? locale = null, int? expectedVersion = null, CancellationToken cancellationToken = default) =>
+        await ReadBackAsync(await documents.RestoreVersionAsync(_type, id, number, locale, expectedVersion, cancellationToken), locale);
+
+    public Task<IReadOnlyList<VersionChange>> DiffAsync(Guid id, int fromVersion, int toVersion, string? locale = null, CancellationToken cancellationToken = default) =>
+        documents.DiffAsync(_type, id, fromVersion, toVersion, locale, cancellationToken);
+
     public Task<long> CountAsync(ContentFilter? filter = null, QueryStatus status = QueryStatus.Published, CancellationToken cancellationToken = default) =>
         documents.CountAsync(_type, filter, status, cancellationToken);
 
@@ -62,9 +87,9 @@ internal sealed class TypedContentService<T>(ContentService documents, SchemaMod
 
     // What a write returned, which is all a principal without the read gets, with the system fields a class also holds.
     // The write has committed by now, so a cancelled caller does not turn it into a failure.
-    private async Task<T> ReadBackAsync(ContentDocument written)
+    private async Task<T> ReadBackAsync(ContentDocument written, string? locale = null)
     {
-        var options = new GetOptions { Status = QueryStatus.Draft, Fallback = LocaleFallback.None };
+        var options = new GetOptions { Status = QueryStatus.Draft, Fallback = LocaleFallback.None, Locale = locale };
         return Map(written.ContainsKey("status") && await documents.GetAsync(_type, (Guid)written["id"]!, options, everySystemField: true, CancellationToken.None) is { } entry ? entry : written);
     }
 

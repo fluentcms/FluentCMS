@@ -1,5 +1,6 @@
 using System.Reflection;
 using FluentCMS.Media;
+using FluentCMS.Publishing;
 using FluentCMS.Schema;
 
 namespace FluentCMS.Core.Schema;
@@ -60,6 +61,21 @@ internal sealed class AttributeSchemaReader(SchemaBuilder builder)
             {
                 t.Localized(localized);
                 t.Scope(scope);
+                if (type.GetCustomAttribute<PublishPolicyAttribute>(inherit: false) is { } policy)
+                {
+                    if (policy.MaxVersions < 1)
+                    {
+                        Report(SchemaErrorCodes.InvalidType, $"{type.Name} must keep at least one version");
+                    }
+                    else
+                    {
+                        t.PublishPolicy(policy.UnpublishedReferences, policy.MaxVersions);
+                    }
+                }
+            }
+            else if (type.GetCustomAttribute<PublishPolicyAttribute>(inherit: false) is not null)
+            {
+                Report(SchemaErrorCodes.InvalidType, $"{kind.ToString().ToLowerInvariant()} {type.Name} is not published, so it cannot have a publish policy");
             }
 
             foreach (var property in Properties(type))

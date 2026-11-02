@@ -112,19 +112,33 @@ FluentCMS.Content.IContentService
 FluentCMS.Content.IContentService.CountAsync(string! type, FluentCMS.Content.ContentFilter? filter = null, FluentCMS.Content.QueryStatus status = FluentCMS.Content.QueryStatus.Published, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<long>!
 FluentCMS.Content.IContentService.CreateAsync(string! type, FluentCMS.Content.ContentDocument! entry, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.ContentDocument!>!
 FluentCMS.Content.IContentService.DeleteAsync(string! type, System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+FluentCMS.Content.IContentService.DiffAsync(string! type, System.Guid id, int fromVersion, int toVersion, string? locale = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<FluentCMS.Publishing.VersionChange!>!>!
+FluentCMS.Content.IContentService.DiscardDraftAsync(string! type, System.Guid id, string? locale = null, int? expectedVersion = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.ContentDocument!>!
 FluentCMS.Content.IContentService.GetAsync(string! type, System.Guid id, FluentCMS.Content.GetOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.ContentDocument?>!
+FluentCMS.Content.IContentService.GetVersionAsync(string! type, System.Guid id, int number, string? locale = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.ContentDocument?>!
+FluentCMS.Content.IContentService.GetVersionsAsync(string! type, System.Guid id, string? locale = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<FluentCMS.Publishing.VersionInfo!>!>!
 FluentCMS.Content.IContentService.PatchAsync(string! type, System.Guid id, FluentCMS.Content.ContentDocument! patch, int expectedVersion, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.ContentDocument!>!
+FluentCMS.Content.IContentService.PublishAsync(string! type, System.Guid id, string? locale = null, int? expectedVersion = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Publishing.PublishResult<FluentCMS.Content.ContentDocument!>!>!
 FluentCMS.Content.IContentService.QueryAsync(string! type, FluentCMS.Content.ContentQuery! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.PagedResult<FluentCMS.Content.ContentDocument!>!>!
 FluentCMS.Content.IContentService.RestoreAsync(string! type, System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.ContentDocument!>!
+FluentCMS.Content.IContentService.RestoreVersionAsync(string! type, System.Guid id, int number, string? locale = null, int? expectedVersion = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.ContentDocument!>!
+FluentCMS.Content.IContentService.UnpublishAsync(string! type, System.Guid id, string? locale = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.ContentDocument!>!
 FluentCMS.Content.IContentService.UpdateAsync(string! type, System.Guid id, FluentCMS.Content.ContentDocument! entry, int expectedVersion, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.ContentDocument!>!
 FluentCMS.Content.IContentService<T>
 FluentCMS.Content.IContentService<T>.CountAsync(FluentCMS.Content.ContentFilter? filter = null, FluentCMS.Content.QueryStatus status = FluentCMS.Content.QueryStatus.Published, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<long>!
 FluentCMS.Content.IContentService<T>.CreateAsync(T! entry, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
 FluentCMS.Content.IContentService<T>.DeleteAsync(System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+FluentCMS.Content.IContentService<T>.DiffAsync(System.Guid id, int fromVersion, int toVersion, string? locale = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<FluentCMS.Publishing.VersionChange!>!>!
+FluentCMS.Content.IContentService<T>.DiscardDraftAsync(System.Guid id, string? locale = null, int? expectedVersion = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
 FluentCMS.Content.IContentService<T>.GetAsync(System.Guid id, FluentCMS.Content.GetOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T?>!
+FluentCMS.Content.IContentService<T>.GetVersionAsync(System.Guid id, int number, string? locale = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T?>!
+FluentCMS.Content.IContentService<T>.GetVersionsAsync(System.Guid id, string? locale = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<FluentCMS.Publishing.VersionInfo!>!>!
 FluentCMS.Content.IContentService<T>.PatchAsync(System.Guid id, FluentCMS.Content.ContentDocument! patch, int expectedVersion, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
+FluentCMS.Content.IContentService<T>.PublishAsync(System.Guid id, string? locale = null, int? expectedVersion = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Publishing.PublishResult<T!>!>!
 FluentCMS.Content.IContentService<T>.QueryAsync(FluentCMS.Content.ContentQuery! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.PagedResult<T!>!>!
 FluentCMS.Content.IContentService<T>.RestoreAsync(System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
+FluentCMS.Content.IContentService<T>.RestoreVersionAsync(System.Guid id, int number, string? locale = null, int? expectedVersion = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
+FluentCMS.Content.IContentService<T>.UnpublishAsync(System.Guid id, string? locale = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
 FluentCMS.Content.IContentService<T>.UpdateAsync(System.Guid id, T! entry, int expectedVersion, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
 FluentCMS.Content.IEntryValidator<T>
 FluentCMS.Content.IEntryValidator<T>.ValidateAsync(T entry, FluentCMS.Content.ValidationContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
@@ -410,6 +424,78 @@ FluentCMS.Publishing.EntryStatus.Draft = 0 -> FluentCMS.Publishing.EntryStatus
 FluentCMS.Publishing.EntryStatus.Modified = 2 -> FluentCMS.Publishing.EntryStatus
 FluentCMS.Publishing.EntryStatus.Published = 1 -> FluentCMS.Publishing.EntryStatus
 FluentCMS.Publishing.EntryStatus.Unpublished = 3 -> FluentCMS.Publishing.EntryStatus
+FluentCMS.Publishing.PublishPolicyAttribute
+FluentCMS.Publishing.PublishPolicyAttribute.MaxVersions.get -> int
+FluentCMS.Publishing.PublishPolicyAttribute.MaxVersions.set -> void
+FluentCMS.Publishing.PublishPolicyAttribute.PublishPolicyAttribute() -> void
+FluentCMS.Publishing.PublishPolicyAttribute.UnpublishedReferences.get -> FluentCMS.Publishing.UnpublishedReferencePolicy
+FluentCMS.Publishing.PublishPolicyAttribute.UnpublishedReferences.set -> void
+FluentCMS.Publishing.PublishResult<T>
+FluentCMS.Publishing.PublishResult<T>.<Clone>$() -> FluentCMS.Publishing.PublishResult<T>!
+FluentCMS.Publishing.PublishResult<T>.Deconstruct(out T Entry, out System.Collections.Generic.IReadOnlyList<FluentCMS.Publishing.PublishWarning!>! Warnings) -> void
+FluentCMS.Publishing.PublishResult<T>.Entry.get -> T
+FluentCMS.Publishing.PublishResult<T>.Entry.init -> void
+FluentCMS.Publishing.PublishResult<T>.Equals(FluentCMS.Publishing.PublishResult<T>? other) -> bool
+FluentCMS.Publishing.PublishResult<T>.PublishResult(T Entry, System.Collections.Generic.IReadOnlyList<FluentCMS.Publishing.PublishWarning!>! Warnings) -> void
+FluentCMS.Publishing.PublishResult<T>.Warnings.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Publishing.PublishWarning!>!
+FluentCMS.Publishing.PublishResult<T>.Warnings.init -> void
+FluentCMS.Publishing.PublishWarning
+FluentCMS.Publishing.PublishWarning.<Clone>$() -> FluentCMS.Publishing.PublishWarning!
+FluentCMS.Publishing.PublishWarning.Code.get -> string!
+FluentCMS.Publishing.PublishWarning.Code.init -> void
+FluentCMS.Publishing.PublishWarning.Deconstruct(out string! Path, out string! Code, out string! Message, out string? TargetType, out System.Guid? TargetId) -> void
+FluentCMS.Publishing.PublishWarning.Equals(FluentCMS.Publishing.PublishWarning? other) -> bool
+FluentCMS.Publishing.PublishWarning.Message.get -> string!
+FluentCMS.Publishing.PublishWarning.Message.init -> void
+FluentCMS.Publishing.PublishWarning.Path.get -> string!
+FluentCMS.Publishing.PublishWarning.Path.init -> void
+FluentCMS.Publishing.PublishWarning.PublishWarning(string! Path, string! Code, string! Message, string? TargetType = null, System.Guid? TargetId = null) -> void
+FluentCMS.Publishing.PublishWarning.TargetId.get -> System.Guid?
+FluentCMS.Publishing.PublishWarning.TargetId.init -> void
+FluentCMS.Publishing.PublishWarning.TargetType.get -> string?
+FluentCMS.Publishing.PublishWarning.TargetType.init -> void
+FluentCMS.Publishing.PublishWarningCodes
+FluentCMS.Publishing.UnpublishedReferencePolicy
+FluentCMS.Publishing.UnpublishedReferencePolicy.Block = 1 -> FluentCMS.Publishing.UnpublishedReferencePolicy
+FluentCMS.Publishing.UnpublishedReferencePolicy.Warn = 0 -> FluentCMS.Publishing.UnpublishedReferencePolicy
+FluentCMS.Publishing.VersionChange
+FluentCMS.Publishing.VersionChange.<Clone>$() -> FluentCMS.Publishing.VersionChange!
+FluentCMS.Publishing.VersionChange.After.get -> System.Text.Json.Nodes.JsonNode?
+FluentCMS.Publishing.VersionChange.After.init -> void
+FluentCMS.Publishing.VersionChange.Before.get -> System.Text.Json.Nodes.JsonNode?
+FluentCMS.Publishing.VersionChange.Before.init -> void
+FluentCMS.Publishing.VersionChange.Deconstruct(out string! Path, out FluentCMS.Publishing.VersionChangeKind Kind, out System.Text.Json.Nodes.JsonNode? Before, out System.Text.Json.Nodes.JsonNode? After) -> void
+FluentCMS.Publishing.VersionChange.Equals(FluentCMS.Publishing.VersionChange? other) -> bool
+FluentCMS.Publishing.VersionChange.Kind.get -> FluentCMS.Publishing.VersionChangeKind
+FluentCMS.Publishing.VersionChange.Kind.init -> void
+FluentCMS.Publishing.VersionChange.Path.get -> string!
+FluentCMS.Publishing.VersionChange.Path.init -> void
+FluentCMS.Publishing.VersionChange.VersionChange(string! Path, FluentCMS.Publishing.VersionChangeKind Kind, System.Text.Json.Nodes.JsonNode? Before, System.Text.Json.Nodes.JsonNode? After) -> void
+FluentCMS.Publishing.VersionChangeKind
+FluentCMS.Publishing.VersionChangeKind.Added = 0 -> FluentCMS.Publishing.VersionChangeKind
+FluentCMS.Publishing.VersionChangeKind.Changed = 2 -> FluentCMS.Publishing.VersionChangeKind
+FluentCMS.Publishing.VersionChangeKind.Removed = 1 -> FluentCMS.Publishing.VersionChangeKind
+FluentCMS.Publishing.VersionInfo
+FluentCMS.Publishing.VersionInfo.<Clone>$() -> FluentCMS.Publishing.VersionInfo!
+FluentCMS.Publishing.VersionInfo.AuthorId.get -> System.Guid
+FluentCMS.Publishing.VersionInfo.AuthorId.init -> void
+FluentCMS.Publishing.VersionInfo.ClientId.get -> string?
+FluentCMS.Publishing.VersionInfo.ClientId.init -> void
+FluentCMS.Publishing.VersionInfo.CreatedAt.get -> System.DateTimeOffset
+FluentCMS.Publishing.VersionInfo.CreatedAt.init -> void
+FluentCMS.Publishing.VersionInfo.Deconstruct(out int Number, out string! Locale, out FluentCMS.Publishing.EntryStatus Status, out System.Guid AuthorId, out FluentCMS.Content.Origin Origin, out string? ClientId, out string? Message, out System.DateTimeOffset CreatedAt) -> void
+FluentCMS.Publishing.VersionInfo.Equals(FluentCMS.Publishing.VersionInfo? other) -> bool
+FluentCMS.Publishing.VersionInfo.Locale.get -> string!
+FluentCMS.Publishing.VersionInfo.Locale.init -> void
+FluentCMS.Publishing.VersionInfo.Message.get -> string?
+FluentCMS.Publishing.VersionInfo.Message.init -> void
+FluentCMS.Publishing.VersionInfo.Number.get -> int
+FluentCMS.Publishing.VersionInfo.Number.init -> void
+FluentCMS.Publishing.VersionInfo.Origin.get -> FluentCMS.Content.Origin
+FluentCMS.Publishing.VersionInfo.Origin.init -> void
+FluentCMS.Publishing.VersionInfo.Status.get -> FluentCMS.Publishing.EntryStatus
+FluentCMS.Publishing.VersionInfo.Status.init -> void
+FluentCMS.Publishing.VersionInfo.VersionInfo(int Number, string! Locale, FluentCMS.Publishing.EntryStatus Status, System.Guid AuthorId, FluentCMS.Content.Origin Origin, string? ClientId, string? Message, System.DateTimeOffset CreatedAt) -> void
 FluentCMS.Schema.BlockAttribute
 FluentCMS.Schema.BlockAttribute.BlockAttribute(string? name = null) -> void
 FluentCMS.Schema.BlockAttribute.Name.get -> string?
@@ -607,6 +693,7 @@ FluentCMS.Schema.ISchemaBuilder.LoadSchemaFile(string! path) -> FluentCMS.Schema
 FluentCMS.Schema.ITypeBuilder
 FluentCMS.Schema.ITypeBuilder.Field(string! name, string! fieldType, System.Action<FluentCMS.Schema.IFieldBuilder!>? configure = null) -> FluentCMS.Schema.ITypeBuilder!
 FluentCMS.Schema.ITypeBuilder.Localized(bool localized = true) -> FluentCMS.Schema.ITypeBuilder!
+FluentCMS.Schema.ITypeBuilder.PublishPolicy(FluentCMS.Publishing.UnpublishedReferencePolicy unpublishedReferences = FluentCMS.Publishing.UnpublishedReferencePolicy.Warn, int maxVersions = 50) -> FluentCMS.Schema.ITypeBuilder!
 FluentCMS.Schema.ITypeBuilder.Scope(FluentCMS.Schema.ContentScope scope) -> FluentCMS.Schema.ITypeBuilder!
 FluentCMS.Schema.IndexedAttribute
 FluentCMS.Schema.IndexedAttribute.IndexedAttribute() -> void
@@ -716,9 +803,11 @@ FluentCMS.Schema.SchemaType.Fields.get -> System.Collections.Generic.IReadOnlyLi
 FluentCMS.Schema.SchemaType.FindField(string! name) -> FluentCMS.Schema.SchemaField?
 FluentCMS.Schema.SchemaType.Kind.get -> FluentCMS.Schema.SchemaTypeKind
 FluentCMS.Schema.SchemaType.Localized.get -> bool
+FluentCMS.Schema.SchemaType.MaxVersions.get -> int
 FluentCMS.Schema.SchemaType.Name.get -> string!
 FluentCMS.Schema.SchemaType.ReverseRelations.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Schema.ReverseRelation!>!
 FluentCMS.Schema.SchemaType.Scope.get -> FluentCMS.Schema.ContentScope
+FluentCMS.Schema.SchemaType.UnpublishedReferences.get -> FluentCMS.Publishing.UnpublishedReferencePolicy
 FluentCMS.Schema.SchemaTypeKind
 FluentCMS.Schema.SchemaTypeKind.Block = 4 -> FluentCMS.Schema.SchemaTypeKind
 FluentCMS.Schema.SchemaTypeKind.Collection = 1 -> FluentCMS.Schema.SchemaTypeKind
@@ -789,6 +878,9 @@ const FluentCMS.Content.ValidationErrorCodes.PatternMismatch = "FCMS2106" -> str
 const FluentCMS.Content.ValidationErrorCodes.Required = "FCMS2101" -> string!
 const FluentCMS.Content.ValidationErrorCodes.RequiredByCondition = "FCMS2110" -> string!
 const FluentCMS.Localization.ILocaleResolver.All = "all" -> string!
+const FluentCMS.Publishing.PublishPolicyAttribute.DefaultMaxVersions = 50 -> int
+const FluentCMS.Publishing.PublishWarningCodes.UnavailableReference = "FCMS2404" -> string!
+const FluentCMS.Publishing.PublishWarningCodes.UnpublishedReference = "FCMS2403" -> string!
 const FluentCMS.Schema.FieldSettings.Blocks = "blocks" -> string!
 const FluentCMS.Schema.FieldSettings.Component = "component" -> string!
 const FluentCMS.Schema.FieldSettings.Options = "options" -> string!
@@ -855,6 +947,18 @@ override FluentCMS.Media.MediaRef.ToString() -> string!
 override FluentCMS.Media.MediaRefList.Equals(object? obj) -> bool
 override FluentCMS.Media.MediaRefList.GetHashCode() -> int
 override FluentCMS.Media.MediaRefList.ToString() -> string!
+override FluentCMS.Publishing.PublishResult<T>.Equals(object? obj) -> bool
+override FluentCMS.Publishing.PublishResult<T>.GetHashCode() -> int
+override FluentCMS.Publishing.PublishResult<T>.ToString() -> string!
+override FluentCMS.Publishing.PublishWarning.Equals(object? obj) -> bool
+override FluentCMS.Publishing.PublishWarning.GetHashCode() -> int
+override FluentCMS.Publishing.PublishWarning.ToString() -> string!
+override FluentCMS.Publishing.VersionChange.Equals(object? obj) -> bool
+override FluentCMS.Publishing.VersionChange.GetHashCode() -> int
+override FluentCMS.Publishing.VersionChange.ToString() -> string!
+override FluentCMS.Publishing.VersionInfo.Equals(object? obj) -> bool
+override FluentCMS.Publishing.VersionInfo.GetHashCode() -> int
+override FluentCMS.Publishing.VersionInfo.ToString() -> string!
 override FluentCMS.Schema.BlockList.Equals(object? obj) -> bool
 override FluentCMS.Schema.BlockList.GetHashCode() -> int
 override FluentCMS.Schema.BlockList.ToString() -> string!
@@ -921,6 +1025,14 @@ static FluentCMS.Media.MediaRef.operator ==(FluentCMS.Media.MediaRef left, Fluen
 static FluentCMS.Media.MediaRefList.Create(System.ReadOnlySpan<FluentCMS.Media.MediaRef> items) -> FluentCMS.Media.MediaRefList!
 static FluentCMS.Media.MediaRefList.operator !=(FluentCMS.Media.MediaRefList? left, FluentCMS.Media.MediaRefList? right) -> bool
 static FluentCMS.Media.MediaRefList.operator ==(FluentCMS.Media.MediaRefList? left, FluentCMS.Media.MediaRefList? right) -> bool
+static FluentCMS.Publishing.PublishResult<T>.operator !=(FluentCMS.Publishing.PublishResult<T>? left, FluentCMS.Publishing.PublishResult<T>? right) -> bool
+static FluentCMS.Publishing.PublishResult<T>.operator ==(FluentCMS.Publishing.PublishResult<T>? left, FluentCMS.Publishing.PublishResult<T>? right) -> bool
+static FluentCMS.Publishing.PublishWarning.operator !=(FluentCMS.Publishing.PublishWarning? left, FluentCMS.Publishing.PublishWarning? right) -> bool
+static FluentCMS.Publishing.PublishWarning.operator ==(FluentCMS.Publishing.PublishWarning? left, FluentCMS.Publishing.PublishWarning? right) -> bool
+static FluentCMS.Publishing.VersionChange.operator !=(FluentCMS.Publishing.VersionChange? left, FluentCMS.Publishing.VersionChange? right) -> bool
+static FluentCMS.Publishing.VersionChange.operator ==(FluentCMS.Publishing.VersionChange? left, FluentCMS.Publishing.VersionChange? right) -> bool
+static FluentCMS.Publishing.VersionInfo.operator !=(FluentCMS.Publishing.VersionInfo? left, FluentCMS.Publishing.VersionInfo? right) -> bool
+static FluentCMS.Publishing.VersionInfo.operator ==(FluentCMS.Publishing.VersionInfo? left, FluentCMS.Publishing.VersionInfo? right) -> bool
 static FluentCMS.Schema.BlockList.Create(System.ReadOnlySpan<object!> items) -> FluentCMS.Schema.BlockList!
 static FluentCMS.Schema.BlockList.operator !=(FluentCMS.Schema.BlockList? left, FluentCMS.Schema.BlockList? right) -> bool
 static FluentCMS.Schema.BlockList.operator ==(FluentCMS.Schema.BlockList? left, FluentCMS.Schema.BlockList? right) -> bool

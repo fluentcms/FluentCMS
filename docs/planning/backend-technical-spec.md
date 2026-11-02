@@ -68,7 +68,7 @@ ASP.NET Core host (your app, or FluentCMS.Host)
 |   -> authenticate, resolve site and locale, parse the query, map errors, cache
 |
 +-- In-process services: the only place rules are enforced
-|   IContentService<T>, IPublishingService, IMediaService, IAuthorizationEvaluator,
+|   IContentService<T>, IMediaService, IAuthorizationEvaluator,
 |   IActivityLog, IEventBus, IJobScheduler
 |   -> permissions, row rules, field filtering, validation, hooks, versions
 |
@@ -289,7 +289,7 @@ Rows 8.3, 8.11, 8.14, 8.16 and every attribute and interface named below.
 | --- | --- |
 | `FluentCMS.Schema` | content type and field attributes, `ContentItem` base class, `RichText`, `BlockList`, `Ref<T>`, `RefList<T>`, `IFieldType`, fluent `ISchemaBuilder`, rich text contracts `IRichTextRenderer`, `IRichTextNodeRenderer`, `IRichTextNodeContext`, `RichTextRenderOptions`, `RichTextFormats` |
 | `FluentCMS.Content` | `IContentService`, `IContentService<T>`, `ContentDocument`, `ContentQuery`, filter AST, `PagedResult<T>`, `OperationContext`, `Origin`, `Principal` |
-| `FluentCMS.Publishing` | `EntryStatus`, `VersionInfo`, `ScheduleRequest`, `IPublishingService` |
+| `FluentCMS.Publishing` | `EntryStatus`, `VersionInfo`, `VersionChange`, `PublishResult<T>`, `PublishWarning`, `PublishPolicyAttribute`, `ScheduleRequest` |
 | `FluentCMS.Hooks` | hook interfaces and `HookContext` |
 | `FluentCMS.Events` | `IEventBus`, `IEventHandler<T>`, event records |
 | `FluentCMS.Jobs` | `IJob<TPayload>`, `IJobScheduler`, `JobOptions` |
@@ -537,16 +537,20 @@ Rows 6.1 to 6.11; decisions 38, 39, 40, 41.
 | Save draft | upsert state 0 rows, `draft_version++`, write `cms_version` | draft rules | `EntryDraftSavedEvent` |
 | Publish | copy state 0 rows to state 1, set `published_version`, `published_at` | full rules plus reference integrity | `EntryPublishedEvent` |
 | Unpublish | delete state 1 rows, status `Unpublished` | permission | `EntryUnpublishedEvent` |
-| Discard draft | copy state 1 rows to state 0 | permission | `EntryDraftDiscardedEvent` |
-| Restore version | new draft from snapshot | draft rules | `EntryVersionRestoredEvent` |
+| Discard draft | copy state 1 rows to state 0, as a new version; needs `update` | permission | `EntryDraftDiscardedEvent` |
+| Restore version | new draft from snapshot; needs `update` | draft rules | `EntryVersionRestoredEvent` |
 | Trash | set `deleted_at`; excluded by the global query filter | permission | `EntryTrashedEvent` |
 | Restore from trash | clear `deleted_at` | permission | `EntryRestoredEvent` |
 | Purge | delete all rows; separate permission `content.{type}.purge` | | `EntryPurgedEvent` |
 | Schedule | row in `cms_schedule`, job enqueued | | `EntryScheduledEvent` |
 
-**Versions.** Every save writes an immutable snapshot (decision 38) with author, origin, client id and an optional message. A per-type cap (default 50) prunes oldest drafts; versions that were published are never pruned. Diff is computed on demand as a field-level structural diff (blocks and rich text compared as trees) and returned as a list of `{ path, kind, before, after }`.
+**Versions.** Every save writes an immutable snapshot (decision 38) with author, origin, client id and an optional message. A per-type cap (default 50, `[PublishPolicy(MaxVersions = n)]`) prunes oldest drafts when a version is written; versions that were published are never pruned, which `status_after` records. Diff is computed on demand as a field-level structural diff (blocks and rich text compared as trees) and returned as a list of `{ path, kind, before, after }`. A snapshot holds hidden fields, so reads and diffs go through the reader's field limits as they are today, and need the Management scope as well as the draft read. A restore is a write of the principal's own: what it may not write or read, and what is hidden or read-only, keeps the value the draft holds, except for the system principal.
 
-**Reference integrity.** On publish, references to unpublished or trashed entries produce warnings in the response (`warnings[]`) by default; `[PublishPolicy(UnpublishedReferences = Block)]` on a type turns them into a 422.
+**Reference integrity.** On publish, references to unpublished or trashed entries produce warnings in the response (`warnings[]`) by default; `[PublishPolicy(UnpublishedReferences = Block)]` on a type turns them into a 422. A target counts as published when it has a published row in the entry's locale or its fallback chain. The answer must not be a way to ask about an entry the principal may not read, since a write takes any id: a target of a type it may not read is never confirmed, so it is no warning and, under `Block`, always a refusal; one its row rule refuses, one in the trash or in another site and one that does not exist read the same and name no id; a reference in a field it may not read, or a hidden one, is no warning and, under `Block`, a refusal that does not say where.
+
+**Published reads.** A published read shows only what is published. A relation target that is trashed or has no published row in any locale is returned as null, or left out of a multiple relation. A target published only in another locale stays `{ id, type }`, since a reader with a fallback can follow it. A draft read keeps a trashed or unpublished target as a reference, because that is what its author attached. A filter on the relation still matches such a target: it answers about the source entry and a value the caller named.
+
+**Shared fields.** Non-localizable fields live on one row per state, so publishing one locale publishes them for every published locale. A grant limited to some locales may publish only when those fields have not changed, or no other locale is published. The other locales' status is recomputed after a transition that moves the shared row.
 
 **Scheduling.** `cms_schedule (id, document_id, locale, action, run_at_utc, time_zone, status, job_id, created_by)`. The job runner executes `ScheduledPublishJob` and `ScheduledUnpublishJob`; `cms_document` mirrors the next scheduled times for list views. Cancel and reschedule update the row and the job.
 

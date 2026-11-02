@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using FluentCMS.Publishing;
 using FluentCMS.Schema;
 
 namespace FluentCMS.Core.Schema;
@@ -53,6 +54,16 @@ internal static class SchemaJsonWriter
             if (type.Scope == ContentScope.Global)
             {
                 writer.WriteString("scope", "global");
+            }
+
+            if (type.UnpublishedReferences == UnpublishedReferencePolicy.Block)
+            {
+                writer.WriteString("unpublishedReferences", "block");
+            }
+
+            if (type.MaxVersions != PublishPolicyAttribute.DefaultMaxVersions)
+            {
+                writer.WriteNumber("maxVersions", type.MaxVersions);
             }
 
             writer.WriteStartArray("fields");

@@ -364,7 +364,8 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
 
     // Which targets of a relation to return, or null for all of them. A target the principal cannot read by type or by
     // row rule is not returned, even as a reference, and neither is one in another site than the query's. Under a row
-    // rule, a target with no row in this state and locale cannot be shown to pass, so it goes too.
+    // rule, a target with no row in this state and locale cannot be shown to pass, so it goes too. A published read shows
+    // only what is published (spec 4.5): a target in the trash or with no published row in any locale is not there.
     private async Task<HashSet<Guid>?> ReadableTargetsAsync(QueryScope query, ReferenceOutput output, List<Reference> references, CancellationToken cancellationToken)
     {
         var target = output.Stored.Field.Relation is { } relation ? schema.FindContentType(relation.Target) : null;
@@ -380,7 +381,8 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
 
         var inOneSite = target.Scope == ContentScope.Site && query.Site is not null;
         var hasRule = query.Access.RowRule(target) is not null;
-        if (!inOneSite && !hasRule)
+        var isPublished = query.State == ContentState.Published;
+        if (!inOneSite && !hasRule && !isPublished)
         {
             return null;
         }
@@ -388,14 +390,18 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         var ids = references.Where(reference => reference.Field == output.ApiPath).Select(reference => reference.TargetId).Distinct().ToList();
         if (!hasRule)
         {
-            // Trashed targets stay references, so this looks past the query filter.
-            var site = query.Site!.Value.Value;
-            var inSite = await context.Documents.IgnoreQueryFilters().AsNoTracking()
-                .Where(document => ids.Contains(document.DocumentId) && document.SiteId == site)
-                .Select(document => document.DocumentId)
-                .ToListAsync(cancellationToken);
+            // In a draft a trashed target stays a reference, so this looks past the query filter.
+            var documents = isPublished
+                ? context.Documents.AsNoTracking().Where(document => document.PublishedVersion != null)
+                : context.Documents.IgnoreQueryFilters().AsNoTracking();
+            documents = documents.Where(document => ids.Contains(document.DocumentId));
+            if (inOneSite)
+            {
+                var site = query.Site!.Value.Value;
+                documents = documents.Where(document => document.SiteId == site);
+            }
 
-            return [.. inSite];
+            return [.. await documents.Select(document => document.DocumentId).ToListAsync(cancellationToken)];
         }
 
         var row = Expression.Parameter(typeof(QueryRow), "row");
@@ -411,7 +417,7 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         return [.. readable];
     }
 
-    // A target that has no row in this state and locale stays a reference.
+    // A target that has no row in this state and locale stays a reference: in a published read, one published in another locale.
     private async Task PopulateAsync(QueryScope query, EntryPlan plan, List<(Materialized Parent, ContentDocument Reference, Guid Target)> wanted, CancellationToken cancellationToken)
     {
         var ids = wanted.Select(item => item.Target).Distinct().ToList();

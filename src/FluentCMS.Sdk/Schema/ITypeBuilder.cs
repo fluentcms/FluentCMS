@@ -1,3 +1,5 @@
+using FluentCMS.Publishing;
+
 namespace FluentCMS.Schema;
 
 /// <summary>Declares the fields of a type defined without a class.</summary>
@@ -13,6 +15,14 @@ public interface ITypeBuilder
     /// <returns>This builder.</returns>
     /// <exception cref="ArgumentException">The type is a component or a block and <paramref name="scope"/> is not <see cref="ContentScope.Site"/>.</exception>
     ITypeBuilder Scope(ContentScope scope);
+
+    /// <summary>Sets how entries are published and how many versions are kept. Only collections and singletons are published.</summary>
+    /// <param name="unpublishedReferences">What publishing does about a reference to an entry that is not published or is in the trash.</param>
+    /// <param name="maxVersions">How many versions to keep per entry and locale. A version that was published is never pruned.</param>
+    /// <returns>This builder.</returns>
+    /// <exception cref="ArgumentException">The type is a component or a block.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="maxVersions"/> is less than 1.</exception>
+    ITypeBuilder PublishPolicy(UnpublishedReferencePolicy unpublishedReferences = UnpublishedReferencePolicy.Warn, int maxVersions = PublishPolicyAttribute.DefaultMaxVersions);
 
     /// <summary>Declares a field.</summary>
     /// <param name="name">The field name, in camelCase.</param>

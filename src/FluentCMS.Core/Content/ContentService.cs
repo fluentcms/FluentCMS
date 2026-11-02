@@ -22,7 +22,7 @@ namespace FluentCMS.Core.Content;
 // in one transaction the entry and its row rule, the expected version, the field limits, BeforeValidate, validation,
 // BeforeCreate or BeforeUpdate, the write and the AfterX hooks, and only after the commit the change sink and the
 // response, which is read back like any other read so that a hook's values cannot reach it. A call from a hook joins the transaction.
-internal sealed class ContentService(
+internal sealed partial class ContentService(
     CmsDbContext context,
     SchemaModel schema,
     IOperationContextAccessor accessor,
@@ -377,26 +377,26 @@ internal sealed class ContentService(
         return (field => permissions.CanReadField(type, field.Name, target), permissions.IsSystem);
     }
 
-    private async Task<WriteScope> BeginAsync(string typeName, ContentOperation operationKind, CancellationToken cancellationToken)
+    private async Task<WriteScope> BeginAsync(string typeName, ContentOperation operationKind, CancellationToken cancellationToken, string? locale = null)
     {
         var operation = Current();
         var type = schema.FindContentType(typeName)
             ?? throw new ValidationException([new ValidationError("type", QueryErrorCodes.UnknownField, $"'{typeName}' is not a content type.")]);
 
-        var locale = await ResolveLocaleAsync(operation.Site, operation.Locale, cancellationToken);
-        if (locale == ILocaleResolver.All)
+        var resolved = await ResolveLocaleAsync(operation.Site, locale ?? operation.Locale, cancellationToken);
+        if (resolved == ILocaleResolver.All)
         {
             throw new ValidationException([new ValidationError("locale", QueryErrorCodes.InvalidParameter, "A write needs one locale.")]);
         }
 
-        var target = new AccessTarget(operation.Site, locale);
+        var target = new AccessTarget(operation.Site, resolved);
         var permissions = await evaluator.ResolveAsync(operation, cancellationToken);
         if (!permissions.Allows(type, operationKind, target))
         {
             throw new ContentAccessDeniedException(type.Name, CorePermissions.OperationName(operationKind));
         }
 
-        return new WriteScope(operation, type, operation.Site, locale, target, permissions, new FieldAccess(permissions, schema));
+        return new WriteScope(operation, type, operation.Site, resolved, target, permissions, new FieldAccess(permissions, schema));
     }
 
     // Runs writes as one transaction and tells the sink what committed. A write inside another transaction takes a
