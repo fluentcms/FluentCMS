@@ -205,7 +205,7 @@ internal sealed class JobExecutor(
 
                     leaseUntil = renewed;
                 }
-                catch (Exception exception) when (exception is not OperationCanceledException)
+                catch (Exception exception) when (!stop.IsCancellationRequested)
                 {
                     JobLog.HeartbeatFailed(logger, exception, job.Id);
 

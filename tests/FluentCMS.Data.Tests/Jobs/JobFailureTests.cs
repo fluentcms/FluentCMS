@@ -131,6 +131,51 @@ public sealed class JobFailureTests : IDisposable
         _fixture.Job(id).Attempts.ShouldBe(1);
     }
 
+    [Fact]
+    public async Task ARenewalThatIsCancelledDoesNotEndTheHeartbeat()
+    {
+        var attempt = CancellationToken.None;
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _fixture.Probe.Behavior = async (_, context) =>
+        {
+            attempt = context.CancellationToken;
+            await gate.Task;
+        };
+        var id = await _fixture.EnqueueAsync();
+
+        var running = Task.Run(() => FaultyExecutor().RunNextAsync(Queue, "A", Token), Token);
+        await Eventually.HoldsAsync(() => !_fixture.Probe.Runs.IsEmpty);
+
+        _faults.Fail(command =>
+        {
+            if (!command.CommandText.Contains("\"lease_until\"", StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            _faults.Recover();
+            throw new OperationCanceledException();
+        });
+        await BeatAsync(1);
+
+        // The next renewal still happens, so the lease outlives what it would have been without one.
+        for (var beat = 0; beat < 6; beat++)
+        {
+            _fixture.Clock.Advance(Beat);
+            var expected = _fixture.Clock.GetUtcNow() + Lease;
+            await Eventually.HoldsAsync(() => _fixture.Job(id).LeaseUntil == expected);
+        }
+
+        attempt.IsCancellationRequested.ShouldBeFalse();
+        (await _fixture.Store.ClaimAsync(Queue, "B", Token)).ShouldBeNull();
+
+        gate.SetResult();
+        (await running).ShouldBeTrue();
+
+        _fixture.Job(id).Status.ShouldBe(JobStatus.Succeeded);
+        _fixture.Job(id).Attempts.ShouldBe(1);
+    }
+
     [Theory]
     [InlineData(1)]
     [InlineData(3)]
