@@ -1,6 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <InternalsVisibleTo Include="FluentCMS.Core.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="../FluentCMS.Sdk/FluentCMS.Sdk.csproj" />
   </ItemGroup>
 
