@@ -1,5 +1,6 @@
 using FluentCMS.Content;
 using FluentCMS.Core.Content.Query;
+using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Tests.Schema;
@@ -65,6 +66,7 @@ internal sealed class QueryDatabase : IDisposable
             .Field("contact", "email")
             .Field("link", "url")
             .Field("summary", "longText")
+            .Field("region", "text")
             .Field("author", "relation", field => field.Relation("author"))
             .Field("tags", "relation", field => field.Multiple().Relation("tag", ordered: true))
             .Field("related", "relation", field => field.Multiple().Relation("article"))
@@ -81,9 +83,9 @@ internal sealed class QueryDatabase : IDisposable
     private readonly ServiceProvider _services;
     private readonly IServiceScope _scope;
 
-    public QueryDatabase()
+    public QueryDatabase(Action<FluentCmsBuilder>? configure = null)
     {
-        _services = _database.CreateServices(Schema);
+        _services = _database.CreateServices(Schema, configure);
         _scope = _services.CreateScope();
         Context = _scope.ServiceProvider.GetRequiredService<CmsDbContext>();
 
@@ -96,6 +98,8 @@ internal sealed class QueryDatabase : IDisposable
 
     public IServiceProvider Services => _scope.ServiceProvider;
 
+    public IServiceScope NewScope() => _services.CreateScope();
+
     public ContentQueryEngine Engine(IContentQueryAccess? access = null, ContentQueryOptions? options = null) => new(
         Context,
         Schema,
@@ -103,14 +107,14 @@ internal sealed class QueryDatabase : IDisposable
         access ?? new OpenContentQueryAccess(),
         options ?? new ContentQueryOptions());
 
-    public Guid AddArticle(string title, Dictionary<string, object?>? values = null, string locale = "en", short state = ContentState.Published, Guid? id = null, Guid? site = null)
+    public Guid AddArticle(string title, Dictionary<string, object?>? values = null, string locale = "en", short state = ContentState.Published, Guid? id = null, Guid? site = null, Guid? createdBy = null)
     {
         var documentId = id ?? Guid.CreateVersion7();
-        var shared = new[] { "views", "price", "featured", "published_on", "issued", "category", "labels", "contact", "link", "summary", "sections", "seo_meta_title", "seo_meta_description", "seo_internal", "metadata", "secret", "faq" };
+        var shared = new[] { "views", "price", "featured", "published_on", "issued", "category", "labels", "contact", "link", "summary", "region", "sections", "seo_meta_title", "seo_meta_description", "seo_internal", "metadata", "secret", "faq" };
 
         if (id is null)
         {
-            AddDocument("article", documentId, locale, state, site ?? SiteA);
+            AddDocument("article", documentId, locale, state, site ?? SiteA, createdBy);
             var row = new Dictionary<string, object>
             {
                 ["document_id"] = documentId,
@@ -125,7 +129,7 @@ internal sealed class QueryDatabase : IDisposable
         }
         else
         {
-            AddDocument("article", documentId, locale, state, site ?? SiteA);
+            AddDocument("article", documentId, locale, state, site ?? SiteA, createdBy);
         }
 
         var localized = new Dictionary<string, object>
@@ -145,10 +149,10 @@ internal sealed class QueryDatabase : IDisposable
         return documentId;
     }
 
-    public Guid AddAuthor(string name, string? secret = null, short state = ContentState.Published, long? age = null)
+    public Guid AddAuthor(string name, string? secret = null, short state = ContentState.Published, long? age = null, Guid? createdBy = null)
     {
         var id = Guid.CreateVersion7();
-        AddDocument("author", id, "", state, SiteA);
+        AddDocument("author", id, "", state, SiteA, createdBy);
         var row = new Dictionary<string, object> { ["document_id"] = id, ["site_id"] = SiteA, ["state"] = state, ["name"] = name };
         if (secret is not null)
         {
@@ -226,7 +230,7 @@ internal sealed class QueryDatabase : IDisposable
         _database.Dispose();
     }
 
-    private void AddDocument(string type, Guid id, string locale, short state, Guid? site)
+    private void AddDocument(string type, Guid id, string locale, short state, Guid? site, Guid? createdBy = null)
     {
         var now = DateTimeOffset.UtcNow;
         Context.Documents.Add(new Document
@@ -240,7 +244,7 @@ internal sealed class QueryDatabase : IDisposable
             PublishedVersion = state == ContentState.Published ? 2 : null,
             PublishedAt = state == ContentState.Published ? now : null,
             CreatedAt = now,
-            CreatedBy = Guid.Empty,
+            CreatedBy = createdBy ?? Guid.Empty,
             UpdatedAt = now,
             UpdatedBy = Guid.Empty,
         });
@@ -256,6 +260,18 @@ internal sealed class QueryDatabase : IDisposable
             }
         }
     }
+}
+
+// Reads everything but drafts, for tests of the query itself.
+internal sealed class OpenContentQueryAccess : IContentQueryAccess
+{
+    public bool CanReadType(SchemaType type) => true;
+
+    public bool CanReadDraft(SchemaType type) => false;
+
+    public bool CanReadField(SchemaType type, string field) => true;
+
+    public ContentFilter? RowRule(SchemaType type) => null;
 }
 
 internal sealed class QueryAccess : IContentQueryAccess

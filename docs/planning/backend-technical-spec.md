@@ -492,7 +492,7 @@ GET /api/delivery/v1/article
 
 **Compilation.** The AST compiles to LINQ over the property-bag entities. Relation paths join through `cms_reference` to the target type's row in the same state and locale (decision 44: no fallback-aware filtering). Block and JSON paths go through `IJsonSqlDialect`. Row rules from the evaluator are appended as an `And` node before compilation, so authorization and filtering are one query. `state` is inlined as a literal and every user value is bound as a parameter, by reading a member of a holder object, because a bare expression constant becomes a SQL literal. SQLite does not need the inlined `state`, but a literal matches the `WHERE state = 1` index predicate as written, and [#2711](https://github.com/fluentcms/FluentCMS/issues/2711) checks the other providers.
 
-**Population.** Default depth 1, cap configurable (default 3). Beyond the depth a relation is returned as `{ "id": "...", "type": "author" }`. Cycles stop at the cap. Field selection applies to populated entries with dotted paths.
+**Population.** Default depth 1, cap configurable (default 3). Beyond the depth a relation is returned as `{ "id": "...", "type": "author" }`. A target the principal cannot read, by type or by row rule, is returned as null at any depth, and left out of a multiple relation, so that a reader cannot learn that it exists. Cycles stop at the cap. Field selection applies to populated entries with dotted paths.
 
 **Pagination.** Offset and page with `total` (skip the count with `withTotal=false`). Keyset cursor: base64 of the sort key values plus the document id, which is always appended as the final sort key for stability. A v7 `document_id` makes that key stable, but it does not give creation order within one millisecond.
 

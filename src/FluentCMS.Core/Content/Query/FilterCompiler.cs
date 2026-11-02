@@ -26,7 +26,9 @@ internal sealed class FilterCompiler(QueryScope query)
     }
 
     // Returns null when neither the client nor a row rule filters. The row rule joins the filter in an And node, and
-    // is the one part of it compiled without the access checks.
+    // is the one part of it compiled without the access checks. A rule is trusted all the way down, so a relation path
+    // in it does not pick up the row rule of the target, or a rule that goes through a type the principal cannot read
+    // would stop working.
     public Expression? Where(SchemaType type, ContentFilter? filter, Expression row)
     {
         if (filter is not null && !FilterTree.IsWithin(filter, query.Options.MaxFilterNodes))
@@ -40,7 +42,7 @@ internal sealed class FilterCompiler(QueryScope query)
 
     private Expression? Where(SchemaType type, ContentFilter? filter, Expression row, bool trusted, string prefix, int hops, FilterOperator? asked)
     {
-        var rule = query.Access.RowRule(type);
+        var rule = trusted ? null : query.Access.RowRule(type);
         ContentFilter? combined = (rule, filter) switch
         {
             (null, null) => null,
@@ -423,22 +425,58 @@ internal sealed class FilterCompiler(QueryScope query)
             return Fail();
         }
 
+        // A target the client cannot read must not match, or the filter would tell that it exists. Hop does this for a
+        // path that goes on through the relation.
+        var readable = scope.Trusted ? null : ReadableTarget(path, targetId, scope);
+
+        Expression Targets(Expression? also) => (readable, also) switch
+        {
+            (null, _) => References(also),
+            (_, null) => References(readable),
+            _ => References(Expression.AndAlso(readable, also)),
+        };
+
         (object? Value, string? Problem) ReadId(object? value) =>
             SystemField.TryRead(value, typeof(Guid), out var id) ? (id, null) : (null, "is not an entry id: expected a GUID");
 
         switch (filter.Operator)
         {
             case FilterOperator.Equal:
-                return One(filter, scope, ReadId) is { } id ? References(Expression.Equal(targetId, Bind(id, typeof(Guid)))) : Fail();
+                return One(filter, scope, ReadId) is { } id ? Targets(Expression.Equal(targetId, Bind(id, typeof(Guid)))) : Fail();
             case FilterOperator.In:
-                return Many(filter, scope, ReadId) is { } ids ? References(InList(targetId, ids)) : Fail();
+                return Many(filter, scope, ReadId) is { } ids ? Targets(InList(targetId, ids)) : Fail();
             case FilterOperator.IsNotNull:
-                return References(null);
+                return Targets(null);
             case FilterOperator.IsNull:
-                return Expression.Not(References(null));
+                return Expression.Not(Targets(null));
             default:
                 return NotAllowed(filter, scope);
         }
+    }
+
+    // The condition a reference's target must meet to count, or null when every target does.
+    private Expression? ReadableTarget(FieldPath path, Expression targetId, Scope scope)
+    {
+        var target = path.Stored.Field.Relation is { } relation ? query.Schema.FindContentType(relation.Target) : null;
+        if (target is null)
+        {
+            return null;
+        }
+
+        if (!query.Access.CanReadType(target))
+        {
+            return Expression.Constant(false);
+        }
+
+        if (query.Access.RowRule(target) is null)
+        {
+            return null;
+        }
+
+        var row = Expression.Parameter(typeof(QueryRow), "target");
+        var rule = Where(target, null, row, trusted: false, $"{scope.Prefix}{path.ApiPath}.", scope.Hops + 1, asked: null)!;
+
+        return Any(query.Rows(target), row, Expression.AndAlso(Expression.Equal(DocumentId(row), targetId), rule));
     }
 
     // The target's row in the same state and locale; decision 44 rules out fallback-aware filtering.

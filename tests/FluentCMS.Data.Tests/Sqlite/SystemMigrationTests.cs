@@ -46,11 +46,11 @@ public sealed class SystemMigrationTests : IDisposable
         using var scope = services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
 
-        context.Database.GetPendingMigrations().Count().ShouldBe(2);
+        context.Database.GetPendingMigrations().Count().ShouldBe(3);
         context.Database.Migrate();
 
         Tables(context).ShouldBe(["__EFMigrationsLock", "cms__migrations", "cms_document", "cms_reference", "cms_role", "cms_role_permission", "cms_version"], ignoreOrder: true);
-        Count(context, SystemDbContext.HistoryTable).ShouldBe(2);
+        Count(context, SystemDbContext.HistoryTable).ShouldBe(3);
         context.Database.GetPendingMigrations().ShouldBeEmpty();
     }
 

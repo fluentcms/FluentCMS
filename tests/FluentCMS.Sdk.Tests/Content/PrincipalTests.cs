@@ -37,6 +37,26 @@ public class PrincipalTests
         Should.Throw<ArgumentNullException>(() => new Principal(PrincipalKind.Member, UserId, null!));
     }
 
+    [Fact]
+    public void AnonymousIsASinglePrincipalWithNoIdentity()
+    {
+        Principal.Anonymous.Kind.ShouldBe(PrincipalKind.Anonymous);
+        Principal.Anonymous.IsAnonymous.ShouldBeTrue();
+        Principal.Anonymous.IsSystem.ShouldBeFalse();
+        Principal.Anonymous.Id.ShouldBe(Guid.Empty);
+        Principal.Anonymous.Claims.ShouldBeEmpty();
+        Principal.Anonymous.ShouldNotBe(Principal.System);
+        Principal.System.IsAnonymous.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void AnAnonymousPrincipalWithClaimsCannotBeMade()
+    {
+        var claims = new Dictionary<string, string> { ["scope"] = "management" };
+
+        Should.Throw<ArgumentException>(() => new Principal(PrincipalKind.Anonymous, UserId, "fake", claims));
+    }
+
     [Theory]
     [InlineData(PrincipalKind.AdminUser)]
     [InlineData(PrincipalKind.Member)]

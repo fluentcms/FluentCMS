@@ -1,12 +1,17 @@
 using FluentCMS.Content;
 using FluentCMS.Schema;
+using FluentCMS.Sites;
 
 namespace FluentCMS.Core.Content.Query;
 
-// The seam for the authorization evaluator (#2701). A client cannot filter or sort by what it cannot read, or a
-// filter would reveal the value. A row rule may name such a field: the engine compiles it without these checks.
+// What the engine asks about a principal. A client cannot filter or sort by what it cannot read, or a filter would
+// reveal the value. A row rule may name such a field: the engine compiles it without these checks.
 internal interface IContentQueryAccess
 {
+    // The answers for one query, which may read only some sites and locales of a grant. These methods are synchronous
+    // because compiling is, so loading what they need happens here. The engine runs a query on what this returns.
+    ValueTask<IContentQueryAccess> ForQueryAsync(SiteId? site, string locale, CancellationToken cancellationToken) => ValueTask.FromResult(this);
+
     bool CanReadType(SchemaType type);
 
     // Reading draft rows needs a preview key or the draft scope, on the queried type and on every relation target.
@@ -17,16 +22,4 @@ internal interface IContentQueryAccess
 
     // Joins the client's filter in an And node before compilation, on the queried type and on every relation target.
     ContentFilter? RowRule(SchemaType type);
-}
-
-internal sealed class OpenContentQueryAccess : IContentQueryAccess
-{
-    public bool CanReadType(SchemaType type) => true;
-
-    // Closed by default: nothing proves a preview key or the draft scope until the evaluator exists.
-    public bool CanReadDraft(SchemaType type) => false;
-
-    public bool CanReadField(SchemaType type, string field) => true;
-
-    public ContentFilter? RowRule(SchemaType type) => null;
 }

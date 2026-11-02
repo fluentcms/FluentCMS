@@ -17,4 +17,7 @@ public enum PrincipalKind
 
     /// <summary>The built-in identity for jobs, seeding and the command line tool.</summary>
     System = 5,
+
+    /// <summary>A visitor with no identity, who gets what the Public role of the site grants.</summary>
+    Anonymous = 6,
 }

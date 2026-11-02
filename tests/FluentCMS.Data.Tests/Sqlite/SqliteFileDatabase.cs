@@ -17,7 +17,7 @@ internal sealed class SqliteFileDatabase : IDisposable
 
     public string ConnectionString => $"Data Source={Path.Combine(_directory.FullName, "cms.db")};Pooling=False";
 
-    public ServiceProvider CreateServices(SchemaModel? schema = null)
+    public ServiceProvider CreateServices(SchemaModel? schema = null, Action<FluentCmsBuilder>? configure = null)
     {
         var services = new ServiceCollection();
         if (schema is not null)
@@ -25,7 +25,11 @@ internal sealed class SqliteFileDatabase : IDisposable
             services.AddSingleton(schema);
         }
 
-        services.AddFluentCms(cms => cms.UseSqlite(ConnectionString));
+        services.AddFluentCms(cms =>
+        {
+            cms.UseSqlite(ConnectionString);
+            configure?.Invoke(cms);
+        });
         return services.BuildServiceProvider();
     }
 

@@ -34,6 +34,8 @@ internal sealed record SystemField(string Name, Func<Expression, short, Expressi
 
     public static SystemField? Find(string name) => ByName.GetValueOrDefault(name);
 
+    public static bool NamesAPerson(string name) => name is "createdBy" or "updatedBy";
+
     public Expression ReadFrom(Expression row, short state) => Read(Expression.Property(row, nameof(QueryRow.Document)), state);
 
     // Turns an operand into a value of the type of the expression, which is a system field's or a sort key's.

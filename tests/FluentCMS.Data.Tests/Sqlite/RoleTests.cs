@@ -4,6 +4,8 @@ using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Tests.Schema;
 using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
@@ -57,7 +59,10 @@ public sealed class RoleTests : IDisposable
                 (BuiltInRoles.Member, "Member"),
             ],
             ignoreOrder: true);
-        roles.ShouldAllBe(role => role.BuiltIn && role.SiteId == null && role.PermissionsVersion == 1);
+        roles.ShouldAllBe(role => role.BuiltIn && role.SiteId == null);
+
+        // Author's seeded grants changed in a later migration, which raises its stamp.
+        roles.ShouldAllBe(role => role.PermissionsVersion == (role.Id == BuiltInRoles.Author ? 2 : 1));
     }
 
     [Fact]
@@ -85,7 +90,7 @@ public sealed class RoleTests : IDisposable
     }
 
     [Fact]
-    public void AuthorEditsAndDeletesOnlyTheirOwnEntries()
+    public void AuthorReadsEditsAndDeletesOnlyTheirOwnEntries()
     {
         using var scope = _services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
@@ -96,7 +101,36 @@ public sealed class RoleTests : IDisposable
         foreach (var grant in grants)
         {
             var rule = PermissionConstraints.FromJson(grant.Constraints).RowRule;
-            rule.ShouldBe(grant.Permission is "content.*.update" or "content.*.delete" ? "own-entries" : null);
+            rule.ShouldBe(grant.Permission is "content.*.read" or "content.*.update" or "content.*.delete" ? "own-entries" : null);
+        }
+    }
+
+    [Fact]
+    public void TheMigrationRaisesTheStampOfALiveAuthorRoleRelativeToWhereItIs()
+    {
+        using var database = new SqliteFileDatabase();
+        using var services = database.CreateServices();
+        using (var scope = services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+            var migrator = context.GetInfrastructure().GetRequiredService<IMigrator>();
+            var migrations = context.Database.GetMigrations().ToList();
+            migrator.Migrate(migrations[^2]);
+
+            context.Set<Role>().Where(role => role.Id == BuiltInRoles.Author).ExecuteUpdate(role => role.SetProperty(item => item.PermissionsVersion, 7));
+            context.Set<RoleGrant>().AsNoTracking().Single(grant => grant.RoleId == BuiltInRoles.Author && grant.Permission == "content.*.read").Constraints.ShouldBeNull();
+
+            migrator.Migrate(migrations[^1]);
+
+            var author = context.Set<Role>().AsNoTracking().Single(role => role.Id == BuiltInRoles.Author);
+            author.PermissionsVersion.ShouldBe(8);
+            author.Description.ShouldNotBeNull().ShouldContain("reads");
+            PermissionConstraints.FromJson(context.Set<RoleGrant>().AsNoTracking().Single(grant => grant.RoleId == BuiltInRoles.Author && grant.Permission == "content.*.read").Constraints).RowRule.ShouldBe("own-entries");
+
+            migrator.Migrate(migrations[^2]);
+
+            context.Set<Role>().AsNoTracking().Single(role => role.Id == BuiltInRoles.Author).PermissionsVersion.ShouldBe(9);
+            context.Set<RoleGrant>().AsNoTracking().Single(grant => grant.RoleId == BuiltInRoles.Author && grant.Permission == "content.*.read").Constraints.ShouldBeNull();
         }
     }
 

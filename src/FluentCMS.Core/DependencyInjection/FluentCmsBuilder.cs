@@ -1,4 +1,5 @@
 using System.Reflection;
+using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Storage;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -12,6 +13,8 @@ public sealed class FluentCmsBuilder
     }
 
     public IServiceCollection Services { get; }
+
+    public AuthorizationBuilder Authorization { get; } = new();
 
     internal IDataProvider? DataProvider { get; private set; }
 

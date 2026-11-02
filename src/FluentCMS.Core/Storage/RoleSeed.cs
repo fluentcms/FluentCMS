@@ -24,7 +24,7 @@ internal static class RoleSeed
         (BuiltInRoles.Editor, CorePermissions.SchemaRead, null),
 
         (BuiltInRoles.Author, "content.*.create", null),
-        (BuiltInRoles.Author, "content.*.read", null),
+        (BuiltInRoles.Author, "content.*.read", OwnEntries),
         (BuiltInRoles.Author, "content.*.update", OwnEntries),
         (BuiltInRoles.Author, "content.*.delete", OwnEntries),
         (BuiltInRoles.Author, CorePermissions.SchemaRead, null),
@@ -36,7 +36,7 @@ internal static class RoleSeed
     [
         Built(BuiltInRoles.SuperAdmin, BuiltInRoles.SuperAdminName, "Holds every permission."),
         Built(BuiltInRoles.Editor, BuiltInRoles.EditorName, "Creates, edits, publishes and removes any content."),
-        Built(BuiltInRoles.Author, BuiltInRoles.AuthorName, "Creates content, and edits or removes only their own entries."),
+        Built(BuiltInRoles.Author, BuiltInRoles.AuthorName, "Creates content, and reads, edits or removes only their own entries."),
         Built(BuiltInRoles.Public, BuiltInRoles.PublicName, "The anonymous visitor. Grants here open public Delivery access."),
         Built(BuiltInRoles.Member, BuiltInRoles.MemberName, "The default role of a registered member."),
     ];

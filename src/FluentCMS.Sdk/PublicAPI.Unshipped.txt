@@ -147,12 +147,14 @@ FluentCMS.Content.Principal.Claim(string! type) -> string?
 FluentCMS.Content.Principal.Claims.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
 FluentCMS.Content.Principal.Equals(FluentCMS.Content.Principal? other) -> bool
 FluentCMS.Content.Principal.Id.get -> System.Guid
+FluentCMS.Content.Principal.IsAnonymous.get -> bool
 FluentCMS.Content.Principal.IsSystem.get -> bool
 FluentCMS.Content.Principal.Kind.get -> FluentCMS.Content.PrincipalKind
 FluentCMS.Content.Principal.Name.get -> string!
 FluentCMS.Content.Principal.Principal(FluentCMS.Content.PrincipalKind kind, System.Guid id, string! name, System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<string!, string!>>? claims = null) -> void
 FluentCMS.Content.PrincipalKind
 FluentCMS.Content.PrincipalKind.AdminUser = 1 -> FluentCMS.Content.PrincipalKind
+FluentCMS.Content.PrincipalKind.Anonymous = 6 -> FluentCMS.Content.PrincipalKind
 FluentCMS.Content.PrincipalKind.ApiKey = 3 -> FluentCMS.Content.PrincipalKind
 FluentCMS.Content.PrincipalKind.Member = 2 -> FluentCMS.Content.PrincipalKind
 FluentCMS.Content.PrincipalKind.ServiceAccount = 4 -> FluentCMS.Content.PrincipalKind
@@ -716,6 +718,7 @@ static FluentCMS.Content.Or.operator !=(FluentCMS.Content.Or? left, FluentCMS.Co
 static FluentCMS.Content.Or.operator ==(FluentCMS.Content.Or? left, FluentCMS.Content.Or? right) -> bool
 static FluentCMS.Content.PageRequest.operator !=(FluentCMS.Content.PageRequest? left, FluentCMS.Content.PageRequest? right) -> bool
 static FluentCMS.Content.PageRequest.operator ==(FluentCMS.Content.PageRequest? left, FluentCMS.Content.PageRequest? right) -> bool
+static FluentCMS.Content.Principal.Anonymous.get -> FluentCMS.Content.Principal!
 static FluentCMS.Content.Principal.System.get -> FluentCMS.Content.Principal!
 static FluentCMS.Content.SortField.operator !=(FluentCMS.Content.SortField? left, FluentCMS.Content.SortField? right) -> bool
 static FluentCMS.Content.SortField.operator ==(FluentCMS.Content.SortField? left, FluentCMS.Content.SortField? right) -> bool

@@ -11,25 +11,30 @@ public sealed class Principal : IEquatable<Principal>
     private readonly FrozenDictionary<string, string> _claims;
 
     /// <summary>Creates a principal.</summary>
-    /// <param name="kind">The kind of identity. <see cref="PrincipalKind.System"/> is reserved for <see cref="System"/>.</param>
+    /// <param name="kind">The kind of identity. <see cref="PrincipalKind.System"/> and <see cref="PrincipalKind.Anonymous"/> are reserved for <see cref="System"/> and <see cref="Anonymous"/>.</param>
     /// <param name="id">The id of the user, member, API key or service account.</param>
     /// <param name="name">A display name for logs and the activity log.</param>
     /// <param name="claims">Claims by type, for row rules and scopes.</param>
     public Principal(PrincipalKind kind, Guid id, string name, IEnumerable<KeyValuePair<string, string>>? claims = null)
-        : this(kind, id, name, claims, allowSystem: false)
+        : this(kind, id, name, claims, allowReserved: false)
     {
     }
 
-    private Principal(PrincipalKind kind, Guid id, string name, IEnumerable<KeyValuePair<string, string>>? claims, bool allowSystem)
+    private Principal(PrincipalKind kind, Guid id, string name, IEnumerable<KeyValuePair<string, string>>? claims, bool allowReserved)
     {
         if (!Enum.IsDefined(kind))
         {
             throw new ArgumentOutOfRangeException(nameof(kind), kind, "Unknown principal kind.");
         }
 
-        if (kind == PrincipalKind.System && !allowSystem)
+        if (kind == PrincipalKind.System && !allowReserved)
         {
             throw new ArgumentException("Use Principal.System for the system principal.", nameof(kind));
+        }
+
+        if (kind == PrincipalKind.Anonymous && !allowReserved)
+        {
+            throw new ArgumentException("Use Principal.Anonymous for the anonymous principal.", nameof(kind));
         }
 
         ArgumentNullException.ThrowIfNull(name);
@@ -41,7 +46,10 @@ public sealed class Principal : IEquatable<Principal>
     }
 
     /// <summary>The single system principal, used by jobs, seeding and the command line tool.</summary>
-    public static Principal System { get; } = new(PrincipalKind.System, Guid.Empty, "System", null, allowSystem: true);
+    public static Principal System { get; } = new(PrincipalKind.System, Guid.Empty, "System", null, allowReserved: true);
+
+    /// <summary>The single anonymous principal, a visitor with no identity. It has no claims, so no scopes.</summary>
+    public static Principal Anonymous { get; } = new(PrincipalKind.Anonymous, Guid.Empty, "Anonymous", null, allowReserved: true);
 
     /// <summary>The kind of identity.</summary>
     public PrincipalKind Kind { get; }
@@ -57,6 +65,9 @@ public sealed class Principal : IEquatable<Principal>
 
     /// <summary>Whether this is the system principal.</summary>
     public bool IsSystem => Kind == PrincipalKind.System;
+
+    /// <summary>Whether this is the anonymous principal.</summary>
+    public bool IsAnonymous => Kind == PrincipalKind.Anonymous;
 
     /// <summary>Gets the value of a claim.</summary>
     /// <param name="type">The claim type.</param>
