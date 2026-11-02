@@ -20,6 +20,7 @@ public class LayeringRulesTests
     private const string SitesNamespace = "FluentCMS.Core.Sites";
     private const string ProvidersNamespace = "FluentCMS.Data";
     private const string CliNamespace = "FluentCMS.Cli";
+    private const string TestingNamespace = "FluentCMS.Testing";
 
     private static readonly Lazy<ArchUnitNET.Domain.Architecture> core = new(
         () => new ArchLoader().LoadAssemblies(Assembly.Load("FluentCMS.Core")).Build());
@@ -83,7 +84,8 @@ public class LayeringRulesTests
 
     // Issue #2693. CmsDbContext also holds the system tables, so these may reach it for their own tables only, which the
     // next rules check: the evaluator for roles, Sites and LocaleRegistry for cms_site and cms_site_locale, the extensions
-    // that register it, and the provider packages and the tool, which are the storage layer's other half.
+    // that register it, and the provider packages and the tool, which are the storage layer's other half. The test host
+    // looks roles up and writes custom ones the way role management will.
     [Fact]
     public void OnlyTheServiceAndTheStorageLayerTouchCmsDbContext()
     {
@@ -92,6 +94,7 @@ public class LayeringRulesTests
             .And().DoNotResideInNamespaceOrBelow(ProvidersNamespace)
             .And().DoNotResideInNamespaceOrBelow(CliNamespace)
             .And().DoNotResideInNamespaceOrBelow(SitesNamespace)
+            .And().DoNotResideInNamespaceOrBelow(TestingNamespace)
             .And().DoNotHaveName("AuthorizationEvaluator")
             .And().DoNotHaveName("LocaleRegistry")
             .And().DoNotHaveName("FluentCmsServiceCollectionExtensions")
