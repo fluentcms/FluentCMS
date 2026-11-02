@@ -40,7 +40,14 @@ internal sealed class QueryScope(CmsDbContext context, SchemaModel schema, IJson
         }
 
         var row = Expression.Parameter(typeof(QueryRow), "row");
-        var inSite = Expression.Equal(QueryExpressions.Column(Expression.Property(row, nameof(QueryRow.Shared)), StorageNames.SiteId, typeof(Guid)), QueryExpressions.Bind(only.Value));
+        Expression inSite = Expression.Equal(QueryExpressions.Column(Expression.Property(row, nameof(QueryRow.Shared)), StorageNames.SiteId, typeof(Guid)), QueryExpressions.Bind(only.Value));
+        if (type.Localized)
+        {
+            // The locale row repeats site_id, and the unique index of a localized field leads with it: without this the
+            // lookup scans that index instead of seeking in it.
+            inSite = Expression.AndAlso(inSite, Expression.Equal(QueryExpressions.Column(Expression.Property(row, nameof(QueryRow.Localized)), StorageNames.SiteId, typeof(Guid)), QueryExpressions.Bind(only.Value)));
+        }
+
         return rows.Where(Expression.Lambda<Func<QueryRow, bool>>(inSite, row));
     }
 

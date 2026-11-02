@@ -14,7 +14,7 @@ public class QueryPlanTests
 {
     private const string SlugIndex = "ux_cms_article_i18n_slug";
 
-    private static string Plan(IQueryable query)
+    internal static string Plan(IQueryable query)
     {
         using var command = query.CreateDbCommand();
         command.CommandText = $"EXPLAIN QUERY PLAN {command.CommandText}";
