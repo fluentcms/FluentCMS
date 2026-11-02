@@ -124,6 +124,8 @@ FluentCMS.Schema.CollectionAttribute.CollectionAttribute(string? name = null) ->
 FluentCMS.Schema.CollectionAttribute.Localized.get -> bool
 FluentCMS.Schema.CollectionAttribute.Localized.set -> void
 FluentCMS.Schema.CollectionAttribute.Name.get -> string?
+FluentCMS.Schema.CollectionAttribute.Scope.get -> FluentCMS.Schema.ContentScope
+FluentCMS.Schema.CollectionAttribute.Scope.set -> void
 FluentCMS.Schema.ComponentAttribute
 FluentCMS.Schema.ComponentAttribute.ComponentAttribute(string? name = null) -> void
 FluentCMS.Schema.ComponentAttribute.Name.get -> string?
@@ -167,6 +169,9 @@ FluentCMS.Schema.ContentItem.UpdatedBy.get -> System.Guid
 FluentCMS.Schema.ContentItem.UpdatedBy.set -> void
 FluentCMS.Schema.ContentItem.Version.get -> int
 FluentCMS.Schema.ContentItem.Version.set -> void
+FluentCMS.Schema.ContentScope
+FluentCMS.Schema.ContentScope.Global = 1 -> FluentCMS.Schema.ContentScope
+FluentCMS.Schema.ContentScope.Site = 0 -> FluentCMS.Schema.ContentScope
 FluentCMS.Schema.DateAttribute
 FluentCMS.Schema.DateAttribute.DateAttribute() -> void
 FluentCMS.Schema.DateTimeAttribute
@@ -260,6 +265,7 @@ FluentCMS.Schema.ISchemaBuilder.LoadSchemaFile(string! path) -> FluentCMS.Schema
 FluentCMS.Schema.ITypeBuilder
 FluentCMS.Schema.ITypeBuilder.Field(string! name, string! fieldType, System.Action<FluentCMS.Schema.IFieldBuilder!>? configure = null) -> FluentCMS.Schema.ITypeBuilder!
 FluentCMS.Schema.ITypeBuilder.Localized(bool localized = true) -> FluentCMS.Schema.ITypeBuilder!
+FluentCMS.Schema.ITypeBuilder.Scope(FluentCMS.Schema.ContentScope scope) -> FluentCMS.Schema.ITypeBuilder!
 FluentCMS.Schema.IndexedAttribute
 FluentCMS.Schema.IndexedAttribute.IndexedAttribute() -> void
 FluentCMS.Schema.IntegerAttribute
@@ -370,6 +376,7 @@ FluentCMS.Schema.SchemaType.Kind.get -> FluentCMS.Schema.SchemaTypeKind
 FluentCMS.Schema.SchemaType.Localized.get -> bool
 FluentCMS.Schema.SchemaType.Name.get -> string!
 FluentCMS.Schema.SchemaType.ReverseRelations.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Schema.ReverseRelation!>!
+FluentCMS.Schema.SchemaType.Scope.get -> FluentCMS.Schema.ContentScope
 FluentCMS.Schema.SchemaTypeKind
 FluentCMS.Schema.SchemaTypeKind.Block = 4 -> FluentCMS.Schema.SchemaTypeKind
 FluentCMS.Schema.SchemaTypeKind.Collection = 1 -> FluentCMS.Schema.SchemaTypeKind
@@ -384,6 +391,8 @@ FluentCMS.Schema.SingletonAttribute
 FluentCMS.Schema.SingletonAttribute.Localized.get -> bool
 FluentCMS.Schema.SingletonAttribute.Localized.set -> void
 FluentCMS.Schema.SingletonAttribute.Name.get -> string?
+FluentCMS.Schema.SingletonAttribute.Scope.get -> FluentCMS.Schema.ContentScope
+FluentCMS.Schema.SingletonAttribute.Scope.set -> void
 FluentCMS.Schema.SingletonAttribute.SingletonAttribute(string? name = null) -> void
 FluentCMS.Schema.SlugAttribute
 FluentCMS.Schema.SlugAttribute.SlugAttribute() -> void

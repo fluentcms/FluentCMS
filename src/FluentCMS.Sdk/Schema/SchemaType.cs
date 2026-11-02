@@ -16,6 +16,9 @@ public sealed class SchemaType
     /// <summary>Whether entries have one version per locale. Only collections and singletons can be localized.</summary>
     public bool Localized { get; internal init; }
 
+    /// <summary>Whether entries belong to one site or are shared by all sites. Always <see cref="ContentScope.Site"/> for components and blocks.</summary>
+    public ContentScope Scope { get; internal init; }
+
     /// <summary>The class the type was read from, or <see langword="null"/> if it was defined without one. It does not take part in comparing models.</summary>
     public Type? ClrType { get; internal init; }
 

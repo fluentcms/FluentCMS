@@ -2,7 +2,7 @@ using FluentCMS.Schema;
 
 namespace FluentCMS.Core.Tests.Schema.Samples;
 
-[Collection("tag")]
+[Collection("tag", Scope = ContentScope.Global)]
 public sealed class Tag : ContentItem
 {
     [Text(MaxLength = 50), Required]

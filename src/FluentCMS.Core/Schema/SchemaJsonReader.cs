@@ -95,6 +95,7 @@ internal sealed class SchemaJsonReader(SchemaBuilder builder)
 
         string? name = null;
         var localized = false;
+        var scope = ContentScope.Site;
         JsonElement? fields = null;
         var failed = false;
 
@@ -108,6 +109,9 @@ internal sealed class SchemaJsonReader(SchemaBuilder builder)
                     break;
                 case "localized":
                     failed |= !TryBool(property.Value, propertyPath, out localized);
+                    break;
+                case "scope":
+                    failed |= !TryScope(property.Value, kind, propertyPath, out scope);
                     break;
                 case "fields":
                     fields = property.Value;
@@ -132,11 +136,32 @@ internal sealed class SchemaJsonReader(SchemaBuilder builder)
         builder.AddType(name, kind, null, type =>
         {
             type.Localized(localized);
+            type.Scope(scope);
             if (fields is { } list)
             {
                 ReadFields(type, list, $"{path}.fields");
             }
         });
+    }
+
+    private bool TryScope(JsonElement element, SchemaTypeKind kind, string path, out ContentScope scope)
+    {
+        scope = ContentScope.Site;
+        if (kind is not (SchemaTypeKind.Collection or SchemaTypeKind.Singleton))
+        {
+            return Fail(path, "is only allowed on collections and singletons");
+        }
+
+        switch (element.ValueKind == JsonValueKind.String ? element.GetString() : null)
+        {
+            case "site":
+                return true;
+            case "global":
+                scope = ContentScope.Global;
+                return true;
+            default:
+                return Fail(path, "must be \"site\" or \"global\"");
+        }
     }
 
     private void ReadFields(ITypeBuilder type, JsonElement element, string path)

@@ -20,12 +20,14 @@ public class LayeringRulesTests
     private static readonly Lazy<ArchUnitNET.Domain.Architecture> core = new(
         () => new ArchLoader().LoadAssemblies(Assembly.Load("FluentCMS.Core")).Build());
 
-    [Fact(Skip = "FluentCMS.Core.Api and FluentCMS.Core.Storage do not exist yet. Enable when the Delivery API (B-47) and the CmsDbContext model builder (#2688) are in.")]
+    // FluentCMS.Core.Api does not exist until the Delivery API (B-47), so the rule has nothing to check yet and starts checking with the first type there.
+    [Fact]
     public void ApiDoesNotReferenceStorageOrCmsDbContext()
     {
         Types().That().ResideInNamespaceOrBelow(ApiNamespace)
             .Should().NotDependOnAnyTypesThat().ResideInNamespaceOrBelow(StorageNamespace)
             .AndShould().NotDependOnAnyTypesThat().HaveName("CmsDbContext")
+            .WithoutRequiringPositiveResults()
             .Check(core.Value);
     }
 

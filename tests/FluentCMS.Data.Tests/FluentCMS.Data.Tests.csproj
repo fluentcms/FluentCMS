@@ -5,6 +5,13 @@
     <PackageReference Include="xunit.v3" />
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="Shouldly" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+  </ItemGroup>
+
+  <!-- The storage tests build the sample schema of the core tests; a test project cannot reference another. -->
+  <ItemGroup>
+    <Compile Include="../FluentCMS.Core.Tests/Schema/SampleSchema.cs" Link="Schema/SampleSchema.cs" />
+    <Compile Include="../FluentCMS.Core.Tests/Schema/Samples/*.cs" Link="Schema/Samples/%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>

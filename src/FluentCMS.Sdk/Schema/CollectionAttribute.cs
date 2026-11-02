@@ -10,4 +10,7 @@ public sealed class CollectionAttribute(string? name = null) : Attribute
 
     /// <summary>Whether entries have one version per locale.</summary>
     public bool Localized { get; set; }
+
+    /// <summary>Whether entries belong to one site or are shared by all sites.</summary>
+    public ContentScope Scope { get; set; }
 }

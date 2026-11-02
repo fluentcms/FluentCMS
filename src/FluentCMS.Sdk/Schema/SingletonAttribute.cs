@@ -10,4 +10,7 @@ public sealed class SingletonAttribute(string? name = null) : Attribute
 
     /// <summary>Whether the entry has one version per locale.</summary>
     public bool Localized { get; set; }
+
+    /// <summary>Whether the entry belongs to one site or is shared by all sites.</summary>
+    public ContentScope Scope { get; set; }
 }

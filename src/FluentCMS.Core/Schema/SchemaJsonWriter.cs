@@ -50,6 +50,11 @@ internal static class SchemaJsonWriter
                 writer.WriteBoolean("localized", true);
             }
 
+            if (type.Scope == ContentScope.Global)
+            {
+                writer.WriteString("scope", "global");
+            }
+
             writer.WriteStartArray("fields");
             foreach (var field in type.Fields)
             {
