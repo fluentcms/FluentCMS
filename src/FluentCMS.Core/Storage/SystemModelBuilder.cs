@@ -222,9 +222,14 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
             .HasDatabaseName("uq_cms_outbox_event_handler");
 
         // Over rows still to deliver only, in the order the drain takes them, so that delivered rows are never walked.
-        entity.HasIndex(message => new { message.OccurredAt, message.Position, message.Id })
+        entity.HasIndex(message => new { message.Sequence, message.Id })
             .HasFilter("status = 'pending'")
             .HasDatabaseName("ix_cms_outbox_pending");
+
+        // For the prune of delivered rows.
+        entity.HasIndex(message => message.DeliveredAt)
+            .HasFilter("status = 'delivered'")
+            .HasDatabaseName("ix_cms_outbox_delivered");
     }
 
     private static void MapColumnNames<T>(EntityTypeBuilder<T> entity)

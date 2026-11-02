@@ -20,14 +20,17 @@ internal sealed class Seen
 
     public ConcurrentQueue<EventDelivery> Deliveries { get; } = new();
 
+    public ConcurrentQueue<CancellationToken> Tokens { get; } = new();
+
     // Runs inside the handler, so a test can look at the database at the moment the event arrives or make the handler fail.
     public Func<CmsEvent, EventDelivery?, Task> Behavior { get; set; } = (_, _) => Task.CompletedTask;
 
     public IEnumerable<T> Of<T>()
         where T : CmsEvent => Events.OfType<T>();
 
-    public async ValueTask HeardAsync(string name, CmsEvent @event, EventDelivery? delivery = null)
+    public async ValueTask HeardAsync(string name, CmsEvent @event, EventDelivery? delivery, CancellationToken token)
     {
+        Tokens.Enqueue(token);
         Calls.Enqueue(name);
         Events.Enqueue(@event);
         if (delivery is not null)
@@ -41,34 +44,52 @@ internal sealed class Seen
 
 internal sealed class SavedHandler(Seen seen) : IEventHandler<EntryDraftSavedEvent>
 {
-    public ValueTask HandleAsync(EntryDraftSavedEvent message, CancellationToken cancellationToken) => seen.HeardAsync("saved", message);
+    public ValueTask HandleAsync(EntryDraftSavedEvent message, CancellationToken cancellationToken) => seen.HeardAsync("saved", message, null, cancellationToken);
+}
+
+internal sealed class RestoredHandler(Seen seen) : IEventHandler<EntryRestoredEvent>
+{
+    public ValueTask HandleAsync(EntryRestoredEvent message, CancellationToken cancellationToken) => seen.HeardAsync("restored", message, null, cancellationToken);
+}
+
+// Writes another entry while it is being told of the first, once.
+internal sealed class WritingHandler(Seen seen, FluentCMS.Content.IContentService content) : IEventHandler<EntryDraftSavedEvent>
+{
+    public async ValueTask HandleAsync(EntryDraftSavedEvent message, CancellationToken cancellationToken)
+    {
+        await seen.HeardAsync("writing", message, null, cancellationToken);
+        if (seen.Calls.Count(call => call == "writing") == 1)
+        {
+            await content.CreateAsync("article", new FluentCMS.Content.ContentDocument { ["title"] = "From a handler" }, cancellationToken);
+        }
+    }
 }
 
 internal sealed class TrashedHandler(Seen seen) : IEventHandler<EntryTrashedEvent>
 {
-    public ValueTask HandleAsync(EntryTrashedEvent message, CancellationToken cancellationToken) => seen.HeardAsync("trashed", message);
+    public ValueTask HandleAsync(EntryTrashedEvent message, CancellationToken cancellationToken) => seen.HeardAsync("trashed", message, null, cancellationToken);
 }
 
 [HookOrder(2)]
 internal sealed class LateSaved(Seen seen) : IEventHandler<EntryDraftSavedEvent>
 {
-    public ValueTask HandleAsync(EntryDraftSavedEvent message, CancellationToken cancellationToken) => seen.HeardAsync("late", message);
+    public ValueTask HandleAsync(EntryDraftSavedEvent message, CancellationToken cancellationToken) => seen.HeardAsync("late", message, null, cancellationToken);
 }
 
 [HookOrder(-1)]
 internal sealed class EarlySaved(Seen seen) : IEventHandler<EntryDraftSavedEvent>
 {
-    public ValueTask HandleAsync(EntryDraftSavedEvent message, CancellationToken cancellationToken) => seen.HeardAsync("early", message);
+    public ValueTask HandleAsync(EntryDraftSavedEvent message, CancellationToken cancellationToken) => seen.HeardAsync("early", message, null, cancellationToken);
 }
 
 internal sealed class TiedFirstRegistered(Seen seen) : IEventHandler<EntryDraftSavedEvent>
 {
-    public ValueTask HandleAsync(EntryDraftSavedEvent message, CancellationToken cancellationToken) => seen.HeardAsync("tied-first-registered", message);
+    public ValueTask HandleAsync(EntryDraftSavedEvent message, CancellationToken cancellationToken) => seen.HeardAsync("tied-first-registered", message, null, cancellationToken);
 }
 
 internal sealed class TiedLastRegistered(Seen seen) : IEventHandler<EntryDraftSavedEvent>
 {
-    public ValueTask HandleAsync(EntryDraftSavedEvent message, CancellationToken cancellationToken) => seen.HeardAsync("tied-last-registered", message);
+    public ValueTask HandleAsync(EntryDraftSavedEvent message, CancellationToken cancellationToken) => seen.HeardAsync("tied-last-registered", message, null, cancellationToken);
 }
 
 internal sealed class RankTiebreaker : IHookTiebreaker
@@ -78,42 +99,64 @@ internal sealed class RankTiebreaker : IHookTiebreaker
 
 internal sealed class SavedOutbox(Seen seen) : IOutboxEventHandler<EntryDraftSavedEvent>
 {
-    public ValueTask HandleAsync(EntryDraftSavedEvent message, EventDelivery delivery, CancellationToken cancellationToken) => seen.HeardAsync("outbox", message, delivery);
+    public ValueTask HandleAsync(EntryDraftSavedEvent message, EventDelivery delivery, CancellationToken cancellationToken) => seen.HeardAsync("outbox", message, delivery, cancellationToken);
 }
 
 [HookOrder(3)]
 internal sealed class OutboxThird(Seen seen) : IOutboxEventHandler<EntryDraftSavedEvent>
 {
-    public ValueTask HandleAsync(EntryDraftSavedEvent message, EventDelivery delivery, CancellationToken cancellationToken) => seen.HeardAsync("outbox-3", message, delivery);
+    public ValueTask HandleAsync(EntryDraftSavedEvent message, EventDelivery delivery, CancellationToken cancellationToken) => seen.HeardAsync("outbox-3", message, delivery, cancellationToken);
 }
 
 [HookOrder(1)]
 internal sealed class OutboxFirst(Seen seen) : IOutboxEventHandler<EntryDraftSavedEvent>
 {
-    public ValueTask HandleAsync(EntryDraftSavedEvent message, EventDelivery delivery, CancellationToken cancellationToken) => seen.HeardAsync("outbox-1", message, delivery);
+    public ValueTask HandleAsync(EntryDraftSavedEvent message, EventDelivery delivery, CancellationToken cancellationToken) => seen.HeardAsync("outbox-1", message, delivery, cancellationToken);
 }
 
 [HookOrder(2)]
 internal sealed class OutboxSecond(Seen seen) : IOutboxEventHandler<EntryDraftSavedEvent>
 {
-    public ValueTask HandleAsync(EntryDraftSavedEvent message, EventDelivery delivery, CancellationToken cancellationToken) => seen.HeardAsync("outbox-2", message, delivery);
+    public ValueTask HandleAsync(EntryDraftSavedEvent message, EventDelivery delivery, CancellationToken cancellationToken) => seen.HeardAsync("outbox-2", message, delivery, cancellationToken);
 }
 
 internal sealed class TrashedOutbox(Seen seen) : IOutboxEventHandler<EntryTrashedEvent>
 {
-    public ValueTask HandleAsync(EntryTrashedEvent message, EventDelivery delivery, CancellationToken cancellationToken) => seen.HeardAsync("trashed-outbox", message, delivery);
+    public ValueTask HandleAsync(EntryTrashedEvent message, EventDelivery delivery, CancellationToken cancellationToken) => seen.HeardAsync("trashed-outbox", message, delivery, cancellationToken);
 }
 
 internal sealed record Ping(string Note) : CmsEvent;
 
+internal sealed record Ping2(string Note) : CmsEvent;
+
+internal sealed class Ping2Handler(Seen seen) : IEventHandler<Ping2>
+{
+    public ValueTask HandleAsync(Ping2 message, CancellationToken cancellationToken) => seen.HeardAsync("ping2", message, null, cancellationToken);
+}
+
+// A plugin whose handler cannot be built.
+internal sealed class BrokenPingHandler : IEventHandler<Ping>
+{
+    public BrokenPingHandler() => throw new InvalidOperationException("ctor of a plugin handler failed");
+
+    public ValueTask HandleAsync(Ping message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+}
+
+internal sealed class BrokenSavedHandler : IEventHandler<EntryDraftSavedEvent>
+{
+    public BrokenSavedHandler() => throw new InvalidOperationException("ctor of a plugin handler failed");
+
+    public ValueTask HandleAsync(EntryDraftSavedEvent message, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+}
+
 internal sealed class PingHandler(Seen seen) : IEventHandler<Ping>
 {
-    public ValueTask HandleAsync(Ping message, CancellationToken cancellationToken) => seen.HeardAsync("ping", message);
+    public ValueTask HandleAsync(Ping message, CancellationToken cancellationToken) => seen.HeardAsync("ping", message, null, cancellationToken);
 }
 
 internal sealed class PingOutbox(Seen seen) : IOutboxEventHandler<Ping>
 {
-    public ValueTask HandleAsync(Ping message, EventDelivery delivery, CancellationToken cancellationToken) => seen.HeardAsync("ping-outbox", message, delivery);
+    public ValueTask HandleAsync(Ping message, EventDelivery delivery, CancellationToken cancellationToken) => seen.HeardAsync("ping-outbox", message, delivery, cancellationToken);
 }
 
 internal static class EventRegistrations
@@ -134,7 +177,7 @@ internal static class EventRegistrations
     });
 
     public static List<OutboxMessage> Rows(this Content.ServiceDatabase database) =>
-        database.Read(context => context.Set<OutboxMessage>().AsNoTracking().OrderBy(row => row.OccurredAt).ThenBy(row => row.Position).ToList());
+        database.Read(context => context.Set<OutboxMessage>().AsNoTracking().OrderBy(row => row.Sequence).ToList());
 }
 
 internal sealed class EventLogs : ILoggerProvider

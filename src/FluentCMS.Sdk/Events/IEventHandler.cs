@@ -14,7 +14,7 @@ public interface IEventHandler<TEvent>
 {
     /// <summary>Handles the event. A handler that throws is logged and changes nothing about the write or the other handlers.</summary>
     /// <param name="message">The event.</param>
-    /// <param name="cancellationToken">Cancelled when the host is stopping.</param>
+    /// <param name="cancellationToken">Cancelled when the host is stopping, never when the request that raised the event ends.</param>
     /// <returns>A task that completes when the handler is done.</returns>
     ValueTask HandleAsync(TEvent message, CancellationToken cancellationToken);
 }

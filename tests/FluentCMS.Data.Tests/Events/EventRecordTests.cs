@@ -153,11 +153,11 @@ public sealed class EventRecordTests
 
     private sealed class FailedHandler(Seen seen) : IEventHandler<JobFailedEvent>
     {
-        public ValueTask HandleAsync(JobFailedEvent message, CancellationToken cancellationToken) => seen.HeardAsync("job-failed", message);
+        public ValueTask HandleAsync(JobFailedEvent message, CancellationToken cancellationToken) => seen.HeardAsync("job-failed", message, null, cancellationToken);
     }
 
     private sealed class DeadLetteredHandler(Seen seen) : IEventHandler<JobDeadLetteredEvent>
     {
-        public ValueTask HandleAsync(JobDeadLetteredEvent message, CancellationToken cancellationToken) => seen.HeardAsync("job-dead-lettered", message);
+        public ValueTask HandleAsync(JobDeadLetteredEvent message, CancellationToken cancellationToken) => seen.HeardAsync("job-dead-lettered", message, null, cancellationToken);
     }
 }

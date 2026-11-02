@@ -361,9 +361,9 @@ namespace FluentCMS.Data.PostgreSql.Migrations
                         .HasColumnType("jsonb")
                         .HasColumnName("payload");
 
-                    b.Property<int>("Position")
-                        .HasColumnType("integer")
-                        .HasColumnName("position");
+                    b.Property<long>("Sequence")
+                        .HasColumnType("bigint")
+                        .HasColumnName("sequence");
 
                     b.Property<Guid?>("SiteId")
                         .HasColumnType("uuid")
@@ -377,11 +377,15 @@ namespace FluentCMS.Data.PostgreSql.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("DeliveredAt")
+                        .HasDatabaseName("ix_cms_outbox_delivered")
+                        .HasFilter("status = 'delivered'");
+
                     b.HasIndex("EventId", "Handler")
                         .IsUnique()
                         .HasDatabaseName("uq_cms_outbox_event_handler");
 
-                    b.HasIndex("OccurredAt", "Position", "Id")
+                    b.HasIndex("Sequence", "Id")
                         .HasDatabaseName("ix_cms_outbox_pending")
                         .HasFilter("status = 'pending'");
 

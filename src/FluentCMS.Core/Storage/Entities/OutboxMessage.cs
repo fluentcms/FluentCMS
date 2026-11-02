@@ -18,8 +18,8 @@ public sealed class OutboxMessage
 
     public DateTimeOffset OccurredAt { get; set; }
 
-    // Where the handler stands among those of the event, in the order they run.
-    public int Position { get; set; }
+    // Rises with the order rows were recorded in, and within an event with the order its handlers run in.
+    public long Sequence { get; set; }
 
     public string Status { get; set; } = OutboxStatus.Pending;
 

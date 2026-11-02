@@ -24,6 +24,9 @@ public sealed class OutboxTests
     private static Task<int> DrainAsync(IServiceProvider instance) =>
         instance.GetRequiredService<OutboxDrainer>().DrainAsync(Token);
 
+    private static Task<int> PruneAsync(IServiceProvider instance) =>
+        instance.GetRequiredService<OutboxDrainer>().DrainAsync(prune: true, Token);
+
     [Fact]
     public async Task TheRowIsWrittenWithTheWriteAndNamesTheSameEventAsTheHandlersOfThisProcess()
     {
@@ -206,7 +209,7 @@ public sealed class OutboxTests
         }));
         await database.CreateAsync(Editor, Titled("T"));
 
-        database.Rows().Select(row => (row.Handler, row.Position)).ShouldBe([("first", 0), ("second", 1), ("third", 2)]);
+        database.Rows().Select(row => row.Handler).ShouldBe(["first", "second", "third"]);
         await DrainAsync(database.Database.Services);
 
         seen.Calls.ShouldBe(["outbox-1", "outbox-2", "outbox-3"]);
@@ -266,11 +269,14 @@ public sealed class OutboxTests
         await DrainAsync(database.Database.Services);
 
         clock.Advance(TimeSpan.FromHours(23));
-        await DrainAsync(database.Database.Services);
+        await PruneAsync(database.Database.Services);
         database.Rows().Count.ShouldBe(1);
 
         clock.Advance(TimeSpan.FromHours(2));
         await DrainAsync(database.Database.Services);
+        database.Rows().Count.ShouldBe(1);
+
+        await PruneAsync(database.Database.Services);
         database.Rows().ShouldBeEmpty();
     }
 
@@ -322,15 +328,56 @@ public sealed class OutboxTests
     [Fact]
     public async Task StartupSchedulesTheRecurringDrainThatCatchesWhatNothingAskedFor()
     {
-        using var database = new ServiceDatabase();
+        using var database = new ServiceDatabase(EventRegistrations.Outbox(new Seen()));
 
         var schedule = database.Database.Services.GetServices<IHostedService>().OfType<OutboxScheduleService>().Single();
         await schedule.StartAsync(Token);
+        await schedule.ExecuteTask!;
 
         var recurring = database.Read(context => context.Set<RecurringJob>().AsNoTracking().Single(job => job.Name == OutboxDrainJob.RecurringName));
         recurring.Type.ShouldBe(OutboxDrainJob.Type);
         recurring.Cron.ShouldBe("* * * * *");
+        recurring.Queue.ShouldBe(OutboxDrainJob.Queue);
+        recurring.Payload.ShouldContain("true");
         recurring.Enabled.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task AHostWithNoOutboxHandlerSchedulesNoDrain()
+    {
+        using var database = new ServiceDatabase();
+
+        var schedule = database.Database.Services.GetServices<IHostedService>().OfType<OutboxScheduleService>().Single();
+        await schedule.StartAsync(Token);
+        await schedule.ExecuteTask!;
+
+        database.Read(context => context.Set<RecurringJob>().AsNoTracking().Count()).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task TheScheduleIsRetriedUntilItIsStoredWhenTheDatabaseIsDownAtStartup()
+    {
+        var faults = new JobFaults();
+        var logs = new RecordingLogs();
+        var clock = new ManualTimeProvider(JobFixture.Start);
+        using var database = new ServiceDatabase(EventRegistrations.Outbox(new Seen(), cms =>
+        {
+            cms.Services.AddSingleton<TimeProvider>(clock);
+            cms.Services.AddSingleton<Microsoft.Extensions.Logging.ILoggerProvider>(logs);
+            cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(faults));
+        }));
+        faults.Fail(command => command.CommandText.Contains("cms_recurring_job", StringComparison.Ordinal));
+
+        var schedule = database.Database.Services.GetServices<IHostedService>().OfType<OutboxScheduleService>().Single();
+        await schedule.StartAsync(Token);
+        await Eventually.HoldsAsync(() => logs.Count("RecurringFailed") >= 1);
+        database.Read(context => context.Set<RecurringJob>().AsNoTracking().Count()).ShouldBe(0);
+
+        faults.Recover();
+        clock.Advance(TimeSpan.FromSeconds(30));
+        await Eventually.CompletesAsync(schedule.ExecuteTask!, () => clock.Advance(TimeSpan.FromSeconds(30)));
+
+        database.Read(context => context.Set<RecurringJob>().AsNoTracking().Count()).ShouldBe(1);
     }
 
     [Fact]
@@ -361,7 +408,7 @@ public sealed class OutboxTests
 
     private sealed class PluginOutbox(Seen seen) : IOutboxEventHandler<EntryDraftSavedEvent>
     {
-        public ValueTask HandleAsync(EntryDraftSavedEvent message, EventDelivery delivery, CancellationToken cancellationToken) => seen.HeardAsync("plugin-outbox", message, delivery);
+        public ValueTask HandleAsync(EntryDraftSavedEvent message, EventDelivery delivery, CancellationToken cancellationToken) => seen.HeardAsync("plugin-outbox", message, delivery, cancellationToken);
     }
 
     private sealed class OutboxRank : IHookTiebreaker

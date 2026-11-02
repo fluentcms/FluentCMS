@@ -23,7 +23,7 @@ namespace FluentCMS.Data.PostgreSql.Migrations
                     payload = table.Column<string>(type: "jsonb", nullable: false),
                     site_id = table.Column<Guid>(type: "uuid", nullable: true),
                     occurred_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    position = table.Column<int>(type: "integer", nullable: false),
+                    sequence = table.Column<long>(type: "bigint", nullable: false),
                     status = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: false),
                     attempts = table.Column<int>(type: "integer", nullable: false),
                     available_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
@@ -38,9 +38,15 @@ namespace FluentCMS.Data.PostgreSql.Migrations
                 });
 
             migrationBuilder.CreateIndex(
+                name: "ix_cms_outbox_delivered",
+                table: "cms_outbox",
+                column: "delivered_at",
+                filter: "status = 'delivered'");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_cms_outbox_pending",
                 table: "cms_outbox",
-                columns: new[] { "occurred_at", "position", "id" },
+                columns: new[] { "sequence", "id" },
                 filter: "status = 'pending'");
 
             migrationBuilder.CreateIndex(

@@ -7,9 +7,10 @@ namespace FluentCMS.Events;
 /// <param name="SiteId">The site of the operation.</param>
 /// <param name="ActorId">The id of the principal to audit, which is the actor a job impersonates or else the principal; empty for the system.</param>
 /// <param name="ActorName">The name of that principal.</param>
+/// <param name="ActorKind">The kind of that principal.</param>
 /// <param name="Origin">Where the operation came from.</param>
 /// <param name="CorrelationId">The correlation id of the operation.</param>
-public sealed record EventSource(DateTimeOffset OccurredAt, Guid SiteId, Guid ActorId, string ActorName, Origin Origin, string CorrelationId)
+public sealed record EventSource(DateTimeOffset OccurredAt, Guid SiteId, Guid ActorId, string ActorName, PrincipalKind ActorKind, Origin Origin, string CorrelationId)
 {
     /// <summary>Describes an event raised by an operation.</summary>
     /// <param name="operation">The operation.</param>
@@ -18,12 +19,13 @@ public sealed record EventSource(DateTimeOffset OccurredAt, Guid SiteId, Guid Ac
     {
         ArgumentNullException.ThrowIfNull(operation);
 
-        return new EventSource(operation.Timestamp, operation.Site.Value, operation.AuditPrincipal.Id, operation.AuditPrincipal.Name, operation.Origin, operation.CorrelationId);
+        var actor = operation.AuditPrincipal;
+        return new EventSource(operation.Timestamp, operation.Site.Value, actor.Id, actor.Name, actor.Kind, operation.Origin, operation.CorrelationId);
     }
 
     /// <summary>Describes an event the system raised outside any request, such as a job's failure.</summary>
     /// <param name="occurredAt">When it happened.</param>
     /// <returns>The source.</returns>
     public static EventSource FromSystem(DateTimeOffset occurredAt) =>
-        new(occurredAt, Guid.Empty, Principal.System.Id, Principal.System.Name, Origin.Job, "");
+        new(occurredAt, Guid.Empty, Principal.System.Id, Principal.System.Name, PrincipalKind.System, Origin.Job, "");
 }

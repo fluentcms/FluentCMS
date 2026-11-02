@@ -350,21 +350,46 @@ FluentCMS.Events.EventSource
 FluentCMS.Events.EventSource.<Clone>$() -> FluentCMS.Events.EventSource!
 FluentCMS.Events.EventSource.ActorId.get -> System.Guid
 FluentCMS.Events.EventSource.ActorId.init -> void
+FluentCMS.Events.EventSource.ActorKind.get -> FluentCMS.Content.PrincipalKind
+FluentCMS.Events.EventSource.ActorKind.init -> void
 FluentCMS.Events.EventSource.ActorName.get -> string!
 FluentCMS.Events.EventSource.ActorName.init -> void
 FluentCMS.Events.EventSource.CorrelationId.get -> string!
 FluentCMS.Events.EventSource.CorrelationId.init -> void
-FluentCMS.Events.EventSource.Deconstruct(out System.DateTimeOffset OccurredAt, out System.Guid SiteId, out System.Guid ActorId, out string! ActorName, out FluentCMS.Content.Origin Origin, out string! CorrelationId) -> void
+FluentCMS.Events.EventSource.Deconstruct(out System.DateTimeOffset OccurredAt, out System.Guid SiteId, out System.Guid ActorId, out string! ActorName, out FluentCMS.Content.PrincipalKind ActorKind, out FluentCMS.Content.Origin Origin, out string! CorrelationId) -> void
 FluentCMS.Events.EventSource.Equals(FluentCMS.Events.EventSource? other) -> bool
-FluentCMS.Events.EventSource.EventSource(System.DateTimeOffset OccurredAt, System.Guid SiteId, System.Guid ActorId, string! ActorName, FluentCMS.Content.Origin Origin, string! CorrelationId) -> void
+FluentCMS.Events.EventSource.EventSource(System.DateTimeOffset OccurredAt, System.Guid SiteId, System.Guid ActorId, string! ActorName, FluentCMS.Content.PrincipalKind ActorKind, FluentCMS.Content.Origin Origin, string! CorrelationId) -> void
 FluentCMS.Events.EventSource.OccurredAt.get -> System.DateTimeOffset
 FluentCMS.Events.EventSource.OccurredAt.init -> void
 FluentCMS.Events.EventSource.Origin.get -> FluentCMS.Content.Origin
 FluentCMS.Events.EventSource.Origin.init -> void
 FluentCMS.Events.EventSource.SiteId.get -> System.Guid
 FluentCMS.Events.EventSource.SiteId.init -> void
+FluentCMS.Events.FailedEventDelivery
+FluentCMS.Events.FailedEventDelivery.<Clone>$() -> FluentCMS.Events.FailedEventDelivery!
+FluentCMS.Events.FailedEventDelivery.Attempts.get -> int
+FluentCMS.Events.FailedEventDelivery.Attempts.init -> void
+FluentCMS.Events.FailedEventDelivery.Deconstruct(out System.Guid Id, out System.Guid EventId, out string! EventType, out string! Handler, out int Attempts, out string? LastError, out System.DateTimeOffset OccurredAt) -> void
+FluentCMS.Events.FailedEventDelivery.Equals(FluentCMS.Events.FailedEventDelivery? other) -> bool
+FluentCMS.Events.FailedEventDelivery.EventId.get -> System.Guid
+FluentCMS.Events.FailedEventDelivery.EventId.init -> void
+FluentCMS.Events.FailedEventDelivery.EventType.get -> string!
+FluentCMS.Events.FailedEventDelivery.EventType.init -> void
+FluentCMS.Events.FailedEventDelivery.FailedEventDelivery(System.Guid Id, System.Guid EventId, string! EventType, string! Handler, int Attempts, string? LastError, System.DateTimeOffset OccurredAt) -> void
+FluentCMS.Events.FailedEventDelivery.Handler.get -> string!
+FluentCMS.Events.FailedEventDelivery.Handler.init -> void
+FluentCMS.Events.FailedEventDelivery.Id.get -> System.Guid
+FluentCMS.Events.FailedEventDelivery.Id.init -> void
+FluentCMS.Events.FailedEventDelivery.LastError.get -> string?
+FluentCMS.Events.FailedEventDelivery.LastError.init -> void
+FluentCMS.Events.FailedEventDelivery.OccurredAt.get -> System.DateTimeOffset
+FluentCMS.Events.FailedEventDelivery.OccurredAt.init -> void
 FluentCMS.Events.IEventBus
 FluentCMS.Events.IEventBus.PublishAsync<TEvent>(TEvent! message, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
+FluentCMS.Events.IEventDeadLetters
+FluentCMS.Events.IEventDeadLetters.ListAsync(int offset = 0, int limit = 50, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<FluentCMS.Events.FailedEventDelivery!>!>!
+FluentCMS.Events.IEventDeadLetters.RemoveAsync(System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+FluentCMS.Events.IEventDeadLetters.RetryAsync(System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
 FluentCMS.Events.IEventHandler<TEvent>
 FluentCMS.Events.IEventHandler<TEvent>.HandleAsync(TEvent! message, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
 FluentCMS.Events.IOutboxEventHandler<TEvent>
@@ -1052,6 +1077,9 @@ override FluentCMS.Events.EventDelivery.ToString() -> string!
 override FluentCMS.Events.EventSource.Equals(object? obj) -> bool
 override FluentCMS.Events.EventSource.GetHashCode() -> int
 override FluentCMS.Events.EventSource.ToString() -> string!
+override FluentCMS.Events.FailedEventDelivery.Equals(object? obj) -> bool
+override FluentCMS.Events.FailedEventDelivery.GetHashCode() -> int
+override FluentCMS.Events.FailedEventDelivery.ToString() -> string!
 override FluentCMS.Events.JobDeadLetteredEvent.<Clone>$() -> FluentCMS.Events.JobDeadLetteredEvent!
 override FluentCMS.Events.JobDeadLetteredEvent.Equals(object? obj) -> bool
 override FluentCMS.Events.JobDeadLetteredEvent.GetHashCode() -> int
@@ -1191,6 +1219,8 @@ static FluentCMS.Events.EventSource.From(FluentCMS.Content.OperationContext! ope
 static FluentCMS.Events.EventSource.FromSystem(System.DateTimeOffset occurredAt) -> FluentCMS.Events.EventSource!
 static FluentCMS.Events.EventSource.operator !=(FluentCMS.Events.EventSource? left, FluentCMS.Events.EventSource? right) -> bool
 static FluentCMS.Events.EventSource.operator ==(FluentCMS.Events.EventSource? left, FluentCMS.Events.EventSource? right) -> bool
+static FluentCMS.Events.FailedEventDelivery.operator !=(FluentCMS.Events.FailedEventDelivery? left, FluentCMS.Events.FailedEventDelivery? right) -> bool
+static FluentCMS.Events.FailedEventDelivery.operator ==(FluentCMS.Events.FailedEventDelivery? left, FluentCMS.Events.FailedEventDelivery? right) -> bool
 static FluentCMS.Events.JobDeadLetteredEvent.operator !=(FluentCMS.Events.JobDeadLetteredEvent? left, FluentCMS.Events.JobDeadLetteredEvent? right) -> bool
 static FluentCMS.Events.JobDeadLetteredEvent.operator ==(FluentCMS.Events.JobDeadLetteredEvent? left, FluentCMS.Events.JobDeadLetteredEvent? right) -> bool
 static FluentCMS.Events.JobFailedEvent.operator !=(FluentCMS.Events.JobFailedEvent? left, FluentCMS.Events.JobFailedEvent? right) -> bool

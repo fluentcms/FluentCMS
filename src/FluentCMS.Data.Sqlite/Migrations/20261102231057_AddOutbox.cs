@@ -23,7 +23,7 @@ namespace FluentCMS.Data.Sqlite.Migrations
                     payload = table.Column<string>(type: "TEXT", nullable: false),
                     site_id = table.Column<Guid>(type: "TEXT", nullable: true),
                     occurred_at = table.Column<long>(type: "INTEGER", nullable: false),
-                    position = table.Column<int>(type: "INTEGER", nullable: false),
+                    sequence = table.Column<long>(type: "INTEGER", nullable: false),
                     status = table.Column<string>(type: "TEXT", maxLength: 16, nullable: false),
                     attempts = table.Column<int>(type: "INTEGER", nullable: false),
                     available_at = table.Column<long>(type: "INTEGER", nullable: false),
@@ -39,9 +39,15 @@ namespace FluentCMS.Data.Sqlite.Migrations
                 });
 
             migrationBuilder.CreateIndex(
+                name: "ix_cms_outbox_delivered",
+                table: "cms_outbox",
+                column: "delivered_at",
+                filter: "status = 'delivered'");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_cms_outbox_pending",
                 table: "cms_outbox",
-                columns: new[] { "occurred_at", "position", "id" },
+                columns: new[] { "sequence", "id" },
                 filter: "status = 'pending'");
 
             migrationBuilder.CreateIndex(

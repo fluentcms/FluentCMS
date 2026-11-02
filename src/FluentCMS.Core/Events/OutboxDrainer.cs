@@ -1,5 +1,4 @@
 using FluentCMS.Content;
-using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
@@ -13,8 +12,10 @@ using Microsoft.Extensions.Logging;
 namespace FluentCMS.Core.Events;
 
 // Delivers the rows of cms_outbox at least once. A delivery is claimed by a conditional update that only one of any
-// number of instances wins, and holds a lease, so that a worker that died frees its rows and one that is merely slow is
-// not delivered to twice while it still holds them.
+// number of instances wins, and holds a lease. A batch is claimed at once, so before each delivery the worker takes its
+// lease again with a conditional update that matches nothing once another instance has the row; a delivery is also cut off
+// before its lease can end, so that a worker never delivers on a lease it has lost. A write of the outcome is conditional
+// on the claim in the same way.
 internal sealed class OutboxDrainer(
     IServiceScopeFactory scopes,
     OutboxRegistry registry,
@@ -23,10 +24,14 @@ internal sealed class OutboxDrainer(
     TimeProvider time,
     ILogger<OutboxDrainer> logger)
 {
+    private const string ExhaustedError = "The worker of the last attempt stopped without finishing it, and no attempts are left.";
+
     private readonly string _owner = $"{Environment.MachineName}/{Guid.NewGuid():N}";
 
+    public Task<int> DrainAsync(CancellationToken cancellationToken = default) => DrainAsync(prune: false, cancellationToken);
+
     // The number of deliveries that succeeded.
-    public async Task<int> DrainAsync(CancellationToken cancellationToken = default)
+    public async Task<int> DrainAsync(bool prune, CancellationToken cancellationToken)
     {
         var delivered = 0;
         while (!cancellationToken.IsCancellationRequested)
@@ -39,6 +44,12 @@ internal sealed class OutboxDrainer(
 
             foreach (var message in batch)
             {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    await ReleaseAsync(message, delay: null);
+                    continue;
+                }
+
                 if (await DeliverAsync(message, cancellationToken))
                 {
                     delivered++;
@@ -46,7 +57,11 @@ internal sealed class OutboxDrainer(
             }
         }
 
-        await PruneAsync(cancellationToken);
+        if (prune)
+        {
+            await PruneAsync(cancellationToken);
+        }
+
         return delivered;
     }
 
@@ -58,8 +73,23 @@ internal sealed class OutboxDrainer(
         var now = time.GetUtcNow();
         var leaseUntil = now + options.LeaseDuration;
 
-        var candidates = await Due(context, now)
-            .OrderBy(message => message.OccurredAt).ThenBy(message => message.Position).ThenBy(message => message.Id)
+        // A row whose attempts are used up and whose worker is gone has no one left to settle it: a delivery that kills its
+        // process would otherwise be tried for ever.
+        var exhausted = await Open(context, now).Where(message => message.Attempts >= options.MaxAttempts).ExecuteUpdateAsync(
+            message => message
+                .SetProperty(row => row.Status, OutboxStatus.Failed)
+                .SetProperty(row => row.LastError, ExhaustedError)
+                .SetProperty(row => row.LeaseOwner, (string?)null)
+                .SetProperty(row => row.LeaseUntil, (DateTimeOffset?)null),
+            cancellationToken);
+
+        if (exhausted > 0)
+        {
+            EventLog.Exhausted(logger, exhausted);
+        }
+
+        var candidates = await Open(context, now)
+            .OrderBy(message => message.Sequence).ThenBy(message => message.Id)
             .Select(message => message.Id)
             .Take(options.BatchSize)
             .ToListAsync(cancellationToken);
@@ -67,7 +97,7 @@ internal sealed class OutboxDrainer(
         List<Guid> claimed = [];
         foreach (var id in candidates)
         {
-            var won = await Due(context, now).Where(message => message.Id == id).ExecuteUpdateAsync(
+            var won = await Open(context, now).Where(message => message.Id == id).ExecuteUpdateAsync(
                 message => message
                     .SetProperty(row => row.LeaseOwner, _owner)
                     .SetProperty(row => row.LeaseUntil, leaseUntil)
@@ -87,50 +117,73 @@ internal sealed class OutboxDrainer(
 
         return await context.Set<OutboxMessage>().AsNoTracking()
             .Where(message => claimed.Contains(message.Id))
-            .OrderBy(message => message.OccurredAt).ThenBy(message => message.Position).ThenBy(message => message.Id)
+            .OrderBy(message => message.Sequence).ThenBy(message => message.Id)
             .ToListAsync(cancellationToken);
     }
 
-    private static IQueryable<OutboxMessage> Due(SystemDbContext context, DateTimeOffset now) =>
+    private static IQueryable<OutboxMessage> Open(SystemDbContext context, DateTimeOffset now) =>
         context.Set<OutboxMessage>().Where(message =>
             message.Status == OutboxStatus.Pending
             && message.AvailableAt <= now
             && (message.LeaseUntil == null || message.LeaseUntil < now));
 
+    private static IQueryable<OutboxMessage> Held(SystemDbContext context, OutboxMessage message, string owner) =>
+        context.Set<OutboxMessage>().Where(row =>
+            row.Id == message.Id && row.Status == OutboxStatus.Pending && row.LeaseOwner == owner && row.Attempts == message.Attempts);
+
     private async Task<bool> DeliverAsync(OutboxMessage message, CancellationToken cancellationToken)
     {
+        var registration = registry.Find(message.Handler);
+        if (registration is null)
+        {
+            // Another instance may have the handler: this one is mid-deploy, or the plugin is gone. The row waits, and a
+            // plugin that stays removed leaves its rows pending.
+            EventLog.HandlerMissing(logger, message.Id, message.Handler);
+            await ReleaseAsync(message, options.MissingHandlerDelay);
+            return false;
+        }
+
+        if (!await RenewAsync(message))
+        {
+            EventLog.LeaseLost(logger, message.Id, message.Handler);
+            return false;
+        }
+
         try
         {
-            var registration = registry.Find(message.Handler)
-                ?? throw new InvalidOperationException($"No outbox handler is registered as '{message.Handler}'.");
             var @event = registration.Read(message.Payload)
                 ?? throw new InvalidOperationException($"The payload of the event for '{message.Handler}' is null.");
 
-            await using (var scope = scopes.CreateAsyncScope())
+            await using var scope = scopes.CreateAsyncScope();
+            using var limit = new CancellationTokenSource(options.DeliveryTimeout, time);
+            using var attempt = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, limit.Token);
+
+            var previous = operation.Current;
+            operation.Current = await OperationOfAsync(message, @event, scope.ServiceProvider);
+            try
             {
-                var previous = operation.Current;
-                operation.Current = OperationOf(message);
-                try
-                {
-                    await registration.Invoke(scope.ServiceProvider, @event, new EventDelivery(message.Id, message.Attempts), cancellationToken);
-                }
-                finally
-                {
-                    operation.Current = previous;
-                }
+                await registration.Invoke(scope.ServiceProvider, @event, new EventDelivery(message.Id, message.Attempts), attempt.Token)
+                    .AsTask()
+                    .WaitAsync(options.DeliveryTimeout, time, cancellationToken);
+            }
+            finally
+            {
+                operation.Current = previous;
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            await SettleAsync(message, row => row
-                .SetProperty(column => column.Attempts, column => column.Attempts - 1)
-                .SetProperty(column => column.LeaseOwner, (string?)null)
-                .SetProperty(column => column.LeaseUntil, (DateTimeOffset?)null));
+            await ReleaseAsync(message, delay: null);
+            return false;
+        }
+        catch (TimeoutException)
+        {
+            await FailAsync(message, $"The handler did not finish within {options.DeliveryTimeout}.");
             return false;
         }
         catch (Exception exception)
         {
-            await FailAsync(message, exception);
+            await FailAsync(message, OutboxErrorText.Of(exception, message.Payload));
             return false;
         }
 
@@ -144,14 +197,28 @@ internal sealed class OutboxDrainer(
         return true;
     }
 
-    private async Task FailAsync(OutboxMessage message, Exception exception)
+    // False when the row is no longer this worker's.
+    private async Task<bool> RenewAsync(OutboxMessage message)
     {
-        var error = JobErrorText.ForStorage(exception, message.Payload);
-        var now = time.GetUtcNow();
+        try
+        {
+            await using var scope = scopes.CreateAsyncScope();
+            var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+            var until = time.GetUtcNow() + options.LeaseDuration;
+            return await Held(context, message, _owner).ExecuteUpdateAsync(row => row.SetProperty(column => column.LeaseUntil, until)) == 1;
+        }
+        catch (Exception exception)
+        {
+            EventLog.SettleFailed(logger, exception, message.Id);
+            return false;
+        }
+    }
 
+    private async Task FailAsync(OutboxMessage message, string error)
+    {
         if (message.Attempts >= options.MaxAttempts)
         {
-            EventLog.DeliveryGaveUp(logger, message.Id, message.Handler, message.Attempts, JobErrorText.ForLog(exception, message.Payload));
+            EventLog.DeliveryGaveUp(logger, message.Id, message.Handler, message.Attempts, error);
             await SettleAsync(message, row => row
                 .SetProperty(column => column.Status, OutboxStatus.Failed)
                 .SetProperty(column => column.LastError, error)
@@ -160,11 +227,22 @@ internal sealed class OutboxDrainer(
             return;
         }
 
-        EventLog.DeliveryFailed(logger, message.Id, message.Handler, message.Attempts, JobErrorText.ForLog(exception, message.Payload));
-        var retryAt = now + options.RetryAfter(message.Attempts);
+        EventLog.DeliveryFailed(logger, message.Id, message.Handler, message.Attempts, error);
+        var retryAt = time.GetUtcNow() + options.RetryAfter(message.Attempts);
         await SettleAsync(message, row => row
             .SetProperty(column => column.AvailableAt, retryAt)
             .SetProperty(column => column.LastError, error)
+            .SetProperty(column => column.LeaseOwner, (string?)null)
+            .SetProperty(column => column.LeaseUntil, (DateTimeOffset?)null));
+    }
+
+    // The attempt is given back, since the handler did not run to an end.
+    private Task ReleaseAsync(OutboxMessage message, TimeSpan? delay)
+    {
+        var availableAt = delay is { } wait ? time.GetUtcNow() + wait : message.AvailableAt;
+        return SettleAsync(message, row => row
+            .SetProperty(column => column.Attempts, column => column.Attempts - 1)
+            .SetProperty(column => column.AvailableAt, availableAt)
             .SetProperty(column => column.LeaseOwner, (string?)null)
             .SetProperty(column => column.LeaseUntil, (DateTimeOffset?)null));
     }
@@ -177,9 +255,7 @@ internal sealed class OutboxDrainer(
         {
             await using var scope = scopes.CreateAsyncScope();
             var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
-            await context.Set<OutboxMessage>()
-                .Where(row => row.Id == message.Id && row.Status == OutboxStatus.Pending && row.LeaseOwner == _owner && row.Attempts == message.Attempts)
-                .ExecuteUpdateAsync(update);
+            await Held(context, message, _owner).ExecuteUpdateAsync(update);
         }
         catch (Exception exception)
         {
@@ -202,8 +278,48 @@ internal sealed class OutboxDrainer(
         {
             EventLog.DrainFailed(logger, exception);
         }
+        catch (OperationCanceledException)
+        {
+        }
     }
 
-    private OperationContext OperationOf(OutboxMessage message) =>
-        new(Principal.System, Origin.Job, new SiteId(message.SiteId ?? DefaultSite.Id), DefaultSite.Locale, ClientId: null, message.EventId.ToString(), time.GetUtcNow());
+    // As a job runs: the system principal, with the actor of the event for audit, on the site of the event and in its default locale.
+    private async Task<OperationContext> OperationOfAsync(OutboxMessage message, CmsEvent @event, IServiceProvider services)
+    {
+        var site = message.SiteId ?? DefaultSite.Id;
+        var locale = await services.GetRequiredService<SystemDbContext>().Set<Site>()
+            .Where(row => row.Id == site)
+            .Select(row => row.DefaultLocale)
+            .FirstOrDefaultAsync();
+
+        var source = @event.Source;
+        return new OperationContext(
+            Principal.System,
+            Origin.Job,
+            new SiteId(site),
+            locale ?? DefaultSite.Locale,
+            ClientId: null,
+            string.IsNullOrEmpty(source.CorrelationId) ? message.EventId.ToString() : source.CorrelationId,
+            time.GetUtcNow())
+        {
+            Actor = ActorOf(source),
+        };
+    }
+
+    private static Principal? ActorOf(EventSource source)
+    {
+        if (source.ActorId == Guid.Empty || source.ActorKind is PrincipalKind.System or PrincipalKind.Anonymous)
+        {
+            return null;
+        }
+
+        try
+        {
+            return new Principal(source.ActorKind, source.ActorId, source.ActorName ?? "");
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
+    }
 }

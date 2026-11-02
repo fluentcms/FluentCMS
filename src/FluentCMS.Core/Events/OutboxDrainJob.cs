@@ -4,7 +4,8 @@ using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Core.Events;
 
-internal sealed record OutboxDrainPayload;
+// Prune is set by the recurring run only, so that the table is not walked for old rows on every drain.
+internal sealed record OutboxDrainPayload(bool Prune = false);
 
 internal sealed class OutboxDrainJob(OutboxDrainer drainer) : IJob<OutboxDrainPayload>
 {
@@ -12,23 +13,46 @@ internal sealed class OutboxDrainJob(OutboxDrainer drainer) : IJob<OutboxDrainPa
 
     public const string RecurringName = "events.outbox.drain";
 
-    public Task ExecuteAsync(OutboxDrainPayload payload, JobContext context) => drainer.DrainAsync(context.CancellationToken);
+    // Its own queue, so that a handler that hangs holds up other deliveries and no other job.
+    public const string Queue = "outbox";
+
+    public Task ExecuteAsync(OutboxDrainPayload payload, JobContext context) => drainer.DrainAsync(payload.Prune, context.CancellationToken);
 }
 
-// The safety net: a crash between a commit and its kick leaves rows nothing has asked to deliver.
-internal sealed class OutboxScheduleService(IJobScheduler scheduler, ILogger<OutboxScheduleService> logger) : IHostedService
+// The safety net for a crash between a commit and its kick, which leaves rows nothing has asked to deliver. It does
+// nothing when no outbox handler is registered, since then there are never rows, and it keeps trying until the
+// schedule is stored, since a database that is down at startup would otherwise leave the host without it for good.
+internal sealed class OutboxScheduleService(IJobScheduler scheduler, OutboxRegistry registry, TimeProvider time, ILogger<OutboxScheduleService> logger) : BackgroundService
 {
-    public async Task StartAsync(CancellationToken cancellationToken)
+    private static readonly TimeSpan Retry = TimeSpan.FromSeconds(30);
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        try
+        if (!registry.Any)
         {
-            await scheduler.AddRecurringAsync<OutboxDrainJob, OutboxDrainPayload>(OutboxDrainJob.RecurringName, "* * * * *", new OutboxDrainPayload(), cancellationToken: cancellationToken);
+            return;
         }
-        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
+
+        while (!stoppingToken.IsCancellationRequested)
         {
-            EventLog.RecurringFailed(logger, exception);
+            try
+            {
+                await scheduler.AddRecurringAsync<OutboxDrainJob, OutboxDrainPayload>(OutboxDrainJob.RecurringName, "* * * * *", new OutboxDrainPayload(Prune: true), OutboxDrainJob.Queue, stoppingToken);
+                return;
+            }
+            catch (Exception exception) when (!stoppingToken.IsCancellationRequested)
+            {
+                EventLog.RecurringFailed(logger, exception);
+            }
+
+            try
+            {
+                await Task.Delay(Retry, time, stoppingToken);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
         }
     }
-
-    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 }

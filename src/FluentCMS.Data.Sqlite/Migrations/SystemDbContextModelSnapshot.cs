@@ -362,9 +362,9 @@ namespace FluentCMS.Data.Sqlite.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("payload");
 
-                    b.Property<int>("Position")
+                    b.Property<long>("Sequence")
                         .HasColumnType("INTEGER")
-                        .HasColumnName("position");
+                        .HasColumnName("sequence");
 
                     b.Property<Guid?>("SiteId")
                         .HasColumnType("TEXT")
@@ -378,11 +378,15 @@ namespace FluentCMS.Data.Sqlite.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("DeliveredAt")
+                        .HasDatabaseName("ix_cms_outbox_delivered")
+                        .HasFilter("status = 'delivered'");
+
                     b.HasIndex("EventId", "Handler")
                         .IsUnique()
                         .HasDatabaseName("uq_cms_outbox_event_handler");
 
-                    b.HasIndex("OccurredAt", "Position", "Id")
+                    b.HasIndex("Sequence", "Id")
                         .HasDatabaseName("ix_cms_outbox_pending")
                         .HasFilter("status = 'pending'");
 

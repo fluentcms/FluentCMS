@@ -64,6 +64,8 @@ internal sealed class OutboxRegistry
             .ToFrozenDictionary(group => group.Key, group => HandlerOrder.Sort(group, registration => registration.Handler, tiebreaker).ToArray());
     }
 
+    public bool Any => _byName.Count > 0;
+
     public OutboxRegistration? Find(string name) => _byName.GetValueOrDefault(name);
 
     public IReadOnlyList<OutboxRegistration> ForEvent(Type eventType) => _byEvent.GetValueOrDefault(eventType) ?? [];

@@ -6,7 +6,10 @@ namespace FluentCMS.Events;
 /// </summary>
 public abstract record CmsEvent
 {
-    /// <summary>Creates an event whose source is the system, now.</summary>
+    private readonly DateTimeOffset _created = DateTimeOffset.UtcNow;
+    private EventSource? _source;
+
+    /// <summary>Creates an event with no source, which <see cref="IEventBus"/> fills from the current operation when it is published.</summary>
     protected CmsEvent()
     {
     }
@@ -14,6 +17,17 @@ public abstract record CmsEvent
     /// <summary>The id of the event, the same for every handler and every delivery of it.</summary>
     public Guid EventId { get; init; } = Guid.CreateVersion7();
 
-    /// <summary>Where and when the event happened. Set it from the operation with <see cref="EventSource.From"/>.</summary>
-    public EventSource Source { get; init; } = EventSource.FromSystem(DateTimeOffset.UtcNow);
+    /// <summary>
+    /// Where and when the event happened. Set it from an operation with <see cref="EventSource.From"/>, or leave it
+    /// for <see cref="IEventBus"/> to set from the operation that publishes the event, or from the system when none is running.
+    /// </summary>
+    public EventSource Source
+    {
+        get => _source ?? EventSource.FromSystem(_created);
+        init => _source = value;
+    }
+
+    internal bool IsAttributed => _source is not null;
+
+    internal void Attribute(EventSource source) => _source = source;
 }

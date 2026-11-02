@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FluentCMS.Data.Sqlite.Migrations
 {
     [DbContext(typeof(SystemDbContext))]
-    [Migration("20261102222728_AddOutbox")]
+    [Migration("20261102231057_AddOutbox")]
     partial class AddOutbox
     {
         /// <inheritdoc />
@@ -365,9 +365,9 @@ namespace FluentCMS.Data.Sqlite.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("payload");
 
-                    b.Property<int>("Position")
+                    b.Property<long>("Sequence")
                         .HasColumnType("INTEGER")
-                        .HasColumnName("position");
+                        .HasColumnName("sequence");
 
                     b.Property<Guid?>("SiteId")
                         .HasColumnType("TEXT")
@@ -381,11 +381,15 @@ namespace FluentCMS.Data.Sqlite.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("DeliveredAt")
+                        .HasDatabaseName("ix_cms_outbox_delivered")
+                        .HasFilter("status = 'delivered'");
+
                     b.HasIndex("EventId", "Handler")
                         .IsUnique()
                         .HasDatabaseName("uq_cms_outbox_event_handler");
 
-                    b.HasIndex("OccurredAt", "Position", "Id")
+                    b.HasIndex("Sequence", "Id")
                         .HasDatabaseName("ix_cms_outbox_pending")
                         .HasFilter("status = 'pending'");
 

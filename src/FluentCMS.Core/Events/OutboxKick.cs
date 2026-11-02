@@ -24,7 +24,7 @@ internal sealed class OutboxKick(IServiceScopeFactory scopes, IJobScheduler sche
                 }
             }
 
-            await scheduler.EnqueueAsync<OutboxDrainJob, OutboxDrainPayload>(new OutboxDrainPayload());
+            await scheduler.EnqueueAsync<OutboxDrainJob, OutboxDrainPayload>(new OutboxDrainPayload(), new JobOptions { Queue = OutboxDrainJob.Queue });
         }
         catch (Exception exception)
         {

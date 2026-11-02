@@ -18,6 +18,13 @@ public sealed class OutboxOptions
 
     public double RetryJitter { get; set; } = 0.2;
 
+    // How long one delivery may take before it is abandoned and counted as failed. Shorter than the lease, so that a
+    // delivery never outlives the claim that lets it run.
+    public TimeSpan DeliveryTimeout { get; set; } = TimeSpan.FromMinutes(1);
+
+    // How long a row waits when no handler is registered under its name, as in a rolling deploy or after a plugin was removed.
+    public TimeSpan MissingHandlerDelay { get; set; } = TimeSpan.FromMinutes(5);
+
     // How long a delivered row stays for diagnosis.
     public TimeSpan Retention { get; set; } = TimeSpan.FromDays(7);
 
@@ -26,6 +33,8 @@ public sealed class OutboxOptions
         Require(BatchSize >= 1, $"{nameof(BatchSize)} is {BatchSize}; it must be at least 1.");
         Require(MaxAttempts >= 1, $"{nameof(MaxAttempts)} is {MaxAttempts}; it must be at least 1.");
         Require(LeaseDuration > TimeSpan.Zero, $"{nameof(LeaseDuration)} must be positive.");
+        Require(DeliveryTimeout > TimeSpan.Zero && DeliveryTimeout < LeaseDuration, $"{nameof(DeliveryTimeout)} must be positive and shorter than {nameof(LeaseDuration)}.");
+        Require(MissingHandlerDelay > TimeSpan.Zero, $"{nameof(MissingHandlerDelay)} must be positive.");
         Require(RetryBaseDelay >= TimeSpan.Zero && RetryMaxDelay >= RetryBaseDelay, $"{nameof(RetryMaxDelay)} must be at least {nameof(RetryBaseDelay)}, which must not be negative.");
         Require(RetryJitter >= 0, $"{nameof(RetryJitter)} must not be negative.");
         Require(Retention >= TimeSpan.Zero, $"{nameof(Retention)} must not be negative.");

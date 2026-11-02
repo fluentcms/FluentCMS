@@ -96,13 +96,16 @@ public sealed class EventDispatchTests
         {
             cms.Events.AddHandler<EntryDraftSavedEvent, SavedHandler>();
             cms.Events.AddHandler<EntryTrashedEvent, TrashedHandler>();
+            cms.Events.AddHandler<EntryRestoredEvent, RestoredHandler>();
         }));
 
         var entry = await database.CreateAsync(Editor, Titled("T"));
         await database.DeleteAsync(Editor, IdOf(entry));
+        await database.RestoreAsync(Editor, IdOf(entry));
 
-        seen.Calls.ShouldBe(["saved", "trashed"]);
+        seen.Calls.ShouldBe(["saved", "trashed", "restored"]);
         seen.Of<EntryTrashedEvent>().ShouldHaveSingleItem().EntryId.ShouldBe(IdOf(entry));
+        seen.Of<EntryRestoredEvent>().ShouldHaveSingleItem().EntryId.ShouldBe(IdOf(entry));
     }
 
     [Fact]
@@ -277,7 +280,7 @@ public sealed class EventDispatchTests
     }
 
     [Fact]
-    public async Task AWriteInATransactionTheServiceDoesNotOwnRecordsNothingForTheOutbox()
+    public async Task AWriteInATransactionTheServiceDoesNotOwnRecordsItsRowWithThatTransactionAndTellsNoHandlerOfThisProcess()
     {
         var seen = new Seen();
         using var database = new ServiceDatabase(EventRegistrations.Outbox(seen, cms => cms.Events.AddHandler<EntryDraftSavedEvent, SavedHandler>()));
@@ -292,7 +295,24 @@ public sealed class EventDispatchTests
 
         seen.Events.ShouldBeEmpty();
         database.Rows().ShouldBeEmpty();
+
+        var committed = await database.AsAsync(Editor, async services =>
+        {
+            await using var transaction = await services.GetRequiredService<CmsDbContext>().Database.BeginTransactionAsync(Token);
+            var entry = await services.GetRequiredService<IContentService>().CreateAsync("article", Titled("Committed"), Token);
+            await transaction.CommitAsync(Token);
+            return IdOf(entry);
+        });
+
+        // In-process handlers cannot see the commit, as in #2747; the outbox handler is told, because its row committed too.
+        seen.Events.ShouldBeEmpty();
+        var row = database.Rows().ShouldHaveSingleItem();
+        row.Payload.ShouldContain(committed.ToString());
+        (await DrainAsync(database.Database.Services)).ShouldBe(1);
+        seen.Of<EntryDraftSavedEvent>().ShouldHaveSingleItem().EntryId.ShouldBe(committed);
     }
+
+    private static Task<int> DrainAsync(IServiceProvider instance) => instance.GetRequiredService<OutboxDrainer>().DrainAsync(Token);
 
     [Fact]
     public async Task ARecordedRowNamesTheEventAndItsHandler()

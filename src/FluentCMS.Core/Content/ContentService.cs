@@ -422,7 +422,7 @@ internal sealed class ContentService(
             try
             {
                 result = await work();
-                await StageAsync(cancellationToken);
+                await StageAsync([.. _pending], cancellationToken);
                 await transaction.CommitAsync(CancellationToken.None);
                 committed = true;
             }
@@ -456,6 +456,13 @@ internal sealed class ContentService(
         try
         {
             result = await work();
+
+            // The end of a transaction someone else began cannot be seen, so in-process handlers are never told. The rows of
+            // the outbox handlers go in with the transaction, and commit or roll back with it.
+            if (!_ownsTransaction)
+            {
+                await StageAsync([.. _pending.Skip(pending)], cancellationToken);
+            }
         }
         catch
         {
@@ -481,7 +488,6 @@ internal sealed class ContentService(
             await outer.ReleaseSavepointAsync(savepoint, CancellationToken.None);
         }
 
-        // The end of a transaction someone else began cannot be seen, and an entry that may yet roll back is never told.
         if (!_ownsTransaction)
         {
             _pending.RemoveRange(pending, _pending.Count - pending);
@@ -492,15 +498,17 @@ internal sealed class ContentService(
     }
 
     // Still inside the transaction: what the outbox handlers must not lose is written with the write, and a failure here fails it.
-    private async Task StageAsync(CancellationToken cancellationToken)
+    private async Task StageAsync(IReadOnlyList<EntryChange> changes, CancellationToken cancellationToken)
     {
-        IReadOnlyList<EntryChange> changes = [.. _pending];
         foreach (var stager in stagers)
         {
             await stager.StageAsync(context, changes, cancellationToken);
         }
 
-        await events.StageAsync(context, cancellationToken);
+        if (_ownsTransaction)
+        {
+            await events.StageAsync(context, cancellationToken);
+        }
     }
 
     // The write has committed: neither a failing sink nor a cancelled caller may turn it into a failure (spec 4.11).

@@ -367,9 +367,9 @@ namespace FluentCMS.Data.SqlServer.Migrations
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("payload");
 
-                    b.Property<int>("Position")
-                        .HasColumnType("int")
-                        .HasColumnName("position");
+                    b.Property<long>("Sequence")
+                        .HasColumnType("bigint")
+                        .HasColumnName("sequence");
 
                     b.Property<Guid?>("SiteId")
                         .HasColumnType("uniqueidentifier")
@@ -383,11 +383,15 @@ namespace FluentCMS.Data.SqlServer.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("DeliveredAt")
+                        .HasDatabaseName("ix_cms_outbox_delivered")
+                        .HasFilter("status = 'delivered'");
+
                     b.HasIndex("EventId", "Handler")
                         .IsUnique()
                         .HasDatabaseName("uq_cms_outbox_event_handler");
 
-                    b.HasIndex("OccurredAt", "Position", "Id")
+                    b.HasIndex("Sequence", "Id")
                         .HasDatabaseName("ix_cms_outbox_pending")
                         .HasFilter("status = 'pending'");
 

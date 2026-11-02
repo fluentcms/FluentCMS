@@ -1,17 +1,23 @@
+using FluentCMS.Content;
 using FluentCMS.Events;
 
 namespace FluentCMS.Core.Events;
 
-internal sealed class EventBus(EventBuffer buffer, EventDispatcher dispatcher, OutboxWriter outbox, ITransactionProbe transaction) : IEventBus
+internal sealed class EventBus(EventBuffer buffer, OutboxWriter outbox, ITransactionProbe transaction, IOperationContextAccessor operation, TimeProvider time) : IEventBus
 {
-    public async ValueTask PublishAsync<TEvent>(TEvent @event, CancellationToken cancellationToken = default)
+    public async ValueTask PublishAsync<TEvent>(TEvent message, CancellationToken cancellationToken = default)
         where TEvent : CmsEvent
     {
-        ArgumentNullException.ThrowIfNull(@event);
+        ArgumentNullException.ThrowIfNull(message);
+
+        if (!message.IsAttributed)
+        {
+            message.Attribute(operation.Current is { } current ? EventSource.From(current) : EventSource.FromSystem(time.GetUtcNow()));
+        }
 
         if (buffer.IsOpen)
         {
-            buffer.Add(@event);
+            buffer.Add(message);
             return;
         }
 
@@ -22,9 +28,8 @@ internal sealed class EventBus(EventBuffer buffer, EventDispatcher dispatcher, O
                 $"{EventErrorCodes.PublishInForeignTransaction}: an event cannot be published inside a transaction the content service does not own, because its end cannot be seen; publish it after the transaction.");
         }
 
-        await outbox.RecordAsync([@event], cancellationToken);
-        await dispatcher.DispatchAsync(@event);
-        await outbox.KickIfStagedAsync();
+        await outbox.RecordAsync([message], cancellationToken);
+        await buffer.DispatchNowAsync(message);
     }
 }
 
