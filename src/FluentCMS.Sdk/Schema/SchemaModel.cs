@@ -12,8 +12,9 @@ public sealed class SchemaModel
     private readonly Dictionary<string, SchemaType> _components;
     private readonly Dictionary<string, SchemaType> _blocks;
 
-    internal SchemaModel(IEnumerable<SchemaType> types)
+    internal SchemaModel(IEnumerable<SchemaType> types, IFieldTypeRegistry fieldTypes)
     {
+        FieldTypes = fieldTypes;
         var ordered = types.OrderBy(type => type.Name, StringComparer.Ordinal).ToList();
 
         ContentTypes = Select(ordered, SchemaTypeKind.Collection, SchemaTypeKind.Singleton);
@@ -24,6 +25,9 @@ public sealed class SchemaModel
         _components = Components.ToDictionary(type => type.Name, StringComparer.Ordinal);
         _blocks = Blocks.ToDictionary(type => type.Name, StringComparer.Ordinal);
     }
+
+    // The registry the schema was validated with, for the engine; it is not part of the schema itself.
+    internal IFieldTypeRegistry FieldTypes { get; }
 
     /// <summary>The collections and singletons, ordered by name.</summary>
     public IReadOnlyList<SchemaType> ContentTypes { get; }

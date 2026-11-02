@@ -80,7 +80,7 @@ public sealed class SchemaBuilder : ISchemaBuilder
             throw new SchemaValidationException(errors);
         }
 
-        return SchemaModelFactory.Create(_types);
+        return SchemaModelFactory.Create(_types, _fieldTypes);
     }
 
     ISchemaBuilder ISchemaBuilder.AddContentType<T>() => AddContentType<T>();
