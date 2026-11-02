@@ -63,17 +63,22 @@ public class DescriptorTests
 
         type.Name.ShouldBe(name);
         type.StorageKind(TestFields.Field(name)).ShouldBe(column);
-        type.StorageKind(TestFields.Field(name, field => field.Multiple())).ShouldBe(repeated);
+        type.SupportsMultiple.ShouldBe(name is "select" or "relation" or "component");
 
         var single = TestFields.Field(name);
-        var many = TestFields.Field(name, field => field.Multiple());
         type.Sortable(single).ShouldBe(sortable);
-        type.Sortable(many).ShouldBe(sortable && repeated != FieldStorageKind.Json);
         type.Indexable(single).ShouldBe(indexable);
-        type.Indexable(many).ShouldBe(indexable && (repeated != FieldStorageKind.Json || column == FieldStorageKind.Json));
         type.FilterOperators.OrderBy(op => op).ShouldBe(operators.OrderBy(op => op));
         type.ClrTypes.ShouldNotBeEmpty();
         type.AcceptsAnySetting.ShouldBeFalse();
+
+        if (type.SupportsMultiple)
+        {
+            var many = TestFields.Field(name, field => field.Multiple());
+            type.StorageKind(many).ShouldBe(repeated);
+            type.Sortable(many).ShouldBe(sortable && repeated != FieldStorageKind.Json);
+            type.Indexable(many).ShouldBe(indexable && (repeated != FieldStorageKind.Json || column == FieldStorageKind.Json));
+        }
     }
 
     [Fact]
@@ -81,7 +86,7 @@ public class DescriptorTests
     {
         foreach (var type in FieldTypeRegistry.Core.All)
         {
-            foreach (var multiple in new[] { false, true })
+            foreach (var multiple in type.SupportsMultiple ? new[] { false, true } : new[] { false })
             {
                 var field = TestFields.Field(type.Name, f => f.Multiple(multiple));
                 if (type.StorageKind(field) == FieldStorageKind.Json)

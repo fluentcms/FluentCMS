@@ -20,6 +20,8 @@ internal abstract class CoreFieldType(string name, Type[] clrTypes, FilterOperat
 
     public virtual bool Indexable(SchemaField field) => indexable;
 
+    public virtual bool SupportsMultiple => false;
+
     public virtual FieldStorageKind StorageKind(SchemaField field) => FieldStorageKind.Column;
 
     public abstract bool TryCoerce(object? value, SchemaField field, out object? result, out string? message);

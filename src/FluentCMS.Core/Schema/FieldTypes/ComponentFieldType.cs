@@ -15,6 +15,8 @@ internal sealed class ComponentFieldType()
         indexable: false,
         new FieldSettingDescriptor { Key = FieldSettings.Component, Kind = FieldSettingKind.String, Required = true })
 {
+    public override bool SupportsMultiple => true;
+
     public override FieldStorageKind StorageKind(SchemaField field) => field.Multiple ? FieldStorageKind.Json : FieldStorageKind.Column;
 
     public override bool TryCoerce(object? value, SchemaField field, out object? result, out string? message)
