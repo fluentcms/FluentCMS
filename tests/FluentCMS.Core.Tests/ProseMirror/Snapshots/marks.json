@@ -1,0 +1,149 @@
+{
+  "type": "doc",
+  "content": [
+    {
+      "type": "paragraph",
+      "content": [
+        { "type": "text", "text": "Start " },
+        { "type": "text", "marks": [ { "type": "bold" } ], "text": "bold " },
+        { "type": "text", "marks": [ { "type": "bold" }, { "type": "italic" } ], "text": "both" },
+        { "type": "text", "marks": [ { "type": "italic" } ], "text": " italic" },
+        { "type": "text", "text": " end" }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        { "type": "text", "marks": [ { "type": "bold" } ], "text": "bold " },
+        { "type": "text", "text": "plain " },
+        { "type": "text", "marks": [ { "type": "underline" }, { "type": "strike" } ], "text": "under and strike" }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "text",
+          "marks": [ { "type": "link", "attrs": { "href": "https://example.com/a b(1)", "title": "Say \"hi\"" } }, { "type": "bold" } ],
+          "text": "link"
+        },
+        { "type": "text", "text": " " },
+        { "type": "text", "marks": [ { "type": "link", "attrs": { "href": "javascript:alert(1)" } } ], "text": "script" },
+        { "type": "text", "text": " " },
+        { "type": "text", "marks": [ { "type": "link", "attrs": { "href": "/docs/start#top" } } ], "text": "relative" },
+        { "type": "text", "text": " " },
+        { "type": "text", "marks": [ { "type": "link", "attrs": { "href": "mailto:team@example.com" } } ], "text": "mail" }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        { "type": "text", "marks": [ { "type": "code" } ], "text": "a`b" },
+        { "type": "text", "text": " " },
+        { "type": "text", "marks": [ { "type": "bold" }, { "type": "code" } ], "text": "x" }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        { "type": "text", "text": "# not a heading" }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        { "type": "text", "text": "1. not a list" }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        { "type": "text", "text": "- not a bullet\n> not a quote\n+ not a plus" }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        { "type": "text", "text": "*stars* _underscores_ [brackets] `ticks` <tags> &amp; AT&T 2 * 3 back\\slash ~tilde~" }
+      ]
+    },
+    {
+      "type": "paragraph"
+    },
+    {
+      "type": "heading",
+      "attrs": { "level": 3 },
+      "content": [
+        { "type": "text", "text": "Title" },
+        { "type": "hardBreak" },
+        { "type": "text", "marks": [ { "type": "bold" } ], "text": "bold" }
+      ]
+    },
+    {
+      "type": "codeBlock",
+      "attrs": { "language": "md" },
+      "content": [ { "type": "text", "text": "```js\nx\n```" } ]
+    },
+    {
+      "type": "bulletList",
+      "content": [
+        {
+          "type": "listItem",
+          "content": [ { "type": "paragraph", "content": [ { "type": "text", "text": "Tight one" } ] } ]
+        },
+        {
+          "type": "listItem",
+          "content": [ { "type": "paragraph", "content": [ { "type": "text", "text": "Tight two" } ] } ]
+        }
+      ]
+    },
+    {
+      "type": "bulletList",
+      "content": [
+        {
+          "type": "listItem",
+          "content": [
+            { "type": "paragraph", "content": [ { "type": "text", "text": "Loose one" } ] },
+            { "type": "paragraph", "content": [ { "type": "text", "text": "Second paragraph" } ] }
+          ]
+        },
+        {
+          "type": "listItem",
+          "content": [ { "type": "paragraph", "content": [ { "type": "text", "text": "Loose two" } ] } ]
+        }
+      ]
+    },
+    {
+      "type": "blockquote",
+      "content": [
+        { "type": "paragraph", "content": [ { "type": "text", "text": "First quoted" } ] },
+        {
+          "type": "bulletList",
+          "content": [
+            {
+              "type": "listItem",
+              "content": [ { "type": "paragraph", "content": [ { "type": "text", "text": "Quoted item" } ] } ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        {
+          "type": "media",
+          "attrs": { "mediaId": "33333333-3333-3333-3333-333333333333" },
+          "marks": [ { "type": "link", "attrs": { "href": "https://example.com/full" } } ]
+        },
+        { "type": "text", "text": " caption" }
+      ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        { "type": "text", "text": "first line\nsecond line" }
+      ]
+    }
+  ]
+}

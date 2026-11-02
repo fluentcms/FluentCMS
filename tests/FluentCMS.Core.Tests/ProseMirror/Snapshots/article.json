@@ -1,0 +1,133 @@
+{
+  "type": "doc",
+  "content": [
+    {
+      "type": "heading",
+      "attrs": { "level": 1 },
+      "content": [ { "type": "text", "text": "Release notes" } ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        { "type": "text", "text": "Plain, " },
+        { "type": "text", "marks": [ { "type": "bold" } ], "text": "bold" },
+        { "type": "text", "text": ", " },
+        { "type": "text", "marks": [ { "type": "italic" } ], "text": "italic" },
+        { "type": "text", "text": ", " },
+        { "type": "text", "marks": [ { "type": "underline" } ], "text": "underlined" },
+        { "type": "text", "text": ", " },
+        { "type": "text", "marks": [ { "type": "strike" } ], "text": "struck" },
+        { "type": "text", "text": " and " },
+        { "type": "text", "marks": [ { "type": "code" } ], "text": "code" },
+        { "type": "text", "text": " with <angle> & ampersand." }
+      ]
+    },
+    {
+      "type": "heading",
+      "attrs": { "level": 2 },
+      "content": [ { "type": "text", "text": "Links" } ]
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        { "type": "text", "text": "Read the " },
+        {
+          "type": "text",
+          "marks": [ { "type": "link", "attrs": { "href": "https://example.com/docs?a=1&b=2", "target": "_blank" } } ],
+          "text": "docs"
+        },
+        { "type": "text", "text": " or the " },
+        {
+          "type": "text",
+          "marks": [ { "type": "entryLink", "attrs": { "entryId": "11111111-1111-1111-1111-111111111111", "entryType": "article" } } ],
+          "text": "getting started guide"
+        },
+        { "type": "text", "text": "." }
+      ]
+    },
+    {
+      "type": "heading",
+      "attrs": { "level": 2 },
+      "content": [ { "type": "text", "text": "Lists" } ]
+    },
+    {
+      "type": "bulletList",
+      "content": [
+        {
+          "type": "listItem",
+          "content": [ { "type": "paragraph", "content": [ { "type": "text", "text": "First" } ] } ]
+        },
+        {
+          "type": "listItem",
+          "content": [
+            { "type": "paragraph", "content": [ { "type": "text", "text": "Second" } ] },
+            {
+              "type": "orderedList",
+              "attrs": { "start": 3 },
+              "content": [
+                {
+                  "type": "listItem",
+                  "content": [ { "type": "paragraph", "content": [ { "type": "text", "text": "Nested three" } ] } ]
+                },
+                {
+                  "type": "listItem",
+                  "content": [ { "type": "paragraph", "content": [ { "type": "text", "text": "Nested four" } ] } ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "orderedList",
+      "attrs": { "start": 1 },
+      "content": [
+        {
+          "type": "listItem",
+          "content": [ { "type": "paragraph", "content": [ { "type": "text", "text": "One" } ] } ]
+        },
+        {
+          "type": "listItem",
+          "content": [ { "type": "paragraph", "content": [ { "type": "text", "text": "Two" } ] } ]
+        }
+      ]
+    },
+    {
+      "type": "blockquote",
+      "content": [ { "type": "paragraph", "content": [ { "type": "text", "text": "Quoted text." } ] } ]
+    },
+    {
+      "type": "codeBlock",
+      "attrs": { "language": "csharp" },
+      "content": [ { "type": "text", "text": "var small = 1 < 2;\nConsole.WriteLine(small);" } ]
+    },
+    {
+      "type": "codeBlock",
+      "attrs": { "language": null },
+      "content": [ { "type": "text", "text": "no language" } ]
+    },
+    { "type": "horizontalRule" },
+    {
+      "type": "media",
+      "attrs": { "alt": "A diagram", "mediaId": "22222222-2222-2222-2222-222222222222", "title": "Architecture" }
+    },
+    {
+      "type": "paragraph",
+      "content": [
+        { "type": "text", "text": "Line one" },
+        { "type": "hardBreak" },
+        { "type": "text", "text": "line two with an inline " },
+        {
+          "type": "inlineBlock",
+          "attrs": { "blockType": "callout", "data": { "tone": "info", "text": "Heads up" } }
+        },
+        { "type": "text", "text": " block." }
+      ]
+    },
+    {
+      "type": "inlineBlock",
+      "attrs": { "blockType": "callout", "data": { "tone": "warning", "text": "Block level" } }
+    }
+  ]
+}

@@ -92,6 +92,18 @@ FluentCMS.Schema.ContentItem.UpdatedBy.get -> System.Guid
 FluentCMS.Schema.ContentItem.UpdatedBy.set -> void
 FluentCMS.Schema.ContentItem.Version.get -> int
 FluentCMS.Schema.ContentItem.Version.set -> void
+FluentCMS.Schema.IRichTextNodeContext
+FluentCMS.Schema.IRichTextNodeContext.Attributes.get -> System.Collections.Generic.IReadOnlyDictionary<string!, System.Text.Json.JsonElement>!
+FluentCMS.Schema.IRichTextNodeContext.Format.get -> string!
+FluentCMS.Schema.IRichTextNodeContext.IsInline.get -> bool
+FluentCMS.Schema.IRichTextNodeContext.NodeType.get -> string!
+FluentCMS.Schema.IRichTextNodeContext.RenderChildren() -> string!
+FluentCMS.Schema.IRichTextNodeRenderer
+FluentCMS.Schema.IRichTextNodeRenderer.NodeType.get -> string!
+FluentCMS.Schema.IRichTextNodeRenderer.Render(FluentCMS.Schema.IRichTextNodeContext! context) -> string?
+FluentCMS.Schema.IRichTextRenderer
+FluentCMS.Schema.IRichTextRenderer.Formats.get -> System.Collections.Generic.IReadOnlyCollection<string!>!
+FluentCMS.Schema.IRichTextRenderer.Render(FluentCMS.Schema.RichText! value, string! format, FluentCMS.Schema.RichTextRenderOptions? options = null) -> string!
 FluentCMS.Schema.Ref<T>
 FluentCMS.Schema.Ref<T>.Deconstruct(out System.Guid Id) -> void
 FluentCMS.Schema.Ref<T>.Id.get -> System.Guid
@@ -112,6 +124,13 @@ FluentCMS.Schema.RichText.<Clone>$() -> FluentCMS.Schema.RichText!
 FluentCMS.Schema.RichText.Equals(FluentCMS.Schema.RichText? other) -> bool
 FluentCMS.Schema.RichText.Json.get -> string!
 FluentCMS.Schema.RichText.RichText(string! json) -> void
+FluentCMS.Schema.RichTextFormats
+FluentCMS.Schema.RichTextRenderOptions
+FluentCMS.Schema.RichTextRenderOptions.EntryUrlResolver.get -> System.Func<string!, System.Guid, string?>?
+FluentCMS.Schema.RichTextRenderOptions.EntryUrlResolver.init -> void
+FluentCMS.Schema.RichTextRenderOptions.MediaUrlResolver.get -> System.Func<System.Guid, string?>?
+FluentCMS.Schema.RichTextRenderOptions.MediaUrlResolver.init -> void
+FluentCMS.Schema.RichTextRenderOptions.RichTextRenderOptions() -> void
 FluentCMS.Sites.SiteId
 FluentCMS.Sites.SiteId.Deconstruct(out System.Guid Value) -> void
 FluentCMS.Sites.SiteId.Equals(FluentCMS.Sites.SiteId other) -> bool
@@ -120,6 +139,8 @@ FluentCMS.Sites.SiteId.SiteId() -> void
 FluentCMS.Sites.SiteId.SiteId(System.Guid Value) -> void
 FluentCMS.Sites.SiteId.Value.get -> System.Guid
 FluentCMS.Sites.SiteId.Value.init -> void
+const FluentCMS.Schema.RichTextFormats.Html = "html" -> string!
+const FluentCMS.Schema.RichTextFormats.Markdown = "markdown" -> string!
 override FluentCMS.Content.OperationContext.Equals(object? obj) -> bool
 override FluentCMS.Content.OperationContext.GetHashCode() -> int
 override FluentCMS.Content.OperationContext.ToString() -> string!
