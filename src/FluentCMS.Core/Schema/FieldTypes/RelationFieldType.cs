@@ -16,6 +16,8 @@ internal sealed class RelationFieldType()
         sortable: false,
         indexable: false)
 {
+    public override bool SupportsMultiple => true;
+
     public override FieldStorageKind StorageKind(SchemaField field) => FieldStorageKind.Reference;
 
     public override bool TryCoerce(object? value, SchemaField field, out object? result, out string? message)

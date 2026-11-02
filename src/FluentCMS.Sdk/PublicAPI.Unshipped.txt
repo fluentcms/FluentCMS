@@ -434,6 +434,7 @@ FluentCMS.Schema.IFieldType.OpenApiSchema(FluentCMS.Schema.SchemaField! field) -
 FluentCMS.Schema.IFieldType.Settings.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Schema.FieldSettingDescriptor!>!
 FluentCMS.Schema.IFieldType.Sortable(FluentCMS.Schema.SchemaField! field) -> bool
 FluentCMS.Schema.IFieldType.StorageKind(FluentCMS.Schema.SchemaField! field) -> FluentCMS.Schema.FieldStorageKind
+FluentCMS.Schema.IFieldType.SupportsMultiple.get -> bool
 FluentCMS.Schema.IFieldType.TryCoerce(object? value, FluentCMS.Schema.SchemaField! field, out object? result, out string? message) -> bool
 FluentCMS.Schema.IFieldTypeRegistry
 FluentCMS.Schema.IFieldTypeRegistry.All.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Schema.IFieldType!>!

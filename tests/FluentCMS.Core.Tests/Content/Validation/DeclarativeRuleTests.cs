@@ -18,8 +18,8 @@ public class DeclarativeRuleTests
         .Field("day", "date", f => f.Range(0, 100))
         .Field("kind", "select", f => f.Setting(FieldSettings.Options, new[] { "a", "b" }))
         .Field("labels", "select", f => f.Multiple().Setting(FieldSettings.Options, new[] { "a", "b" }))
-        .Field("tags", "text", f => f.Multiple().Length(2, 3))
-        .Field("scores", "integer", f => f.Multiple().Range(0, 5)));
+        .Field("tags", "list", f => f.Multiple().Length(2, 3))
+        .Field("scores", "list", f => f.Multiple().Range(0, 5)));
 
     private static async Task<string[]> Run(Dictionary<string, object?> values, ValidationMode mode = ValidationMode.Publish)
     {

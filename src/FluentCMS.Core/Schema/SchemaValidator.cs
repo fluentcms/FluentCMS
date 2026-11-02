@@ -138,6 +138,11 @@ internal sealed class SchemaValidator(IFieldTypeRegistry fieldTypes)
                 : $"field {location} is localizable, but fields of a {type.Kind.ToString().ToLowerInvariant()} cannot be; localize the field that uses it");
         }
 
+        if (field.Multiple && fieldType is { SupportsMultiple: false })
+        {
+            Report(SchemaErrorCodes.InvalidField, $"{fieldType.Name} field {location} is marked multiple, but a {fieldType.Name} field holds a single value");
+        }
+
         ValidateLimits(field, location);
         ValidateSettings(type, field, location, wrongKind, contentTypes, components, blocks);
         ValidateConditions(type, field, location);
