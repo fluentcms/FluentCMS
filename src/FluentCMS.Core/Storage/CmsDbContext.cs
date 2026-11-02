@@ -25,6 +25,8 @@ public sealed class CmsDbContext : DbContext
 
     internal string ConventionsKey => _model.Conventions.CacheKey;
 
+    internal string? JsonDialectKey => _model.JsonDialect?.GetType().FullName;
+
     // The rows of a content table, such as cms_article or cms_article_i18n.
     public DbSet<Dictionary<string, object>> Rows(string table) => Set<Dictionary<string, object>>(table);
 
@@ -35,5 +37,6 @@ public sealed class CmsDbContext : DbContext
     {
         new SystemModelBuilder(_model.Conventions).Apply(modelBuilder);
         new ContentModelBuilder(_model.Schema, _model.Conventions).Apply(modelBuilder);
+        _model.JsonDialect?.ConfigureFunctions(modelBuilder);
     }
 }
