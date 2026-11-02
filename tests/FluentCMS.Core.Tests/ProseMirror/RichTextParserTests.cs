@@ -117,6 +117,8 @@ public class RichTextParserTests
     [InlineData("""{"type":"doc","content":[{"type":"heading","attrs":{"level":7}}]}""", "$.content[0].attrs.level", "between 1 and 6")]
     [InlineData("""{"type":"doc","content":[{"type":"heading","attrs":{"level":"2"}}]}""", "$.content[0].attrs.level", "between 1 and 6")]
     [InlineData("""{"type":"doc","content":[{"type":"orderedList","attrs":{"start":"a"}}]}""", "$.content[0].attrs.start", "must be an integer")]
+    [InlineData("""{"type":"doc","content":[{"type":"orderedList","attrs":{"start":-3}}]}""", "$.content[0].attrs.start", "between 0 and 999999999")]
+    [InlineData("""{"type":"doc","content":[{"type":"orderedList","attrs":{"start":1000000000}}]}""", "$.content[0].attrs.start", "between 0 and 999999999")]
     [InlineData("""{"type":"doc","content":[{"type":"codeBlock","attrs":{"language":3}}]}""", "$.content[0].attrs.language", "must be a string")]
     [InlineData("""{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text"}]}]}""", "$.content[0].content[0].text", "non-empty string")]
     [InlineData("""{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":""}]}]}""", "$.content[0].content[0].text", "non-empty string")]

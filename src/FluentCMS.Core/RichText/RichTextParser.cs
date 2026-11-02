@@ -333,11 +333,16 @@ public static class RichTextParser
 
                     break;
                 case RichTextNodeTypes.OrderedList:
-                    if (attributes.TryGetValue("start", out var start)
-                        && start.ValueKind != JsonValueKind.Null
-                        && (start.ValueKind != JsonValueKind.Number || !start.TryGetInt32(out _)))
+                    if (attributes.TryGetValue("start", out var start) && start.ValueKind != JsonValueKind.Null)
                     {
-                        Add($"{path}.start", "The start must be an integer.");
+                        if (start.ValueKind != JsonValueKind.Number || !start.TryGetInt32(out var startValue))
+                        {
+                            Add($"{path}.start", "The start must be an integer.");
+                        }
+                        else if (RichTextAttributes.CheckListStart(startValue) is { } startError)
+                        {
+                            Add($"{path}.start", startError);
+                        }
                     }
 
                     break;

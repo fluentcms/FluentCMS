@@ -6,6 +6,9 @@ namespace FluentCMS.Core.ProseMirror;
 
 internal static partial class RichTextAttributes
 {
+    // A list marker has at most nine digits in Markdown.
+    private const int MaxListStart = 999_999_999;
+
     public static readonly ImmutableSortedDictionary<string, JsonElement> Empty =
         ImmutableSortedDictionary.Create<string, JsonElement>(StringComparer.Ordinal);
 
@@ -23,6 +26,9 @@ internal static partial class RichTextAttributes
 
     public static string? CheckHeadingLevel(int level) =>
         level is >= 1 and <= 6 ? null : "The heading level must be between 1 and 6.";
+
+    public static string? CheckListStart(int start) =>
+        start is >= 0 and <= MaxListStart ? null : $"The start must be between 0 and {MaxListStart}.";
 
     public static string? CheckBlockType(string? blockType)
     {

@@ -174,6 +174,7 @@ internal sealed partial class MarkdownRenderer(
         {
             builder.Append(character switch
             {
+                '&' => "&amp;",
                 ' ' => "%20",
                 '(' => "%28",
                 ')' => "%29",
@@ -190,7 +191,7 @@ internal sealed partial class MarkdownRenderer(
     private static string Title(string? title) =>
         string.IsNullOrEmpty(title)
             ? string.Empty
-            : " \"" + title.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal).Replace('\n', ' ') + "\"";
+            : " \"" + title.Replace("&", "&amp;", StringComparison.Ordinal).Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal).Replace('\n', ' ') + "\"";
 
     private string Inlines(IReadOnlyList<RichTextNode> nodes, bool singleLine)
     {
@@ -237,9 +238,9 @@ internal sealed partial class MarkdownRenderer(
                 open.RemoveRange(keep, open.Count - keep);
             }
 
-            builder.Append(pending);
+            builder.Append(EscapeText(pending, singleLine, AtLineStart(builder)));
             pending = string.Empty;
-            builder.Append(lead);
+            builder.Append(EscapeText(lead, singleLine, AtLineStart(builder)));
 
             for (var index = keep; index < marks.Count; index++)
             {
@@ -256,9 +257,11 @@ internal sealed partial class MarkdownRenderer(
             builder.Append(Close(open[index]));
         }
 
-        builder.Append(pending);
+        builder.Append(EscapeText(pending, singleLine, AtLineStart(builder)));
         return builder.ToString();
     }
+
+    private static bool AtLineStart(StringBuilder builder) => builder.Length == 0 || builder[^1] == '\n';
 
     private string Inline(RichTextNode node, string? text, bool code, bool singleLine, StringBuilder before)
     {
@@ -270,7 +273,7 @@ internal sealed partial class MarkdownRenderer(
         switch (node)
         {
             case TextNode:
-                return code ? CodeSpan(text!) : EscapeText(text!, singleLine, singleLine ? false : before.Length == 0 || before[^1] == '\n');
+                return code ? CodeSpan(text!) : EscapeText(text!, singleLine, AtLineStart(before));
             case HardBreakNode:
                 return singleLine ? " " : "\\\n";
             case MediaNode media:
@@ -324,14 +327,20 @@ internal sealed partial class MarkdownRenderer(
     private static string EscapeText(string text, bool singleLine, bool atLineStart)
     {
         var builder = new StringBuilder(text.Length + 8);
+        var nextLineStart = atLineStart && !singleLine;
 
         for (var index = 0; index < text.Length; index++)
         {
             var character = text[index];
-            var lineStart = index == 0 ? atLineStart : text[index - 1] == '\n';
+            var lineStart = nextLineStart;
+            nextLineStart = character == '\n' && !singleLine;
 
             switch (character)
             {
+                case ' ' or '\t' when lineStart:
+                    // Indentation is dropped, four spaces would start a code block, and the line stays at its start.
+                    nextLineStart = true;
+                    break;
                 case '\\' or '`' or '*' or '_' or '[' or ']' or '<' or '~':
                     builder.Append('\\').Append(character);
                     break;
@@ -339,6 +348,9 @@ internal sealed partial class MarkdownRenderer(
                     builder.Append('\\').Append(character);
                     break;
                 case '+' or '-' when lineStart && IsMarkerLike(text, index):
+                    builder.Append('\\').Append(character);
+                    break;
+                case '=' when lineStart && IsSetextUnderline(text, index):
                     builder.Append('\\').Append(character);
                     break;
                 case '&' when StartsEntity(text, index):
@@ -377,6 +389,19 @@ internal sealed partial class MarkdownRenderer(
 
     private static bool IsMarkerLike(string text, int index) =>
         index + 1 == text.Length || text[index + 1] is ' ' or '\n' || (text[index] == '-' && text[index + 1] == '-');
+
+    private static bool IsSetextUnderline(string text, int index)
+    {
+        for (var position = index; position < text.Length && text[position] != '\n'; position++)
+        {
+            if (text[position] is not ('=' or ' ' or '\t'))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
 
     private static bool StartsEntity(string text, int index)
     {

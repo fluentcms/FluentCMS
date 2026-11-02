@@ -99,7 +99,7 @@ public sealed class OrderedListNode : RichTextNode
     public OrderedListNode(IEnumerable<ListItemNode>? items = null, int? start = null)
         : base(
             NodeSpec.OrderedList,
-            start is null ? null : RichTextAttributes.Create(("start", RichTextAttributes.Number(start.Value))),
+            start is null ? null : RichTextAttributes.Create(("start", RichTextAttributes.Number(CheckedStart(start.Value)))),
             items,
             null)
     {
@@ -111,6 +111,11 @@ public sealed class OrderedListNode : RichTextNode
     }
 
     public int Start => Attributes.TryGetValue("start", out var value) && value.ValueKind == JsonValueKind.Number ? value.GetInt32() : 1;
+
+    private static int CheckedStart(int start) =>
+        RichTextAttributes.CheckListStart(start) is { } error
+            ? throw new ArgumentOutOfRangeException(nameof(start), start, error)
+            : start;
 }
 
 public sealed class ListItemNode : RichTextNode

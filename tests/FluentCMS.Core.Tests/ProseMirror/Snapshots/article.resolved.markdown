@@ -4,7 +4,7 @@ Plain, **bold**, *italic*, <u>underlined</u>, ~~struck~~ and `code` with \<angle
 
 ## Links
 
-Read the [docs](https://example.com/docs?a=1&b=2) or the [getting started guide](/article/11111111-1111-1111-1111-111111111111).
+Read the [docs](https://example.com/docs?a=1&amp;b=2) or the [getting started guide](/article/11111111-1111-1111-1111-111111111111).
 
 ## Lists
 

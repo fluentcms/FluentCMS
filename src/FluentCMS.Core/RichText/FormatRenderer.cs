@@ -90,12 +90,41 @@ internal static class SafeUrl
             return false;
         }
 
-        var end = trimmed.IndexOfAny(['/', '?', '#', ':']);
-        if (end < 0 || trimmed[end] != ':')
+        var end = SchemeEnd(trimmed);
+        var prefix = end < 0 ? trimmed : trimmed[..end];
+
+        // A character reference such as &#58; can spell the colon once a consumer decodes the URL.
+        if (HasCharacterReference(prefix))
         {
-            return true;
+            return false;
         }
 
-        return allowedSchemes.Contains(trimmed[..end], StringComparer.OrdinalIgnoreCase);
+        return end < 0 || trimmed[end] != ':' || allowedSchemes.Contains(prefix, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static int SchemeEnd(string url)
+    {
+        for (var index = 0; index < url.Length; index++)
+        {
+            if (url[index] is '/' or '?' or ':' || (url[index] == '#' && (index == 0 || url[index - 1] != '&')))
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
+    private static bool HasCharacterReference(string text)
+    {
+        for (var index = text.IndexOf('&', StringComparison.Ordinal); index >= 0; index = text.IndexOf('&', index + 1))
+        {
+            if (index + 1 < text.Length && (text[index + 1] == '#' || char.IsAsciiLetter(text[index + 1])))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

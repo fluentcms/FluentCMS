@@ -127,12 +127,86 @@ public class RichTextRendererTests
     [InlineData("java\tscript:alert(1)")]
     [InlineData("data:text/html,<script>alert(1)</script>")]
     [InlineData("vbscript:msgbox(1)")]
+    [InlineData("javascript&#58;alert(1)")]
+    [InlineData("javascript&#x3A;alert(1)")]
+    [InlineData("javascript&colon;alert(1)")]
+    [InlineData("&#106;avascript:alert(1)")]
     public void DropsLinksWithUnsafeSchemes(string href)
     {
         var value = Linked(href);
 
         renderer.Render(value, RichTextFormats.Html).ShouldBe("<p>text</p>");
         renderer.Render(value, RichTextFormats.Markdown).ShouldBe("text");
+    }
+
+    [Fact]
+    public void MarkdownEncodesAmpersandsInDestinationsAndTitles()
+    {
+        var entry = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        var media = Guid.Parse("22222222-2222-2222-2222-222222222222");
+        var value = RichTextSerializer.ToRichText(new DocumentNode(
+        [
+            new ParagraphNode(
+            [
+                new TextNode("x", [new LinkMark("https://example.com/?a=1&b=2&amp;c", title: "A & B")]),
+                new TextNode("e", [new EntryLinkMark(entry, "article")]),
+            ]),
+            new MediaNode(media),
+        ]));
+        var options = new RichTextRenderOptions
+        {
+            EntryUrlResolver = (_, _) => "/e?a=1&b=2",
+            MediaUrlResolver = _ => "https://cdn.example.com/m.png?w=1&h=2",
+        };
+
+        renderer.Render(value, RichTextFormats.Markdown, options).ShouldBe(
+            "[x](https://example.com/?a=1&amp;b=2&amp;amp;c \"A &amp; B\")[e](/e?a=1&amp;b=2)\n\n" +
+            "![](https://cdn.example.com/m.png?w=1&amp;h=2)");
+    }
+
+    [Theory]
+    [InlineData("foo", "===", "foo\\\n\\===")]
+    [InlineData("foo", "= = =", "foo\\\n\\= = =")]
+    [InlineData("foo", "=== bar", "foo\\\n=== bar")]
+    [InlineData("foo", "    indented", "foo\\\nindented")]
+    [InlineData("foo", "   # not a heading", "foo\\\n\\# not a heading")]
+    public void MarkdownKeepsTextAfterAHardBreakFromChangingTheBlock(string first, string second, string expected)
+    {
+        var value = RichTextSerializer.ToRichText(new DocumentNode(
+            [new ParagraphNode([new TextNode(first), new HardBreakNode(), new TextNode(second)])]));
+
+        renderer.Render(value, RichTextFormats.Markdown).ShouldBe(expected);
+    }
+
+    [Theory]
+    [InlineData("    indented", "indented")]
+    [InlineData("\tindented", "indented")]
+    [InlineData("a\n    b", "a\nb")]
+    [InlineData("   - not a bullet", "\\- not a bullet")]
+    [InlineData("a  b", "a  b")]
+    public void MarkdownDropsIndentationAtTheStartOfALine(string text, string expected)
+    {
+        var value = RichTextSerializer.ToRichText(new DocumentNode([new ParagraphNode([new TextNode(text)])]));
+
+        renderer.Render(value, RichTextFormats.Markdown).ShouldBe(expected);
+    }
+
+    [Fact]
+    public void MarkdownDropsIndentationBeforeAMarkedRun()
+    {
+        var value = RichTextSerializer.ToRichText(new DocumentNode(
+            [new ParagraphNode([new TextNode("    bold", [new BoldMark()])])]));
+
+        renderer.Render(value, RichTextFormats.Markdown).ShouldBe("**bold**");
+    }
+
+    [Fact]
+    public void MarkdownNumbersAListFromItsStart()
+    {
+        var items = new[] { new ListItemNode([new ParagraphNode([new TextNode("a")])]), new ListItemNode([new ParagraphNode([new TextNode("b")])]) };
+        var value = RichTextSerializer.ToRichText(new DocumentNode([new OrderedListNode(items, start: 0)]));
+
+        renderer.Render(value, RichTextFormats.Markdown).ShouldBe("0. a\n1. b");
     }
 
     [Theory]

@@ -58,6 +58,8 @@ public class RichTextSerializerTests
     {
         Should.Throw<ArgumentOutOfRangeException>(() => new HeadingNode(0));
         Should.Throw<ArgumentOutOfRangeException>(() => new HeadingNode(7));
+        Should.Throw<ArgumentOutOfRangeException>(() => new OrderedListNode(null, -1));
+        Should.Throw<ArgumentOutOfRangeException>(() => new OrderedListNode(null, 1_000_000_000));
         Should.Throw<ArgumentException>(() => new InlineBlockNode("paragraph"));
         Should.Throw<ArgumentException>(() => new InlineBlockNode("not valid"));
         Should.Throw<ArgumentException>(() => new EntryLinkMark(Guid.NewGuid(), "Not Kebab"));
