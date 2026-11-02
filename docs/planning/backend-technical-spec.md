@@ -361,7 +361,7 @@ public sealed class Seo { [Text(MaxLength = 70)] public string? MetaTitle { get;
 public sealed class HeroBlock { [Text] public string Heading { get; set; } = ""; [Media] public MediaRef? Image { get; set; } }
 ```
 
-`ContentItem` carries the system fields (`Id`, `Status`, `Locale`, `Version`, `CreatedAt`, `CreatedBy`, `UpdatedAt`, `UpdatedBy`, `PublishedAt`) with setters the engine uses. Their names are reserved; a field with a reserved name fails schema validation. The system tables of Appendix C are reserved too: a collection or singleton may not take a name that maps to one of them (`job`, `user`, `site`, `member`, `site-host` and the rest, the table name without `cms_` and with hyphens for underscores), and fails with `FCMS1206`. Components and blocks have no table and may use these names.
+`ContentItem` carries the system fields (`Id`, `Status`, `Locale`, `Version`, `CreatedAt`, `CreatedBy`, `UpdatedAt`, `UpdatedBy`, `PublishedAt`) with setters the engine uses. Their names are reserved, and so is `fallbacks`, which a response adds (`ContentItem.ReservedFieldNames`, compared without regard to case); a field with a reserved name fails schema validation. A write ignores `fallbacks`. The system tables of Appendix C are reserved too: a collection or singleton may not take a name that maps to one of them (`job`, `user`, `site`, `member`, `site-host` and the rest, the table name without `cms_` and with hyphens for underscores), and fails with `FCMS1206`. Components and blocks have no table and may use these names.
 
 **Field types.** Each field type is an `IFieldType` descriptor: CLR type(s), storage kind (`Column`, `Json`, `Reference`), whether it supports `Multiple` (`SupportsMultiple`, `false` unless the type says otherwise), default validation, OpenAPI schema fragment, supported filter operators, whether it can be sorted or indexed. Core types that support `Multiple` are select, relation and component; the media plugin's `media` does too. Core registers text, longText, richText, integer, decimal, boolean, date, dateTime, email, url, slug, select (single and multi), json, relation, component and blocks. The media plugin registers `media`, which is the proof of the custom field type extension point (8.5): core without the media plugin reports `FCMS1203: field type 'media' used by article.hero is not registered`.
 
@@ -461,14 +461,24 @@ Rows 2.3 to 2.8, 2.14, 2.15, 2.19, 1.7, 1.8.
 | `GetAsync(id, GetOptions)` | status, locale, fallback, select, populate |
 | `QueryAsync(ContentQuery)` | returns `PagedResult<T>` with items, `total` (optional), `nextCursor` |
 | `CreateAsync(entry)` | creates the draft; returns the entry with system fields |
-| `UpdateAsync(id, entry, expectedVersion)` | full or partial (JSON merge patch) update of the draft; conflict throws `VersionConflictException` with the current version |
-| `DeleteAsync(id)` | trash |
-| `RestoreAsync(id)` | from trash |
+| `UpdateAsync(id, entry, expectedVersion)` | full update of the draft: a field left out is cleared, except one the principal cannot read or write, which keeps its value. Conflict throws `VersionConflictException` with the current version. `expectedVersion: 0` adds a locale the entry does not have yet, and needs `update`, not `create` |
+| `PatchAsync(id, patch, expectedVersion)` | partial update of the draft with a JSON merge patch; a null removes a field. Its own method, because a class cannot express absence |
+| `DeleteAsync(id)` | trash, in every locale |
+| `RestoreAsync(id)` | from trash, in every locale |
 | `PublishAsync(id, locale?)`, `UnpublishAsync`, `DiscardDraftAsync` | publishing transitions (4.5) |
 | `ScheduleAsync(id, ScheduleRequest)`, `CancelScheduleAsync` | per locale |
 | `GetVersionsAsync(id, locale)`, `RestoreVersionAsync(id, number)`, `DiffAsync(id, a, b)` | versions |
 | `BulkAsync(BulkRequest)` | create many; update, publish, unpublish, delete by id list or by filter with a required cap; per-item result |
 | `CountAsync(filter)` | |
+
+**Contract as built.** Every method of `IContentService` takes the type name first. `expectedVersion` is a required `int`, so no caller skips it.
+
+- **Refusals.** A principal that lacks the permission on the type gets `ContentAccessDeniedException` (HTTP 401 or 403). An entry that does not exist, is in another site or of another type, or is refused by its row rule gives `EntryNotFoundException` (404), so a client cannot probe; a read returns null. Delete and restore need the operation on every locale of the entry: none reached is not found, some reached is denied. An unreadable type on a read stays the engine's `ValidationException` on `type`, the same as an unknown type.
+- **System operations.** An operation with no ambient `OperationContext` throws. `Principal.System` is accepted only from `Origin.Job`, `Origin.Cli` and `Origin.Seed`, entered through `SystemOperation.Begin`; from `Api`, `Admin` or `Mcp` it throws.
+- **Audit fields.** `created_by`, `updated_by`, `deleted_by` and `author_id` come from `OperationContext.AuditPrincipal` (4.12). Authorization reads `Principal` alone.
+- **Row rule and grants after the write.** A create or update that puts the entry outside the row rule that allowed it is refused and rolled back. A field the client sent or a hook changed must be allowed by a grant whose row rule holds for the new entry.
+- **Hooks.** A before hook that changes a field outside the principal's grants fails the operation (`FCMS1406`); a change to a `Hidden` or `ReadOnly` field is allowed, since that is what a hook fills.
+- **Uniqueness counts the trash**, because the partial unique index does; only a purge frees a value.
 
 **Query model.** `ContentQuery { Filter, Sort[], Page, Cursor, Select[], Populate[], Status, Locale, Fallback, Site, RichTextFormat }`. The filter is an AST (`FieldFilter(path, op, value)`, `And`, `Or`, `Not`) with operators `eq ne in nin lt lte gt gte between contains startsWith null notNull`. The same AST is produced by the REST bracket parser, the GraphQL input types, the MCP `query` tool and the typed builder from the source generator.
 
@@ -596,6 +606,10 @@ Rows 4.3 to 4.8, 4.12, 4.17, 8.14; decisions 31, 32.
 
 **Constraints.** Additive only, no deny rules. A grant may be constrained to sites, locales, a field allow-list (`fields: ["title", "slug"]`, null means all) and a row rule name. A principal's effective permission set is the union of its roles' grants. Field lists and row rules are tied together where the union would otherwise give access no grant did: a write is decided per grant against the entry, and until responses can project per row, the rows of a read stay the union while a field is readable only if a grant with no row rule allows it or every applying grant does.
 
+**Global types.** A write to a type with `ContentScope.Global` (create, update, patch, delete, restore) needs a grant with no site limit, from a role with no `site_id`, because a global entry is shared by every site. Reads are unchanged. The seeded instance-wide roles are unaffected.
+
+**Shared fields.** A non-localizable field of a localized type is shared by all locales, so writing it needs a grant with no locale limit, or one that covers every locale of the entry, including a locale being added. Two grants that cover the locales only together do not count. Otherwise the field is unwritable and keeps its value.
+
 **Roles.** `cms_role` has an optional `site_id` (null is instance-wide). Built-ins seeded by the first migration: Super Admin (everything), Editor, Author (own entries row rule), Public (the anonymous principal per site, which is how public access configuration is stored), Member (default for the member pool).
 
 **Row rules.** Registered in code with a name and used by roles as data:
@@ -675,11 +689,13 @@ Rows 8.4, 8.16, 6.10.
 
 Rows 6.6, 8.10, 10.7 (locks), 10.20 (Should); decision 40.
 
-**Tables.** `cms_job (id, type, payload json, queue, site_id, run_at, priority, status, attempts, max_attempts, lease_until, lease_owner, last_error, created_at, created_by, origin, completed_at)`, `cms_job_attempt (job_id, attempt, started_at, finished_at, outcome, error)`, `cms_recurring_job (name, cron, payload json, queue, next_run_at, enabled)`.
+**Tables.** `cms_job (id, type, payload json, queue, site_id, run_at, priority, status, attempts, max_attempts, lease_until, lease_owner, last_error, created_at, created_by, origin, completed_at)`, `cms_job_attempt (job_id, attempt, started_at, finished_at, outcome, error)`, `cms_recurring_job (name, type, cron, payload json, queue, next_run_at, enabled)`. A recurring job has a `type` because a schedule must say which job it fires. Job `status` is `pending`, `running`, `succeeded` or `dead_lettered`. The claim is served by `ix_cms_job_claim` on `(queue, priority DESC, run_at, id)`, filtered to live jobs (`pending`, `running`), so finished jobs are never walked.
 
-**API.** `IJob<TPayload>.ExecuteAsync(payload, JobContext)`; `IJobScheduler.EnqueueAsync`, `ScheduleAsync(runAt)`, `AddRecurring(name, cron)`. Jobs run under a `System` principal with `Origin.Job` unless the payload carries an actor to impersonate for audit (scheduled publish records who scheduled it).
+**API.** `IJob<TPayload>.ExecuteAsync(payload, JobContext)`; `IJobScheduler.EnqueueAsync`, `ScheduleAsync(runAt)`, `AddRecurringAsync<TJob, TPayload>(name, cron, payload, queue)`, which is safe to call at every startup on every instance. `IJobDeadLetters` lists dead-lettered jobs and retries one; it checks no permission, so `jobs.manage` is enforced by the caller. Jobs are registered with `cms.Jobs.AddJob<TJob, TPayload>("stable-name")`, and that name is what `cms_job.type` stores.
 
-**Runner.** A hosted service with a configurable worker count per queue. Claiming uses the provider dialect: `FOR UPDATE SKIP LOCKED` (PostgreSQL), `UPDLOCK, READPAST` (SQL Server), optimistic `UPDATE ... WHERE lease_until IS NULL` (SQLite). Leases with heartbeat; retries with exponential backoff and jitter; dead-letter after `max_attempts`; graceful shutdown; multi-instance safe without extra infrastructure. `IJobRunner` is an interface so a Hangfire adapter can replace it.
+**Principal and actor.** A job always runs as `Principal.System` with `Origin.Job`. An actor in the payload (a payload that implements `IJobActorPayload`) does not replace the principal: it goes to `OperationContext.Actor`, which authorization never reads, so a payload cannot borrow a user's roles. The actor is built from kind, id and name only, with no claims. `OperationContext.AuditPrincipal` is `Actor ?? Principal`, and audit columns (`created_by`, `updated_by`, `deleted_by`, `author_id`) use it, so a scheduled publish records who scheduled it. A `System`, `Anonymous` or empty actor fails the attempt with `FCMS2507`.
+
+**Runner.** A hosted service with a configurable worker count per queue. Claiming uses the provider dialect: `FOR UPDATE SKIP LOCKED` (PostgreSQL), `UPDLOCK, READPAST` (SQL Server), optimistic `UPDATE` that rechecks every condition of the read (SQLite). Leases with heartbeat; retries with exponential backoff and jitter; dead-letter after `max_attempts`; graceful shutdown; multi-instance safe without extra infrastructure. `IJobRunner` is an interface so a Hangfire adapter can replace it.
 
 **Built-in jobs.** Scheduled publish and unpublish, trash purge, version pruning, activity retention, outbox dispatch, webhook delivery (plugin), media variant cleanup (plugin).
 
@@ -1146,6 +1162,9 @@ Tracking issue: [#2708](https://github.com/fluentcms/FluentCMS/issues/2708).
 | B-33 [#2704](https://github.com/fluentcms/FluentCMS/issues/2704) | Typed settings model and `cms_setting` persistence with change events | 8.7 | S |
 | B-34 [#2705](https://github.com/fluentcms/FluentCMS/issues/2705) | `FluentCMS.Testing`: test host, fixtures, SQLite modes | 11.6, 8.17 | M |
 | B-35 [#2706](https://github.com/fluentcms/FluentCMS/issues/2706) | Sample `Blog` types and seed API used by tests | 11.5 | S |
+| B-36 [#2749](https://github.com/fluentcms/FluentCMS/issues/2749) | Attempt timeout for the job runner: per registration, default in `JobRunnerOptions`, cancels the token and stops renewing | 4.12 | S |
+| B-37 [#2750](https://github.com/fluentcms/FluentCMS/issues/2750) | Remove succeeded jobs and their attempts after a retention period | 4.12 | S |
+| B-38 [#2751](https://github.com/fluentcms/FluentCMS/issues/2751) | Decide on stable ids for blocks, which changes the stored format in Appendix A | 4.4 | S |
 
 ### 9.3 M2 HTTP and identity
 
