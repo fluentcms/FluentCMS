@@ -63,6 +63,9 @@ public class OfflineProviderTests
         ColumnType(model, "cms_post", "published_on").ShouldBe("timestamp with time zone");
         ColumnType(model, typeof(ContentVersion).FullName!, nameof(ContentVersion.Snapshot)).ShouldBe("jsonb");
         ColumnType(model, typeof(Document).FullName!, nameof(Document.SchedulePublishAt)).ShouldBe("timestamp with time zone");
+        ColumnType(model, typeof(Job).FullName!, nameof(Job.Payload)).ShouldBe("jsonb");
+        ColumnType(model, typeof(Job).FullName!, nameof(Job.RunAt)).ShouldBe("timestamp with time zone");
+        ColumnType(model, typeof(RecurringJob).FullName!, nameof(RecurringJob.Payload)).ShouldBe("jsonb");
     }
 
     [Fact]
@@ -88,6 +91,8 @@ public class OfflineProviderTests
         ColumnType(model, "cms_post", "published_on").ShouldBe("datetimeoffset");
         ColumnType(model, typeof(ContentVersion).FullName!, nameof(ContentVersion.Snapshot)).ShouldBe("nvarchar(max)");
         ColumnType(model, typeof(Document).FullName!, nameof(Document.SchedulePublishAt)).ShouldBe("datetimeoffset");
+        ColumnType(model, typeof(Job).FullName!, nameof(Job.Payload)).ShouldBe("nvarchar(max)");
+        ColumnType(model, typeof(Job).FullName!, nameof(Job.RunAt)).ShouldBe("datetimeoffset");
         model.FindEntityType("cms_post")!.GetCheckConstraints().Select(check => check.Sql).ShouldContain("ISJSON([metadata]) = 1");
     }
 
@@ -119,7 +124,7 @@ public class OfflineProviderTests
         using var scope = services.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<SystemDbContext>().Database;
 
-        database.GetMigrations().Count().ShouldBe(4);
+        database.GetMigrations().Count().ShouldBe(5);
         database.HasPendingModelChanges().ShouldBeFalse();
     }
 
@@ -130,7 +135,7 @@ public class OfflineProviderTests
         using var scope = services.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<SystemDbContext>().Database;
 
-        database.GetMigrations().Count().ShouldBe(4);
+        database.GetMigrations().Count().ShouldBe(5);
         database.HasPendingModelChanges().ShouldBeFalse();
     }
 

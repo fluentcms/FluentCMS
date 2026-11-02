@@ -1,12 +1,14 @@
+using FluentCMS.Content;
 using FluentCMS.Core.Storage;
+using FluentCMS.Core.Storage.Entities;
 using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
 
 namespace FluentCMS.Data.Tests.Sqlite;
 
-// cms_job arrives with #2698, so this is a scratch table with the columns of spec section 4.12.
 public sealed class JobClaimTests : IDisposable
 {
     private const string Queue = "default";
@@ -21,26 +23,8 @@ public sealed class JobClaimTests : IDisposable
     public JobClaimTests()
     {
         _services = _database.CreateServices();
-        Execute("""
-            CREATE TABLE cms_job (
-                id TEXT NOT NULL PRIMARY KEY,
-                type TEXT NOT NULL,
-                payload TEXT NOT NULL CHECK (json_valid(payload)),
-                queue TEXT NOT NULL,
-                site_id TEXT NULL,
-                run_at INTEGER NOT NULL,
-                priority INTEGER NOT NULL,
-                status TEXT NOT NULL,
-                attempts INTEGER NOT NULL,
-                max_attempts INTEGER NOT NULL,
-                lease_until INTEGER NULL,
-                lease_owner TEXT NULL,
-                last_error TEXT NULL,
-                created_at INTEGER NOT NULL,
-                created_by TEXT NULL,
-                origin TEXT NOT NULL,
-                completed_at INTEGER NULL)
-            """);
+        using var scope = _services.CreateScope();
+        scope.ServiceProvider.GetRequiredService<SystemDbContext>().Database.Migrate();
     }
 
     public void Dispose()
@@ -49,29 +33,13 @@ public sealed class JobClaimTests : IDisposable
         _database.Dispose();
     }
 
-    private static string StoredId(Guid id) => id.ToString().ToUpperInvariant();
-
-    private void Execute(string sql, params (string Name, object? Value)[] parameters)
-    {
-        using var connection = new SqliteConnection(_database.ConnectionString);
-        connection.Open();
-        using var command = connection.CreateCommand();
-        command.CommandText = sql;
-        foreach (var (name, value) in parameters)
-        {
-            command.Parameters.AddWithValue(name, value ?? DBNull.Value);
-        }
-
-        command.ExecuteNonQuery();
-    }
-
     private object? Read(Guid job, string column)
     {
         using var connection = new SqliteConnection(_database.ConnectionString);
         connection.Open();
         using var command = connection.CreateCommand();
         command.CommandText = $"SELECT {column} FROM cms_job WHERE id = $id";
-        command.Parameters.AddWithValue("$id", StoredId(job));
+        command.Parameters.AddWithValue("$id", job.ToString().ToUpperInvariant());
         return command.ExecuteScalar();
     }
 
@@ -85,23 +53,26 @@ public sealed class JobClaimTests : IDisposable
         DateTimeOffset? leaseUntil = null,
         string? leaseOwner = null)
     {
-        var id = Guid.CreateVersion7();
-        Execute(
-            """
-            INSERT INTO cms_job (id, type, payload, queue, run_at, priority, status, attempts, max_attempts, lease_until, lease_owner, created_at, origin)
-            VALUES ($id, 'test', '{}', $queue, $runAt, $priority, $status, $attempts, $maxAttempts, $leaseUntil, $leaseOwner, 0, 'Job')
-            """,
-            ("$id", StoredId(id)),
-            ("$queue", queue),
-            ("$runAt", (runAt ?? Now.AddMinutes(-1)).UtcTicks),
-            ("$priority", priority),
-            ("$status", status),
-            ("$attempts", attempts),
-            ("$maxAttempts", maxAttempts),
-            ("$leaseUntil", leaseUntil?.UtcTicks),
-            ("$leaseOwner", leaseOwner));
+        using var scope = _services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+        var job = new Job
+        {
+            Type = "test",
+            Payload = "{}",
+            Queue = queue,
+            RunAt = runAt ?? Now.AddMinutes(-1),
+            Priority = priority,
+            Status = status,
+            Attempts = attempts,
+            MaxAttempts = maxAttempts,
+            LeaseUntil = leaseUntil,
+            LeaseOwner = leaseOwner,
+            Origin = Origin.Job,
+        };
+        context.Add(job);
+        context.SaveChanges();
 
-        return id;
+        return job.Id;
     }
 
     private async Task<Guid?> ClaimAsync(string owner = "worker", string queue = Queue)
@@ -180,7 +151,7 @@ public sealed class JobClaimTests : IDisposable
     [InlineData("wal")]
     public async Task OfTwoConcurrentClaimersOnlyOneWins(string journalMode)
     {
-        Execute($"PRAGMA journal_mode = {journalMode}");
+        _database.Execute($"PRAGMA journal_mode = {journalMode}");
 
         for (var round = 0; round < 25; round++)
         {
@@ -209,7 +180,7 @@ public sealed class JobClaimTests : IDisposable
     [InlineData("wal")]
     public async Task ConcurrentClaimersGetEachJobOnce(string journalMode)
     {
-        Execute($"PRAGMA journal_mode = {journalMode}");
+        _database.Execute($"PRAGMA journal_mode = {journalMode}");
 
         var jobs = Enumerable.Range(0, 20).Select(_ => AddJob()).ToList();
 

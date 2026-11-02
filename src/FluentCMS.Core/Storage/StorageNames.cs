@@ -15,6 +15,9 @@ internal static class StorageNames
     public const string Version = "cms_version";
     public const string Role = "cms_role";
     public const string RolePermission = "cms_role_permission";
+    public const string Job = "cms_job";
+    public const string JobAttempt = "cms_job_attempt";
+    public const string RecurringJob = "cms_recurring_job";
 
     public const string Id = "id";
     public const string DocumentId = "document_id";

@@ -78,6 +78,32 @@ public class SystemModelTests
     }
 
     [Fact]
+    public void JobTablesHaveTheColumnsOfTheSpecification()
+    {
+        using var database = NewDatabase();
+        using var context = database.CreateContext();
+
+        var job = context.Model.FindEntityType(typeof(Job))!;
+        job.GetTableName().ShouldBe("cms_job");
+        job.GetProperties().Select(property => property.GetColumnName()).Order(StringComparer.Ordinal).ShouldBe(
+            ["attempts", "completed_at", "created_at", "created_by", "id", "last_error", "lease_owner", "lease_until", "max_attempts", "origin", "payload", "priority", "queue", "run_at", "site_id", "status", "type"]);
+        IndexColumns(job, "ix_cms_job_claim").ShouldBe(["queue", "status", "priority", "run_at"]);
+        IndexColumns(job, "ix_cms_job_status_lease").ShouldBe(["status", "lease_until"]);
+
+        var attempt = context.Model.FindEntityType(typeof(JobAttempt))!;
+        attempt.GetTableName().ShouldBe("cms_job_attempt");
+        attempt.GetProperties().Select(property => property.GetColumnName()).Order(StringComparer.Ordinal).ShouldBe(
+            ["attempt", "error", "finished_at", "job_id", "outcome", "started_at"]);
+        attempt.FindPrimaryKey()!.Properties.Select(property => property.GetColumnName()).ShouldBe(["job_id", "attempt"]);
+
+        // The specification lists no type, but a schedule has to say which job it fires.
+        var recurring = context.Model.FindEntityType(typeof(RecurringJob))!;
+        recurring.GetTableName().ShouldBe("cms_recurring_job");
+        recurring.GetProperties().Select(property => property.GetColumnName()).Order(StringComparer.Ordinal).ShouldBe(
+            ["cron", "enabled", "name", "next_run_at", "payload", "queue", "type"]);
+    }
+
+    [Fact]
     public void DocumentRoundTripsWithAGeneratedVersion7Id()
     {
         using var database = NewDatabase();

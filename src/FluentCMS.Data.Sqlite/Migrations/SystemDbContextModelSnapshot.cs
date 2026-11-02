@@ -173,6 +173,181 @@ namespace FluentCMS.Data.Sqlite.Migrations
                     b.ToTable("cms_document", (string)null);
                 });
 
+            modelBuilder.Entity("FluentCMS.Core.Storage.Entities.Job", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("attempts");
+
+                    b.Property<long?>("CompletedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("completed_at");
+
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid?>("CreatedBy")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("last_error");
+
+                    b.Property<string>("LeaseOwner")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("lease_owner");
+
+                    b.Property<long?>("LeaseUntil")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("lease_until");
+
+                    b.Property<int>("MaxAttempts")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("max_attempts");
+
+                    b.Property<string>("Origin")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("origin");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("payload");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("priority");
+
+                    b.Property<string>("Queue")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("queue");
+
+                    b.Property<long>("RunAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("run_at");
+
+                    b.Property<Guid?>("SiteId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("site_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("type");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status", "LeaseUntil")
+                        .HasDatabaseName("ix_cms_job_status_lease");
+
+                    b.HasIndex("Queue", "Status", "Priority", "RunAt")
+                        .HasDatabaseName("ix_cms_job_claim");
+
+                    b.ToTable("cms_job", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_cms_job_payload_json", "json_valid(\"payload\")");
+                        });
+                });
+
+            modelBuilder.Entity("FluentCMS.Core.Storage.Entities.JobAttempt", b =>
+                {
+                    b.Property<Guid>("JobId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("job_id");
+
+                    b.Property<int>("Attempt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("attempt");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("error");
+
+                    b.Property<long?>("FinishedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("finished_at");
+
+                    b.Property<string>("Outcome")
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("outcome");
+
+                    b.Property<long>("StartedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("started_at");
+
+                    b.HasKey("JobId", "Attempt");
+
+                    b.ToTable("cms_job_attempt", (string)null);
+                });
+
+            modelBuilder.Entity("FluentCMS.Core.Storage.Entities.RecurringJob", b =>
+                {
+                    b.Property<string>("Name")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Cron")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("cron");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("enabled");
+
+                    b.Property<long>("NextRunAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("next_run_at");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("payload");
+
+                    b.Property<string>("Queue")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("queue");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("type");
+
+                    b.HasKey("Name");
+
+                    b.ToTable("cms_recurring_job", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_cms_recurring_job_payload_json", "json_valid(\"payload\")");
+                        });
+                });
+
             modelBuilder.Entity("FluentCMS.Core.Storage.Entities.Reference", b =>
                 {
                     b.Property<Guid>("Id")
@@ -541,6 +716,15 @@ namespace FluentCMS.Data.Sqlite.Migrations
                             Enabled = true,
                             Position = 0
                         });
+                });
+
+            modelBuilder.Entity("FluentCMS.Core.Storage.Entities.JobAttempt", b =>
+                {
+                    b.HasOne("FluentCMS.Core.Storage.Entities.Job", null)
+                        .WithMany()
+                        .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("FluentCMS.Core.Storage.Entities.Role", b =>

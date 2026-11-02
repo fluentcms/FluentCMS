@@ -36,10 +36,16 @@ public sealed class SqliteJobClaimDialect : IJobClaimDialect
                 return null;
             }
 
+            // Every condition is checked again, not only the lease: between the two steps another worker can have
+            // finished the job, or failed it to a later run_at, and that also clears the lease.
             var claimed = await database.ExecuteSqlAsync($"""
                 UPDATE cms_job
                 SET status = {JobClaimStatus.Running}, lease_owner = {claim.Owner}, lease_until = {claim.LeaseUntil.UtcTicks}, attempts = attempts + 1
-                WHERE id = {candidates[0]} AND (lease_until IS NULL OR lease_until < {now})
+                WHERE id = {candidates[0]}
+                    AND status IN ({JobClaimStatus.Pending}, {JobClaimStatus.Running})
+                    AND run_at <= {now}
+                    AND attempts < max_attempts
+                    AND (lease_until IS NULL OR lease_until < {now})
                 """, cancellationToken);
 
             if (claimed == 1)
