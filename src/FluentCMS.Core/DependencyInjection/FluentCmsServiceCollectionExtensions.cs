@@ -1,3 +1,5 @@
+using FluentCMS.Authorization;
+using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Storage;
 using FluentCMS.Schema;
@@ -29,9 +31,16 @@ public static class FluentCmsServiceCollectionExtensions
         // Until content types can be added to the builder, a schema comes from the container, and none means system tables only.
         services.TryAddSingleton(_ => new SchemaBuilder().Build());
 
+        services.TryAddSingleton(serviceProvider => new PermissionCatalogue(
+            serviceProvider.GetRequiredService<SchemaModel>(),
+            serviceProvider.GetServices<IPermissionProvider>()));
+
+        services.AddSingleton<RoleVersionInterceptor>();
+
         services.AddDbContext<CmsDbContext>((serviceProvider, options) =>
         {
             provider.ConfigureDbContext(options);
+            options.AddInterceptors(serviceProvider.GetRequiredService<RoleVersionInterceptor>());
             options.UseCmsModel(serviceProvider.GetRequiredService<SchemaModel>(), provider.Conventions, provider.JsonDialect);
         });
 

@@ -64,13 +64,13 @@ public class LayeringRulesTests
         violations.ShouldBeEmpty();
     }
 
-    [Fact(Skip = "The role permission entities and FluentCMS.Core.Authorization do not exist yet. Enable with the permission catalogue and roles (#2700) and confirm the entity names then.")]
+    [Fact]
     public void OnlyAuthorizationReadsRolePermissionEntities()
     {
         // The Storage namespace declares the entities and maps them, which is not reading them.
         Types().That().DoNotResideInNamespaceOrBelow(AuthorizationNamespace)
             .And().DoNotResideInNamespaceOrBelow(StorageNamespace)
-            .Should().NotDependOnAnyTypesThat().HaveNameStartingWith("RolePermission")
+            .Should().NotDependOnAnyTypesThat().HaveNameStartingWith("RoleGrant")
             .Check(core.Value);
     }
 
