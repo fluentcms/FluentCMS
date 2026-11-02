@@ -90,13 +90,77 @@ public class SettingsValidationTests
         var builder = new SchemaBuilder().AddCollection("article", type => type
             .Field("category", "select", field => field.Setting(FieldSettings.Options, "news")));
 
-        Errors(builder).ShouldContain(error => error.Code == "FCMS1211" && error.Message == "setting 'options' of select field article.category must be a list of strings");
+        var error = Errors(builder).ShouldHaveSingleItem();
+
+        error.Code.ShouldBe("FCMS1211");
+        error.Message.ShouldBe("setting 'options' of select field article.category must be a list of strings");
+    }
+
+    [Fact]
+    public void AComponentOrBlocksSettingOfTheWrongKindIsReportedOnce()
+    {
+        var builder = new SchemaBuilder().AddCollection("article", type => type
+            .Field("seo", "component", field => field.Setting(FieldSettings.Component, 5))
+            .Field("sections", "blocks", field => field.Setting(FieldSettings.Blocks, "hero")));
+
+        var errors = Errors(builder);
+
+        errors.Select(error => error.Message).ShouldBe(
+        [
+            "setting 'component' of component field article.seo must be a string",
+            "setting 'blocks' of blocks field article.sections must be a list of strings",
+        ]);
+    }
+
+    [Theory]
+    [InlineData(0, null, "precision of 0; it must be between 1 and 28")]
+    [InlineData(-1, null, "precision of -1; it must be between 1 and 28")]
+    [InlineData(29, null, "precision of 29; it must be between 1 and 28")]
+    [InlineData(null, -1, "scale of -1; it must be between 0 and 28")]
+    [InlineData(null, 29, "scale of 29; it must be between 0 and 28")]
+    [InlineData(2, 3, "scale of 3 above its precision of 2")]
+    public void DecimalPrecisionAndScaleOutOfRangeAreReported(int? precision, int? scale, string messagePart)
+    {
+        var builder = new SchemaBuilder().AddCollection("article", type => type.Field("price", "decimal", field => Decimal(field, precision, scale)));
+
+        var error = Errors(builder).ShouldHaveSingleItem();
+
+        error.Code.ShouldBe("FCMS1211");
+        error.Message.ShouldBe($"decimal field article.price has a {messagePart}");
+    }
+
+    [Theory]
+    [InlineData(1, 0)]
+    [InlineData(5, 2)]
+    [InlineData(5, 5)]
+    [InlineData(28, 28)]
+    [InlineData(28, null)]
+    [InlineData(null, 3)]
+    [InlineData(null, 0)]
+    public void DecimalPrecisionAndScaleInRangeBuild(int? precision, int? scale)
+    {
+        var builder = new SchemaBuilder().AddCollection("article", type => type.Field("price", "decimal", field => Decimal(field, precision, scale)));
+
+        builder.Build().FindContentType("article").ShouldNotBeNull();
+    }
+
+    private static void Decimal(IFieldBuilder field, int? precision, int? scale)
+    {
+        if (precision is { } digits)
+        {
+            field.Setting(FieldSettings.Precision, digits);
+        }
+
+        if (scale is { } places)
+        {
+            field.Setting(FieldSettings.Scale, places);
+        }
     }
 
     [Fact]
     public void AMissingRequiredKeyIsReportedWithTheTypeFieldAndKey()
     {
-        var registry = new FieldTypeRegistry([new PluginFieldType("map", [new FieldSettingDescriptor("provider", FieldSettingKind.String, Required: true)])]);
+        var registry = new FieldTypeRegistry([new PluginFieldType("map", [new FieldSettingDescriptor { Key = "provider", Kind = FieldSettingKind.String, Required = true }])]);
         var builder = new SchemaBuilder(registry).AddCollection("place", type => type.Field("location", "map"));
 
         var error = Errors(builder).ShouldHaveSingleItem();
@@ -108,7 +172,7 @@ public class SettingsValidationTests
     [Fact]
     public void ARequiredKeyThatIsSetBuilds()
     {
-        var registry = new FieldTypeRegistry([new PluginFieldType("map", [new FieldSettingDescriptor("provider", FieldSettingKind.String, Required: true), new FieldSettingDescriptor("zoom", FieldSettingKind.Integer)])]);
+        var registry = new FieldTypeRegistry([new PluginFieldType("map", [new FieldSettingDescriptor { Key = "provider", Kind = FieldSettingKind.String, Required = true }, new FieldSettingDescriptor { Key = "zoom", Kind = FieldSettingKind.Integer }])]);
         var builder = new SchemaBuilder(registry).AddCollection("place", type => type.Field("location", "map", field => field.Setting("provider", "osm").Setting("zoom", 12)));
 
         builder.Build().FindContentType("place")!.Fields.Single().Settings["provider"].ShouldBe("osm");
@@ -117,7 +181,7 @@ public class SettingsValidationTests
     [Fact]
     public void AKindOfTheDecimalSettingAcceptsWholeAndFractionalNumbers()
     {
-        var registry = new FieldTypeRegistry([new PluginFieldType("ratio", [new FieldSettingDescriptor("step", FieldSettingKind.Decimal), new FieldSettingDescriptor("live", FieldSettingKind.Boolean)])]);
+        var registry = new FieldTypeRegistry([new PluginFieldType("ratio", [new FieldSettingDescriptor { Key = "step", Kind = FieldSettingKind.Decimal }, new FieldSettingDescriptor { Key = "live", Kind = FieldSettingKind.Boolean }])]);
 
         new SchemaBuilder(registry).AddCollection("a", type => type.Field("x", "ratio", field => field.Setting("step", 1).Setting("live", true))).Build();
         new SchemaBuilder(registry).AddCollection("a", type => type.Field("x", "ratio", field => field.Setting("step", 0.5m))).Build();
@@ -141,10 +205,22 @@ public class SettingsValidationTests
     [Fact]
     public void ATypeThatAcceptsAnySettingStillChecksTheRequiredOnes()
     {
-        var registry = new FieldTypeRegistry([new PluginFieldType("map", [new FieldSettingDescriptor("provider", FieldSettingKind.String, Required: true)], acceptsAnySetting: true)]);
+        var registry = new FieldTypeRegistry([new PluginFieldType("map", [new FieldSettingDescriptor { Key = "provider", Kind = FieldSettingKind.String, Required = true }], acceptsAnySetting: true)]);
 
         Errors(new SchemaBuilder(registry).AddCollection("place", type => type.Field("location", "map", field => field.Setting("zoom", 12))))
             .ShouldHaveSingleItem().Message.ShouldContain("missing the required setting 'provider'");
+    }
+
+    [Fact]
+    public void ATypeThatAcceptsAnySettingStillChecksTheKindOfTheDeclaredOnes()
+    {
+        var registry = new FieldTypeRegistry([new PluginFieldType("map", [new FieldSettingDescriptor { Key = "provider", Kind = FieldSettingKind.String, Required = true }], acceptsAnySetting: true)]);
+        var builder = new SchemaBuilder(registry).AddCollection("place", type => type.Field("location", "map", field => field.Setting("provider", 5).Setting("zoom", 12)));
+
+        var error = Errors(builder).ShouldHaveSingleItem();
+
+        error.Code.ShouldBe("FCMS1211");
+        error.Message.ShouldBe("setting 'provider' of map field place.location must be a string");
     }
 
     [Fact]
@@ -183,9 +259,9 @@ public class SettingsValidationTests
 
         public IReadOnlySet<FluentCMS.Content.FilterOperator> FilterOperators => new HashSet<FluentCMS.Content.FilterOperator>();
 
-        public bool Sortable => false;
+        public bool Sortable(SchemaField field) => false;
 
-        public bool Indexable => false;
+        public bool Indexable(SchemaField field) => false;
 
         public IReadOnlyList<FieldSettingDescriptor> Settings { get; } = settings;
 

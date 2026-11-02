@@ -124,9 +124,9 @@ public class FieldTypeRegistryTests
 
         public IReadOnlySet<FluentCMS.Content.FilterOperator> FilterOperators => new HashSet<FluentCMS.Content.FilterOperator>();
 
-        public bool Sortable => false;
+        public bool Sortable(SchemaField field) => false;
 
-        public bool Indexable => false;
+        public bool Indexable(SchemaField field) => false;
 
         public IReadOnlyList<FieldSettingDescriptor> Settings => [];
 

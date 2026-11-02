@@ -20,11 +20,6 @@ public interface IFieldType
     /// <summary>The filter operators a query may apply to the type. Whether a field is stored as JSON narrows what the engine can compile.</summary>
     IReadOnlySet<FilterOperator> FilterOperators { get; }
 
-    /// <summary>Whether a query may sort by a field of the type. Never true for a field whose <see cref="StorageKind"/> is <see cref="FieldStorageKind.Json"/>.</summary>
-    bool Sortable { get; }
-
-    /// <summary>Whether a field of the type may be marked as indexed.</summary>
-    bool Indexable { get; }
 
     /// <summary>The settings the type accepts in <see cref="SchemaField.Settings"/>.</summary>
     IReadOnlyList<FieldSettingDescriptor> Settings { get; }
@@ -35,15 +30,27 @@ public interface IFieldType
     /// </summary>
     bool AcceptsAnySetting => false;
 
+    /// <summary>Whether a query may sort by the field. Core types answer <see langword="false"/> for a field stored as <see cref="FieldStorageKind.Json"/>, such as a multi select.</summary>
+    /// <param name="field">The field.</param>
+    /// <returns><see langword="true"/> if the field can be sorted.</returns>
+    bool Sortable(SchemaField field);
+
+    /// <summary>Whether the field may be marked as indexed. A JSON column is indexed only where the type says so: <c>json</c> and <c>blocks</c> are, a multi select is not.</summary>
+    /// <param name="field">The field.</param>
+    /// <returns><see langword="true"/> if the field can be indexed.</returns>
+    bool Indexable(SchemaField field);
+
     /// <summary>How a field of this type is stored; some types depend on the field, such as a component that repeats.</summary>
     /// <param name="field">The field.</param>
     /// <returns>The storage kind.</returns>
     FieldStorageKind StorageKind(SchemaField field);
 
     /// <summary>
-    /// Turns a raw value into the canonical CLR value of the field: a string, a number, a boolean, a
-    /// <c>JsonElement</c> or a value that already has the right type. A <see langword="null"/> value is accepted and stays
-    /// <see langword="null"/>; whether the field may be empty is a validation rule.
+    /// Turns a raw value into the canonical CLR value of the field. A raw value is a CLR value (a string, a number, a
+    /// boolean, a date, an enum member or a value that already has the right type), a <c>JsonElement</c> or a
+    /// <c>JsonNode</c>. The canonical value is a CLR value, except that a field holding JSON gives a <c>JsonNode</c>.
+    /// A <see langword="null"/> value, or a JSON null, is accepted and gives <see langword="null"/>; whether the field
+    /// may be empty is a validation rule.
     /// </summary>
     /// <param name="value">The raw value.</param>
     /// <param name="field">The field.</param>

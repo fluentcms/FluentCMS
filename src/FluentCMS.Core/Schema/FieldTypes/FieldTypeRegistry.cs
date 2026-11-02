@@ -23,7 +23,7 @@ public sealed class FieldTypeRegistry : IFieldTypeRegistry
         }
 
         _byName = byName.ToFrozenDictionary(StringComparer.Ordinal);
-        All = [.. byName.Values.OrderBy(fieldType => fieldType.Name, StringComparer.Ordinal)];
+        All = byName.Values.OrderBy(fieldType => fieldType.Name, StringComparer.Ordinal).ToList().AsReadOnly();
     }
 
     // The core types only.

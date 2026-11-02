@@ -188,9 +188,8 @@ FluentCMS.Schema.FieldRelation.Reverse.get -> string?
 FluentCMS.Schema.FieldRelation.Target.get -> string!
 FluentCMS.Schema.FieldSettingDescriptor
 FluentCMS.Schema.FieldSettingDescriptor.<Clone>$() -> FluentCMS.Schema.FieldSettingDescriptor!
-FluentCMS.Schema.FieldSettingDescriptor.Deconstruct(out string! Key, out FluentCMS.Schema.FieldSettingKind Kind, out bool Required) -> void
 FluentCMS.Schema.FieldSettingDescriptor.Equals(FluentCMS.Schema.FieldSettingDescriptor? other) -> bool
-FluentCMS.Schema.FieldSettingDescriptor.FieldSettingDescriptor(string! Key, FluentCMS.Schema.FieldSettingKind Kind, bool Required = false) -> void
+FluentCMS.Schema.FieldSettingDescriptor.FieldSettingDescriptor() -> void
 FluentCMS.Schema.FieldSettingDescriptor.Key.get -> string!
 FluentCMS.Schema.FieldSettingDescriptor.Key.init -> void
 FluentCMS.Schema.FieldSettingDescriptor.Kind.get -> FluentCMS.Schema.FieldSettingKind
@@ -236,11 +235,11 @@ FluentCMS.Schema.IFieldType
 FluentCMS.Schema.IFieldType.AcceptsAnySetting.get -> bool
 FluentCMS.Schema.IFieldType.ClrTypes.get -> System.Collections.Generic.IReadOnlyList<System.Type!>!
 FluentCMS.Schema.IFieldType.FilterOperators.get -> System.Collections.Generic.IReadOnlySet<FluentCMS.Content.FilterOperator>!
-FluentCMS.Schema.IFieldType.Indexable.get -> bool
+FluentCMS.Schema.IFieldType.Indexable(FluentCMS.Schema.SchemaField! field) -> bool
 FluentCMS.Schema.IFieldType.Name.get -> string!
 FluentCMS.Schema.IFieldType.OpenApiSchema(FluentCMS.Schema.SchemaField! field) -> System.Text.Json.Nodes.JsonObject!
 FluentCMS.Schema.IFieldType.Settings.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Schema.FieldSettingDescriptor!>!
-FluentCMS.Schema.IFieldType.Sortable.get -> bool
+FluentCMS.Schema.IFieldType.Sortable(FluentCMS.Schema.SchemaField! field) -> bool
 FluentCMS.Schema.IFieldType.StorageKind(FluentCMS.Schema.SchemaField! field) -> FluentCMS.Schema.FieldStorageKind
 FluentCMS.Schema.IFieldType.TryCoerce(object? value, FluentCMS.Schema.SchemaField! field, out object? result, out string? message) -> bool
 FluentCMS.Schema.IFieldTypeRegistry

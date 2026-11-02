@@ -12,8 +12,8 @@ internal sealed class BlocksFieldType()
         [typeof(BlockList)],
         [FilterOperator.HasBlock, .. FilterSets.NullChecks],
         sortable: false,
-        indexable: false,
-        new FieldSettingDescriptor(FieldSettings.Blocks, FieldSettingKind.StringList, Required: true))
+        indexable: true,
+        new FieldSettingDescriptor { Key = FieldSettings.Blocks, Kind = FieldSettingKind.StringList, Required = true })
 {
     private const string Discriminator = "type";
 

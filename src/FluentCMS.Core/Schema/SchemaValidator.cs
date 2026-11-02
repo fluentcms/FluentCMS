@@ -13,6 +13,9 @@ internal sealed class SchemaValidator(IFieldTypeRegistry fieldTypes)
 
     private const string BlockDiscriminator = "type";
 
+    // A decimal holds 28 digits.
+    private const int MaxDecimalDigits = 28;
+
     // A select, component or blocks field without its setting is reported by the type-specific checks, with a message of its own.
     private static readonly HashSet<string> TypesThatReportMissingSettings = [FieldTypeNames.Select, FieldTypeNames.Component, FieldTypeNames.Blocks];
 
@@ -111,13 +114,14 @@ internal sealed class SchemaValidator(IFieldTypeRegistry fieldTypes)
         }
 
         var fieldType = fieldTypes.Find(field.FieldType);
+        HashSet<string> wrongKind = [];
         if (fieldType is null)
         {
             Report(SchemaErrorCodes.FieldTypeNotRegistered, $"field type '{field.FieldType}' used by {location} is not registered");
         }
         else
         {
-            ValidateSettingKeys(fieldType, field, location);
+            wrongKind = ValidateSettingKeys(fieldType, field, location);
         }
 
         if (field.Localizable && !(type.IsContentType && type.Localized))
@@ -128,37 +132,65 @@ internal sealed class SchemaValidator(IFieldTypeRegistry fieldTypes)
         }
 
         ValidateLimits(field, location);
-        ValidateSettings(type, field, location, contentTypes, components, blocks);
+        ValidateSettings(type, field, location, wrongKind, contentTypes, components, blocks);
         ValidateConditions(type, field, location);
     }
 
-    private void ValidateSettingKeys(IFieldType fieldType, FieldDraft field, string location)
+    // Returns the keys whose value has the wrong kind, so the type-specific checks do not report them a second time.
+    private HashSet<string> ValidateSettingKeys(IFieldType fieldType, FieldDraft field, string location)
     {
-        if (!fieldType.AcceptsAnySetting)
+        HashSet<string> wrongKind = [];
+
+        foreach (var (key, value) in field.Settings.OrderBy(setting => setting.Key, StringComparer.Ordinal))
         {
-            foreach (var (key, value) in field.Settings.OrderBy(setting => setting.Key, StringComparer.Ordinal))
+            var descriptor = fieldType.Settings.FirstOrDefault(setting => setting.Key == key);
+            if (descriptor is null)
             {
-                var descriptor = fieldType.Settings.FirstOrDefault(setting => setting.Key == key);
-                if (descriptor is null)
+                if (!fieldType.AcceptsAnySetting)
                 {
                     var accepted = fieldType.Settings.Count == 0 ? "it accepts none" : $"it accepts {string.Join(", ", fieldType.Settings.Select(setting => setting.Key))}";
                     Report(SchemaErrorCodes.InvalidField, $"{fieldType.Name} field {location} has an unknown setting '{key}'; {accepted}");
                 }
-                else if (!HasKind(value, descriptor.Kind))
-                {
-                    Report(SchemaErrorCodes.InvalidField, $"setting '{key}' of {fieldType.Name} field {location} must be {Describe(descriptor.Kind)}");
-                }
+            }
+            else if (!HasKind(value, descriptor.Kind))
+            {
+                wrongKind.Add(key);
+                Report(SchemaErrorCodes.InvalidField, $"setting '{key}' of {fieldType.Name} field {location} must be {Describe(descriptor.Kind)}");
             }
         }
 
-        if (TypesThatReportMissingSettings.Contains(fieldType.Name))
+        if (!TypesThatReportMissingSettings.Contains(fieldType.Name))
         {
-            return;
+            foreach (var descriptor in fieldType.Settings.Where(setting => setting.Required && !field.Settings.ContainsKey(setting.Key)))
+            {
+                Report(SchemaErrorCodes.InvalidField, $"{fieldType.Name} field {location} is missing the required setting '{descriptor.Key}'");
+            }
         }
 
-        foreach (var descriptor in fieldType.Settings.Where(setting => setting.Required && !field.Settings.ContainsKey(setting.Key)))
+        return wrongKind;
+    }
+
+    private void ValidateDecimalBounds(FieldDraft field, string location)
+    {
+        long? precision = field.Settings.TryGetValue(FieldSettings.Precision, out var p) && p is long digits ? digits : null;
+        long? scale = field.Settings.TryGetValue(FieldSettings.Scale, out var s) && s is long places ? places : null;
+
+        var precisionFits = precision is null or (>= 1 and <= MaxDecimalDigits);
+        var scaleFits = scale is null or (>= 0 and <= MaxDecimalDigits);
+
+        if (!precisionFits)
         {
-            Report(SchemaErrorCodes.InvalidField, $"{fieldType.Name} field {location} is missing the required setting '{descriptor.Key}'");
+            Report(SchemaErrorCodes.InvalidField, $"decimal field {location} has a precision of {precision}; it must be between 1 and {MaxDecimalDigits}");
+        }
+
+        if (!scaleFits)
+        {
+            Report(SchemaErrorCodes.InvalidField, $"decimal field {location} has a scale of {scale}; it must be between 0 and {MaxDecimalDigits}");
+        }
+
+        if (precisionFits && scaleFits && scale > precision)
+        {
+            Report(SchemaErrorCodes.InvalidField, $"decimal field {location} has a scale of {scale} above its precision of {precision}");
         }
     }
 
@@ -206,7 +238,7 @@ internal sealed class SchemaValidator(IFieldTypeRegistry fieldTypes)
         }
     }
 
-    private void ValidateSettings(TypeDraft type, FieldDraft field, string location, Dictionary<string, TypeDraft> contentTypes, Dictionary<string, TypeDraft> components, Dictionary<string, TypeDraft> blocks)
+    private void ValidateSettings(TypeDraft type, FieldDraft field, string location, HashSet<string> wrongKind, Dictionary<string, TypeDraft> contentTypes, Dictionary<string, TypeDraft> components, Dictionary<string, TypeDraft> blocks)
     {
         if (field.Relation is not null && field.FieldType != FieldTypeNames.Relation)
         {
@@ -220,13 +252,17 @@ internal sealed class SchemaValidator(IFieldTypeRegistry fieldTypes)
 
         switch (field.FieldType)
         {
-            case FieldTypeNames.Select:
+            case FieldTypeNames.Select when !wrongKind.Contains(FieldSettings.Options):
                 var options = SettingList(field, FieldSettings.Options);
                 if (options.Length == 0 || options.Distinct(StringComparer.Ordinal).Count() != options.Length)
                 {
                     Report(SchemaErrorCodes.InvalidField, $"select field {location} needs at least one option, and no option twice");
                 }
 
+                break;
+
+            case FieldTypeNames.Decimal:
+                ValidateDecimalBounds(field, location);
                 break;
 
             case FieldTypeNames.Slug:
@@ -250,7 +286,7 @@ internal sealed class SchemaValidator(IFieldTypeRegistry fieldTypes)
 
                 break;
 
-            case FieldTypeNames.Component:
+            case FieldTypeNames.Component when !wrongKind.Contains(FieldSettings.Component):
                 if (SettingText(field, FieldSettings.Component) is not { } component)
                 {
                     Report(SchemaErrorCodes.InvalidField, $"component field {location} has no component");
@@ -262,7 +298,7 @@ internal sealed class SchemaValidator(IFieldTypeRegistry fieldTypes)
 
                 break;
 
-            case FieldTypeNames.Blocks:
+            case FieldTypeNames.Blocks when !wrongKind.Contains(FieldSettings.Blocks):
                 var allowed = SettingList(field, FieldSettings.Blocks);
                 if (allowed.Length == 0)
                 {

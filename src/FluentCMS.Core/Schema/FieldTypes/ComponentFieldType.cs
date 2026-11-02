@@ -13,7 +13,7 @@ internal sealed class ComponentFieldType()
         [],
         sortable: false,
         indexable: false,
-        new FieldSettingDescriptor(FieldSettings.Component, FieldSettingKind.String, Required: true))
+        new FieldSettingDescriptor { Key = FieldSettings.Component, Kind = FieldSettingKind.String, Required = true })
 {
     public override FieldStorageKind StorageKind(SchemaField field) => field.Multiple ? FieldStorageKind.Json : FieldStorageKind.Column;
 

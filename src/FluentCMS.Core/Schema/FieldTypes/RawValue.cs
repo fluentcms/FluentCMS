@@ -7,9 +7,14 @@ namespace FluentCMS.Core.Schema.FieldTypes;
 // Reduces what a client or a mapper hands over to plain CLR values, so each field type has few shapes to handle.
 internal static class RawValue
 {
-    // A JsonElement becomes null, a string, a boolean, a long or a decimal; objects and arrays stay JsonElements.
+    // A JsonElement or a JsonNode becomes null, a string, a boolean, a long or a decimal; objects and arrays become JsonElements.
     public static object? Unwrap(object? value)
     {
+        if (value is JsonNode node)
+        {
+            value = JsonSerializer.SerializeToElement(node);
+        }
+
         if (value is not JsonElement element)
         {
             return value;

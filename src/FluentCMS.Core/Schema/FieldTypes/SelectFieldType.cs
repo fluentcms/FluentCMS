@@ -14,9 +14,11 @@ internal sealed class SelectFieldType()
         [FilterOperator.Equal, FilterOperator.NotEqual, FilterOperator.In, FilterOperator.NotIn, FilterOperator.Contains, .. FilterSets.NullChecks],
         sortable: true,
         indexable: true,
-        new FieldSettingDescriptor(FieldSettings.Options, FieldSettingKind.StringList, Required: true))
+        new FieldSettingDescriptor { Key = FieldSettings.Options, Kind = FieldSettingKind.StringList, Required = true })
 {
     public override FieldStorageKind StorageKind(SchemaField field) => field.Multiple ? FieldStorageKind.Json : FieldStorageKind.Column;
+
+    public override bool Indexable(SchemaField field) => !field.Multiple;
 
     public override bool TryCoerce(object? value, SchemaField field, out object? result, out string? message)
     {

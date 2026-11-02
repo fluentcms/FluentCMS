@@ -9,7 +9,7 @@ namespace FluentCMS.Core.Schema.FieldTypes;
 // Uniqueness of a slug is not checked here: the partial unique index of the storage model enforces it for published
 // entries and the validation pipeline for drafts.
 internal sealed partial class SlugFieldType()
-    : StringFieldType(FieldTypeNames.Slug, [typeof(string)], FilterSets.Text, sortable: true, indexable: true, new FieldSettingDescriptor(FieldSettings.Source, FieldSettingKind.String))
+    : StringFieldType(FieldTypeNames.Slug, [typeof(string)], FilterSets.Text, sortable: true, indexable: true, new FieldSettingDescriptor { Key = FieldSettings.Source, Kind = FieldSettingKind.String })
 {
     public const string Pattern = "^[a-z0-9]+(?:-[a-z0-9]+)*$";
 

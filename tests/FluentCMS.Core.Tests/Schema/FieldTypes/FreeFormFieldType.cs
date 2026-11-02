@@ -13,9 +13,9 @@ public sealed class FreeFormFieldType : IFieldType
 
     public IReadOnlySet<FilterOperator> FilterOperators { get; } = new HashSet<FilterOperator>();
 
-    public bool Sortable => false;
+    public bool Sortable(SchemaField field) => false;
 
-    public bool Indexable => false;
+    public bool Indexable(SchemaField field) => false;
 
     public IReadOnlyList<FieldSettingDescriptor> Settings { get; } = [];
 

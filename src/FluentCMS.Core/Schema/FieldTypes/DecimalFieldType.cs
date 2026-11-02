@@ -11,11 +11,9 @@ internal sealed class DecimalFieldType()
         FilterSets.Ordered,
         sortable: true,
         indexable: true,
-        new FieldSettingDescriptor(FieldSettings.Precision, FieldSettingKind.Integer),
-        new FieldSettingDescriptor(FieldSettings.Scale, FieldSettingKind.Integer))
+        new FieldSettingDescriptor { Key = FieldSettings.Precision, Kind = FieldSettingKind.Integer },
+        new FieldSettingDescriptor { Key = FieldSettings.Scale, Kind = FieldSettingKind.Integer })
 {
-    private const int MaxScale = 28;
-
     public override bool TryCoerce(object? value, SchemaField field, out object? result, out string? message)
     {
         var raw = RawValue.Unwrap(value);
@@ -49,11 +47,6 @@ internal sealed class DecimalFieldType()
     public override JsonObject OpenApiSchema(SchemaField field)
     {
         var schema = new JsonObject { ["type"] = "number" };
-        if (SettingValues.Int(field, FieldSettings.Scale) is > 0 and <= MaxScale and var scale)
-        {
-            schema["multipleOf"] = new decimal(1, 0, 0, false, (byte)scale);
-        }
-
         if (field.Minimum is { } min)
         {
             schema["minimum"] = min;

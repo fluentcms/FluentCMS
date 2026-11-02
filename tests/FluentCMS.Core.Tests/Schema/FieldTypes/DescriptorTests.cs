@@ -32,7 +32,7 @@ public class DescriptorTests
         { "json", FieldStorageKind.Json, FieldStorageKind.Json, false, true, [FilterOperator.Equal, FilterOperator.NotEqual, FilterOperator.Contains, FilterOperator.IsNull, FilterOperator.IsNotNull] },
         { "relation", FieldStorageKind.Reference, FieldStorageKind.Reference, false, false, [FilterOperator.Equal, FilterOperator.In, FilterOperator.IsNull, FilterOperator.IsNotNull] },
         { "component", FieldStorageKind.Column, FieldStorageKind.Json, false, false, [] },
-        { "blocks", FieldStorageKind.Json, FieldStorageKind.Json, false, false, [FilterOperator.HasBlock, FilterOperator.IsNull, FilterOperator.IsNotNull] },
+        { "blocks", FieldStorageKind.Json, FieldStorageKind.Json, false, true, [FilterOperator.HasBlock, FilterOperator.IsNull, FilterOperator.IsNotNull] },
     };
 
     public static TheoryData<string, string> OpenApiFragments => new()
@@ -64,24 +64,29 @@ public class DescriptorTests
         type.Name.ShouldBe(name);
         type.StorageKind(TestFields.Field(name)).ShouldBe(column);
         type.StorageKind(TestFields.Field(name, field => field.Multiple())).ShouldBe(repeated);
-        type.Sortable.ShouldBe(sortable);
-        type.Indexable.ShouldBe(indexable);
+
+        var single = TestFields.Field(name);
+        var many = TestFields.Field(name, field => field.Multiple());
+        type.Sortable(single).ShouldBe(sortable);
+        type.Sortable(many).ShouldBe(sortable && repeated != FieldStorageKind.Json);
+        type.Indexable(single).ShouldBe(indexable);
+        type.Indexable(many).ShouldBe(indexable && (repeated != FieldStorageKind.Json || column == FieldStorageKind.Json));
         type.FilterOperators.OrderBy(op => op).ShouldBe(operators.OrderBy(op => op));
         type.ClrTypes.ShouldNotBeEmpty();
         type.AcceptsAnySetting.ShouldBeFalse();
     }
 
     [Fact]
-    public void JsonStoredTypesAreNeverSortable()
+    public void AFieldStoredAsJsonIsNeverSortable()
     {
         foreach (var type in FieldTypeRegistry.Core.All)
         {
             foreach (var multiple in new[] { false, true })
             {
                 var field = TestFields.Field(type.Name, f => f.Multiple(multiple));
-                if (type.StorageKind(field) == FieldStorageKind.Json && type.Name != "select")
+                if (type.StorageKind(field) == FieldStorageKind.Json)
                 {
-                    type.Sortable.ShouldBeFalse(type.Name);
+                    type.Sortable(field).ShouldBeFalse($"{type.Name}, multiple {multiple}");
                 }
             }
         }
@@ -122,13 +127,13 @@ public class DescriptorTests
     }
 
     [Fact]
-    public void NumberFragmentsCarryTheRangeAndScale()
+    public void NumberFragmentsCarryTheRange()
     {
         var integer = TestFields.Field("integer", f => f.Range(1, 10));
         var number = TestFields.Field("decimal", f => f.Range(0.5m, null).Setting("scale", 2));
 
         JsonNode.DeepEquals(TestFields.Type("integer").OpenApiSchema(integer), JsonNode.Parse("""{"type":"integer","format":"int64","minimum":1,"maximum":10}""")).ShouldBeTrue();
-        JsonNode.DeepEquals(TestFields.Type("decimal").OpenApiSchema(number), JsonNode.Parse("""{"type":"number","multipleOf":0.01,"minimum":0.5}""")).ShouldBeTrue();
+        JsonNode.DeepEquals(TestFields.Type("decimal").OpenApiSchema(number), JsonNode.Parse("""{"type":"number","minimum":0.5}""")).ShouldBeTrue();
     }
 
     [Fact]
@@ -146,16 +151,27 @@ public class DescriptorTests
     [Fact]
     public void CoreTypesDeclareTheirSettings()
     {
-        TestFields.Type("select").Settings.ShouldBe([new FieldSettingDescriptor("options", FieldSettingKind.StringList, true)]);
-        TestFields.Type("component").Settings.ShouldBe([new FieldSettingDescriptor("component", FieldSettingKind.String, true)]);
-        TestFields.Type("blocks").Settings.ShouldBe([new FieldSettingDescriptor("blocks", FieldSettingKind.StringList, true)]);
-        TestFields.Type("slug").Settings.ShouldBe([new FieldSettingDescriptor("source", FieldSettingKind.String, false)]);
-        TestFields.Type("decimal").Settings.ShouldBe([new FieldSettingDescriptor("precision", FieldSettingKind.Integer, false), new FieldSettingDescriptor("scale", FieldSettingKind.Integer, false)]);
+        TestFields.Type("select").Settings.ShouldBe([new FieldSettingDescriptor { Key = "options", Kind = FieldSettingKind.StringList, Required = true }]);
+        TestFields.Type("component").Settings.ShouldBe([new FieldSettingDescriptor { Key = "component", Kind = FieldSettingKind.String, Required = true }]);
+        TestFields.Type("blocks").Settings.ShouldBe([new FieldSettingDescriptor { Key = "blocks", Kind = FieldSettingKind.StringList, Required = true }]);
+        TestFields.Type("slug").Settings.ShouldBe([new FieldSettingDescriptor { Key = "source", Kind = FieldSettingKind.String }]);
+        TestFields.Type("decimal").Settings.ShouldBe([new FieldSettingDescriptor { Key = "precision", Kind = FieldSettingKind.Integer }, new FieldSettingDescriptor { Key = "scale", Kind = FieldSettingKind.Integer }]);
 
         foreach (var name in new[] { "text", "longText", "richText", "integer", "boolean", "date", "dateTime", "email", "url", "json", "relation" })
         {
             TestFields.Type(name).Settings.ShouldBeEmpty(name);
         }
+    }
+
+    [Fact]
+    public void ListsOfTheRegistryAndItsTypesCannotBeChanged()
+    {
+        var type = TestFields.Type("decimal");
+
+        Should.Throw<NotSupportedException>(() => ((IList<Type>)type.ClrTypes).Add(typeof(int)));
+        Should.Throw<NotSupportedException>(() => ((IList<FieldSettingDescriptor>)type.Settings).Clear());
+        Should.Throw<NotSupportedException>(() => ((IList<IFieldType>)FieldTypeRegistry.Core.All).Clear());
+        FieldTypeRegistry.Core.All.Count.ShouldBe(16);
     }
 
     [Fact]

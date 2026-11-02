@@ -33,11 +33,11 @@ public class FieldTypeContractTests
     [Fact]
     public void ASettingIsOptionalByDefaultAndEqualByValue()
     {
-        var setting = new FieldSettingDescriptor("scale", FieldSettingKind.Integer);
+        var setting = new FieldSettingDescriptor { Key = "scale", Kind = FieldSettingKind.Integer };
 
         setting.Required.ShouldBeFalse();
-        setting.ShouldBe(new FieldSettingDescriptor("scale", FieldSettingKind.Integer, false));
-        setting.ShouldNotBe(new FieldSettingDescriptor("scale", FieldSettingKind.Integer, true));
+        setting.ShouldBe(new FieldSettingDescriptor { Key = "scale", Kind = FieldSettingKind.Integer });
+        setting.ShouldNotBe(new FieldSettingDescriptor { Key = "scale", Kind = FieldSettingKind.Integer, Required = true });
     }
 
     [Fact]
@@ -56,9 +56,9 @@ public class FieldTypeContractTests
 
         public IReadOnlySet<FilterOperator> FilterOperators => new HashSet<FilterOperator>();
 
-        public bool Sortable => false;
+        public bool Sortable(SchemaField field) => false;
 
-        public bool Indexable => false;
+        public bool Indexable(SchemaField field) => false;
 
         public IReadOnlyList<FieldSettingDescriptor> Settings => [];
 

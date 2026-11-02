@@ -9,15 +9,16 @@ internal abstract class CoreFieldType(string name, Type[] clrTypes, FilterOperat
 {
     public string Name { get; } = name;
 
-    public IReadOnlyList<Type> ClrTypes { get; } = clrTypes;
+    public IReadOnlyList<Type> ClrTypes { get; } = Array.AsReadOnly(clrTypes);
 
     public IReadOnlySet<FilterOperator> FilterOperators { get; } = filterOperators.ToFrozenSet();
 
-    public bool Sortable { get; } = sortable;
+    public IReadOnlyList<FieldSettingDescriptor> Settings { get; } = Array.AsReadOnly(settings);
 
-    public bool Indexable { get; } = indexable;
+    // A field stored as JSON cannot be sorted, whatever its type says.
+    public bool Sortable(SchemaField field) => sortable && StorageKind(field) != FieldStorageKind.Json;
 
-    public IReadOnlyList<FieldSettingDescriptor> Settings { get; } = settings;
+    public virtual bool Indexable(SchemaField field) => indexable;
 
     public virtual FieldStorageKind StorageKind(SchemaField field) => FieldStorageKind.Column;
 
