@@ -33,6 +33,7 @@
     },
     {
       "name": "tag",
+      "scope": "global",
       "fields": [
         { "name": "name", "type": "text", "maxLength": 50, "required": true },
         { "name": "slug", "type": "slug", "source": "name", "unique": true }

@@ -20,6 +20,7 @@ internal static class SchemaModelFactory
             Name = draft.Name,
             Kind = draft.Kind,
             Localized = draft.Localized,
+            Scope = draft.Scope,
             ClrType = draft.ClrType,
             Fields = draft.Fields.Select(Create).ToList().AsReadOnly(),
             ReverseRelations = (draft.IsContentType ? reverseRelations[draft.Name] : []).OrderBy(relation => relation.Name, StringComparer.Ordinal).ToList().AsReadOnly(),

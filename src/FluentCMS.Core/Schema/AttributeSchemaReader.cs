@@ -44,7 +44,7 @@ internal sealed class AttributeSchemaReader(SchemaBuilder builder)
             return;
         }
 
-        var (kind, declaredName, localized) = kinds[0];
+        var (kind, declaredName, localized, scope) = kinds[0];
         var isContentType = kind is SchemaTypeKind.Collection or SchemaTypeKind.Singleton;
         if (isContentType != typeof(ContentItem).IsAssignableFrom(type))
         {
@@ -59,6 +59,7 @@ internal sealed class AttributeSchemaReader(SchemaBuilder builder)
             if (isContentType)
             {
                 t.Localized(localized);
+                t.Scope(scope);
             }
 
             foreach (var property in Properties(type))
@@ -68,28 +69,28 @@ internal sealed class AttributeSchemaReader(SchemaBuilder builder)
         });
     }
 
-    private static List<(SchemaTypeKind Kind, string? Name, bool Localized)> KindsOf(Type type)
+    private static List<(SchemaTypeKind Kind, string? Name, bool Localized, ContentScope Scope)> KindsOf(Type type)
     {
-        List<(SchemaTypeKind, string?, bool)> kinds = [];
+        List<(SchemaTypeKind, string?, bool, ContentScope)> kinds = [];
 
         if (type.GetCustomAttribute<CollectionAttribute>(inherit: false) is { } collection)
         {
-            kinds.Add((SchemaTypeKind.Collection, collection.Name, collection.Localized));
+            kinds.Add((SchemaTypeKind.Collection, collection.Name, collection.Localized, collection.Scope));
         }
 
         if (type.GetCustomAttribute<SingletonAttribute>(inherit: false) is { } singleton)
         {
-            kinds.Add((SchemaTypeKind.Singleton, singleton.Name, singleton.Localized));
+            kinds.Add((SchemaTypeKind.Singleton, singleton.Name, singleton.Localized, singleton.Scope));
         }
 
         if (type.GetCustomAttribute<ComponentAttribute>(inherit: false) is { } component)
         {
-            kinds.Add((SchemaTypeKind.Component, component.Name, false));
+            kinds.Add((SchemaTypeKind.Component, component.Name, false, ContentScope.Site));
         }
 
         if (type.GetCustomAttribute<BlockAttribute>(inherit: false) is { } block)
         {
-            kinds.Add((SchemaTypeKind.Block, block.Name, false));
+            kinds.Add((SchemaTypeKind.Block, block.Name, false, ContentScope.Site));
         }
 
         return kinds;
