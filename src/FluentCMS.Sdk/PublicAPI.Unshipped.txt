@@ -94,7 +94,6 @@ FluentCMS.Schema.ContentItem.Version.get -> int
 FluentCMS.Schema.ContentItem.Version.set -> void
 FluentCMS.Schema.Ref<T>
 FluentCMS.Schema.Ref<T>.Deconstruct(out System.Guid Id) -> void
-FluentCMS.Schema.Ref<T>.Equals(FluentCMS.Schema.Ref<T> other) -> bool
 FluentCMS.Schema.Ref<T>.Id.get -> System.Guid
 FluentCMS.Schema.Ref<T>.Id.init -> void
 FluentCMS.Schema.Ref<T>.IsEmpty.get -> bool
@@ -102,13 +101,12 @@ FluentCMS.Schema.Ref<T>.Ref() -> void
 FluentCMS.Schema.Ref<T>.Ref(System.Guid Id) -> void
 FluentCMS.Schema.RefList
 FluentCMS.Schema.RefList<T>
-FluentCMS.Schema.RefList<T>.<Clone>$() -> FluentCMS.Schema.RefList<T>!
 FluentCMS.Schema.RefList<T>.Count.get -> int
-FluentCMS.Schema.RefList<T>.Equals(FluentCMS.Schema.RefList<T>? other) -> bool
-FluentCMS.Schema.RefList<T>.GetEnumerator() -> System.Collections.Generic.IEnumerator<FluentCMS.Schema.Ref<T>>!
+FluentCMS.Schema.RefList<T>.Equals(FluentCMS.Schema.RefList<T!>? other) -> bool
+FluentCMS.Schema.RefList<T>.GetEnumerator() -> System.Collections.Generic.IEnumerator<FluentCMS.Schema.Ref<T!>>!
 FluentCMS.Schema.RefList<T>.RefList() -> void
-FluentCMS.Schema.RefList<T>.RefList(System.Collections.Generic.IEnumerable<FluentCMS.Schema.Ref<T>>! items) -> void
-FluentCMS.Schema.RefList<T>.this[int index].get -> FluentCMS.Schema.Ref<T>
+FluentCMS.Schema.RefList<T>.RefList(System.Collections.Generic.IEnumerable<FluentCMS.Schema.Ref<T!>>! items) -> void
+FluentCMS.Schema.RefList<T>.this[int index].get -> FluentCMS.Schema.Ref<T!>
 FluentCMS.Schema.RichText
 FluentCMS.Schema.RichText.<Clone>$() -> FluentCMS.Schema.RichText!
 FluentCMS.Schema.RichText.Equals(FluentCMS.Schema.RichText? other) -> bool
@@ -158,17 +156,19 @@ static FluentCMS.Schema.BlockList.Create(System.ReadOnlySpan<object!> items) -> 
 static FluentCMS.Schema.BlockList.operator !=(FluentCMS.Schema.BlockList? left, FluentCMS.Schema.BlockList? right) -> bool
 static FluentCMS.Schema.BlockList.operator ==(FluentCMS.Schema.BlockList? left, FluentCMS.Schema.BlockList? right) -> bool
 static FluentCMS.Schema.ContentItem.ReservedFieldNames.get -> System.Collections.Generic.IReadOnlySet<string!>!
-static FluentCMS.Schema.Ref<T>.operator !=(FluentCMS.Schema.Ref<T> left, FluentCMS.Schema.Ref<T> right) -> bool
-static FluentCMS.Schema.Ref<T>.operator ==(FluentCMS.Schema.Ref<T> left, FluentCMS.Schema.Ref<T> right) -> bool
-static FluentCMS.Schema.RefList.Create<T>(System.ReadOnlySpan<FluentCMS.Schema.Ref<T>> items) -> FluentCMS.Schema.RefList<T>!
-static FluentCMS.Schema.RefList<T>.operator !=(FluentCMS.Schema.RefList<T>? left, FluentCMS.Schema.RefList<T>? right) -> bool
-static FluentCMS.Schema.RefList<T>.operator ==(FluentCMS.Schema.RefList<T>? left, FluentCMS.Schema.RefList<T>? right) -> bool
+static FluentCMS.Schema.RefList.Create<T>(System.ReadOnlySpan<FluentCMS.Schema.Ref<T!>> items) -> FluentCMS.Schema.RefList<T!>!
 static FluentCMS.Schema.RichText.Empty.get -> FluentCMS.Schema.RichText!
 static FluentCMS.Schema.RichText.operator !=(FluentCMS.Schema.RichText? left, FluentCMS.Schema.RichText? right) -> bool
 static FluentCMS.Schema.RichText.operator ==(FluentCMS.Schema.RichText? left, FluentCMS.Schema.RichText? right) -> bool
 static FluentCMS.Sites.SiteId.Empty.get -> FluentCMS.Sites.SiteId
 static FluentCMS.Sites.SiteId.operator !=(FluentCMS.Sites.SiteId left, FluentCMS.Sites.SiteId right) -> bool
 static FluentCMS.Sites.SiteId.operator ==(FluentCMS.Sites.SiteId left, FluentCMS.Sites.SiteId right) -> bool
+~FluentCMS.Schema.Ref<T>.Equals(FluentCMS.Schema.Ref<T> other) -> bool
+~FluentCMS.Schema.RefList<T>.<Clone>$() -> FluentCMS.Schema.RefList<T>!
 ~override FluentCMS.Media.MediaRef.Equals(object obj) -> bool
 ~override FluentCMS.Schema.Ref<T>.Equals(object obj) -> bool
 ~override FluentCMS.Sites.SiteId.Equals(object obj) -> bool
+~static FluentCMS.Schema.Ref<T>.operator !=(FluentCMS.Schema.Ref<T> left, FluentCMS.Schema.Ref<T> right) -> bool
+~static FluentCMS.Schema.Ref<T>.operator ==(FluentCMS.Schema.Ref<T> left, FluentCMS.Schema.Ref<T> right) -> bool
+~static FluentCMS.Schema.RefList<T>.operator !=(FluentCMS.Schema.RefList<T>? left, FluentCMS.Schema.RefList<T>? right) -> bool
+~static FluentCMS.Schema.RefList<T>.operator ==(FluentCMS.Schema.RefList<T>? left, FluentCMS.Schema.RefList<T>? right) -> bool

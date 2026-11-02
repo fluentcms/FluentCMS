@@ -4,6 +4,7 @@ namespace FluentCMS.Schema;
 /// <typeparam name="T">The content type of the referenced entry.</typeparam>
 /// <param name="Id">The id of the referenced entry.</param>
 public readonly record struct Ref<T>(Guid Id)
+    where T : ContentItem
 {
     /// <summary>Whether the reference points to no entry.</summary>
     public bool IsEmpty => Id == Guid.Empty;

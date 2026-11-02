@@ -11,6 +11,7 @@ namespace FluentCMS.Schema;
 /// <typeparam name="T">The content type of the referenced entries.</typeparam>
 [CollectionBuilder(typeof(RefList), nameof(RefList.Create))]
 public sealed record RefList<T> : IReadOnlyList<Ref<T>>
+    where T : ContentItem
 {
     private readonly Ref<T>[] _items;
 
@@ -74,5 +75,6 @@ public static class RefList
     /// <typeparam name="T">The content type of the referenced entries.</typeparam>
     /// <param name="items">The references, in order.</param>
     /// <returns>The new list.</returns>
-    public static RefList<T> Create<T>(ReadOnlySpan<Ref<T>> items) => new(items);
+    public static RefList<T> Create<T>(ReadOnlySpan<Ref<T>> items)
+        where T : ContentItem => new(items);
 }
