@@ -1,4 +1,20 @@
 #nullable enable
+FluentCMS.Content.ContentDocument
+FluentCMS.Content.ContentDocument.Add(string! name, object? value) -> void
+FluentCMS.Content.ContentDocument.Clear() -> void
+FluentCMS.Content.ContentDocument.ContainsKey(string! name) -> bool
+FluentCMS.Content.ContentDocument.ContentDocument() -> void
+FluentCMS.Content.ContentDocument.ContentDocument(System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<string!, object?>>! values) -> void
+FluentCMS.Content.ContentDocument.Count.get -> int
+FluentCMS.Content.ContentDocument.Get<T>(string! name) -> T?
+FluentCMS.Content.ContentDocument.GetEnumerator() -> System.Collections.Generic.IEnumerator<System.Collections.Generic.KeyValuePair<string!, object?>>!
+FluentCMS.Content.ContentDocument.Keys.get -> System.Collections.Generic.ICollection<string!>!
+FluentCMS.Content.ContentDocument.Remove(string! name) -> bool
+FluentCMS.Content.ContentDocument.TryGet<T>(string! name, out T? value) -> bool
+FluentCMS.Content.ContentDocument.TryGetValue(string! name, out object? value) -> bool
+FluentCMS.Content.ContentDocument.Values.get -> System.Collections.Generic.ICollection<object?>!
+FluentCMS.Content.ContentDocument.this[string! name].get -> object?
+FluentCMS.Content.ContentDocument.this[string! name].set -> void
 FluentCMS.Content.FilterOperator
 FluentCMS.Content.FilterOperator.Between = 8 -> FluentCMS.Content.FilterOperator
 FluentCMS.Content.FilterOperator.Contains = 9 -> FluentCMS.Content.FilterOperator
@@ -97,6 +113,48 @@ FluentCMS.Content.ValidationResult
 FluentCMS.Content.ValidationResult.Errors.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Content.ValidationError!>!
 FluentCMS.Content.ValidationResult.IsValid.get -> bool
 FluentCMS.Content.ValidationResult.ValidationResult(System.Collections.Generic.IEnumerable<FluentCMS.Content.ValidationError!>! errors) -> void
+FluentCMS.Hooks.HookContext<T>
+FluentCMS.Hooks.HookContext<T>.Cancel(string! code, string! message) -> void
+FluentCMS.Hooks.HookContext<T>.CancelCode.get -> string?
+FluentCMS.Hooks.HookContext<T>.CancelMessage.get -> string?
+FluentCMS.Hooks.HookContext<T>.ChangedPaths.get -> System.Collections.Generic.IReadOnlyList<string!>!
+FluentCMS.Hooks.HookContext<T>.Entry.get -> T
+FluentCMS.Hooks.HookContext<T>.HookContext(FluentCMS.Content.OperationContext! operation, T entry, T? previous, System.Collections.Generic.IReadOnlyList<string!>! changedPaths) -> void
+FluentCMS.Hooks.HookContext<T>.IsCancelled.get -> bool
+FluentCMS.Hooks.HookContext<T>.Operation.get -> FluentCMS.Content.OperationContext!
+FluentCMS.Hooks.HookContext<T>.Previous.get -> T?
+FluentCMS.Hooks.HookOrderAttribute
+FluentCMS.Hooks.HookOrderAttribute.HookOrderAttribute(int order) -> void
+FluentCMS.Hooks.HookOrderAttribute.Order.get -> int
+FluentCMS.Hooks.HookRejectedException
+FluentCMS.Hooks.HookRejectedException.Code.get -> string!
+FluentCMS.Hooks.HookRejectedException.HookRejectedException(string! code, string! message) -> void
+FluentCMS.Hooks.IAfterCreateHook<T>
+FluentCMS.Hooks.IAfterCreateHook<T>.AfterCreateAsync(FluentCMS.Hooks.HookContext<T>! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
+FluentCMS.Hooks.IAfterDeleteHook<T>
+FluentCMS.Hooks.IAfterDeleteHook<T>.AfterDeleteAsync(FluentCMS.Hooks.HookContext<T>! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
+FluentCMS.Hooks.IAfterPublishHook<T>
+FluentCMS.Hooks.IAfterPublishHook<T>.AfterPublishAsync(FluentCMS.Hooks.HookContext<T>! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
+FluentCMS.Hooks.IAfterRestoreHook<T>
+FluentCMS.Hooks.IAfterRestoreHook<T>.AfterRestoreAsync(FluentCMS.Hooks.HookContext<T>! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
+FluentCMS.Hooks.IAfterUnpublishHook<T>
+FluentCMS.Hooks.IAfterUnpublishHook<T>.AfterUnpublishAsync(FluentCMS.Hooks.HookContext<T>! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
+FluentCMS.Hooks.IAfterUpdateHook<T>
+FluentCMS.Hooks.IAfterUpdateHook<T>.AfterUpdateAsync(FluentCMS.Hooks.HookContext<T>! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
+FluentCMS.Hooks.IBeforeCreateHook<T>
+FluentCMS.Hooks.IBeforeCreateHook<T>.BeforeCreateAsync(FluentCMS.Hooks.HookContext<T>! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
+FluentCMS.Hooks.IBeforeDeleteHook<T>
+FluentCMS.Hooks.IBeforeDeleteHook<T>.BeforeDeleteAsync(FluentCMS.Hooks.HookContext<T>! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
+FluentCMS.Hooks.IBeforePublishHook<T>
+FluentCMS.Hooks.IBeforePublishHook<T>.BeforePublishAsync(FluentCMS.Hooks.HookContext<T>! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
+FluentCMS.Hooks.IBeforeRestoreHook<T>
+FluentCMS.Hooks.IBeforeRestoreHook<T>.BeforeRestoreAsync(FluentCMS.Hooks.HookContext<T>! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
+FluentCMS.Hooks.IBeforeUnpublishHook<T>
+FluentCMS.Hooks.IBeforeUnpublishHook<T>.BeforeUnpublishAsync(FluentCMS.Hooks.HookContext<T>! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
+FluentCMS.Hooks.IBeforeUpdateHook<T>
+FluentCMS.Hooks.IBeforeUpdateHook<T>.BeforeUpdateAsync(FluentCMS.Hooks.HookContext<T>! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
+FluentCMS.Hooks.IBeforeValidateHook<T>
+FluentCMS.Hooks.IBeforeValidateHook<T>.BeforeValidateAsync(FluentCMS.Hooks.HookContext<T>! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
 FluentCMS.Media.MediaRef
 FluentCMS.Media.MediaRef.Deconstruct(out System.Guid Id) -> void
 FluentCMS.Media.MediaRef.Equals(FluentCMS.Media.MediaRef other) -> bool
