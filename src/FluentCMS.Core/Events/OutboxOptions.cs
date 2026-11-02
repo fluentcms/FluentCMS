@@ -22,6 +22,9 @@ public sealed class OutboxOptions
     // delivery never outlives the claim that lets it run.
     public TimeSpan DeliveryTimeout { get; set; } = TimeSpan.FromMinutes(1);
 
+    // How long the job runner waits for the in-process handlers of a job event before it goes on. They are not stopped.
+    public TimeSpan JobEventTimeout { get; set; } = TimeSpan.FromSeconds(5);
+
     // How long a row waits when no handler is registered under its name, as in a rolling deploy or after a plugin was removed.
     public TimeSpan MissingHandlerDelay { get; set; } = TimeSpan.FromMinutes(5);
 
@@ -34,6 +37,7 @@ public sealed class OutboxOptions
         Require(MaxAttempts >= 1, $"{nameof(MaxAttempts)} is {MaxAttempts}; it must be at least 1.");
         Require(LeaseDuration > TimeSpan.Zero, $"{nameof(LeaseDuration)} must be positive.");
         Require(DeliveryTimeout > TimeSpan.Zero && DeliveryTimeout < LeaseDuration, $"{nameof(DeliveryTimeout)} must be positive and shorter than {nameof(LeaseDuration)}.");
+        Require(JobEventTimeout > TimeSpan.Zero, $"{nameof(JobEventTimeout)} must be positive.");
         Require(MissingHandlerDelay > TimeSpan.Zero, $"{nameof(MissingHandlerDelay)} must be positive.");
         Require(RetryBaseDelay >= TimeSpan.Zero && RetryMaxDelay >= RetryBaseDelay, $"{nameof(RetryMaxDelay)} must be at least {nameof(RetryBaseDelay)}, which must not be negative.");
         Require(RetryJitter >= 0, $"{nameof(RetryJitter)} must not be negative.");

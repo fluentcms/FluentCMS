@@ -55,7 +55,4 @@ internal sealed class OutboxWriter(IServiceScopeFactory scopes, OutboxRows rows,
         _staged = false;
         await kick.KickAsync();
     }
-
-    // The rows were rolled back with the transaction.
-    public void Forget() => _staged = false;
 }

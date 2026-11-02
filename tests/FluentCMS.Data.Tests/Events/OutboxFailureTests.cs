@@ -376,7 +376,7 @@ public sealed class OutboxFailureTests
 
         var error = database.Rows().Single().LastError!;
         error.ShouldStartWith("System.Net.Http.HttpRequestException: ");
-        error.ShouldContain("https://hooks.example/x failed with 500");
+        error.ShouldContain("https://hooks.example failed with 500");
         error.ShouldNotContain("s3cr3t");
         error.ShouldNotContain("pw@");
         error.ShouldNotContain("frag");
@@ -387,7 +387,7 @@ public sealed class OutboxFailureTests
     {
         var text = OutboxErrorText.Of(new InvalidOperationException("a http://h/p?q=1 and ftp://u:p@h2:21/f.txt?x=y then wss://h3/ws#z"), "{}");
 
-        text.ShouldBe("System.InvalidOperationException: a http://h/p and ftp://h2:21/f.txt then wss://h3/ws");
+        text.ShouldBe("System.InvalidOperationException: a http://h and ftp://h2:21 then wss://h3");
         OutboxErrorText.Of(new InvalidOperationException(new string('x', 5000)), "{}").Length.ShouldBe(Job.LastErrorMaxLength);
     }
 

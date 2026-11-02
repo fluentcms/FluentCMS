@@ -34,6 +34,12 @@ internal static partial class EventLog
     [LoggerMessage(Level = LogLevel.Warning, Message = "Outbox delivery {Id} to {Handler} lost its lease, so this worker leaves it alone.")]
     public static partial void LeaseLost(ILogger logger, Guid id, string handler);
 
+    [LoggerMessage(Level = LogLevel.Error, Message = "Outbox delivery {Id} to {Handler} did not finish within {Timeout} and was abandoned; the handler may still be running.")]
+    public static partial void DeliveryAbandoned(ILogger logger, Guid id, string handler, TimeSpan timeout);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "The in-process handlers of {EventType} {EventId} did not finish within {Timeout} and were abandoned; they may still be running.")]
+    public static partial void DispatchAbandoned(ILogger logger, string eventType, Guid eventId, TimeSpan timeout);
+
     [LoggerMessage(Level = LogLevel.Error, Message = "The drain of the outbox hit an error.")]
     public static partial void DrainFailed(ILogger logger, Exception exception);
 }

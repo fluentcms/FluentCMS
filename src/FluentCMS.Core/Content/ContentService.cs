@@ -516,6 +516,7 @@ internal sealed class ContentService(
     {
         List<EntryChange> changes = [.. _pending];
         _pending.Clear();
+        var buffered = events.Take();
         foreach (var change in changes)
         {
             foreach (var sink in sinks)
@@ -533,7 +534,7 @@ internal sealed class ContentService(
 
         try
         {
-            await events.DispatchAsync();
+            await events.DispatchAsync(buffered);
         }
         catch (Exception exception)
         {

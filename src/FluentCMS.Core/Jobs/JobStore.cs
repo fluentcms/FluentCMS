@@ -64,7 +64,7 @@ internal sealed class JobStore(
         context.Add(new JobAttempt { JobId = id, Attempt = job.Attempts, StartedAt = now });
 
         // The event is recorded for the outbox handlers in the same commit as the fact it reports.
-        var expiredEvent = expired > 0 ? Failed(job.Id, job.Type, job.Queue, job.Attempts - 1, job.MaxAttempts, LeaseExpiredError) : null;
+        var expiredEvent = expired > 0 ? Failed(job.Id, job.SiteId, job.Type, job.Queue, job.Attempts - 1, job.MaxAttempts, LeaseExpiredError) : null;
         var rows = expiredEvent is null ? [] : outbox.Build([expiredEvent]);
         context.AddRange(rows);
         await context.SaveChangesAsync(cancellationToken);
@@ -109,8 +109,8 @@ internal sealed class JobStore(
         var deadLetter = job.Attempt >= job.MaxAttempts;
         var runAt = now + RetryBackoff.After(job.Attempt, options);
 
-        var failedEvent = Failed(job.Id, job.Type, job.Queue, job.Attempt, job.MaxAttempts, error);
-        var deadEvent = deadLetter ? DeadLettered(job.Id, job.Type, job.Queue, job.Attempt, error) : null;
+        var failedEvent = Failed(job.Id, job.SiteId, job.Type, job.Queue, job.Attempt, job.MaxAttempts, error);
+        var deadEvent = deadLetter ? DeadLettered(job.Id, job.SiteId, job.Type, job.Queue, job.Attempt, error) : null;
         var rows = outbox.Build(deadEvent is null ? [failedEvent] : [failedEvent, deadEvent]);
 
         var held = await SettleAsync(job, JobAttemptOutcome.Failed, error, now, rows, row =>
@@ -191,8 +191,8 @@ internal sealed class JobStore(
                     .SetProperty(row => row.FinishedAt, now)
                     .SetProperty(row => row.Error, OutOfAttemptsError));
 
-            var failedEvent = Failed(job.Id, job.Type, job.Queue, job.Attempts, job.MaxAttempts, OutOfAttemptsError);
-            var deadEvent = DeadLettered(job.Id, job.Type, job.Queue, job.Attempts, OutOfAttemptsError);
+            var failedEvent = Failed(job.Id, job.SiteId, job.Type, job.Queue, job.Attempts, job.MaxAttempts, OutOfAttemptsError);
+            var deadEvent = DeadLettered(job.Id, job.SiteId, job.Type, job.Queue, job.Attempts, OutOfAttemptsError);
             var rows = outbox.Build([failedEvent, deadEvent]);
             context.AddRange(rows);
             await context.SaveChangesAsync();
@@ -258,19 +258,22 @@ internal sealed class JobStore(
     }
 
     // The ids follow from the job and the attempt, so that an outcome written again after a failed write is the same event.
-    private JobFailedEvent Failed(Guid id, string type, string queue, int attempt, int maxAttempts, string error) =>
-        new(id, type, queue, attempt, maxAttempts, error)
+    private JobFailedEvent Failed(Guid id, Guid? site, string type, string queue, int attempt, int maxAttempts, string error) =>
+        new(id, type, queue, attempt, maxAttempts, SecretScrubber.Of(error))
         {
             EventId = OutboxRows.StableId($"job:{id}:{attempt}:failed"),
-            Source = EventSource.FromSystem(time.GetUtcNow()),
+            Source = SourceOf(site),
         };
 
-    private JobDeadLetteredEvent DeadLettered(Guid id, string type, string queue, int attempts, string error) =>
-        new(id, type, queue, attempts, error)
+    private JobDeadLetteredEvent DeadLettered(Guid id, Guid? site, string type, string queue, int attempts, string error) =>
+        new(id, type, queue, attempts, SecretScrubber.Of(error))
         {
             EventId = OutboxRows.StableId($"job:{id}:{attempts}:dead"),
-            Source = EventSource.FromSystem(time.GetUtcNow()),
+            Source = SourceOf(site),
         };
+
+    // The system raises it, on the site the job belongs to.
+    private EventSource SourceOf(Guid? site) => EventSource.FromSystem(time.GetUtcNow()) with { SiteId = site ?? Guid.Empty };
 
     private async Task KickAsync(int rows)
     {

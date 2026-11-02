@@ -28,21 +28,23 @@ internal sealed class EventBuffer(EventDispatcher dispatcher, OutboxWriter outbo
 
     public void Truncate(int mark) => _events.RemoveRange(mark, _events.Count - mark);
 
-    public void Clear()
+    public void Clear() => _events.Clear();
+
+    // The events of the commit that just happened. A handler that writes while it is told gets a buffer of its own, which
+    // can neither repeat nor lose these.
+    public List<CmsEvent> Take()
     {
+        List<CmsEvent> taken = [.. _events];
         _events.Clear();
-        outbox.Forget();
+        return taken;
     }
 
     // Inside the transaction, so that the rows commit with the write.
     public ValueTask StageAsync(DbContext context, CancellationToken cancellationToken) => outbox.StageAsync(context, _events, cancellationToken);
 
     // After the commit. Nothing that goes wrong here may reach the caller, lose another event or skip the request for a drain.
-    public async ValueTask DispatchAsync()
+    public async ValueTask DispatchAsync(List<CmsEvent> events)
     {
-        List<CmsEvent> events = [.. _events];
-        _events.Clear();
-
         try
         {
             foreach (var @event in events)

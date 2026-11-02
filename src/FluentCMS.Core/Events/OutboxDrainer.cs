@@ -1,9 +1,7 @@
 using FluentCMS.Content;
-using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Events;
-using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,11 +9,12 @@ using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Core.Events;
 
-// Delivers the rows of cms_outbox at least once. A delivery is claimed by a conditional update that only one of any
-// number of instances wins, and holds a lease. A batch is claimed at once, so before each delivery the worker takes its
-// lease again with a conditional update that matches nothing once another instance has the row; a delivery is also cut off
-// before its lease can end, so that a worker never delivers on a lease it has lost. A write of the outcome is conditional
-// on the claim in the same way.
+// Delivers the rows of cms_outbox at least once. A batch is claimed with a conditional update that only one of any number
+// of instances wins per row, and holds a lease. Claiming costs no attempt, since a row whose lease runs out before its turn
+// comes was never tried: the worker starts an attempt, and takes its lease again, with one conditional update before each
+// delivery, which matches nothing once another instance has the row. A delivery is cut off before its lease can end, so that
+// a worker never delivers on a lease it has lost, and a write of the outcome is conditional on the claim in the same way.
+// A handler that has to be abandoned may still be running, on a thread of its own; nothing here can stop it.
 internal sealed class OutboxDrainer(
     IServiceScopeFactory scopes,
     OutboxRegistry registry,
@@ -46,7 +45,7 @@ internal sealed class OutboxDrainer(
             {
                 if (cancellationToken.IsCancellationRequested)
                 {
-                    await ReleaseAsync(message, delay: null);
+                    await ReleaseAsync(message, delay: null, started: false);
                     continue;
                 }
 
@@ -100,8 +99,7 @@ internal sealed class OutboxDrainer(
             var won = await Open(context, now).Where(message => message.Id == id).ExecuteUpdateAsync(
                 message => message
                     .SetProperty(row => row.LeaseOwner, _owner)
-                    .SetProperty(row => row.LeaseUntil, leaseUntil)
-                    .SetProperty(row => row.Attempts, row => row.Attempts + 1),
+                    .SetProperty(row => row.LeaseUntil, leaseUntil),
                 cancellationToken);
 
             if (won == 1)
@@ -139,11 +137,11 @@ internal sealed class OutboxDrainer(
             // Another instance may have the handler: this one is mid-deploy, or the plugin is gone. The row waits, and a
             // plugin that stays removed leaves its rows pending.
             EventLog.HandlerMissing(logger, message.Id, message.Handler);
-            await ReleaseAsync(message, options.MissingHandlerDelay);
+            await ReleaseAsync(message, options.MissingHandlerDelay, started: false);
             return false;
         }
 
-        if (!await RenewAsync(message))
+        if (!await StartAsync(message))
         {
             EventLog.LeaseLost(logger, message.Id, message.Handler);
             return false;
@@ -159,11 +157,13 @@ internal sealed class OutboxDrainer(
             using var attempt = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, limit.Token);
 
             var previous = operation.Current;
-            operation.Current = await OperationOfAsync(message, @event, scope.ServiceProvider);
+            operation.Current = await EventOperation.CreateAsync(scope.ServiceProvider, @event.Source, message.EventId, message.SiteId, time.GetUtcNow());
             try
             {
-                await registration.Invoke(scope.ServiceProvider, @event, new EventDelivery(message.Id, message.Attempts), attempt.Token)
-                    .AsTask()
+                // On a thread of its own, since a handler that blocks before its first await would never hand control back
+                // to the timeout.
+                var delivery = new EventDelivery(message.Id, message.Attempts);
+                await Task.Run(() => registration.Invoke(scope.ServiceProvider, @event, delivery, attempt.Token).AsTask(), CancellationToken.None)
                     .WaitAsync(options.DeliveryTimeout, time, cancellationToken);
             }
             finally
@@ -173,11 +173,12 @@ internal sealed class OutboxDrainer(
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            await ReleaseAsync(message, delay: null);
+            await ReleaseAsync(message, delay: null, started: true);
             return false;
         }
         catch (TimeoutException)
         {
+            EventLog.DeliveryAbandoned(logger, message.Id, message.Handler, options.DeliveryTimeout);
             await FailAsync(message, $"The handler did not finish within {options.DeliveryTimeout}.");
             return false;
         }
@@ -197,15 +198,24 @@ internal sealed class OutboxDrainer(
         return true;
     }
 
-    // False when the row is no longer this worker's.
-    private async Task<bool> RenewAsync(OutboxMessage message)
+    // Starts an attempt and takes the lease again, in one conditional update. False when the row is no longer this worker's.
+    private async Task<bool> StartAsync(OutboxMessage message)
     {
         try
         {
             await using var scope = scopes.CreateAsyncScope();
             var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
             var until = time.GetUtcNow() + options.LeaseDuration;
-            return await Held(context, message, _owner).ExecuteUpdateAsync(row => row.SetProperty(column => column.LeaseUntil, until)) == 1;
+            var started = await Held(context, message, _owner).ExecuteUpdateAsync(row => row
+                .SetProperty(column => column.LeaseUntil, until)
+                .SetProperty(column => column.Attempts, column => column.Attempts + 1)) == 1;
+
+            if (started)
+            {
+                message.Attempts++;
+            }
+
+            return started;
         }
         catch (Exception exception)
         {
@@ -236,12 +246,13 @@ internal sealed class OutboxDrainer(
             .SetProperty(column => column.LeaseUntil, (DateTimeOffset?)null));
     }
 
-    // The attempt is given back, since the handler did not run to an end.
-    private Task ReleaseAsync(OutboxMessage message, TimeSpan? delay)
+    // An attempt that was started is given back, since the handler did not run to an end.
+    private Task ReleaseAsync(OutboxMessage message, TimeSpan? delay, bool started)
     {
         var availableAt = delay is { } wait ? time.GetUtcNow() + wait : message.AvailableAt;
+        var back = started ? 1 : 0;
         return SettleAsync(message, row => row
-            .SetProperty(column => column.Attempts, column => column.Attempts - 1)
+            .SetProperty(column => column.Attempts, column => column.Attempts - back)
             .SetProperty(column => column.AvailableAt, availableAt)
             .SetProperty(column => column.LeaseOwner, (string?)null)
             .SetProperty(column => column.LeaseUntil, (DateTimeOffset?)null));
@@ -280,46 +291,6 @@ internal sealed class OutboxDrainer(
         }
         catch (OperationCanceledException)
         {
-        }
-    }
-
-    // As a job runs: the system principal, with the actor of the event for audit, on the site of the event and in its default locale.
-    private async Task<OperationContext> OperationOfAsync(OutboxMessage message, CmsEvent @event, IServiceProvider services)
-    {
-        var site = message.SiteId ?? DefaultSite.Id;
-        var locale = await services.GetRequiredService<SystemDbContext>().Set<Site>()
-            .Where(row => row.Id == site)
-            .Select(row => row.DefaultLocale)
-            .FirstOrDefaultAsync();
-
-        var source = @event.Source;
-        return new OperationContext(
-            Principal.System,
-            Origin.Job,
-            new SiteId(site),
-            locale ?? DefaultSite.Locale,
-            ClientId: null,
-            string.IsNullOrEmpty(source.CorrelationId) ? message.EventId.ToString() : source.CorrelationId,
-            time.GetUtcNow())
-        {
-            Actor = ActorOf(source),
-        };
-    }
-
-    private static Principal? ActorOf(EventSource source)
-    {
-        if (source.ActorId == Guid.Empty || source.ActorKind is PrincipalKind.System or PrincipalKind.Anonymous)
-        {
-            return null;
-        }
-
-        try
-        {
-            return new Principal(source.ActorKind, source.ActorId, source.ActorName ?? "");
-        }
-        catch (ArgumentException)
-        {
-            return null;
         }
     }
 }
