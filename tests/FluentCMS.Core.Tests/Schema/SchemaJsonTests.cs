@@ -269,6 +269,75 @@ public class SchemaJsonTests
     }
 
     [Fact]
+    public void ListAsEqualsValueIsFCMS1213()
+    {
+        ShouldReportOnly(
+            """{ "collections": [ { "name": "article", "fields": [ { "name": "category", "type": "text" }, { "name": "videoUrl", "type": "url", "visibleWhen": { "field": "category", "equals": ["video"] } } ] } ] }""",
+            "collections[0].fields[1].visibleWhen.equals must be a string, boolean, number or null");
+    }
+
+    [Fact]
+    public void ListAsMemberOfInIsFCMS1213()
+    {
+        ShouldReportOnly(
+            """{ "collections": [ { "name": "article", "fields": [ { "name": "category", "type": "text" }, { "name": "videoUrl", "type": "url", "visibleWhen": { "field": "category", "in": ["video", ["audio"]] } } ] } ] }""",
+            "collections[0].fields[1].visibleWhen.in[1] must be a string, boolean, number or null");
+    }
+
+    [Fact]
+    public void ObjectAsMemberOfInIsFCMS1213()
+    {
+        ShouldReportOnly(
+            """{ "collections": [ { "name": "article", "fields": [ { "name": "category", "type": "text" }, { "name": "videoUrl", "type": "url", "visibleWhen": { "field": "category", "in": [{}] } } ] } ] }""",
+            "collections[0].fields[1].visibleWhen.in[0] must be a string, boolean, number or array of strings");
+    }
+
+    [Fact]
+    public void ReverseOnAComponentFieldIsFCMS1217()
+    {
+        const string json = """
+            {
+              "collections": [ { "name": "tag" } ],
+              "components": [ { "name": "seo", "fields": [ { "name": "tag", "type": "relation", "target": "tag", "reverse": "pages" } ] } ]
+            }
+            """;
+
+        var errors = Errors(json);
+
+        errors.Select(error => error.Code).ShouldBe(["FCMS1217"]);
+        errors[0].Message.ShouldContain("relation seo.tag declares a reverse side");
+    }
+
+    [Fact]
+    public void ReverseOnABlockFieldIsFCMS1217()
+    {
+        const string json = """
+            {
+              "collections": [ { "name": "tag" } ],
+              "blocks": [ { "name": "hero", "fields": [ { "name": "tag", "type": "relation", "target": "tag", "reverse": "pages" } ] } ]
+            }
+            """;
+
+        var errors = Errors(json);
+
+        errors.Select(error => error.Code).ShouldBe(["FCMS1217"]);
+        errors[0].Message.ShouldContain("not of a block");
+    }
+
+    [Fact]
+    public void RelationWithoutReverseIsAllowedInAComponent()
+    {
+        const string json = """
+            {
+              "collections": [ { "name": "tag" } ],
+              "components": [ { "name": "seo", "fields": [ { "name": "tag", "type": "relation", "target": "tag" } ] } ]
+            }
+            """;
+
+        Builder().AddSchemaJson(json).Build().FindContentType("tag")!.ReverseRelations.ShouldBeEmpty();
+    }
+
+    [Fact]
     public void ProblemsAreReportedTogetherAndTheRestOfTheDocumentIsStillRead()
     {
         const string json = """

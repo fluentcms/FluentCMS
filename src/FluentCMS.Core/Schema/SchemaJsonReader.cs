@@ -442,9 +442,18 @@ internal sealed class SchemaJsonReader(SchemaBuilder builder)
 
         if (equalsValue is { } single)
         {
-            return TryValue(single, $"{path}.equals", allowNull: true, out var value) && value is not IReadOnlyList<string>
-                ? Condition.Field(field).Equals(value)
-                : null;
+            if (!TryValue(single, $"{path}.equals", allowNull: true, out var value))
+            {
+                return null;
+            }
+
+            if (value is IReadOnlyList<string>)
+            {
+                Fail($"{path}.equals", "must be a string, boolean, number or null");
+                return null;
+            }
+
+            return Condition.Field(field).Equals(value);
         }
 
         return ReadMembers(inValues!.Value, $"{path}.in") is { } members ? Condition.Field(field).In(members) : null;
@@ -461,8 +470,15 @@ internal sealed class SchemaJsonReader(SchemaBuilder builder)
         List<object?> members = [];
         foreach (var item in element.EnumerateArray())
         {
-            if (!TryValue(item, path, allowNull: true, out var value) || value is IReadOnlyList<string>)
+            var itemPath = $"{path}[{members.Count}]";
+            if (!TryValue(item, itemPath, allowNull: true, out var value))
             {
+                return null;
+            }
+
+            if (value is IReadOnlyList<string>)
+            {
+                Fail(itemPath, "must be a string, boolean, number or null");
                 return null;
             }
 

@@ -155,6 +155,11 @@ internal sealed class SchemaValidator(IReadOnlySet<string> registeredFieldTypes)
             Report(SchemaErrorCodes.InvalidField, $"field {location} has a relation target, but its type is '{field.FieldType}', not 'relation'");
         }
 
+        if (!type.IsContentType && field.Relation?.Reverse is not null)
+        {
+            Report(SchemaErrorCodes.ReverseRelationOutsideContentType, $"relation {location} declares a reverse side, but reverse relations are only allowed on fields of collections and singletons, not of a {type.Kind.ToString().ToLowerInvariant()}");
+        }
+
         switch (field.FieldType)
         {
             case KnownFieldTypes.Select:

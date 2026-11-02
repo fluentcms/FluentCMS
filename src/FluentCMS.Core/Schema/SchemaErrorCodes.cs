@@ -18,4 +18,5 @@ internal static class SchemaErrorCodes
     public const string InvalidName = "FCMS1214";
     public const string InvalidType = "FCMS1215";
     public const string InvalidProperty = "FCMS1216";
+    public const string ReverseRelationOutsideContentType = "FCMS1217";
 }

@@ -267,6 +267,19 @@ public class AttributeReaderTests
         ShouldReport(typeof(UnsupportedDefault), "FCMS1216", "UnsupportedDefault.Code: A value of type");
     }
 
+    [Theory]
+    [InlineData(typeof(ReverseInComponent), "component")]
+    [InlineData(typeof(ReverseInBlock), "block")]
+    public void ReverseRelationInAComponentOrBlockIsFCMS1217(Type type, string kind)
+    {
+        var builder = Builder().AddContentType<Tag>().AddContentType(type);
+
+        var errors = Should.Throw<SchemaValidationException>(() => builder.Build()).Errors;
+
+        errors.Select(error => error.Code).ShouldBe(["FCMS1217"]);
+        errors[0].Message.ShouldContain($"reverse relations are only allowed on fields of collections and singletons, not of a {kind}");
+    }
+
     [Fact]
     public void ClassesInAnAssemblyWithoutKindAttributesAreIgnored()
     {
@@ -290,6 +303,20 @@ public class AttributeReaderTests
 
     [Collection]
     private sealed class FaqItem : ContentItem;
+
+    [Component]
+    private sealed class ReverseInComponent
+    {
+        [Relation(Reverse = "pages")]
+        public Ref<Tag> Tag { get; set; }
+    }
+
+    [Block("reverse-in-block")]
+    private sealed class ReverseInBlock
+    {
+        [Relation(Reverse = "pages")]
+        public Ref<Tag> Tag { get; set; }
+    }
 
     [Collection("shapes")]
     private sealed class ShapesClass : ContentItem
