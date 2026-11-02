@@ -255,7 +255,7 @@ src/FluentCMS.Core/
 - `Directory.Build.props`: `net10.0`, nullable enabled, warnings as errors, .NET analyzers at `latest-recommended`, deterministic builds, SourceLink, package icon and license expression.
 - `Directory.Packages.props`: central package versions. A new dependency is named in the issue before it is added, so it is visible in review.
 - `FluentCMS.Sdk` uses `Microsoft.CodeAnalysis.PublicApiAnalyzers` (`PublicAPI.Shipped.txt`, `PublicAPI.Unshipped.txt`) and `EnablePackageValidation` against the last released version, so the semver promise in decision 14 is enforced by the build.
-- Tests: xUnit v3; Testcontainers for PostgreSQL and SQL Server in the data matrix; SQLite everywhere else. Assertion library is Q13.
+- Tests: xUnit v3 with Shouldly (Q13). SQLite is the only database used locally and in CI during implementation; Testcontainers for PostgreSQL and SQL Server join the data matrix with the deferred provider work (Q19).
 - Public types in `FluentCMS.Sdk` carry XML docs because they ship in the package. Implementation code does not.
 
 ### 3.3 Naming conventions
@@ -1058,8 +1058,8 @@ Follows the sequencing note in the decisions log: SDK and core first, because ev
 
 | Milestone | Goal | Exit criteria |
 | --- | --- | --- |
-| M0 Foundation | Solution, build and CI exist; nothing runs yet. | `dotnet build` and `dotnet test` green in CI on Linux and Windows; packages pack; provider matrix job runs an empty test against PostgreSQL, SQLite and SQL Server containers. |
-| M1 SDK and core engine | A host can define types in C#, store and query entries in-process with permissions, versions, publishing, scheduling, events and jobs on all three providers. No HTTP yet. | The sample `Blog` types round-trip through `IContentService<T>` in the test host; the storage spike's decision is recorded; migrations generate for all providers. |
+| M0 Foundation | Solution, build and CI exist; nothing runs yet. | `dotnet build` and `dotnet test` green in CI on Linux and Windows; packages pack; the test matrix job runs on SQLite (PostgreSQL and SQL Server deferred, Q19). |
+| M1 SDK and core engine | A host can define types in C#, store and query entries in-process with permissions, versions, publishing, scheduling, events and jobs on SQLite (other providers deferred, Q19). No HTTP yet. | The sample `Blog` types round-trip through `IContentService<T>` in the test host; the storage spike's decision is recorded; migrations generate for SQLite. |
 | M2 HTTP and identity | Delivery and Management APIs, authorization server with hosted pages, admin users, roles, keys, 2FA, SSO federation, activity log endpoint, OpenAPI, caching, limits, health, observability, startup diagnostics, reference host image. | An editor can be invited, sign in through the hosted pages, obtain a token with PKCE, create and publish content through the Management API, and read it through the Delivery API with a key, all from the Docker image on SQLite and on PostgreSQL. |
 | M3 Plugin host, media, webhooks | Plugin contract proven by two first-party plugins. | A plugin project from the server template boots in the test host with its own tables, permissions, settings and job; images upload and transform through signed URLs on local, S3 and Azure storage; a publish triggers a signed webhook with retries. |
 | M4 Agents and GraphQL | MCP server and GraphQL plugin. | Claude or an IDE client connects to `/mcp` through OAuth, lists tools filtered by role, drafts an entry and cannot publish without the permission; GraphQL queries and mutations mirror REST. |
@@ -1083,6 +1083,7 @@ Tracking issue: [#2707](https://github.com/fluentcms/FluentCMS/issues/2707).
 | B-03 [#2678](https://github.com/fluentcms/FluentCMS/issues/2678) | Package metadata, SourceLink, symbol packages, public API analyzers and package validation on `FluentCMS.Sdk` | 14, 61 | S |
 | B-04 [#2679](https://github.com/fluentcms/FluentCMS/issues/2679) | Architecture test project with the layering rules of 3.4 | 4.12 | S |
 | B-05 [#2680](https://github.com/fluentcms/FluentCMS/issues/2680) | Contributing guide update: issue-first flow, branch naming, labels, milestone process, ADR folder (Q12) | | S |
+| B-06 [#2712](https://github.com/fluentcms/FluentCMS/issues/2712) | Record the deferred database provider testing in this document (Q19) | | S |
 
 ### 9.2 M1 SDK and core engine
 
@@ -1188,11 +1189,11 @@ Tracking issue: [#2708](https://github.com/fluentcms/FluentCMS/issues/2708).
 | B-95 | Source generator: typed filter builders and mappers | 11.3 | L |
 | B-96 | Analyzers: schema attribute rules and SDK obsoletion | 11.13, 11.12 | M |
 
-77 issues for the Must scope, created milestone by milestone (Q17). Should items get issues when their milestone is planned, not now.
+77 issues for the Must scope, created milestone by milestone (Q17), plus [#2711](https://github.com/fluentcms/FluentCMS/issues/2711) for the deferred PostgreSQL and SQL Server validation (Q19), which has no milestone until the code is complete. Should items get issues when their milestone is planned, not now.
 
 ## 10. Open questions and suggestions
 
-All eighteen questions were decided on 1 Nov 2026. The table keeps each question and its decision; where the decision differs from the recommendation that was made, it says so.
+All eighteen questions were decided on 1 Nov 2026, and Q19 was added the same day after approval. The table keeps each question and its decision; where the decision differs from the recommendation that was made, it says so.
 
 ### 10.1 Decisions on the open questions
 
@@ -1217,6 +1218,7 @@ All eighteen questions were decided on 1 Nov 2026. The table keeps each question
 | Q16 | The uploaded `research/` folder names v2 and a possible paid tier; the public `main` must not mention v2. | Commit `specification/` and this document only. `research/` stays out of the repository and out of the planning folder; this document no longer refers to it. |
 | Q17 | Issue granularity. | The 77 issues of section 9 under seven milestone tracking issues, created milestone by milestone, M0 and M1 first. |
 | Q18 | Is the tooling part of this backend batch? | Yes. `FluentCMS.Testing` and the `migrations add` command sit in M1 because the core tests need them; the rest is M6 in this batch. |
+| Q19 | Database providers during implementation: SQLite only locally, or PostgreSQL and SQL Server in CI from M0? | **SQLite only, locally and in CI, until the backend code is complete.** PostgreSQL and SQL Server validation and the completion of their provider packages are deferred to [#2711](https://github.com/fluentcms/FluentCMS/issues/2711). The recommendation to run the provider matrix in CI from M0 was not taken. Risk accepted: JSON filtering, job claiming, partial unique indexes and migration generation stay unverified on the primary production provider until then; issues #2677, #2681 and #2689 carry scope notes. |
 
 ### 10.2 Suggestions
 
