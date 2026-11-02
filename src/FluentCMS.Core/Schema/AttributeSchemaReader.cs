@@ -96,7 +96,7 @@ internal sealed class AttributeSchemaReader(SchemaBuilder builder)
         return kinds;
     }
 
-    private static string NameOf(Type type) =>
+    internal static string NameOf(Type type) =>
         KindsOf(type) is [{ Name: { } name }, ..] ? name : SchemaNaming.ToKebabCase(type.Name);
 
     private static IEnumerable<PropertyInfo> Properties(Type type)

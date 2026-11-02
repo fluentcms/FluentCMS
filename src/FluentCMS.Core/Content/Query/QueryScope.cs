@@ -1,11 +1,13 @@
+using System.Linq.Expressions;
 using FluentCMS.Content;
 using FluentCMS.Core.Storage;
 using FluentCMS.Schema;
+using FluentCMS.Sites;
 
 namespace FluentCMS.Core.Content.Query;
 
-// What one compilation shares: the state and locale every joined row must have, and the errors found so far.
-internal sealed class QueryScope(CmsDbContext context, SchemaModel schema, IJsonSqlDialect dialect, IContentQueryAccess access, ContentQueryOptions options, short state, string locale)
+// What one compilation shares: the state, locale and site every joined row must have, and the errors found so far.
+internal sealed class QueryScope(CmsDbContext context, SchemaModel schema, IJsonSqlDialect dialect, IContentQueryAccess access, ContentQueryOptions options, short state, string locale, SiteId? site)
 {
     private readonly List<ValidationError> _errors = [];
     private int _populated;
@@ -24,9 +26,23 @@ internal sealed class QueryScope(CmsDbContext context, SchemaModel schema, IJson
 
     public string Locale => locale;
 
+    public SiteId? Site => site;
+
     public QueryPaths Paths { get; } = new(schema, access);
 
-    public IQueryable<QueryRow> Rows(SchemaType type) => QueryRows.Of(context, type, state, locale);
+    // A site's query reads that site's entries on every level. Global entries belong to no site, and any site may read them.
+    public IQueryable<QueryRow> Rows(SchemaType type)
+    {
+        var rows = QueryRows.Of(context, type, state, locale);
+        if (site is not { } only || type.Scope != ContentScope.Site)
+        {
+            return rows;
+        }
+
+        var row = Expression.Parameter(typeof(QueryRow), "row");
+        var inSite = Expression.Equal(QueryExpressions.Column(Expression.Property(row, nameof(QueryRow.Shared)), StorageNames.SiteId, typeof(Guid)), QueryExpressions.Bind(only.Value));
+        return rows.Where(Expression.Lambda<Func<QueryRow, bool>>(inSite, row));
+    }
 
     public void Report(string path, string code, string message)
     {

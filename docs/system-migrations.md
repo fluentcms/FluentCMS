@@ -26,4 +26,6 @@ Do this in the pull request that changes `SystemModelBuilder`, such as one that 
 
 4. Run `dotnet test --project tests/FluentCMS.Data.Tests -c Release`. The tests fail if a provider's snapshot no longer matches the model, so a skipped provider is caught.
 
+A migration that changes the grants of a seeded role also raises `permissions_version` of that role, with `migrationBuilder.Sql` and relative to its current value, because the seed cannot say what a live role has reached and the evaluator's cache is keyed on the stamp. Add the statement to the scaffolded `Up` and `Down`.
+
 Do not edit a migration that has shipped. The PostgreSQL and SQL Server migrations have never been applied to a database; [#2711](https://github.com/fluentcms/FluentCMS/issues/2711) validates them.

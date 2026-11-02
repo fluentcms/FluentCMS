@@ -528,6 +528,57 @@ public sealed class BadInputTests : IDisposable
     }
 
     [Fact]
+    public async Task AFilterOnARelationDoesNotMatchATargetOfATypeThePrincipalCannotRead()
+    {
+        var ann = _database.AddAuthor("Ann");
+        var article = _database.AddArticle("With author");
+        _database.Relate("article", article, "author", "author", ann);
+
+        var access = new QueryAccess();
+        access.DeniedTypes.Add("author");
+
+        (await _database.RunAsync($"locale=en&filter[author][eq]={ann}", access)).Items.ShouldBeEmpty();
+        (await _database.RunAsync($"locale=en&filter[author][in]={ann}", access)).Items.ShouldBeEmpty();
+        (await _database.RunAsync("locale=en&filter[author][notNull]=true", access)).Items.ShouldBeEmpty();
+        (await _database.RunAsync($"locale=en&filter[author][null]=true&filter[id][eq]={article}", access)).Items.Single()["title"].ShouldBe("With author");
+    }
+
+    [Fact]
+    public async Task AFilterOnARelationDoesNotMatchATargetARowRuleDenies()
+    {
+        var ann = _database.AddAuthor("Ann");
+        var article = _database.AddArticle("With author");
+        _database.Relate("article", article, "author", "author", ann);
+
+        var access = new QueryAccess();
+        access.RowRules["author"] = new FieldFilter("name", FilterOperator.Equal, "Somebody else");
+
+        (await _database.RunAsync($"locale=en&filter[author][eq]={ann}", access)).Items.ShouldBeEmpty();
+        (await _database.RunAsync("locale=en&filter[author][notNull]=true", access)).Items.ShouldBeEmpty();
+        (await _database.RunAsync($"locale=en&filter[author][null]=true&filter[id][eq]={article}", access)).Items.Single()["title"].ShouldBe("With author");
+
+        access.RowRules["author"] = new FieldFilter("name", FilterOperator.Equal, "Ann");
+
+        (await _database.RunAsync($"locale=en&filter[author][eq]={ann}", access)).Items.Single()["title"].ShouldBe("With author");
+    }
+
+    [Fact]
+    public async Task ARowRuleThroughARelationGoesThroughATypeTheClientCannotRead()
+    {
+        var ann = _database.AddAuthor("Ann", secret: "mine");
+        var article = _database.AddArticle("With author");
+        _database.Relate("article", article, "author", "author", ann);
+        _database.AddArticle("Without");
+
+        var access = new QueryAccess();
+        access.DeniedTypes.Add("author");
+        access.RowRules["article"] = new FieldFilter("author.secret", FilterOperator.Equal, "mine");
+        access.RowRules["author"] = new FieldFilter("name", FilterOperator.Equal, "Somebody else");
+
+        (await _database.RunAsync("locale=en", access)).Items.Single()["title"].ShouldBe("With author");
+    }
+
+    [Fact]
     public void TheEngineIsInTheContainer() =>
         _database.Services.GetService<ContentQueryEngine>().ShouldNotBeNull();
 }

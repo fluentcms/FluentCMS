@@ -30,7 +30,9 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
 
     public async Task<ContentQueryResult> ExecuteAsync(string typeName, ContentQuery query, CancellationToken cancellationToken = default)
     {
-        var compiled = Compile(typeName, query);
+        ArgumentNullException.ThrowIfNull(query);
+
+        var compiled = Compile(await access.ForQueryAsync(query.Site, query.Locale ?? "", cancellationToken), typeName, query);
 
         long? total = compiled.WithTotal ? await compiled.Filtered.LongCountAsync(cancellationToken) : null;
         var rows = await compiled.Rows.ToListAsync(cancellationToken);
@@ -51,12 +53,14 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
     }
 
     // Separate from running it, so that a test can read the SQL.
-    internal CompiledQuery Compile(string typeName, ContentQuery query)
+    internal CompiledQuery Compile(string typeName, ContentQuery query) => Compile(access, typeName, query);
+
+    private CompiledQuery Compile(IContentQueryAccess access, string typeName, ContentQuery query)
     {
         ArgumentNullException.ThrowIfNull(query);
 
         var state = query.Status == QueryStatus.Draft ? ContentState.Draft : ContentState.Published;
-        var scope = new QueryScope(context, schema, dialect, access, options, state, query.Locale ?? "");
+        var scope = new QueryScope(context, schema, dialect, access, options, state, query.Locale ?? "", query.Site);
 
         if (schema.FindContentType(typeName) is not { } type || !access.CanReadType(type))
         {
@@ -75,11 +79,6 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
 
         var row = Expression.Parameter(typeof(QueryRow), "row");
         var rows = scope.Rows(type);
-
-        if (query.Site is { } site && type.Scope == ContentScope.Site)
-        {
-            rows = rows.Where(Lambda(Expression.Equal(QueryExpressions.Column(Expression.Property(row, nameof(QueryRow.Shared)), StorageNames.SiteId, typeof(Guid)), QueryExpressions.Bind(site.Value)), row));
-        }
 
         if (new FilterCompiler(scope).Where(type, query.Filter, row) is { } filter)
         {
@@ -186,7 +185,7 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
                 return true;
             case FieldPath { Stored.Kind: FieldStorageKind.Reference, Stored.Field.Relation: { } relation } hop when hops < options.MaxPopulateDepth:
                 var target = schema.FindContentType(relation.Target);
-                return target is not null && access.CanReadType(target) && CheckSelection(scope, target, string.Join('.', hop.Rest), hops + 1);
+                return target is not null && scope.Access.CanReadType(target) && CheckSelection(scope, target, string.Join('.', hop.Rest), hops + 1);
             default:
                 return false;
         }
@@ -250,7 +249,7 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         }
 
         var target = field.Stored.Field.Relation is { } relation ? schema.FindContentType(relation.Target) : null;
-        if (target is null || !access.CanReadType(target))
+        if (target is null || !scope.Access.CanReadType(target))
         {
             return (QueryErrorCodes.NotARelation, $"'{field.ApiPath}' of {type.Name} cannot be populated further.");
         }
@@ -328,10 +327,13 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
 
         foreach (var output in outputs)
         {
+            var readable = await ReadableTargetsAsync(query, output, references, cancellationToken);
+
             List<(Materialized Parent, ContentDocument Reference, Guid Target)> wanted = [];
             foreach (var entry in entries)
             {
                 var values = bySource[(entry.Id, output.ApiPath, output.Stored.Localized ? locale : "")]
+                    .Where(reference => readable?.Contains(reference.TargetId) != false)
                     .Select(reference => (Reference: Stub(reference), reference.TargetId))
                     .ToList();
 
@@ -354,7 +356,56 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
 
     private static ContentDocument Stub(Reference reference) => new() { ["id"] = reference.TargetId, ["type"] = reference.TargetType };
 
-    // A target the principal may not see, or one that has no row in this state and locale, stays a reference.
+    // Which targets of a relation to return, or null for all of them. A target the principal cannot read by type or by
+    // row rule is not returned, even as a reference, and neither is one in another site than the query's. Under a row
+    // rule, a target with no row in this state and locale cannot be shown to pass, so it goes too.
+    private async Task<HashSet<Guid>?> ReadableTargetsAsync(QueryScope query, ReferenceOutput output, List<Reference> references, CancellationToken cancellationToken)
+    {
+        var target = output.Stored.Field.Relation is { } relation ? schema.FindContentType(relation.Target) : null;
+        if (target is null)
+        {
+            return null;
+        }
+
+        if (!query.Access.CanReadType(target))
+        {
+            return [];
+        }
+
+        var inOneSite = target.Scope == ContentScope.Site && query.Site is not null;
+        var hasRule = query.Access.RowRule(target) is not null;
+        if (!inOneSite && !hasRule)
+        {
+            return null;
+        }
+
+        var ids = references.Where(reference => reference.Field == output.ApiPath).Select(reference => reference.TargetId).Distinct().ToList();
+        if (!hasRule)
+        {
+            // Trashed targets stay references, so this looks past the query filter.
+            var site = query.Site!.Value.Value;
+            var inSite = await context.Documents.IgnoreQueryFilters().AsNoTracking()
+                .Where(document => ids.Contains(document.DocumentId) && document.SiteId == site)
+                .Select(document => document.DocumentId)
+                .ToListAsync(cancellationToken);
+
+            return [.. inSite];
+        }
+
+        var row = Expression.Parameter(typeof(QueryRow), "row");
+        var rule = new FilterCompiler(query).Where(target, null, row)!;
+        query.ThrowIfInvalid();
+
+        var readable = await query.Rows(target)
+            .Where(item => ids.Contains(item.Document.DocumentId))
+            .Where(Lambda(rule, row))
+            .Select(item => item.Document.DocumentId)
+            .ToListAsync(cancellationToken);
+
+        return [.. readable];
+    }
+
+    // A target that has no row in this state and locale stays a reference.
     private async Task PopulateAsync(QueryScope query, EntryPlan plan, List<(Materialized Parent, ContentDocument Reference, Guid Target)> wanted, CancellationToken cancellationToken)
     {
         var ids = wanted.Select(item => item.Target).Distinct().ToList();

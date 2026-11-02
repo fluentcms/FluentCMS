@@ -1,6 +1,8 @@
 using System.Reflection;
 using FluentCMS.Authorization;
+using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Content;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Storage;
@@ -56,7 +58,16 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddHostedService<MigrationStartupService>();
 
         services.TryAddSingleton<ContentQueryOptions>();
-        services.TryAddScoped<IContentQueryAccess, OpenContentQueryAccess>();
+        services.TryAddSingleton<IOperationContextAccessor, OperationContextAccessor>();
+        services.TryAddSingleton<IPrincipalRoles, ClaimPrincipalRoles>();
+        services.TryAddSingleton<EffectiveGrantCache>();
+        services.AddSingleton(serviceProvider => new RowRuleRegistry(
+            serviceProvider.GetRequiredService<SchemaModel>(),
+            serviceProvider.GetRequiredService<ContentQueryOptions>(),
+            builder.Authorization.Rules));
+        services.AddHostedService<RowRuleStartupCheck>();
+        services.TryAddScoped<IAuthorizationEvaluator, AuthorizationEvaluator>();
+        services.TryAddScoped<IContentQueryAccess, ContentQueryAccess>();
         services.AddScoped<ContentQueryEngine>();
 
         return services;

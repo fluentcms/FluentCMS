@@ -300,7 +300,7 @@ namespace FluentCMS.Data.PostgreSql.Migrations
                         {
                             Id = new Guid("00000000-0000-7000-8000-000000000003"),
                             BuiltIn = true,
-                            Description = "Creates content, and edits or removes only their own entries.",
+                            Description = "Creates content, and reads, edits or removes only their own entries.",
                             Name = "Author",
                             PermissionsVersion = 1L
                         },
@@ -414,6 +414,7 @@ namespace FluentCMS.Data.PostgreSql.Migrations
                         new
                         {
                             Id = new Guid("00000000-0000-7000-8001-000000000011"),
+                            Constraints = "{\"rowRule\":\"own-entries\"}",
                             Permission = "content.*.read",
                             RoleId = new Guid("00000000-0000-7000-8000-000000000003")
                         },

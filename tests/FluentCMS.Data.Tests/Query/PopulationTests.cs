@@ -318,21 +318,62 @@ public sealed class PopulationTests : IDisposable
     }
 
     [Fact]
-    public async Task ATypeThePrincipalCannotReadStaysAReference()
+    public async Task ATargetOfATypeThePrincipalCannotReadIsNull()
     {
         var access = new QueryAccess();
         access.DeniedTypes.Add("author");
+        access.DeniedTypes.Add("tag");
 
-        ShouldBeReference((await Entry("populate=*", access))["author"], _author, "author");
+        foreach (var query in new[] { "populate=*", "sort=title" })
+        {
+            var entry = await Entry(query, access);
+
+            entry["author"].ShouldBeNull();
+            entry["tags"].ShouldBeAssignableTo<IReadOnlyList<ContentDocument>>()!.ShouldBeEmpty();
+            ShouldBeReference(entry["hero"], _media, "media");
+        }
     }
 
     [Fact]
-    public async Task ARowRuleAppliesToAPopulatedTarget()
+    public async Task ATargetARowRuleDeniesIsNullWhetherPopulatedOrNot()
     {
         var access = new QueryAccess();
         access.RowRules["author"] = new FieldFilter("name", FilterOperator.Equal, "Somebody else");
 
-        ShouldBeReference((await Entry("populate=author", access))["author"], _author, "author");
+        (await Entry("populate=author", access))["author"].ShouldBeNull();
+        (await Entry("sort=title", access))["author"].ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task ARowRuleKeepsOnlyTheTargetsItAllowsOfAMultipleRelation()
+    {
+        var access = new QueryAccess();
+        access.RowRules["tag"] = new FieldFilter("name", FilterOperator.Equal, "two");
+
+        var tags = (await Entry("sort=title", access))["tags"].ShouldBeAssignableTo<IReadOnlyList<ContentDocument>>()!;
+        ShouldBeReference(tags.Single(), _secondTag, "tag");
+
+        var populated = (await Entry("populate=tags", access))["tags"].ShouldBeAssignableTo<IReadOnlyList<ContentDocument>>()!;
+        populated.Single()["name"].ShouldBe("two");
+    }
+
+    [Fact]
+    public async Task ADeniedTargetBeyondTheDepthIsNullToo()
+    {
+        var access = new QueryAccess();
+        access.DeniedTypes.Add("company");
+
+        Doc((await Entry("populate=author", access))["author"])["company"].ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task ATargetARowRuleAllowsStaysAsItWas()
+    {
+        var access = new QueryAccess();
+        access.RowRules["author"] = new FieldFilter("name", FilterOperator.Equal, "Ann");
+
+        ShouldBeReference((await Entry("sort=title", access))["author"], _author, "author");
+        Doc((await Entry("populate=author", access))["author"])["name"].ShouldBe("Ann");
     }
 
     [Fact]

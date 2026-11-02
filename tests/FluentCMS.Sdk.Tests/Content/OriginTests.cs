@@ -31,9 +31,9 @@ public class OriginTests
     }
 
     [Fact]
-    public void PrincipalKindsAreTheFiveKinds()
+    public void PrincipalKindsAreTheSixKinds()
     {
-        Enum.GetNames<PrincipalKind>().ShouldBe(["AdminUser", "Member", "ApiKey", "ServiceAccount", "System"]);
+        Enum.GetNames<PrincipalKind>().ShouldBe(["AdminUser", "Member", "ApiKey", "ServiceAccount", "System", "Anonymous"]);
         Enum.IsDefined(default(PrincipalKind)).ShouldBeFalse();
     }
 
