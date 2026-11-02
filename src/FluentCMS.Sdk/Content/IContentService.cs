@@ -20,7 +20,7 @@ public interface IContentService
 
     /// <summary>Reads a page of entries.</summary>
     /// <param name="type">The name of the content type.</param>
-    /// <param name="query">What to read. A missing site or locale is that of the operation.</param>
+    /// <param name="query">What to read. A missing site or locale is that of the operation. Another site than that of the operation is refused, except for the system principal.</param>
     /// <param name="cancellationToken">A token to cancel the work.</param>
     /// <returns>The page.</returns>
     /// <exception cref="ValidationException">The query is not valid, or the principal may not read the type or its drafts.</exception>
@@ -37,7 +37,8 @@ public interface IContentService
 
     /// <summary>
     /// Replaces the draft in the locale of the operation. A field left out is cleared, unless the principal may not write
-    /// or read it, in which case it keeps its value. With an expected version of 0, this adds a locale the entry does not have yet.
+    /// or read it, in which case it keeps its value; so do relation targets it may not read. Fields named under
+    /// <c>fallbacks</c> count as left out. With an expected version of 0, this adds a locale the entry does not have yet.
     /// </summary>
     /// <param name="type">The name of the content type.</param>
     /// <param name="id">The id of the entry.</param>
@@ -123,7 +124,7 @@ public interface IContentService<T>
     /// <exception cref="ValidationException">A value is refused or not valid.</exception>
     Task<T> CreateAsync(T entry, CancellationToken cancellationToken = default);
 
-    /// <summary>Replaces the draft in the locale of the operation. A property with no value clears its field, unless the principal may not write or read it.</summary>
+    /// <summary>Replaces the draft in the locale of the operation. A property with no value clears its field. A property the principal may not read, and one that is hidden, is not sent, so it keeps its value; use a patch to write a field that cannot be read back.</summary>
     /// <param name="id">The id of the entry.</param>
     /// <param name="entry">The values.</param>
     /// <param name="expectedVersion">The version the change was based on.</param>

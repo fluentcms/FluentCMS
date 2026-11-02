@@ -113,5 +113,24 @@ internal static class EntryPaths
         return current;
     }
 
+    // Sets a stored field, making the groups above it where a single component was absent.
+    public static void SetAt(ContentDocument entry, StoredField stored, SchemaType type, object? value)
+    {
+        var names = Query.QueryPaths.ApiPath(type, stored).Split('.');
+        var group = entry;
+        foreach (var name in names[..^1])
+        {
+            if (group.GetValueOrDefault(name) is not ContentDocument inner)
+            {
+                inner = [];
+                group[name] = inner;
+            }
+
+            group = inner;
+        }
+
+        group[names[^1]] = value;
+    }
+
     public static string ReferenceTarget(SchemaField field) => field.Relation?.Target ?? field.FieldType;
 }

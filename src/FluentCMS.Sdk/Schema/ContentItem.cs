@@ -10,9 +10,9 @@ namespace FluentCMS.Schema;
 public abstract class ContentItem
 {
     /// <summary>
-    /// The reserved system field names, as they appear in the API. Compared without regard to case,
-    /// so a C# property named <c>CreatedAt</c> matches <c>createdAt</c>. A content type field with one
-    /// of these names fails schema validation.
+    /// The reserved names, as they appear in the API: the system fields and <c>fallbacks</c>, which a response adds.
+    /// Compared without regard to case, so a C# property named <c>CreatedAt</c> matches <c>createdAt</c>. A content
+    /// type field with one of these names fails schema validation.
     /// </summary>
     public static IReadOnlySet<string> ReservedFieldNames { get; } = new[]
     {
@@ -25,6 +25,7 @@ public abstract class ContentItem
         "updatedAt",
         "updatedBy",
         "publishedAt",
+        "fallbacks",
     }.ToFrozenSet(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>The id of the entry.</summary>

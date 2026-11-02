@@ -111,10 +111,12 @@ internal sealed class EntryComposer(SchemaModel schema)
         return result;
     }
 
-    // What a client cannot see or change inside a component or a block stays when it sends the rest back. In a list, a
-    // block keeps those values of the block at the same index, if that is of the same type. A single component only needs
-    // this on a full update: a patch merged into it already keeps them, and may be the system principal clearing one.
-    public void CarryHidden(SchemaType type, ContentDocument stored, ContentDocument composed, bool includingGroups)
+    // What a client cannot see or change inside a component or a block stays when it sends the rest back, even when it
+    // sends no component at all. A list has no ids, so an incoming block keeps the values of the stored block of the
+    // same type whose visible content is identical, each used once, and what is left pairs up in order. A block both
+    // moved and edited can still pair with the wrong one. A single component is left alone on a patch only for the
+    // system principal, which may be clearing a value, since a patch merged into a component already keeps the rest.
+    public void CarryProtected(SchemaType type, ContentDocument stored, ContentDocument composed, bool includingGroups)
     {
         foreach (var field in type.Fields)
         {
@@ -122,10 +124,9 @@ internal sealed class EntryComposer(SchemaModel schema)
             composed.TryGetValue(field.Name, out var after);
             if (field.FieldType == FieldTypeNames.Component && !field.Multiple)
             {
-                if (includingGroups && before is ContentDocument oldGroup && after is ContentDocument newGroup
-                    && schema.FindComponent((string)field.Settings[FieldSettings.Component]) is { } component)
+                if (includingGroups && before is ContentDocument oldGroup && ComponentOf(field) is { } component)
                 {
-                    CarryIntoGroup(component, oldGroup, newGroup);
+                    CarryGroup(component, oldGroup, after as ContentDocument, group => composed[field.Name] = group);
                 }
             }
             else if (before is JsonNode oldNode && after is JsonNode newNode)
@@ -135,24 +136,34 @@ internal sealed class EntryComposer(SchemaModel schema)
         }
     }
 
-    private void CarryIntoGroup(SchemaType component, ContentDocument before, ContentDocument after)
+    private SchemaType? ComponentOf(SchemaField field) =>
+        field.Settings.TryGetValue(FieldSettings.Component, out var name) && name is string component ? schema.FindComponent(component) : null;
+
+    // An absent component comes back only if it has something to carry.
+    private void CarryGroup(SchemaType component, ContentDocument before, ContentDocument? after, Action<ContentDocument> set)
     {
+        var group = after ?? [];
         foreach (var field in component.Fields)
         {
-            if ((field.Hidden || field.ReadOnly) && before.GetValueOrDefault(field.Name) is { } value && after.GetValueOrDefault(field.Name) is null)
+            var old = before.GetValueOrDefault(field.Name);
+            var current = group.GetValueOrDefault(field.Name);
+            if ((field.Hidden || field.ReadOnly) && old is not null && current is null)
             {
-                after[field.Name] = value;
+                group[field.Name] = old;
             }
-            else if (before.GetValueOrDefault(field.Name) is JsonNode oldNode && after.GetValueOrDefault(field.Name) is JsonNode newNode)
+            else if (old is JsonNode oldNode && current is JsonNode newNode)
             {
                 CarryInside(field, oldNode, newNode);
             }
-            else if (field.FieldType == FieldTypeNames.Component && !field.Multiple
-                && before.GetValueOrDefault(field.Name) is ContentDocument oldGroup && after.GetValueOrDefault(field.Name) is ContentDocument newGroup
-                && schema.FindComponent((string)field.Settings[FieldSettings.Component]) is { } inner)
+            else if (field.FieldType == FieldTypeNames.Component && !field.Multiple && old is ContentDocument oldGroup && ComponentOf(field) is { } inner)
             {
-                CarryIntoGroup(inner, oldGroup, newGroup);
+                CarryGroup(inner, oldGroup, current as ContentDocument, value => group[field.Name] = value);
             }
+        }
+
+        if (after is null && group.Values.Any(value => value is not null))
+        {
+            set(group);
         }
     }
 
@@ -160,33 +171,87 @@ internal sealed class EntryComposer(SchemaModel schema)
     {
         if (before is JsonArray oldItems && after is JsonArray newItems)
         {
-            for (var index = 0; index < Math.Min(oldItems.Count, newItems.Count); index++)
+            foreach (var (oldItem, newItem) in PairUp(field, [.. oldItems.OfType<JsonObject>()], [.. newItems.OfType<JsonObject>()]))
             {
-                if (oldItems[index] is JsonObject oldItem && newItems[index] is JsonObject newItem && OwnerOf(field, oldItem, newItem) is { } owner)
+                if (OwnerOf(field, oldItem) is { } owner)
                 {
                     CarryIntoObject(owner, oldItem, newItem);
                 }
             }
         }
-        else if (before is JsonObject oldObject && after is JsonObject newObject && OwnerOf(field, oldObject, newObject) is { } owner)
+        else if (before is JsonObject oldObject && after is JsonObject newObject && OwnerOf(field, oldObject) is { } single && OwnerOf(field, newObject) == single)
         {
-            CarryIntoObject(owner, oldObject, newObject);
+            CarryIntoObject(single, oldObject, newObject);
         }
     }
 
-    private SchemaType? OwnerOf(SchemaField field, JsonObject before, JsonObject after)
+    private List<(JsonObject Old, JsonObject New)> PairUp(SchemaField field, List<JsonObject> before, List<JsonObject> after)
     {
-        if (field.FieldType == FieldTypeNames.Component)
+        List<(JsonObject Old, JsonObject New)> pairs = [];
+        List<JsonObject> oldLeft = [.. before];
+        List<JsonObject> newLeft = [];
+        foreach (var item in after)
         {
-            return schema.FindComponent((string)field.Settings[FieldSettings.Component]);
+            var same = OwnerOf(field, item) is { } owner
+                ? oldLeft.FindIndex(old => OwnerOf(field, old) == owner && JsonNode.DeepEquals(Comparable(owner, old), Comparable(owner, item)))
+                : -1;
+
+            if (same < 0)
+            {
+                newLeft.Add(item);
+            }
+            else
+            {
+                pairs.Add((oldLeft[same], item));
+                oldLeft.RemoveAt(same);
+            }
         }
 
-        return field.FieldType == FieldTypeNames.Blocks
-            && before[Discriminator] is JsonValue oldName && after[Discriminator] is JsonValue newName
-            && oldName.TryGetValue<string>(out var name) && newName.TryGetValue<string>(out var same) && name == same
-                ? schema.FindBlock(name)
-                : null;
+        for (var index = 0; index < Math.Min(oldLeft.Count, newLeft.Count); index++)
+        {
+            if (OwnerOf(field, oldLeft[index]) is { } owner && OwnerOf(field, newLeft[index]) == owner)
+            {
+                pairs.Add((oldLeft[index], newLeft[index]));
+            }
+        }
+
+        return pairs;
     }
+
+    // What a client saw of a block: no protected values, and no key that holds nothing, which is the same as no key.
+    private JsonObject Comparable(SchemaType owner, JsonObject item)
+    {
+        JsonObject result = [];
+        foreach (var (key, value) in item)
+        {
+            if (value is null || owner.FindField(key) is { Hidden: true } or { ReadOnly: true })
+            {
+                continue;
+            }
+
+            var inner = owner.FindField(key) is { } field ? ComparableValue(field, value) : value.DeepClone();
+            if (inner is not JsonObject { Count: 0 })
+            {
+                result[key] = inner;
+            }
+        }
+
+        return result;
+    }
+
+    private JsonNode ComparableValue(SchemaField field, JsonNode value) => value switch
+    {
+        JsonObject single when OwnerOf(field, single) is { } owner => Comparable(owner, single),
+        JsonArray items => new JsonArray([.. items.Select(item => item is null ? null : ComparableValue(field, item))]),
+        _ => value.DeepClone(),
+    };
+
+    private SchemaType? OwnerOf(SchemaField field, JsonObject item) => field.FieldType switch
+    {
+        FieldTypeNames.Component => ComponentOf(field),
+        FieldTypeNames.Blocks when item[Discriminator] is JsonValue name && name.TryGetValue<string>(out var block) => schema.FindBlock(block),
+        _ => null,
+    };
 
     private void CarryIntoObject(SchemaType owner, JsonObject before, JsonObject after)
     {
@@ -199,11 +264,23 @@ internal sealed class EntryComposer(SchemaModel schema)
 
             if (field.Hidden || field.ReadOnly)
             {
-                after[field.Name] ??= value.DeepClone();
+                if (!after.ContainsKey(field.Name))
+                {
+                    after[field.Name] = value.DeepClone();
+                }
             }
             else if (after[field.Name] is { } inner)
             {
                 CarryInside(field, value, inner);
+            }
+            else if (field.FieldType == FieldTypeNames.Component && !field.Multiple && value is JsonObject nested && ComponentOf(field) is { } component)
+            {
+                JsonObject kept = [];
+                CarryIntoObject(component, nested, kept);
+                if (kept.Count > 0)
+                {
+                    after[field.Name] = kept;
+                }
             }
         }
     }

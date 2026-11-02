@@ -46,11 +46,21 @@ public sealed class ContentServiceReadTests : IDisposable
     [Fact]
     public async Task AReadWithoutASiteOrLocaleStaysInTheOperation()
     {
-        await _database.CreateAsync(Editor, Titled("In A"));
-        await _database.CreateAsync(Editor, Titled("In B"), site: SiteB);
+        var query = new ContentQuery { Status = QueryStatus.Draft };
+        query.Site.ShouldBeNull();
+        query.Locale.ShouldBeNull();
 
-        (await _database.QueryAsync(Editor, new ContentQuery { Status = QueryStatus.Draft })).Items.ShouldHaveSingleItem()["title"].ShouldBe("In A");
-        (await _database.QueryAsync(Editor, new ContentQuery { Status = QueryStatus.Draft }, site: SiteB)).Items.ShouldHaveSingleItem()["title"].ShouldBe("In B");
+        await _database.CreateAsync(Editor, Titled("In A"), site: SiteA);
+        await _database.CreateAsync(Editor, Titled("In B"), site: SiteB);
+        await _database.CreateAsync(Editor, Titled("In French"), locale: "fr", site: SiteA);
+
+        (await _database.QueryAsync(Editor, query, locale: "en", site: SiteA)).Items.ShouldHaveSingleItem()["title"].ShouldBe("In A");
+        (await _database.QueryAsync(Editor, query, locale: "en", site: SiteB)).Items.ShouldHaveSingleItem()["title"].ShouldBe("In B");
+        var french = (await _database.QueryAsync(Editor, query, locale: "fr", site: SiteA)).Items.ShouldHaveSingleItem();
+        french["title"].ShouldBe("In French");
+        french["locale"].ShouldBe("fr");
+
+        (await _database.AsAsync(Editor, services => services.GetRequiredService<IContentService>().CountAsync("article", null, QueryStatus.Draft, Token), locale: "en", site: SiteB)).ShouldBe(1);
     }
 
     [Fact]

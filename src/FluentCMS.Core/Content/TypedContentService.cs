@@ -33,24 +33,27 @@ internal sealed class TypedContentService<T>(ContentService documents, SchemaMod
     {
         ArgumentNullException.ThrowIfNull(entry);
 
-        return await ReadBackAsync(await documents.CreateAsync(_type, mapper.ToDocument(entry), cancellationToken), cancellationToken);
+        var limits = await documents.TypedWriteLimitsAsync(_type, cancellationToken);
+        return await ReadBackAsync(await documents.CreateAsync(_type, mapper.ToDocument(entry, static _ => true, limits.IsSystem), cancellationToken));
     }
 
     public async Task<T> UpdateAsync(Guid id, T entry, int expectedVersion, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(entry);
 
-        return await ReadBackAsync(await documents.UpdateAsync(_type, id, mapper.ToDocument(entry), expectedVersion, cancellationToken), cancellationToken);
+        // What the principal may not read came back as a default: sending it would overwrite the stored value.
+        var limits = await documents.TypedWriteLimitsAsync(_type, cancellationToken);
+        return await ReadBackAsync(await documents.UpdateAsync(_type, id, mapper.ToDocument(entry, limits.CanRead, limits.IsSystem), expectedVersion, cancellationToken));
     }
 
     public async Task<T> PatchAsync(Guid id, ContentDocument patch, int expectedVersion, CancellationToken cancellationToken = default) =>
-        await ReadBackAsync(await documents.PatchAsync(_type, id, patch, expectedVersion, cancellationToken), cancellationToken);
+        await ReadBackAsync(await documents.PatchAsync(_type, id, patch, expectedVersion, cancellationToken));
 
     public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default) =>
         documents.DeleteAsync(_type, id, cancellationToken);
 
     public async Task<T> RestoreAsync(Guid id, CancellationToken cancellationToken = default) =>
-        await ReadBackAsync(await documents.RestoreAsync(_type, id, cancellationToken), cancellationToken);
+        await ReadBackAsync(await documents.RestoreAsync(_type, id, cancellationToken));
 
     public Task<long> CountAsync(ContentFilter? filter = null, QueryStatus status = QueryStatus.Published, CancellationToken cancellationToken = default) =>
         documents.CountAsync(_type, filter, status, cancellationToken);
@@ -58,10 +61,11 @@ internal sealed class TypedContentService<T>(ContentService documents, SchemaMod
     private T Map(ContentDocument entry) => (T)mapper.ToEntry(typeof(T), entry);
 
     // What a write returned, which is all a principal without the read gets, with the system fields a class also holds.
-    private async Task<T> ReadBackAsync(ContentDocument written, CancellationToken cancellationToken)
+    // The write has committed by now, so a cancelled caller does not turn it into a failure.
+    private async Task<T> ReadBackAsync(ContentDocument written)
     {
         var options = new GetOptions { Status = QueryStatus.Draft, Fallback = LocaleFallback.None };
-        return Map(written.ContainsKey("status") && await documents.GetAsync(_type, (Guid)written["id"]!, options, everySystemField: true, cancellationToken) is { } entry ? entry : written);
+        return Map(written.ContainsKey("status") && await documents.GetAsync(_type, (Guid)written["id"]!, options, everySystemField: true, CancellationToken.None) is { } entry ? entry : written);
     }
 
     private static void ThrowIfUnfit(string? locale, string? richTextFormat)

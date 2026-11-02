@@ -113,13 +113,15 @@ internal sealed class AuthorizationEvaluator(
                 }
             }
 
-            if (grant.Constraints.Fields is null)
+            var reachesShared = !type.Localized || grant.ReachesEveryLocale(target);
+            if (grant.Constraints.Fields is null && reachesShared)
             {
                 return WritableFields.All;
             }
 
             allowed = true;
-            fields.UnionWith(grant.Constraints.Fields);
+            var names = grant.Constraints.Fields ?? type.Fields.Select(field => field.Name);
+            fields.UnionWith(reachesShared ? names : names.Where(name => type.FindField(name) is not { Localizable: false }));
         }
 
         return allowed ? new WritableFields(true, fields) : WritableFields.None;

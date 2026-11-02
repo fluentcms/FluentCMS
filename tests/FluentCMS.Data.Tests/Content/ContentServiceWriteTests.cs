@@ -658,12 +658,18 @@ public sealed class ContentServiceWriteTests : IDisposable
     [Fact]
     public async Task AGrantLimitedToALocaleWritesOnlyThatLocale()
     {
-        var entry = await _database.CreateAsync(Editor, Titled("Hello"));
+        var entry = await _database.CreateAsync(Editor, new() { ["title"] = "Hello", ["views"] = 5 });
         var role = _database.Database.AddRoleForTest("Translator", ("content.article.update", new PermissionConstraints { Locales = ["fr"] }), ("content.article.read", null));
         var translator = WithRole(role);
 
-        await Should.NotThrowAsync(() => _database.UpdateAsync(translator, IdOf(entry), Titled("Bonjour"), 0, locale: "fr"));
+        var french = await _database.UpdateAsync(translator, IdOf(entry), Titled("Bonjour"), 0, locale: "fr");
+        french["title"].ShouldBe("Bonjour");
+        french["views"].ShouldBe(5L);
+
         await Should.ThrowAsync<ContentAccessDeniedException>(() => _database.PatchAsync(translator, IdOf(entry), Titled("Changed"), 1));
+        (await Should.ThrowAsync<ValidationException>(() => _database.PatchAsync(translator, IdOf(entry), new() { ["views"] = 6 }, 1, locale: "fr")))
+            .Errors.ShouldHaveSingleItem().Path.ShouldBe("views");
+        (await _database.GetAsync(Editor, IdOf(entry)))!["views"].ShouldBe(5L);
     }
 
     [Fact]
@@ -734,5 +740,11 @@ public sealed class ContentServiceWriteTests : IDisposable
 
         recorder.Changes.Select(change => change.Kind).ShouldBe([EntryChangeKind.DraftSaved, EntryChangeKind.Trashed, EntryChangeKind.Restored]);
         recorder.Changes[0].Version.ShouldBe(1);
+
+        // A write that was refused after it reached the tables is not told either.
+        recorder.Changes.Clear();
+        var role = database.Database.AddRoleForTest("Regional", ("content.article.create", new PermissionConstraints { RowRule = "nothing" }));
+        await Should.ThrowAsync<ContentAccessDeniedException>(() => database.CreateAsync(WithRole(role), Titled("Refused")));
+        recorder.Changes.ShouldBeEmpty();
     }
 }

@@ -21,7 +21,9 @@ internal sealed class EntryCanonicalizer(SchemaModel schema)
     private const string IdKey = "id";
     private const int SlugLength = 200;
 
-    public ContentDocument Canonicalize(SchemaType type, ContentDocument entry)
+    // mayDerive says whether a slug may be made from a source field. Where it may not, the slug keeps what stored holds:
+    // a slug shows its source to whoever reads it, so it must not be how a principal learns what it may not read.
+    public ContentDocument Canonicalize(SchemaType type, ContentDocument entry, Func<SchemaType, SchemaField, bool> mayDerive, ContentDocument? stored = null)
     {
         ArgumentNullException.ThrowIfNull(type);
         ArgumentNullException.ThrowIfNull(entry);
@@ -42,7 +44,7 @@ internal sealed class EntryCanonicalizer(SchemaModel schema)
 
         try
         {
-            ReadFields(type, entry, result, "", flattened: false, errors);
+            ReadFields(type, entry, result, "", flattened: false, errors, mayDerive, stored);
             EntryJson.ThrowIfUnreadable(EntryJson.Fields(type, result));
         }
         catch (ArgumentException exception)
@@ -58,33 +60,37 @@ internal sealed class EntryCanonicalizer(SchemaModel schema)
     public bool TryRead(SchemaField field, object? raw, out object? value)
     {
         List<ValidationError> errors = [];
-        value = Top(field, raw, field.Name, flattened: false, errors);
+        value = Top(field, raw, field.Name, flattened: false, errors, NeverDerive, null);
         return errors.Count == 0;
     }
 
-    private void ReadFields(SchemaType owner, IEnumerable<KeyValuePair<string, object?>> values, ContentDocument into, string prefix, bool flattened, List<ValidationError> errors)
+    private static bool NeverDerive(SchemaType owner, SchemaField source) => false;
+
+    private void ReadFields(SchemaType owner, IEnumerable<KeyValuePair<string, object?>> values, ContentDocument into, string prefix, bool flattened, List<ValidationError> errors, Func<SchemaType, SchemaField, bool> mayDerive, ContentDocument? stored)
     {
         var known = values as ContentDocument ?? new ContentDocument(values);
         foreach (var field in owner.Fields)
         {
             known.TryGetValue(field.Name, out var raw);
-            into[field.Name] = Top(field, raw, prefix + field.Name, flattened, errors);
+            into[field.Name] = Top(field, raw, prefix + field.Name, flattened, errors, mayDerive, stored?.GetValueOrDefault(field.Name) as ContentDocument);
         }
 
         // After the loop, so that the source has its value whichever comes first.
         foreach (var field in owner.Fields.Where(field => field.FieldType == FieldTypeNames.Slug))
         {
-            if (into[field.Name] is null or "" && Source(field, into) is { } source)
+            if (into[field.Name] is null or "" && Source(owner, field) is { } source && into.GetValueOrDefault(source.Name) is string text)
             {
-                into[field.Name] = SlugFieldType.Slugify(source, field.MaxLength ?? SlugLength);
+                into[field.Name] = mayDerive(owner, source)
+                    ? SlugFieldType.Slugify(text, field.MaxLength ?? SlugLength)
+                    : stored?.GetValueOrDefault(field.Name) ?? into[field.Name];
             }
         }
     }
 
-    private static string? Source(SchemaField field, ContentDocument values) =>
-        field.Settings.TryGetValue(FieldSettings.Source, out var name) && name is string source && values.TryGetValue(source, out var value) ? value as string : null;
+    private static SchemaField? Source(SchemaType owner, SchemaField field) =>
+        field.Settings.TryGetValue(FieldSettings.Source, out var name) && name is string source ? owner.FindField(source) : null;
 
-    private object? Top(SchemaField field, object? raw, string path, bool flattened, List<ValidationError> errors)
+    private object? Top(SchemaField field, object? raw, string path, bool flattened, List<ValidationError> errors, Func<SchemaType, SchemaField, bool> mayDerive, ContentDocument? storedGroup)
     {
         var kind = schema.FieldTypes.Find(field.FieldType)!.StorageKind(field);
         if (kind == FieldStorageKind.Reference)
@@ -94,7 +100,7 @@ internal sealed class EntryCanonicalizer(SchemaModel schema)
 
         if (field.FieldType == FieldTypeNames.Component && !field.Multiple)
         {
-            return ReadGroup(field, raw, path, errors);
+            return ReadGroup(field, raw, path, errors, mayDerive, storedGroup);
         }
 
         if (kind == FieldStorageKind.Json && field.FieldType != FieldTypeNames.RichText)
@@ -147,7 +153,7 @@ internal sealed class EntryCanonicalizer(SchemaModel schema)
         return null;
     }
 
-    private ContentDocument? ReadGroup(SchemaField field, object? raw, string path, List<ValidationError> errors)
+    private ContentDocument? ReadGroup(SchemaField field, object? raw, string path, List<ValidationError> errors, Func<SchemaType, SchemaField, bool> mayDerive, ContentDocument? stored)
     {
         if (schema.FindComponent((string)field.Settings[FieldSettings.Component]) is not { } component)
         {
@@ -168,7 +174,7 @@ internal sealed class EntryCanonicalizer(SchemaModel schema)
 
         ReportUnknown(map, component, path, isBlock: false, errors);
         ContentDocument group = [];
-        ReadFields(component, map, group, path + ".", flattened: true, errors);
+        ReadFields(component, map, group, path + ".", flattened: true, errors, mayDerive, stored);
         return group.Values.All(value => value is null or JsonArray { Count: 0 }) ? null : group;
     }
 

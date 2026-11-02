@@ -1,4 +1,4 @@
-using System.Text.Json;
+using System.Globalization;
 using System.Text.Json.Nodes;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
@@ -13,6 +13,8 @@ using FluentCMS.Publishing;
 using FluentCMS.Schema;
 using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Core.Content;
 
@@ -35,9 +37,12 @@ internal sealed class ContentService(
     EntryComposer composer,
     ContentEntryMapper mapper,
     ResponseRichText richText,
-    IEnumerable<IEntryChangeSink> sinks) : IContentService
+    IEnumerable<IEntryChangeSink> sinks,
+    ILogger<ContentService> logger) : IContentService
 {
     private readonly List<EntryChange> _pending = [];
+    private bool _ownsTransaction;
+    private int _savepoints;
 
     public Task<ContentDocument?> GetAsync(string type, Guid id, GetOptions? options = null, CancellationToken cancellationToken = default) =>
         GetAsync(type, id, options, everySystemField: false, cancellationToken);
@@ -104,8 +109,9 @@ internal sealed class ContentService(
         var row = await InTransactionAsync(
             async () =>
             {
+                var sent = WithoutFallbacks(entry, isPatch: false);
                 var writable = await evaluator.WritableFieldsAsync(write.Operation, write.Type, ContentOperation.Create, null, write.Target, cancellationToken);
-                Reject(write, entry, writable);
+                Reject(write, sent, writable);
 
                 if (write.Type.Kind == SchemaTypeKind.Singleton && await store.AnyEntryAsync(write.Type, write.Site, cancellationToken))
                 {
@@ -126,7 +132,7 @@ internal sealed class ContentService(
                     UpdatedBy = write.Operation.Principal.Id,
                 };
 
-                ContentDocument composed = new(entry);
+                ContentDocument composed = new(sent);
                 foreach (var field in write.Type.Fields)
                 {
                     if (field.DefaultValue is { } value && !composed.ContainsKey(field.Name))
@@ -135,11 +141,17 @@ internal sealed class ContentService(
                     }
                 }
 
-                var working = Prepare(write, composed, document);
+                var working = Prepare(write, composed, document, null);
                 working = await RunBeforeHooksAsync(write, HookKind.BeforeCreate, working, null, writable, document, cancellationToken);
 
                 store.AddDocument(document);
                 await store.WriteDraftAsync(write.Type, document, working, write.Operation.Origin, write.Operation.ClientId, cancellationToken);
+
+                // A row rule on a create grant has no entry to read until now.
+                if (!await evaluator.CanAccessEntryAsync(write.Operation, write.Type, ContentOperation.Create, id, write.Target, QueryStatus.Draft, cancellationToken))
+                {
+                    throw new ContentAccessDeniedException(write.Type.Name, CorePermissions.OperationName(ContentOperation.Create));
+                }
 
                 await hooks.RunAsync(HookKind.AfterCreate, write.Type, write.Operation, working, null, cancellationToken);
                 _pending.Add(new EntryChange(EntryChangeKind.DraftSaved, write.Type.Name, id, document.Locale, document.DraftVersion, write.Operation));
@@ -147,7 +159,7 @@ internal sealed class ContentService(
             },
             cancellationToken);
 
-        return await RespondAsync(write, row, cancellationToken);
+        return await RespondAsync(write, row);
     }
 
     public Task<ContentDocument> UpdateAsync(string type, Guid id, ContentDocument entry, int expectedVersion, CancellationToken cancellationToken = default)
@@ -174,14 +186,14 @@ internal sealed class ContentService(
         await InTransactionAsync(
             async () =>
             {
-                var (row, stored) = await ReachAllLocalesAsync(write, ContentOperation.Delete, id, trashed: false, cancellationToken);
+                var (documents, row, stored) = await ReachAllLocalesAsync(write, ContentOperation.Delete, id, trashed: false, cancellationToken);
 
                 var working = ContentCopy.Of(stored);
-                await hooks.RunAsync(HookKind.BeforeDelete, write.Type, write.Operation, working, stored, cancellationToken);
+                await hooks.RunAsync(HookKind.BeforeDelete, write.Type, write.Operation, working, ContentCopy.Of(stored), cancellationToken);
                 await store.SetTrashedAsync(id, write.Operation.Timestamp, write.Operation.Principal.Id, cancellationToken);
-                await hooks.RunAsync(HookKind.AfterDelete, write.Type, write.Operation, working, stored, cancellationToken);
+                await hooks.RunAsync(HookKind.AfterDelete, write.Type, write.Operation, working, ContentCopy.Of(stored), cancellationToken);
 
-                _pending.Add(new EntryChange(EntryChangeKind.Trashed, write.Type.Name, id, row.Locale, row.DraftVersion, write.Operation));
+                _pending.AddRange(documents.Select(document => new EntryChange(EntryChangeKind.Trashed, write.Type.Name, id, document.Locale, document.DraftVersion, write.Operation)));
                 return row;
             },
             cancellationToken);
@@ -195,19 +207,19 @@ internal sealed class ContentService(
         var restored = await InTransactionAsync(
             async () =>
             {
-                var (row, stored) = await ReachAllLocalesAsync(write, ContentOperation.Restore, id, trashed: true, cancellationToken);
+                var (documents, row, stored) = await ReachAllLocalesAsync(write, ContentOperation.Restore, id, trashed: true, cancellationToken);
 
                 var working = ContentCopy.Of(stored);
-                await hooks.RunAsync(HookKind.BeforeRestore, write.Type, write.Operation, working, stored, cancellationToken);
+                await hooks.RunAsync(HookKind.BeforeRestore, write.Type, write.Operation, working, ContentCopy.Of(stored), cancellationToken);
                 await store.SetTrashedAsync(id, null, null, cancellationToken);
-                await hooks.RunAsync(HookKind.AfterRestore, write.Type, write.Operation, working, stored, cancellationToken);
+                await hooks.RunAsync(HookKind.AfterRestore, write.Type, write.Operation, working, ContentCopy.Of(stored), cancellationToken);
 
-                _pending.Add(new EntryChange(EntryChangeKind.Restored, write.Type.Name, id, row.Locale, row.DraftVersion, write.Operation));
+                _pending.AddRange(documents.Select(document => new EntryChange(EntryChangeKind.Restored, write.Type.Name, id, document.Locale, document.DraftVersion, write.Operation)));
                 return row;
             },
             cancellationToken);
 
-        return await RespondAsync(write, restored, cancellationToken);
+        return await RespondAsync(write, restored);
     }
 
     // No ambient operation is not an anonymous one: it is a bug in the entry point, and nothing runs. A client's origin
@@ -233,7 +245,14 @@ internal sealed class ContentService(
     {
         richText.ThrowIfUnknown(query.RichTextFormat);
 
+        // The entry point resolves the site before the operation (spec 4.6), and an API key's binding comes first, so a
+        // query cannot name another one. The grants are read against the site named, which is why this comes first.
         var operation = Current();
+        if (query.Site is { } asked && asked != operation.Site && !operation.Principal.IsSystem)
+        {
+            throw new ValidationException([new ValidationError("site", QueryErrorCodes.InvalidParameter, "A query reads the site of its operation.")]);
+        }
+
         var site = query.Site ?? operation.Site;
         var locale = await ResolveLocaleAsync(site, query.Locale ?? operation.Locale, cancellationToken);
         var everyLocale = locale == ILocaleResolver.All;
@@ -340,6 +359,18 @@ internal sealed class ContentService(
         return items;
     }
 
+    // What a typed write may name: a class holds a default for whatever the principal could not read.
+    internal async Task<(Func<SchemaField, bool> CanRead, bool IsSystem)> TypedWriteLimitsAsync(string typeName, CancellationToken cancellationToken)
+    {
+        var operation = Current();
+        var type = schema.FindContentType(typeName)
+            ?? throw new ValidationException([new ValidationError("type", QueryErrorCodes.UnknownField, $"'{typeName}' is not a content type.")]);
+
+        var target = new AccessTarget(operation.Site, await ResolveLocaleAsync(operation.Site, operation.Locale, cancellationToken));
+        var permissions = await evaluator.ResolveAsync(operation, cancellationToken);
+        return (field => permissions.CanReadField(type, field.Name, target), permissions.IsSystem);
+    }
+
     private async Task<WriteScope> BeginAsync(string typeName, ContentOperation operationKind, CancellationToken cancellationToken)
     {
         var operation = Current();
@@ -362,27 +393,31 @@ internal sealed class ContentService(
         return new WriteScope(operation, type, operation.Site, locale, target, permissions, new FieldAccess(permissions, schema));
     }
 
-    private async Task<T> InTransactionAsync<T>(Func<Task<T>> work, CancellationToken cancellationToken)
+    // Runs writes as one transaction and tells the sink what committed. A write inside another transaction takes a
+    // savepoint, so that one that fails leaves nothing behind for that transaction to commit. Internal for #2703.
+    internal async Task<T> InTransactionAsync<T>(Func<Task<T>> work, CancellationToken cancellationToken)
     {
-        if (context.Database.CurrentTransaction is not null)
+        if (context.Database.CurrentTransaction is { } outer)
         {
-            return await work();
+            return await InSavepointAsync(outer, work, cancellationToken);
         }
 
         // On SQLite this takes the write lock at once, so a second writer waits here and then sees the first one's version.
         var committed = false;
         T result;
+        _ownsTransaction = true;
         var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
         await using (transaction)
         {
             try
             {
                 result = await work();
-                await transaction.CommitAsync(cancellationToken);
+                await transaction.CommitAsync(CancellationToken.None);
                 committed = true;
             }
             finally
             {
+                _ownsTransaction = false;
                 if (!committed)
                 {
                     context.ChangeTracker.Clear();
@@ -391,17 +426,69 @@ internal sealed class ContentService(
             }
         }
 
+        await PublishCommittedAsync();
+        return result;
+    }
+
+    private async Task<T> InSavepointAsync<T>(IDbContextTransaction outer, Func<Task<T>> work, CancellationToken cancellationToken)
+    {
+        var pending = _pending.Count;
+        var savepoint = string.Create(CultureInfo.InvariantCulture, $"cms_content_{++_savepoints}");
+        if (outer.SupportsSavepoints)
+        {
+            await outer.CreateSavepointAsync(savepoint, cancellationToken);
+        }
+
+        T result;
+        try
+        {
+            result = await work();
+        }
+        catch
+        {
+            context.ChangeTracker.Clear();
+            _pending.RemoveRange(pending, _pending.Count - pending);
+            if (outer.SupportsSavepoints)
+            {
+                await outer.RollbackToSavepointAsync(savepoint, CancellationToken.None);
+            }
+
+            throw;
+        }
+
+        if (outer.SupportsSavepoints)
+        {
+            await outer.ReleaseSavepointAsync(savepoint, CancellationToken.None);
+        }
+
+        // The end of a transaction someone else began cannot be seen, and an entry that may yet roll back is never told.
+        if (!_ownsTransaction)
+        {
+            _pending.RemoveRange(pending, _pending.Count - pending);
+        }
+
+        return result;
+    }
+
+    // The write has committed: neither a failing sink nor a cancelled caller may turn it into a failure (spec 4.11).
+    private async Task PublishCommittedAsync()
+    {
         List<EntryChange> changes = [.. _pending];
         _pending.Clear();
         foreach (var change in changes)
         {
             foreach (var sink in sinks)
             {
-                await sink.PublishAsync(change, cancellationToken);
+                try
+                {
+                    await sink.PublishAsync(change, CancellationToken.None);
+                }
+                catch (Exception exception)
+                {
+                    ContentLog.SinkFailed(logger, exception, change.Kind, change.Type, change.Id, change.Locale);
+                }
             }
         }
-
-        return result;
     }
 
     private async Task<ContentDocument> SaveAsync(string typeName, Guid id, ContentDocument changes, int expectedVersion, bool isPatch, CancellationToken cancellationToken)
@@ -421,6 +508,7 @@ internal sealed class ContentService(
                 var existing = documents.Find(item => item.Locale == write.DocumentLocale);
                 var addsLocale = existing is null;
                 var target = addsLocale ? write.Target with { RowLocale = documents[0].Locale } : write.Target;
+                target = target with { EntryLocales = [.. documents.Select(item => item.Locale).Append(write.DocumentLocale).Distinct(StringComparer.OrdinalIgnoreCase)] };
 
                 if (!await evaluator.CanAccessEntryAsync(write.Operation, type, ContentOperation.Update, id, target, QueryStatus.Draft, cancellationToken))
                 {
@@ -448,14 +536,22 @@ internal sealed class ContentService(
 
                 var writable = await evaluator.WritableFieldsAsync(write.Operation, type, ContentOperation.Update, id, target, cancellationToken);
                 var stored = await store.ReadAsync(type, document, ContentState.Draft, cancellationToken);
-                var refused = isPatch ? changes : WithoutUnchanged(write, changes, stored, writable);
+                var sent = WithoutFallbacks(changes, isPatch);
+
+                // A full update answers what a read showed, so what that read left out is not the client's to change.
+                var shown = isPatch ? null : await ReadDraftOrNullAsync(write, id, addsLocale ? documents[0].Locale : write.Locale, cancellationToken);
+                var refused = isPatch ? sent : WithoutUnchanged(write, sent, shown, writable, addsLocale);
                 Reject(write, refused, writable);
 
                 var composed = isPatch
-                    ? composer.Patch(type, stored, changes)
+                    ? composer.Patch(type, stored, sent)
                     : EntryComposer.Replace(type, stored, refused, field => Keeps(write, field, writable, addsLocale));
-                var working = Prepare(write, composed, document);
-                composer.CarryHidden(type, stored, working, includingGroups: !isPatch);
+                var working = Prepare(write, composed, document, stored);
+                composer.CarryProtected(type, stored, working, includingGroups: !isPatch || !write.Permissions.IsSystem);
+                if (!isPatch)
+                {
+                    KeepUnreadableTargets(type, stored, shown, working);
+                }
 
                 working = await RunBeforeHooksAsync(write, HookKind.BeforeUpdate, working, stored, writable, document, cancellationToken);
 
@@ -492,33 +588,98 @@ internal sealed class ContentService(
                 }
 
                 EntryStore.ApplySystem(working, document);
-                await hooks.RunAsync(HookKind.AfterUpdate, type, write.Operation, working, stored, cancellationToken);
+                await hooks.RunAsync(HookKind.AfterUpdate, type, write.Operation, working, ContentCopy.Of(stored), cancellationToken);
                 _pending.Add(new EntryChange(EntryChangeKind.DraftSaved, type.Name, id, document.Locale, document.DraftVersion, write.Operation));
                 return document;
             },
             cancellationToken);
 
-        return await RespondAsync(write, row, cancellationToken);
+        return await RespondAsync(write, row);
     }
 
     // A full update sends what a read gave it: a field the principal can see but not change is no write as long as it
-    // is the same. Not for what it cannot see, because the answer would tell it the value: so the comparison leaves out
-    // hidden values inside the field, and a value that names one is never "the same".
-    private ContentDocument WithoutUnchanged(WriteScope write, ContentDocument changes, ContentDocument stored, WritableFields writable)
+    // is the same. The comparison is with what that read showed, on this row and with the relation targets it may read,
+    // so the answer tells it nothing it could not read anyway. A value that names a hidden field is never the same.
+    private ContentDocument WithoutUnchanged(WriteScope write, ContentDocument changes, ContentDocument? shown, WritableFields writable, bool addsLocale)
     {
         ContentDocument result = [];
         foreach (var (key, value) in changes)
         {
-            var unchanged = write.Type.FindField(key) is { Hidden: false } field
+            var unchanged = shown is not null
+                && write.Type.FindField(key) is { Hidden: false } field
                 && (field.ReadOnly || !writable.Includes(key))
-                && write.Permissions.CanReadField(write.Type, key, write.Target)
+                && (!addsLocale || !field.Localizable)
+                && shown.TryGetValue(key, out var visible)
                 && write.Access.IsClean(field, value, write.Type)
                 && canonicalizer.TryRead(field, value, out var read)
-                && JsonNode.DeepEquals(Visible(field, read), Visible(field, stored[key]));
+                && canonicalizer.TryRead(field, visible, out var seen)
+                && JsonNode.DeepEquals(Visible(field, read), Visible(field, seen));
 
             if (!unchanged)
             {
                 result[key] = value;
+            }
+        }
+
+        return result;
+    }
+
+    // What a read gave comes back with the targets it may not read missing. They are not the client's to remove: a
+    // multiple relation keeps them after what was sent, and a single one sent empty keeps its target. A patch names
+    // what it changes, so an explicit null there still clears.
+    private void KeepUnreadableTargets(SchemaType type, ContentDocument stored, ContentDocument? shown, ContentDocument working)
+    {
+        ContentDocument seen = [];
+        foreach (var field in type.Fields)
+        {
+            if (shown is not null && shown.TryGetValue(field.Name, out var visible) && canonicalizer.TryRead(field, visible, out var read))
+            {
+                seen[field.Name] = read;
+            }
+        }
+
+        foreach (var item in FieldStorage.Of(schema, type).Where(item => item.Kind == FieldStorageKind.Reference))
+        {
+            var kept = IdsOf(EntryPaths.ValueAt(stored, item, type)).Except(IdsOf(EntryPaths.ValueAt(seen, item, type))).ToList();
+            if (kept.Count == 0)
+            {
+                continue;
+            }
+
+            var sent = IdsOf(EntryPaths.ValueAt(working, item, type));
+            if (item.Field.Multiple)
+            {
+                EntryPaths.SetAt(working, item, type, sent.Concat(kept.Except(sent)).ToArray());
+            }
+            else if (sent.Count == 0)
+            {
+                EntryPaths.SetAt(working, item, type, kept[0]);
+            }
+        }
+    }
+
+    private static List<Guid> IdsOf(object? value) => value switch
+    {
+        Guid id => [id],
+        Guid[] ids => [.. ids],
+        _ => [],
+    };
+
+    // What a read adds is no value to write. On a full update, a field it names came from another locale, so it was not sent.
+    private static ContentDocument WithoutFallbacks(ContentDocument changes, bool isPatch)
+    {
+        if (!changes.TryGetValue(LocaleFallbackReader.FallbacksKey, out var named))
+        {
+            return changes;
+        }
+
+        var result = new ContentDocument(changes);
+        result.Remove(LocaleFallbackReader.FallbacksKey);
+        if (!isPatch && EntryCanonicalizer.TryReadMap(named, out var map) && map is not null)
+        {
+            foreach (var name in map.Keys)
+            {
+                result.Remove(name);
             }
         }
 
@@ -552,9 +713,14 @@ internal sealed class ContentService(
         }
     }
 
-    private ContentDocument Prepare(WriteScope write, ContentDocument composed, Document document)
+    // A hidden field shows to no one, and the rest as the principal's grants say. A nested source goes with the field
+    // that holds it, since an allow-list names top-level fields.
+    private static bool MayDerive(WriteScope write, SchemaType owner, SchemaField source) =>
+        !source.Hidden && (owner != write.Type || write.Permissions.CanReadField(write.Type, source.Name, write.Target));
+
+    private ContentDocument Prepare(WriteScope write, ContentDocument composed, Document document, ContentDocument? stored)
     {
-        var working = canonicalizer.Canonicalize(write.Type, composed);
+        var working = canonicalizer.Canonicalize(write.Type, composed, (owner, source) => MayDerive(write, owner, source), stored);
         ContentDocument withSystem = [];
         EntryStore.ApplySystem(withSystem, document);
         foreach (var (key, value) in working)
@@ -570,55 +736,77 @@ internal sealed class ContentService(
 
     // Validation runs on what hooks left, and again if BeforeCreate or BeforeUpdate changed it, so that a hook cannot get
     // a value past it. A hook is held to the principal's field limits as well, except on a hidden or read-only field,
-    // which no client can reach and which is what a hook is for.
-    private async Task<ContentDocument> RunBeforeHooksAsync(WriteScope write, HookKind before, ContentDocument working, ContentDocument? previous, WritableFields writable, Document document, CancellationToken cancellationToken)
+    // which no client can reach and which is what a hook is for. Hooks get a copy of the stored state, so they cannot
+    // change what the write compares with.
+    private async Task<ContentDocument> RunBeforeHooksAsync(WriteScope write, HookKind before, ContentDocument working, ContentDocument? stored, WritableFields writable, Document document, CancellationToken cancellationToken)
     {
-        var baseline = EntryJson.Fields(write.Type, working);
-        await hooks.RunAsync(HookKind.BeforeValidate, write.Type, write.Operation, working, previous, cancellationToken);
-        working = AfterHook(write, working, baseline, writable, document);
-        await ValidateAsync(write, working, document.DocumentId, cancellationToken);
+        var sent = EntryJson.Fields(write.Type, working);
+        var was = stored is null ? null : EntryJson.Fields(write.Type, stored);
+
+        await hooks.RunAsync(HookKind.BeforeValidate, write.Type, write.Operation, working, CopyOf(stored), cancellationToken);
+        working = AfterHook(write, working, sent, writable, document, stored);
+        await ValidateAsync(write, working, document.DocumentId, was, sent, cancellationToken);
 
         var validated = EntryJson.Fields(write.Type, working);
-        await hooks.RunAsync(before, write.Type, write.Operation, working, previous, cancellationToken);
-        working = AfterHook(write, working, validated, writable, document);
+        await hooks.RunAsync(before, write.Type, write.Operation, working, CopyOf(stored), cancellationToken);
+        working = AfterHook(write, working, validated, writable, document, stored);
 
         if (!JsonNode.DeepEquals(validated, EntryJson.Fields(write.Type, working)))
         {
-            await ValidateAsync(write, working, document.DocumentId, cancellationToken);
+            await ValidateAsync(write, working, document.DocumentId, was, sent, cancellationToken);
         }
 
         return working;
     }
 
-    private ContentDocument AfterHook(WriteScope write, ContentDocument working, JsonObject baseline, WritableFields writable, Document document)
+    private static ContentDocument? CopyOf(ContentDocument? stored) => stored is null ? null : ContentCopy.Of(stored);
+
+    private ContentDocument AfterHook(WriteScope write, ContentDocument working, JsonObject baseline, WritableFields writable, Document document, ContentDocument? stored)
     {
-        var after = Prepare(write, working, document);
+        var after = Prepare(write, working, document, stored);
         var fields = EntryJson.Fields(write.Type, after);
         write.Access.RejectHookChanges(write.Type.Fields.Select(field => field.Name).Where(name => !JsonNode.DeepEquals(baseline[name], fields[name])), write.Type, writable);
         return after;
     }
 
-    private async Task ValidateAsync(WriteScope write, ContentDocument working, Guid id, CancellationToken cancellationToken)
+    private async Task ValidateAsync(WriteScope write, ContentDocument working, Guid id, JsonObject? was, JsonObject sent, CancellationToken cancellationToken)
     {
         var entry = write.Type.ClrType is { } clrType ? mapper.ToEntry(clrType, working) : null;
+        var values = mapper.ValidationValues(write.Type, working);
+        var checkedUnique = false;
         var result = await validation.ValidateAsync(
             write.Type,
-            mapper.ValidationValues(write.Type, working),
+            values,
             entry,
             write.Operation,
             ValidationMode.Draft,
             cancellationToken,
-            (context, token) => new ValueTask(store.CheckUniqueAsync(write.Type, working, id, write.Site, write.Locale, context, token)));
+            (context, token) =>
+            {
+                checkedUnique = true;
+                return new ValueTask(store.CheckUniqueAsync(write.Type, working, id, write.Site, write.Locale, context, token));
+            });
 
-        if (!result.IsValid)
+        var now = EntryJson.Fields(write.Type, working);
+        var errors = new EntryErrors(schema, write.Type, write.Permissions, write.Target).Reportable(result.Errors, now, was, sent);
+
+        // The pipeline skips uniqueness after an error, and a dropped error is no reason to.
+        if (errors.Count == 0 && !checkedUnique)
         {
-            throw new ValidationException(result.Errors);
+            var context = new ValidationContext(write.Type, values, write.Operation, ValidationMode.Draft, entry);
+            await store.CheckUniqueAsync(write.Type, working, id, write.Site, write.Locale, context, cancellationToken);
+            errors = new EntryErrors(schema, write.Type, write.Permissions, write.Target).Reportable(context.Errors, now, was, sent);
+        }
+
+        if (errors.Count > 0)
+        {
+            throw new ValidationException(errors);
         }
     }
 
     // One entry is one document: it goes to the trash and comes back in every locale, so the principal must hold the
     // operation on all of them. No row that it may reach reads as no entry, which keeps a client from probing.
-    private async Task<(Document Row, ContentDocument Stored)> ReachAllLocalesAsync(WriteScope write, ContentOperation operation, Guid id, bool trashed, CancellationToken cancellationToken)
+    private async Task<(List<Document> Documents, Document Row, ContentDocument Stored)> ReachAllLocalesAsync(WriteScope write, ContentOperation operation, Guid id, bool trashed, CancellationToken cancellationToken)
     {
         var documents = await store.DocumentsAsync(write.Type, id, write.Site, trashed, cancellationToken);
         var reached = 0;
@@ -642,22 +830,23 @@ internal sealed class ContentService(
         }
 
         var row = documents.Find(document => document.Locale == write.DocumentLocale) ?? documents[0];
-        return (row, await store.ReadAsync(write.Type, row, ContentState.Draft, cancellationToken));
+        return (documents, row, await store.ReadAsync(write.Type, row, ContentState.Draft, cancellationToken));
     }
 
     private async Task<VersionConflictException> ConflictAsync(WriteScope write, Guid id, int expected, int current, CancellationToken cancellationToken) =>
-        new(expected, current, await ReadDraftOrNullAsync(write, id, cancellationToken));
+        new(expected, current, await ReadDraftOrNullAsync(write, id, write.Locale, cancellationToken));
 
-    // A principal may hold a write without the read. It still gets the id and the version, which it needs for its next write.
-    private async Task<ContentDocument> RespondAsync(WriteScope write, Document row, CancellationToken cancellationToken) =>
-        await ReadDraftOrNullAsync(write, row.DocumentId, cancellationToken)
+    // A principal may hold a write without the read. It still gets the id and the version, which it needs for its next
+    // write. The write has committed by now, so a cancelled caller does not turn it into a failure.
+    private async Task<ContentDocument> RespondAsync(WriteScope write, Document row) =>
+        await ReadDraftOrNullAsync(write, row.DocumentId, write.Locale, CancellationToken.None)
             ?? new ContentDocument { ["id"] = row.DocumentId, ["version"] = row.DraftVersion };
 
-    private async Task<ContentDocument?> ReadDraftOrNullAsync(WriteScope write, Guid id, CancellationToken cancellationToken)
+    private async Task<ContentDocument?> ReadDraftOrNullAsync(WriteScope write, Guid id, string locale, CancellationToken cancellationToken)
     {
         try
         {
-            return await GetAsync(write.Type.Name, id, new GetOptions { Status = QueryStatus.Draft, Locale = write.Locale, Fallback = LocaleFallback.None }, everySystemField: false, cancellationToken);
+            return await GetAsync(write.Type.Name, id, new GetOptions { Status = QueryStatus.Draft, Locale = string.IsNullOrEmpty(locale) ? write.Locale : locale, Fallback = LocaleFallback.None }, everySystemField: false, cancellationToken);
         }
         catch (ValidationException exception) when (exception.Errors.All(error => error.Path is "type" or "status"))
         {

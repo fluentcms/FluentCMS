@@ -54,10 +54,15 @@ internal sealed class ContentEntryMapper(SchemaModel schema) : IHookEntryMapper
     }
 
     // The document of a typed write: a property with no value is not named, because a class cannot leave a field out.
-    public ContentDocument ToDocument(object entry)
+    // Nor is one that include turns down, at the top level. A hidden property holds nothing a read gave it, and a
+    // read-only one is not the client's to send, at any level; only the system principal sends a read-only value.
+    public ContentDocument ToDocument(object entry, Func<SchemaField, bool> include, bool isSystem)
     {
         ArgumentNullException.ThrowIfNull(entry);
-        return ToFields(entry);
+        ArgumentNullException.ThrowIfNull(include);
+
+        bool Inside(SchemaField field) => !field.Hidden && (isSystem || !field.ReadOnly);
+        return ToFields(entry, field => Inside(field) && include(field), Inside);
     }
 
     // What validation reads: nested objects as documents and each value as the property of its class declares it, where
@@ -424,7 +429,7 @@ internal sealed class ContentEntryMapper(SchemaModel schema) : IHookEntryMapper
         }
     }
 
-    private ContentDocument ToFields(object instance)
+    private ContentDocument ToFields(object instance, Func<SchemaField, bool>? include, Func<SchemaField, bool>? inside)
     {
         ContentDocument fields = [];
         var type = instance.GetType();
@@ -435,7 +440,12 @@ internal sealed class ContentEntryMapper(SchemaModel schema) : IHookEntryMapper
 
         foreach (var (field, property) in MapOf(type).Fields)
         {
-            var value = ToApi(property.GetValue(instance));
+            if (include?.Invoke(field) == false)
+            {
+                continue;
+            }
+
+            var value = ToApi(property.GetValue(instance), inside);
             if (!IsEmpty(value))
             {
                 fields[field.Name] = value;
@@ -454,7 +464,7 @@ internal sealed class ContentEntryMapper(SchemaModel schema) : IHookEntryMapper
         _ => false,
     };
 
-    private object? ToApi(object? value)
+    private object? ToApi(object? value, Func<SchemaField, bool>? inside = null)
     {
         switch (value)
         {
@@ -467,7 +477,7 @@ internal sealed class ContentEntryMapper(SchemaModel schema) : IHookEntryMapper
             case MediaRefList medias:
                 return medias.Where(media => !media.IsEmpty).Select(media => media.Id).ToArray();
             case BlockList blocks:
-                return blocks.Select(block => (object?)ToFields(block)).ToList();
+                return blocks.Select(block => (object?)ToFields(block, inside, inside)).ToList();
             case not null when RawValue.IsNumber(value):
                 return value;
         }
@@ -485,10 +495,10 @@ internal sealed class ContentEntryMapper(SchemaModel schema) : IHookEntryMapper
 
         if (Attribute.IsDefined(type, typeof(ComponentAttribute)) || Attribute.IsDefined(type, typeof(BlockAttribute)))
         {
-            return ToFields(value);
+            return ToFields(value, inside, inside);
         }
 
-        return value is IEnumerable items and not IEnumerable<KeyValuePair<string, object?>> ? items.Cast<object?>().Select(ToApi).ToList() : value;
+        return value is IEnumerable items and not IEnumerable<KeyValuePair<string, object?>> ? items.Cast<object?>().Select(item => ToApi(item, inside)).ToList() : value;
     }
 
     private static List<object?> ItemsOf(object? value) => value switch
