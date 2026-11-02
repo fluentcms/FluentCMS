@@ -2,7 +2,6 @@ namespace FluentCMS.Core.Jobs;
 
 internal static class RetryBackoff
 {
-    // The base delay doubled for each attempt after the first, capped, plus up to RetryJitter of itself.
     public static TimeSpan After(int attempt, JobRunnerOptions options)
     {
         var seconds = Math.Min(

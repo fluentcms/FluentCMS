@@ -6,7 +6,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Core.Jobs;
 
-// How to run one job type, without reflection at run time.
 internal sealed class JobRegistration
 {
     private JobRegistration(string type, Type job, Type payload, Func<string, object?> read, Func<IServiceProvider, object, JobContext, Task> invoke)

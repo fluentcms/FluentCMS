@@ -20,7 +20,7 @@ public sealed class PostgreSqlJobClaimDialect : IJobClaimDialect
                 SELECT id
                 FROM cms_job
                 WHERE queue = {claim.Queue}
-                    AND status IN ({JobClaimStatus.Pending}, {JobClaimStatus.Running})
+                    AND status IN ('pending', 'running')
                     AND run_at <= {now}
                     AND attempts < max_attempts
                     AND (lease_until IS NULL OR lease_until < {now})

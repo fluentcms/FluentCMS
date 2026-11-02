@@ -167,7 +167,11 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         entity.Property(job => job.Origin).HasConversion<string>().HasMaxLength(StatusLength);
         conventions.ConfigureJsonColumn(entity, entity.Property(job => job.Payload));
 
-        entity.HasIndex(job => new { job.Queue, job.Status, job.Priority, job.RunAt })
+        // In the order of the claim's ORDER BY, so that it seeks and does not sort, and over live jobs only, so that
+        // finished ones are never walked. The claim must repeat this filter as literals for a database to use it.
+        entity.HasIndex(job => new { job.Queue, job.Priority, job.RunAt, job.Id })
+            .IsDescending(false, true, false, false)
+            .HasFilter("status IN ('pending', 'running')")
             .HasDatabaseName("ix_cms_job_claim");
 
         entity.HasIndex(job => new { job.Status, job.LeaseUntil })

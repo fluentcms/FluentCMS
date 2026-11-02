@@ -3,8 +3,6 @@ using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Core.Jobs;
 
-// The database-backed runner: a few workers per queue, plus one loop that fires recurring jobs and sweeps. Instances
-// share nothing but the database, so any number can run against one.
 internal sealed class JobRunner(
     JobExecutor executor,
     JobStore store,
@@ -15,10 +13,8 @@ internal sealed class JobRunner(
 {
     private static readonly TimeSpan DisposeWait = TimeSpan.FromSeconds(5);
 
-    // Tells the workers to stop taking jobs.
     private readonly CancellationTokenSource _stopping = new();
 
-    // Tells the running jobs to stop.
     private readonly CancellationTokenSource _shutdown = new();
 
     // Stops the heartbeats of jobs that ignored the shutdown, so that their leases can expire.
@@ -91,7 +87,6 @@ internal sealed class JobRunner(
         }
         catch (AggregateException)
         {
-            // The loops catch what they can; there is no one left to tell about the rest.
         }
 
         _stopping.Dispose();
@@ -119,7 +114,11 @@ internal sealed class JobRunner(
             var worked = false;
             try
             {
-                worked = await executor.RunNextAsync(queue, owner, _shutdown.Token, _abandon.Token);
+                worked = await executor.RunNextAsync(queue, owner, _stopping.Token, _shutdown.Token, _abandon.Token);
+            }
+            catch (OperationCanceledException) when (_stopping.IsCancellationRequested)
+            {
+                return;
             }
             catch (Exception exception)
             {
@@ -137,24 +136,28 @@ internal sealed class JobRunner(
     {
         while (!_stopping.IsCancellationRequested)
         {
-            try
-            {
-                await recurring.FireDueAsync(_stopping.Token);
-                await store.SweepAsync();
-            }
-            catch (OperationCanceledException) when (_stopping.IsCancellationRequested)
-            {
-                return;
-            }
-            catch (Exception exception)
-            {
-                JobLog.MaintenanceFailed(logger, exception);
-            }
+            await MaintainAsync(() => recurring.FireDueAsync(_stopping.Token));
+            await MaintainAsync(store.SweepAsync);
 
             if (!await WaitAsync(options.MaintenanceInterval))
             {
                 return;
             }
+        }
+    }
+
+    private async Task MaintainAsync(Func<Task> step)
+    {
+        try
+        {
+            await step();
+        }
+        catch (OperationCanceledException) when (_stopping.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            JobLog.MaintenanceFailed(logger, exception);
         }
     }
 

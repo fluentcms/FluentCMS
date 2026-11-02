@@ -262,8 +262,10 @@ namespace FluentCMS.Data.PostgreSql.Migrations
                     b.HasIndex("Status", "LeaseUntil")
                         .HasDatabaseName("ix_cms_job_status_lease");
 
-                    b.HasIndex("Queue", "Status", "Priority", "RunAt")
-                        .HasDatabaseName("ix_cms_job_claim");
+                    b.HasIndex("Queue", "Priority", "RunAt", "Id")
+                        .IsDescending(false, true, false, false)
+                        .HasDatabaseName("ix_cms_job_claim")
+                        .HasFilter("status IN ('pending', 'running')");
 
                     b.ToTable("cms_job", (string)null);
                 });

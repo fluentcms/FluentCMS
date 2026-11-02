@@ -16,12 +16,10 @@ public sealed class JobRunnerOptions
 
     public TimeSpan PollInterval { get; set; } = TimeSpan.FromSeconds(5);
 
-    // How long a job stays leased without a heartbeat, so how long a dead worker's job waits to come back.
     public TimeSpan LeaseDuration { get; set; } = TimeSpan.FromMinutes(5);
 
     public TimeSpan HeartbeatInterval { get; set; } = TimeSpan.FromMinutes(1);
 
-    // How often to fire due recurring jobs and sweep jobs that ran out of attempts.
     public TimeSpan MaintenanceInterval { get; set; } = TimeSpan.FromSeconds(15);
 
     public TimeSpan RetryBaseDelay { get; set; } = TimeSpan.FromSeconds(30);
@@ -31,10 +29,8 @@ public sealed class JobRunnerOptions
     // A retry waits up to this fraction longer, so that jobs failing together do not return together.
     public double RetryJitter { get; set; } = 0.2;
 
-    // How long a stopping runner lets jobs finish before it cancels them.
     public TimeSpan ShutdownGracePeriod { get; set; } = TimeSpan.FromSeconds(20);
 
-    // How long it then waits for cancelled jobs to be released, before leaving their leases to expire.
     public TimeSpan ReleaseTimeout { get; set; } = TimeSpan.FromSeconds(5);
 
     internal void Validate()

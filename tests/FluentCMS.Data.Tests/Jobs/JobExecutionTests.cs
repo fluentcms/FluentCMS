@@ -89,6 +89,32 @@ public sealed class JobExecutionTests : IDisposable
     }
 
     [Fact]
+    public async Task EachRetryFromDeadLetterGivesTheDefaultAttempts()
+    {
+        AlwaysFail();
+        var further = new JobRunnerOptions().DefaultMaxAttempts;
+        var letters = _fixture.Services.GetRequiredService<IJobDeadLetters>();
+        var id = await _fixture.EnqueueAsync(options: new JobOptions { MaxAttempts = 2 });
+
+        var deadAt = 2;
+        for (var round = 0; round < 3; round++)
+        {
+            while (_fixture.Job(id).Status != JobStatus.DeadLettered)
+            {
+                _fixture.Clock.Advance(TimeSpan.FromHours(2));
+                await RunNextAsync();
+            }
+
+            _fixture.Job(id).Attempts.ShouldBe(deadAt);
+
+            (await letters.RetryAsync(id, TestContext.Current.CancellationToken)).ShouldBeTrue();
+
+            deadAt += further;
+            _fixture.Job(id).MaxAttempts.ShouldBe(deadAt);
+        }
+    }
+
+    [Fact]
     public void BackoffIsCappedHoweverManyAttemptsThereHaveBeen()
     {
         var options = new JobRunnerOptions();
@@ -137,7 +163,7 @@ public sealed class JobExecutionTests : IDisposable
         var id = await _fixture.EnqueueAsync();
 
         // The worker claims the job and is never heard from again.
-        var claimed = (await _fixture.Store.ClaimAsync(Queue, Owner)).ShouldNotBeNull();
+        var claimed = (await _fixture.Store.ClaimAsync(Queue, Owner, TestContext.Current.CancellationToken)).ShouldNotBeNull();
 
         (await RunNextAsync(OtherOwner)).ShouldBeFalse("the lease still holds");
 
@@ -154,7 +180,7 @@ public sealed class JobExecutionTests : IDisposable
         // If that worker was only stalled, what it writes on waking changes nothing.
         (await _fixture.Store.FailAsync(claimed, "too late")).ShouldBeFalse();
         (await _fixture.Store.SucceedAsync(claimed)).ShouldBeFalse();
-        (await _fixture.Store.RenewLeaseAsync(claimed)).ShouldBeFalse();
+        (await _fixture.Store.RenewLeaseAsync(claimed)).ShouldBeNull();
         _fixture.Job(id).LastError.ShouldBeNull();
         _fixture.Attempts(id)[0].Outcome.ShouldBe(JobAttemptOutcome.LeaseExpired);
     }
@@ -163,7 +189,7 @@ public sealed class JobExecutionTests : IDisposable
     public async Task AWorkerThatDiedOnTheLastAttemptIsDeadLetteredByTheSweep()
     {
         var id = await _fixture.EnqueueAsync(options: new JobOptions { MaxAttempts = 1 });
-        (await _fixture.Store.ClaimAsync(Queue, Owner)).ShouldNotBeNull();
+        (await _fixture.Store.ClaimAsync(Queue, Owner, TestContext.Current.CancellationToken)).ShouldNotBeNull();
 
         (await _fixture.Store.SweepAsync()).ShouldBe(0, "the lease still holds");
 
@@ -190,7 +216,7 @@ public sealed class JobExecutionTests : IDisposable
     public async Task TheSweepLeavesAJobThatStillHasAttempts()
     {
         var id = await _fixture.EnqueueAsync(options: new JobOptions { MaxAttempts = 2 });
-        await _fixture.Store.ClaimAsync(Queue, Owner);
+        await _fixture.Store.ClaimAsync(Queue, Owner, TestContext.Current.CancellationToken);
 
         _fixture.Clock.Advance(Lease + TimeSpan.FromTicks(1));
 
@@ -202,7 +228,7 @@ public sealed class JobExecutionTests : IDisposable
     public async Task ConcurrentSweepsDeadLetterAJobOnce()
     {
         var id = await _fixture.EnqueueAsync(options: new JobOptions { MaxAttempts = 1 });
-        await _fixture.Store.ClaimAsync(Queue, Owner);
+        await _fixture.Store.ClaimAsync(Queue, Owner, TestContext.Current.CancellationToken);
         _fixture.Clock.Advance(Lease + TimeSpan.FromTicks(1));
 
         var stores = Enumerable.Range(0, 4).Select(_ => _fixture.NewInstance().GetRequiredService<JobStore>()).ToList();
@@ -352,7 +378,7 @@ public sealed class JobExecutionTests : IDisposable
     [InlineData(PrincipalKind.Anonymous)]
     public async Task AnActorMayNotBeAReservedPrincipal(PrincipalKind kind)
     {
-        var id = await _fixture.EnqueueAsync(options: new JobOptions { MaxAttempts = 1 }, actor: new JobActor(kind, Guid.Empty, "forged"));
+        var id = await _fixture.EnqueueAsync(options: new JobOptions { MaxAttempts = 1 }, actor: new JobActor(kind, Guid.CreateVersion7(), "forged"));
 
         await RunNextAsync();
 
@@ -448,9 +474,53 @@ public sealed class JobExecutionTests : IDisposable
         await RunNextAsync();
 
         var job = _fixture.Job(id);
-        job.LastError.ShouldBe("System.InvalidOperationException: POST failed with key *** ---> System.FormatException: bad ***");
+        job.LastError.ShouldBe("System.InvalidOperationException: POST failed with *** *** ---> System.FormatException: bad ***");
         _fixture.Attempts(id).ShouldHaveSingleItem().Error.ShouldBe(job.LastError);
         _fixture.Events.Failed.ShouldHaveSingleItem().Error.ShouldBe(job.LastError);
+    }
+
+    [Fact]
+    public void ScrubbingTakesOutNumbersShortStringsAndPropertyNames()
+    {
+        const string Payload = """{"card":4111111111111111,"pin":"123","tokens":{"sk_live_abcdef":1.50},"secret":"hunter2hunter2"}""";
+        var failure = new InvalidOperationException("number 4111111111111111 code 123 token sk_live_abcdef rate 1.50 secret hunter2hunter2 rejected");
+
+        var text = JobErrorText.ForStorage(failure, Payload);
+
+        text.ShouldBe("System.InvalidOperationException: number *** code *** token *** rate *** *** *** rejected");
+        JobErrorText.ForLog(failure, Payload).ShouldNotContain("4111111111111111");
+    }
+
+    [Fact]
+    public void AShortValueIsTakenOutOnlyAsAWholeWord()
+    {
+        var text = JobErrorText.ForStorage(new InvalidOperationException("stored 12 in 123 at 12:30"), """{"to":12}""");
+
+        text.ShouldBe("System.InvalidOperationException: stored *** in 123 at ***:30");
+    }
+
+    [Fact]
+    public async Task ABadPayloadDoesNotStoreADictionaryKey()
+    {
+        var instance = _fixture.NewInstance(cms: cms => cms.Jobs.AddJob<DictionaryJob, Dictionary<string, int>>("dictionary"));
+        var id = _fixture.AddRow("dictionary", """{"sk_live_abcdef":"not a number"}""", maxAttempts: 1);
+
+        (await instance.GetRequiredService<JobExecutor>().RunNextAsync(Queue, Owner, TestContext.Current.CancellationToken)).ShouldBeTrue();
+
+        var error = _fixture.Job(id).LastError.ShouldNotBeNull();
+        error.ShouldStartWith("FCMS2502");
+        error.ShouldNotContain("sk_live_abcdef");
+    }
+
+    [Fact]
+    public async Task AnActorMustHaveAnId()
+    {
+        var id = await _fixture.EnqueueAsync(options: new JobOptions { MaxAttempts = 1 }, actor: new JobActor(PrincipalKind.AdminUser, Guid.Empty, "no one"));
+
+        await RunNextAsync();
+
+        _fixture.Probe.Runs.ShouldBeEmpty();
+        _fixture.Job(id).LastError.ShouldNotBeNull().ShouldStartWith("FCMS2507");
     }
 
     [Fact]
@@ -527,6 +597,11 @@ public sealed class JobExecutionTests : IDisposable
         row.LeaseOwner.ShouldBe(OtherOwner);
         row.LastError.ShouldBeNull();
         _fixture.Events.Failed.ShouldBeEmpty();
+    }
+
+    private sealed class DictionaryJob : IJob<Dictionary<string, int>>
+    {
+        public Task ExecuteAsync(Dictionary<string, int> payload, JobContext context) => Task.CompletedTask;
     }
 
     private sealed class UnregisteredJob : IJob<ProbePayload>

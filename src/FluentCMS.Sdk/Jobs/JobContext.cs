@@ -46,8 +46,9 @@ public sealed class JobContext
     public OperationContext Operation { get; }
 
     /// <summary>
-    /// Cancelled when the host is shutting down and its grace period has passed, or when another worker has taken
-    /// over the job. A job that throws <see cref="OperationCanceledException"/> because of this has not failed.
+    /// Cancelled when the host is shutting down and its grace period has passed, when another worker has taken over
+    /// the job, or when this worker cannot renew its lease in time. A job that throws
+    /// <see cref="OperationCanceledException"/> because of this has not failed.
     /// </summary>
     public CancellationToken CancellationToken { get; }
 }

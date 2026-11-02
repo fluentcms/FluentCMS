@@ -4,6 +4,7 @@ using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Tests.Schema;
 using FluentCMS.Publishing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Shouldly;
 using Xunit;
@@ -87,7 +88,10 @@ public class SystemModelTests
         job.GetTableName().ShouldBe("cms_job");
         job.GetProperties().Select(property => property.GetColumnName()).Order(StringComparer.Ordinal).ShouldBe(
             ["attempts", "completed_at", "created_at", "created_by", "id", "last_error", "lease_owner", "lease_until", "max_attempts", "origin", "payload", "priority", "queue", "run_at", "site_id", "status", "type"]);
-        IndexColumns(job, "ix_cms_job_claim").ShouldBe(["queue", "status", "priority", "run_at"]);
+        var claim = context.GetService<IDesignTimeModel>().Model.FindEntityType(typeof(Job))!.GetIndexes().Single(index => index.GetDatabaseName() == "ix_cms_job_claim");
+        claim.Properties.Select(property => property.GetColumnName()).ShouldBe(["queue", "priority", "run_at", "id"]);
+        claim.IsDescending.ShouldNotBeNull().ShouldBe([false, true, false, false]);
+        claim.GetFilter().ShouldBe("status IN ('pending', 'running')");
         IndexColumns(job, "ix_cms_job_status_lease").ShouldBe(["status", "lease_until"]);
 
         var attempt = context.Model.FindEntityType(typeof(JobAttempt))!;

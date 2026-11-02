@@ -43,29 +43,41 @@ internal sealed class RecurringJobs(IServiceScopeFactory scopes, JobRunnerOption
         }
     }
 
-    // Fires each due job once, however many instances try: only the one that moves next_run_at on enqueues it. Runs
-    // missed while nothing was up collapse into one.
     public async Task FireDueAsync(CancellationToken cancellationToken = default)
     {
-        await using var scope = scopes.CreateAsyncScope();
-        var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
-
+        List<RecurringJob> due;
         var now = time.GetUtcNow();
-        var due = await context.Set<RecurringJob>().AsNoTracking()
-            .Where(job => job.Enabled && job.NextRunAt <= now)
-            .ToListAsync(cancellationToken);
+
+        await using (var scope = scopes.CreateAsyncScope())
+        {
+            due = await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<RecurringJob>().AsNoTracking()
+                .Where(job => job.Enabled && job.NextRunAt <= now)
+                .ToListAsync(cancellationToken);
+        }
 
         foreach (var job in due)
         {
-            if (Next(job, now) is { } next)
+            if (Next(job, now) is not { } next)
             {
-                await FireAsync(context, job, next, now, cancellationToken);
+                continue;
+            }
+
+            try
+            {
+                await FireAsync(job, next, now, cancellationToken);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                JobLog.RecurringFireFailed(logger, exception, job.Name);
             }
         }
     }
 
-    private async Task FireAsync(SystemDbContext context, RecurringJob due, DateTimeOffset next, DateTimeOffset now, CancellationToken cancellationToken)
+    // Only the instance that moves next_run_at on enqueues the job, so an occurrence fires once however many try.
+    private async Task FireAsync(RecurringJob due, DateTimeOffset next, DateTimeOffset now, CancellationToken cancellationToken)
     {
+        await using var scope = scopes.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
 
         var moved = await context.Set<RecurringJob>()
@@ -89,10 +101,9 @@ internal sealed class RecurringJobs(IServiceScopeFactory scopes, JobRunnerOption
         });
         await context.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
-        context.ChangeTracker.Clear();
     }
 
-    // A row can hold what AddAsync would refuse, if it was edited by hand, and that must not stop the other schedules.
+    // A row can hold what AddAsync would refuse, if it was edited by hand.
     private DateTimeOffset? Next(RecurringJob job, DateTimeOffset now)
     {
         try
@@ -116,7 +127,7 @@ internal sealed class RecurringJobs(IServiceScopeFactory scopes, JobRunnerOption
     {
         var rows = context.Set<RecurringJob>().Where(job => job.Name == name);
 
-        // A changed cron starts from now; the same one keeps its next run, so a restart does not skip an occurrence.
+        // Only a changed cron moves the next run, so that a restart does not skip an occurrence.
         await rows.Where(job => job.Cron != cron)
             .ExecuteUpdateAsync(job => job.SetProperty(row => row.NextRunAt, next), cancellationToken);
 

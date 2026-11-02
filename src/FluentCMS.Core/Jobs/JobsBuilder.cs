@@ -14,8 +14,7 @@ public sealed class JobsBuilder
 
     public JobRunnerOptions Options { get; } = new();
 
-    // The type is what cms_job stores, so it must outlive renames of the class. Each attempt resolves the job from a
-    // scope of its own.
+    // The type is what cms_job stores, so it must outlive renames of the class.
     public JobsBuilder AddJob<TJob, TPayload>(string type)
         where TJob : class, IJob<TPayload>
     {

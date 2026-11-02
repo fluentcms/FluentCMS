@@ -19,7 +19,7 @@ public interface IJobDeadLetters
     /// <returns>The jobs.</returns>
     Task<IReadOnlyList<DeadLetteredJob>> ListAsync(int offset = 0, int limit = 50, CancellationToken cancellationToken = default);
 
-    /// <summary>Queues a dead-lettered job to run now, with as many further attempts as it had before.</summary>
+    /// <summary>Queues a dead-lettered job to run now, with the runner's default number of further attempts.</summary>
     /// <param name="id">The id of the job.</param>
     /// <param name="cancellationToken">Cancels the write.</param>
     /// <returns>Whether a dead-lettered job with this id was queued.</returns>

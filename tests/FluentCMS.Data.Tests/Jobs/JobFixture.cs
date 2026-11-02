@@ -1,12 +1,16 @@
 using System.Collections.Concurrent;
+using System.Data.Common;
 using FluentCMS.Content;
+using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Data.Tests.Sqlite;
 using FluentCMS.Jobs;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Shouldly;
 using Xunit;
 
@@ -56,6 +60,79 @@ internal sealed class RecordingJobEvents : IJobEventSink
     }
 }
 
+// Fails the commands of one instance, as if that instance could not reach the database while others can.
+internal sealed class JobFaults : DbCommandInterceptor
+{
+    private volatile Func<DbCommand, bool>? _fails;
+
+    public void Fail(Func<DbCommand, bool> when) => _fails = when;
+
+    public void FailEverything() => _fails = _ => true;
+
+    public void Recover() => _fails = null;
+
+    public override InterceptionResult<DbDataReader> ReaderExecuting(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result)
+    {
+        Check(command);
+        return result;
+    }
+
+    public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
+    {
+        Check(command);
+        return ValueTask.FromResult(result);
+    }
+
+    public override InterceptionResult<int> NonQueryExecuting(DbCommand command, CommandEventData eventData, InterceptionResult<int> result)
+    {
+        Check(command);
+        return result;
+    }
+
+    public override ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+    {
+        Check(command);
+        return ValueTask.FromResult(result);
+    }
+
+    private void Check(DbCommand command)
+    {
+        if (_fails?.Invoke(command) == true)
+        {
+            throw new InvalidOperationException("The database cannot be reached.");
+        }
+    }
+}
+
+internal sealed class RecordingLogs : ILoggerProvider
+{
+    private readonly ConcurrentDictionary<string, int> _events = new(StringComparer.Ordinal);
+
+    public int Count(string eventName) => _events.GetValueOrDefault(eventName);
+
+    public ILogger CreateLogger(string categoryName) => new Logger(_events);
+
+    public void Dispose()
+    {
+    }
+
+    private sealed class Logger(ConcurrentDictionary<string, int> events) : ILogger
+    {
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            if (eventId.Name is { } name)
+            {
+                events.AddOrUpdate(name, 1, (_, count) => count + 1);
+            }
+        }
+    }
+}
+
 // A migrated file database, with any number of instances on it. Each instance is its own container, as a second
 // process would be, and shares only the database, the clock and the probe.
 internal sealed class JobFixture : IDisposable
@@ -90,15 +167,24 @@ internal sealed class JobFixture : IDisposable
 
     public JobStore Store => Services.GetRequiredService<JobStore>();
 
-    public ServiceProvider NewInstance(TimeProvider? time = null, Action<JobRunnerOptions>? configure = null)
+    public RecordingLogs Logs { get; } = new();
+
+    public ServiceProvider NewInstance(TimeProvider? time = null, Action<JobRunnerOptions>? configure = null, JobFaults? faults = null, Action<FluentCmsBuilder>? cms = null)
     {
-        var instance = Database.CreateServices(configure: cms =>
+        var instance = Database.CreateServices(configure: builder =>
         {
-            cms.Services.AddSingleton(time ?? Clock);
-            cms.Services.AddSingleton(Probe);
-            cms.Services.AddSingleton<IJobEventSink>(Events);
-            cms.Jobs.AddJob<ProbeJob, ProbePayload>(ProbeType);
-            configure?.Invoke(cms.Jobs.Options);
+            builder.Services.AddSingleton(time ?? Clock);
+            builder.Services.AddSingleton(Probe);
+            builder.Services.AddSingleton<IJobEventSink>(Events);
+            builder.Services.AddSingleton<ILoggerProvider>(Logs);
+            builder.Jobs.AddJob<ProbeJob, ProbePayload>(ProbeType);
+            configure?.Invoke(builder.Jobs.Options);
+            cms?.Invoke(builder);
+
+            if (faults is not null)
+            {
+                builder.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(faults));
+            }
         });
 
         _instances.Add(instance);

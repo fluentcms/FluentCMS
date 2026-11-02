@@ -17,8 +17,11 @@ internal static partial class JobLog
     [LoggerMessage(Level = LogLevel.Information, Message = "Job {JobId} ({Type}) was released by the shutdown during attempt {Attempt}.")]
     public static partial void Released(ILogger logger, Guid jobId, string type, int attempt);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Could not renew the lease of job {JobId}; the next heartbeat tries again.")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Could not renew the lease of job {JobId}.")]
     public static partial void HeartbeatFailed(ILogger logger, Exception exception, Guid jobId);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Could not write the outcome of job {JobId}; trying again.")]
+    public static partial void SettleFailed(ILogger logger, Exception exception, Guid jobId);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "The worker of queue {Queue} hit an error and carries on.")]
     public static partial void WorkerFailed(ILogger logger, Exception exception, string queue);
@@ -31,6 +34,9 @@ internal static partial class JobLog
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Recurring job {Name} has a cron expression that cannot fire, so it is skipped: {Reason}")]
     public static partial void RecurringCronInvalid(ILogger logger, string name, string reason);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Recurring job {Name} could not fire; it tries again next time.")]
+    public static partial void RecurringFireFailed(ILogger logger, Exception exception, string name);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "The job runner stopped with jobs still running, whose leases will expire.")]
     public static partial void StoppedWithRunningJobs(ILogger logger);

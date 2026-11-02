@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Core.Jobs;
 
-internal sealed class JobDeadLetters(IServiceScopeFactory scopes, TimeProvider time) : IJobDeadLetters
+internal sealed class JobDeadLetters(IServiceScopeFactory scopes, JobRunnerOptions options, TimeProvider time) : IJobDeadLetters
 {
     public async Task<IReadOnlyList<DeadLetteredJob>> ListAsync(int offset = 0, int limit = 50, CancellationToken cancellationToken = default)
     {
@@ -33,13 +33,14 @@ internal sealed class JobDeadLetters(IServiceScopeFactory scopes, TimeProvider t
         var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
 
         var now = time.GetUtcNow();
+        var further = options.DefaultMaxAttempts;
         var queued = await context.Set<Job>()
             .Where(job => job.Id == id && job.Status == JobStatus.DeadLettered)
             .ExecuteUpdateAsync(
                 job => job
                     .SetProperty(row => row.Status, JobStatus.Pending)
                     .SetProperty(row => row.RunAt, now)
-                    .SetProperty(row => row.MaxAttempts, row => row.Attempts + row.MaxAttempts)
+                    .SetProperty(row => row.MaxAttempts, row => row.Attempts + further)
                     .SetProperty(row => row.CompletedAt, (DateTimeOffset?)null),
                 cancellationToken);
 

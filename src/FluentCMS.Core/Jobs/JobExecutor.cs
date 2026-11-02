@@ -1,4 +1,3 @@
-using System.Text.Json;
 using FluentCMS.Content;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
@@ -11,8 +10,6 @@ using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Core.Jobs;
 
-// Runs one attempt: claims it, holds the lease while the job runs and writes the outcome. Whatever the job does stays
-// in here as a failed attempt.
 internal sealed class JobExecutor(
     JobStore store,
     JobRegistry registry,
@@ -22,10 +19,18 @@ internal sealed class JobExecutor(
     TimeProvider time,
     ILogger<JobExecutor> logger)
 {
+    private static readonly TimeSpan FirstSettleRetry = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan LastSettleRetry = TimeSpan.FromSeconds(30);
+
     // False when the queue has nothing due.
-    public async Task<bool> RunNextAsync(string queue, string owner, CancellationToken shutdown = default, CancellationToken abandon = default)
+    public async Task<bool> RunNextAsync(
+        string queue,
+        string owner,
+        CancellationToken stopClaiming = default,
+        CancellationToken shutdown = default,
+        CancellationToken abandon = default)
     {
-        if (await store.ClaimAsync(queue, owner) is not { } job)
+        if (await store.ClaimAsync(queue, owner, stopClaiming) is not { } job)
         {
             return false;
         }
@@ -42,7 +47,7 @@ internal sealed class JobExecutor(
         var heartbeat = HeartbeatAsync(job, attempt, stopHeartbeat.Token);
         try
         {
-            await ExecuteAndSettleAsync(job, shutdown, attempt.Token);
+            await ExecuteAndSettleAsync(job, shutdown, attempt.Token, abandon);
         }
         finally
         {
@@ -51,20 +56,18 @@ internal sealed class JobExecutor(
         }
     }
 
-    private async Task ExecuteAndSettleAsync(ClaimedJob job, CancellationToken shutdown, CancellationToken attempt)
+    private async Task ExecuteAndSettleAsync(ClaimedJob job, CancellationToken shutdown, CancellationToken attempt, CancellationToken abandon)
     {
+        Func<Task<bool>> settle;
         try
         {
             await InvokeAsync(job, attempt);
+            settle = () => store.SucceedAsync(job);
         }
         catch (OperationCanceledException) when (shutdown.IsCancellationRequested)
         {
-            if (await store.ReleaseAsync(job))
-            {
-                JobLog.Released(logger, job.Id, job.Type, job.Attempt);
-            }
-
-            return;
+            JobLog.Released(logger, job.Id, job.Type, job.Attempt);
+            settle = () => store.ReleaseAsync(job);
         }
         catch (OperationCanceledException) when (attempt.IsCancellationRequested)
         {
@@ -74,21 +77,39 @@ internal sealed class JobExecutor(
         catch (Exception exception)
         {
             JobLog.AttemptFailed(logger, job.Id, job.Type, job.Attempt, JobErrorText.ForLog(exception, job.Payload));
-            await SettleFailureAsync(job, JobErrorText.ForStorage(exception, job.Payload));
-            return;
+            var error = JobErrorText.ForStorage(exception, job.Payload);
+            settle = () => store.FailAsync(job, error);
         }
 
-        if (!await store.SucceedAsync(job))
-        {
-            JobLog.LeaseLost(logger, job.Id, job.Type, job.Attempt);
-        }
+        await SettleWithRetriesAsync(job, settle, abandon);
     }
 
-    private async Task SettleFailureAsync(ClaimedJob job, string error)
+    // A result not written means the job runs again, or is dead-lettered as if it never finished, so a brief outage is
+    // waited out. Retrying past the real end of the lease is safe, because a write matches nothing once another worker
+    // has the job. It gives up after one lease, in case the failure is not an outage.
+    private async Task SettleWithRetriesAsync(ClaimedJob job, Func<Task<bool>> settle, CancellationToken abandon)
     {
-        if (!await store.FailAsync(job, error))
+        var giveUpAt = time.GetUtcNow() + options.LeaseDuration;
+        var delay = FirstSettleRetry;
+
+        while (true)
         {
-            JobLog.LeaseLost(logger, job.Id, job.Type, job.Attempt);
+            try
+            {
+                if (!await settle())
+                {
+                    JobLog.LeaseLost(logger, job.Id, job.Type, job.Attempt);
+                }
+
+                return;
+            }
+            catch (Exception exception) when (time.GetUtcNow() + delay < giveUpAt)
+            {
+                JobLog.SettleFailed(logger, exception, job.Id);
+            }
+
+            await Task.Delay(delay, time, abandon);
+            delay = TimeSpan.FromTicks(Math.Min(delay.Ticks * 2, LastSettleRetry.Ticks));
         }
     }
 
@@ -114,7 +135,7 @@ internal sealed class JobExecutor(
         }
     }
 
-    // No part of the reader's exception is kept, because it can quote the payload: a converter can put anything in it.
+    // Keeps nothing of the reader's exception: a converter can quote any value in it, and a path can name a dictionary key.
     private static object ReadPayload(JobRegistration registration, ClaimedJob job)
     {
         try
@@ -124,9 +145,8 @@ internal sealed class JobExecutor(
         }
         catch (Exception exception) when (exception is not JobInvocationException)
         {
-            var path = exception is JsonException { Path: { } at } ? $" at {at}" : "";
             throw new JobInvocationException(
-                $"{JobErrorCodes.BadPayload}: the payload of '{job.Type}' could not be read as {registration.Payload.FullName}{path} ({exception.GetType().Name}).");
+                $"{JobErrorCodes.BadPayload}: the payload of '{job.Type}' could not be read as {registration.Payload.Name} ({exception.GetType().Name}).");
         }
     }
 
@@ -144,13 +164,17 @@ internal sealed class JobExecutor(
         };
     }
 
-    // The principal is built here from the id alone, so that nothing in a payload can bring claims, and it never
-    // replaces Principal.System: it is what audit records, and authorization does not read it.
+    // Built from the id alone, so that nothing in a payload can bring claims. It never replaces Principal.System.
     private static Principal? ActorOf(ClaimedJob job, object payload)
     {
         if (payload is not IJobActorPayload { Actor: { } actor })
         {
             return null;
+        }
+
+        if (actor.Id == Guid.Empty)
+        {
+            throw new JobInvocationException($"{JobErrorCodes.BadActor}: the payload of '{job.Type}' names an actor with an empty id.");
         }
 
         try
@@ -166,22 +190,31 @@ internal sealed class JobExecutor(
     private async Task HeartbeatAsync(ClaimedJob job, CancellationTokenSource attempt, CancellationToken stop)
     {
         using var timer = new PeriodicTimer(options.HeartbeatInterval, time);
+        var leaseUntil = job.LeaseUntil;
         try
         {
             while (await timer.WaitForNextTickAsync(stop))
             {
                 try
                 {
-                    if (!await store.RenewLeaseAsync(job))
+                    if (await store.RenewLeaseAsync(job) is not { } renewed)
                     {
-                        // Another worker has it, so this one must stop.
                         await attempt.CancelAsync();
                         return;
                     }
+
+                    leaseUntil = renewed;
                 }
                 catch (Exception exception) when (exception is not OperationCanceledException)
                 {
                     JobLog.HeartbeatFailed(logger, exception, job.Id);
+
+                    // With no renewal before the lease ends, another worker can take the job, so stop first.
+                    if (time.GetUtcNow() + options.HeartbeatInterval >= leaseUntil)
+                    {
+                        await attempt.CancelAsync();
+                        return;
+                    }
                 }
             }
         }

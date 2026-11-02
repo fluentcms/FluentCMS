@@ -81,7 +81,9 @@ namespace FluentCMS.Data.PostgreSql.Migrations
             migrationBuilder.CreateIndex(
                 name: "ix_cms_job_claim",
                 table: "cms_job",
-                columns: new[] { "queue", "status", "priority", "run_at" });
+                columns: new[] { "queue", "priority", "run_at", "id" },
+                descending: new[] { false, true, false, false },
+                filter: "status IN ('pending', 'running')");
 
             migrationBuilder.CreateIndex(
                 name: "ix_cms_job_status_lease",

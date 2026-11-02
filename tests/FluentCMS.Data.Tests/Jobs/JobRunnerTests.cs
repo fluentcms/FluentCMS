@@ -172,7 +172,7 @@ public sealed class JobRunnerTests : IDisposable
             var expected = _fixture.Clock.GetUtcNow() + options.LeaseDuration;
             await Eventually.HoldsAsync(() => _fixture.Job(id).LeaseUntil == expected);
 
-            (await _fixture.Store.ClaimAsync(JobRunnerOptions.DefaultQueue, "thief")).ShouldBeNull();
+            (await _fixture.Store.ClaimAsync(JobRunnerOptions.DefaultQueue, "thief", TestContext.Current.CancellationToken)).ShouldBeNull();
             (await _fixture.Store.SweepAsync()).ShouldBe(0);
         }
 
@@ -190,10 +190,10 @@ public sealed class JobRunnerTests : IDisposable
         var options = new JobRunnerOptions();
         var id = await _fixture.EnqueueAsync();
 
-        await _fixture.Store.ClaimAsync(JobRunnerOptions.DefaultQueue, "silent");
+        await _fixture.Store.ClaimAsync(JobRunnerOptions.DefaultQueue, "silent", TestContext.Current.CancellationToken);
         _fixture.Clock.Advance(options.LeaseDuration + TimeSpan.FromTicks(1));
 
-        (await _fixture.Store.ClaimAsync(JobRunnerOptions.DefaultQueue, "next")).ShouldNotBeNull().Id.ShouldBe(id);
+        (await _fixture.Store.ClaimAsync(JobRunnerOptions.DefaultQueue, "next", TestContext.Current.CancellationToken)).ShouldNotBeNull().Id.ShouldBe(id);
     }
 
     [Fact]
@@ -289,7 +289,7 @@ public sealed class JobRunnerTests : IDisposable
         for (var tries = 0; taken is null && tries < 20; tries++)
         {
             _fixture.Clock.Advance(new JobRunnerOptions().LeaseDuration + TimeSpan.FromTicks(1));
-            taken = await _fixture.Store.ClaimAsync(JobRunnerOptions.DefaultQueue, "next");
+            taken = await _fixture.Store.ClaimAsync(JobRunnerOptions.DefaultQueue, "next", TestContext.Current.CancellationToken);
         }
 
         taken.ShouldNotBeNull().Id.ShouldBe(id);
@@ -314,7 +314,7 @@ public sealed class JobRunnerTests : IDisposable
     {
         await _fixture.Scheduler.AddRecurringAsync<ProbeJob, ProbePayload>("r", "* * * * *", new ProbePayload("recurring"), cancellationToken: Token);
         var stuck = await _fixture.EnqueueAsync("stuck", new JobOptions { MaxAttempts = 1, Queue = "no-workers" });
-        await _fixture.Store.ClaimAsync("no-workers", "dead");
+        await _fixture.Store.ClaimAsync("no-workers", "dead", TestContext.Current.CancellationToken);
 
         var options = new JobRunnerOptions();
         var runner = ManualInstance().GetRequiredService<IJobRunner>();

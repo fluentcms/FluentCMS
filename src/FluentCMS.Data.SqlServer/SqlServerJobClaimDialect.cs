@@ -17,7 +17,7 @@ public sealed class SqlServerJobClaimDialect : IJobClaimDialect
                 SELECT TOP (1) status, lease_owner, lease_until, attempts, id
                 FROM cms_job WITH (UPDLOCK, READPAST, ROWLOCK)
                 WHERE queue = {claim.Queue}
-                    AND status IN ({JobClaimStatus.Pending}, {JobClaimStatus.Running})
+                    AND status IN ('pending', 'running')
                     AND run_at <= {claim.Now}
                     AND attempts < max_attempts
                     AND (lease_until IS NULL OR lease_until < {claim.Now})

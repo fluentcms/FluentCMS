@@ -2,17 +2,15 @@ using FluentCMS.Content;
 
 namespace FluentCMS.Core.Storage.Entities;
 
-// A row of cms_job. Write it through EF: the SQLite claim matches ids as the uppercase text EF stores.
+// A row of cms_job. Write it through EF: on SQLite, everything after the claim binds the id as the uppercase text EF stores.
 public sealed class Job
 {
     public const int LastErrorMaxLength = 2000;
 
     public Guid Id { get; set; }
 
-    // The name a job is registered under.
     public string Type { get; set; } = "";
 
-    // JSON text.
     public string Payload { get; set; } = "";
 
     public string Queue { get; set; } = "";

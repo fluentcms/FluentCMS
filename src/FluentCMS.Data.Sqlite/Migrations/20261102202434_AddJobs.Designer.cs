@@ -3,80 +3,75 @@ using System;
 using FluentCMS.Core.Storage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace FluentCMS.Data.SqlServer.Migrations
+namespace FluentCMS.Data.Sqlite.Migrations
 {
     [DbContext(typeof(SystemDbContext))]
-    [Migration("20261102190132_AddJobs")]
+    [Migration("20261102202434_AddJobs")]
     partial class AddJobs
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.14")
-                .HasAnnotation("Relational:MaxIdentifierLength", 128);
-
-            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+            modelBuilder.HasAnnotation("ProductVersion", "10.0.14");
 
             modelBuilder.Entity("FluentCMS.Core.Storage.Entities.ContentVersion", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("TEXT")
                         .HasColumnName("id");
 
                     b.Property<Guid>("AuthorId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("TEXT")
                         .HasColumnName("author_id");
 
                     b.Property<string>("ClientId")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("client_id");
 
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("datetimeoffset")
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("created_at");
 
                     b.Property<Guid>("DocumentId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("TEXT")
                         .HasColumnName("document_id");
 
                     b.Property<string>("Locale")
                         .IsRequired()
                         .HasMaxLength(16)
-                        .HasColumnType("nvarchar(16)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("locale");
 
                     b.Property<string>("Message")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("message");
 
                     b.Property<int>("Number")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("number");
 
                     b.Property<string>("Origin")
                         .IsRequired()
                         .HasMaxLength(16)
-                        .HasColumnType("nvarchar(16)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("origin");
 
                     b.Property<string>("Snapshot")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("snapshot");
 
                     b.Property<string>("StatusAfter")
                         .IsRequired()
                         .HasMaxLength(16)
-                        .HasColumnType("nvarchar(16)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("status_after");
 
                     b.HasKey("Id");
@@ -87,7 +82,7 @@ namespace FluentCMS.Data.SqlServer.Migrations
 
                     b.ToTable("cms_version", null, t =>
                         {
-                            t.HasCheckConstraint("ck_cms_version_snapshot_json", "ISJSON([snapshot]) = 1");
+                            t.HasCheckConstraint("ck_cms_version_snapshot_json", "json_valid(\"snapshot\")");
                         });
                 });
 
@@ -95,81 +90,81 @@ namespace FluentCMS.Data.SqlServer.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("TEXT")
                         .HasColumnName("id");
 
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("datetimeoffset")
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("created_at");
 
                     b.Property<Guid>("CreatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created_by");
 
-                    b.Property<DateTimeOffset?>("DeletedAt")
-                        .HasColumnType("datetimeoffset")
+                    b.Property<long?>("DeletedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("deleted_at");
 
                     b.Property<Guid?>("DeletedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("TEXT")
                         .HasColumnName("deleted_by");
 
                     b.Property<Guid>("DocumentId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("TEXT")
                         .HasColumnName("document_id");
 
                     b.Property<int>("DraftVersion")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("draft_version");
 
-                    b.Property<DateTimeOffset?>("FirstPublishedAt")
-                        .HasColumnType("datetimeoffset")
+                    b.Property<long?>("FirstPublishedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("first_published_at");
 
                     b.Property<string>("Locale")
                         .IsRequired()
                         .HasMaxLength(16)
-                        .HasColumnType("nvarchar(16)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("locale");
 
-                    b.Property<DateTimeOffset?>("PublishedAt")
-                        .HasColumnType("datetimeoffset")
+                    b.Property<long?>("PublishedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("published_at");
 
                     b.Property<int?>("PublishedVersion")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("published_version");
 
-                    b.Property<DateTimeOffset?>("SchedulePublishAt")
-                        .HasColumnType("datetimeoffset")
+                    b.Property<long?>("SchedulePublishAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("schedule_publish_at");
 
-                    b.Property<DateTimeOffset?>("ScheduleUnpublishAt")
-                        .HasColumnType("datetimeoffset")
+                    b.Property<long?>("ScheduleUnpublishAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("schedule_unpublish_at");
 
                     b.Property<Guid?>("SiteId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("TEXT")
                         .HasColumnName("site_id");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(16)
-                        .HasColumnType("nvarchar(16)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("status");
 
                     b.Property<string>("Type")
                         .IsRequired()
                         .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("type");
 
-                    b.Property<DateTimeOffset>("UpdatedAt")
-                        .HasColumnType("datetimeoffset")
+                    b.Property<long>("UpdatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("updated_at");
 
                     b.Property<Guid>("UpdatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("TEXT")
                         .HasColumnName("updated_by");
 
                     b.HasKey("Id");
@@ -185,82 +180,82 @@ namespace FluentCMS.Data.SqlServer.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("TEXT")
                         .HasColumnName("id");
 
                     b.Property<int>("Attempts")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("attempts");
 
-                    b.Property<DateTimeOffset?>("CompletedAt")
-                        .HasColumnType("datetimeoffset")
+                    b.Property<long?>("CompletedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("completed_at");
 
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("datetimeoffset")
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("created_at");
 
                     b.Property<Guid?>("CreatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("TEXT")
                         .HasColumnName("created_by");
 
                     b.Property<string>("LastError")
                         .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("last_error");
 
                     b.Property<string>("LeaseOwner")
                         .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("lease_owner");
 
-                    b.Property<DateTimeOffset?>("LeaseUntil")
-                        .HasColumnType("datetimeoffset")
+                    b.Property<long?>("LeaseUntil")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("lease_until");
 
                     b.Property<int>("MaxAttempts")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("max_attempts");
 
                     b.Property<string>("Origin")
                         .IsRequired()
                         .HasMaxLength(16)
-                        .HasColumnType("nvarchar(16)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("origin");
 
                     b.Property<string>("Payload")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("payload");
 
                     b.Property<int>("Priority")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("priority");
 
                     b.Property<string>("Queue")
                         .IsRequired()
                         .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("queue");
 
-                    b.Property<DateTimeOffset>("RunAt")
-                        .HasColumnType("datetimeoffset")
+                    b.Property<long>("RunAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("run_at");
 
                     b.Property<Guid?>("SiteId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("TEXT")
                         .HasColumnName("site_id");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(16)
-                        .HasColumnType("nvarchar(16)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("status");
 
                     b.Property<string>("Type")
                         .IsRequired()
                         .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("type");
 
                     b.HasKey("Id");
@@ -268,41 +263,43 @@ namespace FluentCMS.Data.SqlServer.Migrations
                     b.HasIndex("Status", "LeaseUntil")
                         .HasDatabaseName("ix_cms_job_status_lease");
 
-                    b.HasIndex("Queue", "Status", "Priority", "RunAt")
-                        .HasDatabaseName("ix_cms_job_claim");
+                    b.HasIndex("Queue", "Priority", "RunAt", "Id")
+                        .IsDescending(false, true, false, false)
+                        .HasDatabaseName("ix_cms_job_claim")
+                        .HasFilter("status IN ('pending', 'running')");
 
                     b.ToTable("cms_job", null, t =>
                         {
-                            t.HasCheckConstraint("ck_cms_job_payload_json", "ISJSON([payload]) = 1");
+                            t.HasCheckConstraint("ck_cms_job_payload_json", "json_valid(\"payload\")");
                         });
                 });
 
             modelBuilder.Entity("FluentCMS.Core.Storage.Entities.JobAttempt", b =>
                 {
                     b.Property<Guid>("JobId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("TEXT")
                         .HasColumnName("job_id");
 
                     b.Property<int>("Attempt")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("attempt");
 
                     b.Property<string>("Error")
                         .HasMaxLength(2000)
-                        .HasColumnType("nvarchar(2000)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("error");
 
-                    b.Property<DateTimeOffset?>("FinishedAt")
-                        .HasColumnType("datetimeoffset")
+                    b.Property<long?>("FinishedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("finished_at");
 
                     b.Property<string>("Outcome")
                         .HasMaxLength(16)
-                        .HasColumnType("nvarchar(16)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("outcome");
 
-                    b.Property<DateTimeOffset>("StartedAt")
-                        .HasColumnType("datetimeoffset")
+                    b.Property<long>("StartedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("started_at");
 
                     b.HasKey("JobId", "Attempt");
@@ -314,45 +311,45 @@ namespace FluentCMS.Data.SqlServer.Migrations
                 {
                     b.Property<string>("Name")
                         .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("name");
 
                     b.Property<string>("Cron")
                         .IsRequired()
                         .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("cron");
 
                     b.Property<bool>("Enabled")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("enabled");
 
-                    b.Property<DateTimeOffset>("NextRunAt")
-                        .HasColumnType("datetimeoffset")
+                    b.Property<long>("NextRunAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("next_run_at");
 
                     b.Property<string>("Payload")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("payload");
 
                     b.Property<string>("Queue")
                         .IsRequired()
                         .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("queue");
 
                     b.Property<string>("Type")
                         .IsRequired()
                         .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("type");
 
                     b.HasKey("Name");
 
                     b.ToTable("cms_recurring_job", null, t =>
                         {
-                            t.HasCheckConstraint("ck_cms_recurring_job_payload_json", "ISJSON([payload]) = 1");
+                            t.HasCheckConstraint("ck_cms_recurring_job_payload_json", "json_valid(\"payload\")");
                         });
                 });
 
@@ -360,47 +357,47 @@ namespace FluentCMS.Data.SqlServer.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("TEXT")
                         .HasColumnName("id");
 
                     b.Property<string>("Field")
                         .IsRequired()
                         .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("field");
 
                     b.Property<string>("Locale")
                         .IsRequired()
                         .HasMaxLength(16)
-                        .HasColumnType("nvarchar(16)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("locale");
 
                     b.Property<int>("Position")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("position");
 
                     b.Property<Guid>("SourceDocumentId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("TEXT")
                         .HasColumnName("source_document_id");
 
                     b.Property<string>("SourceType")
                         .IsRequired()
                         .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("source_type");
 
                     b.Property<short>("State")
-                        .HasColumnType("smallint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("state");
 
                     b.Property<Guid>("TargetId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("TEXT")
                         .HasColumnName("target_id");
 
                     b.Property<string>("TargetType")
                         .IsRequired()
                         .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("target_type");
 
                     b.HasKey("Id");
@@ -419,31 +416,31 @@ namespace FluentCMS.Data.SqlServer.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("TEXT")
                         .HasColumnName("id");
 
                     b.Property<bool>("BuiltIn")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("built_in");
 
                     b.Property<string>("Description")
                         .HasMaxLength(512)
-                        .HasColumnType("nvarchar(512)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("description");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("name");
 
                     b.Property<long>("PermissionsVersion")
                         .IsConcurrencyToken()
-                        .HasColumnType("bigint")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("permissions_version");
 
                     b.Property<Guid?>("SiteId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("TEXT")
                         .HasColumnName("site_id");
 
                     b.HasKey("Id");
@@ -516,21 +513,21 @@ namespace FluentCMS.Data.SqlServer.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("TEXT")
                         .HasColumnName("id");
 
                     b.Property<string>("Constraints")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("constraints");
 
                     b.Property<string>("Permission")
                         .IsRequired()
                         .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("permission");
 
                     b.Property<Guid>("RoleId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("TEXT")
                         .HasColumnName("role_id");
 
                     b.HasKey("Id");
@@ -540,7 +537,7 @@ namespace FluentCMS.Data.SqlServer.Migrations
 
                     b.ToTable("cms_role_permission", null, t =>
                         {
-                            t.HasCheckConstraint("ck_cms_role_permission_constraints_json", "ISJSON([constraints]) = 1");
+                            t.HasCheckConstraint("ck_cms_role_permission_constraints_json", "json_valid(\"constraints\")");
                         });
 
                     b.HasData(
@@ -637,33 +634,33 @@ namespace FluentCMS.Data.SqlServer.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("TEXT")
                         .HasColumnName("id");
 
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("datetimeoffset")
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("created_at");
 
                     b.Property<string>("DefaultLocale")
                         .IsRequired()
                         .HasMaxLength(16)
-                        .HasColumnType("nvarchar(16)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("default_locale");
 
                     b.Property<bool>("IsDefault")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("is_default");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("name");
 
                     b.Property<string>("Slug")
                         .IsRequired()
                         .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("slug");
 
                     b.HasKey("Id");
@@ -678,7 +675,7 @@ namespace FluentCMS.Data.SqlServer.Migrations
                         new
                         {
                             Id = new Guid("00000000-0000-7000-8002-000000000001"),
-                            CreatedAt = new DateTimeOffset(new DateTime(2026, 11, 2, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            CreatedAt = 639291744000000000L,
                             DefaultLocale = "en",
                             IsDefault = true,
                             Name = "Default",
@@ -689,31 +686,31 @@ namespace FluentCMS.Data.SqlServer.Migrations
             modelBuilder.Entity("FluentCMS.Core.Storage.Entities.SiteLocale", b =>
                 {
                     b.Property<Guid>("SiteId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("TEXT")
                         .HasColumnName("site_id");
 
                     b.Property<string>("Code")
                         .HasMaxLength(16)
-                        .HasColumnType("nvarchar(16)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("code");
 
                     b.Property<bool>("Enabled")
-                        .HasColumnType("bit")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("enabled");
 
                     b.Property<string>("Fallbacks")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("TEXT")
                         .HasColumnName("fallbacks");
 
                     b.Property<int>("Position")
-                        .HasColumnType("int")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("position");
 
                     b.HasKey("SiteId", "Code");
 
                     b.ToTable("cms_site_locale", null, t =>
                         {
-                            t.HasCheckConstraint("ck_cms_site_locale_fallbacks_json", "ISJSON([fallbacks]) = 1");
+                            t.HasCheckConstraint("ck_cms_site_locale_fallbacks_json", "json_valid(\"fallbacks\")");
                         });
 
                     b.HasData(

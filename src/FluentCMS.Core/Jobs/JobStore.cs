@@ -7,12 +7,10 @@ using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Core.Jobs;
 
-// One attempt of a job, held by one worker.
-internal sealed record ClaimedJob(Guid Id, string Type, string Payload, string Queue, Guid? SiteId, int Attempt, int MaxAttempts, string Owner);
+internal sealed record ClaimedJob(Guid Id, string Type, string Payload, string Queue, Guid? SiteId, int Attempt, int MaxAttempts, string Owner, DateTimeOffset LeaseUntil);
 
-// The state changes of cms_job. Each is one conditional update and goes through ExecuteUpdate, because a worker can
-// have lost the job to another by now: what it writes then matches no row. Cancellation is not taken, since an outcome
-// that is not written means the job runs again.
+// A worker can have lost its job to another by the time it writes, so every write after the claim is conditional on
+// still holding it, and matches no row otherwise. ExecuteUpdate, because SaveChanges uses UPDATE ... RETURNING on SQLite.
 internal sealed class JobStore(
     IServiceScopeFactory scopes,
     IJobClaimDialect dialect,
@@ -25,46 +23,63 @@ internal sealed class JobStore(
     private const string LeaseExpiredError = "The worker stopped without finishing this attempt, and its lease expired.";
     private const string OutOfAttemptsError = "The worker of the last attempt stopped without finishing it, and no attempts are left.";
 
-    public async Task<ClaimedJob?> ClaimAsync(string queue, string owner)
+    public async Task<ClaimedJob?> ClaimAsync(string queue, string owner, CancellationToken cancellationToken = default)
     {
         await using var scope = scopes.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
 
         var now = time.GetUtcNow();
-        if (await dialect.ClaimAsync(context.Database, new JobClaim(queue, owner, now, now + options.LeaseDuration)) is not { } id)
+
+        // The transaction takes the write lock on SQLite, which an idle poll must not do.
+        if (!await AnyDueAsync(context, queue, now, cancellationToken))
         {
             return null;
         }
 
-        var job = await context.Set<Job>().AsNoTracking().SingleAsync(row => row.Id == id);
+        // One transaction, so that a failure here does not use up an attempt of a job that never ran.
+        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+
+        var leaseUntil = now + options.LeaseDuration;
+        if (await dialect.ClaimAsync(context.Database, new JobClaim(queue, owner, now, leaseUntil), cancellationToken) is not { } id)
+        {
+            return null;
+        }
+
+        var job = await context.Set<Job>().AsNoTracking().SingleAsync(row => row.Id == id, cancellationToken);
 
         // A row still open from an earlier attempt means that attempt's worker died.
         var expired = await context.Set<JobAttempt>()
             .Where(attempt => attempt.JobId == id && attempt.Attempt < job.Attempts && attempt.Outcome == null)
-            .ExecuteUpdateAsync(attempt => attempt
-                .SetProperty(row => row.Outcome, JobAttemptOutcome.LeaseExpired)
-                .SetProperty(row => row.FinishedAt, now)
-                .SetProperty(row => row.Error, LeaseExpiredError));
+            .ExecuteUpdateAsync(
+                attempt => attempt
+                    .SetProperty(row => row.Outcome, JobAttemptOutcome.LeaseExpired)
+                    .SetProperty(row => row.FinishedAt, now)
+                    .SetProperty(row => row.Error, LeaseExpiredError),
+                cancellationToken);
 
         context.Add(new JobAttempt { JobId = id, Attempt = job.Attempts, StartedAt = now });
-        await context.SaveChangesAsync();
+        await context.SaveChangesAsync(cancellationToken);
+
+        await transaction.CommitAsync(CancellationToken.None);
 
         if (expired > 0)
         {
             await PublishAsync(job.Id, new JobFailedEvent(job.Id, job.Type, job.Queue, job.Attempts - 1, job.MaxAttempts, LeaseExpiredError));
         }
 
-        return new ClaimedJob(job.Id, job.Type, job.Payload, job.Queue, job.SiteId, job.Attempts, job.MaxAttempts, owner);
+        return new ClaimedJob(job.Id, job.Type, job.Payload, job.Queue, job.SiteId, job.Attempts, job.MaxAttempts, owner, leaseUntil);
     }
 
-    // False when the worker no longer holds the job.
-    public async Task<bool> RenewLeaseAsync(ClaimedJob job)
+    // The new end of the lease, or null when the worker no longer holds the job.
+    public async Task<DateTimeOffset?> RenewLeaseAsync(ClaimedJob job)
     {
         await using var scope = scopes.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
 
         var until = time.GetUtcNow() + options.LeaseDuration;
-        return await Held(context, job).ExecuteUpdateAsync(row => row.SetProperty(column => column.LeaseUntil, until)) == 1;
+        var renewed = await Held(context, job).ExecuteUpdateAsync(row => row.SetProperty(column => column.LeaseUntil, until));
+
+        return renewed == 1 ? until : null;
     }
 
     public Task<bool> SucceedAsync(ClaimedJob job)
@@ -78,7 +93,6 @@ internal sealed class JobStore(
             .SetProperty(column => column.LeaseUntil, (DateTimeOffset?)null));
     }
 
-    // Retries with backoff while attempts are left, and dead-letters otherwise.
     public async Task<bool> FailAsync(ClaimedJob job, string error)
     {
         var now = time.GetUtcNow();
@@ -116,8 +130,7 @@ internal sealed class JobStore(
         return held;
     }
 
-    // Hands the job back for another worker. The attempt keeps its row, so it is numbered on, and max_attempts rises
-    // by one so that a shutdown does not use up an attempt.
+    // The attempt keeps its row, because attempts are numbered on, so max_attempts rises by one to give it back.
     public Task<bool> ReleaseAsync(ClaimedJob job)
     {
         var now = time.GetUtcNow();
@@ -129,7 +142,7 @@ internal sealed class JobStore(
     }
 
     // A claim requires attempts < max_attempts, so a job whose worker died on its last attempt never comes back and
-    // would stay running. This dead-letters it. Of several instances sweeping, the conditional update lets one win.
+    // would stay running without this.
     public async Task<int> SweepAsync()
     {
         await using var scope = scopes.CreateAsyncScope();
@@ -172,6 +185,15 @@ internal sealed class JobStore(
 
         return swept;
     }
+
+    private static Task<bool> AnyDueAsync(SystemDbContext context, string queue, DateTimeOffset now, CancellationToken cancellationToken) =>
+        context.Set<Job>().AnyAsync(
+            row => row.Queue == queue
+                && (row.Status == JobStatus.Pending || row.Status == JobStatus.Running)
+                && row.RunAt <= now
+                && row.Attempts < row.MaxAttempts
+                && (row.LeaseUntil == null || row.LeaseUntil < now),
+            cancellationToken);
 
     private static IQueryable<Job> Stuck(SystemDbContext context, DateTimeOffset now) =>
         context.Set<Job>().Where(row =>

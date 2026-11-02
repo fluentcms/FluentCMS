@@ -1,20 +1,20 @@
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using FluentCMS.Core.Storage.Entities;
 
 namespace FluentCMS.Core.Jobs;
 
-// What may be stored and logged about a failure. An exception message can quote the job's input, so every string of
-// the payload is taken out of it. This cannot catch a secret the job has encoded or derived.
+// An exception message can quote the job's input, so every string, number and property name of the payload is taken
+// out of what is stored and logged. This cannot catch a secret the job has encoded or derived.
 internal static class JobErrorText
 {
     private const string Redacted = "***";
     private const string Truncated = "...";
 
-    // A shorter value is not a secret, and removing it would garble the message.
-    private const int MinScrubbedLength = 4;
+    // A shorter value is matched only as a whole word, since inside a word it is more likely chance than a quote.
+    private const int AnywhereFromLength = 4;
 
-    // For last_error and cms_job_attempt.error: the types and messages, without a stack trace.
     public static string ForStorage(Exception exception, string payload)
     {
         if (exception is JobInvocationException)
@@ -22,16 +22,17 @@ internal static class JobErrorText
             return Cap(exception.Message);
         }
 
+        var values = ValuesOf(payload);
         var text = new StringBuilder();
         for (var current = exception; current is not null; current = current.InnerException)
         {
-            text.Append(text.Length == 0 ? "" : " ---> ").Append(current.GetType().FullName).Append(": ").Append(current.Message);
+            text.Append(text.Length == 0 ? "" : " ---> ").Append(current.GetType().FullName).Append(": ").Append(Scrub(current.Message, values));
         }
 
-        return Cap(Scrub(text.ToString(), payload));
+        return Cap(text.ToString());
     }
 
-    public static string ForLog(Exception exception, string payload) => Scrub(exception.ToString(), payload);
+    public static string ForLog(Exception exception, string payload) => Scrub(exception.ToString(), ValuesOf(payload));
 
     public static string Cap(string text)
     {
@@ -49,50 +50,57 @@ internal static class JobErrorText
         return string.Concat(text.AsSpan(0, keep), Truncated);
     }
 
-    private static string Scrub(string text, string payload)
+    private static string Scrub(string text, List<string> values)
     {
-        foreach (var value in Strings(payload).Where(value => value.Length >= MinScrubbedLength).Distinct(StringComparer.Ordinal).OrderByDescending(value => value.Length))
+        foreach (var value in values)
         {
-            text = text.Replace(value, Redacted, StringComparison.Ordinal);
+            text = value.Length >= AnywhereFromLength
+                ? text.Replace(value, Redacted, StringComparison.Ordinal)
+                : Regex.Replace(text, $@"(?<![\p{{L}}\p{{N}}]){Regex.Escape(value)}(?![\p{{L}}\p{{N}}])", Redacted, RegexOptions.CultureInvariant);
         }
 
         return text;
     }
 
-    private static List<string> Strings(string payload)
+    // The longest first, so that a value inside another does not leave the rest of it behind.
+    private static List<string> ValuesOf(string payload)
     {
-        var strings = new List<string>();
+        var values = new List<string>();
         try
         {
             using var document = JsonDocument.Parse(payload);
-            Collect(document.RootElement, strings);
+            Collect(document.RootElement, values);
         }
         catch (JsonException)
         {
-            strings.Add(payload);
+            values.Add(payload);
         }
 
-        return strings;
+        return [.. values.Where(value => value.Length > 0).Distinct(StringComparer.Ordinal).OrderByDescending(value => value.Length)];
     }
 
-    private static void Collect(JsonElement element, List<string> strings)
+    private static void Collect(JsonElement element, List<string> values)
     {
         switch (element.ValueKind)
         {
             case JsonValueKind.String:
-                strings.Add(element.GetString()!);
+                values.Add(element.GetString()!);
+                break;
+            case JsonValueKind.Number:
+                values.Add(element.GetRawText());
                 break;
             case JsonValueKind.Array:
                 foreach (var item in element.EnumerateArray())
                 {
-                    Collect(item, strings);
+                    Collect(item, values);
                 }
 
                 break;
             case JsonValueKind.Object:
                 foreach (var property in element.EnumerateObject())
                 {
-                    Collect(property.Value, strings);
+                    values.Add(property.Name);
+                    Collect(property.Value, values);
                 }
 
                 break;
