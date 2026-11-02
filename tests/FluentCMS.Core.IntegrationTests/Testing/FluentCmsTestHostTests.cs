@@ -1,7 +1,11 @@
 using System.Diagnostics;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Sites;
+using FluentCMS.Core.Storage;
+using FluentCMS.Sites;
 using FluentCMS.Testing;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
@@ -219,11 +223,115 @@ public sealed class FluentCmsTestHostTests : IAsyncDisposable
         var host = new FluentCmsTestHost().UseSqlite(file: null).WithContentTypes<Note>();
         var editor = await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
         await host.As(editor).Content<Note>().CreateAsync(new Note { Title = "On disk" }, Token);
-        var before = Directory.GetDirectories(Path.GetTempPath(), "fluentcms-testing-*").Length;
+        string file;
+        using (var scope = host.Services.CreateScope())
+        {
+            file = scope.ServiceProvider.GetRequiredService<CmsDbContext>().Database.GetDbConnection().DataSource;
+        }
+
+        File.Exists(file).ShouldBeTrue();
 
         await host.DisposeAsync();
 
-        before.ShouldBeGreaterThan(0);
-        Directory.GetDirectories(Path.GetTempPath(), "fluentcms-testing-*").Length.ShouldBeLessThan(before);
+        Directory.Exists(Path.GetDirectoryName(file)).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task AFilePathWithASemicolonIsUsedAsGiven()
+    {
+        var directory = Directory.CreateTempSubdirectory("fluentcms-testing-semicolon-");
+        var file = Path.Combine(directory.FullName, "a;b.db");
+        try
+        {
+            await using (var host = new FluentCmsTestHost().UseSqlite(file).WithContentTypes<Note>())
+            {
+                var editor = await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+                await host.As(editor).Content<Note>().CreateAsync(new Note { Title = "Kept" }, Token);
+            }
+
+            File.Exists(file).ShouldBeTrue();
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            directory.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ADisposedHostDoesNotRestartAndDisposesTwice()
+    {
+        var host = new FluentCmsTestHost().WithContentTypes<Note>();
+        _ = host.Services;
+
+        await host.DisposeAsync();
+        await host.DisposeAsync();
+        host.Dispose();
+
+        Should.Throw<ObjectDisposedException>(() => host.Services);
+        Should.Throw<ObjectDisposedException>(() => host.CreateClient());
+        await Should.ThrowAsync<ObjectDisposedException>(() => host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token));
+    }
+
+    [Fact]
+    public void ACaptiveDependencyFailsTheBootAsItDoesInADevelopersHost()
+    {
+        using var host = new FluentCmsTestHost()
+            .WithServices(services =>
+            {
+                services.AddScoped<ScopedProbe>();
+                services.AddSingleton<CaptiveProbe>();
+            });
+
+        Should.Throw<Exception>(() => host.Services).ToString().ShouldContain(nameof(ScopedProbe));
+    }
+
+    [Fact]
+    public async Task AnActorCanBeMovedToAnotherLocaleAndSite()
+    {
+        var site = new SiteId(Guid.CreateVersion7());
+        var user = await _host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+        var actor = _host.As(user);
+
+        var moved = actor.In("fr").In(site);
+        var seen = await moved.RunAsync<IOperationContextAccessor, OperationContext?>(accessor => Task.FromResult(accessor.Current));
+
+        seen.ShouldNotBeNull();
+        seen.Locale.ShouldBe("fr");
+        seen.Site.ShouldBe(site);
+        seen.Principal.ShouldBe(user.Principal);
+        actor.Locale.ShouldBe(DefaultSite.Locale);
+        actor.Site.ShouldBe(new SiteId(DefaultSite.Id));
+    }
+
+    [Fact]
+    public async Task ASeedCanChooseItsSiteAndLocale()
+    {
+        var site = new SiteId(Guid.CreateVersion7());
+        OperationContext? seen = null;
+        await using var host = new FluentCmsTestHost()
+            .WithContentTypes<Note>()
+            .Seed(
+                services =>
+                {
+                    seen = services.GetRequiredService<IOperationContextAccessor>().Current;
+                    return Task.CompletedTask;
+                },
+                site,
+                "de");
+
+        _ = host.Services;
+
+        seen.ShouldNotBeNull();
+        seen.Site.ShouldBe(site);
+        seen.Locale.ShouldBe("de");
+        seen.Principal.IsSystem.ShouldBeTrue();
+    }
+
+    private sealed class ScopedProbe;
+
+    private sealed class CaptiveProbe(ScopedProbe scoped)
+    {
+        public ScopedProbe Scoped { get; } = scoped;
     }
 }

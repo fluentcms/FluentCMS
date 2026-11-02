@@ -26,12 +26,13 @@ public sealed class FluentCmsTestHost : IAsyncDisposable, IDisposable
     private readonly List<Type> _contentTypes = [];
     private readonly List<Action<FluentCmsBuilder>> _configure = [];
     private readonly List<Action<IServiceCollection>> _services = [];
-    private readonly List<Func<IServiceProvider, Task>> _seeds = [];
+    private readonly List<SeedStep> _seeds = [];
     private readonly Lock _gate = new();
 
     private string? _file;
     private bool _inMemory = true;
     private bool _started;
+    private bool _disposed;
     private SqliteConnection? _keeper;
     private DirectoryInfo? _directory;
     private IHost? _host;
@@ -93,10 +94,10 @@ public sealed class FluentCmsTestHost : IAsyncDisposable, IDisposable
     }
 
     // Runs once the database is ready and before the host reports started, as the system principal with the Seed origin.
-    public FluentCmsTestHost Seed(Func<IServiceProvider, Task> seed)
+    public FluentCmsTestHost Seed(Func<IServiceProvider, Task> seed, SiteId? site = null, string? locale = null)
     {
         EnsureNotStarted();
-        _seeds.Add(seed);
+        _seeds.Add(new SeedStep(seed, site ?? new SiteId(DefaultSite.Id), locale ?? DefaultSite.Locale));
         return this;
     }
 
@@ -157,8 +158,19 @@ public sealed class FluentCmsTestHost : IAsyncDisposable, IDisposable
 
     public async ValueTask DisposeAsync()
     {
-        var host = _host;
-        _host = null;
+        IHost? host;
+        lock (_gate)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _disposed = true;
+            host = _host;
+            _host = null;
+        }
+
         if (host is not null)
         {
             await host.StopAsync();
@@ -172,6 +184,8 @@ public sealed class FluentCmsTestHost : IAsyncDisposable, IDisposable
     {
         lock (_gate)
         {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+
             if (_host is not null)
             {
                 return _host;
@@ -201,6 +215,11 @@ public sealed class FluentCmsTestHost : IAsyncDisposable, IDisposable
 
         return new HostBuilder()
             .UseEnvironment(Environments.Development)
+            .UseDefaultServiceProvider(options =>
+            {
+                options.ValidateScopes = true;
+                options.ValidateOnBuild = true;
+            })
             .ConfigureWebHost(web => web.UseTestServer().Configure(_ => { }))
             .ConfigureServices(services =>
             {
@@ -226,7 +245,7 @@ public sealed class FluentCmsTestHost : IAsyncDisposable, IDisposable
     }
 
     private TestActor Act(Principal principal, Origin origin, string? clientId) =>
-        new(Services, Time, principal, origin, clientId, DefaultSite.Locale);
+        new(Services, Time, principal, origin, clientId, new SiteId(DefaultSite.Id), DefaultSite.Locale);
 
     private void EnsureNotStarted()
     {
@@ -254,7 +273,12 @@ public sealed class FluentCmsTestHost : IAsyncDisposable, IDisposable
     {
         if (_inMemory)
         {
-            var connectionString = $"Data Source=fluentcms-test-{Guid.NewGuid():N};Mode=Memory;Cache=Shared";
+            var connectionString = new SqliteConnectionStringBuilder
+            {
+                DataSource = $"fluentcms-test-{Guid.NewGuid():N}",
+                Mode = SqliteOpenMode.Memory,
+                Cache = SqliteCacheMode.Shared,
+            }.ToString();
             _keeper = new SqliteConnection(connectionString);
             _keeper.Open();
             return connectionString;
@@ -267,7 +291,7 @@ public sealed class FluentCmsTestHost : IAsyncDisposable, IDisposable
             file = Path.Combine(_directory.FullName, "cms.db");
         }
 
-        return $"Data Source={file};Pooling=False";
+        return new SqliteConnectionStringBuilder { DataSource = file, Pooling = false }.ToString();
     }
 
     private void Release()
@@ -289,7 +313,9 @@ public sealed class FluentCmsTestHost : IAsyncDisposable, IDisposable
         }
     }
 
-    private sealed class SeedRunner(IServiceProvider provider, TimeProvider time, List<Func<IServiceProvider, Task>> seeds) : IHostedService
+    private sealed record SeedStep(Func<IServiceProvider, Task> Run, SiteId Site, string Locale);
+
+    private sealed class SeedRunner(IServiceProvider provider, TimeProvider time, List<SeedStep> seeds) : IHostedService
     {
         public async Task StartAsync(CancellationToken cancellationToken)
         {
@@ -301,20 +327,20 @@ public sealed class FluentCmsTestHost : IAsyncDisposable, IDisposable
             await using var scope = provider.CreateAsyncScope();
             var accessor = scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>();
             var previous = accessor.Current;
-            accessor.Current = new OperationContext(
-                Principal.System,
-                Origin.Seed,
-                new SiteId(DefaultSite.Id),
-                DefaultSite.Locale,
-                ClientId: null,
-                Guid.CreateVersion7().ToString(),
-                time.GetUtcNow());
 
             try
             {
                 foreach (var seed in seeds)
                 {
-                    await seed(scope.ServiceProvider);
+                    accessor.Current = new OperationContext(
+                        Principal.System,
+                        Origin.Seed,
+                        seed.Site,
+                        seed.Locale,
+                        ClientId: null,
+                        Guid.CreateVersion7().ToString(),
+                        time.GetUtcNow());
+                    await seed.Run(scope.ServiceProvider);
                 }
             }
             finally

@@ -1,5 +1,4 @@
 using FluentCMS.Content;
-using FluentCMS.Core.Sites;
 using FluentCMS.Sites;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -7,7 +6,7 @@ namespace FluentCMS.Testing;
 
 // Gives each call a scope of its own and sets IOperationContextAccessor.Current for it, the way an entry point does for a
 // request. The previous value is put back, so an operation never leaks into the code that called it.
-internal sealed class OperationRunner(IServiceProvider services, TimeProvider time, Principal principal, Origin origin, string? clientId, string locale)
+internal sealed class OperationRunner(IServiceProvider services, TimeProvider time, Principal principal, Origin origin, string? clientId, SiteId site, string locale)
 {
     public async Task<TResult> RunAsync<TService, TResult>(Func<TService, Task<TResult>> call)
         where TService : notnull
@@ -18,7 +17,7 @@ internal sealed class OperationRunner(IServiceProvider services, TimeProvider ti
         accessor.Current = new OperationContext(
             principal,
             origin,
-            new SiteId(DefaultSite.Id),
+            site,
             locale,
             clientId,
             Guid.CreateVersion7().ToString(),
