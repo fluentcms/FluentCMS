@@ -122,7 +122,7 @@ Confirmed. A `ValueGenerator` assigns `Guid.CreateVersion7()` to `id` on all fou
 
 ## Changes to the specification
 
-These are required, and are not yet applied to the specification.
+These were required, and [#2722](https://github.com/fluentcms/FluentCMS/pull/2722) applied them to the specification.
 
 | Section | Change | Why |
 | --- | --- | --- |
@@ -193,7 +193,7 @@ Attribute-defined and builder-defined types share one code path, and a user's cl
 
 Follow-up work:
 
-- [ ] Apply the specification changes above.
-- [ ] Build on them in [#2688](https://github.com/fluentcms/FluentCMS/issues/2688) (model), [#2689](https://github.com/fluentcms/FluentCMS/issues/2689) (JSON dialect and SQLite conventions), [#2690](https://github.com/fluentcms/FluentCMS/issues/2690) (migration streams) and [#2692](https://github.com/fluentcms/FluentCMS/issues/2692) (query compiler).
+- [x] Apply the specification changes above. Done in [#2722](https://github.com/fluentcms/FluentCMS/pull/2722) for [#2721](https://github.com/fluentcms/FluentCMS/issues/2721).
+- [x] Build on them in [#2688](https://github.com/fluentcms/FluentCMS/issues/2688) (model, [#2729](https://github.com/fluentcms/FluentCMS/pull/2729)), [#2689](https://github.com/fluentcms/FluentCMS/issues/2689) (JSON dialect and SQLite conventions, [#2737](https://github.com/fluentcms/FluentCMS/pull/2737)), [#2690](https://github.com/fluentcms/FluentCMS/issues/2690) (migration streams, [#2739](https://github.com/fluentcms/FluentCMS/pull/2739)) and [#2692](https://github.com/fluentcms/FluentCMS/issues/2692) (query compiler, [#2740](https://github.com/fluentcms/FluentCMS/pull/2740)).
 - [x] Delete `tests/FluentCMS.Storage.Spike.Tests` once #2688 lands. Done in [#2736](https://github.com/fluentcms/FluentCMS/issues/2736).
 - [ ] Run the [Not verified](#not-verified) list in #2711 and update this record with the results.
