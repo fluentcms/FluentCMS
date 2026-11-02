@@ -22,6 +22,9 @@ public sealed class SystemDbContext : DbContext
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
         _model.Conventions.ConfigureConventions(configurationBuilder);
 
-    protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
         new SystemModelBuilder(_model.Conventions).Apply(modelBuilder);
+        SystemModelBuilder.ApplySeedData(modelBuilder);
+    }
 }

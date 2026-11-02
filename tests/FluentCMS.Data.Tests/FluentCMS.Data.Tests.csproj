@@ -6,6 +6,8 @@
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="Shouldly" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
   </ItemGroup>
 
   <!-- The storage tests build the sample schema of the core tests; a test project cannot reference another. -->
@@ -16,6 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../../src/FluentCMS.Cli/FluentCMS.Cli.csproj" />
     <ProjectReference Include="../../src/FluentCMS.Data.PostgreSql/FluentCMS.Data.PostgreSql.csproj" />
     <ProjectReference Include="../../src/FluentCMS.Data.Sqlite/FluentCMS.Data.Sqlite.csproj" />
     <ProjectReference Include="../../src/FluentCMS.Data.SqlServer/FluentCMS.Data.SqlServer.csproj" />

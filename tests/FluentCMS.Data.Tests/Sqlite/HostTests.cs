@@ -4,6 +4,7 @@ using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Tests.Schema;
 using FluentCMS.Data.Sqlite;
 using FluentCMS.Publishing;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
@@ -47,8 +48,8 @@ public class HostTests
 
         using (var scope = services.CreateScope())
         {
+            scope.ServiceProvider.GetRequiredService<SystemDbContext>().Database.Migrate();
             var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
-            context.Database.EnsureCreated();
             context.Documents.Add(new Document { DocumentId = Guid.CreateVersion7(), Type = "post", Status = EntryStatus.Draft, CreatedAt = at, UpdatedAt = at });
             context.SaveChanges();
         }

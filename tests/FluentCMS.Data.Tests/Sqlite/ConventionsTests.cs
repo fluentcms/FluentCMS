@@ -5,6 +5,8 @@ using FluentCMS.Publishing;
 using FluentCMS.Schema;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
@@ -38,8 +40,9 @@ public sealed class ConventionsTests : IDisposable
     {
         _services = _database.CreateServices(Schema);
         _scope = _services.CreateScope();
+        _scope.ServiceProvider.GetRequiredService<SystemDbContext>().Database.Migrate();
         _context = _scope.ServiceProvider.GetRequiredService<CmsDbContext>();
-        _context.Database.EnsureCreated();
+        _context.GetService<IRelationalDatabaseCreator>().CreateTables();
     }
 
     public void Dispose()

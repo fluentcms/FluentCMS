@@ -1,3 +1,4 @@
+using System.Reflection;
 using FluentCMS.Core.Storage;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,13 +10,20 @@ public sealed class SqliteDataProvider(string connectionString) : IDataProvider
 
     public bool MigrateOnStartup => true;
 
+    public bool SupportsSchemaSync => true;
+
     public IStorageConventions Conventions { get; } = new SqliteStorageConventions();
 
     public IJsonSqlDialect JsonDialect { get; } = new SqliteJsonDialect();
 
     public IJobClaimDialect JobClaimDialect { get; } = new SqliteJobClaimDialect();
 
-    public void ConfigureDbContext(DbContextOptionsBuilder options) => options.UseSqlite(connectionString);
+    public IDatabaseSchemaReader SchemaReader { get; } = new SqliteSchemaReader();
+
+    public void ConfigureContentMigrations(DbContextOptionsBuilder options, Assembly migrationsAssembly) =>
+        options.UseSqlite(connectionString, sqlite => sqlite
+            .MigrationsAssembly(migrationsAssembly)
+            .MigrationsHistoryTable(CmsDbContext.HistoryTable));
 
     public void ConfigureSystemMigrations(DbContextOptionsBuilder options) =>
         options.UseSqlite(connectionString, sqlite => sqlite

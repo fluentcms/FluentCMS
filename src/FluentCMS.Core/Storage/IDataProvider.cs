@@ -1,3 +1,4 @@
+using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 
 namespace FluentCMS.Core.Storage;
@@ -7,8 +8,11 @@ public interface IDataProvider
 {
     string Name { get; }
 
-    // The default of Database:MigrateOnStartup. The migration runner acts on it.
+    // The default of Database:MigrateOnStartup.
     bool MigrateOnStartup { get; }
+
+    // Whether Database:SchemaSync may be Auto in Development.
+    bool SupportsSchemaSync { get; }
 
     IStorageConventions Conventions { get; }
 
@@ -16,8 +20,10 @@ public interface IDataProvider
 
     IJobClaimDialect JobClaimDialect { get; }
 
-    // Points the options at the database.
-    void ConfigureDbContext(DbContextOptionsBuilder options);
+    IDatabaseSchemaReader SchemaReader { get; }
+
+    // Points the options of CmsDbContext at the database, with the host's content migrations and their history table.
+    void ConfigureContentMigrations(DbContextOptionsBuilder options, Assembly migrationsAssembly);
 
     // The same, for SystemDbContext: adds the assembly that holds the system migrations and their history table.
     void ConfigureSystemMigrations(DbContextOptionsBuilder options);

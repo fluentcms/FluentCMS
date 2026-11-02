@@ -22,6 +22,14 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         modelBuilder.Entity<RoleGrant>(MapRoleGrant);
     }
 
+    // For the system stream only. EF puts seed data into a context's migrations and EnsureCreated even for a table
+    // marked ExcludeFromMigrations, so on CmsDbContext it would insert the rows a second time.
+    public static void ApplySeedData(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Role>().HasData(RoleSeed.Roles());
+        modelBuilder.Entity<RoleGrant>().HasData(RoleSeed.Permissions());
+    }
+
     private static void MapDocument(EntityTypeBuilder<Document> entity)
     {
         entity.ToTable(StorageNames.Document);
@@ -91,8 +99,6 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
             .IsUnique()
             .HasFilter("site_id IS NOT NULL")
             .HasDatabaseName("uq_cms_role_site_name");
-
-        entity.HasData(RoleSeed.Roles());
     }
 
     private void MapRoleGrant(EntityTypeBuilder<RoleGrant> entity)
@@ -106,8 +112,6 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         entity.HasOne<Role>().WithMany().HasForeignKey(grant => grant.RoleId).OnDelete(DeleteBehavior.Cascade);
         entity.HasIndex(grant => new { grant.RoleId, grant.Permission })
             .HasDatabaseName("ix_cms_role_permission_role_permission");
-
-        entity.HasData(RoleSeed.Permissions());
     }
 
     private static void MapColumnNames<T>(EntityTypeBuilder<T> entity)

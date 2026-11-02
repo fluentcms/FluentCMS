@@ -1,9 +1,9 @@
+using System.Reflection;
 using FluentCMS.Authorization;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Storage;
 using FluentCMS.Schema;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -37,11 +37,11 @@ public static class FluentCmsServiceCollectionExtensions
 
         services.AddSingleton<RoleVersionInterceptor>();
 
+        var contentMigrations = builder.ContentMigrationsAssembly ?? Assembly.GetEntryAssembly() ?? typeof(CmsDbContext).Assembly;
         services.AddDbContext<CmsDbContext>((serviceProvider, options) =>
         {
-            provider.ConfigureDbContext(options);
+            ContentMigrations.Configure(options, provider, serviceProvider.GetRequiredService<SchemaModel>(), contentMigrations);
             options.AddInterceptors(serviceProvider.GetRequiredService<RoleVersionInterceptor>());
-            options.UseCmsModel(serviceProvider.GetRequiredService<SchemaModel>(), provider.Conventions, provider.JsonDialect);
         });
 
         services.AddDbContext<SystemDbContext>(options =>
@@ -49,6 +49,10 @@ public static class FluentCmsServiceCollectionExtensions
             provider.ConfigureSystemMigrations(options);
             options.UseSystemModel(provider.Conventions);
         });
+
+        services.AddLogging();
+        services.AddSingleton<MigrationRunner>();
+        services.AddHostedService<MigrationStartupService>();
 
         return services;
     }
