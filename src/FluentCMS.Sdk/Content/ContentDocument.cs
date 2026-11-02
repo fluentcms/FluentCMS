@@ -56,18 +56,18 @@ public sealed class ContentDocument : IDictionary<string, object?>, IReadOnlyDic
     }
 
     /// <summary>Gets a value as a type.</summary>
-    /// <typeparam name="T">The type to read the value as. A number converts to another numeric type.</typeparam>
+    /// <typeparam name="T">The type to read the value as. The value must already be a <typeparamref name="T"/>, except that a number converts to another numeric type when it fits.</typeparam>
     /// <param name="name">The API field name.</param>
     /// <returns>The value, or the default of <typeparamref name="T"/> when the field is missing or null.</returns>
-    /// <exception cref="InvalidCastException">The value does not convert to <typeparamref name="T"/>.</exception>
+    /// <exception cref="InvalidCastException">The value is not a <typeparamref name="T"/> and is not a number that fits it.</exception>
     public T? Get<T>(string name) => TryGet<T>(name, out var value) ? value : default;
 
     /// <summary>Tries to get a value as a type.</summary>
-    /// <typeparam name="T">The type to read the value as. A number converts to another numeric type.</typeparam>
+    /// <typeparam name="T">The type to read the value as. The value must already be a <typeparamref name="T"/>, except that a number converts to another numeric type when it fits.</typeparam>
     /// <param name="name">The API field name.</param>
     /// <param name="value">The value, or the default of <typeparamref name="T"/> when the field is missing or null.</param>
     /// <returns><see langword="true"/> when the field exists and holds a non-null value.</returns>
-    /// <exception cref="InvalidCastException">The value does not convert to <typeparamref name="T"/>.</exception>
+    /// <exception cref="InvalidCastException">The value is not a <typeparamref name="T"/> and is not a number that fits it.</exception>
     public bool TryGet<T>(string name, out T? value)
     {
         if (!_values.TryGetValue(name, out var raw) || raw is null)
@@ -130,18 +130,30 @@ public sealed class ContentDocument : IDictionary<string, object?>, IReadOnlyDic
         }
 
         var target = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);
-        if (raw is IConvertible && typeof(IConvertible).IsAssignableFrom(target) && !target.IsEnum)
+        if (!IsNumber(raw.GetType()) || !IsNumber(target))
         {
-            try
-            {
-                return (T)System.Convert.ChangeType(raw, target, CultureInfo.InvariantCulture);
-            }
-            catch (Exception exception) when (exception is FormatException or OverflowException)
-            {
-                throw new InvalidCastException($"The value {raw} does not convert to {typeof(T)}.", exception);
-            }
+            throw new InvalidCastException($"A value of type {raw.GetType()} is not a {typeof(T)}.");
         }
 
-        throw new InvalidCastException($"A value of type {raw.GetType()} does not convert to {typeof(T)}.");
+        try
+        {
+            var converted = System.Convert.ChangeType(raw, target, CultureInfo.InvariantCulture);
+            if (raw is float or double or decimal && target != typeof(float) && target != typeof(double) && target != typeof(decimal)
+                && System.Convert.ToDecimal(raw, CultureInfo.InvariantCulture) != System.Convert.ToDecimal(converted, CultureInfo.InvariantCulture))
+            {
+                throw new InvalidCastException($"The value {raw} does not fit {typeof(T)}.");
+            }
+
+            return (T)converted;
+        }
+        catch (OverflowException exception)
+        {
+            throw new InvalidCastException($"The value {raw} does not fit {typeof(T)}.", exception);
+        }
     }
+
+    private static bool IsNumber(Type type) =>
+        Type.GetTypeCode(type) is TypeCode.SByte or TypeCode.Byte or TypeCode.Int16 or TypeCode.UInt16 or TypeCode.Int32 or TypeCode.UInt32
+            or TypeCode.Int64 or TypeCode.UInt64 or TypeCode.Single or TypeCode.Double or TypeCode.Decimal
+        && !type.IsEnum;
 }

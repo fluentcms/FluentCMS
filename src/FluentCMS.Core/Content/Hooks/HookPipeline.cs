@@ -10,6 +10,9 @@ namespace FluentCMS.Core.Content.Hooks;
 // and for its base classes, form one sequence ordered by [HookOrder], then by IHookTiebreaker rank. Hooks that still tie keep
 // the order of resolution: all-types hooks first, then base classes before derived ones, each in registration order.
 // The first hook that cancels throws HookRejectedException and the hooks after it do not run.
+// The changed paths are those between previous and entry, computed again before each before hook so that a hook sees the
+// changes of the hooks before it; an operation that changes no field passes the stored state as previous.
+// Only before hooks change the entry: an after hook works on a copy.
 public sealed class HookPipeline(IServiceProvider services)
 {
     private static readonly ConcurrentDictionary<Type, int> Orders = new();
@@ -20,13 +23,11 @@ public sealed class HookPipeline(IServiceProvider services)
         OperationContext operation,
         ContentDocument entry,
         ContentDocument? previous,
-        IReadOnlyList<string> changedPaths,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(type);
         ArgumentNullException.ThrowIfNull(operation);
         ArgumentNullException.ThrowIfNull(entry);
-        ArgumentNullException.ThrowIfNull(changedPaths);
 
         var hooks = Resolve(kind, type);
         if (hooks.Count == 0)
@@ -34,13 +35,26 @@ public sealed class HookPipeline(IServiceProvider services)
             return;
         }
 
-        var session = new Session(type.ClrType, operation, entry, previous, changedPaths, services.GetService(typeof(IHookEntryMapper)) as IHookEntryMapper);
         var mutable = kind is HookKind.BeforeValidate or HookKind.BeforeCreate or HookKind.BeforeUpdate
             or HookKind.BeforeDelete or HookKind.BeforePublish or HookKind.BeforeUnpublish or HookKind.BeforeRestore;
+        var session = new Session(
+            type.ClrType,
+            operation,
+            mutable ? entry : ContentCopy.Of(entry),
+            previous,
+            services.GetService(typeof(IHookEntryMapper)) as IHookEntryMapper);
 
+        var first = true;
         foreach (var hook in hooks)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (mutable && !first)
+            {
+                session.RefreshChangedPaths();
+            }
+
+            first = false;
+
             await hook.InvokeAsync(session, mutable, cancellationToken);
         }
     }
@@ -81,17 +95,19 @@ public sealed class HookPipeline(IServiceProvider services)
         OperationContext operation,
         ContentDocument entry,
         ContentDocument? previous,
-        IReadOnlyList<string> changedPaths,
         IHookEntryMapper? mapper)
     {
         private object? _previousEntry;
+        private IReadOnlyList<string> _changedPaths = ContentChanges.Between(previous, entry);
+
+        public void RefreshChangedPaths() => _changedPaths = ContentChanges.Between(previous, entry);
 
         public HookContext<T> CreateContext<T>(out object? mapped)
         {
             if (typeof(T) == typeof(ContentDocument))
             {
                 mapped = null;
-                return new HookContext<T>(operation, (T)(object)entry, (T?)(object?)previous, changedPaths);
+                return new HookContext<T>(operation, (T)(object)entry, (T?)(object?)previous, _changedPaths);
             }
 
             var map = RequireMapper();
@@ -101,7 +117,7 @@ public sealed class HookPipeline(IServiceProvider services)
                 _previousEntry ??= map.ToEntry(clrType!, previous);
             }
 
-            return new HookContext<T>(operation, (T)mapped, (T?)_previousEntry, changedPaths);
+            return new HookContext<T>(operation, (T)mapped, (T?)_previousEntry, _changedPaths);
         }
 
         public void WriteBack(object mapped) => RequireMapper().CopyTo(mapped, entry);

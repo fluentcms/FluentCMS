@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using FluentCMS.Content;
 using FluentCMS.Core.Content.Hooks;
 using FluentCMS.Core.Tests.Schema;
@@ -198,6 +199,65 @@ public class HookPipelineTests
         public ValueTask BeforeRestoreAsync(HookContext<ContentDocument> context, CancellationToken cancellationToken) => Note(HookKind.BeforeRestore);
 
         public ValueTask AfterRestoreAsync(HookContext<ContentDocument> context, CancellationToken cancellationToken) => Note(HookKind.AfterRestore);
+    }
+
+    [HookOrder(-1)]
+    private sealed class SlugSetter : IBeforeUpdateHook<ContentDocument>
+    {
+        public ValueTask BeforeUpdateAsync(HookContext<ContentDocument> context, CancellationToken cancellationToken)
+        {
+            context.Entry["slug"] = "new-slug";
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    [HookOrder(1)]
+    private sealed class LateCapture(Log log) : IBeforeUpdateHook<ContentDocument>
+    {
+        public ValueTask BeforeUpdateAsync(HookContext<ContentDocument> context, CancellationToken cancellationToken)
+        {
+            log.Contexts.Add(context);
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    private sealed class PublishCapture(Log log) : IBeforePublishHook<ContentDocument>, IAfterPublishHook<ContentDocument>
+    {
+        public ValueTask BeforePublishAsync(HookContext<ContentDocument> context, CancellationToken cancellationToken)
+        {
+            log.Contexts.Add(context);
+            return ValueTask.CompletedTask;
+        }
+
+        public ValueTask AfterPublishAsync(HookContext<ContentDocument> context, CancellationToken cancellationToken)
+        {
+            log.Contexts.Add(context);
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    private sealed class MutatingAfter(Log log) : IAfterCreateHook<ContentDocument>
+    {
+        public ValueTask AfterCreateAsync(HookContext<ContentDocument> context, CancellationToken cancellationToken)
+        {
+            log.Entries.Add(context.Entry.Get<string>("title")!);
+            context.Entry["title"] = "changed after the write";
+            context.Entry["added"] = true;
+            ((Dictionary<string, object?>)context.Entry["seo"]!)["metaTitle"] = "changed";
+            ((List<object?>)context.Entry["tags"]!).Add("c");
+            ((JsonObject)context.Entry["extra"]!)["x"] = 2;
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    private sealed class TypedAfter(Log log) : IAfterUpdateHook<Article>
+    {
+        public ValueTask AfterUpdateAsync(HookContext<Article> context, CancellationToken cancellationToken)
+        {
+            log.Entries.Add($"after:{context.Entry.Title}");
+            context.Entry.Title = "changed after the write";
+            return ValueTask.CompletedTask;
+        }
     }
 
     private static ContentDocument Doc(string title = "Hello") => new() { ["title"] = title };
@@ -434,6 +494,105 @@ public class HookPipelineTests
         });
 
         await Should.ThrowAsync<InvalidOperationException>(HookFixtures.RunAsync(pipeline, HookKind.BeforeUpdate, Doc()).AsTask());
+    }
+
+    [Fact]
+    public async Task ChangedPathsFollowTheChangesOfEarlierBeforeHooks()
+    {
+        var log = new Log();
+        var pipeline = HookFixtures.Pipeline(services =>
+        {
+            services.AddSingleton(log);
+            services.AddSingleton<IBeforeUpdateHook<ContentDocument>, SlugSetter>();
+            services.AddSingleton<IBeforeUpdateHook<ContentDocument>, CaptureUpdate>();
+            services.AddSingleton<IBeforeUpdateHook<ContentDocument>, LateCapture>();
+        });
+        var previous = new ContentDocument { ["title"] = "Old", ["slug"] = "old" };
+
+        await HookFixtures.RunAsync(pipeline, HookKind.BeforeUpdate, new ContentDocument { ["title"] = "New", ["slug"] = "old" }, previous);
+
+        log.Contexts.Select(context => context.ChangedPaths.ToArray()).ShouldBe([["title", "slug"], ["title", "slug"]]);
+    }
+
+    [Fact]
+    public async Task ChangedPathsSeeWhatATypedHookChanged()
+    {
+        var log = new Log();
+        var pipeline = HookFixtures.Pipeline(services =>
+        {
+            services.AddSingleton(log);
+            services.AddSingleton<IHookEntryMapper, HookFixtures.ArticleMapper>();
+            services.AddSingleton<IBeforeUpdateHook<Article>, TypedRetitle>();
+            services.AddSingleton<IBeforeUpdateHook<ContentDocument>, LateCapture>();
+        });
+        var previous = new ContentDocument { ["title"] = "Same", ["slug"] = "same" };
+
+        await HookFixtures.RunAsync(pipeline, HookKind.BeforeUpdate, new ContentDocument { ["title"] = "Same", ["slug"] = "same" }, previous);
+
+        log.Contexts.ShouldHaveSingleItem().ChangedPaths.ShouldBe(["title", "slug"]);
+    }
+
+    [Fact]
+    public async Task AnOperationWithoutFieldChangesHasNoChangedPaths()
+    {
+        var log = new Log();
+        var pipeline = HookFixtures.Pipeline(services =>
+        {
+            services.AddSingleton(log);
+            services.AddSingleton<IBeforePublishHook<ContentDocument>, PublishCapture>();
+            services.AddSingleton<IAfterPublishHook<ContentDocument>, PublishCapture>();
+        });
+        var stored = new ContentDocument { ["title"] = "Same", ["seo"] = new Dictionary<string, object?> { ["metaTitle"] = "m" } };
+        var copy = new ContentDocument { ["title"] = "Same", ["seo"] = new Dictionary<string, object?> { ["metaTitle"] = "m" } };
+
+        await HookFixtures.RunAsync(pipeline, HookKind.BeforePublish, stored, copy);
+        await HookFixtures.RunAsync(pipeline, HookKind.AfterPublish, stored, copy);
+
+        log.Contexts.Count.ShouldBe(2);
+        log.Contexts.ShouldAllBe(context => context.ChangedPaths.Count == 0);
+    }
+
+    [Fact]
+    public async Task AnAfterHookWorksOnACopyThatCannotReachTheCallersEntry()
+    {
+        var log = new Log();
+        var pipeline = HookFixtures.Pipeline(services =>
+        {
+            services.AddSingleton(log);
+            services.AddSingleton<IAfterCreateHook<ContentDocument>, MutatingAfter>();
+        });
+        var seo = new Dictionary<string, object?> { ["metaTitle"] = "m" };
+        var tags = new List<object?> { "a", "b" };
+        var extra = JsonNode.Parse("""{"x":1}""")!;
+        var entry = new ContentDocument { ["title"] = "stored", ["seo"] = seo, ["tags"] = tags, ["extra"] = extra };
+
+        await HookFixtures.RunAsync(pipeline, HookKind.AfterCreate, entry);
+
+        log.Entries.ShouldBe(["stored"]);
+        entry.Keys.ShouldBe(["title", "seo", "tags", "extra"]);
+        entry.Get<string>("title").ShouldBe("stored");
+        seo["metaTitle"].ShouldBe("m");
+        tags.ShouldBe(["a", "b"]);
+        extra["x"]!.GetValue<int>().ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task ATypedAfterHookCannotChangeTheCallersEntryEither()
+    {
+        var log = new Log();
+        var pipeline = HookFixtures.Pipeline(services =>
+        {
+            services.AddSingleton(log);
+            services.AddSingleton<IHookEntryMapper, HookFixtures.ArticleMapper>();
+            services.AddSingleton<IAfterUpdateHook<Article>, TypedAfter>();
+        });
+        var entry = Doc("stored");
+
+        await HookFixtures.RunAsync(pipeline, HookKind.AfterUpdate, entry, Doc("old"));
+
+        log.Entries.ShouldBe(["after:stored"]);
+        entry.Get<string>("title").ShouldBe("stored");
+        entry.ContainsKey("slug").ShouldBeFalse();
     }
 
     [Fact]

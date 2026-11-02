@@ -1,5 +1,9 @@
 using FluentCMS.Content;
+using System.Text.Json.Nodes;
 using FluentCMS.Core.Content.Hooks;
+using FluentCMS.Core.Tests.Schema.Samples;
+using FluentCMS.Media;
+using FluentCMS.Schema;
 using Shouldly;
 using Xunit;
 
@@ -92,5 +96,96 @@ public class ContentChangesTests
         var current = new ContentDocument { ["seo"] = new ContentDocument { ["metaTitle"] = "n" } };
 
         ContentChanges.Between(previous, current).ShouldBe(["seo.metaTitle"]);
+    }
+
+    [Fact]
+    public void EqualButDistinctJsonObjectsHaveNoChanges()
+    {
+        var previous = Map(("seo", JsonNode.Parse("""{"metaTitle":"m","tags":["a","b"],"n":{"x":1}}""")), ("flag", JsonValue.Create(true)));
+        var current = Map(("seo", JsonNode.Parse("""{"metaTitle":"m","tags":["a","b"],"n":{"x":1}}""")), ("flag", JsonValue.Create(true)));
+
+        ContentChanges.Between(previous, current).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void AChangeInsideJsonIsReportedAtItsPath()
+    {
+        var previous = Map(("seo", JsonNode.Parse("""{"metaTitle":"m","tags":["a","b"],"n":{"x":1}}""")), ("count", JsonValue.Create(1)));
+        var current = Map(("seo", JsonNode.Parse("""{"metaTitle":"n","tags":["a","c"],"n":{"x":2}}""")), ("count", JsonValue.Create(2)));
+
+        ContentChanges.Between(previous, current).ShouldBe(["seo.metaTitle", "seo.tags[1]", "seo.n.x", "count"]);
+    }
+
+    [Fact]
+    public void AJsonArrayWhoseLengthChangedIsReportedAsTheArray()
+    {
+        var previous = Map(("sections", JsonNode.Parse("""[{"type":"hero"}]""")));
+        var current = Map(("sections", JsonNode.Parse("""[{"type":"hero"},{"type":"quote"}]""")));
+
+        ContentChanges.Between(previous, current).ShouldBe(["sections"]);
+    }
+
+    [Fact]
+    public void JsonAndDictionariesCompareAsTheSameValue()
+    {
+        var previous = Map(("seo", JsonNode.Parse("""{"metaTitle":"m","count":3}""")));
+        var current = Map(("seo", Map(("metaTitle", "m"), ("count", 3))));
+
+        ContentChanges.Between(previous, current).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void JsonNullAndAMissingValueAreTheSame()
+    {
+        var previous = Map(("seo", JsonNode.Parse("""{"metaTitle":null}""")));
+        var current = Map(("seo", JsonNode.Parse("""{}""")));
+
+        ContentChanges.Between(previous, current).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void EqualButDistinctSdkValuesHaveNoChanges()
+    {
+        var id = Guid.CreateVersion7();
+        var other = Guid.CreateVersion7();
+        var previous = Map(
+            ("body", new RichText("""{"type":"doc"}""")),
+            ("author", new Ref<Author>(id)),
+            ("tags", new RefList<Tag>([new Ref<Tag>(id), new Ref<Tag>(other)])),
+            ("hero", new MediaRef(id)),
+            ("images", new MediaRefList([new MediaRef(id)])),
+            ("sections", new BlockList([new HeroBlock { Heading = "h", Image = new MediaRef(id) }, new QuoteBlock { Text = "t" }])));
+        var current = Map(
+            ("body", new RichText("""{"type":"doc"}""")),
+            ("author", new Ref<Author>(id)),
+            ("tags", new RefList<Tag>([new Ref<Tag>(id), new Ref<Tag>(other)])),
+            ("hero", new MediaRef(id)),
+            ("images", new MediaRefList([new MediaRef(id)])),
+            ("sections", new BlockList([new HeroBlock { Heading = "h", Image = new MediaRef(id) }, new QuoteBlock { Text = "t" }])));
+
+        ContentChanges.Between(previous, current).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void ChangedSdkValuesAreReported()
+    {
+        var id = Guid.CreateVersion7();
+        var other = Guid.CreateVersion7();
+        var previous = Map(
+            ("body", new RichText("""{"type":"doc"}""")),
+            ("author", new Ref<Author>(id)),
+            ("tags", new RefList<Tag>([new Ref<Tag>(id), new Ref<Tag>(other)])),
+            ("hero", new MediaRef(id)),
+            ("images", new MediaRefList([new MediaRef(id)])),
+            ("sections", new BlockList([new HeroBlock { Heading = "h" }, new QuoteBlock { Text = "t" }])));
+        var current = Map(
+            ("body", new RichText("""{"type":"doc","content":[]}""")),
+            ("author", new Ref<Author>(other)),
+            ("tags", new RefList<Tag>([new Ref<Tag>(id), new Ref<Tag>(id)])),
+            ("hero", new MediaRef(other)),
+            ("images", new MediaRefList([new MediaRef(id), new MediaRef(other)])),
+            ("sections", new BlockList([new HeroBlock { Heading = "changed" }, new GalleryBlock()])));
+
+        ContentChanges.Between(previous, current).ShouldBe(["body", "author", "tags[1]", "hero", "images", "sections[0].heading", "sections[1]"]);
     }
 }

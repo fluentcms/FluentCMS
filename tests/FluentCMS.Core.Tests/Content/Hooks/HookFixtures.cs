@@ -27,7 +27,7 @@ internal static class HookFixtures
         ContentDocument entry,
         ContentDocument? previous = null,
         SchemaType? type = null) =>
-        pipeline.RunAsync(kind, type ?? ArticleType, Operation, entry, previous, ContentChanges.Between(previous, entry), CancellationToken.None);
+        pipeline.RunAsync(kind, type ?? ArticleType, Operation, entry, previous, CancellationToken.None);
 
     // Maps the title and slug of an article, which is all the tests change.
     public sealed class ArticleMapper : IHookEntryMapper

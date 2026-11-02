@@ -91,7 +91,7 @@ public class HookTransactionTests
         using var context = database.CreateContext();
         await using var transaction = await context.Database.BeginTransactionAsync();
 
-        await pipeline.RunAsync(HookKind.BeforeCreate, type, Operation, entry, null, ContentChanges.Between(null, entry), CancellationToken.None);
+        await pipeline.RunAsync(HookKind.BeforeCreate, type, Operation, entry, null, CancellationToken.None);
 
         context.Rows(Article).Add(new Dictionary<string, object>
         {
@@ -102,7 +102,7 @@ public class HookTransactionTests
         });
         await context.SaveChangesAsync();
 
-        await pipeline.RunAsync(HookKind.AfterCreate, type, Operation, entry, null, ContentChanges.Between(null, entry), CancellationToken.None);
+        await pipeline.RunAsync(HookKind.AfterCreate, type, Operation, entry, null, CancellationToken.None);
 
         await transaction.CommitAsync();
     }
