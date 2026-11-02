@@ -55,14 +55,16 @@ internal sealed class ContentEntryMapper(SchemaModel schema) : IHookEntryMapper
 
     // The document of a typed write: a property with no value is not named, because a class cannot leave a field out.
     // Nor is one that include turns down, at the top level. A hidden property holds nothing a read gave it, and a
-    // read-only one is not the client's to send, at any level. The system principal sends both.
-    public ContentDocument ToDocument(object entry, Func<SchemaField, bool> include, bool isSystem)
+    // read-only one is not the client's to send, at any level. The system principal sends both, but a read leaves a
+    // hidden property at its default even for it, so on an update a default means it was not set, and a patch is how to
+    // put a hidden value back to its default.
+    public ContentDocument ToDocument(object entry, Func<SchemaField, bool> include, bool isSystem, bool isUpdate)
     {
         ArgumentNullException.ThrowIfNull(entry);
         ArgumentNullException.ThrowIfNull(include);
 
         bool Inside(SchemaField field) => isSystem || (!field.Hidden && !field.ReadOnly);
-        return ToFields(entry, field => Inside(field) && include(field), Inside);
+        return ToFields(entry, field => Inside(field) && include(field), Inside, isUpdate);
     }
 
     // What validation reads: nested objects as documents and each value as the property of its class declares it, where
@@ -429,7 +431,7 @@ internal sealed class ContentEntryMapper(SchemaModel schema) : IHookEntryMapper
         }
     }
 
-    private ContentDocument ToFields(object instance, Func<SchemaField, bool>? include, Func<SchemaField, bool>? inside)
+    private ContentDocument ToFields(object instance, Func<SchemaField, bool>? include, Func<SchemaField, bool>? inside, bool hiddenDefaultIsUnset)
     {
         ContentDocument fields = [];
         var type = instance.GetType();
@@ -445,7 +447,12 @@ internal sealed class ContentEntryMapper(SchemaModel schema) : IHookEntryMapper
                 continue;
             }
 
-            var value = ToApi(property.GetValue(instance), inside);
+            var value = ToApi(property.GetValue(instance), inside, hiddenDefaultIsUnset);
+            if (hiddenDefaultIsUnset && field.Hidden && EntryJson.Same(value, ToApi(property.GetValue(Activator.CreateInstance(type)), inside, hiddenDefaultIsUnset)))
+            {
+                continue;
+            }
+
             if (!IsEmpty(value))
             {
                 fields[field.Name] = value;
@@ -464,7 +471,7 @@ internal sealed class ContentEntryMapper(SchemaModel schema) : IHookEntryMapper
         _ => false,
     };
 
-    private object? ToApi(object? value, Func<SchemaField, bool>? inside = null)
+    private object? ToApi(object? value, Func<SchemaField, bool>? inside = null, bool hiddenDefaultIsUnset = false)
     {
         switch (value)
         {
@@ -477,7 +484,7 @@ internal sealed class ContentEntryMapper(SchemaModel schema) : IHookEntryMapper
             case MediaRefList medias:
                 return medias.Where(media => !media.IsEmpty).Select(media => media.Id).ToArray();
             case BlockList blocks:
-                return blocks.Select(block => (object?)ToFields(block, inside, inside)).ToList();
+                return blocks.Select(block => (object?)ToFields(block, inside, inside, hiddenDefaultIsUnset)).ToList();
             case not null when RawValue.IsNumber(value):
                 return value;
         }
@@ -495,10 +502,10 @@ internal sealed class ContentEntryMapper(SchemaModel schema) : IHookEntryMapper
 
         if (Attribute.IsDefined(type, typeof(ComponentAttribute)) || Attribute.IsDefined(type, typeof(BlockAttribute)))
         {
-            return ToFields(value, inside, inside);
+            return ToFields(value, inside, inside, hiddenDefaultIsUnset);
         }
 
-        return value is IEnumerable items and not IEnumerable<KeyValuePair<string, object?>> ? items.Cast<object?>().Select(item => ToApi(item, inside)).ToList() : value;
+        return value is IEnumerable items and not IEnumerable<KeyValuePair<string, object?>> ? items.Cast<object?>().Select(item => ToApi(item, inside, hiddenDefaultIsUnset)).ToList() : value;
     }
 
     private static List<object?> ItemsOf(object? value) => value switch

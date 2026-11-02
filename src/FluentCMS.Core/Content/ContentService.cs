@@ -143,7 +143,7 @@ internal sealed class ContentService(
 
                 var working = Prepare(write, composed, document, null);
                 var prepared = EntryJson.Fields(write.Type, working);
-                working = await RunBeforeHooksAsync(write, HookKind.BeforeCreate, working, new SaveContext(null, Named(sent), writable, document), cancellationToken);
+                working = await RunBeforeHooksAsync(write, HookKind.BeforeCreate, working, new SaveContext(null, Client(sent), writable, document), cancellationToken);
 
                 await store.WriteDraftAsync(write.Type, document, isNewDocument: true, working, write.Operation.Origin, write.Operation.ClientId, cancellationToken);
 
@@ -565,7 +565,7 @@ internal sealed class ContentService(
                 composer.CarryProtected(type, stored, working, includingGroups: !isPatch || !write.Permissions.IsSystem);
                 await KeepUnreadableTargetsAsync(write, stored, shown, working, isPatch, cancellationToken);
 
-                working = await RunBeforeHooksAsync(write, HookKind.BeforeUpdate, working, new SaveContext(stored, Named(refused), writable, document), cancellationToken);
+                working = await RunBeforeHooksAsync(write, HookKind.BeforeUpdate, working, new SaveContext(stored, Client(refused), writable, document), cancellationToken);
 
                 var sharedChanged = type.Localized && type.Fields.Any(field => !field.Localizable && !EntryJson.Same(working[field.Name], stored[field.Name]));
                 var next = expectedVersion + 1;
@@ -761,7 +761,7 @@ internal sealed class ContentService(
         return result;
     }
 
-    private static HashSet<string> Named(ContentDocument sent) => new(sent.Keys, StringComparer.Ordinal);
+    private static JsonObject Client(ContentDocument sent) => (JsonObject)EntryJson.ToNode(sent)!;
 
     private JsonNode? Visible(SchemaField field, object? value)
     {
@@ -883,7 +883,7 @@ internal sealed class ContentService(
 
     private async Task<List<ValidationError>> ReportableAsync(WriteScope write, IReadOnlyList<ValidationError> errors, JsonObject now, JsonObject sent, SaveContext save, CancellationToken cancellationToken)
     {
-        var (reportable, toCompare, produced) = new EntryErrors(schema, write.Type, write.Permissions, write.Target).Sort(errors, now, sent, save.Named);
+        var (reportable, toCompare, produced) = new EntryErrors(schema, write.Type, write.Permissions, write.Target).Sort(errors, now, sent, save.FromClient);
         if (!produced && toCompare.Count > 0)
         {
             var before = save.Stored is { } stored ? await ValidateStoredAsync(write, stored, save.Document.DocumentId, cancellationToken) : [];
@@ -959,7 +959,7 @@ internal sealed class ContentService(
     }
 
     // What the steps of one save share.
-    private sealed record SaveContext(ContentDocument? Stored, IReadOnlySet<string> Named, WritableFields Writable, Document Document);
+    private sealed record SaveContext(ContentDocument? Stored, JsonObject FromClient, WritableFields Writable, Document Document);
 
     private sealed record WriteScope(OperationContext Operation, SchemaType Type, SiteId Site, string Locale, AccessTarget Target, EffectivePermissions Permissions, FieldAccess Access)
     {

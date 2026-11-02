@@ -124,7 +124,7 @@ public interface IContentService<T>
     /// <exception cref="ValidationException">A value is refused or not valid.</exception>
     Task<T> CreateAsync(T entry, CancellationToken cancellationToken = default);
 
-    /// <summary>Replaces the draft in the locale of the operation. A property with no value clears its field. A property the principal may not read, and one that is hidden, is not sent, so it keeps its value; use a patch to write a field that cannot be read back.</summary>
+    /// <summary>Replaces the draft in the locale of the operation. A property with no value clears its field. A property the principal may not read is not sent, so it keeps its value, and nor is a hidden one, except from the system principal when it holds a value other than its default. Use a patch to write a field that cannot be read back, or to put a hidden value back to its default.</summary>
     /// <param name="id">The id of the entry.</param>
     /// <param name="entry">The values.</param>
     /// <param name="expectedVersion">The version the change was based on.</param>

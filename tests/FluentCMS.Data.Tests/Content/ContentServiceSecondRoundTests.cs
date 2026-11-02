@@ -104,6 +104,64 @@ public sealed class ContentServiceRulesAcrossFieldsTests
     }
 }
 
+public sealed class ContentServiceSentValueTests : IDisposable
+{
+    private readonly ServiceDatabase _database = new();
+
+    public void Dispose() => _database.Dispose();
+
+    private async Task<(Guid Id, Principal Writer)> TooLongStoredTitleAsync()
+    {
+        var id = IdOf(await _database.CreateAsync(Editor, new() { ["title"] = "T", ["seo"] = new ContentDocument { ["metaTitle"] = "short" } }));
+        _database.Read(context => context.Rows("cms_article").Where(row => EF.Property<Guid>(row, "document_id") == id).ExecuteUpdate(set => set.SetProperty(row => EF.Property<string?>(row, "seo_meta_title"), "a stored value much too long")));
+        var role = _database.Database.AddRoleForTest("WriteOnly", ("content.article.read", new PermissionConstraints { Fields = ["title"] }), ("content.article.update", null));
+        return (id, WithRole(role));
+    }
+
+    public static TheoryData<object> PatchesOfAnotherFieldOfTheComponent() => new()
+    {
+        new ContentDocument { ["image"] = Guid.Parse("0192f2a4-3333-7000-8000-000000000003") },
+        JsonNode.Parse("""{"image":"0192f2a4-3333-7000-8000-000000000003"}""")!,
+        """{"image":"0192f2a4-3333-7000-8000-000000000003"}""",
+    };
+
+    [Theory]
+    [MemberData(nameof(PatchesOfAnotherFieldOfTheComponent))]
+    public async Task APatchIntoAComponentDoesNotHearOfAStoredValueItDidNotSend(object seo)
+    {
+        var (id, writer) = await TooLongStoredTitleAsync();
+
+        var patched = await _database.PatchAsync(writer, id, new() { ["seo"] = seo }, 1);
+
+        patched["version"].ShouldBe(2);
+        _database.Row("cms_article", id)["seo_meta_title"].ShouldBe("a stored value much too long");
+    }
+
+    [Fact]
+    public async Task AValueSentInsideAComponentIsReported()
+    {
+        var (id, writer) = await TooLongStoredTitleAsync();
+
+        foreach (var guess in new[] { "a stored value much too long", "another value much too long" })
+        {
+            (await Should.ThrowAsync<ValidationException>(() => _database.PatchAsync(writer, id, new() { ["seo"] = new ContentDocument { ["metaTitle"] = guess } }, 1)))
+                .Errors.ShouldHaveSingleItem().ShouldSatisfyAllConditions(
+                    error => error.Path.ShouldBe("seo.metaTitle"),
+                    error => error.Code.ShouldBe(ValidationErrorCodes.MaxLength));
+        }
+    }
+
+    [Fact]
+    public async Task AValueSentInsideABlockIsReportedAtItsIndex()
+    {
+        var id = IdOf(await _database.CreateAsync(Editor, new() { ["title"] = "T" }));
+        var role = _database.Database.AddRoleForTest("WriteOnly", ("content.article.read", new PermissionConstraints { Fields = ["title"] }), ("content.article.update", null));
+
+        (await Should.ThrowAsync<ValidationException>(() => _database.PatchAsync(WithRole(role), id, new() { ["sections"] = JsonNode.Parse("""[{"type":"hero","heading":"ok"},{"type":"hero","heading":"much too long a heading"}]""") }, 1)))
+            .Errors.ShouldHaveSingleItem().Path.ShouldBe("sections[1].heading");
+    }
+}
+
 public sealed class ContentServiceFallbackEchoTests : IDisposable
 {
     private readonly ServiceDatabase _database = new();
@@ -309,6 +367,45 @@ public sealed class ContentServiceGrantTests : IDisposable
             origin: Origin.Seed);
 
         database.Row("cms_scored", created.Id)["score"].ShouldBe(42L);
+    }
+
+    [Fact]
+    public async Task ASystemJobThatReadsAndUpdatesAClassKeepsAHiddenValue()
+    {
+        using var database = new ServiceDatabase(schema: SampleSchema.NewBuilder().AddContentType<Scored>().Build());
+        Task<T> AsJob<T>(Func<IContentService<Scored>, Task<T>> work) =>
+            database.AsAsync(Principal.System, services => work(services.GetRequiredService<IContentService<Scored>>()), origin: Origin.Job);
+        var created = await AsJob(service => service.CreateAsync(new Scored { Name = "seeded", Score = 42 }, Token));
+
+        var read = (await AsJob(service => service.GetAsync(created.Id, new GetOptions { Status = QueryStatus.Draft }, Token)))!;
+        read.Score.ShouldBe(0);
+        read.Name = "changed";
+        await AsJob(service => service.UpdateAsync(created.Id, read, read.Version, Token));
+
+        var row = database.Row("cms_scored", created.Id);
+        row["name"].ShouldBe("changed");
+        row["score"].ShouldBe(42L);
+
+        // A value other than the default is a write, and a patch puts it back to the default.
+        read.Score = 50;
+        await AsJob(service => service.UpdateAsync(created.Id, read, 2, Token));
+        database.Row("cms_scored", created.Id)["score"].ShouldBe(50L);
+
+        await AsJob(service => service.PatchAsync(created.Id, new() { ["score"] = 0 }, 3, Token));
+        database.Row("cms_scored", created.Id)["score"].ShouldBe(0L);
+    }
+
+    [Fact]
+    public async Task ASystemTypedCreateSendsAHiddenDefaultToo()
+    {
+        using var database = new ServiceDatabase(schema: SampleSchema.NewBuilder().AddContentType<Scored>().Build());
+
+        var created = await database.AsAsync(
+            Principal.System,
+            services => services.GetRequiredService<IContentService<Scored>>().CreateAsync(new Scored { Name = "seeded" }, Token),
+            origin: Origin.Seed);
+
+        database.Row("cms_scored", created.Id)["score"].ShouldBe(0L);
     }
 }
 

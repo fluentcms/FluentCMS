@@ -34,7 +34,7 @@ internal sealed class TypedContentService<T>(ContentService documents, SchemaMod
         ArgumentNullException.ThrowIfNull(entry);
 
         var limits = await documents.TypedWriteLimitsAsync(_type, cancellationToken);
-        return await ReadBackAsync(await documents.CreateAsync(_type, mapper.ToDocument(entry, static _ => true, limits.IsSystem), cancellationToken));
+        return await ReadBackAsync(await documents.CreateAsync(_type, mapper.ToDocument(entry, static _ => true, limits.IsSystem, isUpdate: false), cancellationToken));
     }
 
     public async Task<T> UpdateAsync(Guid id, T entry, int expectedVersion, CancellationToken cancellationToken = default)
@@ -43,7 +43,7 @@ internal sealed class TypedContentService<T>(ContentService documents, SchemaMod
 
         // What the principal may not read came back as a default: sending it would overwrite the stored value.
         var limits = await documents.TypedWriteLimitsAsync(_type, cancellationToken);
-        return await ReadBackAsync(await documents.UpdateAsync(_type, id, mapper.ToDocument(entry, limits.CanRead, limits.IsSystem), expectedVersion, cancellationToken));
+        return await ReadBackAsync(await documents.UpdateAsync(_type, id, mapper.ToDocument(entry, limits.CanRead, limits.IsSystem, isUpdate: true), expectedVersion, cancellationToken));
     }
 
     public async Task<T> PatchAsync(Guid id, ContentDocument patch, int expectedVersion, CancellationToken cancellationToken = default) =>

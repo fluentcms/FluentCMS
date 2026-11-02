@@ -18,7 +18,9 @@ internal sealed class EntryErrors(SchemaModel schema, SchemaType type, Effective
 
     public static readonly ValidationError ProducedValue = new("", ValidationErrorCodes.InvalidValue, "A value set while saving the entry is not valid.");
 
-    public (List<ValidationError> Reportable, List<ValidationError> ToCompare, bool Produced) Sort(IReadOnlyList<ValidationError> errors, JsonObject now, JsonObject sent, IReadOnlySet<string> named)
+    // sent is the entry before any hook, and fromClient only what the client itself sent: a patch into a component names
+    // some of its fields, and the rest of them are stored values it did not send.
+    public (List<ValidationError> Reportable, List<ValidationError> ToCompare, bool Produced) Sort(IReadOnlyList<ValidationError> errors, JsonObject now, JsonObject sent, JsonObject fromClient)
     {
         List<ValidationError> reportable = [];
         List<ValidationError> toCompare = [];
@@ -32,7 +34,7 @@ internal sealed class EntryErrors(SchemaModel schema, SchemaType type, Effective
             }
 
             var same = JsonNode.DeepEquals(ValueAt(now, error.Path), ValueAt(sent, error.Path));
-            if (same && !path.Hidden && named.Contains(Parse(error.Path)[0].Name))
+            if (same && !path.Hidden && WasSent(fromClient, error.Path))
             {
                 reportable.Add(error);
             }
@@ -80,6 +82,42 @@ internal sealed class EntryErrors(SchemaModel schema, SchemaType type, Effective
         }
 
         return (!hidden && permissions.CanReadField(type, top.Name, target), hidden);
+    }
+
+    private static bool WasSent(JsonObject fromClient, string path)
+    {
+        JsonNode? value = fromClient;
+        foreach (var (name, index) in Parse(path))
+        {
+            if (AsJson(value) is not JsonObject container || !container.ContainsKey(name))
+            {
+                return false;
+            }
+
+            value = container[name];
+            if (index is { } position)
+            {
+                if (AsJson(value) is not JsonArray items || position >= items.Count)
+                {
+                    return false;
+                }
+
+                value = items[position];
+            }
+        }
+
+        return true;
+    }
+
+    // A component or block may arrive as JSON text.
+    private static JsonNode? AsJson(JsonNode? value)
+    {
+        if (value is not JsonValue text || !text.TryGetValue<string>(out var json))
+        {
+            return value;
+        }
+
+        return RawValue.TryReadJson(json, out var parsed, out _) ? parsed : value;
     }
 
     private static JsonNode? ValueAt(JsonObject root, string path)
