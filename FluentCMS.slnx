@@ -1,0 +1,35 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FluentCMS.Sdk/FluentCMS.Sdk.csproj" />
+    <Project Path="src/FluentCMS.Core/FluentCMS.Core.csproj" />
+    <Project Path="src/FluentCMS.Data.PostgreSql/FluentCMS.Data.PostgreSql.csproj" />
+    <Project Path="src/FluentCMS.Data.Sqlite/FluentCMS.Data.Sqlite.csproj" />
+    <Project Path="src/FluentCMS.Data.SqlServer/FluentCMS.Data.SqlServer.csproj" />
+    <Project Path="src/FluentCMS.Testing/FluentCMS.Testing.csproj" />
+    <Project Path="src/FluentCMS.Cli/FluentCMS.Cli.csproj" />
+    <Project Path="src/FluentCMS.Generators/FluentCMS.Generators.csproj" />
+    <Project Path="src/FluentCMS.Analyzers/FluentCMS.Analyzers.csproj" />
+    <Project Path="src/FluentCMS.Host/FluentCMS.Host.csproj" />
+  </Folder>
+  <Folder Name="/src/plugins/">
+    <Project Path="src/plugins/FluentCMS.Plugins.Media/FluentCMS.Plugins.Media.csproj" />
+    <Project Path="src/plugins/FluentCMS.Plugins.Media.S3/FluentCMS.Plugins.Media.S3.csproj" />
+    <Project Path="src/plugins/FluentCMS.Plugins.Media.AzureBlob/FluentCMS.Plugins.Media.AzureBlob.csproj" />
+    <Project Path="src/plugins/FluentCMS.Plugins.Webhooks/FluentCMS.Plugins.Webhooks.csproj" />
+    <Project Path="src/plugins/FluentCMS.Plugins.GraphQL/FluentCMS.Plugins.GraphQL.csproj" />
+    <Project Path="src/plugins/FluentCMS.Plugins.Mcp/FluentCMS.Plugins.Mcp.csproj" />
+    <Project Path="src/plugins/FluentCMS.Plugins.AiAssist/FluentCMS.Plugins.AiAssist.csproj" />
+    <Project Path="src/plugins/FluentCMS.Plugins.MultiSite/FluentCMS.Plugins.MultiSite.csproj" />
+    <Project Path="src/plugins/FluentCMS.Plugins.Search/FluentCMS.Plugins.Search.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FluentCMS.Sdk.Tests/FluentCMS.Sdk.Tests.csproj" />
+    <Project Path="tests/FluentCMS.Core.Tests/FluentCMS.Core.Tests.csproj" />
+    <Project Path="tests/FluentCMS.Core.IntegrationTests/FluentCMS.Core.IntegrationTests.csproj" />
+    <Project Path="tests/FluentCMS.Data.Tests/FluentCMS.Data.Tests.csproj" />
+    <Project Path="tests/FluentCMS.Architecture.Tests/FluentCMS.Architecture.Tests.csproj" />
+  </Folder>
+  <Folder Name="/samples/">
+    <Project Path="samples/Blog/Blog.csproj" />
+  </Folder>
+</Solution>

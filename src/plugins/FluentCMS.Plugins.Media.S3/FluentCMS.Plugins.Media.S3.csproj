@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="../FluentCMS.Plugins.Media/FluentCMS.Plugins.Media.csproj" />
+  </ItemGroup>
+
+</Project>
