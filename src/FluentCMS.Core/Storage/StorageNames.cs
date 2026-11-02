@@ -7,9 +7,12 @@ namespace FluentCMS.Core.Storage;
 internal static class StorageNames
 {
     public const string Prefix = "cms_";
+    public const string HistoryTableSuffix = "__migrations";
     public const string Document = "cms_document";
     public const string Reference = "cms_reference";
     public const string Version = "cms_version";
+    public const string Role = "cms_role";
+    public const string RolePermission = "cms_role_permission";
 
     public const string Id = "id";
     public const string DocumentId = "document_id";

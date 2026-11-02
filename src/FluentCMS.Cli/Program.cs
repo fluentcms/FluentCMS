@@ -1,1 +1,3 @@
-return 0;
+using FluentCMS.Cli;
+
+return CommandLine.Run(args, Console.Out, Console.Error);

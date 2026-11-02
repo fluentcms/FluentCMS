@@ -1,4 +1,10 @@
 #nullable enable
+FluentCMS.Authorization.IPermissionProvider
+FluentCMS.Authorization.IPermissionProvider.GetPermissions() -> System.Collections.Generic.IEnumerable<FluentCMS.Authorization.Permission!>!
+FluentCMS.Authorization.Permission
+FluentCMS.Authorization.Permission.Description.get -> string!
+FluentCMS.Authorization.Permission.Name.get -> string!
+FluentCMS.Authorization.Permission.Permission(string! name, string! description) -> void
 FluentCMS.Content.And
 FluentCMS.Content.And.And(params System.Collections.Generic.IReadOnlyList<FluentCMS.Content.ContentFilter!>! Filters) -> void
 FluentCMS.Content.And.Deconstruct(out System.Collections.Generic.IReadOnlyList<FluentCMS.Content.ContentFilter!>! Filters) -> void
@@ -610,6 +616,7 @@ FluentCMS.Sites.SiteId.SiteId(System.Guid Value) -> void
 FluentCMS.Sites.SiteId.Value.get -> System.Guid
 FluentCMS.Sites.SiteId.Value.init -> void
 abstract FluentCMS.Content.ContentFilter.<Clone>$() -> FluentCMS.Content.ContentFilter!
+const FluentCMS.Authorization.Permission.ContentPrefix = "content" -> string!
 const FluentCMS.Content.ValidationErrorCodes.AboveMaximum = "FCMS2105" -> string!
 const FluentCMS.Content.ValidationErrorCodes.BelowMinimum = "FCMS2104" -> string!
 const FluentCMS.Content.ValidationErrorCodes.Custom = "FCMS2109" -> string!
@@ -628,6 +635,7 @@ const FluentCMS.Schema.FieldSettings.Scale = "scale" -> string!
 const FluentCMS.Schema.FieldSettings.Source = "source" -> string!
 const FluentCMS.Schema.RichTextFormats.Html = "html" -> string!
 const FluentCMS.Schema.RichTextFormats.Markdown = "markdown" -> string!
+override FluentCMS.Authorization.Permission.ToString() -> string!
 override FluentCMS.Content.And.<Clone>$() -> FluentCMS.Content.And!
 override FluentCMS.Content.And.Equals(object? obj) -> bool
 override FluentCMS.Content.And.GetHashCode() -> int
@@ -691,6 +699,7 @@ override sealed FluentCMS.Content.And.Equals(FluentCMS.Content.ContentFilter? ot
 override sealed FluentCMS.Content.FieldFilter.Equals(FluentCMS.Content.ContentFilter? other) -> bool
 override sealed FluentCMS.Content.Not.Equals(FluentCMS.Content.ContentFilter? other) -> bool
 override sealed FluentCMS.Content.Or.Equals(FluentCMS.Content.ContentFilter? other) -> bool
+static FluentCMS.Authorization.Permission.IsValidName(string? name) -> bool
 static FluentCMS.Content.And.operator !=(FluentCMS.Content.And? left, FluentCMS.Content.And? right) -> bool
 static FluentCMS.Content.And.operator ==(FluentCMS.Content.And? left, FluentCMS.Content.And? right) -> bool
 static FluentCMS.Content.ContentFilter.operator !=(FluentCMS.Content.ContentFilter? left, FluentCMS.Content.ContentFilter? right) -> bool

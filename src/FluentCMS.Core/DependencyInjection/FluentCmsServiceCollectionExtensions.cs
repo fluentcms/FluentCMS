@@ -1,8 +1,10 @@
+using System.Reflection;
+using FluentCMS.Authorization;
+using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Storage;
 using FluentCMS.Schema;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -30,10 +32,17 @@ public static class FluentCmsServiceCollectionExtensions
         // Until content types can be added to the builder, a schema comes from the container, and none means system tables only.
         services.TryAddSingleton(_ => new SchemaBuilder().Build());
 
+        services.TryAddSingleton(serviceProvider => new PermissionCatalogue(
+            serviceProvider.GetRequiredService<SchemaModel>(),
+            serviceProvider.GetServices<IPermissionProvider>()));
+
+        services.AddSingleton<RoleVersionInterceptor>();
+
+        var contentMigrations = builder.ContentMigrationsAssembly ?? Assembly.GetEntryAssembly() ?? typeof(CmsDbContext).Assembly;
         services.AddDbContext<CmsDbContext>((serviceProvider, options) =>
         {
-            provider.ConfigureDbContext(options);
-            options.UseCmsModel(serviceProvider.GetRequiredService<SchemaModel>(), provider.Conventions, provider.JsonDialect);
+            ContentMigrations.Configure(options, provider, serviceProvider.GetRequiredService<SchemaModel>(), contentMigrations);
+            options.AddInterceptors(serviceProvider.GetRequiredService<RoleVersionInterceptor>());
         });
 
         services.AddDbContext<SystemDbContext>(options =>
@@ -41,6 +50,10 @@ public static class FluentCmsServiceCollectionExtensions
             provider.ConfigureSystemMigrations(options);
             options.UseSystemModel(provider.Conventions);
         });
+
+        services.AddLogging();
+        services.AddSingleton<MigrationRunner>();
+        services.AddHostedService<MigrationStartupService>();
 
         services.TryAddSingleton<ContentQueryOptions>();
         services.TryAddScoped<IContentQueryAccess, OpenContentQueryAccess>();
