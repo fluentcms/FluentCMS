@@ -356,7 +356,7 @@ internal sealed class SchemaJsonReader(SchemaBuilder builder)
         return ok && Add(steps, f => f.Display(label, help, placeholder, group, tab, width));
     }
 
-    private Condition? ReadCondition(JsonElement element, string path)
+    internal Condition? ReadCondition(JsonElement element, string path)
     {
         if (element.ValueKind != JsonValueKind.Object)
         {
