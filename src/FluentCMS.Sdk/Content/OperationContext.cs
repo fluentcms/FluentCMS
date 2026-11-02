@@ -20,4 +20,14 @@ public sealed record OperationContext(
     string Locale,
     string? ClientId,
     string CorrelationId,
-    DateTimeOffset Timestamp);
+    DateTimeOffset Timestamp)
+{
+    /// <summary>
+    /// Who this operation acts for, when <see cref="Principal"/> does the work on someone's behalf. It is for the
+    /// audit trail only: authorization reads <see cref="Principal"/> and never this.
+    /// </summary>
+    public Principal? Actor { get; init; }
+
+    /// <summary>The identity to record on what this operation writes: <see cref="Actor"/> if there is one, otherwise <see cref="Principal"/>.</summary>
+    public Principal AuditPrincipal => Actor ?? Principal;
+}

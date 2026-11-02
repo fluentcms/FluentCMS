@@ -14,9 +14,17 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
     private const int PermissionLength = 128;
     private const int SiteNameLength = 128;
     private const int SlugLength = 64;
+    private const int JobTypeLength = 128;
+    private const int QueueLength = 64;
+    private const int LeaseOwnerLength = 128;
+    private const int RecurringNameLength = 128;
+    private const int CronLength = 128;
 
     public void Apply(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<Job>(MapJob);
+        modelBuilder.Entity<JobAttempt>(MapJobAttempt);
+        modelBuilder.Entity<RecurringJob>(MapRecurringJob);
         modelBuilder.Entity<Site>(MapSite);
         modelBuilder.Entity<SiteLocale>(MapSiteLocale);
         modelBuilder.Entity<Document>(MapDocument);
@@ -144,6 +152,53 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         entity.HasOne<Role>().WithMany().HasForeignKey(grant => grant.RoleId).OnDelete(DeleteBehavior.Cascade);
         entity.HasIndex(grant => new { grant.RoleId, grant.Permission })
             .HasDatabaseName("ix_cms_role_permission_role_permission");
+    }
+
+    private void MapJob(EntityTypeBuilder<Job> entity)
+    {
+        entity.ToTable(StorageNames.Job);
+        MapColumnNames(entity);
+        entity.Property(job => job.Id).HasValueGenerator<GuidV7ValueGenerator>();
+        entity.Property(job => job.Type).HasMaxLength(JobTypeLength);
+        entity.Property(job => job.Queue).HasMaxLength(QueueLength);
+        entity.Property(job => job.Status).HasMaxLength(StatusLength);
+        entity.Property(job => job.LeaseOwner).HasMaxLength(LeaseOwnerLength);
+        entity.Property(job => job.LastError).HasMaxLength(Job.LastErrorMaxLength);
+        entity.Property(job => job.Origin).HasConversion<string>().HasMaxLength(StatusLength);
+        conventions.ConfigureJsonColumn(entity, entity.Property(job => job.Payload));
+
+        // In the order of the claim's ORDER BY, so that it seeks and does not sort, and over live jobs only, so that
+        // finished ones are never walked. The claim must repeat this filter as literals for a database to use it.
+        entity.HasIndex(job => new { job.Queue, job.Priority, job.RunAt, job.Id })
+            .IsDescending(false, true, false, false)
+            .HasFilter("status IN ('pending', 'running')")
+            .HasDatabaseName("ix_cms_job_claim");
+
+        entity.HasIndex(job => new { job.Status, job.LeaseUntil })
+            .HasDatabaseName("ix_cms_job_status_lease");
+    }
+
+    private static void MapJobAttempt(EntityTypeBuilder<JobAttempt> entity)
+    {
+        entity.ToTable(StorageNames.JobAttempt);
+        MapColumnNames(entity);
+        entity.HasKey(attempt => new { attempt.JobId, attempt.Attempt });
+        entity.Property(attempt => attempt.Outcome).HasMaxLength(StatusLength);
+        entity.Property(attempt => attempt.Error).HasMaxLength(Job.LastErrorMaxLength);
+
+        entity.HasOne<Job>().WithMany().HasForeignKey(attempt => attempt.JobId).OnDelete(DeleteBehavior.Cascade);
+    }
+
+    private void MapRecurringJob(EntityTypeBuilder<RecurringJob> entity)
+    {
+        entity.ToTable(StorageNames.RecurringJob);
+        MapColumnNames(entity);
+        entity.HasKey(job => job.Name);
+        entity.Property(job => job.Name).HasMaxLength(RecurringNameLength);
+        entity.Property(job => job.Cron).HasMaxLength(CronLength);
+        entity.Property(job => job.Type).HasMaxLength(JobTypeLength);
+        entity.Property(job => job.Queue).HasMaxLength(QueueLength);
+        conventions.ConfigureJsonColumn(entity, entity.Property(job => job.Payload));
     }
 
     private static void MapColumnNames<T>(EntityTypeBuilder<T> entity)
