@@ -1,1 +1,174 @@
 #nullable enable
+FluentCMS.Content.IOperationContextAccessor
+FluentCMS.Content.IOperationContextAccessor.Current.get -> FluentCMS.Content.OperationContext?
+FluentCMS.Content.IOperationContextAccessor.Current.set -> void
+FluentCMS.Content.OperationContext
+FluentCMS.Content.OperationContext.<Clone>$() -> FluentCMS.Content.OperationContext!
+FluentCMS.Content.OperationContext.ClientId.get -> string?
+FluentCMS.Content.OperationContext.ClientId.init -> void
+FluentCMS.Content.OperationContext.CorrelationId.get -> string!
+FluentCMS.Content.OperationContext.CorrelationId.init -> void
+FluentCMS.Content.OperationContext.Deconstruct(out FluentCMS.Content.Principal! Principal, out FluentCMS.Content.Origin Origin, out FluentCMS.Sites.SiteId Site, out string! Locale, out string? ClientId, out string! CorrelationId, out System.DateTimeOffset Timestamp) -> void
+FluentCMS.Content.OperationContext.Equals(FluentCMS.Content.OperationContext? other) -> bool
+FluentCMS.Content.OperationContext.Locale.get -> string!
+FluentCMS.Content.OperationContext.Locale.init -> void
+FluentCMS.Content.OperationContext.OperationContext(FluentCMS.Content.Principal! Principal, FluentCMS.Content.Origin Origin, FluentCMS.Sites.SiteId Site, string! Locale, string? ClientId, string! CorrelationId, System.DateTimeOffset Timestamp) -> void
+FluentCMS.Content.OperationContext.Origin.get -> FluentCMS.Content.Origin
+FluentCMS.Content.OperationContext.Origin.init -> void
+FluentCMS.Content.OperationContext.Principal.get -> FluentCMS.Content.Principal!
+FluentCMS.Content.OperationContext.Principal.init -> void
+FluentCMS.Content.OperationContext.Site.get -> FluentCMS.Sites.SiteId
+FluentCMS.Content.OperationContext.Site.init -> void
+FluentCMS.Content.OperationContext.Timestamp.get -> System.DateTimeOffset
+FluentCMS.Content.OperationContext.Timestamp.init -> void
+FluentCMS.Content.Origin
+FluentCMS.Content.Origin.Admin = 1 -> FluentCMS.Content.Origin
+FluentCMS.Content.Origin.Api = 2 -> FluentCMS.Content.Origin
+FluentCMS.Content.Origin.Cli = 5 -> FluentCMS.Content.Origin
+FluentCMS.Content.Origin.Job = 4 -> FluentCMS.Content.Origin
+FluentCMS.Content.Origin.Mcp = 3 -> FluentCMS.Content.Origin
+FluentCMS.Content.Origin.Seed = 6 -> FluentCMS.Content.Origin
+FluentCMS.Content.Principal
+FluentCMS.Content.Principal.Claim(string! type) -> string?
+FluentCMS.Content.Principal.Claims.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+FluentCMS.Content.Principal.Equals(FluentCMS.Content.Principal? other) -> bool
+FluentCMS.Content.Principal.Id.get -> System.Guid
+FluentCMS.Content.Principal.IsSystem.get -> bool
+FluentCMS.Content.Principal.Kind.get -> FluentCMS.Content.PrincipalKind
+FluentCMS.Content.Principal.Name.get -> string!
+FluentCMS.Content.Principal.Principal(FluentCMS.Content.PrincipalKind kind, System.Guid id, string! name, System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<string!, string!>>? claims = null) -> void
+FluentCMS.Content.PrincipalKind
+FluentCMS.Content.PrincipalKind.AdminUser = 1 -> FluentCMS.Content.PrincipalKind
+FluentCMS.Content.PrincipalKind.ApiKey = 3 -> FluentCMS.Content.PrincipalKind
+FluentCMS.Content.PrincipalKind.Member = 2 -> FluentCMS.Content.PrincipalKind
+FluentCMS.Content.PrincipalKind.ServiceAccount = 4 -> FluentCMS.Content.PrincipalKind
+FluentCMS.Content.PrincipalKind.System = 5 -> FluentCMS.Content.PrincipalKind
+FluentCMS.Media.MediaRef
+FluentCMS.Media.MediaRef.Deconstruct(out System.Guid Id) -> void
+FluentCMS.Media.MediaRef.Equals(FluentCMS.Media.MediaRef other) -> bool
+FluentCMS.Media.MediaRef.Id.get -> System.Guid
+FluentCMS.Media.MediaRef.Id.init -> void
+FluentCMS.Media.MediaRef.IsEmpty.get -> bool
+FluentCMS.Media.MediaRef.MediaRef() -> void
+FluentCMS.Media.MediaRef.MediaRef(System.Guid Id) -> void
+FluentCMS.Media.MediaRefList
+FluentCMS.Media.MediaRefList.<Clone>$() -> FluentCMS.Media.MediaRefList!
+FluentCMS.Media.MediaRefList.Count.get -> int
+FluentCMS.Media.MediaRefList.Equals(FluentCMS.Media.MediaRefList? other) -> bool
+FluentCMS.Media.MediaRefList.GetEnumerator() -> System.Collections.Generic.IEnumerator<FluentCMS.Media.MediaRef>!
+FluentCMS.Media.MediaRefList.MediaRefList() -> void
+FluentCMS.Media.MediaRefList.MediaRefList(System.Collections.Generic.IEnumerable<FluentCMS.Media.MediaRef>! items) -> void
+FluentCMS.Media.MediaRefList.this[int index].get -> FluentCMS.Media.MediaRef
+FluentCMS.Publishing.EntryStatus
+FluentCMS.Publishing.EntryStatus.Draft = 0 -> FluentCMS.Publishing.EntryStatus
+FluentCMS.Publishing.EntryStatus.Modified = 2 -> FluentCMS.Publishing.EntryStatus
+FluentCMS.Publishing.EntryStatus.Published = 1 -> FluentCMS.Publishing.EntryStatus
+FluentCMS.Publishing.EntryStatus.Unpublished = 3 -> FluentCMS.Publishing.EntryStatus
+FluentCMS.Schema.BlockList
+FluentCMS.Schema.BlockList.<Clone>$() -> FluentCMS.Schema.BlockList!
+FluentCMS.Schema.BlockList.BlockList() -> void
+FluentCMS.Schema.BlockList.BlockList(System.Collections.Generic.IEnumerable<object!>! items) -> void
+FluentCMS.Schema.BlockList.Count.get -> int
+FluentCMS.Schema.BlockList.Equals(FluentCMS.Schema.BlockList? other) -> bool
+FluentCMS.Schema.BlockList.GetEnumerator() -> System.Collections.Generic.IEnumerator<object!>!
+FluentCMS.Schema.BlockList.this[int index].get -> object!
+FluentCMS.Schema.ContentItem
+FluentCMS.Schema.ContentItem.ContentItem() -> void
+FluentCMS.Schema.ContentItem.CreatedAt.get -> System.DateTimeOffset
+FluentCMS.Schema.ContentItem.CreatedAt.set -> void
+FluentCMS.Schema.ContentItem.CreatedBy.get -> System.Guid
+FluentCMS.Schema.ContentItem.CreatedBy.set -> void
+FluentCMS.Schema.ContentItem.Id.get -> System.Guid
+FluentCMS.Schema.ContentItem.Id.set -> void
+FluentCMS.Schema.ContentItem.Locale.get -> string!
+FluentCMS.Schema.ContentItem.Locale.set -> void
+FluentCMS.Schema.ContentItem.PublishedAt.get -> System.DateTimeOffset?
+FluentCMS.Schema.ContentItem.PublishedAt.set -> void
+FluentCMS.Schema.ContentItem.Status.get -> FluentCMS.Publishing.EntryStatus
+FluentCMS.Schema.ContentItem.Status.set -> void
+FluentCMS.Schema.ContentItem.UpdatedAt.get -> System.DateTimeOffset
+FluentCMS.Schema.ContentItem.UpdatedAt.set -> void
+FluentCMS.Schema.ContentItem.UpdatedBy.get -> System.Guid
+FluentCMS.Schema.ContentItem.UpdatedBy.set -> void
+FluentCMS.Schema.ContentItem.Version.get -> int
+FluentCMS.Schema.ContentItem.Version.set -> void
+FluentCMS.Schema.Ref<T>
+FluentCMS.Schema.Ref<T>.Deconstruct(out System.Guid Id) -> void
+FluentCMS.Schema.Ref<T>.Id.get -> System.Guid
+FluentCMS.Schema.Ref<T>.Id.init -> void
+FluentCMS.Schema.Ref<T>.IsEmpty.get -> bool
+FluentCMS.Schema.Ref<T>.Ref() -> void
+FluentCMS.Schema.Ref<T>.Ref(System.Guid Id) -> void
+FluentCMS.Schema.RefList
+FluentCMS.Schema.RefList<T>
+FluentCMS.Schema.RefList<T>.Count.get -> int
+FluentCMS.Schema.RefList<T>.Equals(FluentCMS.Schema.RefList<T!>? other) -> bool
+FluentCMS.Schema.RefList<T>.GetEnumerator() -> System.Collections.Generic.IEnumerator<FluentCMS.Schema.Ref<T!>>!
+FluentCMS.Schema.RefList<T>.RefList() -> void
+FluentCMS.Schema.RefList<T>.RefList(System.Collections.Generic.IEnumerable<FluentCMS.Schema.Ref<T!>>! items) -> void
+FluentCMS.Schema.RefList<T>.this[int index].get -> FluentCMS.Schema.Ref<T!>
+FluentCMS.Schema.RichText
+FluentCMS.Schema.RichText.<Clone>$() -> FluentCMS.Schema.RichText!
+FluentCMS.Schema.RichText.Equals(FluentCMS.Schema.RichText? other) -> bool
+FluentCMS.Schema.RichText.Json.get -> string!
+FluentCMS.Schema.RichText.RichText(string! json) -> void
+FluentCMS.Sites.SiteId
+FluentCMS.Sites.SiteId.Deconstruct(out System.Guid Value) -> void
+FluentCMS.Sites.SiteId.Equals(FluentCMS.Sites.SiteId other) -> bool
+FluentCMS.Sites.SiteId.IsEmpty.get -> bool
+FluentCMS.Sites.SiteId.SiteId() -> void
+FluentCMS.Sites.SiteId.SiteId(System.Guid Value) -> void
+FluentCMS.Sites.SiteId.Value.get -> System.Guid
+FluentCMS.Sites.SiteId.Value.init -> void
+override FluentCMS.Content.OperationContext.Equals(object? obj) -> bool
+override FluentCMS.Content.OperationContext.GetHashCode() -> int
+override FluentCMS.Content.OperationContext.ToString() -> string!
+override FluentCMS.Content.Principal.Equals(object? obj) -> bool
+override FluentCMS.Content.Principal.GetHashCode() -> int
+override FluentCMS.Content.Principal.ToString() -> string!
+override FluentCMS.Media.MediaRef.GetHashCode() -> int
+override FluentCMS.Media.MediaRef.ToString() -> string!
+override FluentCMS.Media.MediaRefList.Equals(object? obj) -> bool
+override FluentCMS.Media.MediaRefList.GetHashCode() -> int
+override FluentCMS.Media.MediaRefList.ToString() -> string!
+override FluentCMS.Schema.BlockList.Equals(object? obj) -> bool
+override FluentCMS.Schema.BlockList.GetHashCode() -> int
+override FluentCMS.Schema.BlockList.ToString() -> string!
+override FluentCMS.Schema.Ref<T>.GetHashCode() -> int
+override FluentCMS.Schema.Ref<T>.ToString() -> string!
+override FluentCMS.Schema.RefList<T>.Equals(object? obj) -> bool
+override FluentCMS.Schema.RefList<T>.GetHashCode() -> int
+override FluentCMS.Schema.RefList<T>.ToString() -> string!
+override FluentCMS.Schema.RichText.Equals(object? obj) -> bool
+override FluentCMS.Schema.RichText.GetHashCode() -> int
+override FluentCMS.Schema.RichText.ToString() -> string!
+override FluentCMS.Sites.SiteId.GetHashCode() -> int
+override FluentCMS.Sites.SiteId.ToString() -> string!
+static FluentCMS.Content.OperationContext.operator !=(FluentCMS.Content.OperationContext? left, FluentCMS.Content.OperationContext? right) -> bool
+static FluentCMS.Content.OperationContext.operator ==(FluentCMS.Content.OperationContext? left, FluentCMS.Content.OperationContext? right) -> bool
+static FluentCMS.Content.Principal.System.get -> FluentCMS.Content.Principal!
+static FluentCMS.Media.MediaRef.operator !=(FluentCMS.Media.MediaRef left, FluentCMS.Media.MediaRef right) -> bool
+static FluentCMS.Media.MediaRef.operator ==(FluentCMS.Media.MediaRef left, FluentCMS.Media.MediaRef right) -> bool
+static FluentCMS.Media.MediaRefList.Create(System.ReadOnlySpan<FluentCMS.Media.MediaRef> items) -> FluentCMS.Media.MediaRefList!
+static FluentCMS.Media.MediaRefList.operator !=(FluentCMS.Media.MediaRefList? left, FluentCMS.Media.MediaRefList? right) -> bool
+static FluentCMS.Media.MediaRefList.operator ==(FluentCMS.Media.MediaRefList? left, FluentCMS.Media.MediaRefList? right) -> bool
+static FluentCMS.Schema.BlockList.Create(System.ReadOnlySpan<object!> items) -> FluentCMS.Schema.BlockList!
+static FluentCMS.Schema.BlockList.operator !=(FluentCMS.Schema.BlockList? left, FluentCMS.Schema.BlockList? right) -> bool
+static FluentCMS.Schema.BlockList.operator ==(FluentCMS.Schema.BlockList? left, FluentCMS.Schema.BlockList? right) -> bool
+static FluentCMS.Schema.ContentItem.ReservedFieldNames.get -> System.Collections.Generic.IReadOnlySet<string!>!
+static FluentCMS.Schema.RefList.Create<T>(System.ReadOnlySpan<FluentCMS.Schema.Ref<T!>> items) -> FluentCMS.Schema.RefList<T!>!
+static FluentCMS.Schema.RichText.Empty.get -> FluentCMS.Schema.RichText!
+static FluentCMS.Schema.RichText.operator !=(FluentCMS.Schema.RichText? left, FluentCMS.Schema.RichText? right) -> bool
+static FluentCMS.Schema.RichText.operator ==(FluentCMS.Schema.RichText? left, FluentCMS.Schema.RichText? right) -> bool
+static FluentCMS.Sites.SiteId.Empty.get -> FluentCMS.Sites.SiteId
+static FluentCMS.Sites.SiteId.operator !=(FluentCMS.Sites.SiteId left, FluentCMS.Sites.SiteId right) -> bool
+static FluentCMS.Sites.SiteId.operator ==(FluentCMS.Sites.SiteId left, FluentCMS.Sites.SiteId right) -> bool
+~FluentCMS.Schema.Ref<T>.Equals(FluentCMS.Schema.Ref<T> other) -> bool
+~FluentCMS.Schema.RefList<T>.<Clone>$() -> FluentCMS.Schema.RefList<T>!
+~override FluentCMS.Media.MediaRef.Equals(object obj) -> bool
+~override FluentCMS.Schema.Ref<T>.Equals(object obj) -> bool
+~override FluentCMS.Sites.SiteId.Equals(object obj) -> bool
+~static FluentCMS.Schema.Ref<T>.operator !=(FluentCMS.Schema.Ref<T> left, FluentCMS.Schema.Ref<T> right) -> bool
+~static FluentCMS.Schema.Ref<T>.operator ==(FluentCMS.Schema.Ref<T> left, FluentCMS.Schema.Ref<T> right) -> bool
+~static FluentCMS.Schema.RefList<T>.operator !=(FluentCMS.Schema.RefList<T>? left, FluentCMS.Schema.RefList<T>? right) -> bool
+~static FluentCMS.Schema.RefList<T>.operator ==(FluentCMS.Schema.RefList<T>? left, FluentCMS.Schema.RefList<T>? right) -> bool
