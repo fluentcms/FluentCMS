@@ -78,6 +78,39 @@ public sealed class BulkTests : IDisposable
         }
     }
 
+    private sealed class ThrowOnTitle(string title) : IBeforeUpdateHook<ContentDocument>
+    {
+        public ValueTask BeforeUpdateAsync(HookContext<ContentDocument> context, CancellationToken cancellationToken) =>
+            Equals(context.Entry["title"], title) ? throw new InvalidOperationException($"secret {title}") : ValueTask.CompletedTask;
+    }
+
+    // Changes another entry once the first publish has committed, between the selection and that entry's turn.
+    private sealed class ChangeAfterPublish : IEntryChangeSink
+    {
+        public Func<Task>? Change { get; set; }
+
+        public async ValueTask PublishAsync(EntryChange change, CancellationToken cancellationToken)
+        {
+            if (change.Kind == EntryChangeKind.Published && Change is { } run)
+            {
+                Change = null;
+                await run();
+            }
+        }
+    }
+
+    // The single check refuses every delete, as it would for a row the selection query let through by mistake.
+    private sealed class RefuseDeletes(AuthorizationEvaluator inner) : IAuthorizationEvaluator
+    {
+        public ValueTask<EffectivePermissions> ResolveAsync(OperationContext context, CancellationToken cancellationToken = default) => inner.ResolveAsync(context, cancellationToken);
+
+        public ValueTask<bool> CanAccessEntryAsync(OperationContext context, SchemaType type, ContentOperation operation, Guid entry, AccessTarget target, QueryStatus status = QueryStatus.Published, CancellationToken cancellationToken = default) =>
+            operation == ContentOperation.Delete ? ValueTask.FromResult(false) : inner.CanAccessEntryAsync(context, type, operation, entry, target, status, cancellationToken);
+
+        public ValueTask<WritableFields> WritableFieldsAsync(OperationContext context, SchemaType type, ContentOperation operation, Guid? entry, AccessTarget target, CancellationToken cancellationToken = default) =>
+            inner.WritableFieldsAsync(context, type, operation, entry, target, cancellationToken);
+    }
+
     [Fact]
     public async Task AForbiddenItemFailsAndTheOthersComplete()
     {
@@ -414,6 +447,92 @@ public sealed class BulkTests : IDisposable
 
         await Should.ThrowAsync<ContentAccessDeniedException>(() => BulkAsync(_database, WithRole(readOnly), new BulkRequest { Operation = BulkOperation.Delete, Items = [new BulkItem(id)] }));
         await Should.ThrowAsync<ContentAccessDeniedException>(() => BulkAsync(_database, WithRole(readOnly), new BulkRequest { Operation = BulkOperation.Delete, Filter = Every, Cap = 1 }));
+    }
+
+    [Fact]
+    public async Task AnUnexpectedFailureIsReportedWithoutItsCauseAndTheOthersRun()
+    {
+        using var database = new ServiceDatabase(cms => cms.Services.AddSingleton<IBeforeUpdateHook<ContentDocument>>(new ThrowOnTitle("Boom")));
+        var one = IdOf(await database.CreateAsync(Editor, Titled("One")));
+        var two = IdOf(await database.CreateAsync(Editor, Titled("Two")));
+        var three = IdOf(await database.CreateAsync(Editor, Titled("Three")));
+        var before = database.Trace(two);
+        var request = new BulkRequest
+        {
+            Operation = BulkOperation.Update,
+            Items = [new BulkItem(one) { Patch = Titled("Go"), ExpectedVersion = 1 }, new BulkItem(two) { Patch = Titled("Boom"), ExpectedVersion = 1 }, new BulkItem(three) { Patch = Titled("Go"), ExpectedVersion = 1 }],
+        };
+
+        var result = await BulkAsync(database, Editor, request);
+
+        result.Items.Select(item => item.Status).ShouldBe([BulkItemStatus.Succeeded, BulkItemStatus.Failed, BulkItemStatus.Succeeded]);
+        var problem = result.Items[1].Problem.ShouldBeOfType<InvalidOperationException>();
+        problem.Message.ShouldBe(ContentService.UnexpectedFailure);
+        problem.InnerException.ShouldBeNull();
+        database.Trace(two).ShouldBe(before);
+        (await database.GetAsync(Editor, three))!["title"].ShouldBe("Go");
+    }
+
+    [Fact]
+    public async Task APublishByFilterPublishesTheVersionTheFilterRead()
+    {
+        var sink = new ChangeAfterPublish();
+        using var database = new ServiceDatabase(cms => cms.Services.AddSingleton<IEntryChangeSink>(sink));
+        var ids = new[] { IdOf(await database.CreateAsync(Editor, Titled("One"))), IdOf(await database.CreateAsync(Editor, Titled("Two"))) };
+        sink.Change = async () =>
+        {
+            foreach (var id in ids)
+            {
+                if (database.Document(id).Status == EntryStatus.Draft)
+                {
+                    await database.PatchAsync(Editor, id, Titled("Changed since"), 1);
+                }
+            }
+        };
+
+        var result = await BulkAsync(database, Editor, new BulkRequest { Operation = BulkOperation.Publish, Filter = Every, Cap = 2 });
+
+        result.Items[0].Status.ShouldBe(BulkItemStatus.Succeeded);
+        result.Items[1].Problem.ShouldBeOfType<VersionConflictException>().CurrentVersion.ShouldBe(2);
+        database.Document(result.Items[1].Id!.Value).Status.ShouldBe(EntryStatus.Draft);
+    }
+
+    [Fact]
+    public async Task TheSelectionQueryLeavesOutWhatTheCallerCannotChange()
+    {
+        var ann = WithRole(OwnEditor(), Guid.CreateVersion7());
+        for (var index = 0; index < 12; index++)
+        {
+            await ArticleAsync($"Theirs {index}");
+        }
+
+        var mine = await ArticleAsync("Mine", ann);
+
+        // Twelve rows Ann may read but not delete, against a cap of one: walked one by one they would pass the bound.
+        var result = await BulkAsync(_database, ann, new BulkRequest { Operation = BulkOperation.Delete, Filter = Every, Cap = 1 });
+
+        result.Items.ShouldHaveSingleItem().Id.ShouldBe(mine);
+    }
+
+    [Fact]
+    public async Task AFilterThatReachesTooManyRowsTheCallerCannotChangeIsRefused()
+    {
+        using var database = new ServiceDatabase(cms => cms.Services
+            .AddScoped<AuthorizationEvaluator>()
+            .AddScoped<IAuthorizationEvaluator>(services => new RefuseDeletes(services.GetRequiredService<AuthorizationEvaluator>())));
+        for (var index = 0; index < 12; index++)
+        {
+            await database.CreateAsync(Editor, Titled($"Entry {index}"));
+        }
+
+        var before = database.Footprint();
+
+        var refused = await Should.ThrowAsync<ValidationException>(() => BulkAsync(database, Editor, new BulkRequest { Operation = BulkOperation.Delete, Filter = Every, Cap = 1 }));
+
+        var error = refused.Errors.ShouldHaveSingleItem();
+        (error.Path, error.Code).ShouldBe(("filter", QueryErrorCodes.LimitExceeded));
+        database.Footprint().ShouldBe(before);
+        (await BulkAsync(database, Editor, new BulkRequest { Operation = BulkOperation.Delete, Filter = Every, Cap = 2 })).Items.ShouldBeEmpty();
     }
 
     [Fact]

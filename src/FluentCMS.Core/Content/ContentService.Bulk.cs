@@ -11,6 +11,12 @@ namespace FluentCMS.Core.Content;
 // and is told on its own. A filter is read in full before the first write, so one over its cap writes nothing.
 internal sealed partial class ContentService
 {
+    internal const string UnexpectedFailure = "The operation failed unexpectedly. The log of the host has the cause.";
+
+    // Rows the principal may read and the operation's rule lets through, but that a single entry check still refuses,
+    // are skipped; a filter that reaches this many of them for each one the cap allows is refused rather than walked.
+    private const int SkippedPerCapped = 10;
+
     public async Task<BulkResult> BulkAsync(string type, BulkRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(type);
@@ -60,6 +66,12 @@ internal sealed partial class ContentService
                 {
                     results.Add(new BulkItemResult(step.Index, step.Id, BulkItemStatus.Failed) { Problem = exception });
                 }
+                catch (Exception exception) when (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+                {
+                    // A bug or a database failure says nothing the caller may read, and its message can hold a value of the entry.
+                    ContentLog.BulkItemFailed(logger, exception, step.Index, request.Operation, type);
+                    results.Add(new BulkItemResult(step.Index, step.Id, BulkItemStatus.Failed) { Problem = new InvalidOperationException(UnexpectedFailure) });
+                }
             }
         }
 
@@ -89,12 +101,16 @@ internal sealed partial class ContentService
     private static BulkItemResult Succeeded(BulkStep step, ContentDocument entry) =>
         new(step.Index, (Guid)entry["id"]!, BulkItemStatus.Succeeded) { Version = entry["version"] as int? };
 
-    // Only entries the principal may read as drafts reach the selection, through the engine and its row rule, and of those
-    // only the ones its grant for the operation reaches. Selecting runs to the end, so the cap is never met partway.
+    // The engine selects the drafts the principal may read and that the row rule of the operation lets through, both in
+    // one query, and each is then checked as the single call checks it. Selecting runs to the end before anything is
+    // written, so the cap is never met partway; what it skips is bounded too, so a broad filter cannot walk the table.
     private async Task<List<BulkStep>> SelectAsync(WriteScope write, BulkRequest request, CancellationToken cancellationToken)
     {
         var operation = OperationOf(request.Operation);
+        var rule = write.Permissions.RowRuleOf(write.Type, operation, write.Target);
+        var cap = request.Cap!.Value;
         List<BulkStep> steps = [];
+        var skipped = 0;
         string? cursor = null;
         do
         {
@@ -106,25 +122,32 @@ internal sealed partial class ContentService
                 Site = write.Site,
                 Locale = write.Locale,
                 Fallback = LocaleFallback.None,
-                Page = new PageRequest { Size = queryOptions.MaxPageSize, WithTotal = false },
+                Page = new PageRequest { Size = Math.Min(queryOptions.MaxPageSize, cap + 1), WithTotal = false },
                 Cursor = cursor,
             };
 
-            var page = await engine.ExecuteAsync(write.Type.Name, query, cancellationToken);
+            var page = await engine.ExecuteWithRuleAsync(write.Type.Name, query, rule, cancellationToken);
             foreach (var entry in page.Items)
             {
                 var id = (Guid)entry["id"]!;
                 if (!await evaluator.CanAccessEntryAsync(write.Operation, write.Type, operation, id, write.Target, QueryStatus.Draft, cancellationToken))
                 {
+                    if (++skipped > SkippedPerCapped * cap)
+                    {
+                        throw new ValidationException([new ValidationError("filter", QueryErrorCodes.LimitExceeded, $"The filter reaches more than {SkippedPerCapped * cap} entries that cannot be changed; narrow it.")]);
+                    }
+
                     continue;
                 }
 
-                if (steps.Count == request.Cap)
+                if (steps.Count == cap)
                 {
-                    throw new ValidationException([new ValidationError("cap", QueryErrorCodes.LimitExceeded, $"The filter selects more than the cap of {request.Cap} entries.")]);
+                    throw new ValidationException([new ValidationError("cap", QueryErrorCodes.LimitExceeded, $"The filter selects more than the cap of {cap} entries.")]);
                 }
 
-                var version = request.Operation is BulkOperation.Update ? (int?)(int)entry["version"]! : null;
+                // An update and a publish act on the version the filter matched, so a draft changed since is a conflict.
+                // Unpublish and delete take no version: they act on what matched, and both can be undone.
+                var version = request.Operation is BulkOperation.Update or BulkOperation.Publish ? (int?)(int)entry["version"]! : null;
                 steps.Add(new BulkStep(steps.Count, id, null, version));
             }
 

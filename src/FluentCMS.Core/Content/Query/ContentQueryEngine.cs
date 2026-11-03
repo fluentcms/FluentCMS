@@ -41,11 +41,22 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
     public Task<ContentQueryResult> ExecuteTrashAsync(string typeName, ContentQuery query, bool everySystemField, CancellationToken cancellationToken) =>
         ExecuteAsync(typeName, query with { Status = QueryStatus.Draft }, everySystemField, trashed: true, cancellationToken);
 
-    private async Task<ContentQueryResult> ExecuteAsync(string typeName, ContentQuery query, bool everySystemField, bool trashed, CancellationToken cancellationToken)
+    // Reads the entries the principal may read that another row rule also lets through, such as that of a write about to
+    // be made to them. The rule joins the read rule of the type, trusted like it, wherever the type is queried.
+    public Task<ContentQueryResult> ExecuteWithRuleAsync(string typeName, ContentQuery query, ContentFilter? rule, CancellationToken cancellationToken) =>
+        ExecuteAsync(typeName, query, everySystemField: false, trashed: false, cancellationToken, rule is null ? null : (typeName, rule));
+
+    private async Task<ContentQueryResult> ExecuteAsync(string typeName, ContentQuery query, bool everySystemField, bool trashed, CancellationToken cancellationToken, (string Type, ContentFilter Rule)? extra = null)
     {
         ArgumentNullException.ThrowIfNull(query);
 
-        var compiled = Compile(await access.ForQueryAsync(query.Site, query.Locale ?? "", cancellationToken), typeName, query, everySystemField, trashed);
+        var bound = await access.ForQueryAsync(query.Site, query.Locale ?? "", cancellationToken);
+        if (extra is var (owner, rule) && schema.FindContentType(owner) is { } ownerType)
+        {
+            bound = new ContentQueryAccess.WithRule(bound, ownerType, rule);
+        }
+
+        var compiled = Compile(bound, typeName, query, everySystemField, trashed);
 
         long? total = compiled.WithTotal ? await compiled.Filtered.LongCountAsync(cancellationToken) : null;
         var rows = await compiled.Rows.ToListAsync(cancellationToken);

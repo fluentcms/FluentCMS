@@ -14,7 +14,8 @@ public sealed record BulkItemResult(int Index, Guid? Id, BulkItemStatus Status)
     /// <summary>
     /// Why the operation failed: the exception the single call would have thrown, such as <see cref="EntryNotFoundException"/>,
     /// <see cref="ContentAccessDeniedException"/>, <see cref="VersionConflictException"/>, <see cref="ValidationException"/> or
-    /// <see cref="Hooks.HookRejectedException"/>. An entry the principal may not reach fails as one that does not exist.
+    /// <see cref="Hooks.HookRejectedException"/>. An entry the principal may not reach fails as one that does not exist. Any other
+    /// failure is an <see cref="InvalidOperationException"/> that says nothing of its cause, which the host logs.
     /// </summary>
     public Exception? Problem { get; init; }
 

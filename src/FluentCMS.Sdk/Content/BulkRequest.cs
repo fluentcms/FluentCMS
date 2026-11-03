@@ -22,6 +22,8 @@ public sealed record BulkRequest
     /// <summary>
     /// The entries to act on by filter, read against the drafts in the locale of the request. It selects only entries the
     /// principal may read and may also perform the operation on, and a filter on a relation matches only targets it may read.
+    /// An update or a publish acts on the version the filter read, so a draft changed since fails with a conflict; an
+    /// unpublish or a delete acts on what matched when the filter was read, and both can be undone.
     /// </summary>
     public ContentFilter? Filter { get; init; }
 
