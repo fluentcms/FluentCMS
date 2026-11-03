@@ -2,7 +2,6 @@ using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Jobs;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -73,9 +72,9 @@ internal sealed class ActivityRetentionJob(SystemDbContext context, ActivityOpti
 
 // Stores the schedule of the retention job before the host reports started, so that a failure is seen at once. A database
 // that is down at startup is retried in the background, since the host would otherwise be left without the job for good.
-// With the log turned off the stored schedule is switched off instead, since the row outlives the setting; turning the log
-// on again does not switch it back on.
-internal sealed class ActivityScheduleService(IJobScheduler scheduler, IServiceScopeFactory scopes, ActivityOptions options, TimeProvider time, ILogger<ActivityScheduleService> logger) : IHostedService, IDisposable
+// With the log turned off nothing is stored and the stored row is left alone: the job returns at once while the log is off,
+// and runs as before when it is turned on again.
+internal sealed class ActivityScheduleService(IJobScheduler scheduler, ActivityOptions options, TimeProvider time, ILogger<ActivityScheduleService> logger) : IHostedService, IDisposable
 {
     private static readonly TimeSpan Retry = TimeSpan.FromSeconds(30);
 
@@ -116,15 +115,6 @@ internal sealed class ActivityScheduleService(IJobScheduler scheduler, IServiceS
         }
     }
 
-    // Never the other way: a schedule an operator switched off stays off when the host starts.
-    private async Task SwitchOffAsync(CancellationToken cancellationToken)
-    {
-        await using var scope = scopes.CreateAsyncScope();
-        await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<RecurringJob>()
-            .Where(job => job.Name == ActivityRetentionJob.RecurringName && job.Enabled)
-            .ExecuteUpdateAsync(job => job.SetProperty(row => row.Enabled, false), cancellationToken);
-    }
-
     private async Task<bool> TryScheduleAsync(CancellationToken cancellationToken)
     {
         try
@@ -132,10 +122,6 @@ internal sealed class ActivityScheduleService(IJobScheduler scheduler, IServiceS
             if (options.Enabled)
             {
                 await scheduler.AddRecurringAsync<ActivityRetentionJob, ActivityRetentionPayload>(ActivityRetentionJob.RecurringName, options.PruneSchedule, new ActivityRetentionPayload(), cancellationToken: cancellationToken);
-            }
-            else
-            {
-                await SwitchOffAsync(cancellationToken);
             }
 
             return true;

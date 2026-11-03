@@ -132,23 +132,33 @@ public sealed class ActivityRetentionTests
     }
 
     [Fact]
-    public async Task TurningTheLogOffSwitchesTheStoredScheduleOffAndStartingOnAgainNeverSwitchesItOn()
+    public async Task TurningTheLogOffLeavesTheStoredScheduleAloneAndOnAgainPrunesAsBefore()
     {
-        using var database = new ServiceDatabase(ActivityFixture.On());
+        using var database = new ServiceDatabase(ActivityFixture.On(cms => cms.Activity.PruneSchedule = "0 4 * * *"));
         await database.Database.Services.GetServices<IHostedService>().OfType<ActivityScheduleService>().Single().StartAsync(Token);
-        Recurring(database).Enabled.ShouldBeTrue();
+        var stored = Recurring(database);
 
-        using (var off = database.Database.NewInstance())
+        using (var off = database.Database.NewInstance(cms => cms.Activity.PruneSchedule = "0 5 * * *"))
         {
             await off.GetServices<IHostedService>().OfType<ActivityScheduleService>().Single().StartAsync(Token);
+            Recurring(database).ShouldBeEquivalentTo(stored);
+
+            database.Add(Row("old-while-off", SiteA.Value, Now.AddDays(-40)));
+            using var scope = off.CreateScope();
+            await scope.ServiceProvider.GetRequiredService<ActivityRetentionJob>().ExecuteAsync(new ActivityRetentionPayload(), JobContextFor());
+            Kept(database).ShouldBe(["old-while-off"]);
         }
 
-        Recurring(database).Enabled.ShouldBeFalse();
+        Recurring(database).Enabled.ShouldBeTrue();
 
         using var on = database.Database.NewInstance(ActivityFixture.On());
         await on.GetServices<IHostedService>().OfType<ActivityScheduleService>().Single().StartAsync(Token);
+        using (var scope = on.CreateScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<ActivityRetentionJob>().ExecuteAsync(new ActivityRetentionPayload(), JobContextFor());
+        }
 
-        Recurring(database).Enabled.ShouldBeFalse();
+        Kept(database).ShouldBeEmpty();
     }
 
     [Fact]
@@ -163,6 +173,9 @@ public sealed class ActivityRetentionTests
 
         Recurring(database).Enabled.ShouldBeFalse();
     }
+
+    private static JobContext JobContextFor() =>
+        new(Guid.CreateVersion7(), ActivityRetentionJob.Type, "default", 1, 3, new OperationContext(Principal.System, Origin.Job, SiteA, "en", null, "retention", Now), Token);
 
     [Fact]
     public async Task AJobThatRunsAfterTheLogWasTurnedOffRemovesNothing()
