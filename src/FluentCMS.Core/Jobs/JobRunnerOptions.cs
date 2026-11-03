@@ -6,7 +6,7 @@ public sealed class JobRunnerOptions
 {
     public const string DefaultQueue = "default";
 
-    private static readonly TimeSpan LongestWait = TimeSpan.FromDays(49);
+    internal static readonly TimeSpan LongestWait = TimeSpan.FromDays(49);
 
     // Workers per queue on this instance, which is also the concurrency limit of the queue here. A queue left out has
     // no worker on this instance.

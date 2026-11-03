@@ -23,7 +23,7 @@ public sealed class JobsBuilder
         ArgumentOutOfRangeException.ThrowIfGreaterThan(type.Length, JobScheduler.TypeMaxLength, nameof(type));
         if (attemptTimeout is { } timeout && !JobRunnerOptions.IsValidAttemptTimeout(timeout))
         {
-            throw new ArgumentOutOfRangeException(nameof(attemptTimeout), timeout, "The attempt timeout must be positive and no longer than 49 days, or Timeout.InfiniteTimeSpan.");
+            throw new ArgumentOutOfRangeException(nameof(attemptTimeout), timeout, $"The attempt timeout must be positive and no longer than {JobRunnerOptions.LongestWait.TotalDays} days, or Timeout.InfiniteTimeSpan.");
         }
 
         _services.AddTransient<TJob>();
