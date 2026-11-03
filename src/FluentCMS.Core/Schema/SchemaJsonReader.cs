@@ -99,6 +99,7 @@ internal sealed class SchemaJsonReader(SchemaBuilder builder)
         var scope = ContentScope.Site;
         var unpublishedReferences = UnpublishedReferencePolicy.Warn;
         var maxVersions = PublishPolicyAttribute.DefaultMaxVersions;
+        var trashRetentionDays = PublishPolicyAttribute.DefaultTrashRetentionDays;
         JsonElement? fields = null;
         var failed = false;
 
@@ -124,8 +125,12 @@ internal sealed class SchemaJsonReader(SchemaBuilder builder)
                 case "maxVersions" when kind is SchemaTypeKind.Collection or SchemaTypeKind.Singleton && property.Value.ValueKind == JsonValueKind.Number && property.Value.TryGetInt32(out var kept) && kept >= 1:
                     maxVersions = kept;
                     break;
+                case "trashRetentionDays" when kind is SchemaTypeKind.Collection or SchemaTypeKind.Singleton && property.Value.ValueKind == JsonValueKind.Number && property.Value.TryGetInt32(out var days) && days >= 1:
+                    trashRetentionDays = days;
+                    break;
                 case "unpublishedReferences":
                 case "maxVersions":
+                case "trashRetentionDays":
                     Fail(propertyPath, "is not a valid publishing setting for this type");
                     failed = true;
                     break;
@@ -155,7 +160,7 @@ internal sealed class SchemaJsonReader(SchemaBuilder builder)
             type.Scope(scope);
             if (kind is SchemaTypeKind.Collection or SchemaTypeKind.Singleton)
             {
-                type.PublishPolicy(unpublishedReferences, maxVersions);
+                type.PublishPolicy(unpublishedReferences, maxVersions, trashRetentionDays);
             }
 
             if (fields is { } list)

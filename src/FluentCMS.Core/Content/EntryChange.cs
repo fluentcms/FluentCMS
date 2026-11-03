@@ -12,6 +12,7 @@ internal enum EntryChangeKind
     Unpublished,
     DraftDiscarded,
     VersionRestored,
+    Purged,
 }
 
 internal sealed record EntryChange(EntryChangeKind Kind, string Type, Guid Id, string Locale, int Version, OperationContext Operation)

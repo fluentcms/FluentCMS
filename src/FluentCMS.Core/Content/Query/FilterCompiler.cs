@@ -488,9 +488,15 @@ internal sealed class FilterCompiler(QueryScope query)
         }
 
         var document = Expression.Parameter(typeof(Document), "document");
-        return Any(query.Context.Documents, document, Expression.AndAlso(
+        Expression inSite = Expression.AndAlso(
             Expression.Equal(Expression.Property(document, nameof(Document.DocumentId)), targetId),
-            Expression.Equal(Expression.Property(document, nameof(Document.SiteId)), Bind<Guid?>(site.Value))));
+            Expression.Equal(Expression.Property(document, nameof(Document.SiteId)), Bind<Guid?>(site.Value)));
+        if (query.ReachesTrash)
+        {
+            inSite = Expression.AndAlso(inSite, Expression.Equal(Expression.Property(document, nameof(Document.DeletedAt)), Expression.Constant(null, typeof(DateTimeOffset?))));
+        }
+
+        return Any(query.Context.Documents, document, inSite);
     }
 
     // The target's row in the same state and locale; decision 44 rules out fallback-aware filtering.

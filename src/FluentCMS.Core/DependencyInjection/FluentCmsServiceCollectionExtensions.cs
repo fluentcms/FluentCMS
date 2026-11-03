@@ -112,6 +112,9 @@ public static class FluentCmsServiceCollectionExtensions
         services.TryAddSingleton<IJobDeadLetters, JobDeadLetters>();
         services.AddHostedService<JobRunnerHostedService>();
 
+        builder.Jobs.AddJob<TrashPurgeJob, TrashPurgePayload>(TrashPurgeJob.Type);
+        services.AddHostedService<TrashPurgeScheduleService>();
+
         builder.Events.Outbox.Validate();
         builder.Jobs.Options.Queues.TryAdd(OutboxDrainJob.Queue, 1);
         builder.Jobs.AddJob<OutboxDrainJob, OutboxDrainPayload>(OutboxDrainJob.Type);

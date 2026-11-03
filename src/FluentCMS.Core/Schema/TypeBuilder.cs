@@ -22,7 +22,7 @@ internal sealed class TypeBuilder(TypeDraft draft) : ITypeBuilder
         return this;
     }
 
-    public ITypeBuilder PublishPolicy(UnpublishedReferencePolicy unpublishedReferences = UnpublishedReferencePolicy.Warn, int maxVersions = PublishPolicyAttribute.DefaultMaxVersions)
+    public ITypeBuilder PublishPolicy(UnpublishedReferencePolicy unpublishedReferences = UnpublishedReferencePolicy.Warn, int maxVersions = PublishPolicyAttribute.DefaultMaxVersions, int trashRetentionDays = PublishPolicyAttribute.DefaultTrashRetentionDays)
     {
         if (!draft.IsContentType)
         {
@@ -30,9 +30,11 @@ internal sealed class TypeBuilder(TypeDraft draft) : ITypeBuilder
         }
 
         ArgumentOutOfRangeException.ThrowIfLessThan(maxVersions, 1);
+        ArgumentOutOfRangeException.ThrowIfLessThan(trashRetentionDays, 1);
 
         draft.UnpublishedReferences = unpublishedReferences;
         draft.MaxVersions = maxVersions;
+        draft.TrashRetentionDays = trashRetentionDays;
         return this;
     }
 

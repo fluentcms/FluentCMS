@@ -56,6 +56,18 @@ internal sealed class TypedContentService<T>(ContentService documents, SchemaMod
     public async Task<T> RestoreAsync(Guid id, CancellationToken cancellationToken = default) =>
         await ReadBackAsync(await documents.RestoreAsync(_type, id, cancellationToken));
 
+    public async Task<PagedResult<T>> QueryTrashAsync(ContentQuery query, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        ThrowIfUnfit(query.Locale, query.RichTextFormat);
+
+        var page = await documents.QueryTrashAsync(_type, query, everySystemField: true, cancellationToken);
+        return new PagedResult<T>(page.Items.Select(Map).ToList(), page.Total, page.Page, page.PageSize, page.NextCursor);
+    }
+
+    public Task PurgeAsync(Guid id, CancellationToken cancellationToken = default) =>
+        documents.PurgeAsync(_type, id, cancellationToken);
+
     public async Task<PublishResult<T>> PublishAsync(Guid id, string? locale = null, int? expectedVersion = null, CancellationToken cancellationToken = default)
     {
         var published = await documents.PublishAsync(_type, id, locale, expectedVersion, cancellationToken);

@@ -7,7 +7,7 @@ using FluentCMS.Sites;
 namespace FluentCMS.Core.Content.Query;
 
 // What one compilation shares: the state, locale and site every joined row must have, and the errors found so far.
-internal sealed class QueryScope(CmsDbContext context, SchemaModel schema, IJsonSqlDialect dialect, IContentQueryAccess access, ContentQueryOptions options, short state, string locale, SiteId? site)
+internal sealed class QueryScope(CmsDbContext context, SchemaModel schema, IJsonSqlDialect dialect, IContentQueryAccess access, ContentQueryOptions options, short state, string locale, SiteId? site, bool reachesTrash = false)
 {
     private readonly List<ValidationError> _errors = [];
     private int _populated;
@@ -28,12 +28,25 @@ internal sealed class QueryScope(CmsDbContext context, SchemaModel schema, IJson
 
     public SiteId? Site => site;
 
+    // The query filter on Document is off for the whole query, because EF cannot turn it off for the root alone. The trash
+    // is the root's; every row reached through a relation says explicitly that it is not in it.
+    public bool ReachesTrash => reachesTrash;
+
     public QueryPaths Paths { get; } = new(schema, access);
 
     // A site's query reads that site's entries on every level. Global entries belong to no site, and any site may read them.
-    public IQueryable<QueryRow> Rows(SchemaType type)
+    public IQueryable<QueryRow> Rows(SchemaType type, bool trashedRoot = false)
     {
         var rows = QueryRows.Of(context, type, state, locale);
+        if (trashedRoot)
+        {
+            rows = rows.Where(row => row.Document.DeletedAt != null);
+        }
+        else if (reachesTrash)
+        {
+            rows = rows.Where(row => row.Document.DeletedAt == null);
+        }
+
         if (site is not { } only || type.Scope != ContentScope.Site)
         {
             return rows;

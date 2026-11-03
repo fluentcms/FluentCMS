@@ -28,6 +28,12 @@ internal sealed class ScopedContentService<T>(OperationRunner runner) : IContent
     public Task<T> RestoreAsync(Guid id, CancellationToken cancellationToken = default) =>
         runner.RunAsync<IContentService<T>, T>(service => service.RestoreAsync(id, cancellationToken));
 
+    public Task<PagedResult<T>> QueryTrashAsync(ContentQuery query, CancellationToken cancellationToken = default) =>
+        runner.RunAsync<IContentService<T>, PagedResult<T>>(service => service.QueryTrashAsync(query, cancellationToken));
+
+    public Task PurgeAsync(Guid id, CancellationToken cancellationToken = default) =>
+        runner.RunAsync<IContentService<T>>(service => service.PurgeAsync(id, cancellationToken));
+
     public Task<PublishResult<T>> PublishAsync(Guid id, string? locale = null, int? expectedVersion = null, CancellationToken cancellationToken = default) =>
         runner.RunAsync<IContentService<T>, PublishResult<T>>(service => service.PublishAsync(id, locale, expectedVersion, cancellationToken));
 
@@ -75,6 +81,12 @@ internal sealed class ScopedContentService(OperationRunner runner) : IContentSer
 
     public Task<ContentDocument> RestoreAsync(string type, Guid id, CancellationToken cancellationToken = default) =>
         runner.RunAsync<IContentService, ContentDocument>(service => service.RestoreAsync(type, id, cancellationToken));
+
+    public Task<PagedResult<ContentDocument>> QueryTrashAsync(string type, ContentQuery query, CancellationToken cancellationToken = default) =>
+        runner.RunAsync<IContentService, PagedResult<ContentDocument>>(service => service.QueryTrashAsync(type, query, cancellationToken));
+
+    public Task PurgeAsync(string type, Guid id, CancellationToken cancellationToken = default) =>
+        runner.RunAsync<IContentService>(service => service.PurgeAsync(type, id, cancellationToken));
 
     public Task<PublishResult<ContentDocument>> PublishAsync(string type, Guid id, string? locale = null, int? expectedVersion = null, CancellationToken cancellationToken = default) =>
         runner.RunAsync<IContentService, PublishResult<ContentDocument>>(service => service.PublishAsync(type, id, locale, expectedVersion, cancellationToken));
