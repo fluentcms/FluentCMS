@@ -39,6 +39,7 @@ public sealed class PublishPolicyTests
     [InlineData("""{ "collections": [ { "name": "article", "unpublishedReferences": "ignore" } ] }""")]
     [InlineData("""{ "collections": [ { "name": "article", "maxVersions": 0 } ] }""")]
     [InlineData("""{ "collections": [ { "name": "article", "trashRetentionDays": 0 } ] }""")]
+    [InlineData("""{ "collections": [ { "name": "article", "trashRetentionDays": 36501 } ] }""")]
     [InlineData("""{ "components": [ { "name": "seo", "trashRetentionDays": 5 } ] }""")]
     [InlineData("""{ "components": [ { "name": "seo", "maxVersions": 5 } ] }""")]
     [InlineData("""{ "blocks": [ { "name": "hero", "unpublishedReferences": "block" } ] }""")]
@@ -51,6 +52,8 @@ public sealed class PublishPolicyTests
         Should.Throw<ArgumentException>(() => new SchemaBuilder().AddComponent("seo", type => type.PublishPolicy()).Build());
         Should.Throw<ArgumentOutOfRangeException>(() => new SchemaBuilder().AddCollection("article", type => type.PublishPolicy(maxVersions: 0)).Build());
         Should.Throw<ArgumentOutOfRangeException>(() => new SchemaBuilder().AddCollection("article", type => type.PublishPolicy(trashRetentionDays: 0)).Build());
+        Should.Throw<ArgumentOutOfRangeException>(() => new SchemaBuilder().AddCollection("article", type => type.PublishPolicy(trashRetentionDays: PublishPolicyAttribute.MaxTrashRetentionDays + 1)).Build());
+        new SchemaBuilder().AddCollection("article", type => type.PublishPolicy(trashRetentionDays: PublishPolicyAttribute.MaxTrashRetentionDays)).Build().FindContentType("article")!.TrashRetentionDays.ShouldBe(36500);
     }
 
     [FluentCMS.Schema.Collection("capless")]
@@ -62,6 +65,12 @@ public sealed class PublishPolicyTests
     [FluentCMS.Schema.Collection("hoarder")]
     [PublishPolicy(TrashRetentionDays = 0)]
     private sealed class Hoarder : ContentItem
+    {
+    }
+
+    [FluentCMS.Schema.Collection("forever")]
+    [PublishPolicy(TrashRetentionDays = 1_000_000)]
+    private sealed class Forever : ContentItem
     {
     }
 
@@ -82,6 +91,7 @@ public sealed class PublishPolicyTests
     {
         Should.Throw<SchemaValidationException>(() => new SchemaBuilder().AddContentType<Capless>().Build());
         Should.Throw<SchemaValidationException>(() => new SchemaBuilder().AddContentType<Hoarder>().Build());
+        Should.Throw<SchemaValidationException>(() => new SchemaBuilder().AddContentType<Forever>().Build());
         new SchemaBuilder().AddContentType<Keeper>().Build().FindContentType("keeper")!.TrashRetentionDays.ShouldBe(14);
         Should.Throw<SchemaValidationException>(() => new SchemaBuilder().AddContentType<Policed>().Build());
     }

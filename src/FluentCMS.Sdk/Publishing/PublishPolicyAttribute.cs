@@ -10,12 +10,15 @@ public sealed class PublishPolicyAttribute : Attribute
     /// <summary>The number of days an entry stays in the trash when a type does not say.</summary>
     public const int DefaultTrashRetentionDays = 30;
 
+    /// <summary>The most days a type can keep its trash, a hundred years.</summary>
+    public const int MaxTrashRetentionDays = 36500;
+
     /// <summary>What publishing does about a reference to an entry that is not published or is in the trash.</summary>
     public UnpublishedReferencePolicy UnpublishedReferences { get; set; }
 
     /// <summary>How many versions to keep per entry and locale. The oldest go first, and a version that was published is never pruned.</summary>
     public int MaxVersions { get; set; } = DefaultMaxVersions;
 
-    /// <summary>How many days an entry stays in the trash before the purge job deletes it for good.</summary>
+    /// <summary>How many days an entry stays in the trash before the purge job deletes it for good, from 1 to <see cref="MaxTrashRetentionDays"/>.</summary>
     public int TrashRetentionDays { get; set; } = DefaultTrashRetentionDays;
 }

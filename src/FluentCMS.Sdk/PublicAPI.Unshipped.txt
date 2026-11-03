@@ -1068,6 +1068,7 @@ const FluentCMS.Content.ValidationErrorCodes.RequiredByCondition = "FCMS2110" ->
 const FluentCMS.Localization.ILocaleResolver.All = "all" -> string!
 const FluentCMS.Publishing.PublishPolicyAttribute.DefaultMaxVersions = 50 -> int
 const FluentCMS.Publishing.PublishPolicyAttribute.DefaultTrashRetentionDays = 30 -> int
+const FluentCMS.Publishing.PublishPolicyAttribute.MaxTrashRetentionDays = 36500 -> int
 const FluentCMS.Publishing.PublishWarningCodes.UnavailableReference = "FCMS2404" -> string!
 const FluentCMS.Publishing.PublishWarningCodes.UnpublishedReference = "FCMS2403" -> string!
 const FluentCMS.Schema.FieldSettings.Blocks = "blocks" -> string!

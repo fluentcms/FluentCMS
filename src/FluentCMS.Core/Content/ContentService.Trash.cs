@@ -67,7 +67,11 @@ internal sealed partial class ContentService
 
     // Only an entry in the trash can be purged, so a live one is not found, and one the row rule of the purge grant
     // excludes is not found either, whatever the id. Every version goes with it, published ones included.
-    public async Task PurgeAsync(string type, Guid id, CancellationToken cancellationToken = default)
+    public Task PurgeAsync(string type, Guid id, CancellationToken cancellationToken = default) =>
+        PurgeAsync(type, id, trashedBefore: null, cancellationToken);
+
+    // The purge job passes the cutoff it listed the entry by, and an entry put in the trash again since is not found.
+    internal async Task PurgeAsync(string type, Guid id, DateTimeOffset? trashedBefore, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(type);
 
@@ -77,7 +81,10 @@ internal sealed partial class ContentService
             {
                 var (documents, row, _) = await ReachAllLocalesAsync(write, ContentOperation.Purge, id, trashed: true, cancellationToken);
 
-                await store.PurgeAsync(write.Type, id, cancellationToken);
+                if (await store.PurgeAsync(write.Type, id, trashedBefore, cancellationToken) != documents.Count)
+                {
+                    throw new EntryNotFoundException(write.Type.Name, id);
+                }
 
                 _pending.AddRange(documents.Select(document => new EntryChange(EntryChangeKind.Purged, write.Type.Name, id, document.Locale, document.DraftVersion, write.Operation)));
                 return row;

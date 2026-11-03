@@ -181,6 +181,65 @@ public sealed class TrashTests : IDisposable
         (await _database.TrashAsync(Editor, type: "author")).Items.ShouldHaveSingleItem()["id"].ShouldBe(ann);
     }
 
+    private async Task<int> MatchesAsync(Guid target, string field, QueryStatus status, bool trash = false)
+    {
+        var query = new ContentQuery { Filter = new FieldFilter(field, FilterOperator.Equal, target), Status = status };
+        return (trash ? await _database.TrashAsync(Editor, query) : await _database.QueryAsync(Editor, query)).Items.Count;
+    }
+
+    [Fact]
+    public async Task AFilterOnTheIdOfARelationMatchesOnlyATargetTheSameReadWouldShow()
+    {
+        var tag = IdOf(await _database.CreateAsync(Editor, new() { ["name"] = "Net" }, type: "tag"));
+        var ann = IdOf(await _database.CreateAsync(Editor, new() { ["name"] = "Ann" }, type: "author"));
+        var entry = IdOf(await _database.CreateAsync(Editor, new() { ["title"] = "Tagged", ["tags"] = new[] { tag }, ["author"] = ann }));
+        var draft = QueryStatus.Draft;
+        var published = QueryStatus.Published;
+
+        // A target that exists but is not published is not shown by a published read.
+        (await MatchesAsync(tag, "tags", draft)).ShouldBe(1);
+        (await MatchesAsync(ann, "author", draft)).ShouldBe(1);
+        await _database.PublishAsync(Editor, entry);
+        (await MatchesAsync(tag, "tags", published)).ShouldBe(0);
+        (await MatchesAsync(ann, "author", published)).ShouldBe(0);
+
+        await _database.PublishAsync(Editor, tag, type: "tag");
+        await _database.PublishAsync(Editor, ann, type: "author");
+        (await MatchesAsync(tag, "tags", published)).ShouldBe(1);
+        (await MatchesAsync(ann, "author", published)).ShouldBe(1);
+
+        // A target in the trash is not shown by any read, whether its type is global or belongs to a site.
+        await _database.DeleteAsync(Editor, tag, type: "tag");
+        await _database.DeleteAsync(Editor, ann, type: "author");
+        (await MatchesAsync(tag, "tags", draft)).ShouldBe(0);
+        (await MatchesAsync(ann, "author", draft)).ShouldBe(0);
+        (await MatchesAsync(tag, "tags", published)).ShouldBe(0);
+        (await MatchesAsync(ann, "author", published)).ShouldBe(0);
+        var anyOf = new ContentQuery { Filter = new FieldFilter("tags", FilterOperator.In, new[] { tag }), Status = draft };
+        (await _database.QueryAsync(Editor, anyOf)).Items.ShouldBeEmpty();
+
+        // The same in the trash list.
+        await _database.RestoreAsync(Editor, tag, type: "tag");
+        await _database.RestoreAsync(Editor, ann, type: "author");
+        await _database.DeleteAsync(Editor, entry);
+        (await MatchesAsync(tag, "tags", draft, trash: true)).ShouldBe(1);
+        (await MatchesAsync(ann, "author", draft, trash: true)).ShouldBe(1);
+        await _database.DeleteAsync(Editor, tag, type: "tag");
+        await _database.DeleteAsync(Editor, ann, type: "author");
+        (await MatchesAsync(tag, "tags", draft, trash: true)).ShouldBe(0);
+        (await MatchesAsync(ann, "author", draft, trash: true)).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task AFilterOnTheIdOfARelationDoesNotMatchAnEntryOfAnotherType()
+    {
+        var ann = IdOf(await _database.CreateAsync(Editor, new() { ["name"] = "Ann" }, type: "author"));
+        var other = IdOf(await _database.CreateAsync(Editor, new() { ["title"] = "Other", ["author"] = ann }));
+
+        (await MatchesAsync(other, "tags", QueryStatus.Draft)).ShouldBe(0);
+        (await MatchesAsync(ann, "author", QueryStatus.Draft)).ShouldBe(1);
+    }
+
     [Fact]
     public async Task PurgeDeletesEveryRowOfAnEntryInEveryLocaleAndEveryVersion()
     {

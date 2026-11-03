@@ -22,7 +22,7 @@ public interface ITypeBuilder
     /// <param name="trashRetentionDays">How many days an entry stays in the trash before the purge job deletes it for good.</param>
     /// <returns>This builder.</returns>
     /// <exception cref="ArgumentException">The type is a component or a block.</exception>
-    /// <exception cref="ArgumentOutOfRangeException"><paramref name="maxVersions"/> or <paramref name="trashRetentionDays"/> is less than 1.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="maxVersions"/> is less than 1, or <paramref name="trashRetentionDays"/> is outside 1 to <see cref="PublishPolicyAttribute.MaxTrashRetentionDays"/>.</exception>
     ITypeBuilder PublishPolicy(UnpublishedReferencePolicy unpublishedReferences = UnpublishedReferencePolicy.Warn, int maxVersions = PublishPolicyAttribute.DefaultMaxVersions, int trashRetentionDays = PublishPolicyAttribute.DefaultTrashRetentionDays);
 
     /// <summary>Declares a field.</summary>

@@ -8,7 +8,9 @@ using FluentCMS.Data.Tests.Events;
 using FluentCMS.Data.Tests.Jobs;
 using FluentCMS.Events;
 using FluentCMS.Jobs;
+using FluentCMS.Publishing;
 using FluentCMS.Sites;
+using System.Data.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -25,10 +27,19 @@ public sealed class TrashPurgeJobTests
 
     private sealed class Poisoned : IEntryChangeStager
     {
-        public Guid Id { get; set; }
+        public HashSet<Guid> Ids { get; } = [];
+
+        public Guid Id
+        {
+            set
+            {
+                Ids.Clear();
+                Ids.Add(value);
+            }
+        }
 
         public ValueTask StageAsync(DbContext context, IReadOnlyList<EntryChange> changes, CancellationToken cancellationToken) =>
-            changes.Any(change => change.Kind == EntryChangeKind.Purged && change.Id == Id) ? throw new InvalidOperationException("The outbox is down.") : ValueTask.CompletedTask;
+            changes.Any(change => change.Kind == EntryChangeKind.Purged && Ids.Contains(change.Id)) ? throw new InvalidOperationException("The outbox is down.") : ValueTask.CompletedTask;
     }
 
     private sealed class Heard(Seen seen) : IEventHandler<EntryPurgedEvent>
@@ -36,11 +47,11 @@ public sealed class TrashPurgeJobTests
         public ValueTask HandleAsync(EntryPurgedEvent message, CancellationToken cancellationToken) => seen.HeardAsync("purged", message, null, cancellationToken);
     }
 
-    private static async Task RunAsync(ServiceDatabase database, int limit = 500)
+    private static async Task RunAsync(ServiceDatabase database, int limit = 500, int pageSize = 100)
     {
         using var scope = database.Database.NewScope();
         var context = new OperationContext(Principal.System, Origin.Job, SiteA, "en", null, "test", DateTimeOffset.UtcNow);
-        await scope.ServiceProvider.GetRequiredService<TrashPurgeJob>().ExecuteAsync(new TrashPurgePayload(limit), new JobContext(Guid.NewGuid(), TrashPurgeJob.Type, "default", 1, 3, context, Token));
+        await scope.ServiceProvider.GetRequiredService<TrashPurgeJob>().ExecuteAsync(new TrashPurgePayload(limit, pageSize), new JobContext(Guid.NewGuid(), TrashPurgeJob.Type, "default", 1, 3, context, Token));
     }
 
     private static async Task<Guid> TrashedAsync(ServiceDatabase database, string title, DateTimeOffset at, string type = "article", SiteId? site = null)
@@ -155,6 +166,108 @@ public sealed class TrashPurgeJobTests
         await RunAsync(database);
 
         Exists(database, stuck).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task EntriesThatKeepFailingDoNotStarveTheOnesBehindThem()
+    {
+        var poison = new Poisoned();
+        using var database = new ServiceDatabase(cms => cms.Services.AddScoped<IEntryChangeStager>(_ => poison));
+        var stuck = new List<Guid>();
+        for (var index = 0; index < 3; index++)
+        {
+            stuck.Add(await TrashedAsync(database, $"Stuck {index}", DateTimeOffset.UtcNow.AddDays(-100 + index)));
+        }
+
+        var good = new List<Guid>
+        {
+            await TrashedAsync(database, "Good one", DateTimeOffset.UtcNow.AddDays(-50)),
+            await TrashedAsync(database, "Good two", DateTimeOffset.UtcNow.AddDays(-40)),
+        };
+        poison.Ids.UnionWith(stuck);
+
+        await RunAsync(database, limit: 2, pageSize: 2);
+
+        good.ShouldAllBe(id => !Exists(database, id));
+        stuck.ShouldAllBe(id => Exists(database, id));
+    }
+
+    [Fact]
+    public async Task AnEntryPutInTheTrashAgainAfterItWasListedAsDueIsNotPurged()
+    {
+        using var database = new ServiceDatabase();
+        var id = await TrashedAsync(database, "Again", DateTimeOffset.UtcNow);
+        var cutoff = DateTimeOffset.UtcNow.AddDays(-1);
+        var before = database.Trace(id);
+
+        Task PurgeBeforeAsync(DateTimeOffset at) => database.AsAsync<object?>(
+            Principal.System,
+            async services =>
+            {
+                await services.GetRequiredService<ContentService>().PurgeAsync("article", id, at, Token);
+                return null;
+            },
+            origin: Origin.Job);
+
+        await Should.ThrowAsync<EntryNotFoundException>(() => PurgeBeforeAsync(cutoff));
+        database.Trace(id).ShouldBe(before);
+        database.Held(id).ShouldNotBe(TrashDatabase.Nothing);
+
+        await PurgeBeforeAsync(DateTimeOffset.UtcNow.AddMinutes(1));
+
+        database.Held(id).ShouldBe(TrashDatabase.Nothing);
+    }
+
+    [Fact]
+    public async Task OneTypeThatFailsDoesNotStopTheOthers()
+    {
+        var model = SampleSchema.NewBuilder()
+            .AddCollection("note", type => type.PublishPolicy(trashRetentionDays: PublishPolicyAttribute.MaxTrashRetentionDays).Field("name", "text"))
+            .AddCollection("memo", type => type.Field("name", "text"))
+            .Build();
+        var faults = new JobFaults();
+        var logs = new RecordingLogs();
+        using var database = new ServiceDatabase(
+            cms =>
+            {
+                cms.Services.AddSingleton<ILoggerProvider>(logs);
+                cms.Services.ConfigureDbContext<CmsDbContext>(options => options.AddInterceptors(faults));
+            },
+            model);
+        var note = await TrashedAsync(database, "Note", Long, "note");
+        var memo = await TrashedAsync(database, "Memo", Long, "memo");
+        faults.Fail(command => command.CommandText.Contains("cms_document", StringComparison.Ordinal)
+            && command.CommandText.StartsWith("SELECT", StringComparison.Ordinal)
+            && command.Parameters.Cast<DbParameter>().Any(parameter => Equals(parameter.Value, "note")));
+
+        await RunAsync(database);
+
+        Exists(database, memo).ShouldBeFalse();
+        Exists(database, note).ShouldBeTrue();
+        logs.Count("TypeFailed").ShouldBe(1);
+        logs.Count("Report").ShouldBe(1);
+
+        faults.Recover();
+        await RunAsync(database);
+
+        Exists(database, note).ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task TheLongestRetentionStillWorksOutAMoment()
+    {
+        var model = SampleSchema.NewBuilder()
+            .AddCollection("note", type => type.PublishPolicy(trashRetentionDays: PublishPolicyAttribute.MaxTrashRetentionDays).Field("name", "text"))
+            .AddCollection("memo", type => type.Field("name", "text"))
+            .Build();
+        using var database = new ServiceDatabase(schema: model);
+        var note = await TrashedAsync(database, "Note", Long, "note");
+        var memo = await TrashedAsync(database, "Memo", Long, "memo");
+
+        await RunAsync(database);
+
+        Exists(database, note).ShouldBeTrue();
+        Exists(database, memo).ShouldBeFalse();
     }
 
     [Fact]

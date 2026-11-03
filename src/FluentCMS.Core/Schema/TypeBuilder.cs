@@ -31,6 +31,7 @@ internal sealed class TypeBuilder(TypeDraft draft) : ITypeBuilder
 
         ArgumentOutOfRangeException.ThrowIfLessThan(maxVersions, 1);
         ArgumentOutOfRangeException.ThrowIfLessThan(trashRetentionDays, 1);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(trashRetentionDays, PublishPolicyAttribute.MaxTrashRetentionDays);
 
         draft.UnpublishedReferences = unpublishedReferences;
         draft.MaxVersions = maxVersions;

@@ -125,8 +125,12 @@ internal sealed class SchemaJsonReader(SchemaBuilder builder)
                 case "maxVersions" when kind is SchemaTypeKind.Collection or SchemaTypeKind.Singleton && property.Value.ValueKind == JsonValueKind.Number && property.Value.TryGetInt32(out var kept) && kept >= 1:
                     maxVersions = kept;
                     break;
-                case "trashRetentionDays" when kind is SchemaTypeKind.Collection or SchemaTypeKind.Singleton && property.Value.ValueKind == JsonValueKind.Number && property.Value.TryGetInt32(out var days) && days >= 1:
+                case "trashRetentionDays" when kind is SchemaTypeKind.Collection or SchemaTypeKind.Singleton && property.Value.ValueKind == JsonValueKind.Number && property.Value.TryGetInt32(out var days) && days is >= 1 and <= PublishPolicyAttribute.MaxTrashRetentionDays:
                     trashRetentionDays = days;
+                    break;
+                case "trashRetentionDays" when kind is SchemaTypeKind.Collection or SchemaTypeKind.Singleton:
+                    Fail(propertyPath, $"must be a whole number of days from 1 to {PublishPolicyAttribute.MaxTrashRetentionDays}");
+                    failed = true;
                     break;
                 case "unpublishedReferences":
                 case "maxVersions":
