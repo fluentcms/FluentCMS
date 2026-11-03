@@ -6,10 +6,12 @@ using FluentCMS.Core.Content.Hooks;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.Content.Validation;
 using FluentCMS.Core.Events;
+using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Localization;
 using FluentCMS.Core.Schema.FieldTypes;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
+using FluentCMS.Jobs;
 using FluentCMS.Localization;
 using FluentCMS.Publishing;
 using FluentCMS.Schema;
@@ -42,6 +44,9 @@ internal sealed partial class ContentService(
     IEnumerable<IEntryChangeSink> sinks,
     IEnumerable<IEntryChangeStager> stagers,
     EventBuffer events,
+    ScheduleStore schedules,
+    JobFactory jobs,
+    TimeProvider time,
     ILogger<ContentService> logger) : IContentService
 {
     private readonly List<EntryChange> _pending = [];
@@ -388,9 +393,11 @@ internal sealed partial class ContentService(
         return (field => permissions.CanReadField(type, field.Name, target), permissions.IsSystem);
     }
 
-    private async Task<WriteScope> BeginAsync(string typeName, ContentOperation operationKind, CancellationToken cancellationToken, string? locale = null)
+    private async Task<WriteScope> BeginAsync(string typeName, ContentOperation operationKind, CancellationToken cancellationToken, string? locale = null) =>
+        await BeginAsync(Current(), typeName, operationKind, locale, cancellationToken);
+
+    private async Task<WriteScope> BeginAsync(OperationContext operation, string typeName, ContentOperation operationKind, string? locale, CancellationToken cancellationToken)
     {
-        var operation = Current();
         var type = schema.FindContentType(typeName)
             ?? throw new ValidationException([new ValidationError("type", QueryErrorCodes.UnknownField, $"'{typeName}' is not a content type.")]);
 

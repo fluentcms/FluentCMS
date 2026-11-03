@@ -1,7 +1,4 @@
-using System.Text.Json;
-using FluentCMS.Content;
 using FluentCMS.Core.Storage;
-using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Jobs;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -12,12 +9,11 @@ internal sealed class JobScheduler(
     IServiceScopeFactory scopes,
     JobRegistry registry,
     RecurringJobs recurring,
-    IOperationContextAccessor operation,
-    JobRunnerOptions options,
+    JobFactory jobs,
     TimeProvider time) : IJobScheduler
 {
     public const int TypeMaxLength = 128;
-    public const int QueueMaxLength = 64;
+    public const int QueueMaxLength = JobFactory.QueueMaxLength;
 
     public Task<Guid> EnqueueAsync<TJob, TPayload>(TPayload payload, JobOptions? jobOptions = null, CancellationToken cancellationToken = default)
         where TJob : class, IJob<TPayload> =>
@@ -38,25 +34,7 @@ internal sealed class JobScheduler(
     private async Task<Guid> AddAsync<TJob, TPayload>(TPayload payload, DateTimeOffset runAt, JobOptions? jobOptions, CancellationToken cancellationToken)
         where TJob : class, IJob<TPayload>
     {
-        ArgumentNullException.ThrowIfNull(payload);
-
-        var maxAttempts = jobOptions?.MaxAttempts ?? options.DefaultMaxAttempts;
-        ArgumentOutOfRangeException.ThrowIfLessThan(maxAttempts, 1, nameof(jobOptions));
-
-        var current = operation.Current;
-        var job = new Job
-        {
-            Type = registry.TypeOf<TJob, TPayload>(),
-            Payload = Serialize(payload),
-            Queue = CheckedQueue(jobOptions?.Queue),
-            SiteId = (jobOptions?.Site ?? current?.Site)?.Value,
-            RunAt = runAt,
-            Priority = jobOptions?.Priority ?? 0,
-            MaxAttempts = maxAttempts,
-            CreatedAt = time.GetUtcNow(),
-            CreatedBy = current?.AuditPrincipal.Id is { } author && author != Guid.Empty ? author : null,
-            Origin = current?.Origin ?? Origin.Job,
-        };
+        var job = jobs.Create<TJob, TPayload>(payload, runAt, jobOptions);
 
         await using var scope = scopes.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
@@ -66,14 +44,7 @@ internal sealed class JobScheduler(
         return job.Id;
     }
 
-    private static string Serialize<TPayload>(TPayload payload) => JsonSerializer.Serialize(payload, JobJson.Options);
+    private static string Serialize<TPayload>(TPayload payload) => JobFactory.Serialize(payload);
 
-    private static string CheckedQueue(string? queue)
-    {
-        queue ??= JobRunnerOptions.DefaultQueue;
-        ArgumentException.ThrowIfNullOrEmpty(queue);
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(queue.Length, QueueMaxLength, nameof(queue));
-
-        return queue;
-    }
+    private static string CheckedQueue(string? queue) => JobFactory.CheckedQueue(queue);
 }

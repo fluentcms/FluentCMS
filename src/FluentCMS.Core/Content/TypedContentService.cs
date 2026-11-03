@@ -77,6 +77,12 @@ internal sealed class TypedContentService<T>(ContentService documents, SchemaMod
     public async Task<T> UnpublishAsync(Guid id, string? locale = null, CancellationToken cancellationToken = default) =>
         await ReadBackAsync(await documents.UnpublishAsync(_type, id, locale, cancellationToken), locale);
 
+    public Task<ScheduleInfo> ScheduleAsync(Guid id, ScheduleRequest request, string? locale = null, CancellationToken cancellationToken = default) =>
+        documents.ScheduleAsync(_type, id, request, locale, cancellationToken);
+
+    public Task CancelScheduleAsync(Guid id, ScheduleAction action, string? locale = null, CancellationToken cancellationToken = default) =>
+        documents.CancelScheduleAsync(_type, id, action, locale, cancellationToken);
+
     public async Task<T> DiscardDraftAsync(Guid id, string? locale = null, int? expectedVersion = null, CancellationToken cancellationToken = default) =>
         await ReadBackAsync(await documents.DiscardDraftAsync(_type, id, locale, expectedVersion, cancellationToken), locale);
 

@@ -40,6 +40,12 @@ internal sealed class ScopedContentService<T>(OperationRunner runner) : IContent
     public Task<T> UnpublishAsync(Guid id, string? locale = null, CancellationToken cancellationToken = default) =>
         runner.RunAsync<IContentService<T>, T>(service => service.UnpublishAsync(id, locale, cancellationToken));
 
+    public Task<ScheduleInfo> ScheduleAsync(Guid id, ScheduleRequest request, string? locale = null, CancellationToken cancellationToken = default) =>
+        runner.RunAsync<IContentService<T>, ScheduleInfo>(service => service.ScheduleAsync(id, request, locale, cancellationToken));
+
+    public Task CancelScheduleAsync(Guid id, ScheduleAction action, string? locale = null, CancellationToken cancellationToken = default) =>
+        runner.RunAsync<IContentService<T>>(service => service.CancelScheduleAsync(id, action, locale, cancellationToken));
+
     public Task<T> DiscardDraftAsync(Guid id, string? locale = null, int? expectedVersion = null, CancellationToken cancellationToken = default) =>
         runner.RunAsync<IContentService<T>, T>(service => service.DiscardDraftAsync(id, locale, expectedVersion, cancellationToken));
 
@@ -93,6 +99,12 @@ internal sealed class ScopedContentService(OperationRunner runner) : IContentSer
 
     public Task<ContentDocument> UnpublishAsync(string type, Guid id, string? locale = null, CancellationToken cancellationToken = default) =>
         runner.RunAsync<IContentService, ContentDocument>(service => service.UnpublishAsync(type, id, locale, cancellationToken));
+
+    public Task<ScheduleInfo> ScheduleAsync(string type, Guid id, ScheduleRequest request, string? locale = null, CancellationToken cancellationToken = default) =>
+        runner.RunAsync<IContentService, ScheduleInfo>(service => service.ScheduleAsync(type, id, request, locale, cancellationToken));
+
+    public Task CancelScheduleAsync(string type, Guid id, ScheduleAction action, string? locale = null, CancellationToken cancellationToken = default) =>
+        runner.RunAsync<IContentService>(service => service.CancelScheduleAsync(type, id, action, locale, cancellationToken));
 
     public Task<ContentDocument> DiscardDraftAsync(string type, Guid id, string? locale = null, int? expectedVersion = null, CancellationToken cancellationToken = default) =>
         runner.RunAsync<IContentService, ContentDocument>(service => service.DiscardDraftAsync(type, id, locale, expectedVersion, cancellationToken));

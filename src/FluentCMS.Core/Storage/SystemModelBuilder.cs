@@ -28,6 +28,7 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
     private const int TargetLabelLength = 256;
     private const int CorrelationIdLength = 128;
     private const int IpLength = 45;
+    private const int TimeZoneLength = 64;
 
     public void Apply(ModelBuilder modelBuilder)
     {
@@ -36,6 +37,7 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         modelBuilder.Entity<RecurringJob>(MapRecurringJob);
         modelBuilder.Entity<OutboxMessage>(MapOutbox);
         modelBuilder.Entity<ActivityRow>(MapActivity);
+        modelBuilder.Entity<ScheduleRow>(MapSchedule);
         modelBuilder.Entity<Site>(MapSite);
         modelBuilder.Entity<SiteLocale>(MapSiteLocale);
         modelBuilder.Entity<Document>(MapDocument);
@@ -271,6 +273,29 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
 
         entity.HasIndex(row => row.ActorId)
             .HasDatabaseName("ix_cms_activity_actor");
+    }
+
+    private void MapSchedule(EntityTypeBuilder<ScheduleRow> entity)
+    {
+        entity.ToTable(StorageNames.Schedule);
+        MapColumnNames(entity);
+        entity.Property(row => row.Id).HasValueGenerator<GuidV7ValueGenerator>();
+        entity.Property(row => row.Locale).HasMaxLength(StorageNames.LocaleLength);
+        entity.Property(row => row.Action).HasMaxLength(StatusLength);
+        entity.Property(row => row.TimeZone).HasMaxLength(TimeZoneLength);
+        entity.Property(row => row.Status).HasMaxLength(StatusLength);
+        entity.Property(row => row.Error).HasMaxLength(ScheduleRow.ErrorMaxLength);
+        conventions.ConfigureJsonColumn(entity, entity.Property(row => row.Claims));
+
+        // A reschedule moves the pending row, so there is never a second one to run for the same action.
+        entity.HasIndex(row => new { row.DocumentId, row.Locale, row.Action })
+            .IsUnique()
+            .HasFilter("status = 'pending'")
+            .HasDatabaseName("uq_cms_schedule_pending");
+
+        // For the lookup of what an entry has scheduled, and for its purge.
+        entity.HasIndex(row => row.DocumentId)
+            .HasDatabaseName("ix_cms_schedule_document");
     }
 
     private static void MapColumnNames<T>(EntityTypeBuilder<T> entity)
