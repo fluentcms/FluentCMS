@@ -17,6 +17,7 @@ public sealed class ContentVersion
     // JSON text.
     public string Snapshot { get; set; } = "";
 
+    // Published only once this version has been published, the one thing that changes it, and what keeps it from pruning.
     public EntryStatus StatusAfter { get; set; }
 
     public Guid AuthorId { get; set; }

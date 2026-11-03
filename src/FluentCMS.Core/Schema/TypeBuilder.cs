@@ -1,3 +1,4 @@
+using FluentCMS.Publishing;
 using FluentCMS.Schema;
 
 namespace FluentCMS.Core.Schema;
@@ -18,6 +19,20 @@ internal sealed class TypeBuilder(TypeDraft draft) : ITypeBuilder
         }
 
         draft.Scope = scope;
+        return this;
+    }
+
+    public ITypeBuilder PublishPolicy(UnpublishedReferencePolicy unpublishedReferences = UnpublishedReferencePolicy.Warn, int maxVersions = PublishPolicyAttribute.DefaultMaxVersions)
+    {
+        if (!draft.IsContentType)
+        {
+            throw new ArgumentException($"{draft.Kind.ToString().ToLowerInvariant()} '{draft.Name}' is not published; only collections and singletons are.", nameof(unpublishedReferences));
+        }
+
+        ArgumentOutOfRangeException.ThrowIfLessThan(maxVersions, 1);
+
+        draft.UnpublishedReferences = unpublishedReferences;
+        draft.MaxVersions = maxVersions;
         return this;
     }
 

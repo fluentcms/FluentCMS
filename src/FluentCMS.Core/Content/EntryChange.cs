@@ -8,6 +8,10 @@ internal enum EntryChangeKind
     DraftSaved,
     Trashed,
     Restored,
+    Published,
+    Unpublished,
+    DraftDiscarded,
+    VersionRestored,
 }
 
 internal sealed record EntryChange(EntryChangeKind Kind, string Type, Guid Id, string Locale, int Version, OperationContext Operation)

@@ -7,6 +7,7 @@ using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.Content.Validation;
 using FluentCMS.Core.Events;
 using FluentCMS.Core.Localization;
+using FluentCMS.Core.Schema.FieldTypes;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Localization;
@@ -23,7 +24,7 @@ namespace FluentCMS.Core.Content;
 // in one transaction the entry and its row rule, the expected version, the field limits, BeforeValidate, validation,
 // BeforeCreate or BeforeUpdate, the write and the AfterX hooks, and only after the commit the change sink and the
 // response, which is read back like any other read so that a hook's values cannot reach it. A call from a hook joins the transaction.
-internal sealed class ContentService(
+internal sealed partial class ContentService(
     CmsDbContext context,
     SchemaModel schema,
     IOperationContextAccessor accessor,
@@ -380,26 +381,26 @@ internal sealed class ContentService(
         return (field => permissions.CanReadField(type, field.Name, target), permissions.IsSystem);
     }
 
-    private async Task<WriteScope> BeginAsync(string typeName, ContentOperation operationKind, CancellationToken cancellationToken)
+    private async Task<WriteScope> BeginAsync(string typeName, ContentOperation operationKind, CancellationToken cancellationToken, string? locale = null)
     {
         var operation = Current();
         var type = schema.FindContentType(typeName)
             ?? throw new ValidationException([new ValidationError("type", QueryErrorCodes.UnknownField, $"'{typeName}' is not a content type.")]);
 
-        var locale = await ResolveLocaleAsync(operation.Site, operation.Locale, cancellationToken);
-        if (locale == ILocaleResolver.All)
+        var resolved = await ResolveLocaleAsync(operation.Site, locale ?? operation.Locale, cancellationToken);
+        if (resolved == ILocaleResolver.All)
         {
             throw new ValidationException([new ValidationError("locale", QueryErrorCodes.InvalidParameter, "A write needs one locale.")]);
         }
 
-        var target = new AccessTarget(operation.Site, locale);
+        var target = new AccessTarget(operation.Site, resolved);
         var permissions = await evaluator.ResolveAsync(operation, cancellationToken);
         if (!permissions.Allows(type, operationKind, target))
         {
             throw new ContentAccessDeniedException(type.Name, CorePermissions.OperationName(operationKind));
         }
 
-        return new WriteScope(operation, type, operation.Site, locale, target, permissions, new FieldAccess(permissions, schema));
+        return new WriteScope(operation, type, operation.Site, resolved, target, permissions, new FieldAccess(permissions, schema));
     }
 
     // Runs writes as one transaction and tells the sink what committed. A write inside another transaction takes a
@@ -594,7 +595,8 @@ internal sealed class ContentService(
                 }
 
                 // A write answers what a read showed, so what that read left out is not the client's to change.
-                var shown = NeedsWhatARead(write, sent, isPatch) ? await ReadShownAsync(write, id, documents, addsLocale, cancellationToken) : null;
+                var needsRead = NeedsWhatARead(write, sent, isPatch);
+                var shown = needsRead ? await ReadShownAsync(write, id, documents, addsLocale, cancellationToken) : null;
                 var refused = isPatch ? sent : WithoutUnchanged(write, sent, shown, writable, addsLocale);
                 Reject(write, refused, writable);
 
@@ -602,7 +604,7 @@ internal sealed class ContentService(
                     ? composer.Patch(type, stored, sent)
                     : EntryComposer.Replace(type, stored, refused, field => Keeps(write, field, writable, addsLocale));
                 var working = Prepare(write, composed, document, stored);
-                composer.CarryProtected(type, stored, working, includingGroups: !isPatch || !write.Permissions.IsSystem);
+                composer.CarryProtected(type, stored, working, includingGroups: !isPatch || !write.Permissions.IsSystem, needsRead ? await UnseenNestedTargetsAsync(write, stored, shown, cancellationToken) : null);
                 await KeepUnreadableTargetsAsync(write, stored, shown, working, isPatch, cancellationToken);
 
                 working = await RunBeforeHooksAsync(write, HookKind.BeforeUpdate, working, new SaveContext(stored, Client(refused), writable, document), cancellationToken);
@@ -677,7 +679,40 @@ internal sealed class ContentService(
 
     private bool NeedsWhatARead(WriteScope write, ContentDocument sent, bool isPatch) =>
         !write.Permissions.IsSystem
-        && (!isPatch || FieldStorage.Of(schema, write.Type).Any(item => item.Kind == FieldStorageKind.Reference && item.Field.Multiple && sent.ContainsKey(QueryPaths.ApiPath(write.Type, item).Split('.')[0])));
+        && (!isPatch
+            || FieldStorage.Of(schema, write.Type).Any(item => item.Kind == FieldStorageKind.Reference && item.Field.Multiple && sent.ContainsKey(QueryPaths.ApiPath(write.Type, item).Split('.')[0]))
+            || sent.Keys.Any(key => write.Type.FindField(key)?.FieldType is FieldTypeNames.Blocks or FieldTypeNames.Component or FieldTypeNames.RichText));
+
+    private async Task<HashSet<Guid>> UnseenNestedTargetsAsync(WriteScope write, ContentDocument stored, ContentDocument? shown, CancellationToken cancellationToken)
+    {
+        var nested = new NestedTargets(schema);
+        var seen = shown is null ? null : nested.Collect(write.Type, shown);
+        HashSet<Guid> unseen = [];
+        foreach (var (name, ids) in nested.Collect(write.Type, stored))
+        {
+            var left = ids.Except(seen?.GetValueOrDefault(name) ?? []).ToList();
+            if (left.Count > 0)
+            {
+                unseen.UnionWith(await KeptTargetsAsync(write, name, left, cancellationToken));
+            }
+        }
+
+        return unseen;
+    }
+
+    // Which of the targets a read left out stay. All of them, so that the result, and any warning on it later, is the same
+    // whatever the id is. Only a principal whose read of that type has no row rule and no locale limit may lose one that
+    // is not there, trashed counting as there: a read tells it that anyway, and it is how a ghost gets cleared.
+    private async Task<List<Guid>> KeptTargetsAsync(WriteScope write, string targetName, List<Guid> ids, CancellationToken cancellationToken)
+    {
+        if (schema.FindContentType(targetName) is not { } target
+            || !write.Permissions.GrantsOf(target, ContentOperation.Read, write.Target).Any(grant => grant.Constraints.RowRule is null && grant.Constraints.Locales is null))
+        {
+            return ids;
+        }
+
+        return await store.ExistingTargetsAsync(target, ids, write.Site, cancellationToken);
+    }
 
     // A locale being added has no row to read, so this reads a locale it has for the shared fields. One that has since
     // been disabled cannot be read, and the next one may.
@@ -697,7 +732,7 @@ internal sealed class ContentService(
     // What a read gave comes back with the targets it may not read missing. They are not the client's to remove, so each
     // goes back where it was in a multiple relation, which leaves a list sent as it was read unchanged, and a single
     // relation sent empty keeps its target. A patch names what it changes, so an explicit null on a single one clears.
-    // A target that no longer exists is nothing to keep, and the system principal reads everything and keeps nothing.
+    // The system principal reads everything and keeps nothing.
     private async Task KeepUnreadableTargetsAsync(WriteScope write, ContentDocument stored, ContentDocument? shown, ContentDocument working, bool isPatch, CancellationToken cancellationToken)
     {
         if (write.Permissions.IsSystem)
@@ -723,7 +758,7 @@ internal sealed class ContentService(
                 continue;
             }
 
-            var kept = await store.ExistingTargetsAsync(item.Field, unseen, cancellationToken);
+            var kept = await KeptTargetsAsync(write, EntryPaths.ReferenceTarget(item.Field), unseen, cancellationToken);
             var sent = IdsOf(EntryPaths.ValueAt(working, item, write.Type));
             if (item.Field.Multiple)
             {

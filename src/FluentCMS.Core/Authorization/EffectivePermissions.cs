@@ -15,10 +15,13 @@ internal readonly record struct AccessTarget(SiteId? Site, string? Locale, strin
 internal sealed record EffectiveGrant(string Pattern, PermissionConstraints Constraints, Guid? RoleSite)
 {
     public bool Applies(string permission, AccessTarget target) =>
+        AppliesInSomeLocale(permission, target)
+        && (Constraints.Locales is null || (!string.IsNullOrEmpty(target.Locale) && Constraints.Locales.Contains(target.Locale, StringComparer.OrdinalIgnoreCase)));
+
+    public bool AppliesInSomeLocale(string permission, AccessTarget target) =>
         PermissionPattern.Matches(Pattern, permission)
         && (RoleSite is null || target.Site?.Value == RoleSite)
-        && (Constraints.Sites is null || (target.Site is { } site && Constraints.Sites.Contains(site)))
-        && (Constraints.Locales is null || (!string.IsNullOrEmpty(target.Locale) && Constraints.Locales.Contains(target.Locale, StringComparer.OrdinalIgnoreCase)));
+        && (Constraints.Sites is null || (target.Site is { } site && Constraints.Sites.Contains(site)));
 
     // A global entry is shared by every site, so what changes it must come from a grant that no site limits.
     public bool IsInstanceWide => RoleSite is null && Constraints.Sites is null;
@@ -76,6 +79,34 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
     {
         var writesEverySite = type.Scope == ContentScope.Global && operation != ContentOperation.Read;
         return grants.Where(grant => grant.Applies(permission, target) && (!writesEverySite || grant.IsInstanceWide));
+    }
+
+    // The locales a read reaches with no row rule to ask, or null when such a grant has no locale limit. A relation's target
+    // may be read in another locale than the one asked about, but a rule is only asked of that one, so a grant with a rule
+    // cannot vouch for a row elsewhere.
+    public IReadOnlySet<string>? ReadLocalesOf(SchemaType type, AccessTarget target)
+    {
+        if (IsSystem)
+        {
+            return null;
+        }
+
+        HashSet<string> locales = new(StringComparer.OrdinalIgnoreCase);
+        var permission = CorePermissions.Content(type.Name, ContentOperation.Read);
+        if (ScopeAllows(permission))
+        {
+            foreach (var grant in grants.Where(grant => grant.Constraints.RowRule is null && grant.AppliesInSomeLocale(permission, target)))
+            {
+                if (grant.Constraints.Locales is not { } limited)
+                {
+                    return null;
+                }
+
+                locales.UnionWith(limited);
+            }
+        }
+
+        return locales;
     }
 
     // Null when every field is readable. A response has one set of fields for all its rows, and rows are the union of

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using FluentCMS.Publishing;
 using FluentCMS.Schema;
 
 namespace FluentCMS.Core.Schema;
@@ -96,6 +97,8 @@ internal sealed class SchemaJsonReader(SchemaBuilder builder)
         string? name = null;
         var localized = false;
         var scope = ContentScope.Site;
+        var unpublishedReferences = UnpublishedReferencePolicy.Warn;
+        var maxVersions = PublishPolicyAttribute.DefaultMaxVersions;
         JsonElement? fields = null;
         var failed = false;
 
@@ -112,6 +115,19 @@ internal sealed class SchemaJsonReader(SchemaBuilder builder)
                     break;
                 case "scope":
                     failed |= !TryScope(property.Value, kind, propertyPath, out scope);
+                    break;
+                case "unpublishedReferences" when kind is SchemaTypeKind.Collection or SchemaTypeKind.Singleton && property.Value.ValueKind == JsonValueKind.String && property.Value.GetString() == "block":
+                    unpublishedReferences = UnpublishedReferencePolicy.Block;
+                    break;
+                case "unpublishedReferences" when kind is SchemaTypeKind.Collection or SchemaTypeKind.Singleton && property.Value.ValueKind == JsonValueKind.String && property.Value.GetString() == "warn":
+                    break;
+                case "maxVersions" when kind is SchemaTypeKind.Collection or SchemaTypeKind.Singleton && property.Value.ValueKind == JsonValueKind.Number && property.Value.TryGetInt32(out var kept) && kept >= 1:
+                    maxVersions = kept;
+                    break;
+                case "unpublishedReferences":
+                case "maxVersions":
+                    Fail(propertyPath, "is not a valid publishing setting for this type");
+                    failed = true;
                     break;
                 case "fields":
                     fields = property.Value;
@@ -137,6 +153,11 @@ internal sealed class SchemaJsonReader(SchemaBuilder builder)
         {
             type.Localized(localized);
             type.Scope(scope);
+            if (kind is SchemaTypeKind.Collection or SchemaTypeKind.Singleton)
+            {
+                type.PublishPolicy(unpublishedReferences, maxVersions);
+            }
+
             if (fields is { } list)
             {
                 ReadFields(type, list, $"{path}.fields");

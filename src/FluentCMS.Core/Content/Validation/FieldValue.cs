@@ -1,6 +1,9 @@
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Reflection;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using FluentCMS.Core.ProseMirror;
 using FluentCMS.Media;
 using FluentCMS.Schema;
 
@@ -18,6 +21,7 @@ internal static class FieldValue
         string text => string.IsNullOrWhiteSpace(text),
         Guid id => id == Guid.Empty,
         MediaRef media => media.IsEmpty,
+        RichText document => IsEmptyDocument(document),
         IEnumerable items => !items.GetEnumerator().MoveNext(),
         _ => IsEmptyRef(value),
     };
@@ -68,6 +72,41 @@ internal static class FieldValue
         }
 
         return values;
+    }
+
+    // What a draft holds for no rich text, and what an editor leaves behind: blocks with no text, and nothing a reader
+    // would see without any, such as an image or a rule. A document that cannot be read is for its own rule to refuse.
+    private static bool IsEmptyDocument(RichText document)
+    {
+        try
+        {
+            return HasNoContent(JsonNode.Parse(document.Json));
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+
+    private static bool HasNoContent(JsonNode? node)
+    {
+        if (node is not JsonObject item || item["type"] is not JsonValue kind || !kind.TryGetValue<string>(out var type))
+        {
+            return false;
+        }
+
+        if (type == RichTextNodeTypes.Text)
+        {
+            return item["text"] is not JsonValue value || !value.TryGetValue<string>(out var text) || string.IsNullOrWhiteSpace(text);
+        }
+
+        if (type is not (RichTextNodeTypes.Doc or RichTextNodeTypes.Paragraph or RichTextNodeTypes.Heading or RichTextNodeTypes.BulletList
+            or RichTextNodeTypes.OrderedList or RichTextNodeTypes.ListItem or RichTextNodeTypes.Blockquote or RichTextNodeTypes.CodeBlock or RichTextNodeTypes.HardBreak))
+        {
+            return false;
+        }
+
+        return item["content"] is not JsonArray content || content.All(HasNoContent);
     }
 
     private static PropertyInfo[] ReadableProperties(Type type) =>

@@ -56,7 +56,7 @@ internal sealed class AuthorizationEvaluator(
             return false;
         }
 
-        if (!await IsInSiteAsync(type, operation, entry, target, cancellationToken))
+        if (!await IsInReachAsync(type, operation, entry, target, permissions, cancellationToken))
         {
             return false;
         }
@@ -81,7 +81,7 @@ internal sealed class AuthorizationEvaluator(
             return WritableFields.None;
         }
 
-        if (entry is { } inSite && !await IsInSiteAsync(type, operation, inSite, target, cancellationToken))
+        if (entry is { } inSite && !await IsInReachAsync(type, operation, inSite, target, permissions, cancellationToken))
         {
             return WritableFields.None;
         }
@@ -128,16 +128,32 @@ internal sealed class AuthorizationEvaluator(
     }
 
     // A grant's site limit is about the entry, so the entry's own site must be the one asked about. A global type's
-    // entries belong to no site, and a target of every site has nothing to compare.
-    private async Task<bool> IsInSiteAsync(SchemaType type, ContentOperation operation, Guid entry, AccessTarget target, CancellationToken cancellationToken)
+    // entries belong to no site, and a target of every site has nothing to compare. A read's locale limit is about the entry
+    // too: one with rows only in other locales reads as no entry. A row rule answers that itself, since it reads the row in
+    // the locale asked about. A write may add a locale, so this is for reads alone.
+    private async Task<bool> IsInReachAsync(SchemaType type, ContentOperation operation, Guid entry, AccessTarget target, EffectivePermissions permissions, CancellationToken cancellationToken)
     {
-        if (type.Scope != ContentScope.Site || target.Site is not { } site)
+        var locales = operation == ContentOperation.Read && type.Localized && permissions.RowRuleOf(type, operation, target) is null ? permissions.ReadLocalesOf(type, target) : null;
+        var site = type.Scope == ContentScope.Site ? target.Site : null;
+        if (site is null && locales is null)
         {
             return true;
         }
 
+        var typeName = type.Name;
         IQueryable<Document> documents = ReachesTrash(operation) ? database.Documents.IgnoreQueryFilters() : database.Documents;
-        return await documents.AsNoTracking().AnyAsync(document => document.DocumentId == entry && document.SiteId == site.Value, cancellationToken);
+        documents = documents.AsNoTracking().Where(document => document.DocumentId == entry && document.Type == typeName);
+        if (site is { } one)
+        {
+            documents = documents.Where(document => document.SiteId == one.Value);
+        }
+
+        if (locales is null)
+        {
+            return await documents.AnyAsync(cancellationToken);
+        }
+
+        return (await documents.Select(document => document.Locale).ToListAsync(cancellationToken)).Any(locales.Contains);
     }
 
     private async Task<bool> MatchesAsync(SchemaType type, ContentOperation operation, Guid entry, AccessTarget target, QueryStatus status, ContentFilter rule, CancellationToken cancellationToken)

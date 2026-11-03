@@ -18,6 +18,8 @@ internal sealed class EntryErrors(SchemaModel schema, SchemaType type, Effective
 
     public static readonly ValidationError ProducedValue = new("", ValidationErrorCodes.InvalidValue, "A value set while saving the entry is not valid.");
 
+    public static readonly ValidationError UnreadableValue = new("", ValidationErrorCodes.InvalidValue, "The entry cannot be published: a value the principal may not read is not valid.");
+
     // sent is the entry before any hook, and fromClient only what the client itself sent: a patch into a component names
     // some of its fields, and the rest of them are stored values it did not send.
     public (List<ValidationError> Reportable, List<ValidationError> ToCompare, bool Produced) Sort(IReadOnlyList<ValidationError> errors, JsonObject now, JsonObject sent, JsonObject fromClient)
@@ -49,6 +51,32 @@ internal sealed class EntryErrors(SchemaModel schema, SchemaType type, Effective
         }
 
         return (reportable, toCompare, produced);
+    }
+
+    // On publish nothing was sent and every error blocks. One on a field the principal cannot read says nothing of that
+    // field, not even which one, since a rule's message can quote the value.
+    public List<ValidationError> ForPublish(IReadOnlyList<ValidationError> errors, JsonObject now)
+    {
+        List<ValidationError> reportable = [];
+        var unreadable = false;
+        foreach (var error in errors)
+        {
+            if (permissions.IsSystem || Describe(error.Path, now) is not { } path || path.Readable)
+            {
+                reportable.Add(error);
+            }
+            else
+            {
+                unreadable = true;
+            }
+        }
+
+        if (unreadable)
+        {
+            reportable.Add(UnreadableValue);
+        }
+
+        return reportable;
     }
 
     // Null when the path is not a field, such as an error on the entry as a whole.

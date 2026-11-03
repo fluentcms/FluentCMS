@@ -68,7 +68,7 @@ ASP.NET Core host (your app, or FluentCMS.Host)
 |   -> authenticate, resolve site and locale, parse the query, map errors, cache
 |
 +-- In-process services: the only place rules are enforced
-|   IContentService<T>, IPublishingService, IMediaService, IAuthorizationEvaluator,
+|   IContentService<T>, IMediaService, IAuthorizationEvaluator,
 |   IActivityLog, IEventBus, IJobScheduler
 |   -> permissions, row rules, field filtering, validation, hooks, versions
 |
@@ -289,7 +289,7 @@ Rows 8.3, 8.11, 8.14, 8.16 and every attribute and interface named below.
 | --- | --- |
 | `FluentCMS.Schema` | content type and field attributes, `ContentItem` base class, `RichText`, `BlockList`, `Ref<T>`, `RefList<T>`, `IFieldType`, fluent `ISchemaBuilder`, rich text contracts `IRichTextRenderer`, `IRichTextNodeRenderer`, `IRichTextNodeContext`, `RichTextRenderOptions`, `RichTextFormats` |
 | `FluentCMS.Content` | `IContentService`, `IContentService<T>`, `ContentDocument`, `ContentQuery`, filter AST, `PagedResult<T>`, `OperationContext`, `Origin`, `Principal` |
-| `FluentCMS.Publishing` | `EntryStatus`, `VersionInfo`, `ScheduleRequest`, `IPublishingService` |
+| `FluentCMS.Publishing` | `EntryStatus`, `VersionInfo`, `VersionChange`, `PublishResult<T>`, `PublishWarning`, `PublishPolicyAttribute`, `ScheduleRequest` |
 | `FluentCMS.Hooks` | hook interfaces and `HookContext` |
 | `FluentCMS.Events` | `IEventBus`, `IEventHandler<T>`, event records |
 | `FluentCMS.Jobs` | `IJob<TPayload>`, `IJobScheduler`, `JobOptions` |
@@ -465,13 +465,13 @@ Rows 2.3 to 2.8, 2.14, 2.15, 2.19, 1.7, 1.8.
 | `PatchAsync(id, patch, expectedVersion)` | partial update of the draft with a JSON merge patch; a null removes a field. Its own method, because a class cannot express absence |
 | `DeleteAsync(id)` | trash, in every locale |
 | `RestoreAsync(id)` | from trash, in every locale |
-| `PublishAsync(id, locale?)`, `UnpublishAsync`, `DiscardDraftAsync` | publishing transitions (4.5) |
+| `PublishAsync(id, locale?, expectedVersion?)`, `UnpublishAsync(id, locale?)`, `DiscardDraftAsync(id, locale?, expectedVersion?)` | publishing transitions (4.5); publish returns the entry and `warnings` |
 | `ScheduleAsync(id, ScheduleRequest)`, `CancelScheduleAsync` | per locale |
-| `GetVersionsAsync(id, locale)`, `RestoreVersionAsync(id, number)`, `DiffAsync(id, a, b)` | versions |
+| `GetVersionsAsync(id, locale?)`, `GetVersionAsync(id, number, locale?)`, `RestoreVersionAsync(id, number, locale?, expectedVersion?)`, `DiffAsync(id, a, b, locale?)` | versions |
 | `BulkAsync(BulkRequest)` | create many; update, publish, unpublish, delete by id list or by filter with a required cap; per-item result |
 | `CountAsync(filter)` | |
 
-**Contract as built.** Every method of `IContentService` takes the type name first. `expectedVersion` is a required `int`, so no caller skips it.
+**Contract as built.** Every method of `IContentService` takes the type name first. On a save `expectedVersion` is a required `int`, so no caller skips it; on publish, discard and version restore it is optional, for a caller that wants to act only on what it reviewed.
 
 - **Refusals.** A principal that lacks the permission on the type gets `ContentAccessDeniedException` (HTTP 401 or 403). An entry that does not exist, is in another site or of another type, or is refused by its row rule gives `EntryNotFoundException` (404), so a client cannot probe; a read returns null. Delete and restore need the operation on every locale of the entry: none reached is not found, some reached is denied. An unreadable type on a read stays the engine's `ValidationException` on `type`, the same as an unknown type.
 - **System operations.** An operation with no ambient `OperationContext` throws. `Principal.System` is accepted only from `Origin.Job`, `Origin.Cli` and `Origin.Seed`, entered through `SystemOperation.Begin`; from `Api`, `Admin` or `Mcp` it throws.
@@ -547,16 +547,35 @@ Rows 6.1 to 6.11; decisions 38, 39, 40, 41.
 | Save draft | upsert state 0 rows, `draft_version++`, write `cms_version` | draft rules | `EntryDraftSavedEvent` |
 | Publish | copy state 0 rows to state 1, set `published_version`, `published_at` | full rules plus reference integrity | `EntryPublishedEvent` |
 | Unpublish | delete state 1 rows, status `Unpublished` | permission | `EntryUnpublishedEvent` |
-| Discard draft | copy state 1 rows to state 0 | permission | `EntryDraftDiscardedEvent` |
-| Restore version | new draft from snapshot | draft rules | `EntryVersionRestoredEvent` |
+| Discard draft | copy state 1 rows to state 0, as a new version; needs `update` | permission | `EntryDraftDiscardedEvent` |
+| Restore version | new draft from snapshot; needs `update` | draft rules | `EntryVersionRestoredEvent` |
 | Trash | set `deleted_at`; excluded by the global query filter | permission | `EntryTrashedEvent` |
 | Restore from trash | clear `deleted_at` | permission | `EntryRestoredEvent` |
 | Purge | delete all rows; separate permission `content.{type}.purge` | | `EntryPurgedEvent` |
 | Schedule | row in `cms_schedule`, job enqueued | | `EntryScheduledEvent` |
 
-**Versions.** Every save writes an immutable snapshot (decision 38) with author, origin, client id and an optional message. A per-type cap (default 50) prunes oldest drafts; versions that were published are never pruned. Diff is computed on demand as a field-level structural diff (blocks and rich text compared as trees) and returned as a list of `{ path, kind, before, after }`.
+**Versions.** Every save writes an immutable snapshot (decision 38) with author, origin, client id and an optional message. A per-type cap (default 50, `[PublishPolicy(MaxVersions = n)]`) prunes oldest drafts when a version is written; versions that were published are never pruned, and only a publish marks one so, in `status_after`. Diff is computed on demand as a field-level structural diff (blocks and rich text compared as trees) and returned as a list of `{ path, kind, before, after }`. A snapshot holds hidden fields, so reads and diffs go through the reader's field limits as they are today, and need the Management scope as well as the draft read. Access to versions is decided on the entry's current row: history is part of the entry, so a reader the row rule lets in also sees versions from before the entry came within the rule. A restore is a write of the principal's own: what it may not write or read, and what is hidden or read-only, keeps the value the draft holds, except for the system principal. A principal that can write a field it cannot read may not discard or restore at all, whatever that field holds, because the status and version those answer with would check a saved guess against the value.
 
-**Reference integrity.** On publish, references to unpublished or trashed entries produce warnings in the response (`warnings[]`) by default; `[PublishPolicy(UnpublishedReferences = Block)]` on a type turns them into a 422.
+**Reference integrity.** On publish, references to unpublished or trashed entries produce warnings in the response (`warnings[]`) by default; `[PublishPolicy(UnpublishedReferences = Block)]` on a type turns them into a 422. A target counts as published when it has a published row in the entry's locale or its fallback chain. A self-reference is exempt. A cycle is not: under `Block` neither side can go first, and the way out is to publish one side without the reference and set it afterwards.
+
+The answer must not be a way to ask about an entry the principal may not read, since a write takes any id:
+
+| Target, for a principal other than the system principal | Warn | Block |
+| --- | --- | --- |
+| Published, and it may read it | nothing | publishes |
+| Unpublished, and it may read it | `FCMS2403` with the id | `FCMS2403` on the field |
+| Trashed, missing, in another site or of another type; refused by its row rule, asked of the locale that serves the target; or with rows only in locales its grant does not cover | `FCMS2404`, no id, all identical | `FCMS2404` on the field |
+| Of a type it may not read, or of no type at all | nothing | always one refusal, no path |
+| In a field it can write but not read, which is where it chooses the id | nothing | always one refusal, no path |
+| In a field it can neither read nor write, or hidden: it did not choose the id | nothing | a refusal with no path, only if the target really is a problem |
+
+The system principal is told the id on `FCMS2404`.
+
+**Relation targets on a read.** The same rules hold for a top-level relation, a relation inside a block or component, an entry link inside rich text, and a relation in the `data` of an inline block, which also count in `cms_reference` and reference integrity. A target the principal may not read by type or row rule, in another site, of another type than the field's, or with rows only in locales its grants do not cover, is returned as null or left out of a list. A row rule is asked only of the locale being read, so where that locale has no rule, only grants with no rule count as covering a locale: a rule on another locale's grant cannot vouch for a row there, and such a target is left out even if the principal could read it directly in that locale. A rich text link keeps its text and loses its target, and a link to an unknown type is treated as one to an unreadable type. A published read shows only what is published: a target that is trashed or has no published row in any locale goes too, and one published only in another locale stays `{ id, type }`, since a reader with a fallback can follow it. A draft read keeps a trashed target of a type the principal may read as a reference, because that is what its author attached. A filter on the relation still matches a target left out: it answers about the source entry and a value the caller named.
+
+A write answers what a read showed, so what the read left out stays: a nested target goes back in its block, and a rich text document keeps its links when it comes back as it was read. Rich text nodes have no ids, so an edited document loses the links the principal could not see. Keeping must not test whether the target exists, or a later warning would say so: a principal keeps every target its read left out, whatever the id is. Only one whose read grant on that type has no row rule and no locale limit, which a read tells anyway, loses a target that does not exist in that type and site, trashed counting as existing. So a limited principal cannot clear a ghost id, and under `Block` the entry stays refused until a wider principal does. The system principal keeps nothing it did not send.
+
+**Shared fields.** Non-localizable fields live on one row per state, so publishing one locale publishes them for every published locale. A grant limited to some locales may publish only when those fields have not changed, or no other locale is published. The other locales' status is recomputed after a transition that moves the shared row. So `published_version` names the version a locale last published, and what that locale serves can differ from that snapshot in its shared fields.
 
 **Scheduling.** `cms_schedule (id, document_id, locale, action, run_at_utc, time_zone, status, job_id, created_by)`. The job runner executes `ScheduledPublishJob` and `ScheduledUnpublishJob`; `cms_document` mirrors the next scheduled times for list views. Cancel and reschedule update the row and the job.
 
