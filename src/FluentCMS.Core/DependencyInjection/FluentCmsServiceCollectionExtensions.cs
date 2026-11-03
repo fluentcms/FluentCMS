@@ -1,6 +1,8 @@
 using System.Reflection;
+using FluentCMS.Activity;
 using FluentCMS.Authorization;
 using FluentCMS.Content;
+using FluentCMS.Core.ActivityLog;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Content.Hooks;
@@ -133,6 +135,15 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddScoped<EntryChangeSink>();
         services.AddScoped<IEntryChangeSink>(serviceProvider => serviceProvider.GetRequiredService<EntryChangeSink>());
         services.AddScoped<IEntryChangeStager>(serviceProvider => serviceProvider.GetRequiredService<EntryChangeSink>());
+
+        builder.Activity.Validate();
+        builder.Jobs.AddJob<ActivityRetentionJob, ActivityRetentionPayload>(ActivityRetentionJob.Type);
+        services.AddSingleton(builder.Activity);
+        services.AddScoped<ActivityLogWriter>();
+        services.TryAddScoped<IActivityLog>(serviceProvider => serviceProvider.GetRequiredService<ActivityLogWriter>());
+        services.TryAddScoped<IActivityQuery, ActivityQuery>();
+        ActivityEvents.Register(builder.Events);
+        services.AddHostedService<ActivityScheduleService>();
 
         return services;
     }

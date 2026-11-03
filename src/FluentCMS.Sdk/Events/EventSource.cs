@@ -10,7 +10,8 @@ namespace FluentCMS.Events;
 /// <param name="ActorKind">The kind of that principal.</param>
 /// <param name="Origin">Where the operation came from.</param>
 /// <param name="CorrelationId">The correlation id of the operation.</param>
-public sealed record EventSource(DateTimeOffset OccurredAt, Guid SiteId, Guid ActorId, string ActorName, PrincipalKind ActorKind, Origin Origin, string CorrelationId)
+/// <param name="ClientId">The OAuth client id or API key id of the operation, when it had one.</param>
+public sealed record EventSource(DateTimeOffset OccurredAt, Guid SiteId, Guid ActorId, string ActorName, PrincipalKind ActorKind, Origin Origin, string CorrelationId, string? ClientId = null)
 {
     /// <summary>Describes an event raised by an operation.</summary>
     /// <param name="operation">The operation.</param>
@@ -20,7 +21,7 @@ public sealed record EventSource(DateTimeOffset OccurredAt, Guid SiteId, Guid Ac
         ArgumentNullException.ThrowIfNull(operation);
 
         var actor = operation.AuditPrincipal;
-        return new EventSource(operation.Timestamp, operation.Site.Value, actor.Id, actor.Name, actor.Kind, operation.Origin, operation.CorrelationId);
+        return new EventSource(operation.Timestamp, operation.Site.Value, actor.Id, actor.Name, actor.Kind, operation.Origin, operation.CorrelationId, operation.ClientId);
     }
 
     /// <summary>Describes an event the system raised outside any request, such as a job's failure.</summary>

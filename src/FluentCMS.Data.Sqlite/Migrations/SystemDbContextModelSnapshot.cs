@@ -17,6 +17,109 @@ namespace FluentCMS.Data.Sqlite.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.14");
 
+            modelBuilder.Entity("FluentCMS.Core.Storage.Entities.ActivityRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("action");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("actor_id");
+
+                    b.Property<string>("ActorName")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("actor_name");
+
+                    b.Property<string>("ActorType")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("actor_type");
+
+                    b.Property<string>("ClientId")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("client_id");
+
+                    b.Property<string>("CorrelationId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("correlation_id");
+
+                    b.Property<string>("Details")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("details");
+
+                    b.Property<string>("Ip")
+                        .HasMaxLength(45)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("ip");
+
+                    b.Property<string>("Locale")
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("locale");
+
+                    b.Property<long>("OccurredAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("occurred_at");
+
+                    b.Property<string>("Origin")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("origin");
+
+                    b.Property<Guid?>("SiteId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("site_id");
+
+                    b.Property<string>("TargetId")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("target_id");
+
+                    b.Property<string>("TargetLabel")
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("target_label");
+
+                    b.Property<string>("TargetType")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("target_type");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActorId")
+                        .HasDatabaseName("ix_cms_activity_actor");
+
+                    b.HasIndex("OccurredAt")
+                        .HasDatabaseName("ix_cms_activity_occurred");
+
+                    b.HasIndex("SiteId", "OccurredAt")
+                        .HasDatabaseName("ix_cms_activity_site_occurred");
+
+                    b.HasIndex("TargetType", "TargetId")
+                        .HasDatabaseName("ix_cms_activity_target");
+
+                    b.ToTable("cms_activity", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_cms_activity_details_json", "json_valid(\"details\")");
+                        });
+                });
+
             modelBuilder.Entity("FluentCMS.Core.Storage.Entities.ContentVersion", b =>
                 {
                     b.Property<Guid>("Id")

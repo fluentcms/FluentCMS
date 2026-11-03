@@ -1,4 +1,87 @@
 #nullable enable
+FluentCMS.Activity.ActivityEntry
+FluentCMS.Activity.ActivityEntry.<Clone>$() -> FluentCMS.Activity.ActivityEntry!
+FluentCMS.Activity.ActivityEntry.Action.get -> string!
+FluentCMS.Activity.ActivityEntry.Action.init -> void
+FluentCMS.Activity.ActivityEntry.ActivityEntry(string! Action) -> void
+FluentCMS.Activity.ActivityEntry.Deconstruct(out string! Action) -> void
+FluentCMS.Activity.ActivityEntry.Details.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string?>?
+FluentCMS.Activity.ActivityEntry.Details.init -> void
+FluentCMS.Activity.ActivityEntry.Equals(FluentCMS.Activity.ActivityEntry? other) -> bool
+FluentCMS.Activity.ActivityEntry.Ip.get -> string?
+FluentCMS.Activity.ActivityEntry.Ip.init -> void
+FluentCMS.Activity.ActivityEntry.Locale.get -> string?
+FluentCMS.Activity.ActivityEntry.Locale.init -> void
+FluentCMS.Activity.ActivityEntry.TargetId.get -> string?
+FluentCMS.Activity.ActivityEntry.TargetId.init -> void
+FluentCMS.Activity.ActivityEntry.TargetLabel.get -> string?
+FluentCMS.Activity.ActivityEntry.TargetLabel.init -> void
+FluentCMS.Activity.ActivityEntry.TargetType.get -> string?
+FluentCMS.Activity.ActivityEntry.TargetType.init -> void
+FluentCMS.Activity.ActivityFilter
+FluentCMS.Activity.ActivityFilter.<Clone>$() -> FluentCMS.Activity.ActivityFilter!
+FluentCMS.Activity.ActivityFilter.Action.get -> string?
+FluentCMS.Activity.ActivityFilter.Action.init -> void
+FluentCMS.Activity.ActivityFilter.ActivityFilter() -> void
+FluentCMS.Activity.ActivityFilter.ActorId.get -> System.Guid?
+FluentCMS.Activity.ActivityFilter.ActorId.init -> void
+FluentCMS.Activity.ActivityFilter.ActorKind.get -> FluentCMS.Content.PrincipalKind?
+FluentCMS.Activity.ActivityFilter.ActorKind.init -> void
+FluentCMS.Activity.ActivityFilter.Equals(FluentCMS.Activity.ActivityFilter? other) -> bool
+FluentCMS.Activity.ActivityFilter.From.get -> System.DateTimeOffset?
+FluentCMS.Activity.ActivityFilter.From.init -> void
+FluentCMS.Activity.ActivityFilter.IncludeInstance.get -> bool
+FluentCMS.Activity.ActivityFilter.IncludeInstance.init -> void
+FluentCMS.Activity.ActivityFilter.Origin.get -> FluentCMS.Content.Origin?
+FluentCMS.Activity.ActivityFilter.Origin.init -> void
+FluentCMS.Activity.ActivityFilter.TargetId.get -> string?
+FluentCMS.Activity.ActivityFilter.TargetId.init -> void
+FluentCMS.Activity.ActivityFilter.TargetType.get -> string?
+FluentCMS.Activity.ActivityFilter.TargetType.init -> void
+FluentCMS.Activity.ActivityFilter.To.get -> System.DateTimeOffset?
+FluentCMS.Activity.ActivityFilter.To.init -> void
+FluentCMS.Activity.ActivityItem
+FluentCMS.Activity.ActivityItem.<Clone>$() -> FluentCMS.Activity.ActivityItem!
+FluentCMS.Activity.ActivityItem.Action.get -> string!
+FluentCMS.Activity.ActivityItem.Action.init -> void
+FluentCMS.Activity.ActivityItem.ActivityItem(System.Guid Id, System.Guid? SiteId, System.DateTimeOffset OccurredAt, FluentCMS.Content.PrincipalKind ActorKind, System.Guid ActorId, string! ActorName, FluentCMS.Content.Origin Origin, string? ClientId, string! Action, string? TargetType, string? TargetId, string? TargetLabel, string? Locale, System.Collections.Generic.IReadOnlyDictionary<string!, string?>! Details, string! CorrelationId, string? Ip) -> void
+FluentCMS.Activity.ActivityItem.ActorId.get -> System.Guid
+FluentCMS.Activity.ActivityItem.ActorId.init -> void
+FluentCMS.Activity.ActivityItem.ActorKind.get -> FluentCMS.Content.PrincipalKind
+FluentCMS.Activity.ActivityItem.ActorKind.init -> void
+FluentCMS.Activity.ActivityItem.ActorName.get -> string!
+FluentCMS.Activity.ActivityItem.ActorName.init -> void
+FluentCMS.Activity.ActivityItem.ClientId.get -> string?
+FluentCMS.Activity.ActivityItem.ClientId.init -> void
+FluentCMS.Activity.ActivityItem.CorrelationId.get -> string!
+FluentCMS.Activity.ActivityItem.CorrelationId.init -> void
+FluentCMS.Activity.ActivityItem.Deconstruct(out System.Guid Id, out System.Guid? SiteId, out System.DateTimeOffset OccurredAt, out FluentCMS.Content.PrincipalKind ActorKind, out System.Guid ActorId, out string! ActorName, out FluentCMS.Content.Origin Origin, out string? ClientId, out string! Action, out string? TargetType, out string? TargetId, out string? TargetLabel, out string? Locale, out System.Collections.Generic.IReadOnlyDictionary<string!, string?>! Details, out string! CorrelationId, out string? Ip) -> void
+FluentCMS.Activity.ActivityItem.Details.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string?>!
+FluentCMS.Activity.ActivityItem.Details.init -> void
+FluentCMS.Activity.ActivityItem.Equals(FluentCMS.Activity.ActivityItem? other) -> bool
+FluentCMS.Activity.ActivityItem.Id.get -> System.Guid
+FluentCMS.Activity.ActivityItem.Id.init -> void
+FluentCMS.Activity.ActivityItem.Ip.get -> string?
+FluentCMS.Activity.ActivityItem.Ip.init -> void
+FluentCMS.Activity.ActivityItem.Locale.get -> string?
+FluentCMS.Activity.ActivityItem.Locale.init -> void
+FluentCMS.Activity.ActivityItem.OccurredAt.get -> System.DateTimeOffset
+FluentCMS.Activity.ActivityItem.OccurredAt.init -> void
+FluentCMS.Activity.ActivityItem.Origin.get -> FluentCMS.Content.Origin
+FluentCMS.Activity.ActivityItem.Origin.init -> void
+FluentCMS.Activity.ActivityItem.SiteId.get -> System.Guid?
+FluentCMS.Activity.ActivityItem.SiteId.init -> void
+FluentCMS.Activity.ActivityItem.TargetId.get -> string?
+FluentCMS.Activity.ActivityItem.TargetId.init -> void
+FluentCMS.Activity.ActivityItem.TargetLabel.get -> string?
+FluentCMS.Activity.ActivityItem.TargetLabel.init -> void
+FluentCMS.Activity.ActivityItem.TargetType.get -> string?
+FluentCMS.Activity.ActivityItem.TargetType.init -> void
+FluentCMS.Activity.IActivityLog
+FluentCMS.Activity.IActivityLog.WriteAsync(FluentCMS.Activity.ActivityEntry! entry, FluentCMS.Events.EventSource! source, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
+FluentCMS.Activity.IActivityLog.WriteAsync(FluentCMS.Activity.ActivityEntry! entry, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
+FluentCMS.Activity.IActivityQuery
+FluentCMS.Activity.IActivityQuery.QueryAsync(FluentCMS.Activity.ActivityFilter? filter = null, FluentCMS.Content.PageRequest? page = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.PagedResult<FluentCMS.Activity.ActivityItem!>!>!
 FluentCMS.Authorization.IPermissionProvider
 FluentCMS.Authorization.IPermissionProvider.GetPermissions() -> System.Collections.Generic.IEnumerable<FluentCMS.Authorization.Permission!>!
 FluentCMS.Authorization.Permission
@@ -372,11 +455,13 @@ FluentCMS.Events.EventSource.ActorKind.get -> FluentCMS.Content.PrincipalKind
 FluentCMS.Events.EventSource.ActorKind.init -> void
 FluentCMS.Events.EventSource.ActorName.get -> string!
 FluentCMS.Events.EventSource.ActorName.init -> void
+FluentCMS.Events.EventSource.ClientId.get -> string?
+FluentCMS.Events.EventSource.ClientId.init -> void
 FluentCMS.Events.EventSource.CorrelationId.get -> string!
 FluentCMS.Events.EventSource.CorrelationId.init -> void
-FluentCMS.Events.EventSource.Deconstruct(out System.DateTimeOffset OccurredAt, out System.Guid SiteId, out System.Guid ActorId, out string! ActorName, out FluentCMS.Content.PrincipalKind ActorKind, out FluentCMS.Content.Origin Origin, out string! CorrelationId) -> void
+FluentCMS.Events.EventSource.Deconstruct(out System.DateTimeOffset OccurredAt, out System.Guid SiteId, out System.Guid ActorId, out string! ActorName, out FluentCMS.Content.PrincipalKind ActorKind, out FluentCMS.Content.Origin Origin, out string! CorrelationId, out string? ClientId) -> void
 FluentCMS.Events.EventSource.Equals(FluentCMS.Events.EventSource? other) -> bool
-FluentCMS.Events.EventSource.EventSource(System.DateTimeOffset OccurredAt, System.Guid SiteId, System.Guid ActorId, string! ActorName, FluentCMS.Content.PrincipalKind ActorKind, FluentCMS.Content.Origin Origin, string! CorrelationId) -> void
+FluentCMS.Events.EventSource.EventSource(System.DateTimeOffset OccurredAt, System.Guid SiteId, System.Guid ActorId, string! ActorName, FluentCMS.Content.PrincipalKind ActorKind, FluentCMS.Content.Origin Origin, string! CorrelationId, string? ClientId = null) -> void
 FluentCMS.Events.EventSource.OccurredAt.get -> System.DateTimeOffset
 FluentCMS.Events.EventSource.OccurredAt.init -> void
 FluentCMS.Events.EventSource.Origin.get -> FluentCMS.Content.Origin
@@ -1079,6 +1164,15 @@ const FluentCMS.Schema.FieldSettings.Scale = "scale" -> string!
 const FluentCMS.Schema.FieldSettings.Source = "source" -> string!
 const FluentCMS.Schema.RichTextFormats.Html = "html" -> string!
 const FluentCMS.Schema.RichTextFormats.Markdown = "markdown" -> string!
+override FluentCMS.Activity.ActivityEntry.Equals(object? obj) -> bool
+override FluentCMS.Activity.ActivityEntry.GetHashCode() -> int
+override FluentCMS.Activity.ActivityEntry.ToString() -> string!
+override FluentCMS.Activity.ActivityFilter.Equals(object? obj) -> bool
+override FluentCMS.Activity.ActivityFilter.GetHashCode() -> int
+override FluentCMS.Activity.ActivityFilter.ToString() -> string!
+override FluentCMS.Activity.ActivityItem.Equals(object? obj) -> bool
+override FluentCMS.Activity.ActivityItem.GetHashCode() -> int
+override FluentCMS.Activity.ActivityItem.ToString() -> string!
 override FluentCMS.Authorization.Permission.ToString() -> string!
 override FluentCMS.Content.And.<Clone>$() -> FluentCMS.Content.And!
 override FluentCMS.Content.And.Equals(object? obj) -> bool
@@ -1272,6 +1366,12 @@ override sealed FluentCMS.Events.JobFailedEvent.Equals(FluentCMS.Events.CmsEvent
 override sealed FluentCMS.Events.SettingsChangedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
 override sealed FluentCMS.Events.SiteCreatedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
 override sealed FluentCMS.Events.SiteUpdatedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+static FluentCMS.Activity.ActivityEntry.operator !=(FluentCMS.Activity.ActivityEntry? left, FluentCMS.Activity.ActivityEntry? right) -> bool
+static FluentCMS.Activity.ActivityEntry.operator ==(FluentCMS.Activity.ActivityEntry? left, FluentCMS.Activity.ActivityEntry? right) -> bool
+static FluentCMS.Activity.ActivityFilter.operator !=(FluentCMS.Activity.ActivityFilter? left, FluentCMS.Activity.ActivityFilter? right) -> bool
+static FluentCMS.Activity.ActivityFilter.operator ==(FluentCMS.Activity.ActivityFilter? left, FluentCMS.Activity.ActivityFilter? right) -> bool
+static FluentCMS.Activity.ActivityItem.operator !=(FluentCMS.Activity.ActivityItem? left, FluentCMS.Activity.ActivityItem? right) -> bool
+static FluentCMS.Activity.ActivityItem.operator ==(FluentCMS.Activity.ActivityItem? left, FluentCMS.Activity.ActivityItem? right) -> bool
 static FluentCMS.Authorization.Permission.IsValidName(string? name) -> bool
 static FluentCMS.Content.And.operator !=(FluentCMS.Content.And? left, FluentCMS.Content.And? right) -> bool
 static FluentCMS.Content.And.operator ==(FluentCMS.Content.And? left, FluentCMS.Content.And? right) -> bool

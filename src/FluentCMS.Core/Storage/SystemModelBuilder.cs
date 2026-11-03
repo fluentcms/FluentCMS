@@ -21,6 +21,13 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
     private const int CronLength = 128;
     private const int EventTypeLength = 256;
     private const int HandlerLength = 128;
+    private const int ActorNameLength = 128;
+    private const int ClientIdLength = 128;
+    private const int ActionLength = 64;
+    private const int TargetIdLength = 128;
+    private const int TargetLabelLength = 256;
+    private const int CorrelationIdLength = 128;
+    private const int IpLength = 45;
 
     public void Apply(ModelBuilder modelBuilder)
     {
@@ -28,6 +35,7 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         modelBuilder.Entity<JobAttempt>(MapJobAttempt);
         modelBuilder.Entity<RecurringJob>(MapRecurringJob);
         modelBuilder.Entity<OutboxMessage>(MapOutbox);
+        modelBuilder.Entity<ActivityRow>(MapActivity);
         modelBuilder.Entity<Site>(MapSite);
         modelBuilder.Entity<SiteLocale>(MapSiteLocale);
         modelBuilder.Entity<Document>(MapDocument);
@@ -230,6 +238,39 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         entity.HasIndex(message => message.DeliveredAt)
             .HasFilter("status = 'delivered'")
             .HasDatabaseName("ix_cms_outbox_delivered");
+    }
+
+    private void MapActivity(EntityTypeBuilder<ActivityRow> entity)
+    {
+        entity.ToTable(StorageNames.Activity);
+        MapColumnNames(entity);
+        entity.Property(row => row.Id).HasValueGenerator<GuidV7ValueGenerator>();
+        entity.Property(row => row.ActorType).HasConversion<string>().HasMaxLength(StatusLength);
+        entity.Property(row => row.ActorName).HasMaxLength(ActorNameLength);
+        entity.Property(row => row.Origin).HasConversion<string>().HasMaxLength(StatusLength);
+        entity.Property(row => row.ClientId).HasMaxLength(ClientIdLength);
+        entity.Property(row => row.Action).HasMaxLength(ActionLength);
+        entity.Property(row => row.TargetType).HasMaxLength(NameLength);
+        entity.Property(row => row.TargetId).HasMaxLength(TargetIdLength);
+        entity.Property(row => row.TargetLabel).HasMaxLength(TargetLabelLength);
+        entity.Property(row => row.Locale).HasMaxLength(StorageNames.LocaleLength);
+        entity.Property(row => row.CorrelationId).HasMaxLength(CorrelationIdLength);
+        entity.Property(row => row.Ip).HasMaxLength(IpLength);
+        conventions.ConfigureJsonColumn(entity, entity.Property(row => row.Details));
+
+        // No foreign key to the site: the log outlives what it describes, and the retention job removes it by age.
+        entity.HasIndex(row => new { row.SiteId, row.OccurredAt })
+            .HasDatabaseName("ix_cms_activity_site_occurred");
+
+        // For the retention job, which takes the oldest rows of every site that has no age of its own.
+        entity.HasIndex(row => row.OccurredAt)
+            .HasDatabaseName("ix_cms_activity_occurred");
+
+        entity.HasIndex(row => new { row.TargetType, row.TargetId })
+            .HasDatabaseName("ix_cms_activity_target");
+
+        entity.HasIndex(row => row.ActorId)
+            .HasDatabaseName("ix_cms_activity_actor");
     }
 
     private static void MapColumnNames<T>(EntityTypeBuilder<T> entity)
