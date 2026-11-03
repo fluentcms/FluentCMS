@@ -47,8 +47,9 @@ public sealed class JobContext
 
     /// <summary>
     /// Cancelled when the host is shutting down and its grace period has passed, when another worker has taken over
-    /// the job, or when this worker cannot renew its lease in time. A job that throws
-    /// <see cref="OperationCanceledException"/> because of this has not failed.
+    /// the job, when this worker cannot renew its lease in time, or when the attempt has run past its timeout.
+    /// A job that throws <see cref="OperationCanceledException"/> because of this has not failed, except for the
+    /// timeout, which fails the attempt so that it is retried or dead-lettered.
     /// </summary>
     public CancellationToken CancellationToken { get; }
 }

@@ -67,9 +67,13 @@ internal sealed class AttributeSchemaReader(SchemaBuilder builder)
                     {
                         Report(SchemaErrorCodes.InvalidType, $"{type.Name} must keep at least one version");
                     }
+                    else if (policy.TrashRetentionDays is < 1 or > PublishPolicyAttribute.MaxTrashRetentionDays)
+                    {
+                        Report(SchemaErrorCodes.InvalidType, $"{type.Name} must keep its trash for 1 to {PublishPolicyAttribute.MaxTrashRetentionDays} days");
+                    }
                     else
                     {
-                        t.PublishPolicy(policy.UnpublishedReferences, policy.MaxVersions);
+                        t.PublishPolicy(policy.UnpublishedReferences, policy.MaxVersions, policy.TrashRetentionDays);
                     }
                 }
             }

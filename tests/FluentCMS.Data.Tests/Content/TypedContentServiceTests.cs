@@ -113,6 +113,29 @@ public sealed class TypedContentServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task ATrashedClassIsListedAndPurgedLikeADocument()
+    {
+        var created = await AsAsync<Tag, Tag>(Editor, service => service.CreateAsync(new Tag { Name = "Net Core" }, Token));
+        await AsAsync<Tag, bool>(Editor, async service =>
+        {
+            await service.DeleteAsync(created.Id, Token);
+            return true;
+        });
+
+        var listed = (await AsAsync<Tag, PagedResult<Tag>>(Editor, service => service.QueryTrashAsync(new ContentQuery(), Token))).Items.ShouldHaveSingleItem();
+        listed.Id.ShouldBe(created.Id);
+        listed.Name.ShouldBe("Net Core");
+
+        var admin = WithRole(BuiltInRoles.SuperAdmin);
+        await AsAsync<Tag, bool>(admin, async service =>
+        {
+            await service.PurgeAsync(created.Id, Token);
+            return true;
+        });
+        (await AsAsync<Tag, PagedResult<Tag>>(Editor, service => service.QueryTrashAsync(new ContentQuery(), Token))).Items.ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task ASingletonRoundTrips()
     {
         var created = await AsAsync<SiteSettings, SiteSettings>(Editor, service => service.CreateAsync(new SiteSettings { SiteName = "Mine" }, Token));

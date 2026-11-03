@@ -29,6 +29,7 @@ internal static class EntryEvents
             EntryChangeKind.Unpublished => new EntryUnpublishedEvent(change.Type, change.Id, change.Locale, change.Version) { EventId = change.EventId, Source = source },
             EntryChangeKind.DraftDiscarded => new EntryDraftDiscardedEvent(change.Type, change.Id, change.Locale, change.Version) { EventId = change.EventId, Source = source },
             EntryChangeKind.VersionRestored => new EntryVersionRestoredEvent(change.Type, change.Id, change.Locale, change.Version) { EventId = change.EventId, Source = source },
+            EntryChangeKind.Purged => new EntryPurgedEvent(change.Type, change.Id, change.Locale, change.Version) { EventId = change.EventId, Source = source },
             _ => throw new ArgumentOutOfRangeException(nameof(change), change.Kind, "No event is defined for this kind of change."),
         };
     }

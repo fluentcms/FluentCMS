@@ -85,6 +85,31 @@ public interface IContentService
     Task<ContentDocument> RestoreAsync(string type, Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Reads a page of the entries in the trash, as drafts and in one locale. The principal needs <c>restore</c> or <c>purge</c> on the type and
+    /// sees only the entries it may read as drafts, with the fields it may read; <c>deletedAt</c> and, where it may read who changed an entry, <c>deletedBy</c> say when and by whom.
+    /// A relation is followed to targets that are not in the trash, and a filter on a relation never matches a target in the trash.
+    /// </summary>
+    /// <param name="type">The name of the content type.</param>
+    /// <param name="query">What to read. Its status is ignored, since the trash is read as drafts, and so is its fallback. A missing site or locale is that of the operation, and every locale at once is refused.</param>
+    /// <param name="cancellationToken">A token to cancel the work.</param>
+    /// <returns>The page.</returns>
+    /// <exception cref="ContentAccessDeniedException">The principal may read the type but may neither restore nor purge its entries.</exception>
+    /// <exception cref="ValidationException">The query is not valid, or the principal may not read the type or its drafts.</exception>
+    Task<PagedResult<ContentDocument>> QueryTrashAsync(string type, ContentQuery query, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Deletes an entry in the trash for good, in all its locales: its content, its references, and every version of it, published ones included.
+    /// The values it held are free to use again.
+    /// </summary>
+    /// <param name="type">The name of the content type.</param>
+    /// <param name="id">The id of the entry.</param>
+    /// <param name="cancellationToken">A token to cancel the work.</param>
+    /// <returns>A task that completes when the entry is gone.</returns>
+    /// <exception cref="ContentAccessDeniedException">The principal may not purge the entry in every one of its locales.</exception>
+    /// <exception cref="EntryNotFoundException">The entry is not in the trash, or the principal may not reach it.</exception>
+    Task PurgeAsync(string type, Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Publishes the draft of one locale, under every rule a draft skips and with the references checked. Fields a localized
     /// type shares go with it, so a grant that does not cover the other published locales may only publish when those fields have not changed.
     /// </summary>
@@ -258,6 +283,12 @@ public interface IContentService<T>
     /// <exception cref="ContentAccessDeniedException">The principal may not restore the entry in every one of its locales.</exception>
     /// <exception cref="EntryNotFoundException">The entry is not in the trash, or the principal may not reach it.</exception>
     Task<T> RestoreAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <inheritdoc cref="IContentService.QueryTrashAsync"/>
+    Task<PagedResult<T>> QueryTrashAsync(ContentQuery query, CancellationToken cancellationToken = default);
+
+    /// <inheritdoc cref="IContentService.PurgeAsync"/>
+    Task PurgeAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <inheritdoc cref="IContentService.PublishAsync"/>
     Task<PublishResult<T>> PublishAsync(Guid id, string? locale = null, int? expectedVersion = null, CancellationToken cancellationToken = default);

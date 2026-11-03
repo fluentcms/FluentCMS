@@ -6,7 +6,7 @@ public sealed class JobRunnerOptions
 {
     public const string DefaultQueue = "default";
 
-    private static readonly TimeSpan LongestWait = TimeSpan.FromDays(49);
+    internal static readonly TimeSpan LongestWait = TimeSpan.FromDays(49);
 
     // Workers per queue on this instance, which is also the concurrency limit of the queue here. A queue left out has
     // no worker on this instance.
@@ -15,6 +15,10 @@ public sealed class JobRunnerOptions
     public int DefaultMaxAttempts { get; set; } = 5;
 
     public TimeSpan PollInterval { get; set; } = TimeSpan.FromSeconds(5);
+
+    // How long one attempt may run before its token is cancelled and its lease is no longer renewed. Null puts no limit
+    // on an attempt; a job registration can set its own, or Timeout.InfiniteTimeSpan for none.
+    public TimeSpan? AttemptTimeout { get; set; }
 
     public TimeSpan LeaseDuration { get; set; } = TimeSpan.FromMinutes(5);
 
@@ -46,6 +50,7 @@ public sealed class JobRunnerOptions
         Require(MaintenanceInterval > TimeSpan.Zero, $"{nameof(MaintenanceInterval)} must be positive.");
         Require(HeartbeatInterval > TimeSpan.Zero, $"{nameof(HeartbeatInterval)} must be positive.");
         Require(LeaseDuration > HeartbeatInterval, $"{nameof(LeaseDuration)} must be longer than {nameof(HeartbeatInterval)}, or a live job loses its lease.");
+        Require(AttemptTimeout is null || IsValidAttemptTimeout(AttemptTimeout.Value), $"{nameof(AttemptTimeout)} must be positive and no longer than {LongestWait.TotalDays} days, or Timeout.InfiniteTimeSpan.");
         Require(RetryBaseDelay >= TimeSpan.Zero && RetryMaxDelay >= RetryBaseDelay, $"{nameof(RetryMaxDelay)} must be at least {nameof(RetryBaseDelay)}, which must not be negative.");
         Require(RetryJitter >= 0, $"{nameof(RetryJitter)} must not be negative.");
         Require(ShutdownGracePeriod >= TimeSpan.Zero && ReleaseTimeout >= TimeSpan.Zero, "The shutdown periods must not be negative.");
@@ -54,6 +59,9 @@ public sealed class JobRunnerOptions
         TimeSpan[] waits = [PollInterval, MaintenanceInterval, HeartbeatInterval, ShutdownGracePeriod, ReleaseTimeout];
         Require(waits.All(wait => wait <= LongestWait), $"The intervals and shutdown periods must not be longer than {LongestWait.TotalDays} days.");
     }
+
+    internal static bool IsValidAttemptTimeout(TimeSpan timeout) =>
+        timeout == Timeout.InfiniteTimeSpan || (timeout > TimeSpan.Zero && timeout <= LongestWait);
 
     private static void Require(bool condition, string message)
     {

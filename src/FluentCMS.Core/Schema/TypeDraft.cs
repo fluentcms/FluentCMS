@@ -19,6 +19,8 @@ internal sealed class TypeDraft(string name, SchemaTypeKind kind, Type? clrType)
 
     public int MaxVersions { get; set; } = PublishPolicyAttribute.DefaultMaxVersions;
 
+    public int TrashRetentionDays { get; set; } = PublishPolicyAttribute.DefaultTrashRetentionDays;
+
     public List<FieldDraft> Fields { get; } = [];
 
     public bool IsContentType => Kind is SchemaTypeKind.Collection or SchemaTypeKind.Singleton;

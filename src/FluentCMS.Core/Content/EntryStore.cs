@@ -172,6 +172,42 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
                     .SetProperty(document => document.DeletedBy, by),
                 cancellationToken);
 
+    // When and by whom each of these entries was trashed, in one locale. A trashed row is not read through the query filter.
+    public async Task<Dictionary<Guid, (DateTimeOffset? At, Guid? By)>> TrashMarksAsync(IReadOnlyCollection<Guid> ids, string locale, CancellationToken cancellationToken)
+    {
+        var marks = await context.Documents.IgnoreQueryFilters().AsNoTracking()
+            .Where(document => ids.Contains(document.DocumentId) && document.Locale == locale && document.DeletedAt != null)
+            .Select(document => new { document.DocumentId, document.DeletedAt, document.DeletedBy })
+            .ToListAsync(cancellationToken);
+
+        return marks.ToDictionary(mark => mark.DocumentId, mark => (mark.DeletedAt, mark.DeletedBy));
+    }
+
+    // Everything an entry holds, in every state and locale. The documents go first and only while they are in the trash
+    // and, when a cutoff is given, were put there before it, so that an entry trashed again since it was read as due is not
+    // taken; the caller compares the count with the rows it saw and rolls back on a difference. References to the entry from
+    // others are theirs: they are the values of those entries' fields, and a read leaves out a target that is not there.
+    public async Task<int> PurgeAsync(SchemaType type, Guid id, DateTimeOffset? trashedBefore, CancellationToken cancellationToken)
+    {
+        var typeName = type.Name;
+        var documents = context.Documents.IgnoreQueryFilters().Where(document => document.DocumentId == id && document.Type == typeName && document.DeletedAt != null);
+        if (trashedBefore is { } before)
+        {
+            documents = documents.Where(document => document.DeletedAt < before);
+        }
+
+        var removed = await documents.ExecuteDeleteAsync(cancellationToken);
+        await context.Versions.Where(version => version.DocumentId == id).ExecuteDeleteAsync(cancellationToken);
+        await context.References.Where(reference => reference.SourceType == typeName && reference.SourceDocumentId == id).ExecuteDeleteAsync(cancellationToken);
+        if (type.Localized)
+        {
+            await context.Rows(StorageNames.LocaleTable(type)).Where(row => EF.Property<Guid>(row, StorageNames.DocumentId) == id).ExecuteDeleteAsync(cancellationToken);
+        }
+
+        await context.Rows(StorageNames.Table(type)).Where(row => EF.Property<Guid>(row, StorageNames.DocumentId) == id).ExecuteDeleteAsync(cancellationToken);
+        return removed;
+    }
+
     // Saves the draft of one locale: the document when it is new, the shared row, the locale row, the references and the
     // version, in one save, and prunes the versions over the cap of the type.
     public Task WriteDraftAsync(SchemaType type, Document row, bool isNewDocument, ContentDocument entry, Origin origin, string? clientId, CancellationToken cancellationToken, string? message = null) =>
