@@ -11,7 +11,6 @@ using FluentCMS.Publishing;
 using FluentCMS.Schema;
 using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.ChangeTracking;
 
 namespace FluentCMS.Core.Content;
 
@@ -408,9 +407,7 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
     // to lose if this write is rolled back, so it stays pending and only this write's rows go.
     private async Task SaveOwnRowsAsync(Func<Task> add, Func<Task>? afterSave, CancellationToken cancellationToken)
     {
-        context.ChangeTracker.DetectChanges();
-        var known = context.ChangeTracker.Entries().Select(item => item.Entity).ToHashSet(ReferenceEqualityComparer.Instance);
-        var held = context.ChangeTracker.Entries().Where(item => item.State != EntityState.Unchanged).Select(Hold).ToList();
+        var held = HeldChanges.Take(context);
         try
         {
             await add();
@@ -422,15 +419,7 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
         }
         finally
         {
-            foreach (var own in context.ChangeTracker.Entries().Where(item => !known.Contains(item.Entity)).ToList())
-            {
-                own.State = EntityState.Detached;
-            }
-
-            foreach (var pending in held)
-            {
-                pending.Restore();
-            }
+            held.Release();
         }
     }
 
@@ -490,34 +479,6 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
 
     private Task<int> DeleteReferencesAsync(SchemaType type, Document row, short state, bool includingShared, CancellationToken cancellationToken) =>
         ReferencesOf(type, row, state, includingShared).ExecuteDeleteAsync(cancellationToken);
-
-    private static HeldEntry Hold(EntityEntry entry)
-    {
-        var original = entry.State == EntityState.Modified ? entry.OriginalValues.Clone() : null;
-        var modified = entry.Properties.Where(property => property.IsModified).Select(property => property.Metadata.Name).ToList();
-        var state = entry.State;
-        entry.State = EntityState.Detached;
-        return new HeldEntry(entry, state, original, modified);
-    }
-
-    private sealed record HeldEntry(EntityEntry Entry, EntityState State, PropertyValues? Original, List<string> Modified)
-    {
-        public void Restore()
-        {
-            if (Original is null)
-            {
-                Entry.State = State;
-                return;
-            }
-
-            Entry.State = EntityState.Unchanged;
-            Entry.OriginalValues.SetValues(Original);
-            foreach (var name in Modified)
-            {
-                Entry.Property(name).IsModified = true;
-            }
-        }
-    }
 
     // Which of these relation targets exist, in the trash too. A media target has no row here, so it counts.
     public async Task<List<Guid>> ExistingTargetsAsync(SchemaField field, List<Guid> ids, CancellationToken cancellationToken)

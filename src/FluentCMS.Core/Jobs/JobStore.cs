@@ -1,5 +1,7 @@
+using FluentCMS.Core.Events;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
+using FluentCMS.Events;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,6 +17,8 @@ internal sealed class JobStore(
     IServiceScopeFactory scopes,
     IJobClaimDialect dialect,
     IJobEventSink events,
+    OutboxRows outbox,
+    OutboxKick kick,
     JobRunnerOptions options,
     TimeProvider time,
     ILogger<JobStore> logger)
@@ -58,13 +62,19 @@ internal sealed class JobStore(
                 cancellationToken);
 
         context.Add(new JobAttempt { JobId = id, Attempt = job.Attempts, StartedAt = now });
+
+        // The event is recorded for the outbox handlers in the same commit as the fact it reports.
+        var expiredEvent = expired > 0 ? Failed(job.Id, job.SiteId, job.Type, job.Queue, job.Attempts - 1, job.MaxAttempts, LeaseExpiredError) : null;
+        var rows = expiredEvent is null ? [] : outbox.Build([expiredEvent]);
+        context.AddRange(rows);
         await context.SaveChangesAsync(cancellationToken);
 
         await transaction.CommitAsync(CancellationToken.None);
 
-        if (expired > 0)
+        if (expiredEvent is not null)
         {
-            await PublishAsync(job.Id, new JobFailedEvent(job.Id, job.Type, job.Queue, job.Attempts - 1, job.MaxAttempts, LeaseExpiredError));
+            await PublishAsync(job.Id, expiredEvent);
+            await KickAsync(rows.Count);
         }
 
         return new ClaimedJob(job.Id, job.Type, job.Payload, job.Queue, job.SiteId, job.Attempts, job.MaxAttempts, owner, leaseUntil);
@@ -85,7 +95,7 @@ internal sealed class JobStore(
     public Task<bool> SucceedAsync(ClaimedJob job)
     {
         var now = time.GetUtcNow();
-        return SettleAsync(job, JobAttemptOutcome.Succeeded, error: null, now, row => row
+        return SettleAsync(job, JobAttemptOutcome.Succeeded, error: null, now, [], row => row
             .SetProperty(column => column.Status, JobStatus.Succeeded)
             .SetProperty(column => column.CompletedAt, now)
             .SetProperty(column => column.LastError, (string?)null)
@@ -99,7 +109,11 @@ internal sealed class JobStore(
         var deadLetter = job.Attempt >= job.MaxAttempts;
         var runAt = now + RetryBackoff.After(job.Attempt, options);
 
-        var held = await SettleAsync(job, JobAttemptOutcome.Failed, error, now, row =>
+        var failedEvent = Failed(job.Id, job.SiteId, job.Type, job.Queue, job.Attempt, job.MaxAttempts, error);
+        var deadEvent = deadLetter ? DeadLettered(job.Id, job.SiteId, job.Type, job.Queue, job.Attempt, error) : null;
+        var rows = outbox.Build(deadEvent is null ? [failedEvent] : [failedEvent, deadEvent]);
+
+        var held = await SettleAsync(job, JobAttemptOutcome.Failed, error, now, rows, row =>
         {
             row.SetProperty(column => column.LastError, error)
                 .SetProperty(column => column.LeaseOwner, (string?)null)
@@ -119,12 +133,14 @@ internal sealed class JobStore(
 
         if (held)
         {
-            await PublishAsync(job.Id, new JobFailedEvent(job.Id, job.Type, job.Queue, job.Attempt, job.MaxAttempts, error));
-            if (deadLetter)
+            await PublishAsync(job.Id, failedEvent);
+            if (deadEvent is not null)
             {
                 JobLog.DeadLettered(logger, job.Id, job.Type, job.Attempt, error);
-                await PublishAsync(job.Id, new JobDeadLetteredEvent(job.Id, job.Type, job.Queue, job.Attempt, error));
+                await PublishAsync(job.Id, deadEvent);
             }
+
+            await KickAsync(rows.Count);
         }
 
         return held;
@@ -134,7 +150,7 @@ internal sealed class JobStore(
     public Task<bool> ReleaseAsync(ClaimedJob job)
     {
         var now = time.GetUtcNow();
-        return SettleAsync(job, JobAttemptOutcome.Released, error: null, now, row => row
+        return SettleAsync(job, JobAttemptOutcome.Released, error: null, now, [], row => row
             .SetProperty(column => column.Status, JobStatus.Pending)
             .SetProperty(column => column.MaxAttempts, column => column.MaxAttempts + 1)
             .SetProperty(column => column.LeaseOwner, (string?)null)
@@ -175,12 +191,19 @@ internal sealed class JobStore(
                     .SetProperty(row => row.FinishedAt, now)
                     .SetProperty(row => row.Error, OutOfAttemptsError));
 
+            var failedEvent = Failed(job.Id, job.SiteId, job.Type, job.Queue, job.Attempts, job.MaxAttempts, OutOfAttemptsError);
+            var deadEvent = DeadLettered(job.Id, job.SiteId, job.Type, job.Queue, job.Attempts, OutOfAttemptsError);
+            var rows = outbox.Build([failedEvent, deadEvent]);
+            context.AddRange(rows);
+            await context.SaveChangesAsync();
+
             await transaction.CommitAsync();
 
             swept++;
             JobLog.DeadLettered(logger, job.Id, job.Type, job.Attempts, OutOfAttemptsError);
-            await PublishAsync(job.Id, new JobFailedEvent(job.Id, job.Type, job.Queue, job.Attempts, job.MaxAttempts, OutOfAttemptsError));
-            await PublishAsync(job.Id, new JobDeadLetteredEvent(job.Id, job.Type, job.Queue, job.Attempts, OutOfAttemptsError));
+            await PublishAsync(job.Id, failedEvent);
+            await PublishAsync(job.Id, deadEvent);
+            await KickAsync(rows.Count);
         }
 
         return swept;
@@ -205,7 +228,7 @@ internal sealed class JobStore(
         context.Set<Job>().Where(row =>
             row.Id == job.Id && row.Status == JobStatus.Running && row.LeaseOwner == job.Owner && row.Attempts == job.Attempt);
 
-    private async Task<bool> SettleAsync(ClaimedJob job, string outcome, string? error, DateTimeOffset now, Action<UpdateSettersBuilder<Job>> update)
+    private async Task<bool> SettleAsync(ClaimedJob job, string outcome, string? error, DateTimeOffset now, List<OutboxMessage> rows, Action<UpdateSettersBuilder<Job>> update)
     {
         await using var scope = scopes.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
@@ -223,8 +246,41 @@ internal sealed class JobStore(
                 .SetProperty(row => row.FinishedAt, now)
                 .SetProperty(row => row.Error, error));
 
+        // The events of the outcome are recorded in the commit that makes it true, or not at all.
+        if (rows.Count > 0)
+        {
+            context.AddRange(rows);
+            await context.SaveChangesAsync();
+        }
+
         await transaction.CommitAsync();
         return true;
+    }
+
+    // The ids follow from the job and the attempt, so that an outcome written again after a failed write is the same event.
+    private JobFailedEvent Failed(Guid id, Guid? site, string type, string queue, int attempt, int maxAttempts, string error) =>
+        new(id, type, queue, attempt, maxAttempts, SecretScrubber.Of(error))
+        {
+            EventId = OutboxRows.StableId($"job:{id}:{attempt}:failed"),
+            Source = SourceOf(site),
+        };
+
+    private JobDeadLetteredEvent DeadLettered(Guid id, Guid? site, string type, string queue, int attempts, string error) =>
+        new(id, type, queue, attempts, SecretScrubber.Of(error))
+        {
+            EventId = OutboxRows.StableId($"job:{id}:{attempts}:dead"),
+            Source = SourceOf(site),
+        };
+
+    // The system raises it, on the site the job belongs to.
+    private EventSource SourceOf(Guid? site) => EventSource.FromSystem(time.GetUtcNow()) with { SiteId = site ?? Guid.Empty };
+
+    private async Task KickAsync(int rows)
+    {
+        if (rows > 0)
+        {
+            await kick.KickAsync();
+        }
     }
 
     private Task PublishAsync(Guid jobId, JobFailedEvent failed) => GuardAsync(jobId, () => events.PublishAsync(failed));

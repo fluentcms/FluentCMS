@@ -19,12 +19,15 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
     private const int LeaseOwnerLength = 128;
     private const int RecurringNameLength = 128;
     private const int CronLength = 128;
+    private const int EventTypeLength = 256;
+    private const int HandlerLength = 128;
 
     public void Apply(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Job>(MapJob);
         modelBuilder.Entity<JobAttempt>(MapJobAttempt);
         modelBuilder.Entity<RecurringJob>(MapRecurringJob);
+        modelBuilder.Entity<OutboxMessage>(MapOutbox);
         modelBuilder.Entity<Site>(MapSite);
         modelBuilder.Entity<SiteLocale>(MapSiteLocale);
         modelBuilder.Entity<Document>(MapDocument);
@@ -199,6 +202,34 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         entity.Property(job => job.Type).HasMaxLength(JobTypeLength);
         entity.Property(job => job.Queue).HasMaxLength(QueueLength);
         conventions.ConfigureJsonColumn(entity, entity.Property(job => job.Payload));
+    }
+
+    private void MapOutbox(EntityTypeBuilder<OutboxMessage> entity)
+    {
+        entity.ToTable(StorageNames.Outbox);
+        MapColumnNames(entity);
+        entity.Property(message => message.Id).HasValueGenerator<GuidV7ValueGenerator>();
+        entity.Property(message => message.EventType).HasMaxLength(EventTypeLength);
+        entity.Property(message => message.Handler).HasMaxLength(HandlerLength);
+        entity.Property(message => message.Status).HasMaxLength(StatusLength);
+        entity.Property(message => message.LeaseOwner).HasMaxLength(LeaseOwnerLength);
+        entity.Property(message => message.LastError).HasMaxLength(Job.LastErrorMaxLength);
+        conventions.ConfigureJsonColumn(entity, entity.Property(message => message.Payload));
+
+        // One row per event and handler, so a retry of the write that raised the event cannot add a second delivery.
+        entity.HasIndex(message => new { message.EventId, message.Handler })
+            .IsUnique()
+            .HasDatabaseName("uq_cms_outbox_event_handler");
+
+        // Over rows still to deliver only, in the order the drain takes them, so that delivered rows are never walked.
+        entity.HasIndex(message => new { message.Sequence, message.Id })
+            .HasFilter("status = 'pending'")
+            .HasDatabaseName("ix_cms_outbox_pending");
+
+        // For the prune of delivered rows.
+        entity.HasIndex(message => message.DeliveredAt)
+            .HasFilter("status = 'delivered'")
+            .HasDatabaseName("ix_cms_outbox_delivered");
     }
 
     private static void MapColumnNames<T>(EntityTypeBuilder<T> entity)

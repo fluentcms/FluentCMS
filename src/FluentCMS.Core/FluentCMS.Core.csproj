@@ -3,6 +3,8 @@
   <ItemGroup>
     <InternalsVisibleTo Include="FluentCMS.Core.Tests" />
     <InternalsVisibleTo Include="FluentCMS.Data.Tests" />
+    <InternalsVisibleTo Include="FluentCMS.Testing" />
+    <InternalsVisibleTo Include="FluentCMS.Core.IntegrationTests" />
   </ItemGroup>
 
   <ItemGroup>

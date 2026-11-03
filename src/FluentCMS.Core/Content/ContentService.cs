@@ -5,6 +5,7 @@ using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Content.Hooks;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.Content.Validation;
+using FluentCMS.Core.Events;
 using FluentCMS.Core.Localization;
 using FluentCMS.Core.Schema.FieldTypes;
 using FluentCMS.Core.Storage;
@@ -39,6 +40,8 @@ internal sealed partial class ContentService(
     ContentEntryMapper mapper,
     ResponseRichText richText,
     IEnumerable<IEntryChangeSink> sinks,
+    IEnumerable<IEntryChangeStager> stagers,
+    EventBuffer events,
     ILogger<ContentService> logger) : IContentService
 {
     private readonly List<EntryChange> _pending = [];
@@ -414,20 +417,24 @@ internal sealed partial class ContentService(
         T result;
         var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
         _ownsTransaction = true;
+        events.Open();
         await using (transaction)
         {
             try
             {
                 result = await work();
+                await StageAsync([.. _pending], cancellationToken);
                 await transaction.CommitAsync(CancellationToken.None);
                 committed = true;
             }
             finally
             {
                 _ownsTransaction = false;
+                events.Close();
                 if (!committed)
                 {
                     _pending.Clear();
+                    events.Clear();
                 }
             }
         }
@@ -439,6 +446,7 @@ internal sealed partial class ContentService(
     private async Task<T> InSavepointAsync<T>(IDbContextTransaction outer, Func<Task<T>> work, CancellationToken cancellationToken)
     {
         var pending = _pending.Count;
+        var buffered = events.Mark;
         var savepoint = string.Create(CultureInfo.InvariantCulture, $"cms_content_{++_savepoints}");
         if (outer.SupportsSavepoints)
         {
@@ -449,10 +457,18 @@ internal sealed partial class ContentService(
         try
         {
             result = await work();
+
+            // The end of a transaction someone else began cannot be seen, so in-process handlers are never told. The rows of
+            // the outbox handlers go in with the transaction, and commit or roll back with it.
+            if (!_ownsTransaction)
+            {
+                await StageAsync([.. _pending.Skip(pending)], cancellationToken);
+            }
         }
         catch
         {
             _pending.RemoveRange(pending, _pending.Count - pending);
+            events.Truncate(buffered);
 
             // Without a savepoint the failed write's rows cannot be undone alone, and the transaction must not be
             // able to commit them, so all of it goes. SQL Server with MARS reports none: #2711.
@@ -473,13 +489,27 @@ internal sealed partial class ContentService(
             await outer.ReleaseSavepointAsync(savepoint, CancellationToken.None);
         }
 
-        // The end of a transaction someone else began cannot be seen, and an entry that may yet roll back is never told.
         if (!_ownsTransaction)
         {
             _pending.RemoveRange(pending, _pending.Count - pending);
+            events.Truncate(buffered);
         }
 
         return result;
+    }
+
+    // Still inside the transaction: what the outbox handlers must not lose is written with the write, and a failure here fails it.
+    private async Task StageAsync(IReadOnlyList<EntryChange> changes, CancellationToken cancellationToken)
+    {
+        foreach (var stager in stagers)
+        {
+            await stager.StageAsync(context, changes, cancellationToken);
+        }
+
+        if (_ownsTransaction)
+        {
+            await events.StageAsync(context, cancellationToken);
+        }
     }
 
     // The write has committed: neither a failing sink nor a cancelled caller may turn it into a failure (spec 4.11).
@@ -487,6 +517,7 @@ internal sealed partial class ContentService(
     {
         List<EntryChange> changes = [.. _pending];
         _pending.Clear();
+        var buffered = events.Take();
         foreach (var change in changes)
         {
             foreach (var sink in sinks)
@@ -500,6 +531,15 @@ internal sealed partial class ContentService(
                     ContentLog.SinkFailed(logger, exception, change.Kind, change.Type, change.Id, change.Locale);
                 }
             }
+        }
+
+        try
+        {
+            await events.DispatchAsync(buffered);
+        }
+        catch (Exception exception)
+        {
+            ContentLog.EventsFailed(logger, exception);
         }
     }
 

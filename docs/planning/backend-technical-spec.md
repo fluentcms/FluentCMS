@@ -899,7 +899,7 @@ Rows 11.1 to 11.6, 11.12, 11.13.
 
 ### 6.3 Test host
 
-`FluentCmsTestHost` on `WebApplicationFactory`: `UseSqlite(inMemory or file)`, `WithContentTypes<...>()`, `WithPlugin<T>()`, fixtures `CreateUserAsync(role)`, `CreateApiKeyAsync(class)`, `AsUser(user)` and `AsKey(key)` HTTP clients, `Content<T>()` for in-process calls, `Seed(...)`. The project's own integration tests use it from milestone M1, which is why it ships early.
+`FluentCmsTestHost` on `TestServer` (`WebApplicationFactory` needs the entry point of the application under test, and the CMS library has none): `UseSqlite(inMemory or file)`, `WithContentTypes<...>()`, `WithPlugin<T>()`, fixtures `CreateUserAsync(role)`, `CreateApiKeyAsync(class)`, `AsUser(user)` and `AsKey(key)` HTTP clients, `Content<T>()` for in-process calls, `Seed(...)`. The project's own integration tests use it from milestone M1, which is why it ships early.
 
 ### 6.4 Source generator and analyzers
 

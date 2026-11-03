@@ -18,6 +18,7 @@ internal static class StorageNames
     public const string Job = "cms_job";
     public const string JobAttempt = "cms_job_attempt";
     public const string RecurringJob = "cms_recurring_job";
+    public const string Outbox = "cms_outbox";
 
     public const string Id = "id";
     public const string DocumentId = "document_id";
