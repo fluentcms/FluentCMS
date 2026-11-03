@@ -47,7 +47,19 @@ internal sealed class JobExecutor(
         var heartbeat = HeartbeatAsync(job, attempt, stopHeartbeat.Token);
         try
         {
-            await ExecuteAndSettleAsync(job, shutdown, attempt.Token, abandon);
+            var limit = AttemptTimeoutOf(job);
+            using var deadline = limit is { } span ? new CancellationTokenSource(span, time) : null;
+            var timedOut = false;
+
+            // Renewal stops first, so that a job that ignores its token also loses its lease and is taken over.
+            using var expiry = deadline?.Token.Register(() =>
+            {
+                timedOut = true;
+                stopHeartbeat.Cancel();
+                attempt.Cancel();
+            });
+
+            await ExecuteAndSettleAsync(job, () => timedOut ? limit : null, shutdown, attempt.Token, abandon);
         }
         finally
         {
@@ -56,7 +68,13 @@ internal sealed class JobExecutor(
         }
     }
 
-    private async Task ExecuteAndSettleAsync(ClaimedJob job, CancellationToken shutdown, CancellationToken attempt, CancellationToken abandon)
+    private TimeSpan? AttemptTimeoutOf(ClaimedJob job)
+    {
+        var limit = registry.Find(job.Type)?.AttemptTimeout ?? options.AttemptTimeout;
+        return limit == Timeout.InfiniteTimeSpan ? null : limit;
+    }
+
+    private async Task ExecuteAndSettleAsync(ClaimedJob job, Func<TimeSpan?> timedOut, CancellationToken shutdown, CancellationToken attempt, CancellationToken abandon)
     {
         Func<Task<bool>> settle;
         try
@@ -68,6 +86,12 @@ internal sealed class JobExecutor(
         {
             JobLog.Released(logger, job.Id, job.Type, job.Attempt);
             settle = () => store.ReleaseAsync(job);
+        }
+        catch (OperationCanceledException) when (timedOut() is { } limit)
+        {
+            var error = JobErrorText.ForStorage(TimedOut(limit), job.Payload);
+            JobLog.AttemptFailed(logger, job.Id, job.Type, job.Attempt, error);
+            settle = () => store.FailAsync(job, error);
         }
         catch (OperationCanceledException) when (attempt.IsCancellationRequested)
         {
@@ -134,6 +158,9 @@ internal sealed class JobExecutor(
             operation.Current = previous;
         }
     }
+
+    private static JobInvocationException TimedOut(TimeSpan limit) =>
+        new($"{JobErrorCodes.AttemptTimedOut}: the attempt ran longer than {limit}.");
 
     // Keeps nothing of the reader's exception: a converter can quote any value in it, and a path can name a dictionary key.
     private static object ReadPayload(JobRegistration registration, ClaimedJob job)
