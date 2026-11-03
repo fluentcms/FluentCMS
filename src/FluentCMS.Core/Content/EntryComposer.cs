@@ -9,6 +9,8 @@ namespace FluentCMS.Core.Content;
 // Makes the entry an update asks for out of what is stored and what the client sent, before it is canonicalized.
 internal sealed class EntryComposer(SchemaModel schema)
 {
+    private readonly NestedTargets _nested = new(schema);
+
     private const string Discriminator = "type";
 
     private static readonly HashSet<Guid> NoTargets = [];
@@ -145,8 +147,8 @@ internal sealed class EntryComposer(SchemaModel schema)
         }
     }
 
-    private static RichText CarryLinks(RichText before, RichText after, IReadOnlySet<Guid> unseen) =>
-        unseen.Count > 0 && JsonNode.DeepEquals(JsonNode.Parse(NestedTargets.DropLinks(before, (_, id) => !unseen.Contains(id)).Json), JsonNode.Parse(after.Json)) ? before : after;
+    private RichText CarryLinks(RichText before, RichText after, IReadOnlySet<Guid> unseen) =>
+        unseen.Count > 0 && JsonNode.DeepEquals(JsonNode.Parse(_nested.DropLinks(before, (_, id) => !unseen.Contains(id)).Json), JsonNode.Parse(after.Json)) ? before : after;
 
     private SchemaType? ComponentOf(SchemaField field) =>
         field.Settings.TryGetValue(FieldSettings.Component, out var name) && name is string component ? schema.FindComponent(component) : null;
@@ -268,7 +270,7 @@ internal sealed class EntryComposer(SchemaModel schema)
         if (field.FieldType == FieldTypeNames.RichText)
         {
             var text = value.DeepClone();
-            NestedTargets.DropLinks(text, (_, id) => !unseen.Contains(id));
+            _nested.DropLinks(text, (_, id) => !unseen.Contains(id));
             return text;
         }
 
@@ -281,7 +283,10 @@ internal sealed class EntryComposer(SchemaModel schema)
     }
 
     private static bool IsUnseen(JsonNode? value, IReadOnlySet<Guid> unseen) =>
-        value is not JsonArray && EntryCanonicalizer.TryReadId(RawValue.Unwrap(value), out var id) && unseen.Contains(id);
+        value is not JsonArray && TargetId(value) is { } id && unseen.Contains(id);
+
+    private static Guid? TargetId(JsonNode? value) =>
+        EntryCanonicalizer.TryReadId(RawValue.Unwrap(value), out var id) ? id : null;
 
     private SchemaType? OwnerOf(SchemaField field, JsonObject item) => field.FieldType switch
     {
@@ -347,9 +352,10 @@ internal sealed class EntryComposer(SchemaModel schema)
         }
 
         var targets = after[field.Name] as JsonArray ?? [];
+        HashSet<Guid> present = [.. targets.Select(TargetId).OfType<Guid>()];
         for (var index = 0; index < oldTargets.Count; index++)
         {
-            if (IsUnseen(oldTargets[index], unseen))
+            if (IsUnseen(oldTargets[index], unseen) && TargetId(oldTargets[index]) is { } id && present.Add(id))
             {
                 targets.Insert(Math.Min(index, targets.Count), oldTargets[index]?.DeepClone());
             }

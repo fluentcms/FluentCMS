@@ -366,7 +366,8 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
     // Which targets of a relation to return, or null for all of them. A target the principal cannot read by type or by
     // row rule is not returned, even as a reference, and neither is one in another site than the query's. Under a row
     // rule, a target with no row in this state and locale cannot be shown to pass, so it goes too. A published read shows
-    // only what is published (spec 4.5): a target in the trash or with no published row in any locale is not there.
+    // only what is published (spec 4.5): a target in the trash or with no published row in any locale is not there. A target
+    // only in locales the principal's grants do not cover is not there either.
     private async Task<HashSet<Guid>?> ReadableTargetsAsync(QueryScope query, ReferenceOutput output, List<Reference> references, CancellationToken cancellationToken)
     {
         var target = output.Stored.Field.Relation is { } relation ? schema.FindContentType(relation.Target) : null;
@@ -417,7 +418,8 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         var inOneSite = target.Scope == ContentScope.Site && query.Site is not null;
         var hasRule = query.Access.RowRule(target) is not null;
         var isPublished = query.State == ContentState.Published;
-        if (!inOneSite && !hasRule && !isPublished)
+        var locales = target.Localized ? query.Access.ReadLocales(target) : null;
+        if (!inOneSite && !hasRule && !isPublished && locales is null)
         {
             return null;
         }
@@ -436,7 +438,13 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
                 documents = documents.Where(document => document.SiteId == site);
             }
 
-            return [.. await documents.Select(document => document.DocumentId).ToListAsync(cancellationToken)];
+            if (locales is null)
+            {
+                return [.. await documents.Select(document => document.DocumentId).ToListAsync(cancellationToken)];
+            }
+
+            var rows = await documents.Select(document => new { document.DocumentId, document.Locale }).ToListAsync(cancellationToken);
+            return [.. rows.Where(row => locales.Contains(row.Locale)).Select(row => row.DocumentId)];
         }
 
         var row = Expression.Parameter(typeof(QueryRow), "row");

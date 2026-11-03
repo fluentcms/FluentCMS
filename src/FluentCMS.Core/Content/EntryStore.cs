@@ -353,12 +353,6 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
         return await rows.Select(document => new ReferenceTargetRow(document.Locale, document.PublishedVersion != null)).ToListAsync(cancellationToken);
     }
 
-    // Which of these ids are entries, in the trash too.
-    public async Task<HashSet<Guid>> ExistingEntriesAsync(List<Guid> ids, CancellationToken cancellationToken) =>
-        [.. await context.Documents.IgnoreQueryFilters().AsNoTracking()
-            .Where(document => ids.Contains(document.DocumentId))
-            .Select(document => document.DocumentId)
-            .ToListAsync(cancellationToken)];
 
     // What an entry refers to, with whether the reference is outside what hidden fields hide. Media has no row here to check.
     public List<EntryTarget> TargetsOf(SchemaType type, ContentDocument entry)
@@ -480,19 +474,18 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
     private Task<int> DeleteReferencesAsync(SchemaType type, Document row, short state, bool includingShared, CancellationToken cancellationToken) =>
         ReferencesOf(type, row, state, includingShared).ExecuteDeleteAsync(cancellationToken);
 
-    // Which of these relation targets exist, in the trash too. A media target has no row here, so it counts.
-    public async Task<List<Guid>> ExistingTargetsAsync(SchemaField field, List<Guid> ids, CancellationToken cancellationToken)
+    // Which of these ids are entries of this type in this site, in the trash too.
+    public async Task<List<Guid>> ExistingTargetsAsync(SchemaType target, List<Guid> ids, SiteId site, CancellationToken cancellationToken)
     {
-        if (schema.FindContentType(EntryPaths.ReferenceTarget(field)) is null)
+        var typeName = target.Name;
+        var siteId = (Guid?)site.Value;
+        var rows = context.Documents.IgnoreQueryFilters().AsNoTracking().Where(document => ids.Contains(document.DocumentId) && document.Type == typeName);
+        if (target.Scope == ContentScope.Site)
         {
-            return ids;
+            rows = rows.Where(document => document.SiteId == siteId);
         }
 
-        return await context.Documents.IgnoreQueryFilters().AsNoTracking()
-            .Where(document => ids.Contains(document.DocumentId))
-            .Select(document => document.DocumentId)
-            .Distinct()
-            .ToListAsync(cancellationToken);
+        return await rows.Select(document => document.DocumentId).Distinct().ToListAsync(cancellationToken);
     }
 
     private async Task WriteRowAsync(string table, SchemaType type, Document document, string? locale, IEnumerable<StoredField> fields, ContentDocument entry, CancellationToken cancellationToken)
@@ -644,7 +637,7 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
         }
     }
 
-    private static void CollectRichText(object? value, List<(string Target, Guid Id)> into)
+    private void CollectRichText(object? value, List<(string Target, Guid Id)> into)
     {
         var document = value switch
         {
@@ -661,6 +654,16 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
         var found = RichTextReferenceExtractor.Extract(document);
         into.AddRange(found.Entries.Select(entry => (entry.Type, entry.Id)));
         into.AddRange(found.Media.Select(media => (MediaTarget, media.Id)));
+        foreach (var block in found.InlineBlocks)
+        {
+            foreach (var field in schema.FindBlock(block.BlockType)?.Fields ?? [])
+            {
+                if (block.Data.TryGetValue(field.Name, out var data))
+                {
+                    Collect(field, EntryJson.ToNode(data), into);
+                }
+            }
+        }
     }
 
     private void CollectInside(SchemaField field, JsonNode node, List<(string Target, Guid Id)> into)

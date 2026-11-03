@@ -40,6 +40,8 @@ internal sealed class ContentQueryAccess(IAuthorizationEvaluator evaluator, IOpe
 
         public bool CanReadField(SchemaType type, string field) => permissions.CanReadField(type, field, Target(type));
 
+        public IReadOnlySet<string>? ReadLocales(SchemaType type) => permissions.ReadLocalesOf(type, Target(type));
+
         public ContentFilter? RowRule(SchemaType type)
         {
             // One instance per type, because the compiler recognises the rule in a filter by reference.

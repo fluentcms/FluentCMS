@@ -137,6 +137,9 @@ internal sealed partial class ContentService
                 ThrowIfNotPublished(write, document);
                 await ThrowIfNotExpectedAsync(write, id, document, expectedVersion, cancellationToken);
 
+                var writable = await evaluator.WritableFieldsAsync(write.Operation, write.Type, ContentOperation.Update, id, target, cancellationToken);
+                ThrowIfWritesBlind(write, writable);
+
                 var stored = await store.ReadAsync(write.Type, document, ContentState.Draft, cancellationToken);
                 var published = await store.ReadAsync(write.Type, document, ContentState.Published, cancellationToken);
                 if (SameFields(write.Type, stored, published))
@@ -149,7 +152,6 @@ internal sealed partial class ContentService
                     return document;
                 }
 
-                var writable = await evaluator.WritableFieldsAsync(write.Operation, write.Type, ContentOperation.Update, id, target, cancellationToken);
                 var working = Prepare(write, EntryComposer.Replace(write.Type, stored, DiscardedValues(write, published, writable), static _ => true), document, stored);
                 if (writable.Fields is not null)
                 {
@@ -249,6 +251,8 @@ internal sealed partial class ContentService
                     ?? throw new EntryNotFoundException(write.Type.Name, id);
 
                 var writable = await evaluator.WritableFieldsAsync(write.Operation, write.Type, ContentOperation.Update, id, target, cancellationToken);
+                ThrowIfWritesBlind(write, writable);
+
                 var stored = await store.ReadAsync(write.Type, document, ContentState.Draft, cancellationToken);
                 var restored = await RestorableFieldsAsync(write, version, writable, cancellationToken);
 
@@ -351,6 +355,16 @@ internal sealed partial class ContentService
         if (document.PublishedVersion is null)
         {
             throw new ValidationException([new ValidationError("", ContentErrorCodes.NotPublished, $"This {write.Type.Name} is not published in this locale.")]);
+        }
+    }
+
+    // A discard or restore answers with a status and a version that depend on whether the draft equals what it is compared
+    // with. Where the principal can write a field it cannot read, that would check a saved guess, so it is refused whatever the field holds.
+    private static void ThrowIfWritesBlind(WriteScope write, WritableFields writable)
+    {
+        if (!write.Permissions.IsSystem && write.Type.Fields.Any(field => !field.Hidden && !field.ReadOnly && writable.Includes(field.Name) && !write.Permissions.CanReadField(write.Type, field.Name, write.Target)))
+        {
+            throw new ContentAccessDeniedException(write.Type.Name, CorePermissions.OperationName(ContentOperation.Update));
         }
     }
 

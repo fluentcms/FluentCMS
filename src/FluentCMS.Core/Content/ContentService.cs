@@ -683,22 +683,35 @@ internal sealed partial class ContentService(
             || FieldStorage.Of(schema, write.Type).Any(item => item.Kind == FieldStorageKind.Reference && item.Field.Multiple && sent.ContainsKey(QueryPaths.ApiPath(write.Type, item).Split('.')[0]))
             || sent.Keys.Any(key => write.Type.FindField(key)?.FieldType is FieldTypeNames.Blocks or FieldTypeNames.Component or FieldTypeNames.RichText));
 
-    // A nested target that the read left out and that still exists. One no longer there is nothing to keep.
     private async Task<HashSet<Guid>> UnseenNestedTargetsAsync(WriteScope write, ContentDocument stored, ContentDocument? shown, CancellationToken cancellationToken)
     {
         var nested = new NestedTargets(schema);
-        var ids = nested.Collect(write.Type, stored).Values.SelectMany(found => found).ToHashSet();
-        if (ids.Count == 0)
+        var seen = shown is null ? null : nested.Collect(write.Type, shown);
+        HashSet<Guid> unseen = [];
+        foreach (var (name, ids) in nested.Collect(write.Type, stored))
+        {
+            var left = ids.Except(seen?.GetValueOrDefault(name) ?? []).ToList();
+            if (left.Count > 0)
+            {
+                unseen.UnionWith(await KeptTargetsAsync(write, name, left, cancellationToken));
+            }
+        }
+
+        return unseen;
+    }
+
+    // Which of the targets a read left out stay. All of them, so that the result, and any warning on it later, is the same
+    // whatever the id is. Only a principal whose read of that type has no row rule and no locale limit may lose one that
+    // is not there, trashed counting as there: a read tells it that anyway, and it is how a ghost gets cleared.
+    private async Task<List<Guid>> KeptTargetsAsync(WriteScope write, string targetName, List<Guid> ids, CancellationToken cancellationToken)
+    {
+        if (schema.FindContentType(targetName) is not { } target
+            || !write.Permissions.GrantsOf(target, ContentOperation.Read, write.Target).Any(grant => grant.Constraints.RowRule is null && grant.Constraints.Locales is null))
         {
             return ids;
         }
 
-        if (shown is not null)
-        {
-            ids.ExceptWith(nested.Collect(write.Type, shown).Values.SelectMany(found => found));
-        }
-
-        return ids.Count == 0 ? ids : await store.ExistingEntriesAsync([.. ids], cancellationToken);
+        return await store.ExistingTargetsAsync(target, ids, write.Site, cancellationToken);
     }
 
     // A locale being added has no row to read, so this reads a locale it has for the shared fields. One that has since
@@ -719,7 +732,7 @@ internal sealed partial class ContentService(
     // What a read gave comes back with the targets it may not read missing. They are not the client's to remove, so each
     // goes back where it was in a multiple relation, which leaves a list sent as it was read unchanged, and a single
     // relation sent empty keeps its target. A patch names what it changes, so an explicit null on a single one clears.
-    // A target that no longer exists is nothing to keep, and the system principal reads everything and keeps nothing.
+    // The system principal reads everything and keeps nothing.
     private async Task KeepUnreadableTargetsAsync(WriteScope write, ContentDocument stored, ContentDocument? shown, ContentDocument working, bool isPatch, CancellationToken cancellationToken)
     {
         if (write.Permissions.IsSystem)
@@ -745,7 +758,7 @@ internal sealed partial class ContentService(
                 continue;
             }
 
-            var kept = await store.ExistingTargetsAsync(item.Field, unseen, cancellationToken);
+            var kept = await KeptTargetsAsync(write, EntryPaths.ReferenceTarget(item.Field), unseen, cancellationToken);
             var sent = IdsOf(EntryPaths.ValueAt(working, item, write.Type));
             if (item.Field.Multiple)
             {

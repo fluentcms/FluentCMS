@@ -596,17 +596,45 @@ public sealed class PublishingAccessTests : IDisposable
     }
 
     [Fact]
-    public async Task AWriterWhoCannotReadGetsOnlyTheIdAndVersionFromARestoreAndADiscard()
+    public async Task AWriterWhoCannotReadMayNotRestoreOrDiscard()
     {
         var id = IdOf(await _database.CreateAsync(Editor, Titled("One")));
         await _database.PublishAsync(Editor, id);
         await _database.PatchAsync(Editor, id, Titled("Two"), 1);
+        var before = _database.Trace(id);
         var writer = Limited(("content.article.update", null));
 
-        (await _database.RestoreVersionAsync(writer, id, 1)).Keys.ShouldBe(["id", "version"]);
-        await _database.PatchAsync(Editor, id, Titled("Three"), 3);
-        (await _database.DiscardAsync(writer, id)).Keys.ShouldBe(["id", "version"]);
+        await Should.ThrowAsync<ContentAccessDeniedException>(() => _database.RestoreVersionAsync(writer, id, 1));
+        await Should.ThrowAsync<ContentAccessDeniedException>(() => _database.DiscardAsync(writer, id));
         await Should.ThrowAsync<ValidationException>(() => _database.VersionAsync(writer, id, 1));
+        _database.Trace(id).ShouldBe(before);
+    }
+
+    [Fact]
+    public async Task ADiscardOrRestoreCannotCheckAGuessAtAFieldItCannotRead()
+    {
+        var id = IdOf(await _database.CreateAsync(Editor, new() { ["title"] = "One", ["code"] = "SECRET" }));
+        await _database.PublishAsync(Editor, id);
+        var guesser = Limited(
+            ("content.article.read", new PermissionConstraints { Fields = ["title"] }),
+            ("content.article.update", new PermissionConstraints { Fields = ["title", "code"] }));
+        List<string> answers = [];
+
+        var version = 1;
+        foreach (var guess in new[] { "WRONG", "SECRET" })
+        {
+            version = VersionOf(await _database.PatchAsync(guesser, id, new() { ["code"] = guess }, version));
+            var before = _database.Trace(id);
+            foreach (var call in new Func<Task<ContentDocument>>[] { () => _database.DiscardAsync(guesser, id), () => _database.RestoreVersionAsync(guesser, id, 1) })
+            {
+                var refused = await Should.ThrowAsync<ContentAccessDeniedException>(call);
+                answers.Add(refused.Message);
+            }
+
+            _database.Trace(id).ShouldBe(before);
+        }
+
+        answers.Distinct().ShouldHaveSingleItem();
     }
 
     [Fact]

@@ -119,7 +119,7 @@ public interface IContentService
     /// <param name="expectedVersion">The version being discarded, or <see langword="null"/> for whatever the draft holds.</param>
     /// <param name="cancellationToken">A token to cancel the work.</param>
     /// <returns>The entry with its system fields, without what the principal may not read.</returns>
-    /// <exception cref="ContentAccessDeniedException">The principal may not update entries of the type in the locale.</exception>
+    /// <exception cref="ContentAccessDeniedException">The principal may not update entries of the type in the locale, or may write a field it may not read.</exception>
     /// <exception cref="EntryNotFoundException">The entry has no row in the locale, is in the trash, or the principal may not reach it.</exception>
     /// <exception cref="VersionConflictException">The stored version is not the expected one.</exception>
     /// <exception cref="ValidationException">The entry is not published in the locale, or a hook left a value that is not valid.</exception>
@@ -159,7 +159,7 @@ public interface IContentService
     /// <param name="expectedVersion">The version being replaced, or <see langword="null"/> for whatever the draft holds.</param>
     /// <param name="cancellationToken">A token to cancel the work.</param>
     /// <returns>The entry with its system fields, without what the principal may not read.</returns>
-    /// <exception cref="ContentAccessDeniedException">The principal may not update entries of the type in the locale.</exception>
+    /// <exception cref="ContentAccessDeniedException">The principal may not update entries of the type in the locale, or may write a field it may not read.</exception>
     /// <exception cref="EntryNotFoundException">The entry or the version does not exist in the locale, or the principal may not reach it.</exception>
     /// <exception cref="VersionConflictException">The stored version is not the expected one.</exception>
     /// <exception cref="ValidationException">The values are not valid for a draft today.</exception>
