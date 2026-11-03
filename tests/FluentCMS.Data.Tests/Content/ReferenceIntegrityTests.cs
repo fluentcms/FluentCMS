@@ -299,6 +299,25 @@ public sealed class ReferenceIntegrityTests : IDisposable
         answers.Distinct().ShouldHaveSingleItem();
     }
 
+    [Fact]
+    public async Task ARowInALocaleItsGrantDoesNotCoverIsNotWhatTheTargetIsJudgedBy()
+    {
+        var publisher = WithRole(_warning.Database.AddRoleForTest(
+            "Canadian",
+            ("content.article.read", null),
+            ("content.article.publish", null),
+            ("content.author.read", new PermissionConstraints { Locales = ["fr-CA"] })));
+        var target = await AuthorAsync(_warning, "fr");
+        await _warning.PublishAsync(Editor, target, "fr", type: "author", operationLocale: "fr");
+        await _warning.PatchAsync(Editor, target, new() { ["name"] = "Anne" }, 0, "author", "fr-CA");
+        var id = IdOf(await _warning.CreateAsync(Editor, new() { ["title"] = "x", ["author"] = target }, locale: "fr-CA"));
+
+        var warning = (await _warning.PublishAsync(publisher, id, "fr-CA", operationLocale: "fr-CA")).Warnings.ShouldHaveSingleItem();
+
+        warning.Code.ShouldBe(PublishWarningCodes.UnpublishedReference);
+        warning.TargetId.ShouldBe(target);
+    }
+
     [Theory]
     [InlineData(UnpublishedReferencePolicy.Warn)]
     [InlineData(UnpublishedReferencePolicy.Block)]
