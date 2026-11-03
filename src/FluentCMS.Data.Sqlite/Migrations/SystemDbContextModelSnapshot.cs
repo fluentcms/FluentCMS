@@ -304,6 +304,98 @@ namespace FluentCMS.Data.Sqlite.Migrations
                     b.ToTable("cms_job_attempt", (string)null);
                 });
 
+            modelBuilder.Entity("FluentCMS.Core.Storage.Entities.OutboxMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("attempts");
+
+                    b.Property<long>("AvailableAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("available_at");
+
+                    b.Property<long?>("DeliveredAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("delivered_at");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("event_id");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("event_type");
+
+                    b.Property<string>("Handler")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("handler");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("last_error");
+
+                    b.Property<string>("LeaseOwner")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("lease_owner");
+
+                    b.Property<long?>("LeaseUntil")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("lease_until");
+
+                    b.Property<long>("OccurredAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("occurred_at");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("payload");
+
+                    b.Property<long>("Sequence")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("sequence");
+
+                    b.Property<Guid?>("SiteId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("site_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeliveredAt")
+                        .HasDatabaseName("ix_cms_outbox_delivered")
+                        .HasFilter("status = 'delivered'");
+
+                    b.HasIndex("EventId", "Handler")
+                        .IsUnique()
+                        .HasDatabaseName("uq_cms_outbox_event_handler");
+
+                    b.HasIndex("Sequence", "Id")
+                        .HasDatabaseName("ix_cms_outbox_pending")
+                        .HasFilter("status = 'pending'");
+
+                    b.ToTable("cms_outbox", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_cms_outbox_payload_json", "json_valid(\"payload\")");
+                        });
+                });
+
             modelBuilder.Entity("FluentCMS.Core.Storage.Entities.RecurringJob", b =>
                 {
                     b.Property<string>("Name")

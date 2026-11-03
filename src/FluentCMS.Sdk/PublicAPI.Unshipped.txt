@@ -266,6 +266,186 @@ FluentCMS.Content.VersionConflictException.Current.get -> FluentCMS.Content.Cont
 FluentCMS.Content.VersionConflictException.CurrentVersion.get -> int
 FluentCMS.Content.VersionConflictException.ExpectedVersion.get -> int
 FluentCMS.Content.VersionConflictException.VersionConflictException(int expectedVersion, int currentVersion, FluentCMS.Content.ContentDocument? current) -> void
+FluentCMS.Events.CacheInvalidatedEvent
+FluentCMS.Events.CacheInvalidatedEvent.CacheInvalidatedEvent(System.Collections.Generic.IReadOnlyList<string!>! Tags) -> void
+FluentCMS.Events.CacheInvalidatedEvent.Deconstruct(out System.Collections.Generic.IReadOnlyList<string!>! Tags) -> void
+FluentCMS.Events.CacheInvalidatedEvent.Equals(FluentCMS.Events.CacheInvalidatedEvent? other) -> bool
+FluentCMS.Events.CacheInvalidatedEvent.Tags.get -> System.Collections.Generic.IReadOnlyList<string!>!
+FluentCMS.Events.CacheInvalidatedEvent.Tags.init -> void
+FluentCMS.Events.CmsEvent
+FluentCMS.Events.CmsEvent.CmsEvent() -> void
+FluentCMS.Events.CmsEvent.CmsEvent(FluentCMS.Events.CmsEvent! original) -> void
+FluentCMS.Events.CmsEvent.EventId.get -> System.Guid
+FluentCMS.Events.CmsEvent.EventId.init -> void
+FluentCMS.Events.CmsEvent.Source.get -> FluentCMS.Events.EventSource!
+FluentCMS.Events.CmsEvent.Source.init -> void
+FluentCMS.Events.EntryDraftDiscardedEvent
+FluentCMS.Events.EntryDraftDiscardedEvent.Deconstruct(out string! Type, out System.Guid EntryId, out string! Locale, out int Version) -> void
+FluentCMS.Events.EntryDraftDiscardedEvent.EntryDraftDiscardedEvent(string! Type, System.Guid EntryId, string! Locale, int Version) -> void
+FluentCMS.Events.EntryDraftDiscardedEvent.Equals(FluentCMS.Events.EntryDraftDiscardedEvent? other) -> bool
+FluentCMS.Events.EntryDraftSavedEvent
+FluentCMS.Events.EntryDraftSavedEvent.Deconstruct(out string! Type, out System.Guid EntryId, out string! Locale, out int Version) -> void
+FluentCMS.Events.EntryDraftSavedEvent.EntryDraftSavedEvent(string! Type, System.Guid EntryId, string! Locale, int Version) -> void
+FluentCMS.Events.EntryDraftSavedEvent.Equals(FluentCMS.Events.EntryDraftSavedEvent? other) -> bool
+FluentCMS.Events.EntryEvent
+FluentCMS.Events.EntryEvent.Deconstruct(out string! Type, out System.Guid EntryId, out string! Locale, out int Version) -> void
+FluentCMS.Events.EntryEvent.EntryEvent(FluentCMS.Events.EntryEvent! original) -> void
+FluentCMS.Events.EntryEvent.EntryEvent(string! Type, System.Guid EntryId, string! Locale, int Version) -> void
+FluentCMS.Events.EntryEvent.EntryId.get -> System.Guid
+FluentCMS.Events.EntryEvent.EntryId.init -> void
+FluentCMS.Events.EntryEvent.Locale.get -> string!
+FluentCMS.Events.EntryEvent.Locale.init -> void
+FluentCMS.Events.EntryEvent.Type.get -> string!
+FluentCMS.Events.EntryEvent.Type.init -> void
+FluentCMS.Events.EntryEvent.Version.get -> int
+FluentCMS.Events.EntryEvent.Version.init -> void
+FluentCMS.Events.EntryPublishedEvent
+FluentCMS.Events.EntryPublishedEvent.Deconstruct(out string! Type, out System.Guid EntryId, out string! Locale, out int Version) -> void
+FluentCMS.Events.EntryPublishedEvent.EntryPublishedEvent(string! Type, System.Guid EntryId, string! Locale, int Version) -> void
+FluentCMS.Events.EntryPublishedEvent.Equals(FluentCMS.Events.EntryPublishedEvent? other) -> bool
+FluentCMS.Events.EntryPurgedEvent
+FluentCMS.Events.EntryPurgedEvent.Deconstruct(out string! Type, out System.Guid EntryId, out string! Locale, out int Version) -> void
+FluentCMS.Events.EntryPurgedEvent.EntryPurgedEvent(string! Type, System.Guid EntryId, string! Locale, int Version) -> void
+FluentCMS.Events.EntryPurgedEvent.Equals(FluentCMS.Events.EntryPurgedEvent? other) -> bool
+FluentCMS.Events.EntryRestoredEvent
+FluentCMS.Events.EntryRestoredEvent.Deconstruct(out string! Type, out System.Guid EntryId, out string! Locale, out int Version) -> void
+FluentCMS.Events.EntryRestoredEvent.EntryRestoredEvent(string! Type, System.Guid EntryId, string! Locale, int Version) -> void
+FluentCMS.Events.EntryRestoredEvent.Equals(FluentCMS.Events.EntryRestoredEvent? other) -> bool
+FluentCMS.Events.EntryScheduleCancelledEvent
+FluentCMS.Events.EntryScheduleCancelledEvent.Action.get -> string!
+FluentCMS.Events.EntryScheduleCancelledEvent.Action.init -> void
+FluentCMS.Events.EntryScheduleCancelledEvent.Deconstruct(out string! Type, out System.Guid EntryId, out string! Locale, out int Version, out string! Action) -> void
+FluentCMS.Events.EntryScheduleCancelledEvent.EntryScheduleCancelledEvent(string! Type, System.Guid EntryId, string! Locale, int Version, string! Action) -> void
+FluentCMS.Events.EntryScheduleCancelledEvent.Equals(FluentCMS.Events.EntryScheduleCancelledEvent? other) -> bool
+FluentCMS.Events.EntryScheduledEvent
+FluentCMS.Events.EntryScheduledEvent.Action.get -> string!
+FluentCMS.Events.EntryScheduledEvent.Action.init -> void
+FluentCMS.Events.EntryScheduledEvent.At.get -> System.DateTimeOffset
+FluentCMS.Events.EntryScheduledEvent.At.init -> void
+FluentCMS.Events.EntryScheduledEvent.Deconstruct(out string! Type, out System.Guid EntryId, out string! Locale, out int Version, out System.DateTimeOffset At, out string! Action) -> void
+FluentCMS.Events.EntryScheduledEvent.EntryScheduledEvent(string! Type, System.Guid EntryId, string! Locale, int Version, System.DateTimeOffset At, string! Action) -> void
+FluentCMS.Events.EntryScheduledEvent.Equals(FluentCMS.Events.EntryScheduledEvent? other) -> bool
+FluentCMS.Events.EntryTrashedEvent
+FluentCMS.Events.EntryTrashedEvent.Deconstruct(out string! Type, out System.Guid EntryId, out string! Locale, out int Version) -> void
+FluentCMS.Events.EntryTrashedEvent.EntryTrashedEvent(string! Type, System.Guid EntryId, string! Locale, int Version) -> void
+FluentCMS.Events.EntryTrashedEvent.Equals(FluentCMS.Events.EntryTrashedEvent? other) -> bool
+FluentCMS.Events.EntryUnpublishedEvent
+FluentCMS.Events.EntryUnpublishedEvent.Deconstruct(out string! Type, out System.Guid EntryId, out string! Locale, out int Version) -> void
+FluentCMS.Events.EntryUnpublishedEvent.EntryUnpublishedEvent(string! Type, System.Guid EntryId, string! Locale, int Version) -> void
+FluentCMS.Events.EntryUnpublishedEvent.Equals(FluentCMS.Events.EntryUnpublishedEvent? other) -> bool
+FluentCMS.Events.EntryVersionRestoredEvent
+FluentCMS.Events.EntryVersionRestoredEvent.Deconstruct(out string! Type, out System.Guid EntryId, out string! Locale, out int Version) -> void
+FluentCMS.Events.EntryVersionRestoredEvent.EntryVersionRestoredEvent(string! Type, System.Guid EntryId, string! Locale, int Version) -> void
+FluentCMS.Events.EntryVersionRestoredEvent.Equals(FluentCMS.Events.EntryVersionRestoredEvent? other) -> bool
+FluentCMS.Events.EventDelivery
+FluentCMS.Events.EventDelivery.<Clone>$() -> FluentCMS.Events.EventDelivery!
+FluentCMS.Events.EventDelivery.Attempt.get -> int
+FluentCMS.Events.EventDelivery.Attempt.init -> void
+FluentCMS.Events.EventDelivery.Deconstruct(out System.Guid Key, out int Attempt) -> void
+FluentCMS.Events.EventDelivery.Equals(FluentCMS.Events.EventDelivery? other) -> bool
+FluentCMS.Events.EventDelivery.EventDelivery(System.Guid Key, int Attempt) -> void
+FluentCMS.Events.EventDelivery.Key.get -> System.Guid
+FluentCMS.Events.EventDelivery.Key.init -> void
+FluentCMS.Events.EventSource
+FluentCMS.Events.EventSource.<Clone>$() -> FluentCMS.Events.EventSource!
+FluentCMS.Events.EventSource.ActorId.get -> System.Guid
+FluentCMS.Events.EventSource.ActorId.init -> void
+FluentCMS.Events.EventSource.ActorKind.get -> FluentCMS.Content.PrincipalKind
+FluentCMS.Events.EventSource.ActorKind.init -> void
+FluentCMS.Events.EventSource.ActorName.get -> string!
+FluentCMS.Events.EventSource.ActorName.init -> void
+FluentCMS.Events.EventSource.CorrelationId.get -> string!
+FluentCMS.Events.EventSource.CorrelationId.init -> void
+FluentCMS.Events.EventSource.Deconstruct(out System.DateTimeOffset OccurredAt, out System.Guid SiteId, out System.Guid ActorId, out string! ActorName, out FluentCMS.Content.PrincipalKind ActorKind, out FluentCMS.Content.Origin Origin, out string! CorrelationId) -> void
+FluentCMS.Events.EventSource.Equals(FluentCMS.Events.EventSource? other) -> bool
+FluentCMS.Events.EventSource.EventSource(System.DateTimeOffset OccurredAt, System.Guid SiteId, System.Guid ActorId, string! ActorName, FluentCMS.Content.PrincipalKind ActorKind, FluentCMS.Content.Origin Origin, string! CorrelationId) -> void
+FluentCMS.Events.EventSource.OccurredAt.get -> System.DateTimeOffset
+FluentCMS.Events.EventSource.OccurredAt.init -> void
+FluentCMS.Events.EventSource.Origin.get -> FluentCMS.Content.Origin
+FluentCMS.Events.EventSource.Origin.init -> void
+FluentCMS.Events.EventSource.SiteId.get -> System.Guid
+FluentCMS.Events.EventSource.SiteId.init -> void
+FluentCMS.Events.FailedEventDelivery
+FluentCMS.Events.FailedEventDelivery.<Clone>$() -> FluentCMS.Events.FailedEventDelivery!
+FluentCMS.Events.FailedEventDelivery.Attempts.get -> int
+FluentCMS.Events.FailedEventDelivery.Attempts.init -> void
+FluentCMS.Events.FailedEventDelivery.Deconstruct(out System.Guid Id, out System.Guid EventId, out string! EventType, out string! Handler, out int Attempts, out string? LastError, out System.DateTimeOffset OccurredAt) -> void
+FluentCMS.Events.FailedEventDelivery.Equals(FluentCMS.Events.FailedEventDelivery? other) -> bool
+FluentCMS.Events.FailedEventDelivery.EventId.get -> System.Guid
+FluentCMS.Events.FailedEventDelivery.EventId.init -> void
+FluentCMS.Events.FailedEventDelivery.EventType.get -> string!
+FluentCMS.Events.FailedEventDelivery.EventType.init -> void
+FluentCMS.Events.FailedEventDelivery.FailedEventDelivery(System.Guid Id, System.Guid EventId, string! EventType, string! Handler, int Attempts, string? LastError, System.DateTimeOffset OccurredAt) -> void
+FluentCMS.Events.FailedEventDelivery.Handler.get -> string!
+FluentCMS.Events.FailedEventDelivery.Handler.init -> void
+FluentCMS.Events.FailedEventDelivery.Id.get -> System.Guid
+FluentCMS.Events.FailedEventDelivery.Id.init -> void
+FluentCMS.Events.FailedEventDelivery.LastError.get -> string?
+FluentCMS.Events.FailedEventDelivery.LastError.init -> void
+FluentCMS.Events.FailedEventDelivery.OccurredAt.get -> System.DateTimeOffset
+FluentCMS.Events.FailedEventDelivery.OccurredAt.init -> void
+FluentCMS.Events.IEventBus
+FluentCMS.Events.IEventBus.PublishAsync<TEvent>(TEvent! message, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
+FluentCMS.Events.IEventDeadLetters
+FluentCMS.Events.IEventDeadLetters.ListAsync(int offset = 0, int limit = 50, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<FluentCMS.Events.FailedEventDelivery!>!>!
+FluentCMS.Events.IEventDeadLetters.RemoveAsync(System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+FluentCMS.Events.IEventDeadLetters.RetryAsync(System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+FluentCMS.Events.IEventHandler<TEvent>
+FluentCMS.Events.IEventHandler<TEvent>.HandleAsync(TEvent! message, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
+FluentCMS.Events.IOutboxEventHandler<TEvent>
+FluentCMS.Events.IOutboxEventHandler<TEvent>.HandleAsync(TEvent! message, FluentCMS.Events.EventDelivery! delivery, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
+FluentCMS.Events.JobDeadLetteredEvent
+FluentCMS.Events.JobDeadLetteredEvent.Attempts.get -> int
+FluentCMS.Events.JobDeadLetteredEvent.Attempts.init -> void
+FluentCMS.Events.JobDeadLetteredEvent.Deconstruct(out System.Guid JobId, out string! Type, out string! Queue, out int Attempts, out string! Error) -> void
+FluentCMS.Events.JobDeadLetteredEvent.Equals(FluentCMS.Events.JobDeadLetteredEvent? other) -> bool
+FluentCMS.Events.JobDeadLetteredEvent.Error.get -> string!
+FluentCMS.Events.JobDeadLetteredEvent.Error.init -> void
+FluentCMS.Events.JobDeadLetteredEvent.JobDeadLetteredEvent(System.Guid JobId, string! Type, string! Queue, int Attempts, string! Error) -> void
+FluentCMS.Events.JobDeadLetteredEvent.JobId.get -> System.Guid
+FluentCMS.Events.JobDeadLetteredEvent.JobId.init -> void
+FluentCMS.Events.JobDeadLetteredEvent.Queue.get -> string!
+FluentCMS.Events.JobDeadLetteredEvent.Queue.init -> void
+FluentCMS.Events.JobDeadLetteredEvent.Type.get -> string!
+FluentCMS.Events.JobDeadLetteredEvent.Type.init -> void
+FluentCMS.Events.JobFailedEvent
+FluentCMS.Events.JobFailedEvent.Attempt.get -> int
+FluentCMS.Events.JobFailedEvent.Attempt.init -> void
+FluentCMS.Events.JobFailedEvent.Deconstruct(out System.Guid JobId, out string! Type, out string! Queue, out int Attempt, out int MaxAttempts, out string! Error) -> void
+FluentCMS.Events.JobFailedEvent.Equals(FluentCMS.Events.JobFailedEvent? other) -> bool
+FluentCMS.Events.JobFailedEvent.Error.get -> string!
+FluentCMS.Events.JobFailedEvent.Error.init -> void
+FluentCMS.Events.JobFailedEvent.JobFailedEvent(System.Guid JobId, string! Type, string! Queue, int Attempt, int MaxAttempts, string! Error) -> void
+FluentCMS.Events.JobFailedEvent.JobId.get -> System.Guid
+FluentCMS.Events.JobFailedEvent.JobId.init -> void
+FluentCMS.Events.JobFailedEvent.MaxAttempts.get -> int
+FluentCMS.Events.JobFailedEvent.MaxAttempts.init -> void
+FluentCMS.Events.JobFailedEvent.Queue.get -> string!
+FluentCMS.Events.JobFailedEvent.Queue.init -> void
+FluentCMS.Events.JobFailedEvent.Type.get -> string!
+FluentCMS.Events.JobFailedEvent.Type.init -> void
+FluentCMS.Events.SettingsChangedEvent
+FluentCMS.Events.SettingsChangedEvent.Area.get -> string!
+FluentCMS.Events.SettingsChangedEvent.Area.init -> void
+FluentCMS.Events.SettingsChangedEvent.Deconstruct(out string! Area) -> void
+FluentCMS.Events.SettingsChangedEvent.Equals(FluentCMS.Events.SettingsChangedEvent? other) -> bool
+FluentCMS.Events.SettingsChangedEvent.SettingsChangedEvent(string! Area) -> void
+FluentCMS.Events.SiteCreatedEvent
+FluentCMS.Events.SiteCreatedEvent.Deconstruct(out System.Guid SiteId, out string! Slug) -> void
+FluentCMS.Events.SiteCreatedEvent.Equals(FluentCMS.Events.SiteCreatedEvent? other) -> bool
+FluentCMS.Events.SiteCreatedEvent.SiteCreatedEvent(System.Guid SiteId, string! Slug) -> void
+FluentCMS.Events.SiteCreatedEvent.SiteId.get -> System.Guid
+FluentCMS.Events.SiteCreatedEvent.SiteId.init -> void
+FluentCMS.Events.SiteCreatedEvent.Slug.get -> string!
+FluentCMS.Events.SiteCreatedEvent.Slug.init -> void
+FluentCMS.Events.SiteUpdatedEvent
+FluentCMS.Events.SiteUpdatedEvent.Deconstruct(out System.Guid SiteId, out string! Slug) -> void
+FluentCMS.Events.SiteUpdatedEvent.Equals(FluentCMS.Events.SiteUpdatedEvent? other) -> bool
+FluentCMS.Events.SiteUpdatedEvent.SiteId.get -> System.Guid
+FluentCMS.Events.SiteUpdatedEvent.SiteId.init -> void
+FluentCMS.Events.SiteUpdatedEvent.SiteUpdatedEvent(System.Guid SiteId, string! Slug) -> void
+FluentCMS.Events.SiteUpdatedEvent.Slug.get -> string!
+FluentCMS.Events.SiteUpdatedEvent.Slug.init -> void
 FluentCMS.Hooks.HookContext<T>
 FluentCMS.Hooks.HookContext<T>.Cancel(string! code, string! message) -> void
 FluentCMS.Hooks.HookContext<T>.CancelCode.get -> string?
@@ -776,6 +956,7 @@ FluentCMS.Sites.SiteRequest.Parameter.get -> string?
 FluentCMS.Sites.SiteRequest.Parameter.init -> void
 FluentCMS.Sites.SiteRequest.SiteRequest() -> void
 abstract FluentCMS.Content.ContentFilter.<Clone>$() -> FluentCMS.Content.ContentFilter!
+abstract FluentCMS.Events.CmsEvent.<Clone>$() -> FluentCMS.Events.CmsEvent!
 const FluentCMS.Authorization.Permission.ContentPrefix = "content" -> string!
 const FluentCMS.Content.ValidationErrorCodes.AboveMaximum = "FCMS2105" -> string!
 const FluentCMS.Content.ValidationErrorCodes.BelowMinimum = "FCMS2104" -> string!
@@ -838,6 +1019,87 @@ override FluentCMS.Content.SortField.ToString() -> string!
 override FluentCMS.Content.ValidationError.Equals(object? obj) -> bool
 override FluentCMS.Content.ValidationError.GetHashCode() -> int
 override FluentCMS.Content.ValidationError.ToString() -> string!
+override FluentCMS.Events.CacheInvalidatedEvent.<Clone>$() -> FluentCMS.Events.CacheInvalidatedEvent!
+override FluentCMS.Events.CacheInvalidatedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.CacheInvalidatedEvent.GetHashCode() -> int
+override FluentCMS.Events.CacheInvalidatedEvent.ToString() -> string!
+override FluentCMS.Events.CmsEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.CmsEvent.GetHashCode() -> int
+override FluentCMS.Events.CmsEvent.ToString() -> string!
+override FluentCMS.Events.EntryDraftDiscardedEvent.<Clone>$() -> FluentCMS.Events.EntryDraftDiscardedEvent!
+override FluentCMS.Events.EntryDraftDiscardedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.EntryDraftDiscardedEvent.GetHashCode() -> int
+override FluentCMS.Events.EntryDraftDiscardedEvent.ToString() -> string!
+override FluentCMS.Events.EntryDraftSavedEvent.<Clone>$() -> FluentCMS.Events.EntryDraftSavedEvent!
+override FluentCMS.Events.EntryDraftSavedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.EntryDraftSavedEvent.GetHashCode() -> int
+override FluentCMS.Events.EntryDraftSavedEvent.ToString() -> string!
+override FluentCMS.Events.EntryEvent.EqualityContract.get -> System.Type!
+override FluentCMS.Events.EntryEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.EntryEvent.GetHashCode() -> int
+override FluentCMS.Events.EntryEvent.PrintMembers(System.Text.StringBuilder! builder) -> bool
+override FluentCMS.Events.EntryEvent.ToString() -> string!
+override FluentCMS.Events.EntryPublishedEvent.<Clone>$() -> FluentCMS.Events.EntryPublishedEvent!
+override FluentCMS.Events.EntryPublishedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.EntryPublishedEvent.GetHashCode() -> int
+override FluentCMS.Events.EntryPublishedEvent.ToString() -> string!
+override FluentCMS.Events.EntryPurgedEvent.<Clone>$() -> FluentCMS.Events.EntryPurgedEvent!
+override FluentCMS.Events.EntryPurgedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.EntryPurgedEvent.GetHashCode() -> int
+override FluentCMS.Events.EntryPurgedEvent.ToString() -> string!
+override FluentCMS.Events.EntryRestoredEvent.<Clone>$() -> FluentCMS.Events.EntryRestoredEvent!
+override FluentCMS.Events.EntryRestoredEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.EntryRestoredEvent.GetHashCode() -> int
+override FluentCMS.Events.EntryRestoredEvent.ToString() -> string!
+override FluentCMS.Events.EntryScheduleCancelledEvent.<Clone>$() -> FluentCMS.Events.EntryScheduleCancelledEvent!
+override FluentCMS.Events.EntryScheduleCancelledEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.EntryScheduleCancelledEvent.GetHashCode() -> int
+override FluentCMS.Events.EntryScheduleCancelledEvent.ToString() -> string!
+override FluentCMS.Events.EntryScheduledEvent.<Clone>$() -> FluentCMS.Events.EntryScheduledEvent!
+override FluentCMS.Events.EntryScheduledEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.EntryScheduledEvent.GetHashCode() -> int
+override FluentCMS.Events.EntryScheduledEvent.ToString() -> string!
+override FluentCMS.Events.EntryTrashedEvent.<Clone>$() -> FluentCMS.Events.EntryTrashedEvent!
+override FluentCMS.Events.EntryTrashedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.EntryTrashedEvent.GetHashCode() -> int
+override FluentCMS.Events.EntryTrashedEvent.ToString() -> string!
+override FluentCMS.Events.EntryUnpublishedEvent.<Clone>$() -> FluentCMS.Events.EntryUnpublishedEvent!
+override FluentCMS.Events.EntryUnpublishedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.EntryUnpublishedEvent.GetHashCode() -> int
+override FluentCMS.Events.EntryUnpublishedEvent.ToString() -> string!
+override FluentCMS.Events.EntryVersionRestoredEvent.<Clone>$() -> FluentCMS.Events.EntryVersionRestoredEvent!
+override FluentCMS.Events.EntryVersionRestoredEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.EntryVersionRestoredEvent.GetHashCode() -> int
+override FluentCMS.Events.EntryVersionRestoredEvent.ToString() -> string!
+override FluentCMS.Events.EventDelivery.Equals(object? obj) -> bool
+override FluentCMS.Events.EventDelivery.GetHashCode() -> int
+override FluentCMS.Events.EventDelivery.ToString() -> string!
+override FluentCMS.Events.EventSource.Equals(object? obj) -> bool
+override FluentCMS.Events.EventSource.GetHashCode() -> int
+override FluentCMS.Events.EventSource.ToString() -> string!
+override FluentCMS.Events.FailedEventDelivery.Equals(object? obj) -> bool
+override FluentCMS.Events.FailedEventDelivery.GetHashCode() -> int
+override FluentCMS.Events.FailedEventDelivery.ToString() -> string!
+override FluentCMS.Events.JobDeadLetteredEvent.<Clone>$() -> FluentCMS.Events.JobDeadLetteredEvent!
+override FluentCMS.Events.JobDeadLetteredEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.JobDeadLetteredEvent.GetHashCode() -> int
+override FluentCMS.Events.JobDeadLetteredEvent.ToString() -> string!
+override FluentCMS.Events.JobFailedEvent.<Clone>$() -> FluentCMS.Events.JobFailedEvent!
+override FluentCMS.Events.JobFailedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.JobFailedEvent.GetHashCode() -> int
+override FluentCMS.Events.JobFailedEvent.ToString() -> string!
+override FluentCMS.Events.SettingsChangedEvent.<Clone>$() -> FluentCMS.Events.SettingsChangedEvent!
+override FluentCMS.Events.SettingsChangedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.SettingsChangedEvent.GetHashCode() -> int
+override FluentCMS.Events.SettingsChangedEvent.ToString() -> string!
+override FluentCMS.Events.SiteCreatedEvent.<Clone>$() -> FluentCMS.Events.SiteCreatedEvent!
+override FluentCMS.Events.SiteCreatedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.SiteCreatedEvent.GetHashCode() -> int
+override FluentCMS.Events.SiteCreatedEvent.ToString() -> string!
+override FluentCMS.Events.SiteUpdatedEvent.<Clone>$() -> FluentCMS.Events.SiteUpdatedEvent!
+override FluentCMS.Events.SiteUpdatedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.SiteUpdatedEvent.GetHashCode() -> int
+override FluentCMS.Events.SiteUpdatedEvent.ToString() -> string!
 override FluentCMS.Jobs.DeadLetteredJob.Equals(object? obj) -> bool
 override FluentCMS.Jobs.DeadLetteredJob.GetHashCode() -> int
 override FluentCMS.Jobs.DeadLetteredJob.ToString() -> string!
@@ -875,10 +1137,28 @@ override FluentCMS.Sites.SiteId.ToString() -> string!
 override FluentCMS.Sites.SiteRequest.Equals(object? obj) -> bool
 override FluentCMS.Sites.SiteRequest.GetHashCode() -> int
 override FluentCMS.Sites.SiteRequest.ToString() -> string!
+override abstract FluentCMS.Events.EntryEvent.<Clone>$() -> FluentCMS.Events.EntryEvent!
 override sealed FluentCMS.Content.And.Equals(FluentCMS.Content.ContentFilter? other) -> bool
 override sealed FluentCMS.Content.FieldFilter.Equals(FluentCMS.Content.ContentFilter? other) -> bool
 override sealed FluentCMS.Content.Not.Equals(FluentCMS.Content.ContentFilter? other) -> bool
 override sealed FluentCMS.Content.Or.Equals(FluentCMS.Content.ContentFilter? other) -> bool
+override sealed FluentCMS.Events.CacheInvalidatedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+override sealed FluentCMS.Events.EntryDraftDiscardedEvent.Equals(FluentCMS.Events.EntryEvent? other) -> bool
+override sealed FluentCMS.Events.EntryDraftSavedEvent.Equals(FluentCMS.Events.EntryEvent? other) -> bool
+override sealed FluentCMS.Events.EntryEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+override sealed FluentCMS.Events.EntryPublishedEvent.Equals(FluentCMS.Events.EntryEvent? other) -> bool
+override sealed FluentCMS.Events.EntryPurgedEvent.Equals(FluentCMS.Events.EntryEvent? other) -> bool
+override sealed FluentCMS.Events.EntryRestoredEvent.Equals(FluentCMS.Events.EntryEvent? other) -> bool
+override sealed FluentCMS.Events.EntryScheduleCancelledEvent.Equals(FluentCMS.Events.EntryEvent? other) -> bool
+override sealed FluentCMS.Events.EntryScheduledEvent.Equals(FluentCMS.Events.EntryEvent? other) -> bool
+override sealed FluentCMS.Events.EntryTrashedEvent.Equals(FluentCMS.Events.EntryEvent? other) -> bool
+override sealed FluentCMS.Events.EntryUnpublishedEvent.Equals(FluentCMS.Events.EntryEvent? other) -> bool
+override sealed FluentCMS.Events.EntryVersionRestoredEvent.Equals(FluentCMS.Events.EntryEvent? other) -> bool
+override sealed FluentCMS.Events.JobDeadLetteredEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+override sealed FluentCMS.Events.JobFailedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+override sealed FluentCMS.Events.SettingsChangedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+override sealed FluentCMS.Events.SiteCreatedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+override sealed FluentCMS.Events.SiteUpdatedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
 static FluentCMS.Authorization.Permission.IsValidName(string? name) -> bool
 static FluentCMS.Content.And.operator !=(FluentCMS.Content.And? left, FluentCMS.Content.And? right) -> bool
 static FluentCMS.Content.And.operator ==(FluentCMS.Content.And? left, FluentCMS.Content.And? right) -> bool
@@ -907,6 +1187,50 @@ static FluentCMS.Content.SystemOperation.Begin(FluentCMS.Content.IOperationConte
 static FluentCMS.Content.ValidationError.operator !=(FluentCMS.Content.ValidationError? left, FluentCMS.Content.ValidationError? right) -> bool
 static FluentCMS.Content.ValidationError.operator ==(FluentCMS.Content.ValidationError? left, FluentCMS.Content.ValidationError? right) -> bool
 static FluentCMS.Content.ValidationResult.Success.get -> FluentCMS.Content.ValidationResult!
+static FluentCMS.Events.CacheInvalidatedEvent.operator !=(FluentCMS.Events.CacheInvalidatedEvent? left, FluentCMS.Events.CacheInvalidatedEvent? right) -> bool
+static FluentCMS.Events.CacheInvalidatedEvent.operator ==(FluentCMS.Events.CacheInvalidatedEvent? left, FluentCMS.Events.CacheInvalidatedEvent? right) -> bool
+static FluentCMS.Events.CmsEvent.operator !=(FluentCMS.Events.CmsEvent? left, FluentCMS.Events.CmsEvent? right) -> bool
+static FluentCMS.Events.CmsEvent.operator ==(FluentCMS.Events.CmsEvent? left, FluentCMS.Events.CmsEvent? right) -> bool
+static FluentCMS.Events.EntryDraftDiscardedEvent.operator !=(FluentCMS.Events.EntryDraftDiscardedEvent? left, FluentCMS.Events.EntryDraftDiscardedEvent? right) -> bool
+static FluentCMS.Events.EntryDraftDiscardedEvent.operator ==(FluentCMS.Events.EntryDraftDiscardedEvent? left, FluentCMS.Events.EntryDraftDiscardedEvent? right) -> bool
+static FluentCMS.Events.EntryDraftSavedEvent.operator !=(FluentCMS.Events.EntryDraftSavedEvent? left, FluentCMS.Events.EntryDraftSavedEvent? right) -> bool
+static FluentCMS.Events.EntryDraftSavedEvent.operator ==(FluentCMS.Events.EntryDraftSavedEvent? left, FluentCMS.Events.EntryDraftSavedEvent? right) -> bool
+static FluentCMS.Events.EntryEvent.operator !=(FluentCMS.Events.EntryEvent? left, FluentCMS.Events.EntryEvent? right) -> bool
+static FluentCMS.Events.EntryEvent.operator ==(FluentCMS.Events.EntryEvent? left, FluentCMS.Events.EntryEvent? right) -> bool
+static FluentCMS.Events.EntryPublishedEvent.operator !=(FluentCMS.Events.EntryPublishedEvent? left, FluentCMS.Events.EntryPublishedEvent? right) -> bool
+static FluentCMS.Events.EntryPublishedEvent.operator ==(FluentCMS.Events.EntryPublishedEvent? left, FluentCMS.Events.EntryPublishedEvent? right) -> bool
+static FluentCMS.Events.EntryPurgedEvent.operator !=(FluentCMS.Events.EntryPurgedEvent? left, FluentCMS.Events.EntryPurgedEvent? right) -> bool
+static FluentCMS.Events.EntryPurgedEvent.operator ==(FluentCMS.Events.EntryPurgedEvent? left, FluentCMS.Events.EntryPurgedEvent? right) -> bool
+static FluentCMS.Events.EntryRestoredEvent.operator !=(FluentCMS.Events.EntryRestoredEvent? left, FluentCMS.Events.EntryRestoredEvent? right) -> bool
+static FluentCMS.Events.EntryRestoredEvent.operator ==(FluentCMS.Events.EntryRestoredEvent? left, FluentCMS.Events.EntryRestoredEvent? right) -> bool
+static FluentCMS.Events.EntryScheduleCancelledEvent.operator !=(FluentCMS.Events.EntryScheduleCancelledEvent? left, FluentCMS.Events.EntryScheduleCancelledEvent? right) -> bool
+static FluentCMS.Events.EntryScheduleCancelledEvent.operator ==(FluentCMS.Events.EntryScheduleCancelledEvent? left, FluentCMS.Events.EntryScheduleCancelledEvent? right) -> bool
+static FluentCMS.Events.EntryScheduledEvent.operator !=(FluentCMS.Events.EntryScheduledEvent? left, FluentCMS.Events.EntryScheduledEvent? right) -> bool
+static FluentCMS.Events.EntryScheduledEvent.operator ==(FluentCMS.Events.EntryScheduledEvent? left, FluentCMS.Events.EntryScheduledEvent? right) -> bool
+static FluentCMS.Events.EntryTrashedEvent.operator !=(FluentCMS.Events.EntryTrashedEvent? left, FluentCMS.Events.EntryTrashedEvent? right) -> bool
+static FluentCMS.Events.EntryTrashedEvent.operator ==(FluentCMS.Events.EntryTrashedEvent? left, FluentCMS.Events.EntryTrashedEvent? right) -> bool
+static FluentCMS.Events.EntryUnpublishedEvent.operator !=(FluentCMS.Events.EntryUnpublishedEvent? left, FluentCMS.Events.EntryUnpublishedEvent? right) -> bool
+static FluentCMS.Events.EntryUnpublishedEvent.operator ==(FluentCMS.Events.EntryUnpublishedEvent? left, FluentCMS.Events.EntryUnpublishedEvent? right) -> bool
+static FluentCMS.Events.EntryVersionRestoredEvent.operator !=(FluentCMS.Events.EntryVersionRestoredEvent? left, FluentCMS.Events.EntryVersionRestoredEvent? right) -> bool
+static FluentCMS.Events.EntryVersionRestoredEvent.operator ==(FluentCMS.Events.EntryVersionRestoredEvent? left, FluentCMS.Events.EntryVersionRestoredEvent? right) -> bool
+static FluentCMS.Events.EventDelivery.operator !=(FluentCMS.Events.EventDelivery? left, FluentCMS.Events.EventDelivery? right) -> bool
+static FluentCMS.Events.EventDelivery.operator ==(FluentCMS.Events.EventDelivery? left, FluentCMS.Events.EventDelivery? right) -> bool
+static FluentCMS.Events.EventSource.From(FluentCMS.Content.OperationContext! operation) -> FluentCMS.Events.EventSource!
+static FluentCMS.Events.EventSource.FromSystem(System.DateTimeOffset occurredAt) -> FluentCMS.Events.EventSource!
+static FluentCMS.Events.EventSource.operator !=(FluentCMS.Events.EventSource? left, FluentCMS.Events.EventSource? right) -> bool
+static FluentCMS.Events.EventSource.operator ==(FluentCMS.Events.EventSource? left, FluentCMS.Events.EventSource? right) -> bool
+static FluentCMS.Events.FailedEventDelivery.operator !=(FluentCMS.Events.FailedEventDelivery? left, FluentCMS.Events.FailedEventDelivery? right) -> bool
+static FluentCMS.Events.FailedEventDelivery.operator ==(FluentCMS.Events.FailedEventDelivery? left, FluentCMS.Events.FailedEventDelivery? right) -> bool
+static FluentCMS.Events.JobDeadLetteredEvent.operator !=(FluentCMS.Events.JobDeadLetteredEvent? left, FluentCMS.Events.JobDeadLetteredEvent? right) -> bool
+static FluentCMS.Events.JobDeadLetteredEvent.operator ==(FluentCMS.Events.JobDeadLetteredEvent? left, FluentCMS.Events.JobDeadLetteredEvent? right) -> bool
+static FluentCMS.Events.JobFailedEvent.operator !=(FluentCMS.Events.JobFailedEvent? left, FluentCMS.Events.JobFailedEvent? right) -> bool
+static FluentCMS.Events.JobFailedEvent.operator ==(FluentCMS.Events.JobFailedEvent? left, FluentCMS.Events.JobFailedEvent? right) -> bool
+static FluentCMS.Events.SettingsChangedEvent.operator !=(FluentCMS.Events.SettingsChangedEvent? left, FluentCMS.Events.SettingsChangedEvent? right) -> bool
+static FluentCMS.Events.SettingsChangedEvent.operator ==(FluentCMS.Events.SettingsChangedEvent? left, FluentCMS.Events.SettingsChangedEvent? right) -> bool
+static FluentCMS.Events.SiteCreatedEvent.operator !=(FluentCMS.Events.SiteCreatedEvent? left, FluentCMS.Events.SiteCreatedEvent? right) -> bool
+static FluentCMS.Events.SiteCreatedEvent.operator ==(FluentCMS.Events.SiteCreatedEvent? left, FluentCMS.Events.SiteCreatedEvent? right) -> bool
+static FluentCMS.Events.SiteUpdatedEvent.operator !=(FluentCMS.Events.SiteUpdatedEvent? left, FluentCMS.Events.SiteUpdatedEvent? right) -> bool
+static FluentCMS.Events.SiteUpdatedEvent.operator ==(FluentCMS.Events.SiteUpdatedEvent? left, FluentCMS.Events.SiteUpdatedEvent? right) -> bool
 static FluentCMS.Jobs.DeadLetteredJob.operator !=(FluentCMS.Jobs.DeadLetteredJob? left, FluentCMS.Jobs.DeadLetteredJob? right) -> bool
 static FluentCMS.Jobs.DeadLetteredJob.operator ==(FluentCMS.Jobs.DeadLetteredJob? left, FluentCMS.Jobs.DeadLetteredJob? right) -> bool
 static FluentCMS.Jobs.JobActor.operator !=(FluentCMS.Jobs.JobActor? left, FluentCMS.Jobs.JobActor? right) -> bool
@@ -940,6 +1264,10 @@ static FluentCMS.Sites.SiteRequest.operator ==(FluentCMS.Sites.SiteRequest? left
 virtual FluentCMS.Content.ContentFilter.EqualityContract.get -> System.Type!
 virtual FluentCMS.Content.ContentFilter.Equals(FluentCMS.Content.ContentFilter? other) -> bool
 virtual FluentCMS.Content.ContentFilter.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual FluentCMS.Events.CmsEvent.EqualityContract.get -> System.Type!
+virtual FluentCMS.Events.CmsEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+virtual FluentCMS.Events.CmsEvent.PrintMembers(System.Text.StringBuilder! builder) -> bool
+virtual FluentCMS.Events.EntryEvent.Equals(FluentCMS.Events.EntryEvent? other) -> bool
 ~FluentCMS.Schema.Ref<T>.Equals(FluentCMS.Schema.Ref<T> other) -> bool
 ~FluentCMS.Schema.RefList<T>.<Clone>$() -> FluentCMS.Schema.RefList<T>!
 ~override FluentCMS.Media.MediaRef.Equals(object obj) -> bool
