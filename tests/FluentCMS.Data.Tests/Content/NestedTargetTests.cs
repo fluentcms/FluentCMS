@@ -537,6 +537,21 @@ public sealed class NestedTargetTests : IDisposable
     }
 
     [Fact]
+    public async Task ATrashedTargetCountsAsThereForOneThatCouldNotSeeIt()
+    {
+        var trashed = await AuthorAsync("trashed");
+        var id = await ArticleAsync(new() { ["title"] = "x", ["cards"] = new object[] { Card(trashed) } }, publish: false);
+        var blindToTheEntry = WithRole(_database.Database.AddRoleForTest(
+            "Blind",
+            ("content.article.update", null),
+            ("content.author.read", null)));
+
+        await _database.PatchAsync(blindToTheEntry, id, new() { ["cards"] = new object[] { new ContentDocument { ["type"] = "card", ["label"] = "L" } } }, 1, "article");
+
+        _database.References(id, Core.Storage.ContentState.Draft).ShouldHaveSingleItem().TargetId.ShouldBe(trashed);
+    }
+
+    [Fact]
     public async Task AGhostStaysRefusedUnderBlockUntilAWiderPrincipalClearsIt()
     {
         var schema = SampleSchema.NewBuilder()
