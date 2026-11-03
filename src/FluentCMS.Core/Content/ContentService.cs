@@ -30,6 +30,7 @@ internal sealed partial class ContentService(
     IOperationContextAccessor accessor,
     IAuthorizationEvaluator evaluator,
     ContentQueryEngine engine,
+    ContentQueryOptions queryOptions,
     LocaleFallbackReader fallback,
     ILocaleResolver locales,
     HookPipeline hooks,
