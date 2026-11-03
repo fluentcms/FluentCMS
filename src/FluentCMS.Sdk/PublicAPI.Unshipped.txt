@@ -119,7 +119,9 @@ FluentCMS.Content.IContentService.GetVersionAsync(string! type, System.Guid id, 
 FluentCMS.Content.IContentService.GetVersionsAsync(string! type, System.Guid id, string? locale = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<FluentCMS.Publishing.VersionInfo!>!>!
 FluentCMS.Content.IContentService.PatchAsync(string! type, System.Guid id, FluentCMS.Content.ContentDocument! patch, int expectedVersion, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.ContentDocument!>!
 FluentCMS.Content.IContentService.PublishAsync(string! type, System.Guid id, string? locale = null, int? expectedVersion = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Publishing.PublishResult<FluentCMS.Content.ContentDocument!>!>!
+FluentCMS.Content.IContentService.PurgeAsync(string! type, System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 FluentCMS.Content.IContentService.QueryAsync(string! type, FluentCMS.Content.ContentQuery! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.PagedResult<FluentCMS.Content.ContentDocument!>!>!
+FluentCMS.Content.IContentService.QueryTrashAsync(string! type, FluentCMS.Content.ContentQuery! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.PagedResult<FluentCMS.Content.ContentDocument!>!>!
 FluentCMS.Content.IContentService.RestoreAsync(string! type, System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.ContentDocument!>!
 FluentCMS.Content.IContentService.RestoreVersionAsync(string! type, System.Guid id, int number, string? locale = null, int? expectedVersion = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.ContentDocument!>!
 FluentCMS.Content.IContentService.UnpublishAsync(string! type, System.Guid id, string? locale = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.ContentDocument!>!
@@ -135,7 +137,9 @@ FluentCMS.Content.IContentService<T>.GetVersionAsync(System.Guid id, int number,
 FluentCMS.Content.IContentService<T>.GetVersionsAsync(System.Guid id, string? locale = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<FluentCMS.Publishing.VersionInfo!>!>!
 FluentCMS.Content.IContentService<T>.PatchAsync(System.Guid id, FluentCMS.Content.ContentDocument! patch, int expectedVersion, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
 FluentCMS.Content.IContentService<T>.PublishAsync(System.Guid id, string? locale = null, int? expectedVersion = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Publishing.PublishResult<T!>!>!
+FluentCMS.Content.IContentService<T>.PurgeAsync(System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 FluentCMS.Content.IContentService<T>.QueryAsync(FluentCMS.Content.ContentQuery! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.PagedResult<T!>!>!
+FluentCMS.Content.IContentService<T>.QueryTrashAsync(FluentCMS.Content.ContentQuery! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.PagedResult<T!>!>!
 FluentCMS.Content.IContentService<T>.RestoreAsync(System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
 FluentCMS.Content.IContentService<T>.RestoreVersionAsync(System.Guid id, int number, string? locale = null, int? expectedVersion = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
 FluentCMS.Content.IContentService<T>.UnpublishAsync(System.Guid id, string? locale = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
@@ -608,6 +612,8 @@ FluentCMS.Publishing.PublishPolicyAttribute
 FluentCMS.Publishing.PublishPolicyAttribute.MaxVersions.get -> int
 FluentCMS.Publishing.PublishPolicyAttribute.MaxVersions.set -> void
 FluentCMS.Publishing.PublishPolicyAttribute.PublishPolicyAttribute() -> void
+FluentCMS.Publishing.PublishPolicyAttribute.TrashRetentionDays.get -> int
+FluentCMS.Publishing.PublishPolicyAttribute.TrashRetentionDays.set -> void
 FluentCMS.Publishing.PublishPolicyAttribute.UnpublishedReferences.get -> FluentCMS.Publishing.UnpublishedReferencePolicy
 FluentCMS.Publishing.PublishPolicyAttribute.UnpublishedReferences.set -> void
 FluentCMS.Publishing.PublishResult<T>
@@ -873,7 +879,7 @@ FluentCMS.Schema.ISchemaBuilder.LoadSchemaFile(string! path) -> FluentCMS.Schema
 FluentCMS.Schema.ITypeBuilder
 FluentCMS.Schema.ITypeBuilder.Field(string! name, string! fieldType, System.Action<FluentCMS.Schema.IFieldBuilder!>? configure = null) -> FluentCMS.Schema.ITypeBuilder!
 FluentCMS.Schema.ITypeBuilder.Localized(bool localized = true) -> FluentCMS.Schema.ITypeBuilder!
-FluentCMS.Schema.ITypeBuilder.PublishPolicy(FluentCMS.Publishing.UnpublishedReferencePolicy unpublishedReferences = FluentCMS.Publishing.UnpublishedReferencePolicy.Warn, int maxVersions = 50) -> FluentCMS.Schema.ITypeBuilder!
+FluentCMS.Schema.ITypeBuilder.PublishPolicy(FluentCMS.Publishing.UnpublishedReferencePolicy unpublishedReferences = FluentCMS.Publishing.UnpublishedReferencePolicy.Warn, int maxVersions = 50, int trashRetentionDays = 30) -> FluentCMS.Schema.ITypeBuilder!
 FluentCMS.Schema.ITypeBuilder.Scope(FluentCMS.Schema.ContentScope scope) -> FluentCMS.Schema.ITypeBuilder!
 FluentCMS.Schema.IndexedAttribute
 FluentCMS.Schema.IndexedAttribute.IndexedAttribute() -> void
@@ -987,6 +993,7 @@ FluentCMS.Schema.SchemaType.MaxVersions.get -> int
 FluentCMS.Schema.SchemaType.Name.get -> string!
 FluentCMS.Schema.SchemaType.ReverseRelations.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Schema.ReverseRelation!>!
 FluentCMS.Schema.SchemaType.Scope.get -> FluentCMS.Schema.ContentScope
+FluentCMS.Schema.SchemaType.TrashRetentionDays.get -> int
 FluentCMS.Schema.SchemaType.UnpublishedReferences.get -> FluentCMS.Publishing.UnpublishedReferencePolicy
 FluentCMS.Schema.SchemaTypeKind
 FluentCMS.Schema.SchemaTypeKind.Block = 4 -> FluentCMS.Schema.SchemaTypeKind
@@ -1060,6 +1067,8 @@ const FluentCMS.Content.ValidationErrorCodes.Required = "FCMS2101" -> string!
 const FluentCMS.Content.ValidationErrorCodes.RequiredByCondition = "FCMS2110" -> string!
 const FluentCMS.Localization.ILocaleResolver.All = "all" -> string!
 const FluentCMS.Publishing.PublishPolicyAttribute.DefaultMaxVersions = 50 -> int
+const FluentCMS.Publishing.PublishPolicyAttribute.DefaultTrashRetentionDays = 30 -> int
+const FluentCMS.Publishing.PublishPolicyAttribute.MaxTrashRetentionDays = 36500 -> int
 const FluentCMS.Publishing.PublishWarningCodes.UnavailableReference = "FCMS2404" -> string!
 const FluentCMS.Publishing.PublishWarningCodes.UnpublishedReference = "FCMS2403" -> string!
 const FluentCMS.Schema.FieldSettings.Blocks = "blocks" -> string!

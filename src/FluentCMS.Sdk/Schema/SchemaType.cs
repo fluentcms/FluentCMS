@@ -27,6 +27,9 @@ public sealed class SchemaType
     /// <summary>How many versions to keep per entry and locale. A version that was published is never pruned.</summary>
     public int MaxVersions { get; internal init; } = PublishPolicyAttribute.DefaultMaxVersions;
 
+    /// <summary>How many days an entry stays in the trash before the purge job deletes it for good.</summary>
+    public int TrashRetentionDays { get; internal init; } = PublishPolicyAttribute.DefaultTrashRetentionDays;
+
     /// <summary>The class the type was read from, or <see langword="null"/> if it was defined without one. It does not take part in comparing models.</summary>
     public Type? ClrType { get; internal init; }
 

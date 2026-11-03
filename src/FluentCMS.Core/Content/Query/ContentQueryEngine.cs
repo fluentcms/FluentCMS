@@ -33,11 +33,19 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
 
     // everySystemField is for a content class, which has a property for each of them; a document leaves out the two that
     // are not in the response shape. Field permissions still decide.
-    public async Task<ContentQueryResult> ExecuteAsync(string typeName, ContentQuery query, bool everySystemField, CancellationToken cancellationToken)
+    public Task<ContentQueryResult> ExecuteAsync(string typeName, ContentQuery query, bool everySystemField, CancellationToken cancellationToken) =>
+        ExecuteAsync(typeName, query, everySystemField, trashed: false, cancellationToken);
+
+    // Reads the entries in the trash as drafts. Whoever calls this has decided that the principal may look at the trash;
+    // what a draft read is limited by still holds.
+    public Task<ContentQueryResult> ExecuteTrashAsync(string typeName, ContentQuery query, bool everySystemField, CancellationToken cancellationToken) =>
+        ExecuteAsync(typeName, query with { Status = QueryStatus.Draft }, everySystemField, trashed: true, cancellationToken);
+
+    private async Task<ContentQueryResult> ExecuteAsync(string typeName, ContentQuery query, bool everySystemField, bool trashed, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(query);
 
-        var compiled = Compile(await access.ForQueryAsync(query.Site, query.Locale ?? "", cancellationToken), typeName, query, everySystemField);
+        var compiled = Compile(await access.ForQueryAsync(query.Site, query.Locale ?? "", cancellationToken), typeName, query, everySystemField, trashed);
 
         long? total = compiled.WithTotal ? await compiled.Filtered.LongCountAsync(cancellationToken) : null;
         var rows = await compiled.Rows.ToListAsync(cancellationToken);
@@ -61,12 +69,12 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
     // Separate from running it, so that a test can read the SQL.
     internal CompiledQuery Compile(string typeName, ContentQuery query) => Compile(access, typeName, query);
 
-    private CompiledQuery Compile(IContentQueryAccess access, string typeName, ContentQuery query, bool everySystemField = false)
+    private CompiledQuery Compile(IContentQueryAccess access, string typeName, ContentQuery query, bool everySystemField = false, bool trashed = false)
     {
         ArgumentNullException.ThrowIfNull(query);
 
         var state = query.Status == QueryStatus.Draft ? ContentState.Draft : ContentState.Published;
-        var scope = new QueryScope(context, schema, dialect, access, options, state, query.Locale ?? "", query.Site);
+        var scope = new QueryScope(context, schema, dialect, access, options, state, query.Locale ?? "", query.Site, trashed);
 
         if (schema.FindContentType(typeName) is not { } type || !access.CanReadType(type))
         {
@@ -84,7 +92,11 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         }
 
         var row = Expression.Parameter(typeof(QueryRow), "row");
-        var rows = scope.Rows(type);
+        var rows = scope.Rows(type, trashedRoot: trashed);
+        if (trashed)
+        {
+            rows = rows.IgnoreQueryFilters();
+        }
 
         if (new FilterCompiler(scope).Where(type, query.Filter, row) is { } filter)
         {

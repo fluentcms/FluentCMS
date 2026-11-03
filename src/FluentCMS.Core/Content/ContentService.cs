@@ -251,7 +251,7 @@ internal sealed partial class ContentService(
         await locales.ResolveAsync(new LocaleRequest(site) { Parameter = locale }, cancellationToken);
 
     // Reads ask the engine, which holds the permission on the type, the row rule, the site and the field limits as one query.
-    private async Task<PagedResult<ContentDocument>> ReadAsync(string typeName, ContentQuery query, Guid? id, bool everySystemField, CancellationToken cancellationToken)
+    private async Task<PagedResult<ContentDocument>> ReadAsync(string typeName, ContentQuery query, Guid? id, bool everySystemField, CancellationToken cancellationToken, bool trashed = false)
     {
         richText.ThrowIfUnknown(query.RichTextFormat);
 
@@ -266,6 +266,11 @@ internal sealed partial class ContentService(
         var site = query.Site ?? operation.Site;
         var locale = await ResolveLocaleAsync(site, query.Locale ?? operation.Locale, cancellationToken);
         var everyLocale = locale == ILocaleResolver.All;
+        if (trashed && everyLocale)
+        {
+            throw new ValidationException([new ValidationError("locale", QueryErrorCodes.InvalidParameter, "The trash is read in one locale.")]);
+        }
+
         var oneLocale = everyLocale ? await ResolveLocaleAsync(site, null, cancellationToken) : locale;
 
         var bound = query with { Site = site, Locale = oneLocale };
@@ -273,7 +278,9 @@ internal sealed partial class ContentService(
         ContentQueryResult? page = null;
         if (!everyLocale || id is null)
         {
-            page = await engine.ExecuteAsync(typeName, bound, everySystemField, cancellationToken);
+            page = trashed
+                ? await engine.ExecuteTrashAsync(typeName, bound, everySystemField, cancellationToken)
+                : await engine.ExecuteAsync(typeName, bound, everySystemField, cancellationToken);
             found = page.Items;
         }
 

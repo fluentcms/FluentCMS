@@ -66,6 +66,11 @@ internal static class SchemaJsonWriter
                 writer.WriteNumber("maxVersions", type.MaxVersions);
             }
 
+            if (type.TrashRetentionDays != PublishPolicyAttribute.DefaultTrashRetentionDays)
+            {
+                writer.WriteNumber("trashRetentionDays", type.TrashRetentionDays);
+            }
+
             writer.WriteStartArray("fields");
             foreach (var field in type.Fields)
             {

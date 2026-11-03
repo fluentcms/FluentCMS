@@ -470,7 +470,7 @@ internal sealed class FilterCompiler(QueryScope query)
 
         if (query.Access.RowRule(target) is null)
         {
-            return InSite(target, targetId);
+            return ShownTarget(target, targetId);
         }
 
         var row = Expression.Parameter(typeof(QueryRow), "target");
@@ -479,18 +479,27 @@ internal sealed class FilterCompiler(QueryScope query)
         return Any(query.Rows(target), row, Expression.AndAlso(Expression.Equal(DocumentId(row), targetId), rule));
     }
 
-    // A row rule's own condition goes through the rows of the site already, so this is for a target without one.
-    private MethodCallExpression? InSite(SchemaType target, Expression targetId)
+    // A filter on the id of a relation matches only a target the same read would show: one of that type that is not in the
+    // trash, in the site of a site-scoped type, and for a published read published. A row rule's own condition goes through
+    // the rows of the site already, so this is for a target without one.
+    private MethodCallExpression ShownTarget(SchemaType target, Expression targetId)
     {
-        if (target.Scope != ContentScope.Site || query.Site is not { } site)
+        var document = Expression.Parameter(typeof(Document), "document");
+        Expression shown = Expression.AndAlso(
+            Expression.Equal(Expression.Property(document, nameof(Document.DocumentId)), targetId),
+            Expression.Equal(Expression.Property(document, nameof(Document.Type)), Expression.Constant(target.Name)));
+        shown = Expression.AndAlso(shown, Expression.Equal(Expression.Property(document, nameof(Document.DeletedAt)), Expression.Constant(null, typeof(DateTimeOffset?))));
+        if (target.Scope == ContentScope.Site && query.Site is { } site)
         {
-            return null;
+            shown = Expression.AndAlso(shown, Expression.Equal(Expression.Property(document, nameof(Document.SiteId)), Bind<Guid?>(site.Value)));
         }
 
-        var document = Expression.Parameter(typeof(Document), "document");
-        return Any(query.Context.Documents, document, Expression.AndAlso(
-            Expression.Equal(Expression.Property(document, nameof(Document.DocumentId)), targetId),
-            Expression.Equal(Expression.Property(document, nameof(Document.SiteId)), Bind<Guid?>(site.Value))));
+        if (query.State == ContentState.Published)
+        {
+            shown = Expression.AndAlso(shown, Expression.NotEqual(Expression.Property(document, nameof(Document.PublishedVersion)), Expression.Constant(null, typeof(int?))));
+        }
+
+        return Any(query.Context.Documents, document, shown);
     }
 
     // The target's row in the same state and locale; decision 44 rules out fallback-aware filtering.
