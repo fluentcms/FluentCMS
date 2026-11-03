@@ -14,6 +14,12 @@ internal static partial class SecretScrubber
         return Pair().Replace(text, "${key}${quote}${separator}***");
     }
 
+    // Whether a name, such as that of a detail of an activity row, suggests that its value is a secret.
+    public static bool NamesSecret(string name) => SecretName().IsMatch(name);
+
+    [GeneratedRegex(@"token|secret|passw(?:or)?d|pwd|key|authorization|credential|signature", RegexOptions.IgnoreCase)]
+    private static partial Regex SecretName();
+
     [GeneratedRegex(@"(?<scheme>[A-Za-z][A-Za-z0-9+.\-]*://)(?:[^/?#@\s]*@)?(?<host>[^/?#\s]*)\S*")]
     private static partial Regex Url();
 

@@ -1,0 +1,327 @@
+using FluentCMS.Activity;
+using FluentCMS.Content;
+using FluentCMS.Core.ActivityLog;
+using FluentCMS.Core.DependencyInjection;
+using FluentCMS.Core.Events;
+using FluentCMS.Core.Storage;
+using FluentCMS.Core.Storage.Entities;
+using FluentCMS.Data.Tests.Content;
+using FluentCMS.Data.Sqlite;
+using FluentCMS.Data.Tests.Events;
+using FluentCMS.Events;
+using FluentCMS.Sites;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Shouldly;
+using Xunit;
+using static FluentCMS.Data.Tests.Activity.ActivityFixture;
+using static FluentCMS.Data.Tests.Content.ServiceDatabase;
+
+namespace FluentCMS.Data.Tests.Activity;
+
+// The log is written for the events of the catalogue without anyone remembering to, says who did it and from where, and
+// holds nothing a reader of the log could not otherwise see.
+public sealed class ActivityLogTests
+{
+    private static readonly Guid Entry = Guid.Parse("00000000-0000-0000-0000-00000000e001");
+
+    private static readonly Guid Job = Guid.Parse("00000000-0000-0000-0000-00000000f001");
+
+    // One of every event of the catalogue. A new event fails the first test until it has a sample here and an entry in ActivityEvents.
+    private static readonly CmsEvent[] Samples =
+    [
+        new EntryDraftSavedEvent("article", Entry, "en", 1),
+        new EntryPublishedEvent("article", Entry, "en", 1),
+        new EntryUnpublishedEvent("article", Entry, "en", 1),
+        new EntryDraftDiscardedEvent("article", Entry, "en", 1),
+        new EntryVersionRestoredEvent("article", Entry, "en", 2),
+        new EntryTrashedEvent("article", Entry, "en", 1),
+        new EntryRestoredEvent("article", Entry, "en", 1),
+        new EntryPurgedEvent("article", Entry, "en", 1),
+        new EntryScheduledEvent("article", Entry, "en", 1, new DateTimeOffset(2026, 12, 1, 8, 0, 0, TimeSpan.Zero), "publish"),
+        new EntryScheduleCancelledEvent("article", Entry, "en", 1, "publish"),
+        new SettingsChangedEvent("seo"),
+        new SiteCreatedEvent(SiteB.Value, "b"),
+        new SiteUpdatedEvent(SiteB.Value, "b"),
+        new CacheInvalidatedEvent(["article:1", "article:2"]),
+        new JobFailedEvent(Job, "events.outbox.drain", "outbox", 1, 3, "boom"),
+        new JobDeadLetteredEvent(Job, "events.outbox.drain", "outbox", 3, "boom"),
+    ];
+
+    private static Task<bool> PublishAsync(ServiceDatabase database, Principal principal, CmsEvent @event, SiteId? site = null, Origin origin = Origin.Mcp) =>
+        database.AsAsync(principal, async services =>
+        {
+            await services.GetRequiredService<IEventBus>().PublishAsync(@event, Token);
+            return true;
+        }, site: site, origin: origin);
+
+    [Fact]
+    public void EveryEventOfTheCatalogueHasASampleHere()
+    {
+        var catalogue = typeof(CmsEvent).Assembly.GetTypes().Where(type => !type.IsAbstract && type.IsAssignableTo(typeof(CmsEvent)));
+
+        catalogue.ShouldBe(Samples.Select(sample => sample.GetType()), ignoreOrder: true);
+    }
+
+    [Fact]
+    public async Task EveryEventOfTheCatalogueProducesARowWithItsOriginActorClientAndCorrelationId()
+    {
+        using var database = new ServiceDatabase(On());
+
+        foreach (var sample in Samples)
+        {
+            await PublishAsync(database, Editor, sample, SiteB);
+        }
+
+        (await database.DrainAsync()).ShouldBe(Samples.Length);
+
+        var rows = database.ActivityRows();
+        rows.Count.ShouldBe(Samples.Length);
+        rows.Select(row => row.Action).Distinct().Count().ShouldBe(Samples.Length);
+        rows.ShouldAllBe(row => row.ActorId == Editor.Id && row.ActorType == Editor.Kind && row.ActorName == Editor.Name);
+        rows.ShouldAllBe(row => row.Origin == Origin.Mcp && row.ClientId == "client" && row.CorrelationId == "correlation");
+        rows.ShouldAllBe(row => row.SiteId == SiteB.Value);
+    }
+
+    [Fact]
+    public async Task ARowSaysWhatTheEventSaysEvenThoughAJobDeliversIt()
+    {
+        using var database = new ServiceDatabase(On());
+        var occurredAt = new DateTimeOffset(2026, 10, 1, 9, 30, 0, TimeSpan.FromHours(2));
+        var source = new EventSource(occurredAt, SiteB.Value, Guid.Parse("00000000-0000-0000-0000-0000000000f1"), "Importer", PrincipalKind.ServiceAccount, Origin.Cli, "import-1", "key-7");
+
+        await PublishAsync(database, Editor, new EntryPublishedEvent("article", Entry, "fr", 4) { Source = source });
+        await database.DrainAsync();
+
+        var row = database.ActivityRows().ShouldHaveSingleItem();
+        row.Action.ShouldBe("content.published");
+        row.OccurredAt.ShouldBe(occurredAt);
+        row.ActorType.ShouldBe(PrincipalKind.ServiceAccount);
+        row.ActorId.ShouldBe(source.ActorId);
+        row.ActorName.ShouldBe("Importer");
+        row.Origin.ShouldBe(Origin.Cli);
+        row.ClientId.ShouldBe("key-7");
+        row.CorrelationId.ShouldBe("import-1");
+        row.SiteId.ShouldBe(SiteB.Value);
+        row.TargetType.ShouldBe("article");
+        row.TargetId.ShouldBe(Entry.ToString("D"));
+        row.Locale.ShouldBe("fr");
+        ActivityText.ReadDetails(row.Details)["version"].ShouldBe("4");
+    }
+
+    [Fact]
+    public async Task AnEventOfNoSiteOrActorIsAnInstanceRowOfTheSystem()
+    {
+        using var database = new ServiceDatabase(On());
+
+        using (var scope = database.Database.NewScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<IEventBus>().PublishAsync(new JobFailedEvent(Job, "x", "default", 1, 3, "boom"), Token);
+        }
+
+        await database.DrainAsync();
+
+        var row = database.ActivityRows().ShouldHaveSingleItem();
+        row.SiteId.ShouldBeNull();
+        row.ActorType.ShouldBe(PrincipalKind.System);
+        row.ActorId.ShouldBe(Guid.Empty);
+        row.Origin.ShouldBe(Origin.Job);
+        row.TargetType.ShouldBe("job");
+        row.TargetLabel.ShouldBe("x");
+    }
+
+    [Fact]
+    public async Task TheWritesOfContentLeaveTheRowsOfTheirTransitionsAndNoFieldValue()
+    {
+        using var database = new ServiceDatabase(On());
+
+        var entry = await database.CreateAsync(Editor, new() { ["title"] = "Confidential headline", ["subtitle"] = "Unannounced product" });
+        var id = IdOf(entry);
+        await database.AsAsync(Editor, async services =>
+        {
+            await services.GetRequiredService<IContentService>().PublishAsync("article", id, cancellationToken: Token);
+            return true;
+        });
+        await database.DrainAsync();
+
+        var rows = database.ActivityRows();
+        rows.Select(row => row.Action).ShouldBe(["content.draft_saved", "content.published"], ignoreOrder: true);
+        rows.ShouldAllBe(row => row.TargetType == "article" && row.TargetId == id.ToString("D") && row.Locale == "en" && row.SiteId == SiteA.Value);
+
+        var everything = string.Join('|', rows.Select(row => $"{row.TargetLabel}{row.Details}{row.TargetType}{row.TargetId}{row.Action}"));
+        everything.ShouldNotContain("Confidential");
+        everything.ShouldNotContain("Unannounced");
+        rows.ShouldAllBe(row => row.TargetLabel == null);
+    }
+
+    [Fact]
+    public async Task TheErrorOfAJobIsScrubbedBeforeItIsStoredAsADetail()
+    {
+        using var database = new ServiceDatabase(On());
+        const string error = "POST https://hooks.example.com/services/T00/B00/XXXSECRETPATH failed: token=abc123 Bearer abcdefgh12345678 rejected";
+
+        await PublishAsync(database, Editor, new JobFailedEvent(Job, "webhooks.deliver", "default", 1, 3, error));
+        await database.DrainAsync();
+
+        var stored = ActivityText.ReadDetails(database.ActivityRows().Single().Details)["error"].ShouldNotBeNull();
+        stored.ShouldNotContain("XXXSECRETPATH");
+        stored.ShouldNotContain("abc123");
+        stored.ShouldNotContain("abcdefgh12345678");
+        stored.ShouldContain("hooks.example.com");
+    }
+
+    [Fact]
+    public async Task ADetailNamedLikeASecretLosesItsValueAndTheOthersAreScrubbedAndCut()
+    {
+        using var database = new ServiceDatabase(On());
+
+        await database.AsAsync(Editor, async services =>
+        {
+            await services.GetRequiredService<IActivityLog>().WriteAsync(
+                new ActivityEntry("plugin.configured")
+                {
+                    TargetType = "plugin",
+                    TargetId = "media",
+                    TargetLabel = "https://user:pass@cdn.example.com/path?sig=1234",
+                    Details = new Dictionary<string, string?>
+                    {
+                        ["apiKey"] = "k-123456",
+                        ["Password"] = "hunter22",
+                        ["note"] = "ok password=hunter22 done",
+                        ["long"] = new string('x', 1000),
+                        ["none"] = null,
+                    },
+                },
+                Token);
+            return true;
+        });
+
+        var row = database.ActivityRows().Single();
+        row.TargetLabel.ShouldBe("https://cdn.example.com");
+        var details = ActivityText.ReadDetails(row.Details);
+        details["apiKey"].ShouldBe("***");
+        details["Password"].ShouldBe("***");
+        details["note"].ShouldBe("ok password=*** done");
+        details["long"]!.Length.ShouldBe(256);
+        details["none"].ShouldBeNull();
+        (row.Details ?? "").ShouldNotContain("hunter22");
+    }
+
+    [Fact]
+    public async Task AnEntryWithoutAnOperationIsWrittenForTheSystemAndAnInvalidActionIsRefused()
+    {
+        using var database = new ServiceDatabase(On());
+
+        using (var scope = database.Database.NewScope())
+        {
+            var log = scope.ServiceProvider.GetRequiredService<IActivityLog>();
+            await log.WriteAsync(new ActivityEntry("cli.ran") { Ip = "10.0.0.7" }, Token);
+
+            await Should.ThrowAsync<ArgumentException>(async () => await log.WriteAsync(new ActivityEntry(""), Token));
+            await Should.ThrowAsync<ArgumentException>(async () => await log.WriteAsync(new ActivityEntry(new string('a', 65)), Token));
+        }
+
+        var row = database.ActivityRows().ShouldHaveSingleItem();
+        row.ActorType.ShouldBe(PrincipalKind.System);
+        row.SiteId.ShouldBeNull();
+        row.Ip.ShouldBe("10.0.0.7");
+    }
+
+    [Fact]
+    public async Task ARepeatedDeliveryWritesNoSecondRow()
+    {
+        using var database = new ServiceDatabase(On());
+        var delivery = new EventDelivery(Guid.CreateVersion7(), 1);
+
+        await database.AsAsync(Editor, async services =>
+        {
+            var recorder = services.GetRequiredService<ActivityRecorder<SettingsChangedEvent>>();
+            await recorder.HandleAsync(new SettingsChangedEvent("seo"), delivery, Token);
+            await recorder.HandleAsync(new SettingsChangedEvent("seo"), delivery with { Attempt = 2 }, Token);
+            return true;
+        });
+
+        database.ActivityRows().ShouldHaveSingleItem().Id.ShouldBe(delivery.Key);
+    }
+
+    [Fact]
+    public async Task TheRowIsRecordedWithTheWriteAndDeliveredByTheDrain()
+    {
+        using var database = new ServiceDatabase(On());
+
+        await database.CreateAsync(Editor, new() { ["title"] = "T" });
+
+        database.ActivityRows().ShouldBeEmpty();
+        var pending = database.Database.Services.GetRequiredService<SystemDbContext>().Set<OutboxMessage>().AsNoTracking().ToList();
+        pending.Select(row => row.Handler).ShouldBe(["activity.content.draft_saved"]);
+
+        await database.DrainAsync();
+
+        database.ActivityRows().ShouldHaveSingleItem().Action.ShouldBe("content.draft_saved");
+    }
+
+    [Fact]
+    public async Task AnEventOfAPluginIsLoggedOnceTheHostDescribesIt()
+    {
+        using var database = new ServiceDatabase(On(cms => cms.Events.AddActivity<Ping>("ping.sent", ping => new ActivityEntry("ping.sent") { TargetType = "ping", TargetLabel = ping.Note })));
+
+        await PublishAsync(database, Editor, new Ping("hello"), origin: Origin.Admin);
+        await database.DrainAsync();
+
+        var row = database.ActivityRows().ShouldHaveSingleItem();
+        row.Action.ShouldBe("ping.sent");
+        row.TargetLabel.ShouldBe("hello");
+        row.Origin.ShouldBe(Origin.Admin);
+    }
+
+    [Fact]
+    public void AnEventDescribedTwiceIsRefused()
+    {
+        var exception = Should.Throw<FluentCmsConfigurationException>(() => new ServiceCollection().AddFluentCms(cms => cms.Events
+            .AddActivity<Ping>("first", _ => new ActivityEntry("first"))
+            .AddActivity<Ping>("second", _ => new ActivityEntry("second"))));
+
+        exception.Code.ShouldBe("FCMS2702");
+    }
+
+    [Fact]
+    public async Task WithTheLogTurnedOffNoRowIsRecorded()
+    {
+        using var database = new ServiceDatabase();
+
+        await database.CreateAsync(Editor, new() { ["title"] = "T" });
+
+        database.Rows().ShouldBeEmpty();
+        database.ActivityRows().ShouldBeEmpty();
+    }
+
+    [Theory]
+    [InlineData("retention")]
+    [InlineData("site")]
+    [InlineData("batch")]
+    [InlineData("cron")]
+    public void OptionsThatCannotWorkAreRefusedAtStartup(string which)
+    {
+        var exception = Should.Throw<FluentCmsConfigurationException>(() => new ServiceCollection().AddFluentCms(cms =>
+        {
+            cms.UseSqlite("Data Source=activity-options.db");
+            switch (which)
+            {
+                case "retention":
+                    cms.Activity.Retention = TimeSpan.Zero;
+                    break;
+                case "site":
+                    cms.Activity.SiteRetention["b"] = TimeSpan.FromDays(-1);
+                    break;
+                case "cron":
+                    cms.Activity.PruneSchedule = "every night";
+                    break;
+                default:
+                    cms.Activity.PruneBatchSize = 0;
+                    break;
+            }
+        }));
+
+        exception.Code.ShouldBe("FCMS2701");
+    }
+}

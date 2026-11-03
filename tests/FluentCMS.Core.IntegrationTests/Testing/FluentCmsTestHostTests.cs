@@ -1,6 +1,8 @@
 using System.Diagnostics;
+using FluentCMS.Activity;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Events;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
 using FluentCMS.Sites;
@@ -326,6 +328,31 @@ public sealed class FluentCmsTestHostTests : IAsyncDisposable
         seen.Site.ShouldBe(site);
         seen.Locale.ShouldBe("de");
         seen.Principal.IsSystem.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task AWriteLeavesARowInTheActivityLogWithoutAnyoneAskingForIt()
+    {
+        var editor = await _host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+        var actor = _host.As(editor);
+
+        await actor.Content<Note>().CreateAsync(new Note { Title = "Logged" }, Token);
+
+        IReadOnlyList<ActivityItem> items = [];
+        for (var attempt = 0; attempt < 50 && items.Count == 0; attempt++)
+        {
+            await _host.Services.GetRequiredService<OutboxDrainer>().DrainAsync(Token);
+            items = (await actor.RunAsync<IActivityQuery, PagedResult<ActivityItem>>(query => query.QueryAsync(null, null, Token))).Items;
+            if (items.Count == 0)
+            {
+                await Task.Delay(100, Token);
+            }
+        }
+
+        var item = items.ShouldHaveSingleItem();
+        item.Action.ShouldBe("content.draft_saved");
+        item.ActorId.ShouldBe(editor.Id);
+        item.Origin.ShouldBe(Origin.Admin);
     }
 
     private sealed class ScopedProbe;
