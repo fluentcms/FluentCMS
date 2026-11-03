@@ -1,6 +1,8 @@
 using FluentCMS.Activity;
 using FluentCMS.Content;
 using FluentCMS.Core.ActivityLog;
+using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Content;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Events;
 using FluentCMS.Core.Storage;
@@ -9,6 +11,7 @@ using FluentCMS.Data.Tests.Content;
 using FluentCMS.Data.Sqlite;
 using FluentCMS.Data.Tests.Events;
 using FluentCMS.Events;
+using FluentCMS.Jobs;
 using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -152,6 +155,53 @@ public sealed class ActivityLogTests
         everything.ShouldNotContain("Confidential");
         everything.ShouldNotContain("Unannounced");
         rows.ShouldAllBe(row => row.TargetLabel == null);
+    }
+
+    [Fact]
+    public async Task TrashingRestoringAndPurgingAnEntryLeaveTheirRowsAndNoFieldValue()
+    {
+        using var database = new ServiceDatabase(On());
+        var admin = WithRole(BuiltInRoles.SuperAdmin);
+        var id = IdOf(await database.CreateAsync(admin, new() { ["title"] = "Confidential headline" }));
+
+        await database.DeleteAsync(admin, id);
+        await database.RestoreAsync(admin, id);
+        await database.DeleteAsync(admin, id);
+        await database.PurgeAsync(admin, id);
+        await database.DrainAsync();
+
+        var rows = database.ActivityRows();
+        rows.Select(row => row.Action).Order().ShouldBe(["content.draft_saved", "content.purged", "content.restored", "content.trashed", "content.trashed"]);
+        rows.ShouldAllBe(row => row.TargetType == "article" && row.TargetId == id.ToString("D") && row.Locale == "en" && row.ActorId == admin.Id);
+        rows.Where(row => row.Action is "content.trashed" or "content.restored" or "content.purged").ShouldAllBe(row => ActivityText.ReadDetails(row.Details).ContainsKey("version"));
+        string.Join('|', rows.Select(row => $"{row.TargetLabel}{row.Details}")).ShouldNotContain("Confidential");
+    }
+
+    [Fact]
+    public async Task ThePurgeJobLeavesARowOfThePurgeForTheSystemThatRanIt()
+    {
+        using var database = new ServiceDatabase(On());
+        var id = IdOf(await database.CreateAsync(Editor, new() { ["title"] = "Old news" }));
+        await database.DeleteAsync(Editor, id);
+        database.TrashedAt(id, DateTimeOffset.UtcNow.AddDays(-90));
+
+        using (var scope = database.Database.NewScope())
+        {
+            var operation = new OperationContext(Principal.System, Origin.Job, SiteA, "en", null, "purge-run", DateTimeOffset.UtcNow);
+            await scope.ServiceProvider.GetRequiredService<TrashPurgeJob>().ExecuteAsync(new TrashPurgePayload(500, 100), new JobContext(Guid.NewGuid(), TrashPurgeJob.Type, "default", 1, 3, operation, Token));
+        }
+
+        await database.DrainAsync();
+
+        var purged = database.ActivityRows().Single(row => row.Action == "content.purged");
+        purged.TargetType.ShouldBe("article");
+        purged.TargetId.ShouldBe(id.ToString("D"));
+        purged.Locale.ShouldBe("en");
+        purged.ActorType.ShouldBe(PrincipalKind.System);
+        purged.Origin.ShouldBe(Origin.Job);
+        purged.CorrelationId.ShouldBe("purge-run");
+        purged.SiteId.ShouldBe(SiteA.Value);
+        (purged.Details ?? "").ShouldNotContain("Old news");
     }
 
     [Fact]

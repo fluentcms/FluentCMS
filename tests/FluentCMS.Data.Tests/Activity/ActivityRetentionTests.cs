@@ -132,7 +132,7 @@ public sealed class ActivityRetentionTests
     }
 
     [Fact]
-    public async Task TurningTheLogOffSwitchesTheStoredScheduleOffAndOnAgainSwitchesItOn()
+    public async Task TurningTheLogOffSwitchesTheStoredScheduleOffAndStartingOnAgainNeverSwitchesItOn()
     {
         using var database = new ServiceDatabase(ActivityFixture.On());
         await database.Database.Services.GetServices<IHostedService>().OfType<ActivityScheduleService>().Single().StartAsync(Token);
@@ -148,7 +148,20 @@ public sealed class ActivityRetentionTests
         using var on = database.Database.NewInstance(ActivityFixture.On());
         await on.GetServices<IHostedService>().OfType<ActivityScheduleService>().Single().StartAsync(Token);
 
-        Recurring(database).Enabled.ShouldBeTrue();
+        Recurring(database).Enabled.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task AScheduleAnOperatorSwitchedOffStaysOffWhenTheHostStarts()
+    {
+        using var database = new ServiceDatabase(ActivityFixture.On());
+        await database.Database.Services.GetServices<IHostedService>().OfType<ActivityScheduleService>().Single().StartAsync(Token);
+        database.Database.Services.GetRequiredService<SystemDbContext>().Set<RecurringJob>().Where(job => job.Name == "activity.retention").ExecuteUpdate(set => set.SetProperty(job => job.Enabled, false));
+
+        using var restarted = database.Database.NewInstance(ActivityFixture.On());
+        await restarted.GetServices<IHostedService>().OfType<ActivityScheduleService>().Single().StartAsync(Token);
+
+        Recurring(database).Enabled.ShouldBeFalse();
     }
 
     [Fact]

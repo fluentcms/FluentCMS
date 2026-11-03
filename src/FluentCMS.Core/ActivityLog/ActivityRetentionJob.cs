@@ -73,7 +73,8 @@ internal sealed class ActivityRetentionJob(SystemDbContext context, ActivityOpti
 
 // Stores the schedule of the retention job before the host reports started, so that a failure is seen at once. A database
 // that is down at startup is retried in the background, since the host would otherwise be left without the job for good.
-// With the log turned off the stored schedule is switched off instead, since the row outlives the setting.
+// With the log turned off the stored schedule is switched off instead, since the row outlives the setting; turning the log
+// on again does not switch it back on.
 internal sealed class ActivityScheduleService(IJobScheduler scheduler, IServiceScopeFactory scopes, ActivityOptions options, TimeProvider time, ILogger<ActivityScheduleService> logger) : IHostedService, IDisposable
 {
     private static readonly TimeSpan Retry = TimeSpan.FromSeconds(30);
@@ -115,12 +116,13 @@ internal sealed class ActivityScheduleService(IJobScheduler scheduler, IServiceS
         }
     }
 
-    private async Task SetEnabledAsync(bool enabled, CancellationToken cancellationToken)
+    // Never the other way: a schedule an operator switched off stays off when the host starts.
+    private async Task SwitchOffAsync(CancellationToken cancellationToken)
     {
         await using var scope = scopes.CreateAsyncScope();
         await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<RecurringJob>()
-            .Where(job => job.Name == ActivityRetentionJob.RecurringName && job.Enabled != enabled)
-            .ExecuteUpdateAsync(job => job.SetProperty(row => row.Enabled, enabled), cancellationToken);
+            .Where(job => job.Name == ActivityRetentionJob.RecurringName && job.Enabled)
+            .ExecuteUpdateAsync(job => job.SetProperty(row => row.Enabled, false), cancellationToken);
     }
 
     private async Task<bool> TryScheduleAsync(CancellationToken cancellationToken)
@@ -131,8 +133,11 @@ internal sealed class ActivityScheduleService(IJobScheduler scheduler, IServiceS
             {
                 await scheduler.AddRecurringAsync<ActivityRetentionJob, ActivityRetentionPayload>(ActivityRetentionJob.RecurringName, options.PruneSchedule, new ActivityRetentionPayload(), cancellationToken: cancellationToken);
             }
+            else
+            {
+                await SwitchOffAsync(cancellationToken);
+            }
 
-            await SetEnabledAsync(options.Enabled, cancellationToken);
             return true;
         }
         catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
