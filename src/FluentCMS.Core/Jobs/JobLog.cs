@@ -38,6 +38,12 @@ internal static partial class JobLog
     [LoggerMessage(Level = LogLevel.Error, Message = "Recurring job {Name} could not fire; it tries again next time.")]
     public static partial void RecurringFireFailed(ILogger logger, Exception exception, string name);
 
+    [LoggerMessage(Level = LogLevel.Information, Message = "Job retention removed {Removed} succeeded jobs.")]
+    public static partial void Retention(ILogger logger, int removed);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Could not register the recurring retention of succeeded jobs; they stay until it is registered.")]
+    public static partial void RetentionScheduleFailed(ILogger logger, Exception exception);
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "The job runner stopped with jobs still running, whose leases will expire.")]
     public static partial void StoppedWithRunningJobs(ILogger logger);
 }
