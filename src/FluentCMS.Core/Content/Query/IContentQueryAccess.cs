@@ -20,7 +20,7 @@ internal interface IContentQueryAccess
     // The field is a top-level field of the type or a system field such as createdBy.
     bool CanReadField(SchemaType type, string field);
 
-    // The locales a relation's target may be read in, or null when there is no limit.
+    // The locales a relation's target may be read in with no row rule to ask, or null when there is no limit.
     IReadOnlySet<string>? ReadLocales(SchemaType type) => null;
 
     // Joins the client's filter in an And node before compilation, on the queried type and on every relation target.

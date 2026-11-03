@@ -129,10 +129,11 @@ internal sealed class AuthorizationEvaluator(
 
     // A grant's site limit is about the entry, so the entry's own site must be the one asked about. A global type's
     // entries belong to no site, and a target of every site has nothing to compare. A read's locale limit is about the entry
-    // too: one with rows only in other locales reads as no entry. A write may add a locale, so this is for reads alone.
+    // too: one with rows only in other locales reads as no entry. A row rule answers that itself, since it reads the row in
+    // the locale asked about. A write may add a locale, so this is for reads alone.
     private async Task<bool> IsInReachAsync(SchemaType type, ContentOperation operation, Guid entry, AccessTarget target, EffectivePermissions permissions, CancellationToken cancellationToken)
     {
-        var locales = operation == ContentOperation.Read && type.Localized ? permissions.ReadLocalesOf(type, target) : null;
+        var locales = operation == ContentOperation.Read && type.Localized && permissions.RowRuleOf(type, operation, target) is null ? permissions.ReadLocalesOf(type, target) : null;
         var site = type.Scope == ContentScope.Site ? target.Site : null;
         if (site is null && locales is null)
         {

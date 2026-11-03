@@ -461,6 +461,63 @@ public sealed class NestedTargetTests : IDisposable
         }
     }
 
+    [Fact]
+    public async Task AGrantWithARuleInAnotherLocaleDoesNotVouchForARowThere()
+    {
+        var schema = SampleSchema.NewBuilder()
+            .AddBlock("card", block => block.Field("who", "relation", field => field.Relation("author")))
+            .AddCollection("author", type => type.Localized().Field("name", "text", field => field.Localizable()))
+            .AddCollection("article", type => type.Field("title", "text").Field("author", "relation", field => field.Relation("author")).Field("cards", "blocks", field => field.Setting(FieldSettings.Blocks, Cards)))
+            .Build();
+        using var database = new ServiceDatabase(schema: schema);
+        var reader = WithRole(database.Database.AddRoleForTest(
+            "Two grants",
+            ("content.article.read", null),
+            ("content.author.create", null),
+            ("content.author.read", new PermissionConstraints { Locales = ["en"] }),
+            ("content.author.read", new PermissionConstraints { Locales = ["fr"], RowRule = BuiltInRoles.OwnEntriesRule })));
+
+        async Task<Guid> AuthorInAsync(Principal by, string locale)
+        {
+            var id = IdOf(await database.CreateAsync(by, new() { ["name"] = "Ann" }, "author", locale));
+            await database.PublishAsync(Editor, id, locale, type: "author", operationLocale: locale);
+            return id;
+        }
+
+        async Task ShouldReadAsync(Guid target, string locale, bool visible)
+        {
+            var id = IdOf(await database.CreateAsync(Editor, new() { ["title"] = Guid.NewGuid().ToString("N"), ["author"] = target, ["cards"] = new object[] { new ContentDocument { ["type"] = "card", ["who"] = target } } }, "article"));
+            await database.PublishAsync(Editor, id, type: "article");
+
+            foreach (var read in new[]
+            {
+                await database.GetAsync(reader, id, null, "article", locale),
+                await database.GetAsync(reader, id, new GetOptions { Status = QueryStatus.Published }, "article", locale),
+                await database.VersionAsync(reader, id, 1, locale, "article"),
+            })
+            {
+                (read!["author"] is not null).ShouldBe(visible);
+                Text(read["cards"]).Contains(target.ToString(), StringComparison.Ordinal).ShouldBe(visible);
+            }
+        }
+
+        var refused = await AuthorInAsync(Editor, "fr");
+        var own = await AuthorInAsync(reader, "fr");
+        var open = await AuthorInAsync(Editor, "en");
+
+        // Read in en, which has no rule: only what that grant reaches counts, and a row in fr tells nothing either way.
+        await ShouldReadAsync(refused, "en", visible: false);
+        await ShouldReadAsync(own, "en", visible: false);
+        await ShouldReadAsync(Guid.CreateVersion7(), "en", visible: false);
+        await ShouldReadAsync(open, "en", visible: true);
+
+        // Read in fr, where the rule is asked of the row in fr: a target only in en has none to ask.
+        await ShouldReadAsync(refused, "fr", visible: false);
+        await ShouldReadAsync(own, "fr", visible: true);
+        await ShouldReadAsync(Guid.CreateVersion7(), "fr", visible: false);
+        await ShouldReadAsync(open, "fr", visible: false);
+    }
+
     // Whatever X is, a principal limited on the type keeps it, and publishing then says the same.
     private async Task<List<Guid>> GhostsAsync()
     {

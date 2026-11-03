@@ -81,8 +81,9 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
         return grants.Where(grant => grant.Applies(permission, target) && (!writesEverySite || grant.IsInstanceWide));
     }
 
-    // The locales a read of the type is limited to, or null when a grant has no such limit. Across every grant, since a
-    // relation's target may be read in another locale than the one asked about.
+    // The locales a read reaches with no row rule to ask, or null when such a grant has no locale limit. A relation's target
+    // may be read in another locale than the one asked about, but a rule is only asked of that one, so a grant with a rule
+    // cannot vouch for a row elsewhere.
     public IReadOnlySet<string>? ReadLocalesOf(SchemaType type, AccessTarget target)
     {
         if (IsSystem)
@@ -94,7 +95,7 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
         var permission = CorePermissions.Content(type.Name, ContentOperation.Read);
         if (ScopeAllows(permission))
         {
-            foreach (var grant in grants.Where(grant => grant.AppliesInSomeLocale(permission, target)))
+            foreach (var grant in grants.Where(grant => grant.Constraints.RowRule is null && grant.AppliesInSomeLocale(permission, target)))
             {
                 if (grant.Constraints.Locales is not { } limited)
                 {
