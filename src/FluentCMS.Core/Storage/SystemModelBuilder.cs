@@ -262,6 +262,10 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         entity.HasIndex(row => new { row.SiteId, row.OccurredAt })
             .HasDatabaseName("ix_cms_activity_site_occurred");
 
+        // For the retention job, which takes the oldest rows of every site that has no age of its own.
+        entity.HasIndex(row => row.OccurredAt)
+            .HasDatabaseName("ix_cms_activity_occurred");
+
         entity.HasIndex(row => new { row.TargetType, row.TargetId })
             .HasDatabaseName("ix_cms_activity_target");
 

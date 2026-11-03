@@ -208,6 +208,80 @@ public sealed class ActivityLogTests
     }
 
     [Fact]
+    public async Task AWriteSavesNothingTheCallerTrackedAndKeepsItTracked()
+    {
+        using var database = new ServiceDatabase(On());
+
+        using var scope = database.Database.NewScope();
+        var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+        var site = await context.Set<Site>().SingleAsync(row => row.Id == SiteA.Value, Token);
+        site.Name = "Renamed";
+
+        await scope.ServiceProvider.GetRequiredService<IActivityLog>().WriteAsync(new ActivityEntry("cli.ran"), Token);
+
+        context.Entry(site).State.ShouldBe(EntityState.Modified);
+        using var other = database.Database.NewScope();
+        (await other.ServiceProvider.GetRequiredService<SystemDbContext>().Set<Site>().AsNoTracking().SingleAsync(row => row.Id == SiteA.Value, Token)).Name.ShouldBe("a");
+        database.ActivityRows().ShouldHaveSingleItem();
+    }
+
+    [Fact]
+    public async Task AWriteInsideATransactionIsRefused()
+    {
+        using var database = new ServiceDatabase(On());
+
+        using var scope = database.Database.NewScope();
+        await using var transaction = await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Database.BeginTransactionAsync(Token);
+
+        var exception = await Should.ThrowAsync<InvalidOperationException>(async () => await scope.ServiceProvider.GetRequiredService<IActivityLog>().WriteAsync(new ActivityEntry("cli.ran"), Token));
+
+        exception.Message.ShouldStartWith("FCMS2704");
+        database.ActivityRows().ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task ACutThroughASurrogatePairBacksOffOneCharacter()
+    {
+        using var database = new ServiceDatabase(On());
+        var label = new string('a', 255) + "\U0001F600";
+
+        using (var scope = database.Database.NewScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<IActivityLog>().WriteAsync(new ActivityEntry("cli.ran") { TargetLabel = label, Details = new Dictionary<string, string?> { ["d"] = new string('b', 255) + "\U0001F600" } }, Token);
+        }
+
+        var row = database.ActivityRows().Single();
+        row.TargetLabel.ShouldBe(new string('a', 255));
+        ActivityText.ReadDetails(row.Details)["d"].ShouldBe(new string('b', 255));
+    }
+
+    [Fact]
+    public async Task AnActionIsStoredInLowerCase()
+    {
+        using var database = new ServiceDatabase(On());
+
+        using (var scope = database.Database.NewScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<IActivityLog>().WriteAsync(new ActivityEntry("Plugin.Configured"), Token);
+        }
+
+        database.ActivityRows().Single().Action.ShouldBe("plugin.configured");
+    }
+
+    [Fact]
+    public async Task RowsStillWaitingWhenTheLogIsTurnedOffAreDeliveredAndDropped()
+    {
+        using var database = new ServiceDatabase(On());
+        await database.CreateAsync(Editor, new() { ["title"] = "T" });
+
+        using var off = database.Database.NewInstance();
+        (await off.GetRequiredService<OutboxDrainer>().DrainAsync(Token)).ShouldBe(1);
+
+        database.ActivityRows().ShouldBeEmpty();
+        database.Database.Services.GetRequiredService<SystemDbContext>().Set<OutboxMessage>().AsNoTracking().Single().Status.ShouldBe(OutboxStatus.Delivered);
+    }
+
+    [Fact]
     public async Task AnEntryWithoutAnOperationIsWrittenForTheSystemAndAnInvalidActionIsRefused()
     {
         using var database = new ServiceDatabase(On());
@@ -299,6 +373,7 @@ public sealed class ActivityLogTests
     [InlineData("retention")]
     [InlineData("site")]
     [InlineData("batch")]
+    [InlineData("batch-high")]
     [InlineData("cron")]
     public void OptionsThatCannotWorkAreRefusedAtStartup(string which)
     {
@@ -312,6 +387,9 @@ public sealed class ActivityLogTests
                     break;
                 case "site":
                     cms.Activity.SiteRetention["b"] = TimeSpan.FromDays(-1);
+                    break;
+                case "batch-high":
+                    cms.Activity.PruneBatchSize = 1001;
                     break;
                 case "cron":
                     cms.Activity.PruneSchedule = "every night";

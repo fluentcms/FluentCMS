@@ -45,6 +45,11 @@ namespace FluentCMS.Data.SqlServer.Migrations
                 column: "actor_id");
 
             migrationBuilder.CreateIndex(
+                name: "ix_cms_activity_occurred",
+                table: "cms_activity",
+                column: "occurred_at");
+
+            migrationBuilder.CreateIndex(
                 name: "ix_cms_activity_site_occurred",
                 table: "cms_activity",
                 columns: new[] { "site_id", "occurred_at" });

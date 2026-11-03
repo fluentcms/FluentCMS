@@ -26,8 +26,9 @@ internal static class ActivityText
     public static string Action(string action)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(action);
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(action.Length, ActionMaxLength, nameof(action));
-        return action;
+        var lower = action.ToLowerInvariant();
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(lower.Length, ActionMaxLength, nameof(action));
+        return lower;
     }
 
     public static string? Of(string? text, int maxLength) =>
@@ -71,5 +72,15 @@ internal static class ActivityText
             ? new Dictionary<string, string?>()
             : JsonSerializer.Deserialize<Dictionary<string, string?>>(json) ?? [];
 
-    private static string Cut(string text, int maxLength) => text.Length <= maxLength ? text : text[..maxLength];
+    // Not through the middle of a surrogate pair, which would leave a character that cannot be encoded.
+    private static string Cut(string text, int maxLength)
+    {
+        if (text.Length <= maxLength)
+        {
+            return text;
+        }
+
+        var end = char.IsHighSurrogate(text[maxLength - 1]) ? maxLength - 1 : maxLength;
+        return text[..end];
+    }
 }

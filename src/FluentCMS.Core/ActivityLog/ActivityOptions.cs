@@ -10,6 +10,7 @@ public sealed class ActivityOptions
     public const int MaxPageSize = 100;
 
     // Whether the CMS writes a row for the events it raises and prunes the log. A host that keeps its own record turns it off.
+    // Turning it off later stops new rows and the daily prune; rows already recorded for delivery are dropped, and rows written stay.
     public bool Enabled { get; set; } = true;
 
     // How long a row stays. A site in SiteRetention keeps its rows for its own time; the instance-wide rows, which
@@ -19,7 +20,10 @@ public sealed class ActivityOptions
     // By site slug, until sites have settings of their own to hold it.
     public Dictionary<string, TimeSpan> SiteRetention { get; } = new(StringComparer.OrdinalIgnoreCase);
 
-    // The most rows one delete of the retention job takes, so that a long backlog is not removed in one statement.
+    public const int MaxPruneBatchSize = 1000;
+
+    // The most rows one delete of the retention job takes, so that a long backlog is not removed in one statement. The ids of
+    // a batch go into one statement as parameters, which is why it is capped.
     public int PruneBatchSize { get; set; } = 1000;
 
     // When the retention job runs, as a cron expression in UTC.
@@ -33,7 +37,7 @@ public sealed class ActivityOptions
             Require(retention > TimeSpan.Zero, $"The retention of the site '{site}' must be positive.");
         }
 
-        Require(PruneBatchSize >= 1, $"{nameof(PruneBatchSize)} is {PruneBatchSize}; it must be at least 1.");
+        Require(PruneBatchSize is >= 1 and <= MaxPruneBatchSize, $"{nameof(PruneBatchSize)} is {PruneBatchSize}; it must be from 1 to {MaxPruneBatchSize}.");
         Require(IsCron(PruneSchedule), $"{nameof(PruneSchedule)} '{PruneSchedule}' is not a cron expression that ever occurs.");
     }
 

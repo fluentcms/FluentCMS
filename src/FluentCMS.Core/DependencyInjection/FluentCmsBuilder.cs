@@ -14,7 +14,7 @@ public sealed class FluentCmsBuilder
     {
         Services = services;
         Jobs = new JobsBuilder(services);
-        Events = new EventsBuilder(services);
+        Events = new EventsBuilder(services, Activity);
     }
 
     public IServiceCollection Services { get; }

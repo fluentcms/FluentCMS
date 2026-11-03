@@ -9,8 +9,9 @@ namespace FluentCMS.Core.Events;
 
 internal sealed class OutboxRegistration
 {
-    private OutboxRegistration(string name, Type eventType, Type handler, Func<string, CmsEvent?> read, Func<IServiceProvider, CmsEvent, EventDelivery, CancellationToken, ValueTask> invoke)
+    private OutboxRegistration(string name, Type eventType, Type handler, Func<string, CmsEvent?> read, Func<IServiceProvider, CmsEvent, EventDelivery, CancellationToken, ValueTask> invoke, Func<bool>? active)
     {
+        Active = active ?? (() => true);
         Name = name;
         EventType = eventType;
         Handler = handler;
@@ -20,6 +21,9 @@ internal sealed class OutboxRegistration
 
     public string Name { get; }
 
+    // Whether new events are recorded for it. A registration that is not active is still found for the rows already recorded.
+    public Func<bool> Active { get; }
+
     public Type EventType { get; }
 
     public Type Handler { get; }
@@ -28,7 +32,7 @@ internal sealed class OutboxRegistration
 
     public Func<IServiceProvider, CmsEvent, EventDelivery, CancellationToken, ValueTask> Invoke { get; }
 
-    public static OutboxRegistration Create<TEvent, THandler>(string name)
+    public static OutboxRegistration Create<TEvent, THandler>(string name, Func<bool>? active = null)
         where TEvent : CmsEvent
         where THandler : class, IOutboxEventHandler<TEvent> =>
         new(
@@ -36,7 +40,8 @@ internal sealed class OutboxRegistration
             typeof(TEvent),
             typeof(THandler),
             json => JsonSerializer.Deserialize<TEvent>(json, EventJson.Options),
-            (services, @event, delivery, cancellationToken) => services.GetRequiredService<THandler>().HandleAsync((TEvent)@event, delivery, cancellationToken));
+            (services, @event, delivery, cancellationToken) => services.GetRequiredService<THandler>().HandleAsync((TEvent)@event, delivery, cancellationToken),
+            active);
 }
 
 internal static class EventJson
@@ -64,9 +69,10 @@ internal sealed class OutboxRegistry
             .ToFrozenDictionary(group => group.Key, group => HandlerOrder.Sort(group, registration => registration.Handler, tiebreaker).ToArray());
     }
 
-    public bool Any => _byName.Count > 0;
+    public bool Any => _byName.Values.Any(registration => registration.Active());
 
     public OutboxRegistration? Find(string name) => _byName.GetValueOrDefault(name);
 
-    public IReadOnlyList<OutboxRegistration> ForEvent(Type eventType) => _byEvent.GetValueOrDefault(eventType) ?? [];
+    public IReadOnlyList<OutboxRegistration> ForEvent(Type eventType) =>
+        _byEvent.GetValueOrDefault(eventType)?.Where(registration => registration.Active()).ToArray() ?? [];
 }

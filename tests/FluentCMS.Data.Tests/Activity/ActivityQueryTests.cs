@@ -89,6 +89,15 @@ public sealed class ActivityQueryTests
     }
 
     [Fact]
+    public async Task AnActionIsMatchedInLowerCaseWhateverTheCaseOfTheFilter()
+    {
+        using var database = Seeded();
+
+        (await ActionsAsync(database, new ActivityFilter { Action = "Content.Published" })).Count.ShouldBe(2);
+        (await ActionsAsync(database, new ActivityFilter { Action = "CONTENT.*" })).Count.ShouldBe(3);
+    }
+
+    [Fact]
     public async Task ItFiltersByTarget()
     {
         using var database = Seeded();

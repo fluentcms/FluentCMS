@@ -10,10 +10,12 @@ public sealed class EventsBuilder
 {
     private readonly IServiceCollection _services;
     private readonly HashSet<Type> _activities = [];
+    private readonly ActivityOptions _activity;
 
-    internal EventsBuilder(IServiceCollection services)
+    internal EventsBuilder(IServiceCollection services, ActivityOptions activity)
     {
         _services = services;
+        _activity = activity;
     }
 
     public OutboxOptions Outbox { get; } = new();
@@ -29,13 +31,17 @@ public sealed class EventsBuilder
     // The name is what cms_outbox stores, so it must outlive renames of the class.
     public EventsBuilder AddOutboxHandler<TEvent, THandler>(string name)
         where TEvent : CmsEvent
+        where THandler : class, IOutboxEventHandler<TEvent> => AddOutboxHandler<TEvent, THandler>(name, active: null);
+
+    private EventsBuilder AddOutboxHandler<TEvent, THandler>(string name, Func<bool>? active)
+        where TEvent : CmsEvent
         where THandler : class, IOutboxEventHandler<TEvent>
     {
         ArgumentException.ThrowIfNullOrEmpty(name);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(name.Length, OutboxWriter.HandlerMaxLength, nameof(name));
 
         _services.AddScoped<THandler>();
-        _services.AddSingleton(OutboxRegistration.Create<TEvent, THandler>(name));
+        _services.AddSingleton(OutboxRegistration.Create<TEvent, THandler>(name, active));
         return this;
     }
 
@@ -53,6 +59,6 @@ public sealed class EventsBuilder
         }
 
         _services.AddSingleton(new ActivityDescription<TEvent>(describe));
-        return AddOutboxHandler<TEvent, ActivityRecorder<TEvent>>("activity." + name);
+        return AddOutboxHandler<TEvent, ActivityRecorder<TEvent>>("activity." + name, () => _activity.Enabled);
     }
 }

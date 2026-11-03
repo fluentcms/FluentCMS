@@ -105,6 +105,9 @@ namespace FluentCMS.Data.Sqlite.Migrations
                     b.HasIndex("ActorId")
                         .HasDatabaseName("ix_cms_activity_actor");
 
+                    b.HasIndex("OccurredAt")
+                        .HasDatabaseName("ix_cms_activity_occurred");
+
                     b.HasIndex("SiteId", "OccurredAt")
                         .HasDatabaseName("ix_cms_activity_site_occurred");
 

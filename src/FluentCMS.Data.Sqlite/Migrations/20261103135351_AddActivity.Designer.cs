@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FluentCMS.Data.Sqlite.Migrations
 {
     [DbContext(typeof(SystemDbContext))]
-    [Migration("20261103132259_AddActivity")]
+    [Migration("20261103135351_AddActivity")]
     partial class AddActivity
     {
         /// <inheritdoc />
@@ -107,6 +107,9 @@ namespace FluentCMS.Data.Sqlite.Migrations
 
                     b.HasIndex("ActorId")
                         .HasDatabaseName("ix_cms_activity_actor");
+
+                    b.HasIndex("OccurredAt")
+                        .HasDatabaseName("ix_cms_activity_occurred");
 
                     b.HasIndex("SiteId", "OccurredAt")
                         .HasDatabaseName("ix_cms_activity_site_occurred");

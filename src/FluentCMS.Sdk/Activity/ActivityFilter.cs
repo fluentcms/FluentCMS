@@ -29,6 +29,10 @@ public sealed record ActivityFilter
     /// <summary>Only what happened before this time.</summary>
     public DateTimeOffset? To { get; init; }
 
-    /// <summary>Whether to include the rows that belong to no site, such as the failures of jobs. The rows of the site of the operation are always included.</summary>
+    /// <summary>
+    /// Whether to include the rows that belong to no site, such as the failures of jobs, whose text can name internals of the
+    /// host. The rows of the site of the operation are always included. Those rows are for readers of the whole instance only:
+    /// this query checks no permission, so the caller must check that the reader may see the instance and not only a site.
+    /// </summary>
     public bool IncludeInstance { get; init; }
 }

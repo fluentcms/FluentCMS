@@ -139,11 +139,8 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddScoped<ActivityLogWriter>();
         services.TryAddScoped<IActivityLog>(serviceProvider => serviceProvider.GetRequiredService<ActivityLogWriter>());
         services.TryAddScoped<IActivityQuery, ActivityQuery>();
-        if (builder.Activity.Enabled)
-        {
-            ActivityEvents.Register(builder.Events);
-            services.AddHostedService<ActivityScheduleService>();
-        }
+        ActivityEvents.Register(builder.Events);
+        services.AddHostedService<ActivityScheduleService>();
 
         return services;
     }

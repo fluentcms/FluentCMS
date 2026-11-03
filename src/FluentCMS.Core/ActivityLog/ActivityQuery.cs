@@ -45,7 +45,7 @@ internal sealed class ActivityQuery(SystemDbContext context, IOperationContextAc
 
         if (!string.IsNullOrEmpty(filter.Action))
         {
-            var action = filter.Action;
+            var action = filter.Action.ToLowerInvariant();
             rows = action.EndsWith('*')
                 ? ByPrefix(rows, action[..^1])
                 : rows.Where(row => row.Action == action);
