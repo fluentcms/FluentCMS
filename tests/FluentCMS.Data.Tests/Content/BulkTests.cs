@@ -8,6 +8,7 @@ using FluentCMS.Data.Tests.Activity;
 using FluentCMS.Hooks;
 using FluentCMS.Publishing;
 using FluentCMS.Schema;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
@@ -109,6 +110,23 @@ public sealed class BulkTests : IDisposable
 
         public ValueTask<WritableFields> WritableFieldsAsync(OperationContext context, SchemaType type, ContentOperation operation, Guid? entry, AccessTarget target, CancellationToken cancellationToken = default) =>
             inner.WritableFieldsAsync(context, type, operation, entry, target, cancellationToken);
+    }
+
+    // Takes the article tables away once a write has committed, so that reading it back fails.
+    private sealed class Armed
+    {
+        public bool On { get; set; }
+    }
+
+    private sealed class BreakReadsAfterCommit(CmsDbContext context, Armed armed) : IEntryChangeSink
+    {
+        public async ValueTask PublishAsync(EntryChange change, CancellationToken cancellationToken)
+        {
+            if (armed.On)
+            {
+                await context.Database.ExecuteSqlRawAsync("ALTER TABLE cms_article_i18n RENAME TO cms_article_i18n_gone", cancellationToken);
+            }
+        }
     }
 
     [Fact]
@@ -533,6 +551,45 @@ public sealed class BulkTests : IDisposable
         (error.Path, error.Code).ShouldBe(("filter", QueryErrorCodes.LimitExceeded));
         database.Footprint().ShouldBe(before);
         (await BulkAsync(database, Editor, new BulkRequest { Operation = BulkOperation.Delete, Filter = Every, Cap = 2 })).Items.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task TheRuleOfTheOperationHoldsForTheSelectedEntriesNotForTheirRelationTargets()
+    {
+        var model = SampleSchema.NewBuilder()
+            .AddCollection("page", type => type.Field("title", "text").Field("parent", "relation", field => field.Relation("page")))
+            .Build();
+        using var database = new ServiceDatabase(schema: model);
+        var role = database.Database.AddRoleForTest(
+            "OwnPages",
+            ("content.page.create", null),
+            ("content.page.read", null),
+            ("content.page.update", new PermissionConstraints { RowRule = BuiltInRoles.OwnEntriesRule }));
+        var ann = WithRole(role, Guid.CreateVersion7());
+        var theirs = IdOf(await database.CreateAsync(Editor, Titled("Theirs"), "page"));
+        var child = IdOf(await database.CreateAsync(ann, new() { ["title"] = "Child", ["parent"] = theirs }, "page"));
+        await database.CreateAsync(Editor, new() { ["title"] = "Their child", ["parent"] = theirs }, "page");
+        var byParent = new BulkRequest { Operation = BulkOperation.Update, Filter = new FieldFilter("parent", FilterOperator.Equal, theirs), Cap = 5, Patch = Titled("Changed") };
+
+        var result = await BulkAsync(database, ann, byParent, "page");
+
+        result.Items.ShouldHaveSingleItem().Id.ShouldBe(child);
+        result.Items[0].Status.ShouldBe(BulkItemStatus.Succeeded);
+    }
+
+    [Fact]
+    public async Task AnItemThatCommittedIsDoneEvenWhenReadingItBackFails()
+    {
+        var armed = new Armed();
+        using var database = new ServiceDatabase(cms => cms.Services.AddSingleton(armed).AddScoped<IEntryChangeSink, BreakReadsAfterCommit>());
+        var id = IdOf(await database.CreateAsync(Editor, Titled("One")));
+        armed.On = true;
+
+        var result = await BulkAsync(database, Editor, Patch(id));
+
+        var item = result.Items.ShouldHaveSingleItem();
+        (item.Id, item.Status, item.Version, item.Problem).ShouldBe((id, BulkItemStatus.Succeeded, 2, null));
+        database.Document(id).DraftVersion.ShouldBe(2);
     }
 
     [Fact]

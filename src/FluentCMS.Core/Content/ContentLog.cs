@@ -13,4 +13,7 @@ internal static partial class ContentLog
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Item {Index} of a bulk {Operation} of {Type} failed unexpectedly; the other items go on.")]
     public static partial void BulkItemFailed(ILogger logger, Exception exception, int index, BulkOperation operation, string type);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Item {Index} of a bulk {Operation} of {Type} committed, but reading it back failed; it is reported as done.")]
+    public static partial void BulkReadBackFailed(ILogger logger, Exception exception, int index, BulkOperation operation, string type);
 }

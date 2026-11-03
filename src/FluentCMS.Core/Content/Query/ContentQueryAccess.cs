@@ -68,30 +68,6 @@ internal sealed class ContentQueryAccess(IAuthorizationEvaluator evaluator, IOpe
         public ContentFilter? RowRule(SchemaType type) => Authorization.RowRule.NoRows;
     }
 
-    // Another rule on one type, joined to its read rule. One instance per query, since the compiler knows the rule by reference.
-    internal sealed class WithRule(IContentQueryAccess inner, SchemaType owner, ContentFilter rule) : IContentQueryAccess
-    {
-        private ContentFilter? _joined;
-
-        public bool CanReadType(SchemaType type) => inner.CanReadType(type);
-
-        public bool CanReadDraft(SchemaType type) => inner.CanReadDraft(type);
-
-        public bool CanReadField(SchemaType type, string field) => inner.CanReadField(type, field);
-
-        public IReadOnlySet<string>? ReadLocales(SchemaType type) => inner.ReadLocales(type);
-
-        public ContentFilter? RowRule(SchemaType type)
-        {
-            if (type != owner)
-            {
-                return inner.RowRule(type);
-            }
-
-            return _joined ??= inner.RowRule(type) is { } read ? new And(read, rule) : rule;
-        }
-    }
-
     // Compiles one rule on one type, for checking it against a single entry. The rule is trusted, so nothing else is asked.
     internal sealed class RuleOnly(SchemaType owner, ContentFilter rule) : IContentQueryAccess
     {

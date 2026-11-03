@@ -52,9 +52,16 @@ internal sealed partial class ContentService
             }
             else
             {
+                var commits = _commits;
                 try
                 {
                     results.Add(await RunAsync(type, request, step, cancellationToken));
+                }
+                catch (Exception exception) when (_commits != commits && _committed is { } row)
+                {
+                    // What follows the commit only reads the entry back, and cannot undo it.
+                    ContentLog.BulkReadBackFailed(logger, exception, step.Index, request.Operation, type);
+                    results.Add(new BulkItemResult(step.Index, row.DocumentId, BulkItemStatus.Succeeded) { Version = request.Operation == BulkOperation.Delete ? null : row.DraftVersion });
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
