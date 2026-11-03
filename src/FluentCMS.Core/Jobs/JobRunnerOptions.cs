@@ -1,3 +1,4 @@
+using Cronos;
 using FluentCMS.Core.DependencyInjection;
 
 namespace FluentCMS.Core.Jobs;
@@ -37,6 +38,20 @@ public sealed class JobRunnerOptions
 
     public TimeSpan ReleaseTimeout { get; set; } = TimeSpan.FromSeconds(5);
 
+    public const int MaxRetentionBatchSize = 1000;
+
+    internal static readonly TimeSpan LongestRetention = TimeSpan.FromDays(36500);
+
+    // How long a succeeded job and its attempts stay. Pending, running and dead-lettered jobs are never removed.
+    public TimeSpan SucceededRetention { get; set; } = TimeSpan.FromDays(7);
+
+    // The most jobs one delete of the retention job takes. The ids of a batch go into one statement as parameters, which
+    // is why it is capped.
+    public int RetentionBatchSize { get; set; } = 500;
+
+    // When the retention job runs, as a cron expression in UTC.
+    public string RetentionSchedule { get; set; } = "45 3 * * *";
+
     internal void Validate()
     {
         foreach (var (queue, workers) in Queues)
@@ -55,6 +70,10 @@ public sealed class JobRunnerOptions
         Require(RetryJitter >= 0, $"{nameof(RetryJitter)} must not be negative.");
         Require(ShutdownGracePeriod >= TimeSpan.Zero && ReleaseTimeout >= TimeSpan.Zero, "The shutdown periods must not be negative.");
 
+        Require(SucceededRetention > TimeSpan.Zero && SucceededRetention <= LongestRetention, $"{nameof(SucceededRetention)} must be positive and no longer than {LongestRetention.TotalDays} days.");
+        Require(RetentionBatchSize is >= 1 and <= MaxRetentionBatchSize, $"{nameof(RetentionBatchSize)} is {RetentionBatchSize}; it must be from 1 to {MaxRetentionBatchSize}.");
+        Require(IsCron(RetentionSchedule), $"{nameof(RetentionSchedule)} '{RetentionSchedule}' is not a cron expression that ever occurs.");
+
         // Longer than a timer can wait, these would throw only when the loop first waits, or at shutdown.
         TimeSpan[] waits = [PollInterval, MaintenanceInterval, HeartbeatInterval, ShutdownGracePeriod, ReleaseTimeout];
         Require(waits.All(wait => wait <= LongestWait), $"The intervals and shutdown periods must not be longer than {LongestWait.TotalDays} days.");
@@ -62,6 +81,18 @@ public sealed class JobRunnerOptions
 
     internal static bool IsValidAttemptTimeout(TimeSpan timeout) =>
         timeout == Timeout.InfiniteTimeSpan || (timeout > TimeSpan.Zero && timeout <= LongestWait);
+
+    private static bool IsCron(string? cron)
+    {
+        try
+        {
+            return !string.IsNullOrWhiteSpace(cron) && CronExpression.Parse(cron).GetNextOccurrence(DateTimeOffset.UtcNow, TimeZoneInfo.Utc) is not null;
+        }
+        catch (CronFormatException)
+        {
+            return false;
+        }
+    }
 
     private static void Require(bool condition, string message)
     {

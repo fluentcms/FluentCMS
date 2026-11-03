@@ -731,6 +731,8 @@ Rows 6.6, 8.10, 10.7 (locks), 10.20 (Should); decision 40.
 
 **Built-in jobs.** Scheduled publish and unpublish, trash purge, version pruning, activity retention, outbox dispatch, webhook delivery (plugin), media variant cleanup (plugin).
 
+**Job retention.** A recurring job (`jobs.retention`, daily) removes succeeded jobs and their attempts once `JobRunnerOptions.SucceededRetention` (7 days) has passed since `completed_at`, in batches of at most `RetentionBatchSize` (500, at most 1000), each batch in one transaction. Pending, running and dead-lettered jobs and recurring definitions are never removed. It sets an attempt timeout, and it is safe to run on several instances and to run again.
+
 **Management.** `/jobs` endpoints (4.10), permission `jobs.manage`. Cron parsing uses Cronos (MIT), approved in Q9.
 
 ### 4.13 Plugin host, server side
