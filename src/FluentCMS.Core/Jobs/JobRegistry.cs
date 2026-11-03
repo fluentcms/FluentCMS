@@ -8,11 +8,12 @@ namespace FluentCMS.Core.Jobs;
 
 internal sealed class JobRegistration
 {
-    private JobRegistration(string type, Type job, Type payload, Func<string, object?> read, Func<IServiceProvider, object, JobContext, Task> invoke)
+    private JobRegistration(string type, Type job, Type payload, TimeSpan? attemptTimeout, Func<string, object?> read, Func<IServiceProvider, object, JobContext, Task> invoke)
     {
         Type = type;
         Job = job;
         Payload = payload;
+        AttemptTimeout = attemptTimeout;
         Read = read;
         Invoke = invoke;
     }
@@ -23,16 +24,19 @@ internal sealed class JobRegistration
 
     public Type Payload { get; }
 
+    public TimeSpan? AttemptTimeout { get; }
+
     public Func<string, object?> Read { get; }
 
     public Func<IServiceProvider, object, JobContext, Task> Invoke { get; }
 
-    public static JobRegistration Create<TJob, TPayload>(string type)
+    public static JobRegistration Create<TJob, TPayload>(string type, TimeSpan? attemptTimeout)
         where TJob : class, IJob<TPayload> =>
         new(
             type,
             typeof(TJob),
             typeof(TPayload),
+            attemptTimeout,
             json => JsonSerializer.Deserialize<TPayload>(json, JobJson.Options),
             (services, payload, context) => services.GetRequiredService<TJob>().ExecuteAsync((TPayload)payload, context));
 }
