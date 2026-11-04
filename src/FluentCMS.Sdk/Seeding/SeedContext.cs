@@ -8,9 +8,7 @@ public sealed class SeedContext
 {
     private readonly IOperationContextAccessor _accessor;
 
-    /// <summary>Creates a context over a scope whose operation is already set.</summary>
-    /// <param name="services">The services of the scope the seeder runs in.</param>
-    public SeedContext(IServiceProvider services)
+    internal SeedContext(IServiceProvider services)
     {
         ArgumentNullException.ThrowIfNull(services);
 

@@ -1216,12 +1216,13 @@ FluentCMS.Schema.VisibleWhenAttribute.VisibleWhenAttribute(string! conditionName
 FluentCMS.Seeding.ISeedRunner
 FluentCMS.Seeding.ISeedRunner.RunAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 FluentCMS.Seeding.ISeeder
+FluentCMS.Seeding.ISeeder.Name.get -> string!
 FluentCMS.Seeding.ISeeder.SeedAsync(FluentCMS.Seeding.SeedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+FluentCMS.Seeding.ISeeder.Version.get -> int
 FluentCMS.Seeding.SeedContext
 FluentCMS.Seeding.SeedContext.Get<T>() -> T!
 FluentCMS.Seeding.SeedContext.InLocale(string! locale) -> System.IDisposable!
 FluentCMS.Seeding.SeedContext.Locale.get -> string!
-FluentCMS.Seeding.SeedContext.SeedContext(System.IServiceProvider! services) -> void
 FluentCMS.Seeding.SeedContext.Services.get -> System.IServiceProvider!
 FluentCMS.Seeding.SeedContext.Site.get -> FluentCMS.Sites.SiteId
 FluentCMS.Seeding.SeedContext.Time.get -> System.TimeProvider!

@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using FluentCMS.Activity;
 using FluentCMS.Content;
 using FluentCMS.Core.Localization;
 using FluentCMS.Core.Settings;
@@ -9,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 namespace FluentCMS.Core.Sites;
 
 // What creating and deleting a site does to the rows around it. The Management endpoints (M2) call it.
-internal sealed partial class SiteManager(CmsDbContext context, TimeProvider time, SettingsCache settings)
+internal sealed partial class SiteManager(CmsDbContext context, TimeProvider time, SettingsCache settings, IActivityLog activity)
 {
     private const int SlugLength = 64;
 
@@ -70,13 +71,30 @@ internal sealed partial class SiteManager(CmsDbContext context, TimeProvider tim
         }
 
         var rows = await context.Set<SiteLocale>().AsNoTracking().Where(item => item.SiteId == siteId).Select(item => new { item.Code, item.Position }).ToListAsync(cancellationToken);
-        if (rows.Any(row => string.Equals(row.Code, locale, StringComparison.OrdinalIgnoreCase)))
+        if (rows.Any(item => string.Equals(item.Code, locale, StringComparison.OrdinalIgnoreCase)))
         {
             return;
         }
 
-        context.Add(new SiteLocale { SiteId = siteId, Code = locale, Position = rows.Count == 0 ? 0 : rows.Max(row => row.Position) + 1, Enabled = true });
-        await context.SaveChangesAsync(cancellationToken);
+        var row = new SiteLocale { SiteId = siteId, Code = locale, Position = rows.Count == 0 ? 0 : rows.Max(item => item.Position) + 1, Enabled = true };
+        context.Add(row);
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            // Another instance added it between the read and the insert; that is what was wanted.
+            context.Entry(row).State = EntityState.Detached;
+            if (await context.Set<SiteLocale>().AsNoTracking().AnyAsync(item => item.SiteId == siteId && item.Code == locale, cancellationToken))
+            {
+                return;
+            }
+
+            throw;
+        }
+
+        await activity.WriteAsync(new ActivityEntry("site.locale-added") { TargetType = "site", TargetId = siteId.ToString("D"), Locale = locale }, cancellationToken);
     }
 
     // The foreign keys delete the site's locales, its roles with their grants, and its settings. A site with documents stays, because

@@ -7,7 +7,9 @@ using FluentCMS.Settings;
 
 namespace FluentCMS.Samples.Blog;
 
-// Finds each entry by a natural key (the name of an author or tag, the English slug of an article), so a second run creates nothing.
+// Every entry is found by its slug, which a person does not change by accident, and each step brings what it finds to the state the
+// seed wants. A run that stopped halfway therefore finishes the job, and a person's later edits (a changed name, an unpublish,
+// a trash that was purged) are left alone: the host runs a seeder again only when its version is raised.
 public sealed class BlogSeeder : ISeeder
 {
     public const string WelcomeSlug = "welcome-to-fluentcms";
@@ -15,8 +17,15 @@ public sealed class BlogSeeder : ISeeder
     public const string TourSlug = "a-tour-of-the-blog-sample";
     public const string ScheduledSlug = "fluentcms-1-0-release-notes";
     public const string TrashedSlug = "a-post-we-took-down";
+    public const string AdaSlug = "ada-lovelace";
+    public const string GraceSlug = "grace-hopper";
+    public const string DotnetSlug = "dotnet";
+    public const string HeadlessSlug = "headless-cms";
+    public const string ReleasesSlug = "release-notes";
 
     public static readonly TimeSpan ScheduleDelay = TimeSpan.FromDays(30);
+
+    private static readonly GetOptions Draft = new() { Status = QueryStatus.Draft, Fallback = LocaleFallback.None };
 
     public async Task SeedAsync(SeedContext context, CancellationToken cancellationToken = default)
     {
@@ -28,83 +37,85 @@ public sealed class BlogSeeder : ISeeder
         var tags = context.Get<IContentService<Tag>>();
         var articles = context.Get<IContentService<Article>>();
 
-        var ada = await EnsureAuthorAsync(authors, "Ada Lovelace", "Writes about analytical engines and typed content.", cancellationToken);
-        var grace = await EnsureAuthorAsync(authors, "Grace Hopper", "Believes in readable code and compilers that help.", cancellationToken);
+        var ada = await EnsureAuthorAsync(authors, AdaSlug, "Ada Lovelace", "Writes about analytical engines and typed content.", cancellationToken);
+        var grace = await EnsureAuthorAsync(authors, GraceSlug, "Grace Hopper", "Believes in readable code and compilers that help.", cancellationToken);
 
-        var dotnet = await EnsureTagAsync(tags, "dotnet", cancellationToken);
-        var headless = await EnsureTagAsync(tags, "headless cms", cancellationToken);
-        var releases = await EnsureTagAsync(tags, "release notes", cancellationToken);
+        var dotnet = await EnsureTagAsync(tags, DotnetSlug, "dotnet", cancellationToken);
+        var headless = await EnsureTagAsync(tags, HeadlessSlug, "headless cms", cancellationToken);
+        var releases = await EnsureTagAsync(tags, ReleasesSlug, "release notes", cancellationToken);
 
-        await EnsureWelcomeAsync(context, articles, ada, [dotnet, headless], cancellationToken);
+        await SeedWelcomeAsync(context, articles, ada, [dotnet, headless], cancellationToken);
 
-        if (await FindAsync(articles, TypedSlug, cancellationToken) is null)
+        var typed = await EnsureAsync(
+            articles,
+            TypedSlug,
+            () => new Article
+            {
+                Title = "Typed content, no magic",
+                Slug = TypedSlug,
+                Body = Text("Content types are plain classes. The schema, the storage and the API come from them."),
+                Author = grace,
+                Tags = [dotnet],
+                Category = ArticleCategory.Opinion,
+                Sections = [new QuoteBlock { Text = "Make illegal states unrepresentable.", Attribution = "A common saying" }],
+                Seo = new Seo { MetaTitle = "Typed content, no magic" },
+            },
+            cancellationToken);
+        await PublishIfDraftAsync(articles, typed, cancellationToken);
+
+        await EnsureAsync(
+            articles,
+            TourSlug,
+            () => new Article
+            {
+                Title = "A tour of the blog sample",
+                Slug = TourSlug,
+                Body = Text("A draft that is not published yet."),
+                Author = ada,
+                Tags = [headless],
+                Category = ArticleCategory.Video,
+                VideoUrl = "https://example.com/videos/blog-sample-tour",
+                Sections = [new GalleryBlock { Caption = "Screenshots", Columns = 2 }],
+            },
+            cancellationToken);
+
+        var taken = await EnsureAsync(
+            articles,
+            TrashedSlug,
+            () => new Article
+            {
+                Title = "A post we took down",
+                Slug = TrashedSlug,
+                Body = Text("This one was published and then moved to the trash."),
+                Author = grace,
+                Category = ArticleCategory.News,
+            },
+            cancellationToken);
+        if (!taken.InTrash)
         {
-            var typed = await articles.CreateAsync(
-                new Article
-                {
-                    Title = "Typed content, no magic",
-                    Slug = TypedSlug,
-                    Body = Text("Content types are plain classes. The schema, the storage and the API come from them."),
-                    Author = grace,
-                    Tags = [dotnet],
-                    Category = ArticleCategory.Opinion,
-                    Sections = [new QuoteBlock { Text = "Make illegal states unrepresentable.", Attribution = "A common saying" }],
-                    Seo = new Seo { MetaTitle = "Typed content, no magic" },
-                },
-                cancellationToken);
-            await articles.PublishAsync(typed.Id, cancellationToken: cancellationToken);
-        }
-
-        if (await FindAsync(articles, TourSlug, cancellationToken) is null)
-        {
-            await articles.CreateAsync(
-                new Article
-                {
-                    Title = "A tour of the blog sample",
-                    Slug = TourSlug,
-                    Body = Text("A draft that is not published yet."),
-                    Author = ada,
-                    Tags = [headless],
-                    Category = ArticleCategory.Video,
-                    VideoUrl = "https://example.com/videos/blog-sample-tour",
-                    Sections = [new GalleryBlock { Caption = "Screenshots", Columns = 2 }],
-                },
-                cancellationToken);
-        }
-
-        if (await FindAsync(articles, TrashedSlug, cancellationToken) is null)
-        {
-            var taken = await articles.CreateAsync(
-                new Article
-                {
-                    Title = "A post we took down",
-                    Slug = TrashedSlug,
-                    Body = Text("This one was published and then moved to the trash."),
-                    Author = grace,
-                    Category = ArticleCategory.News,
-                },
-                cancellationToken);
-            await articles.PublishAsync(taken.Id, cancellationToken: cancellationToken);
-            await articles.DeleteAsync(taken.Id, cancellationToken);
+            await PublishIfDraftAsync(articles, taken, cancellationToken);
+            await articles.DeleteAsync(taken.Entry.Id, cancellationToken);
         }
 
         // Last, because a scheduled publish publishes the draft and shared fields as they are when it is scheduled.
-        if (await FindAsync(articles, ScheduledSlug, cancellationToken) is null)
+        var notes = await EnsureAsync(
+            articles,
+            ScheduledSlug,
+            () => new Article
+            {
+                Title = "FluentCMS 1.0 release notes",
+                Slug = ScheduledSlug,
+                Body = Text("Everything that is new in 1.0."),
+                Author = ada,
+                Tags = [releases, dotnet],
+                Category = ArticleCategory.News,
+                Sections = [new HeroBlock { Heading = "FluentCMS 1.0", Subheading = "Out now" }],
+            },
+            cancellationToken);
+        if (!notes.InTrash && notes.Entry.Status == EntryStatus.Draft)
         {
-            var notes = await articles.CreateAsync(
-                new Article
-                {
-                    Title = "FluentCMS 1.0 release notes",
-                    Slug = ScheduledSlug,
-                    Body = Text("Everything that is new in 1.0."),
-                    Author = ada,
-                    Tags = [releases, dotnet],
-                    Category = ArticleCategory.News,
-                    Sections = [new HeroBlock { Heading = "FluentCMS 1.0", Subheading = "Out now" }],
-                },
-                cancellationToken);
             var at = context.Time.GetUtcNow().UtcDateTime.Add(ScheduleDelay);
-            await articles.ScheduleAsync(notes.Id, new ScheduleRequest(ScheduleAction.Publish, at), cancellationToken: cancellationToken);
+            await articles.ScheduleAsync(notes.Entry.Id, new ScheduleRequest(ScheduleAction.Publish, at), cancellationToken: cancellationToken);
         }
     }
 
@@ -122,15 +133,12 @@ public sealed class BlogSeeder : ISeeder
         await settings.SetAsync(context.Site, current, cancellationToken);
     }
 
-    private static async Task EnsureWelcomeAsync(SeedContext context, IContentService<Article> articles, Ref<Author> author, RefList<Tag> tags, CancellationToken cancellationToken)
+    private static async Task SeedWelcomeAsync(SeedContext context, IContentService<Article> articles, Ref<Author> author, RefList<Tag> tags, CancellationToken cancellationToken)
     {
-        if (await FindAsync(articles, WelcomeSlug, cancellationToken) is not null)
-        {
-            return;
-        }
-
-        var created = await articles.CreateAsync(
-            new Article
+        var welcome = await EnsureAsync(
+            articles,
+            WelcomeSlug,
+            () => new Article
             {
                 Title = "Welcome to FluentCMS",
                 Slug = WelcomeSlug,
@@ -148,66 +156,101 @@ public sealed class BlogSeeder : ISeeder
             },
             cancellationToken);
 
+        if (welcome.InTrash)
+        {
+            return;
+        }
+
         using (context.InLocale(BlogSample.SecondLocale))
         {
-            await articles.UpdateAsync(
-                created.Id,
-                new Article
-                {
-                    Title = "Bienvenue dans FluentCMS",
-                    Slug = "bienvenue-dans-fluentcms",
-                    Body = Text("FluentCMS est un CMS headless pour .NET."),
-                    Author = author,
-                    Tags = tags,
-                    Category = ArticleCategory.News,
-                    PublishedOn = created.PublishedOn,
-                    Sections = created.Sections,
-                    Seo = created.Seo,
-                },
-                expectedVersion: 0,
-                cancellationToken);
-            await articles.PublishAsync(created.Id, BlogSample.SecondLocale, cancellationToken: cancellationToken);
+            var french = await articles.GetAsync(welcome.Entry.Id, Draft with { Locale = BlogSample.SecondLocale }, cancellationToken);
+            if (french is null)
+            {
+                var source = welcome.Entry;
+                french = await articles.UpdateAsync(
+                    source.Id,
+                    new Article
+                    {
+                        Title = "Bienvenue dans FluentCMS",
+                        Slug = "bienvenue-dans-fluentcms",
+                        Body = Text("FluentCMS est un CMS headless pour .NET."),
+                        Author = source.Author,
+                        Tags = source.Tags,
+                        Category = source.Category,
+                        PublishedOn = source.PublishedOn,
+                        Sections = source.Sections,
+                        Seo = source.Seo,
+                    },
+                    expectedVersion: 0,
+                    cancellationToken);
+            }
+
+            if (french.Status == EntryStatus.Draft)
+            {
+                await articles.PublishAsync(french.Id, BlogSample.SecondLocale, cancellationToken: cancellationToken);
+            }
         }
 
-        await articles.PublishAsync(created.Id, cancellationToken: cancellationToken);
+        await PublishIfDraftAsync(articles, welcome, cancellationToken);
     }
 
-    private static async Task<Ref<Author>> EnsureAuthorAsync(IContentService<Author> authors, string name, string bio, CancellationToken cancellationToken)
+    private static async Task<Ref<Author>> EnsureAuthorAsync(IContentService<Author> authors, string slug, string name, string bio, CancellationToken cancellationToken)
     {
-        var found = await FindAsync(authors, "name", name, cancellationToken);
+        var author = await EnsureAsync(authors, slug, () => new Author { Name = name, Slug = slug, Bio = Text(bio) }, cancellationToken);
+        await PublishIfDraftAsync(authors, author, cancellationToken);
+        return new Ref<Author>(author.Entry.Id);
+    }
+
+    private static async Task<Ref<Tag>> EnsureTagAsync(IContentService<Tag> tags, string slug, string name, CancellationToken cancellationToken)
+    {
+        var tag = await EnsureAsync(tags, slug, () => new Tag { Name = name, Slug = slug }, cancellationToken);
+        await PublishIfDraftAsync(tags, tag, cancellationToken);
+        return new Ref<Tag>(tag.Entry.Id);
+    }
+
+    // Only a draft is published: a person who unpublished an entry, or changed it after it was published, is not overruled.
+    private static async Task PublishIfDraftAsync<T>(IContentService<T> service, Found<T> found, CancellationToken cancellationToken)
+        where T : ContentItem
+    {
+        if (!found.InTrash && found.Entry.Status == EntryStatus.Draft)
+        {
+            await service.PublishAsync(found.Entry.Id, cancellationToken: cancellationToken);
+        }
+    }
+
+    // Finds the entry by slug among the live and the trashed ones, or creates it. When another instance creates it first the unique
+    // slug is refused, and the entry that is there is the one wanted.
+    private static async Task<Found<T>> EnsureAsync<T>(IContentService<T> service, string slug, Func<T> build, CancellationToken cancellationToken)
+        where T : ContentItem
+    {
+        var found = await FindAsync(service, slug, cancellationToken);
         if (found is not null)
         {
-            return new Ref<Author>(found.Id);
+            return found;
         }
 
-        var created = await authors.CreateAsync(new Author { Name = name, Bio = Text(bio) }, cancellationToken);
-        await authors.PublishAsync(created.Id, cancellationToken: cancellationToken);
-        return new Ref<Author>(created.Id);
-    }
-
-    private static async Task<Ref<Tag>> EnsureTagAsync(IContentService<Tag> tags, string name, CancellationToken cancellationToken)
-    {
-        var found = await FindAsync(tags, "name", name, cancellationToken);
-        if (found is not null)
+        try
         {
-            return new Ref<Tag>(found.Id);
+            return new Found<T>(await service.CreateAsync(build(), cancellationToken), InTrash: false);
         }
+        catch (ValidationException exception) when (exception.Errors.Any(error => error.Code == ValidationErrorCodes.NotUnique))
+        {
+            var existing = await FindAsync(service, slug, cancellationToken);
+            if (existing is null)
+            {
+                throw;
+            }
 
-        var created = await tags.CreateAsync(new Tag { Name = name }, cancellationToken);
-        await tags.PublishAsync(created.Id, cancellationToken: cancellationToken);
-        return new Ref<Tag>(created.Id);
+            return existing;
+        }
     }
 
-    private static Task<Article?> FindAsync(IContentService<Article> articles, string slug, CancellationToken cancellationToken) =>
-        FindAsync(articles, "slug", slug, cancellationToken);
-
-    // A trashed entry counts as found, because it still holds its slug.
-    private static async Task<T?> FindAsync<T>(IContentService<T> service, string field, string value, CancellationToken cancellationToken)
+    private static async Task<Found<T>?> FindAsync<T>(IContentService<T> service, string slug, CancellationToken cancellationToken)
         where T : ContentItem
     {
         var query = new ContentQuery
         {
-            Filter = new FieldFilter(field, FilterOperator.Equal, value),
+            Filter = new FieldFilter("slug", FilterOperator.Equal, slug),
             Status = QueryStatus.Draft,
             Page = new PageRequest { Size = 1, WithTotal = false },
         };
@@ -215,13 +258,15 @@ public sealed class BlogSeeder : ISeeder
         var live = await service.QueryAsync(query, cancellationToken);
         if (live.Items.Count > 0)
         {
-            return live.Items[0];
+            return new Found<T>(live.Items[0], InTrash: false);
         }
 
         var trashed = await service.QueryTrashAsync(query, cancellationToken);
-        return trashed.Items.Count > 0 ? trashed.Items[0] : null;
+        return trashed.Items.Count > 0 ? new Found<T>(trashed.Items[0], InTrash: true) : null;
     }
 
     private static RichText Text(string text) =>
         new($$"""{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":{{JsonSerializer.Serialize(text)}}}]}]}""");
+
+    private sealed record Found<T>(T Entry, bool InTrash);
 }

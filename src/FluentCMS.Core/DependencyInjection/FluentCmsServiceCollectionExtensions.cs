@@ -51,6 +51,12 @@ public static class FluentCmsServiceCollectionExtensions
         // Until content types can be added to the builder, a schema comes from the container, and none means system tables only.
         services.TryAddSingleton(_ => new SchemaBuilder().Build());
 
+        builder.Seeding.Validate();
+        if (builder.Seeding.Types.Count > 0)
+        {
+            builder.Settings.Add<SeedingState>();
+        }
+
         var settings = builder.Settings.Build();
         services.AddSingleton(settings);
 
@@ -167,7 +173,7 @@ public static class FluentCmsServiceCollectionExtensions
 
         services.AddSingleton(builder.Seeding);
         services.AddScoped<ISeedRunner, SeedRunner>();
-        if (builder.Seeding.Count > 0)
+        if (builder.Seeding.Types.Count > 0 && builder.Seeding.RunOnStart)
         {
             services.AddHostedService<SeedStartupService>();
         }
