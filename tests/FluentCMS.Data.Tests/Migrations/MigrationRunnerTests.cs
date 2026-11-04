@@ -34,7 +34,7 @@ public sealed class MigrationRunnerTests : IDisposable
         await host.StartAsync(Token);
 
         _database.Tables().ShouldBe(
-            ["__EFMigrationsLock", "cms__migrations", "cms_activity", "cms_article", "cms_content__migrations", "cms_document", "cms_job", "cms_job_attempt", "cms_outbox", "cms_recurring_job", "cms_reference", "cms_role", "cms_role_permission", "cms_schedule", "cms_site", "cms_site_locale", "cms_version"],
+            ["__EFMigrationsLock", "cms__migrations", "cms_activity", "cms_article", "cms_content__migrations", "cms_document", "cms_job", "cms_job_attempt", "cms_outbox", "cms_recurring_job", "cms_reference", "cms_role", "cms_role_permission", "cms_schedule", "cms_setting", "cms_site", "cms_site_locale", "cms_version"],
             ignoreOrder: true);
         _database.ReadStrings("select MigrationId from cms__migrations").ShouldContain(id => id.EndsWith("_InitialSystem", StringComparison.Ordinal));
         _database.ReadStrings("select MigrationId from cms_content__migrations").ShouldHaveSingleItem().ShouldEndWith("_Initial");
@@ -250,7 +250,7 @@ public sealed class MigrationRunnerTests : IDisposable
 
         var tables = context.GetService<IDesignTimeModel>().Model.GetRelationalModel().Tables;
         tables.Where(table => !table.IsExcludedFromMigrations).Select(table => table.Name).ShouldBe(["cms_article"]);
-        tables.Where(table => table.IsExcludedFromMigrations).Select(table => table.Name).ShouldBe(["cms_activity", "cms_document", "cms_job", "cms_job_attempt", "cms_outbox", "cms_recurring_job", "cms_reference", "cms_role", "cms_role_permission", "cms_schedule", "cms_site", "cms_site_locale", "cms_version"], ignoreOrder: true);
+        tables.Where(table => table.IsExcludedFromMigrations).Select(table => table.Name).ShouldBe(["cms_activity", "cms_document", "cms_job", "cms_job_attempt", "cms_outbox", "cms_recurring_job", "cms_reference", "cms_role", "cms_role_permission", "cms_schedule", "cms_setting", "cms_site", "cms_site_locale", "cms_version"], ignoreOrder: true);
     }
 
     [Fact]

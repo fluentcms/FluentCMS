@@ -13,12 +13,14 @@ using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Localization;
 using FluentCMS.Core.ProseMirror;
 using FluentCMS.Core.Schema;
+using FluentCMS.Core.Settings;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
 using FluentCMS.Events;
 using FluentCMS.Jobs;
 using FluentCMS.Localization;
 using FluentCMS.Schema;
+using FluentCMS.Settings;
 using FluentCMS.Sites;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -47,9 +49,13 @@ public static class FluentCmsServiceCollectionExtensions
         // Until content types can be added to the builder, a schema comes from the container, and none means system tables only.
         services.TryAddSingleton(_ => new SchemaBuilder().Build());
 
+        var settings = builder.Settings.Build();
+        services.AddSingleton(settings);
+
         services.TryAddSingleton(serviceProvider => new PermissionCatalogue(
             serviceProvider.GetRequiredService<SchemaModel>(),
-            serviceProvider.GetServices<IPermissionProvider>()));
+            serviceProvider.GetServices<IPermissionProvider>(),
+            settings.Descriptors.Select(descriptor => descriptor.Area)));
 
         services.AddSingleton<RoleVersionInterceptor>();
 
@@ -89,6 +95,10 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddScoped<LocaleRegistry>();
         services.AddScoped<LocaleFallbackReader>();
         services.AddScoped<SiteManager>();
+
+        services.AddSingleton<SettingsCache>();
+        services.AddScoped<SettingsService>();
+        services.TryAddScoped(typeof(ISettings<>), typeof(Settings<>));
 
         services.TryAddSingleton<IRichTextRenderer, RichTextRenderer>();
         services.TryAddSingleton<ContentEntryMapper>();

@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using FluentCMS.Content;
 using FluentCMS.Core.Localization;
+using FluentCMS.Core.Settings;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -8,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 namespace FluentCMS.Core.Sites;
 
 // What creating and deleting a site does to the rows around it. The Management endpoints (M2) call it.
-internal sealed partial class SiteManager(CmsDbContext context, TimeProvider time)
+internal sealed partial class SiteManager(CmsDbContext context, TimeProvider time, SettingsCache settings)
 {
     private const int SlugLength = 64;
 
@@ -60,7 +61,7 @@ internal sealed partial class SiteManager(CmsDbContext context, TimeProvider tim
         return site;
     }
 
-    // The foreign keys delete the site's locales and its roles, with their grants. A site with documents stays, because
+    // The foreign keys delete the site's locales, its roles with their grants, and its settings. A site with documents stays, because
     // they would be left in a site that no longer exists; trashed ones count, since restoring one needs its site.
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
@@ -78,5 +79,6 @@ internal sealed partial class SiteManager(CmsDbContext context, TimeProvider tim
         }
 
         await context.Set<Site>().Where(item => item.Id == id).ExecuteDeleteAsync(cancellationToken);
+        settings.InvalidateSite(id);
     }
 }
