@@ -95,6 +95,9 @@ internal sealed class TypedContentService<T>(ContentService documents, SchemaMod
     public Task<long> CountAsync(ContentFilter? filter = null, QueryStatus status = QueryStatus.Published, CancellationToken cancellationToken = default) =>
         documents.CountAsync(_type, filter, status, cancellationToken);
 
+    public Task<BulkResult> BulkAsync(BulkRequest request, CancellationToken cancellationToken = default) =>
+        documents.BulkAsync(_type, request, cancellationToken);
+
     private T Map(ContentDocument entry) => (T)mapper.ToEntry(typeof(T), entry);
 
     // What a write returned, which is all a principal without the read gets, with the system fields a class also holds.

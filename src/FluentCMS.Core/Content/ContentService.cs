@@ -30,6 +30,7 @@ internal sealed partial class ContentService(
     IOperationContextAccessor accessor,
     IAuthorizationEvaluator evaluator,
     ContentQueryEngine engine,
+    ContentQueryOptions queryOptions,
     LocaleFallbackReader fallback,
     ILocaleResolver locales,
     HookPipeline hooks,
@@ -47,6 +48,8 @@ internal sealed partial class ContentService(
     private readonly List<EntryChange> _pending = [];
     private bool _ownsTransaction;
     private int _savepoints;
+    private int _commits;
+    private Document? _committed;
 
     public Task<ContentDocument?> GetAsync(string type, Guid id, GetOptions? options = null, CancellationToken cancellationToken = default) =>
         GetAsync(type, id, options, everySystemField: false, cancellationToken);
@@ -433,6 +436,8 @@ internal sealed partial class ContentService(
                 await StageAsync([.. _pending], cancellationToken);
                 await transaction.CommitAsync(CancellationToken.None);
                 committed = true;
+                _commits++;
+                _committed = result as Document;
             }
             finally
             {

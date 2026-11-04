@@ -57,6 +57,9 @@ internal sealed class ScopedContentService<T>(OperationRunner runner) : IContent
 
     public Task<long> CountAsync(ContentFilter? filter = null, QueryStatus status = QueryStatus.Published, CancellationToken cancellationToken = default) =>
         runner.RunAsync<IContentService<T>, long>(service => service.CountAsync(filter, status, cancellationToken));
+
+    public Task<BulkResult> BulkAsync(BulkRequest request, CancellationToken cancellationToken = default) =>
+        runner.RunAsync<IContentService<T>, BulkResult>(service => service.BulkAsync(request, cancellationToken));
 }
 
 internal sealed class ScopedContentService(OperationRunner runner) : IContentService
@@ -111,4 +114,7 @@ internal sealed class ScopedContentService(OperationRunner runner) : IContentSer
 
     public Task<long> CountAsync(string type, ContentFilter? filter = null, QueryStatus status = QueryStatus.Published, CancellationToken cancellationToken = default) =>
         runner.RunAsync<IContentService, long>(service => service.CountAsync(type, filter, status, cancellationToken));
+
+    public Task<BulkResult> BulkAsync(string type, BulkRequest request, CancellationToken cancellationToken = default) =>
+        runner.RunAsync<IContentService, BulkResult>(service => service.BulkAsync(type, request, cancellationToken));
 }
