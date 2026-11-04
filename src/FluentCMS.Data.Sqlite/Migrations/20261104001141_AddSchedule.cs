@@ -25,6 +25,7 @@ namespace FluentCMS.Data.Sqlite.Migrations
                     status = table.Column<string>(type: "TEXT", maxLength: 16, nullable: false),
                     job_id = table.Column<Guid>(type: "TEXT", nullable: true),
                     version = table.Column<int>(type: "INTEGER", nullable: false),
+                    shared_hash = table.Column<string>(type: "TEXT", maxLength: 64, nullable: true),
                     created_by = table.Column<Guid>(type: "TEXT", nullable: false),
                     created_at = table.Column<long>(type: "INTEGER", nullable: false),
                     claims = table.Column<string>(type: "TEXT", nullable: true),

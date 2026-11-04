@@ -29,6 +29,7 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
     private const int CorrelationIdLength = 128;
     private const int IpLength = 45;
     private const int TimeZoneLength = 64;
+    private const int SharedHashLength = 64;
 
     public void Apply(ModelBuilder modelBuilder)
     {
@@ -284,6 +285,7 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         entity.Property(row => row.Action).HasMaxLength(StatusLength);
         entity.Property(row => row.TimeZone).HasMaxLength(TimeZoneLength);
         entity.Property(row => row.Status).HasMaxLength(StatusLength);
+        entity.Property(row => row.SharedHash).HasMaxLength(SharedHashLength);
         entity.Property(row => row.Error).HasMaxLength(ScheduleRow.ErrorMaxLength);
         conventions.ConfigureJsonColumn(entity, entity.Property(row => row.Claims));
 

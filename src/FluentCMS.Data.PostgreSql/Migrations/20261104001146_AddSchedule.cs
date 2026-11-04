@@ -25,6 +25,7 @@ namespace FluentCMS.Data.PostgreSql.Migrations
                     status = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: false),
                     job_id = table.Column<Guid>(type: "uuid", nullable: true),
                     version = table.Column<int>(type: "integer", nullable: false),
+                    shared_hash = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
                     created_by = table.Column<Guid>(type: "uuid", nullable: false),
                     created_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     claims = table.Column<string>(type: "jsonb", nullable: true),

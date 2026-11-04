@@ -65,6 +65,7 @@ internal sealed class ScheduleStore(CmsDbContext context)
                         .SetProperty(item => item.TimeZone, row.TimeZone)
                         .SetProperty(item => item.JobId, row.JobId)
                         .SetProperty(item => item.Version, row.Version)
+                        .SetProperty(item => item.SharedHash, row.SharedHash)
                         .SetProperty(item => item.CreatedBy, row.CreatedBy)
                         .SetProperty(item => item.CreatedAt, row.CreatedAt)
                         .SetProperty(item => item.Claims, row.Claims),

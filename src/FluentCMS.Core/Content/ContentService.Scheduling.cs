@@ -1,4 +1,7 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Content.Validation;
@@ -39,12 +42,14 @@ internal sealed partial class ContentService
             async () =>
             {
                 var (documents, document, target) = await ReachLocaleAsync(write, kind, id, cancellationToken);
+                string? shared = null;
                 if (kind == ContentOperation.Publish)
                 {
                     var draft = await store.ReadAsync(write.Type, document, ContentState.Draft, cancellationToken);
                     var published = await store.ReadAsync(write.Type, document, ContentState.Published, cancellationToken);
                     await CheckPublishGrantAsync(write, documents, document, target, draft, published, cancellationToken);
                     await CheckScheduledReferencesAsync(write, document, target, strict: false, cancellationToken);
+                    shared = SharedHashOf(write.Type, draft);
                 }
                 else
                 {
@@ -62,6 +67,7 @@ internal sealed partial class ContentService
                     RunAtUtc = runAt,
                     TimeZone = zone,
                     Version = document.DraftVersion,
+                    SharedHash = shared,
                     CreatedBy = write.Operation.AuditPrincipal.Id,
                     CreatedAt = write.Operation.Timestamp,
                     Claims = ClaimsOf(write.Operation),
@@ -168,8 +174,11 @@ internal sealed partial class ContentService
             return await EndAsync(row, jobId, ScheduleRow.Skipped, "The entry is not in this site.", cancellationToken);
         }
 
-        // A publish takes the draft that was scheduled, not whatever it has become: someone else may have edited it since.
-        if (action == ScheduleAction.Publish && document.DraftVersion != row.Version)
+        // A publish takes the draft that was scheduled, not whatever it has become: someone else may have edited it since. The
+        // fields shared by every locale go out with this one, and can be saved through another without moving this version.
+        if (action == ScheduleAction.Publish
+            && (document.DraftVersion != row.Version
+                || (row.SharedHash is not null && SharedHashOf(type, await store.ReadAsync(type, document, ContentState.Draft, cancellationToken)) != row.SharedHash)))
         {
             return await EndAsync(row, jobId, ScheduleRow.Skipped, $"{ContentErrorCodes.ScheduledDraftChanged}: the draft changed after it was scheduled.", cancellationToken);
         }
@@ -194,7 +203,7 @@ internal sealed partial class ContentService
 
         if (action == ScheduleAction.Publish)
         {
-            await PublishAsync(type.Name, row.DocumentId, locale, null, cancellationToken);
+            await PublishAsync(type.Name, row.DocumentId, locale, row.Version, cancellationToken);
         }
         else
         {
@@ -262,6 +271,22 @@ internal sealed partial class ContentService
 
         await schedules.SetMirrorAsync(row.DocumentId, row.Locale, row.Action, null, cancellationToken);
         return ScheduleOutcome.Skipped;
+    }
+
+    private static string? SharedHashOf(SchemaType type, ContentDocument draft)
+    {
+        if (!type.Localized)
+        {
+            return null;
+        }
+
+        JsonObject shared = [];
+        foreach (var field in type.Fields.Where(field => !field.Localizable))
+        {
+            shared[field.Name] = EntryJson.ToNode(draft.GetValueOrDefault(field.Name));
+        }
+
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(shared.ToJsonString())));
     }
 
     private static string ActionName(ScheduleAction action) => action == ScheduleAction.Publish ? ScheduleRow.Publish : ScheduleRow.Unpublish;

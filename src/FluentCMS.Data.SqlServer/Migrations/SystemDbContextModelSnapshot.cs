@@ -879,6 +879,11 @@ namespace FluentCMS.Data.SqlServer.Migrations
                         .HasColumnType("datetimeoffset")
                         .HasColumnName("run_at_utc");
 
+                    b.Property<string>("SharedHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)")
+                        .HasColumnName("shared_hash");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(16)

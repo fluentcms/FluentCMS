@@ -861,6 +861,11 @@ namespace FluentCMS.Data.PostgreSql.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("run_at_utc");
 
+                    b.Property<string>("SharedHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("shared_hash");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(16)

@@ -874,6 +874,11 @@ namespace FluentCMS.Data.Sqlite.Migrations
                         .HasColumnType("INTEGER")
                         .HasColumnName("run_at_utc");
 
+                    b.Property<string>("SharedHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("shared_hash");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(16)

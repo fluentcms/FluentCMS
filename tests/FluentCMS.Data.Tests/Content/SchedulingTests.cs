@@ -10,7 +10,9 @@ using FluentCMS.Data.Tests.Activity;
 using FluentCMS.Events;
 using FluentCMS.Hooks;
 using FluentCMS.Publishing;
+using System.Data.Common;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
@@ -678,6 +680,112 @@ public sealed class SchedulingTests : IDisposable
         (await _fixture.RunDueAsync()).ShouldBeTrue();
         Database.Document(id).Status.ShouldBe(EntryStatus.Published);
         Database.PublishedRow("cms_article_i18n", id)!["title"].ShouldBe("Changed by someone else");
+    }
+
+    [Fact]
+    public async Task AFieldSharedByEveryLocaleSavedThroughAnotherLocaleStopsTheScheduledPublish()
+    {
+        var updater = WithRole(_fixture.RoleWith("content.article.read", "content.article.update"));
+        var id = await _fixture.DraftAsync();
+        await Database.UpdateAsync(Editor, id, new() { ["title"] = "Un" }, 0, locale: "fr");
+        await _fixture.ScheduleAsync(Editor, id, At(Start.AddHours(1)), "en");
+
+        // views is not localizable, so this text goes out with the English publish although its draft version stays.
+        await Database.PatchAsync(updater, id, new() { ["views"] = 900 }, 1, locale: "fr");
+        Database.Document(id, "en").DraftVersion.ShouldBe(1);
+
+        _fixture.AdvanceTo(Start.AddHours(1));
+        (await _fixture.RunDueAsync()).ShouldBeTrue();
+
+        var row = _fixture.Schedules(id).Single();
+        row.Status.ShouldBe(ScheduleRow.Skipped);
+        row.Error.ShouldNotBeNull().ShouldContain(ContentErrorCodes.ScheduledDraftChanged);
+        row.SharedHash.ShouldNotBeNull();
+        Database.Document(id, "en").Status.ShouldBe(EntryStatus.Draft);
+        Database.Document(id, "en").SchedulePublishAt.ShouldBeNull();
+        _fixture.Seen.Of<EntryPublishedEvent>().ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task AnEditOfAnotherLocalesOwnFieldsLeavesTheScheduledPublishAlone()
+    {
+        var updater = WithRole(_fixture.RoleWith("content.article.read", "content.article.update"));
+        var id = await _fixture.DraftAsync();
+        await Database.UpdateAsync(Editor, id, new() { ["title"] = "Un" }, 0, locale: "fr");
+        await _fixture.ScheduleAsync(Editor, id, At(Start.AddHours(1)), "en");
+
+        await Database.PatchAsync(updater, id, new() { ["title"] = "Deux" }, 1, locale: "fr");
+
+        _fixture.AdvanceTo(Start.AddHours(1));
+        (await _fixture.RunDueAsync()).ShouldBeTrue();
+
+        _fixture.Schedules(id).Single().Status.ShouldBe(ScheduleRow.Executed);
+        Database.Document(id, "en").Status.ShouldBe(EntryStatus.Published);
+        Database.Document(id, "fr").Status.ShouldBe(EntryStatus.Draft);
+    }
+
+    [Fact]
+    public async Task ReschedulingTakesTheSharedFieldsAsTheyAreNow()
+    {
+        var updater = WithRole(_fixture.RoleWith("content.article.read", "content.article.update"));
+        var id = await _fixture.DraftAsync();
+        await Database.UpdateAsync(Editor, id, new() { ["title"] = "Un" }, 0, locale: "fr");
+        await _fixture.ScheduleAsync(Editor, id, At(Start.AddHours(1)), "en");
+        var before = _fixture.Schedules(id).Single().SharedHash;
+        await Database.PatchAsync(updater, id, new() { ["views"] = 900 }, 1, locale: "fr");
+
+        await _fixture.ScheduleAsync(Editor, id, At(Start.AddHours(2)), "en");
+
+        _fixture.Schedules(id).Single().SharedHash.ShouldNotBe(before);
+        _fixture.AdvanceTo(Start.AddHours(2));
+        (await _fixture.RunDueAsync()).ShouldBeTrue();
+        Database.Document(id, "en").Status.ShouldBe(EntryStatus.Published);
+    }
+
+    private sealed class SaveInTheWindow : DbCommandInterceptor
+    {
+        public bool Armed { get; set; }
+
+        public override ValueTask<int> NonQueryExecutedAsync(DbCommand command, CommandExecutedEventData eventData, int result, CancellationToken cancellationToken = default)
+        {
+            if (Armed
+                && command.CommandText.Contains("UPDATE \"cms_schedule\"", StringComparison.Ordinal)
+                && command.Parameters.Cast<DbParameter>().Any(parameter => parameter.Value is ScheduleRow.Executed))
+            {
+                // Another writer's save, as if it landed between the checks and the publish.
+                Armed = false;
+                using var save = command.Connection!.CreateCommand();
+                save.Transaction = command.Transaction;
+                save.CommandText = "UPDATE cms_document SET draft_version = draft_version + 1";
+                save.ExecuteNonQuery();
+            }
+
+            return base.NonQueryExecutedAsync(command, eventData, result, cancellationToken);
+        }
+    }
+
+    [Fact]
+    public async Task ADraftSavedBetweenTheChecksAndThePublishIsNotPublishedAndTheNextAttemptSkips()
+    {
+        var window = new SaveInTheWindow();
+        using var fixture = new SchedulingFixture(more: cms => cms.Services.ConfigureDbContext<CmsDbContext>(options => options.AddInterceptors(window)));
+        var user = fixture.Publisher();
+        var id = await fixture.DraftAsync();
+        await fixture.ScheduleAsync(user, id, At(Start.AddHours(1)));
+        var row = fixture.Schedules(id).Single();
+        window.Armed = true;
+
+        await Should.ThrowAsync<VersionConflictException>(() => fixture.RunAsync(row.Id, row.JobId!.Value, user));
+
+        window.Armed.ShouldBeFalse("the save did happen in the window");
+        fixture.Schedules(id).Single().Status.ShouldBe(ScheduleRow.Pending);
+        fixture.Database.Document(id).Status.ShouldBe(EntryStatus.Draft);
+        fixture.Seen.Of<EntryPublishedEvent>().ShouldBeEmpty();
+
+        // The save committed on its own, so the retry finds the draft moved.
+        fixture.Database.Read(context => context.Documents.Where(document => document.DocumentId == id).ExecuteUpdate(set => set.SetProperty(document => document.DraftVersion, 2)));
+        (await fixture.RunAsync(row.Id, row.JobId!.Value, user)).ShouldBe(ScheduleOutcome.Skipped);
+        fixture.Schedules(id).Single().Status.ShouldBe(ScheduleRow.Skipped);
     }
 
     [Fact]

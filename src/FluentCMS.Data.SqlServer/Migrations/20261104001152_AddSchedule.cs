@@ -25,6 +25,7 @@ namespace FluentCMS.Data.SqlServer.Migrations
                     status = table.Column<string>(type: "nvarchar(16)", maxLength: 16, nullable: false),
                     job_id = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
                     version = table.Column<int>(type: "int", nullable: false),
+                    shared_hash = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: true),
                     created_by = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     created_at = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
                     claims = table.Column<string>(type: "nvarchar(max)", nullable: true),

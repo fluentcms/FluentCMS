@@ -36,6 +36,10 @@ public sealed class ScheduleRow
 
     public int Version { get; set; }
 
+    // A hash of the shared (not localizable) fields of the draft when a publish was scheduled. They go out with any locale, and
+    // can be saved through another, which leaves this locale's draft version as it was. Null for an unpublish and for a type that is not localized.
+    public string? SharedHash { get; set; }
+
     public Guid CreatedBy { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; }
