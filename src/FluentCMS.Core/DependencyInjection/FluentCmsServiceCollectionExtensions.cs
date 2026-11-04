@@ -13,6 +13,7 @@ using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Localization;
 using FluentCMS.Core.ProseMirror;
 using FluentCMS.Core.Schema;
+using FluentCMS.Core.Seeding;
 using FluentCMS.Core.Settings;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
@@ -20,6 +21,7 @@ using FluentCMS.Events;
 using FluentCMS.Jobs;
 using FluentCMS.Localization;
 using FluentCMS.Schema;
+using FluentCMS.Seeding;
 using FluentCMS.Settings;
 using FluentCMS.Sites;
 using Microsoft.Extensions.DependencyInjection;
@@ -162,6 +164,13 @@ public static class FluentCmsServiceCollectionExtensions
         services.TryAddScoped<IActivityQuery, ActivityQuery>();
         ActivityEvents.Register(builder.Events);
         services.AddHostedService<ActivityScheduleService>();
+
+        services.AddSingleton(builder.Seeding);
+        services.AddScoped<ISeedRunner, SeedRunner>();
+        if (builder.Seeding.Count > 0)
+        {
+            services.AddHostedService<SeedStartupService>();
+        }
 
         return services;
     }

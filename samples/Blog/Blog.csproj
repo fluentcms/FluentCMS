@@ -1,7 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <PropertyGroup>
+    <RootNamespace>FluentCMS.Samples.Blog</RootNamespace>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="../../src/FluentCMS.Sdk/FluentCMS.Sdk.csproj" />
+    <ProjectReference Include="../../src/FluentCMS.Core/FluentCMS.Core.csproj" />
   </ItemGroup>
 
 </Project>

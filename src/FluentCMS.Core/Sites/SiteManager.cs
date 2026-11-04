@@ -61,6 +61,24 @@ internal sealed partial class SiteManager(CmsDbContext context, TimeProvider tim
         return site;
     }
 
+    // Adds a locale to a site's allow-list if it has none by that code, after the others. A locale that exists is left as it is, enabled or not.
+    public async Task EnsureLocaleAsync(Guid siteId, string code, CancellationToken cancellationToken = default)
+    {
+        if (!LocaleTag.TryNormalize(code, out var locale))
+        {
+            throw new ValidationException([new ValidationError("locale", LocaleErrorCodes.InvalidLocale, $"'{code}' is not a well-formed BCP 47 language tag.")]);
+        }
+
+        var rows = await context.Set<SiteLocale>().AsNoTracking().Where(item => item.SiteId == siteId).Select(item => new { item.Code, item.Position }).ToListAsync(cancellationToken);
+        if (rows.Any(row => string.Equals(row.Code, locale, StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        context.Add(new SiteLocale { SiteId = siteId, Code = locale, Position = rows.Count == 0 ? 0 : rows.Max(row => row.Position) + 1, Enabled = true });
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
     // The foreign keys delete the site's locales, its roles with their grants, and its settings. A site with documents stays, because
     // they would be left in a site that no longer exists; trashed ones count, since restoring one needs its site.
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
