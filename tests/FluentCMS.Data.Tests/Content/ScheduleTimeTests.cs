@@ -89,6 +89,16 @@ public sealed class ScheduleTimeTests
     }
 
     [Fact]
+    public void ATimeAtTheEdgeOfTheCalendarIsRefusedNotThrown()
+    {
+        Refusal(DateTime.SpecifyKind(DateTime.MaxValue, DateTimeKind.Unspecified), "America/New_York").Code.ShouldBe(ValidationErrorCodes.InvalidValue);
+        Refusal(DateTime.SpecifyKind(DateTime.MinValue, DateTimeKind.Unspecified), "Asia/Kolkata").Path.ShouldBe("at");
+        Refusal(DateTime.SpecifyKind(DateTime.MinValue, DateTimeKind.Unspecified), "America/New_York").Code.ShouldBe(ContentErrorCodes.ScheduleNotInFuture);
+        Resolve(DateTime.SpecifyKind(DateTime.MaxValue, DateTimeKind.Unspecified), "Asia/Kolkata").RunAt.Year.ShouldBe(9999);
+        Resolve(DateTime.SpecifyKind(DateTime.MaxValue.AddDays(-2), DateTimeKind.Unspecified), "Europe/Berlin").RunAt.Year.ShouldBe(9999);
+    }
+
+    [Fact]
     public void AnActionThatIsNotOneOfTheTwoIsRefused() =>
         Should.Throw<ValidationException>(() => ScheduleTime.Resolve(new ScheduleRequest((ScheduleAction)9, new DateTime(2027, 5, 1, 8, 0, 0, DateTimeKind.Utc)), Now))
             .Errors.ShouldHaveSingleItem().Path.ShouldBe("action");

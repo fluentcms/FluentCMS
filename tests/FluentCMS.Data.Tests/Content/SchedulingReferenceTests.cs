@@ -72,13 +72,12 @@ public sealed class SchedulingReferenceTests : IDisposable
     }
 
     [Fact]
-    public async Task AReferenceThatTheEntryAcquiresAfterwardsIsHeldToTheSchedulersViewWhenTheJobRuns()
+    public async Task AReadRightTheSchedulerLosesBeforeTheJobRunsIsNotUsedForTheReferences()
     {
-        var blind = Publisher();
-        var article = await ArticleAsync(null);
-        await _fixture.ScheduleAsync(blind, article, At(Start.AddHours(1)));
-        var author = await AuthorAsync(published: true);
-        await Database.PatchAsync(Editor, article, new() { ["author"] = author }, 1);
+        var role = Database.Database.AddRoleForTest(Guid.NewGuid().ToString("N"), ("content.article.read", null), ("content.article.publish", null), ("content.author.read", null));
+        var article = await ArticleAsync(await AuthorAsync(published: true));
+        await _fixture.ScheduleAsync(WithRole(role), article, At(Start.AddHours(1)));
+        _fixture.RemoveGrant(role, "content.author.read");
 
         _fixture.AdvanceTo(Start.AddHours(1));
         (await _fixture.RunDueAsync()).ShouldBeTrue();

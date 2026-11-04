@@ -119,6 +119,7 @@ public static class FluentCmsServiceCollectionExtensions
         builder.Jobs.AddJob<TrashPurgeJob, TrashPurgePayload>(TrashPurgeJob.Type);
         builder.Jobs.AddJob<ScheduledPublishJob, ScheduledPayload>(ScheduledPublishJob.Type);
         builder.Jobs.AddJob<ScheduledUnpublishJob, ScheduledPayload>(ScheduledUnpublishJob.Type);
+        builder.Events.AddHandler<JobDeadLetteredEvent, ScheduleDeadLetterHandler>();
         services.AddHostedService<TrashPurgeScheduleService>();
 
         builder.Jobs.AddJob<JobRetentionJob, JobRetentionPayload>(JobRetentionJob.Type, JobRetentionJob.AttemptTimeout);

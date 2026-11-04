@@ -12,6 +12,19 @@ internal sealed class ScheduleStore(CmsDbContext context)
         context.Set<ScheduleRow>().AsNoTracking()
             .FirstOrDefaultAsync(row => row.DocumentId == documentId && row.Locale == locale && row.Action == action && row.Status == ScheduleRow.Pending, cancellationToken);
 
+    // For a job that has been dead-lettered: its schedule will never run, so it is closed rather than left pending.
+    public async Task<bool> FailByJobAsync(Guid jobId, DateTimeOffset at, string error, CancellationToken cancellationToken)
+    {
+        if (await context.Set<ScheduleRow>().AsNoTracking().FirstOrDefaultAsync(row => row.JobId == jobId && row.Status == ScheduleRow.Pending, cancellationToken) is not { } pending
+            || !await CloseAsync(pending.Id, jobId, ScheduleRow.Failed, at, error, cancellationToken))
+        {
+            return false;
+        }
+
+        await SetMirrorAsync(pending.DocumentId, pending.Locale, pending.Action, null, cancellationToken);
+        return true;
+    }
+
     public Task<ScheduleRow?> FindAsync(Guid id, CancellationToken cancellationToken) =>
         context.Set<ScheduleRow>().AsNoTracking().FirstOrDefaultAsync(row => row.Id == id, cancellationToken);
 

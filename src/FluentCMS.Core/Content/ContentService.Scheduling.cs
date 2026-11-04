@@ -96,7 +96,18 @@ internal sealed partial class ContentService
         await InTransactionAsync(
             async () =>
             {
-                var (_, document, _) = await ReachLocaleAsync(write, kind, id, cancellationToken);
+                var (documents, document, target) = await ReachLocaleAsync(write, kind, id, cancellationToken);
+                if (kind == ContentOperation.Publish)
+                {
+                    var draft = await store.ReadAsync(write.Type, document, ContentState.Draft, cancellationToken);
+                    var published = await store.ReadAsync(write.Type, document, ContentState.Published, cancellationToken);
+                    await CheckPublishGrantAsync(write, documents, document, target, draft, published, cancellationToken);
+                }
+                else
+                {
+                    await CheckUnpublishGrantAsync(write, document, target, cancellationToken);
+                }
+
                 var cancelled = await schedules.CancelAsync(id, document.Locale, ActionName(action), write.Operation.Timestamp, cancellationToken)
                     ?? throw new ValidationException([new ValidationError("", ContentErrorCodes.NotScheduled, $"This {write.Type.Name} has no {ActionName(action)} scheduled in this locale.")]);
 
@@ -123,7 +134,7 @@ internal sealed partial class ContentService
         {
             return await InTransactionAsync(() => RunClaimedAsync(operation, row, action, jobId, cancellationToken), cancellationToken);
         }
-        catch (Exception exception) when ((IsRefusal(exception) || lastAttempt) && exception is not OperationCanceledException)
+        catch (Exception exception) when ((IsRefusal(exception) || lastAttempt) && !(exception is OperationCanceledException && cancellationToken.IsCancellationRequested))
         {
             await schedules.CloseAsync(row.Id, jobId, ScheduleRow.Failed, time.GetUtcNow(), ErrorText(exception), CancellationToken.None);
             await schedules.SetMirrorAsync(row.DocumentId, row.Locale, row.Action, null, CancellationToken.None);
@@ -155,6 +166,12 @@ internal sealed partial class ContentService
         if (documents.Find(item => item.Locale == row.Locale) is not { } document)
         {
             return await EndAsync(row, jobId, ScheduleRow.Skipped, "The entry is not in this site.", cancellationToken);
+        }
+
+        // A publish takes the draft that was scheduled, not whatever it has become: someone else may have edited it since.
+        if (action == ScheduleAction.Publish && document.DraftVersion != row.Version)
+        {
+            return await EndAsync(row, jobId, ScheduleRow.Skipped, $"{ContentErrorCodes.ScheduledDraftChanged}: the draft changed after it was scheduled.", cancellationToken);
         }
 
         if (action == ScheduleAction.Publish ? document.Status == EntryStatus.Published : document.PublishedVersion is null)

@@ -141,6 +141,7 @@ public interface IContentService
     /// Schedules a publish or an unpublish of one locale, or moves the one already scheduled for that action to the new time. It needs the permission, row rule,
     /// locale and site that doing it now needs, and a publish is checked against the references the principal can see. When it runs, the job acts as the system
     /// principal on behalf of this principal, and first checks again that this principal may still do it: one that has lost the role is refused, and nothing is published.
+    /// A publish publishes the draft version that was scheduled: if the draft has been saved since, the schedule is skipped and nothing is published, and it must be scheduled again. A schedule that has failed or been skipped is final too.
     /// </summary>
     /// <param name="type">The name of the content type.</param>
     /// <param name="id">The id of the entry.</param>

@@ -43,7 +43,15 @@ internal static class ScheduleTime
 
             // A time that happens twice runs the first time, when the offset is the larger.
             var offset = info.IsAmbiguousTime(request.At) ? info.GetAmbiguousTimeOffsets(request.At).Max() : info.GetUtcOffset(request.At);
-            runAt = new DateTimeOffset(request.At, offset);
+            try
+            {
+                runAt = new DateTimeOffset(request.At, offset);
+                _ = runAt.UtcDateTime;
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                throw Refuse("at", ValidationErrorCodes.InvalidValue, "The time is out of range.");
+            }
         }
 
         if (runAt <= now)

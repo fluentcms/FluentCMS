@@ -3,6 +3,8 @@ using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Jobs;
+using FluentCMS.Core.Storage;
+using FluentCMS.Jobs;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Data.Tests.Activity;
 using FluentCMS.Events;
@@ -543,8 +545,182 @@ public sealed class SchedulingTests : IDisposable
     {
         public bool On { get; set; } = true;
 
+        public Func<Exception> Error { get; set; } = () => new InvalidOperationException("The mail server is down.");
+
         public ValueTask BeforePublishAsync(HookContext<ContentDocument> context, CancellationToken cancellationToken) =>
-            On ? throw new InvalidOperationException("The mail server is down.") : ValueTask.CompletedTask;
+            On ? throw Error() : ValueTask.CompletedTask;
+    }
+
+    [Fact]
+    public async Task ACancellationThatIsNotTheJobsOwnIsAnOrdinaryFailureAndIsRecordedOnTheLastAttempt()
+    {
+        var explodes = new Explodes { Error = () => new TaskCanceledException("The request timed out.") };
+        using var fixture = new SchedulingFixture(more: cms =>
+        {
+            cms.Services.AddSingleton(explodes);
+            cms.Services.AddSingleton<IBeforePublishHook<ContentDocument>>(services => services.GetRequiredService<Explodes>());
+        });
+        var user = fixture.Publisher();
+        var id = await fixture.DraftAsync();
+        await fixture.ScheduleAsync(user, id, At(Start.AddHours(1)));
+        var row = fixture.Schedules(id).Single();
+
+        await Should.ThrowAsync<TaskCanceledException>(() => fixture.RunAsync(row.Id, row.JobId!.Value, user, lastAttempt: true));
+
+        fixture.Schedules(id).Single().Status.ShouldBe(ScheduleRow.Failed);
+        fixture.Database.Document(id).SchedulePublishAt.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task ACancellationOfTheJobsOwnTokenLeavesTheScheduleForTheNextAttempt()
+    {
+        var user = _fixture.Publisher();
+        var id = await _fixture.DraftAsync();
+        await _fixture.ScheduleAsync(user, id, At(Start.AddHours(1)));
+        var row = _fixture.Schedules(id).Single();
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+        using var scope = Database.Database.NewScope();
+        var accessor = scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>();
+        accessor.Current = new OperationContext(Principal.System, Origin.Job, SiteA, "en", null, "test", DateTimeOffset.UtcNow) { Actor = new Principal(user.Kind, user.Id, user.Name) };
+
+        await Should.ThrowAsync<OperationCanceledException>(() => scope.ServiceProvider.GetRequiredService<ContentService>().RunScheduledAsync(row.Id, row.JobId!.Value, ScheduleAction.Publish, lastAttempt: true, cancelled.Token));
+
+        accessor.Current = null;
+        _fixture.Schedules(id).Single().Status.ShouldBe(ScheduleRow.Pending);
+        Database.Document(id).SchedulePublishAt.ShouldBe(Start.AddHours(1));
+    }
+
+    [Fact]
+    public async Task AJobTheRunnerDeadLettersByItselfClosesItsScheduleAsFailed()
+    {
+        var other = await _fixture.DraftAsync("Other");
+        var id = await _fixture.DraftAsync();
+        await _fixture.ScheduleAsync(Editor, id, At(Start.AddHours(1)));
+        await _fixture.ScheduleAsync(Editor, other, At(Start.AddHours(1)));
+        var job = _fixture.Schedules(id).Single().JobId!.Value;
+
+        // A worker died on the last attempt, so no job code ran to say so.
+        Database.Read(context => context.Set<Job>().Where(item => item.Id == job).ExecuteUpdate(set => set
+            .SetProperty(item => item.Status, JobStatus.Running)
+            .SetProperty(item => item.Attempts, item => item.MaxAttempts)
+            .SetProperty(item => item.LeaseUntil, (DateTimeOffset?)null)));
+        _fixture.AdvanceTo(Start.AddHours(1));
+        using (var scope = Database.Database.NewScope())
+        {
+            (await scope.ServiceProvider.GetRequiredService<JobStore>().SweepAsync()).ShouldBe(1);
+        }
+
+        var row = _fixture.Schedules(id).Single();
+        row.Status.ShouldBe(ScheduleRow.Failed);
+        row.Error.ShouldNotBeNull().ShouldContain("dead-lettered");
+        Database.Document(id).SchedulePublishAt.ShouldBeNull();
+        _fixture.Schedules(other).Single().Status.ShouldBe(ScheduleRow.Pending);
+        Database.Document(other).SchedulePublishAt.ShouldBe(Start.AddHours(1));
+    }
+
+    [Fact]
+    public async Task AJobThatIsNotDeadLetteredAnyMoreLeavesItsScheduleAlone()
+    {
+        var id = await _fixture.DraftAsync();
+        await _fixture.ScheduleAsync(Editor, id, At(Start.AddHours(1)));
+        var job = _fixture.Schedules(id).Single().JobId!.Value;
+
+        // The event is heard after the job was brought back from the dead-letter list.
+        using (var scope = Database.Database.NewScope())
+        {
+            await scope.ServiceProvider.GetServices<IEventHandler<JobDeadLetteredEvent>>().OfType<ScheduleDeadLetterHandler>().Single().HandleAsync(new JobDeadLetteredEvent(job, ScheduledPublishJob.Type, "default", 5, "error"), Token);
+        }
+
+        _fixture.Schedules(id).Single().Status.ShouldBe(ScheduleRow.Pending);
+    }
+
+    [Fact]
+    public async Task AFailedScheduleIsFinalEvenIfItsJobIsRunAgain()
+    {
+        var user = _fixture.Publisher();
+        var role = Guid.Parse(user.Claim("roles")!);
+        var id = await _fixture.DraftAsync();
+        await _fixture.ScheduleAsync(user, id, At(Start.AddHours(1)));
+        var row = _fixture.Schedules(id).Single();
+        _fixture.RemoveRole(role);
+        _fixture.AdvanceTo(Start.AddHours(1));
+        (await _fixture.RunDueAsync()).ShouldBeTrue();
+        _fixture.Schedules(id).Single().Status.ShouldBe(ScheduleRow.Failed);
+
+        (await _fixture.RunAsync(row.Id, row.JobId!.Value, user)).ShouldBe(ScheduleOutcome.Superseded);
+
+        Database.Document(id).Status.ShouldBe(EntryStatus.Draft);
+        _fixture.Schedules(id).Single().Status.ShouldBe(ScheduleRow.Failed);
+    }
+
+    [Fact]
+    public async Task APublishTakesTheDraftThatWasScheduledAndSkipsWhenItHasBeenSavedSince()
+    {
+        var updater = WithRole(_fixture.RoleWith("content.article.read", "content.article.update"));
+        var id = await _fixture.DraftAsync();
+        await _fixture.ScheduleAsync(Editor, id, At(Start.AddHours(1)));
+        await Database.PatchAsync(updater, id, new() { ["title"] = "Changed by someone else" }, 1);
+
+        _fixture.AdvanceTo(Start.AddHours(1));
+        (await _fixture.RunDueAsync()).ShouldBeTrue();
+
+        var row = _fixture.Schedules(id).Single();
+        row.Status.ShouldBe(ScheduleRow.Skipped);
+        row.Error.ShouldNotBeNull().ShouldContain(ContentErrorCodes.ScheduledDraftChanged);
+        Database.Document(id).Status.ShouldBe(EntryStatus.Draft);
+        Database.Document(id).SchedulePublishAt.ShouldBeNull();
+        _fixture.Seen.Of<EntryPublishedEvent>().ShouldBeEmpty();
+
+        var again = await _fixture.ScheduleAsync(Editor, id, At(Start.AddHours(2)));
+        again.Version.ShouldBe(2);
+        _fixture.AdvanceTo(Start.AddHours(2));
+        (await _fixture.RunDueAsync()).ShouldBeTrue();
+        Database.Document(id).Status.ShouldBe(EntryStatus.Published);
+        Database.PublishedRow("cms_article_i18n", id)!["title"].ShouldBe("Changed by someone else");
+    }
+
+    [Fact]
+    public async Task AReschedulePinsTheDraftItFindsAndAnUnpublishDoesNotDependOnTheDraft()
+    {
+        var published = await _fixture.PublishedAsync("Live");
+        await _fixture.ScheduleAsync(Editor, published, At(Start.AddHours(1), ScheduleAction.Unpublish));
+        await Database.PatchAsync(Editor, published, new() { ["title"] = "Live again" }, 1);
+        var draft = await _fixture.DraftAsync("Draft");
+        await _fixture.ScheduleAsync(Editor, draft, At(Start.AddHours(1)));
+        await Database.PatchAsync(Editor, draft, new() { ["title"] = "Draft two" }, 1);
+        await _fixture.ScheduleAsync(Editor, draft, At(Start.AddHours(1)));
+
+        _fixture.AdvanceTo(Start.AddHours(1));
+        (await _fixture.RunDueAsync()).ShouldBeTrue();
+        (await _fixture.RunDueAsync()).ShouldBeTrue();
+
+        Database.Document(published).Status.ShouldBe(EntryStatus.Unpublished);
+        Database.Document(draft).Status.ShouldBe(EntryStatus.Published);
+    }
+
+    [Fact]
+    public async Task CancellingNeedsWhatCreatingTheScheduleNeeded()
+    {
+        var titleOnly = WithRole(Database.Database.AddRoleForTest(
+            "Title only",
+            ("content.article.read", null),
+            ("content.article.publish", new PermissionConstraints { Fields = ["title"] }),
+            ("content.article.unpublish", new PermissionConstraints { Fields = ["title"] })));
+        var changed = await _fixture.PublishedAsync("Two");
+        await Database.PatchAsync(Editor, changed, new() { ["views"] = 7 }, 1);
+        await _fixture.ScheduleAsync(Editor, changed, At(Start.AddHours(1)));
+        await _fixture.ScheduleAsync(Editor, changed, At(Start.AddHours(2), ScheduleAction.Unpublish));
+
+        await Should.ThrowAsync<ContentAccessDeniedException>(() => _fixture.CancelAsync(titleOnly, changed));
+        await Should.ThrowAsync<ContentAccessDeniedException>(() => _fixture.CancelAsync(titleOnly, changed, ScheduleAction.Unpublish));
+
+        _fixture.Schedules(changed).ShouldAllBe(row => row.Status == ScheduleRow.Pending);
+        Database.Document(changed).SchedulePublishAt.ShouldBe(Start.AddHours(1));
+
+        await _fixture.CancelAsync(Editor, changed);
+        await _fixture.CancelAsync(Editor, changed, ScheduleAction.Unpublish);
+        _fixture.Schedules(changed).ShouldAllBe(row => row.Status == ScheduleRow.Cancelled);
     }
 
     [Fact]
