@@ -137,7 +137,7 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
             return value;
         }
 
-        return stored.Field.FieldType == FieldTypeNames.RichText ? new RichText(json) : JsonNode.Parse(json);
+        return stored.Field.FieldType == FieldTypeNames.RichText ? new RichText(json) : JsonDepth.Parse(json);
     }
 
     // The compare and swap that makes one of two concurrent writers lose. The filter on Document keeps trash out.

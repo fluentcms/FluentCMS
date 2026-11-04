@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using FluentCMS.Core.Content;
 
 namespace FluentCMS.Core.Schema.FieldTypes;
 
@@ -10,9 +11,9 @@ internal static class RawValue
     // A JsonElement or a JsonNode becomes null, a string, a boolean, a long or a decimal; objects and arrays become JsonElements.
     public static object? Unwrap(object? value)
     {
-        if (value is JsonNode node)
+        if (value is JsonNode node && !JsonDepth.Exceeds(node))
         {
-            value = JsonSerializer.SerializeToElement(node);
+            value = JsonDepth.ToElement(node);
         }
 
         if (value is not JsonElement element)
@@ -99,26 +100,35 @@ internal static class RawValue
             case JsonElement { ValueKind: JsonValueKind.Null or JsonValueKind.Undefined }:
                 return true;
             case JsonElement element:
-                node = JsonNode.Parse(element.GetRawText());
-                return true;
+                return TryParse(element.GetRawText(), out node, out message);
+            case JsonNode existing when JsonDepth.Exceeds(existing):
+                message = $"is nested deeper than the {JsonDepth.Max} levels allowed";
+                return false;
             case JsonNode existing:
                 node = existing.DeepClone();
                 return true;
             case string text:
-                try
-                {
-                    node = JsonNode.Parse(text);
-                    return true;
-                }
-                catch (JsonException exception)
-                {
-                    message = $"is not valid JSON: {exception.Message}";
-                    return false;
-                }
+                return TryParse(text, out node, out message);
 
             default:
                 message = $"expected JSON but got {Describe(value)}";
                 return false;
+        }
+    }
+
+    private static bool TryParse(string json, out JsonNode? node, out string? message)
+    {
+        try
+        {
+            node = JsonDepth.ParseValue(json);
+            message = null;
+            return true;
+        }
+        catch (JsonException exception)
+        {
+            node = null;
+            message = $"is not valid JSON: {exception.Message}";
+            return false;
         }
     }
 }

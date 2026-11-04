@@ -1,6 +1,6 @@
-using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using FluentCMS.Core.Content;
 using FluentCMS.Schema;
 
 namespace FluentCMS.Core.ProseMirror;
@@ -9,14 +9,11 @@ namespace FluentCMS.Core.ProseMirror;
 // as deep a document as the rich text field type accepts, so that nothing it accepts goes unseen here.
 internal static class InlineBlockJson
 {
-    private static readonly JsonDocumentOptions ReadOptions = new() { MaxDepth = 128 };
-    private static readonly JsonSerializerOptions WriteOptions = new() { MaxDepth = 128, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
-
     public static bool MayHold(string json) => json.Contains(RichTextNodeTypes.InlineBlock, StringComparison.Ordinal);
 
-    public static JsonNode? Parse(string json) => JsonNode.Parse(json, documentOptions: ReadOptions);
+    public static JsonNode? Parse(string json) => JsonDepth.Parse(json);
 
-    public static string Text(JsonNode node) => node.ToJsonString(WriteOptions);
+    public static string Text(JsonNode node) => node.ToJsonString(JsonDepth.Serializer);
 
     // The canonical document, for what was changed as JSON.
     public static RichText ToRichText(JsonNode document) => RichTextSerializer.ToRichText(RichTextParser.Parse(Text(document)));

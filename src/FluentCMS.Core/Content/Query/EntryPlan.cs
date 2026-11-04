@@ -201,7 +201,7 @@ internal sealed class EntryPlan
 
         return value =>
         {
-            var node = value is string json ? JsonNode.Parse(json) : null;
+            var node = value is string json ? JsonDepth.Parse(json) : null;
             HiddenFields.Remove(_query.Schema, node, stored.Field);
             return node;
         };
