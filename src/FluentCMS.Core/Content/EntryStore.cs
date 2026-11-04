@@ -432,6 +432,11 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
 
     private object? WithoutHidden(SchemaField field, object? value)
     {
+        if (value is RichText document)
+        {
+            return HiddenFields.Remove(schema, document);
+        }
+
         if (value is not JsonNode node)
         {
             return value;

@@ -196,7 +196,7 @@ internal sealed class EntryPlan
 
         if (stored.Field.FieldType == FieldTypeNames.RichText)
         {
-            return value => value is string json ? new RichText(json) : null;
+            return value => value is string json ? HiddenFields.Remove(_query.Schema, new RichText(json)) : null;
         }
 
         return value =>

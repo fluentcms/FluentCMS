@@ -434,6 +434,36 @@ public sealed class ReferenceIntegrityTests : IDisposable
         (await _warning.PublishAsync(publisher, id)).Warnings.ShouldBeEmpty();
     }
 
+    // The hidden reference sits in the same block, in a block list or inline in rich text.
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task AHiddenReferenceInABlockIsNamedUnderNeitherPolicy(bool inline, bool blocking)
+    {
+        var database = blocking ? _blocking : _warning;
+        var draft = await AuthorAsync(database);
+        var publisher = Publisher(database, "content.author.read");
+        var block = new ContentDocument { ["type"] = "card", ["internal"] = draft };
+        ContentDocument values = inline
+            ? new() { ["title"] = "One", ["body"] = new RichText("{\"type\":\"doc\",\"content\":[{\"type\":\"inlineBlock\",\"attrs\":{\"blockType\":\"card\",\"data\":{\"internal\":\"" + draft + "\"}}}]}") }
+            : new() { ["title"] = "One", ["cards"] = new object[] { block } };
+        var id = IdOf(await database.AsAsync(Principal.System, services => Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IContentService>(services).CreateAsync("article", values, Token), origin: Origin.Seed));
+
+        if (blocking)
+        {
+            var error = (await Should.ThrowAsync<ValidationException>(() => database.PublishAsync(publisher, id))).Errors.ShouldHaveSingleItem();
+            error.Path.ShouldBe("");
+            error.Code.ShouldBe(PublishWarningCodes.UnavailableReference);
+            error.Message.ShouldNotContain(draft.ToString());
+        }
+        else
+        {
+            (await database.PublishAsync(publisher, id)).Warnings.ShouldBeEmpty();
+        }
+    }
+
     [Fact]
     public async Task TheSystemPrincipalSeesWhichTargetAndWhatIsWrong()
     {

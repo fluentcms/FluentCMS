@@ -142,15 +142,35 @@ internal sealed class EntryCanonicalizer(SchemaModel schema)
         return field.FieldType == FieldTypeNames.RichText && value is RichText document ? CanonicalRichText(document, path, errors) : value;
     }
 
-    private static RichText? CanonicalRichText(RichText document, string path, List<ValidationError> errors)
+    private RichText? CanonicalRichText(RichText document, string path, List<ValidationError> errors)
     {
         if (RichTextParser.TryParse(document, out var parsed, out var problems))
         {
-            return RichTextSerializer.ToRichText(parsed);
+            var canonical = RichTextSerializer.ToRichText(parsed);
+            return InlineBlockJson.MayHold(canonical.Json) ? WithBlockData(canonical, path, errors) : canonical;
         }
 
         errors.AddRange(problems.Select(problem => Invalid(path, $"The rich text is not valid at {problem.Path}: {problem.Message}")));
         return null;
+    }
+
+    // The data of an inline block is read as the same block in a block list. One of a type the schema does not know is
+    // left as written, as the rich text contract has it.
+    private RichText WithBlockData(RichText document, string path, List<ValidationError> errors)
+    {
+        var root = InlineBlockJson.Parse(document.Json)!;
+        foreach (var inline in InlineBlockJson.Find(root))
+        {
+            if (schema.FindBlock(inline.BlockType) is { } block && inline.Data is { } data)
+            {
+                var map = data.ToDictionary(pair => pair.Key, pair => (object?)pair.Value, StringComparer.Ordinal);
+                var at = path + inline.DataPath;
+                ReportUnknown(map, block, at, isBlock: false, errors);
+                inline.Attributes["data"] = ReadObject(block, map, at, errors);
+            }
+        }
+
+        return InlineBlockJson.ToRichText(root);
     }
 
     private ContentDocument? ReadGroup(SchemaField field, object? raw, string path, List<ValidationError> errors, Func<SchemaType, SchemaField, bool> mayDerive, ContentDocument? stored)

@@ -15,6 +15,8 @@ namespace FluentCMS.Core.Content;
 internal sealed class EntryErrors(SchemaModel schema, SchemaType type, EffectivePermissions permissions, AccessTarget target)
 {
     private const string Discriminator = "type";
+    private const string InlineData = "data";
+    private const string InlineBlockType = "blockType";
 
     public static readonly ValidationError ProducedValue = new("", ValidationErrorCodes.InvalidValue, "A value set while saving the entry is not valid.");
 
@@ -89,18 +91,33 @@ internal sealed class EntryErrors(SchemaModel schema, SchemaType type, Effective
         }
 
         var hidden = false;
+        var inDocument = false;
         SchemaType? owner = type;
         JsonNode? value = now;
         foreach (var (name, index) in segments)
         {
-            var field = owner?.FindField(name);
-            hidden |= field?.Hidden == true;
+            var parent = value;
             value = value is JsonObject container ? container[name] : null;
             if (index is { } position)
             {
                 value = value is JsonArray items && position < items.Count ? items[position] : null;
             }
 
+            // Through the nodes of a rich text document to the data of an inline block, whose fields are its block's.
+            if (inDocument)
+            {
+                if (name == InlineData && parent is JsonObject attributes && attributes[InlineBlockType] is JsonValue inline && inline.TryGetValue<string>(out var inlineName))
+                {
+                    owner = schema.FindBlock(inlineName);
+                    inDocument = false;
+                }
+
+                continue;
+            }
+
+            var field = owner?.FindField(name);
+            hidden |= field?.Hidden == true;
+            inDocument = field?.FieldType == FieldTypeNames.RichText;
             owner = field?.FieldType switch
             {
                 FieldTypeNames.Component => schema.FindComponent((string)field.Settings[FieldSettings.Component]),
