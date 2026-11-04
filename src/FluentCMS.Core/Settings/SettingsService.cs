@@ -178,13 +178,13 @@ internal sealed class SettingsService(
                 throw Conflict(descriptor);
             }
 
-            // A site that has no row yet was shown the instance default, so the secrets it left out are the ones it was shown.
-            var stored = current?.Json;
+            // The secrets that the document leaves out are the ones the caller was shown, which are those of the document the read
+            // resolved to. A row that the class cannot read was skipped by the read, so its secrets were not shown and are not used:
+            // a site without a readable row of its own takes them from the instance default if that can be read, and from the code.
+            var stored = current is not null && descriptor.CanRead(current.Json) ? current.Json : null;
             if (stored is null && site is not null)
             {
                 var inherited = await Rows(db, descriptor.Area, null).AsNoTracking().Select(row => row.Json).FirstOrDefaultAsync(cancellationToken);
-
-                // Only from the document the read resolved to: an instance row the class cannot read was skipped, and its secret was not shown.
                 stored = inherited is not null && descriptor.CanRead(inherited) ? inherited : null;
             }
 

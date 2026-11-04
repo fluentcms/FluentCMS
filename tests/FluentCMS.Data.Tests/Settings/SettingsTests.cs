@@ -896,23 +896,72 @@ public sealed class SettingsTests
     }
 
     [Fact]
-    public async Task AWriteThatLeavesOutASecretOfAnOlderShapeIsNotRefusedAndTheSecretGoesBackToItsDefault()
+    public async Task AStoredSecretThatNoLongerHoldsItsAttributesIsNotKeptAndTheOthersAre()
     {
         using var database = new SettingsDatabase();
-        database.AddRow(SiteA.Value, "media", """{"maxUploadMb":7,"apiKey":5,"passphrase":"far-too-long-to-pass","storageAccount":"kept-account"}""");
+        database.AddRow(SiteA.Value, "media", """{"maxUploadMb":7,"passphrase":"far-too-long-to-pass","storageAccount":"kept-account"}""");
+
+        await WriteDocumentAsync(database, "media", SiteA, """{"maxUploadMb":8}""");
+
+        var site = await database.GetAsync(SiteA);
+        site.MaxUploadMb.ShouldBe(8);
+        site.Passphrase.ShouldBeNull();
+        site.StorageAccount.ShouldBe("kept-account");
+
+        database.Logs.All.ShouldContain("passphrase");
+        database.Logs.All.ShouldNotContain("far-too-long-to-pass");
+        database.Logs.All.ShouldNotContain("kept-account");
+    }
+
+    [Fact]
+    public async Task AWriteThatLeavesOutASecretOfARowTheClassCannotReadIsNotRefusedAndTakesNoSecretFromIt()
+    {
+        using var database = new SettingsDatabase();
+        database.AddRow(SiteA.Value, "media", """{"maxUploadMb":7,"apiKey":5,"storageAccount":"hidden-account"}""");
 
         await WriteDocumentAsync(database, "media", SiteA, """{"maxUploadMb":8}""");
 
         var site = await database.GetAsync(SiteA);
         site.MaxUploadMb.ShouldBe(8);
         site.ApiKey.ShouldBeNull();
-        site.Passphrase.ShouldBeNull();
-        site.StorageAccount.ShouldBe("kept-account");
+        site.StorageAccount.ShouldBe("default-account-8841");
+    }
 
-        database.Logs.All.ShouldContain("apiKey");
-        database.Logs.All.ShouldContain("passphrase");
-        database.Logs.All.ShouldNotContain("far-too-long-to-pass");
-        database.Logs.All.ShouldNotContain("kept-account");
+    [Fact]
+    public async Task AnUnreadableSiteRowDoesNotSupplyASecretThatTheReadDidNotShow()
+    {
+        using var database = new SettingsDatabase();
+        await database.SetDefaultAsync(new MediaSettings { ApiKey = Secret + "-shown" });
+        database.AddRow(SiteA.Value, "media", $$"""{"maxUploadMb":"x","apiKey":"{{Secret}}-hidden"}""");
+
+        var shown = await database.ServiceAsync((service, descriptor) => service.ResolveRedactedAsync(descriptor, SiteA, Token));
+        shown.Source.ShouldBe(SettingsSource.Default);
+        shown.SecretsSet.ShouldContain("apiKey");
+        shown.Version.ShouldBe(1);
+
+        await WriteDocumentAsync(database, "media", SiteA, shown.Json, shown.Version);
+
+        (await database.GetAsync(SiteA)).ApiKey.ShouldBe(Secret + "-shown");
+    }
+
+    [Fact]
+    public async Task AnUnreadableInstanceRowSuppliesNoSecretToAWriteOfItself()
+    {
+        using var database = new SettingsDatabase();
+        database.AddRow(null, "media", $$"""{"maxUploadMb":"x","apiKey":"{{Secret}}"}""");
+
+        await WriteDocumentAsync(database, "media", null, """{"maxUploadMb":8}""", 1);
+
+        (await database.GetDefaultAsync()).ApiKey.ShouldBeNull();
+    }
+
+    [Fact]
+    public void ARenamedPropertyIsStillSecretByItsNameInCSharp()
+    {
+        var descriptor = new SettingsRegistry([typeof(RenamedSecret)], TimeSpan.Zero).Find("renamed")!;
+
+        descriptor.SecretKeys.ShouldBe(["pw"]);
+        descriptor.CreateSchema()["properties"]!["pw"]!["writeOnly"]!.GetValue<bool>().ShouldBeTrue();
     }
 
     [Fact]
@@ -945,6 +994,20 @@ public sealed class SettingsTests
     [InlineData("accessKey")]
     [InlineData("connectionString")]
     [InlineData("databaseConnectionString")]
+    [InlineData("Token2")]
+    [InlineData("ApiKey2")]
+    [InlineData("PasswordV2")]
+    [InlineData("password_v10")]
+    [InlineData("Tokens")]
+    [InlineData("Passwords")]
+    [InlineData("Secrets")]
+    [InlineData("ApiKeys")]
+    [InlineData("ConnectionStrings")]
+    [InlineData("APIKEY")]
+    [InlineData("apikey")]
+    [InlineData("SigningKey")]
+    [InlineData("EncryptionKey")]
+    [InlineData("Pwd")]
     public void ANameThatEndsLikeASecretIsASecret(string name) => SettingsSecretNames.Matches(name).ShouldBeTrue();
 
     [Theory]
@@ -958,6 +1021,15 @@ public sealed class SettingsTests
     [InlineData("passwordPolicyEnabled")]
     [InlineData("secretsPath")]
     [InlineData("monkey")]
+    [InlineData("Tokenizer")]
+    [InlineData("Hotkey")]
+    [InlineData("PrimaryKey")]
+    [InlineData("AccessKeyId")]
+    [InlineData("TokenLifetime")]
+    [InlineData("PasswordMinLength")]
+    [InlineData("SecretaryEmail")]
+    [InlineData("ApiKeyHeaderName")]
+    [InlineData("v2")]
     [InlineData("title")]
     [InlineData("")]
     public void ANameThatOnlyContainsASecretWordIsNot(string name) => SettingsSecretNames.Matches(name).ShouldBeFalse();

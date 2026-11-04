@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.DependencyInjection;
@@ -293,4 +294,13 @@ internal sealed class SeoKeywords
     public SeoMeta Meta { get; set; } = new();
 
     public string SortKey { get; set; } = "title";
+}
+
+[Settings("renamed")]
+internal sealed class RenamedSecret
+{
+    [JsonPropertyName("pw")]
+    public string? SmtpPassword { get; set; }
+
+    public string Name { get; set; } = "n";
 }
