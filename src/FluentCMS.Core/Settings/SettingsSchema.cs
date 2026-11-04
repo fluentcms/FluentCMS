@@ -78,7 +78,8 @@ internal static class SettingsSchema
             }
         }
 
-        if (descriptor.SecretKeys.Contains(property.Name))
+        // Only the properties of the class itself can be secret; one below it that shares a name is not.
+        if (property.DeclaringType == descriptor.Type && descriptor.SecretKeys.Contains(property.Name))
         {
             schema["writeOnly"] = true;
         }

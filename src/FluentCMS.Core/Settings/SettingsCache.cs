@@ -9,6 +9,9 @@ internal enum SettingsSource
     Site = 2,
 }
 
+// What the Management endpoint shows of a document: no secret key, and the names of the secret keys that hold a value.
+internal sealed record RedactedSetting(string Json, SettingsSource Source, int Version, IReadOnlyList<string> SecretsSet);
+
 // What a read resolved to: the document, where it came from, and the version of the row it came from (0 for the code default).
 internal sealed record ResolvedSetting(string Json, SettingsSource Source, int Version);
 
@@ -65,8 +68,14 @@ internal sealed class SettingsCache(SettingsRegistry registry, TimeProvider time
         }
     }
 
+    // A read that began before the site was deleted must not keep what it found, so every area moves on too.
     public void InvalidateSite(Guid site)
     {
+        foreach (var descriptor in registry.Descriptors)
+        {
+            _generations.AddOrUpdate(descriptor.Area, 1, (_, current) => current + 1);
+        }
+
         foreach (var key in _entries.Keys.Where(key => key.Scope == site))
         {
             _entries.TryRemove(key, out _);

@@ -620,4 +620,224 @@ public sealed class SettingsTests
         schema.ToJsonString().ShouldNotContain("default-account-8841");
         properties["passphrase"]!["maxLength"]!.GetValue<int>().ShouldBe(8);
     }
+
+    private static Task<bool> WriteDocumentAsync(SettingsDatabase database, string area, SiteId? site, string json, int? expected = null) =>
+        database.AsAsync(Admin, async services =>
+        {
+            var service = services.GetRequiredService<SettingsService>();
+            await service.WriteAsync(service.Require(area), site, json, expected, Token);
+            return true;
+        });
+
+    [Fact]
+    public async Task AValidationAttributeBelowTheTopLevelIsEnforcedWithAPathForTheKey()
+    {
+        using var database = new SettingsDatabase(cms => cms.Settings.Add<NestedSettings>());
+
+        async Task<ValidationError> RefusedAsync(string json) =>
+            (await Should.ThrowAsync<ValidationException>(() => WriteDocumentAsync(database, "nested", SiteA, json))).Errors.ShouldHaveSingleItem();
+
+        (await RefusedAsync("""{"limits":{"port":99}}""")).ShouldBe(new ValidationError("limits.port", "FCMS2805", "The field Port must be between 1 and 10."));
+        (await RefusedAsync("""{"many":[{"port":2},{"port":99}]}""")).Path.ShouldBe("many[1].port");
+        (await RefusedAsync("""{"byName":{"a":{"port":0}}}""")).Path.ShouldBe("byName.a.port");
+
+        var typed = await Should.ThrowAsync<ValidationException>(() => database.AsAsync(Admin, async services =>
+        {
+            await services.GetRequiredService<ISettings<NestedSettings>>().SetAsync(SiteA, new NestedSettings { Limits = new Limits { Port = 99 } }, Token);
+            return true;
+        }));
+        typed.Errors.ShouldHaveSingleItem().Path.ShouldBe("limits.port");
+
+        await WriteDocumentAsync(database, "nested", SiteA, """{"limits":{"port":10},"many":[{"port":1}]}""");
+        database.Rows().ShouldHaveSingleItem();
+    }
+
+    [Fact]
+    public void ASecretBelowTheTopLevelStopsTheHost()
+    {
+        foreach (var type in new[] { typeof(SecretInAnObject), typeof(SecretInAList) })
+        {
+            var exception = Should.Throw<FluentCmsConfigurationException>(() => new SettingsRegistry([type], TimeSpan.Zero));
+            exception.Code.ShouldBe("FCMS2801");
+            exception.Message.ShouldContain("Password");
+        }
+    }
+
+    [Fact]
+    public void OnlyTopLevelPropertiesAreSecretInTheSchema()
+    {
+        var descriptor = new SettingsRegistry([typeof(NestedSettings)], TimeSpan.Zero).Find("nested")!;
+        descriptor.SecretKeys.ShouldBe(["token"]);
+
+        var schema = descriptor.CreateSchema().AsObject();
+        var properties = schema["properties"]!.AsObject();
+
+        properties["token"]!["writeOnly"]!.GetValue<bool>().ShouldBeTrue();
+        properties["token"]!.AsObject().ContainsKey("default").ShouldBeFalse();
+        schema.ToJsonString().ShouldNotContain("root-token-default-31");
+
+        var smtp = properties["smtp"]!["properties"]!["token"]!.AsObject();
+        smtp.ContainsKey("writeOnly").ShouldBeFalse();
+        properties["smtp"]!["default"]!["token"]!.GetValue<string>().ShouldBe("nested-token-default-52");
+    }
+
+    [Fact]
+    public async Task AResetThatNamesVersionZeroNeverDeletesARowAndAStaleVersionConflicts()
+    {
+        using var database = new SettingsDatabase();
+
+        Task<bool> ResetAsync(int? expected) => database.ServiceAsync(async (service, descriptor) =>
+        {
+            await service.ResetAsync(descriptor, SiteA, expected, Token);
+            return true;
+        });
+
+        await ResetAsync(0);
+        database.Seen.Events.ShouldBeEmpty();
+
+        await database.SetAsync(SiteA, new MediaSettings { MaxUploadMb = 10 });
+        await database.SetAsync(SiteA, new MediaSettings { MaxUploadMb = 11 });
+        database.Seen.Events.Count.ShouldBe(2);
+
+        (await Should.ThrowAsync<ValidationException>(() => ResetAsync(0))).Errors.ShouldHaveSingleItem().Code.ShouldBe("FCMS2808");
+        (await Should.ThrowAsync<ValidationException>(() => ResetAsync(1))).Errors.ShouldHaveSingleItem().Code.ShouldBe("FCMS2808");
+        database.Rows().ShouldHaveSingleItem().Version.ShouldBe(2);
+
+        await ResetAsync(2);
+        database.Rows().ShouldBeEmpty();
+        database.Seen.Events.Count.ShouldBe(3);
+        (await Should.ThrowAsync<ValidationException>(() => ResetAsync(2))).Errors.ShouldHaveSingleItem().Code.ShouldBe("FCMS2808");
+    }
+
+    [Fact]
+    public async Task AWriteNeitherSavesNorDropsWhatTheCallerHasTracked()
+    {
+        using var database = new SettingsDatabase();
+
+        var state = await database.AsAsync(Admin, async services =>
+        {
+            var system = services.GetRequiredService<SystemDbContext>();
+            var site = await system.Set<Site>().SingleAsync(item => item.Id == SiteA.Value, Token);
+            site.Name = "renamed-by-accident";
+
+            var media = services.GetRequiredService<ISettings<MediaSettings>>();
+            await media.SetAsync(SiteA, new MediaSettings(), Token);
+            await media.SetAsync(SiteA, new MediaSettings { MaxUploadMb = 3 }, Token);
+            await media.ResetAsync(SiteA, Token);
+
+            return system.Entry(site).State;
+        });
+
+        state.ShouldBe(EntityState.Modified);
+        database.Inner.Read(context => context.Set<Site>().AsNoTracking().Single(item => item.Id == SiteA.Value).Name).ShouldNotBe("renamed-by-accident");
+    }
+
+    [Fact]
+    public async Task ASecretLeftOutOfAWholeDocumentWriteKeepsItsValueAndOneThatIsSentReplacesIt()
+    {
+        using var database = new SettingsDatabase();
+        await database.SetAsync(SiteA, new MediaSettings { ApiKey = Secret + "-key", StorageAccount = "kept-account", Passphrase = "pass" });
+
+        await WriteDocumentAsync(database, "media", SiteA, """{"maxUploadMb":30}""");
+
+        var kept = await database.GetAsync(SiteA);
+        kept.MaxUploadMb.ShouldBe(30);
+        kept.ApiKey.ShouldBe(Secret + "-key");
+        kept.StorageAccount.ShouldBe("kept-account");
+        kept.Passphrase.ShouldBe("pass");
+
+        await WriteDocumentAsync(database, "media", SiteA, """{"apiKey":null,"passphrase":"other"}""");
+
+        var replaced = await database.GetAsync(SiteA);
+        replaced.ApiKey.ShouldBeNull();
+        replaced.Passphrase.ShouldBe("other");
+        replaced.StorageAccount.ShouldBe("kept-account");
+        replaced.MaxUploadMb.ShouldBe(25);
+
+        // A typed write names every property, so it replaces them all.
+        await database.SetAsync(SiteA, new MediaSettings { StorageAccount = null });
+        (await database.GetAsync(SiteA)).StorageAccount.ShouldBeNull();
+
+        // A row that does not exist yet has nothing to keep: the secret takes its code default.
+        await WriteDocumentAsync(database, "media", SiteB, """{"maxUploadMb":4}""");
+        (await database.GetAsync(SiteB)).StorageAccount.ShouldBe("default-account-8841");
+    }
+
+    [Fact]
+    public async Task ConcurrentWholeDocumentWritesKeepTheSecretAndEachOtherIntact()
+    {
+        using var database = new SettingsDatabase();
+        await database.SetAsync(SiteA, new MediaSettings { ApiKey = Secret + "-key" });
+
+        await Task.WhenAll(Enumerable.Range(1, 10).Select(number => Task.Run(() => WriteDocumentAsync(database, "media", SiteA, $$"""{"maxUploadMb":{{number}}}"""))));
+
+        var row = database.Rows().ShouldHaveSingleItem();
+        row.Version.ShouldBe(11);
+        (await database.GetAsync(SiteA)).ApiKey.ShouldBe(Secret + "-key");
+    }
+
+    [Fact]
+    public async Task TheRedactedResolveHasNoSecretValueAndNamesTheSecretsThatAreSet()
+    {
+        using var database = new SettingsDatabase();
+
+        Task<RedactedSetting> ResolveAsync(SiteId? site) => database.ServiceAsync((service, descriptor) => service.ResolveRedactedAsync(descriptor, site, Token));
+
+        var code = await ResolveAsync(SiteA);
+        code.Source.ShouldBe(SettingsSource.Code);
+        code.SecretsSet.ShouldBeEmpty();
+        code.Json.ShouldNotContain("default-account-8841");
+        JsonNode.Parse(code.Json)!.AsObject().Select(property => property.Key).ShouldBe(["maxUploadMb", "provider", "quality", "tags"], ignoreOrder: true);
+
+        await database.SetDefaultAsync(new MediaSettings { ApiKey = Secret + "-default", StorageAccount = "", Passphrase = null });
+        var fromDefault = await ResolveAsync(SiteA);
+        fromDefault.Source.ShouldBe(SettingsSource.Default);
+        fromDefault.SecretsSet.ShouldBe(["apiKey"]);
+        fromDefault.Json.ShouldNotContain(Secret);
+
+        await database.SetAsync(SiteA, new MediaSettings { ApiKey = Secret + "-key", StorageAccount = Secret + "-account", Passphrase = "pass" });
+        var own = await ResolveAsync(SiteA);
+        own.Source.ShouldBe(SettingsSource.Site);
+        own.Version.ShouldBe(1);
+        own.SecretsSet.ShouldBe(["apiKey", "passphrase", "storageAccount"]);
+        own.Json.ShouldNotContain(Secret);
+        own.Json.ShouldNotContain("pass\"");
+        JsonNode.Parse(own.Json)!["maxUploadMb"]!.GetValue<int>().ShouldBe(25);
+    }
+
+    [Fact]
+    public async Task ADocumentTheManagementEndpointShowsCanBeSentBackWithoutLosingASecret()
+    {
+        using var database = new SettingsDatabase();
+        await database.SetAsync(SiteA, new MediaSettings { ApiKey = Secret + "-key" });
+
+        var shown = await database.ServiceAsync((service, descriptor) => service.ResolveRedactedAsync(descriptor, SiteA, Token));
+        await database.ServiceAsync(async (service, descriptor) =>
+        {
+            await service.WriteAsync(descriptor, SiteA, shown.Json, shown.Version, Token);
+            return true;
+        });
+
+        (await database.GetAsync(SiteA)).ApiKey.ShouldBe(Secret + "-key");
+    }
+
+    [Fact]
+    public void ADeletedSiteStopsAReadThatWasUnderWayFromCachingItsDocument()
+    {
+        using var database = new SettingsDatabase();
+        var registry = new SettingsRegistry([typeof(MediaSettings)], TimeSpan.FromMinutes(1));
+        var cache = new SettingsCache(registry, database.Clock);
+        var site = Guid.CreateVersion7();
+        var resolved = new ResolvedSetting("{}", SettingsSource.Site, 1);
+
+        var generation = cache.Generation("media");
+        cache.InvalidateSite(site);
+        cache.Set(site, "media", resolved, generation);
+        cache.TryGet(site, "media", out _).ShouldBeFalse();
+
+        cache.Set(site, "media", resolved, cache.Generation("media"));
+        cache.TryGet(site, "media", out _).ShouldBeTrue();
+        cache.InvalidateSite(site);
+        cache.TryGet(site, "media", out _).ShouldBeFalse();
+    }
 }

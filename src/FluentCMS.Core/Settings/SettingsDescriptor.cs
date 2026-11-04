@@ -1,11 +1,10 @@
 using System.Collections.Frozen;
-using System.ComponentModel.DataAnnotations;
-using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization.Metadata;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Events;
 using FluentCMS.Settings;
 using ValidationError = FluentCMS.Content.ValidationError;
@@ -17,7 +16,6 @@ namespace FluentCMS.Core.Settings;
 internal sealed class SettingsDescriptor
 {
     private readonly Lazy<JsonNode> _schema;
-    private readonly FrozenDictionary<string, string> _jsonNameOf;
 
     public SettingsDescriptor(string area, Type type)
     {
@@ -28,10 +26,11 @@ internal sealed class SettingsDescriptor
         var properties = SettingsJson.Strict.GetTypeInfo(type).Properties.Where(property => property.Get is not null && property.Set is not null).ToList();
         KnownKeys = properties.Select(property => property.Name).ToFrozenSet(StringComparer.Ordinal);
         SecretKeys = properties.Where(IsSecret).Select(property => property.Name).ToFrozenSet(StringComparer.Ordinal);
-        _jsonNameOf = properties
-            .Select(property => (Member: (property.AttributeProvider as MemberInfo)?.Name, property.Name))
-            .Where(pair => pair.Member is not null)
-            .ToFrozenDictionary(pair => pair.Member!, pair => pair.Name, StringComparer.Ordinal);
+        foreach (var property in properties)
+        {
+            RejectNestedSecrets(property.PropertyType, property.Name, [type]);
+        }
+
         _schema = new Lazy<JsonNode>(() => SettingsSchema.Create(this, properties));
     }
 
@@ -148,25 +147,147 @@ internal sealed class SettingsDescriptor
 
     private object Validated(object value)
     {
-        List<ValidationResult> results = [];
-        if (Validator.TryValidateObject(value, new ValidationContext(value), results, validateAllProperties: true))
+        var errors = SettingsValidator.Validate(value, SettingsErrorCodes.InvalidValue);
+        if (errors.Count == 0)
         {
             return value;
         }
 
-        List<ValidationError> errors = [];
-        foreach (var result in results)
+        // A message of an attribute may say what it found. For a secret it says nothing.
+        throw new ValidationException(errors.Select(error => SecretKeys.Contains(RootOf(error.Path)) ? error with { Message = "The value is not valid." } : error));
+    }
+
+    // When a document is written without a secret key, the secret stays as it is in the row being replaced: a form of the
+    // admin never shows a secret, so a form that is sent back must not wipe it. A key that is sent, even as null, replaces it.
+    public string KeepSecrets(string json, string? stored)
+    {
+        if (SecretKeys.Count == 0 || stored is null)
         {
-            var members = result.MemberNames.Any() ? result.MemberNames : [""];
-            foreach (var member in members)
+            return json;
+        }
+
+        try
+        {
+            if (JsonNode.Parse(json, documentOptions: new JsonDocumentOptions { MaxDepth = SettingsJson.MaxDepth }) is not JsonObject target || JsonNode.Parse(stored) is not JsonObject source)
             {
-                var key = _jsonNameOf.GetValueOrDefault(member, member);
-                var message = SecretKeys.Contains(key) ? "The value is not valid." : result.ErrorMessage ?? "The value is not valid.";
-                errors.Add(new ValidationError(key, SettingsErrorCodes.InvalidValue, message));
+                return json;
+            }
+
+            foreach (var key in SecretKeys.Where(key => !target.ContainsKey(key) && source[key] is not null))
+            {
+                target[key] = source[key]!.DeepClone();
+            }
+
+            return target.ToJsonString();
+        }
+        catch (Exception exception) when (exception is JsonException or ArgumentException)
+        {
+            return json;
+        }
+    }
+
+    // The document without its secret keys, and the secret keys that hold a value in it.
+    public (string Json, IReadOnlyList<string> SecretsSet) Redact(string json)
+    {
+        var document = JsonNode.Parse(json)!.AsObject();
+        List<string> set = [];
+        foreach (var key in SecretKeys.Order(StringComparer.Ordinal))
+        {
+            if (document.TryGetPropertyValue(key, out var value))
+            {
+                if (value is not null && !(value is JsonValue text && text.TryGetValue<string>(out var content) && content.Length == 0))
+                {
+                    set.Add(key);
+                }
+
+                document.Remove(key);
             }
         }
 
-        throw new ValidationException(errors);
+        return (document.ToJsonString(), set);
+    }
+
+    // A secret is a property of the top level. Below it a value may be shown and written like any other, so the attribute
+    // there would promise what the document does not keep.
+    private static void RejectNestedSecrets(Type type, string path, HashSet<Type> seen)
+    {
+        type = Peel(type);
+        if (!seen.Add(type))
+        {
+            return;
+        }
+
+        JsonTypeInfo info;
+        try
+        {
+            info = SettingsJson.Strict.GetTypeInfo(type);
+        }
+        catch (NotSupportedException)
+        {
+            return;
+        }
+
+        if (info.Kind != JsonTypeInfoKind.Object)
+        {
+            return;
+        }
+
+        foreach (var property in info.Properties)
+        {
+            var here = path + "." + property.Name;
+            if (property.AttributeProvider?.IsDefined(typeof(SettingsSecretAttribute), inherit: true) ?? false)
+            {
+                throw new FluentCmsConfigurationException(
+                    SettingsErrorCodes.InvalidRegistration,
+                    $"[SettingsSecret] is on '{here}', which is not a property of the settings class itself; only those can be secret. Mark the property of the class that holds it.");
+            }
+
+            RejectNestedSecrets(property.PropertyType, here, seen);
+        }
+    }
+
+    // The type of the items of a list or the values of a dictionary, until it is neither.
+    private static Type Peel(Type type)
+    {
+        while (true)
+        {
+            var next = Nullable.GetUnderlyingType(type) ?? ItemTypeOf(type);
+            if (next is null)
+            {
+                return type;
+            }
+
+            type = next;
+        }
+    }
+
+    private static Type? ItemTypeOf(Type type)
+    {
+        if (type == typeof(string))
+        {
+            return null;
+        }
+
+        if (type.IsArray)
+        {
+            return type.GetElementType();
+        }
+
+        var interfaces = type.IsInterface ? type.GetInterfaces().Append(type) : type.GetInterfaces();
+        var dictionary = interfaces.FirstOrDefault(item => item.IsGenericType && item.GetGenericTypeDefinition() == typeof(IDictionary<,>));
+        if (dictionary is not null)
+        {
+            return dictionary.GetGenericArguments()[1];
+        }
+
+        return interfaces.FirstOrDefault(item => item.IsGenericType && item.GetGenericTypeDefinition() == typeof(IEnumerable<>))?.GetGenericArguments()[0];
+    }
+
+    // The key at the top of a path: limits for limits.port and many[2].port.
+    private static string RootOf(string path)
+    {
+        var end = path.AsSpan().IndexOfAny('.', '[');
+        return end < 0 ? path : path[..end];
     }
 
     // "$.limits.port" is the key limits.port.

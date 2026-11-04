@@ -7,16 +7,20 @@ using FluentCMS.Events;
 using FluentCMS.Settings;
 using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Core.Settings;
 
 // The settings of every area, as documents. ISettings<T> is a typed face on it, and the Management endpoint (B-50) is another.
 // A read is not checked against permissions; a write needs settings.{area}.manage for the site, or with no site limit for the
-// instance defaults. A write is one statement on one row, so two writers never see half of each other's document; the later one
-// stands, unless the caller names the version it read, in which case a row that has moved on is refused.
+// instance defaults. A write goes through a context of its own, as the outbox does, so that it saves nothing the caller has
+// tracked and drops nothing the caller has tracked. It replaces the row with one statement that names the version it read, and
+// starts again when another writer got there first, so two writers never see half of each other's document and the later one
+// stands; a caller that names the version it read is refused instead when the row has moved on.
 internal sealed class SettingsService(
     SystemDbContext context,
+    IServiceScopeFactory scopes,
     SettingsRegistry registry,
     SettingsCache cache,
     IAuthorizationEvaluator authorization,
@@ -26,7 +30,8 @@ internal sealed class SettingsService(
     TimeProvider time,
     ILogger<SettingsService> logger)
 {
-    private const int InsertRetries = 3;
+    // Every lost round means another writer won it, so a writer that loses this many in a row is among very many.
+    private const int Attempts = 100;
 
     public SettingsDescriptor Require(string area) =>
         registry.Find(area) ?? throw SettingsDescriptor.Fail("area", SettingsErrorCodes.UnknownArea, $"There is no settings area '{area}'.");
@@ -66,16 +71,26 @@ internal sealed class SettingsService(
         return resolved;
     }
 
+    // What the Management endpoint shows: the resolved document without its secret keys, and the secret keys that hold a value in
+    // it. The version is that of the row the document came from, which is the row of the site only when the source is the site;
+    // a write to a site that has no row of its own names version 0.
+    public async Task<RedactedSetting> ResolveRedactedAsync(SettingsDescriptor descriptor, SiteId? site, CancellationToken cancellationToken)
+    {
+        var resolved = await ResolveAsync(descriptor, site, cancellationToken);
+        var (json, secretsSet) = descriptor.Redact(resolved.Json);
+        return new RedactedSetting(json, resolved.Source, resolved.Version, resolved.Source == SettingsSource.Code ? [] : secretsSet);
+    }
+
     // Replaces a document. A null site is the instance defaults. The version is the one the caller read (0 for no row), or
-    // null to replace whatever is there.
+    // null to replace whatever is there. A secret key that the document leaves out keeps the value of the row it replaces.
     public async Task WriteAsync(SettingsDescriptor descriptor, SiteId? site, string json, int? expectedVersion, CancellationToken cancellationToken)
     {
         var operation = await AuthorizeAsync(descriptor, site, cancellationToken);
-        var canonical = descriptor.Canonicalize(json);
-        await EnsureSiteAsync(site, cancellationToken);
 
-        var actor = operation.AuditPrincipal.Id;
-        await StoreAsync(descriptor, site?.Value, canonical, expectedVersion, actor, cancellationToken);
+        // Refused before the database is touched; the document that is stored is built again from the row it replaces.
+        descriptor.Canonicalize(json);
+
+        await StoreAsync(descriptor, site, json, expectedVersion, operation.AuditPrincipal.Id, cancellationToken);
         await ChangedAsync(descriptor, site, operation, "changed", cancellationToken);
     }
 
@@ -83,16 +98,9 @@ internal sealed class SettingsService(
     public async Task ResetAsync(SettingsDescriptor descriptor, SiteId? site, int? expectedVersion, CancellationToken cancellationToken)
     {
         var operation = await AuthorizeAsync(descriptor, site, cancellationToken);
-        await EnsureSiteAsync(site, cancellationToken);
 
-        var removed = await Rows(descriptor.Area, site?.Value, expectedVersion).ExecuteDeleteAsync(cancellationToken);
-        if (removed == 0)
+        if (!await RemoveAsync(descriptor, site, expectedVersion, cancellationToken))
         {
-            if (expectedVersion is > 0)
-            {
-                throw Conflict(descriptor);
-            }
-
             return;
         }
 
@@ -136,27 +144,41 @@ internal sealed class SettingsService(
         return operation;
     }
 
-    private async Task EnsureSiteAsync(SiteId? site, CancellationToken cancellationToken)
+    private static async Task EnsureSiteAsync(SystemDbContext db, Guid? site, CancellationToken cancellationToken)
     {
-        if (site is { } one && (one.IsEmpty || !await context.Set<Site>().AnyAsync(item => item.Id == one.Value, cancellationToken)))
+        if (site is { } one && (one == Guid.Empty || !await db.Set<Site>().AnyAsync(item => item.Id == one, cancellationToken)))
         {
-            throw SiteNotFound(one);
+            throw SiteNotFound(new SiteId(one));
         }
     }
 
-    private async Task StoreAsync(SettingsDescriptor descriptor, Guid? site, string json, int? expectedVersion, Guid actor, CancellationToken cancellationToken)
+    private async Task StoreAsync(SettingsDescriptor descriptor, SiteId? siteId, string json, int? expectedVersion, Guid actor, CancellationToken cancellationToken)
     {
-        for (var attempt = 0; attempt < InsertRetries; attempt++)
-        {
-            var now = time.GetUtcNow();
+        var site = siteId?.Value;
+        await using var scope = scopes.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+        await EnsureSiteAsync(db, site, cancellationToken);
 
-            // Version 0 says there was no row, so the only thing left to try is the insert.
-            if (expectedVersion != 0)
+        for (var attempt = 0; attempt < Attempts; attempt++)
+        {
+            var current = await Rows(db, descriptor.Area, site).AsNoTracking()
+                .Select(row => new { row.Json, row.Version })
+                .FirstOrDefaultAsync(cancellationToken);
+
+            var version = current?.Version ?? 0;
+            if (expectedVersion is { } expected && expected != version)
             {
-                var updated = await Rows(descriptor.Area, site, expectedVersion).ExecuteUpdateAsync(
+                throw Conflict(descriptor);
+            }
+
+            var canonical = descriptor.Canonicalize(descriptor.KeepSecrets(json, current?.Json));
+            var now = time.GetUtcNow();
+            if (current is not null)
+            {
+                var updated = await Rows(db, descriptor.Area, site).Where(row => row.Version == version).ExecuteUpdateAsync(
                     set => set
-                        .SetProperty(row => row.Json, json)
-                        .SetProperty(row => row.Version, row => row.Version + 1)
+                        .SetProperty(row => row.Json, canonical)
+                        .SetProperty(row => row.Version, version + 1)
                         .SetProperty(row => row.UpdatedAt, now)
                         .SetProperty(row => row.UpdatedBy, actor),
                     cancellationToken);
@@ -165,48 +187,69 @@ internal sealed class SettingsService(
                 {
                     return;
                 }
-
-                if (expectedVersion is > 0)
+            }
+            else
+            {
+                db.Add(new SettingRow { Id = Guid.CreateVersion7(), SiteId = site, Key = descriptor.Area, Json = canonical, Version = 1, UpdatedAt = now, UpdatedBy = actor });
+                try
                 {
-                    throw Conflict(descriptor);
+                    await db.SaveChangesAsync(cancellationToken);
+                    return;
+                }
+                catch (DbUpdateException)
+                {
+                    db.ChangeTracker.Clear();
+                    await EnsureSiteAsync(db, site, cancellationToken);
+
+                    // Another writer inserted the row first, which the next round sees; anything else is a real failure.
+                    if (!await Rows(db, descriptor.Area, site).AnyAsync(cancellationToken))
+                    {
+                        throw;
+                    }
                 }
             }
 
-            context.Add(new SettingRow { Id = Guid.CreateVersion7(), SiteId = site, Key = descriptor.Area, Json = json, Version = 1, UpdatedAt = now, UpdatedBy = actor });
-            try
+            // The row moved between the read and the write. A caller that named a version has lost; any other starts again.
+            if (expectedVersion is not null)
             {
-                await context.SaveChangesAsync(cancellationToken);
-                return;
-            }
-            catch (DbUpdateException)
-            {
-                context.ChangeTracker.Clear();
-                if (site is { } one && !await context.Set<Site>().AnyAsync(item => item.Id == one, cancellationToken))
-                {
-                    throw SiteNotFound(new SiteId(one));
-                }
-
-                // Another writer inserted the row first. A caller that named no version just replaces it, and one that named 0 lost.
-                if (!await Rows(descriptor.Area, site, null).AnyAsync(cancellationToken))
-                {
-                    throw;
-                }
-
-                if (expectedVersion is 0)
-                {
-                    throw Conflict(descriptor);
-                }
+                throw Conflict(descriptor);
             }
         }
 
         throw Conflict(descriptor);
     }
 
-    private IQueryable<SettingRow> Rows(string area, Guid? site, int? expectedVersion)
+    // Whether there was a document to remove. Version 0 says there was none, so a row that is there is a conflict.
+    private async Task<bool> RemoveAsync(SettingsDescriptor descriptor, SiteId? siteId, int? expectedVersion, CancellationToken cancellationToken)
     {
-        var rows = context.Set<SettingRow>().Where(row => row.Key == area);
-        rows = site is { } one ? rows.Where(row => row.SiteId == one) : rows.Where(row => row.SiteId == null);
-        return expectedVersion is { } version and > 0 ? rows.Where(row => row.Version == version) : rows;
+        var site = siteId?.Value;
+        await using var scope = scopes.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+        await EnsureSiteAsync(db, site, cancellationToken);
+
+        var rows = Rows(db, descriptor.Area, site);
+        if (expectedVersion == 0)
+        {
+            return await rows.AnyAsync(cancellationToken) ? throw Conflict(descriptor) : false;
+        }
+
+        if (expectedVersion is { } version)
+        {
+            rows = rows.Where(row => row.Version == version);
+        }
+
+        if (await rows.ExecuteDeleteAsync(cancellationToken) > 0)
+        {
+            return true;
+        }
+
+        return expectedVersion is null ? false : throw Conflict(descriptor);
+    }
+
+    private static IQueryable<SettingRow> Rows(SystemDbContext db, string area, Guid? site)
+    {
+        var rows = db.Set<SettingRow>().Where(row => row.Key == area);
+        return site is { } one ? rows.Where(row => row.SiteId == one) : rows.Where(row => row.SiteId == null);
     }
 
     private async Task ChangedAsync(SettingsDescriptor descriptor, SiteId? site, OperationContext operation, string change, CancellationToken cancellationToken)

@@ -80,6 +80,53 @@ internal sealed class SecondMedia
 [Settings("empty")]
 internal sealed class Empty;
 
+internal sealed class Limits
+{
+    [Range(1, 10)]
+    public int Port { get; set; } = 5;
+}
+
+// A property below the top level is not a secret, whatever its name, so its default is shown like any other.
+internal sealed class Smtp
+{
+    public string Host { get; set; } = "smtp";
+
+    public string? Token { get; set; } = "nested-token-default-52";
+}
+
+[Settings("nested")]
+internal sealed class NestedSettings
+{
+    public Limits Limits { get; set; } = new();
+
+    public Smtp Smtp { get; set; } = new();
+
+    public List<Limits> Many { get; set; } = [];
+
+    public Dictionary<string, Limits> ByName { get; set; } = [];
+
+    [SettingsSecret]
+    public string? Token { get; set; } = "root-token-default-31";
+}
+
+internal sealed class Inner
+{
+    [SettingsSecret]
+    public string? Password { get; set; }
+}
+
+[Settings("bad-nested")]
+internal sealed class SecretInAnObject
+{
+    public Inner Inner { get; set; } = new();
+}
+
+[Settings("bad-listed")]
+internal sealed class SecretInAList
+{
+    public List<Inner> Inners { get; set; } = [];
+}
+
 internal sealed class CapturedLogs : ILoggerProvider
 {
     private readonly ConcurrentQueue<string> _messages = new();
