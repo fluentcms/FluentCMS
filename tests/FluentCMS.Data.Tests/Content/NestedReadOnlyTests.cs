@@ -32,6 +32,7 @@ public sealed class NestedReadOnlyTests : IDisposable
             .Localized()
             .Field("title", "text", field => field.Localizable())
             .Field("seo", "component", field => field.Setting(FieldSettings.Component, "seo"))
+            .Field("list", "component", field => field.Multiple().Setting(FieldSettings.Component, "seo"))
             .Field("cards", "blocks", field => field.Setting(FieldSettings.Blocks, Cards))
             .Field("body", "richText", field => field.Localizable()))
         .Build();
@@ -40,15 +41,25 @@ public sealed class NestedReadOnlyTests : IDisposable
 
     public void Dispose() => _database.Dispose();
 
-    public static TheoryData<string> Places() => new() { "seo", "cards", "body", "nested" };
+    private static readonly string[] AllPlaces = ["seo", "list", "cards", "body", "nested"];
 
-    public static TheoryData<string> Lists() => new() { "cards", "body", "nested" };
+    private static readonly string[] Stamps = ["ONE", "TWO"];
 
-    public static TheoryData<string, bool> PlacesAndWrites() => new()
+    public static TheoryData<string> Places() => new(AllPlaces);
+
+    public static TheoryData<string> Lists() => new(AllPlaces.Where(place => place != "seo"));
+
+    public static TheoryData<string, bool> PlacesAndWrites()
     {
-        { "seo", false }, { "seo", true }, { "cards", false }, { "cards", true },
-        { "body", false }, { "body", true }, { "nested", false }, { "nested", true },
-    };
+        var data = new TheoryData<string, bool>();
+        foreach (var place in AllPlaces)
+        {
+            data.Add(place, false);
+            data.Add(place, true);
+        }
+
+        return data;
+    }
 
     private static string Field(string place) => place == "nested" ? "cards" : place;
 
@@ -58,10 +69,11 @@ public sealed class NestedReadOnlyTests : IDisposable
         """{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Before"},"""
         + string.Join(",", cards.Select(card => $$$"""{"type":"inlineBlock","attrs":{"blockType":"card","data":{{{card}}}}}""")) + "]}]}";
 
-    // The cards, each the data of one as JSON, at a place: the component takes the first.
+    // The cards, each the data of one as JSON, at a place: the single component takes the first.
     private static object? Value(string place, params string[] cards) => place switch
     {
         "seo" => JsonNode.Parse(cards[0]),
+        "list" => JsonNode.Parse("[" + string.Join(",", cards) + "]"),
         "cards" => JsonNode.Parse("[" + string.Join(",", cards.Select(card => """{"type":"card",""" + card[1..])) + "]"),
         "body" => new RichText(Document(cards)),
         _ => JsonNode.Parse("""[{"type":"story","text":""" + Document(cards) + "}]"),
@@ -127,7 +139,7 @@ public sealed class NestedReadOnlyTests : IDisposable
     public static TheoryData<string, string[], string[]> Changes()
     {
         var data = new TheoryData<string, string[], string[]>();
-        foreach (var place in new[] { "seo", "cards", "body", "nested" })
+        foreach (var place in AllPlaces)
         {
             data.Add(place, [Card("A", "STAMPED")], [Card("A", "FORGED")]);
             data.Add(place, [Card("A", "STAMPED")], ["""{"label":"A","stamp":null}"""]);
@@ -135,8 +147,11 @@ public sealed class NestedReadOnlyTests : IDisposable
             if (place != "seo")
             {
                 data.Add(place, [Card("A", "STAMPED")], [Card("A", "STAMPED"), Card("C", "STAMPED")]);
-                data.Add(place, [Card("A", "ONE"), Card("B", "TWO")], [Card("B", "TWO"), Card("A", "ONE")]);
-                data.Add(place, [Card("A", "ONE"), Card("B", "TWO")], [Card("B", "TWO")]);
+                data.Add(place, [Card("A", "ONE"), Card("B", "TWO")], [Card("B", "ONE"), Card("A", "TWO")]);
+                data.Add(place, [Card("A", "ONE"), Card("B", "TWO")], [Card("N", "ONE"), """{"label":"A"}""", """{"label":"B"}"""]);
+                data.Add(place, [Card("A", "ONE"), Card("B", "TWO")], [Card("B", "ONE")]);
+                data.Add(place, ["""{"label":"A"}""", Card("B", "TWO")], ["""{"label":"B"}""", Card("A", "TWO")]);
+                data.Add(place, [Card("A", "ONE"), Card("B", "TWO")], [Card("A", "ONE"), Card("B", "ONE")]);
             }
         }
 
@@ -164,6 +179,33 @@ public sealed class NestedReadOnlyTests : IDisposable
         }
 
         Stored(id).ShouldBe(before);
+    }
+
+    // A read-only value is compared with the stored item the write pairs its item with, by visible content and then by
+    // order, which is the one the composer keeps the stored value from.
+    public static TheoryData<string, string[], string[]> Moves()
+    {
+        var data = new TheoryData<string, string[], string[]>();
+        foreach (var place in AllPlaces.Where(place => place != "seo"))
+        {
+            data.Add(place, [Card("B", "TWO"), Card("A", "ONE")], ["TWO", "ONE"]);
+            data.Add(place, [Card("B", "TWO")], ["TWO"]);
+            data.Add(place, ["""{"label":"N"}""", Card("A", "ONE"), Card("B", "TWO")], ["ONE", "TWO"]);
+        }
+
+        return data;
+    }
+
+    [Theory]
+    [MemberData(nameof(Moves))]
+    public async Task AReadOnlyValueSentWithItsItemMovesWithIt(string place, string[] sent, string[] stamps)
+    {
+        var id = await SystemCreateAsync(place, Card("A", "ONE"), Card("B", "TWO"));
+
+        await _database.PatchAsync(Editor, id, new() { [Field(place)] = Value(place, sent) }, 1);
+
+        var read = JsonSerializer.Serialize((await _database.GetAsync(Editor, id))![Field(place)]);
+        Stamps.Where(read.Contains).OrderBy(stamp => read.IndexOf(stamp, StringComparison.Ordinal)).ShouldBe(stamps);
     }
 
     [Theory]

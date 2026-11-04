@@ -616,14 +616,15 @@ internal sealed partial class ContentService(
                 // A write answers what a read showed, so what that read left out is not the client's to change.
                 var needsRead = NeedsWhatARead(write, sent, isPatch);
                 var shown = needsRead ? await ReadShownAsync(write, id, documents, addsLocale, cancellationToken) : null;
-                var refused = WithoutUnchangedInside(write, isPatch ? sent : WithoutUnchanged(write, sent, shown, writable, addsLocale), shown, writable, addsLocale);
+                var unseen = needsRead ? await UnseenNestedTargetsAsync(write, stored, shown, cancellationToken) : null;
+                var refused = WithoutUnchangedInside(write, isPatch ? sent : WithoutUnchanged(write, sent, shown, writable, addsLocale), stored, shown, unseen, writable, addsLocale);
                 Reject(write, refused, writable);
 
                 var composed = isPatch
                     ? composer.Patch(type, stored, refused)
                     : EntryComposer.Replace(type, stored, refused, field => Keeps(write, field, writable, addsLocale));
                 var working = Prepare(write, composed, document, stored);
-                composer.CarryProtected(type, stored, working, includingGroups: !isPatch || !write.Permissions.IsSystem, needsRead ? await UnseenNestedTargetsAsync(write, stored, shown, cancellationToken) : null);
+                composer.CarryProtected(type, stored, working, includingGroups: !isPatch || !write.Permissions.IsSystem, unseen);
                 await KeepUnreadableTargetsAsync(write, stored, shown, working, isPatch, cancellationToken);
 
                 working = await RunBeforeHooksAsync(write, HookKind.BeforeUpdate, working, new SaveContext(stored, Client(refused), writable, document), cancellationToken);

@@ -171,7 +171,33 @@ internal sealed class EntryComposer(SchemaModel schema)
     private bool CameBack(SchemaField field, JsonNode before, JsonNode after, IReadOnlySet<Guid> unseen) =>
         JsonNode.DeepEquals(ComparableValue(field, before, unseen), after);
 
+    // Which stored item each sent one keeps what it cannot see from, as CarryProtected pairs them: the objects of a block
+    // list or a repeated component, or the data of the inline blocks of a rich text document.
+    public List<(JsonObject Old, JsonObject New)> Pairs(SchemaField field, JsonNode before, JsonNode after, IReadOnlySet<Guid> unseen) => field.FieldType switch
+    {
+        FieldTypeNames.RichText => PairInline(before, after, unseen).Pairs,
+        _ when before is JsonArray oldItems && after is JsonArray newItems => PairItems(field, oldItems, newItems, unseen),
+        _ => [],
+    };
+
     private bool CarryInlineBlocks(JsonNode before, JsonNode after, IReadOnlySet<Guid> unseen)
+    {
+        var was = after.DeepClone();
+        var (pairs, owners, newData) = PairInline(before, after, unseen);
+        foreach (var (oldItem, newItem) in pairs)
+        {
+            CarryIntoObject(owners[oldItem], oldItem, newItem, unseen);
+        }
+
+        foreach (var (data, block) in newData.Where(item => item.Data.Count > 0 && item.Block.Data is null))
+        {
+            block.Attributes["data"] = data;
+        }
+
+        return !JsonNode.DeepEquals(was, after);
+    }
+
+    private (List<(JsonObject Old, JsonObject New)> Pairs, Dictionary<JsonObject, SchemaType> Owners, List<(JsonObject Data, InlineBlockJsonNode Block)> NewData) PairInline(JsonNode before, JsonNode after, IReadOnlySet<Guid> unseen)
     {
         Dictionary<JsonObject, SchemaType> owners = new(ReferenceEqualityComparer.Instance);
         List<JsonObject> oldData = [];
@@ -195,19 +221,11 @@ internal sealed class EntryComposer(SchemaModel schema)
             }
         }
 
-        var was = after.DeepClone();
-        foreach (var (oldItem, newItem) in PairUp([.. oldData], [.. newData.Select(item => item.Data)], item => owners.GetValueOrDefault(item), unseen))
-        {
-            CarryIntoObject(owners[oldItem], oldItem, newItem, unseen);
-        }
-
-        foreach (var (data, block) in newData.Where(item => item.Data.Count > 0 && item.Block.Data is null))
-        {
-            block.Attributes["data"] = data;
-        }
-
-        return !JsonNode.DeepEquals(was, after);
+        return (PairUp([.. oldData], [.. newData.Select(item => item.Data)], item => owners.GetValueOrDefault(item), unseen), owners, newData);
     }
+
+    private List<(JsonObject Old, JsonObject New)> PairItems(SchemaField field, JsonArray before, JsonArray after, IReadOnlySet<Guid> unseen) =>
+        PairUp([.. before.OfType<JsonObject>()], [.. after.OfType<JsonObject>()], item => OwnerOf(field, item), unseen);
 
     private SchemaType? ComponentOf(SchemaField field) =>
         field.Settings.TryGetValue(FieldSettings.Component, out var name) && name is string component ? schema.FindComponent(component) : null;
@@ -248,7 +266,7 @@ internal sealed class EntryComposer(SchemaModel schema)
     {
         if (before is JsonArray oldItems && after is JsonArray newItems)
         {
-            foreach (var (oldItem, newItem) in PairUp([.. oldItems.OfType<JsonObject>()], [.. newItems.OfType<JsonObject>()], item => OwnerOf(field, item), unseen))
+            foreach (var (oldItem, newItem) in PairItems(field, oldItems, newItems, unseen))
             {
                 if (OwnerOf(field, oldItem) is { } owner)
                 {
