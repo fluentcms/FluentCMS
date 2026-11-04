@@ -5,7 +5,6 @@ using System.Text.Json.Nodes;
 using System.Text.Json.Serialization.Metadata;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.DependencyInjection;
-using FluentCMS.Core.Events;
 using FluentCMS.Settings;
 using ValidationError = FluentCMS.Content.ValidationError;
 using ValidationException = FluentCMS.Content.ValidationException;
@@ -275,7 +274,7 @@ internal sealed class SettingsDescriptor
                     $"[SettingsSecret] is on '{here}', which is not a property of the settings class itself; only those can be secret. Move the secret to the top level of the settings class.");
             }
 
-            if (SecretScrubber.NamesSecret(property.Name))
+            if (SettingsSecretNames.Matches(property.Name))
             {
                 throw new FluentCmsConfigurationException(
                     SettingsErrorCodes.InvalidRegistration,
@@ -335,6 +334,6 @@ internal sealed class SettingsDescriptor
         exception.Path is { Length: > 1 } path ? path[(path.StartsWith("$.", StringComparison.Ordinal) ? 2 : 1)..] : "";
 
     private static bool IsSecret(JsonPropertyInfo property) =>
-        SecretScrubber.NamesSecret(property.Name)
+        SettingsSecretNames.Matches(property.Name)
         || (property.AttributeProvider?.IsDefined(typeof(SettingsSecretAttribute), inherit: true) ?? false);
 }

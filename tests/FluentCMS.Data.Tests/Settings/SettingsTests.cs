@@ -926,4 +926,113 @@ public sealed class SettingsTests
         error.Path.ShouldBe("tokens");
         error.Message.ShouldNotContain("sk_live_ABC123");
     }
+
+    [Theory]
+    [InlineData("apiKey")]
+    [InlineData("ApiKey")]
+    [InlineData("APIKey")]
+    [InlineData("api_key")]
+    [InlineData("stripeApiKey")]
+    [InlineData("smtpPassword")]
+    [InlineData("password")]
+    [InlineData("passphrase")]
+    [InlineData("accessToken")]
+    [InlineData("token")]
+    [InlineData("clientSecret")]
+    [InlineData("secret")]
+    [InlineData("privateKey")]
+    [InlineData("secretKey")]
+    [InlineData("accessKey")]
+    [InlineData("connectionString")]
+    [InlineData("databaseConnectionString")]
+    public void ANameThatEndsLikeASecretIsASecret(string name) => SettingsSecretNames.Matches(name).ShouldBeTrue();
+
+    [Theory]
+    [InlineData("keywords")]
+    [InlineData("Keywords")]
+    [InlineData("sortKey")]
+    [InlineData("hotkey")]
+    [InlineData("primaryKey")]
+    [InlineData("key")]
+    [InlineData("tokenizer")]
+    [InlineData("passwordPolicyEnabled")]
+    [InlineData("secretsPath")]
+    [InlineData("monkey")]
+    [InlineData("title")]
+    [InlineData("")]
+    public void ANameThatOnlyContainsASecretWordIsNot(string name) => SettingsSecretNames.Matches(name).ShouldBeFalse();
+
+    [Fact]
+    public void AKeywordsPropertyIsNotASecretAtAnyLevel()
+    {
+        var descriptor = Should.NotThrow(() => new SettingsRegistry([typeof(SeoKeywords)], TimeSpan.Zero)).Find("seo-keywords")!;
+
+        descriptor.SecretKeys.ShouldBeEmpty();
+        descriptor.CreateSchema()["properties"]!["keywords"]!.AsObject().ContainsKey("writeOnly").ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task TheRedactedVersionOfARowThatCannotBeReadCanBeWrittenBack()
+    {
+        using var database = new SettingsDatabase();
+        database.AddRow(SiteA.Value, "media", """{"maxUploadMb":"x"}""");
+        database.AddRow(null, "media", """{"maxUploadMb":"y"}""");
+
+        Task<RedactedSetting> ResolveAsync(SiteId? site) => database.ServiceAsync((service, descriptor) => service.ResolveRedactedAsync(descriptor, site, Token));
+
+        var site = await ResolveAsync(SiteA);
+        site.Source.ShouldBe(SettingsSource.Code);
+        site.Version.ShouldBe(1);
+        await WriteDocumentAsync(database, "media", SiteA, """{"maxUploadMb":4}""", site.Version);
+
+        var instance = await ResolveAsync(null);
+        instance.Source.ShouldBe(SettingsSource.Code);
+        instance.Version.ShouldBe(1);
+        await WriteDocumentAsync(database, "media", null, """{"maxUploadMb":5}""", instance.Version);
+
+        (await database.GetAsync(SiteA)).MaxUploadMb.ShouldBe(4);
+        (await database.GetDefaultAsync()).MaxUploadMb.ShouldBe(5);
+        database.Rows().ShouldAllBe(row => row.Version == 2);
+    }
+
+    [Fact]
+    public async Task ASiteWithNoRowOfItsOwnStillNamesVersionZeroWhenTheInstanceRowCannotBeRead()
+    {
+        using var database = new SettingsDatabase();
+        database.AddRow(null, "media", """{"maxUploadMb":"y"}""");
+
+        var shown = await database.ServiceAsync((service, descriptor) => service.ResolveRedactedAsync(descriptor, SiteA, Token));
+
+        shown.Version.ShouldBe(0);
+        await WriteDocumentAsync(database, "media", SiteA, shown.Json, shown.Version);
+    }
+
+    [Fact]
+    public async Task TheFirstSiteWriteInheritsNothingFromAnInstanceRowTheReadRejected()
+    {
+        using var database = new SettingsDatabase();
+        database.AddRow(null, "media", $$"""{"maxUploadMb":"x","apiKey":"{{Secret}}"}""");
+
+        var shown = await database.ServiceAsync((service, descriptor) => service.ResolveRedactedAsync(descriptor, SiteA, Token));
+        shown.Source.ShouldBe(SettingsSource.Code);
+        shown.SecretsSet.ShouldBeEmpty();
+
+        await WriteDocumentAsync(database, "media", SiteA, shown.Json, shown.Version);
+
+        (await database.GetAsync(SiteA)).ApiKey.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task AnInheritedSecretIsACopyThatARotationOfTheInstanceDefaultDoesNotReach()
+    {
+        using var database = new SettingsDatabase();
+        await database.SetDefaultAsync(new MediaSettings { ApiKey = Secret + "-old" });
+        var shown = await database.ServiceAsync((service, descriptor) => service.ResolveRedactedAsync(descriptor, SiteA, Token));
+        await WriteDocumentAsync(database, "media", SiteA, shown.Json, shown.Version);
+
+        await database.SetDefaultAsync(new MediaSettings { ApiKey = Secret + "-new" });
+
+        (await database.GetAsync(SiteA)).ApiKey.ShouldBe(Secret + "-old");
+        (await database.GetAsync(SiteB)).ApiKey.ShouldBe(Secret + "-new");
+    }
 }

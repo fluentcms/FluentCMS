@@ -12,7 +12,8 @@ internal enum SettingsSource
 // What the Management endpoint shows of a document: no secret key, and the names of the secret keys that hold a value.
 internal sealed record RedactedSetting(string Json, SettingsSource Source, int Version, IReadOnlyList<string> SecretsSet);
 
-// What a read resolved to: the document, where it came from, and the version of the row it came from (0 for the code default).
+// What a read resolved to: the document, where it came from, and the version of the row that a write to the same scope would
+// replace (0 when there is none), which is not the version of the row the document came from when that was a level below.
 internal sealed record ResolvedSetting(string Json, SettingsSource Source, int Version);
 
 // What readers on this instance keep. A write drops everything of its area before it returns, and a read that was under way

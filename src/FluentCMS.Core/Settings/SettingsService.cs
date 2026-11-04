@@ -63,9 +63,15 @@ internal sealed class SettingsService(
             throw SiteNotFound(site.Value);
         }
 
-        var resolved = Pick(descriptor, rows.FirstOrDefault(row => row.SiteId is not null), SettingsSource.Site, scope)
-            ?? Pick(descriptor, rows.FirstOrDefault(row => row.SiteId is null), SettingsSource.Default, SettingsCache.InstanceScope)
-            ?? new ResolvedSetting(descriptor.Write(descriptor.CreateDefault()), SettingsSource.Code, 0);
+        var own = rows.FirstOrDefault(row => row.SiteId is not null);
+        var instance = rows.FirstOrDefault(row => row.SiteId is null);
+
+        // The version is that of the row a write to this scope replaces, also when that row is skipped as unreadable: the
+        // caller must be able to name it, or it could never save over a row that cannot be read.
+        var version = (site is null ? instance : own)?.Version ?? 0;
+        var resolved = Pick(descriptor, own, SettingsSource.Site, version, scope)
+            ?? Pick(descriptor, instance, SettingsSource.Default, version, SettingsCache.InstanceScope)
+            ?? new ResolvedSetting(descriptor.Write(descriptor.CreateDefault()), SettingsSource.Code, version);
 
         cache.Set(scope, area, resolved, generation);
         return resolved;
@@ -73,13 +79,13 @@ internal sealed class SettingsService(
 
     // What the Management endpoint shows: the resolved document without its secret keys, and the secret keys that hold a value in
     // it. The version is that of the row a write to this site (or to the instance defaults) would replace, so that it can go
-    // back as the version a write names: 0 when that row does not exist, even if the document came from a level below it.
+    // back as the version a write names: 0 when that row does not exist, even if the document came from a level below it, and
+    // the version of the row that is there even if it was skipped because the class cannot read it.
     public async Task<RedactedSetting> ResolveRedactedAsync(SettingsDescriptor descriptor, SiteId? site, CancellationToken cancellationToken)
     {
         var resolved = await ResolveAsync(descriptor, site, cancellationToken);
         var (json, secretsSet) = descriptor.Redact(resolved.Json);
-        var target = site is null ? SettingsSource.Default : SettingsSource.Site;
-        return new RedactedSetting(json, resolved.Source, resolved.Source == target ? resolved.Version : 0, resolved.Source == SettingsSource.Code ? [] : secretsSet);
+        return new RedactedSetting(json, resolved.Source, resolved.Version, resolved.Source == SettingsSource.Code ? [] : secretsSet);
     }
 
     // Replaces a document. A null site is the instance defaults. The version is the one the caller read (0 for no row), or
@@ -108,7 +114,7 @@ internal sealed class SettingsService(
         await ChangedAsync(descriptor, site, operation, "reset", cancellationToken);
     }
 
-    private ResolvedSetting? Pick(SettingsDescriptor descriptor, SettingRow? row, SettingsSource source, Guid scope)
+    private ResolvedSetting? Pick(SettingsDescriptor descriptor, SettingRow? row, SettingsSource source, int version, Guid scope)
     {
         if (row is null)
         {
@@ -117,7 +123,7 @@ internal sealed class SettingsService(
 
         if (descriptor.CanRead(row.Json))
         {
-            return new ResolvedSetting(row.Json, source, row.Version);
+            return new ResolvedSetting(row.Json, source, version);
         }
 
         SettingsLog.Unreadable(logger, descriptor.Area, ScopeName(scope));
@@ -176,7 +182,10 @@ internal sealed class SettingsService(
             var stored = current?.Json;
             if (stored is null && site is not null)
             {
-                stored = await Rows(db, descriptor.Area, null).AsNoTracking().Select(row => row.Json).FirstOrDefaultAsync(cancellationToken);
+                var inherited = await Rows(db, descriptor.Area, null).AsNoTracking().Select(row => row.Json).FirstOrDefaultAsync(cancellationToken);
+
+                // Only from the document the read resolved to: an instance row the class cannot read was skipped, and its secret was not shown.
+                stored = inherited is not null && descriptor.CanRead(inherited) ? inherited : null;
             }
 
             var canonical = descriptor.Canonicalize(descriptor.KeepSecrets(json, stored, out var dropped));

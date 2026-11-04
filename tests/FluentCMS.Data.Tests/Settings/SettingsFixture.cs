@@ -279,3 +279,18 @@ internal sealed class SecretDictionary
 
     public string Name { get; set; } = "n";
 }
+
+internal sealed class SeoMeta
+{
+    public List<string> Keywords { get; set; } = [];
+}
+
+[Settings("seo-keywords")]
+internal sealed class SeoKeywords
+{
+    public List<string> Keywords { get; set; } = [];
+
+    public SeoMeta Meta { get; set; } = new();
+
+    public string SortKey { get; set; } = "title";
+}
