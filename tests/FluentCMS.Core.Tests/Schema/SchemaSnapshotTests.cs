@@ -175,6 +175,8 @@ public class SchemaSnapshotTests
     [InlineData("{\"collections\":[{\"name\":7}]}")]
     [InlineData("{\"collections\":[{\"name\":\"article\",\"fields\":{}}]}")]
     [InlineData("{\"collections\":[{\"name\":\"article\",\"fields\":[{\"type\":\"text\"}]}]}")]
+    [InlineData("{\"collections\":[{\"name\":\"\\ud800\",\"fields\":[]}]}")]
+    [InlineData("{\"collections\":[{\"name\":\"article\",\"fields\":[{\"name\":\"\\udc00\"}]}]}")]
     [InlineData("not json")]
     public void AStoredSnapshotOfAnotherShapeFailsAsJsonAndNothingElse(string stored)
     {
@@ -189,6 +191,15 @@ public class SchemaSnapshotTests
     {
         var current = SchemaSnapshot.Of(Article(type => type.Field("title", "text"))).Json;
         const string stored = "{\"collections\":[{\"name\":\"article\",\"fields\":[{\"name\":\"b\",\"formerNames\":\"c\"}]}]}";
+
+        Should.Throw<JsonException>(() => SchemaSnapshotDiff.Compare(current, stored));
+    }
+
+    [Fact]
+    public void AFormerNameWithALoneSurrogateFailsAsJson()
+    {
+        var current = SchemaSnapshot.Of(Article(type => type.Field("title", "text"))).Json;
+        const string stored = "{\"collections\":[{\"name\":\"article\",\"fields\":[{\"name\":\"b\",\"formerNames\":[\"\\ud800\"]}]}]}";
 
         Should.Throw<JsonException>(() => SchemaSnapshotDiff.Compare(current, stored));
     }

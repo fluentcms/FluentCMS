@@ -1,7 +1,6 @@
 using System.Data;
 using System.Data.Common;
 using System.Reflection;
-using System.Text.Json;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Schema;
@@ -22,10 +21,48 @@ internal sealed class SchemaHistory(IServiceScopeFactory scopes, TimeProvider ti
     // Adds a row unless the newest one already has the hash of the schema. The read and the insert are one serializable
     // transaction, so nodes that start together add one row between them; where a database settles that by failing one
     // of them (a deadlock, a serialization failure), the loser reads again and finds the row.
+    // The migrations that came before stay applied, so a history that cannot be written is logged and never stops the host.
     public async Task RecordAsync(SchemaModel schema, CancellationToken cancellationToken)
     {
-        var snapshot = SchemaSnapshot.Of(schema);
+        try
+        {
+            await RecordWithRetriesAsync(SchemaSnapshot.Of(schema), cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            SchemaHistoryLog.NotRecorded(logger, exception.GetType().Name, exception);
+        }
+    }
 
+    // Logs what differs between the code and the newest row. It never fails startup: a schema that drifted is the
+    // operator's to apply, and a missing check must not stop a host that works.
+    public async Task CheckDriftAsync(SchemaModel schema, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var snapshot = SchemaSnapshot.Of(schema);
+
+            await using var scope = scopes.CreateAsyncScope();
+            var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+
+            var last = await NewestAsync(context, cancellationToken);
+            if (last is null)
+            {
+                SchemaHistoryLog.NoHistory(logger);
+            }
+            else if (last.Hash != snapshot.Hash)
+            {
+                SchemaHistoryLog.Drift(logger, last.AppliedAt, last.FluentcmsVersion, last.Hash, snapshot.Hash, Describe(last.Snapshot, snapshot.Json));
+            }
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            SchemaHistoryLog.NotChecked(logger, exception.GetType().Name, exception);
+        }
+    }
+
+    private async Task RecordWithRetriesAsync(SchemaSnapshot snapshot, CancellationToken cancellationToken)
+    {
         for (var attempt = 1; ; attempt++)
         {
             try
@@ -37,26 +74,6 @@ internal sealed class SchemaHistory(IServiceScopeFactory scopes, TimeProvider ti
             {
                 await Task.Delay(TimeSpan.FromMilliseconds(25 * attempt), cancellationToken);
             }
-        }
-    }
-
-    // Logs what differs between the code and the newest row. It never fails startup: a schema that drifted is the
-    // operator's to apply, and a missing check must not stop a host that works.
-    public async Task CheckDriftAsync(SchemaModel schema, CancellationToken cancellationToken)
-    {
-        var snapshot = SchemaSnapshot.Of(schema);
-
-        await using var scope = scopes.CreateAsyncScope();
-        var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
-
-        var last = await NewestAsync(context, cancellationToken);
-        if (last is null)
-        {
-            SchemaHistoryLog.NoHistory(logger);
-        }
-        else if (last.Hash != snapshot.Hash)
-        {
-            SchemaHistoryLog.Drift(logger, last.AppliedAt, last.FluentcmsVersion, last.Hash, snapshot.Hash, Describe(last.Snapshot, snapshot.Json));
         }
     }
 
@@ -74,6 +91,8 @@ internal sealed class SchemaHistory(IServiceScopeFactory scopes, TimeProvider ti
                 return;
             }
 
+            // Before the insert, so that nothing but the commit can fail once the row is there.
+            changes = last is null ? "first schema" : Describe(last.Snapshot, snapshot.Json);
             context.Set<SchemaHistoryRow>().Add(new SchemaHistoryRow
             {
                 Hash = snapshot.Hash,
@@ -83,8 +102,6 @@ internal sealed class SchemaHistory(IServiceScopeFactory scopes, TimeProvider ti
             });
             await context.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
-
-            changes = last is null ? "first schema" : Describe(last.Snapshot, snapshot.Json);
         }
 
         SchemaHistoryLog.Recorded(logger, snapshot.Hash, changes);
@@ -103,7 +120,7 @@ internal sealed class SchemaHistory(IServiceScopeFactory scopes, TimeProvider ti
             var changes = SchemaSnapshotDiff.Compare(before, after);
             return changes.Count == 0 ? "no change to a type or field, only to the order of types or the format of the snapshot" : string.Join("; ", changes);
         }
-        catch (JsonException)
+        catch (Exception)
         {
             return "details are unavailable because the stored snapshot cannot be read";
         }
@@ -126,6 +143,12 @@ internal static partial class SchemaHistoryLog
 {
     [LoggerMessage(Level = LogLevel.Information, Message = "Recorded schema {Hash} in the schema history: {Changes}.")]
     public static partial void Recorded(ILogger logger, string hash, string changes);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The schema was not recorded in the schema history ({ExceptionType}); the host starts without it.")]
+    public static partial void NotRecorded(ILogger logger, string exceptionType, Exception exception);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "The schema in code could not be compared with the schema history ({ExceptionType}); the host starts without the check.")]
+    public static partial void NotChecked(ILogger logger, string exceptionType, Exception exception);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "The schema history is empty, so the schema in code cannot be compared; 'fluentcms migrate' records it.")]
     public static partial void NoHistory(ILogger logger);

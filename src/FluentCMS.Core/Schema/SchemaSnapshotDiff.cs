@@ -19,6 +19,19 @@ internal static class SchemaSnapshotDiff
 
     public static IReadOnlyList<SchemaChange> Compare(string before, string after)
     {
+        try
+        {
+            return CompareCore(before, after);
+        }
+        catch (InvalidOperationException)
+        {
+            // GetString on a string with a lone surrogate, and whatever else a text that is JSON can do to a reader.
+            throw Unexpected();
+        }
+    }
+
+    private static List<SchemaChange> CompareCore(string before, string after)
+    {
         using var previous = JsonDocument.Parse(before);
         using var current = JsonDocument.Parse(after);
 

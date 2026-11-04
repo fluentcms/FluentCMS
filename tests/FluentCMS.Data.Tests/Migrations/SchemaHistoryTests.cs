@@ -173,6 +173,7 @@ public sealed class SchemaHistoryTests : IDisposable
     [InlineData("5")]
     [InlineData("{\"collections\":5}")]
     [InlineData("{\"collections\":[{\"fields\":[]}]}")]
+    [InlineData("{\"collections\":[{\"name\":\"\\ud800\",\"fields\":[]}]}")]
     public async Task AStoredSnapshotOfAnotherShapeDoesNotStopStartup(string stored)
     {
         var migrations = GeneratedMigrations.CompileFirst(ArticleSchemas.Titled);
@@ -197,6 +198,38 @@ public sealed class SchemaHistoryTests : IDisposable
         await host.StartAsync(Token);
 
         (await RowsAsync(host)).Last().Hash.ShouldBe(SchemaSnapshot.Of(ArticleSchemas.Titled).Hash);
+    }
+
+    [Fact]
+    public async Task ARecordThatCannotBeWrittenIsLoggedAndStartupGoesOn()
+    {
+        var migrations = GeneratedMigrations.CompileFirst(ArticleSchemas.Titled);
+        await StartAndStopAsync(_database.CreateHost(ArticleSchemas.Titled, Production, migrations));
+        _database.Execute("drop table cms_schema_history");
+        var logs = new CapturedLogs();
+
+        using var host = _database.CreateHost(ArticleSchemas.TitledAndRequired, Production, migrations, services: Capture(logs));
+        await Should.NotThrowAsync(() => host.StartAsync(Token));
+
+        var warning = logs.Warnings.ShouldHaveSingleItem();
+        warning.ShouldContain("not recorded");
+        warning.ShouldContain("SqliteException");
+    }
+
+    [Fact]
+    public async Task ADriftCheckThatCannotReadTheHistoryIsLoggedAndStartupGoesOn()
+    {
+        var migrations = GeneratedMigrations.CompileFirst(ArticleSchemas.Titled);
+        await StartAndStopAsync(_database.CreateHost(ArticleSchemas.Titled, Production, migrations));
+        _database.Execute("drop table cms_schema_history");
+        var logs = new CapturedLogs();
+
+        using var host = _database.CreateHost(ArticleSchemas.Titled, Production, migrations, NoMigrationOnStartup, Capture(logs));
+        await Should.NotThrowAsync(() => host.StartAsync(Token));
+
+        var warning = logs.Warnings.ShouldHaveSingleItem();
+        warning.ShouldContain("could not be compared");
+        warning.ShouldContain("SqliteException");
     }
 
     [Fact]
