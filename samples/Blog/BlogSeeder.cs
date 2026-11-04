@@ -104,7 +104,7 @@ public class BlogSeeder : ISeeder
         if (!taken.InTrash && (first || taken.Created))
         {
             await PublishIfDraftAsync(articles, taken, first, cancellationToken);
-            await articles.DeleteAsync(taken.Entry.Id, cancellationToken);
+            await ConvergeAsync(() => articles.DeleteAsync(taken.Entry.Id, cancellationToken));
         }
 
         // Last, because a scheduled publish publishes the draft and shared fields as they are when it is scheduled.
@@ -125,7 +125,7 @@ public class BlogSeeder : ISeeder
         if (!notes.InTrash && (first || notes.Created) && notes.Entry.Status == EntryStatus.Draft)
         {
             var at = context.Time.GetUtcNow().UtcDateTime.Add(ScheduleDelay);
-            await articles.ScheduleAsync(notes.Entry.Id, new ScheduleRequest(ScheduleAction.Publish, at), cancellationToken: cancellationToken);
+            await ConvergeAsync(() => articles.ScheduleAsync(notes.Entry.Id, new ScheduleRequest(ScheduleAction.Publish, at), cancellationToken: cancellationToken));
         }
     }
 
@@ -199,6 +199,10 @@ public class BlogSeeder : ISeeder
                         cancellationToken);
                     createdFrench = true;
                 }
+                catch (EntryNotFoundException)
+                {
+                    return;
+                }
                 catch (VersionConflictException)
                 {
                     french = await articles.GetAsync(welcome.Entry.Id, options, cancellationToken)
@@ -208,7 +212,7 @@ public class BlogSeeder : ISeeder
 
             if ((first || createdFrench) && french.Status == EntryStatus.Draft)
             {
-                await articles.PublishAsync(french.Id, BlogSample.SecondLocale, cancellationToken: cancellationToken);
+                await ConvergeAsync(() => articles.PublishAsync(french.Id, BlogSample.SecondLocale, cancellationToken: cancellationToken));
             }
         }
 
@@ -236,7 +240,20 @@ public class BlogSeeder : ISeeder
     {
         if (!found.InTrash && (first || found.Created) && found.Entry.Status == EntryStatus.Draft)
         {
-            await service.PublishAsync(found.Entry.Id, cancellationToken: cancellationToken);
+            await ConvergeAsync(() => service.PublishAsync(found.Entry.Id, cancellationToken: cancellationToken));
+        }
+    }
+
+    // An entry that is gone or in the trash by the time a state step reaches it was taken there by an overlapping run or a person; the
+    // step has nothing left to do.
+    private static async Task ConvergeAsync(Func<Task> step)
+    {
+        try
+        {
+            await step();
+        }
+        catch (EntryNotFoundException)
+        {
         }
     }
 

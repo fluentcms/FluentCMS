@@ -1,4 +1,7 @@
+using System.Reflection;
+using System.Runtime.ExceptionServices;
 using FluentCMS.Content;
+using FluentCMS.Core.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Seeding;
@@ -431,6 +434,76 @@ public sealed class BlogSeedingTests
         (await ScheduledAt()).ShouldBe(before);
         (await DocumentsAsync(admin)).ShouldBe(count + 1);
         (await AllAsync<Article>(admin)).Single(article => article.Slug == BlogSeeder.TourSlug).Status.ShouldBe(EntryStatus.Draft);
+    }
+
+    [Fact]
+    public async Task AFailureBeforeTheSeederRunsReleasesTheClaim()
+    {
+        var counter = new SeedCounter();
+        await using var host = new FluentCmsTestHost()
+            .WithServices(services => services.AddSingleton(counter))
+            .Configure(cms =>
+            {
+                cms.Seeding.RequireLocale("not a locale!").Add<CountingSeeder>();
+                cms.Seeding.RunOnStart = false;
+            });
+
+        await Should.ThrowAsync<ValidationException>(() => RunAsync(host));
+
+        (await StateAsync(host)).Claim.ShouldBeNull();
+        counter.Attempts.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task StateStepsOnEntriesThatAreGoneAreTreatedAsDone()
+    {
+        await using var host = new FluentCmsTestHost()
+            .WithContentTypes([.. BlogSample.ContentTypes])
+            .WithServices(services => services.AddScoped(provider =>
+                GoneOnStateSteps.Wrap(ActivatorUtilities.CreateInstance<TypedContentService<Article>>(provider))))
+            .Configure(cms =>
+            {
+                cms.AddBlogSample();
+                cms.Seeding.RunOnStart = false;
+            });
+        var admin = await AdminOf(host);
+
+        await Should.NotThrowAsync(() => RunAsync(host));
+
+        (await AllAsync<Article>(admin)).Count.ShouldBe(5);
+        (await StateAsync(host)).Claim.ShouldBeNull();
+        (await StateAsync(host)).Seeders.ShouldContainKey(typeof(BlogSeeder).FullName!);
+    }
+
+    // Stands in for an overlapping run that published, trashed or purged the entry between the seeder reading it and changing it.
+    public class GoneOnStateSteps : DispatchProxy
+    {
+        private IContentService<Article> _inner = null!;
+
+        public static IContentService<Article> Wrap(IContentService<Article> inner)
+        {
+            var proxy = Create<IContentService<Article>, GoneOnStateSteps>();
+            ((GoneOnStateSteps)(object)proxy)._inner = inner;
+            return proxy;
+        }
+
+        protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
+        {
+            if (targetMethod!.Name is "PublishAsync" or "DeleteAsync" or "ScheduleAsync")
+            {
+                throw new EntryNotFoundException("article", (Guid)args![0]!);
+            }
+
+            try
+            {
+                return targetMethod.Invoke(_inner, args);
+            }
+            catch (TargetInvocationException exception) when (exception.InnerException is not null)
+            {
+                ExceptionDispatchInfo.Capture(exception.InnerException).Throw();
+                throw;
+            }
+        }
     }
 
     private static async Task<SeedingState> StateAsync(FluentCmsTestHost host)

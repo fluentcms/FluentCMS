@@ -94,7 +94,6 @@ internal sealed class SeedRunner(
                 catch (Exception exception)
                 {
                     SeedLog.Failed(logger, exception, seeder.Name, seeder.Version);
-                    await ReleaseAsync(claimId);
                     throw;
                 }
 
@@ -127,7 +126,7 @@ internal sealed class SeedRunner(
         {
             SeedLog.ClaimLost(logger);
         }
-        catch (OperationCanceledException)
+        catch (Exception)
         {
             await ReleaseAsync(claimId);
             throw;
