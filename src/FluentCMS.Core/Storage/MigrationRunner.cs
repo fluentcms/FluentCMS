@@ -27,13 +27,16 @@ public sealed class MigrationRunner(
     IEnumerable<IPluginMigrations> plugins,
     ILogger<MigrationRunner> logger,
     IConfiguration? configuration = null,
-    IHostEnvironment? environment = null)
+    IHostEnvironment? environment = null,
+    TimeProvider? time = null)
 {
     public const string SystemStream = "system";
     public const string ContentStream = "content";
 
     private static readonly Stream System = new(SystemStream, services => services.GetRequiredService<SystemDbContext>());
     private static readonly Stream Content = new(ContentStream, services => services.GetRequiredService<CmsDbContext>());
+
+    private readonly SchemaHistory _history = new(scopes, time ?? TimeProvider.System, logger);
 
     private IEnumerable<Stream> SystemAndPlugins =>
         [System, .. plugins.Select(plugin => new Stream(plugin.Name, plugin.ResolveContext))];
@@ -48,23 +51,45 @@ public sealed class MigrationRunner(
 
             if (options.SchemaSync == SchemaSyncMode.Auto)
             {
-                await SyncAsync(schema, cancellationToken);
+                var report = await SyncAsync(schema, cancellationToken);
+                if (report.NotApplied.Count == 0)
+                {
+                    await _history.RecordAsync(schema, cancellationToken);
+                }
+                else
+                {
+                    await _history.CheckDriftAsync(schema, cancellationToken);
+                }
+
                 return;
             }
 
             await ApplyAsync([Content], cancellationToken);
-        }
-        else
-        {
-            await ValidateSystemAndPluginStreamsAsync(cancellationToken);
+            await ValidateContentSchemaAsync(cancellationToken);
+            await _history.RecordAsync(schema, cancellationToken);
+            return;
         }
 
+        await ValidateSystemAndPluginStreamsAsync(cancellationToken);
         await ValidateContentSchemaAsync(cancellationToken);
+        await _history.CheckDriftAsync(schema, cancellationToken);
     }
 
     // Whatever Database:MigrateOnStartup says.
-    public Task<IReadOnlyList<StreamMigration>> MigrateAsync(CancellationToken cancellationToken = default) =>
-        ApplyAsync([.. SystemAndPlugins, Content], cancellationToken);
+    public async Task<IReadOnlyList<StreamMigration>> MigrateAsync(CancellationToken cancellationToken = default)
+    {
+        var applied = await ApplyAsync([.. SystemAndPlugins, Content], cancellationToken);
+
+        // A database that lacks a column of the schema has not been brought up to it, so the history keeps its old row.
+        await using var scope = scopes.CreateAsyncScope();
+        var diff = await ContentSchemaDiff.CompareAsync(scope.ServiceProvider.GetRequiredService<CmsDbContext>(), provider.SchemaReader, cancellationToken);
+        if (diff.Missing.Count == 0)
+        {
+            await _history.RecordAsync(schema, cancellationToken);
+        }
+
+        return applied;
+    }
 
     public Task<IReadOnlyList<StreamMigration>> GetPendingMigrationsAsync(CancellationToken cancellationToken = default) =>
         GetPendingAsync([.. SystemAndPlugins, Content], cancellationToken);

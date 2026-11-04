@@ -41,6 +41,9 @@ public class OfflineProviderTests
     private static string? ColumnType(IModel model, string entity, string property) =>
         model.FindEntityType(entity)!.FindProperty(property)!.GetColumnType();
 
+    private static List<string> SchemaHistoryColumns(SystemDbContext context) =>
+        [.. context.GetService<IDesignTimeModel>().Model.FindEntityType(typeof(SchemaHistoryRow))!.GetProperties().Select(property => $"{property.GetColumnName()}:{property.GetColumnType()}")];
+
     private static string Sql(IServiceProvider services, Func<IJsonSqlDialect, ParameterExpression, Expression> filter)
     {
         var dialect = services.GetRequiredService<IJsonSqlDialect>();
@@ -124,7 +127,7 @@ public class OfflineProviderTests
         using var scope = services.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<SystemDbContext>().Database;
 
-        database.GetMigrations().Count().ShouldBe(9);
+        database.GetMigrations().Count().ShouldBe(10);
         database.HasPendingModelChanges().ShouldBeFalse();
     }
 
@@ -135,8 +138,41 @@ public class OfflineProviderTests
         using var scope = services.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<SystemDbContext>().Database;
 
-        database.GetMigrations().Count().ShouldBe(9);
+        database.GetMigrations().Count().ShouldBe(10);
         database.HasPendingModelChanges().ShouldBeFalse();
+    }
+
+    [Fact]
+    public void ThePostgreSqlSchemaHistoryKeepsTheSnapshotAsText()
+    {
+        using var services = PostgreSql();
+        using var scope = services.CreateScope();
+
+        SchemaHistoryColumns(scope.ServiceProvider.GetRequiredService<SystemDbContext>()).ShouldBe(
+            ["id:uuid", "hash:character varying(64)", "snapshot:text", "applied_at:timestamp with time zone", "fluentcms_version:character varying(64)"], ignoreOrder: true);
+    }
+
+    [Fact]
+    public void TheSqlServerSchemaHistoryKeepsTheSnapshotAsText()
+    {
+        using var services = SqlServer();
+        using var scope = services.CreateScope();
+
+        SchemaHistoryColumns(scope.ServiceProvider.GetRequiredService<SystemDbContext>()).ShouldBe(
+            ["id:uniqueidentifier", "hash:nvarchar(64)", "snapshot:nvarchar(max)", "applied_at:datetimeoffset", "fluentcms_version:nvarchar(64)"], ignoreOrder: true);
+    }
+
+    [Fact]
+    public void EveryProviderHasTheSchemaHistoryMigration()
+    {
+        using var postgreSql = PostgreSql();
+        using var sqlServer = SqlServer();
+
+        foreach (var services in new[] { postgreSql, sqlServer })
+        {
+            using var scope = services.CreateScope();
+            scope.ServiceProvider.GetRequiredService<SystemDbContext>().Database.GetMigrations().ShouldContain(id => id.EndsWith("_AddSchemaHistory", StringComparison.Ordinal));
+        }
     }
 
     [Fact]

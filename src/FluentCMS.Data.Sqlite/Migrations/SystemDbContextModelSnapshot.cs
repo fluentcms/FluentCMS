@@ -910,6 +910,42 @@ namespace FluentCMS.Data.Sqlite.Migrations
                         });
                 });
 
+            modelBuilder.Entity("FluentCMS.Core.Storage.Entities.SchemaHistoryRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("id");
+
+                    b.Property<long>("AppliedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("applied_at");
+
+                    b.Property<string>("FluentcmsVersion")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("fluentcms_version");
+
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("hash");
+
+                    b.Property<string>("Snapshot")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("snapshot");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AppliedAt")
+                        .HasDatabaseName("ix_cms_schema_history_applied_at");
+
+                    b.ToTable("cms_schema_history", (string)null);
+                });
+
             modelBuilder.Entity("FluentCMS.Core.Storage.Entities.SettingRow", b =>
                 {
                     b.Property<Guid>("Id")

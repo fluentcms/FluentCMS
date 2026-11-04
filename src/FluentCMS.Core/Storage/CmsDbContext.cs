@@ -1,3 +1,4 @@
+using FluentCMS.Core.Schema;
 using FluentCMS.Core.Storage.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -23,7 +24,7 @@ public sealed class CmsDbContext : DbContext
 
     public DbSet<ContentVersion> Versions => Set<ContentVersion>();
 
-    internal string ModelKey => SchemaModelKey.Of(_model.Schema);
+    internal string ModelKey => SchemaSnapshot.Of(_model.Schema).Hash;
 
     internal string ConventionsKey => _model.Conventions.CacheKey;
 
