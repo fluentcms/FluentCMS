@@ -124,7 +124,7 @@ public class OfflineProviderTests
         using var scope = services.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<SystemDbContext>().Database;
 
-        database.GetMigrations().Count().ShouldBe(7);
+        database.GetMigrations().Count().ShouldBe(8);
         database.HasPendingModelChanges().ShouldBeFalse();
     }
 
@@ -135,7 +135,7 @@ public class OfflineProviderTests
         using var scope = services.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<SystemDbContext>().Database;
 
-        database.GetMigrations().Count().ShouldBe(7);
+        database.GetMigrations().Count().ShouldBe(8);
         database.HasPendingModelChanges().ShouldBeFalse();
     }
 

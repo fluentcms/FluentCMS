@@ -35,10 +35,7 @@ internal sealed partial class ContentService
                 var published = await store.ReadAsync(write.Type, document, ContentState.Published, cancellationToken);
                 var previous = document.PublishedVersion is null ? null : published;
 
-                // Publishing moves a shared field for every locale published with it, so those are the ones a grant must cover.
-                var moved = target with { EntryLocales = [.. documents.Where(other => other.PublishedVersion is not null || other.Id == document.Id).Select(other => other.Locale)] };
-                var writable = await evaluator.WritableFieldsAsync(write.Operation, write.Type, ContentOperation.Publish, id, moved, cancellationToken);
-                await ThrowIfBeyondThePublishGrantAsync(write, id, target, draft, published, writable, cancellationToken);
+                var writable = await CheckPublishGrantAsync(write, documents, document, target, draft, published, cancellationToken);
 
                 var original = EntryJson.Fields(write.Type, draft);
                 var working = ContentCopy.Of(draft);
@@ -97,12 +94,7 @@ internal sealed partial class ContentService
                 var (documents, document, target) = await ReachLocaleAsync(write, ContentOperation.Unpublish, id, cancellationToken);
                 ThrowIfNotPublished(write, document);
 
-                // The whole entry goes out of sight, so a grant limited to some fields does not reach far enough.
-                var writable = await evaluator.WritableFieldsAsync(write.Operation, write.Type, ContentOperation.Unpublish, id, target with { EntryLocales = [document.Locale] }, cancellationToken);
-                if (write.Type.Fields.Any(field => !field.Hidden && !field.ReadOnly && !writable.Includes(field.Name)))
-                {
-                    throw new ContentAccessDeniedException(write.Type.Name, CorePermissions.OperationName(ContentOperation.Unpublish));
-                }
+                await CheckUnpublishGrantAsync(write, document, target, cancellationToken);
 
                 var published = await store.ReadAsync(write.Type, document, ContentState.Published, cancellationToken);
                 var working = ContentCopy.Of(published);
@@ -368,6 +360,25 @@ internal sealed partial class ContentService
         }
     }
 
+    // Publishing moves a shared field for every locale published with it, so those are the ones a grant must cover.
+    private async Task<WritableFields> CheckPublishGrantAsync(WriteScope write, List<Document> documents, Document document, AccessTarget target, ContentDocument draft, ContentDocument published, CancellationToken cancellationToken)
+    {
+        var moved = target with { EntryLocales = [.. documents.Where(other => other.PublishedVersion is not null || other.Id == document.Id).Select(other => other.Locale)] };
+        var writable = await evaluator.WritableFieldsAsync(write.Operation, write.Type, ContentOperation.Publish, document.DocumentId, moved, cancellationToken);
+        await ThrowIfBeyondThePublishGrantAsync(write, document.DocumentId, target, draft, published, writable, cancellationToken);
+        return writable;
+    }
+
+    // The whole entry goes out of sight, so a grant limited to some fields does not reach far enough.
+    private async Task CheckUnpublishGrantAsync(WriteScope write, Document document, AccessTarget target, CancellationToken cancellationToken)
+    {
+        var writable = await evaluator.WritableFieldsAsync(write.Operation, write.Type, ContentOperation.Unpublish, document.DocumentId, target with { EntryLocales = [document.Locale] }, cancellationToken);
+        if (write.Type.Fields.Any(field => !field.Hidden && !field.ReadOnly && !writable.Includes(field.Name)))
+        {
+            throw new ContentAccessDeniedException(write.Type.Name, CorePermissions.OperationName(ContentOperation.Unpublish));
+        }
+    }
+
     // A grant limited to some fields publishes only what stays within them. A field it can write but not read is refused
     // whatever it holds: otherwise it could save a guess and let this answer say whether it equals the published value.
     private async Task ThrowIfBeyondThePublishGrantAsync(WriteScope write, Guid id, AccessTarget target, ContentDocument draft, ContentDocument published, WritableFields writable, CancellationToken cancellationToken)
@@ -426,7 +437,7 @@ internal sealed partial class ContentService
     // A write takes any id without looking, so a warning or a refusal that told a missing target from a published one would
     // be a way to ask about any entry. What a principal could have chosen is therefore never confirmed to it (spec 4.5).
     // A self-reference is exempt: it is what is being published.
-    private async Task CheckReferencesAsync(WriteScope write, ContentDocument working, Guid id, AccessTarget entryTarget, ValidationContext context, List<PublishWarning> warnings, CancellationToken cancellationToken)
+    private async Task CheckReferencesAsync(WriteScope write, ContentDocument working, Guid id, AccessTarget entryTarget, ValidationContext context, List<PublishWarning> warnings, CancellationToken cancellationToken, bool tolerateTargetState = false)
     {
         var blocks = write.Type.UnpublishedReferences == UnpublishedReferencePolicy.Block;
         var locales = (await fallback.ChainAsync(write.Site, write.Locale, LocaleFallback.Chain, cancellationToken)).Locales;
@@ -452,7 +463,7 @@ internal sealed partial class ContentService
                     updatable ??= await evaluator.WritableFieldsAsync(write.Operation, write.Type, ContentOperation.Update, id, entryTarget, cancellationToken);
                     creatable ??= await evaluator.WritableFieldsAsync(write.Operation, write.Type, ContentOperation.Create, id, entryTarget, cancellationToken);
                     var chose = reference.IsShown && (updatable.Includes(reference.Field) || creatable.Includes(reference.Field));
-                    if (chose || !await IsPublishedTargetAsync(write, target, reference.Id, locales, cancellationToken))
+                    if (chose || (!tolerateTargetState && !await IsPublishedTargetAsync(write, target, reference.Id, locales, cancellationToken)))
                     {
                         Refuse();
                     }
@@ -472,7 +483,7 @@ internal sealed partial class ContentService
             }
 
             var state = await TargetStateAsync(write, target, reference.Id, locales, cancellationToken);
-            if (state == ReferenceTargetState.Published)
+            if (state == ReferenceTargetState.Published || tolerateTargetState)
             {
                 continue;
             }

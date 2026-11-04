@@ -99,6 +99,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddScoped<HookPipeline>();
         services.AddScoped<ValidationPipeline>();
         services.AddScoped<EntryStore>();
+        services.AddScoped<ScheduleStore>();
         services.AddScoped<ContentService>();
         services.TryAddScoped<IContentService>(serviceProvider => serviceProvider.GetRequiredService<ContentService>());
         services.TryAddScoped(typeof(IContentService<>), typeof(TypedContentService<>));
@@ -108,6 +109,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddSingleton<JobStore>();
         services.AddSingleton<JobExecutor>();
         services.AddSingleton<RecurringJobs>();
+        services.AddSingleton<JobFactory>();
         services.TryAddSingleton<IJobEventSink, BusJobEventSink>();
         services.TryAddSingleton<IJobScheduler, JobScheduler>();
         services.TryAddSingleton<IJobRunner, JobRunner>();
@@ -115,6 +117,9 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddHostedService<JobRunnerHostedService>();
 
         builder.Jobs.AddJob<TrashPurgeJob, TrashPurgePayload>(TrashPurgeJob.Type);
+        builder.Jobs.AddJob<ScheduledPublishJob, ScheduledPayload>(ScheduledPublishJob.Type);
+        builder.Jobs.AddJob<ScheduledUnpublishJob, ScheduledPayload>(ScheduledUnpublishJob.Type);
+        builder.Events.AddHandler<JobDeadLetteredEvent, ScheduleDeadLetterHandler>();
         services.AddHostedService<TrashPurgeScheduleService>();
 
         builder.Jobs.AddJob<JobRetentionJob, JobRetentionPayload>(JobRetentionJob.Type, JobRetentionJob.AttemptTimeout);

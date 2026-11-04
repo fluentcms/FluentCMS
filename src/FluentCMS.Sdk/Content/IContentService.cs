@@ -137,6 +137,35 @@ public interface IContentService
     /// <exception cref="ValidationException">The entry is not published in the locale.</exception>
     Task<ContentDocument> UnpublishAsync(string type, Guid id, string? locale = null, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Schedules a publish or an unpublish of one locale, or moves the one already scheduled for that action to the new time. It needs the permission, row rule,
+    /// locale and site that doing it now needs, and a publish is checked against the references the principal can see. When it runs, the job acts as the system
+    /// principal on behalf of this principal, and first checks again that this principal may still do it: one that has lost the role is refused, and nothing is published.
+    /// A publish publishes the draft version that was scheduled: if the draft has been saved since, the schedule is skipped and nothing is published, and it must be scheduled again. A schedule that has failed or been skipped is final too.
+    /// </summary>
+    /// <param name="type">The name of the content type.</param>
+    /// <param name="id">The id of the entry.</param>
+    /// <param name="request">What to do and when.</param>
+    /// <param name="locale">The locale, or <see langword="null"/> for that of the operation.</param>
+    /// <param name="cancellationToken">A token to cancel the work.</param>
+    /// <returns>The schedule.</returns>
+    /// <exception cref="ContentAccessDeniedException">The principal may not publish or unpublish entries of the type in the locale, or the entry changes a field its grant does not cover.</exception>
+    /// <exception cref="EntryNotFoundException">The entry has no row in the locale, is in the trash, or the principal may not reach it.</exception>
+    /// <exception cref="ValidationException">The time is not in the future, the time zone is unknown, the time does not exist in the zone, or a reference is refused by the type's policy.</exception>
+    Task<ScheduleInfo> ScheduleAsync(string type, Guid id, ScheduleRequest request, string? locale = null, CancellationToken cancellationToken = default);
+
+    /// <summary>Cancels the schedule of one action in one locale. The same permission is needed as for scheduling it.</summary>
+    /// <param name="type">The name of the content type.</param>
+    /// <param name="id">The id of the entry.</param>
+    /// <param name="action">The action whose schedule is cancelled.</param>
+    /// <param name="locale">The locale, or <see langword="null"/> for that of the operation.</param>
+    /// <param name="cancellationToken">A token to cancel the work.</param>
+    /// <returns>A task that completes when the schedule is cancelled.</returns>
+    /// <exception cref="ContentAccessDeniedException">The principal may not publish or unpublish entries of the type in the locale.</exception>
+    /// <exception cref="EntryNotFoundException">The entry has no row in the locale, is in the trash, or the principal may not reach it.</exception>
+    /// <exception cref="ValidationException">The action has no schedule in the locale.</exception>
+    Task CancelScheduleAsync(string type, Guid id, ScheduleAction action, string? locale = null, CancellationToken cancellationToken = default);
+
     /// <summary>Puts the published values back in the draft of one locale, as a new version. A field the principal may not write stays as the draft holds it, so the entry then stays modified.</summary>
     /// <param name="type">The name of the content type.</param>
     /// <param name="id">The id of the entry.</param>
@@ -309,6 +338,12 @@ public interface IContentService<T>
 
     /// <inheritdoc cref="IContentService.UnpublishAsync"/>
     Task<T> UnpublishAsync(Guid id, string? locale = null, CancellationToken cancellationToken = default);
+
+    /// <inheritdoc cref="IContentService.ScheduleAsync"/>
+    Task<ScheduleInfo> ScheduleAsync(Guid id, ScheduleRequest request, string? locale = null, CancellationToken cancellationToken = default);
+
+    /// <inheritdoc cref="IContentService.CancelScheduleAsync"/>
+    Task CancelScheduleAsync(Guid id, ScheduleAction action, string? locale = null, CancellationToken cancellationToken = default);
 
     /// <inheritdoc cref="IContentService.DiscardDraftAsync"/>
     Task<T> DiscardDraftAsync(Guid id, string? locale = null, int? expectedVersion = null, CancellationToken cancellationToken = default);

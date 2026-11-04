@@ -1,5 +1,6 @@
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Tests.Schema;
 using FluentCMS.Core.Tests.Schema.Samples;
 using FluentCMS.Media;
@@ -41,6 +42,27 @@ public sealed class TypedContentServiceTests : IDisposable
         PublishedOn = new DateTimeOffset(2026, 11, 2, 8, 0, 0, TimeSpan.Zero),
         VideoUrl = "https://example.com/video",
     };
+
+    [Fact]
+    public async Task ASchedulePutThroughTheTypedServiceIsTheOneTheDocumentServiceKeeps()
+    {
+        var tag = await AsAsync<Tag, Tag>(Editor, service => service.CreateAsync(new Tag { Name = "Net Core" }, Token));
+        var runAt = DateTime.UtcNow.AddDays(1);
+
+        var info = await AsAsync<Tag, ScheduleInfo>(Editor, service => service.ScheduleAsync(tag.Id, new ScheduleRequest(ScheduleAction.Publish, runAt), null, Token));
+
+        info.Action.ShouldBe(ScheduleAction.Publish);
+        info.Version.ShouldBe(1);
+        _database.Read(context => context.Set<ScheduleRow>().Single(row => row.DocumentId == tag.Id)).RunAtUtc.UtcDateTime.ShouldBe(runAt);
+
+        await AsAsync<Tag, object?>(Editor, async service =>
+        {
+            await service.CancelScheduleAsync(tag.Id, ScheduleAction.Publish, null, Token);
+            return null;
+        });
+
+        _database.Read(context => context.Set<ScheduleRow>().Single(row => row.DocumentId == tag.Id)).Status.ShouldBe(ScheduleRow.Cancelled);
+    }
 
     [Fact]
     public async Task TheSampleTypesRoundTrip()

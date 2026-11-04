@@ -13,12 +13,19 @@ internal enum EntryChangeKind
     DraftDiscarded,
     VersionRestored,
     Purged,
+    Scheduled,
+    ScheduleCancelled,
 }
 
 internal sealed record EntryChange(EntryChangeKind Kind, string Type, Guid Id, string Locale, int Version, OperationContext Operation)
 {
     // The id of the event the change becomes, so that the outbox row and the handlers of this process agree on it.
     public Guid EventId { get; } = Guid.CreateVersion7();
+
+    // What a schedule change adds: the action, and when it is due for a new or moved schedule.
+    public string? ScheduleAction { get; init; }
+
+    public DateTimeOffset? ScheduleAt { get; init; }
 }
 
 // The seam for the event bus: the service tells it what changed once its transaction has committed, one change

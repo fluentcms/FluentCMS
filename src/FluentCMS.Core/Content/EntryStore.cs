@@ -197,6 +197,7 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
         }
 
         var removed = await documents.ExecuteDeleteAsync(cancellationToken);
+        await PurgeSchedulesAsync(id, cancellationToken);
         await context.Versions.Where(version => version.DocumentId == id).ExecuteDeleteAsync(cancellationToken);
         await context.References.Where(reference => reference.SourceType == typeName && reference.SourceDocumentId == id).ExecuteDeleteAsync(cancellationToken);
         if (type.Localized)
@@ -206,6 +207,14 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
 
         await context.Rows(StorageNames.Table(type)).Where(row => EF.Property<Guid>(row, StorageNames.DocumentId) == id).ExecuteDeleteAsync(cancellationToken);
         return removed;
+    }
+
+    // A schedule goes with its entry, and its job if it has not started. One that has will find nothing to run.
+    private async Task PurgeSchedulesAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var jobs = context.Set<ScheduleRow>().Where(row => row.DocumentId == id && row.Status == ScheduleRow.Pending && row.JobId != null).Select(row => row.JobId);
+        await context.Set<Job>().Where(job => job.Status == JobClaimStatus.Pending && jobs.Contains(job.Id)).ExecuteDeleteAsync(cancellationToken);
+        await context.Set<ScheduleRow>().Where(row => row.DocumentId == id).ExecuteDeleteAsync(cancellationToken);
     }
 
     // Saves the draft of one locale: the document when it is new, the shared row, the locale row, the references and the
