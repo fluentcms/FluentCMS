@@ -664,6 +664,18 @@ public sealed class SettingsTests
     }
 
     [Fact]
+    public void ANestedPropertyNamedLikeASecretStopsTheHostToo()
+    {
+        foreach (var type in new[] { typeof(NamedSecretInAnObject), typeof(NamedSecretInAList) })
+        {
+            var exception = Should.Throw<FluentCmsConfigurationException>(() => new SettingsRegistry([type], TimeSpan.Zero));
+            exception.Code.ShouldBe("FCMS2801");
+            exception.Message.ShouldContain("Password");
+            exception.Message.ShouldContain("top level");
+        }
+    }
+
+    [Fact]
     public void OnlyTopLevelPropertiesAreSecretInTheSchema()
     {
         var descriptor = new SettingsRegistry([typeof(NestedSettings)], TimeSpan.Zero).Find("nested")!;
@@ -676,9 +688,8 @@ public sealed class SettingsTests
         properties["token"]!.AsObject().ContainsKey("default").ShouldBeFalse();
         schema.ToJsonString().ShouldNotContain("root-token-default-31");
 
-        var smtp = properties["smtp"]!["properties"]!["token"]!.AsObject();
-        smtp.ContainsKey("writeOnly").ShouldBeFalse();
-        properties["smtp"]!["default"]!["token"]!.GetValue<string>().ShouldBe("nested-token-default-52");
+        properties["smtp"]!["properties"]!["sender"]!.AsObject().ContainsKey("writeOnly").ShouldBeFalse();
+        properties["smtp"]!["default"]!["sender"]!.GetValue<string>().ShouldBe("nested-sender-default-52");
     }
 
     [Fact]
@@ -839,5 +850,80 @@ public sealed class SettingsTests
         cache.TryGet(site, "media", out _).ShouldBeTrue();
         cache.InvalidateSite(site);
         cache.TryGet(site, "media", out _).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task TheFirstSiteWriteKeepsTheSecretOfTheInstanceDefaultThatTheSiteWasShown()
+    {
+        using var database = new SettingsDatabase();
+        await database.SetDefaultAsync(new MediaSettings { ApiKey = Secret + "-default" });
+
+        var shown = await database.ServiceAsync((service, descriptor) => service.ResolveRedactedAsync(descriptor, SiteA, Token));
+        shown.Source.ShouldBe(SettingsSource.Default);
+        shown.SecretsSet.ShouldContain("apiKey");
+        shown.Version.ShouldBe(0);
+
+        await WriteDocumentAsync(database, "media", SiteA, shown.Json, shown.Version);
+
+        (await database.GetAsync(SiteA)).ApiKey.ShouldBe(Secret + "-default");
+        database.Rows().Count.ShouldBe(2);
+
+        // The site now has a row of its own, and its version is the one a second write names.
+        var again = await database.ServiceAsync((service, descriptor) => service.ResolveRedactedAsync(descriptor, SiteA, Token));
+        again.Source.ShouldBe(SettingsSource.Site);
+        again.Version.ShouldBe(1);
+        await WriteDocumentAsync(database, "media", SiteA, again.Json, again.Version);
+        database.Rows().Single(row => row.SiteId == SiteA.Value).Version.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task TheVersionOfTheRedactedResolveIsThatOfTheRowAWriteWouldReplace()
+    {
+        using var database = new SettingsDatabase();
+
+        Task<RedactedSetting> ResolveAsync(SiteId? site) => database.ServiceAsync((service, descriptor) => service.ResolveRedactedAsync(descriptor, site, Token));
+
+        (await ResolveAsync(null)).Version.ShouldBe(0);
+        await database.SetDefaultAsync(new MediaSettings());
+        await database.SetDefaultAsync(new MediaSettings { MaxUploadMb = 2 });
+
+        var instance = await ResolveAsync(null);
+        instance.Source.ShouldBe(SettingsSource.Default);
+        instance.Version.ShouldBe(2);
+        await WriteDocumentAsync(database, "media", null, instance.Json, instance.Version);
+
+        (await ResolveAsync(SiteB)).Version.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task AWriteThatLeavesOutASecretOfAnOlderShapeIsNotRefusedAndTheSecretGoesBackToItsDefault()
+    {
+        using var database = new SettingsDatabase();
+        database.AddRow(SiteA.Value, "media", """{"maxUploadMb":7,"apiKey":5,"passphrase":"far-too-long-to-pass","storageAccount":"kept-account"}""");
+
+        await WriteDocumentAsync(database, "media", SiteA, """{"maxUploadMb":8}""");
+
+        var site = await database.GetAsync(SiteA);
+        site.MaxUploadMb.ShouldBe(8);
+        site.ApiKey.ShouldBeNull();
+        site.Passphrase.ShouldBeNull();
+        site.StorageAccount.ShouldBe("kept-account");
+
+        database.Logs.All.ShouldContain("apiKey");
+        database.Logs.All.ShouldContain("passphrase");
+        database.Logs.All.ShouldNotContain("far-too-long-to-pass");
+        database.Logs.All.ShouldNotContain("kept-account");
+    }
+
+    [Fact]
+    public async Task AnErrorUnderASecretDictionaryNamesTheSecretAndNotItsKey()
+    {
+        using var database = new SettingsDatabase(cms => cms.Settings.Add<SecretDictionary>());
+
+        var errors = (await Should.ThrowAsync<ValidationException>(() => WriteDocumentAsync(database, "secret-dictionary", SiteA, """{"tokens":{"sk_live_ABC123":"x"}}"""))).Errors;
+
+        var error = errors.ShouldHaveSingleItem();
+        error.Path.ShouldBe("tokens");
+        error.Message.ShouldNotContain("sk_live_ABC123");
     }
 }

@@ -76,7 +76,7 @@ internal sealed class SettingsDescriptor
         }
         catch (JsonException exception)
         {
-            throw Fail(PathOf(exception), SettingsErrorCodes.InvalidValue, "The value is not valid for this settings type.");
+            throw Fail(Safe(PathOf(exception)), SettingsErrorCodes.InvalidValue, "The value is not valid for this settings type.");
         }
     }
 
@@ -101,7 +101,7 @@ internal sealed class SettingsDescriptor
         }
         catch (JsonException exception)
         {
-            throw Fail(PathOf(exception), SettingsErrorCodes.InvalidValue, "The value is not valid for this settings type.");
+            throw Fail(Safe(PathOf(exception)), SettingsErrorCodes.InvalidValue, "The value is not valid for this settings type.");
         }
 
         return value is null
@@ -153,14 +153,22 @@ internal sealed class SettingsDescriptor
             return value;
         }
 
-        // A message of an attribute may say what it found. For a secret it says nothing.
-        throw new ValidationException(errors.Select(error => SecretKeys.Contains(RootOf(error.Path)) ? error with { Message = "The value is not valid." } : error));
+        // A message of an attribute may say what it found, and a path may hold a key of a dictionary. For a secret neither does.
+        throw new ValidationException(errors.Select(error => SecretKeys.Contains(RootOf(error.Path))
+            ? error with { Path = RootOf(error.Path), Message = "The value is not valid." }
+            : error));
     }
 
-    // When a document is written without a secret key, the secret stays as it is in the row being replaced: a form of the
-    // admin never shows a secret, so a form that is sent back must not wipe it. A key that is sent, even as null, replaces it.
-    public string KeepSecrets(string json, string? stored)
+    // A path under a secret is the secret's own key: what lies below it may be as secret as the value.
+    private string Safe(string path) => SecretKeys.Contains(RootOf(path)) ? RootOf(path) : path;
+
+    // When a document is written without a secret key, the secret stays as it is in the stored document: a form of the admin
+    // never shows a secret, so a form that is sent back must not wipe it. A key that is sent, even as null, replaces it. A
+    // stored secret that the class would no longer accept, written under an older shape, is not kept: it goes back to its
+    // code default, and the key is returned so that the caller can say so. The value is never looked at by the caller.
+    public string KeepSecrets(string json, string? stored, out IReadOnlyList<string> dropped)
     {
+        dropped = [];
         if (SecretKeys.Count == 0 || stored is null)
         {
             return json;
@@ -173,16 +181,41 @@ internal sealed class SettingsDescriptor
                 return json;
             }
 
-            foreach (var key in SecretKeys.Where(key => !target.ContainsKey(key) && source[key] is not null))
+            List<string> lost = [];
+            foreach (var key in SecretKeys.Order(StringComparer.Ordinal).Where(key => !target.ContainsKey(key) && source[key] is not null))
             {
-                target[key] = source[key]!.DeepClone();
+                if (StillAcceptable(key, source[key]!))
+                {
+                    target[key] = source[key]!.DeepClone();
+                }
+                else
+                {
+                    lost.Add(key);
+                }
             }
 
+            dropped = lost;
             return target.ToJsonString();
         }
         catch (Exception exception) when (exception is JsonException or ArgumentException)
         {
             return json;
+        }
+    }
+
+    // Whether the value of a secret key reads into the class and holds its validation attributes, by itself: a problem of
+    // another key does not count against it.
+    private bool StillAcceptable(string key, JsonNode value)
+    {
+        var probe = new JsonObject { [key] = value.DeepClone() };
+        try
+        {
+            Canonicalize(probe.ToJsonString());
+            return true;
+        }
+        catch (ValidationException exception)
+        {
+            return !exception.Errors.Any(error => RootOf(error.Path) == key);
         }
     }
 
@@ -239,7 +272,14 @@ internal sealed class SettingsDescriptor
             {
                 throw new FluentCmsConfigurationException(
                     SettingsErrorCodes.InvalidRegistration,
-                    $"[SettingsSecret] is on '{here}', which is not a property of the settings class itself; only those can be secret. Mark the property of the class that holds it.");
+                    $"[SettingsSecret] is on '{here}', which is not a property of the settings class itself; only those can be secret. Move the secret to the top level of the settings class.");
+            }
+
+            if (SecretScrubber.NamesSecret(property.Name))
+            {
+                throw new FluentCmsConfigurationException(
+                    SettingsErrorCodes.InvalidRegistration,
+                    $"'{here}' is named like a secret but is not a property of the settings class itself, and only those are kept out of reads, events and schemas. Move it to the top level of the settings class, or give it a name that does not suggest a secret.");
             }
 
             RejectNestedSecrets(property.PropertyType, here, seen);

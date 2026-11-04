@@ -86,12 +86,11 @@ internal sealed class Limits
     public int Port { get; set; } = 5;
 }
 
-// A property below the top level is not a secret, whatever its name, so its default is shown like any other.
 internal sealed class Smtp
 {
     public string Host { get; set; } = "smtp";
 
-    public string? Token { get; set; } = "nested-token-default-52";
+    public string? Sender { get; set; } = "nested-sender-default-52";
 }
 
 [Settings("nested")]
@@ -253,4 +252,30 @@ internal sealed class ChangedHandler(Seen seen) : FluentCMS.Events.IEventHandler
 {
     public ValueTask HandleAsync(FluentCMS.Events.SettingsChangedEvent message, CancellationToken cancellationToken) =>
         seen.HeardAsync("settings", message, null, cancellationToken);
+}
+
+internal sealed class Credentials
+{
+    public string? Password { get; set; }
+}
+
+[Settings("bad-named")]
+internal sealed class NamedSecretInAnObject
+{
+    public Credentials Credentials { get; set; } = new();
+}
+
+[Settings("bad-named-listed")]
+internal sealed class NamedSecretInAList
+{
+    public List<Credentials> Many { get; set; } = [];
+}
+
+[Settings("secret-dictionary")]
+internal sealed class SecretDictionary
+{
+    [SettingsSecret]
+    public Dictionary<string, int> Tokens { get; set; } = [];
+
+    public string Name { get; set; } = "n";
 }

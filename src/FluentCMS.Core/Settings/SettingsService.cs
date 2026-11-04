@@ -72,17 +72,18 @@ internal sealed class SettingsService(
     }
 
     // What the Management endpoint shows: the resolved document without its secret keys, and the secret keys that hold a value in
-    // it. The version is that of the row the document came from, which is the row of the site only when the source is the site;
-    // a write to a site that has no row of its own names version 0.
+    // it. The version is that of the row a write to this site (or to the instance defaults) would replace, so that it can go
+    // back as the version a write names: 0 when that row does not exist, even if the document came from a level below it.
     public async Task<RedactedSetting> ResolveRedactedAsync(SettingsDescriptor descriptor, SiteId? site, CancellationToken cancellationToken)
     {
         var resolved = await ResolveAsync(descriptor, site, cancellationToken);
         var (json, secretsSet) = descriptor.Redact(resolved.Json);
-        return new RedactedSetting(json, resolved.Source, resolved.Version, resolved.Source == SettingsSource.Code ? [] : secretsSet);
+        var target = site is null ? SettingsSource.Default : SettingsSource.Site;
+        return new RedactedSetting(json, resolved.Source, resolved.Source == target ? resolved.Version : 0, resolved.Source == SettingsSource.Code ? [] : secretsSet);
     }
 
     // Replaces a document. A null site is the instance defaults. The version is the one the caller read (0 for no row), or
-    // null to replace whatever is there. A secret key that the document leaves out keeps the value of the row it replaces.
+    // null to replace whatever is there. A secret key that the document leaves out keeps the stored value: that of the row it replaces, or for a site with none, of the instance default.
     public async Task WriteAsync(SettingsDescriptor descriptor, SiteId? site, string json, int? expectedVersion, CancellationToken cancellationToken)
     {
         var operation = await AuthorizeAsync(descriptor, site, cancellationToken);
@@ -171,7 +172,19 @@ internal sealed class SettingsService(
                 throw Conflict(descriptor);
             }
 
-            var canonical = descriptor.Canonicalize(descriptor.KeepSecrets(json, current?.Json));
+            // A site that has no row yet was shown the instance default, so the secrets it left out are the ones it was shown.
+            var stored = current?.Json;
+            if (stored is null && site is not null)
+            {
+                stored = await Rows(db, descriptor.Area, null).AsNoTracking().Select(row => row.Json).FirstOrDefaultAsync(cancellationToken);
+            }
+
+            var canonical = descriptor.Canonicalize(descriptor.KeepSecrets(json, stored, out var dropped));
+            foreach (var key in dropped)
+            {
+                SettingsLog.SecretDropped(logger, descriptor.Area, key, ScopeName(site ?? SettingsCache.InstanceScope));
+            }
+
             var now = time.GetUtcNow();
             if (current is not null)
             {
