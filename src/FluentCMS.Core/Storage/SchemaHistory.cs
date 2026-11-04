@@ -1,3 +1,5 @@
+using System.Data;
+using System.Data.Common;
 using System.Reflection;
 using System.Text.Json;
 using FluentCMS.Core.Schema;
@@ -9,37 +11,33 @@ using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Core.Storage;
 
-// Reads and writes cms_schema_history. The newest row is the schema the content tables were last brought up to.
+// Reads and writes cms_schema_history. The row with the highest id is the schema the content tables were last brought up to.
 internal sealed class SchemaHistory(IServiceScopeFactory scopes, TimeProvider time, ILogger logger)
 {
     private const int VersionLength = 64;
+    private const int Attempts = 4;
 
     private static readonly string Version = ResolveVersion();
 
-    // Adds a row unless the newest one already has the hash of the schema.
+    // Adds a row unless the newest one already has the hash of the schema. The read and the insert are one serializable
+    // transaction, so nodes that start together add one row between them; where a database settles that by failing one
+    // of them (a deadlock, a serialization failure), the loser reads again and finds the row.
     public async Task RecordAsync(SchemaModel schema, CancellationToken cancellationToken)
     {
         var snapshot = SchemaSnapshot.Of(schema);
 
-        await using var scope = scopes.CreateAsyncScope();
-        var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
-
-        var last = await NewestAsync(context, cancellationToken);
-        if (last?.Hash == snapshot.Hash)
+        for (var attempt = 1; ; attempt++)
         {
-            return;
+            try
+            {
+                await TryRecordAsync(snapshot, cancellationToken);
+                return;
+            }
+            catch (Exception exception) when (attempt < Attempts && exception is DbException or DbUpdateException)
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(25 * attempt), cancellationToken);
+            }
         }
-
-        context.Set<SchemaHistoryRow>().Add(new SchemaHistoryRow
-        {
-            Hash = snapshot.Hash,
-            Snapshot = snapshot.Json,
-            AppliedAt = time.GetUtcNow(),
-            FluentcmsVersion = Version,
-        });
-        await context.SaveChangesAsync(cancellationToken);
-
-        SchemaHistoryLog.Recorded(logger, snapshot.Hash, last is null ? "first schema" : Describe(last.Snapshot, snapshot.Json));
     }
 
     // Logs what differs between the code and the newest row. It never fails startup: a schema that drifted is the
@@ -62,11 +60,40 @@ internal sealed class SchemaHistory(IServiceScopeFactory scopes, TimeProvider ti
         }
     }
 
+    private async Task TryRecordAsync(SchemaSnapshot snapshot, CancellationToken cancellationToken)
+    {
+        await using var scope = scopes.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+
+        string changes;
+        await using (var transaction = await context.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken))
+        {
+            var last = await NewestAsync(context, cancellationToken);
+            if (last?.Hash == snapshot.Hash)
+            {
+                return;
+            }
+
+            context.Set<SchemaHistoryRow>().Add(new SchemaHistoryRow
+            {
+                Hash = snapshot.Hash,
+                Snapshot = snapshot.Json,
+                AppliedAt = time.GetUtcNow(),
+                FluentcmsVersion = Version,
+            });
+            await context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            changes = last is null ? "first schema" : Describe(last.Snapshot, snapshot.Json);
+        }
+
+        SchemaHistoryLog.Recorded(logger, snapshot.Hash, changes);
+    }
+
     private static Task<SchemaHistoryRow?> NewestAsync(SystemDbContext context, CancellationToken cancellationToken) =>
         context.Set<SchemaHistoryRow>()
             .AsNoTracking()
-            .OrderByDescending(row => row.AppliedAt)
-            .ThenByDescending(row => row.Id)
+            .OrderByDescending(row => row.Id)
             .FirstOrDefaultAsync(cancellationToken);
 
     private static string Describe(string before, string after)
@@ -78,7 +105,7 @@ internal sealed class SchemaHistory(IServiceScopeFactory scopes, TimeProvider ti
         }
         catch (JsonException)
         {
-            return "the stored snapshot cannot be read";
+            return "details are unavailable because the stored snapshot cannot be read";
         }
     }
 

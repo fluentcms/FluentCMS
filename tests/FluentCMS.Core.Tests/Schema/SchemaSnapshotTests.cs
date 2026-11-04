@@ -1,4 +1,5 @@
 using FluentCMS.Core.Schema;
+using System.Text.Json;
 using FluentCMS.Schema;
 using Shouldly;
 using Xunit;
@@ -136,5 +137,59 @@ public class SchemaSnapshotTests
         var schema = SampleSchema.FromClasses().Build();
 
         Diff(schema, SampleSchema.FromClasses().Build()).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void AComponentAndABlockThatShareANameAreComparedApart()
+    {
+        var before = SampleSchema.NewBuilder()
+            .AddComponent("seo", type => type.Field("title", "text"))
+            .AddBlock("seo", type => type.Field("heading", "text"))
+            .Build();
+        var after = SampleSchema.NewBuilder()
+            .AddComponent("seo", type => type.Field("title", "text", field => field.Required()))
+            .AddBlock("seo", type => type.Field("heading", "text", field => field.Length(null, 10)))
+            .Build();
+
+        Diff(before, after).ShouldBe(["field 'block seo.heading' changed (maxLength)", "field 'component seo.title' changed (required)"], ignoreOrder: true);
+    }
+
+    [Fact]
+    public void ABlockThatIsDroppedWhileAComponentOfTheSameNameStaysIsRemoved()
+    {
+        var before = SampleSchema.NewBuilder()
+            .AddComponent("seo", type => type.Field("title", "text"))
+            .AddBlock("seo", type => type.Field("heading", "text"))
+            .Build();
+        var after = SampleSchema.NewBuilder().AddComponent("seo", type => type.Field("title", "text")).Build();
+
+        Diff(before, after).ShouldBe(["block 'seo' removed"]);
+    }
+
+    [Theory]
+    [InlineData("[]")]
+    [InlineData("5")]
+    [InlineData("{\"collections\":5}")]
+    [InlineData("{\"collections\":[5]}")]
+    [InlineData("{\"collections\":[{\"fields\":[]}]}")]
+    [InlineData("{\"collections\":[{\"name\":7}]}")]
+    [InlineData("{\"collections\":[{\"name\":\"article\",\"fields\":{}}]}")]
+    [InlineData("{\"collections\":[{\"name\":\"article\",\"fields\":[{\"type\":\"text\"}]}]}")]
+    [InlineData("not json")]
+    public void AStoredSnapshotOfAnotherShapeFailsAsJsonAndNothingElse(string stored)
+    {
+        var current = SchemaSnapshot.Of(Article(type => type.Field("title", "text"))).Json;
+
+        Should.Throw<JsonException>(() => SchemaSnapshotDiff.Compare(stored, current));
+        Should.Throw<JsonException>(() => SchemaSnapshotDiff.Compare(current, stored));
+    }
+
+    [Fact]
+    public void FormerNamesOfTheWrongShapeFailAsJson()
+    {
+        var current = SchemaSnapshot.Of(Article(type => type.Field("title", "text"))).Json;
+        const string stored = "{\"collections\":[{\"name\":\"article\",\"fields\":[{\"name\":\"b\",\"formerNames\":\"c\"}]}]}";
+
+        Should.Throw<JsonException>(() => SchemaSnapshotDiff.Compare(current, stored));
     }
 }

@@ -332,13 +332,8 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
     {
         entity.ToTable(StorageNames.SchemaHistory);
         MapColumnNames(entity);
-        entity.Property(row => row.Id).HasValueGenerator<GuidV7ValueGenerator>();
         entity.Property(row => row.Hash).HasMaxLength(HashLength);
         entity.Property(row => row.FluentcmsVersion).HasMaxLength(VersionLength).HasColumnName("fluentcms_version");
-
-        // For the lookup of the newest row.
-        entity.HasIndex(row => row.AppliedAt)
-            .HasDatabaseName("ix_cms_schema_history_applied_at");
     }
 
     private static void MapColumnNames<T>(EntityTypeBuilder<T> entity)

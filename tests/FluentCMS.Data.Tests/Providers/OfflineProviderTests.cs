@@ -149,7 +149,7 @@ public class OfflineProviderTests
         using var scope = services.CreateScope();
 
         SchemaHistoryColumns(scope.ServiceProvider.GetRequiredService<SystemDbContext>()).ShouldBe(
-            ["id:uuid", "hash:character varying(64)", "snapshot:text", "applied_at:timestamp with time zone", "fluentcms_version:character varying(64)"], ignoreOrder: true);
+            ["id:bigint", "hash:character varying(64)", "snapshot:text", "applied_at:timestamp with time zone", "fluentcms_version:character varying(64)"], ignoreOrder: true);
     }
 
     [Fact]
@@ -159,7 +159,7 @@ public class OfflineProviderTests
         using var scope = services.CreateScope();
 
         SchemaHistoryColumns(scope.ServiceProvider.GetRequiredService<SystemDbContext>()).ShouldBe(
-            ["id:uniqueidentifier", "hash:nvarchar(64)", "snapshot:nvarchar(max)", "applied_at:datetimeoffset", "fluentcms_version:nvarchar(64)"], ignoreOrder: true);
+            ["id:bigint", "hash:nvarchar(64)", "snapshot:nvarchar(max)", "applied_at:datetimeoffset", "fluentcms_version:nvarchar(64)"], ignoreOrder: true);
     }
 
     [Fact]

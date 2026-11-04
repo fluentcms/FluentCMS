@@ -52,11 +52,7 @@ public sealed class MigrationRunner(
             if (options.SchemaSync == SchemaSyncMode.Auto)
             {
                 var report = await SyncAsync(schema, cancellationToken);
-                if (report.NotApplied.Count == 0)
-                {
-                    await _history.RecordAsync(schema, cancellationToken);
-                }
-                else
+                if (report.NotApplied.Count > 0)
                 {
                     await _history.CheckDriftAsync(schema, cancellationToken);
                 }
@@ -200,6 +196,11 @@ public sealed class MigrationRunner(
         foreach (var change in diff.NotApplied)
         {
             MigrationLog.SchemaSyncNotApplied(logger, change);
+        }
+
+        if (diff.NotApplied.Count == 0)
+        {
+            await _history.RecordAsync(target, cancellationToken);
         }
 
         return new SchemaSyncReport(applied, diff.NotApplied);

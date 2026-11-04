@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FluentCMS.Data.Sqlite.Migrations
 {
     [DbContext(typeof(SystemDbContext))]
-    [Migration("20261104132130_AddSchemaHistory")]
+    [Migration("20261104135431_AddSchemaHistory")]
     partial class AddSchemaHistory
     {
         /// <inheritdoc />
@@ -915,9 +915,9 @@ namespace FluentCMS.Data.Sqlite.Migrations
 
             modelBuilder.Entity("FluentCMS.Core.Storage.Entities.SchemaHistoryRow", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<long>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT")
+                        .HasColumnType("INTEGER")
                         .HasColumnName("id");
 
                     b.Property<long>("AppliedAt")
@@ -942,9 +942,6 @@ namespace FluentCMS.Data.Sqlite.Migrations
                         .HasColumnName("snapshot");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("AppliedAt")
-                        .HasDatabaseName("ix_cms_schema_history_applied_at");
 
                     b.ToTable("cms_schema_history", (string)null);
                 });

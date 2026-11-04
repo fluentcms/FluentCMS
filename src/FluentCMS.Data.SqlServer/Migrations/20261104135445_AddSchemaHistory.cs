@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace FluentCMS.Data.PostgreSql.Migrations
+namespace FluentCMS.Data.SqlServer.Migrations
 {
     /// <inheritdoc />
     public partial class AddSchemaHistory : Migration
@@ -16,21 +16,17 @@ namespace FluentCMS.Data.PostgreSql.Migrations
                 name: "cms_schema_history",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "uuid", nullable: false),
-                    hash = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
-                    snapshot = table.Column<string>(type: "text", nullable: false),
-                    applied_at = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    fluentcms_version = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false)
+                    id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    hash = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
+                    snapshot = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    applied_at = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
+                    fluentcms_version = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_cms_schema_history", x => x.id);
                 });
-
-            migrationBuilder.CreateIndex(
-                name: "ix_cms_schema_history_applied_at",
-                table: "cms_schema_history",
-                column: "applied_at");
         }
 
         /// <inheritdoc />

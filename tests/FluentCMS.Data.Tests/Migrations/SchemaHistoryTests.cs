@@ -3,6 +3,7 @@ using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
+using FluentCMS.Core.Tests.Schema;
 using FluentCMS.Data.Tests.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -31,7 +32,7 @@ public sealed class SchemaHistoryTests : IDisposable
     {
         using var scope = host.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
-        return [.. (await context.Set<SchemaHistoryRow>().AsNoTracking().ToListAsync(Token)).OrderBy(row => row.AppliedAt)];
+        return [.. (await context.Set<SchemaHistoryRow>().AsNoTracking().ToListAsync(Token)).OrderBy(row => row.Id)];
     }
 
     private static async Task StartAndStopAsync(IHost host)
@@ -167,6 +168,106 @@ public sealed class SchemaHistoryTests : IDisposable
         logs.Warnings.ShouldHaveSingleItem().ShouldContain("the stored snapshot cannot be read");
     }
 
+    [Theory]
+    [InlineData("[]")]
+    [InlineData("5")]
+    [InlineData("{\"collections\":5}")]
+    [InlineData("{\"collections\":[{\"fields\":[]}]}")]
+    public async Task AStoredSnapshotOfAnotherShapeDoesNotStopStartup(string stored)
+    {
+        var migrations = GeneratedMigrations.CompileFirst(ArticleSchemas.Titled);
+        await StartAndStopAsync(_database.CreateHost(ArticleSchemas.Titled, Production, migrations));
+        _database.Execute($"update cms_schema_history set hash = 'x', snapshot = '{stored}'");
+        var logs = new CapturedLogs();
+
+        using var host = _database.CreateHost(ArticleSchemas.Titled, Production, migrations, NoMigrationOnStartup, Capture(logs));
+        await host.StartAsync(Token);
+
+        logs.Warnings.ShouldHaveSingleItem().ShouldContain("the stored snapshot cannot be read");
+    }
+
+    [Fact]
+    public async Task AStoredSnapshotOfAnotherShapeDoesNotStopRecording()
+    {
+        var migrations = GeneratedMigrations.CompileFirst(ArticleSchemas.Titled);
+        await StartAndStopAsync(_database.CreateHost(ArticleSchemas.Titled, Production, migrations));
+        _database.Execute("update cms_schema_history set hash = 'x', snapshot = '[]'");
+
+        using var host = _database.CreateHost(ArticleSchemas.Titled, Production, migrations);
+        await host.StartAsync(Token);
+
+        (await RowsAsync(host)).Last().Hash.ShouldBe(SchemaSnapshot.Of(ArticleSchemas.Titled).Hash);
+    }
+
+    [Fact]
+    public async Task NodesThatMigrateTogetherAddOneRow()
+    {
+        var migrations = GeneratedMigrations.CompileFirst(ArticleSchemas.Titled);
+        await StartAndStopAsync(_database.CreateHost(ArticleSchemas.Titled, Production, migrations));
+        _database.Execute("delete from cms_schema_history");
+
+        var hosts = Enumerable.Range(0, 4).Select(_ => _database.CreateHost(ArticleSchemas.Titled, Production, migrations, NoMigrationOnStartup)).ToList();
+        try
+        {
+            await Task.WhenAll(hosts.Select(host => Task.Run(() => host.Services.GetRequiredService<MigrationRunner>().MigrateAsync(Token))));
+
+            (await RowsAsync(hosts[0])).Count.ShouldBe(1);
+        }
+        finally
+        {
+            hosts.ForEach(host => host.Dispose());
+        }
+    }
+
+    [Fact]
+    public async Task ARuntimeSyncIsRecorded()
+    {
+        using var host = _database.CreateHost(ArticleSchemas.Titled, Environments.Development);
+        await host.StartAsync(Token);
+
+        var report = await host.Services.GetRequiredService<MigrationRunner>().SyncContentSchemaAsync(ArticleSchemas.WithSubtitle, Token);
+
+        report.NotApplied.ShouldBeEmpty();
+        (await RowsAsync(host)).Select(row => row.Hash).ShouldBe([SchemaSnapshot.Of(ArticleSchemas.Titled).Hash, SchemaSnapshot.Of(ArticleSchemas.WithSubtitle).Hash]);
+    }
+
+    [Fact]
+    public async Task TheNewestRowIsTheLastAddedWhateverTheClocksSay()
+    {
+        var migrations = GeneratedMigrations.CompileFirst(ArticleSchemas.Titled);
+        var clock = new ManualClock(new DateTimeOffset(2026, 11, 4, 12, 0, 0, TimeSpan.Zero));
+        Action<IServiceCollection> time = services => services.AddSingleton<TimeProvider>(clock);
+        await StartAndStopAsync(_database.CreateHost(ArticleSchemas.Titled, Production, migrations, services: time));
+
+        clock.Now = clock.Now.AddMinutes(-5);
+        await StartAndStopAsync(_database.CreateHost(ArticleSchemas.TitledAndRequired, Production, migrations, services: time));
+        var logs = new CapturedLogs();
+
+        using var again = _database.CreateHost(ArticleSchemas.TitledAndRequired, Production, migrations, NoMigrationOnStartup, services => Capture(logs)(services));
+        await again.StartAsync(Token);
+
+        (await RowsAsync(again)).Count.ShouldBe(2);
+        logs.Warnings.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task TheDriftWarningCarriesNoValues()
+    {
+        var withDefault = SampleSchema.NewBuilder()
+            .AddCollection("article", type => type.Field("title", "text", field => field.DefaultValue("secret-default")))
+            .Build();
+        var migrations = GeneratedMigrations.CompileFirst(ArticleSchemas.Titled);
+        await StartAndStopAsync(_database.CreateHost(ArticleSchemas.Titled, Production, migrations));
+        var logs = new CapturedLogs();
+
+        using var host = _database.CreateHost(withDefault, Production, migrations, NoMigrationOnStartup, Capture(logs));
+        await host.StartAsync(Token);
+
+        var warning = logs.Warnings.ShouldHaveSingleItem();
+        warning.ShouldContain("field 'article.title' changed (defaultValue)");
+        warning.ShouldNotContain("secret-default");
+    }
+
     [Fact]
     public async Task AnEmptyHistoryIsReportedAsInformation()
     {
@@ -180,6 +281,13 @@ public sealed class SchemaHistoryTests : IDisposable
 
         logs.Warnings.ShouldBeEmpty();
         logs.Informations.ShouldContain(message => message.Contains("schema history is empty", StringComparison.Ordinal));
+    }
+
+    private sealed class ManualClock(DateTimeOffset now) : TimeProvider
+    {
+        public DateTimeOffset Now { get; set; } = now;
+
+        public override DateTimeOffset GetUtcNow() => Now;
     }
 
     private sealed class CapturedLogs : ILoggerProvider

@@ -3,10 +3,19 @@ using System.Text.Json;
 namespace FluentCMS.Core.Schema;
 
 // Compares two snapshots in the form SchemaJsonWriter writes. A field that is new and lists the name of a field that is
-// gone in its formerNames is a rename, which is why the snapshot keeps formerNames.
+// gone in its formerNames is a rename, which is why the snapshot keeps formerNames. A snapshot read from a database can
+// be anything, so a shape other than the writer's throws JsonException and nothing else.
 internal static class SchemaSnapshotDiff
 {
-    private static readonly string[] Groups = ["collections", "singletons", "components", "blocks"];
+    public const string ContentFamily = "type";
+
+    private static readonly (string Group, string Family)[] Groups =
+    [
+        ("collections", ContentFamily),
+        ("singletons", ContentFamily),
+        ("components", "component"),
+        ("blocks", "block"),
+    ];
 
     public static IReadOnlyList<SchemaChange> Compare(string before, string after)
     {
@@ -17,44 +26,49 @@ internal static class SchemaSnapshotDiff
         var newTypes = TypesOf(current.RootElement);
         var changes = new List<SchemaChange>();
 
-        changes.AddRange(oldTypes.Keys.Where(name => !newTypes.ContainsKey(name)).Select(name => new SchemaChange(SchemaChangeKind.TypeRemoved, name)));
+        changes.AddRange(oldTypes.Keys.Where(key => !newTypes.ContainsKey(key)).Select(key => new SchemaChange(SchemaChangeKind.TypeRemoved, key.Family, key.Name)));
 
-        foreach (var (name, type) in newTypes)
+        foreach (var (key, type) in newTypes)
         {
-            if (oldTypes.TryGetValue(name, out var old))
+            if (oldTypes.TryGetValue(key, out var old))
             {
-                CompareType(name, old, type, changes);
+                CompareType(key, old, type, changes);
             }
             else
             {
-                changes.Add(new SchemaChange(SchemaChangeKind.TypeAdded, name));
+                changes.Add(new SchemaChange(SchemaChangeKind.TypeAdded, key.Family, key.Name));
             }
         }
 
         return changes;
     }
 
-    private static SortedDictionary<string, (string Group, JsonElement Element)> TypesOf(JsonElement root)
+    private static SortedDictionary<(string Family, string Name), (string Group, JsonElement Element)> TypesOf(JsonElement root)
     {
-        var types = new SortedDictionary<string, (string Group, JsonElement Element)>(StringComparer.Ordinal);
-        foreach (var group in Groups)
+        Require(root, JsonValueKind.Object);
+
+        var types = new SortedDictionary<(string Family, string Name), (string Group, JsonElement Element)>();
+        foreach (var (group, family) in Groups)
         {
             if (!root.TryGetProperty(group, out var list))
             {
                 continue;
             }
 
+            Require(list, JsonValueKind.Array);
             foreach (var type in list.EnumerateArray())
             {
-                types[type.GetProperty("name").GetString()!] = (group, type);
+                Require(type, JsonValueKind.Object);
+                types[(family, NameOf(type))] = (group, type);
             }
         }
 
         return types;
     }
 
-    private static void CompareType(string name, (string Group, JsonElement Element) oldType, (string Group, JsonElement Element) newType, List<SchemaChange> changes)
+    private static void CompareType((string Family, string Name) key, (string Group, JsonElement Element) oldType, (string Group, JsonElement Element) newType, List<SchemaChange> changes)
     {
+        var (family, name) = key;
         var (old, current) = (oldType.Element, newType.Element);
         var typeChanges = Differences(old, current, "name", "fields");
         if (oldType.Group != newType.Group)
@@ -64,7 +78,7 @@ internal static class SchemaSnapshotDiff
 
         if (typeChanges.Count > 0)
         {
-            changes.Add(new SchemaChange(SchemaChangeKind.TypeChanged, name, Properties: typeChanges));
+            changes.Add(new SchemaChange(SchemaChangeKind.TypeChanged, family, name, Properties: typeChanges));
         }
 
         var oldFields = FieldsOf(old);
@@ -78,7 +92,7 @@ internal static class SchemaSnapshotDiff
                 var fieldChanges = Differences(oldField, element, "name");
                 if (fieldChanges.Count > 0)
                 {
-                    changes.Add(new SchemaChange(SchemaChangeKind.FieldChanged, name, field, Properties: fieldChanges));
+                    changes.Add(new SchemaChange(SchemaChangeKind.FieldChanged, family, name, field, Properties: fieldChanges));
                 }
 
                 continue;
@@ -87,29 +101,29 @@ internal static class SchemaSnapshotDiff
             var former = FormerNamesOf(element).FirstOrDefault(candidate => oldFields.ContainsKey(candidate) && !newFields.ContainsKey(candidate) && !renamedFrom.Contains(candidate));
             if (former is null)
             {
-                changes.Add(new SchemaChange(SchemaChangeKind.FieldAdded, name, field));
+                changes.Add(new SchemaChange(SchemaChangeKind.FieldAdded, family, name, field));
                 continue;
             }
 
             renamedFrom.Add(former);
-            changes.Add(new SchemaChange(SchemaChangeKind.FieldRenamed, name, field, former));
+            changes.Add(new SchemaChange(SchemaChangeKind.FieldRenamed, family, name, field, former));
 
             var renamedChanges = Differences(oldFields[former], element, "name", "formerNames");
             if (renamedChanges.Count > 0)
             {
-                changes.Add(new SchemaChange(SchemaChangeKind.FieldChanged, name, field, Properties: renamedChanges));
+                changes.Add(new SchemaChange(SchemaChangeKind.FieldChanged, family, name, field, Properties: renamedChanges));
             }
         }
 
         foreach (var field in oldFields.Keys.Where(field => !newFields.ContainsKey(field) && !renamedFrom.Contains(field)))
         {
-            changes.Add(new SchemaChange(SchemaChangeKind.FieldRemoved, name, field));
+            changes.Add(new SchemaChange(SchemaChangeKind.FieldRemoved, family, name, field));
         }
 
         var kept = oldFields.Keys.Where(newFields.ContainsKey).ToList();
         if (!kept.SequenceEqual(newFields.Keys.Where(oldFields.ContainsKey), StringComparer.Ordinal))
         {
-            changes.Add(new SchemaChange(SchemaChangeKind.FieldsReordered, name));
+            changes.Add(new SchemaChange(SchemaChangeKind.FieldsReordered, family, name));
         }
     }
 
@@ -119,17 +133,27 @@ internal static class SchemaSnapshotDiff
         var fields = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
         if (type.TryGetProperty("fields", out var list))
         {
+            Require(list, JsonValueKind.Array);
             foreach (var field in list.EnumerateArray())
             {
-                fields[field.GetProperty("name").GetString()!] = field;
+                Require(field, JsonValueKind.Object);
+                fields[NameOf(field)] = field;
             }
         }
 
         return fields;
     }
 
-    private static IEnumerable<string> FormerNamesOf(JsonElement field) =>
-        field.TryGetProperty("formerNames", out var names) ? names.EnumerateArray().Select(name => name.GetString()!) : [];
+    private static IEnumerable<string> FormerNamesOf(JsonElement field)
+    {
+        if (!field.TryGetProperty("formerNames", out var names))
+        {
+            return [];
+        }
+
+        Require(names, JsonValueKind.Array);
+        return [.. names.EnumerateArray().Select(name => name.ValueKind == JsonValueKind.String ? name.GetString()! : throw Unexpected())];
+    }
 
     // The keys whose value differs or that only one side has, sorted.
     private static List<string> Differences(JsonElement old, JsonElement current, params string[] ignored)
@@ -144,4 +168,17 @@ internal static class SchemaSnapshotDiff
 
     private static string? Raw(JsonElement element, string key) =>
         element.TryGetProperty(key, out var value) ? value.GetRawText() : null;
+
+    private static string NameOf(JsonElement element) =>
+        element.TryGetProperty("name", out var name) && name.ValueKind == JsonValueKind.String ? name.GetString()! : throw Unexpected();
+
+    private static void Require(JsonElement element, JsonValueKind kind)
+    {
+        if (element.ValueKind != kind)
+        {
+            throw Unexpected();
+        }
+    }
+
+    private static JsonException Unexpected() => new("The snapshot does not have the shape of a schema.");
 }
