@@ -1,11 +1,14 @@
 using System.Reflection;
 using FluentCMS.Core.Storage;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace FluentCMS.Data.Sqlite;
 
 public sealed class SqliteDataProvider(string connectionString) : IDataProvider
 {
+    private static readonly IInterceptor[] WriteInterceptors = [new SqliteWriteInterceptor(), new SqliteCommandTransactions()];
+
     public string Name => "SQLite";
 
     public bool MigrateOnStartup => true;
@@ -23,10 +26,12 @@ public sealed class SqliteDataProvider(string connectionString) : IDataProvider
     public void ConfigureContentMigrations(DbContextOptionsBuilder options, Assembly migrationsAssembly) =>
         options.UseSqlite(connectionString, sqlite => sqlite
             .MigrationsAssembly(migrationsAssembly)
-            .MigrationsHistoryTable(CmsDbContext.HistoryTable));
+            .MigrationsHistoryTable(CmsDbContext.HistoryTable))
+            .AddInterceptors(WriteInterceptors);
 
     public void ConfigureSystemMigrations(DbContextOptionsBuilder options) =>
         options.UseSqlite(connectionString, sqlite => sqlite
             .MigrationsAssembly(typeof(SqliteDataProvider).Assembly)
-            .MigrationsHistoryTable(SystemDbContext.HistoryTable));
+            .MigrationsHistoryTable(SystemDbContext.HistoryTable))
+            .AddInterceptors(WriteInterceptors);
 }
