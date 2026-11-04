@@ -80,7 +80,7 @@ public static class ContentChanges
     private static object? Plain(object? value) => value switch
     {
         JsonElement { ValueKind: JsonValueKind.Undefined } => null,
-        JsonElement element => Plain(JsonNode.Parse(element.GetRawText())),
+        JsonElement element => Plain(JsonDepth.Parse(element.GetRawText())),
         JsonObject node => node.ToDictionary(property => property.Key, property => Plain(property.Value), StringComparer.Ordinal),
         JsonArray node => node.Select(Plain).ToList(),
         JsonValue node => PlainScalar(node),

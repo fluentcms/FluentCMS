@@ -308,7 +308,7 @@ internal sealed class ContentEntryMapper(SchemaModel schema) : IHookEntryMapper
             return true;
         }
 
-        result = target == typeof(JsonNode) ? node : JsonSerializer.SerializeToElement(node);
+        result = target == typeof(JsonNode) ? node : JsonDepth.ToElement(node);
         return true;
     }
 

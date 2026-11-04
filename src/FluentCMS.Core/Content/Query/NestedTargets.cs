@@ -90,7 +90,7 @@ internal sealed class NestedTargets(SchemaModel schema)
             return document;
         }
 
-        var node = JsonNode.Parse(document.Json);
+        var node = JsonDepth.Parse(document.Json);
         return DropLinks(node, keep) ? new RichText(EntryJson.Text(node!)) : document;
     }
 

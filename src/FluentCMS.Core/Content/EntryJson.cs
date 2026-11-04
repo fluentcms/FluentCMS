@@ -1,6 +1,5 @@
 using System.Collections;
 using System.Globalization;
-using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Content;
@@ -17,9 +16,7 @@ internal static class EntryJson
     private const string DateFormat = "yyyy-MM-dd";
     private const string MomentFormat = "yyyy-MM-dd'T'HH:mm:ss.FFFFFFF'Z'";
 
-    private static readonly JsonSerializerOptions Options = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
-
-    public static string Text(JsonNode node) => node.ToJsonString(Options);
+    public static string Text(JsonNode node) => node.ToJsonString(JsonDepth.Serializer);
 
     public static string Date(DateOnly day) => day.ToString(DateFormat, CultureInfo.InvariantCulture);
 
@@ -67,7 +64,7 @@ internal static class EntryJson
         null => null,
         JsonNode node => node.DeepClone(),
         JsonElement { ValueKind: JsonValueKind.Undefined or JsonValueKind.Null } => null,
-        JsonElement element => JsonNode.Parse(element.GetRawText()),
+        JsonElement element => JsonDepth.Parse(element.GetRawText()),
         string text => JsonValue.Create(text),
         bool flag => JsonValue.Create(flag),
         long number => JsonValue.Create(number),
@@ -78,10 +75,10 @@ internal static class EntryJson
         DateTimeOffset moment => JsonValue.Create(Moment(moment)),
         Guid id => JsonValue.Create(id.ToString("D", CultureInfo.InvariantCulture)),
         MediaRef media => JsonValue.Create(media.Id.ToString("D", CultureInfo.InvariantCulture)),
-        RichText document => JsonNode.Parse(document.Json),
+        RichText document => JsonDepth.Parse(document.Json),
         IEnumerable<KeyValuePair<string, object?>> pairs => ToObject(pairs),
         IEnumerable items => new JsonArray([.. items.Cast<object?>().Select(ToNode)]),
-        _ => JsonSerializer.SerializeToNode(value, value.GetType(), Options),
+        _ => JsonSerializer.SerializeToNode(value, value.GetType(), JsonDepth.Serializer),
     };
 
     private static JsonObject ToObject(IEnumerable<KeyValuePair<string, object?>> pairs)

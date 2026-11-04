@@ -74,7 +74,7 @@ public class HostTests
     public void TheProviderRegistersItsPartsAndDefaults()
     {
         using var database = new SqliteFileDatabase();
-        using var services = database.CreateServices();
+        using var services = new ServiceCollection().AddFluentCms(cms => cms.UseSqlite(database.ConnectionString)).BuildServiceProvider();
 
         var provider = services.GetRequiredService<IDataProvider>();
         provider.ShouldBeOfType<SqliteDataProvider>();
