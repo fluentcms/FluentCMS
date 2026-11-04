@@ -1,9 +1,12 @@
+using System.Data.Common;
 using System.Reflection;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Storage;
 using FluentCMS.Data.Sqlite;
 using FluentCMS.Schema;
 using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -17,6 +20,8 @@ internal sealed class SqliteFileDatabase : IDisposable
 
     public string ConnectionString => $"Data Source={Path.Combine(_directory.FullName, "cms.db")};Pooling=False";
 
+    public void UseSqlite(FluentCmsBuilder cms) => cms.UseDataProvider(new UnflushedSqliteProvider(new SqliteDataProvider(ConnectionString)));
+
     public ServiceProvider CreateServices(SchemaModel? schema = null, Action<FluentCmsBuilder>? configure = null)
     {
         var services = new ServiceCollection();
@@ -27,7 +32,7 @@ internal sealed class SqliteFileDatabase : IDisposable
 
         services.AddFluentCms(cms =>
         {
-            cms.UseSqlite(ConnectionString);
+            UseSqlite(cms);
             cms.Activity.Enabled = false;
             configure?.Invoke(cms);
         });
@@ -48,7 +53,7 @@ internal sealed class SqliteFileDatabase : IDisposable
         services?.Invoke(builder.Services);
         builder.Services.AddFluentCms(cms =>
         {
-            cms.UseSqlite(ConnectionString);
+            UseSqlite(cms);
             cms.UseContentMigrations(contentMigrations ?? typeof(CmsDbContext).Assembly);
 
             // Its outbox handlers start a schedule in the background, which a test that disposes the host without stopping it leaves running against a file it then deletes.
@@ -95,4 +100,54 @@ internal sealed class SqliteFileDatabase : IDisposable
     }
 
     public void Dispose() => _directory.Delete(recursive: true);
+
+    // A commit of a file database waits for the disk to flush, and the tests seed rows and create tables one commit at a time, which is most of what they cost on a Windows runner. The locks behave the same without it, and the file is deleted after the test.
+    private sealed class UnflushedSqliteProvider(SqliteDataProvider inner) : IDataProvider
+    {
+        private static readonly NoFlush Interceptor = new();
+
+        public string Name => inner.Name;
+
+        public bool MigrateOnStartup => inner.MigrateOnStartup;
+
+        public bool SupportsSchemaSync => inner.SupportsSchemaSync;
+
+        public IStorageConventions Conventions => inner.Conventions;
+
+        public IJsonSqlDialect JsonDialect => inner.JsonDialect;
+
+        public IJobClaimDialect JobClaimDialect => inner.JobClaimDialect;
+
+        public IDatabaseSchemaReader SchemaReader => inner.SchemaReader;
+
+        public void ConfigureContentMigrations(DbContextOptionsBuilder options, Assembly migrationsAssembly)
+        {
+            inner.ConfigureContentMigrations(options, migrationsAssembly);
+            options.AddInterceptors(Interceptor);
+        }
+
+        public void ConfigureSystemMigrations(DbContextOptionsBuilder options)
+        {
+            inner.ConfigureSystemMigrations(options);
+            options.AddInterceptors(Interceptor);
+        }
+    }
+
+    private sealed class NoFlush : DbConnectionInterceptor
+    {
+        public override void ConnectionOpened(DbConnection connection, ConnectionEndEventData eventData) => Off(connection);
+
+        public override Task ConnectionOpenedAsync(DbConnection connection, ConnectionEndEventData eventData, CancellationToken cancellationToken = default)
+        {
+            Off(connection);
+            return Task.CompletedTask;
+        }
+
+        private static void Off(DbConnection connection)
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = "PRAGMA synchronous = OFF";
+            command.ExecuteNonQuery();
+        }
+    }
 }
