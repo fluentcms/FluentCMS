@@ -616,11 +616,11 @@ internal sealed partial class ContentService(
                 // A write answers what a read showed, so what that read left out is not the client's to change.
                 var needsRead = NeedsWhatARead(write, sent, isPatch);
                 var shown = needsRead ? await ReadShownAsync(write, id, documents, addsLocale, cancellationToken) : null;
-                var refused = isPatch ? sent : WithoutUnchanged(write, sent, shown, writable, addsLocale);
+                var refused = WithoutUnchangedInside(write, isPatch ? sent : WithoutUnchanged(write, sent, shown, writable, addsLocale), shown, writable, addsLocale);
                 Reject(write, refused, writable);
 
                 var composed = isPatch
-                    ? composer.Patch(type, stored, sent)
+                    ? composer.Patch(type, stored, refused)
                     : EntryComposer.Replace(type, stored, refused, field => Keeps(write, field, writable, addsLocale));
                 var working = Prepare(write, composed, document, stored);
                 composer.CarryProtected(type, stored, working, includingGroups: !isPatch || !write.Permissions.IsSystem, needsRead ? await UnseenNestedTargetsAsync(write, stored, shown, cancellationToken) : null);
