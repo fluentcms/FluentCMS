@@ -41,11 +41,16 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
     public Task<ContentQueryResult> ExecuteTrashAsync(string typeName, ContentQuery query, bool everySystemField, CancellationToken cancellationToken) =>
         ExecuteAsync(typeName, query with { Status = QueryStatus.Draft }, everySystemField, trashed: true, cancellationToken);
 
-    private async Task<ContentQueryResult> ExecuteAsync(string typeName, ContentQuery query, bool everySystemField, bool trashed, CancellationToken cancellationToken)
+    // Reads the entries the principal may read that another row rule also lets through, such as that of a write about to
+    // be made to them. The rule is trusted like the read rule, and holds for the entries read, not for relation targets.
+    public Task<ContentQueryResult> ExecuteWithRuleAsync(string typeName, ContentQuery query, ContentFilter? rule, CancellationToken cancellationToken) =>
+        ExecuteAsync(typeName, query, everySystemField: false, trashed: false, cancellationToken, rule);
+
+    private async Task<ContentQueryResult> ExecuteAsync(string typeName, ContentQuery query, bool everySystemField, bool trashed, CancellationToken cancellationToken, ContentFilter? rule = null)
     {
         ArgumentNullException.ThrowIfNull(query);
 
-        var compiled = Compile(await access.ForQueryAsync(query.Site, query.Locale ?? "", cancellationToken), typeName, query, everySystemField, trashed);
+        var compiled = Compile(await access.ForQueryAsync(query.Site, query.Locale ?? "", cancellationToken), typeName, query, everySystemField, trashed, rule);
 
         long? total = compiled.WithTotal ? await compiled.Filtered.LongCountAsync(cancellationToken) : null;
         var rows = await compiled.Rows.ToListAsync(cancellationToken);
@@ -69,7 +74,7 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
     // Separate from running it, so that a test can read the SQL.
     internal CompiledQuery Compile(string typeName, ContentQuery query) => Compile(access, typeName, query);
 
-    private CompiledQuery Compile(IContentQueryAccess access, string typeName, ContentQuery query, bool everySystemField = false, bool trashed = false)
+    private CompiledQuery Compile(IContentQueryAccess access, string typeName, ContentQuery query, bool everySystemField = false, bool trashed = false, ContentFilter? rule = null)
     {
         ArgumentNullException.ThrowIfNull(query);
 
@@ -101,6 +106,11 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         if (new FilterCompiler(scope).Where(type, query.Filter, row) is { } filter)
         {
             rows = rows.Where(Lambda(filter, row));
+        }
+
+        if (rule is not null)
+        {
+            rows = rows.Where(Lambda(new FilterCompiler(scope).Rule(type, rule, row), row));
         }
 
         var select = everySystemField && query.Select.Count == 0 ? SelectNode.EverythingWithSystem : Selection(scope, type, query.Select);

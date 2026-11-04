@@ -40,6 +40,10 @@ internal sealed class FilterCompiler(QueryScope query)
         return Where(type, filter, row, trusted: false, prefix: "", hops: 0, asked: null);
     }
 
+    // Another rule on the queried type alone, compiled as trusted as the read rule.
+    public Expression Rule(SchemaType type, ContentFilter rule, Expression row) =>
+        Where(type, rule, row, trusted: true, prefix: "", hops: 0, asked: null)!;
+
     private Expression? Where(SchemaType type, ContentFilter? filter, Expression row, bool trusted, string prefix, int hops, FilterOperator? asked)
     {
         var rule = trusted ? null : query.Access.RowRule(type);

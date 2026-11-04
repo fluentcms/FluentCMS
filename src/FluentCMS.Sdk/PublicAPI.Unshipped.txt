@@ -94,6 +94,72 @@ FluentCMS.Content.And.Deconstruct(out System.Collections.Generic.IReadOnlyList<F
 FluentCMS.Content.And.Equals(FluentCMS.Content.And? other) -> bool
 FluentCMS.Content.And.Filters.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Content.ContentFilter!>!
 FluentCMS.Content.And.Filters.init -> void
+FluentCMS.Content.BulkItem
+FluentCMS.Content.BulkItem.<Clone>$() -> FluentCMS.Content.BulkItem!
+FluentCMS.Content.BulkItem.BulkItem(System.Guid Id) -> void
+FluentCMS.Content.BulkItem.Deconstruct(out System.Guid Id) -> void
+FluentCMS.Content.BulkItem.Equals(FluentCMS.Content.BulkItem? other) -> bool
+FluentCMS.Content.BulkItem.ExpectedVersion.get -> int?
+FluentCMS.Content.BulkItem.ExpectedVersion.init -> void
+FluentCMS.Content.BulkItem.Id.get -> System.Guid
+FluentCMS.Content.BulkItem.Id.init -> void
+FluentCMS.Content.BulkItem.Patch.get -> FluentCMS.Content.ContentDocument?
+FluentCMS.Content.BulkItem.Patch.init -> void
+FluentCMS.Content.BulkItemResult
+FluentCMS.Content.BulkItemResult.<Clone>$() -> FluentCMS.Content.BulkItemResult!
+FluentCMS.Content.BulkItemResult.BulkItemResult(int Index, System.Guid? Id, FluentCMS.Content.BulkItemStatus Status) -> void
+FluentCMS.Content.BulkItemResult.Deconstruct(out int Index, out System.Guid? Id, out FluentCMS.Content.BulkItemStatus Status) -> void
+FluentCMS.Content.BulkItemResult.Equals(FluentCMS.Content.BulkItemResult? other) -> bool
+FluentCMS.Content.BulkItemResult.Id.get -> System.Guid?
+FluentCMS.Content.BulkItemResult.Id.init -> void
+FluentCMS.Content.BulkItemResult.Index.get -> int
+FluentCMS.Content.BulkItemResult.Index.init -> void
+FluentCMS.Content.BulkItemResult.Problem.get -> System.Exception?
+FluentCMS.Content.BulkItemResult.Problem.init -> void
+FluentCMS.Content.BulkItemResult.Status.get -> FluentCMS.Content.BulkItemStatus
+FluentCMS.Content.BulkItemResult.Status.init -> void
+FluentCMS.Content.BulkItemResult.Version.get -> int?
+FluentCMS.Content.BulkItemResult.Version.init -> void
+FluentCMS.Content.BulkItemResult.Warnings.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Publishing.PublishWarning!>!
+FluentCMS.Content.BulkItemResult.Warnings.init -> void
+FluentCMS.Content.BulkItemStatus
+FluentCMS.Content.BulkItemStatus.Duplicate = 2 -> FluentCMS.Content.BulkItemStatus
+FluentCMS.Content.BulkItemStatus.Failed = 1 -> FluentCMS.Content.BulkItemStatus
+FluentCMS.Content.BulkItemStatus.NotRun = 3 -> FluentCMS.Content.BulkItemStatus
+FluentCMS.Content.BulkItemStatus.Succeeded = 0 -> FluentCMS.Content.BulkItemStatus
+FluentCMS.Content.BulkOperation
+FluentCMS.Content.BulkOperation.Create = 0 -> FluentCMS.Content.BulkOperation
+FluentCMS.Content.BulkOperation.Delete = 4 -> FluentCMS.Content.BulkOperation
+FluentCMS.Content.BulkOperation.Publish = 2 -> FluentCMS.Content.BulkOperation
+FluentCMS.Content.BulkOperation.Unpublish = 3 -> FluentCMS.Content.BulkOperation
+FluentCMS.Content.BulkOperation.Update = 1 -> FluentCMS.Content.BulkOperation
+FluentCMS.Content.BulkRequest
+FluentCMS.Content.BulkRequest.<Clone>$() -> FluentCMS.Content.BulkRequest!
+FluentCMS.Content.BulkRequest.BulkRequest() -> void
+FluentCMS.Content.BulkRequest.Cap.get -> int?
+FluentCMS.Content.BulkRequest.Cap.init -> void
+FluentCMS.Content.BulkRequest.Entries.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Content.ContentDocument!>?
+FluentCMS.Content.BulkRequest.Entries.init -> void
+FluentCMS.Content.BulkRequest.Equals(FluentCMS.Content.BulkRequest? other) -> bool
+FluentCMS.Content.BulkRequest.Filter.get -> FluentCMS.Content.ContentFilter?
+FluentCMS.Content.BulkRequest.Filter.init -> void
+FluentCMS.Content.BulkRequest.Items.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Content.BulkItem!>?
+FluentCMS.Content.BulkRequest.Items.init -> void
+FluentCMS.Content.BulkRequest.Locale.get -> string?
+FluentCMS.Content.BulkRequest.Locale.init -> void
+FluentCMS.Content.BulkRequest.Operation.get -> FluentCMS.Content.BulkOperation
+FluentCMS.Content.BulkRequest.Operation.init -> void
+FluentCMS.Content.BulkRequest.Patch.get -> FluentCMS.Content.ContentDocument?
+FluentCMS.Content.BulkRequest.Patch.init -> void
+FluentCMS.Content.BulkResult
+FluentCMS.Content.BulkResult.<Clone>$() -> FluentCMS.Content.BulkResult!
+FluentCMS.Content.BulkResult.BulkResult(System.Collections.Generic.IReadOnlyList<FluentCMS.Content.BulkItemResult!>! Items, bool Cancelled) -> void
+FluentCMS.Content.BulkResult.Cancelled.get -> bool
+FluentCMS.Content.BulkResult.Cancelled.init -> void
+FluentCMS.Content.BulkResult.Deconstruct(out System.Collections.Generic.IReadOnlyList<FluentCMS.Content.BulkItemResult!>! Items, out bool Cancelled) -> void
+FluentCMS.Content.BulkResult.Equals(FluentCMS.Content.BulkResult? other) -> bool
+FluentCMS.Content.BulkResult.Items.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Content.BulkItemResult!>!
+FluentCMS.Content.BulkResult.Items.init -> void
 FluentCMS.Content.ContentAccessDeniedException
 FluentCMS.Content.ContentAccessDeniedException.ContentAccessDeniedException(string! type, string! operation) -> void
 FluentCMS.Content.ContentAccessDeniedException.Operation.get -> string!
@@ -192,6 +258,7 @@ FluentCMS.Content.GetOptions.Select.init -> void
 FluentCMS.Content.GetOptions.Status.get -> FluentCMS.Content.QueryStatus
 FluentCMS.Content.GetOptions.Status.init -> void
 FluentCMS.Content.IContentService
+FluentCMS.Content.IContentService.BulkAsync(string! type, FluentCMS.Content.BulkRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.BulkResult!>!
 FluentCMS.Content.IContentService.CancelScheduleAsync(string! type, System.Guid id, FluentCMS.Publishing.ScheduleAction action, string? locale = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 FluentCMS.Content.IContentService.CountAsync(string! type, FluentCMS.Content.ContentFilter? filter = null, FluentCMS.Content.QueryStatus status = FluentCMS.Content.QueryStatus.Published, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<long>!
 FluentCMS.Content.IContentService.CreateAsync(string! type, FluentCMS.Content.ContentDocument! entry, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.ContentDocument!>!
@@ -212,6 +279,7 @@ FluentCMS.Content.IContentService.ScheduleAsync(string! type, System.Guid id, Fl
 FluentCMS.Content.IContentService.UnpublishAsync(string! type, System.Guid id, string? locale = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.ContentDocument!>!
 FluentCMS.Content.IContentService.UpdateAsync(string! type, System.Guid id, FluentCMS.Content.ContentDocument! entry, int expectedVersion, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.ContentDocument!>!
 FluentCMS.Content.IContentService<T>
+FluentCMS.Content.IContentService<T>.BulkAsync(FluentCMS.Content.BulkRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.BulkResult!>!
 FluentCMS.Content.IContentService<T>.CancelScheduleAsync(System.Guid id, FluentCMS.Publishing.ScheduleAction action, string? locale = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 FluentCMS.Content.IContentService<T>.CountAsync(FluentCMS.Content.ContentFilter? filter = null, FluentCMS.Content.QueryStatus status = FluentCMS.Content.QueryStatus.Published, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<long>!
 FluentCMS.Content.IContentService<T>.CreateAsync(T! entry, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
@@ -1172,6 +1240,7 @@ FluentCMS.Sites.SiteRequest.SiteRequest() -> void
 abstract FluentCMS.Content.ContentFilter.<Clone>$() -> FluentCMS.Content.ContentFilter!
 abstract FluentCMS.Events.CmsEvent.<Clone>$() -> FluentCMS.Events.CmsEvent!
 const FluentCMS.Authorization.Permission.ContentPrefix = "content" -> string!
+const FluentCMS.Content.BulkRequest.MaxItems = 1000 -> int
 const FluentCMS.Content.ValidationErrorCodes.AboveMaximum = "FCMS2105" -> string!
 const FluentCMS.Content.ValidationErrorCodes.BelowMinimum = "FCMS2104" -> string!
 const FluentCMS.Content.ValidationErrorCodes.Custom = "FCMS2109" -> string!
@@ -1211,6 +1280,18 @@ override FluentCMS.Content.And.<Clone>$() -> FluentCMS.Content.And!
 override FluentCMS.Content.And.Equals(object? obj) -> bool
 override FluentCMS.Content.And.GetHashCode() -> int
 override FluentCMS.Content.And.ToString() -> string!
+override FluentCMS.Content.BulkItem.Equals(object? obj) -> bool
+override FluentCMS.Content.BulkItem.GetHashCode() -> int
+override FluentCMS.Content.BulkItem.ToString() -> string!
+override FluentCMS.Content.BulkItemResult.Equals(object? obj) -> bool
+override FluentCMS.Content.BulkItemResult.GetHashCode() -> int
+override FluentCMS.Content.BulkItemResult.ToString() -> string!
+override FluentCMS.Content.BulkRequest.Equals(object? obj) -> bool
+override FluentCMS.Content.BulkRequest.GetHashCode() -> int
+override FluentCMS.Content.BulkRequest.ToString() -> string!
+override FluentCMS.Content.BulkResult.Equals(object? obj) -> bool
+override FluentCMS.Content.BulkResult.GetHashCode() -> int
+override FluentCMS.Content.BulkResult.ToString() -> string!
 override FluentCMS.Content.ContentFilter.Equals(object? obj) -> bool
 override FluentCMS.Content.ContentFilter.GetHashCode() -> int
 override FluentCMS.Content.ContentFilter.ToString() -> string!
@@ -1414,6 +1495,14 @@ static FluentCMS.Activity.ActivityItem.operator ==(FluentCMS.Activity.ActivityIt
 static FluentCMS.Authorization.Permission.IsValidName(string? name) -> bool
 static FluentCMS.Content.And.operator !=(FluentCMS.Content.And? left, FluentCMS.Content.And? right) -> bool
 static FluentCMS.Content.And.operator ==(FluentCMS.Content.And? left, FluentCMS.Content.And? right) -> bool
+static FluentCMS.Content.BulkItem.operator !=(FluentCMS.Content.BulkItem? left, FluentCMS.Content.BulkItem? right) -> bool
+static FluentCMS.Content.BulkItem.operator ==(FluentCMS.Content.BulkItem? left, FluentCMS.Content.BulkItem? right) -> bool
+static FluentCMS.Content.BulkItemResult.operator !=(FluentCMS.Content.BulkItemResult? left, FluentCMS.Content.BulkItemResult? right) -> bool
+static FluentCMS.Content.BulkItemResult.operator ==(FluentCMS.Content.BulkItemResult? left, FluentCMS.Content.BulkItemResult? right) -> bool
+static FluentCMS.Content.BulkRequest.operator !=(FluentCMS.Content.BulkRequest? left, FluentCMS.Content.BulkRequest? right) -> bool
+static FluentCMS.Content.BulkRequest.operator ==(FluentCMS.Content.BulkRequest? left, FluentCMS.Content.BulkRequest? right) -> bool
+static FluentCMS.Content.BulkResult.operator !=(FluentCMS.Content.BulkResult? left, FluentCMS.Content.BulkResult? right) -> bool
+static FluentCMS.Content.BulkResult.operator ==(FluentCMS.Content.BulkResult? left, FluentCMS.Content.BulkResult? right) -> bool
 static FluentCMS.Content.ContentFilter.operator !=(FluentCMS.Content.ContentFilter? left, FluentCMS.Content.ContentFilter? right) -> bool
 static FluentCMS.Content.ContentFilter.operator ==(FluentCMS.Content.ContentFilter? left, FluentCMS.Content.ContentFilter? right) -> bool
 static FluentCMS.Content.ContentQuery.operator !=(FluentCMS.Content.ContentQuery? left, FluentCMS.Content.ContentQuery? right) -> bool

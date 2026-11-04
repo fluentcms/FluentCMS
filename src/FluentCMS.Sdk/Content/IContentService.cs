@@ -240,6 +240,20 @@ public interface IContentService
     /// <returns>The number of entries the principal may read.</returns>
     /// <exception cref="ValidationException">The filter is not valid, or the principal may not read the type or its drafts.</exception>
     Task<long> CountAsync(string type, ContentFilter? filter = null, QueryStatus status = QueryStatus.Published, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Runs one operation on many entries. Each entry goes through the single call, with its permissions, rules, hooks, validation,
+    /// publish policy, version and events, in a transaction of its own, so one that fails leaves the others as they ran. Cancellation
+    /// stops between entries, and what ran is reported.
+    /// </summary>
+    /// <param name="type">The name of the content type.</param>
+    /// <param name="request">What to do.</param>
+    /// <param name="cancellationToken">A token to cancel the work.</param>
+    /// <returns>One result for each entry.</returns>
+    /// <exception cref="ValidationException">The request is not valid, its filter is not valid or may not be read, or the filter selects more entries than the cap. Nothing was written.</exception>
+    /// <exception cref="ContentAccessDeniedException">The principal may not perform the operation on entries of the type. Nothing was written.</exception>
+    /// <exception cref="InvalidOperationException">The call is inside a transaction, where one entry that fails could undo the others.</exception>
+    Task<BulkResult> BulkAsync(string type, BulkRequest request, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -353,4 +367,16 @@ public interface IContentService<T>
     /// <returns>The number of entries the principal may read.</returns>
     /// <exception cref="ValidationException">The filter is not valid, or the principal may not read the type or its drafts.</exception>
     Task<long> CountAsync(ContentFilter? filter = null, QueryStatus status = QueryStatus.Published, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Runs one operation on many entries, as <see cref="IContentService.BulkAsync"/> does. The entries to create are documents,
+    /// as a patch is, so that each names only the fields it sets.
+    /// </summary>
+    /// <param name="request">What to do.</param>
+    /// <param name="cancellationToken">A token to cancel the work.</param>
+    /// <returns>One result for each entry.</returns>
+    /// <exception cref="ValidationException">The request is not valid, its filter is not valid or may not be read, or the filter selects more entries than the cap. Nothing was written.</exception>
+    /// <exception cref="ContentAccessDeniedException">The principal may not perform the operation on entries of the type. Nothing was written.</exception>
+    /// <exception cref="InvalidOperationException">The call is inside a transaction, where one entry that fails could undo the others.</exception>
+    Task<BulkResult> BulkAsync(BulkRequest request, CancellationToken cancellationToken = default);
 }
