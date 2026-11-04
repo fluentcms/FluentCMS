@@ -14,7 +14,7 @@ using Xunit;
 
 namespace FluentCMS.Core.IntegrationTests.Testing;
 
-// The sample types of the blog arrive with #2706; until then these tests use Note, a collection of their own.
+// These tests use Note, a collection of their own, so that they do not depend on the sample types of the blog.
 public sealed class FluentCmsTestHostTests : IAsyncDisposable
 {
     private static readonly CancellationToken Token = TestContext.Current.CancellationToken;

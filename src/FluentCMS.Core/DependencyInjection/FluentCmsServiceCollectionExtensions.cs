@@ -13,6 +13,7 @@ using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Localization;
 using FluentCMS.Core.ProseMirror;
 using FluentCMS.Core.Schema;
+using FluentCMS.Core.Seeding;
 using FluentCMS.Core.Settings;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
@@ -20,6 +21,7 @@ using FluentCMS.Events;
 using FluentCMS.Jobs;
 using FluentCMS.Localization;
 using FluentCMS.Schema;
+using FluentCMS.Seeding;
 using FluentCMS.Settings;
 using FluentCMS.Sites;
 using Microsoft.Extensions.DependencyInjection;
@@ -48,6 +50,12 @@ public static class FluentCmsServiceCollectionExtensions
 
         // Until content types can be added to the builder, a schema comes from the container, and none means system tables only.
         services.TryAddSingleton(_ => new SchemaBuilder().Build());
+
+        builder.Seeding.Validate();
+        if (builder.Seeding.Types.Count > 0)
+        {
+            builder.Settings.Add<SeedingState>();
+        }
 
         var settings = builder.Settings.Build();
         services.AddSingleton(settings);
@@ -162,6 +170,14 @@ public static class FluentCmsServiceCollectionExtensions
         services.TryAddScoped<IActivityQuery, ActivityQuery>();
         ActivityEvents.Register(builder.Events);
         services.AddHostedService<ActivityScheduleService>();
+
+        services.AddSingleton(builder.Seeding);
+        services.AddScoped<SeedStateStore>();
+        services.AddScoped<ISeedRunner, SeedRunner>();
+        if (builder.Seeding.Types.Count > 0 && builder.Seeding.RunOnStart)
+        {
+            services.AddHostedService<SeedStartupService>();
+        }
 
         return services;
     }
