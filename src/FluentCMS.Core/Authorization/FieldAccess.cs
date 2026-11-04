@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Content;
 using FluentCMS.Core.Content.Query;
+using FluentCMS.Core.ProseMirror;
 using FluentCMS.Core.Schema.FieldTypes;
 using FluentCMS.Schema;
 
@@ -156,6 +157,22 @@ internal sealed class FieldAccess(EffectivePermissions permissions, SchemaModel 
         {
             OmitInRelation(document, key, related, target);
         }
+        else if (field.FieldType == FieldTypeNames.RichText && document[key] is { } text)
+        {
+            if (text is RichText rich)
+            {
+                document[key] = HiddenFields.Remove(schema, rich, dropUnknown: true);
+            }
+            else if (ReadDocument(text) is { } node)
+            {
+                HiddenFields.Remove(schema, node, field, dropUnknown: true);
+                document[key] = node;
+            }
+            else
+            {
+                document[key] = null;
+            }
+        }
         else if (field.FieldType is FieldTypeNames.Component or FieldTypeNames.Blocks && document[key] is not null)
         {
             var component = field.FieldType == FieldTypeNames.Component ? schema.FindComponent((string)field.Settings[FieldSettings.Component]) : null;
@@ -215,6 +232,12 @@ internal sealed class FieldAccess(EffectivePermissions permissions, SchemaModel 
     // by reading it the way the coercion will.
     private void CheckInside(List<ValidationError> errors, string path, object? value, SchemaField field, SchemaType root)
     {
+        if (field.FieldType == FieldTypeNames.RichText)
+        {
+            CheckInlineBlocks(errors, path, value, root);
+            return;
+        }
+
         if (field.FieldType is not (FieldTypeNames.Component or FieldTypeNames.Blocks))
         {
             return;
@@ -268,6 +291,40 @@ internal sealed class FieldAccess(EffectivePermissions permissions, SchemaModel 
             {
                 Refuse(errors, $"{path}.{key}", root);
             }
+        }
+    }
+
+    // The data of an inline block is held to the same rules as the block in a block list. A document that cannot be read is
+    // refused as rich text by the canonicalizer, and an inline block of a type the schema does not know is left alone.
+    private void CheckInlineBlocks(List<ValidationError> errors, string path, object? value, SchemaType root)
+    {
+        foreach (var block in InlineBlockJson.Find(ReadDocument(value)))
+        {
+            if (schema.FindBlock(block.BlockType) is { } known && block.Data is { } data)
+            {
+                CheckEntries(errors, path, [.. data.Select(pair => KeyValuePair.Create<string, object?>(pair.Key, pair.Value))], known, root, isBlock: false);
+            }
+        }
+    }
+
+    // Read the way the rich text field type coerces it, as deep as it accepts.
+    private static JsonNode? ReadDocument(object? value)
+    {
+        try
+        {
+            var json = RawValue.Unwrap(value) switch
+            {
+                RichText document => document.Json,
+                string text => text,
+                JsonElement { ValueKind: JsonValueKind.Object } element => element.GetRawText(),
+                _ => null,
+            };
+
+            return json is null ? null : InlineBlockJson.Parse(json);
+        }
+        catch (JsonException)
+        {
+            return null;
         }
     }
 

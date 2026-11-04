@@ -1,7 +1,9 @@
 using System.Collections.Concurrent;
 using System.Globalization;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using FluentCMS.Content;
+using FluentCMS.Core.ProseMirror;
 using FluentCMS.Schema;
 
 namespace FluentCMS.Core.Content.Validation;
@@ -10,9 +12,9 @@ namespace FluentCMS.Core.Content.Validation;
 internal sealed record FieldVisit(SchemaType Owner, SchemaField Field, string Path, object? Value, IReadOnlyDictionary<string, object?> Siblings);
 
 // Required, RequiredWhen, length, range, pattern and select options, for every visible field, recursing into
-// components and blocks. A block or component instance is a dictionary keyed by API field name (a block carries
-// its block name under "type") or a CLR object whose public properties are the fields.
-internal sealed class DeclarativeValidator(SchemaModel model)
+// components, blocks and the data of inline blocks in rich text. A block or component instance is a dictionary keyed by
+// API field name (a block carries its block name under "type") or a CLR object whose public properties are the fields.
+internal sealed class DeclarativeValidator(SchemaModel model, ContentEntryMapper mapper)
 {
     private const string TypeKey = "type";
     private const int MaxNestingDepth = 8;
@@ -177,6 +179,16 @@ internal sealed class DeclarativeValidator(SchemaModel model)
                 ValidateInstance(component, value, $"{path}.", context, visits, depth);
             }
         }
+        else if (field.FieldType == ValidatedFieldTypes.RichText && value is RichText document)
+        {
+            foreach (var inline in InlineBlocks(document))
+            {
+                if (model.FindBlock(inline.BlockType) is { } block)
+                {
+                    ValidateInstance(block, mapper.InlineBlockValues(block, inline.Data), $"{path}{inline.DataPath}.", context, visits, depth);
+                }
+            }
+        }
         else if (field.FieldType == ValidatedFieldTypes.Blocks)
         {
             var allowed = field.Settings.TryGetValue(FieldSettings.Blocks, out var setting) && setting is IEnumerable<string> names ? names.ToList() : [];
@@ -201,6 +213,19 @@ internal sealed class DeclarativeValidator(SchemaModel model)
         if (FieldValue.ReadInstance(instance) is { } values)
         {
             ValidateFields(type, values, prefix, context, visits, depth);
+        }
+    }
+
+    // A document that cannot be read is for the rich text rules to refuse.
+    private static List<InlineBlockJsonNode> InlineBlocks(RichText document)
+    {
+        try
+        {
+            return InlineBlockJson.MayHold(document.Json) ? InlineBlockJson.Find(InlineBlockJson.Parse(document.Json)) : [];
+        }
+        catch (JsonException)
+        {
+            return [];
         }
     }
 
@@ -261,4 +286,5 @@ internal static class ValidatedFieldTypes
     public const string Select = "select";
     public const string Component = "component";
     public const string Blocks = "blocks";
+    public const string RichText = "richText";
 }

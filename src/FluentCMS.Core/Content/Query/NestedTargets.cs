@@ -24,12 +24,9 @@ internal sealed class NestedTargets(SchemaModel schema)
         }
     }
 
-    public void Filter(SchemaType owner, JsonObject item, Func<string, Guid, bool> keep) =>
-        FilterFields(owner.Fields.Where(field => !field.Hidden), item, keep);
-
-    private void FilterFields(IEnumerable<SchemaField> fields, JsonObject item, Func<string, Guid, bool> keep)
+    public void Filter(SchemaType owner, JsonObject item, Func<string, Guid, bool> keep)
     {
-        foreach (var field in fields)
+        foreach (var field in owner.Fields.Where(field => !field.Hidden))
         {
             if (item[field.Name] is { } value)
             {
@@ -97,7 +94,6 @@ internal sealed class NestedTargets(SchemaModel schema)
         return DropLinks(node, keep) ? new RichText(EntryJson.Text(node!)) : document;
     }
 
-    // The data of an inline block is what its author wrote, not a stored block, so a field marked hidden is no exception here.
     private bool FilterInlineBlock(JsonObject node, Func<string, Guid, bool> keep)
     {
         if (node[Discriminator] is not JsonValue kind || !kind.TryGetValue<string>(out var name) || name != RichTextNodeTypes.InlineBlock
@@ -110,7 +106,7 @@ internal sealed class NestedTargets(SchemaModel schema)
         }
 
         var before = data.DeepClone();
-        FilterFields(block.Fields, data, keep);
+        Filter(block, data, keep);
         return !JsonNode.DeepEquals(before, data);
     }
 

@@ -71,6 +71,9 @@ internal sealed class ContentEntryMapper(SchemaModel schema) : IHookEntryMapper
     // it fits, so that a custom validator of the class gets its own types. What does not fit stays, for the rules to report.
     public IReadOnlyDictionary<string, object?> ValidationValues(SchemaType type, ContentDocument entry) => View(type, entry);
 
+    // The data of an inline block, read as the same block in a block list.
+    public IReadOnlyDictionary<string, object?> InlineBlockValues(SchemaType block, JsonObject? data) => View(block, Pairs(data));
+
     private ContentDocument View(SchemaType owner, IEnumerable<KeyValuePair<string, object?>> values)
     {
         ContentDocument view = [];
