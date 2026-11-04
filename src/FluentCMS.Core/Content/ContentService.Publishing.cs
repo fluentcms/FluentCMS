@@ -640,7 +640,7 @@ internal sealed partial class ContentService
     }
 
     private static JsonObject ParseSnapshot(ContentVersion version) =>
-        JsonNode.Parse(version.Snapshot) as JsonObject ?? [];
+        JsonDepth.Parse(version.Snapshot) as JsonObject ?? [];
 
     // Fails closed on a target since trashed, which only a draft read of the entry itself would show.
     private async Task DropUnreadableTargetsAsync(WriteScope write, JsonObject fields, CancellationToken cancellationToken)
