@@ -8,9 +8,10 @@ using FluentCMS.Settings;
 namespace FluentCMS.Samples.Blog;
 
 // Every entry is found by its slug, which a person does not change by accident, and each step brings what it finds to the state the
-// seed wants. A run that stopped halfway therefore finishes the job, and a person's later edits (a changed name, an unpublish,
-// a trash that was purged) are left alone: the host runs a seeder again only when its version is raised.
-public sealed class BlogSeeder : ISeeder
+// seed wants. A run that stopped halfway therefore finishes the job. State changes (publish, trash, schedule) are made only to what
+// this run created, or when the seeder never ran to the end before; after a version bump existing entries stay as a person left them
+// and only missing ones are created.
+public class BlogSeeder : ISeeder
 {
     public const string WelcomeSlug = "welcome-to-fluentcms";
     public const string TypedSlug = "typed-content-no-magic";
@@ -27,9 +28,18 @@ public sealed class BlogSeeder : ISeeder
 
     private static readonly GetOptions Draft = new() { Status = QueryStatus.Draft, Fallback = LocaleFallback.None };
 
+    // A subclass can raise the version, as a release that changes the seed content would.
+    protected virtual int SeedVersion => 1;
+
+    string ISeeder.Name => typeof(BlogSeeder).FullName!;
+
+    int ISeeder.Version => SeedVersion;
+
     public async Task SeedAsync(SeedContext context, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(context);
+
+        var first = context.AppliedVersion == 0;
 
         await SeedSettingsAsync(context, cancellationToken);
 
@@ -37,14 +47,14 @@ public sealed class BlogSeeder : ISeeder
         var tags = context.Get<IContentService<Tag>>();
         var articles = context.Get<IContentService<Article>>();
 
-        var ada = await EnsureAuthorAsync(authors, AdaSlug, "Ada Lovelace", "Writes about analytical engines and typed content.", cancellationToken);
-        var grace = await EnsureAuthorAsync(authors, GraceSlug, "Grace Hopper", "Believes in readable code and compilers that help.", cancellationToken);
+        var ada = await EnsureAuthorAsync(authors, first, AdaSlug, "Ada Lovelace", "Writes about analytical engines and typed content.", cancellationToken);
+        var grace = await EnsureAuthorAsync(authors, first, GraceSlug, "Grace Hopper", "Believes in readable code and compilers that help.", cancellationToken);
 
-        var dotnet = await EnsureTagAsync(tags, DotnetSlug, "dotnet", cancellationToken);
-        var headless = await EnsureTagAsync(tags, HeadlessSlug, "headless cms", cancellationToken);
-        var releases = await EnsureTagAsync(tags, ReleasesSlug, "release notes", cancellationToken);
+        var dotnet = await EnsureTagAsync(tags, first, DotnetSlug, "dotnet", cancellationToken);
+        var headless = await EnsureTagAsync(tags, first, HeadlessSlug, "headless cms", cancellationToken);
+        var releases = await EnsureTagAsync(tags, first, ReleasesSlug, "release notes", cancellationToken);
 
-        await SeedWelcomeAsync(context, articles, ada, [dotnet, headless], cancellationToken);
+        await SeedWelcomeAsync(context, articles, first, ada, [dotnet, headless], cancellationToken);
 
         var typed = await EnsureAsync(
             articles,
@@ -61,7 +71,7 @@ public sealed class BlogSeeder : ISeeder
                 Seo = new Seo { MetaTitle = "Typed content, no magic" },
             },
             cancellationToken);
-        await PublishIfDraftAsync(articles, typed, cancellationToken);
+        await PublishIfDraftAsync(articles, typed, first, cancellationToken);
 
         await EnsureAsync(
             articles,
@@ -91,9 +101,9 @@ public sealed class BlogSeeder : ISeeder
                 Category = ArticleCategory.News,
             },
             cancellationToken);
-        if (!taken.InTrash)
+        if (!taken.InTrash && (first || taken.Created))
         {
-            await PublishIfDraftAsync(articles, taken, cancellationToken);
+            await PublishIfDraftAsync(articles, taken, first, cancellationToken);
             await articles.DeleteAsync(taken.Entry.Id, cancellationToken);
         }
 
@@ -112,7 +122,7 @@ public sealed class BlogSeeder : ISeeder
                 Sections = [new HeroBlock { Heading = "FluentCMS 1.0", Subheading = "Out now" }],
             },
             cancellationToken);
-        if (!notes.InTrash && notes.Entry.Status == EntryStatus.Draft)
+        if (!notes.InTrash && (first || notes.Created) && notes.Entry.Status == EntryStatus.Draft)
         {
             var at = context.Time.GetUtcNow().UtcDateTime.Add(ScheduleDelay);
             await articles.ScheduleAsync(notes.Entry.Id, new ScheduleRequest(ScheduleAction.Publish, at), cancellationToken: cancellationToken);
@@ -133,7 +143,7 @@ public sealed class BlogSeeder : ISeeder
         await settings.SetAsync(context.Site, current, cancellationToken);
     }
 
-    private static async Task SeedWelcomeAsync(SeedContext context, IContentService<Article> articles, Ref<Author> author, RefList<Tag> tags, CancellationToken cancellationToken)
+    private static async Task SeedWelcomeAsync(SeedContext context, IContentService<Article> articles, bool first, Ref<Author> author, RefList<Tag> tags, CancellationToken cancellationToken)
     {
         var welcome = await EnsureAsync(
             articles,
@@ -163,56 +173,68 @@ public sealed class BlogSeeder : ISeeder
 
         using (context.InLocale(BlogSample.SecondLocale))
         {
-            var french = await articles.GetAsync(welcome.Entry.Id, Draft with { Locale = BlogSample.SecondLocale }, cancellationToken);
+            var options = Draft with { Locale = BlogSample.SecondLocale };
+            var french = await articles.GetAsync(welcome.Entry.Id, options, cancellationToken);
+            var createdFrench = false;
             if (french is null)
             {
                 var source = welcome.Entry;
-                french = await articles.UpdateAsync(
-                    source.Id,
-                    new Article
-                    {
-                        Title = "Bienvenue dans FluentCMS",
-                        Slug = "bienvenue-dans-fluentcms",
-                        Body = Text("FluentCMS est un CMS headless pour .NET."),
-                        Author = source.Author,
-                        Tags = source.Tags,
-                        Category = source.Category,
-                        PublishedOn = source.PublishedOn,
-                        Sections = source.Sections,
-                        Seo = source.Seo,
-                    },
-                    expectedVersion: 0,
-                    cancellationToken);
+                try
+                {
+                    french = await articles.UpdateAsync(
+                        source.Id,
+                        new Article
+                        {
+                            Title = "Bienvenue dans FluentCMS",
+                            Slug = "bienvenue-dans-fluentcms",
+                            Body = Text("FluentCMS est un CMS headless pour .NET."),
+                            Author = source.Author,
+                            Tags = source.Tags,
+                            Category = source.Category,
+                            PublishedOn = source.PublishedOn,
+                            Sections = source.Sections,
+                            Seo = source.Seo,
+                        },
+                        expectedVersion: 0,
+                        cancellationToken);
+                    createdFrench = true;
+                }
+                catch (VersionConflictException)
+                {
+                    french = await articles.GetAsync(welcome.Entry.Id, options, cancellationToken)
+                        ?? throw new InvalidOperationException("The French welcome article is missing after a version conflict.");
+                }
             }
 
-            if (french.Status == EntryStatus.Draft)
+            if ((first || createdFrench) && french.Status == EntryStatus.Draft)
             {
                 await articles.PublishAsync(french.Id, BlogSample.SecondLocale, cancellationToken: cancellationToken);
             }
         }
 
-        await PublishIfDraftAsync(articles, welcome, cancellationToken);
+        await PublishIfDraftAsync(articles, welcome, first, cancellationToken);
     }
 
-    private static async Task<Ref<Author>> EnsureAuthorAsync(IContentService<Author> authors, string slug, string name, string bio, CancellationToken cancellationToken)
+    private static async Task<Ref<Author>> EnsureAuthorAsync(IContentService<Author> authors, bool first, string slug, string name, string bio, CancellationToken cancellationToken)
     {
         var author = await EnsureAsync(authors, slug, () => new Author { Name = name, Slug = slug, Bio = Text(bio) }, cancellationToken);
-        await PublishIfDraftAsync(authors, author, cancellationToken);
+        await PublishIfDraftAsync(authors, author, first, cancellationToken);
         return new Ref<Author>(author.Entry.Id);
     }
 
-    private static async Task<Ref<Tag>> EnsureTagAsync(IContentService<Tag> tags, string slug, string name, CancellationToken cancellationToken)
+    private static async Task<Ref<Tag>> EnsureTagAsync(IContentService<Tag> tags, bool first, string slug, string name, CancellationToken cancellationToken)
     {
         var tag = await EnsureAsync(tags, slug, () => new Tag { Name = name, Slug = slug }, cancellationToken);
-        await PublishIfDraftAsync(tags, tag, cancellationToken);
+        await PublishIfDraftAsync(tags, tag, first, cancellationToken);
         return new Ref<Tag>(tag.Entry.Id);
     }
 
-    // Only a draft is published: a person who unpublished an entry, or changed it after it was published, is not overruled.
-    private static async Task PublishIfDraftAsync<T>(IContentService<T> service, Found<T> found, CancellationToken cancellationToken)
+    // Only a draft that this run created, or any draft on a first run, is published: a person who unpublished an entry, or changed
+    // it after it was published, is not overruled.
+    private static async Task PublishIfDraftAsync<T>(IContentService<T> service, Found<T> found, bool first, CancellationToken cancellationToken)
         where T : ContentItem
     {
-        if (!found.InTrash && found.Entry.Status == EntryStatus.Draft)
+        if (!found.InTrash && (first || found.Created) && found.Entry.Status == EntryStatus.Draft)
         {
             await service.PublishAsync(found.Entry.Id, cancellationToken: cancellationToken);
         }
@@ -231,7 +253,7 @@ public sealed class BlogSeeder : ISeeder
 
         try
         {
-            return new Found<T>(await service.CreateAsync(build(), cancellationToken), InTrash: false);
+            return new Found<T>(await service.CreateAsync(build(), cancellationToken), InTrash: false, Created: true);
         }
         catch (ValidationException exception) when (exception.Errors.Any(error => error.Code == ValidationErrorCodes.NotUnique))
         {
@@ -258,15 +280,15 @@ public sealed class BlogSeeder : ISeeder
         var live = await service.QueryAsync(query, cancellationToken);
         if (live.Items.Count > 0)
         {
-            return new Found<T>(live.Items[0], InTrash: false);
+            return new Found<T>(live.Items[0], InTrash: false, Created: false);
         }
 
         var trashed = await service.QueryTrashAsync(query, cancellationToken);
-        return trashed.Items.Count > 0 ? new Found<T>(trashed.Items[0], InTrash: true) : null;
+        return trashed.Items.Count > 0 ? new Found<T>(trashed.Items[0], InTrash: true, Created: false) : null;
     }
 
     private static RichText Text(string text) =>
         new($$"""{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":{{JsonSerializer.Serialize(text)}}}]}]}""");
 
-    private sealed record Found<T>(T Entry, bool InTrash);
+    private sealed record Found<T>(T Entry, bool InTrash, bool Created);
 }

@@ -8,14 +8,23 @@ public sealed class SeedContext
 {
     private readonly IOperationContextAccessor _accessor;
 
-    internal SeedContext(IServiceProvider services)
+    internal SeedContext(IServiceProvider services, int appliedVersion)
     {
         ArgumentNullException.ThrowIfNull(services);
 
         Services = services;
+        AppliedVersion = appliedVersion;
         _accessor = Get<IOperationContextAccessor>();
         Time = services.GetService(typeof(TimeProvider)) as TimeProvider ?? TimeProvider.System;
     }
+
+    /// <summary>
+    /// The highest version of this seeder that ran to the end before, or 0 if it never has. Zero means this is the first run, or a first run
+    /// that stopped halfway: the seeder finishes what it started, including state changes such as publishing, trashing and scheduling.
+    /// Above zero the content was seeded before and a person may have changed it since, so the seeder creates what is missing and leaves what
+    /// exists as it is.
+    /// </summary>
+    public int AppliedVersion { get; }
 
     /// <summary>The services of the scope the seeder runs in.</summary>
     public IServiceProvider Services { get; }

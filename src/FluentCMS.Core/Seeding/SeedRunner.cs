@@ -1,32 +1,26 @@
 using FluentCMS.Content;
 using FluentCMS.Core.Localization;
-using FluentCMS.Core.Settings;
 using FluentCMS.Core.Sites;
-using FluentCMS.Core.Storage;
-using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Seeding;
 using FluentCMS.Sites;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Core.Seeding;
 
-// Runs the seeders that were added to the builder. What was applied is kept in the instance-wide settings area "seeding", and
-// a seeder is claimed in the same document with a write that names the version it read, so two instances never run one at once.
+// Runs the seeders that were added to the builder. What was applied is kept in the instance-wide settings area "seeding". A run holds
+// one claim in the same document for all its seeders, taken with a write that names the version it read and renewed while the run
+// lasts, so two instances never seed at once and a claim older than the timeout means its owner is gone.
 internal sealed class SeedRunner(
     IServiceProvider services,
     IOperationContextAccessor accessor,
     LocaleRegistry locales,
     SiteManager sites,
     SeedingBuilder options,
-    SettingsService settings,
-    SettingsRegistry registry,
-    SystemDbContext database,
+    SeedStateStore store,
     TimeProvider time,
     ILogger<SeedRunner> logger) : ISeedRunner
 {
-    private const int Attempts = 50;
-
     public async Task RunAsync(CancellationToken cancellationToken = default)
     {
         if (options.Types.Count == 0)
@@ -34,48 +28,22 @@ internal sealed class SeedRunner(
             return;
         }
 
+        var seeders = options.Types.Select(type => (ISeeder)services.GetService(type)!).ToList();
+        var (state, version) = await store.ReadAsync(cancellationToken);
+        var pending = seeders.Where(seeder => state.Seeders.GetValueOrDefault(seeder.Name)?.Applied is not { } applied || applied < seeder.Version).ToList();
+        if (pending.Count == 0)
+        {
+            return;
+        }
+
         var site = new SiteId(DefaultSite.Id);
         var locale = (await locales.GetAsync(site, cancellationToken)).Default;
-        var descriptor = registry.For(typeof(SeedingState));
         var previous = accessor.Current;
-        var localesEnsured = false;
+        accessor.Current = new OperationContext(Principal.System, Origin.Seed, site, locale, ClientId: null, Guid.CreateVersion7().ToString(), time.GetUtcNow());
 
         try
         {
-            accessor.Current = new OperationContext(Principal.System, Origin.Seed, site, locale, ClientId: null, Guid.CreateVersion7().ToString(), time.GetUtcNow());
-
-            foreach (var type in options.Types)
-            {
-                var seeder = (ISeeder)services.GetService(type)!;
-                if (!await ClaimAsync(descriptor, seeder, cancellationToken))
-                {
-                    continue;
-                }
-
-                try
-                {
-                    if (!localesEnsured)
-                    {
-                        foreach (var required in options.Locales)
-                        {
-                            await sites.EnsureLocaleAsync(site.Value, required, cancellationToken);
-                        }
-
-                        localesEnsured = true;
-                    }
-
-                    await seeder.SeedAsync(new SeedContext(services), cancellationToken);
-                }
-                catch (Exception exception)
-                {
-                    SeedLog.Failed(logger, exception, seeder.Name, seeder.Version);
-                    await ReleaseAsync(descriptor, seeder);
-                    throw;
-                }
-
-                await UpdateAsync(descriptor, seeder, applied: true, cancellationToken);
-                SeedLog.Applied(logger, seeder.Name, seeder.Version);
-            }
+            await RunClaimedAsync(pending, state, version, site, cancellationToken);
         }
         finally
         {
@@ -83,98 +51,158 @@ internal sealed class SeedRunner(
         }
     }
 
-    // False when the seeder was applied at this version already, another instance is running it, or this instance lost the race for it.
-    private async Task<bool> ClaimAsync(SettingsDescriptor descriptor, ISeeder seeder, CancellationToken cancellationToken)
+    private async Task RunClaimedAsync(List<ISeeder> pending, SeedingState state, int version, SiteId site, CancellationToken cancellationToken)
     {
-        var (state, version) = await ReadAsync(descriptor, cancellationToken);
-        var record = state.Seeders.GetValueOrDefault(seeder.Name);
-
-        if (record is not null && record.Applied >= seeder.Version)
+        if (state.Claim is { } held && time.GetUtcNow() - held.At < options.ClaimTimeout)
         {
-            SeedLog.Skipped(logger, seeder.Name, seeder.Version, "already applied");
-            return false;
+            SeedLog.Skipped(logger, "another instance is seeding");
+            return;
         }
 
-        if (record is { ClaimedAt: { } at } && record.ClaimedVersion >= seeder.Version && time.GetUtcNow() - at < options.ClaimTimeout)
+        var claimId = Guid.CreateVersion7();
+        state.Claim = new SeedClaim { Id = claimId, At = time.GetUtcNow() };
+        if (!await store.TryWriteAsync(state, version, cancellationToken))
         {
-            SeedLog.Skipped(logger, seeder.Name, seeder.Version, "another instance is running it");
-            return false;
+            SeedLog.Skipped(logger, "another instance claimed the seed first");
+            return;
         }
 
-        record ??= new SeedRecord();
-        record.ClaimedVersion = seeder.Version;
-        record.ClaimedAt = time.GetUtcNow();
-        state.Seeders[seeder.Name] = record;
+        using var run = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        using var stopHeartbeat = new CancellationTokenSource();
+        var lost = false;
+        var heartbeat = Task.Run(() => HeartbeatAsync(claimId, () => { lost = true; run.Cancel(); }, stopHeartbeat.Token), CancellationToken.None);
 
         try
         {
-            await settings.WriteAsync(descriptor, null, descriptor.Write(state), version, cancellationToken);
-            return true;
+            foreach (var seeder in pending)
+            {
+                foreach (var required in options.Locales)
+                {
+                    await sites.EnsureLocaleAsync(site.Value, required, run.Token);
+                }
+
+                var applied = state.Seeders.GetValueOrDefault(seeder.Name)?.Applied ?? 0;
+                try
+                {
+                    await seeder.SeedAsync(new SeedContext(services, applied), run.Token);
+                }
+                catch (OperationCanceledException) when (lost)
+                {
+                    SeedLog.ClaimLost(logger);
+                    return;
+                }
+                catch (Exception exception)
+                {
+                    SeedLog.Failed(logger, exception, seeder.Name, seeder.Version);
+                    await ReleaseAsync(claimId);
+                    throw;
+                }
+
+                var marked = await store.MutateAsync(
+                    current =>
+                    {
+                        if (current.Claim?.Id != claimId)
+                        {
+                            return false;
+                        }
+
+                        var record = current.Seeders.GetValueOrDefault(seeder.Name) ?? new SeedRecord();
+                        record.Applied = Math.Max(record.Applied, seeder.Version);
+                        current.Seeders[seeder.Name] = record;
+                        return true;
+                    },
+                    CancellationToken.None);
+                if (!marked)
+                {
+                    SeedLog.ClaimLost(logger);
+                    return;
+                }
+
+                SeedLog.Applied(logger, seeder.Name, seeder.Version);
+            }
+
+            await ReleaseAsync(claimId);
         }
-        catch (ValidationException exception) when (IsConflict(exception))
+        catch (OperationCanceledException) when (lost)
         {
-            SeedLog.Skipped(logger, seeder.Name, seeder.Version, "another instance claimed it first");
-            return false;
+            SeedLog.ClaimLost(logger);
+        }
+        catch (OperationCanceledException)
+        {
+            await ReleaseAsync(claimId);
+            throw;
+        }
+        finally
+        {
+            await stopHeartbeat.CancelAsync();
+            await heartbeat;
         }
     }
 
-    private async Task ReleaseAsync(SettingsDescriptor descriptor, ISeeder seeder)
+    // Clears the claim if it is still this run's; a claim that another run took over is left alone.
+    private async Task ReleaseAsync(Guid claimId)
     {
         try
         {
-            await UpdateAsync(descriptor, seeder, applied: false, CancellationToken.None);
+            await store.MutateAsync(
+                current =>
+                {
+                    if (current.Claim?.Id != claimId)
+                    {
+                        return false;
+                    }
+
+                    current.Claim = null;
+                    return true;
+                },
+                CancellationToken.None);
         }
-        catch (Exception exception) when (exception is ValidationException or DbUpdateException or InvalidOperationException)
+        catch (Exception exception) when (exception is not OperationCanceledException)
         {
             // The claim then runs out by itself.
+            SeedLog.HeartbeatFailed(logger, exception);
         }
     }
 
-    // Another instance may be writing the record of a different seeder at the same time, so the document is read again and the write retried.
-    private async Task UpdateAsync(SettingsDescriptor descriptor, ISeeder seeder, bool applied, CancellationToken cancellationToken)
+    // On a store of its own, because the scope of the run is in use by the seeder.
+    private async Task HeartbeatAsync(Guid claimId, Action onLost, CancellationToken stop)
     {
-        for (var attempt = 0; attempt < Attempts; attempt++)
+        var interval = options.ClaimTimeout / 3;
+        try
         {
-            var (state, version) = await ReadAsync(descriptor, cancellationToken);
-            var record = state.Seeders.GetValueOrDefault(seeder.Name) ?? new SeedRecord();
-            if (applied)
+            while (true)
             {
-                record.Applied = Math.Max(record.Applied, seeder.Version);
-            }
+                await Task.Delay(interval, time, stop);
 
-            if (record.ClaimedVersion <= seeder.Version)
-            {
-                record.ClaimedVersion = 0;
-                record.ClaimedAt = null;
-            }
+                try
+                {
+                    await using var scope = services.GetRequiredService<IServiceScopeFactory>().CreateAsyncScope();
+                    var renewed = await scope.ServiceProvider.GetRequiredService<SeedStateStore>().MutateAsync(
+                        current =>
+                        {
+                            if (current.Claim?.Id != claimId)
+                            {
+                                return false;
+                            }
 
-            state.Seeders[seeder.Name] = record;
-
-            try
-            {
-                await settings.WriteAsync(descriptor, null, descriptor.Write(state), version, cancellationToken);
-                return;
-            }
-            catch (ValidationException exception) when (IsConflict(exception))
-            {
+                            current.Claim.At = time.GetUtcNow();
+                            return true;
+                        },
+                        stop);
+                    if (!renewed)
+                    {
+                        onLost();
+                        return;
+                    }
+                }
+                catch (Exception exception) when (exception is not OperationCanceledException)
+                {
+                    SeedLog.HeartbeatFailed(logger, exception);
+                }
             }
         }
-
-        throw new InvalidOperationException($"The record of seeder {seeder.Name} could not be saved, because the seeding settings kept changing.");
+        catch (OperationCanceledException)
+        {
+        }
     }
-
-    // Straight from the table, so that a write by another instance is seen at once and not after the settings cache has expired.
-    private async Task<(SeedingState State, int Version)> ReadAsync(SettingsDescriptor descriptor, CancellationToken cancellationToken)
-    {
-        var row = await database.Set<SettingRow>().AsNoTracking()
-            .Where(item => item.Key == descriptor.Area && item.SiteId == null)
-            .Select(item => new { item.Json, item.Version })
-            .FirstOrDefaultAsync(cancellationToken);
-
-        return row is not null && descriptor.CanRead(row.Json)
-            ? ((SeedingState)descriptor.Read(row.Json), row.Version)
-            : (new SeedingState(), row?.Version ?? 0);
-    }
-
-    private static bool IsConflict(ValidationException exception) => exception.Errors.Any(error => error.Code == SettingsErrorCodes.VersionConflict);
 }

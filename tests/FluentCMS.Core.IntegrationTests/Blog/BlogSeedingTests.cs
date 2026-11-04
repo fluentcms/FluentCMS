@@ -258,7 +258,7 @@ public sealed class BlogSeedingTests
         var now = host.Time.GetUtcNow();
         await ChangeSeedingStateAsync(host, settings => settings.SetDefaultAsync(new SeedingState
         {
-            Seeders = { [typeof(CountingSeeder).FullName!] = new SeedRecord { ClaimedVersion = 1, ClaimedAt = now } },
+            Claim = new SeedClaim { Id = Guid.NewGuid(), At = now },
         }, Token).AsTask());
 
         await RunAsync(host);
@@ -296,6 +296,232 @@ public sealed class BlogSeedingTests
         exception.ToString().ShouldContain(SeedingErrorCodes.LocaleWithoutSeeder);
     }
 
+    [Fact]
+    public async Task ASeederIsToldTheVersionItWasAppliedAt()
+    {
+        var counter = new SeedCounter();
+        await using var host = Counting(counter, runOnStart: true);
+        _ = host.Services;
+        counter.LastApplied.ShouldBe(0);
+
+        counter.Version = 2;
+        await RunAsync(host);
+
+        counter.LastApplied.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task ALiveRunKeepsItsClaimByRenewingItSoANewerRunSkips()
+    {
+        var gate = new Gate();
+        var counter = new SeedCounter();
+        await using var host = Gated(gate, counter);
+        _ = host.Services;
+
+        var slow = Task.Run(() => RunAsync(host), Token);
+        await gate.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10), Token);
+
+        host.Time.Advance(TimeSpan.FromMilliseconds(500));
+        await WaitForAsync(host, state => state.Claim?.At == host.Time.GetUtcNow());
+        host.Time.Advance(TimeSpan.FromMilliseconds(500));
+
+        await RunAsync(host);
+        gate.Started.ShouldBe(1);
+        counter.Attempts.ShouldBe(0);
+
+        gate.Open.SetResult();
+        await slow;
+        counter.Attempts.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task AllSeedersRunUnderOneClaimSoNoneStartsOnAnotherInstanceMeanwhile()
+    {
+        var gate = new Gate();
+        var counter = new SeedCounter();
+        await using var host = Gated(gate, counter);
+        _ = host.Services;
+
+        var slow = Task.Run(() => RunAsync(host), Token);
+        await gate.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10), Token);
+
+        await RunAsync(host);
+        counter.Attempts.ShouldBe(0);
+
+        gate.Open.SetResult();
+        await slow;
+        counter.Runs.ShouldBe(1);
+        (await StateAsync(host)).Claim.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task ARunWhoseClaimWasTakenOverStopsAndLeavesTheClaimAlone()
+    {
+        var gate = new Gate();
+        var counter = new SeedCounter();
+        await using var host = Gated(gate, counter);
+        _ = host.Services;
+
+        var slow = Task.Run(() => RunAsync(host), Token);
+        await gate.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10), Token);
+        var other = new SeedClaim { Id = Guid.NewGuid(), At = host.Time.GetUtcNow() };
+        await MutateStateAsync(host, state => state.Claim = other);
+
+        await Should.NotThrowAsync(() => slow);
+
+        (await StateAsync(host)).Claim.ShouldNotBeNull().Id.ShouldBe(other.Id);
+        counter.Attempts.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task ARunThatFailsAfterLosingItsClaimLeavesTheNewClaimAlone()
+    {
+        var gate = new Gate { FailOnOpen = true };
+        var counter = new SeedCounter();
+        await using var host = Gated(gate, counter, TimeSpan.FromMinutes(15));
+        _ = host.Services;
+
+        var slow = Task.Run(() => RunAsync(host), Token);
+        await gate.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10), Token);
+        var other = new SeedClaim { Id = Guid.NewGuid(), At = host.Time.GetUtcNow() };
+        await MutateStateAsync(host, state => state.Claim = other);
+        gate.Open.SetResult();
+        await Record.ExceptionAsync(() => slow);
+
+        (await StateAsync(host)).Claim.ShouldNotBeNull().Id.ShouldBe(other.Id);
+    }
+
+    [Fact]
+    public async Task AVersionBumpDoesNotTrashAgainAnArticleAPersonRestored()
+    {
+        var box = new VersionBox();
+        await using var host = Bumpable(box);
+        var admin = await AdminOf(host);
+        await RunAsync(host);
+        var trashed = (await admin.Content<Article>().QueryTrashAsync(new ContentQuery { Status = QueryStatus.Draft }, Token)).Items.Single();
+        await admin.Content<Article>().RestoreAsync(trashed.Id, Token);
+
+        box.Version = 2;
+        await RunAsync(host);
+
+        (await admin.Content<Article>().QueryTrashAsync(new ContentQuery { Status = QueryStatus.Draft }, Token)).Items.ShouldBeEmpty();
+        (await AllAsync<Article>(admin)).ShouldContain(article => article.Slug == BlogSeeder.TrashedSlug);
+    }
+
+    [Fact]
+    public async Task AVersionBumpDoesNotMoveTheScheduleAndCreatesOnlyWhatIsMissing()
+    {
+        var box = new VersionBox();
+        await using var host = Bumpable(box);
+        var admin = await AdminOf(host);
+        await RunAsync(host);
+        var notes = (await AllAsync<Article>(admin)).Single(article => article.Slug == BlogSeeder.ScheduledSlug);
+        Task<DateTimeOffset?> ScheduledAt() => admin.RunAsync<CmsDbContext, DateTimeOffset?>(context =>
+            context.Documents.AsNoTracking().Where(row => row.DocumentId == notes.Id && row.Locale == "en").Select(row => row.SchedulePublishAt).SingleAsync());
+        var before = await ScheduledAt();
+        var tour = (await AllAsync<Article>(admin)).Single(article => article.Slug == BlogSeeder.TourSlug);
+        await admin.Content<Article>().DeleteAsync(tour.Id, Token);
+        await admin.Content<Article>().PurgeAsync(tour.Id, Token);
+        var count = await DocumentsAsync(admin);
+
+        host.Time.Advance(TimeSpan.FromDays(3));
+        box.Version = 2;
+        await RunAsync(host);
+
+        (await ScheduledAt()).ShouldBe(before);
+        (await DocumentsAsync(admin)).ShouldBe(count + 1);
+        (await AllAsync<Article>(admin)).Single(article => article.Slug == BlogSeeder.TourSlug).Status.ShouldBe(EntryStatus.Draft);
+    }
+
+    private static async Task<SeedingState> StateAsync(FluentCmsTestHost host)
+    {
+        await using var scope = host.Services.CreateAsyncScope();
+        return (await scope.ServiceProvider.GetRequiredService<SeedStateStore>().ReadAsync(Token)).State;
+    }
+
+    private static async Task MutateStateAsync(FluentCmsTestHost host, Action<SeedingState> change)
+    {
+        await using var scope = host.Services.CreateAsyncScope();
+        using var operation = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Cli, Site);
+        await scope.ServiceProvider.GetRequiredService<SeedStateStore>().MutateAsync(state =>
+        {
+            change(state);
+            return true;
+        }, Token);
+    }
+
+    private static async Task WaitForAsync(FluentCmsTestHost host, Func<SeedingState, bool> condition)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (!condition(await StateAsync(host)))
+        {
+            if (DateTime.UtcNow > deadline)
+            {
+                throw new TimeoutException("The seeding state did not reach the expected shape.");
+            }
+
+            await Task.Delay(50, Token);
+        }
+    }
+
+    private static FluentCmsTestHost Gated(Gate gate, SeedCounter counter, TimeSpan? claimTimeout = null) => new FluentCmsTestHost()
+        .WithServices(services =>
+        {
+            services.AddSingleton(gate);
+            services.AddSingleton(counter);
+        })
+        .Configure(cms =>
+        {
+            cms.Seeding.Add<GateSeeder>().Add<CountingSeeder>();
+            cms.Seeding.RunOnStart = false;
+            cms.Seeding.ClaimTimeout = claimTimeout ?? TimeSpan.FromMilliseconds(600);
+        });
+
+    private static FluentCmsTestHost Bumpable(VersionBox box) => new FluentCmsTestHost()
+        .WithContentTypes([.. BlogSample.ContentTypes])
+        .WithServices(services => services.AddSingleton(box))
+        .Configure(cms =>
+        {
+            cms.Settings.Add<BlogSettings>();
+            cms.Seeding.RequireLocale(BlogSample.SecondLocale).Add<BumpableBlogSeeder>();
+            cms.Seeding.RunOnStart = false;
+        });
+
+    private sealed class VersionBox
+    {
+        public int Version { get; set; } = 1;
+    }
+
+    private sealed class BumpableBlogSeeder(VersionBox box) : BlogSeeder
+    {
+        protected override int SeedVersion => box.Version;
+    }
+
+    private sealed class Gate
+    {
+        public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource Open { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public bool FailOnOpen { get; set; }
+
+        public int Started { get; set; }
+    }
+
+    private sealed class GateSeeder(Gate gate) : ISeeder
+    {
+        public async Task SeedAsync(SeedContext context, CancellationToken cancellationToken = default)
+        {
+            gate.Started++;
+            gate.Entered.TrySetResult();
+            await gate.Open.Task.WaitAsync(TimeSpan.FromSeconds(15), cancellationToken);
+            if (gate.FailOnOpen)
+            {
+                throw new InvalidOperationException("The seed failed.");
+            }
+        }
+    }
+
     private static FluentCmsTestHost Counting(SeedCounter counter, bool runOnStart) => new FluentCmsTestHost()
         .WithServices(services => services.AddSingleton(counter))
         .Configure(cms =>
@@ -312,6 +538,8 @@ public sealed class BlogSeedingTests
 
         public int Attempts { get; set; }
 
+        public int LastApplied { get; set; } = -1;
+
         public bool FailNext { get; set; }
     }
 
@@ -322,6 +550,7 @@ public sealed class BlogSeedingTests
         public Task SeedAsync(SeedContext context, CancellationToken cancellationToken = default)
         {
             counter.Attempts++;
+            counter.LastApplied = context.AppliedVersion;
             if (counter.FailNext)
             {
                 counter.FailNext = false;

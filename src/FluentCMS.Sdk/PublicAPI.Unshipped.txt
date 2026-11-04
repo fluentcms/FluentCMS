@@ -1220,6 +1220,7 @@ FluentCMS.Seeding.ISeeder.Name.get -> string!
 FluentCMS.Seeding.ISeeder.SeedAsync(FluentCMS.Seeding.SeedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 FluentCMS.Seeding.ISeeder.Version.get -> int
 FluentCMS.Seeding.SeedContext
+FluentCMS.Seeding.SeedContext.AppliedVersion.get -> int
 FluentCMS.Seeding.SeedContext.Get<T>() -> T!
 FluentCMS.Seeding.SeedContext.InLocale(string! locale) -> System.IDisposable!
 FluentCMS.Seeding.SeedContext.Locale.get -> string!
