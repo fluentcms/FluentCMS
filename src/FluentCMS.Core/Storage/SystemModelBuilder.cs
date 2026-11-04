@@ -30,6 +30,7 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
     private const int IpLength = 45;
     private const int TimeZoneLength = 64;
     private const int SharedHashLength = 64;
+    private const int SettingKeyLength = 64;
 
     public void Apply(ModelBuilder modelBuilder)
     {
@@ -39,6 +40,7 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         modelBuilder.Entity<OutboxMessage>(MapOutbox);
         modelBuilder.Entity<ActivityRow>(MapActivity);
         modelBuilder.Entity<ScheduleRow>(MapSchedule);
+        modelBuilder.Entity<SettingRow>(MapSetting);
         modelBuilder.Entity<Site>(MapSite);
         modelBuilder.Entity<SiteLocale>(MapSiteLocale);
         modelBuilder.Entity<Document>(MapDocument);
@@ -298,6 +300,29 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         // For the lookup of what an entry has scheduled, and for its purge.
         entity.HasIndex(row => row.DocumentId)
             .HasDatabaseName("ix_cms_schedule_document");
+    }
+
+    private void MapSetting(EntityTypeBuilder<SettingRow> entity)
+    {
+        entity.ToTable(StorageNames.Setting);
+        MapColumnNames(entity);
+        entity.Property(row => row.Id).HasValueGenerator<GuidV7ValueGenerator>();
+        entity.Property(row => row.Key).HasMaxLength(SettingKeyLength);
+        conventions.ConfigureJsonColumn(entity, entity.Property(row => row.Json));
+
+        // A site's settings go with the site.
+        entity.HasOne<Site>().WithMany().HasForeignKey(row => row.SiteId).OnDelete(DeleteBehavior.Cascade);
+
+        // A unique index treats nulls as distinct on some databases, so the instance defaults and the site rows get one each.
+        entity.HasIndex(row => row.Key)
+            .IsUnique()
+            .HasFilter("site_id IS NULL")
+            .HasDatabaseName("uq_cms_setting_instance_key");
+
+        entity.HasIndex(row => new { row.SiteId, row.Key })
+            .IsUnique()
+            .HasFilter("site_id IS NOT NULL")
+            .HasDatabaseName("uq_cms_setting_site_key");
     }
 
     private static void MapColumnNames<T>(EntityTypeBuilder<T> entity)

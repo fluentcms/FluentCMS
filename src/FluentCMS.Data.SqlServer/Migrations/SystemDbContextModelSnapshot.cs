@@ -915,6 +915,58 @@ namespace FluentCMS.Data.SqlServer.Migrations
                         });
                 });
 
+            modelBuilder.Entity("FluentCMS.Core.Storage.Entities.SettingRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Json")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("json");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)")
+                        .HasColumnName("key");
+
+                    b.Property<Guid?>("SiteId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("site_id");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("UpdatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("updated_by");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("int")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Key")
+                        .IsUnique()
+                        .HasDatabaseName("uq_cms_setting_instance_key")
+                        .HasFilter("site_id IS NULL");
+
+                    b.HasIndex("SiteId", "Key")
+                        .IsUnique()
+                        .HasDatabaseName("uq_cms_setting_site_key")
+                        .HasFilter("site_id IS NOT NULL");
+
+                    b.ToTable("cms_setting", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_cms_setting_json_json", "ISJSON([json]) = 1");
+                        });
+                });
+
             modelBuilder.Entity("FluentCMS.Core.Storage.Entities.Site", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1032,6 +1084,14 @@ namespace FluentCMS.Data.SqlServer.Migrations
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("FluentCMS.Core.Storage.Entities.SettingRow", b =>
+                {
+                    b.HasOne("FluentCMS.Core.Storage.Entities.Site", null)
+                        .WithMany()
+                        .HasForeignKey("SiteId")
+                        .OnDelete(DeleteBehavior.Cascade);
                 });
 
             modelBuilder.Entity("FluentCMS.Core.Storage.Entities.SiteLocale", b =>

@@ -1213,6 +1213,22 @@ FluentCMS.Schema.UrlAttribute.UrlAttribute() -> void
 FluentCMS.Schema.VisibleWhenAttribute
 FluentCMS.Schema.VisibleWhenAttribute.ConditionName.get -> string!
 FluentCMS.Schema.VisibleWhenAttribute.VisibleWhenAttribute(string! conditionName) -> void
+FluentCMS.Settings.ISettings<T>
+FluentCMS.Settings.ISettings<T>.GetAsync(FluentCMS.Sites.SiteId site, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<T!>
+FluentCMS.Settings.ISettings<T>.GetDefaultAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<T!>
+FluentCMS.Settings.ISettings<T>.ResetAsync(FluentCMS.Sites.SiteId site, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
+FluentCMS.Settings.ISettings<T>.ResetDefaultAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
+FluentCMS.Settings.ISettings<T>.SetAsync(FluentCMS.Sites.SiteId site, T! value, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
+FluentCMS.Settings.ISettings<T>.SetDefaultAsync(T! value, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
+FluentCMS.Settings.SettingsAccessDeniedException
+FluentCMS.Settings.SettingsAccessDeniedException.Area.get -> string!
+FluentCMS.Settings.SettingsAccessDeniedException.SettingsAccessDeniedException(string! area, FluentCMS.Sites.SiteId? site) -> void
+FluentCMS.Settings.SettingsAccessDeniedException.Site.get -> FluentCMS.Sites.SiteId?
+FluentCMS.Settings.SettingsAttribute
+FluentCMS.Settings.SettingsAttribute.Area.get -> string!
+FluentCMS.Settings.SettingsAttribute.SettingsAttribute(string! area) -> void
+FluentCMS.Settings.SettingsSecretAttribute
+FluentCMS.Settings.SettingsSecretAttribute.SettingsSecretAttribute() -> void
 FluentCMS.Sites.ISiteHostResolver
 FluentCMS.Sites.ISiteHostResolver.ResolveAsync(string! host, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<FluentCMS.Sites.SiteId?>
 FluentCMS.Sites.ISiteResolver

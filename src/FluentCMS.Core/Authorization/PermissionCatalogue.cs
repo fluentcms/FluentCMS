@@ -39,7 +39,8 @@ public sealed class PermissionCatalogue
 
     private readonly FrozenDictionary<string, PermissionEntry> _byName;
 
-    public PermissionCatalogue(SchemaModel schema, IEnumerable<IPermissionProvider> providers)
+    // settingsAreas are the areas of the settings classes of the host, each of which has its own settings.{area}.manage.
+    public PermissionCatalogue(SchemaModel schema, IEnumerable<IPermissionProvider> providers, IEnumerable<string>? settingsAreas = null)
     {
         ArgumentNullException.ThrowIfNull(schema);
         ArgumentNullException.ThrowIfNull(providers);
@@ -59,6 +60,11 @@ public sealed class PermissionCatalogue
                 var text = string.Format(CultureInfo.InvariantCulture, description, type.Name);
                 Add(entries, names, new PermissionEntry(CorePermissions.Content(type.Name, operation), text, PermissionSource.Content), CoreOwner);
             }
+        }
+
+        foreach (var area in settingsAreas ?? [])
+        {
+            Add(entries, names, new PermissionEntry(CorePermissions.Settings(area), $"Change the {area} settings.", PermissionSource.Settings), CoreOwner);
         }
 
         foreach (var provider in providers)

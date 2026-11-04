@@ -3,6 +3,7 @@ using FluentCMS.Core.ActivityLog;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Events;
 using FluentCMS.Core.Jobs;
+using FluentCMS.Core.Settings;
 using FluentCMS.Core.Storage;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -26,6 +27,8 @@ public sealed class FluentCmsBuilder
     public EventsBuilder Events { get; }
 
     public ActivityOptions Activity { get; } = new();
+
+    public SettingsBuilder Settings { get; } = new();
 
     internal IDataProvider? DataProvider { get; private set; }
 
