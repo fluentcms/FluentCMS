@@ -203,6 +203,25 @@ internal sealed class SettingsDescriptor
         }
     }
 
+    // The secret keys that a row the class cannot read holds, and the document being written does not name: they are lost with
+    // the row, which the caller is told by key and never by value.
+    public IReadOnlyList<string> SecretsLeftOut(string json, string skippedRow)
+    {
+        try
+        {
+            if (JsonNode.Parse(json, documentOptions: new JsonDocumentOptions { MaxDepth = SettingsJson.MaxDepth }) is not JsonObject target || JsonNode.Parse(skippedRow) is not JsonObject source)
+            {
+                return [];
+            }
+
+            return [.. SecretKeys.Order(StringComparer.Ordinal).Where(key => !target.ContainsKey(key) && source[key] is not null)];
+        }
+        catch (Exception exception) when (exception is JsonException or ArgumentException)
+        {
+            return [];
+        }
+    }
+
     // Whether the value of a secret key reads into the class and holds its validation attributes, by itself: a problem of
     // another key does not count against it.
     private bool StillAcceptable(string key, JsonNode value)

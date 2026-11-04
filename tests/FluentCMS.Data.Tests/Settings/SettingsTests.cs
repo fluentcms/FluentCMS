@@ -928,6 +928,22 @@ public sealed class SettingsTests
     }
 
     [Fact]
+    public async Task TheSecretsOfASkippedRowAreReportedAsLostByKeyAndNeverByValue()
+    {
+        using var database = new SettingsDatabase();
+        database.AddRow(SiteA.Value, "media", $$"""{"maxUploadMb":"x","apiKey":"{{Secret}}-a","storageAccount":"{{Secret}}-b","passphrase":null}""");
+
+        await WriteDocumentAsync(database, "media", SiteA, """{"maxUploadMb":8,"storageAccount":"sent"}""");
+
+        var logs = database.Logs.All;
+        logs.ShouldContain("secret key apiKey");
+        logs.ShouldNotContain("secret key storageAccount");
+        logs.ShouldNotContain("secret key passphrase");
+        logs.ShouldNotContain(Secret);
+        (await database.GetAsync(SiteA)).StorageAccount.ShouldBe("sent");
+    }
+
+    [Fact]
     public async Task AnUnreadableSiteRowDoesNotSupplyASecretThatTheReadDidNotShow()
     {
         using var database = new SettingsDatabase();

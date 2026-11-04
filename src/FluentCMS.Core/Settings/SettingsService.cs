@@ -182,6 +182,7 @@ internal sealed class SettingsService(
             // resolved to. A row that the class cannot read was skipped by the read, so its secrets were not shown and are not used:
             // a site without a readable row of its own takes them from the instance default if that can be read, and from the code.
             var stored = current is not null && descriptor.CanRead(current.Json) ? current.Json : null;
+            var skipped = current is not null && stored is null ? descriptor.SecretsLeftOut(json, current.Json) : [];
             if (stored is null && site is not null)
             {
                 var inherited = await Rows(db, descriptor.Area, null).AsNoTracking().Select(row => row.Json).FirstOrDefaultAsync(cancellationToken);
@@ -189,7 +190,7 @@ internal sealed class SettingsService(
             }
 
             var canonical = descriptor.Canonicalize(descriptor.KeepSecrets(json, stored, out var dropped));
-            foreach (var key in dropped)
+            foreach (var key in dropped.Concat(skipped))
             {
                 SettingsLog.SecretDropped(logger, descriptor.Area, key, ScopeName(site ?? SettingsCache.InstanceScope));
             }
