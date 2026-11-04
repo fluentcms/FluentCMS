@@ -5,6 +5,7 @@ using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Tests.Schema;
 using FluentCMS.Publishing;
 using FluentCMS.Schema;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
@@ -16,7 +17,8 @@ namespace FluentCMS.Data.Tests.Content;
 // both, with inline false for the block list.
 public sealed class InlineBlockRulesTests : IDisposable
 {
-    private static readonly string[] Cards = ["card", "strict"];
+    private static readonly string[] Cards = ["card", "strict", "gated"];
+    private static readonly string[] Kinds = ["ok", "fine"];
 
     private static SchemaModel Model() => SampleSchema.NewBuilder()
         .AddComponent("box", component => component.Field("note", "text").Field("internal", "text", field => field.Hidden()))
@@ -28,6 +30,10 @@ public sealed class InlineBlockRulesTests : IDisposable
             .Field("stamp", "text", field => field.IsReadOnly())
             .Field("box", "component", field => field.Setting(FieldSettings.Component, "box")))
         .AddBlock("strict", block => block.Field("title", "text", field => field.Required()))
+        .AddBlock("gated", block => block
+            .Field("label", "text")
+            .Field("kind", "select", field => field.Hidden().Setting(FieldSettings.Options, Kinds))
+            .Field("approval", "text", field => field.Hidden().Required()))
         .AddCollection("author", type => type.Field("name", "text"))
         .AddCollection("article", type => type
             .Field("title", "text")
@@ -186,6 +192,45 @@ public sealed class InlineBlockRulesTests : IDisposable
             Text(reads[7]).ShouldContain("n2");
             Text(reads[8]).ShouldContain("Shown");
         }
+    }
+
+    [Theory]
+    [MemberData(nameof(Writes))]
+    public async Task AnInvalidStoredHiddenValueIsNotQuotedAndDoesNotBlockASave(bool inline, bool isPatch)
+    {
+        var id = await SystemCreateAsync(inline, """gated:{"label":"A","kind":"ok"}""");
+        var column = Field(inline);
+        var corrupt = inline
+            ? """UPDATE cms_article SET body = replace(body, '"ok"', '"LEAKED"')"""
+            : """UPDATE cms_article SET cards = replace(cards, '"ok"', '"LEAKED"')""";
+        _database.Read(context => context.Database.ExecuteSqlRaw(corrupt));
+
+        var read = (await _database.GetAsync(Editor, id))!;
+        Text(read).ShouldNotContain("LEAKED");
+        read[column] = Edited(read[column], "\"A\"", "\"B\"");
+        if (isPatch)
+        {
+            await _database.PatchAsync(Editor, id, new() { [column] = read[column] }, 1);
+        }
+        else
+        {
+            await _database.UpdateAsync(Editor, id, read, 1);
+        }
+
+        Stored(id, inline).ShouldContain("\"B\"");
+        Stored(id, inline).ShouldContain("LEAKED");
+    }
+
+    [Theory]
+    [MemberData(nameof(Both))]
+    public async Task APublishErrorOnAHiddenFieldDoesNotNameIt(bool inline)
+    {
+        var id = await SystemCreateAsync(inline, """gated:{"label":"A"}""");
+
+        var errors = (await Should.ThrowAsync<ValidationException>(() => _database.PublishAsync(Editor, id))).Errors;
+
+        errors.ShouldHaveSingleItem().ShouldBe(Core.Content.EntryErrors.UnreadableValue);
+        Text(errors).ShouldNotContain("approval");
     }
 
     [Theory]
