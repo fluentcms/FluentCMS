@@ -308,7 +308,7 @@ internal sealed class FieldAccess(EffectivePermissions permissions, SchemaModel 
     }
 
     // Read the way the rich text field type coerces it, as deep as it accepts.
-    private static JsonNode? ReadDocument(object? value)
+    internal static JsonNode? ReadDocument(object? value)
     {
         try
         {
