@@ -1,13 +1,14 @@
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
+using FluentCMS.Core.Content;
 using FluentCMS.Schema;
 
 namespace FluentCMS.Core.ProseMirror;
 
 public static class RichTextParser
 {
-    private static readonly JsonDocumentOptions options = new() { MaxDepth = 128, AllowDuplicateProperties = false };
+    private static readonly JsonDocumentOptions options = new() { MaxDepth = JsonDepth.Max, AllowDuplicateProperties = false };
 
     public static DocumentNode Parse(RichText value)
     {

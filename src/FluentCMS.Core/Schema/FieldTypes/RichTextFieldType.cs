@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using FluentCMS.Core.Content;
 using FluentCMS.Schema;
 
 namespace FluentCMS.Core.Schema.FieldTypes;
@@ -9,8 +10,6 @@ namespace FluentCMS.Core.Schema.FieldTypes;
 internal sealed class RichTextFieldType()
     : CoreFieldType(FieldTypeNames.RichText, [typeof(RichText)], FilterSets.NullChecks, sortable: false, indexable: false)
 {
-    private static readonly JsonDocumentOptions Options = new() { MaxDepth = 128 };
-
     public override FieldStorageKind StorageKind(SchemaField field) => FieldStorageKind.Json;
 
     public override bool TryCoerce(object? value, SchemaField field, out object? result, out string? message)
@@ -52,7 +51,7 @@ internal sealed class RichTextFieldType()
     {
         try
         {
-            using var document = JsonDocument.Parse(json, Options);
+            using var document = JsonDocument.Parse(json, JsonDepth.Value);
             var root = document.RootElement;
 
             if (root.ValueKind != JsonValueKind.Object
