@@ -80,7 +80,7 @@ internal static class FieldValue
     {
         try
         {
-            return HasNoContent(JsonNode.Parse(document.Json));
+            return HasNoContent(JsonDepth.Parse(document.Json));
         }
         catch (JsonException)
         {
