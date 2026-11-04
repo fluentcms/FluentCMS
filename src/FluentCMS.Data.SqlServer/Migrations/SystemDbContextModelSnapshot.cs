@@ -915,6 +915,41 @@ namespace FluentCMS.Data.SqlServer.Migrations
                         });
                 });
 
+            modelBuilder.Entity("FluentCMS.Core.Storage.Entities.SchemaHistoryRow", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasColumnName("id");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<DateTimeOffset>("AppliedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("applied_at");
+
+                    b.Property<string>("FluentcmsVersion")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)")
+                        .HasColumnName("fluentcms_version");
+
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)")
+                        .HasColumnName("hash");
+
+                    b.Property<string>("Snapshot")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("snapshot");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("cms_schema_history", (string)null);
+                });
+
             modelBuilder.Entity("FluentCMS.Core.Storage.Entities.SettingRow", b =>
                 {
                     b.Property<Guid>("Id")
