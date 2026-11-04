@@ -22,6 +22,7 @@ internal static class StorageNames
     public const string Activity = "cms_activity";
     public const string Schedule = "cms_schedule";
     public const string Setting = "cms_setting";
+    public const string SchemaHistory = "cms_schema_history";
 
     public const string Id = "id";
     public const string DocumentId = "document_id";

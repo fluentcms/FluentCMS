@@ -31,6 +31,8 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
     private const int TimeZoneLength = 64;
     private const int SharedHashLength = 64;
     private const int SettingKeyLength = 64;
+    private const int HashLength = 64;
+    private const int VersionLength = 64;
 
     public void Apply(ModelBuilder modelBuilder)
     {
@@ -41,6 +43,7 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         modelBuilder.Entity<ActivityRow>(MapActivity);
         modelBuilder.Entity<ScheduleRow>(MapSchedule);
         modelBuilder.Entity<SettingRow>(MapSetting);
+        modelBuilder.Entity<SchemaHistoryRow>(MapSchemaHistory);
         modelBuilder.Entity<Site>(MapSite);
         modelBuilder.Entity<SiteLocale>(MapSiteLocale);
         modelBuilder.Entity<Document>(MapDocument);
@@ -323,6 +326,14 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
             .IsUnique()
             .HasFilter("site_id IS NOT NULL")
             .HasDatabaseName("uq_cms_setting_site_key");
+    }
+
+    private static void MapSchemaHistory(EntityTypeBuilder<SchemaHistoryRow> entity)
+    {
+        entity.ToTable(StorageNames.SchemaHistory);
+        MapColumnNames(entity);
+        entity.Property(row => row.Hash).HasMaxLength(HashLength);
+        entity.Property(row => row.FluentcmsVersion).HasMaxLength(VersionLength).HasColumnName("fluentcms_version");
     }
 
     private static void MapColumnNames<T>(EntityTypeBuilder<T> entity)
