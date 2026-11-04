@@ -49,7 +49,7 @@ public sealed class JobRunnerTests : IDisposable
         builder.Services.AddSingleton(new SchemaBuilder().Build());
         builder.Services.AddFluentCms(cms =>
         {
-            cms.UseSqlite(database.ConnectionString);
+            database.UseSqlite(cms);
             cms.UseContentMigrations(typeof(CmsDbContext).Assembly);
             cms.Jobs.AddJob<ProbeJob, ProbePayload>(JobFixture.ProbeType);
             cms.Jobs.Options.PollInterval = QuickPoll;
@@ -337,7 +337,7 @@ public sealed class JobRunnerTests : IDisposable
         builder.Services.AddSingleton(new SchemaBuilder().Build());
         builder.Services.AddFluentCms(cms =>
         {
-            cms.UseSqlite(database.ConnectionString);
+            database.UseSqlite(cms);
             cms.UseContentMigrations(typeof(CmsDbContext).Assembly);
         });
 
