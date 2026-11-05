@@ -2,16 +2,18 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using OpenIddict.Abstractions;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace FluentCMS.Core.Identity.Oidc;
 
 // Writes the clients of cms.Clients to cms_oidc_application when the host starts, after the migrations. A listed client is
-// replaced by what the options say, its secret included. A client the options registered and no longer list is deleted with
-// its sessions and tokens, so that dropping a compromised client from the configuration ends it; a client registered some
-// other way is left alone.
-internal sealed class ClientRegistrationService(IServiceScopeFactory scopes, ClientOptions clients) : IHostedService
+// replaced by what the options say, its secret included, unless it is that already. A client the options registered and no
+// longer list is deleted with its sessions and tokens, so that dropping a compromised client from the configuration ends it,
+// except when the options list none at all, which is more likely a configuration that failed to load. A client registered
+// some other way is left alone.
+internal sealed class ClientRegistrationService(IServiceScopeFactory scopes, ClientOptions clients, ILogger<ClientRegistrationService> logger) : IHostedService
 {
     public async Task StartAsync(CancellationToken cancellationToken)
     {
@@ -23,7 +25,12 @@ internal sealed class ClientRegistrationService(IServiceScopeFactory scopes, Cli
         {
             if (await applications.FindByClientIdAsync(clientId, cancellationToken) is { } existing)
             {
-                await applications.UpdateAsync(existing, Describe(clientId, client), cancellationToken);
+                var wanted = Describe(clientId, client);
+                if (!await IsCurrentAsync(applications, existing, wanted, cancellationToken))
+                {
+                    await applications.UpdateAsync(existing, wanted, cancellationToken);
+                }
+
                 continue;
             }
 
@@ -49,7 +56,7 @@ internal sealed class ClientRegistrationService(IServiceScopeFactory scopes, Cli
 
     private async Task RemoveUnlistedAsync(IOpenIddictApplicationManager applications, CancellationToken cancellationToken)
     {
-        List<object> unlisted = [];
+        List<(object Application, string ClientId)> unlisted = [];
         await foreach (var application in applications.ListAsync(count: null, offset: null, cancellationToken))
         {
             var properties = await applications.GetPropertiesAsync(application, cancellationToken);
@@ -57,15 +64,48 @@ internal sealed class ClientRegistrationService(IServiceScopeFactory scopes, Cli
                 && await applications.GetClientIdAsync(application, cancellationToken) is { } clientId
                 && !clients.Applications.ContainsKey(clientId))
             {
-                unlisted.Add(application);
+                unlisted.Add((application, clientId));
             }
         }
 
+        if (unlisted.Count > 0 && clients.Applications.Count == 0)
+        {
+            OidcLog.ClientsKept(logger, string.Join(", ", unlisted.Select(entry => entry.ClientId)));
+            return;
+        }
+
         // The EF store deletes the client's authorizations and tokens with it.
-        foreach (var application in unlisted)
+        foreach (var (application, clientId) in unlisted)
         {
             await applications.DeleteAsync(application, cancellationToken);
+            OidcLog.ClientDeleted(logger, clientId);
         }
+    }
+
+    // Whether the stored client already is what the options describe, so that a start writes nothing. A secret is stored
+    // salted and hashed, so a confidential client is checked against it, which costs one hash.
+    private static async Task<bool> IsCurrentAsync(IOpenIddictApplicationManager applications, object existing, OpenIddictApplicationDescriptor wanted, CancellationToken cancellationToken)
+    {
+        var stored = new OpenIddictApplicationDescriptor();
+        await applications.PopulateAsync(stored, existing, cancellationToken);
+
+        var same = stored.ClientType == wanted.ClientType
+            && stored.ConsentType == wanted.ConsentType
+            && stored.DisplayName == wanted.DisplayName
+            && stored.Permissions.SetEquals(wanted.Permissions)
+            && stored.Requirements.SetEquals(wanted.Requirements)
+            && stored.RedirectUris.SetEquals(wanted.RedirectUris)
+            && stored.PostLogoutRedirectUris.SetEquals(wanted.PostLogoutRedirectUris)
+            && stored.Properties.Count == wanted.Properties.Count
+            && wanted.Properties.All(property => stored.Properties.TryGetValue(property.Key, out var value) && value.GetRawText() == property.Value.GetRawText());
+        if (!same)
+        {
+            return false;
+        }
+
+        return wanted.ClientSecret is null
+            ? stored.ClientSecret is null
+            : await applications.ValidateClientSecretAsync(existing, wanted.ClientSecret, cancellationToken);
     }
 
     internal static OpenIddictApplicationDescriptor Describe(string clientId, ClientRegistration client)

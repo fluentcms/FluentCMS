@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using OpenIddict.Server;
 using OpenIddict.Validation;
@@ -18,6 +19,8 @@ internal static class AuthorizationServerRegistration
 {
     public const string ApplicationName = "FluentCMS";
 
+    private const string DataProtectionHostedService = "Microsoft.AspNetCore.DataProtection.Internal.DataProtectionHostedService";
+
     public static void Add(IServiceCollection services, ClientOptions clients)
     {
         services.AddFluentCmsOptions(ClientOptions.Section, OidcErrorCodes.InvalidClients, clients, options => options.Validate());
@@ -25,6 +28,7 @@ internal static class AuthorizationServerRegistration
         // One application name, so that every instance reads the ring the others write.
         services.AddDataProtection().SetApplicationName(ApplicationName);
         services.AddSingleton<DataProtectionKeyRepository>();
+
         services.AddOptions<KeyManagementOptions>().Configure<DataProtectionKeyRepository>((options, repository) => options.XmlRepository ??= repository);
 
         // The cookie of the hosted pages (#2779), which only the authorize endpoint reads.
@@ -100,5 +104,13 @@ internal static class AuthorizationServerRegistration
         services.AddHostedService<ClientRegistrationService>();
         services.AddFluentCmsEndpoints(FluentCmsEndpointGroup.Connect, ConnectEndpoints.Map);
         services.AddFluentCmsEndpoints(FluentCmsEndpointGroup.WellKnown, ConnectEndpoints.MapWellKnown);
+
+        // Data Protection's hosted service loads the ring when the host starts, which with the ring in the database is a
+        // query on every start and a new key on a new database; the ring loads on its first use instead, a sign-in or a
+        // token. Last, since every registration that needs Data Protection adds the service again.
+        foreach (var hosted in services.Where(service => service.ServiceType == typeof(IHostedService) && service.ImplementationType?.FullName == DataProtectionHostedService).ToList())
+        {
+            services.Remove(hosted);
+        }
     }
 }

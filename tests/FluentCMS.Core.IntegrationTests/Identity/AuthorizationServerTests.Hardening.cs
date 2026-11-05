@@ -3,6 +3,7 @@ using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Identity.Oidc;
+using FluentCMS.Core.IntegrationTests.Diagnostics;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
 using FluentCMS.Jobs;
@@ -13,6 +14,7 @@ using Microsoft.AspNetCore.DataProtection.XmlEncryption;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using OpenIddict.Abstractions;
 using OpenIddict.EntityFrameworkCore.Models;
 using Shouldly;
@@ -118,7 +120,13 @@ public sealed partial class AuthorizationServerTests
                     Token);
             }
 
-            await using var second = NewHost(withServiceClient: false).UseSqlite(file);
+            var logs = new LogCapture();
+            await using var second = NewHost(withServiceClient: false).UseSqlite(file).WithServices(services => services.AddLogging(logging => logging.AddProvider(logs)));
+            _ = second.Services;
+            var deleted = logs.Entries.Where(entry => entry.EventId.Id == OidcLog.ClientDeletedId).ShouldHaveSingleItem();
+            deleted.Level.ShouldBe(LogLevel.Warning);
+            deleted.State["ClientId"].ShouldBe(ServiceClientId);
+
             using (var client = second.CreateSecureClient())
             {
                 using var refused = await PostTokenAsync(client, ClientCredentials("management"));
@@ -143,6 +151,52 @@ public sealed partial class AuthorizationServerTests
             Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
             directory.Delete(recursive: true);
         }
+    }
+
+    [Fact]
+    public async Task AnEmptyClientListDeletesNothingAndSaysWhatItKept()
+    {
+        var directory = Directory.CreateTempSubdirectory("fluentcms-clients-");
+        try
+        {
+            var file = Path.Combine(directory.FullName, "cms.db");
+            await using (var first = NewHost().UseSqlite(file))
+            {
+                _ = first.Services;
+            }
+
+            var logs = new LogCapture();
+            await using var second = NewHost(withServiceClient: false)
+                .UseSqlite(file)
+                .Configure(cms => cms.Clients.Applications.Clear())
+                .WithServices(services => services.AddLogging(logging => logging.AddProvider(logs)));
+            _ = second.Services;
+
+            logs.Entries.ShouldNotContain(entry => entry.EventId.Id == OidcLog.ClientDeletedId);
+            var kept = logs.Entries.Where(entry => entry.EventId.Id == OidcLog.ClientsKeptId).ShouldHaveSingleItem();
+            kept.Level.ShouldBe(LogLevel.Warning);
+            ((string)kept.State["ClientIds"]!).Split(", ").ShouldBe([ServiceClientId, FluentCmsTestHost.OAuthClientId], ignoreOrder: true);
+
+            using var client = second.CreateSecureClient();
+            (await TokenAsync(client, ClientCredentials("management"), Token)).AccessToken.ShouldNotBeNullOrEmpty();
+        }
+        finally
+        {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
+            directory.Delete(recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task TheDataProtectionKeyRingIsMadeOnFirstUseNotAtStart()
+    {
+        _ = _host.Services;
+        DataProtectionKeys(_host).ShouldBe(0);
+
+        var editor = await _host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+        await _host.SignInAsync(editor);
+
+        DataProtectionKeys(_host).ShouldBeGreaterThan(0);
     }
 
     [Fact]

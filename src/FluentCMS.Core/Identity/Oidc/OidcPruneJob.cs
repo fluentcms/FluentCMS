@@ -30,27 +30,21 @@ internal sealed class OidcPruneJob(IOpenIddictTokenManager tokens, IOpenIddictAu
     }
 }
 
-// Stores the schedule while the host starts, and keeps trying in the background when the database cannot be reached then,
-// as the retention job of the runner does.
+// Stores the schedule a minute after the host starts and then keeps trying while the database cannot be reached. A daily
+// prune need not hold up the start, and a write made while the host starts competes with its own writes for the database.
 internal sealed class OidcPruneScheduleService(IJobScheduler scheduler, TimeProvider time, ILogger<OidcPruneScheduleService> logger) : BackgroundService
 {
+    private static readonly TimeSpan FirstAttempt = TimeSpan.FromMinutes(1);
     private static readonly TimeSpan Retry = TimeSpan.FromSeconds(30);
-
-    public override async Task StartAsync(CancellationToken cancellationToken)
-    {
-        if (!await TryScheduleAsync(cancellationToken))
-        {
-            await base.StartAsync(cancellationToken);
-        }
-    }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        var wait = FirstAttempt;
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
-                await Task.Delay(Retry, time, stoppingToken);
+                await Task.Delay(wait, time, stoppingToken);
             }
             catch (OperationCanceledException)
             {
@@ -61,6 +55,8 @@ internal sealed class OidcPruneScheduleService(IJobScheduler scheduler, TimeProv
             {
                 return;
             }
+
+            wait = Retry;
         }
     }
 
@@ -77,13 +73,4 @@ internal sealed class OidcPruneScheduleService(IJobScheduler scheduler, TimeProv
             return false;
         }
     }
-}
-
-// Event ids in the identity range of the FCMS codes, after the codes themselves.
-internal static partial class OidcLog
-{
-    public const int PruneScheduleFailedId = 3030;
-
-    [LoggerMessage(EventId = PruneScheduleFailedId, EventName = "OidcPruneScheduleFailed", Level = LogLevel.Error, Message = "Could not register the recurring prune job of the authorization server; used tokens stay until it is registered.")]
-    public static partial void PruneScheduleFailed(ILogger logger, Exception exception);
 }
