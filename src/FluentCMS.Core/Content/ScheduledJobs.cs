@@ -65,9 +65,9 @@ internal sealed class ScheduleDeadLetterHandler(ScheduleStore schedules, CmsDbCo
 
 internal static partial class ScheduleLog
 {
-    [LoggerMessage(Level = LogLevel.Information, Message = "Schedule {Schedule} ({Action}) ran: {Outcome}.")]
+    [LoggerMessage(EventId = 9411, Level = LogLevel.Information, Message = "Schedule {Schedule} ({Action}) ran: {Outcome}.")]
     public static partial void Ran(ILogger logger, Guid schedule, ScheduleAction action, ScheduleOutcome outcome);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Schedule {Schedule} ({Action}) of entry {Document} was refused when it came due; it is marked failed and nothing was changed.")]
+    [LoggerMessage(EventId = 9412, Level = LogLevel.Warning, Message = "Schedule {Schedule} ({Action}) of entry {Document} was refused when it came due; it is marked failed and nothing was changed.")]
     public static partial void Refused(ILogger logger, Exception exception, Guid schedule, string action, Guid document);
 }

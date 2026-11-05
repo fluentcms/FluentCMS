@@ -12,6 +12,7 @@ using FluentCMS.Core.Localization;
 using FluentCMS.Core.Schema.FieldTypes;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
+using FluentCMS.Core.Telemetry;
 using FluentCMS.Jobs;
 using FluentCMS.Localization;
 using FluentCMS.Publishing;
@@ -96,6 +97,8 @@ internal sealed partial class ContentService(
 
     public async Task<long> CountAsync(string type, ContentFilter? filter = null, QueryStatus status = QueryStatus.Published, CancellationToken cancellationToken = default)
     {
+        using var span = Span("count", type);
+
         ArgumentNullException.ThrowIfNull(type);
 
         var operation = Current();
@@ -115,6 +118,8 @@ internal sealed partial class ContentService(
 
     public async Task<ContentDocument> CreateAsync(string type, ContentDocument entry, CancellationToken cancellationToken = default)
     {
+        using var span = Span("create", type);
+
         ArgumentNullException.ThrowIfNull(type);
         ArgumentNullException.ThrowIfNull(entry);
 
@@ -200,6 +205,8 @@ internal sealed partial class ContentService(
 
     public async Task DeleteAsync(string type, Guid id, CancellationToken cancellationToken = default)
     {
+        using var span = Span("delete", type);
+
         ArgumentNullException.ThrowIfNull(type);
 
         var write = await BeginAsync(type, ContentOperation.Delete, cancellationToken);
@@ -221,6 +228,8 @@ internal sealed partial class ContentService(
 
     public async Task<ContentDocument> RestoreAsync(string type, Guid id, CancellationToken cancellationToken = default)
     {
+        using var span = Span("restore", type);
+
         ArgumentNullException.ThrowIfNull(type);
 
         var write = await BeginAsync(type, ContentOperation.Restore, cancellationToken);
@@ -244,6 +253,12 @@ internal sealed partial class ContentService(
 
     // No ambient operation is not an anonymous one: it is a bug in the entry point, and nothing runs. A client's origin
     // never runs as the system principal, whatever set it.
+    // The type is tagged by the name the schema resolves, so that a caller's arbitrary string never becomes a tag value.
+    private System.Diagnostics.Activity? Span(string operation, string? type) =>
+        FluentCmsTelemetry.ActivitySource.HasListeners()
+            ? FluentCmsTelemetry.Start("content", operation, type is null ? null : schema.FindContentType(type)?.Name, accessor.Current)
+            : null;
+
     private OperationContext Current()
     {
         var operation = accessor.Current
@@ -263,6 +278,9 @@ internal sealed partial class ContentService(
     // Reads ask the engine, which holds the permission on the type, the row rule, the site and the field limits as one query.
     private async Task<PagedResult<ContentDocument>> ReadAsync(string typeName, ContentQuery query, Guid? id, bool everySystemField, CancellationToken cancellationToken, bool trashed = false)
     {
+        // A read of the trash has the span of QueryTrashAsync.
+        using var span = trashed ? null : Span(id is null ? "query" : "get", typeName);
+
         richText.ThrowIfUnknown(query.RichTextFormat);
 
         // The entry point resolves the site before the operation (spec 4.6), and an API key's binding comes first, so a
@@ -566,6 +584,8 @@ internal sealed partial class ContentService(
 
     private async Task<ContentDocument> SaveAsync(string typeName, Guid id, ContentDocument changes, int expectedVersion, bool isPatch, CancellationToken cancellationToken)
     {
+        using var span = Span(isPatch ? "patch" : "update", typeName);
+
         var write = await BeginAsync(typeName, ContentOperation.Update, cancellationToken);
         var type = write.Type;
         var row = await InTransactionAsync(

@@ -113,11 +113,11 @@ internal sealed class RecurringJobs(IServiceScopeFactory scopes, JobRunnerOption
                 return next;
             }
 
-            JobLog.RecurringCronInvalid(logger, job.Name, "it never occurs");
+            JobLog.RecurringCronInvalid(logger, JobErrorCodes.InvalidCron, job.Name, "it never occurs");
         }
         catch (ArgumentException exception)
         {
-            JobLog.RecurringCronInvalid(logger, job.Name, exception.Message);
+            JobLog.RecurringCronInvalid(logger, JobErrorCodes.InvalidCron, job.Name, exception.Message);
         }
 
         return null;

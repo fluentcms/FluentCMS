@@ -86,9 +86,9 @@ internal sealed partial class StartupReportService(StartupReportFactory factory,
 
 internal static class StartupReportEvents
 {
-    public const int Report = 1100;
-    public const int InsecureDefault = 1101;
-    public const int NotMade = 1102;
+    public const int Report = 9130;
+    public const int InsecureDefault = 9131;
+    public const int NotMade = 9132;
 }
 
 internal static class StartupReportRegistration

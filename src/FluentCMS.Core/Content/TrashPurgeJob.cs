@@ -172,18 +172,18 @@ internal sealed class TrashPurgeScheduleService(IJobScheduler scheduler, TimePro
 
 internal static partial class TrashLog
 {
-    [LoggerMessage(Level = LogLevel.Information, Message = "Trash purge: {Purged} entries purged, {Failed} failed.")]
+    [LoggerMessage(EventId = 9421, Level = LogLevel.Information, Message = "Trash purge: {Purged} entries purged, {Failed} failed.")]
     public static partial void Report(ILogger logger, int purged, int failed);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Trash purge: {Type} keeps its trash for {Days} days; {Purged} entries purged, {Failed} failed.")]
+    [LoggerMessage(EventId = 9422, Level = LogLevel.Information, Message = "Trash purge: {Type} keeps its trash for {Days} days; {Purged} entries purged, {Failed} failed.")]
     public static partial void TypeReport(ILogger logger, string type, int days, int purged, int failed);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Trash purge could not go through the entries of {Type}; the other types still run.")]
+    [LoggerMessage(EventId = 9423, Level = LogLevel.Error, Message = "Trash purge could not go through the entries of {Type}; the other types still run.")]
     public static partial void TypeFailed(ILogger logger, Exception exception, string type);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Trash purge could not purge {Type} {Id}; it stays in the trash until the next run.")]
+    [LoggerMessage(EventId = 9424, Level = LogLevel.Warning, Message = "Trash purge could not purge {Type} {Id}; it stays in the trash until the next run.")]
     public static partial void PurgeFailed(ILogger logger, Exception exception, string type, Guid id);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Could not register the recurring purge of the trash; entries stay in the trash until it is.")]
+    [LoggerMessage(EventId = 9425, Level = LogLevel.Error, Message = "Could not register the recurring purge of the trash; entries stay in the trash until it is.")]
     public static partial void ScheduleFailed(ILogger logger, Exception exception);
 }

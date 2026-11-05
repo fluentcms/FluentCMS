@@ -1,8 +1,10 @@
+using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Text.Json.Nodes;
 using FluentCMS.Content;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
+using FluentCMS.Core.Telemetry;
 using FluentCMS.Schema;
 using Microsoft.EntityFrameworkCore;
 
@@ -52,6 +54,22 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
 
         var compiled = Compile(await access.ForQueryAsync(query.Site, query.Locale ?? "", cancellationToken), typeName, query, everySystemField, trashed, rule);
 
+        // Timed from here, so that a query refused as invalid is not recorded, and tagged with the type the schema resolved.
+        var started = Stopwatch.GetTimestamp();
+        try
+        {
+            return await RunAsync(compiled, cancellationToken);
+        }
+        finally
+        {
+            FluentCmsTelemetry.QueryDuration.Record(
+                Stopwatch.GetElapsedTime(started).TotalSeconds,
+                new KeyValuePair<string, object?>(FluentCmsTelemetry.Tags.Type, compiled.Type.Name));
+        }
+    }
+
+    private async Task<ContentQueryResult> RunAsync(CompiledQuery compiled, CancellationToken cancellationToken)
+    {
         long? total = compiled.WithTotal ? await compiled.Filtered.LongCountAsync(cancellationToken) : null;
         var rows = await compiled.Rows.ToListAsync(cancellationToken);
 

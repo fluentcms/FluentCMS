@@ -12,7 +12,7 @@ public class PermissionCatalogueTests
     private static readonly string[] SpecCore =
     [
         "users.manage", "roles.manage", "apikeys.manage", "sites.manage", "jobs.manage",
-        "activity.read", "schema.read", "plugins.manage", "transfer.manage",
+        "activity.read", "schema.read", "plugins.manage", "transfer.manage", "system.read",
     ];
 
     private static readonly string[] Operations = ["create", "read", "update", "delete", "publish", "unpublish", "restore", "purge"];
