@@ -215,17 +215,21 @@ internal sealed partial class ContentService
 
     // The principal that scheduled it, as it is now: an admin user's roles are read from cms_user_role, and every role's
     // grants as they are today, so a user that lost the role or was deactivated, and a role that lost the permission or
-    // was deleted, no longer let the schedule through. The system principal then
+    // was deleted, no longer let the schedule through. An API key is read whole from cms_api_key, its claims kept on the
+    // schedule unused, so a key revoked, expired or bound elsewhere since is held to that. The system principal then
     // publishes, and sees every reference target, so a publish is first held to what this principal can see.
     private async Task CheckSchedulerAsync(OperationContext operation, ScheduleRow row, SchemaType type, ScheduleAction action, string? locale, CancellationToken cancellationToken)
     {
+        var refused = new ContentAccessDeniedException(type.Name, CorePermissions.OperationName(action == ScheduleAction.Publish ? ContentOperation.Publish : ContentOperation.Unpublish));
         if (operation.Actor is not { } actor || actor.IsSystem || actor.IsAnonymous)
         {
-            throw new ContentAccessDeniedException(type.Name, CorePermissions.OperationName(action == ScheduleAction.Publish ? ContentOperation.Publish : ContentOperation.Unpublish));
+            throw refused;
         }
 
-        var claims = JsonSerializer.Deserialize<Dictionary<string, string>>(row.Claims!) ?? [];
-        var asScheduler = operation with { Principal = new Principal(actor.Kind, actor.Id, actor.Name, claims), Actor = null };
+        var scheduler = actor.Kind == PrincipalKind.ApiKey
+            ? await keys.CurrentAsync(actor.Id, cancellationToken) ?? throw refused
+            : new Principal(actor.Kind, actor.Id, actor.Name, JsonSerializer.Deserialize<Dictionary<string, string>>(row.Claims!) ?? []);
+        var asScheduler = operation with { Principal = scheduler, Actor = null };
         var kind = action == ScheduleAction.Publish ? ContentOperation.Publish : ContentOperation.Unpublish;
         var write = await BeginAsync(asScheduler, type.Name, kind, locale, cancellationToken);
         var (documents, document, target) = await ReachLocaleAsync(write, kind, row.DocumentId, cancellationToken);
@@ -294,6 +298,7 @@ internal sealed partial class ContentService
 
     // The claims are what scopes and row rules read of a principal when the job checks it again. An admin user's roles are
     // read from cms_user_role as they are then, so a roles claim in them counts only for a principal that is not a stored user.
+    // An API key's are kept but not read: the key is read again instead.
     private static string? ClaimsOf(OperationContext operation) =>
         operation.Principal.IsSystem ? null : JsonSerializer.Serialize(operation.Principal.Claims);
 

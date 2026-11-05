@@ -6,8 +6,8 @@ using Microsoft.AspNetCore.Identity;
 
 namespace FluentCMS.Core.Identity;
 
-// One transaction for a change to users or invitations, and the events it raises: their outbox rows commit with the change,
-// and in-process handlers hear them after the commit. A change inside another joins it, so accepting an invitation is one
+// One transaction for a change to users, invitations or API keys, and the events it raises: their outbox rows commit with
+// the change, and in-process handlers hear them after the commit. A change inside another joins it, so accepting an invitation is one
 // unit with the user it creates. A failed IdentityResult rolls back like an exception.
 internal sealed class IdentityChanges(SystemDbContext context, EventBuffer buffer, IEventBus bus, IOperationContextAccessor accessor, TimeProvider time)
 {
@@ -22,7 +22,7 @@ internal sealed class IdentityChanges(SystemDbContext context, EventBuffer buffe
 
         if (context.Database.CurrentTransaction is not null || buffer.IsOpen)
         {
-            throw new InvalidOperationException($"{IdentityErrorCodes.WriteInTransaction}: users and invitations are written in a transaction of their own, so not inside another.");
+            throw new InvalidOperationException($"{IdentityErrorCodes.WriteInTransaction}: users, invitations and API keys are written in a transaction of their own, so not inside another.");
         }
 
         T result;
@@ -60,7 +60,7 @@ internal sealed class IdentityChanges(SystemDbContext context, EventBuffer buffe
         return result;
     }
 
-    // Users are instance-wide, so their events and activity rows belong to no site.
+    // Users and keys are instance-wide, so their events and activity rows belong to no site.
     public ValueTask RaiseAsync(CmsEvent message, CancellationToken cancellationToken)
     {
         var source = accessor.Current is { } operation
