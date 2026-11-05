@@ -34,7 +34,15 @@ internal sealed class CmsWebHost : IAsyncDisposable
         configure?.Invoke(builder);
 
         var app = builder.Build();
-        pipeline?.Invoke(app);
+        if (pipeline is null)
+        {
+            app.UseFluentCms();
+        }
+        else
+        {
+            pipeline(app);
+        }
+
         app.MapFluentCms();
         return _app = app;
     }

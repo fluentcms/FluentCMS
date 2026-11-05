@@ -29,6 +29,7 @@ public static class ErrorCodeRegistry
         Startup(HostErrorCodes.InvalidOption, "Invalid option"),
         Startup(HostErrorCodes.GeneratedSigningKeyInProduction, "Generated signing key in Production"),
         Startup(HostErrorCodes.NotRegistered, "FluentCMS not registered"),
+        Startup(HostErrorCodes.PipelineMissing, "FluentCMS pipeline missing"),
 
         // 12xx schema, found when the host starts
         Startup(SchemaErrorCodes.DuplicateType, "Duplicate content type"),

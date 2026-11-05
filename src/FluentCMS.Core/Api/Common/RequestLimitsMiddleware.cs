@@ -1,34 +1,47 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Http.Metadata;
 
 namespace FluentCMS.Core.Api.Common;
 
 // A request over the cap is a BadHttpRequestException with status 413, which the exception handler writes as a problem.
 // Kestrel throws the same exception from the feature, so a body that grows past the cap while it is read ends the same way.
+// The cap never raises a limit the host or Kestrel already set, and an endpoint that sets its own limit keeps it.
 internal sealed class RequestLimitsMiddleware(RequestDelegate next, RequestLimitsOptions options)
 {
-    public Task InvokeAsync(HttpContext context)
+    public async Task InvokeAsync(HttpContext context)
     {
-        if (context.GetEndpoint()?.Metadata.GetMetadata<FluentCmsEndpointMetadata>() is not null)
+        var endpoint = context.GetEndpoint();
+        if (endpoint?.Metadata.GetMetadata<FluentCmsEndpointMetadata>() is null || endpoint.Metadata.GetMetadata<IRequestSizeLimitMetadata>() is not null)
         {
-            var cap = options.MaxBodySize;
-            if (context.Request.ContentLength > cap)
-            {
-                throw TooLarge(cap);
-            }
-
-            var feature = context.Features.Get<IHttpMaxRequestBodySizeFeature>();
-            if (feature is { IsReadOnly: false })
-            {
-                feature.MaxRequestBodySize = cap;
-            }
-            else
-            {
-                context.Request.Body = new LimitedStream(context.Request.Body, cap);
-            }
+            await next(context);
+            return;
         }
 
-        return next(context);
+        var cap = options.MaxBodySize;
+        var feature = context.Features.Get<IHttpMaxRequestBodySizeFeature>();
+        if (feature is { IsReadOnly: false })
+        {
+            cap = feature.MaxRequestBodySize is { } current ? Math.Min(current, cap) : cap;
+            feature.MaxRequestBodySize = cap;
+        }
+        else
+        {
+            context.Request.Body = new LimitedStream(context.Request.Body, cap);
+        }
+
+        if (context.Request.ContentLength > cap)
+        {
+            throw TooLarge(cap);
+        }
+
+        await next(context);
+
+        // A body bound to a typed parameter ends in a bare 413 that the endpoint wrote itself.
+        if (context.Response.StatusCode == StatusCodes.Status413PayloadTooLarge && !context.Response.HasStarted && context.Response.ContentType is null)
+        {
+            await ProblemWriter.WriteAsync(context, ProblemMapper.Known(LimitErrorCodes.RequestTooLarge, TooLarge(cap).Message), cancellationToken: context.RequestAborted);
+        }
     }
 
     private static BadHttpRequestException TooLarge(long cap) =>

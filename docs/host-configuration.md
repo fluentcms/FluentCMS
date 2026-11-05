@@ -14,7 +14,7 @@ app.Run();
 
 `MapFluentCms()` creates the route groups `/api/delivery/v1`, `/api/management/v1`, `/connect`, `/account` and `/health`. They are relative to the request's `PathBase`, so a host on a sub-path calls `app.UsePathBase("/cms")` before `UseFluentCms()`. The builder it returns applies conventions to every FluentCMS endpoint.
 
-`UseFluentCms()` puts the request pipeline in place, in the order it works in: the exception handler (problem details), routing, security headers, CORS, authentication, the rate limiter and the request limits. Call it once, after `UsePathBase` and before `MapFluentCms()`, which needs it (the endpoints carry CORS and rate limit metadata that only these middleware read), and add `UseAuthorization()` after it. It includes `UseExceptionHandler()`, `UseRouting()` and `UseAuthentication()`, so a host does not add them again. The order matters: CORS comes before the rate limiter so that a 429 still carries CORS headers, and authentication comes before it because it partitions by API key or principal.
+`UseFluentCms()` puts the request pipeline in place, in the order it works in: the exception handler (problem details), routing, security headers, CORS, a coarse limit per client address, authentication, the rate limiter of the endpoints and the request limits. Call it once, after `UsePathBase` and before `MapFluentCms()`, which needs it (the endpoints carry CORS and rate limit metadata that only these middleware read), and add `UseAuthorization()` after it. It includes `UseExceptionHandler()`, `UseRouting()` and `UseAuthentication()`, so a host does not add them again. The order matters: CORS comes before the limiters so that a 429 still carries CORS headers, the coarse limit comes before authentication so that a flood is turned away before it reaches a key lookup or the token endpoint, and authentication comes before the endpoint limiter because that partitions by API key or principal. `MapFluentCms()` throws `FCMS1104` at startup when `UseFluentCms()` was not called.
 
 ## Options
 
@@ -24,7 +24,7 @@ Everything is read from the `FluentCms` section of the host's configuration, so 
 | --- | --- |
 | `FluentCms:Database` | `MigrateOnStartup`, `SchemaSync` (see [content migrations](content-migrations.md)) |
 | `FluentCms:Security` | `AllowGeneratedSigningKey`, `Cors:Delivery:AllowedOrigins`, `Cors:Management:AllowedOrigins`, `ReferrerPolicy`, `FrameAncestors` |
-| `FluentCms:RateLimits` | `Delivery:PermitLimit`, `Management:PermitLimit`, `Auth:PermitLimit` |
+| `FluentCms:RateLimits` | `Delivery:PermitLimit`, `Delivery:MaxKeyLimit`, `Management:PermitLimit`, `Auth:PermitLimit`, `PreAuth:PermitLimit` |
 | `FluentCms:Limits` | `MaxBodySize` |
 | `FluentCms:Query` | `DefaultPageSize`, `MaxPageSize`, `MaxPopulateDepth`, `MaxFilterNodes`, `MaxPopulatedEntries` |
 | `FluentCms:Jobs` | the job runner: `Queues`, `PollInterval`, `LeaseDuration`, retries, retention |
@@ -48,12 +48,17 @@ ASP.NET Core's rate limiter runs three policies, each a fixed window of one minu
 | `delivery` | `/api/delivery/v1` | the API key's `sub`, or the client address | 600 |
 | `management` | `/api/management/v1` | the principal's `sub`, or the client address when there is none | 300 |
 | `auth` | `/connect`, `/account` | the client address | 20 |
+| coarse (`PreAuth`) | every route but `/health`, before authentication | the client address | 6000 |
 
-An API key whose principal has an `fcms_rate_limit` claim gets that many requests per minute instead of the `delivery` default. `/health` is not limited.
+An API key whose principal has an `fcms_rate_limit` claim gets that many requests per minute instead of the `delivery` default, at most `Delivery:MaxKeyLimit` (5000), which must not be below `Delivery:PermitLimit`. `/health` is not limited.
+
+The coarse limit is checked by path, before authentication, so it also covers requests that no endpoint answers, such as `/connect/token` from the authorization server. It adds no `RateLimit-*` headers; a refusal is the same 429 problem.
 
 A response carries `RateLimit-Limit`, `RateLimit-Remaining` and `RateLimit-Reset` (seconds to the end of the window), from the IETF draft. A refused request is a 429 `application/problem+json` with code `FCMS3110` and a `Retry-After` in seconds.
 
-The client address is the connection's remote address. Behind a proxy, call `app.UseForwardedHeaders()` with the proxies you trust before `UseFluentCms()`, or every caller shares the proxy's address.
+The key and the principal are those of the `FluentCms` authentication scheme when the host has one (the API key registration adds it, as a policy scheme that forwards to the key scheme when a key is presented and otherwise to the default scheme), so a cookie or token default scheme does not hide a key. Without it they are those of the default scheme.
+
+The client address is the connection's remote address, an IPv4-mapped address counted as its IPv4 address and an IPv6 address by its /64. Behind a proxy, call `app.UseForwardedHeaders()` with the proxies you trust before `UseFluentCms()`, or every caller shares the proxy's address.
 
 ## CORS
 
@@ -61,9 +66,9 @@ The client address is the connection's remote address. Behind a proxy, call `app
 
 ## Security headers and request limits
 
-Every FluentCMS response carries `X-Content-Type-Options: nosniff` and `Referrer-Policy` (`FluentCms:Security:ReferrerPolicy`, default `no-referrer`). The `/account` pages, which are the hosted pages, also carry `Content-Security-Policy: frame-ancestors ...` from `FluentCms:Security:FrameAncestors`, default `'none'`. A host's own endpoints are not touched.
+Every FluentCMS response carries `X-Content-Type-Options: nosniff` and `Referrer-Policy` (`FluentCms:Security:ReferrerPolicy`, default `no-referrer`). The `/account` group, which is where the hosted pages are, also carries `Content-Security-Policy: frame-ancestors ...` from `FluentCms:Security:FrameAncestors`, default `'none'`. A header that an endpoint sets itself is kept, and `frame-ancestors` is added to an endpoint's own policy when that has none. A host's own endpoints are not touched.
 
-A request to a FluentCMS endpoint with a body larger than `FluentCms:Limits:MaxBodySize` bytes (default 2 MiB) is refused with 413 and code `FCMS3111`, whether the size is declared or only found out while the body is read. The page size, populate depth and filter node caps are the engine's `FluentCms:Query` options; a query over one comes back as a 400 problem with code `FCMS2207`.
+A request to a FluentCMS endpoint with a body larger than `FluentCms:Limits:MaxBodySize` bytes (default 2 MiB) is refused with 413 and code `FCMS3111`, whether the size is declared or only found out while the body is read. The cap only lowers: a lower limit that the host or Kestrel already set stays, and an endpoint with its own size limit keeps it. The page size, populate depth and filter node caps are the engine's `FluentCms:Query` options; a query over one comes back as a 400 problem with code `FCMS2207`.
 
 ## Production refusals
 

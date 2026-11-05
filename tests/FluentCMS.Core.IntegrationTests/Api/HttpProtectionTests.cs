@@ -412,7 +412,7 @@ public sealed class HttpProtectionTests : IAsyncDisposable
         exception.Code.ShouldBe("FCMS1103");
     }
 
-    private static Dictionary<string, string?> Limits(int? delivery = null, int? management = null, int? auth = null)
+    internal static Dictionary<string, string?> Limits(int? delivery = null, int? management = null, int? auth = null)
     {
         Dictionary<string, string?> settings = [];
         if (delivery is not null)
@@ -433,7 +433,7 @@ public sealed class HttpProtectionTests : IAsyncDisposable
         return settings;
     }
 
-    private static Dictionary<string, string?> Origins(string? delivery = null, string? management = null)
+    internal static Dictionary<string, string?> Origins(string? delivery = null, string? management = null)
     {
         Dictionary<string, string?> settings = [];
         if (delivery is not null)
@@ -449,21 +449,21 @@ public sealed class HttpProtectionTests : IAsyncDisposable
         return settings;
     }
 
-    private static int Seconds(HttpResponseMessage response, string name) => int.Parse(Header(response, name)!, CultureInfo.InvariantCulture);
+    internal static int Seconds(HttpResponseMessage response, string name) => int.Parse(Header(response, name)!, CultureInfo.InvariantCulture);
 
-    private static string? Header(HttpResponseMessage response, string name) =>
+    internal static string? Header(HttpResponseMessage response, string name) =>
         response.Headers.TryGetValues(name, out var values) ? values.Single() : null;
 
-    private static async Task<JsonElement> Problem(HttpResponseMessage response) =>
+    internal static async Task<JsonElement> Problem(HttpResponseMessage response) =>
         JsonDocument.Parse(await response.Content.ReadAsStringAsync(Token)).RootElement.Clone();
 
-    private static async Task<HttpStatusCode> Status(HttpClient client, string path, params (string Name, string Value)[] headers)
+    internal static async Task<HttpStatusCode> Status(HttpClient client, string path, params (string Name, string Value)[] headers)
     {
         using var response = await Send(client, path, headers);
         return response.StatusCode;
     }
 
-    private static Task<HttpResponseMessage> Send(HttpClient client, string path, params (string Name, string Value)[] headers)
+    internal static Task<HttpResponseMessage> Send(HttpClient client, string path, params (string Name, string Value)[] headers)
     {
         var request = new HttpRequestMessage(HttpMethod.Get, path);
         foreach (var (name, value) in headers)
@@ -482,7 +482,7 @@ public sealed class HttpProtectionTests : IAsyncDisposable
         return client.SendAsync(request, Token);
     }
 
-    private static Task<HttpResponseMessage> Post(HttpClient client, string body, bool chunked)
+    internal static Task<HttpResponseMessage> Post(HttpClient client, string body, bool chunked)
     {
         var request = new HttpRequestMessage(HttpMethod.Post, "/api/management/v1/echo");
         request.Content = chunked
