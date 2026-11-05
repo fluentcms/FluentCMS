@@ -1,7 +1,7 @@
-using System.Security.Cryptography;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Identity;
+using FluentCMS.Core.Identity.ApiKeys;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
@@ -12,8 +12,8 @@ using Microsoft.Extensions.DependencyInjection;
 namespace FluentCMS.Testing;
 
 // A user is stored through the user manager and holds its role in cms_user_role; its principal is what the authorization
-// server will build, with the management scope and no roles claim. API keys are not stored yet, so a key's principal names
-// its role in the roles claim, as the key handler will. A role that is not there is refused, which production cannot reach either.
+// server will build, with the management scope and no roles claim. A key is stored through the key service, and its
+// principal is the one its handler's claims become. A role that is not there is refused, which production cannot reach either.
 internal static class Identities
 {
     private static readonly string[] BuiltInNames =
@@ -62,12 +62,15 @@ internal static class Identities
     public static async Task<TestApiKey> CreateApiKeyAsync(IServiceProvider services, ApiKeyClass keyClass, string role, string? name, CancellationToken cancellationToken)
     {
         var stored = await FindRoleAsync(services, role, cancellationToken);
-        var id = Guid.CreateVersion7();
-        var keyName = name ?? $"{keyClass} key {id.ToString("N")[^6..]}";
-        var secret = Prefix(keyClass) + Base64Url(RandomNumberGenerator.GetBytes(32));
+        var keyName = name ?? $"{keyClass} key {Guid.CreateVersion7().ToString("N")[^6..]}";
 
-        var principal = new Principal(PrincipalKind.ApiKey, id, keyName, Claims(stored.Id, Scope(keyClass)));
-        return new TestApiKey(id, keyName, keyClass, stored.Name, stored.Id, secret, principal);
+        await using var scope = services.CreateAsyncScope();
+        var keys = scope.ServiceProvider.GetRequiredService<ApiKeyService>();
+        var created = await keys.CreateAsync(new ApiKeyRequest(keyName, ClassOf(keyClass), stored.Id), cancellationToken);
+        var key = await scope.ServiceProvider.GetRequiredService<ApiKeyPrincipals>().CurrentAsync(created.Key.Id, cancellationToken)
+            ?? throw new InvalidOperationException($"The key '{keyName}' was not stored.");
+
+        return new TestApiKey(created.Key.Id, keyName, keyClass, stored.Name, stored.Id, created.Secret, key);
     }
 
     private static void Check(IdentityResult result, string userName)
@@ -78,28 +81,11 @@ internal static class Identities
         }
     }
 
-    private static Dictionary<string, string> Claims(Guid roleId, string scope) => new()
+    private static Core.Identity.ApiKeys.ApiKeyClass ClassOf(ApiKeyClass keyClass) => keyClass switch
     {
-        [ClaimPrincipalRoles.Claim] = roleId.ToString(),
-        [TokenScopes.Claim] = scope,
-    };
-
-    private static string Scope(ApiKeyClass keyClass) => keyClass switch
-    {
-        ApiKeyClass.Delivery => TokenScopes.Delivery,
-        ApiKeyClass.Preview => TokenScopes.Preview,
-        ApiKeyClass.Management => TokenScopes.Management,
+        ApiKeyClass.Delivery => Core.Identity.ApiKeys.ApiKeyClass.Delivery,
+        ApiKeyClass.Preview => Core.Identity.ApiKeys.ApiKeyClass.Preview,
+        ApiKeyClass.Management => Core.Identity.ApiKeys.ApiKeyClass.Management,
         _ => throw new ArgumentOutOfRangeException(nameof(keyClass), keyClass, null),
     };
-
-    private static string Prefix(ApiKeyClass keyClass) => keyClass switch
-    {
-        ApiKeyClass.Delivery => "fcms_dk_",
-        ApiKeyClass.Preview => "fcms_pk_",
-        ApiKeyClass.Management => "fcms_mk_",
-        _ => throw new ArgumentOutOfRangeException(nameof(keyClass), keyClass, null),
-    };
-
-    private static string Base64Url(byte[] bytes) =>
-        Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 }

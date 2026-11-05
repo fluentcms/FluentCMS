@@ -83,8 +83,8 @@ public class LayeringRulesTests
     }
 
     // Issue #2693. CmsDbContext also holds the system tables, so these may reach it for their own tables only, which the
-    // next rules check: the evaluator and UserPrincipalRoles for roles, Sites and LocaleRegistry for cms_site and cms_site_locale, the extensions
-    // that register it, and the provider packages and the tool, which are the storage layer's other half. The test host
+    // next rules check: the evaluator, UserPrincipalRoles and ApiKeyPrincipals for roles and keys, Sites and LocaleRegistry
+    // for cms_site and cms_site_locale, the extensions that register it, and the provider packages and the tool, which are the storage layer's other half. The test host
     // looks roles up and writes custom ones the way role management will.
     [Fact]
     public void OnlyTheServiceAndTheStorageLayerTouchCmsDbContext()
@@ -97,6 +97,7 @@ public class LayeringRulesTests
             .And().DoNotResideInNamespaceOrBelow(TestingNamespace)
             .And().DoNotHaveName("AuthorizationEvaluator")
             .And().DoNotHaveName("UserPrincipalRoles")
+            .And().DoNotHaveName("ApiKeyPrincipals")
             .And().DoNotHaveName("LocaleRegistry")
             .And().DoNotHaveName("FluentCmsServiceCollectionExtensions")
             .Should().NotDependOnAnyTypesThat().HaveName("CmsDbContext")

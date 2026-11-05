@@ -7,6 +7,7 @@ using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Events;
 using FluentCMS.Core.Identity;
+using FluentCMS.Core.Identity.ApiKeys;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Localization;
 using FluentCMS.Core.Schema;
@@ -153,6 +154,17 @@ public static class ErrorCodeRegistry
         new(IdentityErrorCodes.DeleteNotSupported, StatusCodes.Status409Conflict, "Users are deactivated, not deleted"),
         Startup(IdentityErrorCodes.NoEmailSender, "No email sender"),
         Startup(IdentityErrorCodes.WriteInTransaction, "Users written in a transaction"),
+        Invalid(ApiKeyErrorCodes.InvalidName, "Invalid API key name"),
+        Invalid(ApiKeyErrorCodes.UnknownSite, "Unknown site"),
+        Invalid(ApiKeyErrorCodes.UnknownType, "Unknown content type"),
+        Invalid(ApiKeyErrorCodes.InvalidExpiry, "Invalid API key expiry"),
+        Invalid(ApiKeyErrorCodes.InvalidRateLimit, "Invalid rate limit"),
+        new(ApiKeyErrorCodes.NotFound, StatusCodes.Status404NotFound, "API key not found"),
+        new(ApiKeyErrorCodes.InvalidKey, StatusCodes.Status401Unauthorized, "API key not valid"),
+        new(ApiKeyErrorCodes.Expired, StatusCodes.Status401Unauthorized, "API key expired"),
+        new(ApiKeyErrorCodes.Revoked, StatusCodes.Status401Unauthorized, "API key revoked"),
+        new(ApiKeyErrorCodes.SeveralCredentials, StatusCodes.Status401Unauthorized, "Several credentials"),
+        Invalid(ApiKeyErrorCodes.EmptyBinding, "Empty API key binding"),
 
         // 31xx HTTP
         new(ApiErrorCodes.BadRequest, StatusCodes.Status400BadRequest, "Bad request"),
