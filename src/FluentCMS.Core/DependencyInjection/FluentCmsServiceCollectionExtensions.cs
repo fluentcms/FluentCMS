@@ -5,11 +5,13 @@ using FluentCMS.Content;
 using FluentCMS.Core.ActivityLog;
 using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.Api.Delivery;
+using FluentCMS.Core.Api.Management;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Content.Hooks;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.Content.Validation;
+using FluentCMS.Core.Diagnostics;
 using FluentCMS.Core.Events;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Jobs;
@@ -53,6 +55,8 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddProductionStartupChecks();
         services.AddFluentCmsOptions(DatabaseOptions.Section, StorageErrorCodes.InvalidDatabaseSetting, new DatabaseOptions());
         services.AddFluentCmsOptions(SecurityOptions.Section, HostErrorCodes.InvalidOption, new SecurityOptions(), security => security.Validate());
+        services.AddFluentCmsOptions(ReverseProxyOptions.Section, HostErrorCodes.InvalidOption, builder.ReverseProxy, proxy => proxy.Validate());
+        services.AddReverseProxyHttpsPolicy();
         services.AddSecurityDefaults();
         services.AddFluentCmsApiProtection();
 
@@ -97,6 +101,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddFluentCmsProblemDetails();
         services.AddSingleton<MigrationRunner>();
         services.AddHostedService<MigrationStartupService>();
+        services.AddStartupReport();
 
         services.AddFluentCmsOptions(ContentQueryOptions.Section, HostErrorCodes.InvalidOption, new ContentQueryOptions(), query => query.Validate());
         services.TryAddSingleton<IOperationContextAccessor, OperationContextAccessor>();
@@ -119,6 +124,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddScoped<SiteManager>();
         services.AddScoped<RequestBridge>();
         services.AddDeliveryApi();
+        services.AddSystemApi();
 
         services.AddSingleton<SettingsCache>();
         services.AddScoped<SettingsService>();

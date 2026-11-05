@@ -90,6 +90,8 @@ public sealed class MigrationRunner(
     public Task<IReadOnlyList<StreamMigration>> GetPendingMigrationsAsync(CancellationToken cancellationToken = default) =>
         GetPendingAsync([.. SystemAndPlugins, Content], cancellationToken);
 
+    internal Task<SchemaStatus> GetSchemaStatusAsync(CancellationToken cancellationToken = default) => _history.StatusAsync(schema, cancellationToken);
+
     // Applies the additive changes a schema needs and reports the rest. Startup calls this for the host's schema;
     // passing another applies a changed schema without a restart. Refuses outside Development on SQLite.
     public Task<SchemaSyncReport> SyncContentSchemaAsync(SchemaModel? changedSchema = null, CancellationToken cancellationToken = default)

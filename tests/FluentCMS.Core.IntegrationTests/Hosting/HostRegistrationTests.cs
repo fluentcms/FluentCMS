@@ -51,17 +51,13 @@ public sealed class HostRegistrationTests : IAsyncDisposable
     {
         var app = _host.Build(
             Environments.Development,
+            new Dictionary<string, string?> { ["FluentCms:ReverseProxy:PathBase"] = "/cms" },
             configure: builder =>
             {
                 foreach (var each in Enum.GetValues<FluentCmsEndpointGroup>())
                 {
                     builder.Services.AddFluentCmsEndpoints(each, routes => routes.MapGet("/probe", () => each.ToString()));
                 }
-            },
-            pipeline: app =>
-            {
-                app.UsePathBase("/cms");
-                app.UseFluentCms();
             });
         await app.StartAsync(Token);
 
@@ -88,6 +84,13 @@ public sealed class HostRegistrationTests : IAsyncDisposable
     [InlineData("FluentCms:Jobs:PollInterval", "-00:00:05", "FCMS2506")]
     [InlineData("FluentCms:Events:Outbox:BatchSize", "0", "FCMS2603")]
     [InlineData("FluentCms:Activity:PruneSchedule", "never", "FCMS2701")]
+    [InlineData("FluentCms:ReverseProxy:PathBase", "cms", "FCMS1101")]
+    [InlineData("FluentCms:ReverseProxy:PathBase", "/cms/", "FCMS1101")]
+    [InlineData("FluentCms:ReverseProxy:ForwardedHeaders:KnownProxies:0", "proxy", "FCMS1101")]
+    [InlineData("FluentCms:ReverseProxy:ForwardedHeaders:KnownNetworks:0", "10.0.0.0/33", "FCMS1101")]
+    [InlineData("FluentCms:ReverseProxy:ForwardedHeaders:ForwardLimit", "0", "FCMS1101")]
+    [InlineData("FluentCms:ReverseProxy:HttpsRedirection:Port", "0", "FCMS1101")]
+    [InlineData("FluentCms:ReverseProxy:Hsts:MaxAge", "00:00:00", "FCMS1101")]
     [InlineData("FluentCms:Security:Cors:Delivery:AllowedOrigins:0", "*", "FCMS1101")]
     [InlineData("FluentCms:Security:Cors:Management:AllowedOrigins:0", "https://*.example.com", "FCMS1101")]
     [InlineData("FluentCms:Database:SchemaSync", "7", "FCMS1304")]
