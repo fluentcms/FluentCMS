@@ -1,0 +1,157 @@
+using System.Collections.Frozen;
+using FluentCMS.Content;
+using FluentCMS.Core.ActivityLog;
+using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Content;
+using FluentCMS.Core.Content.Query;
+using FluentCMS.Core.Events;
+using FluentCMS.Core.Jobs;
+using FluentCMS.Core.Localization;
+using FluentCMS.Core.Schema;
+using FluentCMS.Core.Seeding;
+using FluentCMS.Core.Settings;
+using FluentCMS.Core.Sites;
+using FluentCMS.Core.Storage;
+using FluentCMS.Publishing;
+using Microsoft.AspNetCore.Http;
+
+namespace FluentCMS.Core.Api.Common;
+
+// Every FCMS code the engine raises, once, with the status a client sees and a title. A code that is raised only while the
+// host starts or a job runs is 500, since a request never reaches it. An unlisted code, such as a plugin's, is 422.
+public static class ErrorCodeRegistry
+{
+    public static IReadOnlyList<ErrorCodeInfo> All { get; } =
+    [
+        // 12xx schema, found when the host starts
+        Startup(SchemaErrorCodes.DuplicateType, "Duplicate content type"),
+        Startup(SchemaErrorCodes.DuplicateField, "Duplicate field"),
+        Startup(SchemaErrorCodes.FieldTypeNotRegistered, "Field type not registered"),
+        Startup(SchemaErrorCodes.RelationTargetMissing, "Relation target missing"),
+        Startup(SchemaErrorCodes.SlugSourceMissing, "Slug source missing"),
+        Startup(SchemaErrorCodes.ReservedName, "Reserved name"),
+        Startup(SchemaErrorCodes.NestingTooDeep, "Nesting too deep"),
+        Startup(SchemaErrorCodes.LocalizableOnUnlocalizedType, "Localizable field on an unlocalized type"),
+        Startup(SchemaErrorCodes.DuplicateReverseRelation, "Duplicate reverse relation"),
+        Startup(SchemaErrorCodes.ComponentOrBlockMissing, "Component or block missing"),
+        Startup(SchemaErrorCodes.InvalidField, "Invalid field"),
+        Startup(SchemaErrorCodes.InvalidCondition, "Invalid condition"),
+        Startup(SchemaErrorCodes.InvalidSchemaFile, "Invalid schema file"),
+        Startup(SchemaErrorCodes.InvalidName, "Invalid name"),
+        Startup(SchemaErrorCodes.InvalidType, "Invalid content type"),
+        Startup(SchemaErrorCodes.InvalidProperty, "Invalid property"),
+        Startup(SchemaErrorCodes.ReverseRelationOutsideContentType, "Reverse relation outside a content type"),
+
+        // 13xx storage
+        Startup(StorageErrorCodes.MissingContentSchema, "Content tables out of date"),
+        Startup(StorageErrorCodes.NoDataProvider, "No data provider"),
+        Startup(StorageErrorCodes.SeveralDataProviders, "Several data providers"),
+        Startup(StorageErrorCodes.InvalidDatabaseSetting, "Invalid database setting"),
+        Startup(StorageErrorCodes.PendingStreamMigrations, "Pending stream migrations"),
+
+        // 14xx authorization
+        Startup(AuthorizationErrorCodes.DuplicatePermission, "Duplicate permission"),
+        Startup(AuthorizationErrorCodes.ReservedPermission, "Reserved permission"),
+        Startup(AuthorizationErrorCodes.UnsupportedRowRule, "Unsupported row rule"),
+        Startup(AuthorizationErrorCodes.DuplicateRowRule, "Duplicate row rule"),
+        Startup(AuthorizationErrorCodes.InvalidRowRule, "Invalid row rule"),
+        Invalid(AuthorizationErrorCodes.FieldNotWritable, "Field not writable"),
+
+        // 21xx validation
+        Invalid(ApiErrorCodes.ValidationFailed, "Validation failed"),
+        Invalid(ValidationErrorCodes.Required, "Value required"),
+        Invalid(ValidationErrorCodes.MinLength, "Too short"),
+        Invalid(ValidationErrorCodes.MaxLength, "Too long"),
+        Invalid(ValidationErrorCodes.BelowMinimum, "Below the minimum"),
+        Invalid(ValidationErrorCodes.AboveMaximum, "Above the maximum"),
+        Invalid(ValidationErrorCodes.PatternMismatch, "Does not match the pattern"),
+        Invalid(ValidationErrorCodes.NotAnAllowedOption, "Not an allowed option"),
+        Invalid(ValidationErrorCodes.InvalidValue, "Invalid value"),
+        Invalid(ValidationErrorCodes.Custom, "Validation rule failed"),
+        Invalid(ValidationErrorCodes.RequiredByCondition, "Value required by a condition"),
+        Invalid(ValidationErrorCodes.NotUnique, "Value not unique"),
+
+        // 22xx query
+        BadQuery(QueryErrorCodes.InvalidParameter, "Invalid query parameter"),
+        BadQuery(QueryErrorCodes.UnknownField, "Unknown field"),
+        BadQuery(QueryErrorCodes.OperatorNotAllowed, "Operator not allowed"),
+        BadQuery(QueryErrorCodes.InvalidValue, "Invalid query value"),
+        BadQuery(QueryErrorCodes.NotSortable, "Field not sortable"),
+        BadQuery(QueryErrorCodes.InvalidCursor, "Invalid cursor"),
+        BadQuery(QueryErrorCodes.LimitExceeded, "Query limit exceeded"),
+        BadQuery(QueryErrorCodes.NotARelation, "Not a relation"),
+        new(QueryErrorCodes.DraftNotAllowed, StatusCodes.Status403Forbidden, "Drafts not allowed"),
+
+        // 23xx sites and locales
+        new(SiteErrorCodes.SiteNotFound, StatusCodes.Status404NotFound, "Site not found"),
+        new(SiteErrorCodes.DefaultSiteProtected, StatusCodes.Status409Conflict, "Default site protected"),
+        new(SiteErrorCodes.SiteHasContent, StatusCodes.Status409Conflict, "Site has content"),
+        Invalid(SiteErrorCodes.InvalidSite, "Invalid site"),
+        Invalid(LocaleErrorCodes.InvalidLocale, "Invalid locale"),
+        Invalid(LocaleErrorCodes.LocaleNotAllowed, "Locale not allowed"),
+
+        // 24xx content and publishing
+        new(ContentErrorCodes.SingletonExists, StatusCodes.Status409Conflict, "Singleton already exists"),
+        new(ContentErrorCodes.NotPublished, StatusCodes.Status409Conflict, "Entry not published"),
+        Invalid(PublishWarningCodes.UnpublishedReference, "Reference to an unpublished entry"),
+        Invalid(PublishWarningCodes.UnavailableReference, "Reference to an unavailable entry"),
+        new(ContentErrorCodes.DraftMovedByHook, StatusCodes.Status409Conflict, "Draft changed by a hook"),
+        new(ContentErrorCodes.NotScheduled, StatusCodes.Status409Conflict, "Nothing scheduled"),
+        Invalid(ContentErrorCodes.ScheduleNotInFuture, "Schedule not in the future"),
+        Invalid(ContentErrorCodes.NonexistentLocalTime, "Local time does not exist"),
+        new(ContentErrorCodes.ScheduledDraftChanged, StatusCodes.Status409Conflict, "Draft changed since it was scheduled"),
+
+        // 25xx jobs
+        Startup(JobErrorCodes.UnknownJobType, "Unknown job type"),
+        Startup(JobErrorCodes.BadPayload, "Bad job payload"),
+        Startup(JobErrorCodes.InvalidCron, "Invalid cron expression"),
+        Startup(JobErrorCodes.UnregisteredJob, "Unregistered job"),
+        Startup(JobErrorCodes.DuplicateJobType, "Duplicate job type"),
+        Startup(JobErrorCodes.InvalidRunnerOptions, "Invalid job runner options"),
+        Startup(JobErrorCodes.BadActor, "Bad job actor"),
+        Startup(JobErrorCodes.AttemptTimedOut, "Job attempt timed out"),
+
+        // 26xx events
+        Startup(EventErrorCodes.DuplicateOutboxHandler, "Duplicate outbox handler"),
+        Startup(EventErrorCodes.PublishInForeignTransaction, "Event published in a foreign transaction"),
+        Startup(EventErrorCodes.InvalidOutboxOptions, "Invalid outbox options"),
+
+        // 27xx activity
+        Startup(ActivityErrorCodes.InvalidOptions, "Invalid activity options"),
+        Startup(ActivityErrorCodes.DuplicateActivity, "Duplicate activity"),
+        BadQuery(ActivityErrorCodes.InvalidPage, "Invalid page"),
+        Startup(ActivityErrorCodes.WriteInTransaction, "Activity written in a transaction"),
+
+        // 28xx settings
+        Startup(SettingsErrorCodes.InvalidRegistration, "Invalid settings registration"),
+        new(SettingsErrorCodes.UnknownArea, StatusCodes.Status404NotFound, "Unknown settings area"),
+        Invalid(SettingsErrorCodes.InvalidJson, "Invalid settings document"),
+        Invalid(SettingsErrorCodes.UnknownKey, "Unknown settings key"),
+        Invalid(SettingsErrorCodes.InvalidValue, "Invalid settings value"),
+        new(SettingsErrorCodes.SiteNotFound, StatusCodes.Status404NotFound, "Site not found"),
+        Startup(SettingsErrorCodes.WriteInTransaction, "Settings written in a transaction"),
+        new(SettingsErrorCodes.VersionConflict, StatusCodes.Status412PreconditionFailed, "Settings changed since they were read"),
+
+        // 29xx seeding
+        Startup(SeedingErrorCodes.LocaleWithoutSeeder, "Locale without a seeder"),
+        Startup(SeedingErrorCodes.InvalidTimeout, "Invalid seeding timeout"),
+
+        // 31xx HTTP
+        new(ApiErrorCodes.BadRequest, StatusCodes.Status400BadRequest, "Bad request"),
+        new(ApiErrorCodes.Unauthorized, StatusCodes.Status401Unauthorized, "Authentication required"),
+        new(ApiErrorCodes.Forbidden, StatusCodes.Status403Forbidden, "Forbidden"),
+        new(ApiErrorCodes.NotFound, StatusCodes.Status404NotFound, "Not found"),
+        new(ApiErrorCodes.VersionConflict, StatusCodes.Status412PreconditionFailed, "Version conflict"),
+        new(ApiErrorCodes.InternalError, StatusCodes.Status500InternalServerError, "Internal error"),
+    ];
+
+    private static readonly FrozenDictionary<string, ErrorCodeInfo> byCode = All.ToFrozenDictionary(info => info.Code);
+
+    public static ErrorCodeInfo? Find(string? code) => code is not null && byCode.TryGetValue(code, out var info) ? info : null;
+
+    private static ErrorCodeInfo Startup(string code, string title) => new(code, StatusCodes.Status500InternalServerError, title);
+
+    private static ErrorCodeInfo Invalid(string code, string title) => new(code, StatusCodes.Status422UnprocessableEntity, title);
+
+    private static ErrorCodeInfo BadQuery(string code, string title) => new(code, StatusCodes.Status400BadRequest, title);
+}

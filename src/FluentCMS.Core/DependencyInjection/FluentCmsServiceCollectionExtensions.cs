@@ -3,6 +3,7 @@ using FluentCMS.Activity;
 using FluentCMS.Authorization;
 using FluentCMS.Content;
 using FluentCMS.Core.ActivityLog;
+using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Content.Hooks;
@@ -81,6 +82,7 @@ public static class FluentCmsServiceCollectionExtensions
         });
 
         services.AddLogging();
+        services.AddFluentCmsProblemDetails();
         services.AddSingleton<MigrationRunner>();
         services.AddHostedService<MigrationStartupService>();
 
