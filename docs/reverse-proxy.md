@@ -11,11 +11,11 @@ A FluentCMS host often sits behind a proxy that ends TLS, a CDN, or a path prefi
 | `ForwardedHeaders:ForwardFor` | `true` | `X-Forwarded-For` sets the client address. |
 | `ForwardedHeaders:ForwardProto` | `true` | `X-Forwarded-Proto` sets the scheme. |
 | `ForwardedHeaders:ForwardHost` | `false` | `X-Forwarded-Host` sets the host. |
-| `ForwardedHeaders:KnownProxies` | none | Addresses of the proxies to trust. |
-| `ForwardedHeaders:KnownNetworks` | none | Networks to trust, in CIDR notation. |
+| `ForwardedHeaders:KnownProxies` | none | Addresses of the proxies to trust, written in full (`10.0.0.1`, not `10.1`). |
+| `ForwardedHeaders:KnownNetworks` | none | Networks to trust, in CIDR notation with a full address (`10.0.0.0/8`). |
 | `ForwardedHeaders:ForwardLimit` | `1` | How many proxies in a row may add an entry to `X-Forwarded-For`. |
 | `HttpsRedirection:Enabled` | `false` | Redirects http requests to https. |
-| `HttpsRedirection:Port` | 443 | The port of the https address in the redirect. |
+| `HttpsRedirection:Port` | none | The port of the https address in the redirect, such as `443`. Left out, the framework reads `HTTPS_PORT` or `ASPNETCORE_HTTPS_PORT`, then the https address of the server, and redirects nowhere when it finds none, as behind a proxy. |
 | `Hsts:Enabled` | on outside Development | Sends `Strict-Transport-Security` on https responses. |
 | `Hsts:MaxAge` | 30 days | The `max-age` of the header. |
 | `Hsts:IncludeSubDomains` | `false` | Adds `includeSubDomains`. |
@@ -41,7 +41,7 @@ Set `PathBase` and keep the prefix when the proxy forwards the request:
 FluentCms__ReverseProxy__PathBase=/cms
 ```
 
-Every route is then under it (`/cms/api/delivery/v1`, `/cms/api/management/v1`, `/cms/connect`, `/cms/account`, `/cms/health/live`) and the same routes without the prefix answer 404. A proxy that strips the prefix before forwarding does not need the option, but then the host cannot build links that include it. Health probes that call the host directly must use the prefixed path.
+Every route of FluentCMS is then under it (`/cms/api/delivery/v1`, `/cms/api/management/v1`, `/cms/connect`, `/cms/account`, `/cms/health/live`, and any group added later) and the same routes without the prefix answer a 404 problem. Routes the host maps itself, such as its own endpoints, `/openapi/v1.json`, `/scalar` or the media routes, are not held to it: put them under `/cms` yourself with `MapGroup`. A proxy that strips the prefix before forwarding does not need the option, but then the host cannot build links that include it. Health probes that call the host directly must use the prefixed path.
 
 ## Nginx
 

@@ -6,6 +6,7 @@ using FluentCMS.Core.Storage;
 using FluentCMS.Providers;
 using FluentCMS.Schema;
 using FluentCMS.Core.Schema;
+using FluentCMS.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -30,17 +31,45 @@ internal sealed class StartupReportFactory(
         var pending = await migrations.GetPendingMigrationsAsync(cancellationToken);
         var schema = await SchemaAsync(cancellationToken);
 
-        return new StartupReport(
-            time.GetUtcNow(),
-            environment?.EnvironmentName ?? "Unknown",
-            VersionOf(typeof(StartupReportFactory).Assembly),
-            new StartupDataProvider(provider.Name, VersionOf(provider.GetType().Assembly), startup.MigrateOnStartup, startup.SchemaSync.ToString()),
-            Assemblies(),
-            [],
-            [.. pending.Select(migration => new StartupMigration(migration.Stream, SecretScrubber.Of(migration.Id)))],
-            new StartupSchema(schema.Hash, schema.AppliedHash, schema.AppliedAt, schema.AppliedVersion, schema.Drifted, schema.Changes is null ? null : SecretScrubber.Of(schema.Changes)),
-            InsecureDefaults());
+        return new StartupReport
+        {
+            StartedAt = time.GetUtcNow(),
+            Environment = EnvironmentName,
+            Version = VersionOf(typeof(StartupReportFactory).Assembly),
+            DataProvider = new StartupDataProvider
+            {
+                Provider = provider.Name,
+                ProviderVersion = VersionOf(provider.GetType().Assembly),
+                MigrateOnStartup = startup.MigrateOnStartup,
+                SchemaSync = startup.SchemaSync.ToString(),
+            },
+            Assemblies = Assemblies(),
+            PendingMigrations = [.. pending.Select(migration => new StartupMigration { Stream = migration.Stream, Id = SecretScrubber.Of(migration.Id) })],
+            Schema = new StartupSchema
+            {
+                Hash = schema.Hash,
+                AppliedHash = schema.AppliedHash,
+                AppliedAt = schema.AppliedAt,
+                AppliedVersion = schema.AppliedVersion,
+                Drifted = schema.Drifted,
+                Changes = schema.Changes is null ? null : SecretScrubber.Of(schema.Changes),
+            },
+            InsecureDefaults = InsecureDefaults(),
+        };
     }
+
+    // What is left when the report cannot be made: the facts that need no database, and the type of what failed.
+    public StartupReport CreateDegraded(Exception exception) => new()
+    {
+        StartedAt = time.GetUtcNow(),
+        Environment = EnvironmentName,
+        Version = VersionOf(typeof(StartupReportFactory).Assembly),
+        Failure = exception.GetType().Name,
+        DataProvider = new StartupDataProvider { Provider = provider.Name, ProviderVersion = VersionOf(provider.GetType().Assembly) },
+        Assemblies = Assemblies(),
+    };
+
+    private string EnvironmentName => environment?.EnvironmentName ?? "Unknown";
 
     // Like the drift check at startup, a history that cannot be read does not stop the host, and the report says so.
     private async Task<SchemaStatus> SchemaAsync(CancellationToken cancellationToken)
@@ -61,26 +90,26 @@ internal sealed class StartupReportFactory(
         List<InsecureDefault> found = [.. checks
             .Select(check => check.Check())
             .OfType<StartupRefusal>()
-            .Select(refusal => new InsecureDefault(refusal.Code, SecretScrubber.Of(refusal.Message)))];
+            .Select(refusal => new InsecureDefault { Id = refusal.Code, Message = SecretScrubber.Of(refusal.Message) })];
 
         if (services.GetService<ISigningKeyStatus>()?.IsGenerated == true && found.All(item => item.Id != HostErrorCodes.GeneratedSigningKeyInProduction))
         {
-            found.Add(new InsecureDefault("generated-signing-key", $"Tokens are signed with a key the server generated; {GeneratedSigningKeyCheck.Key} accepts it. Configure a signing certificate."));
+            found.Add(new InsecureDefault { Id = "generated-signing-key", Message = $"Tokens are signed with a key the server generated; {GeneratedSigningKeyCheck.Key} accepts it. Configure a signing certificate." });
         }
 
         if (services.GetService<IEmailSender>() is LogEmailSender)
         {
-            found.Add(new InsecureDefault("development-email-sender", "Email is written to the log and not sent, links included. Register an IEmailSender."));
+            found.Add(new InsecureDefault { Id = "development-email-sender", Message = "Email is written to the log and not sent, links included. Register an IEmailSender." });
         }
 
         if (environment?.IsProduction() == true && !proxy.HttpsRedirection.Enabled)
         {
-            found.Add(new InsecureDefault("https-redirection-off", $"HTTPS redirection is off in Production. Turn on {FluentCmsOptions.Section}:{ReverseProxyOptions.Section}:{nameof(ReverseProxyOptions.HttpsRedirection)}:Enabled unless the proxy in front redirects."));
+            found.Add(new InsecureDefault { Id = "https-redirection-off", Message = $"HTTPS redirection is off in Production. Turn on {FluentCmsOptions.Section}:{ReverseProxyOptions.Section}:{nameof(ReverseProxyOptions.HttpsRedirection)}:Enabled unless the proxy in front redirects." });
         }
 
         if (proxy.ForwardedHeaders is { Enabled: true } forwarded && forwarded.TrustsEveryAddress)
         {
-            found.Add(new InsecureDefault("forwarded-headers-trust-any", "Forwarded headers are trusted from every address, so any caller can choose the scheme and client address the host sees. List the proxies or networks."));
+            found.Add(new InsecureDefault { Id = "forwarded-headers-trust-any", Message = "Forwarded headers are trusted from every address, so any caller can choose the scheme and client address the host sees. List the proxies or networks." });
         }
 
         return found;
@@ -91,7 +120,7 @@ internal sealed class StartupReportFactory(
     private static List<StartupAssembly> Assemblies() =>
         [.. AppDomain.CurrentDomain.GetAssemblies()
             .Where(assembly => !assembly.IsDynamic && assembly.GetName().Name is { } name && name.StartsWith("FluentCMS", StringComparison.Ordinal))
-            .Select(assembly => new StartupAssembly(assembly.GetName().Name!, VersionOf(assembly)))
+            .Select(assembly => new StartupAssembly { Name = assembly.GetName().Name!, Version = VersionOf(assembly) })
             .DistinctBy(assembly => assembly.Name)
             .OrderBy(assembly => assembly.Name, StringComparer.Ordinal)];
 

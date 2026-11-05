@@ -155,7 +155,7 @@ public sealed class ReverseProxyTests : IAsyncDisposable
         (await Get(off, "/api/delivery/v1/probe")).StatusCode.ShouldBe(HttpStatusCode.OK);
 
         await using var other = new CmsWebHost();
-        var on = await Start(Environments.Production, new() { [Section + "HttpsRedirection:Enabled"] = "true" }, other);
+        var on = await Start(Environments.Production, new() { [Section + "HttpsRedirection:Enabled"] = "true", [Section + "HttpsRedirection:Port"] = "443" }, other);
         using var redirect = await Get(on, "/api/delivery/v1/probe");
 
         redirect.StatusCode.ShouldBe(HttpStatusCode.TemporaryRedirect);
@@ -163,10 +163,56 @@ public sealed class ReverseProxyTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task TheHttpsPortOfTheEnvironmentIsHonouredWhenNoPortIsSet()
+    {
+        var client = await Start(Environments.Production, new() { [Section + "HttpsRedirection:Enabled"] = "true", ["HTTPS_PORT"] = "5001" });
+
+        using var redirect = await Get(client, "/api/delivery/v1/probe");
+
+        redirect.StatusCode.ShouldBe(HttpStatusCode.TemporaryRedirect);
+        redirect.Headers.Location!.ToString().ShouldBe("https://localhost:5001/api/delivery/v1/probe");
+    }
+
+    [Fact]
+    public async Task ThePortOptionWinsOverTheEnvironment()
+    {
+        var client = await Start(Environments.Production, new() { [Section + "HttpsRedirection:Enabled"] = "true", [Section + "HttpsRedirection:Port"] = "8443", ["HTTPS_PORT"] = "5001" });
+
+        using var redirect = await Get(client, "/api/delivery/v1/probe");
+
+        redirect.Headers.Location!.ToString().ShouldBe("https://localhost:8443/api/delivery/v1/probe");
+    }
+
+    [Fact]
+    public async Task APathRefusedForLackingThePathBaseIsAProblemWithTheSecurityHeaders()
+    {
+        var client = await Start(Environments.Development, new() { [Section + "PathBase"] = "/cms" });
+
+        using var response = await Get(client, "/api/delivery/v1/probe");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        response.Content.Headers.ContentType!.MediaType.ShouldBe("application/problem+json");
+        Header(response, "X-Content-Type-Options").ShouldBe("nosniff");
+        (await response.Content.ReadAsStringAsync(Token)).ShouldContain("FCMS3104");
+    }
+
+    [Fact]
+    public async Task APathOfAGroupThatNoEndpointAnswersIsHeldToThePathBaseToo()
+    {
+        var client = await Start(Environments.Development, new() { [Section + "PathBase"] = "/cms" });
+
+        using var response = await Get(client, "/connect/token");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        response.Content.Headers.ContentType!.MediaType.ShouldBe("application/problem+json");
+    }
+
+    [Fact]
     public async Task HttpsRedirectionLeavesARequestTheProxyForwardedAsHttps()
     {
         var settings = Forwarding();
         settings[Section + "HttpsRedirection:Enabled"] = "true";
+        settings[Section + "HttpsRedirection:Port"] = "443";
         var client = await Start(Environments.Production, settings);
 
         using var forwarded = await Get(client, "/api/delivery/v1/probe", (HeaderNames.TestAddress, Proxy), (HeaderNames.ForwardedProto, "https"));

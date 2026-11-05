@@ -1,18 +1,25 @@
 using System.Text.Json;
+using FluentCMS.Core.Events;
+using FluentCMS.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Core.Diagnostics;
 
-// The report of this start, kept for the diagnostics endpoint.
+// The report of this start, kept for the diagnostics endpoint. It is null until the host has made one.
 internal sealed class StartupReportHolder
 {
     private volatile StartupReport? _report;
 
-    public StartupReport Report => _report ?? throw new InvalidOperationException("The startup report is made when the host has started.");
+    public StartupReport? Current => _report;
 
-    public void Set(StartupReport report) => _report = report;
+    public void Set(StartupReport? report) => _report = report;
+}
+
+internal static class StartupReportJson
+{
+    public static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web);
 }
 
 // Runs after every StartingAsync, which is where the migrations are, so the report sees the database as the host will use it.
@@ -27,12 +34,14 @@ internal sealed partial class StartupReportService(StartupReportFactory factory,
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            NotMade(logger, exception.GetType().Name, exception);
+            // The message can name a connection or a path, so the log gets it scrubbed and the report only the type.
+            NotMade(logger, exception.GetType().Name, SecretScrubber.Of(exception.Message));
+            holder.Set(factory.CreateDegraded(exception));
             return;
         }
 
         holder.Set(report);
-        var json = JsonSerializer.Serialize(report, StartupReport.Json);
+        var json = JsonSerializer.Serialize(report, StartupReportJson.Options);
 
         Started(
             logger,
@@ -64,8 +73,8 @@ internal sealed partial class StartupReportService(StartupReportFactory factory,
         EventId = StartupReportEvents.NotMade,
         EventName = "StartupReportNotMade",
         Level = LogLevel.Warning,
-        Message = "The startup report could not be made ({ExceptionType}); the host starts without it.")]
-    private static partial void NotMade(ILogger logger, string exceptionType, Exception exception);
+        Message = "The startup report could not be made ({ExceptionType}: {Message}); the host starts, and the diagnostics endpoint serves what is known without it.")]
+    private static partial void NotMade(ILogger logger, string exceptionType, string message);
 
     [LoggerMessage(
         EventId = StartupReportEvents.InsecureDefault,

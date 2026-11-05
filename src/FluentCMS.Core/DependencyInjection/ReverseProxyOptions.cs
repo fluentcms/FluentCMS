@@ -78,7 +78,7 @@ public sealed class ProxyForwardedHeadersOptions
 
         for (var index = 0; index < KnownProxies.Count; index++)
         {
-            if (!IPAddress.TryParse(KnownProxies[index], out _))
+            if (!ProxyAddress.TryParse(KnownProxies[index], out _))
             {
                 throw new FluentCmsConfigurationException(
                     HostErrorCodes.InvalidOption,
@@ -88,7 +88,7 @@ public sealed class ProxyForwardedHeadersOptions
 
         for (var index = 0; index < KnownNetworks.Count; index++)
         {
-            if (!IPNetwork.TryParse(KnownNetworks[index], out _))
+            if (!ProxyAddress.TryParseNetwork(KnownNetworks[index], out _))
             {
                 throw new FluentCmsConfigurationException(
                     HostErrorCodes.InvalidOption,
@@ -98,7 +98,7 @@ public sealed class ProxyForwardedHeadersOptions
     }
 
     internal bool TrustsEveryAddress =>
-        KnownNetworks.Any(network => IPNetwork.TryParse(network, out var parsed) && parsed.PrefixLength == 0);
+        KnownNetworks.Any(network => ProxyAddress.TryParseNetwork(network, out var parsed) && parsed.PrefixLength == 0);
 }
 
 // Redirects an http request to https. Off by default, because behind a proxy that ends TLS every request reaches the host
@@ -107,7 +107,8 @@ public sealed class ProxyHttpsRedirectionOptions
 {
     public bool Enabled { get; set; }
 
-    // The port of the https address the redirect names. Empty is 443, which a URL does not spell out.
+    // The port of the https address the redirect names, such as 443. Empty leaves it to the framework, which reads HTTPS_PORT or
+    // ASPNETCORE_HTTPS_PORT and then the https address of the server, and redirects nowhere when it finds none, as behind a proxy.
     public int? Port { get; set; }
 
     internal void Validate(string key)
@@ -140,5 +141,45 @@ public sealed class ProxyHstsOptions
                 HostErrorCodes.InvalidOption,
                 $"{key}:{nameof(MaxAge)} is {MaxAge}; it must be longer than zero.");
         }
+    }
+}
+
+// The addresses of proxies are written in full. IPAddress.TryParse also takes legacy forms, where "1" is 0.0.0.1, which in a
+// list of trusted proxies would trust an address nobody meant.
+internal static class ProxyAddress
+{
+    public static bool TryParse(string? text, out IPAddress address)
+    {
+        address = IPAddress.None;
+        if (string.IsNullOrEmpty(text) || !IPAddress.TryParse(text, out var parsed))
+        {
+            return false;
+        }
+
+        var valid = parsed.AddressFamily switch
+        {
+            System.Net.Sockets.AddressFamily.InterNetwork => parsed.ToString() == text,
+            System.Net.Sockets.AddressFamily.InterNetworkV6 => text.Contains(':', StringComparison.Ordinal) && !text.Contains('%', StringComparison.Ordinal),
+            _ => false,
+        };
+
+        address = parsed;
+        return valid;
+    }
+
+    public static bool TryParseNetwork(string? text, out IPNetwork network)
+    {
+        network = default;
+        var slash = text?.IndexOf('/', StringComparison.Ordinal) ?? -1;
+        if (text is null || slash < 1)
+        {
+            return false;
+        }
+
+        var prefix = text[(slash + 1)..];
+        return TryParse(text[..slash], out _)
+            && prefix.Length is >= 1 and <= 3
+            && prefix.All(char.IsAsciiDigit)
+            && IPNetwork.TryParse(text, out network);
     }
 }

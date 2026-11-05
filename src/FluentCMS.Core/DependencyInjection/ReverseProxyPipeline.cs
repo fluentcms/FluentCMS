@@ -10,10 +10,6 @@ namespace FluentCMS.Core.DependencyInjection;
 
 internal static class ReverseProxyPipeline
 {
-    // Without a port the framework looks for one in the server's addresses, and behind a proxy there is none to find.
-    private const int DefaultHttpsPort = 443;
-
-    // HSTS and HTTPS redirection are the framework's middleware, which read their options from the container.
     public static void AddReverseProxyHttpsPolicy(this IServiceCollection services)
     {
         services.AddOptions<HstsOptions>().Configure<ReverseProxyOptions>((hsts, proxy) =>
@@ -23,7 +19,13 @@ internal static class ReverseProxyPipeline
             hsts.Preload = proxy.Hsts.Preload;
         });
         services.AddOptions<HttpsRedirectionOptions>().Configure<ReverseProxyOptions>((redirection, proxy) =>
-            redirection.HttpsPort = proxy.HttpsRedirection.Port ?? DefaultHttpsPort);
+        {
+            // A port that is not set stays the framework's to find, from HTTPS_PORT or the server's https address.
+            if (proxy.HttpsRedirection.Port is { } port)
+            {
+                redirection.HttpsPort = port;
+            }
+        });
     }
 
     public static bool HstsEnabled(ReverseProxyOptions options, IHostEnvironment? environment) =>
@@ -40,9 +42,7 @@ internal static class ReverseProxyPipeline
 
         if (!string.IsNullOrEmpty(options.PathBase))
         {
-            var pathBase = new PathString(options.PathBase);
-            app.UsePathBase(pathBase);
-            app.Use(RequirePathBase(pathBase));
+            app.UsePathBase(options.PathBase);
         }
 
         if (HstsEnabled(options, app.ApplicationServices.GetService<IHostEnvironment>()))
@@ -55,19 +55,6 @@ internal static class ReverseProxyPipeline
             app.UseHttpsRedirection();
         }
     }
-
-    // UsePathBase leaves a request that does not carry the prefix as it is, so without this the routes would answer both
-    // under the path base and at the root, and a probe or a link that forgot the prefix would work by accident.
-    private static Func<HttpContext, RequestDelegate, Task> RequirePathBase(PathString pathBase) => (context, next) =>
-    {
-        if (context.Request.PathBase != pathBase && FluentCmsEndpointGroups.Prefixes.Any(entry => context.Request.Path.StartsWithSegments(entry.Prefix)))
-        {
-            context.Response.StatusCode = StatusCodes.Status404NotFound;
-            return Task.CompletedTask;
-        }
-
-        return next(context);
-    };
 
     private static ForwardedHeadersOptions Forwarded(ProxyForwardedHeadersOptions options)
     {
@@ -89,12 +76,12 @@ internal static class ReverseProxyPipeline
         forwarded.KnownIPNetworks.Clear();
         foreach (var proxy in options.KnownProxies)
         {
-            forwarded.KnownProxies.Add(IPAddress.Parse(proxy));
+            forwarded.KnownProxies.Add(ProxyAddress.TryParse(proxy, out var address) ? address : throw new InvalidOperationException());
         }
 
         foreach (var network in options.KnownNetworks)
         {
-            forwarded.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(network));
+            forwarded.KnownIPNetworks.Add(ProxyAddress.TryParseNetwork(network, out var parsed) ? parsed : throw new InvalidOperationException());
         }
 
         return forwarded;

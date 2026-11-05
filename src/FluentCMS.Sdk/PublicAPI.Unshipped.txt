@@ -439,6 +439,90 @@ FluentCMS.Content.VersionConflictException.Current.get -> FluentCMS.Content.Cont
 FluentCMS.Content.VersionConflictException.CurrentVersion.get -> int
 FluentCMS.Content.VersionConflictException.ExpectedVersion.get -> int
 FluentCMS.Content.VersionConflictException.VersionConflictException(int expectedVersion, int currentVersion, FluentCMS.Content.ContentDocument? current) -> void
+FluentCMS.Diagnostics.InsecureDefault
+FluentCMS.Diagnostics.InsecureDefault.<Clone>$() -> FluentCMS.Diagnostics.InsecureDefault!
+FluentCMS.Diagnostics.InsecureDefault.Equals(FluentCMS.Diagnostics.InsecureDefault? other) -> bool
+FluentCMS.Diagnostics.InsecureDefault.Id.get -> string!
+FluentCMS.Diagnostics.InsecureDefault.Id.init -> void
+FluentCMS.Diagnostics.InsecureDefault.InsecureDefault() -> void
+FluentCMS.Diagnostics.InsecureDefault.Message.get -> string!
+FluentCMS.Diagnostics.InsecureDefault.Message.init -> void
+FluentCMS.Diagnostics.StartupAssembly
+FluentCMS.Diagnostics.StartupAssembly.<Clone>$() -> FluentCMS.Diagnostics.StartupAssembly!
+FluentCMS.Diagnostics.StartupAssembly.Equals(FluentCMS.Diagnostics.StartupAssembly? other) -> bool
+FluentCMS.Diagnostics.StartupAssembly.Name.get -> string!
+FluentCMS.Diagnostics.StartupAssembly.Name.init -> void
+FluentCMS.Diagnostics.StartupAssembly.StartupAssembly() -> void
+FluentCMS.Diagnostics.StartupAssembly.Version.get -> string!
+FluentCMS.Diagnostics.StartupAssembly.Version.init -> void
+FluentCMS.Diagnostics.StartupDataProvider
+FluentCMS.Diagnostics.StartupDataProvider.<Clone>$() -> FluentCMS.Diagnostics.StartupDataProvider!
+FluentCMS.Diagnostics.StartupDataProvider.Equals(FluentCMS.Diagnostics.StartupDataProvider? other) -> bool
+FluentCMS.Diagnostics.StartupDataProvider.MigrateOnStartup.get -> bool
+FluentCMS.Diagnostics.StartupDataProvider.MigrateOnStartup.init -> void
+FluentCMS.Diagnostics.StartupDataProvider.Provider.get -> string!
+FluentCMS.Diagnostics.StartupDataProvider.Provider.init -> void
+FluentCMS.Diagnostics.StartupDataProvider.ProviderVersion.get -> string!
+FluentCMS.Diagnostics.StartupDataProvider.ProviderVersion.init -> void
+FluentCMS.Diagnostics.StartupDataProvider.SchemaSync.get -> string!
+FluentCMS.Diagnostics.StartupDataProvider.SchemaSync.init -> void
+FluentCMS.Diagnostics.StartupDataProvider.StartupDataProvider() -> void
+FluentCMS.Diagnostics.StartupMigration
+FluentCMS.Diagnostics.StartupMigration.<Clone>$() -> FluentCMS.Diagnostics.StartupMigration!
+FluentCMS.Diagnostics.StartupMigration.Equals(FluentCMS.Diagnostics.StartupMigration? other) -> bool
+FluentCMS.Diagnostics.StartupMigration.Id.get -> string!
+FluentCMS.Diagnostics.StartupMigration.Id.init -> void
+FluentCMS.Diagnostics.StartupMigration.StartupMigration() -> void
+FluentCMS.Diagnostics.StartupMigration.Stream.get -> string!
+FluentCMS.Diagnostics.StartupMigration.Stream.init -> void
+FluentCMS.Diagnostics.StartupPlugin
+FluentCMS.Diagnostics.StartupPlugin.<Clone>$() -> FluentCMS.Diagnostics.StartupPlugin!
+FluentCMS.Diagnostics.StartupPlugin.Equals(FluentCMS.Diagnostics.StartupPlugin? other) -> bool
+FluentCMS.Diagnostics.StartupPlugin.Name.get -> string!
+FluentCMS.Diagnostics.StartupPlugin.Name.init -> void
+FluentCMS.Diagnostics.StartupPlugin.StartupPlugin() -> void
+FluentCMS.Diagnostics.StartupPlugin.Version.get -> string!
+FluentCMS.Diagnostics.StartupPlugin.Version.init -> void
+FluentCMS.Diagnostics.StartupReport
+FluentCMS.Diagnostics.StartupReport.<Clone>$() -> FluentCMS.Diagnostics.StartupReport!
+FluentCMS.Diagnostics.StartupReport.Assemblies.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Diagnostics.StartupAssembly!>!
+FluentCMS.Diagnostics.StartupReport.Assemblies.init -> void
+FluentCMS.Diagnostics.StartupReport.DataProvider.get -> FluentCMS.Diagnostics.StartupDataProvider!
+FluentCMS.Diagnostics.StartupReport.DataProvider.init -> void
+FluentCMS.Diagnostics.StartupReport.Environment.get -> string!
+FluentCMS.Diagnostics.StartupReport.Environment.init -> void
+FluentCMS.Diagnostics.StartupReport.Equals(FluentCMS.Diagnostics.StartupReport? other) -> bool
+FluentCMS.Diagnostics.StartupReport.Failure.get -> string?
+FluentCMS.Diagnostics.StartupReport.Failure.init -> void
+FluentCMS.Diagnostics.StartupReport.InsecureDefaults.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Diagnostics.InsecureDefault!>!
+FluentCMS.Diagnostics.StartupReport.InsecureDefaults.init -> void
+FluentCMS.Diagnostics.StartupReport.PendingMigrations.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Diagnostics.StartupMigration!>!
+FluentCMS.Diagnostics.StartupReport.PendingMigrations.init -> void
+FluentCMS.Diagnostics.StartupReport.Plugins.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Diagnostics.StartupPlugin!>!
+FluentCMS.Diagnostics.StartupReport.Plugins.init -> void
+FluentCMS.Diagnostics.StartupReport.Schema.get -> FluentCMS.Diagnostics.StartupSchema!
+FluentCMS.Diagnostics.StartupReport.Schema.init -> void
+FluentCMS.Diagnostics.StartupReport.StartedAt.get -> System.DateTimeOffset
+FluentCMS.Diagnostics.StartupReport.StartedAt.init -> void
+FluentCMS.Diagnostics.StartupReport.StartupReport() -> void
+FluentCMS.Diagnostics.StartupReport.Version.get -> string!
+FluentCMS.Diagnostics.StartupReport.Version.init -> void
+FluentCMS.Diagnostics.StartupSchema
+FluentCMS.Diagnostics.StartupSchema.<Clone>$() -> FluentCMS.Diagnostics.StartupSchema!
+FluentCMS.Diagnostics.StartupSchema.AppliedAt.get -> System.DateTimeOffset?
+FluentCMS.Diagnostics.StartupSchema.AppliedAt.init -> void
+FluentCMS.Diagnostics.StartupSchema.AppliedHash.get -> string?
+FluentCMS.Diagnostics.StartupSchema.AppliedHash.init -> void
+FluentCMS.Diagnostics.StartupSchema.AppliedVersion.get -> string?
+FluentCMS.Diagnostics.StartupSchema.AppliedVersion.init -> void
+FluentCMS.Diagnostics.StartupSchema.Changes.get -> string?
+FluentCMS.Diagnostics.StartupSchema.Changes.init -> void
+FluentCMS.Diagnostics.StartupSchema.Drifted.get -> bool
+FluentCMS.Diagnostics.StartupSchema.Drifted.init -> void
+FluentCMS.Diagnostics.StartupSchema.Equals(FluentCMS.Diagnostics.StartupSchema? other) -> bool
+FluentCMS.Diagnostics.StartupSchema.Hash.get -> string!
+FluentCMS.Diagnostics.StartupSchema.Hash.init -> void
+FluentCMS.Diagnostics.StartupSchema.StartupSchema() -> void
 FluentCMS.Events.ApiKeyCreatedEvent
 FluentCMS.Events.ApiKeyCreatedEvent.ApiKeyCreatedEvent(System.Guid KeyId, string! Name, string! KeyClass) -> void
 FluentCMS.Events.ApiKeyCreatedEvent.Deconstruct(out System.Guid KeyId, out string! Name, out string! KeyClass) -> void
@@ -1449,6 +1533,27 @@ override FluentCMS.Content.SortField.ToString() -> string!
 override FluentCMS.Content.ValidationError.Equals(object? obj) -> bool
 override FluentCMS.Content.ValidationError.GetHashCode() -> int
 override FluentCMS.Content.ValidationError.ToString() -> string!
+override FluentCMS.Diagnostics.InsecureDefault.Equals(object? obj) -> bool
+override FluentCMS.Diagnostics.InsecureDefault.GetHashCode() -> int
+override FluentCMS.Diagnostics.InsecureDefault.ToString() -> string!
+override FluentCMS.Diagnostics.StartupAssembly.Equals(object? obj) -> bool
+override FluentCMS.Diagnostics.StartupAssembly.GetHashCode() -> int
+override FluentCMS.Diagnostics.StartupAssembly.ToString() -> string!
+override FluentCMS.Diagnostics.StartupDataProvider.Equals(object? obj) -> bool
+override FluentCMS.Diagnostics.StartupDataProvider.GetHashCode() -> int
+override FluentCMS.Diagnostics.StartupDataProvider.ToString() -> string!
+override FluentCMS.Diagnostics.StartupMigration.Equals(object? obj) -> bool
+override FluentCMS.Diagnostics.StartupMigration.GetHashCode() -> int
+override FluentCMS.Diagnostics.StartupMigration.ToString() -> string!
+override FluentCMS.Diagnostics.StartupPlugin.Equals(object? obj) -> bool
+override FluentCMS.Diagnostics.StartupPlugin.GetHashCode() -> int
+override FluentCMS.Diagnostics.StartupPlugin.ToString() -> string!
+override FluentCMS.Diagnostics.StartupReport.Equals(object? obj) -> bool
+override FluentCMS.Diagnostics.StartupReport.GetHashCode() -> int
+override FluentCMS.Diagnostics.StartupReport.ToString() -> string!
+override FluentCMS.Diagnostics.StartupSchema.Equals(object? obj) -> bool
+override FluentCMS.Diagnostics.StartupSchema.GetHashCode() -> int
+override FluentCMS.Diagnostics.StartupSchema.ToString() -> string!
 override FluentCMS.Events.ApiKeyCreatedEvent.<Clone>$() -> FluentCMS.Events.ApiKeyCreatedEvent!
 override FluentCMS.Events.ApiKeyCreatedEvent.Equals(object? obj) -> bool
 override FluentCMS.Events.ApiKeyCreatedEvent.GetHashCode() -> int
@@ -1687,6 +1792,20 @@ static FluentCMS.Content.SystemOperation.Begin(FluentCMS.Content.IOperationConte
 static FluentCMS.Content.ValidationError.operator !=(FluentCMS.Content.ValidationError? left, FluentCMS.Content.ValidationError? right) -> bool
 static FluentCMS.Content.ValidationError.operator ==(FluentCMS.Content.ValidationError? left, FluentCMS.Content.ValidationError? right) -> bool
 static FluentCMS.Content.ValidationResult.Success.get -> FluentCMS.Content.ValidationResult!
+static FluentCMS.Diagnostics.InsecureDefault.operator !=(FluentCMS.Diagnostics.InsecureDefault? left, FluentCMS.Diagnostics.InsecureDefault? right) -> bool
+static FluentCMS.Diagnostics.InsecureDefault.operator ==(FluentCMS.Diagnostics.InsecureDefault? left, FluentCMS.Diagnostics.InsecureDefault? right) -> bool
+static FluentCMS.Diagnostics.StartupAssembly.operator !=(FluentCMS.Diagnostics.StartupAssembly? left, FluentCMS.Diagnostics.StartupAssembly? right) -> bool
+static FluentCMS.Diagnostics.StartupAssembly.operator ==(FluentCMS.Diagnostics.StartupAssembly? left, FluentCMS.Diagnostics.StartupAssembly? right) -> bool
+static FluentCMS.Diagnostics.StartupDataProvider.operator !=(FluentCMS.Diagnostics.StartupDataProvider? left, FluentCMS.Diagnostics.StartupDataProvider? right) -> bool
+static FluentCMS.Diagnostics.StartupDataProvider.operator ==(FluentCMS.Diagnostics.StartupDataProvider? left, FluentCMS.Diagnostics.StartupDataProvider? right) -> bool
+static FluentCMS.Diagnostics.StartupMigration.operator !=(FluentCMS.Diagnostics.StartupMigration? left, FluentCMS.Diagnostics.StartupMigration? right) -> bool
+static FluentCMS.Diagnostics.StartupMigration.operator ==(FluentCMS.Diagnostics.StartupMigration? left, FluentCMS.Diagnostics.StartupMigration? right) -> bool
+static FluentCMS.Diagnostics.StartupPlugin.operator !=(FluentCMS.Diagnostics.StartupPlugin? left, FluentCMS.Diagnostics.StartupPlugin? right) -> bool
+static FluentCMS.Diagnostics.StartupPlugin.operator ==(FluentCMS.Diagnostics.StartupPlugin? left, FluentCMS.Diagnostics.StartupPlugin? right) -> bool
+static FluentCMS.Diagnostics.StartupReport.operator !=(FluentCMS.Diagnostics.StartupReport? left, FluentCMS.Diagnostics.StartupReport? right) -> bool
+static FluentCMS.Diagnostics.StartupReport.operator ==(FluentCMS.Diagnostics.StartupReport? left, FluentCMS.Diagnostics.StartupReport? right) -> bool
+static FluentCMS.Diagnostics.StartupSchema.operator !=(FluentCMS.Diagnostics.StartupSchema? left, FluentCMS.Diagnostics.StartupSchema? right) -> bool
+static FluentCMS.Diagnostics.StartupSchema.operator ==(FluentCMS.Diagnostics.StartupSchema? left, FluentCMS.Diagnostics.StartupSchema? right) -> bool
 static FluentCMS.Events.ApiKeyCreatedEvent.operator !=(FluentCMS.Events.ApiKeyCreatedEvent? left, FluentCMS.Events.ApiKeyCreatedEvent? right) -> bool
 static FluentCMS.Events.ApiKeyCreatedEvent.operator ==(FluentCMS.Events.ApiKeyCreatedEvent? left, FluentCMS.Events.ApiKeyCreatedEvent? right) -> bool
 static FluentCMS.Events.ApiKeyExpiryChangedEvent.operator !=(FluentCMS.Events.ApiKeyExpiryChangedEvent? left, FluentCMS.Events.ApiKeyExpiryChangedEvent? right) -> bool

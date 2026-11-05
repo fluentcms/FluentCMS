@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Core.IntegrationTests.Diagnostics;
 
-internal sealed record LogEntry(string Category, LogLevel Level, EventId EventId, string Message, IReadOnlyDictionary<string, object?> State);
+internal sealed record LogEntry(string Category, LogLevel Level, EventId EventId, string Message, IReadOnlyDictionary<string, object?> State, Exception? Exception);
 
 // Keeps what the host logs, with the structured values of each message.
 internal sealed class LogCapture : ILoggerProvider
@@ -30,7 +30,7 @@ internal sealed class LogCapture : ILoggerProvider
             var values = state is IEnumerable<KeyValuePair<string, object?>> pairs
                 ? pairs.ToDictionary(pair => pair.Key, pair => pair.Value)
                 : [];
-            entries.Enqueue(new LogEntry(category, logLevel, eventId, formatter(state, exception), values));
+            entries.Enqueue(new LogEntry(category, logLevel, eventId, formatter(state, exception), values, exception));
         }
     }
 }

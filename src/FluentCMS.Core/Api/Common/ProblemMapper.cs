@@ -25,6 +25,7 @@ internal static class ProblemMapper
     {
         ContentAccessDeniedException denied => Denied(denied.Message, authenticated),
         SettingsAccessDeniedException denied => Denied(denied.Message, authenticated),
+        ServiceUnavailableException unavailable => Known(ApiErrorCodes.Unavailable, unavailable.Message),
         InstanceAccessDeniedException denied => Denied(denied.Message, authenticated),
         RequestAuthenticationException unauthenticated => Known(ApiErrorCodes.Unauthorized, unauthenticated.Message),
         EntryNotFoundException notFound => Known(ApiErrorCodes.NotFound, notFound.Message),

@@ -27,7 +27,7 @@ public sealed class StartupReportTests : IDisposable
         using var host = _database.CreateHost(ArticleSchemas.Titled, Environments.Development, GeneratedMigrations.CompileFirst(ArticleSchemas.Titled));
         await host.StartAsync(Token);
 
-        var report = host.Services.GetRequiredService<StartupReportHolder>().Report;
+        var report = host.Services.GetRequiredService<StartupReportHolder>().Current!;
 
         report.DataProvider.SchemaSync.ShouldBe("Auto");
         report.PendingMigrations.ShouldHaveSingleItem().Stream.ShouldBe("content");
@@ -40,7 +40,7 @@ public sealed class StartupReportTests : IDisposable
         using var host = _database.CreateHost(ArticleSchemas.Titled, Production, GeneratedMigrations.CompileFirst(ArticleSchemas.Titled));
         await host.StartAsync(Token);
 
-        var report = host.Services.GetRequiredService<StartupReportHolder>().Report;
+        var report = host.Services.GetRequiredService<StartupReportHolder>().Current!;
 
         report.PendingMigrations.ShouldBeEmpty();
         report.Schema.Drifted.ShouldBeFalse();
@@ -62,7 +62,7 @@ public sealed class StartupReportTests : IDisposable
         using var host = _database.CreateHost(ArticleSchemas.TitledAndRequired, Production, migrations, NoMigrationOnStartup);
         await host.StartAsync(Token);
 
-        var schema = host.Services.GetRequiredService<StartupReportHolder>().Report.Schema;
+        var schema = host.Services.GetRequiredService<StartupReportHolder>().Current!.Schema;
 
         schema.Drifted.ShouldBeTrue();
         schema.Hash.ShouldBe(SchemaSnapshot.Of(ArticleSchemas.TitledAndRequired).Hash);
@@ -85,7 +85,7 @@ public sealed class StartupReportTests : IDisposable
         using var host = _database.CreateHost(ArticleSchemas.Titled, Production, migrations);
         await host.StartAsync(Token);
 
-        var schema = host.Services.GetRequiredService<StartupReportHolder>().Report.Schema;
+        var schema = host.Services.GetRequiredService<StartupReportHolder>().Current!.Schema;
         schema.AppliedHash.ShouldBeNull();
         schema.Changes.ShouldNotBeNull().ShouldContain("could not be read");
     }

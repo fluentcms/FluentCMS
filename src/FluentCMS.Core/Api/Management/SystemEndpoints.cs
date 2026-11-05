@@ -3,6 +3,7 @@ using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Diagnostics;
+using FluentCMS.Diagnostics;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -26,6 +27,7 @@ internal static class SystemEndpoints
     private static async Task<IResult> DiagnosticsAsync(HttpContext httpContext, [FromServices] IAuthorizationEvaluator evaluator, [FromServices] StartupReportHolder report)
     {
         await InstanceAccess.RequireAsync(httpContext, evaluator, CorePermissions.SystemRead);
-        return Results.Json(report.Report, StartupReport.Json);
+        var current = report.Current ?? throw new ServiceUnavailableException("The startup report is made when the host has started; try again in a moment.");
+        return Results.Json(current, StartupReportJson.Options);
     }
 }

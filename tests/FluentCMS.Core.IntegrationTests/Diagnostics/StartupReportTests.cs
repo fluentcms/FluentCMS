@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Diagnostics;
 using FluentCMS.Core.IntegrationTests.Hosting;
 using FluentCMS.Core.Storage;
@@ -63,7 +64,7 @@ public sealed class StartupReportTests : IAsyncDisposable
         var app = _host.Build(Environments.Production);
         await app.StartAsync(Token);
 
-        var report = app.Services.GetRequiredService<StartupReportHolder>().Report;
+        var report = app.Services.GetRequiredService<StartupReportHolder>().Current!;
 
         report.Environment.ShouldBe("Production");
         report.InsecureDefaults.Select(item => item.Id).ShouldContain("https-redirection-off");
@@ -78,7 +79,7 @@ public sealed class StartupReportTests : IAsyncDisposable
         var app = _host.Build(Environments.Production, new Dictionary<string, string?> { ["FluentCms:ReverseProxy:HttpsRedirection:Enabled"] = "true", ["FluentCms:ReverseProxy:HttpsRedirection:Port"] = "443" });
         await app.StartAsync(Token);
 
-        app.Services.GetRequiredService<StartupReportHolder>().Report.InsecureDefaults.Select(item => item.Id).ShouldNotContain("https-redirection-off");
+        app.Services.GetRequiredService<StartupReportHolder>().Current!.InsecureDefaults.Select(item => item.Id).ShouldNotContain("https-redirection-off");
     }
 
     [Fact]
@@ -93,7 +94,7 @@ public sealed class StartupReportTests : IAsyncDisposable
             });
         await app.StartAsync(Token);
 
-        app.Services.GetRequiredService<StartupReportHolder>().Report.InsecureDefaults.Select(item => item.Id).ShouldContain("forwarded-headers-trust-any");
+        app.Services.GetRequiredService<StartupReportHolder>().Current!.InsecureDefaults.Select(item => item.Id).ShouldContain("forwarded-headers-trust-any");
     }
 
     [Fact]
@@ -196,10 +197,75 @@ public sealed class StartupReportTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task AReportThatCannotBeMadeLeavesADegradedOneAndNothingSecretInTheLog()
+    {
+        var logs = new LogCapture();
+        await using var host = new FluentCmsTestHost().WithServices(services =>
+        {
+            services.AddLogging(logging => logging.AddProvider(logs));
+            services.AddSingleton<IProductionStartupCheck>(new ThrowingCheck());
+        });
+        var key = await host.CreateApiKeyAsync(ApiKeyClass.Management, BuiltInRoles.SuperAdminName, cancellationToken: Token);
+
+        using var response = await host.AsKey(key).GetAsync(new Uri("/api/management/v1/system/diagnostics", UriKind.Relative), Token);
+        var body = await response.Content.ReadAsStringAsync(Token);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var served = JsonNode.Parse(body)!;
+        served["failure"]!.GetValue<string>().ShouldBe(nameof(InvalidOperationException));
+        served["dataProvider"]!["provider"]!.GetValue<string>().ShouldBe("SQLite");
+        served["pendingMigrations"]!.AsArray().ShouldBeEmpty();
+        body.ShouldNotContain("hunter2");
+
+        var warning = logs.Entries.Single(entry => entry.EventId.Id == StartupReportEvents.NotMade);
+        warning.Level.ShouldBe(LogLevel.Warning);
+        warning.Exception.ShouldBeNull();
+        warning.Message.ShouldContain(nameof(InvalidOperationException));
+        warning.Message.ShouldNotContain("hunter2");
+        logs.Entries.ShouldNotContain(entry => entry.EventId.Id == StartupReportEvents.Report);
+    }
+
+    [Fact]
+    public async Task DiagnosticsIs503BeforeTheReportExists()
+    {
+        await using var host = new FluentCmsTestHost();
+        var key = await host.CreateApiKeyAsync(ApiKeyClass.Management, BuiltInRoles.SuperAdminName, cancellationToken: Token);
+        var holder = host.Services.GetRequiredService<StartupReportHolder>();
+        var report = holder.Current;
+        holder.Set(null);
+
+        using var response = await host.AsKey(key).GetAsync(new Uri("/api/management/v1/system/diagnostics", UriKind.Relative), Token);
+        holder.Set(report);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
+        (await Code(response)).ShouldBe("FCMS3106");
+    }
+
+    [Fact]
+    public async Task DiagnosticsChecksThePermissionBeforeItAdmitsThereIsNoReport()
+    {
+        await using var host = new FluentCmsTestHost();
+        var editor = await host.CreateApiKeyAsync(ApiKeyClass.Management, BuiltInRoles.EditorName, cancellationToken: Token);
+        var holder = host.Services.GetRequiredService<StartupReportHolder>();
+        var report = holder.Current;
+        holder.Set(null);
+
+        using var response = await host.AsKey(editor).GetAsync(new Uri("/api/management/v1/system/diagnostics", UriKind.Relative), Token);
+        holder.Set(report);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
     public void SystemReadIsInTheCatalogue()
     {
         CorePermissions.SystemRead.ShouldBe("system.read");
         CorePermissions.Fixed.ShouldContain(CorePermissions.SystemRead);
+    }
+
+    private sealed class ThrowingCheck : IProductionStartupCheck
+    {
+        public StartupRefusal? Check() => throw new InvalidOperationException("Data Source=cms.db; password=hunter2");
     }
 
     private static async Task<string?> Code(HttpResponseMessage response) =>
