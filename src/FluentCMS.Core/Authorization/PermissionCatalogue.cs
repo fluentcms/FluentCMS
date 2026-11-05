@@ -23,6 +23,7 @@ public sealed class PermissionCatalogue
         (CorePermissions.SchemaRead, "Read the content schema."),
         (CorePermissions.PluginsManage, "Enable and disable plugins per site."),
         (CorePermissions.TransferManage, "Export and import content."),
+        (CorePermissions.SystemRead, "Read the health and diagnostics of the instance."),
     ];
 
     private static readonly (ContentOperation Operation, string Description)[] ContentOperations =

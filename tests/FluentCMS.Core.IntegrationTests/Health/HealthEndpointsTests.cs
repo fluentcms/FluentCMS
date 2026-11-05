@@ -1,0 +1,185 @@
+using System.Net;
+using System.Text.Json.Nodes;
+using FluentCMS.Content;
+using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Health;
+using FluentCMS.Core.Identity.ApiKeys;
+using FluentCMS.Core.IntegrationTests.Testing;
+using FluentCMS.Core.Sites;
+using FluentCMS.Core.Storage;
+using FluentCMS.Testing;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Shouldly;
+using Xunit;
+using TestKeyClass = FluentCMS.Testing.ApiKeyClass;
+
+namespace FluentCMS.Core.IntegrationTests.Health;
+
+public sealed class HealthEndpointsTests : IAsyncDisposable
+{
+    private const string Detailed = "/api/management/v1/system/health";
+
+    private static readonly CancellationToken Token = TestContext.Current.CancellationToken;
+
+    private readonly FluentCmsTestHost _host = new FluentCmsTestHost().WithContentTypes<Note>();
+
+    public ValueTask DisposeAsync() => _host.DisposeAsync();
+
+    [Fact]
+    public async Task LiveAndReadyNeedNoAuthenticationAndAreHealthyOnSqlite()
+    {
+        using var client = _host.CreateClient();
+
+        foreach (var path in new[] { "/health/live", "/health/ready" })
+        {
+            using var response = await client.GetAsync(new Uri(path, UriKind.Relative), Token);
+
+            response.StatusCode.ShouldBe(HttpStatusCode.OK);
+            (await response.Content.ReadAsStringAsync(Token)).ShouldBe("Healthy");
+        }
+    }
+
+    [Fact]
+    public async Task ReadyIsUnhealthyWhenTheDatabaseIsUnreachableAndLiveStaysHealthy()
+    {
+        await using var host = new FluentCmsTestHost().UseSqlite((string?)null).WithContentTypes<Note>();
+        using var client = host.CreateClient();
+        using var before = await client.GetAsync(new Uri("/health/ready", UriKind.Relative), Token);
+        before.StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        // The file goes away under the running host, and the next connection finds an empty database.
+        await DeleteDatabaseAsync(host);
+
+        using var ready = await client.GetAsync(new Uri("/health/ready", UriKind.Relative), Token);
+        using var live = await client.GetAsync(new Uri("/health/live", UriKind.Relative), Token);
+
+        ready.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
+        (await ready.Content.ReadAsStringAsync(Token)).ShouldBe("Unhealthy");
+        live.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task ReadyIsUnhealthyWhenTheJobRunnerHeartbeatIsStale()
+    {
+        using var client = _host.CreateClient();
+        using var fresh = await client.GetAsync(new Uri("/health/ready", UriKind.Relative), Token);
+        fresh.StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        _host.Time.Advance(_host.Services.GetRequiredService<HealthOptions>().JobRunnerHeartbeatTimeout + TimeSpan.FromMinutes(1));
+
+        using var stale = await client.GetAsync(new Uri("/health/ready", UriKind.Relative), Token);
+        using var live = await client.GetAsync(new Uri("/health/live", UriKind.Relative), Token);
+
+        stale.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
+        (await stale.Content.ReadAsStringAsync(Token)).ShouldBe("Unhealthy");
+        live.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task TheDetailedReportIsRefusedWithoutSystemRead()
+    {
+        var withoutPermission = await _host.CreateApiKeyAsync(TestKeyClass.Management, BuiltInRoles.EditorName, cancellationToken: Token);
+        var role = await _host.CreateRoleAsync("Operations", [CorePermissions.SystemRead], Token);
+        var allowed = await CreateKeyAsync(role, Core.Identity.ApiKeys.ApiKeyClass.Management);
+        var delivery = await CreateKeyAsync(role, Core.Identity.ApiKeys.ApiKeyClass.Delivery);
+        var siteBound = await CreateKeyAsync(role, Core.Identity.ApiKeys.ApiKeyClass.Management, DefaultSite.Id);
+        using var anonymous = _host.CreateClient();
+
+        using var none = await anonymous.GetAsync(new Uri(Detailed, UriKind.Relative), Token);
+        using var lacking = await _host.AsKey(withoutPermission).GetAsync(new Uri(Detailed, UriKind.Relative), Token);
+        using var deliveryKey = await Client(delivery).GetAsync(new Uri(Detailed, UriKind.Relative), Token);
+        using var bound = await Client(siteBound).GetAsync(new Uri(Detailed, UriKind.Relative), Token);
+        using var granted = await Client(allowed).GetAsync(new Uri(Detailed, UriKind.Relative), Token);
+
+        none.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        lacking.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        deliveryKey.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        bound.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        granted.StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        var report = JsonNode.Parse(await granted.Content.ReadAsStringAsync(Token))!;
+        report["status"]!.GetValue<string>().ShouldBe("Healthy");
+        var checks = report["checks"]!.AsArray();
+        checks.Select(check => check!["name"]!.GetValue<string>()).ShouldBe(["database", "job-runner", "process"]);
+        checks.Select(check => check!["durationMs"]!.GetValue<double>()).ShouldAllBe(duration => duration >= 0);
+    }
+
+    [Fact]
+    public async Task ASuperAdminKeyReadsTheDetailedReport()
+    {
+        var key = await _host.CreateApiKeyAsync(TestKeyClass.Management, BuiltInRoles.SuperAdminName, cancellationToken: Token);
+
+        using var response = await _host.AsKey(key).GetAsync(new Uri(Detailed, UriKind.Relative), Token);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task AReadyCheckIsAddedInOneCallAndNeitherTheProbeNorTheReportLeaksItsException()
+    {
+        await using var host = new FluentCmsTestHost()
+            .WithContentTypes<Note>()
+            .WithServices(services => services.AddHealthChecks().AddFluentCmsReadyCheck<LeakyCheck>("leaky"));
+        var key = await host.CreateApiKeyAsync(TestKeyClass.Management, BuiltInRoles.SuperAdminName, cancellationToken: Token);
+
+        using var probe = await host.CreateClient().GetAsync(new Uri("/health/ready", UriKind.Relative), Token);
+        using var detailed = await host.AsKey(key).GetAsync(new Uri(Detailed, UriKind.Relative), Token);
+
+        probe.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
+        (await probe.Content.ReadAsStringAsync(Token)).ShouldBe("Unhealthy");
+        detailed.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var text = await detailed.Content.ReadAsStringAsync(Token);
+        text.ShouldContain("leaky");
+        text.ShouldContain("Unhealthy");
+        text.ShouldNotContain("hunter2");
+    }
+
+    private HttpClient Client(string secret)
+    {
+        var client = _host.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("ApiKey", secret);
+        return client;
+    }
+
+    private async Task<string> CreateKeyAsync(Guid role, Core.Identity.ApiKeys.ApiKeyClass keyClass, params Guid[] sites)
+    {
+        await using var scope = _host.Services.CreateAsyncScope();
+        var keys = scope.ServiceProvider.GetRequiredService<ApiKeyService>();
+        var created = await keys.CreateAsync(new ApiKeyRequest($"{keyClass} key", keyClass, role) { SiteIds = sites.Length > 0 ? sites : null }, Token);
+        return created.Secret;
+    }
+
+    private static async Task DeleteDatabaseAsync(FluentCmsTestHost host)
+    {
+        string file;
+        await using (var scope = host.Services.CreateAsyncScope())
+        {
+            var connection = scope.ServiceProvider.GetRequiredService<SystemDbContext>().Database.GetConnectionString();
+            file = new SqliteConnectionStringBuilder(connection).DataSource;
+        }
+
+        for (var attempt = 0; attempt < 50; attempt++)
+        {
+            try
+            {
+                File.Delete(file);
+                return;
+            }
+            catch (IOException)
+            {
+                await Task.Delay(100, Token);
+            }
+        }
+
+        throw new InvalidOperationException("The database file stayed in use.");
+    }
+
+    private sealed class LeakyCheck : IHealthCheck
+    {
+        public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("Server=db.internal;Password=hunter2;");
+    }
+}

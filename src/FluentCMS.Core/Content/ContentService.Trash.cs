@@ -16,6 +16,8 @@ internal sealed partial class ContentService
     // and a type it cannot read answers as an unknown one does.
     public async Task<PagedResult<ContentDocument>> QueryTrashAsync(string typeName, ContentQuery query, bool everySystemField, CancellationToken cancellationToken)
     {
+        using var span = Span("query-trash", typeName);
+
         ArgumentNullException.ThrowIfNull(typeName);
         ArgumentNullException.ThrowIfNull(query);
 
@@ -73,6 +75,8 @@ internal sealed partial class ContentService
     // The purge job passes the cutoff it listed the entry by, and an entry put in the trash again since is not found.
     internal async Task PurgeAsync(string type, Guid id, DateTimeOffset? trashedBefore, CancellationToken cancellationToken)
     {
+        using var span = Span("purge", type);
+
         ArgumentNullException.ThrowIfNull(type);
 
         var write = await BeginAsync(type, ContentOperation.Purge, cancellationToken);

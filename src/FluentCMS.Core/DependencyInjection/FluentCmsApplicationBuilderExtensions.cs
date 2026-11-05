@@ -6,8 +6,9 @@ namespace FluentCMS.Core.DependencyInjection;
 
 public static class FluentCmsApplicationBuilderExtensions
 {
-    // The request pipeline of FluentCMS in the order it works in: the exception handler, routing, security headers,
-    // CORS, a coarse limit per client address, authentication, the rate limiter of the endpoints and the request limits.
+    // The request pipeline of FluentCMS in the order it works in: the exception handler, routing, the request
+    // counter, security headers, CORS, a coarse limit per client address, authentication, the rate limiter of the
+    // endpoints and the request limits.
     // The coarse limit comes before authentication so that a flood is turned away before it reaches a key lookup or the
     // token endpoint, and the rate limiter after it because a key or principal is what it partitions by. A host adds this
     // once, after UsePathBase and before MapFluentCms, and UseAuthorization after it.
@@ -22,6 +23,7 @@ public static class FluentCmsApplicationBuilderExtensions
 
         app.UseExceptionHandler();
         app.UseRouting();
+        app.UseMiddleware<RequestMetricsMiddleware>();
         app.UseMiddleware<SecurityHeadersMiddleware>();
         app.UseCors();
         app.UseMiddleware<PreAuthRateLimitMiddleware>();

@@ -23,6 +23,8 @@ internal sealed partial class ContentService
 {
     public async Task<ScheduleInfo> ScheduleAsync(string type, Guid id, ScheduleRequest request, string? locale = null, CancellationToken cancellationToken = default)
     {
+        using var span = Span("schedule", type);
+
         ArgumentNullException.ThrowIfNull(type);
         ArgumentNullException.ThrowIfNull(request);
 
@@ -90,6 +92,8 @@ internal sealed partial class ContentService
 
     public async Task CancelScheduleAsync(string type, Guid id, ScheduleAction action, string? locale = null, CancellationToken cancellationToken = default)
     {
+        using var span = Span("cancel-schedule", type);
+
         ArgumentNullException.ThrowIfNull(type);
 
         if (!Enum.IsDefined(action))

@@ -46,6 +46,7 @@ public static class FluentCmsEndpointRouteBuilderExtensions
     // The admin application calls /connect from its own origin, so that group answers the Management origins.
     private static RouteGroupBuilder Protect(RouteGroupBuilder routes, FluentCmsEndpointGroup group)
     {
+        routes.WithMetadata(new FluentCmsSurfaceMetadata(group.ToString().ToLowerInvariant()));
         switch (group)
         {
             case FluentCmsEndpointGroup.Delivery:

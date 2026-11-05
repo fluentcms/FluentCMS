@@ -11,6 +11,7 @@ using FluentCMS.Core.Content.Hooks;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.Content.Validation;
 using FluentCMS.Core.Events;
+using FluentCMS.Core.Health;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Localization;
@@ -119,6 +120,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddScoped<SiteManager>();
         services.AddScoped<RequestBridge>();
         services.AddDeliveryApi();
+        services.AddFluentCmsHealth();
 
         services.AddSingleton<SettingsCache>();
         services.AddScoped<SettingsService>();

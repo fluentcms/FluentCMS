@@ -1,7 +1,9 @@
+using System.Diagnostics;
 using FluentCMS.Content;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
+using FluentCMS.Core.Telemetry;
 using FluentCMS.Jobs;
 using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
@@ -76,30 +78,36 @@ internal sealed class JobExecutor(
 
     private async Task ExecuteAndSettleAsync(ClaimedJob job, Func<TimeSpan?> timedOut, CancellationToken shutdown, CancellationToken attempt, CancellationToken abandon)
     {
+        var started = Stopwatch.GetTimestamp();
         Func<Task<bool>> settle;
         try
         {
             await InvokeAsync(job, attempt);
+            Record(job, started, "succeeded");
             settle = () => store.SucceedAsync(job);
         }
         catch (OperationCanceledException) when (shutdown.IsCancellationRequested)
         {
+            Record(job, started, "released");
             JobLog.Released(logger, job.Id, job.Type, job.Attempt);
             settle = () => store.ReleaseAsync(job);
         }
         catch (OperationCanceledException) when (timedOut() is { } limit)
         {
+            Record(job, started, "failed");
             var error = JobErrorText.ForStorage(TimedOut(limit), job.Payload);
             JobLog.AttemptFailed(logger, job.Id, job.Type, job.Attempt, error);
             settle = () => store.FailAsync(job, error);
         }
         catch (OperationCanceledException) when (attempt.IsCancellationRequested)
         {
+            Record(job, started, "lease-lost");
             JobLog.LeaseLost(logger, job.Id, job.Type, job.Attempt);
             return;
         }
         catch (Exception exception)
         {
+            Record(job, started, "failed");
             JobLog.AttemptFailed(logger, job.Id, job.Type, job.Attempt, JobErrorText.ForLog(exception, job.Payload));
             var error = JobErrorText.ForStorage(exception, job.Payload);
             settle = () => store.FailAsync(job, error);
@@ -107,6 +115,12 @@ internal sealed class JobExecutor(
 
         await SettleWithRetriesAsync(job, settle, abandon);
     }
+
+    private static void Record(ClaimedJob job, long started, string outcome) =>
+        FluentCmsTelemetry.JobLatency.Record(
+            Stopwatch.GetElapsedTime(started).TotalSeconds,
+            new KeyValuePair<string, object?>(FluentCmsTelemetry.Tags.Operation, job.Type),
+            new KeyValuePair<string, object?>(FluentCmsTelemetry.Tags.Outcome, outcome));
 
     // A result not written means the job runs again, or is dead-lettered as if it never finished, so a brief outage is
     // waited out. Retrying past the real end of the lease is safe, because a write matches nothing once another worker
@@ -149,9 +163,16 @@ internal sealed class JobExecutor(
 
         var previous = operation.Current;
         operation.Current = context.Operation;
+        using var span = FluentCmsTelemetry.Start("job", job.Type, null, context.Operation);
+        span?.SetTag(FluentCmsTelemetry.Tags.Queue, job.Queue);
         try
         {
             await registration.Invoke(scope.ServiceProvider, payload, context);
+        }
+        catch (Exception)
+        {
+            span?.SetStatus(ActivityStatusCode.Error);
+            throw;
         }
         finally
         {

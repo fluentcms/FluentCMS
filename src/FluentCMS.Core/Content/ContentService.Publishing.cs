@@ -21,6 +21,8 @@ internal sealed partial class ContentService
 {
     public async Task<PublishResult<ContentDocument>> PublishAsync(string type, Guid id, string? locale = null, int? expectedVersion = null, CancellationToken cancellationToken = default)
     {
+        using var span = Span("publish", type);
+
         ArgumentNullException.ThrowIfNull(type);
 
         var write = await BeginAsync(type, ContentOperation.Publish, cancellationToken, locale);
@@ -85,6 +87,8 @@ internal sealed partial class ContentService
 
     public async Task<ContentDocument> UnpublishAsync(string type, Guid id, string? locale = null, CancellationToken cancellationToken = default)
     {
+        using var span = Span("unpublish", type);
+
         ArgumentNullException.ThrowIfNull(type);
 
         var write = await BeginAsync(type, ContentOperation.Unpublish, cancellationToken, locale);
@@ -119,6 +123,8 @@ internal sealed partial class ContentService
 
     public async Task<ContentDocument> DiscardDraftAsync(string type, Guid id, string? locale = null, int? expectedVersion = null, CancellationToken cancellationToken = default)
     {
+        using var span = Span("discard-draft", type);
+
         ArgumentNullException.ThrowIfNull(type);
 
         var write = await BeginAsync(type, ContentOperation.Update, cancellationToken, locale);
@@ -190,6 +196,8 @@ internal sealed partial class ContentService
 
     public async Task<IReadOnlyList<VersionInfo>> GetVersionsAsync(string type, Guid id, string? locale = null, CancellationToken cancellationToken = default)
     {
+        using var span = Span("versions", type);
+
         ArgumentNullException.ThrowIfNull(type);
 
         var (_, document) = await BeginVersionReadAsync(type, id, locale, cancellationToken);
@@ -199,6 +207,8 @@ internal sealed partial class ContentService
 
     public async Task<ContentDocument?> GetVersionAsync(string type, Guid id, int number, string? locale = null, CancellationToken cancellationToken = default)
     {
+        using var span = Span("version", type);
+
         ArgumentNullException.ThrowIfNull(type);
 
         var (write, document) = await BeginVersionReadAsync(type, id, locale, cancellationToken);
@@ -231,6 +241,8 @@ internal sealed partial class ContentService
 
     public async Task<ContentDocument> RestoreVersionAsync(string type, Guid id, int number, string? locale = null, int? expectedVersion = null, CancellationToken cancellationToken = default)
     {
+        using var span = Span("restore-version", type);
+
         ArgumentNullException.ThrowIfNull(type);
 
         var write = await BeginAsync(type, ContentOperation.Update, cancellationToken, locale);
@@ -284,6 +296,8 @@ internal sealed partial class ContentService
 
     public async Task<IReadOnlyList<VersionChange>> DiffAsync(string type, Guid id, int fromVersion, int toVersion, string? locale = null, CancellationToken cancellationToken = default)
     {
+        using var span = Span("diff", type);
+
         ArgumentNullException.ThrowIfNull(type);
 
         var (write, document) = await BeginVersionReadAsync(type, id, locale, cancellationToken);

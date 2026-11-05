@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Reflection;
 using FluentCMS.Content;
 using FluentCMS.Core.Content.Query;
+using FluentCMS.Core.Telemetry;
 using FluentCMS.Hooks;
 using FluentCMS.Schema;
 
@@ -35,6 +36,9 @@ public sealed class HookPipeline(IServiceProvider services)
         {
             return;
         }
+
+        using var span = FluentCmsTelemetry.Start("hook", kind.ToString(), type.Name, operation);
+        span?.SetTag(FluentCmsTelemetry.Tags.Hooks, hooks.Count);
 
         var mutable = kind is HookKind.BeforeValidate or HookKind.BeforeCreate or HookKind.BeforeUpdate
             or HookKind.BeforeDelete or HookKind.BeforePublish or HookKind.BeforeUnpublish or HookKind.BeforeRestore;

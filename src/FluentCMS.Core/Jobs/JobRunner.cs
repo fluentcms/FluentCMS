@@ -1,3 +1,4 @@
+using FluentCMS.Core.Health;
 using FluentCMS.Jobs;
 using Microsoft.Extensions.Logging;
 
@@ -8,6 +9,7 @@ internal sealed class JobRunner(
     JobStore store,
     RecurringJobs recurring,
     JobRunnerOptions options,
+    JobRunnerPulse pulse,
     TimeProvider time,
     ILogger<JobRunner> logger) : IJobRunner, IDisposable
 {
@@ -33,6 +35,7 @@ internal sealed class JobRunner(
             throw new InvalidOperationException("The job runner has already started.");
         }
 
+        pulse.Beat(time.GetUtcNow());
         var loops = new List<Task> { Task.Run(MaintainAsync, CancellationToken.None) };
         foreach (var (queue, workers) in options.Queues)
         {
@@ -136,6 +139,7 @@ internal sealed class JobRunner(
     {
         while (!_stopping.IsCancellationRequested)
         {
+            pulse.Beat(time.GetUtcNow());
             await MaintainAsync(() => recurring.FireDueAsync(_stopping.Token));
             await MaintainAsync(store.SweepAsync);
 
