@@ -256,6 +256,44 @@ public sealed partial class AuthorizationServerTests
     }
 
     [Fact]
+    public async Task UnderAPathBaseTheServerAnswersThereAndItsUrlsCarryIt()
+    {
+        await using var host = NewHost().Configure(cms => cms.ReverseProxy.PathBase = "/cms");
+        using var client = host.CreateSecureClient();
+
+        using (var discovery = await client.GetAsync("/cms/.well-known/openid-configuration", Token))
+        {
+            discovery.StatusCode.ShouldBe(HttpStatusCode.OK);
+            var document = await JsonAsync(discovery);
+            document.GetProperty("issuer").GetString().ShouldBe("https://localhost/cms");
+            document.GetProperty("token_endpoint").GetString().ShouldBe("https://localhost/cms/connect/token");
+            document.GetProperty("jwks_uri").GetString().ShouldBe("https://localhost/cms/.well-known/jwks");
+        }
+
+        using (var outside = await client.GetAsync("/.well-known/openid-configuration", Token))
+        {
+            outside.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        }
+
+        using (var content = new FormUrlEncodedContent(ClientCredentials("management")))
+        using (var outside = await client.PostAsync("/connect/token", content, Token))
+        {
+            outside.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        }
+
+        using var form = new FormUrlEncodedContent(ClientCredentials("management"));
+        using var issued = await client.PostAsync("/cms/connect/token", form, Token);
+        issued.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var accessToken = (await JsonAsync(issued)).GetProperty("access_token").GetString()!;
+        Payload(accessToken).GetProperty("iss").GetString().ShouldBe("https://localhost/cms");
+
+        using var api = Bearer(accessToken, host);
+        using var caller = await api.GetAsync("/cms/api/management/v1/test/whoami", Token);
+        caller.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await JsonAsync(caller)).GetProperty("kind").GetString().ShouldBe(nameof(PrincipalKind.ServiceAccount));
+    }
+
+    [Fact]
     public async Task TheDataProtectionStatusSaysWhetherTheKeyRingIsEncrypted()
     {
         _host.Services.GetRequiredService<IDataProtectionStatus>().KeysEncrypted.ShouldBeFalse();
@@ -263,6 +301,12 @@ public sealed partial class AuthorizationServerTests
         await using var encrypted = NewHost().WithServices(services =>
             services.Configure<KeyManagementOptions>(options => options.XmlEncryptor = new NullXmlEncryptor()));
         encrypted.Services.GetRequiredService<IDataProtectionStatus>().KeysEncrypted.ShouldBeTrue();
+    }
+
+    private static System.Text.Json.JsonElement Payload(string jwt)
+    {
+        using var document = System.Text.Json.JsonDocument.Parse(System.Buffers.Text.Base64Url.DecodeFromChars(jwt.Split('.')[1]));
+        return document.RootElement.Clone();
     }
 
     private async Task WithUserAsync(TestUser user, Func<UserManager<CmsUser>, CmsUser, Task> change)

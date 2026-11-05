@@ -39,6 +39,8 @@ public sealed class FluentCmsBuilder
 
     public ClientOptions Clients { get; } = new();
 
+    public ReverseProxyOptions ReverseProxy { get; } = new();
+
     internal IDataProvider? DataProvider { get; private set; }
 
     internal Assembly? ContentMigrationsAssembly { get; private set; }

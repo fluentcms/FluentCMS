@@ -9,7 +9,7 @@ namespace FluentCMS.Core.DependencyInjection;
 
 public static class FluentCmsEndpointRouteBuilderExtensions
 {
-    // The routes are relative to the request's PathBase, so a host on a sub-path calls UsePathBase before routing.
+    // The routes are relative to the request's PathBase, which UseFluentCms sets from FluentCms:ReverseProxy:PathBase.
     // The returned builder applies conventions to every FluentCMS endpoint.
     public static IEndpointConventionBuilder MapFluentCms(this IEndpointRouteBuilder endpoints)
     {

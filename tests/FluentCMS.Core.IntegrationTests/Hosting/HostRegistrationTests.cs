@@ -51,17 +51,13 @@ public sealed class HostRegistrationTests : IAsyncDisposable
     {
         var app = _host.Build(
             Environments.Development,
+            new Dictionary<string, string?> { ["FluentCms:ReverseProxy:PathBase"] = "/cms" },
             configure: builder =>
             {
                 foreach (var each in Enum.GetValues<FluentCmsEndpointGroup>())
                 {
                     builder.Services.AddFluentCmsEndpoints(each, routes => routes.MapGet("/probe", () => each.ToString()));
                 }
-            },
-            pipeline: app =>
-            {
-                app.UsePathBase("/cms");
-                app.UseFluentCms();
             });
         await app.StartAsync(Token);
 
@@ -102,6 +98,30 @@ public sealed class HostRegistrationTests : IAsyncDisposable
 
         exception.Code.ShouldBe(code);
         exception.Message.ShouldStartWith($"{code}: {key}");
+        File.Exists(_host.DatabaseFile).ShouldBeFalse();
+    }
+
+    // UseFluentCms reads the proxy options while the pipeline is built, so the host is refused before it starts.
+    [Theory]
+    [InlineData("FluentCms:ReverseProxy:PathBase", "cms")]
+    [InlineData("FluentCms:ReverseProxy:PathBase", "/cms/")]
+    [InlineData("FluentCms:ReverseProxy:ForwardedHeaders:KnownProxies:0", "proxy")]
+    [InlineData("FluentCms:ReverseProxy:ForwardedHeaders:KnownProxies:0", "1")]
+    [InlineData("FluentCms:ReverseProxy:ForwardedHeaders:KnownProxies:0", "10.1")]
+    [InlineData("FluentCms:ReverseProxy:ForwardedHeaders:KnownProxies:0", "010.0.0.1")]
+    [InlineData("FluentCms:ReverseProxy:ForwardedHeaders:KnownNetworks:0", "10/8")]
+    [InlineData("FluentCms:ReverseProxy:ForwardedHeaders:KnownNetworks:0", "10.0.0.0/+8")]
+    [InlineData("FluentCms:ReverseProxy:ForwardedHeaders:KnownNetworks:0", "10.0.0.0")]
+    [InlineData("FluentCms:ReverseProxy:ForwardedHeaders:KnownNetworks:0", "10.0.0.0/33")]
+    [InlineData("FluentCms:ReverseProxy:ForwardedHeaders:ForwardLimit", "0")]
+    [InlineData("FluentCms:ReverseProxy:HttpsRedirection:Port", "0")]
+    [InlineData("FluentCms:ReverseProxy:Hsts:MaxAge", "00:00:00")]
+    public void AnInvalidReverseProxyOptionRefusesTheHostAndNamesTheKey(string key, string value)
+    {
+        var exception = Should.Throw<FluentCmsConfigurationException>(() => _host.Build(Environments.Production, new Dictionary<string, string?> { [key] = value }));
+
+        exception.Code.ShouldBe("FCMS1101");
+        exception.Message.ShouldStartWith($"FCMS1101: {key}");
         File.Exists(_host.DatabaseFile).ShouldBeFalse();
     }
 

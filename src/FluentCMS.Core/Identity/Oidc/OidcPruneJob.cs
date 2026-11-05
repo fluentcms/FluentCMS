@@ -79,8 +79,11 @@ internal sealed class OidcPruneScheduleService(IJobScheduler scheduler, TimeProv
     }
 }
 
+// Event ids in the identity range of the FCMS codes, after the codes themselves.
 internal static partial class OidcLog
 {
-    [LoggerMessage(Level = LogLevel.Error, Message = "Could not register the recurring prune job of the authorization server; used tokens stay until it is registered.")]
+    public const int PruneScheduleFailedId = 3030;
+
+    [LoggerMessage(EventId = PruneScheduleFailedId, EventName = "OidcPruneScheduleFailed", Level = LogLevel.Error, Message = "Could not register the recurring prune job of the authorization server; used tokens stay until it is registered.")]
     public static partial void PruneScheduleFailed(ILogger logger, Exception exception);
 }
