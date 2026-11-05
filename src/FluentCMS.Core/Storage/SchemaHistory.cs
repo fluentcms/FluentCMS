@@ -40,25 +40,38 @@ internal sealed class SchemaHistory(IServiceScopeFactory scopes, TimeProvider ti
     {
         try
         {
-            var snapshot = SchemaSnapshot.Of(schema);
-
-            await using var scope = scopes.CreateAsyncScope();
-            var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
-
-            var last = await NewestAsync(context, cancellationToken);
-            if (last is null)
+            var status = await StatusAsync(schema, cancellationToken);
+            if (status.AppliedHash is null)
             {
                 SchemaHistoryLog.NoHistory(logger);
             }
-            else if (last.Hash != snapshot.Hash)
+            else if (status.Drifted)
             {
-                SchemaHistoryLog.Drift(logger, last.AppliedAt, last.FluentcmsVersion, last.Hash, snapshot.Hash, Describe(last.Snapshot, snapshot.Json));
+                SchemaHistoryLog.Drift(logger, status.AppliedAt!.Value, status.AppliedVersion!, status.AppliedHash, status.Hash, status.Changes!);
             }
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             SchemaHistoryLog.NotChecked(logger, exception.GetType().Name, exception);
         }
+    }
+
+    // The newest row of the history set against the schema in code.
+    public async Task<SchemaStatus> StatusAsync(SchemaModel schema, CancellationToken cancellationToken)
+    {
+        var snapshot = SchemaSnapshot.Of(schema);
+
+        await using var scope = scopes.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+
+        var last = await NewestAsync(context, cancellationToken);
+        if (last is null)
+        {
+            return new SchemaStatus(snapshot.Hash, null, null, null, Drifted: false, null);
+        }
+
+        var drifted = last.Hash != snapshot.Hash;
+        return new SchemaStatus(snapshot.Hash, last.Hash, last.AppliedAt, last.FluentcmsVersion, drifted, drifted ? Describe(last.Snapshot, snapshot.Json) : null);
     }
 
     private async Task RecordWithRetriesAsync(SchemaSnapshot snapshot, CancellationToken cancellationToken)
@@ -138,6 +151,9 @@ internal sealed class SchemaHistory(IServiceScopeFactory scopes, TimeProvider ti
         return version.Length <= VersionLength ? version : version[..VersionLength];
     }
 }
+
+// AppliedHash is null while the history is empty, and Changes when nothing drifted.
+internal sealed record SchemaStatus(string Hash, string? AppliedHash, DateTimeOffset? AppliedAt, string? AppliedVersion, bool Drifted, string? Changes);
 
 internal static partial class SchemaHistoryLog
 {

@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using FluentCMS.Core.DependencyInjection;
+using FluentCMS.Core.Diagnostics;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
@@ -9,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Shouldly;
 using Xunit;
 
@@ -331,7 +333,8 @@ public sealed class SchemaHistoryTests : IDisposable
 
         public IReadOnlyList<string> Informations => Of(LogLevel.Information);
 
-        public ILogger CreateLogger(string categoryName) => new Logger(_messages);
+        // The startup report has its own tests; here only what the history logs counts.
+        public ILogger CreateLogger(string categoryName) => categoryName == typeof(StartupReportService).FullName ? NullLogger.Instance : new Logger(_messages);
 
         public void Dispose()
         {

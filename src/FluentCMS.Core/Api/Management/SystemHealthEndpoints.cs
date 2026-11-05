@@ -26,12 +26,7 @@ internal static class SystemHealthEndpoints
 
     private static async Task<IResult> GetAsync(HttpContext httpContext, [FromServices] IAuthorizationEvaluator evaluator, [FromServices] HealthCheckService health)
     {
-        var operation = ApiRequest.Of(httpContext).Operation;
-        var permissions = await evaluator.ResolveAsync(operation, httpContext.RequestAborted);
-        if (!permissions.Allows(CorePermissions.SystemRead, new AccessTarget(Site: null, Locale: null)))
-        {
-            throw new PermissionDeniedException(CorePermissions.SystemRead);
-        }
+        await InstanceAccess.RequireAsync(httpContext, evaluator, CorePermissions.SystemRead);
 
         var report = await health.CheckHealthAsync(httpContext.RequestAborted);
         return Results.Json(Report(report));

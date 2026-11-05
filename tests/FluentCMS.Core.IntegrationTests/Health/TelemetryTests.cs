@@ -119,6 +119,36 @@ public sealed class TelemetryTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task ARouteRequestedOutsideThePathBaseIsCountedAsARefusedRequestOfItsSurface()
+    {
+        var counts = new ConcurrentBag<(string? Surface, string? Status)>();
+        using var listener = new MeterListener
+        {
+            InstrumentPublished = (instrument, meter) =>
+            {
+                if (instrument.Meter.Name == FluentCmsTelemetry.Name && instrument.Name == FluentCmsTelemetry.Instruments.Requests)
+                {
+                    meter.EnableMeasurementEvents(instrument);
+                }
+            },
+        };
+        listener.SetMeasurementEventCallback<long>((_, _, tags, _) => counts.Add((Tag(tags, FluentCmsTelemetry.Tags.Surface), Tag(tags, FluentCmsTelemetry.Tags.StatusClass))));
+        listener.Start();
+        await using var host = new FluentCmsTestHost()
+            .WithContentTypes<Note>()
+            .WithServices(services => services.PostConfigure<FluentCMS.Core.DependencyInjection.ReverseProxyOptions>(proxy => proxy.PathBase = "/cms"));
+        using var client = host.CreateClient();
+
+        using var outside = await client.GetAsync(new Uri("/health/live", UriKind.Relative), Token);
+        using var inside = await client.GetAsync(new Uri("/cms/health/live", UriKind.Relative), Token);
+
+        outside.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        inside.StatusCode.ShouldBe(HttpStatusCode.OK);
+        counts.ShouldContain(count => count.Surface == "health" && count.Status == "4xx");
+        counts.ShouldContain(count => count.Surface == "health" && count.Status == "2xx");
+    }
+
+    [Fact]
     public void TheCacheHitRatioIsInstrumentedAlthoughNothingReportsHitsYet()
     {
         const string Cache = "telemetry-test";
