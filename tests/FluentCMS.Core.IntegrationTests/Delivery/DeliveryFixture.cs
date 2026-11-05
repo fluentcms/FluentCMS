@@ -79,12 +79,13 @@ public sealed class DeliveryFixture : IAsyncLifetime
         return (response.StatusCode, JsonNode.Parse(text)!);
     }
 
-    // A key of the instance-wide Editor role, which reads every type in every site, optionally bound to sites.
-    public static (string, string)[] EditorKey(params Guid[] sites)
+    // A bearer principal of the instance-wide Editor role, which reads every type in every site, optionally bound to sites.
+    // A service account, because an API key principal takes its role from the stored key and not from the claim.
+    public static (string, string)[] Editor(params Guid[] sites)
     {
         List<(string, string)> headers =
         [
-            (TestScheme.KindHeader, nameof(PrincipalKind.ApiKey)),
+            (TestScheme.KindHeader, nameof(PrincipalKind.ServiceAccount)),
             (TestScheme.RolesHeader, BuiltInRoles.Editor.ToString()),
             (TestScheme.ScopeHeader, TokenScopes.Delivery),
         ];

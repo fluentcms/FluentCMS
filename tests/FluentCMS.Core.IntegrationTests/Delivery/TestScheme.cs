@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
-using FluentCMS.Core.Api.Common;
+using FluentCMS.Core.Identity;
 using FluentCMS.Core.Authorization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.DependencyInjection;
@@ -9,12 +9,12 @@ using Microsoft.Extensions.Options;
 
 namespace FluentCMS.Core.IntegrationTests.Delivery;
 
-// Stands in for the FluentCms policy scheme and the handlers behind it: it writes the claims they write, from test
-// headers. A request without the kind header is anonymous. It is not the default scheme, as the policy scheme is not.
+// Stands in for a bearer scheme behind the FluentCms scheme: it writes the claims the handlers write, from test headers.
+// A request without the kind header is anonymous.
 internal sealed class TestScheme(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder)
     : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
 {
-    public const string Name = RequestAuthentication.Scheme;
+    public const string Name = "Test";
     public const string KindHeader = "X-Test-Kind";
     public const string RolesHeader = "X-Test-Roles";
     public const string ScopeHeader = "X-Test-Scope";
@@ -23,8 +23,11 @@ internal sealed class TestScheme(IOptionsMonitor<AuthenticationSchemeOptions> op
 
     public static readonly Guid Subject = new("0192f2a4-7b1c-7d2e-9f10-2a3b4c5d6e7f");
 
-    public static void Add(IServiceCollection services) =>
+    public static void Add(IServiceCollection services)
+    {
         services.AddAuthentication().AddScheme<AuthenticationSchemeOptions, TestScheme>(Name, null);
+        services.Configure<FluentCmsAuthenticationOptions>(FluentCmsAuthentication.Scheme, options => options.BearerScheme = Name);
+    }
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {

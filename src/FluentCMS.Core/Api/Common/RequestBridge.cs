@@ -1,4 +1,5 @@
 using FluentCMS.Content;
+using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.Sites;
 using FluentCMS.Localization;
@@ -55,7 +56,7 @@ internal sealed class RequestBridge(ISiteResolver sites, ILocaleResolver locales
     {
         var header = Present(request.Headers[SiteHeader].FirstOrDefault());
         var parameter = Present(Single(request, SiteParameter));
-        var bound = RequestPrincipal.BoundSites(principal);
+        var bound = PrincipalBinding.Of(principal).Sites;
 
         var fromHeader = header is null ? (SiteId?)null : await NamedAsync(SiteHeader, new SiteRequest { Header = header }, bound, cancellationToken);
         var fromParameter = parameter is null ? (SiteId?)null : await NamedAsync(SiteParameter, new SiteRequest { Parameter = parameter }, bound, cancellationToken);
@@ -79,7 +80,7 @@ internal sealed class RequestBridge(ISiteResolver sites, ILocaleResolver locales
             case 0:
                 throw Refused(SiteParameter, RequestErrorCodes.SiteOutsideBinding, "The key is bound to no site.");
             case 1:
-                return await sites.ResolveAsync(new SiteRequest { ApiKeySite = new SiteId(bound[0]) }, cancellationToken);
+                return await sites.ResolveAsync(new SiteRequest { ApiKeySite = new SiteId(bound.Single()) }, cancellationToken);
         }
 
         var unnamed = await sites.ResolveAsync(new SiteRequest { Host = request.Host.Host }, cancellationToken);
@@ -88,7 +89,7 @@ internal sealed class RequestBridge(ISiteResolver sites, ILocaleResolver locales
             : throw Refused(SiteParameter, RequestErrorCodes.SiteNotNamed, $"The key is bound to several sites; name one with {SiteHeader} or {SiteParameter}.");
     }
 
-    private async Task<SiteId> NamedAsync(string source, SiteRequest request, IReadOnlyList<Guid>? bound, CancellationToken cancellationToken)
+    private async Task<SiteId> NamedAsync(string source, SiteRequest request, IReadOnlySet<Guid>? bound, CancellationToken cancellationToken)
     {
         if (bound is null)
         {

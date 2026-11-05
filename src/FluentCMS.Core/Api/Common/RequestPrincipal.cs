@@ -39,10 +39,4 @@ internal static class RequestPrincipal
 
         return new Principal(kind, id, user.FindFirst(CmsClaimTypes.Name)?.Value ?? "", claims);
     }
-
-    // The sites a key is bound to, or null when it is bound to none. A binding that names no site reaches none.
-    public static IReadOnlyList<Guid>? BoundSites(Principal principal) =>
-        principal.Claim(CmsClaimTypes.Sites) is { } text
-            ? [.. text.Split(' ', StringSplitOptions.RemoveEmptyEntries).Select(item => Guid.TryParse(item, out var site) ? site : Guid.Empty).Where(site => site != Guid.Empty).Distinct()]
-            : null;
 }

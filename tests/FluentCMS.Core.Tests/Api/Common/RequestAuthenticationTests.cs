@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using FluentCMS.Core.Api.Common;
+using FluentCMS.Core.Identity;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,9 +25,9 @@ public sealed class RequestAuthenticationTests
     }
 
     [Fact]
-    public async Task TheFluentCmsSchemeWinsOverTheDefaultUser()
+    public async Task TheFluentCmsSchemeWinsOverTheRequestUser()
     {
-        var httpContext = Context(services => services.AddAuthentication().AddScheme<AuthenticationSchemeOptions, KeyScheme>(RequestAuthentication.Scheme, null));
+        var httpContext = Context(services => services.AddAuthentication().AddScheme<AuthenticationSchemeOptions, KeyScheme>(FluentCmsAuthentication.Scheme, null));
         httpContext.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "cookie")], "Default"));
         httpContext.Request.Headers["X-Key"] = "key";
 
@@ -39,7 +40,7 @@ public sealed class RequestAuthenticationTests
     [Fact]
     public async Task NoResultFromTheFluentCmsSchemeIsAnonymous()
     {
-        var httpContext = Context(services => services.AddAuthentication().AddScheme<AuthenticationSchemeOptions, KeyScheme>(RequestAuthentication.Scheme, null));
+        var httpContext = Context(services => services.AddAuthentication().AddScheme<AuthenticationSchemeOptions, KeyScheme>(FluentCmsAuthentication.Scheme, null));
 
         (await RequestAuthentication.UserAsync(httpContext)).Identity!.IsAuthenticated.ShouldBeFalse();
     }
@@ -47,7 +48,7 @@ public sealed class RequestAuthenticationTests
     [Fact]
     public async Task AFailedFluentCmsSchemeIsRefused()
     {
-        var httpContext = Context(services => services.AddAuthentication().AddScheme<AuthenticationSchemeOptions, KeyScheme>(RequestAuthentication.Scheme, null));
+        var httpContext = Context(services => services.AddAuthentication().AddScheme<AuthenticationSchemeOptions, KeyScheme>(FluentCmsAuthentication.Scheme, null));
         httpContext.Request.Headers["X-Key"] = "bad";
 
         await Should.ThrowAsync<RequestAuthenticationException>(() => RequestAuthentication.UserAsync(httpContext));

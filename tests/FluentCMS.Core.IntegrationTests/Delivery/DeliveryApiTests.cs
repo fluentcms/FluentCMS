@@ -1,8 +1,10 @@
 using System.Net;
 using System.Text.Json.Nodes;
 using FluentCMS.Content;
+using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Sites;
 using FluentCMS.Samples.Blog;
+using FluentCMS.Testing;
 using Shouldly;
 using Xunit;
 
@@ -230,7 +232,7 @@ public sealed class DeliveryApiTests(DeliveryFixture fixture) : IClassFixture<De
     [Fact]
     public async Task AFieldNamedTypeIsAFieldAndNotTheRoutesType()
     {
-        var key = DeliveryFixture.EditorKey();
+        var key = DeliveryFixture.Editor();
 
         var (listed, list) = await fixture.GetAsync($"product?filter[type][eq]={DeliveryFixture.ProductType}", key);
         listed.ShouldBe(HttpStatusCode.OK);
@@ -257,7 +259,7 @@ public sealed class DeliveryApiTests(DeliveryFixture fixture) : IClassFixture<De
     [Fact]
     public async Task AnUnlocalizedTypeUnderLocaleAllIsKeyedByTheEmptyLocale()
     {
-        var (status, body) = await fixture.GetAsync("homepage?locale=all", DeliveryFixture.EditorKey());
+        var (status, body) = await fixture.GetAsync("homepage?locale=all", DeliveryFixture.Editor());
 
         status.ShouldBe(HttpStatusCode.OK);
         body["locales"]!.AsObject().Select(pair => pair.Key).ShouldBe([""]);
@@ -306,7 +308,7 @@ public sealed class DeliveryApiTests(DeliveryFixture fixture) : IClassFixture<De
     {
         var (status, body) = await fixture.GetAsync(
             "article?status=draft",
-            (TestScheme.KindHeader, nameof(PrincipalKind.ApiKey)),
+            (TestScheme.KindHeader, nameof(PrincipalKind.ServiceAccount)),
             (TestScheme.RolesHeader, DefaultSite.PublicRole.ToString()),
             (TestScheme.ScopeHeader, scope));
 
@@ -315,6 +317,33 @@ public sealed class DeliveryApiTests(DeliveryFixture fixture) : IClassFixture<De
         {
             Slugs(body).ShouldBe([Welcome, Typed, BlogSeeder.TourSlug, BlogSeeder.ScheduledSlug], ignoreOrder: true);
             Item(body, BlogSeeder.TourSlug)["status"]!.GetValue<string>().ShouldBe("draft");
+        }
+    }
+
+    [Fact]
+    public async Task RealApiKeysAuthenticateThroughTheFluentCmsScheme()
+    {
+        var token = TestContext.Current.CancellationToken;
+        var preview = await fixture.Host.CreateApiKeyAsync(ApiKeyClass.Preview, BuiltInRoles.PublicName, cancellationToken: token);
+        var delivery = await fixture.Host.CreateApiKeyAsync(ApiKeyClass.Delivery, BuiltInRoles.PublicName, cancellationToken: token);
+        var uri = new Uri("/api/delivery/v1/article?status=draft&fields=slug", UriKind.Relative);
+
+        using (var client = fixture.Host.AsKey(preview))
+        using (var response = await client.GetAsync(uri, token))
+        {
+            response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        }
+
+        using (var client = fixture.Host.AsKey(delivery))
+        using (var response = await client.GetAsync(uri, token))
+        {
+            response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        }
+
+        using (var client = fixture.Host.AsKey(delivery with { Secret = delivery.Secret + "x" }))
+        using (var response = await client.GetAsync(uri, token))
+        {
+            response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         }
     }
 
@@ -337,7 +366,7 @@ public sealed class DeliveryApiTests(DeliveryFixture fixture) : IClassFixture<De
     [Fact]
     public async Task ASingletonReturnsItsEntry()
     {
-        var (status, body) = await fixture.GetAsync("homepage", DeliveryFixture.EditorKey());
+        var (status, body) = await fixture.GetAsync("homepage", DeliveryFixture.Editor());
 
         status.ShouldBe(HttpStatusCode.OK);
         body["headline"]!.GetValue<string>().ShouldBe(DeliveryFixture.Headline);
@@ -347,7 +376,7 @@ public sealed class DeliveryApiTests(DeliveryFixture fixture) : IClassFixture<De
     [Fact]
     public async Task AnUnboundRequestNamesItsSiteByHeaderOrParameter()
     {
-        var key = DeliveryFixture.EditorKey();
+        var key = DeliveryFixture.Editor();
 
         Slugs((await fixture.GetAsync("article", key)).Body).Count.ShouldBe(2);
         Slugs((await fixture.GetAsync("article", [.. key, ("X-Cms-Site", "other")])).Body).ShouldBeEmpty();
@@ -362,7 +391,7 @@ public sealed class DeliveryApiTests(DeliveryFixture fixture) : IClassFixture<De
     [Fact]
     public async Task AHeaderAndAParameterThatNameDifferentSitesAreRefused()
     {
-        var (status, body) = await fixture.GetAsync("article?site=default", [.. DeliveryFixture.EditorKey(), ("X-Cms-Site", "other")]);
+        var (status, body) = await fixture.GetAsync("article?site=default", [.. DeliveryFixture.Editor(), ("X-Cms-Site", "other")]);
 
         status.ShouldBe(HttpStatusCode.BadRequest);
         body["code"]!.GetValue<string>().ShouldBe("FCMS2201");
@@ -372,7 +401,7 @@ public sealed class DeliveryApiTests(DeliveryFixture fixture) : IClassFixture<De
     [Fact]
     public async Task AKeyBoundToOneSiteReadsThatSite()
     {
-        var bound = DeliveryFixture.EditorKey(fixture.OtherSite);
+        var bound = DeliveryFixture.Editor(fixture.OtherSite);
 
         Slugs((await fixture.GetAsync("article", bound)).Body).ShouldBeEmpty();
         Slugs((await fixture.GetAsync("article?site=other", bound)).Body).ShouldBeEmpty();
@@ -413,11 +442,11 @@ public sealed class DeliveryApiTests(DeliveryFixture fixture) : IClassFixture<De
     [Fact]
     public async Task AKeyBoundToSeveralSitesReadsTheOneNamedOrTheDefault()
     {
-        var withDefault = DeliveryFixture.EditorKey(fixture.OtherSite, DefaultSite.Id);
+        var withDefault = DeliveryFixture.Editor(fixture.OtherSite, DefaultSite.Id);
         Slugs((await fixture.GetAsync("article", withDefault)).Body).Count.ShouldBe(2);
         Slugs((await fixture.GetAsync("article?site=other", withDefault)).Body).ShouldBeEmpty();
 
-        var withoutDefault = DeliveryFixture.EditorKey(fixture.OtherSite, fixture.ThirdSite);
+        var withoutDefault = DeliveryFixture.Editor(fixture.OtherSite, fixture.ThirdSite);
         Slugs((await fixture.GetAsync("article?site=third", withoutDefault)).Body).ShouldBeEmpty();
 
         var (unnamed, body) = await fixture.GetAsync("article", withoutDefault);

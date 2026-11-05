@@ -50,20 +50,6 @@ public sealed class RequestPrincipalTests
         Should.Throw<RequestAuthenticationException>(() => RequestPrincipal.From(User(claims)));
     }
 
-    [Theory]
-    [InlineData(null, null)]
-    [InlineData("", new string[0])]
-    [InlineData("0192f2a4-7b1c-7d2e-9f10-2a3b4c5d6e7f nonsense", new[] { "0192f2a4-7b1c-7d2e-9f10-2a3b4c5d6e7f" })]
-    public void TheBindingIsReadFromTheSitesClaim(string? claim, string[]? expected)
-    {
-        KeyValuePair<string, string>[] claims = claim is null ? [] : [KeyValuePair.Create(CmsClaimTypes.Sites, claim)];
-        var principal = new Principal(PrincipalKind.ApiKey, Id, "Key", claims);
-
-        var sites = RequestPrincipal.BoundSites(principal);
-
-        (sites?.Select(site => site.ToString()).ToArray()).ShouldBe(expected);
-    }
-
     private static ClaimsPrincipal User(params Claim[] claims) =>
         new(new ClaimsIdentity([new Claim(CmsClaimTypes.Subject, Id.ToString()), .. claims], "Test"));
 }
