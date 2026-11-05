@@ -13,13 +13,14 @@ using Xunit;
 namespace FluentCMS.Core.IntegrationTests.Delivery;
 
 // The seeded Blog sample behind a TestServer. The default site's Public role reads articles and tags, and authors
-// without their bio; the homepage singleton is for keys only. Two more sites have no content.
+// without their bio; the homepage singleton and products are for keys only. Two more sites have no content.
 public sealed class DeliveryFixture : IAsyncLifetime
 {
     public const string Headline = "Welcome home";
+    public const string ProductType = "gadget";
 
     public FluentCmsTestHost Host { get; } = new FluentCmsTestHost()
-        .WithContentTypes([.. BlogSample.ContentTypes, typeof(Homepage)])
+        .WithContentTypes([.. BlogSample.ContentTypes, typeof(Homepage), typeof(Product)])
         .WithServices(TestScheme.Add)
         .Configure(cms => cms.AddBlogSample())
         .Seed(async services =>
@@ -27,6 +28,10 @@ public sealed class DeliveryFixture : IAsyncLifetime
             var homepages = services.GetRequiredService<IContentService<Homepage>>();
             var homepage = await homepages.CreateAsync(new Homepage { Headline = Headline });
             await homepages.PublishAsync(homepage.Id);
+
+            var products = services.GetRequiredService<IContentService<Product>>();
+            var product = await products.CreateAsync(new Product { Type = ProductType });
+            await products.PublishAsync(product.Id);
         });
 
     public HttpClient Client { get; private set; } = null!;

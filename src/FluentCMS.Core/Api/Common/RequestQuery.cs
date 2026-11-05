@@ -52,6 +52,6 @@ internal static class RequestQuery
             }
         }
 
-        return BracketQueryParser.Parse(parameters) with { Locale = api.Locale };
+        return BracketQueryParser.Parse(parameters, keepSources: true) with { Locale = api.Locale };
     }
 }

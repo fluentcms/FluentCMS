@@ -4,8 +4,9 @@ using Microsoft.AspNetCore.Http;
 
 namespace FluentCMS.Core.Api.Common;
 
-// The engine names a field in its errors, where a client needs the parameter it sent: filter[publishedOn][gt] rather
-// than publishedOn, limit rather than pageSize. An unknown type and one the principal cannot read are the same 404.
+// The engine names a field in some of its errors, where a client needs the parameter it sent: limit rather than
+// pageSize, field or value on a by/ route. A filter condition parsed with its source already names its parameter;
+// one that is not found by its field.
 internal static class RequestErrors
 {
     public const string Field = "field";
@@ -17,18 +18,18 @@ internal static class RequestErrors
     };
 
     // byField is the field of a by/{field}/{value} route, whose filter the client did not write as a parameter.
-    public static ValidationException ForRequest(ValidationException exception, HttpRequest request, string type, string? byField = null)
+    public static ValidationException ForRequest(ValidationException exception, HttpRequest request, string? byField = null)
     {
         ArgumentNullException.ThrowIfNull(exception);
         ArgumentNullException.ThrowIfNull(request);
 
-        if (exception.Errors.Any(error => error is { Path: "type", Code: QueryErrorCodes.UnknownField }))
-        {
-            return new([new ValidationError("type", ApiErrorCodes.NotFound, $"There is no content type '{type}'.")]);
-        }
-
         return new(exception.Errors.Select(error => error with { Path = PathOf(error, request, byField) }));
     }
+
+    // An unknown type and one the principal cannot read are the same 404, decided before the query runs so that an
+    // error on a field that happens to be named type is not taken for it.
+    public static ValidationException TypeNotFound(string type) =>
+        new([new ValidationError("type", ApiErrorCodes.NotFound, $"There is no content type '{type}'.")]);
 
     private static string PathOf(ValidationError error, HttpRequest request, string? byField)
     {

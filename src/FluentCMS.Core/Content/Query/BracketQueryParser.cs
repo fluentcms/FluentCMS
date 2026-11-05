@@ -52,7 +52,10 @@ internal static class BracketQueryParser
         }));
     }
 
-    public static ContentQuery Parse(IEnumerable<KeyValuePair<string, string>> parameters)
+    public static ContentQuery Parse(IEnumerable<KeyValuePair<string, string>> parameters) => Parse(parameters, keepSources: false);
+
+    // keepSources records the parameter of each condition in FilterSources, so that the engine's errors name it.
+    public static ContentQuery Parse(IEnumerable<KeyValuePair<string, string>> parameters, bool keepSources)
     {
         ArgumentNullException.ThrowIfNull(parameters);
 
@@ -86,7 +89,7 @@ internal static class BracketQueryParser
         var depth = Depth(single, errors);
         var query = new ContentQuery
         {
-            Filter = filters.Count == 0 ? null : Node(filters, 0, 0, errors),
+            Filter = filters.Count == 0 ? null : Node(filters, 0, 0, keepSources, errors),
             Sort = Sort(single, errors),
             Page = Page(single, errors),
             Cursor = Take(single, "cursor"),
@@ -135,7 +138,7 @@ internal static class BracketQueryParser
     }
 
     // The conditions at one level, in the order they first appear; several of them are an implicit And.
-    private static ContentFilter? Node(IReadOnlyList<FilterEntry> entries, int offset, int depth, List<ValidationError> errors)
+    private static ContentFilter? Node(IReadOnlyList<FilterEntry> entries, int offset, int depth, bool keepSources, List<ValidationError> errors)
     {
         if (depth > MaxFilterDepth)
         {
@@ -155,19 +158,24 @@ internal static class BracketQueryParser
             {
                 if (done.Add(token))
                 {
-                    var group = Group(entries.Where(item => IsGroup(item, offset, token)).ToList(), offset, depth, errors);
+                    var group = Group(entries.Where(item => IsGroup(item, offset, token)).ToList(), offset, depth, keepSources, errors);
                     nodes.Add(token == OrToken ? new Or(group) : Single(group) ?? new And(group));
                 }
             }
             else if (token == NotToken && left >= 3)
             {
-                if (done.Add(token) && Node(entries.Where(item => IsNot(item, offset)).ToList(), offset + 1, depth + 1, errors) is { } inner)
+                if (done.Add(token) && Node(entries.Where(item => IsNot(item, offset)).ToList(), offset + 1, depth + 1, keepSources, errors) is { } inner)
                 {
                     nodes.Add(new Not(inner));
                 }
             }
             else if (Leaf(entry, offset, errors) is { } leaf)
             {
+                if (keepSources)
+                {
+                    FilterSources.Remember(leaf, entry.Key);
+                }
+
                 nodes.Add(leaf);
             }
         }
@@ -185,11 +193,11 @@ internal static class BracketQueryParser
     private static bool IsNot(FilterEntry entry, int offset) =>
         entry.Tokens.Length - offset >= 3 && entry.Tokens[offset] == NotToken;
 
-    private static List<ContentFilter> Group(List<FilterEntry> entries, int offset, int depth, List<ValidationError> errors) =>
+    private static List<ContentFilter> Group(List<FilterEntry> entries, int offset, int depth, bool keepSources, List<ValidationError> errors) =>
         entries
             .GroupBy(entry => int.Parse(entry.Tokens[offset + 1], CultureInfo.InvariantCulture))
             .OrderBy(group => group.Key)
-            .Select(group => Node(group.ToList(), offset + 2, depth + 1, errors))
+            .Select(group => Node(group.ToList(), offset + 2, depth + 1, keepSources, errors))
             .OfType<ContentFilter>()
             .ToList();
 

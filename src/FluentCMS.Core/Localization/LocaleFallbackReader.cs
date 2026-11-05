@@ -173,7 +173,7 @@ internal sealed class LocaleFallbackReader(ContentQueryEngine engine, SchemaMode
                 Page = new PageRequest { Size = batch.Length, WithTotal = false },
                 Cursor = null,
                 Select = select,
-                Populate = select.Count == 0 ? query.Populate : [.. query.Populate.Where(path => path == "*" || select.Contains(path.Split('.')[0]))],
+                Populate = select.Count == 0 ? query.Populate : [.. query.Populate.Where(path => path == "*" || select.Any(field => Root(field) == Root(path)))],
                 Locale = locale,
                 Fallback = LocaleFallback.None,
             };
@@ -192,6 +192,9 @@ internal sealed class LocaleFallbackReader(ContentQueryEngine engine, SchemaMode
 
         return found;
     }
+
+    // A selection such as author.name keeps the population of author, which it reads through.
+    private static string Root(string path) => path.Split('.')[0];
 
     private static bool RefusesTheLocale(ValidationError error) =>
         (error.Path, error.Code) is ("type", QueryErrorCodes.UnknownField) or ("status", QueryErrorCodes.DraftNotAllowed);

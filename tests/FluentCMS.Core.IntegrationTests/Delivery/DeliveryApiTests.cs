@@ -160,6 +160,9 @@ public sealed class DeliveryApiTests(DeliveryFixture fixture) : IClassFixture<De
     [InlineData("filter[publishedOn][gt]=yesterday", "FCMS2204")]
     [InlineData("filter[author.bio][null]=false", "FCMS2202")]
     [InlineData("filter[or][0][title][eq]=a&filter[or][1][publishedOn][lt]=never", "FCMS2204")]
+    [InlineData("filter[or][0][publishedOn][gt]=2020-01-01T00:00:00Z&filter[or][1][publishedOn][lt]=never", "FCMS2204")]
+    [InlineData("filter[or][0][author.name][eq]=Ada&filter[or][1][author.name][hasBlock]=x", "FCMS2203")]
+    [InlineData("filter[type][eq]=x", "FCMS2202")]
     public async Task AMalformedFilterIsAProblemOnItsParameter(string query, string code)
     {
         var (status, body) = await fixture.GetAsync("article?" + query);
@@ -213,10 +216,42 @@ public sealed class DeliveryApiTests(DeliveryFixture fixture) : IClassFixture<De
         locales["fr"]!["title"]!.GetValue<string>().ShouldBe("Bienvenue dans FluentCMS");
         locales["en"]!["title"]!.GetValue<string>().ShouldBe("Welcome to FluentCMS");
 
+        var (_, populated) = await fixture.GetAsync("article?locale=all&fields=title,author.name&populate=author");
+        var welcome = populated["items"]!.AsArray().Single(item => item!["locales"]!.AsObject().ContainsKey("fr"))!;
+        welcome["locales"]!["fr"]!["author"]!["name"]!.GetValue<string>().ShouldBe("Ada Lovelace");
+        welcome["locales"]!["en"]!["author"]!["name"]!.GetValue<string>().ShouldBe("Ada Lovelace");
+
         var (_, selected) = await fixture.GetAsync("article?locale=all&fields=title");
         selected["items"]!.AsArray()
             .SelectMany(item => item!["locales"]!.AsObject().Select(pair => pair.Value!))
             .ShouldAllBe(entry => entry.AsObject().Count == 2 && entry.AsObject().ContainsKey("id") && entry.AsObject().ContainsKey("title"));
+    }
+
+    [Fact]
+    public async Task AFieldNamedTypeIsAFieldAndNotTheRoutesType()
+    {
+        var key = DeliveryFixture.EditorKey();
+
+        var (listed, list) = await fixture.GetAsync($"product?filter[type][eq]={DeliveryFixture.ProductType}", key);
+        listed.ShouldBe(HttpStatusCode.OK);
+        list["items"]!.AsArray().Single()!["type"]!.GetValue<string>().ShouldBe(DeliveryFixture.ProductType);
+
+        var (found, product) = await fixture.GetAsync($"product/by/type/{DeliveryFixture.ProductType}", key);
+        found.ShouldBe(HttpStatusCode.OK);
+        product["type"]!.GetValue<string>().ShouldBe(DeliveryFixture.ProductType);
+
+        var (refused, problem) = await fixture.GetAsync("product?filter[type][hasBlock]=x", key);
+        refused.ShouldBe(HttpStatusCode.BadRequest);
+        problem["errors"]![0]!["path"]!.GetValue<string>().ShouldBe("filter[type][hasBlock]");
+
+        var (missing, none) = await fixture.GetAsync("product/by/type/none", key);
+        missing.ShouldBe(HttpStatusCode.NotFound);
+        none["errors"]![0]!["path"]!.GetValue<string>().ShouldBe("value");
+
+        var (unknown, field) = await fixture.GetAsync("article/by/type/x");
+        unknown.ShouldBe(HttpStatusCode.BadRequest);
+        field["code"]!.GetValue<string>().ShouldBe("FCMS2202");
+        field["errors"]![0]!["path"]!.GetValue<string>().ShouldBe("field");
     }
 
     [Fact]
