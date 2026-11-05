@@ -53,6 +53,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddFluentCmsOptions(DatabaseOptions.Section, StorageErrorCodes.InvalidDatabaseSetting, new DatabaseOptions());
         services.AddFluentCmsOptions(SecurityOptions.Section, HostErrorCodes.InvalidOption, new SecurityOptions(), security => security.Validate());
         services.AddSecurityDefaults();
+        services.AddFluentCmsApiProtection();
 
         services.AddSingleton(provider);
         services.AddSingleton(provider.Conventions);

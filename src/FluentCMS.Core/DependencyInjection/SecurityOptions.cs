@@ -5,13 +5,45 @@ public sealed class SecurityOptions
 {
     public const string Section = "Security";
 
+    private static readonly string[] ReferrerPolicies =
+    [
+        "no-referrer",
+        "no-referrer-when-downgrade",
+        "origin",
+        "origin-when-cross-origin",
+        "same-origin",
+        "strict-origin",
+        "strict-origin-when-cross-origin",
+        "unsafe-url",
+    ];
+
     // Lets Production start with the signing key the authorization server generates when no certificate is configured.
     public bool AllowGeneratedSigningKey { get; set; }
 
     public SecurityCorsOptions Cors { get; } = new();
 
+    // The Referrer-Policy header of FluentCMS responses.
+    public string ReferrerPolicy { get; set; } = "no-referrer";
+
+    // The sources that may frame the hosted pages, as the frame-ancestors directive takes them. None by default.
+    public string FrameAncestors { get; set; } = "'none'";
+
     internal void Validate()
     {
+        if (!ReferrerPolicies.Contains(ReferrerPolicy))
+        {
+            throw new FluentCmsConfigurationException(
+                HostErrorCodes.InvalidOption,
+                $"{nameof(ReferrerPolicy)} is '{ReferrerPolicy}'; it must be one of {string.Join(", ", ReferrerPolicies)}.");
+        }
+
+        if (string.IsNullOrWhiteSpace(FrameAncestors) || FrameAncestors.Any(character => char.IsControl(character) || character is ';' or ','))
+        {
+            throw new FluentCmsConfigurationException(
+                HostErrorCodes.InvalidOption,
+                $"{nameof(FrameAncestors)} is '{FrameAncestors}'; it must be a space-separated list of sources such as 'none', 'self' or https://admin.example.com, without a semicolon or comma.");
+        }
+
         Cors.Delivery.Validate("Cors:Delivery");
         Cors.Management.Validate("Cors:Management");
     }

@@ -161,6 +161,8 @@ public static class ErrorCodeRegistry
         new(ApiErrorCodes.NotFound, StatusCodes.Status404NotFound, "Not found"),
         new(ApiErrorCodes.VersionConflict, StatusCodes.Status412PreconditionFailed, "Version conflict"),
         new(ApiErrorCodes.InternalError, StatusCodes.Status500InternalServerError, "Internal error"),
+        new(LimitErrorCodes.RateLimited, StatusCodes.Status429TooManyRequests, "Too many requests"),
+        new(LimitErrorCodes.RequestTooLarge, StatusCodes.Status413PayloadTooLarge, "Request too large"),
     ];
 
     private static readonly FrozenDictionary<string, ErrorCodeInfo> byCode = All.ToFrozenDictionary(info => info.Code);

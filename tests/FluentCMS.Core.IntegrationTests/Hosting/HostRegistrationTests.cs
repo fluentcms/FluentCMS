@@ -60,7 +60,7 @@ public sealed class HostRegistrationTests : IAsyncDisposable
             pipeline: app =>
             {
                 app.UsePathBase("/cms");
-                app.UseRouting();
+                app.UseFluentCms();
             });
         await app.StartAsync(Token);
 
