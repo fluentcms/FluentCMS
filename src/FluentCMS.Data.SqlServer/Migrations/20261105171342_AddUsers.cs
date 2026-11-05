@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace FluentCMS.Data.Sqlite.Migrations
+namespace FluentCMS.Data.SqlServer.Migrations
 {
     /// <inheritdoc />
     public partial class AddUsers : Migration
@@ -16,46 +16,47 @@ namespace FluentCMS.Data.Sqlite.Migrations
                 name: "cms_invitation",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    email = table.Column<string>(type: "TEXT", maxLength: 256, nullable: false),
-                    normalized_email = table.Column<string>(type: "TEXT", maxLength: 256, nullable: false),
-                    token_hash = table.Column<string>(type: "TEXT", maxLength: 64, nullable: false),
-                    role_ids = table.Column<string>(type: "TEXT", nullable: false),
-                    created_at = table.Column<long>(type: "INTEGER", nullable: false),
-                    created_by = table.Column<Guid>(type: "TEXT", nullable: false),
-                    expires_at = table.Column<long>(type: "INTEGER", nullable: false),
-                    accepted_at = table.Column<long>(type: "INTEGER", nullable: true),
-                    user_id = table.Column<Guid>(type: "TEXT", nullable: true),
-                    revoked_at = table.Column<long>(type: "INTEGER", nullable: true)
+                    id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    email = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
+                    normalized_email = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
+                    token_hash = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
+                    role_ids = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    created_at = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
+                    created_by = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    created_by_kind = table.Column<string>(type: "nvarchar(16)", maxLength: 16, nullable: false),
+                    expires_at = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
+                    accepted_at = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
+                    user_id = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    revoked_at = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_cms_invitation", x => x.id);
-                    table.CheckConstraint("ck_cms_invitation_role_ids_json", "json_valid(\"role_ids\")");
+                    table.CheckConstraint("ck_cms_invitation_role_ids_json", "ISJSON([role_ids]) = 1");
                 });
 
             migrationBuilder.CreateTable(
                 name: "cms_user",
                 columns: table => new
                 {
-                    id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    created_at = table.Column<long>(type: "INTEGER", nullable: false),
-                    deactivated_at = table.Column<long>(type: "INTEGER", nullable: true),
-                    must_change_password = table.Column<bool>(type: "INTEGER", nullable: false),
-                    user_name = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
-                    normalized_user_name = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
-                    email = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
-                    normalized_email = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
-                    email_confirmed = table.Column<bool>(type: "INTEGER", nullable: false),
-                    password_hash = table.Column<string>(type: "TEXT", nullable: true),
-                    security_stamp = table.Column<string>(type: "TEXT", maxLength: 64, nullable: true),
-                    concurrency_stamp = table.Column<string>(type: "TEXT", maxLength: 64, nullable: true),
-                    phone_number = table.Column<string>(type: "TEXT", maxLength: 32, nullable: true),
-                    phone_number_confirmed = table.Column<bool>(type: "INTEGER", nullable: false),
-                    two_factor_enabled = table.Column<bool>(type: "INTEGER", nullable: false),
-                    lockout_end = table.Column<long>(type: "INTEGER", nullable: true),
-                    lockout_enabled = table.Column<bool>(type: "INTEGER", nullable: false),
-                    access_failed_count = table.Column<int>(type: "INTEGER", nullable: false)
+                    id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    created_at = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
+                    deactivated_at = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
+                    must_change_password = table.Column<bool>(type: "bit", nullable: false),
+                    user_name = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    normalized_user_name = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    email = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    normalized_email = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    email_confirmed = table.Column<bool>(type: "bit", nullable: false),
+                    password_hash = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    security_stamp = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: true),
+                    concurrency_stamp = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: true),
+                    phone_number = table.Column<string>(type: "nvarchar(32)", maxLength: 32, nullable: true),
+                    phone_number_confirmed = table.Column<bool>(type: "bit", nullable: false),
+                    two_factor_enabled = table.Column<bool>(type: "bit", nullable: false),
+                    lockout_end = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
+                    lockout_enabled = table.Column<bool>(type: "bit", nullable: false),
+                    access_failed_count = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -66,11 +67,11 @@ namespace FluentCMS.Data.Sqlite.Migrations
                 name: "cms_user_claim",
                 columns: table => new
                 {
-                    id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    user_id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    claim_type = table.Column<string>(type: "TEXT", maxLength: 256, nullable: true),
-                    claim_value = table.Column<string>(type: "TEXT", nullable: true)
+                    id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    user_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    claim_type = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    claim_value = table.Column<string>(type: "nvarchar(max)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -87,10 +88,10 @@ namespace FluentCMS.Data.Sqlite.Migrations
                 name: "cms_user_login",
                 columns: table => new
                 {
-                    login_provider = table.Column<string>(type: "TEXT", maxLength: 128, nullable: false),
-                    provider_key = table.Column<string>(type: "TEXT", maxLength: 128, nullable: false),
-                    provider_display_name = table.Column<string>(type: "TEXT", maxLength: 128, nullable: true),
-                    user_id = table.Column<Guid>(type: "TEXT", nullable: false)
+                    login_provider = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: false),
+                    provider_key = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: false),
+                    provider_display_name = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: true),
+                    user_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -107,8 +108,8 @@ namespace FluentCMS.Data.Sqlite.Migrations
                 name: "cms_user_role",
                 columns: table => new
                 {
-                    user_id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    role_id = table.Column<Guid>(type: "TEXT", nullable: false)
+                    user_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    role_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -131,10 +132,10 @@ namespace FluentCMS.Data.Sqlite.Migrations
                 name: "cms_user_token",
                 columns: table => new
                 {
-                    user_id = table.Column<Guid>(type: "TEXT", nullable: false),
-                    login_provider = table.Column<string>(type: "TEXT", maxLength: 128, nullable: false),
-                    name = table.Column<string>(type: "TEXT", maxLength: 128, nullable: false),
-                    value = table.Column<string>(type: "TEXT", nullable: true)
+                    user_id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    login_provider = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: false),
+                    name = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: false),
+                    value = table.Column<string>(type: "nvarchar(max)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -169,7 +170,8 @@ namespace FluentCMS.Data.Sqlite.Migrations
                 name: "uq_cms_user_normalized_user_name",
                 table: "cms_user",
                 column: "normalized_user_name",
-                unique: true);
+                unique: true,
+                filter: "[normalized_user_name] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "ix_cms_user_claim_user",

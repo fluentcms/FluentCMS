@@ -149,16 +149,44 @@ public sealed class CmsUserManager : UserManager<CmsUser>
         return result;
     }
 
+    public override async Task<bool> CheckPasswordAsync(CmsUser user, string password)
+    {
+        if (Store is not CmsUserStore store)
+        {
+            return await base.CheckPasswordAsync(user, password);
+        }
+
+        store.Rehashing = true;
+        try
+        {
+            return await base.CheckPasswordAsync(user, password);
+        }
+        finally
+        {
+            store.Rehashing = false;
+        }
+    }
+
     public override Task<IdentityResult> ChangePasswordAsync(CmsUser user, string currentPassword, string newPassword) =>
         ClearingPasswordChangeAsync(user, () => base.ChangePasswordAsync(user, currentPassword, newPassword));
 
     public override Task<IdentityResult> ResetPasswordAsync(CmsUser user, string token, string newPassword) =>
         ClearingPasswordChangeAsync(user, () => base.ResetPasswordAsync(user, token, newPassword));
 
-    public override Task<IdentityResult> AddPasswordAsync(CmsUser user, string password) =>
-        ClearingPasswordChangeAsync(user, () => base.AddPasswordAsync(user, password));
+    // Every Identity call that stages rows of the user saves them here, so a failure here is where they are dropped.
+    protected override async Task<IdentityResult> UpdateUserAsync(CmsUser user)
+    {
+        var result = await base.UpdateUserAsync(user);
+        if (!result.Succeeded && Store is CmsUserStore store)
+        {
+            store.DiscardStaged(user);
+        }
 
-    // The flag goes with the save of the new password, and comes back if that fails.
+        return result;
+    }
+
+    // The user's own new password clears the flag, with its save, and the flag comes back if that fails. A password an admin
+    // sets by removing and adding one keeps it, since that is how a temporary password is given.
     private static async Task<IdentityResult> ClearingPasswordChangeAsync(CmsUser user, Func<Task<IdentityResult>> change)
     {
         ArgumentNullException.ThrowIfNull(user);

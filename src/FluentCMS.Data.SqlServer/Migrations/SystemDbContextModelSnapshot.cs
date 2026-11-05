@@ -157,6 +157,12 @@ namespace FluentCMS.Data.SqlServer.Migrations
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("created_by");
 
+                    b.Property<string>("CreatedByKind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)")
+                        .HasColumnName("created_by_kind");
+
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(256)

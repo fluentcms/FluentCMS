@@ -621,6 +621,7 @@ FluentCMS.Events.SiteUpdatedEvent.SiteId.init -> void
 FluentCMS.Events.SiteUpdatedEvent.SiteUpdatedEvent(System.Guid SiteId, string! Slug) -> void
 FluentCMS.Events.SiteUpdatedEvent.Slug.get -> string!
 FluentCMS.Events.SiteUpdatedEvent.Slug.init -> void
+FluentCMS.Events.UserChanges
 FluentCMS.Events.UserCreatedEvent
 FluentCMS.Events.UserCreatedEvent.Deconstruct(out System.Guid UserId, out string! UserName) -> void
 FluentCMS.Events.UserCreatedEvent.Equals(FluentCMS.Events.UserCreatedEvent? other) -> bool
@@ -1335,6 +1336,15 @@ const FluentCMS.Content.ValidationErrorCodes.NotUnique = "FCMS2111" -> string!
 const FluentCMS.Content.ValidationErrorCodes.PatternMismatch = "FCMS2106" -> string!
 const FluentCMS.Content.ValidationErrorCodes.Required = "FCMS2101" -> string!
 const FluentCMS.Content.ValidationErrorCodes.RequiredByCondition = "FCMS2110" -> string!
+const FluentCMS.Events.UserChanges.Email = "email" -> string!
+const FluentCMS.Events.UserChanges.EmailConfirmed = "emailConfirmed" -> string!
+const FluentCMS.Events.UserChanges.LockoutEnabled = "lockoutEnabled" -> string!
+const FluentCMS.Events.UserChanges.MustChangePassword = "mustChangePassword" -> string!
+const FluentCMS.Events.UserChanges.Password = "password" -> string!
+const FluentCMS.Events.UserChanges.PhoneNumber = "phoneNumber" -> string!
+const FluentCMS.Events.UserChanges.Reactivated = "reactivated" -> string!
+const FluentCMS.Events.UserChanges.TwoFactor = "twoFactor" -> string!
+const FluentCMS.Events.UserChanges.UserName = "userName" -> string!
 const FluentCMS.Localization.ILocaleResolver.All = "all" -> string!
 const FluentCMS.Publishing.PublishPolicyAttribute.DefaultMaxVersions = 50 -> int
 const FluentCMS.Publishing.PublishPolicyAttribute.DefaultTrashRetentionDays = 30 -> int

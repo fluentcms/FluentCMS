@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FluentCMS.Data.Sqlite.Migrations
 {
     [DbContext(typeof(SystemDbContext))]
-    [Migration("20261105163822_AddUsers")]
+    [Migration("20261105171329_AddUsers")]
     partial class AddUsers
     {
         /// <inheritdoc />
@@ -153,6 +153,12 @@ namespace FluentCMS.Data.Sqlite.Migrations
                     b.Property<Guid>("CreatedBy")
                         .HasColumnType("TEXT")
                         .HasColumnName("created_by");
+
+                    b.Property<string>("CreatedByKind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by_kind");
 
                     b.Property<string>("Email")
                         .IsRequired()

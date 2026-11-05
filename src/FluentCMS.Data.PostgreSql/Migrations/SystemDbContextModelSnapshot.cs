@@ -156,6 +156,12 @@ namespace FluentCMS.Data.PostgreSql.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
+                    b.Property<string>("CreatedByKind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("created_by_kind");
+
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(256)

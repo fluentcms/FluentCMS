@@ -5,6 +5,7 @@ using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.Events;
+using FluentCMS.Core.Identity;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Localization;
 using FluentCMS.Core.Schema;
@@ -135,6 +136,17 @@ public static class ErrorCodeRegistry
         // 29xx seeding
         Startup(SeedingErrorCodes.LocaleWithoutSeeder, "Locale without a seeder"),
         Startup(SeedingErrorCodes.InvalidTimeout, "Invalid seeding timeout"),
+
+        // 30xx identity
+        Startup(IdentityErrorCodes.InvalidOptions, "Invalid user options"),
+        Invalid(IdentityErrorCodes.InvalidEmail, "Invalid email address"),
+        new(IdentityErrorCodes.EmailTaken, StatusCodes.Status409Conflict, "Email address taken"),
+        Invalid(IdentityErrorCodes.UnknownRole, "Unknown role"),
+        new(IdentityErrorCodes.InvalidInvitation, StatusCodes.Status404NotFound, "Invitation not valid"),
+        Invalid(IdentityErrorCodes.InvitationExpired, "Invitation expired"),
+        new(IdentityErrorCodes.DeleteNotSupported, StatusCodes.Status409Conflict, "Users are deactivated, not deleted"),
+        Startup(IdentityErrorCodes.NoEmailSender, "No email sender"),
+        Startup(IdentityErrorCodes.WriteInTransaction, "Users written in a transaction"),
 
         // 31xx HTTP
         new(ApiErrorCodes.BadRequest, StatusCodes.Status400BadRequest, "Bad request"),

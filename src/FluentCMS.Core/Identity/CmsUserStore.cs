@@ -57,6 +57,10 @@ internal sealed class CmsUserStore(SystemDbContext context, IdentityChanges chan
 
                 if (before.DeactivatedAt is null && user.DeactivatedAt is not null)
                 {
+                    // What a user sent out must not outlive its right to send it.
+                    await Context.Set<Invitation>()
+                        .Where(row => row.CreatedBy == user.Id && row.AcceptedAt == null && row.RevokedAt == null)
+                        .ExecuteUpdateAsync(setters => setters.SetProperty(row => row.RevokedAt, user.DeactivatedAt), cancellationToken);
                     await changes.RaiseAsync(new UserDeactivatedEvent(user.Id, user.UserName ?? ""), cancellationToken);
                 }
 
@@ -101,9 +105,10 @@ internal sealed class CmsUserStore(SystemDbContext context, IdentityChanges chan
     {
         ArgumentNullException.ThrowIfNull(user);
 
+        // Instance-wide only, as for IsInRoleAsync: a site role may carry the name of an instance-wide one, such as Super Admin.
         return await Context.Set<CmsUserRole>().AsNoTracking()
             .Where(membership => membership.UserId == user.Id)
-            .Join(Context.Set<Role>(), membership => membership.RoleId, role => role.Id, (_, role) => role.Name)
+            .Join(Context.Set<Role>().Where(role => role.SiteId == null), membership => membership.RoleId, role => role.Id, (_, role) => role.Name)
             .ToListAsync(cancellationToken);
     }
 
@@ -147,6 +152,26 @@ internal sealed class CmsUserStore(SystemDbContext context, IdentityChanges chan
         Context.Add(new CmsUserRole { UserId = user.Id, RoleId = roleId });
     }
 
+    // A call that failed after it staged rows of the user leaves them for no one: the next save would commit them.
+    public void DiscardStaged(CmsUser user)
+    {
+        var staged = Context.ChangeTracker.Entries()
+            .Where(entry => (entry.State is EntityState.Added or EntityState.Deleted or EntityState.Modified) && OwnerOf(entry.Entity) == user.Id)
+            .ToList();
+        foreach (var entry in staged)
+        {
+            if (entry.State == EntityState.Added)
+            {
+                entry.State = EntityState.Detached;
+            }
+            else
+            {
+                entry.CurrentValues.SetValues(entry.OriginalValues);
+                entry.State = EntityState.Unchanged;
+            }
+        }
+    }
+
     public async Task RemoveRoleAsync(CmsUser user, Guid roleId, CancellationToken cancellationToken)
     {
         if (await Context.Set<CmsUserRole>().FindAsync([user.Id, roleId], cancellationToken) is { } held)
@@ -160,6 +185,15 @@ internal sealed class CmsUserStore(SystemDbContext context, IdentityChanges chan
             .Where(membership => membership.UserId == user.Id)
             .Select(membership => membership.RoleId)
             .ToListAsync(cancellationToken);
+
+    private static Guid? OwnerOf(object entity) => entity switch
+    {
+        CmsUserRole membership => membership.UserId,
+        IdentityUserClaim<Guid> claim => claim.UserId,
+        IdentityUserLogin<Guid> login => login.UserId,
+        IdentityUserToken<Guid> token => token.UserId,
+        _ => null,
+    };
 
     private async Task<Role?> InstanceRoleAsync(string normalizedRoleName, CancellationToken cancellationToken)
     {
@@ -195,19 +229,23 @@ internal sealed class CmsUserStore(SystemDbContext context, IdentityChanges chan
         }
     }
 
+    // Set by CmsUserManager while a password is checked: a check that rehashes the password saves it again, which changes
+    // its hash and its security stamp like a new password would.
+    internal bool Rehashing { get; set; }
+
     // What an admin would call a change. The stamps, the normalized copies and the counters of failed sign-ins are not.
-    private static List<string> Changes(CmsUser before, CmsUser after)
+    private List<string> Changes(CmsUser before, CmsUser after)
     {
         List<string> changed = [];
-        Add("userName", before.UserName != after.UserName);
-        Add("email", before.Email != after.Email);
-        Add("emailConfirmed", before.EmailConfirmed != after.EmailConfirmed);
-        Add("phoneNumber", before.PhoneNumber != after.PhoneNumber);
-        Add("password", before.PasswordHash != after.PasswordHash);
-        Add("twoFactor", before.TwoFactorEnabled != after.TwoFactorEnabled);
-        Add("lockoutEnabled", before.LockoutEnabled != after.LockoutEnabled);
-        Add("mustChangePassword", before.MustChangePassword != after.MustChangePassword);
-        Add("reactivated", before.DeactivatedAt is not null && after.DeactivatedAt is null);
+        Add(UserChanges.UserName, before.UserName != after.UserName);
+        Add(UserChanges.Email, before.Email != after.Email);
+        Add(UserChanges.EmailConfirmed, before.EmailConfirmed != after.EmailConfirmed);
+        Add(UserChanges.PhoneNumber, before.PhoneNumber != after.PhoneNumber);
+        Add(UserChanges.Password, !Rehashing && before.PasswordHash != after.PasswordHash);
+        Add(UserChanges.TwoFactor, before.TwoFactorEnabled != after.TwoFactorEnabled);
+        Add(UserChanges.LockoutEnabled, before.LockoutEnabled != after.LockoutEnabled);
+        Add(UserChanges.MustChangePassword, before.MustChangePassword != after.MustChangePassword);
+        Add(UserChanges.Reactivated, before.DeactivatedAt is not null && after.DeactivatedAt is null);
         return changed;
 
         void Add(string name, bool differs)

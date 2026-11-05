@@ -4,6 +4,7 @@ using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Identity;
 using FluentCMS.Providers;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
@@ -154,6 +155,47 @@ public sealed class InvitationTests : IDisposable
 
         await _fixture.Database.AsAsync(PrincipalOf(admin), services => services.GetRequiredService<InvitationService>().InviteAsync("bob@example.com", [BuiltInRoles.Editor], AcceptUrl, Token));
 
-        _fixture.Invitations().Single().CreatedBy.ShouldBe(admin.Id);
+        var row = _fixture.Invitations().Single();
+        row.CreatedBy.ShouldBe(admin.Id);
+        row.CreatedByKind.ShouldBe(PrincipalKind.AdminUser);
+    }
+
+    [Fact]
+    public async Task DeactivatingTheInviterEndsItsInvitations()
+    {
+        var admin = await _fixture.CreateUserAsync("admin", Password, BuiltInRoles.SuperAdmin);
+        await _fixture.Database.AsAsync(PrincipalOf(admin), services => services.GetRequiredService<InvitationService>().InviteAsync("bob@example.com", [BuiltInRoles.SuperAdmin], AcceptUrl, Token));
+        var token = TokenOf(_fixture.Email.Sent.Single());
+
+        await _fixture.UsersAsync(async users => (await users.DeactivateAsync((await users.FindByIdAsync(admin.Id.ToString("D")))!)).Succeeded);
+
+        _fixture.Invitations().Single().RevokedAt.ShouldBe(Start);
+        (await AcceptAsync(_fixture, token, "bob")).Errors.ShouldHaveSingleItem().Code.ShouldBe(IdentityErrorCodes.InvalidInvitation);
+        (await _fixture.UsersAsync(users => users.FindByNameAsync("bob"))).ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task AnInvitationOfADeactivatedOrUnknownInviterIsRefusedEvenIfNotRevoked()
+    {
+        var admin = await _fixture.CreateUserAsync("admin", Password, BuiltInRoles.SuperAdmin);
+        await _fixture.Database.AsAsync(PrincipalOf(admin), services => services.GetRequiredService<InvitationService>().InviteAsync("bob@example.com", [BuiltInRoles.SuperAdmin], AcceptUrl, Token));
+        var gone = new Principal(PrincipalKind.AdminUser, Guid.CreateVersion7(), "gone");
+        await _fixture.Database.AsAsync(gone, services => services.GetRequiredService<InvitationService>().InviteAsync("carl@example.com", [BuiltInRoles.Editor], AcceptUrl, Token));
+        var (bob, carl) = (TokenOf(_fixture.Email.Sent.First()), TokenOf(_fixture.Email.Sent.Last()));
+
+        await _fixture.UsersAsync(async users => (await users.DeactivateAsync((await users.FindByIdAsync(admin.Id.ToString("D")))!)).Succeeded);
+        _fixture.Read(context => context.Set<Invitation>().ExecuteUpdate(setters => setters.SetProperty(row => row.RevokedAt, (DateTimeOffset?)null)));
+
+        (await AcceptAsync(_fixture, bob, "bob")).Errors.ShouldHaveSingleItem().Code.ShouldBe(IdentityErrorCodes.InvalidInvitation);
+        (await AcceptAsync(_fixture, carl, "carl")).Errors.ShouldHaveSingleItem().Code.ShouldBe(IdentityErrorCodes.InvalidInvitation);
+    }
+
+    [Fact]
+    public async Task AnInvitationTheSystemSentIsAcceptedWithoutAUserBehindIt()
+    {
+        await InviteAsync(_fixture, "ann@example.com", BuiltInRoles.SuperAdmin);
+
+        _fixture.Invitations().Single().CreatedByKind.ShouldBe(PrincipalKind.System);
+        Succeeded(await AcceptAsync(_fixture, TokenOf(_fixture.Email.Sent.Single())));
     }
 }

@@ -4,9 +4,11 @@ using FluentCMS.Core.Events;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
+using FluentCMS.Events;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Shouldly;
 using Xunit;
 using static FluentCMS.Data.Tests.Identity.IdentityFixture;
@@ -44,7 +46,7 @@ public sealed class UserStoreTests : IDisposable
             (await users.CheckPasswordAsync(read, Password)).ShouldBeTrue();
 
             (await users.GetRoleIdsAsync(read)).ShouldBe([BuiltInRoles.Editor, siteRole, BuiltInRoles.Author], ignoreOrder: true);
-            (await users.GetRolesAsync(read)).ShouldBe([BuiltInRoles.EditorName, "Reviewer", BuiltInRoles.AuthorName], ignoreOrder: true);
+            (await users.GetRolesAsync(read)).ShouldBe([BuiltInRoles.EditorName, BuiltInRoles.AuthorName], ignoreOrder: true);
             (await users.IsInRoleAsync(read, BuiltInRoles.AuthorName)).ShouldBeTrue();
             (await users.GetUsersInRoleAsync(BuiltInRoles.EditorName)).ShouldHaveSingleItem().Id.ShouldBe(user.Id);
 
@@ -216,6 +218,92 @@ public sealed class UserStoreTests : IDisposable
         var updated = fixture.ActivityRows().Where(row => row.Action == "user.updated").ShouldHaveSingleItem();
         updated.Details.ShouldNotBeNull().ShouldContain("email");
         updated.Details.ShouldNotContain("ann@example.org");
+    }
+
+    [Fact]
+    public async Task ASiteRoleNamedLikeAnInstanceRoleIsNotNamedByIdentity()
+    {
+        var siteRole = _fixture.Database.Database.AddRoleForTest(BuiltInRoles.SuperAdminName, Content.ServiceDatabase.SiteA.Value);
+        var user = await _fixture.CreateUserAsync("ann", Password, siteRole, BuiltInRoles.Editor);
+
+        await _fixture.UsersAsync(async users =>
+        {
+            var stored = (await users.FindByIdAsync(user.Id.ToString("D")))!;
+            (await users.GetRolesAsync(stored)).ShouldBe([BuiltInRoles.EditorName]);
+            (await users.IsInRoleAsync(stored, BuiltInRoles.SuperAdminName)).ShouldBeFalse();
+            (await users.GetUsersInRoleAsync(BuiltInRoles.SuperAdminName)).ShouldBeEmpty();
+            (await users.GetRoleIdsAsync(stored)).ShouldBe([siteRole, BuiltInRoles.Editor], ignoreOrder: true);
+            return true;
+        });
+    }
+
+    [Fact]
+    public async Task ARoleStagedByACallThatFailedIsNotSavedByTheNextSave()
+    {
+        var other = await _fixture.CreateUserAsync("other");
+        var user = await _fixture.CreateUserAsync("ann");
+
+        await _fixture.UsersAsync(async users =>
+        {
+            var stored = (await users.FindByIdAsync(user.Id.ToString("D")))!;
+            var email = stored.Email;
+
+            // The user validator refuses the save, after the role was staged.
+            stored.Email = other.Email;
+            (await users.AddToRoleAsync(stored, BuiltInRoles.SuperAdmin)).Succeeded.ShouldBeFalse();
+            (await users.AddToRoleAsync(stored, BuiltInRoles.SuperAdminName)).Succeeded.ShouldBeFalse();
+            (await users.AddClaimAsync(stored, new Claim("region", "eu"))).Succeeded.ShouldBeFalse();
+
+            stored.Email = email;
+            Succeeded(await users.SetPhoneNumberAsync(stored, "+100"));
+            return true;
+        });
+
+        await _fixture.UsersAsync(async users =>
+        {
+            var stored = (await users.FindByIdAsync(user.Id.ToString("D")))!;
+            stored.PhoneNumber.ShouldBe("+100");
+            (await users.GetRoleIdsAsync(stored)).ShouldBeEmpty();
+            (await users.GetClaimsAsync(stored)).ShouldBeEmpty();
+            return true;
+        });
+    }
+
+    [Fact]
+    public async Task ARehashAtSignInIsNotLoggedAsAPasswordChangeAndAChangeIs()
+    {
+        using var fixture = new IdentityFixture(activity: true);
+        var user = await fixture.CreateUserAsync("ann");
+
+        // A hash of an older format, which a sign-in rehashes.
+        var old = new PasswordHasher<CmsUser>(Options.Create(new PasswordHasherOptions { CompatibilityMode = PasswordHasherCompatibilityMode.IdentityV2 })).HashPassword(user, Password);
+        fixture.Read(context => context.Set<CmsUser>().Where(row => row.Id == user.Id).ExecuteUpdate(setters => setters.SetProperty(row => row.PasswordHash, old)));
+
+        (await fixture.UsersAsync(async users => await users.CheckPasswordAsync((await users.FindByIdAsync(user.Id.ToString("D")))!, Password))).ShouldBeTrue();
+        (await fixture.FindAsync(user.Id)).PasswordHash.ShouldNotBe(old);
+
+        await fixture.WithAsync(services => services.GetRequiredService<OutboxDrainer>().DrainAsync(Token));
+        fixture.ActivityRows().Where(row => row.Action == "user.updated").Select(row => row.Details).ShouldBeEmpty();
+
+        Succeeded(await fixture.UsersAsync(async users => await users.ChangePasswordAsync((await users.FindByIdAsync(user.Id.ToString("D")))!, Password, "Another-horse-2")));
+        await fixture.WithAsync(services => services.GetRequiredService<OutboxDrainer>().DrainAsync(Token));
+        fixture.ActivityRows().Single(row => row.Action == "user.updated").Details.ShouldNotBeNull().ShouldContain(UserChanges.Password);
+    }
+
+    [Fact]
+    public async Task APasswordAnAdminSetsKeepsTheForcedChange()
+    {
+        var user = await _fixture.CreateUserAsync("ann");
+        await _fixture.UsersAsync(async users =>
+        {
+            var stored = (await users.FindByIdAsync(user.Id.ToString("D")))!;
+            Succeeded(await users.RequirePasswordChangeAsync(stored));
+            Succeeded(await users.RemovePasswordAsync(stored));
+            Succeeded(await users.AddPasswordAsync(stored, "Temporary-horse-3"));
+            return true;
+        });
+
+        (await _fixture.FindAsync(user.Id)).MustChangePassword.ShouldBeTrue();
     }
 
     [Fact]

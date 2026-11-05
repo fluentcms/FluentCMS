@@ -45,6 +45,7 @@ internal sealed class InvitationService(
             throw new ValidationException([new ValidationError("email", IdentityErrorCodes.InvalidEmail, "The address is not a valid email address.")]);
         }
 
+        // Whether the caller may give these roles is the Management API's to decide (#2786): this checks only that they exist.
         List<Guid> roles = [.. roleIds.Distinct()];
         var found = await context.Set<Role>().AsNoTracking().CountAsync(role => roles.Contains(role.Id), cancellationToken);
         if (found != roles.Count)
@@ -60,6 +61,7 @@ internal sealed class InvitationService(
 
         var token = Base64Url(RandomNumberGenerator.GetBytes(TokenBytes));
         var now = time.GetUtcNow();
+        var inviter = accessor.Current?.AuditPrincipal ?? Principal.System;
         var invitation = new Invitation
         {
             Id = Guid.CreateVersion7(),
@@ -68,7 +70,8 @@ internal sealed class InvitationService(
             TokenHash = Hash(token),
             RoleIds = JsonSerializer.Serialize(roles),
             CreatedAt = now,
-            CreatedBy = accessor.Current?.AuditPrincipal.Id ?? Principal.System.Id,
+            CreatedBy = inviter.Id,
+            CreatedByKind = inviter.Kind,
             ExpiresAt = now + options.InvitationLifetime,
         };
 
@@ -128,6 +131,13 @@ internal sealed class InvitationService(
                 if (invitation.ExpiresAt <= now)
                 {
                     return Failed(IdentityErrorCodes.InvitationExpired, "The invitation has expired. Ask for a new one.");
+                }
+
+                // Deactivation revokes what the user sent; this holds if a revocation was missed.
+                if (invitation.CreatedByKind == PrincipalKind.AdminUser
+                    && !await context.Set<CmsUser>().AnyAsync(user => user.Id == invitation.CreatedBy && user.DeactivatedAt == null, cancellationToken))
+                {
+                    return Failed(IdentityErrorCodes.InvalidInvitation, "The invitation is not valid, or has been used.");
                 }
 
                 var user = new CmsUser { UserName = userName, Email = invitation.Email, EmailConfirmed = true, CreatedAt = now };

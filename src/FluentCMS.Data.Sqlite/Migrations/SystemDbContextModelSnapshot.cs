@@ -151,6 +151,12 @@ namespace FluentCMS.Data.Sqlite.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("created_by");
 
+                    b.Property<string>("CreatedByKind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("created_by_kind");
+
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(256)

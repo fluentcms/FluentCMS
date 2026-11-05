@@ -266,6 +266,7 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         entity.Property(invitation => invitation.Email).HasMaxLength(EmailLength);
         entity.Property(invitation => invitation.NormalizedEmail).HasMaxLength(EmailLength);
         entity.Property(invitation => invitation.TokenHash).HasMaxLength(HashLength);
+        entity.Property(invitation => invitation.CreatedByKind).HasConversion<string>().HasMaxLength(StatusLength);
         conventions.ConfigureJsonColumn(entity, entity.Property(invitation => invitation.RoleIds));
 
         entity.HasIndex(invitation => invitation.TokenHash)

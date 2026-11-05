@@ -1,3 +1,5 @@
+using FluentCMS.Content;
+
 namespace FluentCMS.Core.Identity;
 
 // A row of cms_invitation. The token is only in the email; the row keeps its SHA-256, so the table cannot be read for one.
@@ -17,6 +19,9 @@ internal sealed class Invitation
     public DateTimeOffset CreatedAt { get; set; }
 
     public Guid CreatedBy { get; set; }
+
+    // An invitation an admin user sent is accepted only while that user is active.
+    public PrincipalKind CreatedByKind { get; set; }
 
     public DateTimeOffset ExpiresAt { get; set; }
 
