@@ -1,4 +1,5 @@
 using FluentCMS.Content;
+using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Content.Hooks;
 using FluentCMS.Core.Content.Query;
@@ -19,6 +20,8 @@ internal sealed partial class ContentService
 
     public async Task<BulkResult> BulkAsync(string type, BulkRequest request, CancellationToken cancellationToken = default)
     {
+        using var span = Span("bulk", type);
+
         ArgumentNullException.ThrowIfNull(type);
         ArgumentNullException.ThrowIfNull(request);
 
@@ -76,7 +79,7 @@ internal sealed partial class ContentService
                 catch (Exception exception) when (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
                 {
                     // A bug or a database failure says nothing the caller may read, and its message can hold a value of the entry.
-                    ContentLog.BulkItemFailed(logger, exception, step.Index, request.Operation, type);
+                    ContentLog.BulkItemFailed(logger, exception, ApiErrorCodes.InternalError, step.Index, request.Operation, type);
                     results.Add(new BulkItemResult(step.Index, step.Id, BulkItemStatus.Failed) { Problem = new InvalidOperationException(UnexpectedFailure) });
                 }
             }

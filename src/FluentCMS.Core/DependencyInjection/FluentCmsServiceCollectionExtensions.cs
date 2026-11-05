@@ -13,6 +13,7 @@ using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.Content.Validation;
 using FluentCMS.Core.Diagnostics;
 using FluentCMS.Core.Events;
+using FluentCMS.Core.Health;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Core.Jobs;
@@ -125,6 +126,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddScoped<SiteManager>();
         services.AddScoped<RequestBridge>();
         services.AddDeliveryApi();
+        services.AddFluentCmsHealth();
         services.AddSystemApi();
 
         services.AddSingleton<SettingsCache>();
