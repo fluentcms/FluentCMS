@@ -18,7 +18,7 @@ public sealed class MigrationRunnerTests : IDisposable
 {
     private const string Production = "Production";
 
-    private static readonly Dictionary<string, string?> NoMigrationOnStartup = new() { ["Database:MigrateOnStartup"] = "false" };
+    private static readonly Dictionary<string, string?> NoMigrationOnStartup = new() { ["FluentCms:Database:MigrateOnStartup"] = "false" };
 
     private readonly SqliteFileDatabase _database = new();
 
@@ -227,8 +227,8 @@ public sealed class MigrationRunnerTests : IDisposable
     }
 
     [Theory]
-    [InlineData("Database:MigrateOnStartup", "maybe")]
-    [InlineData("Database:SchemaSync", "Sometimes")]
+    [InlineData("FluentCms:Database:MigrateOnStartup", "maybe")]
+    [InlineData("FluentCms:Database:SchemaSync", "Sometimes")]
     public async Task AnInvalidSettingFailsStartup(string key, string value)
     {
         using var host = _database.CreateHost(ArticleSchemas.Titled, Production, settings: new Dictionary<string, string?> { [key] = value });

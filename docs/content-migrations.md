@@ -32,8 +32,8 @@ This builds the project and writes the migration to `Migrations/Content`. The ru
 
 | Setting | Values | Default |
 | --- | --- | --- |
-| `Database:MigrateOnStartup` | `true`, `false` | `true` on SQLite, `false` otherwise |
-| `Database:SchemaSync` | `Auto`, `Off` | `Auto` in Development on SQLite, `Off` otherwise |
+| `FluentCms:Database:MigrateOnStartup` | `true`, `false` | `true` on SQLite, `false` otherwise |
+| `FluentCms:Database:SchemaSync` | `Auto`, `Off` | `Auto` in Development on SQLite, `Off` otherwise |
 
 `Auto` anywhere other than Development on SQLite logs a warning and acts as `Off`. An invalid value stops startup with `FCMS1304`.
 

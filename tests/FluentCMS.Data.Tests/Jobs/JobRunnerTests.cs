@@ -302,11 +302,11 @@ public sealed class JobRunnerTests : IDisposable
         await ManualInstance().GetRequiredService<IJobRunner>().StopAsync(Token);
 
     [Fact]
-    public async Task BadOptionsStopTheStart()
+    public void BadOptionsAreRefusedBeforeTheRunnerStarts()
     {
-        var runner = _fixture.NewInstance(configure: options => options.HeartbeatInterval = options.LeaseDuration).GetRequiredService<IJobRunner>();
+        var services = _fixture.NewInstance(configure: options => options.HeartbeatInterval = options.LeaseDuration);
 
-        (await Should.ThrowAsync<FluentCmsConfigurationException>(() => runner.StartAsync(Token))).Code.ShouldBe("FCMS2506");
+        Should.Throw<FluentCmsConfigurationException>(() => services.GetRequiredService<IJobRunner>()).Code.ShouldBe("FCMS2506");
     }
 
     [Fact]

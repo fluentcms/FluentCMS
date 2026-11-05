@@ -223,7 +223,7 @@ public sealed class SchemaSyncTests : IDisposable
             ArticleSchemas.Titled,
             Environments.Development,
             GeneratedMigrations.CompileFirst(ArticleSchemas.Titled),
-            new Dictionary<string, string?> { ["Database:SchemaSync"] = "Off" });
+            new Dictionary<string, string?> { ["FluentCms:Database:SchemaSync"] = "Off" });
 
         await host.StartAsync(Token);
 
@@ -233,7 +233,7 @@ public sealed class SchemaSyncTests : IDisposable
     [Fact]
     public async Task SchemaSyncAutoOutsideDevelopmentIsRefused()
     {
-        using var host = _database.CreateHost(ArticleSchemas.Titled, "Production", settings: new Dictionary<string, string?> { ["Database:SchemaSync"] = "Auto" });
+        using var host = _database.CreateHost(ArticleSchemas.Titled, "Production", settings: new Dictionary<string, string?> { ["FluentCms:Database:SchemaSync"] = "Auto" });
 
         var exception = await Should.ThrowAsync<FluentCmsConfigurationException>(() => host.StartAsync(Token));
 
