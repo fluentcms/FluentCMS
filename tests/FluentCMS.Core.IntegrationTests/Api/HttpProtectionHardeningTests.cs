@@ -3,6 +3,9 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using FluentCMS.Core.Api.Common;
+using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Identity;
+using FluentCMS.Core.Identity.ApiKeys;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.IntegrationTests.Hosting;
 using Microsoft.AspNetCore.Authentication;
@@ -34,7 +37,7 @@ public sealed class HttpProtectionHardeningTests : IAsyncDisposable
     public ValueTask DisposeAsync() => _host.DisposeAsync();
 
     [Fact]
-    public async Task AKeyIsPartitionedByTheFluentCmsSchemeWhateverTheDefaultSchemeIs()
+    public async Task ABearerKeyClaimIsPartitionedByTheFluentCmsSchemeWhateverTheDefaultSchemeIs()
     {
         var client = await Start(Limits(delivery: 2), WithPolicyScheme);
         (string, string)[] limited = [("X-Test-Sub", "key-limited"), ("X-Test-Kind", "ApiKey"), ("X-Test-Limit", "4")];
@@ -311,6 +314,52 @@ public sealed class HttpProtectionHardeningTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task ARealApiKeyWithARateLimitIsLimitedToItAndOtherKeysUseTheDefault()
+    {
+        var client = await Start(Limits(delivery: 2), WithPolicyScheme);
+        var limited = await CreateKey("limited", rateLimit: 3);
+        var plain = await CreateKey("plain", rateLimit: null);
+
+        for (var used = 1; used <= 3; used++)
+        {
+            using var allowed = await Send(client, DeliveryPath, ("X-Api-Key", limited), ("X-Test-Ip", "10.0.0.1"));
+
+            allowed.StatusCode.ShouldBe(HttpStatusCode.OK);
+            Header(allowed, "RateLimit-Limit").ShouldBe("3");
+            Header(allowed, "RateLimit-Remaining").ShouldBe((3 - used).ToString(CultureInfo.InvariantCulture));
+        }
+
+        using var refused = await Send(client, DeliveryPath, ("X-Api-Key", limited), ("X-Test-Ip", "10.0.0.2"));
+        refused.StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
+        (await Problem(refused)).GetProperty("code").GetString().ShouldBe("FCMS3110");
+
+        using var other = await Send(client, DeliveryPath, ("X-Api-Key", plain), ("X-Test-Ip", "10.0.0.1"));
+        other.StatusCode.ShouldBe(HttpStatusCode.OK);
+        Header(other, "RateLimit-Limit").ShouldBe("2");
+    }
+
+    [Fact]
+    public async Task ARealApiKeyIsPartitionedByItselfAndAuthorizationHeaderKeysWorkToo()
+    {
+        var client = await Start(Limits(delivery: 1), WithPolicyScheme);
+        var first = await CreateKey("first", rateLimit: null);
+        var second = await CreateKey("second", rateLimit: null);
+
+        (await Status(client, DeliveryPath, ("Authorization", $"ApiKey {first}"))).ShouldBe(HttpStatusCode.OK);
+        (await Status(client, DeliveryPath, ("X-Api-Key", first))).ShouldBe(HttpStatusCode.TooManyRequests);
+        (await Status(client, DeliveryPath, ("X-Api-Key", second))).ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task AKeyThatDoesNotAuthenticateIsLimitedLikeAnAnonymousCaller()
+    {
+        var client = await Start(Limits(delivery: 1), WithPolicyScheme);
+
+        (await Status(client, DeliveryPath, ("X-Api-Key", "fcms_dk_not-a-key"), ("X-Test-Ip", "10.0.0.1"))).ShouldBe(HttpStatusCode.OK);
+        (await Status(client, DeliveryPath, ("X-Api-Key", "fcms_dk_other-wrong"), ("X-Test-Ip", "10.0.0.1"))).ShouldBe(HttpStatusCode.TooManyRequests);
+    }
+
+    [Fact]
     public async Task MapFluentCmsWithoutUseFluentCmsStopsTheHostAtStartup()
     {
         var exception = await Should.ThrowAsync<FluentCmsConfigurationException>(() => Start(pipeline: _ => { }));
@@ -331,14 +380,23 @@ public sealed class HttpProtectionHardeningTests : IAsyncDisposable
         };
     }
 
+    // A host whose default scheme is a browser one. The FluentCms scheme, which AddFluentCms registers, sends a request with
+    // an API key to the key scheme and any other to the bearer scheme, which stands in for the authorization server's.
     private static void WithPolicyScheme(IServiceCollection services)
     {
         services.AddSingleton<AuthCalls>();
         services.AddAuthentication(BrowserAuthHandler.SchemeName)
             .AddScheme<AuthenticationSchemeOptions, BrowserAuthHandler>(BrowserAuthHandler.SchemeName, _ => { })
-            .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, _ => { })
-            .AddPolicyScheme(ApiAuthentication.Scheme, displayName: null, options =>
-                options.ForwardDefaultSelector = context => context.Request.Headers.ContainsKey("X-Test-Sub") ? TestAuthHandler.SchemeName : BrowserAuthHandler.SchemeName);
+            .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, _ => { });
+        services.Configure<FluentCmsAuthenticationOptions>(FluentCmsAuthentication.Scheme, options => options.BearerScheme = TestAuthHandler.SchemeName);
+    }
+
+    private async Task<string> CreateKey(string name, int? rateLimit)
+    {
+        await using var scope = _app!.Services.CreateAsyncScope();
+        var keys = scope.ServiceProvider.GetRequiredService<ApiKeyService>();
+        var created = await keys.CreateAsync(new ApiKeyRequest(name, ApiKeyClass.Delivery, BuiltInRoles.Public) { RateLimit = rateLimit }, Token);
+        return created.Secret;
     }
 
     private static Task<HttpResponseMessage> PostJson(HttpClient client, string json, bool chunked)
