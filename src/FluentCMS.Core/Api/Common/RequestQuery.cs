@@ -10,11 +10,11 @@ internal static class RequestQuery
 {
     private static readonly string[] ListOnly = ["sort", "page", "pageSize", "offset", "limit", "cursor", "withTotal"];
 
-    public static ContentQuery List(HttpRequest request, ApiRequest api) => Parse(request, api, single: false);
-
-    public static GetOptions Single(HttpRequest request, ApiRequest api)
+    // What a read of one entry takes from a query parsed with single set.
+    public static GetOptions Options(ContentQuery query)
     {
-        var query = Parse(request, api, single: true);
+        ArgumentNullException.ThrowIfNull(query);
+
         return new GetOptions
         {
             Status = query.Status ?? QueryStatus.Published,

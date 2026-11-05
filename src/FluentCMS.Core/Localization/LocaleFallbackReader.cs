@@ -146,7 +146,7 @@ internal sealed class LocaleFallbackReader(ContentQueryEngine engine, SchemaMode
         var byEntry = ids.ToDictionary(id => id, _ => new ContentDocument());
         foreach (var locale in locales)
         {
-            foreach (var entry in await ReadAsync(typeName, query, locale, ids, select: [], cancellationToken))
+            foreach (var entry in await ReadAsync(typeName, query, locale, ids, select: [.. query.Select], cancellationToken))
             {
                 byEntry[(Guid)entry["id"]!][locale] = entry;
             }

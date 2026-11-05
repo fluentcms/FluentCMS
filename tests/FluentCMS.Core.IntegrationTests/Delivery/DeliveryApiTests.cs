@@ -98,6 +98,11 @@ public sealed class DeliveryApiTests(DeliveryFixture fixture) : IClassFixture<De
 
         var (_, both) = await fixture.GetAsync("article?fields=title,author.name&populate=author");
         Item(both, "Welcome to FluentCMS", "title")["author"]!.AsObject().Select(pair => pair.Key).ShouldBe(["id", "type", "name"]);
+
+        var (status, everything) = await fixture.GetAsync("article?populate=*&depth=2");
+        status.ShouldBe(HttpStatusCode.OK);
+        Item(everything, Welcome)["author"]!["name"]!.GetValue<string>().ShouldBe("Ada Lovelace");
+        Item(everything, Welcome)["tags"]![0]!["slug"]!.GetValue<string>().ShouldBe("dotnet");
     }
 
     [Fact]
@@ -124,11 +129,17 @@ public sealed class DeliveryApiTests(DeliveryFixture fixture) : IClassFixture<De
 
     [Theory]
     [InlineData("article/by/slug/no-such-article", HttpStatusCode.NotFound, "FCMS3104", "value")]
+    [InlineData("article/by/nothing/x", HttpStatusCode.BadRequest, "FCMS2202", "field")]
+    [InlineData("article/by/publishedOn/yesterday", HttpStatusCode.BadRequest, "FCMS2204", "value")]
     [InlineData("article/by/title/Welcome", HttpStatusCode.BadRequest, "FCMS3123", "field")]
     [InlineData("article/0192f2a4-7b1c-7d2e-9f10-2a3b4c5d6e7f", HttpStatusCode.NotFound, "FCMS3104", null)]
     [InlineData("article/not-an-id", HttpStatusCode.BadRequest, "FCMS2204", "id")]
     [InlineData("article/0192f2a4-7b1c-7d2e-9f10-2a3b4c5d6e7f?sort=title", HttpStatusCode.BadRequest, "FCMS2201", "sort")]
-    [InlineData("nothing", HttpStatusCode.BadRequest, "FCMS2202", "type")]
+    [InlineData("nothing", HttpStatusCode.NotFound, "FCMS3104", "type")]
+    [InlineData("nothing/0192f2a4-7b1c-7d2e-9f10-2a3b4c5d6e7f", HttpStatusCode.NotFound, "FCMS3104", "type")]
+    [InlineData("nothing/by/slug/x", HttpStatusCode.NotFound, "FCMS3104", "type")]
+    [InlineData("Article", HttpStatusCode.NotFound, "FCMS3104", "type")]
+    [InlineData("homepage", HttpStatusCode.NotFound, "FCMS3104", "type")]
     public async Task ASingleEntryThatCannotBeServedIsAProblem(string path, HttpStatusCode expected, string code, string? errorPath)
     {
         var (status, body) = await fixture.GetAsync(path);
@@ -146,6 +157,9 @@ public sealed class DeliveryApiTests(DeliveryFixture fixture) : IClassFixture<De
     [InlineData("filter[title]=x", "FCMS2201")]
     [InlineData("filter[nope.part][eq]=x", "FCMS2202")]
     [InlineData("filter[publishedOn][between]=2026-01-01", "FCMS2204")]
+    [InlineData("filter[publishedOn][gt]=yesterday", "FCMS2204")]
+    [InlineData("filter[author.bio][null]=false", "FCMS2202")]
+    [InlineData("filter[or][0][title][eq]=a&filter[or][1][publishedOn][lt]=never", "FCMS2204")]
     public async Task AMalformedFilterIsAProblemOnItsParameter(string query, string code)
     {
         var (status, body) = await fixture.GetAsync("article?" + query);
@@ -153,8 +167,8 @@ public sealed class DeliveryApiTests(DeliveryFixture fixture) : IClassFixture<De
         status.ShouldBe(HttpStatusCode.BadRequest);
         body["code"]!.GetValue<string>().ShouldBe(code);
         body["type"]!.GetValue<string>().ShouldBe("urn:fluentcms:error:" + code);
-        var parameter = Uri.UnescapeDataString(query[..query.IndexOf('=', StringComparison.Ordinal)]);
-        body["errors"]![0]!["path"]!.GetValue<string>().ShouldBe(code == "FCMS2202" ? "nope.part" : parameter);
+        var parameter = query.Split('&').Last();
+        body["errors"]![0]!["path"]!.GetValue<string>().ShouldBe(parameter[..parameter.IndexOf('=', StringComparison.Ordinal)]);
     }
 
     [Theory]
@@ -164,6 +178,11 @@ public sealed class DeliveryApiTests(DeliveryFixture fixture) : IClassFixture<De
     [InlineData("richText=pdf", "richText")]
     [InlineData("depth=2", "depth")]
     [InlineData("unknown=1", "unknown")]
+    [InlineData("limit=1000", "limit")]
+    [InlineData("pageSize=1000", "pageSize")]
+    [InlineData("populate=*&depth=99", "depth")]
+    [InlineData("sort=bio", "sort")]
+    [InlineData("fields=nothing", "fields")]
     public async Task AMalformedParameterIsAProblemOnItsName(string query, string path)
     {
         var (status, body) = await fixture.GetAsync("article?" + query);
@@ -193,6 +212,36 @@ public sealed class DeliveryApiTests(DeliveryFixture fixture) : IClassFixture<De
         locales.Select(pair => pair.Key).ShouldBe(["en", "fr"], ignoreOrder: true);
         locales["fr"]!["title"]!.GetValue<string>().ShouldBe("Bienvenue dans FluentCMS");
         locales["en"]!["title"]!.GetValue<string>().ShouldBe("Welcome to FluentCMS");
+
+        var (_, selected) = await fixture.GetAsync("article?locale=all&fields=title");
+        selected["items"]!.AsArray()
+            .SelectMany(item => item!["locales"]!.AsObject().Select(pair => pair.Value!))
+            .ShouldAllBe(entry => entry.AsObject().Count == 2 && entry.AsObject().ContainsKey("id") && entry.AsObject().ContainsKey("title"));
+    }
+
+    [Fact]
+    public async Task AnUnlocalizedTypeUnderLocaleAllIsKeyedByTheEmptyLocale()
+    {
+        var (status, body) = await fixture.GetAsync("homepage?locale=all", DeliveryFixture.EditorKey());
+
+        status.ShouldBe(HttpStatusCode.OK);
+        body["locales"]!.AsObject().Select(pair => pair.Key).ShouldBe([""]);
+        body["locales"]![""]!["headline"]!.GetValue<string>().ShouldBe(DeliveryFixture.Headline);
+    }
+
+    [Fact]
+    public async Task AMissingLocaleFallsBackUnlessFallbackIsNone()
+    {
+        var (_, typed) = await fixture.GetAsync($"article/by/slug/{Typed}?fields=id");
+        var id = typed["id"]!.GetValue<string>();
+
+        var (served, entry) = await fixture.GetAsync($"article/{id}?locale=fr");
+        served.ShouldBe(HttpStatusCode.OK);
+        entry["title"]!.GetValue<string>().ShouldBe("Typed content, no magic");
+        entry["fallbacks"]!["title"]!.GetValue<string>().ShouldBe("en");
+
+        var (none, _) = await fixture.GetAsync($"article/{id}?locale=fr&fallback=none");
+        none.ShouldBe(HttpStatusCode.NotFound);
     }
 
     [Fact]
@@ -217,6 +266,7 @@ public sealed class DeliveryApiTests(DeliveryFixture fixture) : IClassFixture<De
     [InlineData("preview", HttpStatusCode.OK)]
     [InlineData("draft", HttpStatusCode.OK)]
     [InlineData("delivery", HttpStatusCode.Forbidden)]
+    [InlineData("management", HttpStatusCode.Forbidden)]
     public async Task DraftsNeedThePreviewOrDraftScope(string scope, HttpStatusCode expected)
     {
         var (status, body) = await fixture.GetAsync(
@@ -237,7 +287,7 @@ public sealed class DeliveryApiTests(DeliveryFixture fixture) : IClassFixture<De
     public async Task AnonymousReadsGetWhatThePublicRoleGrants()
     {
         var (homepage, _) = await fixture.GetAsync("homepage");
-        homepage.ShouldBe(HttpStatusCode.BadRequest);
+        homepage.ShouldBe(HttpStatusCode.NotFound);
 
         var (_, authors) = await fixture.GetAsync("author");
         authors["items"]!.AsArray().ShouldAllBe(author => author!.AsObject().ContainsKey("name") && !author.AsObject().ContainsKey("bio"));
@@ -246,7 +296,7 @@ public sealed class DeliveryApiTests(DeliveryFixture fixture) : IClassFixture<De
         Item(populated, Welcome)["author"]!.AsObject().ContainsKey("bio").ShouldBeFalse();
 
         var (otherSite, _) = await fixture.GetAsync("article", ("X-Cms-Site", "other"));
-        otherSite.ShouldBe(HttpStatusCode.BadRequest);
+        otherSite.ShouldBe(HttpStatusCode.NotFound);
     }
 
     [Fact]
@@ -267,11 +317,21 @@ public sealed class DeliveryApiTests(DeliveryFixture fixture) : IClassFixture<De
         Slugs((await fixture.GetAsync("article", key)).Body).Count.ShouldBe(2);
         Slugs((await fixture.GetAsync("article", [.. key, ("X-Cms-Site", "other")])).Body).ShouldBeEmpty();
         Slugs((await fixture.GetAsync($"article?site={fixture.OtherSite}", key)).Body).ShouldBeEmpty();
-        Slugs((await fixture.GetAsync("article?site=default", [.. key, ("X-Cms-Site", "other")])).Body).ShouldBeEmpty();
+        Slugs((await fixture.GetAsync("article?site=other", [.. key, ("X-Cms-Site", "other")])).Body).ShouldBeEmpty();
 
         var (missing, body) = await fixture.GetAsync("article?site=nowhere", key);
         missing.ShouldBe(HttpStatusCode.NotFound);
         body["code"]!.GetValue<string>().ShouldBe("FCMS2301");
+    }
+
+    [Fact]
+    public async Task AHeaderAndAParameterThatNameDifferentSitesAreRefused()
+    {
+        var (status, body) = await fixture.GetAsync("article?site=default", [.. DeliveryFixture.EditorKey(), ("X-Cms-Site", "other")]);
+
+        status.ShouldBe(HttpStatusCode.BadRequest);
+        body["code"]!.GetValue<string>().ShouldBe("FCMS2201");
+        body["errors"]![0]!["path"]!.GetValue<string>().ShouldBe("site");
     }
 
     [Fact]
@@ -286,6 +346,33 @@ public sealed class DeliveryApiTests(DeliveryFixture fixture) : IClassFixture<De
         status.ShouldBe(HttpStatusCode.Forbidden);
         body["code"]!.GetValue<string>().ShouldBe("FCMS3121");
         body["errors"]![0]!["path"]!.GetValue<string>().ShouldBe("X-Cms-Site");
+
+        // A site that does not exist is answered as one outside the binding, so the key learns nothing of the others.
+        var (missing, unknown) = await fixture.GetAsync("article", [.. bound, ("X-Cms-Site", "nowhere")]);
+        missing.ShouldBe(HttpStatusCode.Forbidden);
+        unknown["code"]!.GetValue<string>().ShouldBe("FCMS3121");
+        unknown["detail"]!.GetValue<string>().ShouldBe(body["detail"]!.GetValue<string>());
+    }
+
+    [Theory]
+    [InlineData("Bogus")]
+    [InlineData("System")]
+    [InlineData("Anonymous")]
+    public async Task APrincipalOfNoUsableKindIsUnauthenticated(string kind)
+    {
+        var (status, body) = await fixture.GetAsync("article", (TestScheme.KindHeader, kind));
+
+        status.ShouldBe(HttpStatusCode.Unauthorized);
+        body["code"]!.GetValue<string>().ShouldBe("FCMS3102");
+    }
+
+    [Fact]
+    public async Task CredentialsTheSchemeRefusesAreUnauthenticatedNotAnonymous()
+    {
+        var (status, body) = await fixture.GetAsync("article", (TestScheme.FailHeader, "1"));
+
+        status.ShouldBe(HttpStatusCode.Unauthorized);
+        body["code"]!.GetValue<string>().ShouldBe("FCMS3102");
     }
 
     [Fact]

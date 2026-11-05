@@ -1,5 +1,6 @@
 using FluentCMS.Content;
 using FluentCMS.Core.Content.Query;
+using FluentCMS.Core.Sites;
 using FluentCMS.Localization;
 using FluentCMS.Sites;
 using Microsoft.AspNetCore.Http;
@@ -28,7 +29,7 @@ internal sealed class RequestBridge(ISiteResolver sites, ILocaleResolver locales
         ArgumentNullException.ThrowIfNull(httpContext);
 
         var request = httpContext.Request;
-        var principal = RequestPrincipal.From(httpContext.User);
+        var principal = RequestPrincipal.From(await RequestAuthentication.UserAsync(httpContext));
         var site = await SiteAsync(request, principal, cancellationToken);
 
         var asked = await locales.ResolveAsync(
@@ -48,41 +49,65 @@ internal sealed class RequestBridge(ISiteResolver sites, ILocaleResolver locales
     }
 
     // A key bound to one site reads that site. A key bound to several reads the one the request names, or the default
-    // site when it is among them. Naming a site outside the binding is refused rather than ignored.
+    // site when it is among them. A named site outside the binding is refused the same way whether it exists or not, so
+    // a bound key cannot learn which sites there are. A header and a parameter that disagree are refused, not ranked.
     private async Task<SiteId> SiteAsync(HttpRequest request, Principal principal, CancellationToken cancellationToken)
     {
         var header = Present(request.Headers[SiteHeader].FirstOrDefault());
         var parameter = Present(Single(request, SiteParameter));
         var bound = RequestPrincipal.BoundSites(principal);
 
+        var fromHeader = header is null ? (SiteId?)null : await NamedAsync(SiteHeader, new SiteRequest { Header = header }, bound, cancellationToken);
+        var fromParameter = parameter is null ? (SiteId?)null : await NamedAsync(SiteParameter, new SiteRequest { Parameter = parameter }, bound, cancellationToken);
+        if (fromHeader is { } one && fromParameter is { } other && one != other)
+        {
+            throw Refused(SiteParameter, QueryErrorCodes.InvalidParameter, $"{SiteHeader} and {SiteParameter} name different sites.");
+        }
+
+        if ((fromHeader ?? fromParameter) is { } named)
+        {
+            return named;
+        }
+
         if (bound is null)
         {
-            return await sites.ResolveAsync(new SiteRequest { Header = header, Parameter = parameter, Host = request.Host.Host }, cancellationToken);
+            return await sites.ResolveAsync(new SiteRequest { Host = request.Host.Host }, cancellationToken);
         }
 
-        var source = header is not null ? SiteHeader : SiteParameter;
-        if (bound.Count == 0)
+        switch (bound.Count)
         {
-            throw Refused(source, RequestErrorCodes.SiteOutsideBinding, "The key is bound to no site.");
-        }
-
-        if (header is not null || parameter is not null)
-        {
-            var named = await sites.ResolveAsync(new SiteRequest { Header = header, Parameter = parameter }, cancellationToken);
-            return bound.Contains(named.Value)
-                ? named
-                : throw Refused(source, RequestErrorCodes.SiteOutsideBinding, $"The key is not bound to the site {named}.");
-        }
-
-        if (bound.Count == 1)
-        {
-            return await sites.ResolveAsync(new SiteRequest { ApiKeySite = new SiteId(bound[0]) }, cancellationToken);
+            case 0:
+                throw Refused(SiteParameter, RequestErrorCodes.SiteOutsideBinding, "The key is bound to no site.");
+            case 1:
+                return await sites.ResolveAsync(new SiteRequest { ApiKeySite = new SiteId(bound[0]) }, cancellationToken);
         }
 
         var unnamed = await sites.ResolveAsync(new SiteRequest { Host = request.Host.Host }, cancellationToken);
         return bound.Contains(unnamed.Value)
             ? unnamed
             : throw Refused(SiteParameter, RequestErrorCodes.SiteNotNamed, $"The key is bound to several sites; name one with {SiteHeader} or {SiteParameter}.");
+    }
+
+    private async Task<SiteId> NamedAsync(string source, SiteRequest request, IReadOnlyList<Guid>? bound, CancellationToken cancellationToken)
+    {
+        if (bound is null)
+        {
+            return await sites.ResolveAsync(request, cancellationToken);
+        }
+
+        SiteId? site;
+        try
+        {
+            site = await sites.ResolveAsync(request, cancellationToken);
+        }
+        catch (ValidationException exception) when (exception.Errors.All(error => error.Code == SiteErrorCodes.SiteNotFound))
+        {
+            site = null;
+        }
+
+        return site is { } found && bound.Contains(found.Value)
+            ? found
+            : throw Refused(source, RequestErrorCodes.SiteOutsideBinding, "The key is not bound to the site the request names.");
     }
 
     private static string? Single(HttpRequest request, string key)

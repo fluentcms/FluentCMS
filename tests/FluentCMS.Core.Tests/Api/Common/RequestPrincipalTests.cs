@@ -43,11 +43,11 @@ public sealed class RequestPrincipalTests
     [InlineData("3")]
     [InlineData("AdminUser, Member")]
     [InlineData("apikey")]
-    public void AKindThatIsNotAnAuthenticatedPrincipalIsAHostFault(string? kind)
+    public void AKindThatIsNotAnAuthenticatedPrincipalIsRefused(string? kind)
     {
         Claim[] claims = kind is null ? [] : [new(CmsClaimTypes.Kind, kind)];
 
-        Should.Throw<InvalidOperationException>(() => RequestPrincipal.From(User(claims)));
+        Should.Throw<RequestAuthenticationException>(() => RequestPrincipal.From(User(claims)));
     }
 
     [Theory]

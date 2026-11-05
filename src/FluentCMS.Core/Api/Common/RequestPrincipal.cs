@@ -17,19 +17,19 @@ internal static class RequestPrincipal
             return Principal.Anonymous;
         }
 
-        // A handler that writes no usable kind or subject is a fault of the host, not of the client.
+        // A principal the engine cannot place is refused as unauthenticated rather than read as anonymous.
         var kindText = user.FindFirst(CmsClaimTypes.Kind)?.Value;
         var kind = kindText is not null && Enum.GetNames<PrincipalKind>().Contains(kindText, StringComparer.Ordinal)
             ? Enum.Parse<PrincipalKind>(kindText)
             : PrincipalKind.Anonymous;
         if (kind is PrincipalKind.System or PrincipalKind.Anonymous)
         {
-            throw new InvalidOperationException($"The authenticated request has no usable {CmsClaimTypes.Kind} claim.");
+            throw new RequestAuthenticationException($"The authenticated request has no usable {CmsClaimTypes.Kind} claim.");
         }
 
         if (!Guid.TryParse(user.FindFirst(CmsClaimTypes.Subject)?.Value, out var id))
         {
-            throw new InvalidOperationException($"The authenticated request has no usable {CmsClaimTypes.Subject} claim.");
+            throw new RequestAuthenticationException($"The authenticated request has no usable {CmsClaimTypes.Subject} claim.");
         }
 
         var claims = user.Claims
