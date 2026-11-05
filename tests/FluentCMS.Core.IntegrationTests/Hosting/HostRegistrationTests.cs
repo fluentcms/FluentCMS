@@ -35,7 +35,7 @@ public sealed class HostRegistrationTests : IAsyncDisposable
         await app.StartAsync(Token);
 
         app.Services.GetRequiredService<IHostApplicationLifetime>().ApplicationStarted.IsCancellationRequested.ShouldBeTrue();
-        using var response = await app.GetTestClient().GetAsync(new Uri("/api/delivery/v1/article", UriKind.Relative), Token);
+        using var response = await app.GetTestClient().GetAsync(new Uri("/api/delivery/v1", UriKind.Relative), Token);
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
         File.Exists(_host.DatabaseFile).ShouldBeTrue();
     }
