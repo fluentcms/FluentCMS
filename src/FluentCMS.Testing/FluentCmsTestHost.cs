@@ -8,6 +8,7 @@ using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Data.Sqlite;
 using FluentCMS.Schema;
 using FluentCMS.Sites;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.Sqlite;
@@ -220,9 +221,10 @@ public sealed class FluentCmsTestHost : IAsyncDisposable, IDisposable
                 options.ValidateScopes = true;
                 options.ValidateOnBuild = true;
             })
-            .ConfigureWebHost(web => web.UseTestServer().Configure(_ => { }))
+            .ConfigureWebHost(web => web.UseTestServer().Configure(Pipeline))
             .ConfigureServices(services =>
             {
+                services.AddRouting();
                 services.AddSingleton(schema);
                 services.AddSingleton<TimeProvider>(Time);
                 foreach (var configure in _services)
@@ -242,6 +244,15 @@ public sealed class FluentCmsTestHost : IAsyncDisposable, IDisposable
 
                 services.AddHostedService(provider => new SeedRunner(provider, Time, _seeds));
             });
+    }
+
+    // The pipeline a host's Program.cs builds, so that a client reaches the endpoints as a production client does.
+    private static void Pipeline(IApplicationBuilder app)
+    {
+        app.UseExceptionHandler();
+        app.UseRouting();
+        app.UseAuthentication();
+        app.UseEndpoints(endpoints => endpoints.MapFluentCms());
     }
 
     private TestActor Act(Principal principal, Origin origin, string? clientId) =>
