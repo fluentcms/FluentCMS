@@ -6,16 +6,18 @@ namespace FluentCMS.Core.Identity.Oidc;
 // A session is one sign-in of a user through a client: an OpenIddict authorization, with the refresh tokens that came from it.
 internal sealed record UserSession(Guid Id, string? ClientId, string? ClientName, DateTimeOffset? CreatedAt, IReadOnlyList<string> Scopes);
 
-// The sessions of a user, for the Management API (#2786). Revoking one revokes its authorization and every token issued
-// under it, so its refresh token is refused at once, and so is an access token on the next request.
-internal sealed class UserSessions(IOpenIddictAuthorizationManager authorizations, IOpenIddictApplicationManager applications, IOpenIddictTokenManager tokens)
+// The sessions of a user, for the Management API (#2786): the valid authorizations that still hold a token in use, so one
+// whose tokens have all expired is over even before the prune job removes it. Revoking one revokes its authorization and
+// every token issued under it, so its refresh token is refused at once, and so is an access token on the next request.
+internal sealed class UserSessions(IOpenIddictAuthorizationManager authorizations, IOpenIddictApplicationManager applications, IOpenIddictTokenManager tokens, TimeProvider time)
 {
     public async Task<IReadOnlyList<UserSession>> ListAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         List<UserSession> sessions = [];
         await foreach (var authorization in authorizations.FindBySubjectAsync(userId.ToString("D"), cancellationToken))
         {
-            if (await authorizations.HasStatusAsync(authorization, Statuses.Valid, cancellationToken))
+            if (await authorizations.HasStatusAsync(authorization, Statuses.Valid, cancellationToken)
+                && await HasLiveTokenAsync(authorization, cancellationToken))
             {
                 sessions.Add(await DescribeAsync(authorization, cancellationToken));
             }
@@ -38,6 +40,27 @@ internal sealed class UserSessions(IOpenIddictAuthorizationManager authorization
         var revoked = await authorizations.TryRevokeAsync(authorization, cancellationToken);
         await tokens.RevokeByAuthorizationIdAsync(sessionId.ToString("D"), cancellationToken);
         return revoked;
+    }
+
+    private async Task<bool> HasLiveTokenAsync(object authorization, CancellationToken cancellationToken)
+    {
+        var id = await authorizations.GetIdAsync(authorization, cancellationToken) ?? "";
+        var now = time.GetUtcNow();
+        await foreach (var token in tokens.FindByAuthorizationIdAsync(id, cancellationToken))
+        {
+            if (!await tokens.HasStatusAsync(token, Statuses.Valid, cancellationToken))
+            {
+                continue;
+            }
+
+            var expires = await tokens.GetExpirationDateAsync(token, cancellationToken);
+            if (expires is null || expires > now)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private async Task<UserSession> DescribeAsync(object authorization, CancellationToken cancellationToken)

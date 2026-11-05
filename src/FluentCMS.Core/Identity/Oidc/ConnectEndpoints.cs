@@ -48,7 +48,7 @@ internal static class ConnectEndpoints
         var signIn = context.RequestServices.GetRequiredService<SignInManager<CmsUser>>();
         var user = cookie.Succeeded ? await signIn.ValidateSecurityStampAsync(cookie.Principal) : null;
 
-        if (user is null || !await signIn.CanSignInAsync(user))
+        if (user is null || !await MaySignInAsync(signIn, user))
         {
             if (request.HasPromptValue(PromptValues.None))
             {
@@ -61,7 +61,7 @@ internal static class ConnectEndpoints
                 [IdentityConstants.ApplicationScheme]);
         }
 
-        var identity = TokenClaims.ForUser(TokenClaims.Identity(), user, request.GetScopes());
+        var identity = TokenClaims.ForUser(TokenClaims.Identity(), user, await signIn.UserManager.GetSecurityStampAsync(user), request.GetScopes());
         return Results.SignIn(new ClaimsPrincipal(identity), properties: null, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
     }
 
@@ -71,17 +71,23 @@ internal static class ConnectEndpoints
         if (request.IsAuthorizationCodeGrantType() || request.IsRefreshTokenGrantType())
         {
             // The code or refresh token keeps its scopes and session; the user is read again, so one who can no longer
-            // sign in gets no new token.
+            // sign in, or whose password changed since, gets no new token.
             var result = await context.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
-            var users = context.RequestServices.GetRequiredService<UserManager<CmsUser>>();
             var signIn = context.RequestServices.GetRequiredService<SignInManager<CmsUser>>();
+            var users = signIn.UserManager;
             var user = result.Principal?.GetClaim(Claims.Subject) is { } subject ? await users.FindByIdAsync(subject) : null;
-            if (user is null || !await signIn.CanSignInAsync(user))
+            if (user is null || !await MaySignInAsync(signIn, user))
             {
                 return Refuse(Errors.InvalidGrant, "The user can no longer sign in.");
             }
 
-            var identity = TokenClaims.ForUser(TokenClaims.Identity(result.Principal), user, result.Principal!.GetScopes());
+            var stamp = await users.GetSecurityStampAsync(user);
+            if (!string.Equals(result.Principal!.GetClaim(TokenClaims.SecurityStamp), stamp, StringComparison.Ordinal))
+            {
+                return Refuse(Errors.InvalidGrant, "The user's credentials changed since the token was issued.");
+            }
+
+            var identity = TokenClaims.ForUser(TokenClaims.Identity(result.Principal), user, stamp, result.Principal!.GetScopes());
             return Results.SignIn(new ClaimsPrincipal(identity), properties: null, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
         }
 
@@ -135,13 +141,44 @@ internal static class ConnectEndpoints
     }
 
     // Ends the user's sign-in on the hosted pages; the server then returns to the client's post-logout URI when it gave one.
+    // A cross-site GET would sign anyone out, so a GET needs a valid id_token_hint of the signed-in user; the cookie is
+    // SameSite=Lax, so a cross-site POST does not carry it. The logout page (#2779) asks the rest.
     private static async Task<IResult> LogoutAsync(HttpContext context)
     {
+        if (HttpMethods.IsGet(context.Request.Method) && !await HintsSignedInUserAsync(context))
+        {
+            return Results.Json(
+                new Dictionary<string, string>
+                {
+                    [Parameters.Error] = Errors.InvalidRequest,
+                    [Parameters.ErrorDescription] = "A logout by GET needs the id_token_hint of the session; post the form instead.",
+                },
+                statusCode: StatusCodes.Status400BadRequest);
+        }
+
         await context.SignOutAsync(IdentityConstants.ApplicationScheme);
         return Results.SignOut(
             new AuthenticationProperties { RedirectUri = context.Request.PathBase.HasValue ? context.Request.PathBase.Value : "/" },
             [OpenIddictServerAspNetCoreDefaults.AuthenticationScheme]);
     }
+
+    // OpenIddict passes a hint it cannot read through without a principal, so the hint is checked here.
+    private static async Task<bool> HintsSignedInUserAsync(HttpContext context)
+    {
+        var hint = await context.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+        if (hint.Principal?.GetClaim(Claims.Subject) is not { } subject)
+        {
+            return false;
+        }
+
+        var cookie = await context.AuthenticateAsync(IdentityConstants.ApplicationScheme);
+        return !cookie.Succeeded
+            || context.RequestServices.GetRequiredService<UserManager<CmsUser>>().GetUserId(cookie.Principal) == subject;
+    }
+
+    // Active and not locked out; CanSignInAsync does not look at lockout, which the password check alone applies.
+    private static async Task<bool> MaySignInAsync(SignInManager<CmsUser> signIn, CmsUser user) =>
+        await signIn.CanSignInAsync(user) && !await signIn.UserManager.IsLockedOutAsync(user);
 
     private static OpenIddictRequest ServerRequest(HttpContext context) =>
         context.GetOpenIddictServerRequest() ?? throw new InvalidOperationException("The request did not pass through the authorization server.");

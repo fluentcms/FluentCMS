@@ -28,7 +28,7 @@ using Xunit;
 
 namespace FluentCMS.Core.IntegrationTests.Identity;
 
-public sealed class AuthorizationServerTests : IAsyncDisposable
+public sealed partial class AuthorizationServerTests : IAsyncDisposable
 {
     private const string TestClientId = FluentCmsTestHost.OAuthClientId;
     private const string ServiceClientId = "billing";
@@ -359,14 +359,20 @@ public sealed class AuthorizationServerTests : IAsyncDisposable
         claims.GetProperty("email").GetString().ShouldBe(editor.Email);
     }
 
-    private static FluentCmsTestHost NewHost() => new FluentCmsTestHost()
+    private static FluentCmsTestHost NewHost(bool withServiceClient = true) => new FluentCmsTestHost()
         .WithContentTypes<Note>()
-        .Configure(cms => cms.Clients.Applications[ServiceClientId] = new ClientRegistration
+        .Configure(cms =>
         {
-            DisplayName = "Billing service",
-            Secret = ServiceClientSecret,
-            Scopes = { TokenScopes.Management },
-            Roles = { BuiltInRoles.EditorName },
+            if (withServiceClient)
+            {
+                cms.Clients.Applications[ServiceClientId] = new ClientRegistration
+                {
+                    DisplayName = "Billing service",
+                    Secret = ServiceClientSecret,
+                    Scopes = { TokenScopes.Management },
+                    Roles = { BuiltInRoles.EditorName },
+                };
+            }
         })
         .WithServices(services => services.AddFluentCmsEndpoints(FluentCmsEndpointGroup.Management, group =>
         {

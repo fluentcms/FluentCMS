@@ -13,15 +13,19 @@ namespace FluentCMS.Core.Identity.Oidc;
 // service account, the roles of its client; the user's roles are read from cms_user_role on each request instead.
 internal static class TokenClaims
 {
+    // Kept in codes and refresh tokens only, which the server alone reads, so that a password change or reset ends them.
+    public const string SecurityStamp = "fcms_security_stamp";
+
     // A new identity, or one that keeps what a code or refresh token carried: its scopes, audiences and session.
     public static ClaimsIdentity Identity(ClaimsPrincipal? from = null) =>
         new(from?.Claims, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, Claims.Name, CmsClaimTypes.Roles);
 
-    public static ClaimsIdentity ForUser(ClaimsIdentity identity, CmsUser user, IEnumerable<string> scopes)
+    public static ClaimsIdentity ForUser(ClaimsIdentity identity, CmsUser user, string? securityStamp, IEnumerable<string> scopes)
     {
         identity.SetClaim(Claims.Subject, user.Id.ToString("D"))
             .SetClaim(Claims.Name, user.UserName)
             .SetClaim(Claims.Email, user.Email)
+            .SetClaim(SecurityStamp, securityStamp)
             .SetClaim(CmsClaimTypes.Kind, nameof(PrincipalKind.AdminUser));
         identity.SetScopes(scopes);
         identity.SetAudiences(AuthorizationServer.ManagementAudience);

@@ -1,8 +1,10 @@
 using System.Xml.Linq;
 using FluentCMS.Core.Storage;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.DataProtection.Repositories;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace FluentCMS.Core.Identity.Oidc;
 
@@ -32,4 +34,16 @@ internal sealed class DataProtectionKeyRepository(IServiceScopeFactory scopes, T
         });
         context.SaveChanges();
     }
+}
+
+// Whether the Data Protection key ring is encrypted at rest. Without an encryptor, anyone who reads the database can read the
+// ring and with it forge the Identity cookie the authorize endpoint accepts; the startup report (#2793) lists it.
+internal interface IDataProtectionStatus
+{
+    bool KeysEncrypted { get; }
+}
+
+internal sealed class DataProtectionStatus(IOptions<KeyManagementOptions> options) : IDataProtectionStatus
+{
+    public bool KeysEncrypted => options.Value.XmlEncryptor is not null;
 }

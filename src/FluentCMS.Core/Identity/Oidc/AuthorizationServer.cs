@@ -12,6 +12,9 @@ internal static class AuthorizationServer
     // The application property that holds the role names of a service account.
     public const string RolesProperty = "fcms_roles";
 
+    // Marks a client cms.Clients registered, which is deleted once the options no longer list it.
+    public const string FromOptionsProperty = "fcms_from_options";
+
     public static readonly string[] KnownScopes =
     [
         TokenScopes.Draft,

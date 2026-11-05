@@ -71,7 +71,11 @@ internal static class AuthorizationServerRegistration
                 validation.AddAudiences(AuthorizationServer.ManagementAudience);
 
                 validation.AddEventHandler(BearerClaimsHandler.Descriptor);
-                validation.UseAspNetCore();
+
+                // From the Authorization header only: a token in a URL ends up in logs, Referer and history.
+                validation.UseAspNetCore()
+                    .DisableAccessTokenExtractionFromQueryString()
+                    .DisableAccessTokenExtractionFromBodyForm();
             });
 
         // A revoked session stops its access tokens at once, not when they expire. After the local server's own setup,
@@ -85,6 +89,7 @@ internal static class AuthorizationServerRegistration
         services.AddSingleton<SigningKeyStore>();
         services.AddSingleton<IConfigureOptions<OpenIddictServerOptions>, ServerCredentials>();
         services.TryAddSingleton<ISigningKeyStatus, SigningKeyStatus>();
+        services.TryAddSingleton<IDataProtectionStatus, DataProtectionStatus>();
 
         // A host or test that set a bearer scheme of its own keeps it.
         services.Configure<FluentCmsAuthenticationOptions>(

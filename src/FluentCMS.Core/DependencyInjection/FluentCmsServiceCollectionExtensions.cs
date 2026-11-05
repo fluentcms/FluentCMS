@@ -12,6 +12,7 @@ using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.Content.Validation;
 using FluentCMS.Core.Events;
 using FluentCMS.Core.Identity;
+using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Localization;
 using FluentCMS.Core.ProseMirror;
@@ -158,6 +159,9 @@ public static class FluentCmsServiceCollectionExtensions
 
         builder.Jobs.AddJob<JobRetentionJob, JobRetentionPayload>(JobRetentionJob.Type, JobRetentionJob.AttemptTimeout);
         services.AddHostedService<JobRetentionScheduleService>();
+
+        builder.Jobs.AddJob<OidcPruneJob, OidcPrunePayload>(OidcPruneJob.Type);
+        services.AddHostedService<OidcPruneScheduleService>();
 
         builder.Events.Outbox.Validate();
         builder.Jobs.Options.Queues.TryAdd(OutboxDrainJob.Queue, 1);
