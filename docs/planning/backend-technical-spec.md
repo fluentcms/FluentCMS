@@ -1158,7 +1158,7 @@ Follows the sequencing note in the decisions log: SDK and core first, because ev
 | --- | --- | --- |
 | M0 Foundation | Solution, build and CI exist; nothing runs yet. | `dotnet build` and `dotnet test` green in CI on Linux and Windows; packages pack; the test matrix job runs on SQLite (PostgreSQL and SQL Server deferred, Q19). |
 | M1 SDK and core engine | A host can define types in C#, store and query entries in-process with permissions, versions, publishing, scheduling, events and jobs on SQLite (other providers deferred, Q19). No HTTP yet. | The sample `Blog` types round-trip through `IContentService<T>` in the test host; the storage spike's decision is recorded; migrations generate for SQLite. |
-| M2 HTTP and identity | Delivery and Management APIs, authorization server with hosted pages, admin users, roles, keys, 2FA, SSO federation, activity log endpoint, OpenAPI, caching, limits, health, observability, startup diagnostics, reference host image. | An editor can be invited, sign in through the hosted pages, obtain a token with PKCE, create and publish content through the Management API, and read it through the Delivery API with a key, all from the Docker image on SQLite and on PostgreSQL. |
+| M2 HTTP and identity | Delivery and Management APIs, authorization server with hosted pages, admin users, roles, keys, 2FA, SSO federation, activity log endpoint, OpenAPI, caching, limits, health, observability, startup diagnostics, reference host image. | An editor can be invited, sign in through the hosted pages, obtain a token with PKCE, create and publish content through the Management API, and read it through the Delivery API with a key, all from the Docker image on SQLite (PostgreSQL and SQL Server deferred, Q19). |
 | M3 Plugin host, media, webhooks | Plugin contract proven by two first-party plugins. | A plugin project from the server template boots in the test host with its own tables, permissions, settings and job; images upload and transform through signed URLs on local, S3 and Azure storage; a publish triggers a signed webhook with retries. |
 | M4 Agents and GraphQL | MCP server and GraphQL plugin. | Claude or an IDE client connects to `/mcp` through OAuth, lists tools filtered by role, drafts an entry and cannot publish without the permission; GraphQL queries and mutations mirror REST. |
 | M5 Multi-site, members, AI assist | Hostname-resolved sites, member authentication with external providers, AI actions. | Two sites on different hostnames share types and media with separate content and roles; a member registers, verifies and signs in with Google; an AI action returns a suggestion and logs usage. |
@@ -1221,27 +1221,29 @@ Tracking issue: [#2708](https://github.com/fluentcms/FluentCMS/issues/2708).
 
 ### 9.3 M2 HTTP and identity
 
+Tracking issue: [#2795](https://github.com/fluentcms/FluentCMS/issues/2795).
+
 | Id | Issue | Spec | Size |
 | --- | --- | --- | --- |
-| B-40 | `AddFluentCms()` and `MapFluentCms()`, options binding and `ValidateOnStart`, Production safety refusals | 10.3, 4.13 | M |
-| B-41 | ASP.NET Core Identity stores for admin users and roles; invitations; password policy; lockout; deactivate | 4.2 | M |
-| B-42 | OpenIddict server: endpoints, flows, scopes, audiences, signing key persistence, session list and revoke | 4.1, 2.13 | L |
-| B-43 | Hosted pages: login, logout, consent, 2FA, recovery codes, forgot and reset, invitation, external callback, error; branding settings | 4.1 | L |
-| B-44 | Two-factor TOTP with per-role enforcement | 4.16 | M |
-| B-45 | Admin SSO federation: generic OIDC with presets, auto-provisioning, group mapping, local-login disable | 4.15 | M |
-| B-46 | API keys: table, classes, format, hashing, authentication handler, per-key rate limit | 4.9, 2.12 | M |
-| B-47 | Delivery API endpoints with bracket filter parser, status and locale handling, `by/{field}` lookup | 2.1, 2.4 | L |
-| B-48 | Management API: content group (CRUD, publishing, versions, schedules, bulk, trash) | 2.2 | L |
-| B-49 | Management API: schema introspection with permission filtering | 1.13, 4.17 | M |
-| B-50 | Management API: users, invitations, roles, permissions catalogue, API keys, sites, locales, settings, jobs, activity, plugins, system, me | 2.2 | L |
-| B-51 | Problem details error model and `FCMS` code registry | 2.8, 11.14 | S |
-| B-52 | OpenAPI 3.1 document transformers and Scalar UI | 2.9 | M |
-| B-53 | Response caching: headers, output cache tags, eviction on events, `CacheInvalidatedEvent` | 2.20, 10.8 | M |
-| B-54 | Rate limiting policies, CORS allow-lists, security headers, request limits | 2.17, 2.18, 10.12 | M |
-| B-55 | Health checks, OpenTelemetry instrumentation, structured log event ids | 10.5, 10.6 | M |
-| B-56 | Multi-instance: Data Protection to database, `IDistributedLock` with `cms_lock` default | 10.7 | S |
-| B-57 | Startup report and diagnostics endpoint; reverse proxy options | 10.13, 10.14 | S |
-| B-58 | Reference host: project, schema file loading (Q2), sample pack, Dockerfile, compose, probes | 10.2 | M |
+| B-40 [#2776](https://github.com/fluentcms/FluentCMS/issues/2776) | `AddFluentCms()` and `MapFluentCms()`, options binding and `ValidateOnStart`, Production safety refusals | 10.3, 4.13 | M |
+| B-41 [#2777](https://github.com/fluentcms/FluentCMS/issues/2777) | ASP.NET Core Identity stores for admin users and roles; invitations through the `IEmailSender` slot with the log-only sender; password policy; lockout; deactivate; schedule jobs read `cms_user_role` | 4.2 | M |
+| B-42 [#2778](https://github.com/fluentcms/FluentCMS/issues/2778) | OpenIddict server: endpoints, flows, scopes, audiences, signing key persistence, session list and revoke | 4.1, 2.13 | L |
+| B-43 [#2779](https://github.com/fluentcms/FluentCMS/issues/2779) | Hosted pages: login, logout, consent, 2FA, recovery codes, forgot and reset, invitation, external callback, error; branding settings | 4.1 | L |
+| B-44 [#2780](https://github.com/fluentcms/FluentCMS/issues/2780) | Two-factor TOTP with per-role enforcement | 4.16 | M |
+| B-45 [#2781](https://github.com/fluentcms/FluentCMS/issues/2781) | Admin SSO federation: generic OIDC with presets, auto-provisioning, group mapping, local-login disable | 4.15 | M |
+| B-46 [#2782](https://github.com/fluentcms/FluentCMS/issues/2782) | API keys: table, classes, format, hashing, authentication handler, per-key rate limit | 4.9, 2.12 | M |
+| B-47 [#2783](https://github.com/fluentcms/FluentCMS/issues/2783) | Delivery API endpoints with bracket filter parser, status and locale handling, `by/{field}` lookup | 2.1, 2.4 | L |
+| B-48 [#2784](https://github.com/fluentcms/FluentCMS/issues/2784) | Management API: content group (CRUD, publishing, versions, schedules, bulk, trash) | 2.2 | L |
+| B-49 [#2785](https://github.com/fluentcms/FluentCMS/issues/2785) | Management API: schema introspection with permission filtering | 1.13, 4.17 | M |
+| B-50 [#2786](https://github.com/fluentcms/FluentCMS/issues/2786) | Management API: users, invitations, roles, permissions catalogue, API keys, the default site and its locales, settings, jobs, activity, me | 2.2 | L |
+| B-51 [#2787](https://github.com/fluentcms/FluentCMS/issues/2787) | Problem details error model and `FCMS` code registry | 2.8, 11.14 | S |
+| B-52 [#2788](https://github.com/fluentcms/FluentCMS/issues/2788) | OpenAPI 3.1 document transformers and Scalar UI | 2.9 | M |
+| B-53 [#2789](https://github.com/fluentcms/FluentCMS/issues/2789) | Response caching: headers, output cache tags, eviction on events, `CacheInvalidatedEvent` | 2.20, 10.8 | M |
+| B-54 [#2790](https://github.com/fluentcms/FluentCMS/issues/2790) | Rate limiting policies, CORS allow-lists, security headers, request limits | 2.17, 2.18, 10.12 | M |
+| B-55 [#2791](https://github.com/fluentcms/FluentCMS/issues/2791) | Health checks, OpenTelemetry instrumentation, structured log event ids | 10.5, 10.6 | M |
+| B-56 [#2792](https://github.com/fluentcms/FluentCMS/issues/2792) | Multi-instance: Data Protection to database, `IDistributedLock` with `cms_lock` default | 10.7 | S |
+| B-57 [#2793](https://github.com/fluentcms/FluentCMS/issues/2793) | Startup report and diagnostics endpoint; reverse proxy options | 10.13, 10.14 | S |
+| B-58 [#2794](https://github.com/fluentcms/FluentCMS/issues/2794) | Reference host: project, schema file loading (Q2), sample pack, Dockerfile, compose, probes | 10.2 | M |
 
 ### 9.4 M3 Plugin host, media, webhooks
 
@@ -1250,7 +1252,7 @@ Tracking issue: [#2708](https://github.com/fluentcms/FluentCMS/issues/2708).
 | B-60 | Plugin host: `IPlugin`, manifest attribute, explicit and discovered registration, startup validation, ordering | 8.1, 8.2 | M |
 | B-61 | Plugin contributions: endpoints under the CMS group, permissions, settings, model contributor, migrations stream, jobs, event handlers | 8.6, 8.13, 8.14 | L |
 | B-62 | Per-site enable and disable with gating of endpoints, hooks, jobs and tools | 8.15 | M |
-| B-63 | Provider slot defaults: `IEmailSender` (Q9), `IDistributedLock`, memory cache; slot registration API | 8.11 | S |
+| B-63 | Provider slot defaults: SMTP `IEmailSender` (Q9; the slot and log-only sender are in B-41), memory cache; slot registration API | 8.11 | S |
 | B-64 | Media plugin: tables, folders, `IFileStorage` with local provider, upload with sniffing and limits, metadata, management endpoints | 5.1 to 5.4 | L |
 | B-65 | Media transforms: `IImageProcessor`, pipeline, variants, presets, focal point, signed URLs, `f=auto` | 5.5 to 5.8 | L |
 | B-66 | Media Delivery API, usage tracking, replace, private assets with signed download URLs | 5.9 to 5.11 | M |
