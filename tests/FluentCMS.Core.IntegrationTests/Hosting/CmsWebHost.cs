@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Core.IntegrationTests.Hosting;
 
@@ -31,6 +32,8 @@ internal sealed class CmsWebHost : IAsyncDisposable
             options.UseSqlite($"Data Source={DatabaseFile};Pooling=False");
             cms?.Invoke(options);
         });
+        // These hosts sign no tokens; a test about the signing key registers the status it needs after this one.
+        builder.Services.AddSingleton<ISigningKeyStatus>(new ConfiguredSigningKey());
         configure?.Invoke(builder);
 
         var app = builder.Build();
@@ -67,5 +70,10 @@ internal sealed class CmsWebHost : IAsyncDisposable
         catch (IOException)
         {
         }
+    }
+
+    private sealed class ConfiguredSigningKey : ISigningKeyStatus
+    {
+        public bool IsGenerated => false;
     }
 }

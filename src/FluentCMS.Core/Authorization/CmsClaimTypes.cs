@@ -11,4 +11,7 @@ internal static class CmsClaimTypes
     public const string Sites = "fcms_sites";
     public const string Types = "fcms_types";
     public const string RateLimit = "fcms_rate_limit";
+
+    // The OAuth client a bearer token was issued to; the request's OperationContext.ClientId.
+    public const string ClientId = "client_id";
 }

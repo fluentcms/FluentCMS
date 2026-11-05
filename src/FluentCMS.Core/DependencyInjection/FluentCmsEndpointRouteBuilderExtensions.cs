@@ -43,10 +43,13 @@ public static class FluentCmsEndpointRouteBuilderExtensions
         return cms;
     }
 
-    // The admin application calls /connect from its own origin, so that group answers the Management origins.
+    // The admin application calls /connect and reads the discovery document from its own origin, so those groups answer
+    // the Management origins.
     private static RouteGroupBuilder Protect(RouteGroupBuilder routes, FluentCmsEndpointGroup group)
     {
-        routes.WithMetadata(new FluentCmsSurfaceMetadata(group.ToString().ToLowerInvariant()));
+        // Discovery and the key set belong to the authorization server, so they count as its surface.
+        var surface = group == FluentCmsEndpointGroup.WellKnown ? FluentCmsEndpointGroup.Connect : group;
+        routes.WithMetadata(new FluentCmsSurfaceMetadata(surface.ToString().ToLowerInvariant()));
         switch (group)
         {
             case FluentCmsEndpointGroup.Delivery:
@@ -57,6 +60,9 @@ public static class FluentCmsEndpointRouteBuilderExtensions
                 break;
             case FluentCmsEndpointGroup.Connect:
                 routes.RequireRateLimiting(RateLimitPolicyNames.Auth).RequireCors(CorsPolicies.Management);
+                break;
+            case FluentCmsEndpointGroup.WellKnown:
+                routes.RequireCors(CorsPolicies.Management);
                 break;
             case FluentCmsEndpointGroup.Account:
                 routes.AsHostedPages();

@@ -210,11 +210,15 @@ public sealed class FluentCmsTestHostTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task AUserClientWaitsForTheTokenEndpoint()
+    public async Task AUserClientSendsTheBearerTokenOfTheCodeFlow()
     {
         var user = await _host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
 
-        Should.Throw<NotSupportedException>(() => _host.AsUser(user));
+        using var client = await _host.AsUserAsync(user);
+
+        client.DefaultRequestHeaders.Authorization.ShouldNotBeNull();
+        client.DefaultRequestHeaders.Authorization.Scheme.ShouldBe("Bearer");
+        client.DefaultRequestHeaders.Authorization.Parameter!.Split('.').Length.ShouldBe(3);
     }
 
     [Fact]

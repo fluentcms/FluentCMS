@@ -1,9 +1,11 @@
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Identity.ApiKeys;
+using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Core.Storage.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using OpenIddict.EntityFrameworkCore.Models;
 
 namespace FluentCMS.Core.Storage;
 
@@ -43,6 +45,8 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
     private const int ProviderLength = 128;
     private const int ClaimTypeLength = 256;
     private const int KeyNameLength = 128;
+    private const int AlgorithmLength = 32;
+    private const int FriendlyNameLength = 256;
 
     public void Apply(ModelBuilder modelBuilder)
     {
@@ -68,6 +72,15 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         modelBuilder.Entity<IdentityUserToken<Guid>>(MapUserToken);
         modelBuilder.Entity<Invitation>(MapInvitation);
         modelBuilder.Entity<ApiKey>(MapApiKey);
+
+        // OpenIddict's own mapping, moved to the cms_oidc_* tables with snake_case columns and FluentCMS index names.
+        modelBuilder.UseOpenIddict<Guid>();
+        modelBuilder.Entity<OpenIddictEntityFrameworkCoreApplication<Guid>>(entity => MapOidc(entity, StorageNames.OidcApplication));
+        modelBuilder.Entity<OpenIddictEntityFrameworkCoreAuthorization<Guid>>(entity => MapOidc(entity, StorageNames.OidcAuthorization));
+        modelBuilder.Entity<OpenIddictEntityFrameworkCoreScope<Guid>>(entity => MapOidc(entity, StorageNames.OidcScope));
+        modelBuilder.Entity<OpenIddictEntityFrameworkCoreToken<Guid>>(entity => MapOidc(entity, StorageNames.OidcToken));
+        modelBuilder.Entity<SigningKey>(MapSigningKey);
+        modelBuilder.Entity<DataProtectionKey>(MapDataProtectionKey);
     }
 
     // For the system stream only. EF puts seed data into a context's migrations and EnsureCreated even for a table
@@ -298,6 +311,40 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
 
         entity.HasIndex(key => key.KeyPrefix).HasDatabaseName("ix_cms_api_key_key_prefix");
         entity.HasIndex(key => key.KeyHash).IsUnique().HasDatabaseName("uq_cms_api_key_key_hash");
+    }
+
+    private static void MapOidc<T>(EntityTypeBuilder<T> entity, string table)
+        where T : class
+    {
+        entity.ToTable(table);
+        entity.Property("Id").HasValueGenerator<GuidV7ValueGenerator>();
+        foreach (var property in entity.Metadata.GetProperties())
+        {
+            property.SetColumnName(StorageNames.Column(property.Name));
+        }
+
+        foreach (var index in entity.Metadata.GetIndexes())
+        {
+            var columns = string.Join('_', index.Properties.Select(property => StorageNames.Column(property.Name)));
+            index.SetDatabaseName($"{(index.IsUnique ? "uq" : "ix")}_{table}_{columns}");
+        }
+    }
+
+    private static void MapSigningKey(EntityTypeBuilder<SigningKey> entity)
+    {
+        entity.ToTable(StorageNames.SigningKey);
+        MapColumnNames(entity);
+        entity.Property(key => key.Id).HasValueGenerator<GuidV7ValueGenerator>();
+        entity.Property(key => key.Use).HasMaxLength(StatusLength);
+        entity.Property(key => key.Algorithm).HasMaxLength(AlgorithmLength);
+    }
+
+    private static void MapDataProtectionKey(EntityTypeBuilder<DataProtectionKey> entity)
+    {
+        entity.ToTable(StorageNames.DataProtectionKey);
+        MapColumnNames(entity);
+        entity.Property(key => key.Id).HasValueGenerator<GuidV7ValueGenerator>();
+        entity.Property(key => key.FriendlyName).HasMaxLength(FriendlyNameLength);
     }
 
     private static ApiKeyClass ClassOf(string scope) =>

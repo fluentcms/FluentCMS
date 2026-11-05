@@ -15,6 +15,7 @@ using FluentCMS.Core.Diagnostics;
 using FluentCMS.Core.Events;
 using FluentCMS.Core.Health;
 using FluentCMS.Core.Identity;
+using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Localization;
 using FluentCMS.Core.ProseMirror;
@@ -112,7 +113,7 @@ public static class FluentCmsServiceCollectionExtensions
             serviceProvider.GetRequiredService<ContentQueryOptions>(),
             builder.Authorization.Rules));
         services.AddHostedService<RowRuleStartupCheck>();
-        IdentityRegistration.Add(services, builder.Users);
+        IdentityRegistration.Add(services, builder.Users, builder.Clients);
         services.TryAddScoped<IAuthorizationEvaluator, AuthorizationEvaluator>();
         services.TryAddScoped<IContentQueryAccess, ContentQueryAccess>();
         services.AddScoped<ContentQueryEngine>();
@@ -166,6 +167,9 @@ public static class FluentCmsServiceCollectionExtensions
 
         builder.Jobs.AddJob<JobRetentionJob, JobRetentionPayload>(JobRetentionJob.Type, JobRetentionJob.AttemptTimeout);
         services.AddHostedService<JobRetentionScheduleService>();
+
+        builder.Jobs.AddJob<OidcPruneJob, OidcPrunePayload>(OidcPruneJob.Type);
+        services.AddHostedService<OidcPruneScheduleService>();
 
         builder.Events.Outbox.Validate();
         builder.Jobs.Options.Queues.TryAdd(OutboxDrainJob.Queue, 1);

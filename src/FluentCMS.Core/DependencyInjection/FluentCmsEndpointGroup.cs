@@ -11,6 +11,7 @@ internal enum FluentCmsEndpointGroup
     Connect,
     Account,
     Health,
+    WellKnown,
 }
 
 internal sealed record FluentCmsEndpoints(FluentCmsEndpointGroup Group, Action<RouteGroupBuilder> Map);
@@ -24,6 +25,7 @@ internal static class FluentCmsEndpointGroups
         (FluentCmsEndpointGroup.Connect, "/connect"),
         (FluentCmsEndpointGroup.Account, "/account"),
         (FluentCmsEndpointGroup.Health, "/health"),
+        (FluentCmsEndpointGroup.WellKnown, "/.well-known"),
     ];
 
     // How an area's registration puts its endpoints in a group; MapFluentCms maps them in the order they were added.

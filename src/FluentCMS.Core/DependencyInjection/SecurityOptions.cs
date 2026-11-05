@@ -1,3 +1,7 @@
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
+using FluentCMS.Core.Identity.Oidc;
+
 namespace FluentCMS.Core.DependencyInjection;
 
 // FluentCms:Security.
@@ -19,6 +23,9 @@ public sealed class SecurityOptions
 
     // Lets Production start with the signing key the authorization server generates when no certificate is configured.
     public bool AllowGeneratedSigningKey { get; set; }
+
+    // The certificate the authorization server signs tokens with. Without one it signs with a key it generates and stores.
+    public SigningCertificateOptions SigningCertificate { get; } = new();
 
     public SecurityCorsOptions Cors { get; } = new();
 
@@ -44,8 +51,53 @@ public sealed class SecurityOptions
                 $"{nameof(FrameAncestors)} is '{FrameAncestors}'; it must be a space-separated list of sources such as 'none', 'self' or https://admin.example.com, without a semicolon or comma.");
         }
 
+        SigningCertificate.Validate();
         Cors.Delivery.Validate("Cors:Delivery");
         Cors.Management.Validate("Cors:Management");
+    }
+}
+
+// A PKCS#12 (.pfx) file with its private key, and its password, which belongs in a secret store.
+public sealed class SigningCertificateOptions
+{
+    public string? Path { get; set; }
+
+    public string? Password { get; set; }
+
+    internal bool IsConfigured => !string.IsNullOrWhiteSpace(Path);
+
+    internal X509Certificate2 Load()
+    {
+        X509Certificate2 certificate;
+        try
+        {
+            certificate = X509CertificateLoader.LoadPkcs12FromFile(Path!, Password);
+        }
+        catch (Exception exception) when (exception is CryptographicException or IOException or UnauthorizedAccessException)
+        {
+            throw new FluentCmsConfigurationException(
+                OidcErrorCodes.SigningCertificateUnusable,
+                $"{nameof(SecurityOptions.SigningCertificate)}:{nameof(Path)} is '{Path}', which cannot be read as a PKCS#12 file with this password: {exception.Message}");
+        }
+
+        using var rsa = certificate.GetRSAPrivateKey();
+        if (rsa is null)
+        {
+            certificate.Dispose();
+            throw new FluentCmsConfigurationException(
+                OidcErrorCodes.SigningCertificateUnusable,
+                $"{nameof(SecurityOptions.SigningCertificate)}:{nameof(Path)} is '{Path}', which holds no RSA private key; the authorization server signs with RS256.");
+        }
+
+        return certificate;
+    }
+
+    internal void Validate()
+    {
+        if (IsConfigured)
+        {
+            Load().Dispose();
+        }
     }
 }
 

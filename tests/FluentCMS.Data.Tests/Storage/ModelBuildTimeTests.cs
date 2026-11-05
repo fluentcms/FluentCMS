@@ -50,7 +50,7 @@ public class ModelBuildTimeTests
         watch.Stop();
 
         TestContext.Current.TestOutputHelper?.WriteLine($"Model of {TypeCount} types built in {watch.ElapsedMilliseconds} ms");
-        model.GetEntityTypes().Count().ShouldBe(TypeCount + (TypeCount / 2) + 22);
+        model.GetEntityTypes().Count().ShouldBe(TypeCount + (TypeCount / 2) + 28);
         watch.Elapsed.ShouldBeLessThan(Bound);
     }
 }

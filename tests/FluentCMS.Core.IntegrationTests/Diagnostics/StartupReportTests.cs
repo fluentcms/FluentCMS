@@ -9,6 +9,8 @@ using FluentCMS.Core.Storage;
 using FluentCMS.Testing;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
+using Microsoft.AspNetCore.DataProtection.XmlEncryption;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -53,9 +55,28 @@ public sealed class StartupReportTests : IAsyncDisposable
 
         var insecure = logged["insecureDefaults"]!.AsArray().Select(item => item!["id"]!.GetValue<string>()).ToList();
         insecure.ShouldContain("development-email-sender");
+        // The generated signing key is named by the refusal it would be in Production.
+        insecure.ShouldContain("FCMS1102");
+        insecure.ShouldContain("data-protection-keys-unencrypted");
         var warnings = logs.Entries.Where(entry => entry.EventId.Id == StartupReportEvents.InsecureDefault).ToList();
         warnings.ShouldAllBe(entry => entry.Level == LogLevel.Warning);
         warnings.Select(entry => (string)entry.State["Id"]!).ShouldBe(insecure, ignoreOrder: true);
+    }
+
+    [Fact]
+    public async Task AnEncryptedKeyRingAndASigningCertificateClearTheirEntries()
+    {
+        await using var host = new FluentCmsTestHost().WithServices(services =>
+        {
+            services.Configure<KeyManagementOptions>(options => options.XmlEncryptor = new NullXmlEncryptor());
+            services.AddSingleton<ISigningKeyStatus>(new CertificateKey());
+        });
+
+        var insecure = host.Services.GetRequiredService<StartupReportHolder>().Current!.InsecureDefaults.Select(item => item.Id).ToList();
+
+        insecure.ShouldNotContain("data-protection-keys-unencrypted");
+        insecure.ShouldNotContain("FCMS1102");
+        insecure.ShouldNotContain("generated-signing-key");
     }
 
     [Fact]
@@ -270,4 +291,9 @@ public sealed class StartupReportTests : IAsyncDisposable
 
     private static async Task<string?> Code(HttpResponseMessage response) =>
         JsonDocument.Parse(await response.Content.ReadAsStringAsync(Token)).RootElement.GetProperty("code").GetString();
+
+    private sealed class CertificateKey : ISigningKeyStatus
+    {
+        public bool IsGenerated => false;
+    }
 }

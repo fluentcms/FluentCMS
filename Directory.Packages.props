@@ -18,6 +18,10 @@
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.14" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+    <PackageVersion Include="OpenIddict.EntityFrameworkCore" Version="7.8.0" />
+    <PackageVersion Include="OpenIddict.Server.AspNetCore" Version="7.8.0" />
+    <PackageVersion Include="OpenIddict.Validation.AspNetCore" Version="7.8.0" />
+    <PackageVersion Include="OpenIddict.Validation.ServerIntegration" Version="7.8.0" />
     <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.14" />
     <PackageVersion Include="xunit.v3" Version="4.0.2" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.1" />

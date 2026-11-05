@@ -27,7 +27,7 @@ internal static class ProblemMapper
         SettingsAccessDeniedException denied => Denied(denied.Message, authenticated),
         ServiceUnavailableException unavailable => Known(ApiErrorCodes.Unavailable, unavailable.Message),
         InstanceAccessDeniedException denied => Denied(denied.Message, authenticated),
-        RequestAuthenticationException unauthenticated => Known(ApiErrorCodes.Unauthorized, unauthenticated.Message),
+        RequestAuthenticationException unauthenticated => Known(unauthenticated.Code ?? ApiErrorCodes.Unauthorized, unauthenticated.Message),
         EntryNotFoundException notFound => Known(ApiErrorCodes.NotFound, notFound.Message),
         VersionConflictException conflict => Known(ApiErrorCodes.VersionConflict, conflict.Message) with { Current = conflict.Current },
         ValidationException validation => FromValidation(validation),

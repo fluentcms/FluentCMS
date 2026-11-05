@@ -2,6 +2,7 @@ using System.Reflection;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Events;
 using FluentCMS.Core.Identity;
+using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Core.Storage;
 using FluentCMS.Providers;
 using FluentCMS.Schema;
@@ -95,6 +96,11 @@ internal sealed class StartupReportFactory(
         if (services.GetService<ISigningKeyStatus>()?.IsGenerated == true && found.All(item => item.Id != HostErrorCodes.GeneratedSigningKeyInProduction))
         {
             found.Add(new InsecureDefault { Id = "generated-signing-key", Message = $"Tokens are signed with a key the server generated; {GeneratedSigningKeyCheck.Key} accepts it. Configure a signing certificate." });
+        }
+
+        if (services.GetService<IDataProtectionStatus>()?.KeysEncrypted == false)
+        {
+            found.Add(new InsecureDefault { Id = "data-protection-keys-unencrypted", Message = "The Data Protection key ring is stored unencrypted, so a reader of the database can forge sign-in cookies. Add an XML encryptor such as ProtectKeysWithCertificate." });
         }
 
         if (services.GetService<IEmailSender>() is LogEmailSender)

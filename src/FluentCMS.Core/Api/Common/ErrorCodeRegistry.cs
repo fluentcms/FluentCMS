@@ -9,6 +9,7 @@ using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Events;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Identity.ApiKeys;
+using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Localization;
 using FluentCMS.Core.Schema;
@@ -167,6 +168,8 @@ public static class ErrorCodeRegistry
         new(ApiKeyErrorCodes.Revoked, StatusCodes.Status401Unauthorized, "API key revoked"),
         new(ApiKeyErrorCodes.SeveralCredentials, StatusCodes.Status401Unauthorized, "Several credentials"),
         Invalid(ApiKeyErrorCodes.EmptyBinding, "Empty API key binding"),
+        Startup(OidcErrorCodes.InvalidClients, "Invalid client registration"),
+        Startup(OidcErrorCodes.SigningCertificateUnusable, "Signing certificate unusable"),
 
         // 31xx HTTP
         new(ApiErrorCodes.BadRequest, StatusCodes.Status400BadRequest, "Bad request"),

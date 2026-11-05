@@ -24,6 +24,11 @@ namespace FluentCMS.Testing;
 // test says otherwise with As, and only Seed runs as the system, with the Seed origin.
 public sealed class FluentCmsTestHost : IAsyncDisposable, IDisposable
 {
+    // The public client the test host registers, whose tokens SignInAsync and AsUserAsync get.
+    public const string OAuthClientId = OAuthFlows.ClientId;
+
+    public const string OAuthRedirectUri = OAuthFlows.RedirectUri;
+
     private readonly List<Type> _contentTypes = [];
     private readonly List<Action<FluentCmsBuilder>> _configure = [];
     private readonly List<Action<IServiceCollection>> _services = [];
@@ -149,11 +154,44 @@ public sealed class FluentCmsTestHost : IAsyncDisposable, IDisposable
         return client;
     }
 
-    // A user signs in through the authorization server, which arrives in M2.
-    public HttpClient AsUser(TestUser user) =>
-        throw new NotSupportedException("A user's HTTP client needs the token endpoint of the authorization server, which arrives in M2.");
+    // A client with the user's bearer token, which the test client got through the authorization code flow with PKCE.
+    // Without scopes the token has the management scope, as the admin's has.
+    public async Task<HttpClient> AsUserAsync(TestUser user, params string[] scopes)
+    {
+        ArgumentNullException.ThrowIfNull(user);
+
+        var tokens = await SignInAsync(user, scopes);
+        var client = CreateSecureClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokens.AccessToken);
+        return client;
+    }
+
+    // The tokens of the test client for the user, from the real authorize and token endpoints.
+    public async Task<TestTokens> SignInAsync(TestUser user, params string[] scopes)
+    {
+        ArgumentNullException.ThrowIfNull(user);
+
+        using var client = CreateSecureClient();
+        return await OAuthFlows.SignInAsync(client, Services, user.Id, scopes.Length > 0 ? scopes : ["openid", "offline_access", "management"], CancellationToken.None);
+    }
+
+    // The Identity cookie the hosted pages give a user who signed in, as a Cookie header value.
+    public Task<string> SignInCookieAsync(TestUser user)
+    {
+        ArgumentNullException.ThrowIfNull(user);
+
+        return OAuthFlows.CookieAsync(Services, user.Id);
+    }
 
     public HttpClient CreateClient() => Start().GetTestClient();
+
+    // A client on https://localhost, which the authorization server asks for.
+    public HttpClient CreateSecureClient()
+    {
+        var client = CreateClient();
+        client.BaseAddress = OAuthFlows.BaseAddress;
+        return client;
+    }
 
     public void Dispose() => DisposeAsync().AsTask().GetAwaiter().GetResult();
 
@@ -236,6 +274,7 @@ public sealed class FluentCmsTestHost : IAsyncDisposable, IDisposable
                 {
                     cms.UseSqlite(connectionString);
                     cms.UseContentMigrations(typeof(CmsDbContext).Assembly);
+                    cms.Clients.Applications[OAuthFlows.ClientId] = OAuthFlows.Client();
                     foreach (var configure in _configure)
                     {
                         configure(cms);
