@@ -133,8 +133,7 @@ public sealed class HttpProtectionHardeningTests : IAsyncDisposable
     [Fact]
     public async Task AFloodFromOneAddressIsRefusedBeforeAuthenticationRuns()
     {
-        var settings = Limits(delivery: 100);
-        settings["FluentCms:RateLimits:PreAuth:PermitLimit"] = "3";
+        var settings = Coarse(3);
         var client = await Start(settings);
         var calls = _app!.Services.GetRequiredService<AuthCalls>();
 
@@ -160,8 +159,8 @@ public sealed class HttpProtectionHardeningTests : IAsyncDisposable
     [InlineData("/api/management/v1/unknown")]
     public async Task TheCoarseLimitAlsoCoversRequestsThatNoEndpointAnswers(string path)
     {
-        var settings = Limits(auth: 100);
-        settings["FluentCms:RateLimits:PreAuth:PermitLimit"] = "2";
+        var settings = Coarse(2);
+        settings["FluentCms:RateLimits:Auth:PermitLimit"] = "100";
         var client = await Start(settings);
 
         (await Status(client, path, ("X-Test-Ip", "10.0.0.1"))).ShouldBe(HttpStatusCode.NotFound);
@@ -172,7 +171,7 @@ public sealed class HttpProtectionHardeningTests : IAsyncDisposable
     [Fact]
     public async Task TheCoarseLimitLeavesHealthAndTheHostsOwnEndpointsAlone()
     {
-        var settings = new Dictionary<string, string?> { ["FluentCms:RateLimits:PreAuth:PermitLimit"] = "1" };
+        var settings = Coarse(1);
         var client = await Start(settings);
 
         for (var request = 0; request < 4; request++)
@@ -257,6 +256,60 @@ public sealed class HttpProtectionHardeningTests : IAsyncDisposable
         refused.StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
     }
 
+    [Theory]
+    [InlineData("/connect/token")]
+    [InlineData("/connect/introspect")]
+    [InlineData("/connect/revoke")]
+    [InlineData("/account/login")]
+    public async Task TheStrictAuthLimitCoversUnroutedAuthPathsBeforeAuthentication(string path)
+    {
+        var client = await Start(Limits(auth: 1));
+        var calls = _app!.Services.GetRequiredService<AuthCalls>();
+
+        (await Status(client, path, ("X-Test-Ip", "10.0.0.1"))).ShouldBe(HttpStatusCode.NotFound);
+        var before = calls.Count;
+        using var refused = await Send(client, path, ("X-Test-Ip", "10.0.0.1"));
+
+        refused.StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
+        (await Problem(refused)).GetProperty("code").GetString().ShouldBe("FCMS3110");
+        Seconds(refused, "Retry-After").ShouldBeInRange(1, 60);
+        calls.Count.ShouldBe(before);
+        (await Status(client, path, ("X-Test-Ip", "10.0.0.2"))).ShouldBe(HttpStatusCode.NotFound);
+    }
+
+    [Theory]
+    [InlineData("/connect/probe")]
+    [InlineData("/account/probe")]
+    public async Task ARoutedAuthRequestIsCountedOnceAndStillCarriesTheHeaders(string path)
+    {
+        var client = await Start(Limits(auth: 3));
+
+        for (var used = 1; used <= 3; used++)
+        {
+            using var allowed = await Send(client, path, ("X-Test-Ip", "10.0.0.1"));
+
+            allowed.StatusCode.ShouldBe(HttpStatusCode.OK);
+            Header(allowed, "RateLimit-Limit").ShouldBe("3");
+            Header(allowed, "RateLimit-Remaining").ShouldBe((3 - used).ToString(CultureInfo.InvariantCulture));
+        }
+
+        (await Status(client, path, ("X-Test-Ip", "10.0.0.1"))).ShouldBe(HttpStatusCode.TooManyRequests);
+    }
+
+    [Fact]
+    public async Task AKeyLimitAboveTheCoarseLimitStopsTheHost()
+    {
+        var settings = Limits(delivery: 2);
+        settings["FluentCms:RateLimits:Delivery:MaxKeyLimit"] = "10";
+        settings["FluentCms:RateLimits:PreAuth:PermitLimit"] = "5";
+
+        var exception = await Should.ThrowAsync<FluentCmsConfigurationException>(() => Start(settings));
+
+        exception.Code.ShouldBe("FCMS1101");
+        exception.Message.ShouldContain("FluentCms:RateLimits:Delivery:MaxKeyLimit");
+        exception.Message.ShouldContain("PreAuth:PermitLimit");
+    }
+
     [Fact]
     public async Task MapFluentCmsWithoutUseFluentCmsStopsTheHostAtStartup()
     {
@@ -264,6 +317,18 @@ public sealed class HttpProtectionHardeningTests : IAsyncDisposable
 
         exception.Code.ShouldBe("FCMS1104");
         exception.Message.ShouldContain("UseFluentCms");
+    }
+
+    // A coarse limit, and the limits below it that the options require to be no higher.
+    private static Dictionary<string, string?> Coarse(int limit)
+    {
+        var value = limit.ToString(CultureInfo.InvariantCulture);
+        return new Dictionary<string, string?>
+        {
+            ["FluentCms:RateLimits:PreAuth:PermitLimit"] = value,
+            ["FluentCms:RateLimits:Delivery:PermitLimit"] = value,
+            ["FluentCms:RateLimits:Delivery:MaxKeyLimit"] = value,
+        };
     }
 
     private static void WithPolicyScheme(IServiceCollection services)

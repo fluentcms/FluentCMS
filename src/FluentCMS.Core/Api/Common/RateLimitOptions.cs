@@ -27,6 +27,14 @@ public sealed class RateLimitOptions
         Management.Validate(nameof(Management));
         Auth.Validate(nameof(Auth));
         PreAuth.Validate(nameof(PreAuth));
+
+        // The coarse limit holds all the callers behind one address together, so a key may not be allowed more than it.
+        if (Delivery.MaxKeyLimit > PreAuth.PermitLimit)
+        {
+            throw new FluentCmsConfigurationException(
+                HostErrorCodes.InvalidOption,
+                $"{nameof(Delivery)}:{nameof(Delivery.MaxKeyLimit)} is {Delivery.MaxKeyLimit}; it must not be more than {nameof(PreAuth)}:{nameof(PreAuth.PermitLimit)}, {PreAuth.PermitLimit}, which limits every caller behind one address.");
+        }
     }
 }
 

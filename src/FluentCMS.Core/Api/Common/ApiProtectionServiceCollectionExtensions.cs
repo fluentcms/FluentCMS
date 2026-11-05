@@ -16,14 +16,15 @@ internal static class ApiProtectionServiceCollectionExtensions
         services.AddFluentCmsCors();
         services.AddSingleton<ApiPipelineState>();
         services.AddSingleton(provider => new PreAuthRateLimitPolicy(provider.GetRequiredService<RateLimitOptions>(), provider.GetRequiredService<TimeProvider>()));
+        services.AddSingleton(provider => new AuthRateLimitPolicy(provider.GetRequiredService<RateLimitOptions>(), provider.GetRequiredService<TimeProvider>()));
         services.AddSingleton<PreAuthRateLimiter>();
 
         services.AddRateLimiter(options => options.RejectionStatusCode = StatusCodes.Status429TooManyRequests);
-        services.AddOptions<RateLimiterOptions>().Configure<RateLimitOptions, TimeProvider>((options, limits, time) =>
+        services.AddOptions<RateLimiterOptions>().Configure<RateLimitOptions, TimeProvider, AuthRateLimitPolicy>((options, limits, time, auth) =>
         {
             options.AddPolicy<string>(RateLimitPolicyNames.Delivery, new DeliveryRateLimitPolicy(limits, time));
             options.AddPolicy<string>(RateLimitPolicyNames.Management, new ManagementRateLimitPolicy(limits, time));
-            options.AddPolicy<string>(RateLimitPolicyNames.Auth, new AuthRateLimitPolicy(limits, time));
+            options.AddPolicy<string>(RateLimitPolicyNames.Auth, auth);
         });
 
         return services;

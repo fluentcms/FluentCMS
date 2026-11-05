@@ -24,6 +24,7 @@ internal abstract class FluentCmsRateLimitPolicy(int defaultLimit, TimeProvider 
 {
     private readonly ConcurrentDictionary<string, WindowLimiter> _limiters = new();
     private readonly object _stateKey = new();
+    private readonly object _countedKey = new();
 
     public Func<OnRejectedContext, CancellationToken, ValueTask>? OnRejected => RejectAsync;
 
@@ -33,6 +34,12 @@ internal abstract class FluentCmsRateLimitPolicy(int defaultLimit, TimeProvider 
     {
         var (caller, limit) = Partition(httpContext);
         var key = $"{caller}|{limit}";
+
+        // The request was counted by the pre-authentication check of its path, so the endpoint's own limiter lets it through.
+        if (httpContext.Items.ContainsKey(_countedKey))
+        {
+            return RateLimitPartition.GetNoLimiter(key);
+        }
 
         if (!httpContext.Items.ContainsKey(_stateKey))
         {
@@ -62,6 +69,8 @@ internal abstract class FluentCmsRateLimitPolicy(int defaultLimit, TimeProvider 
             return limiter;
         });
     }
+
+    public void MarkCounted(HttpContext context) => context.Items[_countedKey] = true;
 
     protected abstract (string Caller, int Limit) Partition(HttpContext context);
 

@@ -47,12 +47,12 @@ ASP.NET Core's rate limiter runs three policies, each a fixed window of one minu
 | --- | --- | --- | --- |
 | `delivery` | `/api/delivery/v1` | the API key's `sub`, or the client address | 600 |
 | `management` | `/api/management/v1` | the principal's `sub`, or the client address when there is none | 300 |
-| `auth` | `/connect`, `/account` | the client address | 20 |
+| `auth` | `/connect`, `/account`, checked by path before authentication | the client address | 20 |
 | coarse (`PreAuth`) | every route but `/health`, before authentication | the client address | 6000 |
 
-An API key whose principal has an `fcms_rate_limit` claim gets that many requests per minute instead of the `delivery` default, at most `Delivery:MaxKeyLimit` (5000), which must not be below `Delivery:PermitLimit`. `/health` is not limited.
+An API key whose principal has an `fcms_rate_limit` claim gets that many requests per minute instead of the `delivery` default, at most `Delivery:MaxKeyLimit` (5000), which must not be below `Delivery:PermitLimit` nor above `PreAuth:PermitLimit`, the coarse limit that holds every caller behind one address together. `/health` is not limited.
 
-The coarse limit is checked by path, before authentication, so it also covers requests that no endpoint answers, such as `/connect/token` from the authorization server. It adds no `RateLimit-*` headers; a refusal is the same 429 problem.
+The coarse limit is checked by path, before authentication, so it also covers requests that no endpoint answers, such as `/connect/token` from the authorization server. It adds no `RateLimit-*` headers; a refusal is the same 429 problem. The strict `auth` limit is checked there too, for every path under `/connect` and `/account`, because the authorization server answers `/connect/token`, `/connect/introspect` and `/connect/revoke` without routing; the endpoints of those groups do not count a request a second time.
 
 A response carries `RateLimit-Limit`, `RateLimit-Remaining` and `RateLimit-Reset` (seconds to the end of the window), from the IETF draft. A refused request is a 429 `application/problem+json` with code `FCMS3110` and a `Retry-After` in seconds.
 
