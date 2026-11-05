@@ -1,5 +1,7 @@
+using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.Storage;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -20,11 +22,18 @@ public static class FluentCmsEndpointRouteBuilderExtensions
                 "MapFluentCms found no FluentCMS services. Call builder.Services.AddFluentCms(...) before building the app.");
         }
 
+        if (!endpoints.ServiceProvider.GetRequiredService<ApiPipelineState>().Configured)
+        {
+            throw new FluentCmsConfigurationException(
+                HostErrorCodes.PipelineMissing,
+                "MapFluentCms found no FluentCMS pipeline. Call app.UseFluentCms() before app.MapFluentCms(); the endpoints need its CORS, rate limiting and request limits.");
+        }
+
         var registered = endpoints.ServiceProvider.GetServices<FluentCmsEndpoints>().ToList();
-        var cms = endpoints.MapGroup(string.Empty);
+        var cms = endpoints.MapGroup(string.Empty).WithMetadata(FluentCmsEndpointMetadata.Instance);
         foreach (var (group, prefix) in FluentCmsEndpointGroups.Prefixes)
         {
-            var routes = cms.MapGroup(prefix);
+            var routes = Protect(cms.MapGroup(prefix), group);
             foreach (var area in registered.Where(area => area.Group == group))
             {
                 area.Map(routes);
@@ -32,5 +41,27 @@ public static class FluentCmsEndpointRouteBuilderExtensions
         }
 
         return cms;
+    }
+
+    // The admin application calls /connect from its own origin, so that group answers the Management origins.
+    private static RouteGroupBuilder Protect(RouteGroupBuilder routes, FluentCmsEndpointGroup group)
+    {
+        switch (group)
+        {
+            case FluentCmsEndpointGroup.Delivery:
+                routes.RequireRateLimiting(RateLimitPolicyNames.Delivery).RequireCors(CorsPolicies.Delivery);
+                break;
+            case FluentCmsEndpointGroup.Management:
+                routes.RequireRateLimiting(RateLimitPolicyNames.Management).RequireCors(CorsPolicies.Management);
+                break;
+            case FluentCmsEndpointGroup.Connect:
+                routes.RequireRateLimiting(RateLimitPolicyNames.Auth).RequireCors(CorsPolicies.Management);
+                break;
+            case FluentCmsEndpointGroup.Account:
+                routes.AsHostedPages();
+                break;
+        }
+
+        return routes;
     }
 }

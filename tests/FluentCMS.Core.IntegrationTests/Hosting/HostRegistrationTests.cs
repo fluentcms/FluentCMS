@@ -19,6 +19,7 @@ namespace FluentCMS.Core.IntegrationTests.Hosting;
 
 // The one test that sets a process environment variable lives here with every other test whose host reads them, and the
 // tests of a class run one at a time.
+[Xunit.Collection(ProcessEnvironment.Collection)]
 public sealed class HostRegistrationTests : IAsyncDisposable
 {
     private static readonly CancellationToken Token = TestContext.Current.CancellationToken;
@@ -60,7 +61,7 @@ public sealed class HostRegistrationTests : IAsyncDisposable
             pipeline: app =>
             {
                 app.UsePathBase("/cms");
-                app.UseRouting();
+                app.UseFluentCms();
             });
         await app.StartAsync(Token);
 

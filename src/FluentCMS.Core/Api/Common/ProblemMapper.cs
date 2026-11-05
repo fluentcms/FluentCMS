@@ -31,11 +31,12 @@ internal static class ProblemMapper
         ValidationException validation => FromValidation(validation),
         HookRejectedException rejected => FromHook(rejected),
         RichTextValidationException richText => FromRichText(richText),
+        BadHttpRequestException { StatusCode: StatusCodes.Status413PayloadTooLarge } tooLarge => Known(LimitErrorCodes.RequestTooLarge, tooLarge.Message),
         BadHttpRequestException badRequest => Known(ApiErrorCodes.BadRequest, badRequest.Message) with { Status = badRequest.StatusCode },
         _ => Known(ApiErrorCodes.InternalError, "An unexpected error occurred."),
     };
 
-    private static ApiProblem Known(string code, string detail)
+    public static ApiProblem Known(string code, string detail)
     {
         var info = ErrorCodeRegistry.Find(code)!;
         return new ApiProblem(info.Status, info.Code, info.Title, detail);

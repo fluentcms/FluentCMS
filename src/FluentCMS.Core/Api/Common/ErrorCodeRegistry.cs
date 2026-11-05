@@ -31,6 +31,7 @@ public static class ErrorCodeRegistry
         Startup(HostErrorCodes.InvalidOption, "Invalid option"),
         Startup(HostErrorCodes.GeneratedSigningKeyInProduction, "Generated signing key in Production"),
         Startup(HostErrorCodes.NotRegistered, "FluentCMS not registered"),
+        Startup(HostErrorCodes.PipelineMissing, "FluentCMS pipeline missing"),
 
         // 12xx schema, found when the host starts
         Startup(SchemaErrorCodes.DuplicateType, "Duplicate content type"),
@@ -174,6 +175,8 @@ public static class ErrorCodeRegistry
         new(ApiErrorCodes.NotFound, StatusCodes.Status404NotFound, "Not found"),
         new(ApiErrorCodes.VersionConflict, StatusCodes.Status412PreconditionFailed, "Version conflict"),
         new(ApiErrorCodes.InternalError, StatusCodes.Status500InternalServerError, "Internal error"),
+        new(LimitErrorCodes.RateLimited, StatusCodes.Status429TooManyRequests, "Too many requests"),
+        new(LimitErrorCodes.RequestTooLarge, StatusCodes.Status413PayloadTooLarge, "Request too large"),
         new(RequestErrorCodes.SiteOutsideBinding, StatusCodes.Status403Forbidden, "Site outside the key's binding"),
         BadQuery(RequestErrorCodes.SiteNotNamed, "Site not named"),
         BadQuery(DeliveryErrorCodes.FieldNotUnique, "Field not unique"),

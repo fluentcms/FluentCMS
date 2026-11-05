@@ -249,9 +249,7 @@ public sealed class FluentCmsTestHost : IAsyncDisposable, IDisposable
     // The pipeline a host's Program.cs builds, so that a client reaches the endpoints as a production client does.
     private static void Pipeline(IApplicationBuilder app)
     {
-        app.UseExceptionHandler();
-        app.UseRouting();
-        app.UseAuthentication();
+        app.UseFluentCms();
         app.UseEndpoints(endpoints => endpoints.MapFluentCms());
     }
 
