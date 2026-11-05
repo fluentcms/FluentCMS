@@ -1,6 +1,7 @@
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Content.Query;
+using FluentCMS.Core.Identity;
 using FluentCMS.Core.Sites;
 using FluentCMS.Localization;
 using FluentCMS.Sites;
@@ -18,7 +19,7 @@ internal sealed record ApiRequest(OperationContext Operation, string Locale)
 
 // Turns an HTTP request into the OperationContext of spec 2.2, for every API: the principal from the authentication
 // handler, the site (spec 4.6, with a key's binding first) and the locale.
-internal sealed class RequestBridge(ISiteResolver sites, ILocaleResolver locales, TimeProvider time)
+internal sealed class RequestBridge(ISiteResolver sites, ILocaleResolver locales, ClientOptions clients, TimeProvider time)
 {
     public const string SiteHeader = "X-Cms-Site";
     public const string LocaleHeader = "X-Cms-Locale";
@@ -38,12 +39,19 @@ internal sealed class RequestBridge(ISiteResolver sites, ILocaleResolver locales
             cancellationToken);
         var locale = asked == ILocaleResolver.All ? await locales.ResolveAsync(new LocaleRequest(site), cancellationToken) : asked;
 
+        // An API key is its own client; a bearer token names the OAuth client it was issued to, and the admin's runs as Admin.
+        var clientId = principal.Kind == PrincipalKind.ApiKey ? principal.Id.ToString() : principal.Claim(CmsClaimTypes.ClientId);
+        if (origin == Origin.Api && principal.Kind != PrincipalKind.ApiKey && clientId is not null && clientId == clients.AdminClientId)
+        {
+            origin = Origin.Admin;
+        }
+
         var operation = new OperationContext(
             principal,
             origin,
             site,
             locale,
-            principal.Kind == PrincipalKind.ApiKey ? principal.Id.ToString() : null,
+            clientId,
             System.Diagnostics.Activity.Current?.Id ?? httpContext.TraceIdentifier,
             time.GetUtcNow());
         return new ApiRequest(operation, asked);

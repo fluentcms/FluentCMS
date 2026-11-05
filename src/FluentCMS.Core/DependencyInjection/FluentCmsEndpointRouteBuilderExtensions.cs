@@ -43,7 +43,8 @@ public static class FluentCmsEndpointRouteBuilderExtensions
         return cms;
     }
 
-    // The admin application calls /connect from its own origin, so that group answers the Management origins.
+    // The admin application calls /connect and reads the discovery document from its own origin, so those groups answer
+    // the Management origins.
     private static RouteGroupBuilder Protect(RouteGroupBuilder routes, FluentCmsEndpointGroup group)
     {
         switch (group)
@@ -56,6 +57,9 @@ public static class FluentCmsEndpointRouteBuilderExtensions
                 break;
             case FluentCmsEndpointGroup.Connect:
                 routes.RequireRateLimiting(RateLimitPolicyNames.Auth).RequireCors(CorsPolicies.Management);
+                break;
+            case FluentCmsEndpointGroup.WellKnown:
+                routes.RequireCors(CorsPolicies.Management);
                 break;
             case FluentCmsEndpointGroup.Account:
                 routes.AsHostedPages();

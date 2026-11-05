@@ -6,8 +6,12 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Core.Api.Common;
 
-// A request whose credentials were sent but cannot be accepted, which is a 401 and never an anonymous read.
-internal sealed class RequestAuthenticationException(string message) : Exception(message);
+// A request whose credentials were sent but cannot be accepted, which is a 401 and never an anonymous read. Code is the
+// handler's own 401 code, such as an API key's FCMS3019, when its failure names one.
+internal sealed class RequestAuthenticationException(string message, string? code = null) : Exception(message)
+{
+    public string? Code { get; } = code;
+}
 
 // The FluentCms scheme decides who a request is: the API key handler when a key is sent, the bearer scheme otherwise.
 // Without it, as in a host that removed it, the request's user from the default scheme is used.
@@ -26,7 +30,7 @@ internal static class RequestAuthentication
         var result = await httpContext.AuthenticateAsync(FluentCmsAuthentication.Scheme);
         if (result.Failure is not null)
         {
-            throw new RequestAuthenticationException("The credentials of the request are not valid.");
+            throw new RequestAuthenticationException("The credentials of the request are not valid.", CodeOf(result.Failure));
         }
 
         // So that whatever runs after the endpoint, such as the problem writer, sees the same principal.
@@ -36,5 +40,12 @@ internal static class RequestAuthentication
         }
 
         return result.Succeeded ? result.Principal : new ClaimsPrincipal(new ClaimsIdentity());
+    }
+
+    // The FluentCMS handlers fail with "FCMSnnnn: ..."; a code the registry does not list as a 401 is not passed on.
+    private static string? CodeOf(Exception failure)
+    {
+        var separator = failure.Message.IndexOf(':', StringComparison.Ordinal);
+        return separator > 0 && ErrorCodeRegistry.Find(failure.Message[..separator]) is { Status: StatusCodes.Status401Unauthorized } info ? info.Code : null;
     }
 }

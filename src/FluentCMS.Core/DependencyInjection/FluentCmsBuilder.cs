@@ -37,6 +37,8 @@ public sealed class FluentCmsBuilder
 
     public AdminUserOptions Users { get; } = new();
 
+    public ClientOptions Clients { get; } = new();
+
     internal IDataProvider? DataProvider { get; private set; }
 
     internal Assembly? ContentMigrationsAssembly { get; private set; }

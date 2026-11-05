@@ -3,6 +3,7 @@ using System.Text.Encodings.Web;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Content.Query;
+using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Identity.ApiKeys;
 using FluentCMS.Core.Storage.Entities;
@@ -25,12 +26,17 @@ namespace FluentCMS.Data.Tests.Identity;
 // The edges of a key: what a request may carry, the FluentCms scheme, and the binding on every read and write path.
 public sealed class ApiKeyBoundaryTests : IDisposable
 {
-    private readonly IdentityFixture _fixture = new();
+    private readonly IdentityFixture _fixture = new(WithoutBearerScheme);
 
     public void Dispose() => _fixture.Dispose();
 
     private Task<CreatedApiKey> CreateAsync(ApiKeyRequest request) =>
         _fixture.WithAsync(services => services.GetRequiredService<ApiKeyService>().CreateAsync(request, Token));
+
+    // These tests call the schemes without the authentication middleware, which the OpenIddict bearer scheme needs, so the
+    // FluentCms scheme is left without a bearer scheme; AuthorizationServerTests cover it over HTTP.
+    private static void WithoutBearerScheme(FluentCmsBuilder cms) =>
+        cms.Services.PostConfigure<FluentCmsAuthenticationOptions>(FluentCmsAuthentication.Scheme, options => options.BearerScheme = null);
 
     private static Task<AuthenticateResult> AuthenticateAsync(IdentityFixture fixture, string scheme, Action<HttpRequest> present) =>
         fixture.WithAsync(services =>
@@ -149,9 +155,13 @@ public sealed class ApiKeyBoundaryTests : IDisposable
     [Fact]
     public async Task TheFluentCmsSchemeNeverReachesTheHostDefaultSoACookieIsNotACredential()
     {
-        using var fixture = new IdentityFixture(cms => cms.Services
-            .AddAuthentication(options => options.DefaultScheme = CountingHandler.Cookie)
-            .AddScheme<AuthenticationSchemeOptions, CountingHandler>(CountingHandler.Cookie, configureOptions: null));
+        using var fixture = new IdentityFixture(cms =>
+        {
+            cms.Services
+                .AddAuthentication(options => options.DefaultScheme = CountingHandler.Cookie)
+                .AddScheme<AuthenticationSchemeOptions, CountingHandler>(CountingHandler.Cookie, configureOptions: null);
+            WithoutBearerScheme(cms);
+        });
         CountingHandler.Calls.Clear();
 
         var result = await AuthenticateAsync(fixture, FluentCmsAuthentication.Scheme, http => http.Headers.Cookie = ".AspNetCore.Cookies=session");

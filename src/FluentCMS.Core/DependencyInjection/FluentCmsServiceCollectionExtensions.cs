@@ -106,7 +106,7 @@ public static class FluentCmsServiceCollectionExtensions
             serviceProvider.GetRequiredService<ContentQueryOptions>(),
             builder.Authorization.Rules));
         services.AddHostedService<RowRuleStartupCheck>();
-        IdentityRegistration.Add(services, builder.Users);
+        IdentityRegistration.Add(services, builder.Users, builder.Clients);
         services.TryAddScoped<IAuthorizationEvaluator, AuthorizationEvaluator>();
         services.TryAddScoped<IContentQueryAccess, ContentQueryAccess>();
         services.AddScoped<ContentQueryEngine>();

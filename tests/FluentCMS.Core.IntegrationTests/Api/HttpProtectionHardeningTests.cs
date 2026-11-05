@@ -157,18 +157,19 @@ public sealed class HttpProtectionHardeningTests : IAsyncDisposable
         (await Status(client, DeliveryPath, ("X-Test-Ip", "10.0.0.2"))).ShouldBe(HttpStatusCode.OK);
     }
 
+    // The authorization server answers a GET of the token endpoint itself, while the request authenticates.
     [Theory]
-    [InlineData("/connect/token")]
-    [InlineData("/account/login")]
-    [InlineData("/api/management/v1/unknown")]
-    public async Task TheCoarseLimitAlsoCoversRequestsThatNoEndpointAnswers(string path)
+    [InlineData("/connect/token", HttpStatusCode.BadRequest)]
+    [InlineData("/account/login", HttpStatusCode.NotFound)]
+    [InlineData("/api/management/v1/unknown", HttpStatusCode.NotFound)]
+    public async Task TheCoarseLimitAlsoCoversRequestsThatNoEndpointAnswers(string path, HttpStatusCode answer)
     {
         var settings = Coarse(2);
         settings["FluentCms:RateLimits:Auth:PermitLimit"] = "100";
         var client = await Start(settings);
 
-        (await Status(client, path, ("X-Test-Ip", "10.0.0.1"))).ShouldBe(HttpStatusCode.NotFound);
-        (await Status(client, path, ("X-Test-Ip", "10.0.0.1"))).ShouldBe(HttpStatusCode.NotFound);
+        (await Status(client, path, ("X-Test-Ip", "10.0.0.1"))).ShouldBe(answer);
+        (await Status(client, path, ("X-Test-Ip", "10.0.0.1"))).ShouldBe(answer);
         (await Status(client, path, ("X-Test-Ip", "10.0.0.1"))).ShouldBe(HttpStatusCode.TooManyRequests);
     }
 
@@ -261,16 +262,16 @@ public sealed class HttpProtectionHardeningTests : IAsyncDisposable
     }
 
     [Theory]
-    [InlineData("/connect/token")]
-    [InlineData("/connect/introspect")]
-    [InlineData("/connect/revoke")]
-    [InlineData("/account/login")]
-    public async Task TheStrictAuthLimitCoversUnroutedAuthPathsBeforeAuthentication(string path)
+    [InlineData("/connect/token", HttpStatusCode.BadRequest)]
+    [InlineData("/connect/introspect", HttpStatusCode.BadRequest)]
+    [InlineData("/connect/revoke", HttpStatusCode.BadRequest)]
+    [InlineData("/account/login", HttpStatusCode.NotFound)]
+    public async Task TheStrictAuthLimitCoversUnroutedAuthPathsBeforeAuthentication(string path, HttpStatusCode answer)
     {
         var client = await Start(Limits(auth: 1));
         var calls = _app!.Services.GetRequiredService<AuthCalls>();
 
-        (await Status(client, path, ("X-Test-Ip", "10.0.0.1"))).ShouldBe(HttpStatusCode.NotFound);
+        (await Status(client, path, ("X-Test-Ip", "10.0.0.1"))).ShouldBe(answer);
         var before = calls.Count;
         using var refused = await Send(client, path, ("X-Test-Ip", "10.0.0.1"));
 
@@ -278,7 +279,7 @@ public sealed class HttpProtectionHardeningTests : IAsyncDisposable
         (await Problem(refused)).GetProperty("code").GetString().ShouldBe("FCMS3110");
         Seconds(refused, "Retry-After").ShouldBeInRange(1, 60);
         calls.Count.ShouldBe(before);
-        (await Status(client, path, ("X-Test-Ip", "10.0.0.2"))).ShouldBe(HttpStatusCode.NotFound);
+        (await Status(client, path, ("X-Test-Ip", "10.0.0.2"))).ShouldBe(answer);
     }
 
     [Theory]
