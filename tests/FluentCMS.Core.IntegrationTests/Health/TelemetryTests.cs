@@ -149,6 +149,36 @@ public sealed class TelemetryTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task TheAuthorizationServerAndItsDiscoveryAreCountedAsTheConnectSurface()
+    {
+        var counts = new ConcurrentBag<(string? Surface, string? Status)>();
+        using var listener = new MeterListener
+        {
+            InstrumentPublished = (instrument, meter) =>
+            {
+                if (instrument.Meter.Name == FluentCmsTelemetry.Name && instrument.Name == FluentCmsTelemetry.Instruments.Requests)
+                {
+                    meter.EnableMeasurementEvents(instrument);
+                }
+            },
+        };
+        listener.SetMeasurementEventCallback<long>((_, _, tags, _) => counts.Add((Tag(tags, FluentCmsTelemetry.Tags.Surface), Tag(tags, FluentCmsTelemetry.Tags.StatusClass))));
+        listener.Start();
+        using var client = _host.CreateSecureClient();
+
+        // The server answers both itself, the discovery document and a token request without a grant type.
+        using var discovery = await client.GetAsync(new Uri("/.well-known/openid-configuration", UriKind.Relative), Token);
+        using var empty = new FormUrlEncodedContent([]);
+        using var token = await client.PostAsync(new Uri("/connect/token", UriKind.Relative), empty, Token);
+
+        discovery.StatusCode.ShouldBe(HttpStatusCode.OK);
+        token.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        counts.ShouldContain(count => count.Surface == "connect" && count.Status == "2xx");
+        counts.ShouldContain(count => count.Surface == "connect" && count.Status == "4xx");
+        counts.ShouldNotContain(count => count.Surface == "wellknown");
+    }
+
+    [Fact]
     public void TheCacheHitRatioIsInstrumentedAlthoughNothingReportsHitsYet()
     {
         const string Cache = "telemetry-test";

@@ -2,12 +2,12 @@ using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Core.Identity.Oidc;
 
-// Event ids in the identity range of the FCMS codes, after the codes themselves.
+// 90xx, the event ids of the identity family (FCMS30xx); the authorization server has 9001 to 9003.
 internal static partial class OidcLog
 {
-    public const int PruneScheduleFailedId = 3030;
-    public const int ClientDeletedId = 3031;
-    public const int ClientsKeptId = 3032;
+    public const int PruneScheduleFailedId = 9001;
+    public const int ClientDeletedId = 9002;
+    public const int ClientsKeptId = 9003;
 
     [LoggerMessage(EventId = PruneScheduleFailedId, EventName = "OidcPruneScheduleFailed", Level = LogLevel.Error, Message = "Could not register the recurring prune job of the authorization server; used tokens stay until it is registered.")]
     public static partial void PruneScheduleFailed(ILogger logger, Exception exception);

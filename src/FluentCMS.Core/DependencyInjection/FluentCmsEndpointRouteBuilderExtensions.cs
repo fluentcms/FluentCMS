@@ -47,7 +47,9 @@ public static class FluentCmsEndpointRouteBuilderExtensions
     // the Management origins.
     private static RouteGroupBuilder Protect(RouteGroupBuilder routes, FluentCmsEndpointGroup group)
     {
-        routes.WithMetadata(new FluentCmsSurfaceMetadata(group.ToString().ToLowerInvariant()));
+        // Discovery and the key set belong to the authorization server, so they count as its surface.
+        var surface = group == FluentCmsEndpointGroup.WellKnown ? FluentCmsEndpointGroup.Connect : group;
+        routes.WithMetadata(new FluentCmsSurfaceMetadata(surface.ToString().ToLowerInvariant()));
         switch (group)
         {
             case FluentCmsEndpointGroup.Delivery:
