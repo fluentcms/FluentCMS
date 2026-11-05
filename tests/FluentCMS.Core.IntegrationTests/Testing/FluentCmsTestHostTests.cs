@@ -3,6 +3,7 @@ using FluentCMS.Activity;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Events;
+using FluentCMS.Core.Identity;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
 using FluentCMS.Sites;
@@ -106,7 +107,13 @@ public sealed class FluentCmsTestHostTests : IAsyncDisposable
         var created = await _host.As(user).Content<Note>().CreateAsync(new Note { Title = "Mine" }, Token);
 
         user.Principal.Kind.ShouldBe(PrincipalKind.AdminUser);
-        user.Principal.Claim(ClaimPrincipalRoles.Claim).ShouldBe(user.RoleId.ToString());
+        user.Principal.Claim(ClaimPrincipalRoles.Claim).ShouldBeNull();
+        await using (var scope = _host.Services.CreateAsyncScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<CmsUserManager>();
+            (await users.GetRoleIdsAsync((await users.FindByIdAsync(user.Id.ToString()))!)).ShouldBe([user.RoleId]);
+        }
+
         created.CreatedBy.ShouldBe(user.Id);
         created.UpdatedBy.ShouldBe(user.Id);
     }

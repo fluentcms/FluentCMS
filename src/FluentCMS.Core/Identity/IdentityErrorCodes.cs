@@ -1,0 +1,14 @@
+namespace FluentCMS.Core.Identity;
+
+internal static class IdentityErrorCodes
+{
+    public const string InvalidOptions = "FCMS3001";
+    public const string InvalidEmail = "FCMS3002";
+    public const string EmailTaken = "FCMS3003";
+    public const string UnknownRole = "FCMS3004";
+    public const string InvalidInvitation = "FCMS3005";
+    public const string InvitationExpired = "FCMS3006";
+    public const string DeleteNotSupported = "FCMS3007";
+    public const string NoEmailSender = "FCMS3008";
+    public const string WriteInTransaction = "FCMS3009";
+}

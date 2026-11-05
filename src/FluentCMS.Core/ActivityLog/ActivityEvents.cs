@@ -44,6 +44,18 @@ internal static class ActivityEvents
         events.AddActivity<SiteCreatedEvent>("site.created", message => Site("site.created", message.SiteId, message.Slug));
         events.AddActivity<SiteUpdatedEvent>("site.updated", message => Site("site.updated", message.SiteId, message.Slug));
 
+        events.AddActivity<UserCreatedEvent>("user.created", message => User("user.created", message.UserId, message.UserName, null));
+        events.AddActivity<UserUpdatedEvent>("user.updated", message => User("user.updated", message.UserId, message.UserName, new Dictionary<string, string?>
+        {
+            ["changes"] = string.Join(',', message.Changes),
+        }));
+        events.AddActivity<UserDeactivatedEvent>("user.deactivated", message => User("user.deactivated", message.UserId, message.UserName, null));
+        events.AddActivity<UserRoleChangedEvent>("user.role_changed", message => User("user.role_changed", message.UserId, message.UserName, new Dictionary<string, string?>
+        {
+            ["added"] = string.Join(',', message.Added.Select(id => id.ToString("D"))),
+            ["removed"] = string.Join(',', message.Removed.Select(id => id.ToString("D"))),
+        }));
+
         events.AddActivity<CacheInvalidatedEvent>("cache.invalidated", message => new ActivityEntry("cache.invalidated")
         {
             Details = new Dictionary<string, string?>
@@ -100,6 +112,15 @@ internal static class ActivityEvents
             TargetType = "site",
             TargetId = siteId.ToString("D"),
             TargetLabel = slug,
+        };
+
+    private static ActivityEntry User(string action, Guid userId, string userName, Dictionary<string, string?>? details) =>
+        new(action)
+        {
+            TargetType = "user",
+            TargetId = userId.ToString("D"),
+            TargetLabel = userName,
+            Details = details,
         };
 
     private static string Number(int value) => value.ToString(CultureInfo.InvariantCulture);

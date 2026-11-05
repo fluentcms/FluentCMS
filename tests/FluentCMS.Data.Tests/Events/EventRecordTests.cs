@@ -91,6 +91,10 @@ public sealed class EventRecordTests
             "SettingsChangedEvent",
             "SiteCreatedEvent",
             "SiteUpdatedEvent",
+            "UserCreatedEvent",
+            "UserDeactivatedEvent",
+            "UserRoleChangedEvent",
+            "UserUpdatedEvent",
         ]);
     }
 

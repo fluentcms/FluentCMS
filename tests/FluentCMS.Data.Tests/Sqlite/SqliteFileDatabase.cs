@@ -1,5 +1,6 @@
 using System.Data.Common;
 using System.Reflection;
+using FluentCMS.Core.Authorization;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Storage;
 using FluentCMS.Data.Sqlite;
@@ -30,6 +31,8 @@ internal sealed class SqliteFileDatabase : IDisposable
             services.AddSingleton(schema);
         }
 
+        // These tests name a principal's roles in its roles claim. A test of stored users registers UserPrincipalRoles in configure.
+        services.AddSingleton<IPrincipalRoles, ClaimPrincipalRoles>();
         services.AddFluentCms(cms =>
         {
             UseSqlite(cms);

@@ -2,6 +2,7 @@ using System.Reflection;
 using FluentCMS.Core.ActivityLog;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Events;
+using FluentCMS.Core.Identity;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Seeding;
 using FluentCMS.Core.Settings;
@@ -33,6 +34,8 @@ public sealed class FluentCmsBuilder
     public SettingsBuilder Settings { get; } = new();
 
     public SeedingBuilder Seeding { get; }
+
+    public AdminUserOptions Users { get; } = new();
 
     internal IDataProvider? DataProvider { get; private set; }
 

@@ -1,4 +1,6 @@
+using FluentCMS.Core.Identity;
 using FluentCMS.Core.Storage.Entities;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -33,6 +35,12 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
     private const int SettingKeyLength = 64;
     private const int HashLength = 64;
     private const int VersionLength = 64;
+    private const int UserNameLength = 256;
+    private const int EmailLength = 256;
+    private const int PhoneLength = 32;
+    private const int StampLength = 64;
+    private const int ProviderLength = 128;
+    private const int ClaimTypeLength = 256;
 
     public void Apply(ModelBuilder modelBuilder)
     {
@@ -51,6 +59,12 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         modelBuilder.Entity<ContentVersion>(MapVersion);
         modelBuilder.Entity<Role>(MapRole);
         modelBuilder.Entity<RoleGrant>(MapRoleGrant);
+        modelBuilder.Entity<CmsUser>(MapUser);
+        modelBuilder.Entity<CmsUserRole>(MapUserRole);
+        modelBuilder.Entity<IdentityUserClaim<Guid>>(MapUserClaim);
+        modelBuilder.Entity<IdentityUserLogin<Guid>>(MapUserLogin);
+        modelBuilder.Entity<IdentityUserToken<Guid>>(MapUserToken);
+        modelBuilder.Entity<Invitation>(MapInvitation);
     }
 
     // For the system stream only. EF puts seed data into a context's migrations and EnsureCreated even for a table
@@ -171,6 +185,95 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         entity.HasOne<Role>().WithMany().HasForeignKey(grant => grant.RoleId).OnDelete(DeleteBehavior.Cascade);
         entity.HasIndex(grant => new { grant.RoleId, grant.Permission })
             .HasDatabaseName("ix_cms_role_permission_role_permission");
+    }
+
+    private static void MapUser(EntityTypeBuilder<CmsUser> entity)
+    {
+        entity.ToTable(StorageNames.User);
+        MapColumnNames(entity);
+        entity.Property(user => user.Id).HasValueGenerator<GuidV7ValueGenerator>();
+        entity.Property(user => user.UserName).HasMaxLength(UserNameLength);
+        entity.Property(user => user.NormalizedUserName).HasMaxLength(UserNameLength);
+        entity.Property(user => user.Email).HasMaxLength(EmailLength);
+        entity.Property(user => user.NormalizedEmail).HasMaxLength(EmailLength);
+        entity.Property(user => user.PhoneNumber).HasMaxLength(PhoneLength);
+        entity.Property(user => user.SecurityStamp).HasMaxLength(StampLength);
+        entity.Property(user => user.ConcurrencyStamp).HasMaxLength(StampLength).IsConcurrencyToken();
+
+        entity.HasIndex(user => user.NormalizedUserName)
+            .IsUnique()
+            .HasDatabaseName("uq_cms_user_normalized_user_name");
+
+        // Invitations go by email, so an address belongs to one user.
+        entity.HasIndex(user => user.NormalizedEmail)
+            .IsUnique()
+            .HasFilter("normalized_email IS NOT NULL")
+            .HasDatabaseName("uq_cms_user_normalized_email");
+    }
+
+    private static void MapUserRole(EntityTypeBuilder<CmsUserRole> entity)
+    {
+        entity.ToTable(StorageNames.UserRole);
+        MapColumnNames(entity);
+        entity.HasKey(membership => new { membership.UserId, membership.RoleId });
+
+        // A deleted role, or the site that held it, takes its members' hold on it along.
+        entity.HasOne<CmsUser>().WithMany().HasForeignKey(membership => membership.UserId).OnDelete(DeleteBehavior.Cascade);
+        entity.HasOne<Role>().WithMany().HasForeignKey(membership => membership.RoleId).OnDelete(DeleteBehavior.Cascade);
+        entity.HasIndex(membership => membership.RoleId).HasDatabaseName("ix_cms_user_role_role");
+    }
+
+    private static void MapUserClaim(EntityTypeBuilder<IdentityUserClaim<Guid>> entity)
+    {
+        entity.ToTable(StorageNames.UserClaim);
+        MapColumnNames(entity);
+        entity.HasKey(claim => claim.Id);
+        entity.Property(claim => claim.ClaimType).HasMaxLength(ClaimTypeLength);
+
+        entity.HasOne<CmsUser>().WithMany().HasForeignKey(claim => claim.UserId).OnDelete(DeleteBehavior.Cascade);
+        entity.HasIndex(claim => claim.UserId).HasDatabaseName("ix_cms_user_claim_user");
+    }
+
+    private static void MapUserLogin(EntityTypeBuilder<IdentityUserLogin<Guid>> entity)
+    {
+        entity.ToTable(StorageNames.UserLogin);
+        MapColumnNames(entity);
+        entity.HasKey(login => new { login.LoginProvider, login.ProviderKey });
+        entity.Property(login => login.LoginProvider).HasMaxLength(ProviderLength);
+        entity.Property(login => login.ProviderKey).HasMaxLength(ProviderLength);
+        entity.Property(login => login.ProviderDisplayName).HasMaxLength(ProviderLength);
+
+        entity.HasOne<CmsUser>().WithMany().HasForeignKey(login => login.UserId).OnDelete(DeleteBehavior.Cascade);
+        entity.HasIndex(login => login.UserId).HasDatabaseName("ix_cms_user_login_user");
+    }
+
+    private static void MapUserToken(EntityTypeBuilder<IdentityUserToken<Guid>> entity)
+    {
+        entity.ToTable(StorageNames.UserToken);
+        MapColumnNames(entity);
+        entity.HasKey(token => new { token.UserId, token.LoginProvider, token.Name });
+        entity.Property(token => token.LoginProvider).HasMaxLength(ProviderLength);
+        entity.Property(token => token.Name).HasMaxLength(ProviderLength);
+
+        entity.HasOne<CmsUser>().WithMany().HasForeignKey(token => token.UserId).OnDelete(DeleteBehavior.Cascade);
+    }
+
+    private void MapInvitation(EntityTypeBuilder<Invitation> entity)
+    {
+        entity.ToTable(StorageNames.Invitation);
+        MapColumnNames(entity);
+        entity.Property(invitation => invitation.Id).HasValueGenerator<GuidV7ValueGenerator>();
+        entity.Property(invitation => invitation.Email).HasMaxLength(EmailLength);
+        entity.Property(invitation => invitation.NormalizedEmail).HasMaxLength(EmailLength);
+        entity.Property(invitation => invitation.TokenHash).HasMaxLength(HashLength);
+        conventions.ConfigureJsonColumn(entity, entity.Property(invitation => invitation.RoleIds));
+
+        entity.HasIndex(invitation => invitation.TokenHash)
+            .IsUnique()
+            .HasDatabaseName("uq_cms_invitation_token_hash");
+
+        entity.HasIndex(invitation => invitation.NormalizedEmail)
+            .HasDatabaseName("ix_cms_invitation_normalized_email");
     }
 
     private void MapJob(EntityTypeBuilder<Job> entity)

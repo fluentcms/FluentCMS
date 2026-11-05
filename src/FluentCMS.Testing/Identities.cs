@@ -1,18 +1,19 @@
 using System.Security.Cryptography;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Identity;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Testing;
 
-// Users and API keys do not exist as stored identities before M2, so what a fixture can do is build the principal that the
-// M2 authentication handlers will build: the kind, the roles claim naming a role that exists in cms_role, and the scope of
-// the token or key class. It refuses a role that is not there, which production cannot reach either. When M2 lands, this
-// is the one place that calls the user manager and the key service instead.
+// A user is stored through the user manager and holds its role in cms_user_role; its principal is what the authorization
+// server will build, with the management scope and no roles claim. API keys are not stored yet, so a key's principal names
+// its role in the roles claim, as the key handler will. A role that is not there is refused, which production cannot reach either.
 internal static class Identities
 {
     private static readonly string[] BuiltInNames =
@@ -44,8 +45,17 @@ internal static class Identities
         var userName = name ?? $"{role} {id.ToString("N")[^6..]}";
         var email = $"{id:N}@test.fluentcms.local";
 
+        await using (var scope = services.CreateAsyncScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<CmsUserManager>();
+            // The display name has spaces, which a user name may not.
+            var user = new CmsUser { Id = id, UserName = email, Email = email, EmailConfirmed = true };
+            Check(await users.CreateAsync(user), userName);
+            Check(await users.AddToRoleAsync(user, stored.Id), userName);
+        }
+
         // An admin user signs in to the admin, whose tokens carry the management scope.
-        var principal = new Principal(PrincipalKind.AdminUser, id, userName, Claims(stored.Id, TokenScopes.Management));
+        var principal = new Principal(PrincipalKind.AdminUser, id, userName, new Dictionary<string, string> { [TokenScopes.Claim] = TokenScopes.Management });
         return new TestUser(id, userName, email, stored.Name, stored.Id, principal);
     }
 
@@ -58,6 +68,14 @@ internal static class Identities
 
         var principal = new Principal(PrincipalKind.ApiKey, id, keyName, Claims(stored.Id, Scope(keyClass)));
         return new TestApiKey(id, keyName, keyClass, stored.Name, stored.Id, secret, principal);
+    }
+
+    private static void Check(IdentityResult result, string userName)
+    {
+        if (!result.Succeeded)
+        {
+            throw new InvalidOperationException($"The user '{userName}' could not be stored: {string.Join("; ", result.Errors.Select(error => $"{error.Code} {error.Description}"))}");
+        }
     }
 
     private static Dictionary<string, string> Claims(Guid roleId, string scope) => new()

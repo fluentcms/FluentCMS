@@ -10,8 +10,8 @@ internal static class ContentTableReaches
 {
     private static readonly string[] Allowed = ["FluentCMS.Core.Content", "FluentCMS.Core.Storage", "FluentCMS.Data", "FluentCMS.Cli"];
 
-    // These open transactions on SystemDbContext for the job tables, and reach no content.
-    private static readonly string[] AllowedTypes = ["FluentCMS.Core.Jobs.JobStore", "FluentCMS.Core.Jobs.RecurringJobs", "FluentCMS.Core.Jobs.JobRetentionJob"];
+    // These open transactions on SystemDbContext for the job and identity tables, and reach no content.
+    private static readonly string[] AllowedTypes = ["FluentCMS.Core.Jobs.JobStore", "FluentCMS.Core.Jobs.RecurringJobs", "FluentCMS.Core.Jobs.JobRetentionJob", "FluentCMS.Core.Identity.IdentityChanges"];
 
     public static IEnumerable<string> SourceAssemblies() =>
         ProjectFile.SourceProjects.Select(project => Path.Combine(AppContext.BaseDirectory, project.Name + ".dll")).Where(File.Exists);

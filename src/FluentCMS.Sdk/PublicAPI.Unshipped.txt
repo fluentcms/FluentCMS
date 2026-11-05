@@ -621,6 +621,44 @@ FluentCMS.Events.SiteUpdatedEvent.SiteId.init -> void
 FluentCMS.Events.SiteUpdatedEvent.SiteUpdatedEvent(System.Guid SiteId, string! Slug) -> void
 FluentCMS.Events.SiteUpdatedEvent.Slug.get -> string!
 FluentCMS.Events.SiteUpdatedEvent.Slug.init -> void
+FluentCMS.Events.UserCreatedEvent
+FluentCMS.Events.UserCreatedEvent.Deconstruct(out System.Guid UserId, out string! UserName) -> void
+FluentCMS.Events.UserCreatedEvent.Equals(FluentCMS.Events.UserCreatedEvent? other) -> bool
+FluentCMS.Events.UserCreatedEvent.UserCreatedEvent(System.Guid UserId, string! UserName) -> void
+FluentCMS.Events.UserCreatedEvent.UserId.get -> System.Guid
+FluentCMS.Events.UserCreatedEvent.UserId.init -> void
+FluentCMS.Events.UserCreatedEvent.UserName.get -> string!
+FluentCMS.Events.UserCreatedEvent.UserName.init -> void
+FluentCMS.Events.UserDeactivatedEvent
+FluentCMS.Events.UserDeactivatedEvent.Deconstruct(out System.Guid UserId, out string! UserName) -> void
+FluentCMS.Events.UserDeactivatedEvent.Equals(FluentCMS.Events.UserDeactivatedEvent? other) -> bool
+FluentCMS.Events.UserDeactivatedEvent.UserDeactivatedEvent(System.Guid UserId, string! UserName) -> void
+FluentCMS.Events.UserDeactivatedEvent.UserId.get -> System.Guid
+FluentCMS.Events.UserDeactivatedEvent.UserId.init -> void
+FluentCMS.Events.UserDeactivatedEvent.UserName.get -> string!
+FluentCMS.Events.UserDeactivatedEvent.UserName.init -> void
+FluentCMS.Events.UserRoleChangedEvent
+FluentCMS.Events.UserRoleChangedEvent.Added.get -> System.Collections.Generic.IReadOnlyList<System.Guid>!
+FluentCMS.Events.UserRoleChangedEvent.Added.init -> void
+FluentCMS.Events.UserRoleChangedEvent.Deconstruct(out System.Guid UserId, out string! UserName, out System.Collections.Generic.IReadOnlyList<System.Guid>! Added, out System.Collections.Generic.IReadOnlyList<System.Guid>! Removed) -> void
+FluentCMS.Events.UserRoleChangedEvent.Equals(FluentCMS.Events.UserRoleChangedEvent? other) -> bool
+FluentCMS.Events.UserRoleChangedEvent.Removed.get -> System.Collections.Generic.IReadOnlyList<System.Guid>!
+FluentCMS.Events.UserRoleChangedEvent.Removed.init -> void
+FluentCMS.Events.UserRoleChangedEvent.UserId.get -> System.Guid
+FluentCMS.Events.UserRoleChangedEvent.UserId.init -> void
+FluentCMS.Events.UserRoleChangedEvent.UserName.get -> string!
+FluentCMS.Events.UserRoleChangedEvent.UserName.init -> void
+FluentCMS.Events.UserRoleChangedEvent.UserRoleChangedEvent(System.Guid UserId, string! UserName, System.Collections.Generic.IReadOnlyList<System.Guid>! Added, System.Collections.Generic.IReadOnlyList<System.Guid>! Removed) -> void
+FluentCMS.Events.UserUpdatedEvent
+FluentCMS.Events.UserUpdatedEvent.Changes.get -> System.Collections.Generic.IReadOnlyList<string!>!
+FluentCMS.Events.UserUpdatedEvent.Changes.init -> void
+FluentCMS.Events.UserUpdatedEvent.Deconstruct(out System.Guid UserId, out string! UserName, out System.Collections.Generic.IReadOnlyList<string!>! Changes) -> void
+FluentCMS.Events.UserUpdatedEvent.Equals(FluentCMS.Events.UserUpdatedEvent? other) -> bool
+FluentCMS.Events.UserUpdatedEvent.UserId.get -> System.Guid
+FluentCMS.Events.UserUpdatedEvent.UserId.init -> void
+FluentCMS.Events.UserUpdatedEvent.UserName.get -> string!
+FluentCMS.Events.UserUpdatedEvent.UserName.init -> void
+FluentCMS.Events.UserUpdatedEvent.UserUpdatedEvent(System.Guid UserId, string! UserName, System.Collections.Generic.IReadOnlyList<string!>! Changes) -> void
 FluentCMS.Hooks.HookContext<T>
 FluentCMS.Hooks.HookContext<T>.Cancel(string! code, string! message) -> void
 FluentCMS.Hooks.HookContext<T>.CancelCode.get -> string?
@@ -760,6 +798,21 @@ FluentCMS.Media.MediaRefList.GetEnumerator() -> System.Collections.Generic.IEnum
 FluentCMS.Media.MediaRefList.MediaRefList() -> void
 FluentCMS.Media.MediaRefList.MediaRefList(System.Collections.Generic.IEnumerable<FluentCMS.Media.MediaRef>! items) -> void
 FluentCMS.Media.MediaRefList.this[int index].get -> FluentCMS.Media.MediaRef
+FluentCMS.Providers.EmailMessage
+FluentCMS.Providers.EmailMessage.<Clone>$() -> FluentCMS.Providers.EmailMessage!
+FluentCMS.Providers.EmailMessage.Deconstruct(out string! To, out string! Subject, out string! TextBody) -> void
+FluentCMS.Providers.EmailMessage.EmailMessage(string! To, string! Subject, string! TextBody) -> void
+FluentCMS.Providers.EmailMessage.Equals(FluentCMS.Providers.EmailMessage? other) -> bool
+FluentCMS.Providers.EmailMessage.HtmlBody.get -> string?
+FluentCMS.Providers.EmailMessage.HtmlBody.init -> void
+FluentCMS.Providers.EmailMessage.Subject.get -> string!
+FluentCMS.Providers.EmailMessage.Subject.init -> void
+FluentCMS.Providers.EmailMessage.TextBody.get -> string!
+FluentCMS.Providers.EmailMessage.TextBody.init -> void
+FluentCMS.Providers.EmailMessage.To.get -> string!
+FluentCMS.Providers.EmailMessage.To.init -> void
+FluentCMS.Providers.IEmailSender
+FluentCMS.Providers.IEmailSender.SendAsync(FluentCMS.Providers.EmailMessage! message, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 FluentCMS.Publishing.EntryStatus
 FluentCMS.Publishing.EntryStatus.Draft = 0 -> FluentCMS.Publishing.EntryStatus
 FluentCMS.Publishing.EntryStatus.Modified = 2 -> FluentCMS.Publishing.EntryStatus
@@ -1439,6 +1492,22 @@ override FluentCMS.Events.SiteUpdatedEvent.<Clone>$() -> FluentCMS.Events.SiteUp
 override FluentCMS.Events.SiteUpdatedEvent.Equals(object? obj) -> bool
 override FluentCMS.Events.SiteUpdatedEvent.GetHashCode() -> int
 override FluentCMS.Events.SiteUpdatedEvent.ToString() -> string!
+override FluentCMS.Events.UserCreatedEvent.<Clone>$() -> FluentCMS.Events.UserCreatedEvent!
+override FluentCMS.Events.UserCreatedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.UserCreatedEvent.GetHashCode() -> int
+override FluentCMS.Events.UserCreatedEvent.ToString() -> string!
+override FluentCMS.Events.UserDeactivatedEvent.<Clone>$() -> FluentCMS.Events.UserDeactivatedEvent!
+override FluentCMS.Events.UserDeactivatedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.UserDeactivatedEvent.GetHashCode() -> int
+override FluentCMS.Events.UserDeactivatedEvent.ToString() -> string!
+override FluentCMS.Events.UserRoleChangedEvent.<Clone>$() -> FluentCMS.Events.UserRoleChangedEvent!
+override FluentCMS.Events.UserRoleChangedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.UserRoleChangedEvent.GetHashCode() -> int
+override FluentCMS.Events.UserRoleChangedEvent.ToString() -> string!
+override FluentCMS.Events.UserUpdatedEvent.<Clone>$() -> FluentCMS.Events.UserUpdatedEvent!
+override FluentCMS.Events.UserUpdatedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.UserUpdatedEvent.GetHashCode() -> int
+override FluentCMS.Events.UserUpdatedEvent.ToString() -> string!
 override FluentCMS.Jobs.DeadLetteredJob.Equals(object? obj) -> bool
 override FluentCMS.Jobs.DeadLetteredJob.GetHashCode() -> int
 override FluentCMS.Jobs.DeadLetteredJob.ToString() -> string!
@@ -1456,6 +1525,9 @@ override FluentCMS.Media.MediaRef.ToString() -> string!
 override FluentCMS.Media.MediaRefList.Equals(object? obj) -> bool
 override FluentCMS.Media.MediaRefList.GetHashCode() -> int
 override FluentCMS.Media.MediaRefList.ToString() -> string!
+override FluentCMS.Providers.EmailMessage.Equals(object? obj) -> bool
+override FluentCMS.Providers.EmailMessage.GetHashCode() -> int
+override FluentCMS.Providers.EmailMessage.ToString() -> string!
 override FluentCMS.Publishing.PublishResult<T>.Equals(object? obj) -> bool
 override FluentCMS.Publishing.PublishResult<T>.GetHashCode() -> int
 override FluentCMS.Publishing.PublishResult<T>.ToString() -> string!
@@ -1516,6 +1588,10 @@ override sealed FluentCMS.Events.JobFailedEvent.Equals(FluentCMS.Events.CmsEvent
 override sealed FluentCMS.Events.SettingsChangedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
 override sealed FluentCMS.Events.SiteCreatedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
 override sealed FluentCMS.Events.SiteUpdatedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+override sealed FluentCMS.Events.UserCreatedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+override sealed FluentCMS.Events.UserDeactivatedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+override sealed FluentCMS.Events.UserRoleChangedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+override sealed FluentCMS.Events.UserUpdatedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
 static FluentCMS.Activity.ActivityEntry.operator !=(FluentCMS.Activity.ActivityEntry? left, FluentCMS.Activity.ActivityEntry? right) -> bool
 static FluentCMS.Activity.ActivityEntry.operator ==(FluentCMS.Activity.ActivityEntry? left, FluentCMS.Activity.ActivityEntry? right) -> bool
 static FluentCMS.Activity.ActivityFilter.operator !=(FluentCMS.Activity.ActivityFilter? left, FluentCMS.Activity.ActivityFilter? right) -> bool
@@ -1602,6 +1678,14 @@ static FluentCMS.Events.SiteCreatedEvent.operator !=(FluentCMS.Events.SiteCreate
 static FluentCMS.Events.SiteCreatedEvent.operator ==(FluentCMS.Events.SiteCreatedEvent? left, FluentCMS.Events.SiteCreatedEvent? right) -> bool
 static FluentCMS.Events.SiteUpdatedEvent.operator !=(FluentCMS.Events.SiteUpdatedEvent? left, FluentCMS.Events.SiteUpdatedEvent? right) -> bool
 static FluentCMS.Events.SiteUpdatedEvent.operator ==(FluentCMS.Events.SiteUpdatedEvent? left, FluentCMS.Events.SiteUpdatedEvent? right) -> bool
+static FluentCMS.Events.UserCreatedEvent.operator !=(FluentCMS.Events.UserCreatedEvent? left, FluentCMS.Events.UserCreatedEvent? right) -> bool
+static FluentCMS.Events.UserCreatedEvent.operator ==(FluentCMS.Events.UserCreatedEvent? left, FluentCMS.Events.UserCreatedEvent? right) -> bool
+static FluentCMS.Events.UserDeactivatedEvent.operator !=(FluentCMS.Events.UserDeactivatedEvent? left, FluentCMS.Events.UserDeactivatedEvent? right) -> bool
+static FluentCMS.Events.UserDeactivatedEvent.operator ==(FluentCMS.Events.UserDeactivatedEvent? left, FluentCMS.Events.UserDeactivatedEvent? right) -> bool
+static FluentCMS.Events.UserRoleChangedEvent.operator !=(FluentCMS.Events.UserRoleChangedEvent? left, FluentCMS.Events.UserRoleChangedEvent? right) -> bool
+static FluentCMS.Events.UserRoleChangedEvent.operator ==(FluentCMS.Events.UserRoleChangedEvent? left, FluentCMS.Events.UserRoleChangedEvent? right) -> bool
+static FluentCMS.Events.UserUpdatedEvent.operator !=(FluentCMS.Events.UserUpdatedEvent? left, FluentCMS.Events.UserUpdatedEvent? right) -> bool
+static FluentCMS.Events.UserUpdatedEvent.operator ==(FluentCMS.Events.UserUpdatedEvent? left, FluentCMS.Events.UserUpdatedEvent? right) -> bool
 static FluentCMS.Jobs.DeadLetteredJob.operator !=(FluentCMS.Jobs.DeadLetteredJob? left, FluentCMS.Jobs.DeadLetteredJob? right) -> bool
 static FluentCMS.Jobs.DeadLetteredJob.operator ==(FluentCMS.Jobs.DeadLetteredJob? left, FluentCMS.Jobs.DeadLetteredJob? right) -> bool
 static FluentCMS.Jobs.JobActor.operator !=(FluentCMS.Jobs.JobActor? left, FluentCMS.Jobs.JobActor? right) -> bool
@@ -1616,6 +1700,8 @@ static FluentCMS.Media.MediaRef.operator ==(FluentCMS.Media.MediaRef left, Fluen
 static FluentCMS.Media.MediaRefList.Create(System.ReadOnlySpan<FluentCMS.Media.MediaRef> items) -> FluentCMS.Media.MediaRefList!
 static FluentCMS.Media.MediaRefList.operator !=(FluentCMS.Media.MediaRefList? left, FluentCMS.Media.MediaRefList? right) -> bool
 static FluentCMS.Media.MediaRefList.operator ==(FluentCMS.Media.MediaRefList? left, FluentCMS.Media.MediaRefList? right) -> bool
+static FluentCMS.Providers.EmailMessage.operator !=(FluentCMS.Providers.EmailMessage? left, FluentCMS.Providers.EmailMessage? right) -> bool
+static FluentCMS.Providers.EmailMessage.operator ==(FluentCMS.Providers.EmailMessage? left, FluentCMS.Providers.EmailMessage? right) -> bool
 static FluentCMS.Publishing.PublishResult<T>.operator !=(FluentCMS.Publishing.PublishResult<T>? left, FluentCMS.Publishing.PublishResult<T>? right) -> bool
 static FluentCMS.Publishing.PublishResult<T>.operator ==(FluentCMS.Publishing.PublishResult<T>? left, FluentCMS.Publishing.PublishResult<T>? right) -> bool
 static FluentCMS.Publishing.PublishWarning.operator !=(FluentCMS.Publishing.PublishWarning? left, FluentCMS.Publishing.PublishWarning? right) -> bool

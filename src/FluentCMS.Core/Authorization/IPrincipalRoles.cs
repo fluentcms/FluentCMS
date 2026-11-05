@@ -2,8 +2,8 @@ using FluentCMS.Content;
 
 namespace FluentCMS.Core.Authorization;
 
-// Which roles a principal holds. cms_user_role and API keys arrive in M2, which replaces the default here. The
-// anonymous principal does not come through this: it always resolves to the Public role of the site.
+// Which roles a principal holds: UserPrincipalRoles reads cms_user_role for admin users. The anonymous principal does
+// not come through this: it always resolves to the Public role of the site.
 internal interface IPrincipalRoles
 {
     ValueTask<IReadOnlyCollection<Guid>> RolesOfAsync(Principal principal, CancellationToken cancellationToken = default);
@@ -18,12 +18,13 @@ internal sealed class ClaimPrincipalRoles : IPrincipalRoles
     {
         ArgumentNullException.ThrowIfNull(principal);
 
-        var ids = (principal.Claim(Claim) ?? "")
+        return ValueTask.FromResult(FromClaim(principal));
+    }
+
+    public static IReadOnlyCollection<Guid> FromClaim(Principal principal) =>
+        (principal.Claim(Claim) ?? "")
             .Split(' ', StringSplitOptions.RemoveEmptyEntries)
             .Select(text => Guid.TryParse(text, out var id) ? id : Guid.Empty)
             .Where(id => id != Guid.Empty)
             .ToHashSet();
-
-        return ValueTask.FromResult<IReadOnlyCollection<Guid>>(ids);
-    }
 }
