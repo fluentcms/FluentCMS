@@ -84,13 +84,6 @@ public sealed class HostRegistrationTests : IAsyncDisposable
     [InlineData("FluentCms:Jobs:PollInterval", "-00:00:05", "FCMS2506")]
     [InlineData("FluentCms:Events:Outbox:BatchSize", "0", "FCMS2603")]
     [InlineData("FluentCms:Activity:PruneSchedule", "never", "FCMS2701")]
-    [InlineData("FluentCms:ReverseProxy:PathBase", "cms", "FCMS1101")]
-    [InlineData("FluentCms:ReverseProxy:PathBase", "/cms/", "FCMS1101")]
-    [InlineData("FluentCms:ReverseProxy:ForwardedHeaders:KnownProxies:0", "proxy", "FCMS1101")]
-    [InlineData("FluentCms:ReverseProxy:ForwardedHeaders:KnownNetworks:0", "10.0.0.0/33", "FCMS1101")]
-    [InlineData("FluentCms:ReverseProxy:ForwardedHeaders:ForwardLimit", "0", "FCMS1101")]
-    [InlineData("FluentCms:ReverseProxy:HttpsRedirection:Port", "0", "FCMS1101")]
-    [InlineData("FluentCms:ReverseProxy:Hsts:MaxAge", "00:00:00", "FCMS1101")]
     [InlineData("FluentCms:Security:Cors:Delivery:AllowedOrigins:0", "*", "FCMS1101")]
     [InlineData("FluentCms:Security:Cors:Management:AllowedOrigins:0", "https://*.example.com", "FCMS1101")]
     [InlineData("FluentCms:Database:SchemaSync", "7", "FCMS1304")]
@@ -105,6 +98,24 @@ public sealed class HostRegistrationTests : IAsyncDisposable
 
         exception.Code.ShouldBe(code);
         exception.Message.ShouldStartWith($"{code}: {key}");
+        File.Exists(_host.DatabaseFile).ShouldBeFalse();
+    }
+
+    // UseFluentCms reads the proxy options while the pipeline is built, so the host is refused before it starts.
+    [Theory]
+    [InlineData("FluentCms:ReverseProxy:PathBase", "cms")]
+    [InlineData("FluentCms:ReverseProxy:PathBase", "/cms/")]
+    [InlineData("FluentCms:ReverseProxy:ForwardedHeaders:KnownProxies:0", "proxy")]
+    [InlineData("FluentCms:ReverseProxy:ForwardedHeaders:KnownNetworks:0", "10.0.0.0/33")]
+    [InlineData("FluentCms:ReverseProxy:ForwardedHeaders:ForwardLimit", "0")]
+    [InlineData("FluentCms:ReverseProxy:HttpsRedirection:Port", "0")]
+    [InlineData("FluentCms:ReverseProxy:Hsts:MaxAge", "00:00:00")]
+    public void AnInvalidReverseProxyOptionRefusesTheHostAndNamesTheKey(string key, string value)
+    {
+        var exception = Should.Throw<FluentCmsConfigurationException>(() => _host.Build(Environments.Production, new Dictionary<string, string?> { [key] = value }));
+
+        exception.Code.ShouldBe("FCMS1101");
+        exception.Message.ShouldStartWith($"FCMS1101: {key}");
         File.Exists(_host.DatabaseFile).ShouldBeFalse();
     }
 
