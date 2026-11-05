@@ -8,10 +8,10 @@ public interface IDataProvider
 {
     string Name { get; }
 
-    // The default of Database:MigrateOnStartup.
+    // The default of FluentCms:Database:MigrateOnStartup.
     bool MigrateOnStartup { get; }
 
-    // Whether Database:SchemaSync may be Auto in Development.
+    // Whether FluentCms:Database:SchemaSync may be Auto in Development.
     bool SupportsSchemaSync { get; }
 
     IStorageConventions Conventions { get; }

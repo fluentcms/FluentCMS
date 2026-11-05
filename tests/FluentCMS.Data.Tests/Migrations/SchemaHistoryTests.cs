@@ -18,7 +18,7 @@ public sealed class SchemaHistoryTests : IDisposable
 {
     private const string Production = "Production";
 
-    private static readonly Dictionary<string, string?> NoMigrationOnStartup = new() { ["Database:MigrateOnStartup"] = "false" };
+    private static readonly Dictionary<string, string?> NoMigrationOnStartup = new() { ["FluentCms:Database:MigrateOnStartup"] = "false" };
 
     private readonly SqliteFileDatabase _database = new();
 

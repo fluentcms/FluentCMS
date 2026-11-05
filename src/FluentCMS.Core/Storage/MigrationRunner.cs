@@ -6,10 +6,10 @@ using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Migrations.Operations;
 using Microsoft.EntityFrameworkCore.Storage;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace FluentCMS.Core.Storage;
 
@@ -26,7 +26,7 @@ public sealed class MigrationRunner(
     SchemaModel schema,
     IEnumerable<IPluginMigrations> plugins,
     ILogger<MigrationRunner> logger,
-    IConfiguration? configuration = null,
+    IOptions<DatabaseOptions>? databaseOptions = null,
     IHostEnvironment? environment = null,
     TimeProvider? time = null)
 {
@@ -71,7 +71,7 @@ public sealed class MigrationRunner(
         await _history.CheckDriftAsync(schema, cancellationToken);
     }
 
-    // Whatever Database:MigrateOnStartup says.
+    // Whatever FluentCms:Database:MigrateOnStartup says.
     public async Task<IReadOnlyList<StreamMigration>> MigrateAsync(CancellationToken cancellationToken = default)
     {
         var applied = await ApplyAsync([.. SystemAndPlugins, Content], cancellationToken);
@@ -114,14 +114,14 @@ public sealed class MigrationRunner(
             return;
         }
 
-        // A migration that exists only needs applying, which is what Database:MigrateOnStartup = false leaves to do.
+        // A migration that exists only needs applying, which is what FluentCms:Database:MigrateOnStartup = false leaves to do.
         var pending = await context.Database.GetPendingMigrationsAsync(cancellationToken);
         var fix = pending.Any() ? "fluentcms migrate" : $"fluentcms migrations add {diff.SuggestedMigrationName}";
 
         throw new FluentCmsConfigurationException(StorageErrorCodes.MissingContentSchema, $"{string.Join("; ", diff.Missing)}; run '{fix}'");
     }
 
-    private DatabaseOptions ResolveOptions() => DatabaseOptions.Resolve(provider, configuration, environment, logger);
+    private DatabaseStartup ResolveOptions() => DatabaseStartup.Resolve(provider, databaseOptions?.Value, environment, logger);
 
     // An upgrade can bring a system migration with no content change, and the first query would then fail on a raw
     // missing relation. Content has its own check, which also looks at the database.

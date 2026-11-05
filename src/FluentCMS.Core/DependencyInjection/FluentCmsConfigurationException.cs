@@ -7,7 +7,10 @@ public sealed class FluentCmsConfigurationException : InvalidOperationException
         : base($"{code}: {message}")
     {
         Code = code;
+        Detail = message;
     }
 
     public string Code { get; }
+
+    internal string Detail { get; }
 }

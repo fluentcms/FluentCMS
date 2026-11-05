@@ -56,8 +56,8 @@ public sealed class JobRunnerOptions
     {
         foreach (var (queue, workers) in Queues)
         {
-            Require(!string.IsNullOrEmpty(queue) && queue.Length <= JobScheduler.QueueMaxLength, $"The queue name '{queue}' is not valid.");
-            Require(workers >= 0, $"Queue '{queue}' has {workers} workers.");
+            Require(!string.IsNullOrEmpty(queue) && queue.Length <= JobScheduler.QueueMaxLength, $"{nameof(Queues)} has the queue name '{queue}', which is not valid.");
+            Require(workers >= 0, $"{nameof(Queues)}:{queue} is {workers}; it must not be negative.");
         }
 
         Require(DefaultMaxAttempts >= 1, $"{nameof(DefaultMaxAttempts)} is {DefaultMaxAttempts}; it must be at least 1.");
@@ -68,7 +68,7 @@ public sealed class JobRunnerOptions
         Require(AttemptTimeout is null || IsValidAttemptTimeout(AttemptTimeout.Value), $"{nameof(AttemptTimeout)} must be positive and no longer than {LongestWait.TotalDays} days, or Timeout.InfiniteTimeSpan.");
         Require(RetryBaseDelay >= TimeSpan.Zero && RetryMaxDelay >= RetryBaseDelay, $"{nameof(RetryMaxDelay)} must be at least {nameof(RetryBaseDelay)}, which must not be negative.");
         Require(RetryJitter >= 0, $"{nameof(RetryJitter)} must not be negative.");
-        Require(ShutdownGracePeriod >= TimeSpan.Zero && ReleaseTimeout >= TimeSpan.Zero, "The shutdown periods must not be negative.");
+        Require(ShutdownGracePeriod >= TimeSpan.Zero && ReleaseTimeout >= TimeSpan.Zero, $"{nameof(ShutdownGracePeriod)} and {nameof(ReleaseTimeout)} must not be negative.");
 
         Require(SucceededRetention > TimeSpan.Zero && SucceededRetention <= LongestRetention, $"{nameof(SucceededRetention)} must be positive and no longer than {LongestRetention.TotalDays} days.");
         Require(RetentionBatchSize is >= 1 and <= MaxRetentionBatchSize, $"{nameof(RetentionBatchSize)} is {RetentionBatchSize}; it must be from 1 to {MaxRetentionBatchSize}.");
@@ -76,7 +76,7 @@ public sealed class JobRunnerOptions
 
         // Longer than a timer can wait, these would throw only when the loop first waits, or at shutdown.
         TimeSpan[] waits = [PollInterval, MaintenanceInterval, HeartbeatInterval, ShutdownGracePeriod, ReleaseTimeout];
-        Require(waits.All(wait => wait <= LongestWait), $"The intervals and shutdown periods must not be longer than {LongestWait.TotalDays} days.");
+        Require(waits.All(wait => wait <= LongestWait), $"{nameof(PollInterval)}, {nameof(MaintenanceInterval)}, {nameof(HeartbeatInterval)}, {nameof(ShutdownGracePeriod)} and {nameof(ReleaseTimeout)} must not be longer than {LongestWait.TotalDays} days.");
     }
 
     internal static bool IsValidAttemptTimeout(TimeSpan timeout) =>

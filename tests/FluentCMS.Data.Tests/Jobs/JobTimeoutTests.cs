@@ -302,7 +302,7 @@ public sealed class JobTimeoutTests : IDisposable
     [Theory]
     [InlineData(0)]
     [InlineData(-5)]
-    public async Task ANonPositiveTimeoutIsRefused(int seconds)
+    public void ANonPositiveTimeoutIsRefused(int seconds)
     {
         var timeout = TimeSpan.FromSeconds(seconds);
 
@@ -310,7 +310,7 @@ public sealed class JobTimeoutTests : IDisposable
             _fixture.NewInstance(cms: cms => cms.Jobs.AddJob<TimedJob, ProbePayload>(TimedJob.Type, timeout)));
         refused.ParamName.ShouldBe("attemptTimeout");
 
-        var runner = _fixture.NewInstance(configure: options => options.AttemptTimeout = timeout).GetRequiredService<IJobRunner>();
-        (await Should.ThrowAsync<FluentCmsConfigurationException>(() => runner.StartAsync(Token))).Code.ShouldBe("FCMS2506");
+        var services = _fixture.NewInstance(configure: options => options.AttemptTimeout = timeout);
+        Should.Throw<FluentCmsConfigurationException>(() => services.GetRequiredService<IJobRunner>()).Code.ShouldBe("FCMS2506");
     }
 }
