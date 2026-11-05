@@ -1,4 +1,5 @@
 using FluentCMS.Core.Identity;
+using FluentCMS.Core.Identity.ApiKeys;
 using FluentCMS.Core.Storage.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -41,6 +42,7 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
     private const int StampLength = 64;
     private const int ProviderLength = 128;
     private const int ClaimTypeLength = 256;
+    private const int KeyNameLength = 128;
 
     public void Apply(ModelBuilder modelBuilder)
     {
@@ -65,6 +67,7 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         modelBuilder.Entity<IdentityUserLogin<Guid>>(MapUserLogin);
         modelBuilder.Entity<IdentityUserToken<Guid>>(MapUserToken);
         modelBuilder.Entity<Invitation>(MapInvitation);
+        modelBuilder.Entity<ApiKey>(MapApiKey);
     }
 
     // For the system stream only. EF puts seed data into a context's migrations and EnsureCreated even for a table
@@ -276,6 +279,29 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         entity.HasIndex(invitation => invitation.NormalizedEmail)
             .HasDatabaseName("ix_cms_invitation_normalized_email");
     }
+
+    private void MapApiKey(EntityTypeBuilder<ApiKey> entity)
+    {
+        entity.ToTable(StorageNames.ApiKey);
+        MapColumnNames(entity);
+        entity.Property(key => key.Id).HasValueGenerator<GuidV7ValueGenerator>();
+        entity.Property(key => key.Name).HasMaxLength(KeyNameLength);
+        entity.Property(key => key.Class).HasConversion(keyClass => ApiKeyFormat.Scope(keyClass), scope => ClassOf(scope)).HasMaxLength(StatusLength);
+        entity.Property(key => key.KeyPrefix).HasMaxLength(ApiKeyFormat.LookupLength);
+        entity.Property(key => key.KeyHash).HasMaxLength(HashLength);
+        conventions.ConfigureJsonColumn(entity, entity.Property(key => key.SiteIds));
+        conventions.ConfigureJsonColumn(entity, entity.Property(key => key.TypeNames));
+
+        // A deleted role, or the site that held it, takes the keys bound to it along, as it does its users' hold on it.
+        entity.HasOne<Role>().WithMany().HasForeignKey(key => key.RoleId).OnDelete(DeleteBehavior.Cascade);
+        entity.HasIndex(key => key.RoleId).HasDatabaseName("ix_cms_api_key_role");
+
+        entity.HasIndex(key => key.KeyPrefix).HasDatabaseName("ix_cms_api_key_key_prefix");
+        entity.HasIndex(key => key.KeyHash).IsUnique().HasDatabaseName("uq_cms_api_key_key_hash");
+    }
+
+    private static ApiKeyClass ClassOf(string scope) =>
+        Enum.GetValues<ApiKeyClass>().Single(keyClass => ApiKeyFormat.Scope(keyClass) == scope);
 
     private void MapJob(EntityTypeBuilder<Job> entity)
     {

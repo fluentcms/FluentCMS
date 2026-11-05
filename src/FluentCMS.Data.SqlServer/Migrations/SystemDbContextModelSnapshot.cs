@@ -22,6 +22,93 @@ namespace FluentCMS.Data.SqlServer.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("FluentCMS.Core.Identity.ApiKeys.ApiKey", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Class")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)")
+                        .HasColumnName("class");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CreatedBy")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateTimeOffset?>("ExpiresAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("KeyHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)")
+                        .HasColumnName("key_hash");
+
+                    b.Property<string>("KeyPrefix")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)")
+                        .HasColumnName("key_prefix");
+
+                    b.Property<DateTimeOffset?>("LastUsedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("last_used_at");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)")
+                        .HasColumnName("name");
+
+                    b.Property<int?>("RateLimit")
+                        .HasColumnType("int")
+                        .HasColumnName("rate_limit");
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<Guid>("RoleId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("role_id");
+
+                    b.Property<string>("SiteIds")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("site_ids");
+
+                    b.Property<string>("TypeNames")
+                        .HasColumnType("nvarchar(max)")
+                        .HasColumnName("type_names");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("KeyHash")
+                        .IsUnique()
+                        .HasDatabaseName("uq_cms_api_key_key_hash");
+
+                    b.HasIndex("KeyPrefix")
+                        .HasDatabaseName("ix_cms_api_key_key_prefix");
+
+                    b.HasIndex("RoleId")
+                        .HasDatabaseName("ix_cms_api_key_role");
+
+                    b.ToTable("cms_api_key", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_cms_api_key_site_ids_json", "ISJSON([site_ids]) = 1");
+
+                            t.HasCheckConstraint("ck_cms_api_key_type_names_json", "ISJSON([type_names]) = 1");
+                        });
+                });
+
             modelBuilder.Entity("FluentCMS.Core.Identity.CmsUser", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1368,6 +1455,15 @@ namespace FluentCMS.Data.SqlServer.Migrations
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("cms_user_token", (string)null);
+                });
+
+            modelBuilder.Entity("FluentCMS.Core.Identity.ApiKeys.ApiKey", b =>
+                {
+                    b.HasOne("FluentCMS.Core.Storage.Entities.Role", null)
+                        .WithMany()
+                        .HasForeignKey("RoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("FluentCMS.Core.Identity.CmsUserRole", b =>
