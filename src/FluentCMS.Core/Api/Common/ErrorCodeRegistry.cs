@@ -4,6 +4,7 @@ using FluentCMS.Core.ActivityLog;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Content.Query;
+using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Events;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Jobs;
@@ -24,6 +25,11 @@ public static class ErrorCodeRegistry
 {
     public static IReadOnlyList<ErrorCodeInfo> All { get; } =
     [
+        // 11xx host, found when the host starts
+        Startup(HostErrorCodes.InvalidOption, "Invalid option"),
+        Startup(HostErrorCodes.GeneratedSigningKeyInProduction, "Generated signing key in Production"),
+        Startup(HostErrorCodes.NotRegistered, "FluentCMS not registered"),
+
         // 12xx schema, found when the host starts
         Startup(SchemaErrorCodes.DuplicateType, "Duplicate content type"),
         Startup(SchemaErrorCodes.DuplicateField, "Duplicate field"),

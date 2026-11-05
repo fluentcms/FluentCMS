@@ -34,7 +34,7 @@ public sealed class ActivityOptions
         Require(Retention > TimeSpan.Zero, $"{nameof(Retention)} must be positive.");
         foreach (var (site, retention) in SiteRetention)
         {
-            Require(retention > TimeSpan.Zero, $"The retention of the site '{site}' must be positive.");
+            Require(retention > TimeSpan.Zero, $"{nameof(SiteRetention)}:{site} must be positive.");
         }
 
         Require(PruneBatchSize is >= 1 and <= MaxPruneBatchSize, $"{nameof(PruneBatchSize)} is {PruneBatchSize}; it must be from 1 to {MaxPruneBatchSize}.");

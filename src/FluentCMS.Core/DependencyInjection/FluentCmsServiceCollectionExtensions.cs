@@ -33,6 +33,10 @@ namespace FluentCMS.Core.DependencyInjection;
 
 public static class FluentCmsServiceCollectionExtensions
 {
+    private const string JobsSection = "Jobs";
+    private const string OutboxSection = "Events:Outbox";
+    private const string ActivitySection = "Activity";
+
     public static IServiceCollection AddFluentCms(this IServiceCollection services, Action<FluentCmsBuilder> configure)
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -44,6 +48,11 @@ public static class FluentCmsServiceCollectionExtensions
         var provider = builder.DataProvider ?? throw new FluentCmsConfigurationException(
             StorageErrorCodes.NoDataProvider,
             "AddFluentCms has no data provider. Add the package for your database and call cms.UseSqlite(...), cms.UsePostgreSql(...) or cms.UseSqlServer(...) inside AddFluentCms.");
+
+        services.AddProductionStartupChecks();
+        services.AddFluentCmsOptions(DatabaseOptions.Section, StorageErrorCodes.InvalidDatabaseSetting, new DatabaseOptions());
+        services.AddFluentCmsOptions(SecurityOptions.Section, HostErrorCodes.InvalidOption, new SecurityOptions(), security => security.Validate());
+        services.AddSecurityDefaults();
 
         services.AddSingleton(provider);
         services.AddSingleton(provider.Conventions);
@@ -87,7 +96,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddSingleton<MigrationRunner>();
         services.AddHostedService<MigrationStartupService>();
 
-        services.TryAddSingleton<ContentQueryOptions>();
+        services.AddFluentCmsOptions(ContentQueryOptions.Section, HostErrorCodes.InvalidOption, new ContentQueryOptions(), query => query.Validate());
         services.TryAddSingleton<IOperationContextAccessor, OperationContextAccessor>();
         services.TryAddSingleton<EffectiveGrantCache>();
         services.AddSingleton(serviceProvider => new RowRuleRegistry(
@@ -125,7 +134,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.TryAddScoped<IContentService>(serviceProvider => serviceProvider.GetRequiredService<ContentService>());
         services.TryAddScoped(typeof(IContentService<>), typeof(TypedContentService<>));
 
-        services.AddSingleton(builder.Jobs.Options);
+        services.AddFluentCmsOptions(JobsSection, JobErrorCodes.InvalidRunnerOptions, builder.Jobs.Options, jobs => jobs.Validate());
         services.AddSingleton<JobRegistry>();
         services.AddSingleton<JobStore>();
         services.AddSingleton<JobExecutor>();
@@ -149,7 +158,7 @@ public static class FluentCmsServiceCollectionExtensions
         builder.Events.Outbox.Validate();
         builder.Jobs.Options.Queues.TryAdd(OutboxDrainJob.Queue, 1);
         builder.Jobs.AddJob<OutboxDrainJob, OutboxDrainPayload>(OutboxDrainJob.Type);
-        services.AddSingleton(builder.Events.Outbox);
+        services.AddFluentCmsOptions(OutboxSection, EventErrorCodes.InvalidOutboxOptions, builder.Events.Outbox, outbox => outbox.Validate());
         services.AddSingleton<OutboxRegistry>();
         services.AddSingleton<OutboxKick>();
         services.AddSingleton<OutboxRows>();
@@ -167,7 +176,7 @@ public static class FluentCmsServiceCollectionExtensions
 
         builder.Activity.Validate();
         builder.Jobs.AddJob<ActivityRetentionJob, ActivityRetentionPayload>(ActivityRetentionJob.Type);
-        services.AddSingleton(builder.Activity);
+        services.AddFluentCmsOptions(ActivitySection, ActivityErrorCodes.InvalidOptions, builder.Activity, activity => activity.Validate());
         services.AddScoped<ActivityLogWriter>();
         services.TryAddScoped<IActivityLog>(serviceProvider => serviceProvider.GetRequiredService<ActivityLogWriter>());
         services.TryAddScoped<IActivityQuery, ActivityQuery>();
