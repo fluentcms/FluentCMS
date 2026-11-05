@@ -61,6 +61,10 @@ internal static class ActivityEvents
             ["class"] = message.KeyClass,
         }));
         events.AddActivity<ApiKeyRevokedEvent>("api_key.revoked", message => Key("api_key.revoked", message.KeyId, message.Name, null));
+        events.AddActivity<ApiKeyExpiryChangedEvent>("api_key.expiry_changed", message => Key("api_key.expiry_changed", message.KeyId, message.Name, new Dictionary<string, string?>
+        {
+            ["expiresAt"] = message.ExpiresAt.UtcDateTime.ToString("O", CultureInfo.InvariantCulture),
+        }));
 
         events.AddActivity<CacheInvalidatedEvent>("cache.invalidated", message => new ActivityEntry("cache.invalidated")
         {

@@ -11,4 +11,6 @@ internal static class ApiKeyErrorCodes
     public const string InvalidKey = "FCMS3016";
     public const string Expired = "FCMS3017";
     public const string Revoked = "FCMS3018";
+    public const string SeveralCredentials = "FCMS3019";
+    public const string EmptyBinding = "FCMS3020";
 }

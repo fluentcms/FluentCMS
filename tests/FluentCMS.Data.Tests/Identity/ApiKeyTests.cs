@@ -110,6 +110,19 @@ public sealed class ApiKeyTests : IDisposable
     }
 
     [Fact]
+    public async Task AnEmptyListOfSitesOrTypesIsRefusedRatherThanReadAsEvery()
+    {
+        var exception = await Should.ThrowAsync<ValidationException>(() => CreateAsync(new ApiKeyRequest("empty", ApiKeyClass.Management, BuiltInRoles.Editor)
+        {
+            SiteIds = [],
+            TypeNames = [],
+        }));
+
+        exception.Errors.Select(error => (error.Path, error.Code)).ShouldBe([("siteIds", ApiKeyErrorCodes.EmptyBinding), ("typeNames", ApiKeyErrorCodes.EmptyBinding)], ignoreOrder: true);
+        _fixture.Read(context => context.Set<ApiKey>().Count()).ShouldBe(0);
+    }
+
+    [Fact]
     public async Task TheHandlerAcceptsBothHeaderFormsAndSetsTheClaimsOfTheContract()
     {
         var created = await CreateAsync(new ApiKeyRequest("Site A articles", ApiKeyClass.Management, BuiltInRoles.Editor)
@@ -307,9 +320,14 @@ public sealed class ApiKeyTests : IDisposable
     }
 
     [Fact]
-    public async Task CreatingAndRevokingAKeyAreEventsAndActivityRowsWithoutTheSecretOrItsHash()
+    public async Task CreatingExpiringAndRevokingAKeyAreEventsAndActivityRowsWithoutTheSecretOrItsHash()
     {
         var created = await CreateAsync(ApiKeyClass.Preview);
+        await _fixture.WithAsync(async services =>
+        {
+            await services.GetRequiredService<ApiKeyService>().ExpireAsync(created.Key.Id, IdentityFixture.Start.AddDays(2), Token);
+            return true;
+        });
         (await RevokeAsync(created.Key.Id)).ShouldBeTrue();
         (await RevokeAsync(created.Key.Id)).ShouldBeFalse();
         var hash = Row(created.Key.Id).KeyHash;
@@ -318,7 +336,8 @@ public sealed class ApiKeyTests : IDisposable
         await _fixture.WithAsync(services => services.GetRequiredService<OutboxDrainer>().DrainAsync(Token));
         var rows = _fixture.ActivityRows();
 
-        rows.Select(row => row.Action).ShouldBe(["api_key.created", "api_key.revoked"], ignoreOrder: true);
+        rows.Select(row => row.Action).ShouldBe(["api_key.created", "api_key.expiry_changed", "api_key.revoked"], ignoreOrder: true);
+        rows.Single(row => row.Action == "api_key.expiry_changed").Details.ShouldNotBeNull().ShouldContain("2027-03-03T08:00:00");
         var revoked = rows.Single(row => row.Action == "api_key.revoked");
         revoked.TargetType.ShouldBe("api_key");
         revoked.TargetId.ShouldBe(created.Key.Id.ToString("D"));

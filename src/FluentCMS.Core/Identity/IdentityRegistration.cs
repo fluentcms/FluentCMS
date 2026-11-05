@@ -19,7 +19,8 @@ internal static class IdentityRegistration
 
         // The sign-in manager reads the schemes; the authorization server adds its own beside the API key's.
         services.AddAuthentication()
-            .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(ApiKeyAuthentication.Scheme, configureOptions: null);
+            .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(ApiKeyAuthentication.Scheme, configureOptions: null)
+            .AddScheme<AuthenticationSchemeOptions, FluentCmsAuthenticationHandler>(FluentCmsAuthentication.Scheme, configureOptions: null);
         services.AddOptions<IdentityOptions>().Configure<AdminUserOptions>((identity, users) => users.Apply(identity));
         services.AddIdentityCore<CmsUser>()
             .AddUserStore<CmsUserStore>()

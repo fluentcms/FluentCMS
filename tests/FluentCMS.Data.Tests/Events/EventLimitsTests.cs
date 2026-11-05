@@ -364,6 +364,10 @@ public sealed class EventLimitsTests
     [InlineData("api_key=abc&other=1", "api_key=***&other=1")]
     [InlineData("{\"clientSecret\":\"abc\",\"name\":\"n\"}", "{\"clientSecret\":***,\"name\":\"n\"}")]
     [InlineData("Authorization: Bearer abcdefghijkl", "Authorization: *** ***")]
+    [InlineData("Authorization: ApiKey fcms_mk_AbCdEfGh-IjKl_MnOp", "Authorization: *** ***")]
+    [InlineData("request failed with ApiKey fcms_dk_AbCdEfGh-IjKl_MnOp", "request failed with ApiKey ***")]
+    [InlineData("key fcms_pk_AbCdEfGh-IjKl_MnOp was refused", "key fcms_pk_*** was refused")]
+    [InlineData("X-Api-Key: fcms_mk_AbCdEfGh-IjKl_MnOp", "X-Api-Key: ***")]
     [InlineData("nothing to hide here", "nothing to hide here")]
     public void AUrlIsReducedToItsHostAndTheValueOfASecretKeyIsMasked(string text, string expected) =>
         SecretScrubber.Of(text).ShouldBe(expected);

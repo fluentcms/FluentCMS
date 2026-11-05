@@ -163,6 +163,8 @@ public static class ErrorCodeRegistry
         new(ApiKeyErrorCodes.InvalidKey, StatusCodes.Status401Unauthorized, "API key not valid"),
         new(ApiKeyErrorCodes.Expired, StatusCodes.Status401Unauthorized, "API key expired"),
         new(ApiKeyErrorCodes.Revoked, StatusCodes.Status401Unauthorized, "API key revoked"),
+        new(ApiKeyErrorCodes.SeveralCredentials, StatusCodes.Status401Unauthorized, "Several credentials"),
+        Invalid(ApiKeyErrorCodes.EmptyBinding, "Empty API key binding"),
 
         // 31xx HTTP
         new(ApiErrorCodes.BadRequest, StatusCodes.Status400BadRequest, "Bad request"),

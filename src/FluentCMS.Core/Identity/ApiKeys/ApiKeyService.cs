@@ -8,7 +8,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FluentCMS.Core.Identity.ApiKeys;
 
-// An empty list of sites or types is no binding, the same as none.
+// Null sites or types is no binding. An empty list is refused rather than read as either: a client that sends [] may mean
+// no site at all, and getting every site instead would widen the key.
 internal sealed record ApiKeyRequest(string Name, ApiKeyClass Class, Guid RoleId)
 {
     public IReadOnlyCollection<Guid>? SiteIds { get; init; }
@@ -71,8 +72,8 @@ internal sealed class ApiKeyService(
 
         var now = time.GetUtcNow();
         var name = (request.Name ?? "").Trim();
-        List<Guid>? sites = request.SiteIds is { Count: > 0 } siteIds ? [.. siteIds.Distinct()] : null;
-        List<string>? types = request.TypeNames is { Count: > 0 } typeNames ? [.. typeNames.Distinct(StringComparer.Ordinal)] : null;
+        List<Guid>? sites = request.SiteIds is { } siteIds ? [.. siteIds.Distinct()] : null;
+        List<string>? types = request.TypeNames is { } typeNames ? [.. typeNames.Distinct(StringComparer.Ordinal)] : null;
 
         List<ValidationError> errors = [];
         if (name.Length == 0 || name.Length > NameLength)
@@ -85,12 +86,20 @@ internal sealed class ApiKeyService(
             errors.Add(new ValidationError("roleId", IdentityErrorCodes.UnknownRole, "A key is bound to a role that exists."));
         }
 
-        if (sites is not null && await context.Set<Site>().CountAsync(site => sites.Contains(site.Id), cancellationToken) != sites.Count)
+        if (sites is { Count: 0 })
+        {
+            errors.Add(new ValidationError("siteIds", ApiKeyErrorCodes.EmptyBinding, "A key is bound to at least one site, or to none by leaving siteIds out."));
+        }
+        else if (sites is not null && await context.Set<Site>().CountAsync(site => sites.Contains(site.Id), cancellationToken) != sites.Count)
         {
             errors.Add(new ValidationError("siteIds", ApiKeyErrorCodes.UnknownSite, "A key is bound only to sites that exist."));
         }
 
-        if (types?.FirstOrDefault(type => schema.FindContentType(type) is null) is { } unknown)
+        if (types is { Count: 0 })
+        {
+            errors.Add(new ValidationError("typeNames", ApiKeyErrorCodes.EmptyBinding, "A key is bound to at least one type, or to none by leaving typeNames out."));
+        }
+        else if (types?.FirstOrDefault(type => schema.FindContentType(type) is null) is { } unknown)
         {
             errors.Add(new ValidationError("typeNames", ApiKeyErrorCodes.UnknownType, $"There is no content type '{unknown}'."));
         }
@@ -169,17 +178,26 @@ internal sealed class ApiKeyService(
             cancellationToken);
 
     // Brings the expiry forward, to now when no time is given. A key's life is never made longer, since that would need the
-    // same decision as a new key.
+    // same decision as a new key. The rule is in the update, so two changes at once cannot extend it between them.
     public async Task ExpireAsync(Guid id, DateTimeOffset? at = null, CancellationToken cancellationToken = default)
     {
-        var key = await StoredAsync(id, cancellationToken);
         var expires = at ?? time.GetUtcNow();
-        if (key.ExpiresAt is { } current && expires > current)
-        {
-            throw new ValidationException([new ValidationError("expiresAt", ApiKeyErrorCodes.InvalidExpiry, "A key's expiry is only brought forward.")]);
-        }
+        await changes.RunAsync(
+            async () =>
+            {
+                var key = await StoredAsync(id, cancellationToken);
+                var changed = await context.Set<ApiKey>()
+                    .Where(row => row.Id == id && (row.ExpiresAt == null || row.ExpiresAt >= expires))
+                    .ExecuteUpdateAsync(setters => setters.SetProperty(row => row.ExpiresAt, expires), cancellationToken);
+                if (changed == 0)
+                {
+                    throw new ValidationException([new ValidationError("expiresAt", ApiKeyErrorCodes.InvalidExpiry, "A key's expiry is only brought forward.")]);
+                }
 
-        await context.Set<ApiKey>().Where(row => row.Id == id).ExecuteUpdateAsync(setters => setters.SetProperty(row => row.ExpiresAt, expires), cancellationToken);
+                await changes.RaiseAsync(new ApiKeyExpiryChangedEvent(key.Id, key.Name, expires), cancellationToken);
+                return true;
+            },
+            cancellationToken);
     }
 
     // For the authentication handler. The prefix finds the candidates, and the hash of the presented key is compared in
