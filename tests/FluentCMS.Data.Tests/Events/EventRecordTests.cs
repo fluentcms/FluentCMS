@@ -75,6 +75,8 @@ public sealed class EventRecordTests
 
         names.ShouldBe(
         [
+            "ApiKeyCreatedEvent",
+            "ApiKeyRevokedEvent",
             "CacheInvalidatedEvent",
             "EntryDraftDiscardedEvent",
             "EntryDraftSavedEvent",

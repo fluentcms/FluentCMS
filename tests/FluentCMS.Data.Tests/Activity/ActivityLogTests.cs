@@ -50,6 +50,8 @@ public sealed class ActivityLogTests
         new UserUpdatedEvent(Entry, "ann", ["email"]),
         new UserDeactivatedEvent(Entry, "ann"),
         new UserRoleChangedEvent(Entry, "ann", [Job], []),
+        new ApiKeyCreatedEvent(Entry, "site key", "delivery"),
+        new ApiKeyRevokedEvent(Entry, "site key"),
         new CacheInvalidatedEvent(["article:1", "article:2"]),
         new JobFailedEvent(Job, "events.outbox.drain", "outbox", 1, 3, "boom"),
         new JobDeadLetteredEvent(Job, "events.outbox.drain", "outbox", 3, "boom"),

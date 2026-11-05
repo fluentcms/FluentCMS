@@ -6,6 +6,7 @@ using FluentCMS.Core.Content.Hooks;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.Content.Validation;
 using FluentCMS.Core.Events;
+using FluentCMS.Core.Identity.ApiKeys;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Localization;
 using FluentCMS.Core.Schema.FieldTypes;
@@ -47,6 +48,7 @@ internal sealed partial class ContentService(
     EventBuffer events,
     ScheduleStore schedules,
     JobFactory jobs,
+    ApiKeyPrincipals keys,
     TimeProvider time,
     ILogger<ContentService> logger) : IContentService
 {

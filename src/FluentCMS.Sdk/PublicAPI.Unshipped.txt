@@ -439,6 +439,24 @@ FluentCMS.Content.VersionConflictException.Current.get -> FluentCMS.Content.Cont
 FluentCMS.Content.VersionConflictException.CurrentVersion.get -> int
 FluentCMS.Content.VersionConflictException.ExpectedVersion.get -> int
 FluentCMS.Content.VersionConflictException.VersionConflictException(int expectedVersion, int currentVersion, FluentCMS.Content.ContentDocument? current) -> void
+FluentCMS.Events.ApiKeyCreatedEvent
+FluentCMS.Events.ApiKeyCreatedEvent.ApiKeyCreatedEvent(System.Guid KeyId, string! Name, string! KeyClass) -> void
+FluentCMS.Events.ApiKeyCreatedEvent.Deconstruct(out System.Guid KeyId, out string! Name, out string! KeyClass) -> void
+FluentCMS.Events.ApiKeyCreatedEvent.Equals(FluentCMS.Events.ApiKeyCreatedEvent? other) -> bool
+FluentCMS.Events.ApiKeyCreatedEvent.KeyClass.get -> string!
+FluentCMS.Events.ApiKeyCreatedEvent.KeyClass.init -> void
+FluentCMS.Events.ApiKeyCreatedEvent.KeyId.get -> System.Guid
+FluentCMS.Events.ApiKeyCreatedEvent.KeyId.init -> void
+FluentCMS.Events.ApiKeyCreatedEvent.Name.get -> string!
+FluentCMS.Events.ApiKeyCreatedEvent.Name.init -> void
+FluentCMS.Events.ApiKeyRevokedEvent
+FluentCMS.Events.ApiKeyRevokedEvent.ApiKeyRevokedEvent(System.Guid KeyId, string! Name) -> void
+FluentCMS.Events.ApiKeyRevokedEvent.Deconstruct(out System.Guid KeyId, out string! Name) -> void
+FluentCMS.Events.ApiKeyRevokedEvent.Equals(FluentCMS.Events.ApiKeyRevokedEvent? other) -> bool
+FluentCMS.Events.ApiKeyRevokedEvent.KeyId.get -> System.Guid
+FluentCMS.Events.ApiKeyRevokedEvent.KeyId.init -> void
+FluentCMS.Events.ApiKeyRevokedEvent.Name.get -> string!
+FluentCMS.Events.ApiKeyRevokedEvent.Name.init -> void
 FluentCMS.Events.CacheInvalidatedEvent
 FluentCMS.Events.CacheInvalidatedEvent.CacheInvalidatedEvent(System.Collections.Generic.IReadOnlyList<string!>! Tags) -> void
 FluentCMS.Events.CacheInvalidatedEvent.Deconstruct(out System.Collections.Generic.IReadOnlyList<string!>! Tags) -> void
@@ -1421,6 +1439,14 @@ override FluentCMS.Content.SortField.ToString() -> string!
 override FluentCMS.Content.ValidationError.Equals(object? obj) -> bool
 override FluentCMS.Content.ValidationError.GetHashCode() -> int
 override FluentCMS.Content.ValidationError.ToString() -> string!
+override FluentCMS.Events.ApiKeyCreatedEvent.<Clone>$() -> FluentCMS.Events.ApiKeyCreatedEvent!
+override FluentCMS.Events.ApiKeyCreatedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.ApiKeyCreatedEvent.GetHashCode() -> int
+override FluentCMS.Events.ApiKeyCreatedEvent.ToString() -> string!
+override FluentCMS.Events.ApiKeyRevokedEvent.<Clone>$() -> FluentCMS.Events.ApiKeyRevokedEvent!
+override FluentCMS.Events.ApiKeyRevokedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.ApiKeyRevokedEvent.GetHashCode() -> int
+override FluentCMS.Events.ApiKeyRevokedEvent.ToString() -> string!
 override FluentCMS.Events.CacheInvalidatedEvent.<Clone>$() -> FluentCMS.Events.CacheInvalidatedEvent!
 override FluentCMS.Events.CacheInvalidatedEvent.Equals(object? obj) -> bool
 override FluentCMS.Events.CacheInvalidatedEvent.GetHashCode() -> int
@@ -1581,6 +1607,8 @@ override sealed FluentCMS.Content.And.Equals(FluentCMS.Content.ContentFilter? ot
 override sealed FluentCMS.Content.FieldFilter.Equals(FluentCMS.Content.ContentFilter? other) -> bool
 override sealed FluentCMS.Content.Not.Equals(FluentCMS.Content.ContentFilter? other) -> bool
 override sealed FluentCMS.Content.Or.Equals(FluentCMS.Content.ContentFilter? other) -> bool
+override sealed FluentCMS.Events.ApiKeyCreatedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+override sealed FluentCMS.Events.ApiKeyRevokedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
 override sealed FluentCMS.Events.CacheInvalidatedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
 override sealed FluentCMS.Events.EntryDraftDiscardedEvent.Equals(FluentCMS.Events.EntryEvent? other) -> bool
 override sealed FluentCMS.Events.EntryDraftSavedEvent.Equals(FluentCMS.Events.EntryEvent? other) -> bool
@@ -1644,6 +1672,10 @@ static FluentCMS.Content.SystemOperation.Begin(FluentCMS.Content.IOperationConte
 static FluentCMS.Content.ValidationError.operator !=(FluentCMS.Content.ValidationError? left, FluentCMS.Content.ValidationError? right) -> bool
 static FluentCMS.Content.ValidationError.operator ==(FluentCMS.Content.ValidationError? left, FluentCMS.Content.ValidationError? right) -> bool
 static FluentCMS.Content.ValidationResult.Success.get -> FluentCMS.Content.ValidationResult!
+static FluentCMS.Events.ApiKeyCreatedEvent.operator !=(FluentCMS.Events.ApiKeyCreatedEvent? left, FluentCMS.Events.ApiKeyCreatedEvent? right) -> bool
+static FluentCMS.Events.ApiKeyCreatedEvent.operator ==(FluentCMS.Events.ApiKeyCreatedEvent? left, FluentCMS.Events.ApiKeyCreatedEvent? right) -> bool
+static FluentCMS.Events.ApiKeyRevokedEvent.operator !=(FluentCMS.Events.ApiKeyRevokedEvent? left, FluentCMS.Events.ApiKeyRevokedEvent? right) -> bool
+static FluentCMS.Events.ApiKeyRevokedEvent.operator ==(FluentCMS.Events.ApiKeyRevokedEvent? left, FluentCMS.Events.ApiKeyRevokedEvent? right) -> bool
 static FluentCMS.Events.CacheInvalidatedEvent.operator !=(FluentCMS.Events.CacheInvalidatedEvent? left, FluentCMS.Events.CacheInvalidatedEvent? right) -> bool
 static FluentCMS.Events.CacheInvalidatedEvent.operator ==(FluentCMS.Events.CacheInvalidatedEvent? left, FluentCMS.Events.CacheInvalidatedEvent? right) -> bool
 static FluentCMS.Events.CmsEvent.operator !=(FluentCMS.Events.CmsEvent? left, FluentCMS.Events.CmsEvent? right) -> bool

@@ -37,12 +37,15 @@ internal sealed record EffectiveGrant(string Pattern, PermissionConstraints Cons
 // The answers of spec 2.3 for one principal: the union of its roles' grants, narrowed by its token's scopes. Scopes
 // only remove: nothing here allows what no grant does. Without a scope claim a principal has no scopes, so a token
 // that lost its scopes can read published content and nothing more. Site and locale limits are applied before the
-// union, so they stay tied to their grant.
+// union, so they stay tied to their grant. A principal bound to sites or types, as an API key may be, is held to them
+// on top of everything else.
 internal sealed class EffectivePermissions(OperationContext context, IReadOnlyList<EffectiveGrant> grants, RowRuleRegistry rules)
 {
     private readonly HashSet<string> _scopes = (context.Principal.Claim(TokenScopes.Claim) ?? "")
         .Split(' ', StringSplitOptions.RemoveEmptyEntries)
         .ToHashSet(StringComparer.Ordinal);
+
+    private readonly PrincipalBinding _binding = PrincipalBinding.Of(context.Principal);
 
     public bool IsSystem => context.Principal.IsSystem;
 
@@ -56,7 +59,7 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
     {
         ArgumentNullException.ThrowIfNull(permission);
 
-        return IsSystem || (ScopeAllows(permission) && grants.Any(grant => grant.Applies(permission, target)));
+        return IsSystem || (Permits(permission, target) && grants.Any(grant => grant.Applies(permission, target)));
     }
 
     public bool Allows(SchemaType type, ContentOperation operation, AccessTarget target) =>
@@ -72,13 +75,13 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
     public IReadOnlyList<EffectiveGrant> GrantsOf(SchemaType type, ContentOperation operation, AccessTarget target)
     {
         var permission = CorePermissions.Content(type.Name, operation);
-        return ScopeAllows(permission) ? [.. Applying(type, operation, permission, target)] : [];
+        return Permits(permission, target) ? [.. Applying(type, operation, permission, target)] : [];
     }
 
     private IEnumerable<EffectiveGrant> Applying(SchemaType type, ContentOperation operation, string permission, AccessTarget target)
     {
         var writesEverySite = type.Scope == ContentScope.Global && operation != ContentOperation.Read;
-        return grants.Where(grant => grant.Applies(permission, target) && (!writesEverySite || grant.IsInstanceWide));
+        return grants.Where(grant => grant.Applies(permission, target) && (!writesEverySite || (grant.IsInstanceWide && _binding.Sites is null)));
     }
 
     // The locales a read reaches with no row rule to ask, or null when such a grant has no locale limit. A relation's target
@@ -93,7 +96,7 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
 
         HashSet<string> locales = new(StringComparer.OrdinalIgnoreCase);
         var permission = CorePermissions.Content(type.Name, ContentOperation.Read);
-        if (ScopeAllows(permission))
+        if (Permits(permission, target))
         {
             foreach (var grant in grants.Where(grant => grant.Constraints.RowRule is null && grant.AppliesInSomeLocale(permission, target)))
             {
@@ -185,7 +188,7 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
         }
 
         var permission = CorePermissions.Content(type.Name, operation);
-        if (!ScopeAllows(permission))
+        if (!Permits(permission, target))
         {
             return RowRule.NoRows;
         }
@@ -221,6 +224,8 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
     // One rule for this operation, or null when it can match no row.
     public ContentFilter? RuleFilter(string name, SchemaType type) =>
         rules.Find(name, type.Name)?.For(context) is { } filter && !ReferenceEquals(filter, RowRule.NoRows) ? filter : null;
+
+    private bool Permits(string permission, AccessTarget target) => ScopeAllows(permission) && _binding.Allows(permission, target);
 
     private bool ScopeAllows(string permission) => CanManage || IsContentRead(permission);
 

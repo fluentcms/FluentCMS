@@ -323,10 +323,12 @@ public sealed class UserStoreTests : IDisposable
         var user = await _fixture.CreateUserAsync("ann", Password, BuiltInRoles.Author);
         var claiming = new FluentCMS.Content.Principal(FluentCMS.Content.PrincipalKind.AdminUser, user.Id, "ann", new Dictionary<string, string> { [ClaimPrincipalRoles.Claim] = BuiltInRoles.SuperAdmin.ToString() });
         var key = new FluentCMS.Content.Principal(FluentCMS.Content.PrincipalKind.ApiKey, Guid.CreateVersion7(), "key", new Dictionary<string, string> { [ClaimPrincipalRoles.Claim] = BuiltInRoles.Editor.ToString() });
+        var service = new FluentCMS.Content.Principal(FluentCMS.Content.PrincipalKind.ServiceAccount, Guid.CreateVersion7(), "ci", new Dictionary<string, string> { [ClaimPrincipalRoles.Claim] = BuiltInRoles.Editor.ToString() });
 
         (await _fixture.RolesOfAsync(claiming)).ShouldBe([BuiltInRoles.Author]);
         (await _fixture.RolesOfAsync(PrincipalOf(new CmsUser { UserName = "nobody" }))).ShouldBeEmpty();
-        (await _fixture.RolesOfAsync(key)).ShouldBe([BuiltInRoles.Editor]);
+        (await _fixture.RolesOfAsync(key)).ShouldBeEmpty();
+        (await _fixture.RolesOfAsync(service)).ShouldBe([BuiltInRoles.Editor]);
     }
 
     [Fact]

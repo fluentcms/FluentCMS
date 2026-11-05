@@ -56,6 +56,12 @@ internal static class ActivityEvents
             ["removed"] = string.Join(',', message.Removed.Select(id => id.ToString("D"))),
         }));
 
+        events.AddActivity<ApiKeyCreatedEvent>("api_key.created", message => Key("api_key.created", message.KeyId, message.Name, new Dictionary<string, string?>
+        {
+            ["class"] = message.KeyClass,
+        }));
+        events.AddActivity<ApiKeyRevokedEvent>("api_key.revoked", message => Key("api_key.revoked", message.KeyId, message.Name, null));
+
         events.AddActivity<CacheInvalidatedEvent>("cache.invalidated", message => new ActivityEntry("cache.invalidated")
         {
             Details = new Dictionary<string, string?>
@@ -120,6 +126,15 @@ internal static class ActivityEvents
             TargetType = "user",
             TargetId = userId.ToString("D"),
             TargetLabel = userName,
+            Details = details,
+        };
+
+    private static ActivityEntry Key(string action, Guid keyId, string name, Dictionary<string, string?>? details) =>
+        new(action)
+        {
+            TargetType = "api_key",
+            TargetId = keyId.ToString("D"),
+            TargetLabel = name,
             Details = details,
         };
 
