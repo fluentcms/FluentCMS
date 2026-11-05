@@ -10,6 +10,7 @@ using FluentCMS.Core.Content.Hooks;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.Content.Validation;
 using FluentCMS.Core.Events;
+using FluentCMS.Core.Identity;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Localization;
 using FluentCMS.Core.ProseMirror;
@@ -97,13 +98,13 @@ public static class FluentCmsServiceCollectionExtensions
 
         services.AddFluentCmsOptions(ContentQueryOptions.Section, HostErrorCodes.InvalidOption, new ContentQueryOptions(), query => query.Validate());
         services.TryAddSingleton<IOperationContextAccessor, OperationContextAccessor>();
-        services.TryAddSingleton<IPrincipalRoles, ClaimPrincipalRoles>();
         services.TryAddSingleton<EffectiveGrantCache>();
         services.AddSingleton(serviceProvider => new RowRuleRegistry(
             serviceProvider.GetRequiredService<SchemaModel>(),
             serviceProvider.GetRequiredService<ContentQueryOptions>(),
             builder.Authorization.Rules));
         services.AddHostedService<RowRuleStartupCheck>();
+        IdentityRegistration.Add(services, builder.Users);
         services.TryAddScoped<IAuthorizationEvaluator, AuthorizationEvaluator>();
         services.TryAddScoped<IContentQueryAccess, ContentQueryAccess>();
         services.AddScoped<ContentQueryEngine>();

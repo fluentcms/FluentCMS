@@ -44,7 +44,8 @@ public sealed class ScheduleRow
 
     public DateTimeOffset CreatedAt { get; set; }
 
-    // JSON object of the claims the scheduling principal held, which is what its roles, scopes and row rules read. Null when
+    // JSON object of the claims the scheduling principal held, which is what its scopes and row rules read, and the roles
+    // of a principal that is not a stored user; an admin user's roles come from cms_user_role when the job runs. Null when
     // the system principal scheduled it, which has nothing to check again.
     public string? Claims { get; set; }
 

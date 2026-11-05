@@ -23,6 +23,12 @@ internal static class StorageNames
     public const string Schedule = "cms_schedule";
     public const string Setting = "cms_setting";
     public const string SchemaHistory = "cms_schema_history";
+    public const string User = "cms_user";
+    public const string UserRole = "cms_user_role";
+    public const string UserClaim = "cms_user_claim";
+    public const string UserLogin = "cms_user_login";
+    public const string UserToken = "cms_user_token";
+    public const string Invitation = "cms_invitation";
 
     public const string Id = "id";
     public const string DocumentId = "document_id";

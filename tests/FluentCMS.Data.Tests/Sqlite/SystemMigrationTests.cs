@@ -46,11 +46,11 @@ public sealed class SystemMigrationTests : IDisposable
         using var scope = services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
 
-        context.Database.GetPendingMigrations().Count().ShouldBe(10);
+        context.Database.GetPendingMigrations().Count().ShouldBe(11);
         context.Database.Migrate();
 
-        Tables(context).ShouldBe(["__EFMigrationsLock", "cms__migrations", "cms_activity", "cms_document", "cms_job", "cms_job_attempt", "cms_outbox", "cms_recurring_job", "cms_reference", "cms_role", "cms_role_permission", "cms_schedule", "cms_schema_history", "cms_setting", "cms_site", "cms_site_locale", "cms_version"], ignoreOrder: true);
-        Count(context, SystemDbContext.HistoryTable).ShouldBe(10);
+        Tables(context).ShouldBe(["__EFMigrationsLock", "cms__migrations", "cms_activity", "cms_document", "cms_invitation", "cms_job", "cms_job_attempt", "cms_outbox", "cms_recurring_job", "cms_reference", "cms_role", "cms_role_permission", "cms_schedule", "cms_schema_history", "cms_setting", "cms_site", "cms_site_locale", "cms_user", "cms_user_claim", "cms_user_login", "cms_user_role", "cms_user_token", "cms_version"], ignoreOrder: true);
+        Count(context, SystemDbContext.HistoryTable).ShouldBe(11);
         context.Database.GetPendingMigrations().ShouldBeEmpty();
     }
 
@@ -70,7 +70,7 @@ public sealed class SystemMigrationTests : IDisposable
         using var scope = services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
 
-        context.Model.GetEntityTypes().Select(type => type.GetTableName()).ShouldBe(["cms_activity", "cms_document", "cms_job", "cms_job_attempt", "cms_outbox", "cms_recurring_job", "cms_reference", "cms_role", "cms_role_permission", "cms_schedule", "cms_schema_history", "cms_setting", "cms_site", "cms_site_locale", "cms_version"], ignoreOrder: true);
+        context.Model.GetEntityTypes().Select(type => type.GetTableName()).ShouldBe(["cms_activity", "cms_document", "cms_invitation", "cms_job", "cms_job_attempt", "cms_outbox", "cms_recurring_job", "cms_reference", "cms_role", "cms_role_permission", "cms_schedule", "cms_schema_history", "cms_setting", "cms_site", "cms_site_locale", "cms_user", "cms_user_claim", "cms_user_login", "cms_user_role", "cms_user_token", "cms_version"], ignoreOrder: true);
     }
 
     [Fact]

@@ -213,8 +213,9 @@ internal sealed partial class ContentService
         return ScheduleOutcome.Executed;
     }
 
-    // The principal that scheduled it, as it is now: the roles it had are read again for the grants they carry today, so
-    // a role that has lost the permission, or been deleted, no longer lets the schedule through. The system principal then
+    // The principal that scheduled it, as it is now: an admin user's roles are read from cms_user_role, and every role's
+    // grants as they are today, so a user that lost the role or was deactivated, and a role that lost the permission or
+    // was deleted, no longer let the schedule through. The system principal then
     // publishes, and sees every reference target, so a publish is first held to what this principal can see.
     private async Task CheckSchedulerAsync(OperationContext operation, ScheduleRow row, SchemaType type, ScheduleAction action, string? locale, CancellationToken cancellationToken)
     {
@@ -291,7 +292,8 @@ internal sealed partial class ContentService
 
     private static string ActionName(ScheduleAction action) => action == ScheduleAction.Publish ? ScheduleRow.Publish : ScheduleRow.Unpublish;
 
-    // The claims are what roles, scopes and row rules read of a principal. The roles in them are only where the grants are looked up from.
+    // The claims are what scopes and row rules read of a principal when the job checks it again. An admin user's roles are
+    // read from cms_user_role as they are then, so a roles claim in them counts only for a principal that is not a stored user.
     private static string? ClaimsOf(OperationContext operation) =>
         operation.Principal.IsSystem ? null : JsonSerializer.Serialize(operation.Principal.Claims);
 
