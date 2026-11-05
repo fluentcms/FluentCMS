@@ -1,4 +1,5 @@
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Providers;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,12 +13,12 @@ internal static class IdentityRegistration
 {
     public static void Add(IServiceCollection services, AdminUserOptions options)
     {
-        options.Validate();
-        services.AddSingleton(options);
+        services.AddFluentCmsOptions(AdminUserOptions.Section, IdentityErrorCodes.InvalidOptions, options, users => users.Validate());
 
         // The sign-in manager reads the schemes; the authorization server adds them.
         services.AddAuthentication();
-        services.AddIdentityCore<CmsUser>(options.Apply)
+        services.AddOptions<IdentityOptions>().Configure<AdminUserOptions>((identity, users) => users.Apply(identity));
+        services.AddIdentityCore<CmsUser>()
             .AddUserStore<CmsUserStore>()
             .AddUserManager<CmsUserManager>()
             .AddSignInManager<CmsSignInManager>();

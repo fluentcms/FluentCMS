@@ -1,11 +1,13 @@
 using System.Net;
 using FluentCMS.Core.DependencyInjection;
+using FluentCMS.Core.Identity;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Storage;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -88,6 +90,9 @@ public sealed class HostRegistrationTests : IAsyncDisposable
     [InlineData("FluentCms:Security:Cors:Delivery:AllowedOrigins:0", "*", "FCMS1101")]
     [InlineData("FluentCms:Security:Cors:Management:AllowedOrigins:0", "https://*.example.com", "FCMS1101")]
     [InlineData("FluentCms:Database:SchemaSync", "7", "FCMS1304")]
+    [InlineData("FluentCms:Users:Password:RequiredLength", "0", "FCMS3001")]
+    [InlineData("FluentCms:Users:Lockout:MaxFailedAccessAttempts", "0", "FCMS3001")]
+    [InlineData("FluentCms:Users:InvitationLifetime", "-1.00:00:00", "FCMS3001")]
     public async Task AnInvalidOptionStopsTheHostAndNamesTheKey(string key, string value, string code)
     {
         var app = _host.Build(Environments.Production, new Dictionary<string, string?> { [key] = value });
@@ -131,6 +136,22 @@ public sealed class HostRegistrationTests : IAsyncDisposable
         jobs.PollInterval.ShouldBe(TimeSpan.FromSeconds(2));
         jobs.Queues["reports"].ShouldBe(3);
         jobs.Queues[JobRunnerOptions.DefaultQueue].ShouldBe(2);
+    }
+
+    [Fact]
+    public void ThePasswordPolicyAndLockoutOfAdminUsersComeFromTheConfiguration()
+    {
+        var app = _host.Build(
+            Environments.Development,
+            new Dictionary<string, string?> { ["FluentCms:Users:Password:RequiredLength"] = "20", ["FluentCms:Users:Lockout:MaxFailedAccessAttempts"] = "3" },
+            cms: cms => cms.Users.InvitationLifetime = TimeSpan.FromDays(2));
+
+        var identity = app.Services.GetRequiredService<IOptions<IdentityOptions>>().Value;
+        identity.Password.RequiredLength.ShouldBe(20);
+        identity.Password.RequireDigit.ShouldBeTrue();
+        identity.Lockout.MaxFailedAccessAttempts.ShouldBe(3);
+        identity.User.RequireUniqueEmail.ShouldBeTrue();
+        app.Services.GetRequiredService<AdminUserOptions>().InvitationLifetime.ShouldBe(TimeSpan.FromDays(2));
     }
 
     [Fact]

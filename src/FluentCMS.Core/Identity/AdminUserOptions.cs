@@ -3,9 +3,12 @@ using Microsoft.AspNetCore.Identity;
 
 namespace FluentCMS.Core.Identity;
 
-// cms.Users: the password policy, lockout and invitations of admin users. Identity's defaults, except a longer password.
+// cms.Users, and FluentCms:Users in configuration: the password policy, lockout and invitations of admin users. Identity's
+// defaults, except a longer password. Not FluentCms:Identity, which members (M5) would share.
 public sealed class AdminUserOptions
 {
+    internal const string Section = "Users";
+
     public PasswordOptions Password { get; } = new() { RequiredLength = 12 };
 
     public LockoutOptions Lockout { get; } = new();
@@ -14,19 +17,18 @@ public sealed class AdminUserOptions
 
     internal void Validate()
     {
-        if (Password.RequiredLength < 1 || Password.RequiredUniqueChars < 0)
-        {
-            throw new FluentCmsConfigurationException(IdentityErrorCodes.InvalidOptions, "cms.Users.Password.RequiredLength must be at least 1, and RequiredUniqueChars not negative.");
-        }
+        Require(Password.RequiredLength >= 1, $"{nameof(Password)}:{nameof(Password.RequiredLength)} is {Password.RequiredLength}; it must be at least 1.");
+        Require(Password.RequiredUniqueChars >= 0, $"{nameof(Password)}:{nameof(Password.RequiredUniqueChars)} is {Password.RequiredUniqueChars}; it must not be negative.");
+        Require(Lockout.MaxFailedAccessAttempts >= 1, $"{nameof(Lockout)}:{nameof(Lockout.MaxFailedAccessAttempts)} is {Lockout.MaxFailedAccessAttempts}; it must be at least 1.");
+        Require(Lockout.DefaultLockoutTimeSpan > TimeSpan.Zero, $"{nameof(Lockout)}:{nameof(Lockout.DefaultLockoutTimeSpan)} must be positive.");
+        Require(InvitationLifetime > TimeSpan.Zero, $"{nameof(InvitationLifetime)} must be positive.");
+    }
 
-        if (Lockout.MaxFailedAccessAttempts < 1 || Lockout.DefaultLockoutTimeSpan <= TimeSpan.Zero)
+    private static void Require(bool condition, string message)
+    {
+        if (!condition)
         {
-            throw new FluentCmsConfigurationException(IdentityErrorCodes.InvalidOptions, "cms.Users.Lockout.MaxFailedAccessAttempts must be at least 1, and DefaultLockoutTimeSpan positive.");
-        }
-
-        if (InvitationLifetime <= TimeSpan.Zero)
-        {
-            throw new FluentCmsConfigurationException(IdentityErrorCodes.InvalidOptions, "cms.Users.InvitationLifetime must be positive.");
+            throw new FluentCmsConfigurationException(IdentityErrorCodes.InvalidOptions, message);
         }
     }
 
