@@ -1,5 +1,6 @@
 using FluentCMS.Core.Api.Management;
 using FluentCMS.Core.DependencyInjection;
+using FluentCMS.Diagnostics;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Routing;

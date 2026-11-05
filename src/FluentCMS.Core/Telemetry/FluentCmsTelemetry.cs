@@ -28,6 +28,8 @@ public static class FluentCmsTelemetry
         public const string Surface = "fluentcms.surface";
         public const string StatusClass = "fluentcms.status_class";
         public const string Outcome = "fluentcms.outcome";
+        public const string Cache = "fluentcms.cache";
+        public const string Result = "fluentcms.result";
     }
 
     public static class Instruments
@@ -58,6 +60,11 @@ public static class FluentCmsTelemetry
     // A span for an operation, with no value of content. Null when nothing listens, which every caller tolerates.
     internal static System.Diagnostics.Activity? Start(string kind, string operation, string? type, OperationContext? context)
     {
+        if (!ActivitySource.HasListeners())
+        {
+            return null;
+        }
+
         var activity = ActivitySource.StartActivity($"{kind} {operation}");
         if (activity is null)
         {
@@ -78,10 +85,14 @@ public static class FluentCmsTelemetry
         return activity;
     }
 
+    private static readonly string[] StatusClasses = ["0xx", "1xx", "2xx", "3xx", "4xx", "5xx"];
+
+    internal static string StatusClass(int status) => StatusClasses[Math.Clamp(status / 100, 0, 5)];
+
     internal static void RecordCache(string cache, bool hit)
     {
         CacheTotals.Record(cache, hit);
-        CacheRequests.Add(1, new KeyValuePair<string, object?>("cache", cache), new KeyValuePair<string, object?>("result", hit ? "hit" : "miss"));
+        CacheRequests.Add(1, new KeyValuePair<string, object?>(Tags.Cache, cache), new KeyValuePair<string, object?>(Tags.Result, hit ? "hit" : "miss"));
     }
 
     private static class CacheTotals
@@ -95,7 +106,7 @@ public static class FluentCmsTelemetry
         {
             foreach (var (cache, (hits, misses)) in Counts)
             {
-                yield return new Measurement<double>((double)hits / (hits + misses), new KeyValuePair<string, object?>("cache", cache));
+                yield return new Measurement<double>((double)hits / (hits + misses), new KeyValuePair<string, object?>(Tags.Cache, cache));
             }
         }
     }

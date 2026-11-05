@@ -14,7 +14,7 @@ internal sealed partial class LogEmailSender(ILogger<LogEmailSender> logger) : I
         return Task.CompletedTask;
     }
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Email to {To}, not sent (Development writes email to the log): {Subject}\n{Body}")]
+    [LoggerMessage(EventId = 9120, Level = LogLevel.Information, Message = "Email to {To}, not sent (Development writes email to the log): {Subject}\n{Body}")]
     private static partial void Sent(ILogger logger, string to, string subject, string body);
 }
 

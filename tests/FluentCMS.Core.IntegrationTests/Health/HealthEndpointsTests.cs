@@ -64,11 +64,15 @@ public sealed class HealthEndpointsTests : IAsyncDisposable
     [Fact]
     public async Task ReadyIsUnhealthyWhenTheJobRunnerHeartbeatIsStale()
     {
-        using var client = _host.CreateClient();
+        // A maintenance turn an hour away cannot beat between the clock moving and the probe.
+        await using var host = new FluentCmsTestHost()
+            .WithContentTypes<Note>()
+            .Configure(cms => cms.Jobs.Options.MaintenanceInterval = TimeSpan.FromHours(1));
+        using var client = host.CreateClient();
         using var fresh = await client.GetAsync(new Uri("/health/ready", UriKind.Relative), Token);
         fresh.StatusCode.ShouldBe(HttpStatusCode.OK);
 
-        _host.Time.Advance(_host.Services.GetRequiredService<HealthOptions>().JobRunnerHeartbeatTimeout + TimeSpan.FromMinutes(1));
+        host.Time.Advance(host.Services.GetRequiredService<HealthOptions>().JobRunnerHeartbeatTimeout + TimeSpan.FromMinutes(1));
 
         using var stale = await client.GetAsync(new Uri("/health/ready", UriKind.Relative), Token);
         using var live = await client.GetAsync(new Uri("/health/live", UriKind.Relative), Token);
@@ -76,6 +80,21 @@ public sealed class HealthEndpointsTests : IAsyncDisposable
         stale.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
         (await stale.Content.ReadAsStringAsync(Token)).ShouldBe("Unhealthy");
         live.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task AnInfiniteHeartbeatLimitLeavesTheJobRunnerOutOfTheCheck()
+    {
+        await using var host = new FluentCmsTestHost()
+            .WithContentTypes<Note>()
+            .Configure(cms => cms.Jobs.Options.MaintenanceInterval = TimeSpan.FromHours(1))
+            .WithServices(services => services.PostConfigure<HealthOptions>(health => health.JobRunnerHeartbeatTimeout = Timeout.InfiniteTimeSpan));
+        using var client = host.CreateClient();
+        host.Time.Advance(TimeSpan.FromDays(1));
+
+        using var ready = await client.GetAsync(new Uri("/health/ready", UriKind.Relative), Token);
+
+        ready.StatusCode.ShouldBe(HttpStatusCode.OK);
     }
 
     [Fact]

@@ -136,6 +136,6 @@ internal sealed class ActivityScheduleService(IJobScheduler scheduler, ActivityO
 
 internal static partial class ActivityLogMessages
 {
-    [LoggerMessage(Level = LogLevel.Error, Message = "Could not register the recurring retention job of the activity log; old rows stay until it is registered.")]
+    [LoggerMessage(EventId = 9701, Level = LogLevel.Error, Message = "Could not register the recurring retention job of the activity log; old rows stay until it is registered.")]
     public static partial void ScheduleFailed(ILogger logger, Exception exception);
 }

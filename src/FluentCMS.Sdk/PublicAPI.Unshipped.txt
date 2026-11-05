@@ -439,6 +439,7 @@ FluentCMS.Content.VersionConflictException.Current.get -> FluentCMS.Content.Cont
 FluentCMS.Content.VersionConflictException.CurrentVersion.get -> int
 FluentCMS.Content.VersionConflictException.ExpectedVersion.get -> int
 FluentCMS.Content.VersionConflictException.VersionConflictException(int expectedVersion, int currentVersion, FluentCMS.Content.ContentDocument? current) -> void
+FluentCMS.Diagnostics.FluentCmsHealthCheckTags
 FluentCMS.Events.ApiKeyCreatedEvent
 FluentCMS.Events.ApiKeyCreatedEvent.ApiKeyCreatedEvent(System.Guid KeyId, string! Name, string! KeyClass) -> void
 FluentCMS.Events.ApiKeyCreatedEvent.Deconstruct(out System.Guid KeyId, out string! Name, out string! KeyClass) -> void
@@ -1364,6 +1365,8 @@ const FluentCMS.Content.ValidationErrorCodes.NotUnique = "FCMS2111" -> string!
 const FluentCMS.Content.ValidationErrorCodes.PatternMismatch = "FCMS2106" -> string!
 const FluentCMS.Content.ValidationErrorCodes.Required = "FCMS2101" -> string!
 const FluentCMS.Content.ValidationErrorCodes.RequiredByCondition = "FCMS2110" -> string!
+const FluentCMS.Diagnostics.FluentCmsHealthCheckTags.Live = "live" -> string!
+const FluentCMS.Diagnostics.FluentCmsHealthCheckTags.Ready = "ready" -> string!
 const FluentCMS.Events.UserChanges.Email = "email" -> string!
 const FluentCMS.Events.UserChanges.EmailConfirmed = "emailConfirmed" -> string!
 const FluentCMS.Events.UserChanges.LockoutEnabled = "lockoutEnabled" -> string!

@@ -52,23 +52,24 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
     {
         ArgumentNullException.ThrowIfNull(query);
 
+        var compiled = Compile(await access.ForQueryAsync(query.Site, query.Locale ?? "", cancellationToken), typeName, query, everySystemField, trashed, rule);
+
+        // Timed from here, so that a query refused as invalid is not recorded, and tagged with the type the schema resolved.
         var started = Stopwatch.GetTimestamp();
         try
         {
-            return await RunAsync(typeName, query, everySystemField, trashed, rule, cancellationToken);
+            return await RunAsync(compiled, cancellationToken);
         }
         finally
         {
             FluentCmsTelemetry.QueryDuration.Record(
                 Stopwatch.GetElapsedTime(started).TotalSeconds,
-                new KeyValuePair<string, object?>(FluentCmsTelemetry.Tags.Type, typeName));
+                new KeyValuePair<string, object?>(FluentCmsTelemetry.Tags.Type, compiled.Type.Name));
         }
     }
 
-    private async Task<ContentQueryResult> RunAsync(string typeName, ContentQuery query, bool everySystemField, bool trashed, ContentFilter? rule, CancellationToken cancellationToken)
+    private async Task<ContentQueryResult> RunAsync(CompiledQuery compiled, CancellationToken cancellationToken)
     {
-        var compiled = Compile(await access.ForQueryAsync(query.Site, query.Locale ?? "", cancellationToken), typeName, query, everySystemField, trashed, rule);
-
         long? total = compiled.WithTotal ? await compiled.Filtered.LongCountAsync(cancellationToken) : null;
         var rows = await compiled.Rows.ToListAsync(cancellationToken);
 

@@ -23,6 +23,6 @@ internal sealed partial class ProblemDetailsExceptionHandler(ILogger<ProblemDeta
         return true;
     }
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "An unhandled exception became {Code}.")]
+    [LoggerMessage(EventId = 9110, Level = LogLevel.Error, Message = "An unhandled exception became {Code}.")]
     private static partial void LogUnhandled(ILogger logger, Exception exception, string code);
 }

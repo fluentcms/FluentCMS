@@ -253,7 +253,11 @@ internal sealed partial class ContentService(
 
     // No ambient operation is not an anonymous one: it is a bug in the entry point, and nothing runs. A client's origin
     // never runs as the system principal, whatever set it.
-    private System.Diagnostics.Activity? Span(string operation, string? type) => FluentCmsTelemetry.Start("content", operation, type, accessor.Current);
+    // The type is tagged by the name the schema resolves, so that a caller's arbitrary string never becomes a tag value.
+    private System.Diagnostics.Activity? Span(string operation, string? type) =>
+        FluentCmsTelemetry.ActivitySource.HasListeners()
+            ? FluentCmsTelemetry.Start("content", operation, type is null ? null : schema.FindContentType(type)?.Name, accessor.Current)
+            : null;
 
     private OperationContext Current()
     {
@@ -274,7 +278,8 @@ internal sealed partial class ContentService(
     // Reads ask the engine, which holds the permission on the type, the row rule, the site and the field limits as one query.
     private async Task<PagedResult<ContentDocument>> ReadAsync(string typeName, ContentQuery query, Guid? id, bool everySystemField, CancellationToken cancellationToken, bool trashed = false)
     {
-        using var span = Span(trashed ? "query-trash" : id is null ? "query" : "get", typeName);
+        // A read of the trash has the span of QueryTrashAsync.
+        using var span = trashed ? null : Span(id is null ? "query" : "get", typeName);
 
         richText.ThrowIfUnknown(query.RichTextFormat);
 

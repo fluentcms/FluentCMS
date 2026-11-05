@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using System.Net;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.IntegrationTests.Testing;
@@ -70,7 +71,7 @@ public sealed class TelemetryTests : IAsyncDisposable
     [Fact]
     public async Task ARequestIncrementsTheRequestCounterBySurfaceAndAQueryRecordsItsDuration()
     {
-        var counts = new ConcurrentBag<(long Value, string? Surface)>();
+        var counts = new ConcurrentBag<(long Value, string? Surface, string? Status)>();
         var durations = new ConcurrentBag<(double Value, string? Type)>();
         using var listener = new MeterListener
         {
@@ -86,7 +87,7 @@ public sealed class TelemetryTests : IAsyncDisposable
         {
             if (instrument.Name == FluentCmsTelemetry.Instruments.Requests)
             {
-                counts.Add((value, Tag(tags, FluentCmsTelemetry.Tags.Surface)));
+                counts.Add((value, Tag(tags, FluentCmsTelemetry.Tags.Surface), Tag(tags, FluentCmsTelemetry.Tags.StatusClass)));
             }
         });
         listener.SetMeasurementEventCallback<double>((instrument, value, tags, _) =>
@@ -100,10 +101,17 @@ public sealed class TelemetryTests : IAsyncDisposable
         using var client = _host.CreateClient();
 
         using var live = await client.GetAsync(new Uri("/health/live", UriKind.Relative), Token);
-        using var delivery = await client.GetAsync(new Uri("/api/delivery/v1/note", UriKind.Relative), Token);
+        using var unknown = await client.GetAsync(new Uri("/api/delivery/v1/nothing-here", UriKind.Relative), Token);
+        using var refused = await client.GetAsync(new Uri("/api/management/v1/system/health", UriKind.Relative), Token);
 
-        counts.ShouldContain(count => count.Surface == "health" && count.Value == 1);
-        counts.ShouldContain(count => count.Surface == "delivery" && count.Value == 1);
+        live.StatusCode.ShouldBe(HttpStatusCode.OK);
+        unknown.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        refused.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+
+        // A request an endpoint refuses by throwing is counted with the status the client got, not as a failure.
+        counts.ShouldContain(count => count.Surface == "health" && count.Status == "2xx" && count.Value == 1);
+        counts.ShouldContain(count => count.Surface == "delivery" && count.Status == "4xx" && count.Value == 1);
+        counts.ShouldContain(count => count.Surface == "management" && count.Status == "4xx" && count.Value == 1);
 
         var editor = await _host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
         await _host.As(editor).Content<Note>().QueryAsync(new ContentQuery { Status = QueryStatus.Draft }, Token);
@@ -125,7 +133,7 @@ public sealed class TelemetryTests : IAsyncDisposable
                 }
             },
         };
-        listener.SetMeasurementEventCallback<double>((_, value, tags, _) => ratios[Tag(tags, "cache") ?? ""] = value);
+        listener.SetMeasurementEventCallback<double>((_, value, tags, _) => ratios[Tag(tags, FluentCmsTelemetry.Tags.Cache) ?? ""] = value);
         listener.Start();
 
         FluentCmsTelemetry.RecordCache(Cache, hit: true);
