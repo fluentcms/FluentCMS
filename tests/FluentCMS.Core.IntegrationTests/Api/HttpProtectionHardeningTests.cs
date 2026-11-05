@@ -24,6 +24,7 @@ namespace FluentCMS.Core.IntegrationTests.Api;
 
 // The protections that depend on how the host is set up: which authentication schemes it has, what limits it already set,
 // and whether it called UseFluentCms at all.
+[Xunit.Collection(ProcessEnvironment.Collection)]
 public sealed class HttpProtectionHardeningTests : IAsyncDisposable
 {
     private const string DeliveryPath = "/api/delivery/v1/probe";

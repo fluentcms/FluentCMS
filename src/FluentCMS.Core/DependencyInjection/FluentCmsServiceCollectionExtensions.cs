@@ -4,6 +4,7 @@ using FluentCMS.Authorization;
 using FluentCMS.Content;
 using FluentCMS.Core.ActivityLog;
 using FluentCMS.Core.Api.Common;
+using FluentCMS.Core.Api.Delivery;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Content.Hooks;
@@ -116,6 +117,8 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddScoped<LocaleRegistry>();
         services.AddScoped<LocaleFallbackReader>();
         services.AddScoped<SiteManager>();
+        services.AddScoped<RequestBridge>();
+        services.AddDeliveryApi();
 
         services.AddSingleton<SettingsCache>();
         services.AddScoped<SettingsService>();

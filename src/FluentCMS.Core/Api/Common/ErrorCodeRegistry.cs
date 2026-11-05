@@ -1,6 +1,7 @@
 using System.Collections.Frozen;
 using FluentCMS.Content;
 using FluentCMS.Core.ActivityLog;
+using FluentCMS.Core.Api.Delivery;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Content.Query;
@@ -176,6 +177,9 @@ public static class ErrorCodeRegistry
         new(ApiErrorCodes.InternalError, StatusCodes.Status500InternalServerError, "Internal error"),
         new(LimitErrorCodes.RateLimited, StatusCodes.Status429TooManyRequests, "Too many requests"),
         new(LimitErrorCodes.RequestTooLarge, StatusCodes.Status413PayloadTooLarge, "Request too large"),
+        new(RequestErrorCodes.SiteOutsideBinding, StatusCodes.Status403Forbidden, "Site outside the key's binding"),
+        BadQuery(RequestErrorCodes.SiteNotNamed, "Site not named"),
+        BadQuery(DeliveryErrorCodes.FieldNotUnique, "Field not unique"),
     ];
 
     private static readonly FrozenDictionary<string, ErrorCodeInfo> byCode = All.ToFrozenDictionary(info => info.Code);

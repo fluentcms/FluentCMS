@@ -22,6 +22,7 @@ using Xunit;
 
 namespace FluentCMS.Core.IntegrationTests.Api;
 
+[Xunit.Collection(ProcessEnvironment.Collection)]
 public sealed class HttpProtectionTests : IAsyncDisposable
 {
     private const string DeliveryPath = "/api/delivery/v1/probe";

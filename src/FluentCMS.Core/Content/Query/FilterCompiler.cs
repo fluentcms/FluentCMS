@@ -20,9 +20,12 @@ internal sealed class FilterCompiler(QueryScope query)
     private static readonly MethodInfo StringIndexOf = typeof(string).GetMethod(nameof(string.IndexOf), [typeof(string)])!;
 
     // Asked is what the client wrote where a relation rewrites a negative operator, which the field type must allow.
-    private sealed record Scope(SchemaType Type, Expression Row, ContentFilter? Rule, bool Trusted, string Prefix, int Hops, FilterOperator? Asked = null)
+    // Source is the query parameter of the condition being compiled, when its parse recorded one (FilterSources).
+    private sealed record Scope(SchemaType Type, Expression Row, ContentFilter? Rule, bool Trusted, string Prefix, int Hops, FilterOperator? Asked = null, string? Source = null)
     {
         public string PathOf(FieldFilter filter) => Prefix + filter.Path;
+
+        public string ReportPath(FieldFilter filter) => Source ?? PathOf(filter);
     }
 
     // Returns null when neither the client nor a row rule filters. The row rule joins the filter in an And node, and
@@ -44,7 +47,7 @@ internal sealed class FilterCompiler(QueryScope query)
     public Expression Rule(SchemaType type, ContentFilter rule, Expression row) =>
         Where(type, rule, row, trusted: true, prefix: "", hops: 0, asked: null)!;
 
-    private Expression? Where(SchemaType type, ContentFilter? filter, Expression row, bool trusted, string prefix, int hops, FilterOperator? asked)
+    private Expression? Where(SchemaType type, ContentFilter? filter, Expression row, bool trusted, string prefix, int hops, FilterOperator? asked, string? source = null)
     {
         var rule = trusted ? null : query.Access.RowRule(type);
         ContentFilter? combined = (rule, filter) switch
@@ -55,7 +58,7 @@ internal sealed class FilterCompiler(QueryScope query)
             _ => new And(rule!, filter!),
         };
 
-        return combined is null ? null : Compile(combined, new Scope(type, row, rule, trusted, prefix, hops, asked));
+        return combined is null ? null : Compile(combined, new Scope(type, row, rule, trusted, prefix, hops, asked, source));
     }
 
     private Expression Compile(ContentFilter filter, Scope scope)
@@ -84,6 +87,11 @@ internal sealed class FilterCompiler(QueryScope query)
 
     private Expression Field(FieldFilter filter, Scope scope)
     {
+        if (scope.Source is null && FilterSources.Of(filter) is { } source)
+        {
+            scope = scope with { Source = source };
+        }
+
         switch (query.Paths.Resolve(scope.Type, filter.Path, scope.Trusted))
         {
             case SystemPath system:
@@ -100,7 +108,7 @@ internal sealed class FilterCompiler(QueryScope query)
             case FieldPath { Rest.Length: 0 } column:
                 return Column(filter, column.Stored, scope);
             default:
-                query.Report(scope.PathOf(filter), QueryErrorCodes.UnknownField, $"'{scope.PathOf(filter)}' is not a field of {scope.Type.Name} that can be read.");
+                query.Report(scope.ReportPath(filter), QueryErrorCodes.UnknownField, $"'{scope.PathOf(filter)}' is not a field of {scope.Type.Name} that can be read.");
                 return Fail();
         }
     }
@@ -328,7 +336,7 @@ internal sealed class FilterCompiler(QueryScope query)
         var field = block?.FindField(key);
         if (field is null || (field.Hidden && !scope.Trusted))
         {
-            query.Report(scope.PathOf(filter), QueryErrorCodes.UnknownField, $"'{scope.PathOf(filter)}' is not a field of a block of this field.");
+            query.Report(scope.ReportPath(filter), QueryErrorCodes.UnknownField, $"'{scope.PathOf(filter)}' is not a field of a block of this field.");
             return Fail();
         }
 
@@ -518,13 +526,13 @@ internal sealed class FilterCompiler(QueryScope query)
 
         if (scope.Hops >= query.Options.MaxPopulateDepth)
         {
-            query.Report(scope.PathOf(filter), QueryErrorCodes.LimitExceeded, $"'{scope.PathOf(filter)}' goes through more than the {query.Options.MaxPopulateDepth} relations allowed.");
+            query.Report(scope.ReportPath(filter), QueryErrorCodes.LimitExceeded, $"'{scope.PathOf(filter)}' goes through more than the {query.Options.MaxPopulateDepth} relations allowed.");
             return null;
         }
 
         if (!scope.Trusted && !query.Access.CanReadType(target))
         {
-            query.Report(scope.PathOf(filter), QueryErrorCodes.UnknownField, $"'{scope.PathOf(filter)}' is not a field of {scope.Type.Name} that can be read.");
+            query.Report(scope.ReportPath(filter), QueryErrorCodes.UnknownField, $"'{scope.PathOf(filter)}' is not a field of {scope.Type.Name} that can be read.");
             return null;
         }
 
@@ -535,7 +543,7 @@ internal sealed class FilterCompiler(QueryScope query)
 
         var row = Expression.Parameter(typeof(QueryRow), "target");
         var rest = new FieldFilter(string.Join('.', path.Rest), filter.Operator, filter.Value);
-        var inner = Where(target, rest, row, scope.Trusted, $"{scope.Prefix}{path.ApiPath}.", scope.Hops + 1, asked)!;
+        var inner = Where(target, rest, row, scope.Trusted, $"{scope.Prefix}{path.ApiPath}.", scope.Hops + 1, asked, scope.Source)!;
 
         return Any(query.Rows(target), row, Expression.AndAlso(Expression.Equal(DocumentId(row), targetId), inner));
     }
@@ -612,13 +620,13 @@ internal sealed class FilterCompiler(QueryScope query)
 
     private ConstantExpression NotAllowed(FieldFilter filter, Scope scope)
     {
-        query.Report(scope.PathOf(filter), QueryErrorCodes.OperatorNotAllowed, $"'{scope.PathOf(filter)}' does not allow the operator {scope.Asked ?? filter.Operator}.");
+        query.Report(scope.ReportPath(filter), QueryErrorCodes.OperatorNotAllowed, $"'{scope.PathOf(filter)}' does not allow the operator {scope.Asked ?? filter.Operator}.");
         return Fail();
     }
 
     private ConstantExpression Invalid(FieldFilter filter, Scope scope, string problem)
     {
-        query.Report(scope.PathOf(filter), QueryErrorCodes.InvalidValue, $"The filter on '{scope.PathOf(filter)}' {problem}.");
+        query.Report(scope.ReportPath(filter), QueryErrorCodes.InvalidValue, $"The filter on '{scope.PathOf(filter)}' {problem}.");
         return Fail();
     }
 
