@@ -12,24 +12,55 @@ internal static class FluentCmsAuthentication
     public const string Scheme = "FluentCms";
 }
 
-// Picks the scheme for a request: the API key's when it carries one, and otherwise the host's default authenticate scheme.
-// With no default, or a default that is this scheme, the request has no result here, so it is anonymous. A policy scheme
-// cannot say that: its handler throws when it has nowhere to forward.
-internal sealed class FluentCmsAuthenticationHandler(
-    IOptionsMonitor<AuthenticationSchemeOptions> options,
-    ILoggerFactory logger,
-    UrlEncoder encoder,
-    IAuthenticationSchemeProvider schemes)
-    : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
+internal sealed class FluentCmsAuthenticationOptions : AuthenticationSchemeOptions
 {
-    protected override async Task<AuthenticateResult> HandleAuthenticateAsync() =>
-        await TargetAsync() is { } target ? await Context.AuthenticateAsync(target) : AuthenticateResult.NoResult();
+    // The bearer token scheme a request without an API key goes to. The authorization server (#2778) sets it; until then
+    // such a request is anonymous here. It is never the host's default, which may be a cookie scheme and would open the
+    // APIs to cross-site requests.
+    public string? BearerScheme { get; set; }
+}
+
+// Picks the scheme for a request: the API key's when it carries one, and otherwise the bearer scheme when one is set.
+// With neither the request has no result here, so it is anonymous. A policy scheme cannot say that: its handler throws
+// when it has nowhere to forward.
+internal sealed class FluentCmsAuthenticationHandler(IOptionsMonitor<FluentCmsAuthenticationOptions> options, ILoggerFactory logger, UrlEncoder encoder)
+    : AuthenticationHandler<FluentCmsAuthenticationOptions>(options, logger, encoder)
+{
+    // A host scheme that forwards back here would otherwise recurse until the stack overflows.
+    private static readonly object Entered = new();
+
+    protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
+    {
+        if (Target() is not { } target || Context.Items.ContainsKey(Entered))
+        {
+            return AuthenticateResult.NoResult();
+        }
+
+        Context.Items[Entered] = true;
+        try
+        {
+            return await Context.AuthenticateAsync(target);
+        }
+        finally
+        {
+            Context.Items.Remove(Entered);
+        }
+    }
 
     protected override async Task HandleChallengeAsync(AuthenticationProperties properties)
     {
-        if (await TargetAsync() is { } target)
+        if (Target() is { } target && !Context.Items.ContainsKey(Entered))
         {
-            await Context.ChallengeAsync(target, properties);
+            Context.Items[Entered] = true;
+            try
+            {
+                await Context.ChallengeAsync(target, properties);
+            }
+            finally
+            {
+                Context.Items.Remove(Entered);
+            }
+
             return;
         }
 
@@ -38,23 +69,32 @@ internal sealed class FluentCmsAuthenticationHandler(
 
     protected override async Task HandleForbiddenAsync(AuthenticationProperties properties)
     {
-        if (await TargetAsync() is { } target)
+        if (Target() is { } target && !Context.Items.ContainsKey(Entered))
         {
-            await Context.ForbidAsync(target, properties);
+            Context.Items[Entered] = true;
+            try
+            {
+                await Context.ForbidAsync(target, properties);
+            }
+            finally
+            {
+                Context.Items.Remove(Entered);
+            }
+
             return;
         }
 
         await base.HandleForbiddenAsync(properties);
     }
 
-    private async Task<string?> TargetAsync()
+    private string? Target()
     {
         if (ApiKeyAuthentication.IsPresented(Request))
         {
             return ApiKeyAuthentication.Scheme;
         }
 
-        var fallback = (await schemes.GetDefaultAuthenticateSchemeAsync())?.Name;
-        return fallback is null || fallback == Scheme.Name ? null : fallback;
+        var bearer = Options.BearerScheme;
+        return string.IsNullOrEmpty(bearer) || bearer == Scheme.Name || bearer == ApiKeyAuthentication.Scheme ? null : bearer;
     }
 }

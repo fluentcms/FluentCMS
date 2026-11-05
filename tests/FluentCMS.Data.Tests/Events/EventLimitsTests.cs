@@ -368,6 +368,7 @@ public sealed class EventLimitsTests
     [InlineData("request failed with ApiKey fcms_dk_AbCdEfGh-IjKl_MnOp", "request failed with ApiKey ***")]
     [InlineData("key fcms_pk_AbCdEfGh-IjKl_MnOp was refused", "key fcms_pk_*** was refused")]
     [InlineData("X-Api-Key: fcms_mk_AbCdEfGh-IjKl_MnOp", "X-Api-Key: ***")]
+    [InlineData("sent key_fcms_mk_AbCdEfGh-IjKl_MnOp", "sent key_fcms_mk_***")]
     [InlineData("nothing to hide here", "nothing to hide here")]
     public void AUrlIsReducedToItsHostAndTheValueOfASecretKeyIsMasked(string text, string expected) =>
         SecretScrubber.Of(text).ShouldBe(expected);

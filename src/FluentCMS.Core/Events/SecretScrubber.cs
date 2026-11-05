@@ -28,7 +28,7 @@ internal static partial class SecretScrubber
     [GeneratedRegex(@"\b(Bearer|Basic|ApiKey)\s+[A-Za-z0-9._~+/=\-]{8,}", RegexOptions.IgnoreCase)]
     private static partial Regex Credential();
 
-    [GeneratedRegex(@"(?<marker>\bfcms_[dpm]k_)[A-Za-z0-9_\-]+")]
+    [GeneratedRegex(@"(?<marker>(?<![A-Za-z0-9])fcms_[dpm]k_)[A-Za-z0-9_\-]+")]
     private static partial Regex ApiKey();
 
     [GeneratedRegex(@"(?<key>[\w.\-]*(?:token|secret|passw(?:or)?d|pwd|key|authorization|credential|signature)[\w.\-]*)(?<quote>[""']?)(?<separator>\s*[=:]\s*)(?:""[^""]*""|'[^']*'|[^\s,;&""']+)", RegexOptions.IgnoreCase)]

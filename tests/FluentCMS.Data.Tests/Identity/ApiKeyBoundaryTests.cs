@@ -147,18 +147,80 @@ public sealed class ApiKeyBoundaryTests : IDisposable
     }
 
     [Fact]
-    public async Task TheFluentCmsSchemeForwardsARequestWithoutAKeyToTheHostDefault()
+    public async Task TheFluentCmsSchemeNeverReachesTheHostDefaultSoACookieIsNotACredential()
     {
         using var fixture = new IdentityFixture(cms => cms.Services
-            .AddAuthentication(options => options.DefaultAuthenticateScheme = HostHandler.Name)
-            .AddScheme<AuthenticationSchemeOptions, HostHandler>(HostHandler.Name, configureOptions: null));
+            .AddAuthentication(options => options.DefaultScheme = CountingHandler.Cookie)
+            .AddScheme<AuthenticationSchemeOptions, CountingHandler>(CountingHandler.Cookie, configureOptions: null));
+        CountingHandler.Calls.Clear();
+
+        var result = await AuthenticateAsync(fixture, FluentCmsAuthentication.Scheme, http => http.Headers.Cookie = ".AspNetCore.Cookies=session");
+
+        result.None.ShouldBeTrue();
+        CountingHandler.Calls.ShouldNotContain(CountingHandler.Cookie);
+    }
+
+    [Fact]
+    public async Task TheFluentCmsSchemeForwardsARequestWithoutAKeyToTheBearerSchemeOnlyWhenOneIsSet()
+    {
+        using var fixture = new IdentityFixture(cms =>
+        {
+            cms.Services.AddAuthentication().AddScheme<AuthenticationSchemeOptions, CountingHandler>(CountingHandler.Bearer, configureOptions: null);
+            cms.Services.Configure<FluentCmsAuthenticationOptions>(FluentCmsAuthentication.Scheme, options => options.BearerScheme = CountingHandler.Bearer);
+        });
         var key = await fixture.WithAsync(services => services.GetRequiredService<ApiKeyService>().CreateAsync(new ApiKeyRequest("A", ApiKeyClass.Delivery, BuiltInRoles.Editor), Token));
 
-        var host = await AuthenticateAsync(fixture, FluentCmsAuthentication.Scheme, http => http.Headers.Authorization = "Bearer token");
-        host.Principal!.Identity!.Name.ShouldBe("host user");
+        var bearer = await AuthenticateAsync(fixture, FluentCmsAuthentication.Scheme, http => http.Headers.Authorization = "Bearer token");
+        bearer.Principal!.Identity!.Name.ShouldBe(CountingHandler.Bearer);
 
         var byKey = await AuthenticateAsync(fixture, FluentCmsAuthentication.Scheme, http => http.Headers[ApiKeyAuthentication.Header] = key.Secret);
         byKey.Principal!.Identity!.AuthenticationType.ShouldBe(ApiKeyAuthentication.Scheme);
+    }
+
+    [Fact]
+    public async Task ABearerSchemeThatForwardsBackToFluentCmsDoesNotRecurse()
+    {
+        using var fixture = new IdentityFixture(cms =>
+        {
+            cms.Services.AddAuthentication().AddScheme<AuthenticationSchemeOptions, LoopingHandler>(LoopingHandler.Name, configureOptions: null);
+            cms.Services.Configure<FluentCmsAuthenticationOptions>(FluentCmsAuthentication.Scheme, options => options.BearerScheme = LoopingHandler.Name);
+        });
+
+        var first = await AuthenticateAsync(fixture, FluentCmsAuthentication.Scheme, http => http.Headers.Authorization = "Bearer token");
+        var again = await AuthenticateAsync(fixture, FluentCmsAuthentication.Scheme, http => http.Headers.Authorization = "Bearer token");
+
+        first.None.ShouldBeTrue();
+        again.None.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task TwoExpiryChangesAtOnceLeaveTheEarlierOne()
+    {
+        for (var round = 0; round < 5; round++)
+        {
+            var key = await CreateAsync(new ApiKeyRequest($"E{round}", ApiKeyClass.Delivery, BuiltInRoles.Editor) { ExpiresAt = IdentityFixture.Start.AddDays(30) });
+            async Task<string> Expire(int days)
+            {
+                try
+                {
+                    await _fixture.WithAsync(async services =>
+                    {
+                        await services.GetRequiredService<ApiKeyService>().ExpireAsync(key.Key.Id, IdentityFixture.Start.AddDays(days), Token);
+                        return true;
+                    });
+                    return "changed";
+                }
+                catch (ValidationException exception) when (exception.Errors.Single().Code == ApiKeyErrorCodes.InvalidExpiry)
+                {
+                    return "refused";
+                }
+            }
+
+            var outcomes = await Task.WhenAll(Task.Run(() => Expire(20)), Task.Run(() => Expire(1)));
+
+            outcomes[1].ShouldBe("changed");
+            _fixture.Read(context => context.Set<ApiKey>().AsNoTracking().Single(row => row.Id == key.Key.Id)).ExpiresAt.ShouldBe(IdentityFixture.Start.AddDays(1));
+        }
     }
 
     [Fact]
@@ -239,12 +301,27 @@ public sealed class ApiKeyBoundaryTests : IDisposable
         (await AsAsync(unbound, content => content.CreateAsync("article", new ContentDocument { ["title"] = "x" }, Token))).ShouldNotBeNull();
     }
 
-    private sealed class HostHandler(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder)
+    private sealed class CountingHandler(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder)
         : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
     {
-        public const string Name = "Host";
+        public const string Cookie = "Cookie";
+        public const string Bearer = "Bearer";
 
-        protected override Task<AuthenticateResult> HandleAuthenticateAsync() =>
-            Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Name, "host user")], Name)), Name)));
+        public static System.Collections.Concurrent.ConcurrentQueue<string> Calls { get; } = new();
+
+        protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+        {
+            Calls.Enqueue(Scheme.Name);
+            return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Name, Scheme.Name)], Scheme.Name)), Scheme.Name)));
+        }
+    }
+
+    // A host scheme that sends its requests to FluentCms, which sends them back here.
+    private sealed class LoopingHandler(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder)
+        : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
+    {
+        public const string Name = "Looping";
+
+        protected override Task<AuthenticateResult> HandleAuthenticateAsync() => Context.AuthenticateAsync(FluentCmsAuthentication.Scheme);
     }
 }
