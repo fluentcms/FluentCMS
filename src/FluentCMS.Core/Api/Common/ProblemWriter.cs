@@ -11,24 +11,7 @@ internal static class ProblemWriter
 
     public static async Task WriteAsync(HttpContext httpContext, ApiProblem problem, Exception? exception = null, CancellationToken cancellationToken = default)
     {
-        var details = new ProblemDetails
-        {
-            Type = ProblemMapper.TypePrefix + problem.Code,
-            Title = problem.Title,
-            Status = problem.Status,
-            Detail = problem.Detail,
-        };
-        details.Extensions["code"] = problem.Code;
-        if (problem.Errors is not null)
-        {
-            details.Extensions["errors"] = problem.Errors;
-        }
-
-        if (problem.Current is not null)
-        {
-            details.Extensions["current"] = problem.Current;
-        }
-
+        var details = Details(problem);
         details.Extensions["traceId"] = System.Diagnostics.Activity.Current?.Id ?? httpContext.TraceIdentifier;
 
         httpContext.Response.StatusCode = problem.Status;
@@ -44,5 +27,31 @@ internal static class ProblemWriter
         {
             await httpContext.Response.WriteAsJsonAsync(details, options: null, contentType: ContentType, cancellationToken);
         }
+    }
+
+    // The body without the trace id, which belongs to a response; a bulk result carries one per entry that failed.
+    public static ProblemDetails Details(ApiProblem problem)
+    {
+        ArgumentNullException.ThrowIfNull(problem);
+
+        var details = new ProblemDetails
+        {
+            Type = ProblemMapper.TypePrefix + problem.Code,
+            Title = problem.Title,
+            Status = problem.Status,
+            Detail = problem.Detail,
+        };
+        details.Extensions["code"] = problem.Code;
+        if (problem.Errors is not null)
+        {
+            details.Extensions["errors"] = problem.Errors;
+        }
+
+        if (problem.Current is not null)
+        {
+            details.Extensions["current"] = ContentJson.Entry(problem.Current);
+        }
+
+        return details;
     }
 }
