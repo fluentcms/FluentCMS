@@ -65,6 +65,7 @@ A schema file has no compiled migrations, so the host creates and extends its ta
 | `AllowedHosts` | `*` | The host names the instance answers, separated by `;`. See [the checklist](#before-production). |
 | `FluentCms__Security__AllowGeneratedSigningKey` | `true` in the image | Accepts the token signing key the server generates. |
 | `FluentCms__Email__Smtp__Host` and the rest of `FluentCms__Email__Smtp__*` | none | The SMTP server that invitations and password resets go through; see [email](host-configuration.md#email). |
+| `FluentCms__Sso__Providers__{name}__*` | none | An OpenID Connect provider that admin users sign in with; see [single sign-on](#single-sign-on). |
 | `FluentCms__OpenApi__Enabled` | off | `true` serves the OpenAPI document at `/openapi/v1.json` and the Scalar UI at `/scalar`. See [the API description](#the-api-description). |
 | `ASPNETCORE_HTTP_PORTS` | `8080` | The port the host listens on, from the base image. |
 
@@ -83,6 +84,22 @@ A new instance has no users, and an invitation is sent by someone who can manage
 It gets a token with the client credentials grant at `/connect/token` (`grant_type=client_credentials`, `client_id=ops`, its secret, `scope=management`) and invites the first administrator with `POST /api/management/v1/invitations` `{ "email": "ada@example.com", "roleIds": ["<id of Super Admin from GET /roles>"] }`. The invitation is emailed, so set up SMTP first. The person follows the link, picks a user name and a password on the hosted page, and signs in from then on through the hosted login page with any client registered with `RedirectUris`. Remove the operator's variables, or keep its secret in a secret store, once it is no longer needed.
 
 The Delivery API is closed until a role allows reading: create a role with `content.{type}.read` and a Delivery key bound to it with `POST /api/management/v1/api-keys` `{ "name", "class": "delivery", "roleId" }`, or grant those permissions to the site's Public role for anonymous reads.
+
+## Single sign-on
+
+Admin users can sign in with Microsoft Entra ID, Okta, Keycloak or any other OpenID Connect provider, configured from the environment. Register the image's public address followed by `/account/sso/{name}` as the redirect URI at the provider, such as `https://cms.example.com/account/sso/corp`. For Entra ID:
+
+```bash
+-e FluentCms__Sso__Providers__corp__Preset=EntraId
+-e FluentCms__Sso__Providers__corp__TenantId=<directory id>
+-e FluentCms__Sso__Providers__corp__ClientId=<application id>
+-e FluentCms__Sso__Providers__corp__ClientSecret=<from your secret store>
+-e FluentCms__Sso__Providers__corp__DefaultRole=Author
+-e FluentCms__Sso__Providers__corp__RoleMappings__0__Group=<object id of the admins group>
+-e "FluentCms__Sso__Providers__corp__RoleMappings__0__Role=Super Admin"
+```
+
+Okta takes `Preset=Okta` and `Domain` (with `AuthorizationServerId` for a custom authorization server), Keycloak `Preset=Keycloak`, `BaseUrl` and `Realm`, and any other provider `Authority`. A first sign-in creates the user with `DefaultRole` and the roles its groups map to, and those mapped roles follow the groups at every sign-in; a mapping that names Super Admin, as above, gives the first administrator without an invitation. `FluentCms__Sso__DisableLocalLogin=true` hides the password form and refuses password sign-ins. A provider's own multi-factor claim counts for a role that requires two-factor only with `TrustMfaClaim=true` on that provider. See [single sign-on](host-configuration.md#single-sign-on) for every setting.
 
 ## The API description
 
