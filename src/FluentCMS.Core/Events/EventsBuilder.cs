@@ -33,7 +33,7 @@ public sealed class EventsBuilder
         where TEvent : CmsEvent
         where THandler : class, IOutboxEventHandler<TEvent> => AddOutboxHandler<TEvent, THandler>(name, active: null);
 
-    private EventsBuilder AddOutboxHandler<TEvent, THandler>(string name, Func<bool>? active)
+    internal EventsBuilder AddOutboxHandler<TEvent, THandler>(string name, Func<bool>? active)
         where TEvent : CmsEvent
         where THandler : class, IOutboxEventHandler<TEvent>
     {

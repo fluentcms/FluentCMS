@@ -17,8 +17,11 @@ namespace FluentCMS.Core.Api.Delivery;
 // here, where the engine would also let a managing principal.
 internal static class DeliveryEndpoints
 {
-    public static IServiceCollection AddDeliveryApi(this IServiceCollection services) =>
-        services.AddFluentCmsEndpoints(FluentCmsEndpointGroup.Delivery, Map);
+    public static IServiceCollection AddDeliveryApi(this IServiceCollection services, DeliveryCacheOptions cache)
+    {
+        services.AddFluentCmsOptions(DeliveryCacheOptions.Section, HostErrorCodes.InvalidOption, cache, options => options.Validate());
+        return services.AddFluentCmsEndpoints(FluentCmsEndpointGroup.Delivery, Map);
+    }
 
     private static void Map(RouteGroupBuilder delivery)
     {
@@ -28,23 +31,26 @@ internal static class DeliveryEndpoints
         routes.MapGet("/{type}/by/{field}/{value}", GetByFieldAsync);
     }
 
-    private static Task<IResult> ListAsync(string type, HttpContext httpContext, [FromServices] IContentService content, [FromServices] SchemaModel schema) =>
-        RunAsync(httpContext, type, byField: null, async () =>
+    private static Task<IResult> ListAsync(string type, HttpContext httpContext, [FromServices] IContentService content) =>
+        RunAsync(httpContext, type, byField: null, async found =>
         {
             var api = ApiRequest.Of(httpContext);
-            if (schema.FindContentType(type) is { Kind: SchemaTypeKind.Singleton })
+            if (found.Kind == SchemaTypeKind.Singleton)
             {
-                var query = Parse(httpContext, api, single: true) with { Page = new PageRequest { Size = 1, WithTotal = false } };
-                var found = await content.QueryAsync(type, query, httpContext.RequestAborted);
-                return found.Items.Count > 0 ? Results.Json(ContentJson.Entry(found.Items[0])) : throw NotFound("type", $"The {type} singleton has no entry.");
+                var single = Parse(httpContext, api, single: true) with { Page = new PageRequest { Size = 1, WithTotal = false } };
+                var entries = await content.QueryAsync(type, single, httpContext.RequestAborted);
+                return entries.Items.Count > 0
+                    ? DeliveryResponse.Entry(ContentJson.Entry(entries.Items[0]), found, IsDraft(single))
+                    : throw NotFound("type", $"The {type} singleton has no entry.");
             }
 
-            var result = await content.QueryAsync(type, Parse(httpContext, api, single: false), httpContext.RequestAborted);
-            return Results.Json(ContentJson.List(result));
+            var query = Parse(httpContext, api, single: false);
+            var result = await content.QueryAsync(type, query, httpContext.RequestAborted);
+            return DeliveryResponse.List(ContentJson.List(result), found, IsDraft(query));
         });
 
     private static Task<IResult> GetAsync(string type, string id, HttpContext httpContext, [FromServices] IContentService content) =>
-        RunAsync(httpContext, type, byField: null, async () =>
+        RunAsync(httpContext, type, byField: null, async found =>
         {
             var query = Parse(httpContext, ApiRequest.Of(httpContext), single: true);
             if (!Guid.TryParseExact(id, "D", out var entryId))
@@ -53,13 +59,13 @@ internal static class DeliveryEndpoints
             }
 
             var entry = await content.GetAsync(type, entryId, RequestQuery.Options(query), httpContext.RequestAborted);
-            return entry is not null ? Results.Json(ContentJson.Entry(entry)) : throw new EntryNotFoundException(type, entryId);
+            return entry is not null ? DeliveryResponse.Entry(ContentJson.Entry(entry), found, IsDraft(query)) : throw new EntryNotFoundException(type, entryId);
         });
 
     // The query runs before the field is checked, so that a type or field the principal cannot read is refused the way
     // an unknown one is, and a non-unique field is reported only to a principal that may filter on it.
-    private static Task<IResult> GetByFieldAsync(string type, string field, string value, HttpContext httpContext, [FromServices] IContentService content, [FromServices] SchemaModel schema) =>
-        RunAsync(httpContext, type, field, async () =>
+    private static Task<IResult> GetByFieldAsync(string type, string field, string value, HttpContext httpContext, [FromServices] IContentService content) =>
+        RunAsync(httpContext, type, field, async found =>
         {
             var query = Parse(httpContext, ApiRequest.Of(httpContext), single: true) with
             {
@@ -67,23 +73,23 @@ internal static class DeliveryEndpoints
                 Page = new PageRequest { Size = 1, WithTotal = false },
             };
 
-            var found = await content.QueryAsync(type, query, httpContext.RequestAborted);
-            if (schema.FindContentType(type)?.FindField(field) is not { Unique: true })
+            var entries = await content.QueryAsync(type, query, httpContext.RequestAborted);
+            if (found.FindField(field) is not { Unique: true })
             {
                 throw new ValidationException([new ValidationError(RequestErrors.Field, DeliveryErrorCodes.FieldNotUnique, $"'{field}' is not a unique field of {type}.")]);
             }
 
-            return found.Items.Count > 0
-                ? Results.Json(ContentJson.Entry(found.Items[0]))
+            return entries.Items.Count > 0
+                ? DeliveryResponse.Entry(ContentJson.Entry(entries.Items[0]), found, IsDraft(query))
                 : throw NotFound(RequestErrors.Value, $"There is no {type} whose {field} is '{value}'.");
         });
 
-    private static async Task<IResult> RunAsync(HttpContext httpContext, string type, string? byField, Func<Task<IResult>> handler)
+    private static async Task<IResult> RunAsync(HttpContext httpContext, string type, string? byField, Func<SchemaType, Task<IResult>> handler)
     {
-        await EnsureReadableAsync(httpContext, type);
+        var found = await EnsureReadableAsync(httpContext, type);
         try
         {
-            return await handler();
+            return await handler(found);
         }
         catch (ValidationException exception)
         {
@@ -92,15 +98,14 @@ internal static class DeliveryEndpoints
     }
 
     // The engine refuses an unreadable type as it refuses an unknown one; asking first makes both the same 404.
-    private static async Task EnsureReadableAsync(HttpContext httpContext, string type)
+    private static async Task<SchemaType> EnsureReadableAsync(HttpContext httpContext, string type)
     {
         var services = httpContext.RequestServices;
         var operation = ApiRequest.Of(httpContext).Operation;
         var access = await services.GetRequiredService<IContentQueryAccess>().ForQueryAsync(operation.Site, operation.Locale, httpContext.RequestAborted);
-        if (services.GetRequiredService<SchemaModel>().FindContentType(type) is not { } found || !access.CanReadType(found))
-        {
-            throw RequestErrors.TypeNotFound(type);
-        }
+        return services.GetRequiredService<SchemaModel>().FindContentType(type) is { } found && access.CanReadType(found)
+            ? found
+            : throw RequestErrors.TypeNotFound(type);
     }
 
     private static ContentQuery Parse(HttpContext httpContext, ApiRequest api, bool single)
@@ -113,6 +118,8 @@ internal static class DeliveryEndpoints
 
         return query;
     }
+
+    private static bool IsDraft(ContentQuery query) => query.Status == QueryStatus.Draft;
 
     private static bool ReadsDrafts(Principal principal) =>
         (principal.Claim(TokenScopes.Claim) ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries) is var scopes

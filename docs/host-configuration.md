@@ -34,6 +34,7 @@ Everything is read from the `FluentCms` section of the host's configuration, so 
 | `FluentCms:ReverseProxy` | `PathBase`, `ForwardedHeaders`, `HttpsRedirection`, `Hsts` (see [reverse proxy](reverse-proxy.md)) |
 | `FluentCms:RateLimits` | `Delivery:PermitLimit`, `Delivery:MaxKeyLimit`, `Management:PermitLimit`, `Auth:PermitLimit`, `PreAuth:PermitLimit` |
 | `FluentCms:Limits` | `MaxBodySize` |
+| `FluentCms:Delivery:Cache` | `CacheControl`, `OutputCache`, `OutputCacheDuration` (see [Delivery caching](#delivery-caching)) |
 | `FluentCms:Query` | `DefaultPageSize`, `MaxPageSize`, `MaxPopulateDepth`, `MaxFilterNodes`, `MaxPopulatedEntries` |
 | `FluentCms:Jobs` | the job runner: `Queues`, `PollInterval`, `LeaseDuration`, retries, retention |
 | `FluentCms:Events:Outbox` | the outbox: `BatchSize`, `MaxAttempts`, `LeaseDuration`, retries, retention |
@@ -86,6 +87,20 @@ The client address is the connection's remote address, an IPv4-mapped address co
 Every FluentCMS response carries `X-Content-Type-Options: nosniff` and `Referrer-Policy` (`FluentCms:Security:ReferrerPolicy`, default `no-referrer`). The `/account` group, which is where the hosted pages are, also carries `Content-Security-Policy: frame-ancestors ...` from `FluentCms:Security:FrameAncestors`, default `'none'`. A header that an endpoint sets itself is kept, and `frame-ancestors` is added to an endpoint's own policy when that has none. A host's own endpoints are not touched.
 
 A request to a FluentCMS endpoint with a body larger than `FluentCms:Limits:MaxBodySize` bytes (default 2 MiB) is refused with 413 and code `FCMS3111`, whether the size is declared or only found out while the body is read. The cap only lowers: a lower limit that the host or Kestrel already set stays, and an endpoint with its own size limit keeps it. The page size, populate depth and filter node caps are the engine's `FluentCms:Query` options; a query over one comes back as a 400 problem with code `FCMS2207`.
+
+## Delivery caching
+
+The options are `FluentCms:Delivery:Cache` (`cms.DeliveryCache` in code). A Delivery response carries an `ETag`, a `Last-Modified` and a `Cache-Control`, and varies on `Authorization`, `X-Api-Key`, `X-Cms-Site` and `X-Cms-Locale`. A request with a matching `If-None-Match` gets a 304; `If-Modified-Since` alone is answered in full, because an entry that leaves a list moves no date.
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `CacheControl` | `public, max-age=60, stale-while-revalidate=300` | What browsers and CDNs are told for a published read without credentials. A read with an API key or a token gets the same value as `private`, a draft read gets `no-store`, and an error gets `no-cache,no-store`. |
+| `OutputCache` | `true` | Whether the server keeps published reads in the ASP.NET Core output cache. Off, nothing is evicted and no `CacheInvalidatedEvent` is raised. |
+| `OutputCacheDuration` | `00:01:00` | How long it keeps one, at most. |
+
+The server keeps one copy for every request without credentials and one per API key, and keeps nothing for a bearer token, a draft read, credentials it refuses, an error or a request with `If-Modified-Since` and no `If-None-Match`. Publishing, unpublishing, trashing and restoring an entry evict the tags `entry:{id}` and `type:{site}:{type}` (`type:global:{type}` for a global type) through the outbox and raise `CacheInvalidatedEvent` with them, so a CDN can purge the same. Every read is tagged with its site, its type and every entry in it, populated ones included. A change to a role's permissions, or a newly published target of a relation, shows when the copy expires.
+
+`UseFluentCms()` adds the output cache middleware, so a host that caches its own endpoints does not call `UseOutputCache()` again. FluentCMS routes other than Delivery are never cached, even under a base policy of the host's. The store is in memory: with several instances, only the instance that delivers the outbox event evicts its copies, and the others serve theirs until `OutputCacheDuration` runs out. A shared `IOutputCacheStore`, such as the Redis one from `Microsoft.AspNetCore.OutputCaching.StackExchangeRedis`, removes that lag.
 
 ## Startup report and diagnostics
 

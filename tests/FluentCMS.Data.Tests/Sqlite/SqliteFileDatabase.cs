@@ -37,6 +37,7 @@ internal sealed class SqliteFileDatabase : IDisposable
         {
             UseSqlite(cms);
             cms.Activity.Enabled = false;
+            cms.DeliveryCache.OutputCache = false;
             configure?.Invoke(cms);
         });
         return services.BuildServiceProvider();
@@ -61,8 +62,9 @@ internal sealed class SqliteFileDatabase : IDisposable
             UseSqlite(cms);
             cms.UseContentMigrations(contentMigrations ?? typeof(CmsDbContext).Assembly);
 
-            // Its outbox handlers start a schedule in the background, which a test that disposes the host without stopping it leaves running against a file it then deletes.
+            // Their outbox handlers start a schedule in the background, which a test that disposes the host without stopping it leaves running against a file it then deletes.
             cms.Activity.Enabled = false;
+            cms.DeliveryCache.OutputCache = false;
         });
 
         return builder.Build();
