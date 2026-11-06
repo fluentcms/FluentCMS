@@ -743,6 +743,31 @@ namespace FluentCMS.Data.Sqlite.Migrations
                     b.ToTable("cms_job_attempt", (string)null);
                 });
 
+            modelBuilder.Entity("FluentCMS.Core.Storage.Entities.LockRow", b =>
+                {
+                    b.Property<string>("Name")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("name");
+
+                    b.Property<long?>("AcquiredAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("acquired_at");
+
+                    b.Property<long?>("LeaseUntil")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("lease_until");
+
+                    b.Property<string>("Owner")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("owner");
+
+                    b.HasKey("Name");
+
+                    b.ToTable("cms_lock", (string)null);
+                });
+
             modelBuilder.Entity("FluentCMS.Core.Storage.Entities.OutboxMessage", b =>
                 {
                     b.Property<Guid>("Id")
