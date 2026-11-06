@@ -4,8 +4,10 @@ using System.Text.RegularExpressions;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Content;
+using FluentCMS.Core.Storage;
 using FluentCMS.Core.Tests.Schema;
 using FluentCMS.Schema;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
@@ -298,6 +300,31 @@ public sealed partial class BlockIdTests : IDisposable
         after[0]!["internal"]!.GetValue<string>().ShouldBe("second");
         after[0]!["id"]!.GetValue<string>().ShouldBe(before[1]!["id"]!.GetValue<string>());
         after[1]!["id"]!.GetValue<string>().ShouldBe(before[0]!["id"]!.GetValue<string>());
+    }
+
+    // Rows written before blocks had ids, which no migration gives them.
+    private void StoreWithoutIds(Guid id, string cards) => _database.Read(context =>
+    {
+        var row = context.Rows("cms_article").Single(row =>
+            EF.Property<Guid>(row, StorageNames.DocumentId) == id && EF.Property<short>(row, StorageNames.State) == ContentState.Draft);
+        row["cards"] = cards;
+        return context.SaveChanges();
+    });
+
+    [Fact]
+    public async Task BlocksStoredWithoutIdsGetThemOnTheNextWriteAndKeepTheirHiddenValues()
+    {
+        var id = await SystemCreateAsync(new() { ["title"] = "T" });
+        StoreWithoutIds(id, "[" + Card("A", "ONE", "approved") + "," + Card("B", "TWO", "rejected") + "]");
+
+        var cards = (JsonArray)Json((await _database.GetAsync(Editor, id))!["cards"]);
+        cards[0]!.AsObject().ContainsKey("id").ShouldBeFalse();
+        await _database.PatchAsync(Editor, id, new() { ["cards"] = List(Card("B", "TWO"), Card("A", "ONE")) }, 1);
+
+        var after = Stored(id, "cards");
+        after[0]!["internal"]!.GetValue<string>().ShouldBe("rejected");
+        after[1]!["internal"]!.GetValue<string>().ShouldBe("approved");
+        new[] { after[0]!["id"]!.GetValue<string>(), after[1]!["id"]!.GetValue<string>() }.ShouldAllBe(value => AssignedId().IsMatch(value));
     }
 
     [FluentCMS.Schema.Collection("page")]

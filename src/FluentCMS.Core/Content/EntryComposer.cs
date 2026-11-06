@@ -194,13 +194,12 @@ internal sealed class EntryComposer(SchemaModel schema)
     private bool CarryInlineBlocks(JsonNode before, JsonNode after, BlockScope blocks, IReadOnlySet<Guid> unseen)
     {
         var was = after.DeepClone();
-        var (pairs, owners, newData) = PairInline(before, after, blocks, unseen);
-        var attributes = newData.ToDictionary<(JsonObject Data, InlineBlockJsonNode Block), JsonObject, JsonObject>(item => item.Data, item => item.Block.Attributes, ReferenceEqualityComparer.Instance);
+        var (pairs, owners, ids, newData) = PairInline(before, after, blocks, unseen);
         foreach (var (oldItem, newItem) in pairs)
         {
-            if (BlockIds.Of(attributes[newItem]) is null && IdOfInline(before, oldItem) is { } id)
+            if (ids[newItem] is null && ids.GetValueOrDefault(oldItem) is { } id)
             {
-                BlockIds.Set(attributes[newItem], id);
+                BlockIds.Set(newData.Find(item => ReferenceEquals(item.Data, newItem)).Block.Attributes, id);
             }
 
             CarryIntoObject(owners[newItem], oldItem, newItem, blocks, unseen);
@@ -223,11 +222,8 @@ internal sealed class EntryComposer(SchemaModel schema)
         return !JsonNode.DeepEquals(was, after);
     }
 
-    // A block that paired without an id paired within its own document, so its stored id is there.
-    private static string? IdOfInline(JsonNode document, JsonObject data) =>
-        BlockIds.Of(InlineBlockJson.Find(document).Find(block => ReferenceEquals(block.Data, data))?.Attributes);
-
-    private (List<(JsonObject Old, JsonObject New)> Pairs, Dictionary<JsonObject, SchemaType> Owners, List<(JsonObject Data, InlineBlockJsonNode Block)> NewData) PairInline(JsonNode before, JsonNode after, BlockScope blocks, IReadOnlySet<Guid> unseen)
+    // Ids holds the id of each data object of both documents; one that paired without an id paired within before.
+    private (List<(JsonObject Old, JsonObject New)> Pairs, Dictionary<JsonObject, SchemaType> Owners, Dictionary<JsonObject, string?> Ids, List<(JsonObject Data, InlineBlockJsonNode Block)> NewData) PairInline(JsonNode before, JsonNode after, BlockScope blocks, IReadOnlySet<Guid> unseen)
     {
         Dictionary<JsonObject, SchemaType> owners = new(ReferenceEqualityComparer.Instance);
         Dictionary<JsonObject, string?> ids = new(ReferenceEqualityComparer.Instance);
@@ -255,7 +251,7 @@ internal sealed class EntryComposer(SchemaModel schema)
         }
 
         var pairs = PairUp([.. oldData], [.. newData.Select(item => item.Data)], item => owners.GetValueOrDefault(item), item => ids.GetValueOrDefault(item), blocks, unseen);
-        return (pairs, owners, newData);
+        return (pairs, owners, ids, newData);
     }
 
     private List<(JsonObject Old, JsonObject New)> PairItems(SchemaField field, JsonArray before, JsonArray after, BlockScope blocks, IReadOnlySet<Guid> unseen)

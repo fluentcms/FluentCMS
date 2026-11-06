@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using FluentCMS.Core.ProseMirror;
 using FluentCMS.Core.Schema.FieldTypes;
 using FluentCMS.Publishing;
 using FluentCMS.Schema;
@@ -87,7 +88,7 @@ internal sealed class ContentSchemas(SchemaModel schema, OpenApiDocumentOptions 
             [BlockId] = new JsonObject
             {
                 ["type"] = "string",
-                ["pattern"] = "^[A-Za-z0-9_-]{1,64}$",
+                ["pattern"] = RichTextAttributes.BlockIdRule,
                 ["description"] = "The id of the block within its top-level field. A write that leaves it out gets one.",
             },
         };
