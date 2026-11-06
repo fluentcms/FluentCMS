@@ -60,18 +60,25 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
         var until = now + Lease;
 
         var current = await context.Set<LockRow>().AsNoTracking().SingleOrDefaultAsync(row => row.Name == name, cancellationToken);
+
+        // The writes are not canceled, so a take that commits always comes back as a handle that renews and releases it.
         if (current is null)
         {
             context.Add(new LockRow { Name = name, Owner = holder, AcquiredAt = now, LeaseUntil = until });
             try
             {
-                await context.SaveChangesAsync(cancellationToken);
+                await context.SaveChangesAsync(CancellationToken.None);
                 return until;
             }
             catch (DbUpdateException)
             {
                 // Another holder made the row first. Only the first use of a name inserts, so this is rare.
-                return null;
+                if (await ExistsAsync(name))
+                {
+                    return null;
+                }
+
+                throw;
             }
         }
 
@@ -87,7 +94,7 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
                     .SetProperty(column => column.Owner, holder)
                     .SetProperty(column => column.AcquiredAt, now)
                     .SetProperty(column => column.LeaseUntil, until),
-                cancellationToken);
+                CancellationToken.None);
 
         if (taken == 0)
         {
@@ -100,6 +107,12 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
         }
 
         return until;
+    }
+
+    private async Task<bool> ExistsAsync(string name)
+    {
+        await using var scope = scopes.CreateAsyncScope();
+        return await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<LockRow>().AnyAsync(row => row.Name == name);
     }
 
     // The end of the renewed lease, or null when the holder no longer has the lock.
