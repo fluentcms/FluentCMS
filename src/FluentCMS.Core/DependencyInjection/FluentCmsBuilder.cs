@@ -51,6 +51,16 @@ public sealed class FluentCmsBuilder
 
     internal Assembly? ContentMigrationsAssembly { get; private set; }
 
+    internal bool SchemaSyncOutsideDevelopment { get; private set; }
+
+    // For a host whose types are data, such as a schema file, and so have no compiled migrations: SchemaSync defaults to
+    // Auto in every environment, with the rules of Development. SQLite only; configuration cannot turn this on.
+    public FluentCmsBuilder AllowSchemaSyncOutsideDevelopment()
+    {
+        SchemaSyncOutsideDevelopment = true;
+        return this;
+    }
+
     // The assembly that holds the host's content migrations, if it is not the entry assembly.
     public FluentCmsBuilder UseContentMigrations(Assembly assembly)
     {

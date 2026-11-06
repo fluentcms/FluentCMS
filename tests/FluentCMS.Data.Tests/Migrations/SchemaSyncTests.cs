@@ -1,4 +1,5 @@
 using FluentCMS.Core.DependencyInjection;
+using FluentCMS.Core.Diagnostics;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Tests.Schema;
 using FluentCMS.Data.PostgreSql;
@@ -240,6 +241,70 @@ public sealed class SchemaSyncTests : IDisposable
         exception.Code.ShouldBe("FCMS1301");
         _database.Tables().ShouldNotContain("cms_article");
         await Should.ThrowAsync<InvalidOperationException>(() => Runner(host).SyncContentSchemaAsync(cancellationToken: Token));
+    }
+
+    [Fact]
+    public async Task AHostThatAllowsItSyncsOutsideDevelopmentAndTheReportSaysSo()
+    {
+        await StartAndStopAsync(ArticleSchemas.Titled);
+        InsertArticle("title", "Kept");
+
+        using var host = _database.CreateHost(ArticleSchemas.WithSubtitle, "Production", configure: cms => cms.AllowSchemaSyncOutsideDevelopment());
+        await host.StartAsync(Token);
+
+        _database.Columns("cms_article").ShouldContain("subtitle");
+        _database.Tables().ShouldNotContain("cms_content__migrations");
+        _database.ReadStrings("select title from cms_article").ShouldBe(["Kept"]);
+        (await Runner(host).SyncContentSchemaAsync(cancellationToken: Token)).Applied.ShouldBeEmpty();
+        host.Services.GetRequiredService<StartupReportHolder>().Current!.InsecureDefaults.Select(item => item.Id).ShouldContain("schema-sync-outside-development");
+        await host.StopAsync(Token);
+    }
+
+    [Fact]
+    public async Task OutsideDevelopmentADestructiveChangeIsStillOnlyReported()
+    {
+        await StartAndStopAsync(ArticleSchemas.WithSubtitle);
+
+        using var host = _database.CreateHost(ArticleSchemas.Titled, "Production", configure: cms => cms.AllowSchemaSyncOutsideDevelopment());
+        await host.StartAsync(Token);
+
+        _database.Columns("cms_article").ShouldContain("subtitle");
+        await host.StopAsync(Token);
+    }
+
+    [Fact]
+    public async Task ConfigurationCanStillTurnTheAllowedSyncOff()
+    {
+        using var host = _database.CreateHost(
+            ArticleSchemas.Titled,
+            "Production",
+            settings: new Dictionary<string, string?> { ["FluentCms:Database:SchemaSync"] = "Off" },
+            configure: cms => cms.AllowSchemaSyncOutsideDevelopment());
+
+        var exception = await Should.ThrowAsync<FluentCmsConfigurationException>(() => host.StartAsync(Token));
+
+        exception.Code.ShouldBe("FCMS1301");
+    }
+
+    [Fact]
+    public async Task InDevelopmentTheReportDoesNotListTheSync()
+    {
+        using var host = DevelopmentHost(ArticleSchemas.Titled);
+        await host.StartAsync(Token);
+
+        host.Services.GetRequiredService<StartupReportHolder>().Current!.InsecureDefaults.Select(item => item.Id).ShouldNotContain("schema-sync-outside-development");
+        await host.StopAsync(Token);
+    }
+
+    [Fact]
+    public void AProviderWithoutSchemaSyncRefusesTheOptIn()
+    {
+        var postgres = Should.Throw<FluentCmsConfigurationException>(() => new ServiceCollection().AddFluentCms(cms => cms.UsePostgreSql("Host=localhost").AllowSchemaSyncOutsideDevelopment()));
+        var sqlServer = Should.Throw<FluentCmsConfigurationException>(() => new ServiceCollection().AddFluentCms(cms => cms.UseSqlServer("Server=localhost").AllowSchemaSyncOutsideDevelopment()));
+
+        postgres.Code.ShouldBe("FCMS3154");
+        postgres.Message.ShouldContain("PostgreSQL");
+        sqlServer.Code.ShouldBe("FCMS3154");
     }
 
     [Fact]
