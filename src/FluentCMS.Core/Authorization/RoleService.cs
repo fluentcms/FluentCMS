@@ -13,12 +13,15 @@ namespace FluentCMS.Core.Authorization;
 
 internal sealed record PermissionGrant(string Permission, PermissionConstraints Constraints);
 
-internal sealed record RoleInfo(Guid Id, Guid? SiteId, string Name, string? Description, bool BuiltIn, IReadOnlyList<PermissionGrant> Grants);
+internal sealed record RoleInfo(Guid Id, Guid? SiteId, string Name, string? Description, bool BuiltIn, bool RequireTwoFactor, IReadOnlyList<PermissionGrant> Grants);
 
-// A role as it is to be. The site is the new role's; an update keeps the site the role has.
+// A role as it is to be. The site is the new role's; an update keeps the site the role has, and the two-factor flag when
+// the request leaves it out.
 internal sealed record RoleRequest(string Name, string? Description, IReadOnlyList<PermissionGrant> Grants)
 {
     public Guid? SiteId { get; init; }
+
+    public bool? RequireTwoFactor { get; init; }
 }
 
 // Roles and their grants for the Management API. Writing a role needs roles.manage where the role applies, and a role holds
@@ -99,7 +102,7 @@ internal sealed class RoleService(
         var (name, description, grants) = await ValidateAsync(request, request.SiteId, id: null, cancellationToken);
         await RequireCoveredAsync(grants, request.SiteId, name, cancellationToken);
 
-        var role = new Role { Id = Guid.CreateVersion7(), SiteId = request.SiteId, Name = name, Description = description };
+        var role = new Role { Id = Guid.CreateVersion7(), SiteId = request.SiteId, Name = name, Description = description, RequireTwoFactor = request.RequireTwoFactor ?? false };
         context.Add(role);
         context.AddRange(Rows(role.Id, grants));
         await SaveAsync(role, cancellationToken);
@@ -108,17 +111,14 @@ internal sealed class RoleService(
         return Info(role, grants);
     }
 
-    // Replaces the name, the description and every grant. A built-in role keeps its name, and Super Admin keeps everything.
+    // Replaces the name, the description and every grant. A built-in role keeps its name, and Super Admin keeps everything
+    // but whether it needs a second factor.
     public async Task<RoleInfo> UpdateAsync(Guid id, RoleRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
 
         var role = await context.Set<Role>().FirstOrDefaultAsync(item => item.Id == id, cancellationToken) ?? throw NotFound(id);
         await authority.RequireAsync(CorePermissions.RolesManage, role.SiteId, cancellationToken);
-        if (role.Id == BuiltInRoles.SuperAdmin)
-        {
-            throw Fixed("Super Admin holds every permission, and cannot be changed.");
-        }
 
         var (name, description, grants) = await ValidateAsync(request, role.SiteId, id, cancellationToken);
         if (role.BuiltIn && name != role.Name)
@@ -127,13 +127,23 @@ internal sealed class RoleService(
         }
 
         var stored = await context.Set<RoleGrant>().Where(grant => grant.RoleId == id).ToListAsync(cancellationToken);
+        if (role.Id == BuiltInRoles.SuperAdmin && (description != role.Description || !SameGrants([.. stored.Select(Grant)], grants)))
+        {
+            throw Fixed("Super Admin holds every permission; of it, only requireTwoFactor can be changed.");
+        }
+
         await RequireCoveredAsync([.. stored.Select(Grant)], role.SiteId, role.Name, cancellationToken);
         await RequireCoveredAsync(grants, role.SiteId, name, cancellationToken);
 
         role.Name = name;
         role.Description = description;
-        context.RemoveRange(stored);
-        context.AddRange(Rows(role.Id, grants));
+        role.RequireTwoFactor = request.RequireTwoFactor ?? role.RequireTwoFactor;
+        if (role.Id != BuiltInRoles.SuperAdmin)
+        {
+            context.RemoveRange(stored);
+            context.AddRange(Rows(role.Id, grants));
+        }
+
         await SaveAsync(role, cancellationToken);
 
         await LogAsync("role.updated", role, cancellationToken);
@@ -372,8 +382,13 @@ internal sealed class RoleService(
 
     private static PermissionGrant Grant(RoleGrant grant) => new(grant.Permission, PermissionConstraints.FromJson(grant.Constraints));
 
+    private static bool SameGrants(List<PermissionGrant> left, List<PermissionGrant> right) =>
+        left.Count == right.Count && left.Select(Key).ToHashSet().SetEquals(right.Select(Key));
+
+    private static (string, string?) Key(PermissionGrant grant) => (grant.Permission, grant.Constraints.ToJson());
+
     private static RoleInfo Info(Role role, IEnumerable<PermissionGrant> grants) =>
-        new(role.Id, role.SiteId, role.Name, role.Description, role.BuiltIn, [.. grants]);
+        new(role.Id, role.SiteId, role.Name, role.Description, role.BuiltIn, role.RequireTwoFactor, [.. grants]);
 
     private static ValidationError Invalid(string path, string message) => new(path, RoleErrorCodes.InvalidGrant, message);
 

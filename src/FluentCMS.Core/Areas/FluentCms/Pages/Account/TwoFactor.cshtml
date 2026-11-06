@@ -11,7 +11,10 @@
     <label asp-for="Input.Code"></label>
     <input asp-for="Input.Code" type="text" inputmode="numeric" autocomplete="one-time-code" autofocus>
     <span asp-validation-for="Input.Code"></span>
-    <label class="check"><input asp-for="Input.RememberMachine"> @Html.DisplayNameFor(model => model.Input.RememberMachine)</label>
+    @if (Model.CanRememberDevice)
+    {
+        <label class="check"><input asp-for="Input.RememberMachine"> @Html.DisplayNameFor(model => model.Input.RememberMachine)</label>
+    }
     <button type="submit">Sign in</button>
 </form>
 <p class="muted">No access to your app? <a asp-page="./RecoveryCode" asp-route-returnUrl="@Model.ReturnUrl">Use a recovery code</a>.</p>

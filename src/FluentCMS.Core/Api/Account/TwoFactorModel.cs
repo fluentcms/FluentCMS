@@ -1,9 +1,11 @@
 using System.ComponentModel.DataAnnotations;
+using FluentCMS.Core.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FluentCMS.Core.Api.Account;
 
-// The second step of a sign-in for a user with an authenticator app, after the password. Enrolling an app is #2780.
+// The second step of a sign-in for a user with an authenticator app, after the password. A user whose role requires
+// two-factor is not offered to skip it on this device, since the authorize endpoint would not take a sign-in that did.
 public sealed class TwoFactorModel : AccountPageModel
 {
     [BindProperty]
@@ -15,23 +17,34 @@ public sealed class TwoFactorModel : AccountPageModel
     [BindProperty(SupportsGet = true)]
     public bool RememberMe { get; set; }
 
-    public async Task<IActionResult> OnGetAsync() =>
-        await SignInManager.GetTwoFactorAuthenticationUserAsync() is null ? RedirectToLogin(ReturnUrl) : Page();
+    public bool CanRememberDevice { get; private set; }
 
-    public async Task<IActionResult> OnPostAsync()
+    public async Task<IActionResult> OnGetAsync()
     {
-        if (await SignInManager.GetTwoFactorAuthenticationUserAsync() is null)
+        if (await SignInManager.GetTwoFactorAuthenticationUserAsync() is not { } user)
         {
             return RedirectToLogin(ReturnUrl);
         }
 
+        CanRememberDevice = !await Service<TwoFactorService>().IsRequiredAsync(user.Id, HttpContext.RequestAborted);
+        return Page();
+    }
+
+    public async Task<IActionResult> OnPostAsync()
+    {
+        if (await SignInManager.GetTwoFactorAuthenticationUserAsync() is not { } user)
+        {
+            return RedirectToLogin(ReturnUrl);
+        }
+
+        CanRememberDevice = !await Service<TwoFactorService>().IsRequiredAsync(user.Id, HttpContext.RequestAborted);
         if (!ModelState.IsValid)
         {
             return Page();
         }
 
         var code = Input.Code.Replace(" ", "", StringComparison.Ordinal).Replace("-", "", StringComparison.Ordinal);
-        var result = await SignInManager.TwoFactorAuthenticatorSignInAsync(code, RememberMe, Input.RememberMachine);
+        var result = await SignInManager.TwoFactorAuthenticatorSignInAsync(code, RememberMe, Input.RememberMachine && CanRememberDevice);
         if (result.Succeeded)
         {
             return LocalRedirect(LocalUrl(ReturnUrl));

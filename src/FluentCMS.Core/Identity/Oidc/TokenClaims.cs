@@ -10,23 +10,33 @@ using static OpenIddict.Validation.OpenIddictValidationEvents;
 namespace FluentCMS.Core.Identity.Oidc;
 
 // The claims of FluentCMS tokens, on the way out and on the way in. A token carries sub, name, fcms_kind and, for a
-// service account, the roles of its client; the user's roles are read from cms_user_role on each request instead.
+// service account, the roles of its client; the user's roles are read from cms_user_role on each request instead. A user's
+// tokens carry amr, how the user signed in on the hosted pages.
 internal static class TokenClaims
 {
     // Kept in codes and refresh tokens only, which the server alone reads, so that a password change or reset ends them.
     public const string SecurityStamp = "fcms_security_stamp";
 
+    // The authentication method reference Identity gives a sign-in with a second factor.
+    public const string MultiFactor = "mfa";
+
     // A new identity, or one that keeps what a code or refresh token carried: its scopes, audiences and session.
     public static ClaimsIdentity Identity(ClaimsPrincipal? from = null) =>
         new(from?.Claims, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, Claims.Name, CmsClaimTypes.Roles);
 
-    public static ClaimsIdentity ForUser(ClaimsIdentity identity, CmsUser user, string? securityStamp, IEnumerable<string> scopes)
+    // Without methods, a code or refresh token keeps those it carried.
+    public static ClaimsIdentity ForUser(ClaimsIdentity identity, CmsUser user, string? securityStamp, IEnumerable<string> scopes, IEnumerable<string>? methods = null)
     {
         identity.SetClaim(Claims.Subject, user.Id.ToString("D"))
             .SetClaim(Claims.Name, user.UserName)
             .SetClaim(Claims.Email, user.Email)
             .SetClaim(SecurityStamp, securityStamp)
             .SetClaim(CmsClaimTypes.Kind, nameof(PrincipalKind.AdminUser));
+        if (methods is not null)
+        {
+            identity.SetClaims(Claims.AuthenticationMethodReference, [.. methods.Distinct(StringComparer.Ordinal)]);
+        }
+
         identity.SetScopes(scopes);
         identity.SetAudiences(AuthorizationServer.ManagementAudience);
         identity.SetDestinations(Destinations);
@@ -73,6 +83,7 @@ internal static class TokenClaims
     {
         Claims.Name when claim.Subject?.HasScope(Scopes.Profile) == true => [OpenIddictConstants.Destinations.AccessToken, OpenIddictConstants.Destinations.IdentityToken],
         Claims.Email when claim.Subject?.HasScope(Scopes.Email) == true => [OpenIddictConstants.Destinations.IdentityToken],
+        Claims.AuthenticationMethodReference => [OpenIddictConstants.Destinations.AccessToken, OpenIddictConstants.Destinations.IdentityToken],
         Claims.Name or CmsClaimTypes.Kind or CmsClaimTypes.Roles => [OpenIddictConstants.Destinations.AccessToken],
         _ => [],
     };

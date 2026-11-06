@@ -1,11 +1,13 @@
 using FluentCMS.Activity;
 using FluentCMS.Content;
 using FluentCMS.Core.ActivityLog;
+using FluentCMS.Core.Api.Account;
 using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Jobs;
+using FluentCMS.Settings;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -15,7 +17,8 @@ using Microsoft.Extensions.DependencyInjection;
 namespace FluentCMS.Core.Api.Management;
 
 // The jobs, activity and me groups of spec 4.10. Jobs need jobs.manage for the instance; the activity log needs activity.read
-// in the site of the request, and shows the rows of no site only to a reader of the instance; /me is the caller itself.
+// in the site of the request, and shows the rows of no site only to a reader of the instance; /me is the caller itself, and
+// /me/two-factor its second factor.
 internal static class OperationsEndpoints
 {
     public static IServiceCollection AddManagementOperationsApi(this IServiceCollection services) =>
@@ -36,6 +39,11 @@ internal static class OperationsEndpoints
         me.MapGet("", MeAsync);
         me.MapGet("/sessions", MySessionsAsync);
         me.MapDelete("/sessions/{sessionId}", RevokeMySessionAsync);
+        me.MapGet("/two-factor", TwoFactorAsync);
+        me.MapPost("/two-factor/enrol", EnrolAsync);
+        me.MapPost("/two-factor/verify", VerifyAsync);
+        me.MapPost("/two-factor/recovery-codes", RecoveryCodesAsync);
+        me.MapPost("/two-factor/disable", DisableTwoFactorAsync);
     }
 
     private static async Task<IResult> ListJobsAsync(HttpContext httpContext, [FromServices] JobAdministration jobs)
@@ -120,6 +128,47 @@ internal static class OperationsEndpoints
         ManagementQuery.Only(httpContext.Request);
         await current.RevokeSessionAsync(ManagementQuery.RouteId(sessionId, nameof(sessionId)), httpContext.RequestAborted);
         return Results.NoContent();
+    }
+
+    private static async Task<IResult> TwoFactorAsync(HttpContext httpContext, [FromServices] CurrentUser current)
+    {
+        ManagementQuery.Only(httpContext.Request);
+        return AdminJson.Ok(await current.TwoFactorAsync(httpContext.RequestAborted));
+    }
+
+    // The key and its otpauth URI are shown here only; the authenticator app is named after the brand of the hosted pages.
+    private static async Task<IResult> EnrolAsync(HttpContext httpContext, [FromServices] CurrentUser current, [FromServices] ISettings<BrandingSettings> branding)
+    {
+        ManagementQuery.Only(httpContext.Request);
+        var issuer = (await branding.GetDefaultAsync(httpContext.RequestAborted)).Name;
+        return AdminJson.Ok(await current.EnrolAuthenticatorAsync(issuer));
+    }
+
+    private static async Task<IResult> VerifyAsync(HttpContext httpContext, [FromServices] CurrentUser current)
+    {
+        var code = await CodeAsync(httpContext);
+        return AdminJson.Ok(new { recoveryCodes = await current.VerifyAuthenticatorAsync(code) });
+    }
+
+    private static async Task<IResult> RecoveryCodesAsync(HttpContext httpContext, [FromServices] CurrentUser current)
+    {
+        var code = await CodeAsync(httpContext);
+        return AdminJson.Ok(new { recoveryCodes = await current.RegenerateRecoveryCodesAsync(code) });
+    }
+
+    private static async Task<IResult> DisableTwoFactorAsync(HttpContext httpContext, [FromServices] CurrentUser current)
+    {
+        await current.DisableTwoFactorAsync(await CodeAsync(httpContext));
+        return Results.NoContent();
+    }
+
+    private static async Task<string?> CodeAsync(HttpContext httpContext)
+    {
+        ManagementQuery.Only(httpContext.Request);
+        var body = await BodyReader.ReadAsync(httpContext.Request, "code");
+        var code = body.String("code", required: true);
+        body.ThrowIfInvalid();
+        return code;
     }
 
     private static IResult Job(JobDetail detail) =>

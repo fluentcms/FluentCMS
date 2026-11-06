@@ -41,7 +41,8 @@ internal static class ConnectEndpoints
     private static IResult AnsweredByServer() => Results.NotFound();
 
     // The user signs in on the hosted pages, which hold the Identity cookie; without it the request goes there and comes back.
-    // So does a user who must choose a new password, and one who has not allowed a third-party client what it asks.
+    // So does a user whose role requires a second factor the sign-in did not give, one who must choose a new password, and
+    // one who has not allowed a third-party client what it asks.
     private static async Task<IResult> AuthorizeAsync(HttpContext context)
     {
         if (context.GetOpenIddictServerResponse() is { Error: not null } failed)
@@ -66,6 +67,28 @@ internal static class ConnectEndpoints
             return Results.Challenge(new AuthenticationProperties { RedirectUri = returnUrl }, [IdentityConstants.ApplicationScheme]);
         }
 
+        // The cookie says how the user signed in: amr=mfa after the second factor, pwd after a password alone, which is also
+        // what a remembered device gives. A role that requires two-factor takes mfa only, so a user who has the second factor
+        // signs in again (the sign-in manager then asks for it whatever the device), and one who has none sets it up first.
+        var methods = cookie.Principal!.FindAll(Claims.AuthenticationMethodReference).Select(claim => claim.Value).ToList();
+        if (!methods.Contains(TokenClaims.MultiFactor) && await context.RequestServices.GetRequiredService<TwoFactorService>().IsRequiredAsync(user.Id, context.RequestAborted))
+        {
+            if (await signIn.UserManager.GetTwoFactorEnabledAsync(user))
+            {
+                if (request.HasPromptValue(PromptValues.None))
+                {
+                    return Refuse(Errors.LoginRequired, "The user's role requires a sign-in with a second factor.");
+                }
+
+                await context.SignOutAsync(IdentityConstants.ApplicationScheme);
+                return Results.Challenge(new AuthenticationProperties { RedirectUri = returnUrl }, [IdentityConstants.ApplicationScheme]);
+            }
+
+            return request.HasPromptValue(PromptValues.None)
+                ? Refuse(Errors.InteractionRequired, "The user's role requires two-factor sign-in, which the user has not set up.")
+                : Results.Redirect(context.Request.PathBase + HostedPagePaths.EnableTwoFactor + QueryString.Create("ReturnUrl", returnUrl));
+        }
+
         if (user.MustChangePassword)
         {
             return request.HasPromptValue(PromptValues.None)
@@ -73,7 +96,7 @@ internal static class ConnectEndpoints
                 : Results.Redirect(context.Request.PathBase + HostedPagePaths.ChangePassword + QueryString.Create("ReturnUrl", returnUrl));
         }
 
-        var identity = TokenClaims.ForUser(TokenClaims.Identity(), user, await signIn.UserManager.GetSecurityStampAsync(user), request.GetScopes());
+        var identity = TokenClaims.ForUser(TokenClaims.Identity(), user, await signIn.UserManager.GetSecurityStampAsync(user), request.GetScopes(), methods);
         var applications = context.RequestServices.GetRequiredService<IOpenIddictApplicationManager>();
         var application = await applications.FindByClientIdAsync(request.ClientId!, context.RequestAborted)
             ?? throw new InvalidOperationException("The authorization server passed a client it did not find.");
@@ -124,6 +147,13 @@ internal static class ConnectEndpoints
             if (!string.Equals(result.Principal!.GetClaim(TokenClaims.SecurityStamp), stamp, StringComparison.Ordinal))
             {
                 return Refuse(Errors.InvalidGrant, "The user's credentials changed since the token was issued.");
+            }
+
+            // A session from before the user's role required two-factor ends when it is refreshed.
+            if (!result.Principal!.HasClaim(Claims.AuthenticationMethodReference, TokenClaims.MultiFactor)
+                && await context.RequestServices.GetRequiredService<TwoFactorService>().IsRequiredAsync(user.Id, context.RequestAborted))
+            {
+                return Refuse(Errors.InvalidGrant, "The user's role requires a sign-in with a second factor.");
             }
 
             var identity = TokenClaims.ForUser(TokenClaims.Identity(result.Principal), user, stamp, result.Principal!.GetScopes());

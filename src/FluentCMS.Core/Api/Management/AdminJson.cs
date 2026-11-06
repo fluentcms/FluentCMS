@@ -30,6 +30,7 @@ internal static class AdminJson
         ["name"] = role.Name,
         ["description"] = role.Description,
         ["builtIn"] = role.BuiltIn,
+        ["requireTwoFactor"] = role.RequireTwoFactor,
         ["grants"] = new JsonArray([.. role.Grants.Select(grant => (JsonNode)new JsonObject
         {
             ["permission"] = grant.Permission,
