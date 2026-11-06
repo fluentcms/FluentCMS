@@ -17,13 +17,13 @@ public static class BlogSample
         typeof(GalleryBlock),
     ];
 
-    // Registers the settings and the seed set. The content types still go to the schema, from ContentTypes.
+    // Registers the settings, the seed set and the OpenAPI examples. The content types still go to the schema, from ContentTypes.
     public static FluentCmsBuilder AddBlogSample(this FluentCmsBuilder cms)
     {
         ArgumentNullException.ThrowIfNull(cms);
 
         cms.Settings.Add<BlogSettings>();
         cms.Seeding.RequireLocale(SecondLocale).Add<BlogSeeder>();
-        return cms;
+        return cms.AddBlogExamples();
     }
 }

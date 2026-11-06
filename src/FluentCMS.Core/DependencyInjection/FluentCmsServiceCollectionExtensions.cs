@@ -7,6 +7,7 @@ using FluentCMS.Core.Api.Account;
 using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.Api.Delivery;
 using FluentCMS.Core.Api.Management;
+using FluentCMS.Core.Api.OpenApi;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Caching;
 using FluentCMS.Core.Content;
@@ -144,6 +145,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddManagementSchemaApi();
         services.AddFluentCmsHealth();
         services.AddSystemApi();
+        services.AddFluentCmsOpenApi(builder.OpenApi);
 
         services.AddSingleton<SettingsCache>();
         services.AddScoped<SettingsService>();

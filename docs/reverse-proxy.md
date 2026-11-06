@@ -41,7 +41,7 @@ Set `PathBase` and keep the prefix when the proxy forwards the request:
 FluentCms__ReverseProxy__PathBase=/cms
 ```
 
-Every route of FluentCMS is then under it (`/cms/api/delivery/v1`, `/cms/api/management/v1`, `/cms/connect`, `/cms/account`, `/cms/health/live`, and any group added later) and the same routes without the prefix answer a 404 problem. Routes the host maps itself, such as its own endpoints, `/openapi/v1.json`, `/scalar` or the media routes, are not held to it: put them under `/cms` yourself with `MapGroup`. A proxy that strips the prefix before forwarding does not need the option, but then the host cannot build links that include it. Health probes that call the host directly must use the prefixed path.
+Every route of FluentCMS is then under it (`/cms/api/delivery/v1`, `/cms/api/management/v1`, `/cms/connect`, `/cms/account`, `/cms/health/live`, and any group added later) and the same routes without the prefix answer a 404 problem. Routes the host maps itself, such as its own endpoints, `/openapi/v1.json`, `/scalar` or the media routes, are not held to it: they answer under the prefix and without it. Read under the prefix, the OpenAPI document names it in its server and in the URLs of the authorization server. A proxy that strips the prefix before forwarding does not need the option, but then the host cannot build links that include it. Health probes that call the host directly must use the prefixed path.
 
 ## Nginx
 

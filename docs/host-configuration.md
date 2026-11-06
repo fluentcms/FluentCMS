@@ -36,6 +36,7 @@ Everything is read from the `FluentCms` section of the host's configuration, so 
 | `FluentCms:RateLimits` | `Delivery:PermitLimit`, `Delivery:MaxKeyLimit`, `Management:PermitLimit`, `Auth:PermitLimit`, `PreAuth:PermitLimit` |
 | `FluentCms:Limits` | `MaxBodySize` |
 | `FluentCms:Delivery:Cache` | `CacheControl`, `OutputCache`, `OutputCacheDuration` (see [Delivery caching](#delivery-caching)) |
+| `FluentCms:OpenApi` | `Enabled` (see [OpenAPI and the Scalar UI](#openapi-and-the-scalar-ui)) |
 | `FluentCms:Query` | `DefaultPageSize`, `MaxPageSize`, `MaxPopulateDepth`, `MaxFilterNodes`, `MaxPopulatedEntries` |
 | `FluentCms:Jobs` | the job runner: `Queues`, `PollInterval`, `LeaseDuration`, retries, retention |
 | `FluentCms:Events:Outbox` | the outbox: `BatchSize`, `MaxAttempts`, `LeaseDuration`, retries, retention |
@@ -102,6 +103,22 @@ The options are `FluentCms:Delivery:Cache` (`cms.DeliveryCache` in code). A Deli
 The server keeps one copy for every request without credentials and one per API key, and keeps nothing for a bearer token, a draft read, credentials it refuses, an error or a request with `If-Modified-Since` and no `If-None-Match`. Publishing, unpublishing, trashing and restoring an entry evict the tags `entry:{id}` and `type:{site}:{type}` (`type:global:{type}` for a global type) through the outbox and raise `CacheInvalidatedEvent` with them, so a CDN can purge the same; a change to a site or its locales evicts `site:{id}` the same way. Every read is tagged with its site, its type and every entry in it, populated ones included. A change to a role's permissions, or a newly published target of a relation, shows when the copy expires.
 
 `UseFluentCms()` adds the output cache middleware, so a host that caches its own endpoints does not call `UseOutputCache()` again. FluentCMS routes other than Delivery are never cached, even under a base policy of the host's. The store is in memory: with several instances, only the instance that delivers the outbox event evicts its copies, and the others serve theirs until `OutputCacheDuration` runs out. A shared `IOutputCacheStore`, such as the Redis one from `Microsoft.AspNetCore.OutputCaching.StackExchangeRedis`, removes that lag.
+
+## OpenAPI and the Scalar UI
+
+`MapFluentCmsOpenApi()` maps the OpenAPI 3.1 document of the deployment at `/openapi/v1.json` and the Scalar UI at `/scalar`:
+
+```csharp
+app.UseFluentCms();
+app.MapFluentCms();
+app.MapFluentCmsOpenApi();
+```
+
+They are mapped in Development only, because the document names every content type, field, component and block of the schema to whoever can reach it, whatever that caller may read. `FluentCms:OpenApi:Enabled = true` maps them in any environment, and `false` leaves them out in Development too. The builder the method returns applies conventions to both, so a host can require a policy of its own, as in `app.MapFluentCmsOpenApi().RequireAuthorization("docs")`. A browser opening the page sends no bearer token or API key, so such a policy needs a credential the browser carries, such as a cookie of the host's.
+
+The document holds the Delivery and Management routes and none of the host's. A content route is written once per content type, such as `/api/delivery/v1/article` and `/api/management/v1/content/article/{id}/publish`, with the type's `entry-{type}` schema for what it reads and `input-{type}` for what it writes. Components and blocks are `component-{name}` and `block-{name}`, and a block list is a `oneOf` of its blocks with `type` as the discriminator. A field is described by its field type's fragment (`IFieldType.OpenApiSchema`), so a plugin's field type is described the way it says. The `filter` parameter of a type (`style: deepObject`) lists the fields it can filter with their operators, and `sort` lists its sort keys. The security schemes are `oauth2`, with the authorization code flow and PKCE against `/connect/authorize` and `/connect/token` and client credentials, and `apiKey`, the `X-Api-Key` header. Examples come from `cms.OpenApi.AddExample<T>(json)`, which the Blog sample calls for its types. The routes other than content and schema list their path parameters but do not describe their bodies yet.
+
+The server of the document is the request's origin and path base, and so are the URLs of the authorization server. The routes are not held to `FluentCms:ReverseProxy:PathBase` (see [reverse proxy](reverse-proxy.md)). The document is the one named `v1` of `Microsoft.AspNetCore.OpenApi`, so a host that documents its own endpoints adds a document of another name, such as `AddOpenApi("host")`.
 
 ## Startup report and diagnostics
 

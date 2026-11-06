@@ -1,11 +1,14 @@
 using FluentCMS.Core.Api.Account;
 using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.Api.Delivery;
+using FluentCMS.Core.Api.OpenApi;
 using FluentCMS.Core.Storage;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Scalar.AspNetCore;
 
 namespace FluentCMS.Core.DependencyInjection;
 
@@ -43,6 +46,28 @@ public static class FluentCmsEndpointRouteBuilderExtensions
         }
 
         return new Conventions(cms, HostedPages.Map(endpoints));
+    }
+
+    // /openapi/v1.json and the Scalar UI at /scalar, which a host maps itself, so they are where it puts them: not held to
+    // the path base, and under any group it maps them in. FluentCms:OpenApi:Enabled turns them on outside Development; off,
+    // nothing is mapped. The returned builder applies conventions to both, such as RequireAuthorization.
+    public static IEndpointConventionBuilder MapFluentCmsOpenApi(this IEndpointRouteBuilder endpoints)
+    {
+        ArgumentNullException.ThrowIfNull(endpoints);
+
+        var options = endpoints.ServiceProvider.GetService<OpenApiDocumentOptions>() ?? throw new FluentCmsConfigurationException(
+            HostErrorCodes.NotRegistered,
+            "MapFluentCmsOpenApi found no FluentCMS services. Call builder.Services.AddFluentCms(...) before building the app.");
+
+        if (!(options.Enabled ?? endpoints.ServiceProvider.GetService<IHostEnvironment>()?.IsDevelopment() == true))
+        {
+            return new Conventions();
+        }
+
+        var document = endpoints.MapOpenApi(OpenApiRegistration.DocumentRoute);
+        var scalar = endpoints.MapScalarApiReference(OpenApiRegistration.ScalarRoute, (ui, context) =>
+            ui.WithTitle("FluentCMS API").WithOpenApiRoutePattern(OpenApiRegistration.DocumentUrl(context)));
+        return new Conventions(document, scalar);
     }
 
     // The admin application calls /connect and reads the discovery document from its own origin, so those groups answer
