@@ -37,13 +37,7 @@ internal sealed record QueryParameter(string Name, string Description, JsonObjec
         return new(name, description, schema);
     }
 
-    public JsonObject ToJson() => new()
-    {
-        ["name"] = Name,
-        ["in"] = "query",
-        ["description"] = Description,
-        ["schema"] = Schema.DeepClone(),
-    };
+    public JsonObject ToJson() => SharedComponents.Query(Name, Schema.DeepClone().AsObject(), Description);
 }
 
 internal static class QueryParameterExtensions

@@ -28,9 +28,10 @@ internal sealed class FluentCmsOperationTransformer : IOpenApiOperationTransform
         operation.OperationId ??= (description.HttpMethod ?? "get").ToLowerInvariant() + string.Concat(segments.Select(Name));
         operation.Security = Security(surface, document);
 
-        // The bridge reads the site on every route; the locale only matters to content, so it is left out here.
+        // The bridge reads the site and the locale on every route; beside content only the site changes the answer.
         operation.Parameters ??= [];
         operation.Parameters.Add(new OpenApiParameterReference("site", document));
+        operation.Parameters.Add(new OpenApiParameterReference(SharedComponents.BridgeLocale, document));
         foreach (var parameter in description.ActionDescriptor.EndpointMetadata.OfType<QueryParameter>())
         {
             operation.Parameters.Add(OpenApiFragments.Read<OpenApiParameter>(parameter.ToJson(), document, $"the parameter {parameter.Name}"));

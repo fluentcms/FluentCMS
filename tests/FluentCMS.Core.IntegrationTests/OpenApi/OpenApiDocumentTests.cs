@@ -280,7 +280,7 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
             }
 
             responses["default"]!["$ref"]!.GetValue<string>().ShouldBe("#/components/responses/problem", name);
-            QueryParameters(operation).Select(parameter => parameter["name"]!.GetValue<string>()).ShouldBe(["site", .. ReadsQuery.GetValueOrDefault(name, [])], name);
+            QueryParameters(operation).Select(parameter => parameter["name"]!.GetValue<string>()).ShouldBe(["site", "locale", .. ReadsQuery.GetValueOrDefault(name, [])], name);
             if (TakesABody.Contains(name))
             {
                 var body = Resolve(operation["requestBody"]!["content"]!["application/json"]!["schema"]!);
@@ -305,6 +305,7 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
         var activity = QueryParameters(Paths[$"{Management}/activity"]!["get"]!).ToDictionary(parameter => parameter["name"]!.GetValue<string>());
 
         activity["site"]!["description"]!.GetValue<string>().ShouldContain("X-Cms-Site");
+        activity["locale"]!["description"]!.GetValue<string>().ShouldContain("reads nothing by it");
         Schema(activity["actorId"]!).ShouldBe("""{"format":"uuid","type":"string"}""");
         Values(activity["actorKind"]!).ShouldBe(["adminUser", "member", "apiKey", "serviceAccount", "system", "anonymous"]);
         Values(activity["origin"]!).ShouldBe(["admin", "api", "mcp", "job", "cli", "seed"]);

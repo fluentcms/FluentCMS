@@ -13,6 +13,7 @@ internal static class SharedComponents
     public const string ProblemResponse = "problem";
     public const string ProblemMediaType = "application/problem+json";
     public const string PublishWarning = "publish-warning";
+    public const string BridgeLocale = "bridge-locale";
 
     public static readonly string[] SingleParameters = ["status", "fallback", "fields", "populate", "depth", "richText"];
 
@@ -171,6 +172,7 @@ internal static class SharedComponents
     {
         yield return ("site", Query("site", String("A site id or slug, as the X-Cms-Site header. The default site when neither is given.")));
         yield return ("locale", Query("locale", String("A BCP 47 tag, as the X-Cms-Locale header, or all for every locale of an entry as { id, locales }. The site's default locale when neither is given.")));
+        yield return (BridgeLocale, Query("locale", String("A locale of the site, as the X-Cms-Locale header. A route beside content refuses one the site does not have and reads nothing by it.")));
         yield return ("status", Query("status", Enum(["published", "draft"]), "Delivery reads published entries and the Management API drafts unless this says otherwise. Delivery reads drafts only with a preview key or a token with the draft scope."));
         yield return ("fallback", Query("fallback", Enum(["none"]), "none reads only what the locale holds; otherwise empty fields come through the site's fallback chain."));
         yield return ("fields", Query("fields", String(), "Comma-separated fields to return; a component's field is component.field."));
@@ -220,7 +222,7 @@ internal static class SharedComponents
 
     private static JsonObject Action() => Enum<ScheduleAction>();
 
-    private static JsonObject Query(string name, JsonObject schema, string? description = null)
+    public static JsonObject Query(string name, JsonObject schema, string? description = null)
     {
         JsonObject json = new() { ["name"] = name, ["in"] = "query" };
         if ((description ?? schema["description"]?.GetValue<string>()) is { } text)

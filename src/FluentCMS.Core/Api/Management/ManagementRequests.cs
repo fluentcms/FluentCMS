@@ -119,7 +119,7 @@ internal static class ManagementQuery
 
     public static readonly QueryParameter[] Paging =
     [
-        QueryParameter.Number("page", "The page number.", minimum: 1, maximum: null, @default: 1),
+        QueryParameter.Number("page", "The page number. The items before it, (page - 1) * pageSize, are at most 2147483647.", minimum: 1, maximum: null, @default: 1),
         QueryParameter.Number("pageSize", "How many items a page holds.", minimum: 1, maximum: MaxPageSize, @default: DefaultPageSize),
     ];
 
