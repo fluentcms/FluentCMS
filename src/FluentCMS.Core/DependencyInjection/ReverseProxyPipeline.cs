@@ -1,10 +1,12 @@
 using System.Net;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.HostFiltering;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 
 namespace FluentCMS.Core.DependencyInjection;
 
@@ -37,7 +39,7 @@ internal static class ReverseProxyPipeline
     {
         if (options.ForwardedHeaders.Enabled)
         {
-            app.UseForwardedHeaders(Forwarded(options.ForwardedHeaders));
+            app.UseForwardedHeaders(Forwarded(options.ForwardedHeaders, app.ApplicationServices.GetService<IOptions<HostFilteringOptions>>()?.Value));
         }
 
         if (!string.IsNullOrEmpty(options.PathBase))
@@ -56,7 +58,7 @@ internal static class ReverseProxyPipeline
         }
     }
 
-    private static ForwardedHeadersOptions Forwarded(ProxyForwardedHeadersOptions options)
+    private static ForwardedHeadersOptions Forwarded(ProxyForwardedHeadersOptions options, HostFilteringOptions? hostFiltering)
     {
         var forwarded = new ForwardedHeadersOptions
         {
@@ -65,6 +67,13 @@ internal static class ReverseProxyPipeline
                 | (options.ForwardHost ? ForwardedHeaders.XForwardedHost : ForwardedHeaders.None),
             ForwardLimit = options.ForwardLimit,
         };
+
+        // Host filtering runs before this middleware and sees the proxy's Host, so a forwarded host is held to AllowedHosts
+        // here; otherwise a forged X-Forwarded-Host would get past it.
+        if (options.ForwardHost && hostFiltering?.AllowedHosts is { Count: > 0 } allowedHosts)
+        {
+            forwarded.AllowedHosts = [.. allowedHosts];
+        }
 
         if (options.KnownProxies.Count == 0 && options.KnownNetworks.Count == 0)
         {

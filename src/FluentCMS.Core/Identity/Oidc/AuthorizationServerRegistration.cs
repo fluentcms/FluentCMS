@@ -78,6 +78,8 @@ internal static class AuthorizationServerRegistration
                 // Signed JWTs a resource server can read; codes and refresh tokens stay encrypted.
                 server.DisableAccessTokenEncryption();
 
+                server.AddEventHandler(PublicOriginDiscoveryHandler.Descriptor);
+
                 // An error of authorize or logout that cannot go back to the client reaches the endpoint, which shows the error page.
                 server.UseAspNetCore()
                     .EnableAuthorizationEndpointPassthrough()
@@ -98,6 +100,10 @@ internal static class AuthorizationServerRegistration
                     .DisableAccessTokenExtractionFromQueryString()
                     .DisableAccessTokenExtractionFromBodyForm();
             });
+
+        // Without a public origin OpenIddict takes the issuer and the URLs of the discovery document from the request, as the
+        // links in emails do.
+        services.AddOptions<OpenIddictServerOptions>().Configure<PublicOrigin>((server, origin) => server.Issuer = origin.Issuer ?? server.Issuer);
 
         // A revoked session stops its access tokens at once, not when they expire. After the local server's own setup,
         // which sets these from the server's options.

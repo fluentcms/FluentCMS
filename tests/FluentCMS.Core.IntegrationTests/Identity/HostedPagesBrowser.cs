@@ -18,16 +18,17 @@ internal sealed partial class HostedPagesBrowser : IDisposable
     private readonly CookieContainer _cookies = new();
     private readonly HttpClient _client;
 
-    public HostedPagesBrowser(FluentCmsTestHost host, string address = "10.1.0.1")
+    // The base address is the host the requests name, https://localhost unless a test forges another.
+    public HostedPagesBrowser(FluentCmsTestHost host, string address = "10.1.0.1", Uri? baseAddress = null)
     {
         var server = (TestServer)host.Services.GetRequiredService<IServer>();
         var handler = server.CreateHandler(context => context.Connection.RemoteIpAddress = IPAddress.Parse(address));
-        _client = new HttpClient(new CookieHandler(_cookies, handler)) { BaseAddress = OAuthBase };
+        _client = new HttpClient(new CookieHandler(_cookies, handler)) { BaseAddress = baseAddress ?? OAuthBase };
     }
 
     public static Uri OAuthBase { get; } = new("https://localhost/");
 
-    public bool HasCookie(string name) => _cookies.GetCookies(OAuthBase).Any(cookie => cookie.Name == name && !cookie.Expired);
+    public bool HasCookie(string name) => _cookies.GetCookies(_client.BaseAddress!).Any(cookie => cookie.Name == name && !cookie.Expired);
 
     public Task<HttpResponseMessage> GetAsync(string url) => _client.GetAsync(url, Token);
 
