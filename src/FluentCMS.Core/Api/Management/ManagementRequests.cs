@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using FluentCMS.Content;
 using FluentCMS.Core.Api.Common;
+using FluentCMS.Core.Api.OpenApi;
 using FluentCMS.Core.Content.Query;
 using Microsoft.AspNetCore.Http;
 
@@ -109,19 +110,26 @@ internal sealed class BodyReader
 
 }
 
-// The query string of the groups beside content: the bridge's site and locale, and the parameters a route names. A list
-// takes page and pageSize, which work as they do on content.
+// The query string of the groups beside content: the bridge's site and locale, and the parameters the route declares with
+// Query, which are the only ones it accepts and reads. A list takes Paging, which works as it does on content.
 internal static class ManagementQuery
 {
     public const int DefaultPageSize = 50;
     public const int MaxPageSize = 100;
 
+    public static readonly QueryParameter[] Paging =
+    [
+        QueryParameter.Number("page", "The page number. The items before it, (page - 1) * pageSize, are at most 2147483647.", minimum: 1, maximum: null, @default: 1),
+        QueryParameter.Number("pageSize", "How many items a page holds.", minimum: 1, maximum: MaxPageSize, @default: DefaultPageSize),
+    ];
+
     private static readonly string[] Bridge = [RequestBridge.SiteParameter, RequestBridge.LocaleParameter];
 
-    public static void Only(HttpRequest request, params string[] names)
+    public static void Only(HttpRequest request)
     {
+        var declared = Declared(request);
         var refused = request.Query.Keys
-            .Where(key => !Bridge.Contains(key, StringComparer.Ordinal) && !names.Contains(key, StringComparer.Ordinal))
+            .Where(key => !Bridge.Contains(key, StringComparer.Ordinal) && !declared.Any(parameter => parameter.Name == key))
             .Select(key => new ValidationError(key, QueryErrorCodes.InvalidParameter, $"'{key}' does not apply to this request."))
             .ToList();
         if (refused.Count > 0)
@@ -154,6 +162,11 @@ internal static class ManagementQuery
 
     public static string? Text(HttpRequest request, string name)
     {
+        if (!Declared(request).Any(parameter => parameter.Name == name))
+        {
+            throw new InvalidOperationException($"The route reads the query parameter '{name}' without declaring it with Query.");
+        }
+
         var values = request.Query[name];
         return values.Count switch
         {
@@ -193,6 +206,9 @@ internal static class ManagementQuery
         Text(request, name) is { } text
             ? int.TryParse(text, NumberStyles.None, CultureInfo.InvariantCulture, out var number) ? number : throw Invalid(name, $"'{name}' is a whole number.")
             : null;
+
+    private static IReadOnlyList<QueryParameter> Declared(HttpRequest request) =>
+        request.HttpContext.GetEndpoint()?.Metadata.GetOrderedMetadata<QueryParameter>() ?? [];
 
     private static ValidationException Invalid(string name, string message) => new([new ValidationError(name, QueryErrorCodes.InvalidValue, message)]);
 }

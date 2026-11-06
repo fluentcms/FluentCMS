@@ -3,6 +3,7 @@ using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Events;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Identity.Oidc;
+using FluentCMS.Core.Plugins;
 using FluentCMS.Core.Storage;
 using FluentCMS.Providers;
 using FluentCMS.Schema;
@@ -24,6 +25,7 @@ internal sealed class StartupReportFactory(
     IOptions<DatabaseOptions> database,
     ReverseProxyOptions proxy,
     PublicOrigin origin,
+    PluginRegistry plugins,
     IEnumerable<IProductionStartupCheck> checks,
     TimeProvider time,
     IHostEnvironment? environment = null)
@@ -47,6 +49,7 @@ internal sealed class StartupReportFactory(
                 SchemaSync = startup.SchemaSync.ToString(),
             },
             Assemblies = Assemblies(),
+            Plugins = Plugins(),
             PendingMigrations = [.. pending.Select(migration => new StartupMigration { Stream = migration.Stream, Id = SecretScrubber.Of(migration.Id) })],
             Schema = new StartupSchema
             {
@@ -70,6 +73,7 @@ internal sealed class StartupReportFactory(
         Failure = exception.GetType().Name,
         DataProvider = new StartupDataProvider { Provider = provider.Name, ProviderVersion = VersionOf(provider.GetType().Assembly) },
         Assemblies = Assemblies(),
+        Plugins = Plugins(),
     };
 
     private string EnvironmentName => environment?.EnvironmentName ?? "Unknown";
@@ -143,8 +147,11 @@ internal sealed class StartupReportFactory(
     private bool AllowsAnyHost() =>
         services.GetService<IOptions<HostFilteringOptions>>()?.Value.AllowedHosts is not { Count: > 0 } hosts || hosts.Contains("*");
 
+    private List<StartupPlugin> Plugins() =>
+        [.. plugins.Plugins.Select(plugin => new StartupPlugin { Name = plugin.Name, Version = plugin.Version })];
+
     // The assemblies of FluentCMS in the process, which is the SDK, core, the data provider and whatever else the host
-    // referenced. A plugin shows here and, once the plugin host exists, in Plugins.
+    // referenced. A plugin's assembly shows here, and the plugin in Plugins.
     private static List<StartupAssembly> Assemblies() =>
         [.. AppDomain.CurrentDomain.GetAssemblies()
             .Where(assembly => !assembly.IsDynamic && assembly.GetName().Name is { } name && name.StartsWith("FluentCMS", StringComparison.Ordinal))
@@ -152,7 +159,7 @@ internal sealed class StartupReportFactory(
             .DistinctBy(assembly => assembly.Name)
             .OrderBy(assembly => assembly.Name, StringComparer.Ordinal)];
 
-    private static string VersionOf(Assembly assembly)
+    internal static string VersionOf(Assembly assembly)
     {
         var version = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
             ?? assembly.GetName().Version?.ToString()

@@ -21,6 +21,7 @@ using FluentCMS.Core.Identity;
 using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Localization;
+using FluentCMS.Core.Plugins;
 using FluentCMS.Core.ProseMirror;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Seeding;
@@ -67,6 +68,11 @@ public static class FluentCmsServiceCollectionExtensions
                 StorageErrorCodes.SchemaSyncNotSupported,
                 $"AllowSchemaSyncOutsideDevelopment needs a data provider with schema sync, and {provider.Name} has none; its content tables come from migrations.");
         }
+
+        // Before the services of core, so that a plugin's replaces one that core adds only when none is there.
+        var plugins = PluginHost.ConfigureServices(builder, PluginHost.Compose(builder.Plugins, PluginDiscovery.Types, PluginHost.RunningSdk));
+        services.AddSingleton(plugins);
+        services.TryAddSingleton<IHookTiebreaker>(plugins);
 
         services.AddProductionStartupChecks();
         services.AddFluentCmsOptions(DatabaseOptions.Section, StorageErrorCodes.InvalidDatabaseSetting, new DatabaseOptions { SchemaSyncOutsideDevelopment = builder.SchemaSyncOutsideDevelopment });

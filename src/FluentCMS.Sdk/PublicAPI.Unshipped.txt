@@ -960,6 +960,26 @@ FluentCMS.Media.MediaRefList.GetEnumerator() -> System.Collections.Generic.IEnum
 FluentCMS.Media.MediaRefList.MediaRefList() -> void
 FluentCMS.Media.MediaRefList.MediaRefList(System.Collections.Generic.IEnumerable<FluentCMS.Media.MediaRef>! items) -> void
 FluentCMS.Media.MediaRefList.this[int index].get -> FluentCMS.Media.MediaRef
+FluentCMS.Plugins.FluentCmsPluginAttribute
+FluentCMS.Plugins.FluentCmsPluginAttribute.DependsOn.get -> string![]!
+FluentCMS.Plugins.FluentCmsPluginAttribute.DependsOn.set -> void
+FluentCMS.Plugins.FluentCmsPluginAttribute.FluentCmsPluginAttribute(string! name) -> void
+FluentCMS.Plugins.FluentCmsPluginAttribute.FluentCmsPluginAttribute(System.Type! pluginType) -> void
+FluentCMS.Plugins.FluentCmsPluginAttribute.Name.get -> string?
+FluentCMS.Plugins.FluentCmsPluginAttribute.PluginType.get -> System.Type?
+FluentCMS.Plugins.FluentCmsPluginAttribute.SdkRange.get -> string?
+FluentCMS.Plugins.FluentCmsPluginAttribute.SdkRange.set -> void
+FluentCMS.Plugins.FluentCmsPluginAttribute.Version.get -> string?
+FluentCMS.Plugins.FluentCmsPluginAttribute.Version.set -> void
+FluentCMS.Plugins.IPlugin
+FluentCMS.Plugins.IPlugin.Configure(FluentCMS.Plugins.IPluginAppBuilder! app) -> void
+FluentCMS.Plugins.IPlugin.ConfigureServices(FluentCMS.Plugins.IPluginServiceBuilder! plugin) -> void
+FluentCMS.Plugins.IPluginAppBuilder
+FluentCMS.Plugins.IPluginAppBuilder.Name.get -> string!
+FluentCMS.Plugins.IPluginAppBuilder.Services.get -> System.IServiceProvider!
+FluentCMS.Plugins.IPluginServiceBuilder
+FluentCMS.Plugins.IPluginServiceBuilder.Name.get -> string!
+FluentCMS.Plugins.IPluginServiceBuilder.Services.get -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 FluentCMS.Providers.EmailMessage
 FluentCMS.Providers.EmailMessage.<Clone>$() -> FluentCMS.Providers.EmailMessage!
 FluentCMS.Providers.EmailMessage.Deconstruct(out string! To, out string! Subject, out string! TextBody) -> void

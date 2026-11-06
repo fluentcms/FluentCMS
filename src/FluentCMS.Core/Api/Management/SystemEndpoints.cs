@@ -21,7 +21,7 @@ internal static class SystemEndpoints
     private static void Map(RouteGroupBuilder management)
     {
         var system = management.MapGroup("/system").WithFluentCmsOperation(Origin.Api);
-        system.MapGet("/diagnostics", DiagnosticsAsync);
+        system.MapGet("/diagnostics", DiagnosticsAsync).Produces<StartupReport>();
     }
 
     private static async Task<IResult> DiagnosticsAsync(HttpContext httpContext, [FromServices] IAuthorizationEvaluator evaluator, [FromServices] StartupReportHolder report)

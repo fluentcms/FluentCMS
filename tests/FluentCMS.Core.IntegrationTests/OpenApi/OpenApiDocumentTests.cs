@@ -70,7 +70,15 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
 {
     private const string Management = "/api/management/v1";
 
-    private static readonly string[] AdminGroups = ["users", "invitations", "roles", "permissions", "api-keys", "sites", "settings", "jobs", "activity", "me"];
+    private static readonly string[] AdminGroups = ["users", "invitations", "roles", "permissions", "api-keys", "sites", "settings", "jobs", "activity", "me", "system"];
+
+    private static readonly Dictionary<string, string[]> ReadsQuery = new(StringComparer.Ordinal)
+    {
+        ["get /users"] = ["search", "page", "pageSize"],
+        ["get /jobs"] = ["status", "type", "queue", "page", "pageSize"],
+        ["get /jobs/dead-letter"] = ["page", "pageSize"],
+        ["get /activity"] = ["actorId", "actorKind", "origin", "action", "targetType", "targetId", "from", "to", "page", "pageSize"],
+    };
 
     private static readonly string[] TakesABody =
     [
@@ -274,6 +282,7 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
             }
 
             responses["default"]!["$ref"]!.GetValue<string>().ShouldBe("#/components/responses/problem", name);
+            QueryParameters(operation).Select(parameter => parameter["name"]!.GetValue<string>()).ShouldBe(["site", "locale", .. ReadsQuery.GetValueOrDefault(name, [])], name);
             if (TakesABody.Contains(name))
             {
                 var body = Resolve(operation["requestBody"]!["content"]!["application/json"]!["schema"]!);
@@ -289,6 +298,54 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
         }
 
         TakesABody.ShouldAllBe(name => operations.Any(operation => operation.Name == name));
+        ReadsQuery.Keys.ShouldAllBe(name => operations.Any(operation => operation.Name == name));
+    }
+
+    [Fact]
+    public void TheActivityAndJobListsDescribeTheirFiltersAndPaging()
+    {
+        var activity = QueryParameters(Paths[$"{Management}/activity"]!["get"]!).ToDictionary(parameter => parameter["name"]!.GetValue<string>());
+
+        activity["site"]!["description"]!.GetValue<string>().ShouldContain("X-Cms-Site");
+        activity["locale"]!["description"]!.GetValue<string>().ShouldContain("reads nothing by it");
+        Schema(activity["actorId"]!).ShouldBe("""{"format":"uuid","type":"string"}""");
+        Values(activity["actorKind"]!).ShouldBe(["adminUser", "member", "apiKey", "serviceAccount", "system", "anonymous"]);
+        Values(activity["origin"]!).ShouldBe(["admin", "api", "mcp", "job", "cli", "seed"]);
+        Schema(activity["action"]!).ShouldBe("""{"minLength":1,"type":"string"}""");
+        activity["action"]!["description"]!.GetValue<string>().ShouldContain("trailing *");
+        foreach (var name in new[] { "from", "to" })
+        {
+            activity[name]!["schema"]!["format"]!.GetValue<string>().ShouldBe("date-time", name);
+        }
+
+        activity.Values.ShouldAllBe(parameter => parameter["in"]!.GetValue<string>() == "query" && parameter["required"] == null);
+        Schema(activity["page"]!).ShouldBe("""{"default":1,"format":"int32","minimum":1,"type":"integer"}""");
+        Schema(activity["pageSize"]!).ShouldBe("""{"default":50,"format":"int32","maximum":100,"minimum":1,"type":"integer"}""");
+
+        var jobs = QueryParameters(Paths[$"{Management}/jobs"]!["get"]!).ToDictionary(parameter => parameter["name"]!.GetValue<string>());
+        Values(jobs["status"]!).ShouldBe(["pending", "running", "succeeded", "dead_lettered"]);
+        jobs["type"]!["schema"]!["type"]!.GetValue<string>().ShouldBe("string");
+        jobs["queue"]!["schema"]!["type"]!.GetValue<string>().ShouldBe("string");
+        jobs["pageSize"]!["schema"]!["maximum"]!.GetValue<int>().ShouldBe(100);
+        QueryParameters(Paths[$"{Management}/users"]!["get"]!).Select(parameter => parameter["name"]!.GetValue<string>()).ShouldContain("search");
+    }
+
+    [Fact]
+    public void TheSystemRoutesDescribeTheirReports()
+    {
+        var health = Response(Paths[$"{Management}/system/health"]!["get"]!, "200");
+        health["properties"]!.AsObject().Select(item => item.Key).ShouldBe(["status", "totalDurationMs", "checks"]);
+        health["properties"]!["status"]!["description"]!.GetValue<string>().ShouldContain("Degraded");
+        health["properties"]!["totalDurationMs"]!["type"]!.GetValue<string>().ShouldBe("number");
+        var check = Resolve(health["properties"]!["checks"]!["items"]!);
+        check["properties"]!.AsObject().Select(item => item.Key).ShouldBe(["name", "status", "durationMs", "tags", "description", "error"]);
+        check["properties"]!["tags"]!["items"]!["type"]!.GetValue<string>().ShouldBe("string");
+        check["properties"]!["error"]!["type"]!.ToJsonString().ShouldBe("""["null","string"]""");
+
+        var diagnostics = Response(Paths[$"{Management}/system/diagnostics"]!["get"]!, "200");
+        diagnostics["properties"]!.AsObject().Select(item => item.Key)
+            .ShouldBe(["startedAt", "environment", "version", "failure", "dataProvider", "assemblies", "plugins", "pendingMigrations", "schema", "insecureDefaults"]);
+        Resolve(diagnostics["properties"]!["schema"]!)["properties"]!["drifted"]!["type"]!.GetValue<string>().ShouldBe("boolean");
     }
 
     [Fact]
@@ -429,6 +486,17 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
         schema["$ref"]?.GetValue<string>() is { } reference ? Schemas[reference["#/components/schemas/".Length..]]! : schema;
 
     private JsonNode Response(JsonNode operation, string status) => Resolve(operation["responses"]![status]!["content"]!["application/json"]!["schema"]!);
+
+    private IEnumerable<JsonNode> QueryParameters(JsonNode operation) =>
+        (operation["parameters"]?.AsArray() ?? [])
+            .Select(parameter => parameter!["$ref"]?.GetValue<string>() is { } reference ? Parameters[reference["#/components/parameters/".Length..]]! : parameter!)
+            .Where(parameter => parameter["in"]!.GetValue<string>() == "query");
+
+    // The schema with its keys in order of name, since the writer's order is not part of the document.
+    private static string Schema(JsonNode parameter) =>
+        new JsonObject([.. parameter["schema"]!.AsObject().OrderBy(item => item.Key, StringComparer.Ordinal).Select(item => KeyValuePair.Create(item.Key, item.Value?.DeepClone()))]).ToJsonString();
+
+    private static IEnumerable<string> Values(JsonNode parameter) => parameter["schema"]!["enum"]!.AsArray().Select(item => item!.GetValue<string>());
 
     private static IEnumerable<JsonNode> Nodes(JsonNode? node) => node switch
     {
