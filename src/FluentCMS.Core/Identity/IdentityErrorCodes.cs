@@ -17,4 +17,8 @@ internal static class IdentityErrorCodes
     public const string InvalidUser = "FCMS3049";
     public const string RoleAlreadyHeld = "FCMS3050";
     public const string RoleNotHeld = "FCMS3051";
+    public const string TwoFactorEnabled = "FCMS3060";
+    public const string TwoFactorNotEnabled = "FCMS3061";
+    public const string NoAuthenticator = "FCMS3062";
+    public const string InvalidTwoFactorCode = "FCMS3063";
 }

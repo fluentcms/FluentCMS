@@ -182,6 +182,10 @@ public static class ErrorCodeRegistry
         Invalid(IdentityErrorCodes.InvalidUser, "Invalid user"),
         new(IdentityErrorCodes.RoleAlreadyHeld, StatusCodes.Status409Conflict, "Role already held"),
         new(IdentityErrorCodes.RoleNotHeld, StatusCodes.Status404NotFound, "Role not held"),
+        new(IdentityErrorCodes.TwoFactorEnabled, StatusCodes.Status409Conflict, "Two-factor sign-in is on"),
+        new(IdentityErrorCodes.TwoFactorNotEnabled, StatusCodes.Status409Conflict, "Two-factor sign-in is off"),
+        new(IdentityErrorCodes.NoAuthenticator, StatusCodes.Status409Conflict, "No authenticator enrolled"),
+        Invalid(IdentityErrorCodes.InvalidTwoFactorCode, "Invalid two-factor code"),
 
         // 31xx HTTP
         new(ApiErrorCodes.BadRequest, StatusCodes.Status400BadRequest, "Bad request"),

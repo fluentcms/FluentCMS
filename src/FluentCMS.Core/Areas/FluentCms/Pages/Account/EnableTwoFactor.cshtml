@@ -1,0 +1,31 @@
+@page "/account/enable-two-factor"
+@model EnableTwoFactorModel
+@{
+    ViewData["Title"] = "Set up two-factor sign-in";
+}
+@if (Model.RecoveryCodes.Count > 0)
+{
+    <p class="notice">Two-factor sign-in is on.</p>
+    <p>Save these recovery codes somewhere safe. Each one signs you in once if you lose your authenticator app, and they are not shown again.</p>
+    <ul class="codes">
+        @foreach (var code in Model.RecoveryCodes)
+        {
+            <li><code>@code</code></li>
+        }
+    </ul>
+    <p><a href="@Model.ContinueUrl">Continue</a></p>
+}
+else
+{
+    <p>Add this key to an authenticator app, then enter the code the app shows.</p>
+    <p><code>@Model.SharedKey</code></p>
+    <p class="muted">On the device with the app, you can <a href="@Model.AuthenticatorUri">open the key in the app</a> instead.</p>
+    <form method="post">
+        <div asp-validation-summary="ModelOnly" class="error"></div>
+        <input type="hidden" asp-for="ReturnUrl">
+        <label asp-for="Input.Code"></label>
+        <input asp-for="Input.Code" type="text" inputmode="numeric" autocomplete="one-time-code" autofocus>
+        <span asp-validation-for="Input.Code"></span>
+        <button type="submit">Turn on two-factor sign-in</button>
+    </form>
+}

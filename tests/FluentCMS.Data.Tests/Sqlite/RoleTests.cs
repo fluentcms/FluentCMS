@@ -127,14 +127,15 @@ public sealed class RoleTests : IDisposable
 
             migrator.Migrate(migrations[authorAt]);
 
-            var author = context.Set<Role>().AsNoTracking().Single(role => role.Id == BuiltInRoles.Author);
+            // The columns this migration knows; later ones add more.
+            var author = context.Set<Role>().AsNoTracking().Where(role => role.Id == BuiltInRoles.Author).Select(role => new { role.PermissionsVersion, role.Description }).Single();
             author.PermissionsVersion.ShouldBe(8);
             author.Description.ShouldNotBeNull().ShouldContain("reads");
             PermissionConstraints.FromJson(context.Set<RoleGrant>().AsNoTracking().Single(grant => grant.RoleId == BuiltInRoles.Author && grant.Permission == "content.*.read").Constraints).RowRule.ShouldBe("own-entries");
 
             migrator.Migrate(migrations[authorAt - 1]);
 
-            context.Set<Role>().AsNoTracking().Single(role => role.Id == BuiltInRoles.Author).PermissionsVersion.ShouldBe(9);
+            context.Set<Role>().AsNoTracking().Where(role => role.Id == BuiltInRoles.Author).Select(role => role.PermissionsVersion).Single().ShouldBe(9);
             context.Set<RoleGrant>().AsNoTracking().Single(grant => grant.RoleId == BuiltInRoles.Author && grant.Permission == "content.*.read").Constraints.ShouldBeNull();
         }
     }

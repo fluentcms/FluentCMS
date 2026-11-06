@@ -169,7 +169,7 @@ internal static class IdentityEndpoints
     private static async Task<IResult> CreateRoleAsync(HttpContext httpContext, [FromServices] RoleService roles)
     {
         ManagementQuery.Only(httpContext.Request);
-        var body = await BodyReader.ReadAsync(httpContext.Request, "name", "description", "siteId", "grants");
+        var body = await BodyReader.ReadAsync(httpContext.Request, "name", "description", "siteId", "requireTwoFactor", "grants");
         var request = RoleRequest(body) with { SiteId = body.Id("siteId") };
         body.ThrowIfInvalid();
 
@@ -182,7 +182,7 @@ internal static class IdentityEndpoints
     {
         ManagementQuery.Only(httpContext.Request);
         var roleId = ManagementQuery.RouteId(id, nameof(id));
-        var body = await BodyReader.ReadAsync(httpContext.Request, "name", "description", "grants");
+        var body = await BodyReader.ReadAsync(httpContext.Request, "name", "description", "requireTwoFactor", "grants");
         var request = RoleRequest(body);
         body.ThrowIfInvalid();
         return AdminJson.Ok(AdminJson.Role(await roles.UpdateAsync(roleId, request, httpContext.RequestAborted)));
@@ -281,7 +281,7 @@ internal static class IdentityEndpoints
             }
         }
 
-        return new RoleRequest(name ?? "", description, grants);
+        return new RoleRequest(name ?? "", description, grants) { RequireTwoFactor = body.Boolean("requireTwoFactor") };
     }
 
     private static PermissionGrant? Grant(JsonElement item, string path, BodyReader body)
