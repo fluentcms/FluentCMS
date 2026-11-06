@@ -227,6 +227,22 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
     }
 
     [Fact]
+    public void RoutesBesideContentComeFromTheirEndpoints()
+    {
+        var read = Paths["/api/management/v1/me/two-factor"]!["get"]!;
+        var verify = Paths["/api/management/v1/me/two-factor/verify"]!["post"]!;
+
+        read["operationId"]!.GetValue<string>().ShouldBe("getMeTwoFactor");
+        read["tags"]!.AsArray().Select(tag => tag!.GetValue<string>()).ShouldBe(["Me"]);
+        verify["operationId"]!.GetValue<string>().ShouldBe("postMeTwoFactorVerify");
+        verify["security"]!.ToJsonString().ShouldBe("""[{"oauth2":["management"]},{"apiKey":[]}]""");
+        foreach (var action in new[] { "enrol", "recovery-codes", "disable" })
+        {
+            Paths[$"/api/management/v1/me/two-factor/{action}"]!["post"].ShouldNotBeNull(action);
+        }
+    }
+
+    [Fact]
     public void TheDocumentHoldsTheDeliveryAndManagementRoutesOnly()
     {
         var paths = Paths.Select(path => path.Key).ToList();
