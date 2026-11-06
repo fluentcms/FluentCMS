@@ -1,9 +1,10 @@
+using FluentCMS.Core.Identity.Sso;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FluentCMS.Core.Api.Account;
 
-// Where an external provider returns to. A user linked to the external login signs in; for any other the page says so,
-// and admin SSO (#2781) provisions one here.
+// Where an external provider returns to. A user linked to the external login signs in, and a provider of cms.Sso creates
+// one at the first sign-in when it may; for anyone else the page says so.
 public sealed class ExternalLoginModel : AccountPageModel
 {
     [BindProperty(SupportsGet = true)]
@@ -19,7 +20,7 @@ public sealed class ExternalLoginModel : AccountPageModel
             return RedirectToPage("./Login", new { ReturnUrl = LocalUrl(ReturnUrl), Status = "external-failed" });
         }
 
-        var result = await SignInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, isPersistent: false, bypassTwoFactor: false);
+        var result = await Service<SsoSignIn>().SignInAsync(info, HttpContext.RequestAborted);
         if (result.Succeeded)
         {
             return LocalRedirect(LocalUrl(ReturnUrl));

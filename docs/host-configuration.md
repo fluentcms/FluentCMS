@@ -32,6 +32,7 @@ Everything is read from the `FluentCms` section of the host's configuration, so 
 | `FluentCms:Security` | `AllowGeneratedSigningKey`, `SigningCertificate:Path`, `SigningCertificate:Password`, `Cors:Delivery:AllowedOrigins`, `Cors:Management:AllowedOrigins`, `ReferrerPolicy`, `FrameAncestors` |
 | `FluentCms:Users` | `Password`, `Lockout`, `InvitationLifetime` (7 days), `PasswordResetLifetime` (1 hour) (see [hosted pages](#hosted-pages)) |
 | `FluentCms:Clients` | `AdminClientId`, and `Applications:{clientId}` with `DisplayName`, `Secret`, `RedirectUris`, `PostLogoutRedirectUris`, `Scopes`, `Roles`, `RequireConsent` (see [authorization server](#authorization-server)) |
+| `FluentCms:Sso` | `DisableLocalLogin`, and `Providers:{name}` with `Preset`, `DisplayName`, `Authority`, `TenantId`, `Domain`, `AuthorizationServerId`, `BaseUrl`, `Realm`, `ClientId`, `ClientSecret`, `Scopes`, `AutoProvision`, `DefaultRole`, `EmailClaim`, `GroupsClaim`, `RoleMappings`, `TrustMfaClaim`, `RequireHttpsMetadata` (see [single sign-on](#single-sign-on)) |
 | `FluentCms:ReverseProxy` | `PathBase`, `ForwardedHeaders`, `HttpsRedirection`, `Hsts` (see [reverse proxy](reverse-proxy.md)) |
 | `FluentCms:RateLimits` | `Delivery:PermitLimit`, `Delivery:MaxKeyLimit`, `Management:PermitLimit`, `Auth:PermitLimit`, `PreAuth:PermitLimit` |
 | `FluentCms:Limits` | `MaxBodySize` |
@@ -165,3 +166,32 @@ The pages of the authorization server are Razor Pages under `/account`: login, l
 Branding is the settings area `branding` (`BrandingSettings` in `FluentCMS.Core.Api.Account`): `Name` (default `FluentCMS`), `LogoUrl` (an https URL or a path of the host, such as `/media/logo.svg`), and the hex colours `PrimaryColor`, `BackgroundColor` and `TextColor`. The pages read the instance defaults, which need `settings.branding.manage` to change. To change more than that, override a page or the layout: add a Razor page at the same path to the host project, such as `Areas/FluentCms/Pages/Account/Login.cshtml` or `Areas/FluentCms/Pages/Shared/_Layout.cshtml`, with `@model FluentCMS.Core.Api.Account.LoginModel` for a page, so that it keeps the page's behaviour. A page of the host wins over the one of the same path in FluentCMS.
 
 A user who forgets the password gets a link by email that works once and for `FluentCms:Users:PasswordResetLifetime`. The page answers the same whether or not the address belongs to a user. The link, like the issuer, is built from the request's scheme, host and path base, so set `AllowedHosts` to the host names of the instance in production: otherwise a request with a forged `Host` header gets a link to that host sent to a real user. An invitation links to `/account/accept-invitation`. Logins, failed and successful, are `user.login_failed` and `user.login_succeeded` activity rows with the client address.
+
+## Single sign-on
+
+Admin users can sign in with an external OpenID Connect provider on the hosted login page, which shows a button for each provider of `FluentCms:Sso:Providers`. A provider's name is 1 to 64 letters, digits, `-` or `_`; register `https://{host}{path base}/account/sso/{name}` as its redirect URI at the provider. Microsoft Entra ID, Okta, Keycloak and any other OpenID Connect provider use the same handler, and `Preset` only builds the authority:
+
+| `Preset` | Settings | Authority |
+| --- | --- | --- |
+| `Oidc` (default) | `Authority` | as given |
+| `EntraId` | `TenantId`, one tenant (`common`, `organizations` and `consumers` are refused) | `https://login.microsoftonline.com/{TenantId}/v2.0` |
+| `Okta` | `Domain`, and `AuthorizationServerId` for a custom authorization server | `https://{Domain}` or `https://{Domain}/oauth2/{AuthorizationServerId}` |
+| `Keycloak` | `BaseUrl`, `Realm` | `{BaseUrl}/realms/{Realm}` |
+
+`Authority` overrides what a preset builds. The sign-in uses the code flow with PKCE, sends `ClientSecret` when it is set, and asks for `openid profile email` and the `Scopes` listed. The authority must be https unless `RequireHttpsMetadata` is off. A host tunes a provider further with `services.Configure<OpenIdConnectOptions>("{name}", ...)`. With environment variables, as in the reference host:
+
+```bash
+FluentCms__Sso__Providers__corp__Preset=EntraId
+FluentCms__Sso__Providers__corp__TenantId=00000000-0000-0000-0000-000000000000
+FluentCms__Sso__Providers__corp__ClientId=fluentcms
+FluentCms__Sso__Providers__corp__ClientSecret=...
+FluentCms__Sso__Providers__corp__DefaultRole=Author
+FluentCms__Sso__Providers__corp__RoleMappings__0__Group=00000000-0000-0000-0000-000000000001
+FluentCms__Sso__Providers__corp__RoleMappings__0__Role=Editor
+```
+
+A first sign-in of someone with no user creates one when `AutoProvision` is on (the default): its user name and email are the token's `EmailClaim` (`email`), it has no password, its external login is kept in `cms_user_login`, and it gets `DefaultRole` and the roles its groups map to. A role is named by its id or by the exact name of an instance-wide role; a role that does not exist is not given and is logged with `FCMS3071`. `RoleMappings` gives the `Role` of each `Group` found in the token's `GroupsClaim` (`groups`); no group gives a role by its name, so Super Admin is given only by a mapping or a default role that names it. At every later sign-in the mapped roles follow the groups: a mapped role whose group is gone is taken away, while the default role and roles given by hand stay. A token without an email address (`FCMS3072`), or whose address already belongs to a user not linked to the provider (`FCMS3073`), creates no user, since an existing account is never taken over by its address. Sign-ins and refusals are `user.login_succeeded` and `user.login_failed` activity rows with the method `external`.
+
+A provider's `amr` claim does not count as the second factor unless `TrustMfaClaim` is set for it. When it is, a token whose `amr` holds `mfa` signs in as if the user had given the local second factor. Otherwise a user whose role requires two-factor gives the local one after the provider, or sets it up on first use. Set `TrustMfaClaim` only for a provider that enforces multi-factor sign-in itself.
+
+`DisableLocalLogin` hides the password form and the forgotten-password link, and refuses every password sign-in, so admin users sign in through a provider only. It needs at least one provider. An invited user then cannot sign in, and a provider refuses the address because the user is not linked to it, so let users sign in through the provider first and give them roles afterwards. Without `DisableLocalLogin`, a user created by a provider can still get a password through a reset link.

@@ -2,6 +2,7 @@ using FluentCMS.Core.Authorization;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Identity.ApiKeys;
 using FluentCMS.Core.Identity.Oidc;
+using FluentCMS.Core.Identity.Sso;
 using FluentCMS.Providers;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
@@ -14,7 +15,7 @@ namespace FluentCMS.Core.Identity;
 
 internal static class IdentityRegistration
 {
-    public static void Add(IServiceCollection services, AdminUserOptions options, ClientOptions clients)
+    public static void Add(IServiceCollection services, AdminUserOptions options, ClientOptions clients, SsoOptions sso)
     {
         services.AddFluentCmsOptions(AdminUserOptions.Section, IdentityErrorCodes.InvalidOptions, options, users => users.Validate());
 
@@ -48,6 +49,7 @@ internal static class IdentityRegistration
         services.TryAddScoped<IPrincipalRoles, UserPrincipalRoles>();
 
         AuthorizationServerRegistration.Add(services, clients);
+        SsoRegistration.Add(services, sso);
 
         services.TryAddSingleton<IEmailSender>(provider =>
             provider.GetService<IHostEnvironment>()?.IsDevelopment() == true
