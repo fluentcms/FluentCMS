@@ -7,6 +7,8 @@ using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.IntegrationTests.Hosting;
 using FluentCMS.Core.Identity;
 using FluentCMS.Events;
+using FluentCMS.Settings;
+using FluentCMS.Sites;
 using FluentCMS.Testing;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
@@ -194,6 +196,23 @@ public sealed partial class HostedPagesTests
     }
 
     [Fact]
+    public async Task AFailureOnAHostedPageAnswersWithAPageNotAProblemDocument()
+    {
+        await using var host = NewHost(new CapturedEmails()).WithServices(services =>
+            services.AddScoped<ISettings<BrandingSettings>, FailingBranding>());
+        using var browser = new HostedPagesBrowser(host);
+
+        using var page = await browser.GetAsync("/account/login");
+
+        page.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
+        page.Content.Headers.ContentType!.MediaType.ShouldBe("text/html");
+        var html = await page.Content.ReadAsStringAsync(Token);
+        html.ShouldContain("<h1>Something went wrong</h1>");
+        html.ShouldNotContain("branding is down");
+        string.Join(", ", page.Headers.GetValues("Content-Security-Policy")).ShouldContain("frame-ancestors 'none'");
+    }
+
+    [Fact]
     public async Task UnderAPathBaseThePagesAndTheirLinksCarryIt()
     {
         var emails = new CapturedEmails();
@@ -227,6 +246,23 @@ public sealed partial class HostedPagesTests
         using var response = await browser.GetAsync("/account/external-login");
 
         response.Headers.Location!.OriginalString.ShouldBe("/account/login?ReturnUrl=%2F&Status=external-failed");
+    }
+
+    private sealed class FailingBranding : ISettings<BrandingSettings>
+    {
+        public ValueTask<BrandingSettings> GetAsync(SiteId site, CancellationToken cancellationToken = default) => throw Down();
+
+        public ValueTask<BrandingSettings> GetDefaultAsync(CancellationToken cancellationToken = default) => throw Down();
+
+        public ValueTask SetAsync(SiteId site, BrandingSettings value, CancellationToken cancellationToken = default) => throw Down();
+
+        public ValueTask SetDefaultAsync(BrandingSettings value, CancellationToken cancellationToken = default) => throw Down();
+
+        public ValueTask ResetAsync(SiteId site, CancellationToken cancellationToken = default) => throw Down();
+
+        public ValueTask ResetDefaultAsync(CancellationToken cancellationToken = default) => throw Down();
+
+        private static InvalidOperationException Down() => new("The branding is down.");
     }
 
     // A remote provider that signs the user in at once: the external cookie, then back to the callback.
