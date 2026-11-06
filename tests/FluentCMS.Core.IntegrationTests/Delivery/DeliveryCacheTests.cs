@@ -112,8 +112,9 @@ public sealed class DeliveryCacheTests : IAsyncLifetime
         second.Body.ShouldBe(first.Body);
         second.ETag.ShouldBe(first.ETag);
         second.CacheControl.ShouldBe(first.CacheControl);
-        lookups.ShouldContain("miss");
-        lookups.ShouldContain("hit");
+
+        // A lookup is counted when its response completes, which can be after the client has read it.
+        SpinWait.SpinUntil(() => lookups.Contains("miss") && lookups.Contains("hit"), TimeSpan.FromSeconds(10)).ShouldBeTrue();
     }
 
     [Fact]
