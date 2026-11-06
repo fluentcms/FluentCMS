@@ -1,10 +1,12 @@
 using System.Text.Json;
 using FluentCMS.Content;
 using FluentCMS.Core.Api.Common;
+using FluentCMS.Core.Api.OpenApi;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Identity.ApiKeys;
+using FluentCMS.Core.Identity.Oidc;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -26,36 +28,36 @@ internal static class IdentityEndpoints
     private static void Map(RouteGroupBuilder management)
     {
         var users = management.MapGroup("/users").WithFluentCmsOperation(Origin.Api).RequireManagementScope();
-        users.MapGet("", ListUsersAsync);
-        users.MapGet("/{id}", GetUserAsync);
-        users.MapPatch("/{id}", UpdateUserAsync);
-        users.MapPost("/{id}/deactivate", DeactivateAsync);
-        users.MapPost("/{id}/reactivate", ReactivateAsync);
-        users.MapPut("/{id}/roles/{roleId}", AddRoleAsync);
-        users.MapDelete("/{id}/roles/{roleId}", RemoveRoleAsync);
-        users.MapGet("/{id}/sessions", SessionsAsync);
-        users.MapDelete("/{id}/sessions/{sessionId}", RevokeSessionAsync);
+        users.MapGet("", ListUsersAsync).Produces<ItemPage<UserInfo>>();
+        users.MapGet("/{id}", GetUserAsync).Produces<UserInfo>();
+        users.MapPatch("/{id}", UpdateUserAsync).Takes<UserChange>().Produces<UserInfo>();
+        users.MapPost("/{id}/deactivate", DeactivateAsync).Produces<UserInfo>();
+        users.MapPost("/{id}/reactivate", ReactivateAsync).Produces<UserInfo>();
+        users.MapPut("/{id}/roles/{roleId}", AddRoleAsync).Produces<UserInfo>();
+        users.MapDelete("/{id}/roles/{roleId}", RemoveRoleAsync).Produces<UserInfo>();
+        users.MapGet("/{id}/sessions", SessionsAsync).Produces<ItemList<UserSession>>();
+        users.MapDelete("/{id}/sessions/{sessionId}", RevokeSessionAsync).Produces(StatusCodes.Status204NoContent);
 
         var invitations = management.MapGroup("/invitations").WithFluentCmsOperation(Origin.Api).RequireManagementScope();
-        invitations.MapGet("", ListInvitationsAsync);
-        invitations.MapPost("", InviteAsync);
-        invitations.MapDelete("/{id}", RevokeInvitationAsync);
+        invitations.MapGet("", ListInvitationsAsync).Produces<ItemList<InvitationInfo>>();
+        invitations.MapPost("", InviteAsync).Takes<InvitationRequest>().Produces<InvitationSent>(StatusCodes.Status201Created);
+        invitations.MapDelete("/{id}", RevokeInvitationAsync).Produces(StatusCodes.Status204NoContent);
 
         var roles = management.MapGroup("/roles").WithFluentCmsOperation(Origin.Api).RequireManagementScope();
-        roles.MapGet("", ListRolesAsync);
-        roles.MapPost("", CreateRoleAsync);
-        roles.MapGet("/{id}", GetRoleAsync);
-        roles.MapPut("/{id}", UpdateRoleAsync);
-        roles.MapDelete("/{id}", DeleteRoleAsync);
+        roles.MapGet("", ListRolesAsync).Produces<ItemList<RoleResponse>>();
+        roles.MapPost("", CreateRoleAsync).Takes<RoleCreateRequest>().Produces<RoleResponse>(StatusCodes.Status201Created);
+        roles.MapGet("/{id}", GetRoleAsync).Produces<RoleResponse>();
+        roles.MapPut("/{id}", UpdateRoleAsync).Takes<RoleUpdateRequest>().Produces<RoleResponse>();
+        roles.MapDelete("/{id}", DeleteRoleAsync).Produces(StatusCodes.Status204NoContent);
 
-        management.MapGroup("/permissions").WithFluentCmsOperation(Origin.Api).RequireManagementScope().MapGet("", PermissionsAsync);
+        management.MapGroup("/permissions").WithFluentCmsOperation(Origin.Api).RequireManagementScope().MapGet("", PermissionsAsync).Produces<ItemList<PermissionEntry>>();
 
         var keys = management.MapGroup("/api-keys").WithFluentCmsOperation(Origin.Api).RequireManagementScope();
-        keys.MapGet("", ListKeysAsync);
-        keys.MapPost("", CreateKeyAsync);
-        keys.MapGet("/{id}", GetKeyAsync);
-        keys.MapDelete("/{id}", RevokeKeyAsync);
-        keys.MapPost("/{id}/expire", ExpireKeyAsync);
+        keys.MapGet("", ListKeysAsync).Produces<ItemList<ApiKeyInfo>>();
+        keys.MapPost("", CreateKeyAsync).Takes<ApiKeyCreateRequest>().Produces<CreatedApiKeyResponse>(StatusCodes.Status201Created);
+        keys.MapGet("/{id}", GetKeyAsync).Produces<ApiKeyInfo>();
+        keys.MapDelete("/{id}", RevokeKeyAsync).Produces(StatusCodes.Status204NoContent);
+        keys.MapPost("/{id}/expire", ExpireKeyAsync).Takes<ApiKeyExpireRequest>(optional: true).Produces<ApiKeyInfo>();
     }
 
     private static async Task<IResult> ListUsersAsync(HttpContext httpContext, [FromServices] UserAdministration users)
@@ -157,13 +159,13 @@ internal static class IdentityEndpoints
     private static async Task<IResult> ListRolesAsync(HttpContext httpContext, [FromServices] RoleService roles)
     {
         ManagementQuery.Only(httpContext.Request);
-        return AdminJson.Items((await roles.ListAsync(httpContext.RequestAborted)).Select(AdminJson.Role));
+        return AdminJson.Items((await roles.ListAsync(httpContext.RequestAborted)).Select(RoleResponse.From));
     }
 
     private static async Task<IResult> GetRoleAsync(string id, HttpContext httpContext, [FromServices] RoleService roles)
     {
         ManagementQuery.Only(httpContext.Request);
-        return AdminJson.Ok(AdminJson.Role(await roles.GetAsync(ManagementQuery.RouteId(id, nameof(id)), httpContext.RequestAborted)));
+        return AdminJson.Ok(RoleResponse.From(await roles.GetAsync(ManagementQuery.RouteId(id, nameof(id)), httpContext.RequestAborted)));
     }
 
     private static async Task<IResult> CreateRoleAsync(HttpContext httpContext, [FromServices] RoleService roles)
@@ -175,7 +177,7 @@ internal static class IdentityEndpoints
 
         var created = await roles.CreateAsync(request, httpContext.RequestAborted);
         httpContext.Response.Headers.Location = $"{httpContext.Request.PathBase}{Prefix}/roles/{created.Id:D}";
-        return AdminJson.Ok(AdminJson.Role(created), StatusCodes.Status201Created);
+        return AdminJson.Ok(RoleResponse.From(created), StatusCodes.Status201Created);
     }
 
     private static async Task<IResult> UpdateRoleAsync(string id, HttpContext httpContext, [FromServices] RoleService roles)
@@ -185,7 +187,7 @@ internal static class IdentityEndpoints
         var body = await BodyReader.ReadAsync(httpContext.Request, "name", "description", "requireTwoFactor", "grants");
         var request = RoleRequest(body);
         body.ThrowIfInvalid();
-        return AdminJson.Ok(AdminJson.Role(await roles.UpdateAsync(roleId, request, httpContext.RequestAborted)));
+        return AdminJson.Ok(RoleResponse.From(await roles.UpdateAsync(roleId, request, httpContext.RequestAborted)));
     }
 
     private static async Task<IResult> DeleteRoleAsync(string id, HttpContext httpContext, [FromServices] RoleService roles)
@@ -232,7 +234,7 @@ internal static class IdentityEndpoints
 
         var created = await keys.CreateAsync(request, httpContext.RequestAborted);
         httpContext.Response.Headers.Location = $"{httpContext.Request.PathBase}{Prefix}/api-keys/{created.Key.Id:D}";
-        return AdminJson.Ok(AdminJson.CreatedKey(created), StatusCodes.Status201Created);
+        return AdminJson.Ok(CreatedApiKeyResponse.From(created), StatusCodes.Status201Created);
     }
 
     // A revoked key stays, so that the log and the list still name it.

@@ -1,5 +1,7 @@
+using System.Text.Json.Nodes;
 using FluentCMS.Content;
 using FluentCMS.Core.Api.Common;
+using FluentCMS.Core.Api.OpenApi;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Settings;
 using FluentCMS.Core.Sites;
@@ -18,25 +20,31 @@ namespace FluentCMS.Core.Api.Management;
 // instance defaults. A read is redacted, and a write names the version it read as If-Match.
 internal static class SiteEndpoints
 {
+    private const string SettingsDocument = "The whole settings document of the area, as the JSON schema of the read describes it. A secret it leaves out keeps the value that is stored.";
+
     public static IServiceCollection AddManagementSiteApi(this IServiceCollection services) =>
         services.AddFluentCmsEndpoints(FluentCmsEndpointGroup.Management, Map);
 
     private static void Map(RouteGroupBuilder management)
     {
         var sites = management.MapGroup("/sites").WithFluentCmsOperation(Origin.Api).RequireManagementScope();
-        sites.MapGet("", ListAsync);
-        sites.MapGet("/{id}", GetAsync);
-        sites.MapPatch("/{id}", UpdateAsync);
-        sites.MapGet("/{id}/locales", LocalesAsync);
-        sites.MapPost("/{id}/locales", AddLocaleAsync);
-        sites.MapPatch("/{id}/locales/{code}", UpdateLocaleAsync);
-        sites.MapDelete("/{id}/locales/{code}", RemoveLocaleAsync);
+        sites.MapGet("", ListAsync).Produces<ItemList<SiteInfo>>();
+        sites.MapGet("/{id}", GetAsync).Produces<SiteInfo>();
+        sites.MapPatch("/{id}", UpdateAsync).Takes<SiteChange>().Produces<SiteInfo>();
+        sites.MapGet("/{id}/locales", LocalesAsync).Produces<ItemList<SiteLocaleInfo>>();
+        sites.MapPost("/{id}/locales", AddLocaleAsync).Takes<SiteLocaleCreateRequest>().Produces<SiteLocaleInfo>(StatusCodes.Status201Created);
+        sites.MapPatch("/{id}/locales/{code}", UpdateLocaleAsync).Takes<SiteLocaleUpdateRequest>().Produces<SiteLocaleInfo>();
+        sites.MapDelete("/{id}/locales/{code}", RemoveLocaleAsync).Produces(StatusCodes.Status204NoContent);
 
         var settings = management.MapGroup("/settings/{area}").WithFluentCmsOperation(Origin.Api).RequireManagementScope();
-        settings.MapGet("", (string area, HttpContext httpContext, [FromServices] SettingsService service) => ReadSettingAsync(area, instance: false, httpContext, service));
-        settings.MapPut("", (string area, HttpContext httpContext, [FromServices] SettingsService service) => WriteSettingAsync(area, instance: false, httpContext, service));
-        settings.MapGet("/defaults", (string area, HttpContext httpContext, [FromServices] SettingsService service) => ReadSettingAsync(area, instance: true, httpContext, service));
-        settings.MapPut("/defaults", (string area, HttpContext httpContext, [FromServices] SettingsService service) => WriteSettingAsync(area, instance: true, httpContext, service));
+        settings.MapGet("", (string area, HttpContext httpContext, [FromServices] SettingsService service) => ReadSettingAsync(area, instance: false, httpContext, service))
+            .Produces<SettingResponse>();
+        settings.MapPut("", (string area, HttpContext httpContext, [FromServices] SettingsService service) => WriteSettingAsync(area, instance: false, httpContext, service))
+            .Takes<JsonObject>(description: SettingsDocument).Produces<SettingResponse>();
+        settings.MapGet("/defaults", (string area, HttpContext httpContext, [FromServices] SettingsService service) => ReadSettingAsync(area, instance: true, httpContext, service))
+            .Produces<SettingResponse>();
+        settings.MapPut("/defaults", (string area, HttpContext httpContext, [FromServices] SettingsService service) => WriteSettingAsync(area, instance: true, httpContext, service))
+            .Takes<JsonObject>(description: SettingsDocument).Produces<SettingResponse>();
     }
 
     private static async Task<IResult> ListAsync(HttpContext httpContext, [FromServices] SiteManager sites)
@@ -128,6 +136,6 @@ internal static class SiteEndpoints
     private static IResult Setting(HttpContext httpContext, SettingsDescriptor descriptor, SiteId? site, RedactedSetting setting)
     {
         IfMatch.SetETag(httpContext.Response, setting.Version);
-        return AdminJson.Ok(AdminJson.Setting(descriptor, site?.Value, setting));
+        return AdminJson.Ok(SettingResponse.From(descriptor, site?.Value, setting));
     }
 }

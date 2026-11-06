@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.Text;
 using System.Text.Json.Nodes;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Events;
@@ -188,6 +189,25 @@ public sealed class IdentityEndpointsTests(AdminFixture fixture) : IClassFixture
         (await fixture.DeleteAsync($"api-keys/{id}")).Status.ShouldBe(HttpStatusCode.NoContent);
         (await delivery.GetAsync(new Uri("/api/delivery/v1/page", UriKind.Relative), TestContext.Current.CancellationToken)).StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         (await fixture.GetAsync($"api-keys/{id}")).Json["revokedAt"].ShouldNotBeNull();
+    }
+
+    // A body is described for the OpenAPI document without a media type, so routing leaves another one to the route.
+    [Fact]
+    public async Task ABodyOfAnotherMediaTypeIsTheRoutesProblemAndAnOptionalOneMayBeLeftOut()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(AdminFixture.Root + "invitations", UriKind.Relative))
+        {
+            Content = new StringContent("email=ada@example.com", Encoding.UTF8, "application/x-www-form-urlencoded"),
+        };
+        using var refused = await fixture.Admin.SendAsync(request, TestContext.Current.CancellationToken);
+
+        refused.StatusCode.ShouldBe(HttpStatusCode.UnsupportedMediaType);
+        refused.Content.Headers.ContentType!.MediaType.ShouldBe("application/problem+json");
+
+        var key = await fixture.Host.CreateApiKeyAsync(ApiKeyClass.Delivery, BuiltInRoles.EditorName, cancellationToken: TestContext.Current.CancellationToken);
+        var expired = await fixture.PostAsync($"api-keys/{key.Id:D}/expire");
+        expired.Status.ShouldBe(HttpStatusCode.OK, expired.Body?.ToJsonString());
+        expired.Json["expiresAt"].ShouldNotBeNull();
     }
 
     [Fact]
