@@ -105,7 +105,7 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
     [Fact]
     public void EachContentTypeComponentAndBlockHasItsOwnSchema()
     {
-        foreach (var name in new[] { "entry-article", "entry-author", "entry-tag", "component-seo", "block-gallery", "block-hero", "block-quote" })
+        foreach (var name in new[] { "entry-article", "input-article", "entry-author", "entry-tag", "component-seo", "block-gallery", "block-hero", "block-quote" })
         {
             Schemas[name].ShouldNotBeNull(name);
         }
@@ -122,6 +122,11 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
         article["category"]!["enum"]!.AsArray().Select(item => item?.GetValue<string>()).ShouldBe(["news", "opinion", "video", null]);
         article["seo"]!.ToJsonString().ShouldContain("#/components/schemas/component-seo");
         article["author"]!.ToJsonString().ShouldContain("#/components/schemas/entry-author");
+
+        var input = Schemas["input-article"]!["properties"]!.AsObject();
+        input.ContainsKey("id").ShouldBeFalse();
+        input["author"]!.ToJsonString().ShouldBe("""{"type":["null","string"],"format":"uuid"}""");
+        input["body"]!["anyOf"].ShouldBeNull();
     }
 
     [Fact]
@@ -205,7 +210,9 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
 
         var create = Paths["/api/management/v1/content/article"]!["post"]!;
         create["responses"]!["201"]!["content"]!["application/json"]!["schema"]!["$ref"]!.GetValue<string>().ShouldBe("#/components/schemas/entry-article");
-        create["requestBody"]!["content"]!["application/json"]!["schema"]!["$ref"]!.GetValue<string>().ShouldBe("#/components/schemas/entry-article");
+        create["requestBody"]!["content"]!["application/json"]!["schema"]!["$ref"]!.GetValue<string>().ShouldBe("#/components/schemas/input-article");
+        create["responses"]!["201"]!["headers"]!["ETag"].ShouldNotBeNull();
+        Paths["/api/management/v1/content/article/{id}/versions/{number}"]!["get"]!["responses"]!["200"]!["headers"].ShouldBeNull();
         create["responses"]!["default"]!["$ref"]!.GetValue<string>().ShouldBe("#/components/responses/problem");
 
         Paths["/api/management/v1/content/article/{id}"]!["put"]!["parameters"]!.ToJsonString().ShouldContain("#/components/parameters/if-match\"");

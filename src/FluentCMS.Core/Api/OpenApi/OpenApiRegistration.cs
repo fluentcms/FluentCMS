@@ -54,9 +54,14 @@ internal static class OpenApiRegistration
         var underlying = Nullable.GetUnderlyingType(type) ?? type;
         if (underlying.IsEnum && underlying.Namespace?.StartsWith("FluentCMS", StringComparison.Ordinal) == true)
         {
-            schema.Type = underlying == type ? JsonSchemaType.String : JsonSchemaType.String | JsonSchemaType.Null;
+            var nullable = underlying != type;
+            schema.Type = nullable ? JsonSchemaType.String | JsonSchemaType.Null : JsonSchemaType.String;
             schema.Format = null;
             schema.Enum = [.. Enum.GetNames(underlying).Select(name => (JsonNode)JsonNamingPolicy.CamelCase.ConvertName(name))];
+            if (nullable)
+            {
+                schema.Enum.Add(JsonNullSentinel.JsonNull);
+            }
         }
 
         return Task.CompletedTask;

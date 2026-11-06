@@ -47,6 +47,9 @@ internal sealed record ContentOperation(string Name, string Summary)
     public int Status { get; init; } = StatusCodes.Status200OK;
 
     public ContentPrecondition IfMatch { get; init; }
+
+    // Whether a Management response that holds the draft gives its version as ETag.
+    public bool ETag { get; init; } = true;
 }
 
 internal static class ContentOperationExtensions

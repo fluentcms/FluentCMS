@@ -128,13 +128,14 @@ internal sealed class ContentPaths(SchemaModel schema, ContentSchemas schemas)
             response["content"] = new JsonObject { ["application/json"] = new JsonObject { ["schema"] = body } };
         }
 
-        if (route.Surface != Delivery && payload is ContentPayload.Entry or ContentPayload.Published)
+        if (route.Surface != Delivery && described.ETag && payload is ContentPayload.Entry or ContentPayload.Published)
         {
+            var when = described.Query == ContentParameters.Single ? "a read of the published version or " : "";
             response["headers"] = new JsonObject
             {
                 ["ETag"] = new JsonObject
                 {
-                    ["description"] = "The version of the draft, to send back as If-Match. Left out when a value came through the fallback chain.",
+                    ["description"] = $"The version of the draft, to send back as If-Match. Left out for {when}a value that came through the fallback chain.",
                     ["schema"] = SharedComponents.String(),
                 },
             };
@@ -192,8 +193,10 @@ internal sealed class ContentPaths(SchemaModel schema, ContentSchemas schemas)
     private static JsonObject? Body(ContentPayload payload, SchemaType type, bool request)
     {
         var entry = new JsonObject { ["$ref"] = OpenApiNames.EntryRef(type.Name) };
+        var input = new JsonObject { ["$ref"] = OpenApiNames.InputRef(type.Name) };
         return payload switch
         {
+            ContentPayload.Entry when request => input,
             ContentPayload.Entry => entry,
             ContentPayload.List or ContentPayload.EntryOrList => new JsonObject
             {
@@ -221,20 +224,20 @@ internal sealed class ContentPaths(SchemaModel schema, ContentSchemas schemas)
             ContentPayload.Schedule => SharedComponents.Ref(request ? "schedule-request" : "schedule"),
             ContentPayload.Versions => SharedComponents.Ref("versions"),
             ContentPayload.Diff => SharedComponents.Ref("diff"),
-            ContentPayload.Bulk when request => BulkRequest(entry),
+            ContentPayload.Bulk when request => BulkRequest(input),
             ContentPayload.Bulk => SharedComponents.Ref("bulk-result"),
             _ => null,
         };
     }
 
-    private static JsonObject BulkRequest(JsonObject entry) => new()
+    private static JsonObject BulkRequest(JsonObject input) => new()
     {
         ["type"] = "object",
         ["description"] = "entries for create; items, or the filter in the query string with cap, for the others. patch is the merge patch of an update for every entry.",
         ["properties"] = new JsonObject
         {
             ["operation"] = SharedComponents.Enum<BulkOperation>(),
-            ["entries"] = new JsonObject { ["type"] = "array", ["items"] = entry.DeepClone() },
+            ["entries"] = new JsonObject { ["type"] = "array", ["items"] = input.DeepClone() },
             ["items"] = new JsonObject
             {
                 ["type"] = "array",
@@ -244,7 +247,7 @@ internal sealed class ContentPaths(SchemaModel schema, ContentSchemas schemas)
                     ["properties"] = new JsonObject
                     {
                         ["id"] = new JsonObject { ["type"] = "string", ["format"] = "uuid" },
-                        ["patch"] = entry.DeepClone(),
+                        ["patch"] = input.DeepClone(),
                         ["expectedVersion"] = new JsonObject { ["type"] = "integer", ["format"] = "int32" },
                     },
                     ["required"] = new JsonArray("id"),
@@ -252,7 +255,7 @@ internal sealed class ContentPaths(SchemaModel schema, ContentSchemas schemas)
                 },
             },
             ["cap"] = new JsonObject { ["type"] = "integer", ["format"] = "int32", ["minimum"] = 1, ["description"] = "The most entries the filter may match." },
-            ["patch"] = entry.DeepClone(),
+            ["patch"] = input.DeepClone(),
         },
         ["required"] = new JsonArray("operation"),
         ["additionalProperties"] = false,

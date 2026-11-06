@@ -6,11 +6,15 @@ internal static class OpenApiNames
 {
     public static string EntryRef(string type) => $"#/components/schemas/{EntrySchema(type)}";
 
+    public static string InputRef(string type) => $"#/components/schemas/{InputSchema(type)}";
+
     public static string ComponentRef(string component) => $"#/components/schemas/{ComponentSchema(component)}";
 
     public static string BlockRef(string block) => $"#/components/schemas/{BlockSchema(block)}";
 
     public static string EntrySchema(string type) => $"entry-{type}";
+
+    public static string InputSchema(string type) => $"input-{type}";
 
     public static string ComponentSchema(string component) => $"component-{component}";
 

@@ -65,7 +65,7 @@ internal static class ContentEndpoints
         content.MapGet("/{id}/versions", VersionsAsync)
             .Describe(new("listVersions", "Lists the versions of one locale, newest first") { Response = ContentPayload.Versions });
         content.MapGet("/{id}/versions/{number}", VersionAsync)
-            .Describe(new("getVersion", "Reads a version"));
+            .Describe(new("getVersion", "Reads a version") { ETag = false });
         content.MapPost("/{id}/versions/{number}/restore", RestoreVersionAsync)
             .Describe(new("restoreVersion", "Makes a version the draft") { IfMatch = ContentPrecondition.Optional });
         content.MapGet("/{id}/versions/{from}/diff/{to}", DiffAsync)

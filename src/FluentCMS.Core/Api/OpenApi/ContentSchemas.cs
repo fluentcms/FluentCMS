@@ -5,9 +5,9 @@ using FluentCMS.Schema;
 
 namespace FluentCMS.Core.Api.OpenApi;
 
-// The schemas under #/components/schemas that the live schema gives: one per content type (entry-{type}), component and
-// block, each field described by its field type's fragment. An entry carries the system fields as read-only, so one
-// schema serves reads and writes. No field is required, because a draft may leave any out and fields= selects some.
+// The schemas under #/components/schemas that the live schema gives: an entry as read (entry-{type}) and as written
+// (input-{type}) per content type, and one per component and block, each field described by its field type's fragment.
+// No field is required, because a draft may leave any out and fields= selects some.
 internal sealed class ContentSchemas(SchemaModel schema, OpenApiDocumentOptions options)
 {
     private const string BlockDiscriminator = "type";
@@ -17,6 +17,7 @@ internal sealed class ContentSchemas(SchemaModel schema, OpenApiDocumentOptions 
         foreach (var type in schema.ContentTypes)
         {
             yield return (OpenApiNames.EntrySchema(type.Name), Entry(type));
+            yield return (OpenApiNames.InputSchema(type.Name), Input(type));
         }
 
         foreach (var component in schema.Components)
@@ -62,6 +63,19 @@ internal sealed class ContentSchemas(SchemaModel schema, OpenApiDocumentOptions 
         return WithExample(new JsonObject { ["type"] = "object", ["description"] = description, ["properties"] = properties }, type);
     }
 
+    // What a create, a replace or a merge patch sends: the fields without the system ones, a relation as ids and rich text
+    // as a document. A read-only field may be sent back as it was read.
+    private JsonObject Input(SchemaType type)
+    {
+        JsonObject properties = [];
+        foreach (var field in type.Fields.Where(field => !field.Hidden))
+        {
+            properties[field.Name] = Field(field, read: false);
+        }
+
+        return new JsonObject { ["type"] = "object", ["description"] = $"The fields of {type.Name} as a write sends them.", ["properties"] = properties };
+    }
+
     private JsonObject Block(SchemaType block)
     {
         var json = Fields(block, $"The {block.Name} block.");
@@ -89,12 +103,12 @@ internal sealed class ContentSchemas(SchemaModel schema, OpenApiDocumentOptions 
         return WithExample(new JsonObject { ["type"] = "object", ["description"] = description, ["properties"] = properties }, owner);
     }
 
-    // The field type's fragment, widened where a query changes the value: populate turns a relation into the entry, and
-    // richText=html or markdown turns a document into a string. Nullability belongs to the object that holds the field.
-    private JsonObject Field(SchemaField field)
+    // The field type's fragment, widened on a read where a query changes the value: populate turns a relation into the
+    // entry, and richText=html or markdown turns a document into a string. Nullability belongs to the object that holds it.
+    private JsonObject Field(SchemaField field, bool read = true)
     {
         var fragment = FieldType(field)?.OpenApiSchema(field) ?? [];
-        fragment = field.FieldType switch
+        fragment = !read ? fragment : field.FieldType switch
         {
             FieldTypeNames.Relation when field.Relation is { } relation && schema.FindContentType(relation.Target) is not null =>
                 Populated(fragment, relation.Target, field.Multiple),
