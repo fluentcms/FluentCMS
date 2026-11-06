@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The sample plugin of the plugin tests: a referenced assembly that names its plugin, as a plugin package does. -->
+  <ItemGroup>
+    <ProjectReference Include="../../src/FluentCMS.Sdk/FluentCMS.Sdk.csproj" />
+  </ItemGroup>
+
+</Project>

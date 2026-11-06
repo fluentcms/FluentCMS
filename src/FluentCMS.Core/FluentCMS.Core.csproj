@@ -10,6 +10,7 @@
     <InternalsVisibleTo Include="FluentCMS.Data.Tests" />
     <InternalsVisibleTo Include="FluentCMS.Testing" />
     <InternalsVisibleTo Include="FluentCMS.Core.IntegrationTests" />
+    <InternalsVisibleTo Include="FluentCMS.Plugins.Tests" />
   </ItemGroup>
 
   <ItemGroup>
