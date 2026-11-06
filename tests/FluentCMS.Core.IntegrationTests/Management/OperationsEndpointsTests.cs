@@ -36,6 +36,7 @@ public sealed class OperationsEndpointsTests(AdminFixture fixture) : IClassFixtu
         (await fixture.PostAsync($"jobs/{id}/retry")).Json["code"]!.GetValue<string>().ShouldBe("FCMS3133");
         (await fixture.GetAsync($"jobs/{Guid.NewGuid():D}")).Json["code"]!.GetValue<string>().ShouldBe("FCMS3132");
         (await fixture.GetAsync("jobs?status=finished")).Status.ShouldBe(HttpStatusCode.BadRequest);
+        (await fixture.GetAsync("jobs?page=2147483647")).Status.ShouldBe(HttpStatusCode.BadRequest);
     }
 
     [Fact]
@@ -113,6 +114,7 @@ public sealed class OperationsEndpointsTests(AdminFixture fixture) : IClassFixtu
     [InlineData("sites")]
     [InlineData("sites/00000000-0000-7000-8002-000000000001/locales")]
     [InlineData("settings/mail")]
+    [InlineData("settings/unknown")]
     [InlineData("jobs")]
     [InlineData("jobs/dead-letter")]
     [InlineData("activity")]

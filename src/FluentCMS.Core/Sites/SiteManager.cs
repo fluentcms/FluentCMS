@@ -348,13 +348,17 @@ internal sealed partial class SiteManager(
             throw new ValidationException([new ValidationError("code", LocaleErrorCodes.LocaleInUse, $"'{row.Code}' is the default locale of the site; make another the default first.")]);
         }
 
+        // One statement, so an entry written after a separate check would stop it too.
         var locale = row.Code;
-        if (await context.Documents.IgnoreQueryFilters().AnyAsync(document => document.SiteId == id && document.Locale == locale, cancellationToken))
+        var removed = await context.Set<SiteLocale>()
+            .Where(item => item.SiteId == id && item.Code == locale
+                && !context.Documents.IgnoreQueryFilters().Any(document => document.SiteId == id && document.Locale == locale))
+            .ExecuteDeleteAsync(cancellationToken);
+        if (removed == 0)
         {
             throw new ValidationException([new ValidationError("code", LocaleErrorCodes.LocaleInUse, $"The site has entries in '{locale}'. Disable the locale instead, or delete them first.")]);
         }
 
-        await context.Set<SiteLocale>().Where(item => item.SiteId == id && item.Code == locale).ExecuteDeleteAsync(cancellationToken);
         await LogAsync("site.locale-removed", site, locale, cancellationToken);
     }
 

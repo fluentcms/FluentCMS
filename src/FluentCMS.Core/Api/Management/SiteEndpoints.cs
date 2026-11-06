@@ -107,8 +107,8 @@ internal static class SiteEndpoints
     private static async Task<IResult> ReadSettingAsync(string area, bool instance, HttpContext httpContext, SettingsService service)
     {
         ManagementQuery.Only(httpContext.Request);
-        var descriptor = service.Require(area);
         var site = instance ? (SiteId?)null : ApiRequest.Of(httpContext).Operation.Site;
+        var descriptor = await service.RequireManagedAsync(area, site, httpContext.RequestAborted);
         return Setting(httpContext, descriptor, site, await service.ResolveRedactedAsync(descriptor, site, httpContext.RequestAborted));
     }
 
@@ -116,8 +116,8 @@ internal static class SiteEndpoints
     private static async Task<IResult> WriteSettingAsync(string area, bool instance, HttpContext httpContext, SettingsService service)
     {
         ManagementQuery.Only(httpContext.Request);
-        var descriptor = service.Require(area);
         var site = instance ? (SiteId?)null : ApiRequest.Of(httpContext).Operation.Site;
+        var descriptor = await service.RequireManagedAsync(area, site, httpContext.RequestAborted);
         var expected = IfMatch.Required(httpContext.Request);
         var document = await RequestBody.ObjectAsync(httpContext.Request);
 

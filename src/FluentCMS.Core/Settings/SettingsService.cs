@@ -33,6 +33,16 @@ internal sealed class SettingsService(
     // Every lost round means another writer won it, so a writer that loses this many in a row is among very many.
     private const int Attempts = 100;
 
+    // For the Management API: the permission is asked by the area's name first, so a caller without it cannot tell which areas exist.
+    public async Task<SettingsDescriptor> RequireManagedAsync(string area, SiteId? site, CancellationToken cancellationToken)
+    {
+        var operation = accessor.Current
+            ?? throw new InvalidOperationException("Managing settings runs inside an operation; the entry point sets IOperationContextAccessor.Current.");
+
+        var permissions = await authorization.ResolveAsync(operation, cancellationToken);
+        return permissions.Allows(CorePermissions.Settings(area), new AccessTarget(site, null)) ? Require(area) : throw new SettingsAccessDeniedException(area, site);
+    }
+
     public SettingsDescriptor Require(string area) =>
         registry.Find(area) ?? throw SettingsDescriptor.Fail("area", SettingsErrorCodes.UnknownArea, $"There is no settings area '{area}'.");
 

@@ -144,6 +144,11 @@ internal static class ManagementQuery
             throw Invalid("pageSize", $"The page size is from 1 to {MaxPageSize}.");
         }
 
+        if ((long)(page - 1) * size > int.MaxValue)
+        {
+            throw Invalid("page", "The page is past any list.");
+        }
+
         return (page, size);
     }
 

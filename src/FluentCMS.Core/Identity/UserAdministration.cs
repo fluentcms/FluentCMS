@@ -70,12 +70,14 @@ internal sealed class UserAdministration(
         return await InfoAsync(await FindAsync(id), cancellationToken);
     }
 
-    // An address an admin sets counts as confirmed, as an invitation's does.
+    // An address an admin sets counts as confirmed, as an invitation's does. A new name or address ends the user's sessions
+    // with a new security stamp, as a new password does.
     public async Task<UserInfo> UpdateAsync(Guid id, UserChange change, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(change);
 
         var user = await TargetAsync(id, cancellationToken);
+        var (oldName, oldEmail) = (user.UserName, user.Email);
         if (change.UserName is { } userName)
         {
             user.UserName = userName.Trim();
@@ -92,6 +94,11 @@ internal sealed class UserAdministration(
         }
 
         UserViews.Check(await users.UpdateAsync(user));
+        if (user.UserName != oldName || user.Email != oldEmail)
+        {
+            UserViews.Check(await users.UpdateSecurityStampAsync(user));
+        }
+
         return await InfoAsync(user, cancellationToken);
     }
 
