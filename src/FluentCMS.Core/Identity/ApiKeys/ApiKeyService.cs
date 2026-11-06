@@ -1,5 +1,6 @@
 using System.Text.Json;
 using FluentCMS.Content;
+using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Events;
@@ -49,12 +50,16 @@ internal sealed record CreatedApiKey(ApiKeyInfo Key, string Secret)
 // The key a request presented, or why it is refused.
 internal sealed record ApiKeyCheck(ApiKey? Key, string? Failure);
 
-// Whether the caller may manage keys (apikeys.manage) is the Management API's to decide (#2786).
+// A key is managed with apikeys.manage where it reaches: for the instance when it is bound to no site, and in each of its
+// sites otherwise, so a caller limited to some sites, a key bound to them included, never makes or touches a key that reaches
+// further. A new key's role, as its binding narrows it, holds nothing the caller does not hold.
 internal sealed class ApiKeyService(
     SystemDbContext context,
     IdentityChanges changes,
     SchemaModel schema,
     IOperationContextAccessor accessor,
+    ManagementAuthority authority,
+    RoleService roles,
     TimeProvider time)
 {
     // last_used_at says whether a key is still in use, which needs minutes, not every request.
@@ -119,6 +124,9 @@ internal sealed class ApiKeyService(
             throw new ValidationException(errors);
         }
 
+        await RequireManageAsync(sites, cancellationToken);
+        await roles.RequireKeyRoleAsync(request.RoleId, sites, types, cancellationToken);
+
         var secret = ApiKeyFormat.Generate(request.Class);
         var key = new ApiKey
         {
@@ -149,18 +157,43 @@ internal sealed class ApiKeyService(
         return new CreatedApiKey(ApiKeyInfo.From(key), secret);
     }
 
+    // The keys the caller manages. One with no permission for any of them is refused rather than shown an empty list.
     public async Task<IReadOnlyList<ApiKeyInfo>> ListAsync(CancellationToken cancellationToken = default)
     {
         var keys = await context.Set<ApiKey>().AsNoTracking().OrderBy(key => key.CreatedAt).ThenBy(key => key.Id).ToListAsync(cancellationToken);
-        return [.. keys.Select(ApiKeyInfo.From)];
+
+        List<ApiKeyInfo> managed = [];
+        foreach (var key in keys.Select(ApiKeyInfo.From))
+        {
+            if (await ManagesAsync(key.SiteIds, cancellationToken))
+            {
+                managed.Add(key);
+            }
+        }
+
+        if (managed.Count == 0)
+        {
+            await RequireAnyAsync(cancellationToken);
+        }
+
+        return managed;
     }
 
-    public async Task<ApiKeyInfo?> FindAsync(Guid id, CancellationToken cancellationToken = default) =>
-        await context.Set<ApiKey>().AsNoTracking().FirstOrDefaultAsync(key => key.Id == id, cancellationToken) is { } key ? ApiKeyInfo.From(key) : null;
+    // A key the caller does not manage is not found, so a caller limited to some sites learns nothing of the others.
+    public async Task<ApiKeyInfo?> FindAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        await RequireAnyAsync(cancellationToken);
+        return await context.Set<ApiKey>().AsNoTracking().FirstOrDefaultAsync(key => key.Id == id, cancellationToken) is { } key
+            && await ManagesAsync(ApiKeyClaims.SitesOf(key), cancellationToken)
+                ? ApiKeyInfo.From(key)
+                : null;
+    }
 
     // False when the key was revoked already, which raises no second event.
-    public async Task<bool> RevokeAsync(Guid id, CancellationToken cancellationToken = default) =>
-        await changes.RunAsync(
+    public async Task<bool> RevokeAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        await ManagedAsync(id, cancellationToken);
+        return await changes.RunAsync(
             async () =>
             {
                 var key = await StoredAsync(id, cancellationToken);
@@ -176,12 +209,14 @@ internal sealed class ApiKeyService(
                 return true;
             },
             cancellationToken);
+    }
 
     // Brings the expiry forward, to now when no time is given. A key's life is never made longer, since that would need the
     // same decision as a new key. The rule is in the update, so two changes at once cannot extend it between them.
     public async Task ExpireAsync(Guid id, DateTimeOffset? at = null, CancellationToken cancellationToken = default)
     {
         var expires = at ?? time.GetUtcNow();
+        await ManagedAsync(id, cancellationToken);
         await changes.RunAsync(
             async () =>
             {
@@ -259,6 +294,55 @@ internal sealed class ApiKeyService(
     }
 
     private async Task<ApiKey> StoredAsync(Guid id, CancellationToken cancellationToken) =>
-        await context.Set<ApiKey>().AsNoTracking().FirstOrDefaultAsync(key => key.Id == id, cancellationToken)
-            ?? throw new ValidationException([new ValidationError("id", ApiKeyErrorCodes.NotFound, $"There is no API key {id:D}.")]);
+        await context.Set<ApiKey>().AsNoTracking().FirstOrDefaultAsync(key => key.Id == id, cancellationToken) ?? throw NotFound(id);
+
+    // Checked before the transaction of the change. A key out of the reach of a caller who manages keys is not found.
+    private async Task ManagedAsync(Guid id, CancellationToken cancellationToken)
+    {
+        await RequireAnyAsync(cancellationToken);
+        if (!await ManagesAsync(ApiKeyClaims.SitesOf(await StoredAsync(id, cancellationToken)), cancellationToken))
+        {
+            throw NotFound(id);
+        }
+    }
+
+    private async Task<bool> ManagesAsync(IReadOnlyCollection<Guid>? sites, CancellationToken cancellationToken)
+    {
+        if (sites is null)
+        {
+            return await authority.AllowsAsync(CorePermissions.ApiKeysManage, site: null, cancellationToken);
+        }
+
+        foreach (var site in sites)
+        {
+            if (!await authority.AllowsAsync(CorePermissions.ApiKeysManage, site, cancellationToken))
+            {
+                return false;
+            }
+        }
+
+        return sites.Count > 0;
+    }
+
+    // A caller who manages no key in the site of the request is refused, rather than told a key is not there.
+    private async Task RequireAnyAsync(CancellationToken cancellationToken)
+    {
+        if (!await authority.AllowsAsync(CorePermissions.ApiKeysManage, authority.CurrentSite?.Value, cancellationToken))
+        {
+            throw new ManagementAccessDeniedException($"API keys are managed with {CorePermissions.ApiKeysManage}.");
+        }
+    }
+
+    private async Task RequireManageAsync(IReadOnlyCollection<Guid>? sites, CancellationToken cancellationToken)
+    {
+        if (!await ManagesAsync(sites, cancellationToken))
+        {
+            throw new ManagementAccessDeniedException(sites is null
+                ? $"A key bound to no site needs the instance-wide permission {CorePermissions.ApiKeysManage}."
+                : $"A key needs {CorePermissions.ApiKeysManage} in every site it is bound to.");
+        }
+    }
+
+    private static ValidationException NotFound(Guid id) =>
+        new([new ValidationError("id", ApiKeyErrorCodes.NotFound, $"There is no API key {id:D}.")]);
 }

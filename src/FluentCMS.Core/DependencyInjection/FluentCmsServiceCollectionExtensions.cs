@@ -8,6 +8,7 @@ using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.Api.Delivery;
 using FluentCMS.Core.Api.Management;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Caching;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Content.Hooks;
 using FluentCMS.Core.Content.Query;
@@ -119,6 +120,8 @@ public static class FluentCmsServiceCollectionExtensions
         HostedPages.Add(services);
         IdentityRegistration.Add(services, builder.Users, builder.Clients);
         services.TryAddScoped<IAuthorizationEvaluator, AuthorizationEvaluator>();
+        services.AddScoped<ManagementAuthority>();
+        services.AddScoped<RoleService>();
         services.TryAddScoped<IContentQueryAccess, ContentQueryAccess>();
         services.AddScoped<ContentQueryEngine>();
 
@@ -129,8 +132,11 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddScoped<LocaleFallbackReader>();
         services.AddScoped<SiteManager>();
         services.AddScoped<RequestBridge>();
-        services.AddDeliveryApi();
+        services.AddDeliveryApi(builder.DeliveryCache);
         services.AddManagementContentApi();
+        services.AddManagementIdentityApi();
+        services.AddManagementSiteApi();
+        services.AddManagementOperationsApi();
         services.AddFluentCmsHealth();
         services.AddSystemApi();
 
@@ -162,6 +168,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.TryAddSingleton<IJobScheduler, JobScheduler>();
         services.TryAddSingleton<IJobRunner, JobRunner>();
         services.TryAddSingleton<IJobDeadLetters, JobDeadLetters>();
+        services.AddScoped<JobAdministration>();
         services.AddHostedService<JobRunnerHostedService>();
 
         builder.Jobs.AddJob<TrashPurgeJob, TrashPurgePayload>(TrashPurgeJob.Type);
@@ -201,8 +208,12 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddScoped<ActivityLogWriter>();
         services.TryAddScoped<IActivityLog>(serviceProvider => serviceProvider.GetRequiredService<ActivityLogWriter>());
         services.TryAddScoped<IActivityQuery, ActivityQuery>();
+        services.AddScoped<ActivityReader>();
         ActivityEvents.Register(builder.Events);
         services.AddHostedService<ActivityScheduleService>();
+
+        services.AddOutputCache();
+        OutputCacheEviction.Register(builder.Events, () => builder.DeliveryCache.OutputCache);
 
         services.AddSingleton(builder.Seeding);
         services.AddScoped<SeedStateStore>();

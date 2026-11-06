@@ -65,6 +65,30 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
     public bool Allows(SchemaType type, ContentOperation operation, AccessTarget target) =>
         IsSystem || GrantsOf(type, operation, target).Count > 0;
 
+    // Whether the principal holds everything a grant gives, wherever it gives it, with no fewer limits, so that handing it to a
+    // role, a user or a key gives nothing the principal does not have. Only managing principals hand anything out. A grant
+    // that reaches several sites may be held through a different grant in each, but one site's locales and fields are held
+    // through one grant.
+    public bool Covers(GrantReach reach)
+    {
+        ArgumentNullException.ThrowIfNull(reach);
+
+        if (IsSystem)
+        {
+            return true;
+        }
+
+        if (!CanManage)
+        {
+            return false;
+        }
+
+        List<GrantReach> held = [.. grants.SelectMany(grant => GrantReach.Of(grant.Pattern, grant.Constraints, grant.RoleSite, _binding))];
+        return reach.Sites is null
+            ? held.Any(mine => mine.Includes(reach))
+            : reach.Sites.All(site => held.Any(mine => mine.Includes(reach with { Sites = new HashSet<Guid> { site } })));
+    }
+
     // The roles must allow reading the type. On top of that a Delivery principal needs a preview key or the draft
     // scope, and a managing one is bounded by its roles alone (spec 4.8).
     public bool CanReadDraft(SchemaType type, AccessTarget target) =>

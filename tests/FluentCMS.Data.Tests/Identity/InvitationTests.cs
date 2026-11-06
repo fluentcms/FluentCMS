@@ -179,8 +179,9 @@ public sealed class InvitationTests : IDisposable
     {
         var admin = await _fixture.CreateUserAsync("admin", Password, BuiltInRoles.SuperAdmin);
         await _fixture.Database.AsAsync(PrincipalOf(admin), services => services.GetRequiredService<InvitationService>().InviteAsync("bob@example.com", [BuiltInRoles.SuperAdmin], AcceptUrl, Token));
-        var gone = new Principal(PrincipalKind.AdminUser, Guid.CreateVersion7(), "gone");
-        await _fixture.Database.AsAsync(gone, services => services.GetRequiredService<InvitationService>().InviteAsync("carl@example.com", [BuiltInRoles.Editor], AcceptUrl, Token));
+        // A user that is not there could not send one now, so the row is made to name such a user.
+        await _fixture.Database.AsAsync(PrincipalOf(admin), services => services.GetRequiredService<InvitationService>().InviteAsync("carl@example.com", [BuiltInRoles.Editor], AcceptUrl, Token));
+        _fixture.Read(context => context.Set<Invitation>().Where(row => row.Email == "carl@example.com").ExecuteUpdate(setters => setters.SetProperty(row => row.CreatedBy, Guid.CreateVersion7())));
         var (bob, carl) = (TokenOf(_fixture.Email.Sent.First()), TokenOf(_fixture.Email.Sent.Last()));
 
         await _fixture.UsersAsync(async users => (await users.DeactivateAsync((await users.FindByIdAsync(admin.Id.ToString("D")))!)).Succeeded);

@@ -1,5 +1,6 @@
 using FluentCMS.Core.Api.Account;
 using FluentCMS.Core.Api.Common;
+using FluentCMS.Core.Api.Delivery;
 using FluentCMS.Core.Storage;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.RateLimiting;
@@ -45,12 +46,21 @@ public static class FluentCmsEndpointRouteBuilderExtensions
     }
 
     // The admin application calls /connect and reads the discovery document from its own origin, so those groups answer
-    // the Management origins.
+    // the Management origins. Only Delivery is cached; the others say so, so that a base policy of the host's leaves them alone.
     private static RouteGroupBuilder Protect(RouteGroupBuilder routes, FluentCmsEndpointGroup group)
     {
         // Discovery and the key set belong to the authorization server, so they count as its surface.
         var surface = group == FluentCmsEndpointGroup.WellKnown ? FluentCmsEndpointGroup.Connect : group;
         routes.WithMetadata(new FluentCmsSurfaceMetadata(surface.ToString().ToLowerInvariant()));
+        if (group == FluentCmsEndpointGroup.Delivery)
+        {
+            routes.CacheOutput(DeliveryOutputCachePolicy.Instance);
+        }
+        else
+        {
+            routes.CacheOutput(policy => policy.NoCache());
+        }
+
         switch (group)
         {
             case FluentCmsEndpointGroup.Delivery:
