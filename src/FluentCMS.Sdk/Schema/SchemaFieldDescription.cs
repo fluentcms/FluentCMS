@@ -39,10 +39,10 @@ public sealed record SchemaFieldDescription
     /// <summary>The declarative rules a value must meet.</summary>
     public required FieldValidationDescription Validation { get; init; }
 
-    /// <summary>When the field is shown, or <see langword="null"/> if it always is.</summary>
+    /// <summary>When the field is shown, or <see langword="null"/> if it always is or the condition reads a field the caller cannot see.</summary>
     public ConditionDescription? VisibleWhen { get; init; }
 
-    /// <summary>When the field is required beyond <see cref="FieldValidationDescription.Required"/>, or <see langword="null"/> if never.</summary>
+    /// <summary>When the field is required beyond <see cref="FieldValidationDescription.Required"/>, or <see langword="null"/> if never or the condition reads a field the caller cannot see.</summary>
     public ConditionDescription? RequiredWhen { get; init; }
 
     /// <summary>The target of a relation field; <see langword="null"/> for other field types.</summary>

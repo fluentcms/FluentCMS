@@ -157,6 +157,9 @@ public sealed class SchemaEndpointsTests(SchemaFixture fixture) : IClassFixture<
         var article = schema["types"]!.AsArray().Single(type => type!["name"]!.GetValue<string>() == "article")!;
         Names(article["fields"]!).ShouldBe(["title", "slug", "author", "category", "videoUrl"]);
         article["fields"]!.AsArray().ShouldAllBe(field => field is JsonObject);
+        article["fields"]![1]!["settings"]!["source"]!.GetValue<string>().ShouldBe("title");
+        article["fields"]![4]!["visibleWhen"]!["field"]!.GetValue<string>().ShouldBe("category");
+        article["fields"]![4]!["requiredWhen"]!["field"]!.GetValue<string>().ShouldBe("category");
         var author = schema["types"]!.AsArray().Single(type => type!["name"]!.GetValue<string>() == "author")!;
         author["reverseRelations"]!.AsArray().ShouldHaveSingleItem()!["sourceField"]!.GetValue<string>().ShouldBe("author");
 
@@ -166,6 +169,34 @@ public sealed class SchemaEndpointsTests(SchemaFixture fixture) : IClassFixture<
         // Only the fields that went used the component. The blocks stay: the author's rich text bio may hold any of them inline.
         Names(schema["components"]!).ShouldBeEmpty();
         Names(schema["blocks"]!).ShouldBe(["gallery", "hero", "quote"]);
+    }
+
+    // The slug's source is the title and the video URL's conditions read the category.
+    [Fact]
+    public async Task NoNameOfAFieldOutsideTheAllowListShowsAnywhere()
+    {
+        string[] allowed = ["slug", "videoUrl"];
+        using var reader = await fixture.ClientWithAsync("""
+            [
+              { "permission": "schema.read" },
+              { "permission": "content.article.read", "constraints": { "fields": ["slug", "videoUrl"] } }
+            ]
+            """);
+
+        var hidden = Names((await SchemaFixture.GetAsync("schema/types/article", fixture.Admin)).Json["fields"]!).Except(allowed).ToList();
+        var schema = (await SchemaFixture.GetAsync("schema", reader)).Json;
+        var article = (await SchemaFixture.GetAsync("schema/types/article", reader)).Json;
+        var snapshot = await SnapshotAsync(reader);
+
+        Names(article["fields"]!).ShouldBe(allowed);
+        hidden.ShouldContain("title");
+        hidden.ShouldContain("category");
+        foreach (var text in new[] { schema.ToJsonString(), article.ToJsonString(), snapshot.Text })
+        {
+            hidden.ShouldAllBe(name => !text.Contains($"\"{name}\"", StringComparison.Ordinal));
+        }
+
+        snapshot.Text.ShouldBe(SchemaJsonWriter.Write(new SchemaBuilder().AddSchemaJson(snapshot.Text).Build()));
     }
 
     [Fact]
