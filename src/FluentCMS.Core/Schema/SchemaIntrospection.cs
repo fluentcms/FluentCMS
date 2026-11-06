@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Runtime.CompilerServices;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
@@ -9,8 +10,9 @@ namespace FluentCMS.Core.Schema;
 // The schema as the principal of the operation may see it (spec 4.2, 4.8): schema.read in the site of the operation, then
 // what the evaluator lets it read there in the operation's locale, which is what TypeAccess asks of a content route. A
 // field outside the allow-lists is left out, and so is a relation to a type it may not read, with the reverse sides of
-// what went, so that no name of such a type shows. A component or block that only what went used goes too; one that
-// nothing uses stays. Outside an operation the caller is the host's own code, which sees the whole schema.
+// what went, so that no name of such a type shows, and a condition or a slug source that reads a field that went. A
+// component or block that only what went used goes too; one that nothing uses stays. Outside an operation the caller is
+// the host's own code, which sees the whole schema.
 internal sealed class SchemaIntrospection(
     SchemaModel schema,
     IAuthorizationEvaluator evaluator,
@@ -121,6 +123,9 @@ internal sealed class SchemaIntrospection(
             return type;
         }
 
+        HashSet<string> kept = [.. keptFields.Select(field => field.Name)];
+        keptFields = [.. keptFields.Select(field => Narrowed(field, kept))];
+
         // Every property of SchemaType, as SchemaModelFactory sets them.
         return new SchemaType
         {
@@ -136,4 +141,54 @@ internal sealed class SchemaIntrospection(
             ReverseRelations = keptReverse.AsReadOnly(),
         };
     }
+
+    // A condition or a slug source that reads a field that went would name it, so it goes as that field did. A condition
+    // goes whole: what is left of it would state a rule other than the one declared.
+    private static SchemaField Narrowed(SchemaField field, HashSet<string> kept)
+    {
+        var visibleWhen = field.VisibleWhen is { } visible && !Reads(visible, kept) ? null : field.VisibleWhen;
+        var requiredWhen = field.RequiredWhen is { } required && !Reads(required, kept) ? null : field.RequiredWhen;
+        var dropSource = field.FieldType == FieldTypeNames.Slug
+            && SettingValues.Text(field, FieldSettings.Source) is { } source
+            && !kept.Contains(source);
+        if (visibleWhen == field.VisibleWhen && requiredWhen == field.RequiredWhen && !dropSource)
+        {
+            return field;
+        }
+
+        var settings = dropSource
+            ? new ReadOnlyDictionary<string, object>(new SortedDictionary<string, object>(
+                field.Settings.Where(setting => setting.Key != FieldSettings.Source).ToDictionary(), StringComparer.Ordinal))
+            : field.Settings;
+
+        // Every property of SchemaField, as SchemaModelFactory sets them.
+        return new SchemaField
+        {
+            Name = field.Name,
+            FieldType = field.FieldType,
+            Multiple = field.Multiple,
+            Required = field.Required,
+            Unique = field.Unique,
+            Indexed = field.Indexed,
+            Searchable = field.Searchable,
+            ReadOnly = field.ReadOnly,
+            Hidden = field.Hidden,
+            Localizable = field.Localizable,
+            FormerNames = field.FormerNames,
+            Display = field.Display,
+            DefaultValue = field.DefaultValue,
+            MinLength = field.MinLength,
+            MaxLength = field.MaxLength,
+            Minimum = field.Minimum,
+            Maximum = field.Maximum,
+            Pattern = field.Pattern,
+            VisibleWhen = visibleWhen,
+            RequiredWhen = requiredWhen,
+            Relation = field.Relation,
+            Settings = settings,
+        };
+    }
+
+    private static bool Reads(Condition condition, HashSet<string> kept) =>
+        condition.FieldName is { } name ? kept.Contains(name) : condition.Operands.All(operand => Reads(operand, kept));
 }
