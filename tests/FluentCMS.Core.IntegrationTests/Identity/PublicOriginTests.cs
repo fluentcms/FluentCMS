@@ -9,6 +9,7 @@ using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Identity;
 using FluentCMS.Providers;
 using FluentCMS.Testing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
@@ -48,6 +49,7 @@ public sealed partial class PublicOriginTests
 
         using var sent = await browser.SubmitAsync("/account/forgot-password", new Dictionary<string, string> { ["Input.Email"] = editor.Email });
 
+        sent.StatusCode.ShouldBe(HttpStatusCode.OK);
         emails.LinkTo(editor.Email).GetLeftPart(UriPartial.Path).ShouldBe("https://cms.other.example/account/reset-password");
     }
 
@@ -133,6 +135,19 @@ public sealed partial class PublicOriginTests
         var document = await JsonAsync(response);
         document.GetProperty("issuer").GetString().ShouldBe($"{Origin}/cms");
         document.GetProperty("token_endpoint").GetString().ShouldBe($"{Origin}/cms/connect/token");
+    }
+
+    [Fact]
+    public async Task AnEmptyConfiguredOriginKeepsTheOneSetInCode()
+    {
+        await using var host = new FluentCmsTestHost()
+            .WithServices(services => services.AddSingleton<IConfiguration>(new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["FluentCms:PublicOrigin"] = "" }).Build()))
+            .Configure(cms => cms.PublicOrigin = Origin);
+        using var client = host.CreateSecureClient();
+
+        using var response = await client.GetAsync("/.well-known/openid-configuration", Token);
+
+        (await JsonAsync(response)).GetProperty("issuer").GetString().ShouldBe($"{Origin}/");
     }
 
     [Fact]

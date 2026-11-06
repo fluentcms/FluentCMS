@@ -13,7 +13,10 @@ internal sealed class PublicOrigin
     // The scheme, host, port and FluentCms:ReverseProxy:PathBase, with no trailing slash. Null when it is not set.
     public string? Base { get; private set; }
 
-    public Uri? Issuer => Base is null ? null : new Uri(Base, UriKind.Absolute);
+    public Uri? Issuer { get; private set; }
+
+    // Base with a trailing slash, which relative endpoint paths resolve against.
+    public Uri? BaseUri { get; private set; }
 
     public Uri Link(HttpRequest request, string path) =>
         new((Base ?? $"{request.Scheme}://{request.Host.ToUriComponent()}{request.PathBase.ToUriComponent()}") + path, UriKind.Absolute);
@@ -23,7 +26,7 @@ internal sealed class PublicOrigin
     {
         if (string.IsNullOrWhiteSpace(configured))
         {
-            Base = null;
+            (Base, Issuer, BaseUri) = (null, null, null);
             return;
         }
 
@@ -43,7 +46,7 @@ internal sealed class PublicOrigin
         }
 
         var pathBase = proxy.PathBase ?? "";
-        var path = uri.AbsolutePath.TrimEnd('/');
+        var path = Uri.UnescapeDataString(uri.AbsolutePath).TrimEnd('/');
         if (path.Length > 0 && !string.Equals(path, pathBase, StringComparison.OrdinalIgnoreCase))
         {
             throw Invalid(configured, pathBase.Length == 0
@@ -52,6 +55,8 @@ internal sealed class PublicOrigin
         }
 
         Base = uri.GetLeftPart(UriPartial.Authority) + pathBase;
+        Issuer = new Uri(Base, UriKind.Absolute);
+        BaseUri = new Uri(Base + "/", UriKind.Absolute);
     }
 
     private static FluentCmsConfigurationException Invalid(string configured, string reason) =>

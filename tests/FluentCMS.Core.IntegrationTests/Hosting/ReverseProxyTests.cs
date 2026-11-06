@@ -150,6 +150,7 @@ public sealed class ReverseProxyTests : IAsyncDisposable
     [InlineData("Production", "https://cms.example.com", null)]
     [InlineData("Production", "https://cms.example.com/", null)]
     [InlineData("Production", "https://cms.example.com:8443/cms", "/cms")]
+    [InlineData("Production", "https://cms.example.com/caf%C3%A9", "/café")]
     [InlineData("Development", "http://localhost:5000", null)]
     public async Task AValidPublicOriginStarts(string environment, string origin, string? pathBase)
     {

@@ -20,9 +20,9 @@ internal sealed class PublicOriginDiscoveryHandler(PublicOrigin origin) : IOpenI
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        if (origin.Base is { } value)
+        if (origin.BaseUri is { } baseUri)
         {
-            context.BaseUri = new Uri(value + "/", UriKind.Absolute);
+            context.BaseUri = baseUri;
         }
 
         return ValueTask.CompletedTask;

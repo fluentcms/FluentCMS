@@ -75,7 +75,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddReverseProxyHttpsPolicy();
         services.AddOptions<PublicOrigin>()
             .Configure<IServiceProvider>((origin, container) => origin.Resolve(
-                container.GetService<IConfiguration>()?[$"{FluentCmsOptions.Section}:{PublicOrigin.Key}"] ?? builder.PublicOrigin,
+                container.GetService<IConfiguration>()?[$"{FluentCmsOptions.Section}:{PublicOrigin.Key}"] is { Length: > 0 } configured ? configured : builder.PublicOrigin,
                 container.GetRequiredService<ReverseProxyOptions>(),
                 container.GetService<IHostEnvironment>()))
             .ValidateOnStart();
