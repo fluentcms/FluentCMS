@@ -71,9 +71,10 @@ internal static class ConnectEndpoints
         // what a remembered device gives. A role that requires two-factor takes mfa only, so a user who has the second factor
         // signs in again (the sign-in manager then asks for it whatever the device), and one who has none sets it up first.
         var methods = cookie.Principal!.FindAll(Claims.AuthenticationMethodReference).Select(claim => claim.Value).ToList();
-        if (!methods.Contains(TokenClaims.MultiFactor) && await context.RequestServices.GetRequiredService<TwoFactorService>().IsRequiredAsync(user.Id, context.RequestAborted))
+        var twoFactor = context.RequestServices.GetRequiredService<TwoFactorService>();
+        if (!methods.Contains(TokenClaims.MultiFactor) && await twoFactor.IsRequiredAsync(user.Id, context.RequestAborted))
         {
-            if (await signIn.UserManager.GetTwoFactorEnabledAsync(user))
+            if (await twoFactor.IsOnAsync(user))
             {
                 if (request.HasPromptValue(PromptValues.None))
                 {

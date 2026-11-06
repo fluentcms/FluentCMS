@@ -23,11 +23,20 @@ internal sealed class TwoFactorService(CmsUserManager users, SystemDbContext con
             .Join(context.Set<Role>(), membership => membership.RoleId, role => role.Id, (_, role) => role.RequireTwoFactor)
             .AnyAsync(required => required, cancellationToken);
 
+    // On with a key to check codes against, which is when Identity's sign-in asks for the second factor. The flag without a
+    // key counts as off, so that such a user is sent to enrol rather than round the sign-in again.
+    public async Task<bool> IsOnAsync(CmsUser user)
+    {
+        ArgumentNullException.ThrowIfNull(user);
+
+        return await users.GetTwoFactorEnabledAsync(user) && !string.IsNullOrEmpty(await users.GetAuthenticatorKeyAsync(user));
+    }
+
     public async Task<TwoFactorStatus> StatusAsync(CmsUser user, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(user);
 
-        var enabled = await users.GetTwoFactorEnabledAsync(user);
+        var enabled = await IsOnAsync(user);
         var pending = !enabled && !string.IsNullOrEmpty(await users.GetAuthenticatorKeyAsync(user));
         var left = enabled ? await users.CountRecoveryCodesAsync(user) : 0;
         return new TwoFactorStatus(enabled, await IsRequiredAsync(user.Id, cancellationToken), pending, left);
@@ -92,9 +101,7 @@ internal sealed class TwoFactorService(CmsUserManager users, SystemDbContext con
 
     private async Task RequireOffAsync(CmsUser user)
     {
-        ArgumentNullException.ThrowIfNull(user);
-
-        if (await users.GetTwoFactorEnabledAsync(user))
+        if (await IsOnAsync(user))
         {
             throw new ValidationException([new ValidationError("twoFactor", IdentityErrorCodes.TwoFactorEnabled, "Two-factor sign-in is on; turn it off before you enrol another authenticator.")]);
         }
@@ -102,9 +109,7 @@ internal sealed class TwoFactorService(CmsUserManager users, SystemDbContext con
 
     private async Task RequireOnAsync(CmsUser user)
     {
-        ArgumentNullException.ThrowIfNull(user);
-
-        if (!await users.GetTwoFactorEnabledAsync(user))
+        if (!await IsOnAsync(user))
         {
             throw new ValidationException([new ValidationError("twoFactor", IdentityErrorCodes.TwoFactorNotEnabled, "Two-factor sign-in is off.")]);
         }
@@ -113,7 +118,8 @@ internal sealed class TwoFactorService(CmsUserManager users, SystemDbContext con
     // A wrong code counts as a failed sign-in, so the lockout of cms.Users bounds guessing as it does on the hosted pages.
     private async Task RequireCodeAsync(CmsUser user, string? code, bool recoveryCode)
     {
-        var compact = (code ?? "").Replace(" ", "", StringComparison.Ordinal);
+        // Identity's recovery codes are upper case.
+        var compact = (code ?? "").Replace(" ", "", StringComparison.Ordinal).ToUpperInvariant();
         if (compact.Length > 0 && !await users.IsLockedOutAsync(user))
         {
             var authenticator = compact.Replace("-", "", StringComparison.Ordinal);

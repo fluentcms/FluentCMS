@@ -237,6 +237,28 @@ public sealed partial class HostedPagesTests
     }
 
     [Fact]
+    public async Task AFlagWithoutAKeySendsTheUserToEnrolRatherThanRoundTheSignIn()
+    {
+        await using var host = TwoFactorHost();
+        using var admin = await host.AsUserAsync(await host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token));
+        var editor = await CreateUserAsync(host);
+        (await AdminFixture.SendAsync(admin, HttpMethod.Put, $"users/{editor.Id:D}/roles/{await GuardedRoleAsync(admin)}")).Status.ShouldBe(HttpStatusCode.OK);
+        await using (var scope = host.Services.CreateAsyncScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<CmsUserManager>();
+            (await users.SetTwoFactorEnabledAsync((await users.FindByIdAsync(editor.Id.ToString()))!, true)).Succeeded.ShouldBeTrue();
+        }
+
+        var request = AuthorizeRequest.For(FluentCmsTestHost.OAuthClientId, FluentCmsTestHost.OAuthRedirectUri);
+        using var browser = new HostedPagesBrowser(host, "10.2.8.1");
+        using var password = await browser.SubmitAsync("/account/login?ReturnUrl=" + Uri.EscapeDataString(request.Url), Credentials(editor.Email, Password));
+        password.Headers.Location!.OriginalString.ShouldStartWith("/connect/authorize?");
+        using var authorize = await browser.GetAsync(request.Url);
+        authorize.Headers.Location!.OriginalString.ShouldStartWith("/account/enable-two-factor?");
+        (await browser.PageAsync(authorize.Headers.Location.OriginalString)).ShouldContain("otpauth://totp/");
+    }
+
+    [Fact]
     public async Task TheSecondFactorOutlastsTheStampCheckOfTheCookie()
     {
         await using var host = TwoFactorHost();
@@ -311,7 +333,7 @@ public sealed partial class HostedPagesTests
         fresh.ShouldNotContain(codes[0]);
 
         (await AdminFixture.SendAsync(client, HttpMethod.Post, "me/two-factor/disable", Code(codes[0]))).Json["code"]!.GetValue<string>().ShouldBe(IdentityErrorCodes.InvalidTwoFactorCode);
-        (await AdminFixture.SendAsync(client, HttpMethod.Post, "me/two-factor/disable", Code(fresh[0]))).Status.ShouldBe(HttpStatusCode.NoContent);
+        (await AdminFixture.SendAsync(client, HttpMethod.Post, "me/two-factor/disable", Code(fresh[0].ToLowerInvariant()))).Status.ShouldBe(HttpStatusCode.NoContent);
 
         var status = await AdminFixture.SendAsync(client, HttpMethod.Get, "me/two-factor");
         status.Json["enabled"]!.GetValue<bool>().ShouldBeFalse();

@@ -383,7 +383,7 @@ internal sealed class RoleService(
     private static PermissionGrant Grant(RoleGrant grant) => new(grant.Permission, PermissionConstraints.FromJson(grant.Constraints));
 
     private static bool SameGrants(List<PermissionGrant> left, List<PermissionGrant> right) =>
-        left.Count == right.Count && left.Select(Key).ToHashSet().SetEquals(right.Select(Key));
+        left.Select(Key).Order().SequenceEqual(right.Select(Key).Order());
 
     private static (string, string?) Key(PermissionGrant grant) => (grant.Permission, grant.Constraints.ToJson());
 

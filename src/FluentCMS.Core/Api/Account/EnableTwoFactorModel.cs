@@ -36,7 +36,7 @@ public sealed class EnableTwoFactorModel : AccountPageModel
             return RedirectToLogin(Request.PathBase + Request.Path + Request.QueryString);
         }
 
-        if (user.TwoFactorEnabled)
+        if (await Service<TwoFactorService>().IsOnAsync(user))
         {
             return LocalRedirect(ContinueUrl);
         }
@@ -52,7 +52,7 @@ public sealed class EnableTwoFactorModel : AccountPageModel
             return RedirectToLogin(Request.PathBase + Request.Path + Request.QueryString);
         }
 
-        if (user.TwoFactorEnabled)
+        if (await Service<TwoFactorService>().IsOnAsync(user))
         {
             return LocalRedirect(ContinueUrl);
         }
