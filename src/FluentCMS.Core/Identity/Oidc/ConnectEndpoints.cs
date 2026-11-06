@@ -201,8 +201,8 @@ internal static class ConnectEndpoints
             [OpenIddictServerAspNetCoreDefaults.AuthenticationScheme]);
     }
 
-    // An error the server could not return to the client, such as an unknown client or redirect URI. The page shows its
-    // code and description, which are the server's own words and hold nothing of the request.
+    // An error the server could not return to the client, such as an unknown client or redirect URI. The error page shows
+    // the code; the description stays in the query for whoever debugs the client.
     private static IResult ErrorPage(HttpContext context, OpenIddictResponse response) =>
         Results.Redirect(context.Request.PathBase + HostedPagePaths.Error + QueryString.Create(new Dictionary<string, string?>
         {

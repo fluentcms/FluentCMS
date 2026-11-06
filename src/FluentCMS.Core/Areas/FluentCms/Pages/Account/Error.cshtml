@@ -4,7 +4,7 @@
     ViewData["Title"] = "Something went wrong";
 }
 <p>@Model.Message</p>
-@if (!string.IsNullOrEmpty(Model.Code))
+@if (Model.ShownCode is not null)
 {
-    <p class="muted">Error: <code>@Model.Code</code>@(Model.Details is null ? "" : $". {Model.Details}")</p>
+    <p class="muted">Error: <code>@Model.ShownCode</code></p>
 }

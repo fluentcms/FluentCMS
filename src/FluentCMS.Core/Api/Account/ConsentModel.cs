@@ -50,11 +50,11 @@ public sealed class ConsentModel : AccountPageModel
 
     public async Task<IActionResult> OnPostAsync(string? decision)
     {
+        var parameters = Request.Query.ToDictionary(parameter => parameter.Key, parameter => parameter.Value, StringComparer.Ordinal);
         if (decision != "allow")
         {
-            var refused = Request.Query.ToDictionary(parameter => parameter.Key, parameter => parameter.Value, StringComparer.Ordinal);
-            refused[ClientConsents.DecisionParameter] = ClientConsents.Denied;
-            return Redirect(AuthorizeUrl(refused));
+            parameters[ClientConsents.DecisionParameter] = ClientConsents.Denied;
+            return Redirect(AuthorizeUrl(parameters));
         }
 
         if (await SignedInUserAsync() is not { } user)
@@ -69,7 +69,6 @@ public sealed class ConsentModel : AccountPageModel
         }
 
         // Consent was just given, so the request goes back without the prompt for it.
-        var parameters = Request.Query.ToDictionary(parameter => parameter.Key, parameter => parameter.Value, StringComparer.Ordinal);
         if (parameters.TryGetValue(Parameters.Prompt, out var prompt))
         {
             var rest = prompt.ToString().Split(' ', StringSplitOptions.RemoveEmptyEntries).Where(value => value != PromptValues.Consent).ToArray();

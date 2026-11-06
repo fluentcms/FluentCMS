@@ -453,6 +453,19 @@ public sealed partial class HostedPagesTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task TheErrorPageShowsNoTextOfItsQuery()
+    {
+        using var browser = new HostedPagesBrowser(_host);
+
+        using var response = await browser.GetAsync("/account/error?error=Call+us+now&error_description=Your+account+is+suspended");
+        var html = await response.Content.ReadAsStringAsync(Token);
+
+        html.ShouldNotContain("suspended");
+        html.ShouldNotContain("Call us");
+        html.ShouldContain("Something went wrong.");
+    }
+
+    [Fact]
     public async Task BrandingSettingsChangeTheLogoColoursAndNameOnThePages()
     {
         using var browser = new HostedPagesBrowser(_host);

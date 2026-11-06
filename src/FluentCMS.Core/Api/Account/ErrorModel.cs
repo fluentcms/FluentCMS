@@ -1,19 +1,19 @@
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace FluentCMS.Core.Api.Account;
 
-// An error that could not go back to the application that sent the user, such as an unknown client or redirect URI.
-public sealed class ErrorModel : AccountPageModel
+// An error that could not go back to the application that sent the user, such as an unknown client or redirect URI. Anyone
+// can link here, so the page shows its own words for the code and the code only when it looks like one, never text of
+// the query; the server's description is in its log.
+public sealed partial class ErrorModel : AccountPageModel
 {
-    private const int MaxDescription = 300;
-
     [BindProperty(SupportsGet = true, Name = Parameters.Error)]
     public string? Code { get; set; }
 
-    [BindProperty(SupportsGet = true, Name = Parameters.ErrorDescription)]
-    public string? Description { get; set; }
+    public string? ShownCode => Code is not null && ErrorCode().IsMatch(Code) ? Code : null;
 
     public string Message => Code switch
     {
@@ -23,8 +23,6 @@ public sealed class ErrorModel : AccountPageModel
         _ => "Something went wrong. Go back to the application and try again.",
     };
 
-    public string? Details => Description is { Length: > MaxDescription } text ? text[..MaxDescription] : Description;
-
     public void OnGet()
     {
         if (!string.IsNullOrEmpty(Code))
@@ -32,4 +30,7 @@ public sealed class ErrorModel : AccountPageModel
             Response.StatusCode = StatusCodes.Status400BadRequest;
         }
     }
+
+    [GeneratedRegex("^[a-z_]{1,64}$", RegexOptions.CultureInvariant)]
+    private static partial Regex ErrorCode();
 }

@@ -87,7 +87,7 @@ internal sealed class InvitationService(
 
         try
         {
-            await email.SendAsync(Message(invitation, Link(acceptUrl, token)), cancellationToken);
+            await email.SendAsync(Message(invitation, EmailLinks.With(acceptUrl, ("token", token))), cancellationToken);
         }
         catch
         {
@@ -169,14 +169,6 @@ internal sealed class InvitationService(
 
     private IQueryable<Invitation> Pending(string normalizedEmail) =>
         context.Set<Invitation>().Where(row => row.NormalizedEmail == normalizedEmail && row.AcceptedAt == null && row.RevokedAt == null);
-
-    private static Uri Link(Uri acceptUrl, string token)
-    {
-        var builder = new UriBuilder(acceptUrl);
-        var query = builder.Query.TrimStart('?');
-        builder.Query = (query.Length == 0 ? "" : query + "&") + "token=" + Uri.EscapeDataString(token);
-        return builder.Uri;
-    }
 
     private static EmailMessage Message(Invitation invitation, Uri link) =>
         new(

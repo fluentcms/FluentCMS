@@ -27,7 +27,7 @@ internal sealed class PasswordResetService(CmsUserManager users, IEmailSender em
         var token = await users.GeneratePasswordResetTokenAsync(user);
         try
         {
-            await email.SendAsync(Message(user, Link(resetUrl, user.Id, token), time.GetUtcNow() + options.PasswordResetLifetime), cancellationToken);
+            await email.SendAsync(Message(user, EmailLinks.With(resetUrl, ("user", user.Id.ToString("D")), ("token", token)), time.GetUtcNow() + options.PasswordResetLifetime), cancellationToken);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
@@ -44,14 +44,6 @@ internal sealed class PasswordResetService(CmsUserManager users, IEmailSender em
         return user is null || user.DeactivatedAt is not null
             ? IdentityResult.Failed(users.ErrorDescriber.InvalidToken())
             : await users.ResetPasswordAsync(user, token, password);
-    }
-
-    private static Uri Link(Uri resetUrl, Guid userId, string token)
-    {
-        var builder = new UriBuilder(resetUrl);
-        var query = builder.Query.TrimStart('?');
-        builder.Query = (query.Length == 0 ? "" : query + "&") + "user=" + userId.ToString("D") + "&token=" + Uri.EscapeDataString(token);
-        return builder.Uri;
     }
 
     private static EmailMessage Message(CmsUser user, Uri link, DateTimeOffset expiresAt) =>
