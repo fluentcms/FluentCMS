@@ -86,7 +86,7 @@ internal static class DeliveryEndpoints
 
     private static async Task<IResult> RunAsync(HttpContext httpContext, string type, string? byField, Func<SchemaType, Task<IResult>> handler)
     {
-        var found = await EnsureReadableAsync(httpContext, type);
+        var found = await TypeAccess.EnsureReadableAsync(httpContext, type);
         try
         {
             return await handler(found);
@@ -95,17 +95,6 @@ internal static class DeliveryEndpoints
         {
             throw RequestErrors.ForRequest(exception, httpContext.Request, byField);
         }
-    }
-
-    // The engine refuses an unreadable type as it refuses an unknown one; asking first makes both the same 404.
-    private static async Task<SchemaType> EnsureReadableAsync(HttpContext httpContext, string type)
-    {
-        var services = httpContext.RequestServices;
-        var operation = ApiRequest.Of(httpContext).Operation;
-        var access = await services.GetRequiredService<IContentQueryAccess>().ForQueryAsync(operation.Site, operation.Locale, httpContext.RequestAborted);
-        return services.GetRequiredService<SchemaModel>().FindContentType(type) is { } found && access.CanReadType(found)
-            ? found
-            : throw RequestErrors.TypeNotFound(type);
     }
 
     private static ContentQuery Parse(HttpContext httpContext, ApiRequest api, bool single)
