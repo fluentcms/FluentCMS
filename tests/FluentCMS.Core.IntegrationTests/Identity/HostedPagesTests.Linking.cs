@@ -4,6 +4,7 @@ using FluentCMS.Core.Identity;
 using FluentCMS.Core.IntegrationTests.Management;
 using FluentCMS.Events;
 using FluentCMS.Testing;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.DependencyInjection;
@@ -143,6 +144,45 @@ public sealed partial class HostedPagesTests
         (await ActivityAsync(host, "user.login_failed", count: 3)).ShouldAllBe(row => Details(row)["reason"] == LoginFailureReasons.NotAllowed);
     }
 
+    // Linking does not need auto-provisioning, and a user who cannot sign in now is not linked.
+    [Fact]
+    public async Task WithoutAutoProvisioningAProviderStillLinksAnExistingUserButNotADeactivatedOne()
+    {
+        using var idp = new FakeOidcProvider();
+        await using var host = SsoHost(idp, provider =>
+        {
+            provider.AutoProvision = false;
+            provider.LinkExistingUsers = true;
+        });
+        var active = await CreateUserAsync(host);
+        var gone = await CreateUserAsync(host);
+        await using (var scope = host.Services.CreateAsyncScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<CmsUserManager>();
+            (await users.DeactivateAsync((await users.FindByIdAsync(gone.Id.ToString()))!)).Succeeded.ShouldBeTrue();
+        }
+
+        using (var browser = new HostedPagesBrowser(host))
+        {
+            using var back = await SignInWithProviderAsync(browser, idp, FakeIdentity.Of(active.Email) with { EmailVerified = true });
+            (await ExternalLoginAsync(browser, back)).ShouldBe("/");
+        }
+
+        foreach (var refused in new[] { gone.Email, "nobody@corp.example" })
+        {
+            using var browser = new HostedPagesBrowser(host);
+            using var back = await SignInWithProviderAsync(browser, idp, FakeIdentity.Of(refused) with { EmailVerified = true });
+            (await (await browser.FollowAsync(back)).Content.ReadAsStringAsync(Token)).ShouldContain("is not linked to a user here");
+        }
+
+        (await LoginsAsync(host, active.Id)).ShouldHaveSingleItem().LoginProvider.ShouldBe(Corp);
+        (await LoginsAsync(host, gone.Id)).ShouldBeEmpty();
+        await using (var scope = host.Services.CreateAsyncScope())
+        {
+            (await scope.ServiceProvider.GetRequiredService<CmsUserManager>().FindByEmailAsync("nobody@corp.example")).ShouldBeNull();
+        }
+    }
+
     // The provider's amr counts as before for a user linked at its first sign-in, and the mapped roles follow its groups.
     [Fact]
     public async Task ALinkedExistingUserTakesTheProvidersMfaOnlyFromAProviderTrustedForIt()
@@ -272,22 +312,30 @@ public sealed partial class HostedPagesTests
     }
 
     // With a public origin the provider is given, and the code is redeemed with, the callback on that origin (#2821), so a
-    // proxy that does not forward the host does not send the internal address to the provider.
+    // proxy that does not forward the host does not send the internal address to the provider. A host's own handler of the
+    // redirect keeps it.
     [Fact]
     public async Task WithAPublicOriginTheProviderCallbackIsBuiltFromIt()
     {
         using var idp = new FakeOidcProvider();
-        await using var host = SsoHost(idp).Configure(cms =>
-        {
-            cms.ReverseProxy.PathBase = "/cms";
-            cms.PublicOrigin = "https://cms.example.com";
-        });
+        await using var host = SsoHost(idp)
+            .WithServices(services => services.Configure<OpenIdConnectOptions>(Corp, options => options.Events.OnRedirectToIdentityProvider = context =>
+            {
+                context.ProtocolMessage.Prompt = "login";
+                return Task.CompletedTask;
+            }))
+            .Configure(cms =>
+            {
+                cms.ReverseProxy.PathBase = "/cms";
+                cms.PublicOrigin = "https://cms.example.com";
+            });
         using var browser = new HostedPagesBrowser(host);
 
         var login = await browser.PageAsync("/cms/account/login");
         using var challenge = await browser.PostAsync("/cms/account/login?handler=External", login, new Dictionary<string, string> { ["provider"] = Corp, ["ReturnUrl"] = "" });
         var authorize = challenge.Headers.Location!;
         QueryHelpers.ParseQuery(authorize.Query)["redirect_uri"].ToString().ShouldBe($"https://cms.example.com/cms/account/sso/{Corp}");
+        QueryHelpers.ParseQuery(authorize.Query)["prompt"].ToString().ShouldBe("login");
 
         using var back = await browser.PostAsync($"/cms/account/sso/{Corp}", idp.Authorize(authorize, FakeIdentity.Of("pat@corp.example")));
         idp.TokenRequests.ShouldBe(1);

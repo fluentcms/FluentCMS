@@ -53,7 +53,7 @@ internal sealed class SsoSignIn(
             }
             else if (provider.AutoProvision)
             {
-                return await ProvisionAsync(info, provider, cancellationToken) is null ? SignInResult.NotAllowed : await ExternalSignInAsync(info, provider);
+                return await ProvisionAsync(info, provider, existing, cancellationToken) is null ? SignInResult.NotAllowed : await ExternalSignInAsync(info, provider);
             }
         }
 
@@ -147,7 +147,8 @@ internal sealed class SsoSignIn(
         return user;
     }
 
-    private async Task<CmsUser?> ProvisionAsync(ExternalLoginInfo info, SsoProvider provider, CancellationToken cancellationToken)
+    // Existing is the user the token's address belongs to, if any.
+    private async Task<CmsUser?> ProvisionAsync(ExternalLoginInfo info, SsoProvider provider, CmsUser? existing, CancellationToken cancellationToken)
     {
         if (Email(info, provider) is not { } email)
         {
@@ -159,7 +160,7 @@ internal sealed class SsoSignIn(
             return await RefusedAsync(info, IdentityErrorCodes.SsoNoEmail, "the provider says the email address is not verified.");
         }
 
-        if (await users.FindByEmailAsync(email) is not null)
+        if (existing is not null)
         {
             return await RefusedAsync(info, IdentityErrorCodes.SsoEmailTaken, "the email address belongs to a user who is not linked to this provider.");
         }

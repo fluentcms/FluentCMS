@@ -42,14 +42,14 @@ internal static class SsoRegistration
         });
 
         services.AddSingleton<IConfigureOptions<OpenIdConnectOptions>, HandlerOptions>();
+        services.AddSingleton<IPostConfigureOptions<OpenIdConnectOptions>, PublicOriginCallback>();
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IPostConfigureOptions<OpenIdConnectOptions>, OpenIdConnectPostConfigureOptions>());
         services.AddScoped<SsoSignIn>();
     }
 
     // The code flow with PKCE into Identity's external cookie, which the external login page reads. Claims keep the names of
-    // the token, so EmailClaim and GroupsClaim name them as the provider does, and amr reaches the page. The callback that
-    // the provider is given is on the public origin when one is set, as links in emails are.
-    private sealed class HandlerOptions(SsoOptions sso, PublicOrigin origin) : IConfigureNamedOptions<OpenIdConnectOptions>
+    // the token, so EmailClaim and GroupsClaim name them as the provider does, and amr reaches the page.
+    private sealed class HandlerOptions(SsoOptions sso) : IConfigureNamedOptions<OpenIdConnectOptions>
     {
         public void Configure(OpenIdConnectOptions options)
         {
@@ -85,20 +85,8 @@ internal static class SsoRegistration
                 }
             }
 
-            options.Events.OnRedirectToIdentityProvider = OnPublicOrigin;
             options.Events.OnTokenValidated = KeepSubject;
             options.Events.OnRemoteFailure = BackToLoginAsync;
-        }
-
-        // The handler keeps the redirect_uri it sends here for the code's redemption, so both use the public origin.
-        private Task OnPublicOrigin(RedirectContext context)
-        {
-            if (origin.Base is { } publicBase)
-            {
-                context.ProtocolMessage.RedirectUri = publicBase + context.Options.CallbackPath;
-            }
-
-            return Task.CompletedTask;
         }
 
         // Identity takes the external login's key from the name identifier, which the token calls sub.
@@ -141,6 +129,31 @@ internal static class SsoRegistration
 
             context.Response.Redirect(context.Request.PathBase + HostedPagePaths.Login + query);
             context.HandleResponse();
+        }
+    }
+
+    // The callback a provider is given is on the public origin when one is set, as links in emails are; the handler keeps
+    // the redirect_uri it sends for the code's redemption, so both use it. It runs after every Configure, and before the
+    // event a host set, so a host's own OnRedirectToIdentityProvider keeps it.
+    private sealed class PublicOriginCallback(SsoOptions sso, PublicOrigin origin) : IPostConfigureOptions<OpenIdConnectOptions>
+    {
+        public void PostConfigure(string? name, OpenIdConnectOptions options)
+        {
+            if (name is null || !sso.Providers.ContainsKey(name))
+            {
+                return;
+            }
+
+            var next = options.Events.OnRedirectToIdentityProvider;
+            options.Events.OnRedirectToIdentityProvider = context =>
+            {
+                if (origin.Base is { } publicBase)
+                {
+                    context.ProtocolMessage.RedirectUri = publicBase + context.Options.CallbackPath;
+                }
+
+                return next(context);
+            };
         }
     }
 }
