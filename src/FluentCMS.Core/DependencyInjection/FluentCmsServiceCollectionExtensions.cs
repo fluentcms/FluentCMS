@@ -137,6 +137,9 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddManagementIdentityApi();
         services.AddManagementSiteApi();
         services.AddManagementOperationsApi();
+        services.AddScoped<SchemaIntrospection>();
+        services.TryAddScoped<ISchemaIntrospection>(serviceProvider => serviceProvider.GetRequiredService<SchemaIntrospection>());
+        services.AddManagementSchemaApi();
         services.AddFluentCmsHealth();
         services.AddSystemApi();
 
