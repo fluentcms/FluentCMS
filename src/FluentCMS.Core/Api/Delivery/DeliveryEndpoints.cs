@@ -1,5 +1,6 @@
 using FluentCMS.Content;
 using FluentCMS.Core.Api.Common;
+using FluentCMS.Core.Api.OpenApi;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.DependencyInjection;
@@ -26,9 +27,12 @@ internal static class DeliveryEndpoints
     private static void Map(RouteGroupBuilder delivery)
     {
         var routes = delivery.MapGroup("").WithFluentCmsOperation(Origin.Api);
-        routes.MapGet("/{type}", ListAsync);
-        routes.MapGet("/{type}/{id}", GetAsync);
-        routes.MapGet("/{type}/by/{field}/{value}", GetByFieldAsync);
+        routes.MapGet("/{type}", ListAsync)
+            .Describe(new("list", "Lists the published entries; a singleton answers its entry") { Query = ContentParameters.List, Response = ContentPayload.EntryOrList });
+        routes.MapGet("/{type}/{id}", GetAsync)
+            .Describe(new("get", "Reads an entry") { Query = ContentParameters.Single });
+        routes.MapGet("/{type}/by/{field}/{value}", GetByFieldAsync)
+            .Describe(new("getBy", "Reads the entry whose unique field has the value") { Query = ContentParameters.Single });
     }
 
     private static Task<IResult> ListAsync(string type, HttpContext httpContext, [FromServices] IContentService content) =>

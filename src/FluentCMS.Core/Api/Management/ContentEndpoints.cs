@@ -1,5 +1,6 @@
 using FluentCMS.Content;
 using FluentCMS.Core.Api.Common;
+using FluentCMS.Core.Api.OpenApi;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Localization;
@@ -28,28 +29,47 @@ internal static class ContentEndpoints
     {
         var content = management.MapGroup("/content/{type}").WithFluentCmsOperation(Origin.Api).RequireManagementScope();
 
-        content.MapGet("", ListAsync);
-        content.MapPost("", CreateAsync);
-        content.MapPost("/bulk", BulkAsync);
-        content.MapGet("/trash", ListTrashAsync);
-        content.MapPost("/trash/{id}/restore", RestoreAsync);
-        content.MapDelete("/trash/{id}", PurgeAsync);
+        content.MapGet("", ListAsync)
+            .Describe(new("list", "Lists the entries, drafts unless status=published is asked") { Query = ContentParameters.List, Response = ContentPayload.List });
+        content.MapPost("", CreateAsync)
+            .Describe(new("create", "Creates an entry as a draft") { Request = ContentPayload.Entry, Status = StatusCodes.Status201Created });
+        content.MapPost("/bulk", BulkAsync)
+            .Describe(new("bulk", "Applies one operation to the entries listed or matched by the filter") { Query = ContentParameters.Filter, Request = ContentPayload.Bulk, Response = ContentPayload.Bulk });
+        content.MapGet("/trash", ListTrashAsync)
+            .Describe(new("listTrash", "Lists the entries in the trash") { Query = ContentParameters.List, Response = ContentPayload.List });
+        content.MapPost("/trash/{id}/restore", RestoreAsync)
+            .Describe(new("restore", "Restores an entry from the trash"));
+        content.MapDelete("/trash/{id}", PurgeAsync)
+            .Describe(new("purge", "Deletes an entry in the trash for good") { Response = ContentPayload.None, Status = StatusCodes.Status204NoContent });
 
-        content.MapGet("/{id}", GetAsync);
-        content.MapPut("/{id}", UpdateAsync);
-        content.MapPatch("/{id}", PatchAsync);
-        content.MapDelete("/{id}", DeleteAsync);
+        content.MapGet("/{id}", GetAsync)
+            .Describe(new("get", "Reads an entry, its draft unless status=published is asked") { Query = ContentParameters.Single });
+        content.MapPut("/{id}", UpdateAsync)
+            .Describe(new("update", "Replaces the draft") { Request = ContentPayload.Entry, IfMatch = ContentPrecondition.Required });
+        content.MapPatch("/{id}", PatchAsync)
+            .Describe(new("patch", "Applies a JSON merge patch to the draft") { Request = ContentPayload.Entry, IfMatch = ContentPrecondition.Required });
+        content.MapDelete("/{id}", DeleteAsync)
+            .Describe(new("delete", "Moves an entry to the trash") { Response = ContentPayload.None, Status = StatusCodes.Status204NoContent });
 
-        content.MapPost("/{id}/publish", PublishAsync);
-        content.MapPost("/{id}/unpublish", UnpublishAsync);
-        content.MapPost("/{id}/discard", DiscardAsync);
-        content.MapPost("/{id}/schedule", ScheduleAsync);
-        content.MapDelete("/{id}/schedule/{action}", CancelScheduleAsync);
+        content.MapPost("/{id}/publish", PublishAsync)
+            .Describe(new("publish", "Publishes the draft") { Response = ContentPayload.Published, IfMatch = ContentPrecondition.Optional });
+        content.MapPost("/{id}/unpublish", UnpublishAsync)
+            .Describe(new("unpublish", "Withdraws the published version"));
+        content.MapPost("/{id}/discard", DiscardAsync)
+            .Describe(new("discard", "Discards the draft and goes back to the published version") { IfMatch = ContentPrecondition.Optional });
+        content.MapPost("/{id}/schedule", ScheduleAsync)
+            .Describe(new("schedule", "Schedules a publish or an unpublish") { Request = ContentPayload.Schedule, Response = ContentPayload.Schedule });
+        content.MapDelete("/{id}/schedule/{action}", CancelScheduleAsync)
+            .Describe(new("cancelSchedule", "Cancels a scheduled publish or unpublish") { Response = ContentPayload.None, Status = StatusCodes.Status204NoContent });
 
-        content.MapGet("/{id}/versions", VersionsAsync);
-        content.MapGet("/{id}/versions/{number}", VersionAsync);
-        content.MapPost("/{id}/versions/{number}/restore", RestoreVersionAsync);
-        content.MapGet("/{id}/versions/{from}/diff/{to}", DiffAsync);
+        content.MapGet("/{id}/versions", VersionsAsync)
+            .Describe(new("listVersions", "Lists the versions of one locale, newest first") { Response = ContentPayload.Versions });
+        content.MapGet("/{id}/versions/{number}", VersionAsync)
+            .Describe(new("getVersion", "Reads a version"));
+        content.MapPost("/{id}/versions/{number}/restore", RestoreVersionAsync)
+            .Describe(new("restoreVersion", "Makes a version the draft") { IfMatch = ContentPrecondition.Optional });
+        content.MapGet("/{id}/versions/{from}/diff/{to}", DiffAsync)
+            .Describe(new("diff", "Compares two versions") { Response = ContentPayload.Diff });
     }
 
     private static Task<IResult> ListAsync(string type, HttpContext httpContext, [FromServices] IContentService content) =>
