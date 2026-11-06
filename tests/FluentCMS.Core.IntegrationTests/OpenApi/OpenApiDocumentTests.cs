@@ -68,6 +68,17 @@ public sealed class BlogOpenApiFixture : IAsyncLifetime
 [Xunit.Collection(ProcessEnvironment.Collection)]
 public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFixture<BlogOpenApiFixture>
 {
+    private const string Management = "/api/management/v1";
+
+    private static readonly string[] AdminGroups = ["users", "invitations", "roles", "permissions", "api-keys", "sites", "settings", "jobs", "activity", "me"];
+
+    private static readonly string[] TakesABody =
+    [
+        "patch /users/{id}", "post /invitations", "post /roles", "put /roles/{id}", "post /api-keys", "post /api-keys/{id}/expire",
+        "patch /sites/{id}", "post /sites/{id}/locales", "patch /sites/{id}/locales/{code}", "put /settings/{area}", "put /settings/{area}/defaults",
+        "post /me/two-factor/verify", "post /me/two-factor/recovery-codes", "post /me/two-factor/disable",
+    ];
+
     private JsonObject Document => fixture.Document;
 
     private JsonObject Schemas => Document["components"]!["schemas"]!.AsObject();
@@ -243,6 +254,125 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
     }
 
     [Fact]
+    public void EveryRouteOfTheGroupsBesideContentDescribesItsBodies()
+    {
+        var operations = Paths
+            .Where(path => path.Key.StartsWith(Management, StringComparison.Ordinal) && AdminGroups.Contains(path.Key[Management.Length..].Split('/')[1]))
+            .SelectMany(path => path.Value!.AsObject().Select(operation => (Name: $"{operation.Key} {path.Key[Management.Length..]}", Operation: operation.Value!)))
+            .ToList();
+
+        operations.Select(operation => operation.Name.Split(' ')[1].Split('/')[1]).Distinct().ShouldBe(AdminGroups, ignoreOrder: true);
+        foreach (var (name, operation) in operations)
+        {
+            var responses = operation["responses"]!.AsObject();
+            var success = responses.Where(response => response.Key.StartsWith('2')).ShouldHaveSingleItem(name);
+            if (success.Key != "204")
+            {
+                success.Value!["content"]!["application/json"]!["schema"].ShouldNotBeNull(name);
+            }
+
+            responses["default"]!["$ref"]!.GetValue<string>().ShouldBe("#/components/responses/problem", name);
+            if (TakesABody.Contains(name))
+            {
+                var body = Resolve(operation["requestBody"]!["content"]!["application/json"]!["schema"]!);
+                if (!name.Contains("/settings/", StringComparison.Ordinal))
+                {
+                    body["additionalProperties"]!.GetValue<bool>().ShouldBeFalse(name);
+                }
+            }
+            else
+            {
+                operation["requestBody"].ShouldBeNull(name);
+            }
+        }
+
+        TakesABody.ShouldAllBe(name => operations.Any(operation => operation.Name == name));
+    }
+
+    [Fact]
+    public void TheTwoFactorRoutesHaveTheirSchemas()
+    {
+        var status = Response(Paths[$"{Management}/me/two-factor"]!["get"]!, "200");
+        status["required"]!.AsArray().Select(item => item!.GetValue<string>()).ShouldBe(["enabled", "required", "pending", "recoveryCodesLeft"]);
+        status["properties"]!["enabled"]!["type"]!.GetValue<string>().ShouldBe("boolean");
+        status["properties"]!["recoveryCodesLeft"]!["type"]!.GetValue<string>().ShouldBe("integer");
+
+        var enrol = Response(Paths[$"{Management}/me/two-factor/enrol"]!["post"]!, "200");
+        enrol["properties"]!.AsObject().Select(item => item.Key).ShouldBe(["sharedKey", "authenticatorUri"]);
+
+        var verify = Paths[$"{Management}/me/two-factor/verify"]!["post"]!;
+        verify["requestBody"]!["required"]!.GetValue<bool>().ShouldBeTrue();
+        var code = Resolve(verify["requestBody"]!["content"]!["application/json"]!["schema"]!);
+        code["required"]!.AsArray().Select(item => item!.GetValue<string>()).ShouldBe(["code"]);
+        code["properties"]!["code"]!["type"]!.GetValue<string>().ShouldBe("string");
+        Response(verify, "200")["properties"]!["recoveryCodes"]!["items"]!["type"]!.GetValue<string>().ShouldBe("string");
+
+        var disable = Paths[$"{Management}/me/two-factor/disable"]!["post"]!;
+        disable["responses"]!["204"]!["content"].ShouldBeNull();
+        disable["requestBody"]!["content"]!["application/json"]!["schema"]!["$ref"]!.GetValue<string>().ShouldBe("#/components/schemas/TwoFactorCodeRequest");
+    }
+
+    [Fact]
+    public void ASettingsReadRefersToTheJsonSchemaOfItsArea()
+    {
+        var read = Response(Paths[$"{Management}/settings/{{area}}"]!["get"]!, "200");
+        var properties = read["properties"]!;
+
+        read["required"]!.AsArray().Select(item => item!.GetValue<string>()).ShouldBe(["area", "siteId", "source", "version", "value", "secretsSet", "schema"]);
+        Resolve(properties["source"]!)["enum"]!.AsArray().Select(item => item!.GetValue<string>()).ShouldBe(["code", "default", "site"]);
+        properties["version"]!["type"]!.GetValue<string>().ShouldBe("integer");
+        properties["siteId"]!["type"]!.ToJsonString().ShouldBe("""["null","string"]""");
+        Resolve(properties["value"]!)["type"]!.GetValue<string>().ShouldBe("object");
+        properties["value"]!["description"]!.GetValue<string>().ShouldContain("JSON schema under schema");
+        Resolve(properties["schema"]!)["type"]!.GetValue<string>().ShouldBe("object");
+        properties["schema"]!["description"]!.GetValue<string>().ShouldContain("JSON schema of the area's settings");
+
+        var write = Paths[$"{Management}/settings/{{area}}/defaults"]!["put"]!;
+        write["requestBody"]!["description"]!.GetValue<string>().ShouldContain("JSON schema of the read");
+        Resolve(write["requestBody"]!["content"]!["application/json"]!["schema"]!)["type"]!.GetValue<string>().ShouldBe("object");
+        write["responses"]!["200"]!["content"]!["application/json"]!["schema"]!["$ref"]!.GetValue<string>().ShouldBe("#/components/schemas/SettingResponse");
+    }
+
+    [Fact]
+    public void TheIdentityAndJobRoutesHaveTheirSchemas()
+    {
+        var users = Response(Paths[$"{Management}/users"]!["get"]!, "200");
+        users["properties"]!["items"]!["items"]!["$ref"]!.GetValue<string>().ShouldBe("#/components/schemas/UserInfo");
+        users["properties"]!["total"]!["format"]!.GetValue<string>().ShouldBe("int64");
+
+        var create = Paths[$"{Management}/roles"]!["post"]!;
+        var role = Resolve(create["requestBody"]!["content"]!["application/json"]!["schema"]!);
+        role["required"]!.AsArray().Select(item => item!.GetValue<string>()).ShouldBe(["name", "grants"]);
+        role["properties"]!.AsObject().Select(item => item.Key).ShouldBe(["name", "description", "siteId", "requireTwoFactor", "grants"]);
+        Resolve(Paths[$"{Management}/roles/{{id}}"]!["put"]!["requestBody"]!["content"]!["application/json"]!["schema"]!)["properties"]!.AsObject().ContainsKey("siteId").ShouldBeFalse();
+        var grant = Resolve(role["properties"]!["grants"]!["items"]!);
+        grant["properties"]!["constraints"]!.ToJsonString().ShouldContain("#/components/schemas/GrantConstraints");
+        Schemas["GrantConstraints"]!["properties"]!.AsObject().Select(item => item.Key).ShouldBe(["sites", "locales", "fields", "rowRule"]);
+        Response(create, "201")["properties"]!["builtIn"]!["type"]!.GetValue<string>().ShouldBe("boolean");
+
+        var key = Response(Paths[$"{Management}/api-keys"]!["post"]!, "201");
+        key["properties"]!["secret"]!["type"]!.GetValue<string>().ShouldBe("string");
+        Resolve(key["properties"]!["class"]!)["enum"]!.AsArray().Select(item => item!.GetValue<string>()).ShouldBe(["delivery", "preview", "management"]);
+        Response(Paths[$"{Management}/api-keys/{{id}}"]!["get"]!, "200")["properties"]!.AsObject().ContainsKey("secret").ShouldBeFalse();
+        Paths[$"{Management}/api-keys/{{id}}/expire"]!["post"]!["requestBody"]!["required"].ShouldBeNull();
+
+        Response(Paths[$"{Management}/jobs/{{id}}"]!["get"]!, "200")["properties"]!["history"]!["items"]!["$ref"]!.GetValue<string>().ShouldBe("#/components/schemas/JobAttemptInfo");
+        Response(Paths[$"{Management}/me"]!["get"]!, "200")["required"]!.AsArray().Select(item => item!.GetValue<string>()).ShouldBe(["id", "kind", "name"]);
+        Response(Paths[$"{Management}/activity"]!["get"]!, "200")["properties"]!["items"]!["items"]!["$ref"]!.GetValue<string>().ShouldBe("#/components/schemas/ActivityItem");
+    }
+
+    [Fact]
+    public void NumbersAreNumbersAndNotNumericStrings()
+    {
+        var numbers = Nodes(Document).OfType<JsonObject>()
+            .Where(node => node["type"] is JsonValue or JsonArray && node["type"]!.ToJsonString() is var type && (type.Contains("\"integer\"", StringComparison.Ordinal) || type.Contains("\"number\"", StringComparison.Ordinal)))
+            .ToList();
+
+        numbers.ShouldNotBeEmpty();
+        numbers.ShouldAllBe(node => !node["type"]!.ToJsonString().Contains("\"string\"", StringComparison.Ordinal) && node["pattern"] == null);
+    }
+
+    [Fact]
     public void TheDocumentHoldsTheDeliveryAndManagementRoutesOnly()
     {
         var paths = Paths.Select(path => path.Key).ToList();
@@ -285,6 +415,19 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
         html.ShouldContain("\"url\":\"openapi/v1.json\"");
         html.ShouldContain("FluentCMS API");
     }
+
+    private JsonNode Resolve(JsonNode schema) =>
+        schema["$ref"]?.GetValue<string>() is { } reference ? Schemas[reference["#/components/schemas/".Length..]]! : schema;
+
+    private JsonNode Response(JsonNode operation, string status) => Resolve(operation["responses"]![status]!["content"]!["application/json"]!["schema"]!);
+
+    private static IEnumerable<JsonNode> Nodes(JsonNode? node) => node switch
+    {
+        JsonObject json => [json, .. json.SelectMany(item => Nodes(item.Value))],
+        JsonArray array => [array, .. array.SelectMany(Nodes)],
+        null => [],
+        _ => [node],
+    };
 
     private static IEnumerable<string> References(JsonNode? node) => node switch
     {

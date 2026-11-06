@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Identity.Oidc;
@@ -23,6 +24,7 @@ internal sealed record UserInfo(
     IReadOnlyList<UserRoleInfo> Roles);
 
 // What an admin changes on a user; a null member leaves the value as it is.
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 internal sealed record UserChange
 {
     public string? UserName { get; init; }

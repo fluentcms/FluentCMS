@@ -29,6 +29,11 @@ internal sealed class FluentCmsOperationTransformer : IOpenApiOperationTransform
         operation.Security = Security(surface, document);
         operation.Responses ??= [];
         operation.Responses["default"] = new OpenApiResponseReference(SharedComponents.ProblemResponse, document);
+        if (operation.RequestBody is OpenApiRequestBody requestBody && description.ActionDescriptor.EndpointMetadata.OfType<JsonRequestBody>().LastOrDefault()?.Description is { } text)
+        {
+            requestBody.Description = text;
+        }
+
         return Task.CompletedTask;
     }
 
