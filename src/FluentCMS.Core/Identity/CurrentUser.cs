@@ -1,14 +1,15 @@
 using FluentCMS.Content;
+using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Core.Storage;
 
 namespace FluentCMS.Core.Identity;
 
 // The principal of the operation, as /me shows it. A stored user is shown with its roles; a key or a service account by
-// its id, kind and name. Only a user has sessions, and it may end any of its own.
+// its id, kind and name. Only a user has sessions, and it may end any of its own; only a user has two-factor sign-in.
 internal sealed record CurrentPrincipal(Guid Id, PrincipalKind Kind, string Name, UserInfo? User);
 
-internal sealed class CurrentUser(IOperationContextAccessor accessor, CmsUserManager users, SystemDbContext context, UserSessions sessions)
+internal sealed class CurrentUser(IOperationContextAccessor accessor, CmsUserManager users, SystemDbContext context, UserSessions sessions, TwoFactorService twoFactor)
 {
     public async Task<CurrentPrincipal> GetAsync(CancellationToken cancellationToken)
     {
@@ -32,6 +33,23 @@ internal sealed class CurrentUser(IOperationContextAccessor accessor, CmsUserMan
             throw UserViews.SessionNotFound(sessionId);
         }
     }
+
+    public async Task<TwoFactorStatus> TwoFactorAsync(CancellationToken cancellationToken) =>
+        await twoFactor.StatusAsync(await UserAsync(), cancellationToken);
+
+    public async Task<AuthenticatorSetup> EnrolAuthenticatorAsync(string issuer) => await twoFactor.EnrolAsync(await UserAsync(), issuer);
+
+    public async Task<IReadOnlyList<string>> VerifyAuthenticatorAsync(string? code) => await twoFactor.VerifyAsync(await UserAsync(), code);
+
+    public async Task<IReadOnlyList<string>> RegenerateRecoveryCodesAsync(string? code) =>
+        await twoFactor.RegenerateRecoveryCodesAsync(await UserAsync(), code);
+
+    public async Task DisableTwoFactorAsync(string? code) => await twoFactor.DisableAsync(await UserAsync(), code);
+
+    private async Task<CmsUser> UserAsync() =>
+        Caller() is { Kind: PrincipalKind.AdminUser } principal && await users.FindByIdAsync(principal.Id.ToString("D")) is { DeactivatedAt: null } user
+            ? user
+            : throw new ManagementAccessDeniedException("Two-factor sign-in belongs to a user; the caller is not one.");
 
     private Principal Caller() =>
         accessor.Current?.Principal ?? throw new InvalidOperationException("The current user is that of an operation, and none is running.");

@@ -15,6 +15,11 @@ internal sealed class CmsUserStore(SystemDbContext context, IdentityChanges chan
     : UserOnlyStore<CmsUser, SystemDbContext, Guid, IdentityUserClaim<Guid>, IdentityUserLogin<Guid>, IdentityUserToken<Guid>>(context, describer),
       IUserRoleStore<CmsUser>
 {
+    // The names under which UserStoreBase keeps them, which it does not expose.
+    private const string InternalLoginProvider = "[AspNetUserStore]";
+    private const string AuthenticatorKeyTokenName = "AuthenticatorKey";
+    private const string RecoveryCodeTokenName = "RecoveryCodes";
+
     public override Task<IdentityResult> CreateAsync(CmsUser user, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(user);
@@ -178,6 +183,13 @@ internal sealed class CmsUserStore(SystemDbContext context, IdentityChanges chan
         {
             Context.Remove(held);
         }
+    }
+
+    // Staged for the caller's save: the rows in which Identity's store keeps the authenticator key and the recovery codes.
+    public async Task ForgetTwoFactorAsync(CmsUser user, CancellationToken cancellationToken)
+    {
+        await RemoveTokenAsync(user, InternalLoginProvider, AuthenticatorKeyTokenName, cancellationToken);
+        await RemoveTokenAsync(user, InternalLoginProvider, RecoveryCodeTokenName, cancellationToken);
     }
 
     public async Task<IReadOnlyList<Guid>> RoleIdsAsync(CmsUser user, CancellationToken cancellationToken) =>

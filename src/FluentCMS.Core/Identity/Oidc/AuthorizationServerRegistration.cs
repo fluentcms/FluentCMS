@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Storage;
 using Microsoft.AspNetCore.DataProtection;
@@ -7,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using OpenIddict.Abstractions;
 using OpenIddict.Server;
 using OpenIddict.Validation;
 using OpenIddict.Validation.AspNetCore;
@@ -41,6 +43,18 @@ internal static class AuthorizationServerRegistration
             options.AccessDeniedPath = HostedPagePaths.Error;
         });
 
+        // The stamp check rebuilds the cookie's principal from the user every half hour, which would drop how the user
+        // signed in, and amr is what a role that requires two-factor reads.
+        services.Configure<SecurityStampValidatorOptions>(options =>
+        {
+            var next = options.OnRefreshingPrincipal;
+            options.OnRefreshingPrincipal = context =>
+            {
+                KeepAuthenticationMethods(context);
+                return next?.Invoke(context) ?? Task.CompletedTask;
+            };
+        });
+
         services.AddOpenIddict()
             .AddCore(core => core.UseEntityFrameworkCore().UseDbContext<SystemDbContext>().ReplaceDefaultEntities<Guid>())
             .AddServer(server =>
@@ -56,7 +70,7 @@ internal static class AuthorizationServerRegistration
 
                 // PKCE for every client, which OAuth 2.1 asks of public ones; a used refresh token is refused at once.
                 server.AllowAuthorizationCodeFlow().RequireProofKeyForCodeExchange();
-                server.Configure(options => options.CodeChallengeMethods.Remove(OpenIddict.Abstractions.OpenIddictConstants.CodeChallengeMethods.Plain));
+                server.Configure(options => options.CodeChallengeMethods.Remove(OpenIddictConstants.CodeChallengeMethods.Plain));
                 server.AllowRefreshTokenFlow().SetRefreshTokenReuseLeeway(TimeSpan.Zero);
                 server.AllowClientCredentialsFlow();
                 server.RegisterScopes(AuthorizationServer.KnownScopes);
@@ -115,6 +129,14 @@ internal static class AuthorizationServerRegistration
         foreach (var hosted in services.Where(service => service.ServiceType == typeof(IHostedService) && service.ImplementationType?.FullName == DataProtectionHostedService).ToList())
         {
             services.Remove(hosted);
+        }
+    }
+
+    private static void KeepAuthenticationMethods(SecurityStampRefreshingPrincipalContext context)
+    {
+        if (context.NewPrincipal?.Identity is ClaimsIdentity identity && context.CurrentPrincipal is { } current)
+        {
+            identity.AddClaims(current.FindAll(OpenIddictConstants.Claims.AuthenticationMethodReference).Select(claim => new Claim(claim.Type, claim.Value)));
         }
     }
 }

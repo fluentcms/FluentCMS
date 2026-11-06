@@ -18,7 +18,8 @@ internal sealed class CmsSignInManager(
     ILogger<SignInManager<CmsUser>> logger,
     IAuthenticationSchemeProvider schemes,
     IUserConfirmation<CmsUser> confirmation,
-    SignInEvents events)
+    SignInEvents events,
+    TwoFactorService twoFactor)
     : SignInManager<CmsUser>(userManager, contextAccessor, claimsFactory, optionsAccessor, logger, schemes, confirmation)
 {
     public override async Task<bool> CanSignInAsync(CmsUser user)
@@ -26,6 +27,15 @@ internal sealed class CmsSignInManager(
         ArgumentNullException.ThrowIfNull(user);
 
         return user.DeactivatedAt is null && await base.CanSignInAsync(user);
+    }
+
+    // A remembered device skips the second factor and signs in with amr=pwd, which a role that requires two-factor does not
+    // take; a user who holds one gives the second factor at every sign-in.
+    public override async Task<bool> IsTwoFactorClientRememberedAsync(CmsUser user)
+    {
+        ArgumentNullException.ThrowIfNull(user);
+
+        return !await twoFactor.IsRequiredAsync(user.Id, Context.RequestAborted) && await base.IsTwoFactorClientRememberedAsync(user);
     }
 
     // The name is a user name or, failing that, an email address.

@@ -37,6 +37,7 @@ public sealed partial class HostedPagesTests
         "account/accept-invitation",
         "account/change-password",
         "account/consent",
+        "account/enable-two-factor",
         "account/error",
         "account/external-login",
         "account/forgot-password",

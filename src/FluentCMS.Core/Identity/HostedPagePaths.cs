@@ -8,6 +8,7 @@ internal static class HostedPagePaths
     public const string Consent = "/account/consent";
     public const string TwoFactor = "/account/two-factor";
     public const string RecoveryCode = "/account/recovery-code";
+    public const string EnableTwoFactor = "/account/enable-two-factor";
     public const string ForgotPassword = "/account/forgot-password";
     public const string ResetPassword = "/account/reset-password";
     public const string AcceptInvitation = "/account/accept-invitation";

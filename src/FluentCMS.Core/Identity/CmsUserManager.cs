@@ -149,6 +149,30 @@ public sealed class CmsUserManager : UserManager<CmsUser>
         return result;
     }
 
+    // A key that waits for a code of it to turn two-factor on; TwoFactorService sets one only while two-factor is off. Until
+    // then the user signs in as before, so the security stamp stays and the user's sessions go on, which Identity's
+    // ResetAuthenticatorKeyAsync would end.
+    public async Task<IdentityResult> SetPendingAuthenticatorKeyAsync(CmsUser user)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(user);
+
+        await RoleStore.SetAuthenticatorKeyAsync(user, GenerateNewAuthenticatorKey(), CancellationToken);
+        return await UpdateUserAsync(user);
+    }
+
+    // Two-factor off, without its key and recovery codes, in one save with a new security stamp, which ends what the user
+    // signed in to with the second factor.
+    public async Task<IdentityResult> DisableTwoFactorAsync(CmsUser user)
+    {
+        ThrowIfDisposed();
+        ArgumentNullException.ThrowIfNull(user);
+
+        await RoleStore.ForgetTwoFactorAsync(user, CancellationToken);
+        await RoleStore.SetTwoFactorEnabledAsync(user, false, CancellationToken);
+        return await UpdateSecurityStampAsync(user);
+    }
+
     public override async Task<bool> CheckPasswordAsync(CmsUser user, string password)
     {
         if (Store is not CmsUserStore store)
