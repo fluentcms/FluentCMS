@@ -2,6 +2,7 @@ using FluentCMS.Core.Api.Account;
 using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.Api.Delivery;
 using FluentCMS.Core.Api.OpenApi;
+using FluentCMS.Core.Plugins;
 using FluentCMS.Core.Storage;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.RateLimiting;
@@ -42,6 +43,15 @@ public static class FluentCmsEndpointRouteBuilderExtensions
             foreach (var area in registered.Where(area => area.Group == group))
             {
                 area.Map(routes);
+            }
+        }
+
+        var plugins = endpoints.ServiceProvider.GetRequiredService<PluginRegistry>();
+        if (plugins.TryStartConfigure())
+        {
+            foreach (var plugin in plugins.Plugins)
+            {
+                plugin.Instance.Configure(new PluginAppBuilder(plugin.Name, endpoints.ServiceProvider));
             }
         }
 

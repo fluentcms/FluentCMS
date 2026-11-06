@@ -27,7 +27,7 @@ public sealed record StartupReport
     /// <summary>The FluentCMS assemblies loaded in the process.</summary>
     public IReadOnlyList<StartupAssembly> Assemblies { get; init; } = [];
 
-    /// <summary>The plugins the host runs. Empty until the plugin host exists.</summary>
+    /// <summary>The plugins the host runs, in plugin order.</summary>
     public IReadOnlyList<StartupPlugin> Plugins { get; init; } = [];
 
     /// <summary>The migrations of the system, plugin and content streams that are not applied yet.</summary>

@@ -12,6 +12,7 @@ using FluentCMS.Core.Identity.ApiKeys;
 using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Localization;
+using FluentCMS.Core.Plugins;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Seeding;
 using FluentCMS.Core.Settings;
@@ -67,6 +68,16 @@ public static class ErrorCodeRegistry
         Startup(AuthorizationErrorCodes.DuplicateRowRule, "Duplicate row rule"),
         Startup(AuthorizationErrorCodes.InvalidRowRule, "Invalid row rule"),
         Invalid(AuthorizationErrorCodes.FieldNotWritable, "Field not writable"),
+
+        // 15xx plugin host, found when the host starts; 1520 to 1599 are kept for later plugin work
+        Startup(PluginErrorCodes.InvalidPlugin, "Invalid plugin"),
+        Startup(PluginErrorCodes.InvalidName, "Invalid plugin name"),
+        Startup(PluginErrorCodes.InvalidVersion, "Invalid plugin version"),
+        Startup(PluginErrorCodes.InvalidSdkRange, "Invalid SDK range"),
+        Startup(PluginErrorCodes.SdkNotSatisfied, "SDK version outside the plugin's range"),
+        Startup(PluginErrorCodes.DuplicateName, "Duplicate plugin name"),
+        Startup(PluginErrorCodes.MissingDependency, "Plugin dependency missing"),
+        Startup(PluginErrorCodes.DependencyCycle, "Plugin dependency cycle"),
 
         // 21xx validation
         Invalid(ApiErrorCodes.ValidationFailed, "Validation failed"),

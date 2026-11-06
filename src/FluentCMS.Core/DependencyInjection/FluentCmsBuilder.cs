@@ -9,12 +9,15 @@ using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Seeding;
 using FluentCMS.Core.Settings;
 using FluentCMS.Core.Storage;
+using FluentCMS.Plugins;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Core.DependencyInjection;
 
 public sealed class FluentCmsBuilder
 {
+    private readonly List<IPlugin> _plugins = [];
+
     internal FluentCmsBuilder(IServiceCollection services)
     {
         Services = services;
@@ -58,6 +61,19 @@ public sealed class FluentCmsBuilder
     internal Assembly? ContentMigrationsAssembly { get; private set; }
 
     internal bool SchemaSyncOutsideDevelopment { get; private set; }
+
+    internal IReadOnlyList<IPlugin> Plugins => _plugins;
+
+    // Creates the plugin now and lets configure set it up. A plugin that a referenced assembly also names is added once, with
+    // this configuration and at this place in the order.
+    public FluentCmsBuilder AddPlugin<TPlugin>(Action<TPlugin>? configure = null)
+        where TPlugin : class, IPlugin, new()
+    {
+        var plugin = new TPlugin();
+        configure?.Invoke(plugin);
+        _plugins.Add(plugin);
+        return this;
+    }
 
     // For a host whose types are data, such as a schema file, and so have no compiled migrations: SchemaSync defaults to
     // Auto in every environment, with the rules of Development. SQLite only; configuration cannot turn this on.
