@@ -130,7 +130,7 @@ internal static class IdentityEndpoints
         return AdminJson.Items(await invitations.ListPendingAsync(httpContext.RequestAborted));
     }
 
-    private static async Task<IResult> InviteAsync(HttpContext httpContext, [FromServices] InvitationService invitations)
+    private static async Task<IResult> InviteAsync(HttpContext httpContext, [FromServices] InvitationService invitations, [FromServices] PublicOrigin origin)
     {
         ManagementQuery.Only(httpContext.Request);
         var body = await BodyReader.ReadAsync(httpContext.Request, "email", "roleIds");
@@ -138,8 +138,7 @@ internal static class IdentityEndpoints
         var roleIds = body.Ids("roleIds") ?? [];
         body.ThrowIfInvalid();
 
-        var request = httpContext.Request;
-        var accept = new Uri($"{request.Scheme}://{request.Host}{request.PathBase}{HostedPagePaths.AcceptInvitation}");
+        var accept = origin.Link(httpContext.Request, HostedPagePaths.AcceptInvitation);
         var sent = await invitations.InviteAsync(email!, [.. roleIds], accept, httpContext.RequestAborted);
         return AdminJson.Ok(sent, StatusCodes.Status201Created);
     }

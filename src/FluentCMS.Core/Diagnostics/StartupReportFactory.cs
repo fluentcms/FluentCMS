@@ -23,6 +23,7 @@ internal sealed class StartupReportFactory(
     SchemaModel model,
     IOptions<DatabaseOptions> database,
     ReverseProxyOptions proxy,
+    PublicOrigin origin,
     IEnumerable<IProductionStartupCheck> checks,
     TimeProvider time,
     IHostEnvironment? environment = null)
@@ -116,7 +117,13 @@ internal sealed class StartupReportFactory(
 
         if (environment?.IsProduction() == true && AllowsAnyHost())
         {
-            found.Add(new InsecureDefault { Id = "allowed-hosts-any", Message = "AllowedHosts is '*' or not set in Production, so a request with a forged Host header gets links to that host in password reset and invitation emails. Set AllowedHosts to the host names of the instance." });
+            var links = origin.Base is null ? ", and links in password reset and invitation emails go to the host it names" : "";
+            found.Add(new InsecureDefault { Id = "allowed-hosts-any", Message = $"AllowedHosts is '*' or not set in Production, so the instance answers a request with any Host header{links}. Set AllowedHosts to the host names of the instance." });
+        }
+
+        if (environment?.IsProduction() == true && origin.Base is null)
+        {
+            found.Add(new InsecureDefault { Id = "public-origin-unset", Message = $"{FluentCmsOptions.Section}:{PublicOrigin.Key} is not set in Production, so links in password reset and invitation emails and the issuer of the authorization server follow the request's scheme, host and path base. Set it to the address users reach the instance at, such as https://cms.example.com." });
         }
 
         if (startup.MigrateOnStartup && startup.SchemaSync == SchemaSyncMode.Auto && environment?.IsDevelopment() != true)
