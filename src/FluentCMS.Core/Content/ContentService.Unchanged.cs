@@ -17,10 +17,10 @@ internal sealed partial class ContentService
     // A read-only value inside a component, a block or the data of an inline block that comes back as the read showed it
     // is no write: it goes, as if the client had left it out, and the composer keeps the stored one. It is compared where
     // the composer takes the stored value from: a single component is its own place, and an item of a list or an inline
-    // block is paired with a stored one as CarryProtected pairs them, so the two cannot disagree. A read-only value on an
-    // item that pairs with none, or that is not the one the read showed on its pair, is a change. Only a field the
-    // principal may write is looked into: one it may not is the whole field's to answer for. A value that cannot be read
-    // is left as sent, for the field check to refuse.
+    // block is paired with a stored one as CarryProtected pairs them, by its id anywhere in the top-level field or else
+    // within its list, so the two cannot disagree. A read-only value on an item that pairs with none, or that is not the
+    // one the read showed on its pair, is a change. Only a field the principal may write is looked into: one it may not is
+    // the whole field's to answer for. A value that cannot be read is left as sent, for the field check to refuse.
     private ContentDocument WithoutUnchangedInside(WriteScope write, ContentDocument changes, ContentDocument stored, ContentDocument? shown, IReadOnlySet<Guid>? unseen, WritableFields writable, bool addsLocale)
     {
         if (shown is null)
@@ -55,7 +55,9 @@ internal sealed partial class ContentService
             }
 
             var took = false;
-            kept = TakeOutUnchanged(write, field, sent, new Views(EntryJson.ToNode(canonical), EntryJson.ToNode(stored), EntryJson.ToNode(shown)), unseen, ref took);
+            var views = new Views(EntryJson.ToNode(canonical), EntryJson.ToNode(stored), EntryJson.ToNode(shown));
+            var check = new Check(composer.Scope(field, views.Stored, views.Canonical), ShownItems(field, views.Stored, views.Shown), unseen);
+            kept = TakeOutUnchanged(write, field, sent, views, check, ref took);
             return took;
         }
         catch (Exception exception) when (exception is JsonException or ArgumentException or InvalidOperationException)
@@ -71,14 +73,18 @@ internal sealed partial class ContentService
         public Views this[string key] => new(Canonical?[key], Stored?[key], Shown?[key]);
     }
 
-    private JsonNode? TakeOutUnchanged(WriteScope write, SchemaField field, JsonNode? sent, Views views, IReadOnlySet<Guid> unseen, ref bool took)
+    // What holds for the whole top-level field: its stored blocks by id, since a block may come from anywhere in it,
+    // where each stored item is in what the read showed, and the targets the read left out.
+    private sealed record Check(BlockScope Blocks, Dictionary<JsonObject, JsonObject> Shown, IReadOnlySet<Guid> Unseen);
+
+    private JsonNode? TakeOutUnchanged(WriteScope write, SchemaField field, JsonNode? sent, Views views, Check check, ref bool took)
     {
         if (sent is JsonValue text && text.TryGetValue<string>(out var json))
         {
             sent = field.FieldType == FieldTypeNames.RichText ? InlineBlockJson.Parse(json) : JsonDepth.ParseValue(json);
         }
 
-        if (views.Canonical is not { } canonical || views.Stored is not { } stored || views.Shown is not { } shown)
+        if (views.Canonical is not { } canonical)
         {
             return sent;
         }
@@ -86,85 +92,87 @@ internal sealed partial class ContentService
         switch (field.FieldType)
         {
             case FieldTypeNames.RichText:
-                TakeOutOfInline(write, field, sent, canonical, stored, shown, unseen, ref took);
+                TakeOutOfInline(write, field, sent, canonical, views.Stored, check, ref took);
                 break;
             case FieldTypeNames.Component when !field.Multiple:
-                if (sent is JsonObject group && canonical is JsonObject && stored is JsonObject && shown is JsonObject
+                if (sent is JsonObject group && canonical is JsonObject
                     && schema.FindComponent((string)field.Settings[FieldSettings.Component]) is { } component)
                 {
-                    TakeOutOf(write, component, group, views, isBlock: false, unseen, ref took);
+                    TakeOutOf(write, component, group, views, isBlock: false, check, ref took);
                 }
 
                 break;
             case FieldTypeNames.Component or FieldTypeNames.Blocks:
-                TakeOutOfItems(write, field, sent, canonical, stored, shown, unseen, ref took);
+                TakeOutOfItems(write, field, sent, canonical, views.Stored, check, ref took);
                 break;
         }
 
         return sent;
     }
 
-    private void TakeOutOfItems(WriteScope write, SchemaField field, JsonNode? sent, JsonNode canonical, JsonNode stored, JsonNode shown, IReadOnlySet<Guid> unseen, ref bool took)
+    // An item that pairs with none is looked into all the same, since what it holds may pair with a stored block by id.
+    private void TakeOutOfItems(WriteScope write, SchemaField field, JsonNode? sent, JsonNode canonical, JsonNode? stored, Check check, ref bool took)
     {
-        if (sent is not JsonArray items || canonical is not JsonArray canonicalItems || items.Count != canonicalItems.Count
-            || stored is not JsonArray storedItems || shown is not JsonArray shownItems || ShownIndexes(field, storedItems, shownItems) is not { } shownAt)
+        if (sent is not JsonArray items || canonical is not JsonArray canonicalItems || items.Count != canonicalItems.Count)
         {
             return;
         }
 
         var isBlock = field.FieldType == FieldTypeNames.Blocks;
-        foreach (var (old, current) in composer.Pairs(field, stored, canonical, unseen))
+        var pairs = PairedWith(composer.Pairs(field, stored as JsonArray ?? [], canonicalItems, check.Unseen, check.Blocks));
+        for (var at = 0; at < items.Count; at++)
         {
-            var at = IndexOf(canonicalItems, current);
-            var was = IndexOf(storedItems, old);
-            if (at < 0 || was < 0 || shownAt[was] < 0 || items[at] is not JsonObject item || shownItems[shownAt[was]] is not JsonObject seen
-                || ItemOwner(field, item) is not { } owner || ItemOwner(field, current) != owner || ItemOwner(field, old) != owner || ItemOwner(field, seen) != owner)
+            if (items[at] is not JsonObject item || canonicalItems[at] is not JsonObject current
+                || ItemOwner(field, item) is not { } owner || ItemOwner(field, current) != owner)
             {
                 continue;
             }
 
-            TakeOutOf(write, owner, item, new Views(current, old, seen), isBlock, unseen, ref took);
+            TakeOutOf(write, owner, item, PairViews(current, pairs, check), isBlock, check, ref took);
         }
     }
 
-    private void TakeOutOfInline(WriteScope write, SchemaField field, JsonNode? sent, JsonNode canonical, JsonNode stored, JsonNode shown, IReadOnlySet<Guid> unseen, ref bool took)
+    private void TakeOutOfInline(WriteScope write, SchemaField field, JsonNode? sent, JsonNode canonical, JsonNode? stored, Check check, ref bool took)
     {
         var sentBlocks = InlineBlockJson.Find(sent);
         var canonicalBlocks = InlineBlockJson.Find(canonical);
-        var storedBlocks = InlineBlockJson.Find(stored);
-        var shownBlocks = InlineBlockJson.Find(shown);
-        if (sentBlocks.Count != canonicalBlocks.Count || storedBlocks.Count != shownBlocks.Count)
+        if (sentBlocks.Count != canonicalBlocks.Count)
         {
             return;
         }
 
-        foreach (var (old, current) in composer.Pairs(field, stored, canonical, unseen))
+        var pairs = PairedWith(composer.Pairs(field, stored ?? new JsonObject(), canonical, check.Unseen, check.Blocks));
+        for (var at = 0; at < canonicalBlocks.Count; at++)
         {
-            var at = canonicalBlocks.FindIndex(block => ReferenceEquals(block.Data, current));
-            var was = storedBlocks.FindIndex(block => ReferenceEquals(block.Data, old));
-            if (at < 0 || was < 0 || sentBlocks[at].Data is not { } data || shownBlocks[was].Data is not { } seen
-                || sentBlocks[at].BlockType != canonicalBlocks[at].BlockType || shownBlocks[was].BlockType != storedBlocks[was].BlockType
-                || storedBlocks[was].BlockType != canonicalBlocks[at].BlockType || schema.FindBlock(storedBlocks[was].BlockType) is not { } block)
+            if (sentBlocks[at].Data is not { } data || canonicalBlocks[at].Data is not { } current
+                || sentBlocks[at].BlockType != canonicalBlocks[at].BlockType || schema.FindBlock(canonicalBlocks[at].BlockType) is not { } block)
             {
                 continue;
             }
 
-            TakeOutOf(write, block, data, new Views(current, old, seen), isBlock: false, unseen, ref took);
+            TakeOutOf(write, block, data, PairViews(current, pairs, check), isBlock: false, check, ref took);
         }
     }
 
-    private void TakeOutOf(WriteScope write, SchemaType owner, JsonObject sent, Views views, bool isBlock, IReadOnlySet<Guid> unseen, ref bool took)
+    private static Dictionary<JsonObject, JsonObject> PairedWith(List<(JsonObject Old, JsonObject New)> pairs) =>
+        pairs.ToDictionary<(JsonObject Old, JsonObject New), JsonObject, JsonObject>(pair => pair.New, pair => pair.Old, ReferenceEqualityComparer.Instance);
+
+    private static Views PairViews(JsonObject current, Dictionary<JsonObject, JsonObject> pairs, Check check) =>
+        pairs.TryGetValue(current, out var old) ? new Views(current, old, check.Shown.GetValueOrDefault(old)) : new Views(current, null, null);
+
+    // A read-only value is compared only where the read showed the item it pairs with.
+    private void TakeOutOf(WriteScope write, SchemaType owner, JsonObject sent, Views views, bool isBlock, Check check, ref bool took)
     {
         foreach (var (key, value) in sent.ToList())
         {
-            if ((isBlock && key == BlockDiscriminator) || owner.FindField(key) is not { Hidden: false } inner)
+            if ((isBlock && key is BlockDiscriminator or BlockIds.Key) || owner.FindField(key) is not { Hidden: false } inner)
             {
                 continue;
             }
 
             if (inner.ReadOnly)
             {
-                if (SameAsSeen(write, inner, value, views.Shown?[key]))
+                if (views.Shown is JsonObject seen && SameAsSeen(write, inner, value, seen[key]))
                 {
                     sent.Remove(key);
                     took = true;
@@ -172,12 +180,75 @@ internal sealed partial class ContentService
             }
             else if (inner.FieldType is FieldTypeNames.Component or FieldTypeNames.Blocks or FieldTypeNames.RichText && value is not null)
             {
-                var kept = TakeOutUnchanged(write, inner, value, views[key], unseen, ref took);
+                var kept = TakeOutUnchanged(write, inner, value, views[key], check, ref took);
                 if (!ReferenceEquals(kept, value))
                 {
                     sent[key] = kept;
                 }
             }
+        }
+    }
+
+    // Where each stored item is in what the read showed, at every depth: a read leaves out what is hidden and a block of a
+    // type the field does not take, and keeps everything else in its place.
+    private Dictionary<JsonObject, JsonObject> ShownItems(SchemaField field, JsonNode? stored, JsonNode? shown)
+    {
+        Dictionary<JsonObject, JsonObject> map = new(ReferenceEqualityComparer.Instance);
+        MapShown(field, stored, shown, map);
+        return map;
+    }
+
+    private void MapShown(SchemaField field, JsonNode? stored, JsonNode? shown, Dictionary<JsonObject, JsonObject> map)
+    {
+        switch (field.FieldType)
+        {
+            case FieldTypeNames.RichText when stored is JsonObject && shown is JsonObject:
+                var storedBlocks = InlineBlockJson.Find(stored);
+                var shownBlocks = InlineBlockJson.Find(shown);
+                for (var index = 0; storedBlocks.Count == shownBlocks.Count && index < storedBlocks.Count; index++)
+                {
+                    if (storedBlocks[index].Data is { } data && shownBlocks[index].Data is { } seen
+                        && storedBlocks[index].BlockType == shownBlocks[index].BlockType && schema.FindBlock(storedBlocks[index].BlockType) is { } block)
+                    {
+                        map[data] = seen;
+                        MapInside(block, data, seen, map);
+                    }
+                }
+
+                break;
+            case FieldTypeNames.Component when !field.Multiple:
+                if (stored is JsonObject group && shown is JsonObject seenGroup
+                    && schema.FindComponent((string)field.Settings[FieldSettings.Component]) is { } component)
+                {
+                    MapInside(component, group, seenGroup, map);
+                }
+
+                break;
+            case FieldTypeNames.Component or FieldTypeNames.Blocks when stored is JsonArray storedItems && shown is JsonArray shownItems:
+                if (ShownIndexes(field, storedItems, shownItems) is not { } shownAt)
+                {
+                    break;
+                }
+
+                for (var index = 0; index < storedItems.Count; index++)
+                {
+                    if (shownAt[index] >= 0 && storedItems[index] is JsonObject item && shownItems[shownAt[index]] is JsonObject seen
+                        && ItemOwner(field, item) is { } owner && ItemOwner(field, seen) == owner)
+                    {
+                        map[item] = seen;
+                        MapInside(owner, item, seen, map);
+                    }
+                }
+
+                break;
+        }
+    }
+
+    private void MapInside(SchemaType owner, JsonObject stored, JsonObject shown, Dictionary<JsonObject, JsonObject> map)
+    {
+        foreach (var field in owner.Fields.Where(field => !field.Hidden && field.FieldType is FieldTypeNames.Component or FieldTypeNames.Blocks or FieldTypeNames.RichText))
+        {
+            MapShown(field, stored[field.Name], shown[field.Name], map);
         }
     }
 
@@ -200,19 +271,6 @@ internal sealed partial class ContentService
     private SchemaType? ItemOwner(SchemaField field, JsonObject item) => field.FieldType == FieldTypeNames.Blocks
         ? BlockName(item) is { } name ? schema.FindBlock(name) : null
         : schema.FindComponent((string)field.Settings[FieldSettings.Component]);
-
-    private static int IndexOf(JsonArray items, JsonObject item)
-    {
-        for (var index = 0; index < items.Count; index++)
-        {
-            if (ReferenceEquals(items[index], item))
-            {
-                return index;
-            }
-        }
-
-        return -1;
-    }
 
     // The same test as for a top-level field: what the read showed, with no hidden field named.
     private bool SameAsSeen(WriteScope write, SchemaField field, JsonNode? value, JsonNode? seen) =>

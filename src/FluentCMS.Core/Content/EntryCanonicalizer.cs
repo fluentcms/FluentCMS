@@ -21,6 +21,8 @@ internal sealed class EntryCanonicalizer(SchemaModel schema)
     private const string IdKey = "id";
     private const int SlugLength = 200;
 
+    private readonly BlockIds _blocks = new(schema);
+
     // mayDerive says whether a slug may be made from a source field. Where it may not, the slug keeps what stored holds:
     // a slug shows its source to whoever reads it, so it must not be how a principal learns what it may not read.
     public ContentDocument Canonicalize(SchemaType type, ContentDocument entry, Func<SchemaType, SchemaField, bool> mayDerive, ContentDocument? stored = null)
@@ -46,6 +48,7 @@ internal sealed class EntryCanonicalizer(SchemaModel schema)
         {
             ReadFields(type, entry, result, "", flattened: false, errors, mayDerive, stored);
             EntryJson.ThrowIfUnreadable(EntryJson.Fields(type, result));
+            _blocks.CheckUnique(type, result, errors);
         }
         catch (ArgumentException exception)
         {
@@ -273,6 +276,11 @@ internal sealed class EntryCanonicalizer(SchemaModel schema)
         ReportUnknown(map, block, path, isBlock: true, errors);
         var result = ReadObject(block, map, path, errors);
         JsonObject named = new() { [Discriminator] = name };
+        if (BlockId(map, path, errors) is { } id)
+        {
+            named[BlockIds.Key] = id;
+        }
+
         foreach (var pair in result.ToList())
         {
             result.Remove(pair.Key);
@@ -280,6 +288,23 @@ internal sealed class EntryCanonicalizer(SchemaModel schema)
         }
 
         return named;
+    }
+
+    // No id, or null, is a block the service gives an id to before it is stored.
+    private static string? BlockId(Dictionary<string, object?> map, string path, List<ValidationError> errors)
+    {
+        if (!map.TryGetValue(BlockIds.Key, out var raw) || RawValue.Unwrap(raw) is not { } value)
+        {
+            return null;
+        }
+
+        if (value is string id && RichTextAttributes.CheckBlockId(id) is null)
+        {
+            return id;
+        }
+
+        errors.Add(Invalid($"{path}.{BlockIds.Key}", RichTextAttributes.CheckBlockId(null)!));
+        return null;
     }
 
     private string? BlockName(object? raw, Dictionary<string, object?> map)
@@ -334,7 +359,7 @@ internal sealed class EntryCanonicalizer(SchemaModel schema)
     {
         foreach (var key in map.Keys)
         {
-            if (owner.FindField(key) is null && !(isBlock && key == Discriminator))
+            if (owner.FindField(key) is null && !(isBlock && key is Discriminator or BlockIds.Key))
             {
                 errors.Add(Invalid($"{path}.{key}", $"'{key}' is not a field of {owner.Name}."));
             }

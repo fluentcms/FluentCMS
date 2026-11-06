@@ -949,6 +949,8 @@ internal sealed partial class ContentService(
             await ValidateAsync(write, working, sent, save, cancellationToken);
         }
 
+        // What is written now is final, so a block that has no id yet gets one here, before a status is decided on it.
+        composer.AssignBlockIds(write.Type, working);
         return working;
     }
 

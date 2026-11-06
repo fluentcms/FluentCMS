@@ -136,6 +136,8 @@ public class RichTextParserTests
     [InlineData("""{"type":"doc","content":[{"type":"inlineBlock","attrs":{"blockType":"two words"}}]}""", "$.content[0].attrs.blockType", "must start with a letter")]
     [InlineData("""{"type":"doc","content":[{"type":"inlineBlock"}]}""", "$.content[0].attrs.blockType", "must be a string")]
     [InlineData("""{"type":"doc","content":[{"type":"inlineBlock","attrs":{"blockType":"callout","data":[]}}]}""", "$.content[0].attrs.data", "must be an object")]
+    [InlineData("""{"type":"doc","content":[{"type":"inlineBlock","attrs":{"blockType":"callout","id":"two words"}}]}""", "$.content[0].attrs.id", "block id")]
+    [InlineData("""{"type":"doc","content":[{"type":"inlineBlock","attrs":{"blockType":"callout","id":7}}]}""", "$.content[0].attrs.id", "block id")]
     public void ReportsInvalidDocumentsWithThePath(string json, string path, string message)
     {
         RichTextParser.TryParse(json, out var document, out var errors).ShouldBeFalse();

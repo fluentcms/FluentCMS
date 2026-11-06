@@ -45,8 +45,17 @@ internal static partial class RichTextAttributes
             ? null
             : "The entry type must be a lower case kebab-case content type name.";
 
+    // The id of a block or an inline block: 1 to 64 URL-safe characters, so that imported ids survive.
+    public static string? CheckBlockId(string? id) =>
+        id is not null && BlockIdPattern().IsMatch(id)
+            ? null
+            : "The block id must be 1 to 64 letters, digits, '-' or '_'.";
+
     [GeneratedRegex("^[A-Za-z][A-Za-z0-9_-]*$")]
     private static partial Regex NamePattern();
+
+    [GeneratedRegex("^[A-Za-z0-9_-]{1,64}$")]
+    private static partial Regex BlockIdPattern();
 
     [GeneratedRegex("^[a-z][a-z0-9-]*$")]
     private static partial Regex EntryTypePattern();

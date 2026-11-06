@@ -60,13 +60,14 @@ public static class ErrorCodeRegistry
         Startup(StorageErrorCodes.InvalidDatabaseSetting, "Invalid database setting"),
         Startup(StorageErrorCodes.PendingStreamMigrations, "Pending stream migrations"),
 
-        // 14xx authorization
+        // 14xx authorization and content writes
         Startup(AuthorizationErrorCodes.DuplicatePermission, "Duplicate permission"),
         Startup(AuthorizationErrorCodes.ReservedPermission, "Reserved permission"),
         Startup(AuthorizationErrorCodes.UnsupportedRowRule, "Unsupported row rule"),
         Startup(AuthorizationErrorCodes.DuplicateRowRule, "Duplicate row rule"),
         Startup(AuthorizationErrorCodes.InvalidRowRule, "Invalid row rule"),
         Invalid(AuthorizationErrorCodes.FieldNotWritable, "Field not writable"),
+        Invalid(ContentErrorCodes.DuplicateBlockId, "Duplicate block id"),
 
         // 21xx validation
         Invalid(ApiErrorCodes.ValidationFailed, "Validation failed"),

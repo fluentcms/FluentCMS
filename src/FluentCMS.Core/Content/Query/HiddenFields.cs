@@ -93,7 +93,7 @@ internal static class HiddenFields
         {
             foreach (var key in entry.Select(pair => pair.Key).ToList())
             {
-                if (key != Discriminator && type.FindField(key) is null)
+                if (key is not (Discriminator or BlockIds.Key) && type.FindField(key) is null)
                 {
                     entry.Remove(key);
                 }

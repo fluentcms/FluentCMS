@@ -138,6 +138,14 @@ public class SchemaValidationTests
     }
 
     [Fact]
+    public void BlockFieldCalledIdIsReservedForTheBlockIdFCMS1206()
+    {
+        var builder = new SchemaBuilder().AddBlock("hero", type => type.Field("id", "text"));
+
+        ShouldReportOnly(builder, "FCMS1206", "block id");
+    }
+
+    [Fact]
     public void ReservedNamesAreOnlyReservedOnContentTypes()
     {
         var model = new SchemaBuilder().AddComponent("seo", type => type.Field("status", "text")).Build();

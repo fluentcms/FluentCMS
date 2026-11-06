@@ -11,6 +11,7 @@ namespace FluentCMS.Core.Content;
 internal sealed class EntryComposer(SchemaModel schema)
 {
     private readonly NestedTargets _nested = new(schema);
+    private readonly BlockIds _blocks = new(schema);
 
     private const string Discriminator = "type";
 
@@ -117,13 +118,16 @@ internal sealed class EntryComposer(SchemaModel schema)
     }
 
     // What a client cannot see or change inside a component or a block stays when it sends the rest back, even when it
-    // sends no component at all. A list has no ids, so an incoming block keeps the values of the stored block of the
-    // same type whose visible content is identical, each used once, and what is left pairs up in order within its type.
-    // A block both moved and edited can still pair with the wrong one. A single component is left alone on a patch only for the
-    // system principal, which may be clearing a value, since a patch merged into a component already keeps the rest.
-    // unseen holds the nested targets a read left out: they stay too, and a rich text document keeps its links only when
-    // it comes back as it was read, since its nodes have no ids to pair an edit by. The inline blocks of a document that
-    // changed pair up as the blocks of a list do, across the whole document.
+    // sends no component at all. A block sent with its id keeps the values of the stored block of the same id and type,
+    // wherever either is in the top-level field, so it can move into or out of a nested list or document; one whose id is
+    // not stored is new. A block sent without an id keeps the values of the stored block of the same type in its list
+    // whose visible content is identical, each used once, and what is left pairs up in order within its type; it then
+    // takes the id of the block it paired with. A block both moved and edited without its id can still pair with the
+    // wrong one. A single component is left alone on a patch only for the system principal, which may be clearing a
+    // value, since a patch merged into a component already keeps the rest. unseen holds the nested targets a read left
+    // out: they stay too, and a rich text document keeps its links only when it comes back as it was read, since its
+    // other nodes have no ids to pair an edit by. The inline blocks of a document that changed pair up as the blocks of a
+    // list do, across the whole document.
     public void CarryProtected(SchemaType type, ContentDocument stored, ContentDocument composed, bool includingGroups, IReadOnlySet<Guid>? unseen = null)
     {
         unseen ??= NoTargets;
@@ -131,27 +135,33 @@ internal sealed class EntryComposer(SchemaModel schema)
         {
             stored.TryGetValue(field.Name, out var before);
             composed.TryGetValue(field.Name, out var after);
+            var blocks = _blocks.Scope(field, before, after);
             if (field.FieldType == FieldTypeNames.Component && !field.Multiple)
             {
                 if (includingGroups && before is ContentDocument oldGroup && ComponentOf(field) is { } component)
                 {
-                    CarryGroup(component, oldGroup, after as ContentDocument, group => composed[field.Name] = group, unseen);
+                    CarryGroup(component, oldGroup, after as ContentDocument, group => composed[field.Name] = group, blocks, unseen);
                 }
             }
             else if (before is RichText oldText && after is RichText newText)
             {
-                composed[field.Name] = CarryRichText(field, oldText, newText, unseen);
+                composed[field.Name] = CarryRichText(field, oldText, newText, blocks, unseen);
             }
             else if (before is JsonNode oldNode && after is JsonNode newNode)
             {
-                CarryInside(field, oldNode, newNode, unseen);
+                CarryInside(field, oldNode, newNode, blocks, unseen);
             }
         }
     }
 
-    private RichText CarryRichText(SchemaField field, RichText before, RichText after, IReadOnlySet<Guid> unseen)
+    // The blocks of a top-level field by id. A stored block Pairs answers with is one of before's own nodes.
+    public BlockScope Scope(SchemaField field, JsonNode? before, JsonNode? after) => _blocks.Scope(field, before, after);
+
+    public void AssignBlockIds(SchemaType type, ContentDocument entry) => _blocks.Assign(type, entry);
+
+    private RichText CarryRichText(SchemaField field, RichText before, RichText after, BlockScope blocks, IReadOnlySet<Guid> unseen)
     {
-        if (unseen.Count == 0 && !InlineBlockJson.MayHold(before.Json))
+        if (unseen.Count == 0 && blocks.IsEmpty && !InlineBlockJson.MayHold(before.Json))
         {
             return after;
         }
@@ -163,7 +173,7 @@ internal sealed class EntryComposer(SchemaModel schema)
             return before;
         }
 
-        return CarryInlineBlocks(old, current, unseen) ? InlineBlockJson.ToRichText(current) : after;
+        return CarryInlineBlocks(old, current, blocks, unseen) ? InlineBlockJson.ToRichText(current) : after;
     }
 
     // As a read showed it, which is all a client could send back. What the client did send is compared as it is, so that
@@ -172,21 +182,37 @@ internal sealed class EntryComposer(SchemaModel schema)
         JsonNode.DeepEquals(ComparableValue(field, before, unseen), after);
 
     // Which stored item each sent one keeps what it cannot see from, as CarryProtected pairs them: the objects of a block
-    // list or a repeated component, or the data of the inline blocks of a rich text document.
-    public List<(JsonObject Old, JsonObject New)> Pairs(SchemaField field, JsonNode before, JsonNode after, IReadOnlySet<Guid> unseen) => field.FieldType switch
+    // list or a repeated component, or the data of the inline blocks of a rich text document. blocks is the scope of the
+    // top-level field the value is in, so an item may pair with a stored one that is not in before.
+    public List<(JsonObject Old, JsonObject New)> Pairs(SchemaField field, JsonNode before, JsonNode after, IReadOnlySet<Guid> unseen, BlockScope blocks) => field.FieldType switch
     {
-        FieldTypeNames.RichText => PairInline(before, after, unseen).Pairs,
-        _ when before is JsonArray oldItems && after is JsonArray newItems => PairItems(field, oldItems, newItems, unseen),
+        FieldTypeNames.RichText => PairInline(before, after, blocks, unseen).Pairs,
+        _ when before is JsonArray oldItems && after is JsonArray newItems => PairItems(field, oldItems, newItems, blocks, unseen),
         _ => [],
     };
 
-    private bool CarryInlineBlocks(JsonNode before, JsonNode after, IReadOnlySet<Guid> unseen)
+    private bool CarryInlineBlocks(JsonNode before, JsonNode after, BlockScope blocks, IReadOnlySet<Guid> unseen)
     {
         var was = after.DeepClone();
-        var (pairs, owners, newData) = PairInline(before, after, unseen);
+        var (pairs, owners, newData) = PairInline(before, after, blocks, unseen);
+        var attributes = newData.ToDictionary<(JsonObject Data, InlineBlockJsonNode Block), JsonObject, JsonObject>(item => item.Data, item => item.Block.Attributes, ReferenceEqualityComparer.Instance);
         foreach (var (oldItem, newItem) in pairs)
         {
-            CarryIntoObject(owners[oldItem], oldItem, newItem, unseen);
+            if (BlockIds.Of(attributes[newItem]) is null && IdOfInline(before, oldItem) is { } id)
+            {
+                BlockIds.Set(attributes[newItem], id);
+            }
+
+            CarryIntoObject(owners[newItem], oldItem, newItem, blocks, unseen);
+        }
+
+        if (!blocks.IsEmpty)
+        {
+            var paired = pairs.Select(pair => pair.New).ToHashSet(ReferenceEqualityComparer.Instance);
+            foreach (var (data, _) in newData.Where(item => !paired.Contains(item.Data)))
+            {
+                CarryIntoObject(owners[data], [], data, blocks, unseen);
+            }
         }
 
         foreach (var (data, block) in newData.Where(item => item.Data.Count > 0 && item.Block.Data is null))
@@ -197,15 +223,21 @@ internal sealed class EntryComposer(SchemaModel schema)
         return !JsonNode.DeepEquals(was, after);
     }
 
-    private (List<(JsonObject Old, JsonObject New)> Pairs, Dictionary<JsonObject, SchemaType> Owners, List<(JsonObject Data, InlineBlockJsonNode Block)> NewData) PairInline(JsonNode before, JsonNode after, IReadOnlySet<Guid> unseen)
+    // A block that paired without an id paired within its own document, so its stored id is there.
+    private static string? IdOfInline(JsonNode document, JsonObject data) =>
+        BlockIds.Of(InlineBlockJson.Find(document).Find(block => ReferenceEquals(block.Data, data))?.Attributes);
+
+    private (List<(JsonObject Old, JsonObject New)> Pairs, Dictionary<JsonObject, SchemaType> Owners, List<(JsonObject Data, InlineBlockJsonNode Block)> NewData) PairInline(JsonNode before, JsonNode after, BlockScope blocks, IReadOnlySet<Guid> unseen)
     {
         Dictionary<JsonObject, SchemaType> owners = new(ReferenceEqualityComparer.Instance);
+        Dictionary<JsonObject, string?> ids = new(ReferenceEqualityComparer.Instance);
         List<JsonObject> oldData = [];
         foreach (var block in InlineBlockJson.Find(before))
         {
             if (schema.FindBlock(block.BlockType) is { } owner && block.Data is { } data)
             {
                 owners[data] = owner;
+                ids[data] = BlockIds.Of(block.Attributes);
                 oldData.Add(data);
             }
         }
@@ -217,21 +249,26 @@ internal sealed class EntryComposer(SchemaModel schema)
             {
                 var data = block.Data ?? [];
                 owners[data] = owner;
+                ids[data] = BlockIds.Of(block.Attributes);
                 newData.Add((data, block));
             }
         }
 
-        return (PairUp([.. oldData], [.. newData.Select(item => item.Data)], item => owners.GetValueOrDefault(item), unseen), owners, newData);
+        var pairs = PairUp([.. oldData], [.. newData.Select(item => item.Data)], item => owners.GetValueOrDefault(item), item => ids.GetValueOrDefault(item), blocks, unseen);
+        return (pairs, owners, newData);
     }
 
-    private List<(JsonObject Old, JsonObject New)> PairItems(SchemaField field, JsonArray before, JsonArray after, IReadOnlySet<Guid> unseen) =>
-        PairUp([.. before.OfType<JsonObject>()], [.. after.OfType<JsonObject>()], item => OwnerOf(field, item), unseen);
+    private List<(JsonObject Old, JsonObject New)> PairItems(SchemaField field, JsonArray before, JsonArray after, BlockScope blocks, IReadOnlySet<Guid> unseen)
+    {
+        Func<JsonObject, string?> idOf = field.FieldType == FieldTypeNames.Blocks ? BlockIds.Of : static _ => null;
+        return PairUp([.. before.OfType<JsonObject>()], [.. after.OfType<JsonObject>()], item => OwnerOf(field, item), idOf, blocks, unseen);
+    }
 
     private SchemaType? ComponentOf(SchemaField field) =>
         field.Settings.TryGetValue(FieldSettings.Component, out var name) && name is string component ? schema.FindComponent(component) : null;
 
     // An absent component comes back only if it has something to carry.
-    private void CarryGroup(SchemaType component, ContentDocument before, ContentDocument? after, Action<ContentDocument> set, IReadOnlySet<Guid> unseen)
+    private void CarryGroup(SchemaType component, ContentDocument before, ContentDocument? after, Action<ContentDocument> set, BlockScope blocks, IReadOnlySet<Guid> unseen)
     {
         var group = after ?? [];
         foreach (var field in component.Fields)
@@ -242,17 +279,18 @@ internal sealed class EntryComposer(SchemaModel schema)
             {
                 group[field.Name] = old;
             }
-            else if (old is RichText oldText && current is RichText newText)
+            else if (current is RichText newText && (old is RichText || !blocks.IsEmpty))
             {
-                group[field.Name] = CarryRichText(field, oldText, newText, unseen);
+                group[field.Name] = CarryRichText(field, old as RichText ?? RichText.Empty, newText, blocks, unseen);
             }
-            else if (old is JsonNode oldNode && current is JsonNode newNode)
+            else if (current is JsonNode newNode && (old is JsonNode || !blocks.IsEmpty))
             {
-                CarryInside(field, oldNode, newNode, unseen);
+                CarryInside(field, old as JsonNode, newNode, blocks, unseen);
             }
-            else if (field.FieldType == FieldTypeNames.Component && !field.Multiple && old is ContentDocument oldGroup && ComponentOf(field) is { } inner)
+            else if (field.FieldType == FieldTypeNames.Component && !field.Multiple && ComponentOf(field) is { } inner
+                && (old is ContentDocument || (!blocks.IsEmpty && current is ContentDocument)))
             {
-                CarryGroup(inner, oldGroup, current as ContentDocument, value => group[field.Name] = value, unseen);
+                CarryGroup(inner, old as ContentDocument ?? [], current as ContentDocument, value => group[field.Name] = value, blocks, unseen);
             }
         }
 
@@ -262,30 +300,66 @@ internal sealed class EntryComposer(SchemaModel schema)
         }
     }
 
-    private void CarryInside(SchemaField field, JsonNode before, JsonNode after, IReadOnlySet<Guid> unseen)
+    // Where nothing is stored at the place there is nothing to fall back on, but a block with an id may come from elsewhere.
+    private void CarryInside(SchemaField field, JsonNode? before, JsonNode after, BlockScope blocks, IReadOnlySet<Guid> unseen)
     {
-        if (before is JsonArray oldItems && after is JsonArray newItems)
+        if (after is JsonArray newItems && (before is JsonArray || (before is null && !blocks.IsEmpty)))
         {
-            foreach (var (oldItem, newItem) in PairItems(field, oldItems, newItems, unseen))
+            var pairs = PairItems(field, before as JsonArray ?? [], newItems, blocks, unseen);
+            foreach (var (oldItem, newItem) in pairs)
             {
-                if (OwnerOf(field, oldItem) is { } owner)
+                if (OwnerOf(field, newItem) is not { } owner)
                 {
-                    CarryIntoObject(owner, oldItem, newItem, unseen);
+                    continue;
+                }
+
+                if (field.FieldType == FieldTypeNames.Blocks && BlockIds.Of(newItem) is null && BlockIds.Of(oldItem) is { } id)
+                {
+                    BlockIds.Set(newItem, id);
+                }
+
+                CarryIntoObject(owner, oldItem, newItem, blocks, unseen);
+            }
+
+            if (!blocks.IsEmpty)
+            {
+                var paired = pairs.Select(pair => pair.New).ToHashSet(ReferenceEqualityComparer.Instance);
+                foreach (var item in newItems.OfType<JsonObject>().Where(item => !paired.Contains(item)))
+                {
+                    if (OwnerOf(field, item) is { } owner)
+                    {
+                        CarryIntoObject(owner, [], item, blocks, unseen);
+                    }
                 }
             }
         }
-        else if (before is JsonObject oldObject && after is JsonObject newObject && OwnerOf(field, oldObject) is { } single && OwnerOf(field, newObject) == single)
+        else if (after is JsonObject newObject && OwnerOf(field, newObject) is { } single
+            && ((before is JsonObject oldObject && OwnerOf(field, oldObject) == single) || (before is null && !blocks.IsEmpty)))
         {
-            CarryIntoObject(single, oldObject, newObject, unseen);
+            CarryIntoObject(single, before as JsonObject ?? [], newObject, blocks, unseen);
         }
     }
 
-    private List<(JsonObject Old, JsonObject New)> PairUp(List<JsonObject> before, List<JsonObject> after, Func<JsonObject, SchemaType?> ownerOf, IReadOnlySet<Guid> unseen)
+    // A block with an id pairs only by it, and a stored block whose id the write sends is not left for another to take.
+    private List<(JsonObject Old, JsonObject New)> PairUp(List<JsonObject> before, List<JsonObject> after, Func<JsonObject, SchemaType?> ownerOf, Func<JsonObject, string?> idOf, BlockScope blocks, IReadOnlySet<Guid> unseen)
     {
         List<(JsonObject Old, JsonObject New)> pairs = [];
-        List<JsonObject> oldLeft = [.. before];
-        List<JsonObject> newLeft = [];
+        List<JsonObject> oldLeft = [.. before.Where(old => !blocks.IsSent(idOf(old)))];
+        List<JsonObject> withoutId = [];
         foreach (var item in after)
+        {
+            if (idOf(item) is not { } id)
+            {
+                withoutId.Add(item);
+            }
+            else if (ownerOf(item) is { } owner && blocks.Find(id, owner) is { } stored)
+            {
+                pairs.Add((stored, item));
+            }
+        }
+
+        List<JsonObject> newLeft = [];
+        foreach (var item in withoutId)
         {
             var same = ownerOf(item) is { } owner
                 ? oldLeft.FindIndex(old => ownerOf(old) == owner && JsonNode.DeepEquals(Comparable(owner, old, unseen), Comparable(owner, item, unseen)))
@@ -316,18 +390,20 @@ internal sealed class EntryComposer(SchemaModel schema)
         return pairs;
     }
 
-    // What a client saw of a block: no protected values, and no key that holds nothing, which is the same as no key.
+    // What a client saw of a block apart from its id: no protected values, and no key that holds nothing, which is the
+    // same as no key.
     private JsonObject Comparable(SchemaType owner, JsonObject item, IReadOnlySet<Guid> unseen)
     {
         JsonObject result = [];
         foreach (var (key, value) in item)
         {
-            if (value is null || owner.FindField(key) is { Hidden: true } or { ReadOnly: true })
+            var field = owner.FindField(key);
+            if (value is null || field is { Hidden: true } or { ReadOnly: true } || (field is null && key == BlockIds.Key))
             {
                 continue;
             }
 
-            var inner = owner.FindField(key) is { } field ? ComparableValue(field, value, unseen) : value.DeepClone();
+            var inner = field is not null ? ComparableValue(field, value, unseen) : value.DeepClone();
             if (inner is not (null or JsonObject { Count: 0 }))
             {
                 result[key] = inner;
@@ -373,12 +449,17 @@ internal sealed class EntryComposer(SchemaModel schema)
         _ => null,
     };
 
-    private void CarryIntoObject(SchemaType owner, JsonObject before, JsonObject after, IReadOnlySet<Guid> unseen)
+    private void CarryIntoObject(SchemaType owner, JsonObject before, JsonObject after, BlockScope blocks, IReadOnlySet<Guid> unseen)
     {
         foreach (var field in owner.Fields)
         {
             if (before[field.Name] is not { } value)
             {
+                if (!blocks.IsEmpty && after[field.Name] is { } added)
+                {
+                    CarryAdded(field, added, blocks, unseen);
+                }
+
                 continue;
             }
 
@@ -406,22 +487,35 @@ internal sealed class EntryComposer(SchemaModel schema)
                 }
                 else
                 {
-                    CarryInlineBlocks(value, text, unseen);
+                    CarryInlineBlocks(value, text, blocks, unseen);
                 }
             }
             else if (after[field.Name] is { } inner)
             {
-                CarryInside(field, value, inner, unseen);
+                CarryInside(field, value, inner, blocks, unseen);
             }
             else if (field.FieldType == FieldTypeNames.Component && !field.Multiple && value is JsonObject nested && ComponentOf(field) is { } component)
             {
                 JsonObject kept = [];
-                CarryIntoObject(component, nested, kept, unseen);
+                CarryIntoObject(component, nested, kept, blocks, unseen);
                 if (kept.Count > 0)
                 {
                     after[field.Name] = kept;
                 }
             }
+        }
+    }
+
+    // A value with nothing stored at its place may still hold a block that moved there.
+    private void CarryAdded(SchemaField field, JsonNode added, BlockScope blocks, IReadOnlySet<Guid> unseen)
+    {
+        if (field.FieldType == FieldTypeNames.RichText)
+        {
+            CarryInlineBlocks(new JsonObject(), added, blocks, unseen);
+        }
+        else if (field.FieldType is FieldTypeNames.Blocks or FieldTypeNames.Component)
+        {
+            CarryInside(field, null, added, blocks, unseen);
         }
     }
 
