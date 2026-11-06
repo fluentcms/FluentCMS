@@ -953,6 +953,11 @@ FluentCMS.Providers.EmailMessage.TextBody.get -> string!
 FluentCMS.Providers.EmailMessage.TextBody.init -> void
 FluentCMS.Providers.EmailMessage.To.get -> string!
 FluentCMS.Providers.EmailMessage.To.init -> void
+FluentCMS.Providers.IDistributedLock
+FluentCMS.Providers.IDistributedLock.TryAcquireAsync(string! name, System.TimeSpan timeout, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Providers.IDistributedLockHandle?>!
+FluentCMS.Providers.IDistributedLockHandle
+FluentCMS.Providers.IDistributedLockHandle.Lost.get -> System.Threading.CancellationToken
+FluentCMS.Providers.IDistributedLockHandle.Name.get -> string!
 FluentCMS.Providers.IEmailSender
 FluentCMS.Providers.IEmailSender.SendAsync(FluentCMS.Providers.EmailMessage! message, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 FluentCMS.Publishing.EntryStatus
