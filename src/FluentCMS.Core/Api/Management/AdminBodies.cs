@@ -3,10 +3,12 @@ using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Events;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Identity.ApiKeys;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Settings;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace FluentCMS.Core.Api.Management;
 
@@ -265,3 +267,41 @@ internal sealed record TwoFactorCodeRequest
 }
 
 internal sealed record RecoveryCodesResponse(IReadOnlyList<string> RecoveryCodes);
+
+// The report of /system/health, every check in order of name. A status is the name of a HealthStatus as it is, and a
+// description or exception may quote a connection string, so every text goes through the scrubber.
+internal sealed record HealthReportResponse(
+    [property: Description("Healthy, Degraded or Unhealthy: the worst status of the checks.")]
+    string Status,
+    double TotalDurationMs,
+    IReadOnlyList<HealthCheckResponse> Checks)
+{
+    public static HealthReportResponse From(HealthReport report)
+    {
+        ArgumentNullException.ThrowIfNull(report);
+
+        return new(
+            report.Status.ToString(),
+            report.TotalDuration.TotalMilliseconds,
+            [.. report.Entries.OrderBy(entry => entry.Key, StringComparer.Ordinal).Select(entry => HealthCheckResponse.From(entry.Key, entry.Value))]);
+    }
+}
+
+internal sealed record HealthCheckResponse(
+    string Name,
+    [property: Description("Healthy, Degraded or Unhealthy.")]
+    string Status,
+    double DurationMs,
+    IReadOnlyList<string> Tags,
+    string? Description,
+    [property: Description("The type and message of the exception the check threw.")]
+    string? Error)
+{
+    public static HealthCheckResponse From(string name, HealthReportEntry entry) => new(
+        name,
+        entry.Status.ToString(),
+        entry.Duration.TotalMilliseconds,
+        [.. entry.Tags.Order(StringComparer.Ordinal)],
+        entry.Description is { } description ? SecretScrubber.Of(description) : null,
+        entry.Exception is { } exception ? SecretScrubber.Of($"{exception.GetType().Name}: {exception.Message}") : null);
+}

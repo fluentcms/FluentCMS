@@ -30,13 +30,34 @@ internal static class OperationsEndpoints
     private static void Map(RouteGroupBuilder management)
     {
         var jobs = management.MapGroup("/jobs").WithFluentCmsOperation(Origin.Api).RequireManagementScope();
-        jobs.MapGet("", ListJobsAsync).Produces<ItemPage<JobInfo>>();
-        jobs.MapGet("/dead-letter", DeadLettersAsync).Produces<ItemList<DeadLetteredJob>>();
+        jobs.MapGet("", ListJobsAsync)
+            .Query(
+            [
+                QueryParameter.OneOf("status", JobAdministration.Statuses, "Only the jobs with this status."),
+                QueryParameter.Text("type", "Only the jobs of this type."),
+                QueryParameter.Text("queue", "Only the jobs of this queue."),
+                .. ManagementQuery.Paging,
+            ])
+            .Produces<ItemPage<JobInfo>>();
+        jobs.MapGet("/dead-letter", DeadLettersAsync).Query(ManagementQuery.Paging).Produces<ItemList<DeadLetteredJob>>();
         jobs.MapGet("/{id}", GetJobAsync).Produces<JobResponse>();
         jobs.MapPost("/{id}/retry", RetryAsync).Produces<JobResponse>();
         jobs.MapPost("/{id}/cancel", CancelAsync).Produces<JobResponse>();
 
-        management.MapGroup("/activity").WithFluentCmsOperation(Origin.Api).RequireManagementScope().MapGet("", ActivityAsync).Produces<ItemPage<ActivityItem>>();
+        management.MapGroup("/activity").WithFluentCmsOperation(Origin.Api).RequireManagementScope().MapGet("", ActivityAsync)
+            .Query(
+            [
+                QueryParameter.Id("actorId", "Only what this actor did."),
+                QueryParameter.Enum<PrincipalKind>("actorKind", "Only what actors of this kind did."),
+                QueryParameter.Enum<Origin>("origin", "Only operations that came from here."),
+                QueryParameter.Text("action", "Only this action, in any case, or with a trailing * every action that starts with the text before it, such as content.*."),
+                QueryParameter.Text("targetType", "Only what happened to this kind of thing."),
+                QueryParameter.Text("targetId", "Only what happened to the thing with this id."),
+                QueryParameter.Moment("from", "Only what happened at or after this time. It names its offset, such as 2027-03-01T09:00:00Z."),
+                QueryParameter.Moment("to", "Only what happened before this time. It names its offset, such as 2027-03-01T09:00:00Z."),
+                .. ManagementQuery.Paging,
+            ])
+            .Produces<ItemPage<ActivityItem>>();
 
         var me = management.MapGroup("/me").WithFluentCmsOperation(Origin.Api).RequireManagementScope();
         me.MapGet("", MeAsync).Produces<MeResponse>();
@@ -54,7 +75,7 @@ internal static class OperationsEndpoints
     private static async Task<IResult> ListJobsAsync(HttpContext httpContext, [FromServices] JobAdministration jobs)
     {
         var request = httpContext.Request;
-        ManagementQuery.Only(request, "status", "type", "queue", "page", "pageSize");
+        ManagementQuery.Only(request);
         var (page, pageSize) = ManagementQuery.Page(request);
         var status = ManagementQuery.Text(request, "status");
         if (status is not null && !JobAdministration.Statuses.Contains(status, StringComparer.Ordinal))
@@ -69,7 +90,7 @@ internal static class OperationsEndpoints
 
     private static async Task<IResult> DeadLettersAsync(HttpContext httpContext, [FromServices] JobAdministration jobs)
     {
-        ManagementQuery.Only(httpContext.Request, "page", "pageSize");
+        ManagementQuery.Only(httpContext.Request);
         var (page, pageSize) = ManagementQuery.Page(httpContext.Request);
         return AdminJson.Items(await jobs.DeadLettersAsync(page, pageSize, httpContext.RequestAborted));
     }
@@ -95,7 +116,7 @@ internal static class OperationsEndpoints
     private static async Task<IResult> ActivityAsync(HttpContext httpContext, [FromServices] ActivityReader activity)
     {
         var request = httpContext.Request;
-        ManagementQuery.Only(request, "actorId", "actorKind", "origin", "action", "targetType", "targetId", "from", "to", "page", "pageSize");
+        ManagementQuery.Only(request);
         var (page, pageSize) = ManagementQuery.Page(request);
         var filter = new ActivityFilter
         {

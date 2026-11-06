@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using FluentCMS.Content;
 using FluentCMS.Core.Api.Management;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Events;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Identity.ApiKeys;
 using FluentCMS.Core.Identity.Oidc;
@@ -11,6 +12,7 @@ using FluentCMS.Core.Settings;
 using FluentCMS.Core.Sites;
 using FluentCMS.Settings;
 using FluentCMS.Sites;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Shouldly;
 using Xunit;
 
@@ -107,6 +109,24 @@ public sealed class AdminBodiesTests
         Text(new RecoveryCodesResponse(codes)).ShouldBe(Text(new { recoveryCodes = (IReadOnlyList<string>)codes }));
     }
 
+    // The old report was a JSON tree, written with the host's JsonOptions, whose names and values it does not change.
+    [Fact]
+    public void AHealthReportHasEveryCheckInOrderOfName()
+    {
+        HealthReport report = new(
+            new Dictionary<string, HealthReportEntry>
+            {
+                ["process"] = new(HealthStatus.Healthy, null, TimeSpan.FromMilliseconds(0.25), null, null, ["live"]),
+                ["database"] = new(HealthStatus.Unhealthy, "Server=db;Password=hunter2", TimeSpan.FromMilliseconds(12.5), new InvalidOperationException("Password=hunter2 refused"), null, ["ready", "db"]),
+            },
+            TimeSpan.FromMilliseconds(13.125));
+
+        var text = Text(HealthReportResponse.From(report));
+
+        text.ShouldBe(JsonSerializer.Serialize(OldHealth(report), JsonSerializerOptions.Web));
+        text.ShouldNotContain("hunter2");
+    }
+
     private static string Text(object value) => JsonSerializer.Serialize(value, AdminJson.Options);
 
     private static IEnumerable<string> Keys(object value) => JsonNode.Parse(Text(value))!.AsObject().Select(item => item.Key);
@@ -164,5 +184,20 @@ public sealed class AdminBodiesTests
         detail.Job.Origin,
         detail.Job.CompletedAt,
         history = detail.Attempts,
+    };
+
+    private static JsonObject OldHealth(HealthReport report) => new()
+    {
+        ["status"] = report.Status.ToString(),
+        ["totalDurationMs"] = report.TotalDuration.TotalMilliseconds,
+        ["checks"] = new JsonArray([.. report.Entries.OrderBy(entry => entry.Key, StringComparer.Ordinal).Select(entry => (JsonNode)new JsonObject
+        {
+            ["name"] = entry.Key,
+            ["status"] = entry.Value.Status.ToString(),
+            ["durationMs"] = entry.Value.Duration.TotalMilliseconds,
+            ["tags"] = new JsonArray([.. entry.Value.Tags.Order(StringComparer.Ordinal).Select(tag => (JsonNode?)JsonValue.Create(tag))]),
+            ["description"] = entry.Value.Description is { } description ? SecretScrubber.Of(description) : null,
+            ["error"] = entry.Value.Exception is { } exception ? SecretScrubber.Of($"{exception.GetType().Name}: {exception.Message}") : null,
+        })]),
     };
 }
