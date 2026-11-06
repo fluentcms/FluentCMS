@@ -8,6 +8,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Update="Management/Snapshots/**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="../../src/FluentCMS.Testing/FluentCMS.Testing.csproj" />
     <ProjectReference Include="../../samples/Blog/Blog.csproj" />
   </ItemGroup>
