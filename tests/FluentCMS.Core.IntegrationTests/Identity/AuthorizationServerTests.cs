@@ -71,11 +71,13 @@ public sealed partial class AuthorizationServerTests : IAsyncDisposable
 
         using var response = await client.SendAsync(request, Token);
 
-        // Refused before the client's redirect URI is trusted, so the server answers it itself.
-        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
-        var body = await response.Content.ReadAsStringAsync(Token);
-        body.ShouldContain("error:invalid_request");
-        body.ShouldContain("'code_challenge'");
+        // Refused before the client's redirect URI is trusted, so the error page shows it instead of the client.
+        response.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        var location = new Uri(client.BaseAddress!, response.Headers.Location!);
+        location.AbsolutePath.ShouldBe("/account/error");
+        var error = QueryHelpers.ParseQuery(location.Query);
+        error["error"].ToString().ShouldBe("invalid_request");
+        error["error_description"].ToString().ShouldContain("'code_challenge'");
     }
 
     [Fact]

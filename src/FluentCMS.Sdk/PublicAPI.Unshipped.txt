@@ -712,6 +712,34 @@ FluentCMS.Events.JobFailedEvent.Queue.get -> string!
 FluentCMS.Events.JobFailedEvent.Queue.init -> void
 FluentCMS.Events.JobFailedEvent.Type.get -> string!
 FluentCMS.Events.JobFailedEvent.Type.init -> void
+FluentCMS.Events.LoginFailedEvent
+FluentCMS.Events.LoginFailedEvent.Deconstruct(out System.Guid? UserId, out string? UserName, out string! Method, out string! Reason, out string? Ip) -> void
+FluentCMS.Events.LoginFailedEvent.Equals(FluentCMS.Events.LoginFailedEvent? other) -> bool
+FluentCMS.Events.LoginFailedEvent.Ip.get -> string?
+FluentCMS.Events.LoginFailedEvent.Ip.init -> void
+FluentCMS.Events.LoginFailedEvent.LoginFailedEvent(System.Guid? UserId, string? UserName, string! Method, string! Reason, string? Ip) -> void
+FluentCMS.Events.LoginFailedEvent.Method.get -> string!
+FluentCMS.Events.LoginFailedEvent.Method.init -> void
+FluentCMS.Events.LoginFailedEvent.Reason.get -> string!
+FluentCMS.Events.LoginFailedEvent.Reason.init -> void
+FluentCMS.Events.LoginFailedEvent.UserId.get -> System.Guid?
+FluentCMS.Events.LoginFailedEvent.UserId.init -> void
+FluentCMS.Events.LoginFailedEvent.UserName.get -> string?
+FluentCMS.Events.LoginFailedEvent.UserName.init -> void
+FluentCMS.Events.LoginFailureReasons
+FluentCMS.Events.LoginMethods
+FluentCMS.Events.LoginSucceededEvent
+FluentCMS.Events.LoginSucceededEvent.Deconstruct(out System.Guid UserId, out string! UserName, out string! Method, out string? Ip) -> void
+FluentCMS.Events.LoginSucceededEvent.Equals(FluentCMS.Events.LoginSucceededEvent? other) -> bool
+FluentCMS.Events.LoginSucceededEvent.Ip.get -> string?
+FluentCMS.Events.LoginSucceededEvent.Ip.init -> void
+FluentCMS.Events.LoginSucceededEvent.LoginSucceededEvent(System.Guid UserId, string! UserName, string! Method, string? Ip) -> void
+FluentCMS.Events.LoginSucceededEvent.Method.get -> string!
+FluentCMS.Events.LoginSucceededEvent.Method.init -> void
+FluentCMS.Events.LoginSucceededEvent.UserId.get -> System.Guid
+FluentCMS.Events.LoginSucceededEvent.UserId.init -> void
+FluentCMS.Events.LoginSucceededEvent.UserName.get -> string!
+FluentCMS.Events.LoginSucceededEvent.UserName.init -> void
 FluentCMS.Events.SettingsChangedEvent
 FluentCMS.Events.SettingsChangedEvent.Area.get -> string!
 FluentCMS.Events.SettingsChangedEvent.Area.init -> void
@@ -1451,6 +1479,14 @@ const FluentCMS.Content.ValidationErrorCodes.Required = "FCMS2101" -> string!
 const FluentCMS.Content.ValidationErrorCodes.RequiredByCondition = "FCMS2110" -> string!
 const FluentCMS.Diagnostics.FluentCmsHealthCheckTags.Live = "live" -> string!
 const FluentCMS.Diagnostics.FluentCmsHealthCheckTags.Ready = "ready" -> string!
+const FluentCMS.Events.LoginFailureReasons.InvalidCredentials = "invalid_credentials" -> string!
+const FluentCMS.Events.LoginFailureReasons.LockedOut = "locked_out" -> string!
+const FluentCMS.Events.LoginFailureReasons.NotAllowed = "not_allowed" -> string!
+const FluentCMS.Events.LoginFailureReasons.UnknownUser = "unknown_user" -> string!
+const FluentCMS.Events.LoginMethods.External = "external" -> string!
+const FluentCMS.Events.LoginMethods.Password = "password" -> string!
+const FluentCMS.Events.LoginMethods.RecoveryCode = "recovery_code" -> string!
+const FluentCMS.Events.LoginMethods.TwoFactor = "two_factor" -> string!
 const FluentCMS.Events.UserChanges.Email = "email" -> string!
 const FluentCMS.Events.UserChanges.EmailConfirmed = "emailConfirmed" -> string!
 const FluentCMS.Events.UserChanges.LockoutEnabled = "lockoutEnabled" -> string!
@@ -1638,6 +1674,14 @@ override FluentCMS.Events.JobFailedEvent.<Clone>$() -> FluentCMS.Events.JobFaile
 override FluentCMS.Events.JobFailedEvent.Equals(object? obj) -> bool
 override FluentCMS.Events.JobFailedEvent.GetHashCode() -> int
 override FluentCMS.Events.JobFailedEvent.ToString() -> string!
+override FluentCMS.Events.LoginFailedEvent.<Clone>$() -> FluentCMS.Events.LoginFailedEvent!
+override FluentCMS.Events.LoginFailedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.LoginFailedEvent.GetHashCode() -> int
+override FluentCMS.Events.LoginFailedEvent.ToString() -> string!
+override FluentCMS.Events.LoginSucceededEvent.<Clone>$() -> FluentCMS.Events.LoginSucceededEvent!
+override FluentCMS.Events.LoginSucceededEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.LoginSucceededEvent.GetHashCode() -> int
+override FluentCMS.Events.LoginSucceededEvent.ToString() -> string!
 override FluentCMS.Events.SettingsChangedEvent.<Clone>$() -> FluentCMS.Events.SettingsChangedEvent!
 override FluentCMS.Events.SettingsChangedEvent.Equals(object? obj) -> bool
 override FluentCMS.Events.SettingsChangedEvent.GetHashCode() -> int
@@ -1746,6 +1790,8 @@ override sealed FluentCMS.Events.EntryUnpublishedEvent.Equals(FluentCMS.Events.E
 override sealed FluentCMS.Events.EntryVersionRestoredEvent.Equals(FluentCMS.Events.EntryEvent? other) -> bool
 override sealed FluentCMS.Events.JobDeadLetteredEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
 override sealed FluentCMS.Events.JobFailedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+override sealed FluentCMS.Events.LoginFailedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+override sealed FluentCMS.Events.LoginSucceededEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
 override sealed FluentCMS.Events.SettingsChangedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
 override sealed FluentCMS.Events.SiteCreatedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
 override sealed FluentCMS.Events.SiteUpdatedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
@@ -1853,6 +1899,10 @@ static FluentCMS.Events.JobDeadLetteredEvent.operator !=(FluentCMS.Events.JobDea
 static FluentCMS.Events.JobDeadLetteredEvent.operator ==(FluentCMS.Events.JobDeadLetteredEvent? left, FluentCMS.Events.JobDeadLetteredEvent? right) -> bool
 static FluentCMS.Events.JobFailedEvent.operator !=(FluentCMS.Events.JobFailedEvent? left, FluentCMS.Events.JobFailedEvent? right) -> bool
 static FluentCMS.Events.JobFailedEvent.operator ==(FluentCMS.Events.JobFailedEvent? left, FluentCMS.Events.JobFailedEvent? right) -> bool
+static FluentCMS.Events.LoginFailedEvent.operator !=(FluentCMS.Events.LoginFailedEvent? left, FluentCMS.Events.LoginFailedEvent? right) -> bool
+static FluentCMS.Events.LoginFailedEvent.operator ==(FluentCMS.Events.LoginFailedEvent? left, FluentCMS.Events.LoginFailedEvent? right) -> bool
+static FluentCMS.Events.LoginSucceededEvent.operator !=(FluentCMS.Events.LoginSucceededEvent? left, FluentCMS.Events.LoginSucceededEvent? right) -> bool
+static FluentCMS.Events.LoginSucceededEvent.operator ==(FluentCMS.Events.LoginSucceededEvent? left, FluentCMS.Events.LoginSucceededEvent? right) -> bool
 static FluentCMS.Events.SettingsChangedEvent.operator !=(FluentCMS.Events.SettingsChangedEvent? left, FluentCMS.Events.SettingsChangedEvent? right) -> bool
 static FluentCMS.Events.SettingsChangedEvent.operator ==(FluentCMS.Events.SettingsChangedEvent? left, FluentCMS.Events.SettingsChangedEvent? right) -> bool
 static FluentCMS.Events.SiteCreatedEvent.operator !=(FluentCMS.Events.SiteCreatedEvent? left, FluentCMS.Events.SiteCreatedEvent? right) -> bool

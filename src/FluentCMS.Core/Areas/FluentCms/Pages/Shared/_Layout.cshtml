@@ -1,0 +1,55 @@
+@using FluentCMS.Settings
+@inject ISettings<BrandingSettings> Branding
+@{
+    var branding = await Branding.GetDefaultAsync(Context.RequestAborted);
+    var primary = BrandingSettings.IsColor(branding.PrimaryColor) ? branding.PrimaryColor : BrandingSettings.DefaultPrimaryColor;
+    var background = BrandingSettings.IsColor(branding.BackgroundColor) ? branding.BackgroundColor : BrandingSettings.DefaultBackgroundColor;
+    var text = BrandingSettings.IsColor(branding.TextColor) ? branding.TextColor : BrandingSettings.DefaultTextColor;
+    var logo = BrandingSettings.IsLogoUrl(branding.LogoUrl) ? branding.LogoUrl : null;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>@ViewData["Title"] - @branding.Name</title>
+    <style>
+        :root { --fcms-primary: @primary; --fcms-background: @background; --fcms-text: @text; }
+        * { box-sizing: border-box; }
+        body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--fcms-background); color: var(--fcms-text); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+        main { width: 100%; max-width: 24rem; margin: 1rem; padding: 2rem; background: #fff; border-radius: .75rem; box-shadow: 0 1px 3px rgb(0 0 0 / .1), 0 8px 24px rgb(0 0 0 / .06); }
+        header { margin-bottom: 1.5rem; text-align: center; }
+        header img { max-width: 100%; max-height: 3rem; }
+        header p { margin: 0; font-size: 1.125rem; font-weight: 600; }
+        h1 { margin: 0 0 1rem; font-size: 1.25rem; }
+        label { display: block; margin-top: 1rem; font-size: .875rem; font-weight: 500; }
+        input[type=text], input[type=email], input[type=password] { width: 100%; margin-top: .25rem; padding: .5rem .75rem; border: 1px solid #d4d4d8; border-radius: .375rem; font: inherit; }
+        input:focus, button:focus { outline: 2px solid var(--fcms-primary); outline-offset: 1px; }
+        label.check { display: flex; gap: .5rem; align-items: center; font-weight: 400; }
+        button { width: 100%; margin-top: 1.25rem; padding: .625rem; border: 0; border-radius: .375rem; background: var(--fcms-primary); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+        button.secondary { margin-top: .5rem; border: 1px solid #d4d4d8; background: transparent; color: var(--fcms-text); }
+        a { color: var(--fcms-primary); }
+        .error, .field-validation-error, .validation-summary-errors { color: #b91c1c; font-size: .875rem; }
+        .validation-summary-valid { display: none; }
+        .notice { padding: .75rem; border-radius: .375rem; background: #f0fdf4; color: #166534; }
+        .muted { color: #71717a; font-size: .875rem; }
+    </style>
+</head>
+<body>
+    <main>
+        <header>
+            @if (logo is not null)
+            {
+                <img src="@logo" alt="@branding.Name">
+            }
+            else
+            {
+                <p>@branding.Name</p>
+            }
+        </header>
+        <h1>@ViewData["Title"]</h1>
+        @RenderBody()
+    </main>
+</body>
+</html>

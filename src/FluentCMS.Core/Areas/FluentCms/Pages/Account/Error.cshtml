@@ -1,0 +1,10 @@
+@page "/account/error"
+@model ErrorModel
+@{
+    ViewData["Title"] = "Something went wrong";
+}
+<p>@Model.Message</p>
+@if (!string.IsNullOrEmpty(Model.Code))
+{
+    <p class="muted">Error: <code>@Model.Code</code>@(Model.Details is null ? "" : $". {Model.Details}")</p>
+}

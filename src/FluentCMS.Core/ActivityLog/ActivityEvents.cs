@@ -56,6 +56,25 @@ internal static class ActivityEvents
             ["removed"] = string.Join(',', message.Removed.Select(id => id.ToString("D"))),
         }));
 
+        events.AddActivity<LoginSucceededEvent>("user.login_succeeded", message => User("user.login_succeeded", message.UserId, message.UserName, new Dictionary<string, string?>
+        {
+            ["method"] = message.Method,
+        }) with { Ip = message.Ip });
+
+        // A sign-in that matched no user has no target.
+        events.AddActivity<LoginFailedEvent>("user.login_failed", message => new ActivityEntry("user.login_failed")
+        {
+            TargetType = message.UserId is null ? null : "user",
+            TargetId = message.UserId?.ToString("D"),
+            TargetLabel = message.UserName,
+            Details = new Dictionary<string, string?>
+            {
+                ["method"] = message.Method,
+                ["reason"] = message.Reason,
+            },
+            Ip = message.Ip,
+        });
+
         events.AddActivity<ApiKeyCreatedEvent>("api_key.created", message => Key("api_key.created", message.KeyId, message.Name, new Dictionary<string, string?>
         {
             ["class"] = message.KeyClass,

@@ -91,6 +91,8 @@ public sealed class EventRecordTests
             "EntryVersionRestoredEvent",
             "JobDeadLetteredEvent",
             "JobFailedEvent",
+            "LoginFailedEvent",
+            "LoginSucceededEvent",
             "SettingsChangedEvent",
             "SiteCreatedEvent",
             "SiteUpdatedEvent",

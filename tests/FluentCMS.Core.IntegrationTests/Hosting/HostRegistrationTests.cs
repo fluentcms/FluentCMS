@@ -90,6 +90,7 @@ public sealed class HostRegistrationTests : IAsyncDisposable
     [InlineData("FluentCms:Users:Password:RequiredLength", "0", "FCMS3001")]
     [InlineData("FluentCms:Users:Lockout:MaxFailedAccessAttempts", "0", "FCMS3001")]
     [InlineData("FluentCms:Users:InvitationLifetime", "-1.00:00:00", "FCMS3001")]
+    [InlineData("FluentCms:Users:PasswordResetLifetime", "00:00:00", "FCMS3001")]
     public async Task AnInvalidOptionStopsTheHostAndNamesTheKey(string key, string value, string code)
     {
         var app = _host.Build(Environments.Production, new Dictionary<string, string?> { [key] = value });
@@ -165,7 +166,11 @@ public sealed class HostRegistrationTests : IAsyncDisposable
         var app = _host.Build(
             Environments.Development,
             new Dictionary<string, string?> { ["FluentCms:Users:Password:RequiredLength"] = "20", ["FluentCms:Users:Lockout:MaxFailedAccessAttempts"] = "3" },
-            cms: cms => cms.Users.InvitationLifetime = TimeSpan.FromDays(2));
+            cms: cms =>
+            {
+                cms.Users.InvitationLifetime = TimeSpan.FromDays(2);
+                cms.Users.PasswordResetLifetime = TimeSpan.FromMinutes(20);
+            });
 
         var identity = app.Services.GetRequiredService<IOptions<IdentityOptions>>().Value;
         identity.Password.RequiredLength.ShouldBe(20);
@@ -173,6 +178,8 @@ public sealed class HostRegistrationTests : IAsyncDisposable
         identity.Lockout.MaxFailedAccessAttempts.ShouldBe(3);
         identity.User.RequireUniqueEmail.ShouldBeTrue();
         app.Services.GetRequiredService<AdminUserOptions>().InvitationLifetime.ShouldBe(TimeSpan.FromDays(2));
+        identity.Tokens.PasswordResetTokenProvider.ShouldBe(PasswordResetTokenProvider.ProviderName);
+        app.Services.GetRequiredService<IOptions<PasswordResetTokenProviderOptions>>().Value.TokenLifespan.ShouldBe(TimeSpan.FromMinutes(20));
     }
 
     [Fact]

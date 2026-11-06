@@ -115,7 +115,7 @@ internal sealed class ClientRegistrationService(IServiceScopeFactory scopes, Cli
             ClientId = clientId,
             ClientSecret = client.IsConfidential ? client.Secret : null,
             ClientType = client.IsConfidential ? ClientTypes.Confidential : ClientTypes.Public,
-            ConsentType = ConsentTypes.Implicit,
+            ConsentType = client.RequireConsent ? ConsentTypes.Explicit : ConsentTypes.Implicit,
             DisplayName = client.DisplayName ?? clientId,
         };
 
