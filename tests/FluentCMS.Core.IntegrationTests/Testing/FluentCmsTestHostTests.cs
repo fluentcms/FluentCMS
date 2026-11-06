@@ -27,16 +27,20 @@ public sealed class FluentCmsTestHostTests : IAsyncDisposable
     [Fact]
     public async Task ABootSeedsTheTypesAndQueriesThemInUnderTwoSeconds()
     {
-        // The first host of a process pays for JIT and for building the EF models, about 1.8 s on its own; a warm one boots in
-        // under 100 ms. The bound is on the best of a few warm hosts, so that neither a slow first run nor a busy shared runner
-        // fails the test.
-        await using (var warm = new FluentCmsTestHost().WithContentTypes<Note>())
-        {
-            _ = warm.Services;
-        }
-
+        // The first run of a process pays for JIT and for building the EF models, about 1.8 s on its own. The bound is on the best
+        // of a few runs after it, so that neither the first run nor a busy shared runner fails the test, while a boot an order of
+        // magnitude slower still does.
+        await BootAsync();
         List<TimeSpan> boots = [];
         for (var run = 0; run < 3; run++)
+        {
+            boots.Add(await BootAsync());
+        }
+
+        TestContext.Current.TestOutputHelper?.WriteLine($"Warm boots took {string.Join(", ", boots.Select(boot => $"{boot.TotalMilliseconds:F0}"))} ms");
+        boots.Min().ShouldBeLessThan(TimeSpan.FromSeconds(2));
+
+        static async Task<TimeSpan> BootAsync()
         {
             var clock = Stopwatch.StartNew();
             await using var host = new FluentCmsTestHost()
@@ -48,10 +52,8 @@ public sealed class FluentCmsTestHostTests : IAsyncDisposable
             clock.Stop();
 
             result.Items.Select(note => note.Title).Order().ToArray().ShouldBe(["First", "Second"]);
-            boots.Add(clock.Elapsed);
+            return clock.Elapsed;
         }
-
-        boots.Min().ShouldBeLessThan(TimeSpan.FromSeconds(2));
     }
 
     [Fact]
