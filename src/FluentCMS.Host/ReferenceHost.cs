@@ -48,6 +48,9 @@ public static class ReferenceHost
         app.UseFluentCms();
         app.UseAuthorization();
         app.MapFluentCms();
+
+        // Off outside Development unless FluentCms:OpenApi:Enabled is true, since the document names every type and field.
+        app.MapFluentCmsOpenApi();
         return app;
     }
 

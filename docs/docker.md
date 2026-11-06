@@ -65,6 +65,7 @@ A schema file has no compiled migrations, so the host creates and extends its ta
 | `AllowedHosts` | `*` | The host names the instance answers, separated by `;`. See [the checklist](#before-production). |
 | `FluentCms__Security__AllowGeneratedSigningKey` | `true` in the image | Accepts the token signing key the server generates. |
 | `FluentCms__Email__Smtp__Host` and the rest of `FluentCms__Email__Smtp__*` | none | The SMTP server that invitations and password resets go through; see [email](host-configuration.md#email). |
+| `FluentCms__OpenApi__Enabled` | off | `true` serves the OpenAPI document at `/openapi/v1.json` and the Scalar UI at `/scalar`. See [the API description](#the-api-description). |
 | `ASPNETCORE_HTTP_PORTS` | `8080` | The port the host listens on, from the base image. |
 
 Every other option is a key of the `FluentCms` section, written with `__` for `:`, as [host configuration](host-configuration.md) lists them.
@@ -82,6 +83,10 @@ A new instance has no users, and an invitation is sent by someone who can manage
 It gets a token with the client credentials grant at `/connect/token` (`grant_type=client_credentials`, `client_id=ops`, its secret, `scope=management`) and invites the first administrator with `POST /api/management/v1/invitations` `{ "email": "ada@example.com", "roleIds": ["<id of Super Admin from GET /roles>"] }`. The invitation is emailed, so set up SMTP first. The person follows the link, picks a user name and a password on the hosted page, and signs in from then on through the hosted login page with any client registered with `RedirectUris`. Remove the operator's variables, or keep its secret in a secret store, once it is no longer needed.
 
 The Delivery API is closed until a role allows reading: create a role with `content.{type}.read` and a Delivery key bound to it with `POST /api/management/v1/api-keys` `{ "name", "class": "delivery", "roleId" }`, or grant those permissions to the site's Public role for anonymous reads.
+
+## The API description
+
+The image serves no OpenAPI document and no Scalar UI, because the document names every content type, field, component and block of the schema to anyone who can reach it, whatever that caller may read. `FluentCms__OpenApi__Enabled=true` serves the document of the instance at `/openapi/v1.json` and the Scalar UI at `/scalar/`, which is handy on a private network or while evaluating. Before exposing them more widely, put them behind an authorization policy: a host of your own built on `AddFluentCms()` does that with `app.MapFluentCmsOpenApi().RequireAuthorization("docs")`, and with the image, keep them off or limit who reaches those paths at the proxy. See [OpenAPI and the Scalar UI](host-configuration.md#openapi-and-the-scalar-ui).
 
 ## Before production
 

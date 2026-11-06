@@ -189,6 +189,31 @@ public sealed class ReferenceHostTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task TheImageDefaultsServeNoOpenApiDocumentOrScalarUi()
+    {
+        await _host.StartAsync();
+
+        using var client = _host.Client();
+        (await client.GetAsync(new Uri("/openapi/v1.json", UriKind.Relative), Token)).StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        (await client.GetAsync(new Uri("/scalar", UriKind.Relative), Token)).StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        (await client.GetAsync(new Uri("/scalar/", UriKind.Relative), Token)).StatusCode.ShouldBe(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task OpenApiEnabledServesTheDocumentOfTheLoadedTypes()
+    {
+        var file = _host.WriteFile("schema.json", """{ "collections": [ { "name": "post", "fields": [ { "name": "title", "type": "text" } ] } ] }""");
+        await _host.StartAsync(new() { [ReferenceHost.SchemaVariable] = file, ["FluentCms:OpenApi:Enabled"] = "true" });
+
+        using var client = _host.Client();
+        using var document = await client.GetAsync(new Uri("/openapi/v1.json", UriKind.Relative), Token);
+        var (status, body) = await HostUnderTest.ReadAsync(document);
+        status.ShouldBe(HttpStatusCode.OK);
+        body!["paths"]!.AsObject().Select(path => path.Key).ShouldContain("/api/delivery/v1/post");
+        (await client.GetAsync(new Uri("/scalar/", UriKind.Relative), Token)).StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
     public async Task AllowedHostsTurnsAwayAForgedHostHeader()
     {
         await _host.StartAsync(new() { ["AllowedHosts"] = "cms.example.com" });
