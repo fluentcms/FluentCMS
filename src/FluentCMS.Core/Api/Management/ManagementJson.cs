@@ -80,35 +80,7 @@ internal static class ManagementJson
 
         if (item.Problem is { } exception)
         {
-            json["problem"] = Problem(ProblemMapper.Map(exception, authenticated));
-        }
-
-        return json;
-    }
-
-    private static JsonObject Problem(ApiProblem problem)
-    {
-        JsonObject json = new()
-        {
-            ["type"] = ProblemMapper.TypePrefix + problem.Code,
-            ["title"] = problem.Title,
-            ["status"] = problem.Status,
-            ["detail"] = problem.Detail,
-            ["code"] = problem.Code,
-        };
-        if (problem.Errors is { } errors)
-        {
-            json["errors"] = new JsonArray([.. errors.Select(error => (JsonNode)new JsonObject
-            {
-                ["path"] = error.Path,
-                ["code"] = error.Code,
-                ["message"] = error.Message,
-            })]);
-        }
-
-        if (problem.Current is { } current)
-        {
-            json["current"] = ContentJson.Entry(current);
+            json["problem"] = JsonSerializer.SerializeToNode(ProblemWriter.Details(ProblemMapper.Map(exception, authenticated)), JsonSerializerOptions.Web);
         }
 
         return json;

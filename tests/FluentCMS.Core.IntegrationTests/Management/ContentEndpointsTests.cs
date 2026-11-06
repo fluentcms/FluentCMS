@@ -90,6 +90,28 @@ public sealed class ContentEndpointsTests(ManagementFixture fixture) : IClassFix
     }
 
     [Fact]
+    public async Task AReadThroughTheFallbackChainHasNoETag()
+    {
+        var id = await fixture.CreatePageAsync("English only");
+
+        var french = await fixture.GetAsync($"page/{id}?locale=fr");
+
+        french.Status.ShouldBe(HttpStatusCode.OK);
+        french.Json["fallbacks"]!["title"]!.GetValue<string>().ShouldBe("en");
+        french.ETag.ShouldBeNull();
+        (await fixture.GetAsync($"page/{id}?locale=fr&fallback=none")).Status.ShouldBe(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task TheLocationNamesTheEntryWhateverPathCreatedIt()
+    {
+        var created = await fixture.PostAsync("page/", """{ "title": "Slash" }""");
+
+        created.Status.ShouldBe(HttpStatusCode.Created);
+        created.Headers.Location!.ToString().ShouldBe($"{ManagementFixture.Root}page/{created.Json["id"]!.GetValue<string>()}");
+    }
+
+    [Fact]
     public async Task AStaleIfMatchReturns412WithTheCurrentEntry()
     {
         var id = await fixture.CreatePageAsync("First");
@@ -289,6 +311,8 @@ public sealed class ContentEndpointsTests(ManagementFixture fixture) : IClassFix
         items[0]!["version"]!.GetValue<int>().ShouldBe(2);
         items[2]!["problem"]!["status"]!.GetValue<int>().ShouldBe(404);
         items[2]!["problem"]!["code"]!.GetValue<string>().ShouldBe("FCMS3104");
+        items[2]!["problem"]!["type"]!.GetValue<string>().ShouldBe("urn:fluentcms:error:FCMS3104");
+        items[2]!["problem"]!.AsObject().ContainsKey("traceId").ShouldBeFalse();
         (await fixture.GetAsync($"page/{id}")).Json["title"]!.GetValue<string>().ShouldBe("Patched");
     }
 
@@ -326,7 +350,7 @@ public sealed class ContentEndpointsTests(ManagementFixture fixture) : IClassFix
         var binned = trash.Json["items"]!.AsArray().Single(item => item!["id"]!.GetValue<string>() == id)!;
         binned["deletedAt"].ShouldNotBeNull();
 
-        var restored = await fixture.PostAsync($"page/trash/{id}/restore");
+        var restored = await fixture.PostAsync($"page/trash/{id}/restore?locale=all");
         restored.Status.ShouldBe(HttpStatusCode.OK);
         restored.Json["title"]!.GetValue<string>().ShouldBe("Binned");
         (await fixture.GetAsync($"page/{id}")).Status.ShouldBe(HttpStatusCode.OK);

@@ -19,6 +19,8 @@ namespace FluentCMS.Core.Api.Management;
 // A write leaves an unreadable type to the engine, since a principal may hold a write without the read.
 internal static class ContentEndpoints
 {
+    private static readonly string Prefix = FluentCmsEndpointGroups.Prefixes.Single(item => item.Group == FluentCmsEndpointGroup.Management).Prefix;
+
     public static IServiceCollection AddManagementContentApi(this IServiceCollection services) =>
         services.AddFluentCmsEndpoints(FluentCmsEndpointGroup.Management, Map);
 
@@ -63,14 +65,14 @@ internal static class ContentEndpoints
             return Entry(httpContext, entry, versioned: options.Status == QueryStatus.Draft);
         });
 
-    private static Task<IResult> CreateAsync(string type, HttpContext httpContext, [FromServices] IContentService content) =>
+    private static Task<IResult> CreateAsync(string type, HttpContext httpContext, [FromServices] IContentService content, [FromServices] SchemaModel schema) =>
         WriteAsync(httpContext, type, async () =>
         {
             var body = RequestBody.Document(await RequestBody.ObjectAsync(httpContext.Request));
             var created = await content.CreateAsync(type, body, httpContext.RequestAborted);
 
-            var request = httpContext.Request;
-            httpContext.Response.Headers.Location = $"{request.PathBase}{request.Path}/{created.Get<Guid>("id"):D}";
+            var name = schema.FindContentType(type)!.Name;
+            httpContext.Response.Headers.Location = $"{httpContext.Request.PathBase}{Prefix}/content/{Uri.EscapeDataString(name)}/{created.Get<Guid>("id"):D}";
             return Entry(httpContext, created, statusCode: StatusCodes.Status201Created);
         });
 
@@ -97,7 +99,8 @@ internal static class ContentEndpoints
         {
             await content.DeleteAsync(type, EntryId(id), httpContext.RequestAborted);
             return Results.NoContent();
-        });
+        },
+        oneLocale: false);
 
     private static Task<IResult> PublishAsync(string type, string id, HttpContext httpContext, [FromServices] IContentService content) =>
         WriteAsync(httpContext, type, async () =>
@@ -183,14 +186,15 @@ internal static class ContentEndpoints
             Results.Json(ContentJson.List(await content.QueryTrashAsync(type, Query(httpContext, single: false), httpContext.RequestAborted))));
 
     private static Task<IResult> RestoreAsync(string type, string id, HttpContext httpContext, [FromServices] IContentService content) =>
-        WriteAsync(httpContext, type, async () => Entry(httpContext, await content.RestoreAsync(type, EntryId(id), httpContext.RequestAborted)));
+        WriteAsync(httpContext, type, async () => Entry(httpContext, await content.RestoreAsync(type, EntryId(id), httpContext.RequestAborted)), oneLocale: false);
 
     private static Task<IResult> PurgeAsync(string type, string id, HttpContext httpContext, [FromServices] IContentService content) =>
         WriteAsync(httpContext, type, async () =>
         {
             await content.PurgeAsync(type, EntryId(id), httpContext.RequestAborted);
             return Results.NoContent();
-        });
+        },
+        oneLocale: false);
 
     // A read with the list grammar, whose errors name the parameters the client sent.
     private static async Task<IResult> ReadAsync(HttpContext httpContext, string type, Func<Task<IResult>> handler)
@@ -215,8 +219,8 @@ internal static class ContentEndpoints
         return await handler();
     }
 
-    // A bulk request checks its own parameters, since it takes a filter.
-    private static Task<IResult> WriteAsync(HttpContext httpContext, string type, Func<Task<IResult>> handler, bool bulk = false)
+    // A bulk request checks its own parameters, since it takes a filter. Delete, restore and purge act on every locale.
+    private static Task<IResult> WriteAsync(HttpContext httpContext, string type, Func<Task<IResult>> handler, bool bulk = false, bool oneLocale = true)
     {
         TypeAccess.EnsureKnown(httpContext, type);
         if (!bulk)
@@ -224,7 +228,11 @@ internal static class ContentEndpoints
             ContentRequests.OnlyParameters(httpContext.Request, filter: false);
         }
 
-        EnsureOneLocale(httpContext);
+        if (oneLocale)
+        {
+            EnsureOneLocale(httpContext);
+        }
+
         return handler();
     }
 
@@ -254,9 +262,11 @@ internal static class ContentEndpoints
         return Results.Json(ContentJson.Entry(entry), statusCode: statusCode);
     }
 
+    // A read that took values through the fallback chain may carry another locale's version, which is no precondition for
+    // this one; fallback=none reads what the locale holds.
     private static void SetETag(HttpContext httpContext, ContentDocument entry)
     {
-        if (entry.TryGetValue("version", out var value) && value is int version)
+        if (entry.TryGetValue("version", out var value) && value is int version && !entry.ContainsKey("fallbacks"))
         {
             IfMatch.SetETag(httpContext.Response, version);
         }

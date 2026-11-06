@@ -11,6 +11,29 @@ internal static class ProblemWriter
 
     public static async Task WriteAsync(HttpContext httpContext, ApiProblem problem, Exception? exception = null, CancellationToken cancellationToken = default)
     {
+        var details = Details(problem);
+        details.Extensions["traceId"] = System.Diagnostics.Activity.Current?.Id ?? httpContext.TraceIdentifier;
+
+        httpContext.Response.StatusCode = problem.Status;
+        var written = await httpContext.RequestServices.GetRequiredService<IProblemDetailsService>().TryWriteAsync(new ProblemDetailsContext
+        {
+            HttpContext = httpContext,
+            ProblemDetails = details,
+            Exception = exception,
+        });
+
+        // The service declines a request whose Accept header excludes JSON, but an error is always problem+json.
+        if (!written)
+        {
+            await httpContext.Response.WriteAsJsonAsync(details, options: null, contentType: ContentType, cancellationToken);
+        }
+    }
+
+    // The body without the trace id, which belongs to a response; a bulk result carries one per entry that failed.
+    public static ProblemDetails Details(ApiProblem problem)
+    {
+        ArgumentNullException.ThrowIfNull(problem);
+
         var details = new ProblemDetails
         {
             Type = ProblemMapper.TypePrefix + problem.Code,
@@ -29,20 +52,6 @@ internal static class ProblemWriter
             details.Extensions["current"] = ContentJson.Entry(problem.Current);
         }
 
-        details.Extensions["traceId"] = System.Diagnostics.Activity.Current?.Id ?? httpContext.TraceIdentifier;
-
-        httpContext.Response.StatusCode = problem.Status;
-        var written = await httpContext.RequestServices.GetRequiredService<IProblemDetailsService>().TryWriteAsync(new ProblemDetailsContext
-        {
-            HttpContext = httpContext,
-            ProblemDetails = details,
-            Exception = exception,
-        });
-
-        // The service declines a request whose Accept header excludes JSON, but an error is always problem+json.
-        if (!written)
-        {
-            await httpContext.Response.WriteAsJsonAsync(details, options: null, contentType: ContentType, cancellationToken);
-        }
+        return details;
     }
 }
