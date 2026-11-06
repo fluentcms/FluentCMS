@@ -132,6 +132,8 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
         var hero = Schemas["block-hero"]!;
         hero["properties"]!["type"]!["const"]!.GetValue<string>().ShouldBe("hero");
         hero["required"]!.AsArray().Select(item => item!.GetValue<string>()).ShouldBe(["type"]);
+        hero["properties"]!.AsObject().Select(pair => pair.Key).Take(2).ShouldBe(["type", "id"]);
+        hero["properties"]!["id"]!["pattern"]!.GetValue<string>().ShouldBe("^[A-Za-z0-9_-]{1,64}$");
         hero["properties"]!["heading"]!["type"]!.ToJsonString().ShouldBe("""["null","string"]""");
 
         var article = Schemas["entry-article"]!["properties"]!;

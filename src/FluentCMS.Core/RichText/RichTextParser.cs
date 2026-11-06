@@ -370,6 +370,12 @@ public static class RichTextParser
                         Add($"{path}.data", "The block data must be an object.");
                     }
 
+                    if (attributes.TryGetValue("id", out var id) && id.ValueKind != JsonValueKind.Null
+                        && RichTextAttributes.CheckBlockId(id.ValueKind == JsonValueKind.String ? id.GetString() : null) is { } idError)
+                    {
+                        Add($"{path}.id", idError);
+                    }
+
                     break;
             }
         }

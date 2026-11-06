@@ -2,6 +2,7 @@ using System.Collections;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Content;
+using FluentCMS.Core.Content;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.ProseMirror;
 using FluentCMS.Core.Schema.FieldTypes;
@@ -278,7 +279,7 @@ internal sealed class FieldAccess(EffectivePermissions permissions, SchemaModel 
     {
         foreach (var (key, value) in entries)
         {
-            if (isBlock && key == Discriminator)
+            if (isBlock && key is Discriminator or BlockIds.Key)
             {
                 continue;
             }

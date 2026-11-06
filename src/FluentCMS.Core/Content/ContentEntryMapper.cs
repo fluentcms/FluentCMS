@@ -83,7 +83,7 @@ internal sealed class ContentEntryMapper(SchemaModel schema) : IHookEntryMapper
             {
                 view[key] = ViewValue(owner, field, value);
             }
-            else if (key == Discriminator)
+            else if (key is Discriminator or BlockIds.Key)
             {
                 view[key] = RawValue.Unwrap(value);
             }
@@ -155,13 +155,19 @@ internal sealed class ContentEntryMapper(SchemaModel schema) : IHookEntryMapper
             ReadSystemFields(item, known);
         }
 
-        foreach (var (field, property) in MapOf(clrType).Fields)
+        var map = MapOf(clrType);
+        foreach (var (field, property) in map.Fields)
         {
             if (property.CanWrite && known.TryGetValue(field.Name, out var value) && value is not null
                 && TryConvert(value, property.PropertyType, out var converted) && converted is not null)
             {
                 property.SetValue(instance, converted);
             }
+        }
+
+        if (map.BlockId is { } id && RawValue.Unwrap(known.GetValueOrDefault(BlockIds.Key)) is string blockId)
+        {
+            id.SetValue(instance, blockId);
         }
 
         return instance;
@@ -438,12 +444,17 @@ internal sealed class ContentEntryMapper(SchemaModel schema) : IHookEntryMapper
     {
         ContentDocument fields = [];
         var type = instance.GetType();
+        var map = MapOf(type);
         if (schema.Blocks.FirstOrDefault(block => block.ClrType == type) is { } named)
         {
             fields[Discriminator] = named.Name;
+            if (map.BlockId?.GetValue(instance) is string id)
+            {
+                fields[BlockIds.Key] = id;
+            }
         }
 
-        foreach (var (field, property) in MapOf(type).Fields)
+        foreach (var (field, property) in map.Fields)
         {
             if (include?.Invoke(field) == false)
             {
@@ -536,10 +547,15 @@ internal sealed class ContentEntryMapper(SchemaModel schema) : IHookEntryMapper
             .Where(property => property.GetIndexParameters().Length == 0)
             .ToDictionary(property => SchemaNaming.ToCamelCase(property.Name), StringComparer.Ordinal);
 
+        // A block class keeps its id in a string property named Id that is no field, which it need not have.
+        var blockId = described.Kind == SchemaTypeKind.Block && properties.GetValueOrDefault(BlockIds.Key) is { CanRead: true, CanWrite: true } id && id.PropertyType == typeof(string)
+            ? id
+            : null;
+
         return new ClassMap([.. described.Fields
             .Where(field => properties.ContainsKey(field.Name))
-            .Select(field => (field, properties[field.Name]))]);
+            .Select(field => (field, properties[field.Name]))], blockId);
     });
 
-    private sealed record ClassMap(IReadOnlyList<(SchemaField Field, PropertyInfo Property)> Fields);
+    private sealed record ClassMap(IReadOnlyList<(SchemaField Field, PropertyInfo Property)> Fields, PropertyInfo? BlockId = null);
 }

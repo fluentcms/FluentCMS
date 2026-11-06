@@ -1,4 +1,5 @@
 using System.Text.Json.Nodes;
+using FluentCMS.Core.ProseMirror;
 using FluentCMS.Core.Schema.FieldTypes;
 using FluentCMS.Publishing;
 using FluentCMS.Schema;
@@ -11,6 +12,7 @@ namespace FluentCMS.Core.Api.OpenApi;
 internal sealed class ContentSchemas(SchemaModel schema, OpenApiDocumentOptions options)
 {
     private const string BlockDiscriminator = "type";
+    private const string BlockId = "id";
 
     public IEnumerable<(string Name, JsonObject Schema)> All()
     {
@@ -80,7 +82,16 @@ internal sealed class ContentSchemas(SchemaModel schema, OpenApiDocumentOptions 
     {
         var json = Fields(block, $"The {block.Name} block.");
         var properties = (JsonObject)json["properties"]!;
-        JsonObject ordered = new() { [BlockDiscriminator] = new JsonObject { ["type"] = "string", ["const"] = block.Name } };
+        JsonObject ordered = new()
+        {
+            [BlockDiscriminator] = new JsonObject { ["type"] = "string", ["const"] = block.Name },
+            [BlockId] = new JsonObject
+            {
+                ["type"] = "string",
+                ["pattern"] = RichTextAttributes.BlockIdRule,
+                ["description"] = "The id of the block within its top-level field. A write that leaves it out gets one.",
+            },
+        };
         foreach (var (name, value) in properties.ToList())
         {
             properties.Remove(name);

@@ -13,6 +13,7 @@ internal sealed class SchemaValidator(IFieldTypeRegistry fieldTypes)
     private const int MaxNestingDepth = 3;
 
     private const string BlockDiscriminator = "type";
+    private const string BlockId = "id";
 
     // A decimal holds 28 digits.
     private const int MaxDecimalDigits = 28;
@@ -118,6 +119,10 @@ internal sealed class SchemaValidator(IFieldTypeRegistry fieldTypes)
         else if (type.Kind == SchemaTypeKind.Block && string.Equals(field.Name, BlockDiscriminator, StringComparison.OrdinalIgnoreCase))
         {
             Report(SchemaErrorCodes.ReservedName, $"field name '{field.Name}' of {location} is reserved for the block type discriminator");
+        }
+        else if (type.Kind == SchemaTypeKind.Block && string.Equals(field.Name, BlockId, StringComparison.OrdinalIgnoreCase))
+        {
+            Report(SchemaErrorCodes.ReservedName, $"field name '{field.Name}' of {location} is reserved for the block id");
         }
 
         var fieldType = fieldTypes.Find(field.FieldType);
