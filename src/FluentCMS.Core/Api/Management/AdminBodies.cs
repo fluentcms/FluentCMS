@@ -11,7 +11,8 @@ using FluentCMS.Core.Settings;
 namespace FluentCMS.Core.Api.Management;
 
 // The bodies of the groups beside content that no service record has the shape of. Responses are written with
-// AdminJson.Options; requests are read key by key, so a request record only describes its body in the OpenAPI document.
+// AdminJson.Options; requests are read key by key, so a request record only describes its body in the OpenAPI document,
+// where a key it does not name is refused as the route refuses it.
 internal sealed record ItemList<T>(IEnumerable<T> Items);
 
 internal sealed record ItemPage<T>(IEnumerable<T> Items, long Total, int Page, int PageSize);
@@ -23,6 +24,7 @@ internal sealed record RoleResponse(Guid Id, Guid? SiteId, string Name, string? 
 }
 
 // A grant without constraints has null constraints.
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 internal sealed record Grant
 {
     public required string Permission { get; init; }
@@ -33,6 +35,7 @@ internal sealed record Grant
 }
 
 // As stored: a member that does not narrow the grant is left out.
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 internal sealed record GrantConstraints
 {
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -58,6 +61,7 @@ internal sealed record GrantConstraints
         };
 }
 
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 internal sealed record RoleCreateRequest
 {
     public required string Name { get; init; }
@@ -72,6 +76,7 @@ internal sealed record RoleCreateRequest
     public required IReadOnlyList<Grant> Grants { get; init; }
 }
 
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 internal sealed record RoleUpdateRequest
 {
     public required string Name { get; init; }
@@ -84,6 +89,7 @@ internal sealed record RoleUpdateRequest
     public required IReadOnlyList<Grant> Grants { get; init; }
 }
 
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 internal sealed record InvitationRequest
 {
     public required string Email { get; init; }
@@ -91,6 +97,7 @@ internal sealed record InvitationRequest
     public IReadOnlyList<Guid>? RoleIds { get; init; }
 }
 
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 internal sealed record ApiKeyCreateRequest
 {
     public required string Name { get; init; }
@@ -99,7 +106,7 @@ internal sealed record ApiKeyCreateRequest
 
     public required Guid RoleId { get; init; }
 
-    [Description("The sites the key is bound to; left out, it is bound to none. An empty list is refused.")]
+    [Description("The sites the key is bound to; left out, it is bound to no site and reaches every one. An empty list is refused.")]
     public IReadOnlyList<Guid>? SiteIds { get; init; }
 
     [Description("The content types the key reads; left out, every type. An empty list is refused.")]
@@ -138,12 +145,14 @@ internal sealed record CreatedApiKeyResponse(
     public override string ToString() => $"{nameof(CreatedApiKeyResponse)} {{ Id = {Id} }}";
 }
 
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 internal sealed record ApiKeyExpireRequest
 {
     [Description("When the key expires; left out, now.")]
     public DateTimeOffset? At { get; init; }
 }
 
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 internal sealed record SiteLocaleCreateRequest
 {
     public required string Code { get; init; }
@@ -157,6 +166,7 @@ internal sealed record SiteLocaleCreateRequest
     public IReadOnlyList<string>? Fallbacks { get; init; }
 }
 
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 internal sealed record SiteLocaleUpdateRequest
 {
     public int? Position { get; init; }
@@ -248,6 +258,7 @@ internal sealed record MeResponse
 
 internal sealed record PrincipalResponse(Guid Id, PrincipalKind Kind, string Name);
 
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 internal sealed record TwoFactorCodeRequest
 {
     public required string Code { get; init; }

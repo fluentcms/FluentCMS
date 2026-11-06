@@ -274,7 +274,11 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
             responses["default"]!["$ref"]!.GetValue<string>().ShouldBe("#/components/responses/problem", name);
             if (TakesABody.Contains(name))
             {
-                operation["requestBody"]!["content"]!["application/json"]!["schema"]!["$ref"].ShouldNotBeNull(name);
+                var body = Resolve(operation["requestBody"]!["content"]!["application/json"]!["schema"]!);
+                if (!name.Contains("/settings/", StringComparison.Ordinal))
+                {
+                    body["additionalProperties"]!.GetValue<bool>().ShouldBeFalse(name);
+                }
             }
             else
             {

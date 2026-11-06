@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using FluentCMS.Activity;
 using FluentCMS.Content;
@@ -17,6 +18,7 @@ internal sealed record SiteInfo(Guid Id, string Name, string Slug, string Defaul
 internal sealed record SiteLocaleInfo(string Code, int Position, IReadOnlyList<string>? Fallbacks, bool Enabled);
 
 // A null member leaves the value as it is.
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 internal sealed record SiteChange
 {
     public string? Name { get; init; }

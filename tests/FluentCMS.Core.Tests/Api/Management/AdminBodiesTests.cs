@@ -96,6 +96,7 @@ public sealed class AdminBodiesTests
         JobDetail detail = new(job, [new JobAttemptInfo(1, At, At, "failed", "boom")]);
 
         Text(JobResponse.From(detail)).ShouldBe(Text(OldJob(detail)));
+        Keys(JobResponse.From(detail)).ShouldBe([.. Keys(job), "history"]);
     }
 
     [Fact]
@@ -107,6 +108,8 @@ public sealed class AdminBodiesTests
     }
 
     private static string Text(object value) => JsonSerializer.Serialize(value, AdminJson.Options);
+
+    private static IEnumerable<string> Keys(object value) => JsonNode.Parse(Text(value))!.AsObject().Select(item => item.Key);
 
     private static ApiKeyInfo Key() =>
         new(Guid.NewGuid(), "Site reader", ApiKeyClass.Delivery, "fcms_dk_ab", Guid.NewGuid(), [Guid.NewGuid()], null, At, null, 100, null, At, Guid.NewGuid());
