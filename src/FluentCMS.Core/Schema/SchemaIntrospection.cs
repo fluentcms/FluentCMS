@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Schema.FieldTypes;
@@ -16,6 +17,8 @@ internal sealed class SchemaIntrospection(
     ManagementAuthority authority,
     IOperationContextAccessor accessor) : ISchemaIntrospection
 {
+    private static readonly ConditionalWeakTable<SchemaModel, HashSet<SchemaType>> UsedByModel = [];
+
     public async Task<SchemaDescription> DescribeAsync(CancellationToken cancellationToken = default) =>
         SchemaDescriber.Describe(await VisibleAsync(cancellationToken));
 
@@ -66,7 +69,7 @@ internal sealed class SchemaIntrospection(
             type.Fields.Where(field => fieldsOf[type.Name].Contains(field.Name)),
             type.ReverseRelations.Where(relation => fieldsOf.TryGetValue(relation.SourceType, out var source) && source.Contains(relation.SourceField))))];
 
-        var used = Used(schema, schema.ContentTypes);
+        var used = UsedByModel.GetValue(schema, static model => Used(model, model.ContentTypes));
         var stillUsed = Used(schema, contentTypes);
         List<SchemaType> parts = [.. schema.Components.Concat(schema.Blocks)
             .Where(part => !used.Contains(part) || stillUsed.Contains(part))
