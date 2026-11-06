@@ -156,11 +156,10 @@ internal sealed class SchemaIntrospection(
             return field;
         }
 
-        var settings = new SortedDictionary<string, object>(field.Settings.ToDictionary(), StringComparer.Ordinal);
-        if (dropSource)
-        {
-            settings.Remove(FieldSettings.Source);
-        }
+        var settings = dropSource
+            ? new ReadOnlyDictionary<string, object>(new SortedDictionary<string, object>(
+                field.Settings.Where(setting => setting.Key != FieldSettings.Source).ToDictionary(), StringComparer.Ordinal))
+            : field.Settings;
 
         // Every property of SchemaField, as SchemaModelFactory sets them.
         return new SchemaField
@@ -186,7 +185,7 @@ internal sealed class SchemaIntrospection(
             VisibleWhen = visibleWhen,
             RequiredWhen = requiredWhen,
             Relation = field.Relation,
-            Settings = new ReadOnlyDictionary<string, object>(settings),
+            Settings = settings,
         };
     }
 

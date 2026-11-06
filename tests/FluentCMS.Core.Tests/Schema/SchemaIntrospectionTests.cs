@@ -63,6 +63,8 @@ public class SchemaIntrospectionTests
                   "visibleWhen": { "or": [ { "field": "summary", "equals": "long" }, { "not": { "field": "title", "isEmpty": true } } ] },
                   "requiredWhen": { "and": [ { "field": "summary", "in": ["a", "b"] }, { "not": { "field": "summary", "isEmpty": true } } ] }
                 },
+                { "name": "rank", "type": "decimal", "minimum": 0, "maximum": 5.5, "precision": 4, "scale": 1, "visibleWhen": { "field": "title", "isEmpty": true } },
+                { "name": "related", "type": "relation", "target": "page", "multiple": true, "ordered": true, "reverse": "relatedTo", "visibleWhen": { "field": "title", "isEmpty": true } },
                 { "name": "body", "type": "blocks", "blocks": ["teaser"] }
               ]
             },
@@ -106,7 +108,7 @@ public class SchemaIntrospectionTests
     private static readonly EffectiveGrant Everything = new("*", PermissionConstraints.None, null);
 
     private static readonly EffectiveGrant PageWithoutTitle =
-        new("content.page.read", new PermissionConstraints { Fields = ["summary", "slug", "intro", "extra", "body"] }, null);
+        new("content.page.read", new PermissionConstraints { Fields = ["summary", "slug", "intro", "extra", "rank", "related", "body"] }, null);
 
     [Fact]
     public async Task ARelationInsideAPartToAnUnreadableTypeIsLeftOut()
@@ -142,7 +144,7 @@ public class SchemaIntrospectionTests
         var described = await DescribeAsync(Conditional, PageWithoutTitle, new EffectiveGrant("content.secret.read", PermissionConstraints.None, null));
 
         var page = Type(described, "page");
-        page.Fields.Select(field => field.Name).ShouldBe(["summary", "slug", "intro", "extra", "body"]);
+        page.Fields.Select(field => field.Name).ShouldBe(["summary", "slug", "intro", "extra", "rank", "related", "body"]);
         Field(page, "slug").Settings.ShouldBeEmpty();
         Field(page, "intro").VisibleWhen.ShouldBeNull();
         Field(page, "intro").RequiredWhen!.Field.ShouldBe("summary");
@@ -218,7 +220,11 @@ public class SchemaIntrospectionTests
         var full = Type(await DescribeAsync(Conditional, Everything), "page");
         var described = Type(await DescribeAsync(Conditional, PageWithoutTitle), "page");
 
-        JsonSerializer.Serialize(Field(described, "extra")).ShouldBe(JsonSerializer.Serialize(Field(full, "extra") with { VisibleWhen = null }));
+        foreach (var name in new[] { "extra", "rank", "related" })
+        {
+            JsonSerializer.Serialize(Field(described, name)).ShouldBe(JsonSerializer.Serialize(Field(full, name) with { VisibleWhen = null }));
+        }
+
         JsonSerializer.Serialize(Field(described, "slug")).ShouldBe(JsonSerializer.Serialize(Field(full, "slug") with { Settings = new Dictionary<string, object>() }));
     }
 
