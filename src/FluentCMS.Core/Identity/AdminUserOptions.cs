@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Identity;
 
 namespace FluentCMS.Core.Identity;
 
-// cms.Users, and FluentCms:Users in configuration: the password policy, lockout and invitations of admin users. Identity's
+// cms.Users, and FluentCms:Users in configuration: the password policy, lockout, invitations and password resets of admin users. Identity's
 // defaults, except a longer password. Not FluentCms:Identity, which members (M5) would share.
 public sealed class AdminUserOptions
 {
@@ -15,6 +15,9 @@ public sealed class AdminUserOptions
 
     public TimeSpan InvitationLifetime { get; set; } = TimeSpan.FromDays(7);
 
+    // How long the link of a forgotten password works.
+    public TimeSpan PasswordResetLifetime { get; set; } = TimeSpan.FromHours(1);
+
     internal void Validate()
     {
         Require(Password.RequiredLength >= 1, $"{nameof(Password)}:{nameof(Password.RequiredLength)} is {Password.RequiredLength}; it must be at least 1.");
@@ -22,6 +25,7 @@ public sealed class AdminUserOptions
         Require(Lockout.MaxFailedAccessAttempts >= 1, $"{nameof(Lockout)}:{nameof(Lockout.MaxFailedAccessAttempts)} is {Lockout.MaxFailedAccessAttempts}; it must be at least 1.");
         Require(Lockout.DefaultLockoutTimeSpan > TimeSpan.Zero, $"{nameof(Lockout)}:{nameof(Lockout.DefaultLockoutTimeSpan)} must be positive.");
         Require(InvitationLifetime > TimeSpan.Zero, $"{nameof(InvitationLifetime)} must be positive.");
+        Require(PasswordResetLifetime > TimeSpan.Zero, $"{nameof(PasswordResetLifetime)} must be positive.");
     }
 
     private static void Require(bool condition, string message)
@@ -47,5 +51,7 @@ public sealed class AdminUserOptions
 
         // Invitations go by email, so an address belongs to one user.
         identity.User.RequireUniqueEmail = true;
+
+        identity.Tokens.PasswordResetTokenProvider = PasswordResetTokenProvider.ProviderName;
     }
 }

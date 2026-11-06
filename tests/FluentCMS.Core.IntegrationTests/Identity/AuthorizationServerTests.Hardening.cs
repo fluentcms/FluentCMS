@@ -281,27 +281,32 @@ public sealed partial class AuthorizationServerTests
         var cookie = await _host.SignInCookieAsync(editor);
         using var client = _host.CreateSecureClient();
 
-        using (var bare = await SendAsync(client, HttpMethod.Get, "/connect/logout", cookie))
+        // Without the hint the logout page asks the user, and posts the request back.
+        using (var bare = await SendAsync(client, HttpMethod.Get, "/connect/logout?state=abc", cookie))
         {
-            bare.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
-            (await ErrorAsync(bare)).ShouldBe("invalid_request");
+            bare.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+            bare.Headers.Location!.OriginalString.ShouldBe("/account/logout?state=abc");
             bare.Headers.Contains("Set-Cookie").ShouldBeFalse();
         }
 
         using (var forged = await SendAsync(client, HttpMethod.Get, "/connect/logout?id_token_hint=not.a.token", cookie))
         {
-            forged.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+            forged.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+            new Uri(client.BaseAddress!, forged.Headers.Location!).AbsolutePath.ShouldBe("/account/logout");
             forged.Headers.Contains("Set-Cookie").ShouldBeFalse();
         }
 
         using (var someoneElse = await SendAsync(client, HttpMethod.Get, $"/connect/logout?id_token_hint={othersTokens.IdentityToken}", cookie))
         {
-            someoneElse.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+            someoneElse.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+            new Uri(client.BaseAddress!, someoneElse.Headers.Location!).AbsolutePath.ShouldBe("/account/logout");
+            someoneElse.Headers.Contains("Set-Cookie").ShouldBeFalse();
         }
 
         using (var hinted = await SendAsync(client, HttpMethod.Get, $"/connect/logout?id_token_hint={tokens.IdentityToken}", cookie))
         {
             hinted.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+            hinted.Headers.Location!.OriginalString.ShouldBe("/account/logout");
             hinted.Headers.GetValues("Set-Cookie").ShouldContain(value => value.StartsWith(".AspNetCore.Identity.Application=;", StringComparison.Ordinal));
         }
 

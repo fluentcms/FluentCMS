@@ -1,0 +1,26 @@
+@page "/account/accept-invitation"
+@model AcceptInvitationModel
+@{
+    ViewData["Title"] = "Accept your invitation";
+}
+@if (Model.Email is null)
+{
+    <p class="error">This invitation is not valid, has been used or has expired. Ask the person who invited you for a new one.</p>
+}
+else
+{
+    <p>You are invited as <strong>@Model.Email</strong>. Choose a user name and a password to finish.</p>
+    <form method="post">
+        <div asp-validation-summary="ModelOnly" class="error"></div>
+        <label asp-for="Input.UserName"></label>
+        <input asp-for="Input.UserName" type="text" autocomplete="username" autofocus>
+        <span asp-validation-for="Input.UserName"></span>
+        <label asp-for="Input.Password"></label>
+        <input asp-for="Input.Password" autocomplete="new-password">
+        <span asp-validation-for="Input.Password"></span>
+        <label asp-for="Input.ConfirmPassword"></label>
+        <input asp-for="Input.ConfirmPassword" autocomplete="new-password">
+        <span asp-validation-for="Input.ConfirmPassword"></span>
+        <button type="submit">Create the account</button>
+    </form>
+}

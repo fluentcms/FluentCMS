@@ -70,6 +70,17 @@ internal sealed class IdentityChanges(SystemDbContext context, EventBuffer buffe
         return bus.PublishAsync(message with { Source = source }, cancellationToken);
     }
 
+    // An event that is the whole change, such as a sign-in, with the source the caller gave it: its outbox row is the only
+    // write of its transaction.
+    public Task RecordAsync(CmsEvent message, CancellationToken cancellationToken) =>
+        RunAsync(
+            async () =>
+            {
+                await bus.PublishAsync(message, cancellationToken);
+                return true;
+            },
+            cancellationToken);
+
     // What the rolled back saves left in the context is not in the database.
     private void Discard()
     {

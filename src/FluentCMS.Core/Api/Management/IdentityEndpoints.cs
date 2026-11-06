@@ -18,9 +18,6 @@ namespace FluentCMS.Core.Api.Management;
 // grant above the caller's own reach).
 internal static class IdentityEndpoints
 {
-    // The hosted page that accepts an invitation (#2779), which the link in the email opens.
-    private const string AcceptInvitationPath = "/account/accept-invitation";
-
     private static readonly string Prefix = FluentCmsEndpointGroups.Prefixes.Single(item => item.Group == FluentCmsEndpointGroup.Management).Prefix;
 
     public static IServiceCollection AddManagementIdentityApi(this IServiceCollection services) =>
@@ -140,7 +137,7 @@ internal static class IdentityEndpoints
         body.ThrowIfInvalid();
 
         var request = httpContext.Request;
-        var accept = new Uri($"{request.Scheme}://{request.Host}{request.PathBase}{AcceptInvitationPath}");
+        var accept = new Uri($"{request.Scheme}://{request.Host}{request.PathBase}{HostedPagePaths.AcceptInvitation}");
         var sent = await invitations.InviteAsync(email!, [.. roleIds], accept, httpContext.RequestAborted);
         return AdminJson.Ok(sent, StatusCodes.Status201Created);
     }

@@ -32,13 +32,13 @@ internal static class AuthorizationServerRegistration
         services.AddOptions<KeyManagementOptions>().Configure<DataProtectionKeyRepository>((options, repository) => options.XmlRepository ??= repository);
         LockedKeyManager.Register(services);
 
-        // The cookie of the hosted pages (#2779), which only the authorize endpoint reads.
+        // The cookie of the hosted pages, which only they and the authorize endpoint read.
         services.AddAuthentication().AddIdentityCookies();
         services.ConfigureApplicationCookie(options =>
         {
-            options.LoginPath = "/account/login";
-            options.LogoutPath = "/account/logout";
-            options.AccessDeniedPath = "/account/access-denied";
+            options.LoginPath = HostedPagePaths.Login;
+            options.LogoutPath = HostedPagePaths.Logout;
+            options.AccessDeniedPath = HostedPagePaths.Error;
         });
 
         services.AddOpenIddict()
@@ -64,11 +64,13 @@ internal static class AuthorizationServerRegistration
                 // Signed JWTs a resource server can read; codes and refresh tokens stay encrypted.
                 server.DisableAccessTokenEncryption();
 
+                // An error of authorize or logout that cannot go back to the client reaches the endpoint, which shows the error page.
                 server.UseAspNetCore()
                     .EnableAuthorizationEndpointPassthrough()
                     .EnableTokenEndpointPassthrough()
                     .EnableUserInfoEndpointPassthrough()
-                    .EnableEndSessionEndpointPassthrough();
+                    .EnableEndSessionEndpointPassthrough()
+                    .EnableErrorPassthrough();
             })
             .AddValidation(validation =>
             {
@@ -102,6 +104,7 @@ internal static class AuthorizationServerRegistration
             options => options.BearerScheme ??= OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme);
 
         services.AddScoped<UserSessions>();
+        services.AddScoped<ClientConsents>();
         services.AddHostedService<ClientRegistrationService>();
         services.AddFluentCmsEndpoints(FluentCmsEndpointGroup.Connect, ConnectEndpoints.Map);
         services.AddFluentCmsEndpoints(FluentCmsEndpointGroup.WellKnown, ConnectEndpoints.MapWellKnown);
