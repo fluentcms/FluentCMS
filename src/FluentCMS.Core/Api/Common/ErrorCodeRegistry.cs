@@ -184,6 +184,8 @@ public static class ErrorCodeRegistry
         new(RequestErrorCodes.SiteOutsideBinding, StatusCodes.Status403Forbidden, "Site outside the key's binding"),
         BadQuery(RequestErrorCodes.SiteNotNamed, "Site not named"),
         BadQuery(DeliveryErrorCodes.FieldNotUnique, "Field not unique"),
+        new(PreconditionErrorCodes.IfMatchRequired, StatusCodes.Status428PreconditionRequired, "If-Match required"),
+        BadQuery(PreconditionErrorCodes.IfMatchInvalid, "Invalid If-Match"),
     ];
 
     private static readonly FrozenDictionary<string, ErrorCodeInfo> byCode = All.ToFrozenDictionary(info => info.Code);

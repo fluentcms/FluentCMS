@@ -26,7 +26,7 @@ internal static class ProblemWriter
 
         if (problem.Current is not null)
         {
-            details.Extensions["current"] = problem.Current;
+            details.Extensions["current"] = ContentJson.Entry(problem.Current);
         }
 
         details.Extensions["traceId"] = System.Diagnostics.Activity.Current?.Id ?? httpContext.TraceIdentifier;
