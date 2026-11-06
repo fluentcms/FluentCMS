@@ -1,0 +1,149 @@
+using System.Net;
+using System.Net.Http.Headers;
+using FluentCMS.Activity;
+using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Sites;
+using FluentCMS.Events;
+using FluentCMS.Testing;
+using Microsoft.Extensions.DependencyInjection;
+using Shouldly;
+using Xunit;
+
+namespace FluentCMS.Core.IntegrationTests.Management;
+
+// Jobs, the activity log and /me over HTTP on SQLite (#2786), and the refusal of every group to a caller without its permission.
+public sealed class OperationsEndpointsTests(AdminFixture fixture) : IClassFixture<AdminFixture>
+{
+    [Fact]
+    public async Task ADeadLetteredJobIsListedAndRetried()
+    {
+        var id = (await fixture.EnqueueAsync(new FailingPayload("boom"))).ToString("D");
+        await fixture.RunDueJobsAsync();
+
+        (await fixture.GetAsync("jobs/dead-letter")).Json["items"]!.AsArray().ShouldContain(item => item!["id"]!.GetValue<string>() == id);
+        var listed = await fixture.GetAsync($"jobs?status=dead_lettered&type={FailingJob.Type}");
+        listed.Json["items"]!.AsArray().ShouldContain(item => item!["id"]!.GetValue<string>() == id);
+
+        var job = await fixture.GetAsync($"jobs/{id}");
+        job.Json["status"]!.GetValue<string>().ShouldBe("dead_lettered");
+        job.Json["history"]!.AsArray().ShouldHaveSingleItem()!["outcome"]!.GetValue<string>().ShouldBe("failed");
+        job.Json.AsObject().ContainsKey("payload").ShouldBeFalse();
+
+        var retried = await fixture.PostAsync($"jobs/{id}/retry");
+        retried.Status.ShouldBe(HttpStatusCode.OK, retried.Body?.ToJsonString());
+        retried.Json["status"]!.GetValue<string>().ShouldBe("pending");
+        retried.Json["maxAttempts"]!.GetValue<int>().ShouldBeGreaterThan(1);
+        (await fixture.PostAsync($"jobs/{id}/retry")).Json["code"]!.GetValue<string>().ShouldBe("FCMS3133");
+        (await fixture.GetAsync($"jobs/{Guid.NewGuid():D}")).Json["code"]!.GetValue<string>().ShouldBe("FCMS3132");
+        (await fixture.GetAsync("jobs?status=finished")).Status.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task APendingJobIsCancelledIntoTheDeadLetterList()
+    {
+        var id = (await fixture.EnqueueAsync(new FailingPayload("later"), DateTimeOffset.UtcNow.AddDays(1))).ToString("D");
+
+        var cancelled = await fixture.PostAsync($"jobs/{id}/cancel");
+        cancelled.Status.ShouldBe(HttpStatusCode.OK, cancelled.Body?.ToJsonString());
+        cancelled.Json["status"]!.GetValue<string>().ShouldBe("dead_lettered");
+        cancelled.Json["lastError"]!.GetValue<string>().ShouldContain("cancelled");
+
+        (await fixture.PostAsync($"jobs/{id}/cancel")).Json["code"]!.GetValue<string>().ShouldBe("FCMS3134");
+        (await fixture.GetAsync("jobs/dead-letter")).Json["items"]!.AsArray().ShouldContain(item => item!["id"]!.GetValue<string>() == id);
+    }
+
+    [Fact]
+    public async Task TheRowsOfNoSiteAreReadOnlyWithAnInstanceWidePermission()
+    {
+        var marker = Guid.NewGuid().ToString("N");
+        await using (var scope = fixture.Host.Services.CreateAsyncScope())
+        {
+            var log = scope.ServiceProvider.GetRequiredService<IActivityLog>();
+            var source = EventSource.FromSystem(DateTimeOffset.UtcNow);
+            await log.WriteAsync(new ActivityEntry("test.site_row") { TargetType = "test", TargetId = marker }, source with { SiteId = DefaultSite.Id }, TestContext.Current.CancellationToken);
+            await log.WriteAsync(new ActivityEntry("test.instance_row") { TargetType = "test", TargetId = marker }, source, TestContext.Current.CancellationToken);
+        }
+
+        var everything = await fixture.GetAsync($"activity?targetId={marker}");
+        everything.Json["items"]!.AsArray().Select(item => item!["action"]!.GetValue<string>()).ShouldBe(["test.site_row", "test.instance_row"], ignoreOrder: true);
+
+        var siteRole = await fixture.CreateRoleAsync($$"""
+            { "name": "Site auditor {{marker}}", "siteId": "{{DefaultSite.Id:D}}", "grants": [ { "permission": "activity.read" } ] }
+            """);
+        using var siteReader = await fixture.ClientForAsync((await fixture.GetAsync($"roles/{siteRole}")).Json["name"]!.GetValue<string>());
+        var siteRows = await fixture.GetAsync($"activity?targetId={marker}", siteReader);
+        siteRows.Status.ShouldBe(HttpStatusCode.OK, siteRows.Body?.ToJsonString());
+        siteRows.Json["items"]!.AsArray().ShouldHaveSingleItem()!["action"]!.GetValue<string>().ShouldBe("test.site_row");
+
+        var limited = await fixture.CreateRoleAsync($$"""
+            { "name": "Limited auditor {{marker}}", "grants": [ { "permission": "activity.read", "constraints": { "sites": ["{{DefaultSite.Id:D}}"] } } ] }
+            """);
+        using var limitedReader = await fixture.ClientForAsync((await fixture.GetAsync($"roles/{limited}")).Json["name"]!.GetValue<string>());
+        (await fixture.GetAsync($"activity?targetId={marker}", limitedReader)).Json["items"]!.AsArray().ShouldHaveSingleItem();
+
+        using var instanceReader = await fixture.ClientWithAsync(CorePermissions.ActivityRead);
+        (await fixture.GetAsync($"activity?targetId={marker}&action=test.*", instanceReader)).Json["items"]!.AsArray().Count.ShouldBe(2);
+        (await fixture.GetAsync($"activity?targetId={marker}&from=2000-01-01T00:00:00Z&to=2001-01-01T00:00:00Z")).Json["items"]!.AsArray().ShouldBeEmpty();
+        (await fixture.GetAsync($"activity?targetId={marker}&origin=sideways")).Status.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task MeIsTheCallerWithItsRoles()
+    {
+        var me = await fixture.GetAsync("me");
+        me.Status.ShouldBe(HttpStatusCode.OK, me.Body?.ToJsonString());
+        me.Json["kind"]!.GetValue<string>().ShouldBe("adminUser");
+        me.Json["roles"]!.AsArray().Select(role => role!["name"]!.GetValue<string>()).ShouldBe([BuiltInRoles.SuperAdminName]);
+        me.Json["twoFactorEnabled"]!.GetValue<bool>().ShouldBeFalse();
+
+        var key = await fixture.Host.CreateApiKeyAsync(ApiKeyClass.Management, BuiltInRoles.EditorName, cancellationToken: TestContext.Current.CancellationToken);
+        using var client = fixture.Host.AsKey(key);
+        var asKey = await fixture.GetAsync("me", client);
+        asKey.Json["kind"]!.GetValue<string>().ShouldBe("apiKey");
+        asKey.Json["id"]!.GetValue<string>().ShouldBe(key.Id.ToString("D"));
+        (await fixture.GetAsync("me/sessions", client)).Json["items"]!.AsArray().ShouldBeEmpty();
+    }
+
+    [Theory]
+    [InlineData("users")]
+    [InlineData("invitations")]
+    [InlineData("roles")]
+    [InlineData("permissions")]
+    [InlineData("api-keys")]
+    [InlineData("sites")]
+    [InlineData("sites/00000000-0000-7000-8002-000000000001/locales")]
+    [InlineData("settings/mail")]
+    [InlineData("jobs")]
+    [InlineData("jobs/dead-letter")]
+    [InlineData("activity")]
+    public async Task EachGroupRefusesACallerWithoutItsPermission(string path)
+    {
+        using var reader = await fixture.ClientWithAsync(CorePermissions.SchemaRead, "content.*.read");
+        var refused = await fixture.GetAsync(path, reader);
+        refused.Status.ShouldBe(HttpStatusCode.Forbidden, refused.Body?.ToJsonString());
+        refused.Json["code"]!.GetValue<string>().ShouldBe("FCMS3103");
+
+        using var anonymous = fixture.Host.CreateClient();
+        (await fixture.GetAsync(path, anonymous)).Status.ShouldBe(HttpStatusCode.Unauthorized);
+
+        var deliveryKey = await fixture.Host.CreateApiKeyAsync(ApiKeyClass.Delivery, BuiltInRoles.SuperAdminName, cancellationToken: TestContext.Current.CancellationToken);
+        using var delivery = fixture.Host.CreateClient();
+        delivery.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("ApiKey", deliveryKey.Secret);
+        (await fixture.GetAsync(path, delivery)).Status.ShouldBe(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task WritesAreRefusedWithoutThePermissionToo()
+    {
+        using var reader = await fixture.ClientWithAsync(CorePermissions.SchemaRead);
+        var id = Guid.NewGuid().ToString("D");
+
+        (await fixture.PostAsync("roles", """{ "name": "X", "grants": [] }""", reader)).Status.ShouldBe(HttpStatusCode.Forbidden);
+        (await fixture.PostAsync("invitations", """{ "email": "x@example.com" }""", reader)).Status.ShouldBe(HttpStatusCode.Forbidden);
+        (await fixture.PostAsync("api-keys", $$"""{ "name": "X", "class": "delivery", "roleId": "{{BuiltInRoles.Editor:D}}" }""", reader)).Status.ShouldBe(HttpStatusCode.Forbidden);
+        (await fixture.PatchAsync($"sites/{DefaultSite.Id:D}", """{ "name": "X" }""", reader)).Status.ShouldBe(HttpStatusCode.Forbidden);
+        (await fixture.PutAsync("settings/mail", """{ "host": "x", "port": 1 }""", reader, "\"0\"")).Status.ShouldBe(HttpStatusCode.Forbidden);
+        (await fixture.PostAsync($"jobs/{id}/retry", client: reader)).Status.ShouldBe(HttpStatusCode.Forbidden);
+        (await fixture.PostAsync($"users/{id}/deactivate", client: reader)).Status.ShouldBe(HttpStatusCode.Forbidden);
+    }
+}

@@ -26,6 +26,7 @@ internal sealed class JobStore(
     private const int SweepBatch = 100;
     private const string LeaseExpiredError = "The worker stopped without finishing this attempt, and its lease expired.";
     private const string OutOfAttemptsError = "The worker of the last attempt stopped without finishing it, and no attempts are left.";
+    private const string CancelledError = "The job was cancelled before it ran.";
 
     public async Task<ClaimedJob?> ClaimAsync(string queue, string owner, CancellationToken cancellationToken = default)
     {
@@ -207,6 +208,41 @@ internal sealed class JobStore(
         }
 
         return swept;
+    }
+
+    // Only a job that no worker holds: it is dead-lettered with its event, as running out of attempts would, so what listens
+    // for that, such as the schedule of a publish, closes too, and it can be retried from the dead-letter list.
+    public async Task<bool> CancelAsync(Guid id, EventSource source, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        await using var scope = scopes.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+
+        var now = time.GetUtcNow();
+        var cancelled = await context.Set<Job>()
+            .Where(row => row.Id == id && row.Status == JobStatus.Pending)
+            .ExecuteUpdateAsync(row => row
+                .SetProperty(column => column.Status, JobStatus.DeadLettered)
+                .SetProperty(column => column.CompletedAt, now)
+                .SetProperty(column => column.LastError, CancelledError),
+                cancellationToken);
+        if (cancelled == 0)
+        {
+            return false;
+        }
+
+        var job = await context.Set<Job>().AsNoTracking().SingleAsync(row => row.Id == id, cancellationToken);
+        var deadEvent = new JobDeadLetteredEvent(job.Id, job.Type, job.Queue, job.Attempts, CancelledError) { Source = source with { SiteId = job.SiteId ?? Guid.Empty } };
+        var rows = outbox.Build([deadEvent]);
+        context.AddRange(rows);
+        await context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(CancellationToken.None);
+
+        await PublishAsync(job.Id, deadEvent);
+        await KickAsync(rows.Count);
+        return true;
     }
 
     private static Task<bool> AnyDueAsync(SystemDbContext context, string queue, DateTimeOffset now, CancellationToken cancellationToken) =>

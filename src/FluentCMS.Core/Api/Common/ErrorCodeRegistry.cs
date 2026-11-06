@@ -170,6 +170,18 @@ public static class ErrorCodeRegistry
         Invalid(ApiKeyErrorCodes.EmptyBinding, "Empty API key binding"),
         Startup(OidcErrorCodes.InvalidClients, "Invalid client registration"),
         Startup(OidcErrorCodes.SigningCertificateUnusable, "Signing certificate unusable"),
+        new(RoleErrorCodes.RoleNotFound, StatusCodes.Status404NotFound, "Role not found"),
+        Invalid(RoleErrorCodes.InvalidRole, "Invalid role"),
+        Invalid(RoleErrorCodes.InvalidGrant, "Invalid grant"),
+        new(RoleErrorCodes.RoleFixed, StatusCodes.Status409Conflict, "Role cannot be changed"),
+        new(RoleErrorCodes.RoleInUse, StatusCodes.Status409Conflict, "Role in use"),
+        new(RoleErrorCodes.RoleChanged, StatusCodes.Status409Conflict, "Role changed"),
+        new(IdentityErrorCodes.UserNotFound, StatusCodes.Status404NotFound, "User not found"),
+        new(IdentityErrorCodes.SessionNotFound, StatusCodes.Status404NotFound, "Session not found"),
+        new(IdentityErrorCodes.InvitationNotFound, StatusCodes.Status404NotFound, "Invitation not found"),
+        Invalid(IdentityErrorCodes.InvalidUser, "Invalid user"),
+        new(IdentityErrorCodes.RoleAlreadyHeld, StatusCodes.Status409Conflict, "Role already held"),
+        new(IdentityErrorCodes.RoleNotHeld, StatusCodes.Status404NotFound, "Role not held"),
 
         // 31xx HTTP
         new(ApiErrorCodes.BadRequest, StatusCodes.Status400BadRequest, "Bad request"),
@@ -186,6 +198,12 @@ public static class ErrorCodeRegistry
         BadQuery(DeliveryErrorCodes.FieldNotUnique, "Field not unique"),
         new(PreconditionErrorCodes.IfMatchRequired, StatusCodes.Status428PreconditionRequired, "If-Match required"),
         BadQuery(PreconditionErrorCodes.IfMatchInvalid, "Invalid If-Match"),
+        new(JobErrorCodes.JobNotFound, StatusCodes.Status404NotFound, "Job not found"),
+        new(JobErrorCodes.NotDeadLettered, StatusCodes.Status409Conflict, "Job not dead-lettered"),
+        new(JobErrorCodes.NotCancellable, StatusCodes.Status409Conflict, "Job cannot be cancelled"),
+        new(LocaleErrorCodes.LocaleNotFound, StatusCodes.Status404NotFound, "Locale not found"),
+        new(LocaleErrorCodes.LocaleInUse, StatusCodes.Status409Conflict, "Locale in use"),
+        new(LocaleErrorCodes.LocaleExists, StatusCodes.Status409Conflict, "Locale exists"),
     ];
 
     private static readonly FrozenDictionary<string, ErrorCodeInfo> byCode = All.ToFrozenDictionary(info => info.Code);

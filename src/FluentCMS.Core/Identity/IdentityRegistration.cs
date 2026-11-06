@@ -30,6 +30,8 @@ internal static class IdentityRegistration
 
         services.AddScoped<IdentityChanges>();
         services.AddScoped<InvitationService>();
+        services.AddScoped<UserAdministration>();
+        services.AddScoped<CurrentUser>();
         services.AddScoped<ApiKeyService>();
         services.AddScoped<ApiKeyPrincipals>();
         services.TryAddScoped<IPrincipalRoles, UserPrincipalRoles>();

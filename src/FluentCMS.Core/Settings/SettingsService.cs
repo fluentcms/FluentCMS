@@ -13,7 +13,7 @@ using Microsoft.Extensions.Logging;
 namespace FluentCMS.Core.Settings;
 
 // The settings of every area, as documents. ISettings<T> is a typed face on it, and the Management endpoint (B-50) is another.
-// A read is not checked against permissions; a write needs settings.{area}.manage for the site, or with no site limit for the
+// A typed read is not checked against permissions; the redacted read and a write need settings.{area}.manage for the site, or with no site limit for the
 // instance defaults. A write goes through a context of its own, as the outbox does, so that it saves nothing the caller has
 // tracked and drops nothing the caller has tracked. It replaces the row with one statement that names the version it read, and
 // starts again when another writer got there first, so two writers never see half of each other's document and the later one
@@ -81,8 +81,10 @@ internal sealed class SettingsService(
     // it. The version is that of the row a write to this site (or to the instance defaults) would replace, so that it can go
     // back as the version a write names: 0 when that row does not exist, even if the document came from a level below it, and
     // the version of the row that is there even if it was skipped because the class cannot read it.
+    // It is what an admin edits, so it needs the permission a write needs.
     public async Task<RedactedSetting> ResolveRedactedAsync(SettingsDescriptor descriptor, SiteId? site, CancellationToken cancellationToken)
     {
+        await RequirePermissionAsync(descriptor, site, cancellationToken);
         var resolved = await ResolveAsync(descriptor, site, cancellationToken);
         var (json, secretsSet) = descriptor.Redact(resolved.Json);
         return new RedactedSetting(json, resolved.Source, resolved.Version, resolved.Source == SettingsSource.Code ? [] : secretsSet);
@@ -130,16 +132,23 @@ internal sealed class SettingsService(
         return null;
     }
 
-    private async Task<OperationContext> AuthorizeAsync(SettingsDescriptor descriptor, SiteId? site, CancellationToken cancellationToken)
+    private async Task<OperationContext> RequirePermissionAsync(SettingsDescriptor descriptor, SiteId? site, CancellationToken cancellationToken)
     {
         var operation = accessor.Current
-            ?? throw new InvalidOperationException("Changing settings runs inside an operation; the entry point sets IOperationContextAccessor.Current.");
+            ?? throw new InvalidOperationException("Managing settings runs inside an operation; the entry point sets IOperationContextAccessor.Current.");
 
         var permissions = await authorization.ResolveAsync(operation, cancellationToken);
         if (!permissions.Allows(descriptor.Permission, new AccessTarget(site, null)))
         {
             throw new SettingsAccessDeniedException(descriptor.Area, site);
         }
+
+        return operation;
+    }
+
+    private async Task<OperationContext> AuthorizeAsync(SettingsDescriptor descriptor, SiteId? site, CancellationToken cancellationToken)
+    {
+        var operation = await RequirePermissionAsync(descriptor, site, cancellationToken);
 
         // The event is raised once the write has committed. Inside a transaction of the caller it has not, and may not.
         if (transaction.InTransaction)

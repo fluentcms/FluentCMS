@@ -11,4 +11,10 @@ internal static class IdentityErrorCodes
     public const string DeleteNotSupported = "FCMS3007";
     public const string NoEmailSender = "FCMS3008";
     public const string WriteInTransaction = "FCMS3009";
+    public const string UserNotFound = "FCMS3046";
+    public const string SessionNotFound = "FCMS3047";
+    public const string InvitationNotFound = "FCMS3048";
+    public const string InvalidUser = "FCMS3049";
+    public const string RoleAlreadyHeld = "FCMS3050";
+    public const string RoleNotHeld = "FCMS3051";
 }
