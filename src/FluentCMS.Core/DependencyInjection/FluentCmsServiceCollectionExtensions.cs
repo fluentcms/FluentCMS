@@ -35,8 +35,11 @@ using FluentCMS.Schema;
 using FluentCMS.Seeding;
 using FluentCMS.Settings;
 using FluentCMS.Sites;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 
 namespace FluentCMS.Core.DependencyInjection;
 
@@ -70,6 +73,13 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddFluentCmsOptions(SecurityOptions.Section, HostErrorCodes.InvalidOption, new SecurityOptions(), security => security.Validate());
         services.AddFluentCmsOptions(ReverseProxyOptions.Section, HostErrorCodes.InvalidOption, builder.ReverseProxy, proxy => proxy.Validate());
         services.AddReverseProxyHttpsPolicy();
+        services.AddOptions<PublicOrigin>()
+            .Configure<IServiceProvider>((origin, container) => origin.Resolve(
+                container.GetService<IConfiguration>()?[$"{FluentCmsOptions.Section}:{PublicOrigin.Key}"] ?? builder.PublicOrigin,
+                container.GetRequiredService<ReverseProxyOptions>(),
+                container.GetService<IHostEnvironment>()))
+            .ValidateOnStart();
+        services.TryAddSingleton(container => container.GetRequiredService<IOptions<PublicOrigin>>().Value);
         services.AddSecurityDefaults();
         services.AddFluentCmsApiProtection();
 

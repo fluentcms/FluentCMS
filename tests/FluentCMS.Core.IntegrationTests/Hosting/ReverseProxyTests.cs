@@ -126,6 +126,59 @@ public sealed class ReverseProxyTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task AForwardedHostOutsideAllowedHostsIsNotApplied()
+    {
+        var settings = Forwarding(host: true);
+        settings["AllowedHosts"] = "cms.example.com;localhost";
+        var client = await Start(Environments.Production, settings);
+
+        (await Seen(client, (HeaderNames.TestAddress, Proxy), (HeaderNames.ForwardedHost, "evil.example"), (HeaderNames.ForwardedProto, "https"))).ShouldBe("https 10.0.0.1 localhost");
+        (await Seen(client, (HeaderNames.TestAddress, Proxy), (HeaderNames.ForwardedHost, "cms.example.com"))).ShouldBe("http 10.0.0.1 cms.example.com");
+    }
+
+    [Fact]
+    public async Task AForwardedHostIsAppliedWhenAllowedHostsAcceptsAnyHost()
+    {
+        var settings = Forwarding(host: true);
+        settings["AllowedHosts"] = "*";
+        var client = await Start(Environments.Production, settings);
+
+        (await Seen(client, (HeaderNames.TestAddress, Proxy), (HeaderNames.ForwardedHost, "cms.example.com"))).ShouldBe("http 10.0.0.1 cms.example.com");
+    }
+
+    [Theory]
+    [InlineData("Production", "https://cms.example.com", null)]
+    [InlineData("Production", "https://cms.example.com/", null)]
+    [InlineData("Production", "https://cms.example.com:8443/cms", "/cms")]
+    [InlineData("Development", "http://localhost:5000", null)]
+    public async Task AValidPublicOriginStarts(string environment, string origin, string? pathBase)
+    {
+        var client = await Start(environment, new() { ["FluentCms:PublicOrigin"] = origin, [Section + "PathBase"] = pathBase });
+
+        (await Get(client, $"{pathBase}/api/delivery/v1/probe")).StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Theory]
+    [InlineData("Production", "cms.example.com", null)]
+    [InlineData("Production", "/cms", null)]
+    [InlineData("Production", "ftp://cms.example.com", null)]
+    [InlineData("Production", "http://cms.example.com", null)]
+    [InlineData("Staging", "http://cms.example.com", null)]
+    [InlineData("Production", "https://cms.example.com/?site=1", null)]
+    [InlineData("Production", "https://cms.example.com/#top", null)]
+    [InlineData("Production", "https://user@cms.example.com", null)]
+    [InlineData("Production", "https://cms.example.com/cms", null)]
+    [InlineData("Production", "https://cms.example.com/other", "/cms")]
+    public async Task ABadPublicOriginStopsTheHost(string environment, string origin, string? pathBase)
+    {
+        var exception = await Should.ThrowAsync<FluentCmsConfigurationException>(() =>
+            Start(environment, new() { ["FluentCms:PublicOrigin"] = origin, [Section + "PathBase"] = pathBase }));
+
+        exception.Code.ShouldBe("FCMS1101");
+        exception.Message.ShouldContain("FluentCms:PublicOrigin");
+    }
+
+    [Fact]
     public async Task TheRateLimitPartitionsByTheForwardedAddressFromAKnownProxy()
     {
         var settings = Forwarding();

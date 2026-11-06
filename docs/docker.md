@@ -62,6 +62,7 @@ A schema file has no compiled migrations, so the host creates and extends its ta
 | `FLUENTCMS_SAMPLE` | none | `blog` for the Blog sample. Any other value stops the host with `FCMS3152`. |
 | `FluentCms__Database__Provider` | `Sqlite` | `Sqlite`, `PostgreSql` or `SqlServer`. Another value stops the host with `FCMS3150`. |
 | `ConnectionStrings__FluentCms` | `Data Source=/data/fluentcms.db` | The connection string. PostgreSQL and SQL Server have no default and stop the host with `FCMS3151` without one. |
+| `FluentCms__PublicOrigin` | none | The address users reach the instance at, such as `https://cms.example.com`. Password reset and invitation links and the issuer are built from it. See [the checklist](#before-production). |
 | `AllowedHosts` | `*` | The host names the instance answers, separated by `;`. See [the checklist](#before-production). |
 | `FluentCms__Security__AllowGeneratedSigningKey` | `true` in the image | Accepts the token signing key the server generates. |
 | `FluentCms__Email__Smtp__Host` and the rest of `FluentCms__Email__Smtp__*` | none | The SMTP server that invitations and password resets go through; see [email](host-configuration.md#email). |
@@ -108,7 +109,8 @@ The image serves no OpenAPI document and no Scalar UI, because the document name
 ## Before production
 
 - **TLS.** The authorization server, and so sign-in, answers HTTPS only, and the image listens on plain HTTP. Put it behind a proxy that ends TLS and forward the scheme with `FluentCms__ReverseProxy__ForwardedHeaders__Enabled=true` and the proxy's address in `FluentCms__ReverseProxy__ForwardedHeaders__KnownProxies__0` or its network in `KnownNetworks__0`; see [reverse proxy](reverse-proxy.md).
-- **Host names.** Set `AllowedHosts` to the host names of the instance, such as `AllowedHosts=cms.example.com;localhost`. Password reset and invitation links are built from the request's host, so with `*` a request with a forged `Host` header gets a link to the attacker's host emailed to a real user. Keep `localhost` in the list, or the `HEALTHCHECK`, which calls `localhost`, is turned away with 400.
+- **Public address.** Set `FluentCms__PublicOrigin` to the address users reach the instance at, such as `https://cms.example.com`, with the path base when there is one. Password reset and invitation links and the issuer are then built from it; without it they follow the request's host, so a request with a forged `Host` header gets a link to the attacker's host emailed to a real user.
+- **Host names.** Set `AllowedHosts` to the host names of the instance, such as `AllowedHosts=cms.example.com;localhost`, so that the instance answers no other host and a proxy's `X-Forwarded-Host` is applied only for those. Keep `localhost` in the list, or the `HEALTHCHECK`, which calls `localhost`, is turned away with 400.
 - **Signing key.** Mount a PKCS#12 (`.pfx`) file with an RSA key read-only, such as `-v ./signing.pfx:/certs/signing.pfx:ro`, and set `FluentCms__Security__SigningCertificate__Path=/certs/signing.pfx` and `FluentCms__Security__SigningCertificate__Password` from your secret store. Then set `FluentCms__Security__AllowGeneratedSigningKey=false`, so that settings that lose the certificate stop the host (`FCMS1102`) instead of falling back to the generated key. Until then the report lists `generated-signing-key`.
 - **Email.** Set `FluentCms__Email__Smtp__Host`, `__Port`, `__UserName`, `__Password` and `__From`; without them invitations and password resets fail with `FCMS3008`.
 

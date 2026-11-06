@@ -136,6 +136,34 @@ public sealed class StartupReportTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task AMissingPublicOriginIsReportedInProduction()
+    {
+        var app = _host.Build(Environments.Production, new Dictionary<string, string?> { ["AllowedHosts"] = "cms.example.com" });
+        await app.StartAsync(Token);
+
+        var insecure = app.Services.GetRequiredService<StartupReportHolder>().Current!.InsecureDefaults.Single(item => item.Id == "public-origin-unset");
+        insecure.Message.ShouldContain("FluentCms:PublicOrigin");
+    }
+
+    [Fact]
+    public async Task APublicOriginClearsItsEntry()
+    {
+        var app = _host.Build(Environments.Production, new Dictionary<string, string?> { ["FluentCms:PublicOrigin"] = "https://cms.example.com" });
+        await app.StartAsync(Token);
+
+        app.Services.GetRequiredService<StartupReportHolder>().Current!.InsecureDefaults.Select(item => item.Id).ShouldNotContain("public-origin-unset");
+    }
+
+    [Fact]
+    public async Task AMissingPublicOriginIsNotReportedOutsideProduction()
+    {
+        var app = _host.Build(Environments.Staging);
+        await app.StartAsync(Token);
+
+        app.Services.GetRequiredService<StartupReportHolder>().Current!.InsecureDefaults.Select(item => item.Id).ShouldNotContain("public-origin-unset");
+    }
+
+    [Fact]
     public async Task ForwardedHeadersTrustedFromEveryAddressAreReported()
     {
         var app = _host.Build(
