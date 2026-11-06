@@ -1,0 +1,498 @@
+{
+  "types": [
+    {
+      "name": "article",
+      "kind": "collection",
+      "localized": true,
+      "scope": "site",
+      "unpublishedReferences": "warn",
+      "maxVersions": 50,
+      "trashRetentionDays": 30,
+      "fields": [
+        {
+          "name": "title",
+          "type": "text",
+          "multiple": false,
+          "localizable": true,
+          "indexed": false,
+          "searchable": true,
+          "readOnly": false,
+          "hidden": false,
+          "formerNames": [],
+          "validation": {
+            "required": true,
+            "unique": false,
+            "maxLength": 200
+          },
+          "settings": {}
+        },
+        {
+          "name": "slug",
+          "type": "slug",
+          "multiple": false,
+          "localizable": true,
+          "indexed": false,
+          "searchable": false,
+          "readOnly": false,
+          "hidden": false,
+          "formerNames": [],
+          "validation": {
+            "required": false,
+            "unique": true
+          },
+          "settings": {
+            "source": "title"
+          }
+        },
+        {
+          "name": "body",
+          "type": "richText",
+          "multiple": false,
+          "localizable": true,
+          "indexed": false,
+          "searchable": false,
+          "readOnly": false,
+          "hidden": false,
+          "formerNames": [],
+          "validation": {
+            "required": false,
+            "unique": false
+          },
+          "settings": {}
+        },
+        {
+          "name": "author",
+          "type": "relation",
+          "multiple": false,
+          "localizable": false,
+          "indexed": false,
+          "searchable": false,
+          "readOnly": false,
+          "hidden": false,
+          "formerNames": [],
+          "validation": {
+            "required": false,
+            "unique": false
+          },
+          "relation": {
+            "target": "author",
+            "reverse": "articles",
+            "ordered": false
+          },
+          "settings": {}
+        },
+        {
+          "name": "tags",
+          "type": "relation",
+          "multiple": true,
+          "localizable": false,
+          "indexed": false,
+          "searchable": false,
+          "readOnly": false,
+          "hidden": false,
+          "formerNames": [],
+          "validation": {
+            "required": false,
+            "unique": false
+          },
+          "relation": {
+            "target": "tag",
+            "ordered": true
+          },
+          "settings": {}
+        },
+        {
+          "name": "sections",
+          "type": "blocks",
+          "multiple": false,
+          "localizable": false,
+          "indexed": false,
+          "searchable": false,
+          "readOnly": false,
+          "hidden": false,
+          "formerNames": [],
+          "validation": {
+            "required": false,
+            "unique": false
+          },
+          "settings": {
+            "blocks": [
+              "hero",
+              "quote",
+              "gallery"
+            ]
+          }
+        },
+        {
+          "name": "seo",
+          "type": "component",
+          "multiple": false,
+          "localizable": false,
+          "indexed": false,
+          "searchable": false,
+          "readOnly": false,
+          "hidden": false,
+          "formerNames": [],
+          "validation": {
+            "required": false,
+            "unique": false
+          },
+          "settings": {
+            "component": "seo"
+          }
+        },
+        {
+          "name": "category",
+          "type": "select",
+          "multiple": false,
+          "localizable": false,
+          "indexed": true,
+          "searchable": false,
+          "readOnly": false,
+          "hidden": false,
+          "formerNames": [],
+          "validation": {
+            "required": false,
+            "unique": false
+          },
+          "settings": {
+            "options": [
+              "news",
+              "opinion",
+              "video"
+            ]
+          }
+        },
+        {
+          "name": "publishedOn",
+          "type": "dateTime",
+          "multiple": false,
+          "localizable": false,
+          "indexed": true,
+          "searchable": false,
+          "readOnly": false,
+          "hidden": false,
+          "formerNames": [],
+          "validation": {
+            "required": false,
+            "unique": false
+          },
+          "settings": {}
+        },
+        {
+          "name": "videoUrl",
+          "type": "url",
+          "multiple": false,
+          "localizable": false,
+          "indexed": false,
+          "searchable": false,
+          "readOnly": false,
+          "hidden": false,
+          "formerNames": [],
+          "validation": {
+            "required": false,
+            "unique": false
+          },
+          "visibleWhen": {
+            "operator": "equal",
+            "field": "category",
+            "values": [
+              "video"
+            ]
+          },
+          "requiredWhen": {
+            "operator": "equal",
+            "field": "category",
+            "values": [
+              "video"
+            ]
+          },
+          "settings": {}
+        }
+      ],
+      "reverseRelations": []
+    },
+    {
+      "name": "author",
+      "kind": "collection",
+      "localized": false,
+      "scope": "site",
+      "unpublishedReferences": "warn",
+      "maxVersions": 50,
+      "trashRetentionDays": 30,
+      "fields": [
+        {
+          "name": "name",
+          "type": "text",
+          "multiple": false,
+          "localizable": false,
+          "indexed": false,
+          "searchable": true,
+          "readOnly": false,
+          "hidden": false,
+          "formerNames": [],
+          "validation": {
+            "required": true,
+            "unique": false,
+            "maxLength": 100
+          },
+          "settings": {}
+        },
+        {
+          "name": "slug",
+          "type": "slug",
+          "multiple": false,
+          "localizable": false,
+          "indexed": false,
+          "searchable": false,
+          "readOnly": false,
+          "hidden": false,
+          "formerNames": [],
+          "validation": {
+            "required": false,
+            "unique": true
+          },
+          "settings": {
+            "source": "name"
+          }
+        },
+        {
+          "name": "bio",
+          "type": "richText",
+          "multiple": false,
+          "localizable": false,
+          "indexed": false,
+          "searchable": false,
+          "readOnly": false,
+          "hidden": false,
+          "formerNames": [],
+          "validation": {
+            "required": false,
+            "unique": false
+          },
+          "settings": {}
+        }
+      ],
+      "reverseRelations": [
+        {
+          "name": "articles",
+          "sourceType": "article",
+          "sourceField": "author"
+        }
+      ]
+    },
+    {
+      "name": "tag",
+      "kind": "collection",
+      "localized": false,
+      "scope": "global",
+      "unpublishedReferences": "warn",
+      "maxVersions": 50,
+      "trashRetentionDays": 30,
+      "fields": [
+        {
+          "name": "name",
+          "type": "text",
+          "multiple": false,
+          "localizable": false,
+          "indexed": false,
+          "searchable": false,
+          "readOnly": false,
+          "hidden": false,
+          "formerNames": [],
+          "validation": {
+            "required": true,
+            "unique": false,
+            "maxLength": 50
+          },
+          "settings": {}
+        },
+        {
+          "name": "slug",
+          "type": "slug",
+          "multiple": false,
+          "localizable": false,
+          "indexed": false,
+          "searchable": false,
+          "readOnly": false,
+          "hidden": false,
+          "formerNames": [],
+          "validation": {
+            "required": false,
+            "unique": true
+          },
+          "settings": {
+            "source": "name"
+          }
+        }
+      ],
+      "reverseRelations": []
+    }
+  ],
+  "components": [
+    {
+      "name": "seo",
+      "kind": "component",
+      "localized": false,
+      "fields": [
+        {
+          "name": "metaTitle",
+          "type": "text",
+          "multiple": false,
+          "localizable": false,
+          "indexed": false,
+          "searchable": false,
+          "readOnly": false,
+          "hidden": false,
+          "formerNames": [],
+          "validation": {
+            "required": false,
+            "unique": false,
+            "maxLength": 70
+          },
+          "settings": {}
+        },
+        {
+          "name": "metaDescription",
+          "type": "text",
+          "multiple": false,
+          "localizable": false,
+          "indexed": false,
+          "searchable": false,
+          "readOnly": false,
+          "hidden": false,
+          "formerNames": [],
+          "validation": {
+            "required": false,
+            "unique": false,
+            "maxLength": 160
+          },
+          "settings": {}
+        }
+      ],
+      "reverseRelations": []
+    }
+  ],
+  "blocks": [
+    {
+      "name": "gallery",
+      "kind": "block",
+      "localized": false,
+      "fields": [
+        {
+          "name": "caption",
+          "type": "text",
+          "multiple": false,
+          "localizable": false,
+          "indexed": false,
+          "searchable": false,
+          "readOnly": false,
+          "hidden": false,
+          "formerNames": [],
+          "validation": {
+            "required": false,
+            "unique": false
+          },
+          "settings": {}
+        },
+        {
+          "name": "columns",
+          "type": "integer",
+          "multiple": false,
+          "localizable": false,
+          "indexed": false,
+          "searchable": false,
+          "readOnly": false,
+          "hidden": false,
+          "formerNames": [],
+          "validation": {
+            "required": false,
+            "unique": false
+          },
+          "settings": {}
+        }
+      ],
+      "reverseRelations": []
+    },
+    {
+      "name": "hero",
+      "kind": "block",
+      "localized": false,
+      "fields": [
+        {
+          "name": "heading",
+          "type": "text",
+          "multiple": false,
+          "localizable": false,
+          "indexed": false,
+          "searchable": false,
+          "readOnly": false,
+          "hidden": false,
+          "formerNames": [],
+          "validation": {
+            "required": false,
+            "unique": false
+          },
+          "settings": {}
+        },
+        {
+          "name": "subheading",
+          "type": "text",
+          "multiple": false,
+          "localizable": false,
+          "indexed": false,
+          "searchable": false,
+          "readOnly": false,
+          "hidden": false,
+          "formerNames": [],
+          "validation": {
+            "required": false,
+            "unique": false
+          },
+          "settings": {}
+        }
+      ],
+      "reverseRelations": []
+    },
+    {
+      "name": "quote",
+      "kind": "block",
+      "localized": false,
+      "fields": [
+        {
+          "name": "text",
+          "type": "longText",
+          "multiple": false,
+          "localizable": false,
+          "indexed": false,
+          "searchable": false,
+          "readOnly": false,
+          "hidden": false,
+          "formerNames": [],
+          "validation": {
+            "required": true,
+            "unique": false
+          },
+          "settings": {}
+        },
+        {
+          "name": "attribution",
+          "type": "text",
+          "multiple": false,
+          "localizable": false,
+          "indexed": false,
+          "searchable": false,
+          "readOnly": false,
+          "hidden": false,
+          "formerNames": [],
+          "validation": {
+            "required": false,
+            "unique": false
+          },
+          "settings": {}
+        }
+      ],
+      "reverseRelations": []
+    }
+  ]
+}

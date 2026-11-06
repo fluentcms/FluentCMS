@@ -1069,6 +1069,18 @@ FluentCMS.Schema.Condition.Operands.get -> System.Collections.Generic.IReadOnlyL
 FluentCMS.Schema.Condition.Operator.get -> FluentCMS.Schema.ConditionOperator
 FluentCMS.Schema.Condition.Or(FluentCMS.Schema.Condition! other) -> FluentCMS.Schema.Condition!
 FluentCMS.Schema.Condition.Values.get -> System.Collections.Generic.IReadOnlyList<object?>!
+FluentCMS.Schema.ConditionDescription
+FluentCMS.Schema.ConditionDescription.<Clone>$() -> FluentCMS.Schema.ConditionDescription!
+FluentCMS.Schema.ConditionDescription.ConditionDescription() -> void
+FluentCMS.Schema.ConditionDescription.Equals(FluentCMS.Schema.ConditionDescription? other) -> bool
+FluentCMS.Schema.ConditionDescription.Field.get -> string?
+FluentCMS.Schema.ConditionDescription.Field.init -> void
+FluentCMS.Schema.ConditionDescription.Operands.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Schema.ConditionDescription!>?
+FluentCMS.Schema.ConditionDescription.Operands.init -> void
+FluentCMS.Schema.ConditionDescription.Operator.get -> FluentCMS.Schema.ConditionOperator
+FluentCMS.Schema.ConditionDescription.Operator.init -> void
+FluentCMS.Schema.ConditionDescription.Values.get -> System.Collections.Generic.IReadOnlyList<object?>?
+FluentCMS.Schema.ConditionDescription.Values.init -> void
 FluentCMS.Schema.ConditionField
 FluentCMS.Schema.ConditionField.Equals(object? value) -> FluentCMS.Schema.Condition!
 FluentCMS.Schema.ConditionField.In(params object?[]! values) -> FluentCMS.Schema.Condition!
@@ -1143,10 +1155,36 @@ FluentCMS.Schema.FieldDisplay.Label.get -> string?
 FluentCMS.Schema.FieldDisplay.Placeholder.get -> string?
 FluentCMS.Schema.FieldDisplay.Tab.get -> string?
 FluentCMS.Schema.FieldDisplay.Width.get -> int
+FluentCMS.Schema.FieldDisplayDescription
+FluentCMS.Schema.FieldDisplayDescription.<Clone>$() -> FluentCMS.Schema.FieldDisplayDescription!
+FluentCMS.Schema.FieldDisplayDescription.Equals(FluentCMS.Schema.FieldDisplayDescription? other) -> bool
+FluentCMS.Schema.FieldDisplayDescription.FieldDisplayDescription() -> void
+FluentCMS.Schema.FieldDisplayDescription.Group.get -> string?
+FluentCMS.Schema.FieldDisplayDescription.Group.init -> void
+FluentCMS.Schema.FieldDisplayDescription.Help.get -> string?
+FluentCMS.Schema.FieldDisplayDescription.Help.init -> void
+FluentCMS.Schema.FieldDisplayDescription.Label.get -> string?
+FluentCMS.Schema.FieldDisplayDescription.Label.init -> void
+FluentCMS.Schema.FieldDisplayDescription.Placeholder.get -> string?
+FluentCMS.Schema.FieldDisplayDescription.Placeholder.init -> void
+FluentCMS.Schema.FieldDisplayDescription.Tab.get -> string?
+FluentCMS.Schema.FieldDisplayDescription.Tab.init -> void
+FluentCMS.Schema.FieldDisplayDescription.Width.get -> int
+FluentCMS.Schema.FieldDisplayDescription.Width.init -> void
 FluentCMS.Schema.FieldRelation
 FluentCMS.Schema.FieldRelation.Ordered.get -> bool
 FluentCMS.Schema.FieldRelation.Reverse.get -> string?
 FluentCMS.Schema.FieldRelation.Target.get -> string!
+FluentCMS.Schema.FieldRelationDescription
+FluentCMS.Schema.FieldRelationDescription.<Clone>$() -> FluentCMS.Schema.FieldRelationDescription!
+FluentCMS.Schema.FieldRelationDescription.Equals(FluentCMS.Schema.FieldRelationDescription? other) -> bool
+FluentCMS.Schema.FieldRelationDescription.FieldRelationDescription() -> void
+FluentCMS.Schema.FieldRelationDescription.Ordered.get -> bool
+FluentCMS.Schema.FieldRelationDescription.Ordered.init -> void
+FluentCMS.Schema.FieldRelationDescription.Reverse.get -> string?
+FluentCMS.Schema.FieldRelationDescription.Reverse.init -> void
+FluentCMS.Schema.FieldRelationDescription.Target.get -> string!
+FluentCMS.Schema.FieldRelationDescription.Target.init -> void
 FluentCMS.Schema.FieldSettingDescriptor
 FluentCMS.Schema.FieldSettingDescriptor.<Clone>$() -> FluentCMS.Schema.FieldSettingDescriptor!
 FluentCMS.Schema.FieldSettingDescriptor.Equals(FluentCMS.Schema.FieldSettingDescriptor? other) -> bool
@@ -1168,6 +1206,24 @@ FluentCMS.Schema.FieldStorageKind
 FluentCMS.Schema.FieldStorageKind.Column = 0 -> FluentCMS.Schema.FieldStorageKind
 FluentCMS.Schema.FieldStorageKind.Json = 1 -> FluentCMS.Schema.FieldStorageKind
 FluentCMS.Schema.FieldStorageKind.Reference = 2 -> FluentCMS.Schema.FieldStorageKind
+FluentCMS.Schema.FieldValidationDescription
+FluentCMS.Schema.FieldValidationDescription.<Clone>$() -> FluentCMS.Schema.FieldValidationDescription!
+FluentCMS.Schema.FieldValidationDescription.Equals(FluentCMS.Schema.FieldValidationDescription? other) -> bool
+FluentCMS.Schema.FieldValidationDescription.FieldValidationDescription() -> void
+FluentCMS.Schema.FieldValidationDescription.MaxLength.get -> int?
+FluentCMS.Schema.FieldValidationDescription.MaxLength.init -> void
+FluentCMS.Schema.FieldValidationDescription.Maximum.get -> decimal?
+FluentCMS.Schema.FieldValidationDescription.Maximum.init -> void
+FluentCMS.Schema.FieldValidationDescription.MinLength.get -> int?
+FluentCMS.Schema.FieldValidationDescription.MinLength.init -> void
+FluentCMS.Schema.FieldValidationDescription.Minimum.get -> decimal?
+FluentCMS.Schema.FieldValidationDescription.Minimum.init -> void
+FluentCMS.Schema.FieldValidationDescription.Pattern.get -> string?
+FluentCMS.Schema.FieldValidationDescription.Pattern.init -> void
+FluentCMS.Schema.FieldValidationDescription.Required.get -> bool
+FluentCMS.Schema.FieldValidationDescription.Required.init -> void
+FluentCMS.Schema.FieldValidationDescription.Unique.get -> bool
+FluentCMS.Schema.FieldValidationDescription.Unique.init -> void
 FluentCMS.Schema.FormerNamesAttribute
 FluentCMS.Schema.FormerNamesAttribute.FormerNamesAttribute(params string![]! names) -> void
 FluentCMS.Schema.FormerNamesAttribute.Names.get -> System.Collections.Generic.IReadOnlyList<string!>!
@@ -1229,6 +1285,9 @@ FluentCMS.Schema.ISchemaBuilder.AddContentTypesFromAssembly(System.Reflection.As
 FluentCMS.Schema.ISchemaBuilder.AddSchemaJson(string! json) -> FluentCMS.Schema.ISchemaBuilder!
 FluentCMS.Schema.ISchemaBuilder.AddSingleton(string! name, System.Action<FluentCMS.Schema.ITypeBuilder!>! configure) -> FluentCMS.Schema.ISchemaBuilder!
 FluentCMS.Schema.ISchemaBuilder.LoadSchemaFile(string! path) -> FluentCMS.Schema.ISchemaBuilder!
+FluentCMS.Schema.ISchemaIntrospection
+FluentCMS.Schema.ISchemaIntrospection.DescribeAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Schema.SchemaDescription!>!
+FluentCMS.Schema.ISchemaIntrospection.DescribeTypeAsync(string! name, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Schema.SchemaTypeDescription?>!
 FluentCMS.Schema.ITypeBuilder
 FluentCMS.Schema.ITypeBuilder.Field(string! name, string! fieldType, System.Action<FluentCMS.Schema.IFieldBuilder!>? configure = null) -> FluentCMS.Schema.ITypeBuilder!
 FluentCMS.Schema.ITypeBuilder.Localized(bool localized = true) -> FluentCMS.Schema.ITypeBuilder!
@@ -1291,6 +1350,16 @@ FluentCMS.Schema.ReverseRelation
 FluentCMS.Schema.ReverseRelation.Name.get -> string!
 FluentCMS.Schema.ReverseRelation.SourceField.get -> string!
 FluentCMS.Schema.ReverseRelation.SourceType.get -> string!
+FluentCMS.Schema.ReverseRelationDescription
+FluentCMS.Schema.ReverseRelationDescription.<Clone>$() -> FluentCMS.Schema.ReverseRelationDescription!
+FluentCMS.Schema.ReverseRelationDescription.Equals(FluentCMS.Schema.ReverseRelationDescription? other) -> bool
+FluentCMS.Schema.ReverseRelationDescription.Name.get -> string!
+FluentCMS.Schema.ReverseRelationDescription.Name.init -> void
+FluentCMS.Schema.ReverseRelationDescription.ReverseRelationDescription() -> void
+FluentCMS.Schema.ReverseRelationDescription.SourceField.get -> string!
+FluentCMS.Schema.ReverseRelationDescription.SourceField.init -> void
+FluentCMS.Schema.ReverseRelationDescription.SourceType.get -> string!
+FluentCMS.Schema.ReverseRelationDescription.SourceType.init -> void
 FluentCMS.Schema.RichText
 FluentCMS.Schema.RichText.<Clone>$() -> FluentCMS.Schema.RichText!
 FluentCMS.Schema.RichText.Equals(FluentCMS.Schema.RichText? other) -> bool
@@ -1305,6 +1374,16 @@ FluentCMS.Schema.RichTextRenderOptions.EntryUrlResolver.init -> void
 FluentCMS.Schema.RichTextRenderOptions.MediaUrlResolver.get -> System.Func<System.Guid, string?>?
 FluentCMS.Schema.RichTextRenderOptions.MediaUrlResolver.init -> void
 FluentCMS.Schema.RichTextRenderOptions.RichTextRenderOptions() -> void
+FluentCMS.Schema.SchemaDescription
+FluentCMS.Schema.SchemaDescription.<Clone>$() -> FluentCMS.Schema.SchemaDescription!
+FluentCMS.Schema.SchemaDescription.Blocks.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Schema.SchemaTypeDescription!>!
+FluentCMS.Schema.SchemaDescription.Blocks.init -> void
+FluentCMS.Schema.SchemaDescription.Components.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Schema.SchemaTypeDescription!>!
+FluentCMS.Schema.SchemaDescription.Components.init -> void
+FluentCMS.Schema.SchemaDescription.Equals(FluentCMS.Schema.SchemaDescription? other) -> bool
+FluentCMS.Schema.SchemaDescription.SchemaDescription() -> void
+FluentCMS.Schema.SchemaDescription.Types.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Schema.SchemaTypeDescription!>!
+FluentCMS.Schema.SchemaDescription.Types.init -> void
 FluentCMS.Schema.SchemaField
 FluentCMS.Schema.SchemaField.DefaultValue.get -> object?
 FluentCMS.Schema.SchemaField.Display.get -> FluentCMS.Schema.FieldDisplay?
@@ -1328,6 +1407,42 @@ FluentCMS.Schema.SchemaField.Searchable.get -> bool
 FluentCMS.Schema.SchemaField.Settings.get -> System.Collections.Generic.IReadOnlyDictionary<string!, object!>!
 FluentCMS.Schema.SchemaField.Unique.get -> bool
 FluentCMS.Schema.SchemaField.VisibleWhen.get -> FluentCMS.Schema.Condition?
+FluentCMS.Schema.SchemaFieldDescription
+FluentCMS.Schema.SchemaFieldDescription.<Clone>$() -> FluentCMS.Schema.SchemaFieldDescription!
+FluentCMS.Schema.SchemaFieldDescription.DefaultValue.get -> object?
+FluentCMS.Schema.SchemaFieldDescription.DefaultValue.init -> void
+FluentCMS.Schema.SchemaFieldDescription.Display.get -> FluentCMS.Schema.FieldDisplayDescription?
+FluentCMS.Schema.SchemaFieldDescription.Display.init -> void
+FluentCMS.Schema.SchemaFieldDescription.Equals(FluentCMS.Schema.SchemaFieldDescription? other) -> bool
+FluentCMS.Schema.SchemaFieldDescription.FormerNames.get -> System.Collections.Generic.IReadOnlyList<string!>!
+FluentCMS.Schema.SchemaFieldDescription.FormerNames.init -> void
+FluentCMS.Schema.SchemaFieldDescription.Hidden.get -> bool
+FluentCMS.Schema.SchemaFieldDescription.Hidden.init -> void
+FluentCMS.Schema.SchemaFieldDescription.Indexed.get -> bool
+FluentCMS.Schema.SchemaFieldDescription.Indexed.init -> void
+FluentCMS.Schema.SchemaFieldDescription.Localizable.get -> bool
+FluentCMS.Schema.SchemaFieldDescription.Localizable.init -> void
+FluentCMS.Schema.SchemaFieldDescription.Multiple.get -> bool
+FluentCMS.Schema.SchemaFieldDescription.Multiple.init -> void
+FluentCMS.Schema.SchemaFieldDescription.Name.get -> string!
+FluentCMS.Schema.SchemaFieldDescription.Name.init -> void
+FluentCMS.Schema.SchemaFieldDescription.ReadOnly.get -> bool
+FluentCMS.Schema.SchemaFieldDescription.ReadOnly.init -> void
+FluentCMS.Schema.SchemaFieldDescription.Relation.get -> FluentCMS.Schema.FieldRelationDescription?
+FluentCMS.Schema.SchemaFieldDescription.Relation.init -> void
+FluentCMS.Schema.SchemaFieldDescription.RequiredWhen.get -> FluentCMS.Schema.ConditionDescription?
+FluentCMS.Schema.SchemaFieldDescription.RequiredWhen.init -> void
+FluentCMS.Schema.SchemaFieldDescription.SchemaFieldDescription() -> void
+FluentCMS.Schema.SchemaFieldDescription.Searchable.get -> bool
+FluentCMS.Schema.SchemaFieldDescription.Searchable.init -> void
+FluentCMS.Schema.SchemaFieldDescription.Settings.get -> System.Collections.Generic.IReadOnlyDictionary<string!, object!>!
+FluentCMS.Schema.SchemaFieldDescription.Settings.init -> void
+FluentCMS.Schema.SchemaFieldDescription.Type.get -> string!
+FluentCMS.Schema.SchemaFieldDescription.Type.init -> void
+FluentCMS.Schema.SchemaFieldDescription.Validation.get -> FluentCMS.Schema.FieldValidationDescription!
+FluentCMS.Schema.SchemaFieldDescription.Validation.init -> void
+FluentCMS.Schema.SchemaFieldDescription.VisibleWhen.get -> FluentCMS.Schema.ConditionDescription?
+FluentCMS.Schema.SchemaFieldDescription.VisibleWhen.init -> void
 FluentCMS.Schema.SchemaModel
 FluentCMS.Schema.SchemaModel.Blocks.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Schema.SchemaType!>!
 FluentCMS.Schema.SchemaModel.Components.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Schema.SchemaType!>!
@@ -1348,6 +1463,28 @@ FluentCMS.Schema.SchemaType.ReverseRelations.get -> System.Collections.Generic.I
 FluentCMS.Schema.SchemaType.Scope.get -> FluentCMS.Schema.ContentScope
 FluentCMS.Schema.SchemaType.TrashRetentionDays.get -> int
 FluentCMS.Schema.SchemaType.UnpublishedReferences.get -> FluentCMS.Publishing.UnpublishedReferencePolicy
+FluentCMS.Schema.SchemaTypeDescription
+FluentCMS.Schema.SchemaTypeDescription.<Clone>$() -> FluentCMS.Schema.SchemaTypeDescription!
+FluentCMS.Schema.SchemaTypeDescription.Equals(FluentCMS.Schema.SchemaTypeDescription? other) -> bool
+FluentCMS.Schema.SchemaTypeDescription.Fields.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Schema.SchemaFieldDescription!>!
+FluentCMS.Schema.SchemaTypeDescription.Fields.init -> void
+FluentCMS.Schema.SchemaTypeDescription.Kind.get -> FluentCMS.Schema.SchemaTypeKind
+FluentCMS.Schema.SchemaTypeDescription.Kind.init -> void
+FluentCMS.Schema.SchemaTypeDescription.Localized.get -> bool
+FluentCMS.Schema.SchemaTypeDescription.Localized.init -> void
+FluentCMS.Schema.SchemaTypeDescription.MaxVersions.get -> int?
+FluentCMS.Schema.SchemaTypeDescription.MaxVersions.init -> void
+FluentCMS.Schema.SchemaTypeDescription.Name.get -> string!
+FluentCMS.Schema.SchemaTypeDescription.Name.init -> void
+FluentCMS.Schema.SchemaTypeDescription.ReverseRelations.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Schema.ReverseRelationDescription!>!
+FluentCMS.Schema.SchemaTypeDescription.ReverseRelations.init -> void
+FluentCMS.Schema.SchemaTypeDescription.SchemaTypeDescription() -> void
+FluentCMS.Schema.SchemaTypeDescription.Scope.get -> FluentCMS.Schema.ContentScope?
+FluentCMS.Schema.SchemaTypeDescription.Scope.init -> void
+FluentCMS.Schema.SchemaTypeDescription.TrashRetentionDays.get -> int?
+FluentCMS.Schema.SchemaTypeDescription.TrashRetentionDays.init -> void
+FluentCMS.Schema.SchemaTypeDescription.UnpublishedReferences.get -> FluentCMS.Publishing.UnpublishedReferencePolicy?
+FluentCMS.Schema.SchemaTypeDescription.UnpublishedReferences.init -> void
 FluentCMS.Schema.SchemaTypeKind
 FluentCMS.Schema.SchemaTypeKind.Block = 4 -> FluentCMS.Schema.SchemaTypeKind
 FluentCMS.Schema.SchemaTypeKind.Collection = 1 -> FluentCMS.Schema.SchemaTypeKind
@@ -1708,17 +1845,41 @@ override FluentCMS.Schema.BlockList.Equals(object? obj) -> bool
 override FluentCMS.Schema.BlockList.GetHashCode() -> int
 override FluentCMS.Schema.BlockList.ToString() -> string!
 override FluentCMS.Schema.Condition.ToString() -> string!
+override FluentCMS.Schema.ConditionDescription.Equals(object? obj) -> bool
+override FluentCMS.Schema.ConditionDescription.GetHashCode() -> int
+override FluentCMS.Schema.ConditionDescription.ToString() -> string!
+override FluentCMS.Schema.FieldDisplayDescription.Equals(object? obj) -> bool
+override FluentCMS.Schema.FieldDisplayDescription.GetHashCode() -> int
+override FluentCMS.Schema.FieldDisplayDescription.ToString() -> string!
+override FluentCMS.Schema.FieldRelationDescription.Equals(object? obj) -> bool
+override FluentCMS.Schema.FieldRelationDescription.GetHashCode() -> int
+override FluentCMS.Schema.FieldRelationDescription.ToString() -> string!
 override FluentCMS.Schema.FieldSettingDescriptor.Equals(object? obj) -> bool
 override FluentCMS.Schema.FieldSettingDescriptor.GetHashCode() -> int
 override FluentCMS.Schema.FieldSettingDescriptor.ToString() -> string!
+override FluentCMS.Schema.FieldValidationDescription.Equals(object? obj) -> bool
+override FluentCMS.Schema.FieldValidationDescription.GetHashCode() -> int
+override FluentCMS.Schema.FieldValidationDescription.ToString() -> string!
 override FluentCMS.Schema.Ref<T>.GetHashCode() -> int
 override FluentCMS.Schema.Ref<T>.ToString() -> string!
 override FluentCMS.Schema.RefList<T>.Equals(object? obj) -> bool
 override FluentCMS.Schema.RefList<T>.GetHashCode() -> int
 override FluentCMS.Schema.RefList<T>.ToString() -> string!
+override FluentCMS.Schema.ReverseRelationDescription.Equals(object? obj) -> bool
+override FluentCMS.Schema.ReverseRelationDescription.GetHashCode() -> int
+override FluentCMS.Schema.ReverseRelationDescription.ToString() -> string!
 override FluentCMS.Schema.RichText.Equals(object? obj) -> bool
 override FluentCMS.Schema.RichText.GetHashCode() -> int
 override FluentCMS.Schema.RichText.ToString() -> string!
+override FluentCMS.Schema.SchemaDescription.Equals(object? obj) -> bool
+override FluentCMS.Schema.SchemaDescription.GetHashCode() -> int
+override FluentCMS.Schema.SchemaDescription.ToString() -> string!
+override FluentCMS.Schema.SchemaFieldDescription.Equals(object? obj) -> bool
+override FluentCMS.Schema.SchemaFieldDescription.GetHashCode() -> int
+override FluentCMS.Schema.SchemaFieldDescription.ToString() -> string!
+override FluentCMS.Schema.SchemaTypeDescription.Equals(object? obj) -> bool
+override FluentCMS.Schema.SchemaTypeDescription.GetHashCode() -> int
+override FluentCMS.Schema.SchemaTypeDescription.ToString() -> string!
 override FluentCMS.Sites.SiteId.GetHashCode() -> int
 override FluentCMS.Sites.SiteId.ToString() -> string!
 override FluentCMS.Sites.SiteRequest.Equals(object? obj) -> bool
@@ -1899,13 +2060,29 @@ static FluentCMS.Schema.BlockList.Create(System.ReadOnlySpan<object!> items) -> 
 static FluentCMS.Schema.BlockList.operator !=(FluentCMS.Schema.BlockList? left, FluentCMS.Schema.BlockList? right) -> bool
 static FluentCMS.Schema.BlockList.operator ==(FluentCMS.Schema.BlockList? left, FluentCMS.Schema.BlockList? right) -> bool
 static FluentCMS.Schema.Condition.Field(string! name) -> FluentCMS.Schema.ConditionField!
+static FluentCMS.Schema.ConditionDescription.operator !=(FluentCMS.Schema.ConditionDescription? left, FluentCMS.Schema.ConditionDescription? right) -> bool
+static FluentCMS.Schema.ConditionDescription.operator ==(FluentCMS.Schema.ConditionDescription? left, FluentCMS.Schema.ConditionDescription? right) -> bool
 static FluentCMS.Schema.ContentItem.ReservedFieldNames.get -> System.Collections.Generic.IReadOnlySet<string!>!
+static FluentCMS.Schema.FieldDisplayDescription.operator !=(FluentCMS.Schema.FieldDisplayDescription? left, FluentCMS.Schema.FieldDisplayDescription? right) -> bool
+static FluentCMS.Schema.FieldDisplayDescription.operator ==(FluentCMS.Schema.FieldDisplayDescription? left, FluentCMS.Schema.FieldDisplayDescription? right) -> bool
+static FluentCMS.Schema.FieldRelationDescription.operator !=(FluentCMS.Schema.FieldRelationDescription? left, FluentCMS.Schema.FieldRelationDescription? right) -> bool
+static FluentCMS.Schema.FieldRelationDescription.operator ==(FluentCMS.Schema.FieldRelationDescription? left, FluentCMS.Schema.FieldRelationDescription? right) -> bool
 static FluentCMS.Schema.FieldSettingDescriptor.operator !=(FluentCMS.Schema.FieldSettingDescriptor? left, FluentCMS.Schema.FieldSettingDescriptor? right) -> bool
 static FluentCMS.Schema.FieldSettingDescriptor.operator ==(FluentCMS.Schema.FieldSettingDescriptor? left, FluentCMS.Schema.FieldSettingDescriptor? right) -> bool
+static FluentCMS.Schema.FieldValidationDescription.operator !=(FluentCMS.Schema.FieldValidationDescription? left, FluentCMS.Schema.FieldValidationDescription? right) -> bool
+static FluentCMS.Schema.FieldValidationDescription.operator ==(FluentCMS.Schema.FieldValidationDescription? left, FluentCMS.Schema.FieldValidationDescription? right) -> bool
 static FluentCMS.Schema.RefList.Create<T>(System.ReadOnlySpan<FluentCMS.Schema.Ref<T!>> items) -> FluentCMS.Schema.RefList<T!>!
+static FluentCMS.Schema.ReverseRelationDescription.operator !=(FluentCMS.Schema.ReverseRelationDescription? left, FluentCMS.Schema.ReverseRelationDescription? right) -> bool
+static FluentCMS.Schema.ReverseRelationDescription.operator ==(FluentCMS.Schema.ReverseRelationDescription? left, FluentCMS.Schema.ReverseRelationDescription? right) -> bool
 static FluentCMS.Schema.RichText.Empty.get -> FluentCMS.Schema.RichText!
 static FluentCMS.Schema.RichText.operator !=(FluentCMS.Schema.RichText? left, FluentCMS.Schema.RichText? right) -> bool
 static FluentCMS.Schema.RichText.operator ==(FluentCMS.Schema.RichText? left, FluentCMS.Schema.RichText? right) -> bool
+static FluentCMS.Schema.SchemaDescription.operator !=(FluentCMS.Schema.SchemaDescription? left, FluentCMS.Schema.SchemaDescription? right) -> bool
+static FluentCMS.Schema.SchemaDescription.operator ==(FluentCMS.Schema.SchemaDescription? left, FluentCMS.Schema.SchemaDescription? right) -> bool
+static FluentCMS.Schema.SchemaFieldDescription.operator !=(FluentCMS.Schema.SchemaFieldDescription? left, FluentCMS.Schema.SchemaFieldDescription? right) -> bool
+static FluentCMS.Schema.SchemaFieldDescription.operator ==(FluentCMS.Schema.SchemaFieldDescription? left, FluentCMS.Schema.SchemaFieldDescription? right) -> bool
+static FluentCMS.Schema.SchemaTypeDescription.operator !=(FluentCMS.Schema.SchemaTypeDescription? left, FluentCMS.Schema.SchemaTypeDescription? right) -> bool
+static FluentCMS.Schema.SchemaTypeDescription.operator ==(FluentCMS.Schema.SchemaTypeDescription? left, FluentCMS.Schema.SchemaTypeDescription? right) -> bool
 static FluentCMS.Sites.SiteId.Empty.get -> FluentCMS.Sites.SiteId
 static FluentCMS.Sites.SiteId.operator !=(FluentCMS.Sites.SiteId left, FluentCMS.Sites.SiteId right) -> bool
 static FluentCMS.Sites.SiteId.operator ==(FluentCMS.Sites.SiteId left, FluentCMS.Sites.SiteId right) -> bool
