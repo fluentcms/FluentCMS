@@ -48,9 +48,18 @@ internal static class IdentityRegistration
 
         AuthorizationServerRegistration.Add(services, clients);
 
+        services.AddFluentCmsOptions(EmailOptions.Section, HostErrorCodes.InvalidOption, new EmailOptions(), email => email.Validate());
         services.TryAddSingleton<IEmailSender>(provider =>
-            provider.GetService<IHostEnvironment>()?.IsDevelopment() == true
+        {
+            var email = provider.GetRequiredService<EmailOptions>();
+            if (email.UsesSmtp)
+            {
+                return new SmtpEmailSender(email);
+            }
+
+            return provider.GetService<IHostEnvironment>()?.IsDevelopment() == true
                 ? new LogEmailSender(provider.GetRequiredService<ILogger<LogEmailSender>>())
-                : new UnconfiguredEmailSender());
+                : new UnconfiguredEmailSender();
+        });
     }
 }

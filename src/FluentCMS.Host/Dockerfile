@@ -1,0 +1,43 @@
+# syntax=docker/dockerfile:1
+# The reference host. Build from the repository root, for one platform or both:
+#   docker build -f src/FluentCMS.Host/Dockerfile -t fluentcms .
+#   docker buildx build -f src/FluentCMS.Host/Dockerfile --platform linux/amd64,linux/arm64 -t fluentcms .
+
+# The SDK runs on the build machine and compiles for the target, so no emulation is needed for the other architecture.
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+ARG TARGETARCH
+WORKDIR /src
+
+COPY global.json Directory.Build.props Directory.Packages.props ./
+COPY docs/resources/icon.png docs/resources/
+COPY src/FluentCMS.Sdk/FluentCMS.Sdk.csproj src/FluentCMS.Sdk/
+COPY src/FluentCMS.Core/FluentCMS.Core.csproj src/FluentCMS.Core/
+COPY src/FluentCMS.Data.PostgreSql/FluentCMS.Data.PostgreSql.csproj src/FluentCMS.Data.PostgreSql/
+COPY src/FluentCMS.Data.Sqlite/FluentCMS.Data.Sqlite.csproj src/FluentCMS.Data.Sqlite/
+COPY src/FluentCMS.Data.SqlServer/FluentCMS.Data.SqlServer.csproj src/FluentCMS.Data.SqlServer/
+COPY samples/Blog/Blog.csproj samples/Blog/
+COPY src/FluentCMS.Host/FluentCMS.Host.csproj src/FluentCMS.Host/
+RUN dotnet restore src/FluentCMS.Host/FluentCMS.Host.csproj -a $TARGETARCH
+
+COPY src/ src/
+COPY samples/Blog/ samples/Blog/
+RUN dotnet publish src/FluentCMS.Host/FluentCMS.Host.csproj -c Release -a $TARGETARCH --no-restore -o /app -p:UseAppHost=false \
+    && mkdir /data
+
+# Chiseled: no shell, no package manager, a non-root user. The extra variant adds ICU and time zone data, which
+# localized content and schedules in a time zone need.
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled-extra
+WORKDIR /app
+COPY --from=build /app .
+COPY --from=build --chown=$APP_UID:$APP_UID /data /data
+
+# SQLite in the /data volume with no configuration. The generated signing key is accepted so that the image starts
+# with nothing set; the startup report lists it until a certificate is configured.
+ENV ConnectionStrings__FluentCms="Data Source=/data/fluentcms.db" \
+    FluentCms__Security__AllowGeneratedSigningKey=true
+VOLUME /data
+EXPOSE 8080
+USER $APP_UID
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 CMD ["dotnet", "/app/FluentCMS.Host.dll", "--probe"]
+ENTRYPOINT ["dotnet", "/app/FluentCMS.Host.dll"]

@@ -204,6 +204,13 @@ public static class ErrorCodeRegistry
         new(LocaleErrorCodes.LocaleNotFound, StatusCodes.Status404NotFound, "Locale not found"),
         new(LocaleErrorCodes.LocaleInUse, StatusCodes.Status409Conflict, "Locale in use"),
         new(LocaleErrorCodes.LocaleExists, StatusCodes.Status409Conflict, "Locale exists"),
+
+        // 315x the reference host (FluentCMS.Host, which this assembly does not reference, so its codes are written out) and the schema sync it allows, found when it starts
+        Startup("FCMS3150", "Unknown data provider"),
+        Startup("FCMS3151", "Connection string missing"),
+        Startup("FCMS3152", "Unknown sample"),
+        Startup("FCMS3153", "Schema file not found"),
+        Startup(StorageErrorCodes.SchemaSyncNotSupported, "Schema sync not supported"),
     ];
 
     private static readonly FrozenDictionary<string, ErrorCodeInfo> byCode = All.ToFrozenDictionary(info => info.Code);

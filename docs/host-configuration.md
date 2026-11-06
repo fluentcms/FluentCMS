@@ -1,5 +1,7 @@
 # Host configuration
 
+To run FluentCMS without writing a host, use the reference host and its image; see [Run with Docker](docker.md).
+
 A host registers the engine with `AddFluentCms()` and puts its HTTP surfaces on the routes with `MapFluentCms()`:
 
 ```csharp
@@ -31,6 +33,7 @@ Everything is read from the `FluentCms` section of the host's configuration, so 
 | `FluentCms:Database` | `MigrateOnStartup`, `SchemaSync` (see [content migrations](content-migrations.md)) |
 | `FluentCms:Security` | `AllowGeneratedSigningKey`, `SigningCertificate:Path`, `SigningCertificate:Password`, `Cors:Delivery:AllowedOrigins`, `Cors:Management:AllowedOrigins`, `ReferrerPolicy`, `FrameAncestors` |
 | `FluentCms:Users` | `Password`, `Lockout`, `InvitationLifetime` (7 days), `PasswordResetLifetime` (1 hour) (see [hosted pages](#hosted-pages)) |
+| `FluentCms:Email` | `Smtp:Host`, `Smtp:Port` (587), `Smtp:Security` (`StartTls`, `SslOnConnect` or `None`), `Smtp:UserName`, `Smtp:Password`, `Smtp:From` (see [email](#email)) |
 | `FluentCms:Clients` | `AdminClientId`, and `Applications:{clientId}` with `DisplayName`, `Secret`, `RedirectUris`, `PostLogoutRedirectUris`, `Scopes`, `Roles`, `RequireConsent` (see [authorization server](#authorization-server)) |
 | `FluentCms:ReverseProxy` | `PathBase`, `ForwardedHeaders`, `HttpsRedirection`, `Hsts` (see [reverse proxy](reverse-proxy.md)) |
 | `FluentCms:RateLimits` | `Delivery:PermitLimit`, `Delivery:MaxKeyLimit`, `Management:PermitLimit`, `Auth:PermitLimit`, `PreAuth:PermitLimit` |
@@ -105,7 +108,7 @@ The server keeps one copy for every request without credentials and one per API 
 
 ## Startup report and diagnostics
 
-Once the migrations have run, the host logs one `StartupReport` (event id 1100, Information) and a warning per insecure default (event id 1101). The report is a public type of the SDK (`FluentCMS.Diagnostics.StartupReport`). It names the environment, the FluentCMS and data provider versions, the FluentCMS assemblies in the process, the plugins (none until the plugin host exists), the pending migrations of the system, plugin and content streams, the schema hash in code against the one last applied, and the insecure defaults: the refusals of the production checks below even in an environment that does not enforce them, a generated signing key that `AllowGeneratedSigningKey` accepted, the Development email sender, the HTTPS redirect being off in Production, and forwarded headers trusted from every address. It holds no connection string, key or password. If the report cannot be made, the log says so (event id 1102, with the scrubbed message) and the report is reduced to what needs no database, with `failure` naming the exception type; a request that arrives before any report exists gets a 503 (`FCMS3106`).
+Once the migrations have run, the host logs one `StartupReport` (event id 1100, Information) and a warning per insecure default (event id 1101). The report is a public type of the SDK (`FluentCMS.Diagnostics.StartupReport`). It names the environment, the FluentCMS and data provider versions, the FluentCMS assemblies in the process, the plugins (none until the plugin host exists), the pending migrations of the system, plugin and content streams, the schema hash in code against the one last applied, and the insecure defaults: the refusals of the production checks below even in an environment that does not enforce them, a generated signing key that `AllowGeneratedSigningKey` accepted, the Development email sender, the HTTPS redirect being off in Production, `AllowedHosts` left at `*` or unset in Production, schema sync running outside Development (see [content migrations](content-migrations.md#schema-sync)), and forwarded headers trusted from every address. It holds no connection string, key or password. If the report cannot be made, the log says so (event id 1102, with the scrubbed message) and the report is reduced to what needs no database, with `failure` naming the exception type; a request that arrives before any report exists gets a 503 (`FCMS3106`).
 
 `GET /api/management/v1/system/diagnostics` returns the same report as JSON. It needs the instance-wide permission `system.read` (a Super Admin has it), which a role of one site, a grant limited to sites and a key bound to sites do not reach, and which a Delivery or Preview key never gets because it lacks the management scope.
 
@@ -148,3 +151,17 @@ The pages of the authorization server are Razor Pages under `/account`: login, l
 Branding is the settings area `branding` (`BrandingSettings` in `FluentCMS.Core.Api.Account`): `Name` (default `FluentCMS`), `LogoUrl` (an https URL or a path of the host, such as `/media/logo.svg`), and the hex colours `PrimaryColor`, `BackgroundColor` and `TextColor`. The pages read the instance defaults, which need `settings.branding.manage` to change. To change more than that, override a page or the layout: add a Razor page at the same path to the host project, such as `Areas/FluentCms/Pages/Account/Login.cshtml` or `Areas/FluentCms/Pages/Shared/_Layout.cshtml`, with `@model FluentCMS.Core.Api.Account.LoginModel` for a page, so that it keeps the page's behaviour. A page of the host wins over the one of the same path in FluentCMS.
 
 A user who forgets the password gets a link by email that works once and for `FluentCms:Users:PasswordResetLifetime`. The page answers the same whether or not the address belongs to a user. The link, like the issuer, is built from the request's scheme, host and path base, so set `AllowedHosts` to the host names of the instance in production: otherwise a request with a forged `Host` header gets a link to that host sent to a real user. An invitation links to `/account/accept-invitation`. Logins, failed and successful, are `user.login_failed` and `user.login_succeeded` activity rows with the client address.
+
+## Email
+
+Invitations and password resets go through `IEmailSender`. In Development the default writes each message, link included, to the log and the startup report lists `development-email-sender`; anywhere else it refuses to send (`FCMS3008`) until a sender is set up. Setting `FluentCms:Email:Smtp:Host` sends through that SMTP server in every environment, Development included:
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `Smtp:Host` | none | The SMTP server. Without it, the defaults above apply. |
+| `Smtp:Port` | `587` | Its port. |
+| `Smtp:Security` | `StartTls` | `StartTls` refuses a server that does not offer TLS; `SslOnConnect` is TLS from the first byte, as on port 465; `None` sends in the clear and is for a relay on a trusted network only. |
+| `Smtp:UserName`, `Smtp:Password` | none | The account to sign in with. Without a user name the server is not asked to authenticate. Keep the password in a secret store. |
+| `Smtp:From` | none, required with a host | The sender, such as `cms@example.com` or `FluentCMS <cms@example.com>`. |
+
+A missing or invalid `From` stops the host with `FCMS1101`. A host or a plugin that registers its own `IEmailSender` replaces all of this.

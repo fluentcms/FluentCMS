@@ -12,12 +12,21 @@
   <ItemGroup>
     <ProjectReference Include="../../src/FluentCMS.Sdk/FluentCMS.Sdk.csproj" />
     <ProjectReference Include="../../src/FluentCMS.Core/FluentCMS.Core.csproj" />
-    <!-- Here for their assemblies, which the content rules scan: the host references the providers and the plugins. -->
+    <!-- Here for their assemblies, which the content rules scan: the host references the providers. -->
     <ProjectReference Include="../../src/FluentCMS.Analyzers/FluentCMS.Analyzers.csproj" />
     <ProjectReference Include="../../src/FluentCMS.Cli/FluentCMS.Cli.csproj" />
     <ProjectReference Include="../../src/FluentCMS.Generators/FluentCMS.Generators.csproj" />
     <ProjectReference Include="../../src/FluentCMS.Host/FluentCMS.Host.csproj" />
     <ProjectReference Include="../../src/FluentCMS.Testing/FluentCMS.Testing.csproj" />
+    <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.AiAssist/FluentCMS.Plugins.AiAssist.csproj" />
+    <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.GraphQL/FluentCMS.Plugins.GraphQL.csproj" />
+    <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.Mcp/FluentCMS.Plugins.Mcp.csproj" />
+    <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.Media/FluentCMS.Plugins.Media.csproj" />
+    <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.Media.AzureBlob/FluentCMS.Plugins.Media.AzureBlob.csproj" />
+    <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.Media.S3/FluentCMS.Plugins.Media.S3.csproj" />
+    <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.MultiSite/FluentCMS.Plugins.MultiSite.csproj" />
+    <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.Search/FluentCMS.Plugins.Search.csproj" />
+    <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.Webhooks/FluentCMS.Plugins.Webhooks.csproj" />
   </ItemGroup>
 
 </Project>

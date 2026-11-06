@@ -93,12 +93,12 @@ public sealed class MigrationRunner(
     internal Task<SchemaStatus> GetSchemaStatusAsync(CancellationToken cancellationToken = default) => _history.StatusAsync(schema, cancellationToken);
 
     // Applies the additive changes a schema needs and reports the rest. Startup calls this for the host's schema;
-    // passing another applies a changed schema without a restart. Refuses outside Development on SQLite.
+    // passing another applies a changed schema without a restart. Refuses where schema sync is not Auto.
     public Task<SchemaSyncReport> SyncContentSchemaAsync(SchemaModel? changedSchema = null, CancellationToken cancellationToken = default)
     {
         if (ResolveOptions().SchemaSync != SchemaSyncMode.Auto)
         {
-            throw new InvalidOperationException($"Schema sync needs {DatabaseOptions.SchemaSyncKey} = Auto, in Development on SQLite.");
+            throw new InvalidOperationException($"Schema sync needs {DatabaseOptions.SchemaSyncKey} = Auto, on SQLite in Development or with AllowSchemaSyncOutsideDevelopment.");
         }
 
         return SyncAsync(changedSchema ?? schema, cancellationToken);
