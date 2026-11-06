@@ -1,5 +1,6 @@
 using System.Text.Json.Nodes;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Identity.ApiKeys;
 using FluentCMS.Schema;
 using Microsoft.AspNetCore.OpenApi;
@@ -9,7 +10,7 @@ namespace FluentCMS.Core.Api.OpenApi;
 
 // Adds what the API explorer cannot see: the schemas of the live schema, the security schemes, the query grammar as
 // parameters, and the content routes once per content type in place of their {type} form.
-internal sealed class FluentCmsDocumentTransformer(SchemaModel schema, OpenApiDocumentOptions options) : IOpenApiDocumentTransformer
+internal sealed class FluentCmsDocumentTransformer(SchemaModel schema, OpenApiDocumentOptions options, PublicOrigin origin) : IOpenApiDocumentTransformer
 {
     public const string OAuth = "oauth2";
     public const string ApiKey = "apiKey";
@@ -21,6 +22,13 @@ internal sealed class FluentCmsDocumentTransformer(SchemaModel schema, OpenApiDo
 
         var schemas = new ContentSchemas(schema, options);
         var paths = new ContentPaths(schema, schemas);
+
+        // With a public origin the server, and so the authorization server's URLs, are at it as the issuer is, so a forged
+        // Host cannot name itself there; without one they follow the request.
+        if (origin.Base is { } publicBase)
+        {
+            document.Servers = [new OpenApiServer { Url = publicBase }];
+        }
 
         document.Info ??= new OpenApiInfo();
         document.Info.Title = "FluentCMS";
