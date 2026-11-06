@@ -749,6 +749,31 @@ namespace FluentCMS.Data.SqlServer.Migrations
                     b.ToTable("cms_job_attempt", (string)null);
                 });
 
+            modelBuilder.Entity("FluentCMS.Core.Storage.Entities.LockRow", b =>
+                {
+                    b.Property<string>("Name")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)")
+                        .HasColumnName("name");
+
+                    b.Property<DateTimeOffset?>("AcquiredAt")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("acquired_at");
+
+                    b.Property<DateTimeOffset?>("LeaseUntil")
+                        .HasColumnType("datetimeoffset")
+                        .HasColumnName("lease_until");
+
+                    b.Property<string>("Owner")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)")
+                        .HasColumnName("owner");
+
+                    b.HasKey("Name");
+
+                    b.ToTable("cms_lock", (string)null);
+                });
+
             modelBuilder.Entity("FluentCMS.Core.Storage.Entities.OutboxMessage", b =>
                 {
                     b.Property<Guid>("Id")

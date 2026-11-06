@@ -29,6 +29,7 @@ using FluentCMS.Core.Storage;
 using FluentCMS.Events;
 using FluentCMS.Jobs;
 using FluentCMS.Localization;
+using FluentCMS.Providers;
 using FluentCMS.Schema;
 using FluentCMS.Seeding;
 using FluentCMS.Settings;
@@ -126,6 +127,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddScoped<ContentQueryEngine>();
 
         services.TryAddSingleton(TimeProvider.System);
+        services.TryAddSingleton<IDistributedLock, DatabaseDistributedLock>();
         services.TryAddScoped<ISiteResolver, SiteResolver>();
         services.TryAddScoped<ILocaleResolver, LocaleResolver>();
         services.AddScoped<LocaleRegistry>();

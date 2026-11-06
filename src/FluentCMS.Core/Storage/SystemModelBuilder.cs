@@ -53,6 +53,7 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         modelBuilder.Entity<Job>(MapJob);
         modelBuilder.Entity<JobAttempt>(MapJobAttempt);
         modelBuilder.Entity<RecurringJob>(MapRecurringJob);
+        modelBuilder.Entity<LockRow>(MapLock);
         modelBuilder.Entity<OutboxMessage>(MapOutbox);
         modelBuilder.Entity<ActivityRow>(MapActivity);
         modelBuilder.Entity<ScheduleRow>(MapSchedule);
@@ -395,6 +396,15 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         entity.Property(job => job.Type).HasMaxLength(JobTypeLength);
         entity.Property(job => job.Queue).HasMaxLength(QueueLength);
         conventions.ConfigureJsonColumn(entity, entity.Property(job => job.Payload));
+    }
+
+    private static void MapLock(EntityTypeBuilder<LockRow> entity)
+    {
+        entity.ToTable(StorageNames.Lock);
+        MapColumnNames(entity);
+        entity.HasKey(row => row.Name);
+        entity.Property(row => row.Name).HasMaxLength(LockRow.NameMaxLength);
+        entity.Property(row => row.Owner).HasMaxLength(LeaseOwnerLength);
     }
 
     private void MapOutbox(EntityTypeBuilder<OutboxMessage> entity)
