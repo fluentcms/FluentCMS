@@ -127,6 +127,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddScoped<SiteManager>();
         services.AddScoped<RequestBridge>();
         services.AddDeliveryApi(builder.DeliveryCache);
+        services.AddManagementContentApi();
         services.AddFluentCmsHealth();
         services.AddSystemApi();
 
