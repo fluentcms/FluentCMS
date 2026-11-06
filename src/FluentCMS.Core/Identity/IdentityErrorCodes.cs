@@ -21,4 +21,9 @@ internal static class IdentityErrorCodes
     public const string TwoFactorNotEnabled = "FCMS3061";
     public const string NoAuthenticator = "FCMS3062";
     public const string InvalidTwoFactorCode = "FCMS3063";
+    public const string InvalidSsoOptions = "FCMS3070";
+    public const string SsoRoleNotFound = "FCMS3071";
+    public const string SsoNoEmail = "FCMS3072";
+    public const string SsoEmailTaken = "FCMS3073";
+    public const string SsoProvisioningFailed = "FCMS3074";
 }

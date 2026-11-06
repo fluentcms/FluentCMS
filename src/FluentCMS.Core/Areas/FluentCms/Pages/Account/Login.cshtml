@@ -11,19 +11,26 @@
 {
     <p class="error">@Model.Problem</p>
 }
-<form method="post">
+@if (Model.LocalLogin)
+{
+    <form method="post">
+        <div asp-validation-summary="ModelOnly" class="error"></div>
+        <input type="hidden" asp-for="ReturnUrl">
+        <label asp-for="Input.UserName"></label>
+        <input asp-for="Input.UserName" type="text" autocomplete="username" autofocus>
+        <span asp-validation-for="Input.UserName"></span>
+        <label asp-for="Input.Password"></label>
+        <input asp-for="Input.Password" autocomplete="current-password">
+        <span asp-validation-for="Input.Password"></span>
+        <label class="check"><input asp-for="Input.RememberMe"> @Html.DisplayNameFor(model => model.Input.RememberMe)</label>
+        <button type="submit">Sign in</button>
+    </form>
+    <p><a asp-page="./ForgotPassword">Forgot your password?</a></p>
+}
+else
+{
     <div asp-validation-summary="ModelOnly" class="error"></div>
-    <input type="hidden" asp-for="ReturnUrl">
-    <label asp-for="Input.UserName"></label>
-    <input asp-for="Input.UserName" type="text" autocomplete="username" autofocus>
-    <span asp-validation-for="Input.UserName"></span>
-    <label asp-for="Input.Password"></label>
-    <input asp-for="Input.Password" autocomplete="current-password">
-    <span asp-validation-for="Input.Password"></span>
-    <label class="check"><input asp-for="Input.RememberMe"> @Html.DisplayNameFor(model => model.Input.RememberMe)</label>
-    <button type="submit">Sign in</button>
-</form>
-<p><a asp-page="./ForgotPassword">Forgot your password?</a></p>
+}
 @if (Model.ExternalProviders.Count > 0)
 {
     <form method="post" asp-page-handler="External">

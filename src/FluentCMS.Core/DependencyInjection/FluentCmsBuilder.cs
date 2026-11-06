@@ -41,6 +41,8 @@ public sealed class FluentCmsBuilder
 
     public ClientOptions Clients { get; } = new();
 
+    public SsoOptions Sso { get; } = new();
+
     public ReverseProxyOptions ReverseProxy { get; } = new();
 
     public DeliveryCacheOptions DeliveryCache { get; } = new();

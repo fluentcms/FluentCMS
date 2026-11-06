@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using FluentCMS.Core.Identity;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
 
@@ -20,6 +21,9 @@ public sealed class LoginModel : AccountPageModel
     public string? Status { get; set; }
 
     public IReadOnlyList<AuthenticationScheme> ExternalProviders { get; private set; } = [];
+
+    // False with cms.Sso.DisableLocalLogin: the page offers the external providers only.
+    public bool LocalLogin => !Service<SsoOptions>().DisableLocalLogin;
 
     public string? Notice => Status switch
     {

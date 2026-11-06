@@ -187,6 +187,13 @@ public static class ErrorCodeRegistry
         new(IdentityErrorCodes.NoAuthenticator, StatusCodes.Status409Conflict, "No authenticator enrolled"),
         Invalid(IdentityErrorCodes.InvalidTwoFactorCode, "Invalid two-factor code"),
 
+        // Admin SSO: options found when the host starts, and refusals of a sign-in that the hosted pages log
+        Startup(IdentityErrorCodes.InvalidSsoOptions, "Invalid single sign-on options"),
+        Startup(IdentityErrorCodes.SsoRoleNotFound, "Single sign-on role not found"),
+        Startup(IdentityErrorCodes.SsoNoEmail, "No email address from the provider"),
+        Startup(IdentityErrorCodes.SsoEmailTaken, "Email address of an unlinked user"),
+        Startup(IdentityErrorCodes.SsoProvisioningFailed, "Single sign-on user not created"),
+
         // 31xx HTTP
         new(ApiErrorCodes.BadRequest, StatusCodes.Status400BadRequest, "Bad request"),
         new(ApiErrorCodes.Unauthorized, StatusCodes.Status401Unauthorized, "Authentication required"),
