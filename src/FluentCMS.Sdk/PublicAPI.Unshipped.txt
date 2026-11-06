@@ -779,6 +779,26 @@ FluentCMS.Events.UserDeactivatedEvent.UserId.get -> System.Guid
 FluentCMS.Events.UserDeactivatedEvent.UserId.init -> void
 FluentCMS.Events.UserDeactivatedEvent.UserName.get -> string!
 FluentCMS.Events.UserDeactivatedEvent.UserName.init -> void
+FluentCMS.Events.UserLoginLinkedEvent
+FluentCMS.Events.UserLoginLinkedEvent.Deconstruct(out System.Guid UserId, out string! UserName, out string! LoginProvider) -> void
+FluentCMS.Events.UserLoginLinkedEvent.Equals(FluentCMS.Events.UserLoginLinkedEvent? other) -> bool
+FluentCMS.Events.UserLoginLinkedEvent.LoginProvider.get -> string!
+FluentCMS.Events.UserLoginLinkedEvent.LoginProvider.init -> void
+FluentCMS.Events.UserLoginLinkedEvent.UserLoginLinkedEvent(System.Guid UserId, string! UserName, string! LoginProvider) -> void
+FluentCMS.Events.UserLoginLinkedEvent.UserId.get -> System.Guid
+FluentCMS.Events.UserLoginLinkedEvent.UserId.init -> void
+FluentCMS.Events.UserLoginLinkedEvent.UserName.get -> string!
+FluentCMS.Events.UserLoginLinkedEvent.UserName.init -> void
+FluentCMS.Events.UserLoginUnlinkedEvent
+FluentCMS.Events.UserLoginUnlinkedEvent.Deconstruct(out System.Guid UserId, out string! UserName, out string! LoginProvider) -> void
+FluentCMS.Events.UserLoginUnlinkedEvent.Equals(FluentCMS.Events.UserLoginUnlinkedEvent? other) -> bool
+FluentCMS.Events.UserLoginUnlinkedEvent.LoginProvider.get -> string!
+FluentCMS.Events.UserLoginUnlinkedEvent.LoginProvider.init -> void
+FluentCMS.Events.UserLoginUnlinkedEvent.UserLoginUnlinkedEvent(System.Guid UserId, string! UserName, string! LoginProvider) -> void
+FluentCMS.Events.UserLoginUnlinkedEvent.UserId.get -> System.Guid
+FluentCMS.Events.UserLoginUnlinkedEvent.UserId.init -> void
+FluentCMS.Events.UserLoginUnlinkedEvent.UserName.get -> string!
+FluentCMS.Events.UserLoginUnlinkedEvent.UserName.init -> void
 FluentCMS.Events.UserRoleChangedEvent
 FluentCMS.Events.UserRoleChangedEvent.Added.get -> System.Collections.Generic.IReadOnlyList<System.Guid>!
 FluentCMS.Events.UserRoleChangedEvent.Added.init -> void
@@ -1844,6 +1864,14 @@ override FluentCMS.Events.UserDeactivatedEvent.<Clone>$() -> FluentCMS.Events.Us
 override FluentCMS.Events.UserDeactivatedEvent.Equals(object? obj) -> bool
 override FluentCMS.Events.UserDeactivatedEvent.GetHashCode() -> int
 override FluentCMS.Events.UserDeactivatedEvent.ToString() -> string!
+override FluentCMS.Events.UserLoginLinkedEvent.<Clone>$() -> FluentCMS.Events.UserLoginLinkedEvent!
+override FluentCMS.Events.UserLoginLinkedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.UserLoginLinkedEvent.GetHashCode() -> int
+override FluentCMS.Events.UserLoginLinkedEvent.ToString() -> string!
+override FluentCMS.Events.UserLoginUnlinkedEvent.<Clone>$() -> FluentCMS.Events.UserLoginUnlinkedEvent!
+override FluentCMS.Events.UserLoginUnlinkedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.UserLoginUnlinkedEvent.GetHashCode() -> int
+override FluentCMS.Events.UserLoginUnlinkedEvent.ToString() -> string!
 override FluentCMS.Events.UserRoleChangedEvent.<Clone>$() -> FluentCMS.Events.UserRoleChangedEvent!
 override FluentCMS.Events.UserRoleChangedEvent.Equals(object? obj) -> bool
 override FluentCMS.Events.UserRoleChangedEvent.GetHashCode() -> int
@@ -1963,6 +1991,8 @@ override sealed FluentCMS.Events.SiteCreatedEvent.Equals(FluentCMS.Events.CmsEve
 override sealed FluentCMS.Events.SiteUpdatedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
 override sealed FluentCMS.Events.UserCreatedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
 override sealed FluentCMS.Events.UserDeactivatedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+override sealed FluentCMS.Events.UserLoginLinkedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+override sealed FluentCMS.Events.UserLoginUnlinkedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
 override sealed FluentCMS.Events.UserRoleChangedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
 override sealed FluentCMS.Events.UserUpdatedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
 static FluentCMS.Activity.ActivityEntry.operator !=(FluentCMS.Activity.ActivityEntry? left, FluentCMS.Activity.ActivityEntry? right) -> bool
@@ -2079,6 +2109,10 @@ static FluentCMS.Events.UserCreatedEvent.operator !=(FluentCMS.Events.UserCreate
 static FluentCMS.Events.UserCreatedEvent.operator ==(FluentCMS.Events.UserCreatedEvent? left, FluentCMS.Events.UserCreatedEvent? right) -> bool
 static FluentCMS.Events.UserDeactivatedEvent.operator !=(FluentCMS.Events.UserDeactivatedEvent? left, FluentCMS.Events.UserDeactivatedEvent? right) -> bool
 static FluentCMS.Events.UserDeactivatedEvent.operator ==(FluentCMS.Events.UserDeactivatedEvent? left, FluentCMS.Events.UserDeactivatedEvent? right) -> bool
+static FluentCMS.Events.UserLoginLinkedEvent.operator !=(FluentCMS.Events.UserLoginLinkedEvent? left, FluentCMS.Events.UserLoginLinkedEvent? right) -> bool
+static FluentCMS.Events.UserLoginLinkedEvent.operator ==(FluentCMS.Events.UserLoginLinkedEvent? left, FluentCMS.Events.UserLoginLinkedEvent? right) -> bool
+static FluentCMS.Events.UserLoginUnlinkedEvent.operator !=(FluentCMS.Events.UserLoginUnlinkedEvent? left, FluentCMS.Events.UserLoginUnlinkedEvent? right) -> bool
+static FluentCMS.Events.UserLoginUnlinkedEvent.operator ==(FluentCMS.Events.UserLoginUnlinkedEvent? left, FluentCMS.Events.UserLoginUnlinkedEvent? right) -> bool
 static FluentCMS.Events.UserRoleChangedEvent.operator !=(FluentCMS.Events.UserRoleChangedEvent? left, FluentCMS.Events.UserRoleChangedEvent? right) -> bool
 static FluentCMS.Events.UserRoleChangedEvent.operator ==(FluentCMS.Events.UserRoleChangedEvent? left, FluentCMS.Events.UserRoleChangedEvent? right) -> bool
 static FluentCMS.Events.UserUpdatedEvent.operator !=(FluentCMS.Events.UserUpdatedEvent? left, FluentCMS.Events.UserUpdatedEvent? right) -> bool

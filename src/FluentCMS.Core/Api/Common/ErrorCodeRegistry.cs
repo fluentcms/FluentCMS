@@ -194,6 +194,12 @@ public static class ErrorCodeRegistry
         Startup(IdentityErrorCodes.SsoEmailTaken, "Email address of an unlinked user"),
         Startup(IdentityErrorCodes.SsoProvisioningFailed, "Single sign-on user not created"),
 
+        // External logins: their removal over the Management API, and the invitations the hosted pages accept
+        new(IdentityErrorCodes.LastWayIn, StatusCodes.Status409Conflict, "Last way to sign in"),
+        new(IdentityErrorCodes.LoginNotFound, StatusCodes.Status404NotFound, "External login not found"),
+        Invalid(IdentityErrorCodes.InvitationLoginRefused, "External login refused for the invitation"),
+        Invalid(IdentityErrorCodes.LocalLoginDisabled, "Password sign-in is off"),
+
         // 31xx HTTP
         new(ApiErrorCodes.BadRequest, StatusCodes.Status400BadRequest, "Bad request"),
         new(ApiErrorCodes.Unauthorized, StatusCodes.Status401Unauthorized, "Authentication required"),

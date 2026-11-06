@@ -13,7 +13,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Core.Api.Management;
 
-// The identity group of spec 4.10: users and their sessions, invitations, roles, the permission catalogue and API keys. The
+// The identity group of spec 4.10: users with their sessions and external logins, invitations, roles, the permission
+// catalogue and API keys. The
 // routes read the request and the services decide who may do what (users.manage, roles.manage, apikeys.manage, and no
 // grant above the caller's own reach).
 internal static class IdentityEndpoints
@@ -35,6 +36,8 @@ internal static class IdentityEndpoints
         users.MapDelete("/{id}/roles/{roleId}", RemoveRoleAsync);
         users.MapGet("/{id}/sessions", SessionsAsync);
         users.MapDelete("/{id}/sessions/{sessionId}", RevokeSessionAsync);
+        users.MapGet("/{id}/logins", LoginsAsync);
+        users.MapDelete("/{id}/logins/{provider}", RemoveLoginAsync);
 
         var invitations = management.MapGroup("/invitations").WithFluentCmsOperation(Origin.Api).RequireManagementScope();
         invitations.MapGet("", ListInvitationsAsync);
@@ -119,6 +122,19 @@ internal static class IdentityEndpoints
         ManagementQuery.Only(httpContext.Request);
         var (user, session) = (ManagementQuery.RouteId(id, nameof(id)), ManagementQuery.RouteId(sessionId, nameof(sessionId)));
         await users.RevokeSessionAsync(user, session, httpContext.RequestAborted);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> LoginsAsync(string id, HttpContext httpContext, [FromServices] UserAdministration users)
+    {
+        ManagementQuery.Only(httpContext.Request);
+        return AdminJson.Items(await users.LoginsAsync(ManagementQuery.RouteId(id, nameof(id)), httpContext.RequestAborted));
+    }
+
+    private static async Task<IResult> RemoveLoginAsync(string id, string provider, HttpContext httpContext, [FromServices] UserAdministration users)
+    {
+        ManagementQuery.Only(httpContext.Request);
+        await users.RemoveLoginAsync(ManagementQuery.RouteId(id, nameof(id)), provider, httpContext.RequestAborted);
         return Results.NoContent();
     }
 

@@ -26,4 +26,8 @@ internal static class IdentityErrorCodes
     public const string SsoNoEmail = "FCMS3072";
     public const string SsoEmailTaken = "FCMS3073";
     public const string SsoProvisioningFailed = "FCMS3074";
+    public const string LastWayIn = "FCMS3090";
+    public const string LoginNotFound = "FCMS3091";
+    public const string InvitationLoginRefused = "FCMS3092";
+    public const string LocalLoginDisabled = "FCMS3093";
 }

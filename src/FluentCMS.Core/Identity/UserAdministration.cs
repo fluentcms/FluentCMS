@@ -35,14 +35,16 @@ internal sealed record UserChange
 internal sealed record UserPage(IReadOnlyList<UserInfo> Items, long Total, int Page, int PageSize);
 
 // Admin users for the Management API. A user belongs to no site, so everything here needs users.manage for the instance.
-// Changing a user, deactivating or reactivating it or ending its sessions also needs every grant of the user's roles, so no
-// one acts on a user who can do more; a role is given or taken only by one who holds all it grants.
+// Changing a user, deactivating or reactivating it, ending its sessions or removing its external logins also needs every
+// grant of the user's roles, so no one acts on a user who can do more; a role is given or taken only by one who holds all it
+// grants.
 internal sealed class UserAdministration(
     CmsUserManager users,
     SystemDbContext context,
     ManagementAuthority authority,
     RoleService roles,
     UserSessions sessions,
+    UserLogins logins,
     IOperationContextAccessor accessor)
 {
     public async Task<UserPage> ListAsync(string? search, int page, int pageSize, CancellationToken cancellationToken)
@@ -157,6 +159,15 @@ internal sealed class UserAdministration(
             throw UserViews.SessionNotFound(sessionId);
         }
     }
+
+    public async Task<IReadOnlyList<UserLogin>> LoginsAsync(Guid id, CancellationToken cancellationToken)
+    {
+        await RequireAsync(cancellationToken);
+        return await logins.ListAsync(await FindAsync(id));
+    }
+
+    public async Task RemoveLoginAsync(Guid id, string provider, CancellationToken cancellationToken) =>
+        await logins.RemoveAsync(await TargetAsync(id, cancellationToken), provider, cancellationToken);
 
     private ValueTask RequireAsync(CancellationToken cancellationToken) =>
         authority.RequireAsync(CorePermissions.UsersManage, site: null, cancellationToken);

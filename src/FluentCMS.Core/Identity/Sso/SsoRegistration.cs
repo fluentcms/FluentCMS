@@ -47,8 +47,9 @@ internal static class SsoRegistration
     }
 
     // The code flow with PKCE into Identity's external cookie, which the external login page reads. Claims keep the names of
-    // the token, so EmailClaim and GroupsClaim name them as the provider does, and amr reaches the page.
-    private sealed class HandlerOptions(SsoOptions sso) : IConfigureNamedOptions<OpenIdConnectOptions>
+    // the token, so EmailClaim and GroupsClaim name them as the provider does, and amr reaches the page. The callback that
+    // the provider is given is on the public origin when one is set, as links in emails are.
+    private sealed class HandlerOptions(SsoOptions sso, PublicOrigin origin) : IConfigureNamedOptions<OpenIdConnectOptions>
     {
         public void Configure(OpenIdConnectOptions options)
         {
@@ -84,8 +85,20 @@ internal static class SsoRegistration
                 }
             }
 
+            options.Events.OnRedirectToIdentityProvider = OnPublicOrigin;
             options.Events.OnTokenValidated = KeepSubject;
             options.Events.OnRemoteFailure = BackToLoginAsync;
+        }
+
+        // The handler keeps the redirect_uri it sends here for the code's redemption, so both use the public origin.
+        private Task OnPublicOrigin(RedirectContext context)
+        {
+            if (origin.Base is { } publicBase)
+            {
+                context.ProtocolMessage.RedirectUri = publicBase + context.Options.CallbackPath;
+            }
+
+            return Task.CompletedTask;
         }
 
         // Identity takes the external login's key from the name identifier, which the token calls sub.
@@ -101,7 +114,8 @@ internal static class SsoRegistration
         }
 
         // A refusal or an error of the provider, or a callback that does not belong to a sign-in started here, goes back to
-        // the login page as a failed sign-in rather than an error page.
+        // the login page as a failed sign-in rather than an error page; one started on the page that accepts an invitation
+        // goes back there, which then finds no external login and says so.
         private static async Task BackToLoginAsync(RemoteFailureContext context)
         {
             var services = context.HttpContext.RequestServices;
@@ -109,6 +123,13 @@ internal static class SsoRegistration
             await services.GetRequiredService<SignInEvents>().FailedAsync(context.HttpContext, null, LoginMethods.External, LoginFailureReasons.InvalidCredentials);
 
             var redirect = context.Properties?.RedirectUri;
+            if (redirect is not null && redirect.StartsWith(context.Request.PathBase + HostedPagePaths.AcceptInvitation + "?", StringComparison.Ordinal))
+            {
+                context.Response.Redirect(redirect);
+                context.HandleResponse();
+                return;
+            }
+
             var returnUrl = redirect?.IndexOf('?', StringComparison.Ordinal) is int start and >= 0
                 ? QueryHelpers.ParseQuery(redirect[start..]).GetValueOrDefault("ReturnUrl").ToString()
                 : null;

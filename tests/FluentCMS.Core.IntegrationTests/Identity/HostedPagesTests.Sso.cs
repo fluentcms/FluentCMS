@@ -203,7 +203,8 @@ public sealed partial class HostedPagesTests
         var editor = await CreateUserAsync(host);
         using var browser = new HostedPagesBrowser(host);
 
-        using var back = await SignInWithProviderAsync(browser, idp, FakeIdentity.Of(editor.Email));
+        // Even an address the provider verified, without LinkExistingUsers.
+        using var back = await SignInWithProviderAsync(browser, idp, FakeIdentity.Of(editor.Email) with { EmailVerified = true });
         using var page = await browser.FollowAsync(back);
 
         page.StatusCode.ShouldBe(HttpStatusCode.OK);
