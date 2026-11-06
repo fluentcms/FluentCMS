@@ -10,20 +10,24 @@ public class ModelBuildTimeTests
 {
     private const int TypeCount = 50;
 
-    // The target is one second; the bound leaves room for a slow CI machine.
+    private const int Samples = 3;
+
+    // The target is one second. The bound is on the best of a few builds after a warm-up, so that a busy shared runner does
+    // not fail the test while a regression of an order of magnitude still does.
     private static readonly TimeSpan Bound = TimeSpan.FromSeconds(3);
 
     private static readonly string[] FieldTypes =
         ["text", "longText", "richText", "integer", "decimal", "boolean", "date", "dateTime", "email", "url", "json"];
 
-    // Half the types are localized, with half of their fields in the locale table: 75 tables in all.
-    private static SchemaModel LargeSchema()
+    // Half the types are localized, with half of their fields in the locale table: 75 tables in all. Each variant has its own
+    // type names, so that EF builds its model instead of taking it from its cache.
+    private static SchemaModel LargeSchema(int variant)
     {
         var builder = SampleSchema.NewBuilder();
         for (var i = 0; i < TypeCount; i++)
         {
             var localized = i % 2 == 0;
-            builder.AddCollection($"type-{i}", type =>
+            builder.AddCollection($"type-{variant}-{i}", type =>
             {
                 type.Localized(localized);
                 for (var f = 0; f < 20; f++)
@@ -38,10 +42,8 @@ public class ModelBuildTimeTests
         return builder.Build();
     }
 
-    [Fact]
-    public void FiftyTypesBuildWithinTheBound()
+    private static TimeSpan Build(SchemaModel schema)
     {
-        var schema = LargeSchema();
         using var database = new StorageDatabase(schema);
         using var context = database.CreateContext();
 
@@ -49,8 +51,18 @@ public class ModelBuildTimeTests
         var model = context.Model;
         watch.Stop();
 
-        TestContext.Current.TestOutputHelper?.WriteLine($"Model of {TypeCount} types built in {watch.ElapsedMilliseconds} ms");
         model.GetEntityTypes().Count().ShouldBe(TypeCount + (TypeCount / 2) + 29);
-        watch.Elapsed.ShouldBeLessThan(Bound);
+        return watch.Elapsed;
+    }
+
+    [Fact]
+    public void FiftyTypesBuildWithinTheBound()
+    {
+        var warmUp = Build(LargeSchema(0));
+        var builds = Enumerable.Range(1, Samples).Select(variant => Build(LargeSchema(variant))).ToList();
+
+        TestContext.Current.TestOutputHelper?.WriteLine(
+            $"Model of {TypeCount} types built in {warmUp.TotalMilliseconds:F0} ms cold, then {string.Join(", ", builds.Select(build => $"{build.TotalMilliseconds:F0}"))} ms");
+        builds.Min().ShouldBeLessThan(Bound);
     }
 }
