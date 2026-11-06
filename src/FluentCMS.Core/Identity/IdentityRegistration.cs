@@ -23,7 +23,7 @@ internal static class IdentityRegistration
             .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(ApiKeyAuthentication.Scheme, configureOptions: null)
             .AddScheme<FluentCmsAuthenticationOptions, FluentCmsAuthenticationHandler>(FluentCmsAuthentication.Scheme, configureOptions: null);
         services.AddOptions<IdentityOptions>().Configure<AdminUserOptions>((identity, users) => users.Apply(identity));
-        // The authenticator provider is what the two-factor page checks a code with; enrolling one is #2780.
+        // The authenticator provider checks the codes of the two-factor page and of /me/two-factor.
         services.AddIdentityCore<CmsUser>()
             .AddUserStore<CmsUserStore>()
             .AddUserManager<CmsUserManager>()
@@ -42,6 +42,7 @@ internal static class IdentityRegistration
         services.AddScoped<PasswordResetService>();
         services.AddScoped<UserAdministration>();
         services.AddScoped<CurrentUser>();
+        services.AddScoped<TwoFactorService>();
         services.AddScoped<ApiKeyService>();
         services.AddScoped<ApiKeyPrincipals>();
         services.TryAddScoped<IPrincipalRoles, UserPrincipalRoles>();

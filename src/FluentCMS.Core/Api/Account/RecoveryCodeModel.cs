@@ -3,7 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FluentCMS.Core.Api.Account;
 
-// The second step with a recovery code in place of the authenticator's; each code works once. Generating them is #2780.
+// The second step with a recovery code in place of the authenticator's; each code works once. They come with two-factor
+// sign-in, on the enrolment page or from /me/two-factor.
 public sealed class RecoveryCodeModel : AccountPageModel
 {
     [BindProperty]

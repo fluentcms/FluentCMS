@@ -5,6 +5,7 @@ using FluentCMS.Content;
 using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Schema;
+using FluentCMS.Schema;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -28,9 +29,9 @@ internal static class SchemaEndpoints
     private static void Map(RouteGroupBuilder management)
     {
         var schema = management.MapGroup("/schema").WithFluentCmsOperation(Origin.Api).RequireManagementScope();
-        schema.MapGet("", DescribeAsync);
-        schema.MapGet("/types/{type}", DescribeTypeAsync);
-        schema.MapGet("/snapshot", SnapshotAsync);
+        schema.MapGet("", DescribeAsync).Produces<SchemaDescription>();
+        schema.MapGet("/types/{type}", DescribeTypeAsync).Produces<SchemaTypeDescription>();
+        schema.MapGet("/snapshot", SnapshotAsync).Produces(StatusCodes.Status200OK, contentType: "application/json");
     }
 
     private static async Task<IResult> DescribeAsync(HttpContext httpContext, [FromServices] SchemaIntrospection introspection)
