@@ -1,0 +1,7 @@
+@page "/account/external-login"
+@model ExternalLoginModel
+@{
+    ViewData["Title"] = "Sign-in not completed";
+}
+<p class="error">Your @Model.ProviderName account is not linked to a user here, or that user cannot sign in now.</p>
+<p><a asp-page="./Login" asp-route-returnUrl="@Model.ReturnUrl">Back to sign in</a></p>

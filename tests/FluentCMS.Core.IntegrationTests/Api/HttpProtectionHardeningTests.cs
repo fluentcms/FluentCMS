@@ -160,7 +160,7 @@ public sealed class HttpProtectionHardeningTests : IAsyncDisposable
     // The authorization server answers a GET of the token endpoint itself, while the request authenticates.
     [Theory]
     [InlineData("/connect/token", HttpStatusCode.BadRequest)]
-    [InlineData("/account/login", HttpStatusCode.NotFound)]
+    [InlineData("/account/unknown", HttpStatusCode.NotFound)]
     [InlineData("/api/management/v1/unknown", HttpStatusCode.NotFound)]
     public async Task TheCoarseLimitAlsoCoversRequestsThatNoEndpointAnswers(string path, HttpStatusCode answer)
     {
@@ -265,7 +265,7 @@ public sealed class HttpProtectionHardeningTests : IAsyncDisposable
     [InlineData("/connect/token", HttpStatusCode.BadRequest)]
     [InlineData("/connect/introspect", HttpStatusCode.BadRequest)]
     [InlineData("/connect/revoke", HttpStatusCode.BadRequest)]
-    [InlineData("/account/login", HttpStatusCode.NotFound)]
+    [InlineData("/account/unknown", HttpStatusCode.NotFound)]
     public async Task TheStrictAuthLimitCoversUnroutedAuthPathsBeforeAuthentication(string path, HttpStatusCode answer)
     {
         var client = await Start(Limits(auth: 1));

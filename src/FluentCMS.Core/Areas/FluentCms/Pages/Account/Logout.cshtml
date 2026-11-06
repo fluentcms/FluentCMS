@@ -1,0 +1,23 @@
+@page "/account/logout"
+@model LogoutModel
+@{
+    ViewData["Title"] = Model.SignedOut ? "You are signed out" : "Sign out?";
+}
+@if (Model.SignedOut)
+{
+    <p>You can close this window.</p>
+}
+else
+{
+    @if (Model.UserName is not null)
+    {
+        <p>You are signed in as <strong>@Model.UserName</strong>.</p>
+    }
+    <form method="post" action="@Url.Content("~/connect/logout")" asp-antiforgery="false">
+        @foreach (var parameter in Model.Parameters)
+        {
+            <input type="hidden" name="@parameter.Key" value="@parameter.Value">
+        }
+        <button type="submit">Sign out</button>
+    </form>
+}

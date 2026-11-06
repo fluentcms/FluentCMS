@@ -1,0 +1,14 @@
+@page "/account/recovery-code"
+@model RecoveryCodeModel
+@{
+    ViewData["Title"] = "Sign in with a recovery code";
+}
+<p>Enter one of the recovery codes you saved when you set up two-factor sign-in. Each code works once.</p>
+<form method="post">
+    <div asp-validation-summary="ModelOnly" class="error"></div>
+    <input type="hidden" asp-for="ReturnUrl">
+    <label asp-for="Input.Code"></label>
+    <input asp-for="Input.Code" type="text" autocomplete="off" autofocus>
+    <span asp-validation-for="Input.Code"></span>
+    <button type="submit">Sign in</button>
+</form>

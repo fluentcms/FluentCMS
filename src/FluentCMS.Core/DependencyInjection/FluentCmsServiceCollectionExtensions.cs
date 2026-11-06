@@ -3,6 +3,7 @@ using FluentCMS.Activity;
 using FluentCMS.Authorization;
 using FluentCMS.Content;
 using FluentCMS.Core.ActivityLog;
+using FluentCMS.Core.Api.Account;
 using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.Api.Delivery;
 using FluentCMS.Core.Api.Management;
@@ -77,6 +78,7 @@ public static class FluentCmsServiceCollectionExtensions
             builder.Settings.Add<SeedingState>();
         }
 
+        builder.Settings.Add<BrandingSettings>();
         var settings = builder.Settings.Build();
         services.AddSingleton(settings);
 
@@ -114,6 +116,8 @@ public static class FluentCmsServiceCollectionExtensions
             serviceProvider.GetRequiredService<ContentQueryOptions>(),
             builder.Authorization.Rules));
         services.AddHostedService<RowRuleStartupCheck>();
+        // Before the identity registration, which takes out the Data Protection hosted service that the pages' antiforgery adds.
+        HostedPages.Add(services);
         IdentityRegistration.Add(services, builder.Users, builder.Clients);
         services.TryAddScoped<IAuthorizationEvaluator, AuthorizationEvaluator>();
         services.AddScoped<ManagementAuthority>();

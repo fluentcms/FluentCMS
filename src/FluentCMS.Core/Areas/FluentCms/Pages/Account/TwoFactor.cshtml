@@ -1,0 +1,17 @@
+@page "/account/two-factor"
+@model TwoFactorModel
+@{
+    ViewData["Title"] = "Two-factor sign-in";
+}
+<p>Enter the code your authenticator app shows.</p>
+<form method="post">
+    <div asp-validation-summary="ModelOnly" class="error"></div>
+    <input type="hidden" asp-for="ReturnUrl">
+    <input type="hidden" asp-for="RememberMe">
+    <label asp-for="Input.Code"></label>
+    <input asp-for="Input.Code" type="text" inputmode="numeric" autocomplete="one-time-code" autofocus>
+    <span asp-validation-for="Input.Code"></span>
+    <label class="check"><input asp-for="Input.RememberMachine"> @Html.DisplayNameFor(model => model.Input.RememberMachine)</label>
+    <button type="submit">Sign in</button>
+</form>
+<p class="muted">No access to your app? <a asp-page="./RecoveryCode" asp-route-returnUrl="@Model.ReturnUrl">Use a recovery code</a>.</p>
