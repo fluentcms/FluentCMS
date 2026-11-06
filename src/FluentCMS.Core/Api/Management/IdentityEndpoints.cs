@@ -28,7 +28,9 @@ internal static class IdentityEndpoints
     private static void Map(RouteGroupBuilder management)
     {
         var users = management.MapGroup("/users").WithFluentCmsOperation(Origin.Api).RequireManagementScope();
-        users.MapGet("", ListUsersAsync).Produces<ItemPage<UserInfo>>();
+        users.MapGet("", ListUsersAsync)
+            .Query([QueryParameter.Text("search", "Only the users whose user name or email address contains this, in any case."), .. ManagementQuery.Paging])
+            .Produces<ItemPage<UserInfo>>();
         users.MapGet("/{id}", GetUserAsync).Produces<UserInfo>();
         users.MapPatch("/{id}", UpdateUserAsync).Takes<UserChange>().Produces<UserInfo>();
         users.MapPost("/{id}/deactivate", DeactivateAsync).Produces<UserInfo>();
@@ -64,7 +66,7 @@ internal static class IdentityEndpoints
 
     private static async Task<IResult> ListUsersAsync(HttpContext httpContext, [FromServices] UserAdministration users)
     {
-        ManagementQuery.Only(httpContext.Request, "search", "page", "pageSize");
+        ManagementQuery.Only(httpContext.Request);
         var (page, pageSize) = ManagementQuery.Page(httpContext.Request);
         var found = await users.ListAsync(ManagementQuery.Text(httpContext.Request, "search"), page, pageSize, httpContext.RequestAborted);
         return AdminJson.Page(found.Items, found.Total, found.Page, found.PageSize);

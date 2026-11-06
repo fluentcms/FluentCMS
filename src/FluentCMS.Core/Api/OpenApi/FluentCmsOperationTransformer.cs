@@ -6,7 +6,7 @@ using Microsoft.OpenApi;
 namespace FluentCMS.Core.Api.OpenApi;
 
 // Every route but the content ones, which the document transformer writes per type: a tag from its group, an operation
-// id from its method and path, who may call it, and the problem body of its errors.
+// id from its method and path, who may call it, its query parameters, and the problem body of its errors.
 internal sealed class FluentCmsOperationTransformer : IOpenApiOperationTransformer
 {
     public Task TransformAsync(OpenApiOperation operation, OpenApiOperationTransformerContext context, CancellationToken cancellationToken)
@@ -27,6 +27,16 @@ internal sealed class FluentCmsOperationTransformer : IOpenApiOperationTransform
         operation.Tags = new HashSet<OpenApiTagReference> { new(Tag(segments), document) };
         operation.OperationId ??= (description.HttpMethod ?? "get").ToLowerInvariant() + string.Concat(segments.Select(Name));
         operation.Security = Security(surface, document);
+
+        // The bridge reads the site and the locale on every route; beside content only the site changes the answer.
+        operation.Parameters ??= [];
+        operation.Parameters.Add(new OpenApiParameterReference("site", document));
+        operation.Parameters.Add(new OpenApiParameterReference(SharedComponents.BridgeLocale, document));
+        foreach (var parameter in description.ActionDescriptor.EndpointMetadata.OfType<QueryParameter>())
+        {
+            operation.Parameters.Add(OpenApiFragments.Read<OpenApiParameter>(parameter.ToJson(), document, $"the parameter {parameter.Name}"));
+        }
+
         operation.Responses ??= [];
         operation.Responses["default"] = new OpenApiResponseReference(SharedComponents.ProblemResponse, document);
         if (operation.RequestBody is OpenApiRequestBody requestBody && description.ActionDescriptor.EndpointMetadata.OfType<JsonRequestBody>().LastOrDefault()?.Description is { } text)
