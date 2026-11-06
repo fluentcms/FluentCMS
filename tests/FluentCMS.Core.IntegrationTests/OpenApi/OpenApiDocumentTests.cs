@@ -359,6 +359,13 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
         Response(Paths[$"{Management}/jobs/{{id}}"]!["get"]!, "200")["properties"]!["history"]!["items"]!["$ref"]!.GetValue<string>().ShouldBe("#/components/schemas/JobAttemptInfo");
         Response(Paths[$"{Management}/me"]!["get"]!, "200")["required"]!.AsArray().Select(item => item!.GetValue<string>()).ShouldBe(["id", "kind", "name"]);
         Response(Paths[$"{Management}/activity"]!["get"]!, "200")["properties"]!["items"]!["items"]!["$ref"]!.GetValue<string>().ShouldBe("#/components/schemas/ActivityItem");
+
+        foreach (var path in new[] { "users/{id}/logins", "me/logins" })
+        {
+            var login = Resolve(Response(Paths[$"{Management}/{path}"]!["get"]!, "200")["properties"]!["items"]!["items"]!);
+            login["required"]!.AsArray().Select(item => item!.GetValue<string>()).ShouldBe(["provider", "providerKey", "displayName"], path);
+            Paths[$"{Management}/{path}/{{provider}}"]!["delete"]!["responses"]!["204"].ShouldNotBeNull(path);
+        }
     }
 
     [Fact]

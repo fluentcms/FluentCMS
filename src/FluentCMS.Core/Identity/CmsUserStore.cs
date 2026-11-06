@@ -33,11 +33,13 @@ internal sealed class CmsUserStore(SystemDbContext context, IdentityChanges chan
             async () =>
             {
                 var (added, removed) = RoleChanges(user);
+                var logins = LoginChanges(user);
                 var result = await base.CreateAsync(user, cancellationToken);
                 if (result.Succeeded)
                 {
                     await changes.RaiseAsync(new UserCreatedEvent(user.Id, user.UserName ?? ""), cancellationToken);
                     await RaiseRolesAsync(user, added, removed, cancellationToken);
+                    await RaiseLoginsAsync(user, logins, cancellationToken);
                 }
 
                 return result;
@@ -54,6 +56,7 @@ internal sealed class CmsUserStore(SystemDbContext context, IdentityChanges chan
             async () =>
             {
                 var (added, removed) = RoleChanges(user);
+                var logins = LoginChanges(user);
                 var result = await base.UpdateAsync(user, cancellationToken);
                 if (!result.Succeeded || before is null)
                 {
@@ -75,6 +78,7 @@ internal sealed class CmsUserStore(SystemDbContext context, IdentityChanges chan
                 }
 
                 await RaiseRolesAsync(user, added, removed, cancellationToken);
+                await RaiseLoginsAsync(user, logins, cancellationToken);
                 return result;
             },
             cancellationToken);
@@ -231,6 +235,21 @@ internal sealed class CmsUserStore(SystemDbContext context, IdentityChanges chan
         return (
             [.. entries.Where(entry => entry.State == EntityState.Added).Select(entry => entry.Entity.RoleId)],
             [.. entries.Where(entry => entry.State == EntityState.Deleted).Select(entry => entry.Entity.RoleId)]);
+    }
+
+    private List<(string Provider, bool Linked)> LoginChanges(CmsUser user) =>
+        [.. Context.ChangeTracker.Entries<IdentityUserLogin<Guid>>()
+            .Where(entry => entry.Entity.UserId == user.Id && entry.State is EntityState.Added or EntityState.Deleted)
+            .Select(entry => (entry.Entity.LoginProvider, entry.State == EntityState.Added))];
+
+    private async Task RaiseLoginsAsync(CmsUser user, List<(string Provider, bool Linked)> logins, CancellationToken cancellationToken)
+    {
+        foreach (var (provider, linked) in logins)
+        {
+            await changes.RaiseAsync(
+                linked ? new UserLoginLinkedEvent(user.Id, user.UserName ?? "", provider) : new UserLoginUnlinkedEvent(user.Id, user.UserName ?? "", provider),
+                cancellationToken);
+        }
     }
 
     private async Task RaiseRolesAsync(CmsUser user, List<Guid> added, List<Guid> removed, CancellationToken cancellationToken)

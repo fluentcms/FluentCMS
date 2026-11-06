@@ -19,9 +19,10 @@ internal sealed record PendingInvitation(Guid Id, string Email, DateTimeOffset E
 internal sealed record InvitationInfo(Guid Id, string Email, IReadOnlyList<Guid> RoleIds, DateTimeOffset CreatedAt, Guid CreatedBy, DateTimeOffset ExpiresAt);
 
 // An invitation is a random token sent by email; the row keeps only its hash. Accepting it creates the user with the roles
-// it names and uses it up, in one transaction. A new invitation to the same address ends the one before. Sending, listing
-// and revoking need users.manage for the instance, since the user it becomes belongs to no site, and the sender must hold
-// every grant of the roles it names.
+// it names and uses it up, in one transaction, with a password or, through a provider whose address for the person is the
+// invitation's, with that external login; with cms.Sso.DisableLocalLogin only the latter. A new invitation to the same
+// address ends the one before. Sending, listing and revoking need users.manage for the instance, since the user it becomes
+// belongs to no site, and the sender must hold every grant of the roles it names.
 internal sealed class InvitationService(
     SystemDbContext context,
     CmsUserManager users,
@@ -31,6 +32,7 @@ internal sealed class InvitationService(
     ManagementAuthority authority,
     RoleService roleService,
     AdminUserOptions options,
+    SsoOptions sso,
     TimeProvider time)
 {
     private const int TokenBytes = 32;
@@ -154,6 +156,34 @@ internal sealed class InvitationService(
         ArgumentNullException.ThrowIfNull(userName);
         ArgumentNullException.ThrowIfNull(password);
 
+        if (sso.DisableLocalLogin)
+        {
+            return Failed(IdentityErrorCodes.LocalLoginDisabled, "Sign-in with a password is turned off here. Accept the invitation with a provider.");
+        }
+
+        return await AcceptAsync(token, userName, address: null, user => users.CreateAsync(user, password), cancellationToken);
+    }
+
+    // The user is named by the invitation's address and has no password. The address the provider gave for the person must
+    // be the invitation's; whether the provider vouches for it is the caller's to check.
+    public async Task<IdentityResult> AcceptAsync(string token, string address, UserLoginInfo login, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(token);
+        ArgumentNullException.ThrowIfNull(address);
+        ArgumentNullException.ThrowIfNull(login);
+
+        return await AcceptAsync(
+            token,
+            userName: null,
+            address,
+            async user => await users.CreateAsync(user) is { Succeeded: false } created ? created : await users.AddLoginAsync(user, login),
+            cancellationToken);
+    }
+
+    internal static string Hash(string token) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
+
+    private async Task<IdentityResult> AcceptAsync(string token, string? userName, string? address, Func<CmsUser, Task<IdentityResult>> create, CancellationToken cancellationToken)
+    {
         var hash = Hash(token);
         return await changes.RunAsync(
             async () =>
@@ -177,8 +207,13 @@ internal sealed class InvitationService(
                     return Failed(IdentityErrorCodes.InvalidInvitation, "The invitation is not valid, or has been used.");
                 }
 
-                var user = new CmsUser { UserName = userName, Email = invitation.Email, EmailConfirmed = true, CreatedAt = now };
-                var created = await users.CreateAsync(user, password);
+                if (address is not null && users.NormalizeEmail(address.Trim()) != invitation.NormalizedEmail)
+                {
+                    return Failed(IdentityErrorCodes.InvitationLoginRefused, "The address the provider gave for you is not the one this invitation was sent to.");
+                }
+
+                var user = new CmsUser { UserName = userName ?? invitation.Email, Email = invitation.Email, EmailConfirmed = true, CreatedAt = now };
+                var created = await create(user);
                 if (!created.Succeeded)
                 {
                     return created;
@@ -202,16 +237,19 @@ internal sealed class InvitationService(
             cancellationToken);
     }
 
-    internal static string Hash(string token) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
-
     private IQueryable<Invitation> Pending(string normalizedEmail) =>
         context.Set<Invitation>().Where(row => row.NormalizedEmail == normalizedEmail && row.AcceptedAt == null && row.RevokedAt == null);
 
-    private static EmailMessage Message(Invitation invitation, Uri link) =>
-        new(
+    private EmailMessage Message(Invitation invitation, Uri link)
+    {
+        var how = sso.DisableLocalLogin ? "by signing in with your organization's account"
+            : sso.Providers.Count > 0 ? "by choosing a password or signing in with your organization's account"
+            : "and choose a password";
+        return new(
             invitation.Email,
             "You are invited to FluentCMS",
-            $"You have been invited to the FluentCMS admin. Accept the invitation and choose a password here:\n\n{link.AbsoluteUri}\n\nThe link can be used once and expires at {invitation.ExpiresAt.UtcDateTime:yyyy-MM-dd HH:mm} UTC.");
+            $"You have been invited to the FluentCMS admin. Accept the invitation {how} here:\n\n{link.AbsoluteUri}\n\nThe link can be used once and expires at {invitation.ExpiresAt.UtcDateTime:yyyy-MM-dd HH:mm} UTC.");
+    }
 
     private static IdentityResult Failed(string code, string description) =>
         IdentityResult.Failed(new IdentityError { Code = code, Description = description });

@@ -86,6 +86,10 @@ public sealed class SsoProvider
     // A first sign-in of someone with no user here creates one, with DefaultRole and the roles of RoleMappings.
     public bool AutoProvision { get; set; } = true;
 
+    // A first sign-in whose email address belongs to a user with no login of this provider links that user, when the token
+    // says email_verified is true. Off, the address is refused, so that a provider cannot take over an account.
+    public bool LinkExistingUsers { get; set; }
+
     // A role id, or the exact name of an instance-wide role, given to a user this provider creates.
     public string? DefaultRole { get; set; }
 

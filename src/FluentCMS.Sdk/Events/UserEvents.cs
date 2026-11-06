@@ -23,6 +23,18 @@ public sealed record UserDeactivatedEvent(Guid UserId, string UserName) : CmsEve
 /// <param name="Removed">The ids of the roles taken from it.</param>
 public sealed record UserRoleChangedEvent(Guid UserId, string UserName, IReadOnlyList<Guid> Added, IReadOnlyList<Guid> Removed) : CmsEvent;
 
+/// <summary>An external login was linked to an admin user, so the user signs in through that provider.</summary>
+/// <param name="UserId">The id of the user.</param>
+/// <param name="UserName">Its user name.</param>
+/// <param name="LoginProvider">The name of the provider, as <c>cms_user_login</c> keeps it.</param>
+public sealed record UserLoginLinkedEvent(Guid UserId, string UserName, string LoginProvider) : CmsEvent;
+
+/// <summary>An external login was removed from an admin user.</summary>
+/// <param name="UserId">The id of the user.</param>
+/// <param name="UserName">Its user name.</param>
+/// <param name="LoginProvider">The name of the provider, as <c>cms_user_login</c> kept it.</param>
+public sealed record UserLoginUnlinkedEvent(Guid UserId, string UserName, string LoginProvider) : CmsEvent;
+
 /// <summary>The names <see cref="UserUpdatedEvent.Changes"/> uses for what changed on an admin user.</summary>
 public static class UserChanges
 {

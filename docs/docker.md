@@ -88,7 +88,7 @@ The Delivery API is closed until a role allows reading: create a role with `cont
 
 ## Single sign-on
 
-Admin users can sign in with Microsoft Entra ID, Okta, Keycloak or any other OpenID Connect provider, configured from the environment. Register the image's public address followed by `/account/sso/{name}` as the redirect URI at the provider, such as `https://cms.example.com/account/sso/corp`. For Entra ID:
+Admin users can sign in with Microsoft Entra ID, Okta, Keycloak or any other OpenID Connect provider, configured from the environment. Register the image's public address followed by `/account/sso/{name}` as the redirect URI at the provider, such as `https://cms.example.com/account/sso/corp`; with `FluentCms__PublicOrigin` set, the instance sends exactly that. For Entra ID:
 
 ```bash
 -e FluentCms__Sso__Providers__corp__Preset=EntraId
@@ -100,7 +100,7 @@ Admin users can sign in with Microsoft Entra ID, Okta, Keycloak or any other Ope
 -e "FluentCms__Sso__Providers__corp__RoleMappings__0__Role=Super Admin"
 ```
 
-Okta takes `Preset=Okta` and `Domain` (with `AuthorizationServerId` for a custom authorization server), Keycloak `Preset=Keycloak`, `BaseUrl` and `Realm`, and any other provider `Authority`. A first sign-in creates the user with `DefaultRole` and the roles its groups map to, and those mapped roles follow the groups at every sign-in; a mapping that names Super Admin, as above, gives the first administrator without an invitation. `FluentCms__Sso__DisableLocalLogin=true` hides the password form and refuses password sign-ins. A provider's own multi-factor claim counts for a role that requires two-factor only with `TrustMfaClaim=true` on that provider. See [single sign-on](host-configuration.md#single-sign-on) for every setting.
+Okta takes `Preset=Okta` and `Domain` (with `AuthorizationServerId` for a custom authorization server), Keycloak `Preset=Keycloak`, `BaseUrl` and `Realm`, and any other provider `Authority`. A first sign-in creates the user with `DefaultRole` and the roles its groups map to, and those mapped roles follow the groups at every sign-in; a mapping that names Super Admin, as above, gives the first administrator without an invitation. `FluentCms__Sso__DisableLocalLogin=true` hides the password form and refuses password sign-ins; invited users then accept their invitation through the provider, whose address for them must be the one invited. `LinkExistingUsers=true` on a provider links an existing user at its first sign-in through it when the token says the address is verified. A provider's own multi-factor claim counts for a role that requires two-factor only with `TrustMfaClaim=true` on that provider. See [single sign-on](host-configuration.md#single-sign-on) for every setting.
 
 ## The API description
 

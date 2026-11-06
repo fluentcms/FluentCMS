@@ -9,18 +9,41 @@
 }
 else
 {
-    <p>You are invited as <strong>@Model.Email</strong>. Choose a user name and a password to finish.</p>
-    <form method="post">
+    @if (Model.Problem is not null)
+    {
+        <p class="error">@Model.Problem</p>
+    }
+    @if (Model.LocalLogin)
+    {
+        <p>You are invited as <strong>@Model.Email</strong>. Choose a user name and a password to finish.</p>
+        <form method="post" asp-page="./AcceptInvitation">
+            <div asp-validation-summary="ModelOnly" class="error"></div>
+            <input type="hidden" asp-for="Token">
+            <label asp-for="Input.UserName"></label>
+            <input asp-for="Input.UserName" type="text" autocomplete="username" autofocus>
+            <span asp-validation-for="Input.UserName"></span>
+            <label asp-for="Input.Password"></label>
+            <input asp-for="Input.Password" autocomplete="new-password">
+            <span asp-validation-for="Input.Password"></span>
+            <label asp-for="Input.ConfirmPassword"></label>
+            <input asp-for="Input.ConfirmPassword" autocomplete="new-password">
+            <span asp-validation-for="Input.ConfirmPassword"></span>
+            <button type="submit">Create the account</button>
+        </form>
+    }
+    else
+    {
+        <p>You are invited as <strong>@Model.Email</strong>. Sign in with your provider to finish.</p>
         <div asp-validation-summary="ModelOnly" class="error"></div>
-        <label asp-for="Input.UserName"></label>
-        <input asp-for="Input.UserName" type="text" autocomplete="username" autofocus>
-        <span asp-validation-for="Input.UserName"></span>
-        <label asp-for="Input.Password"></label>
-        <input asp-for="Input.Password" autocomplete="new-password">
-        <span asp-validation-for="Input.Password"></span>
-        <label asp-for="Input.ConfirmPassword"></label>
-        <input asp-for="Input.ConfirmPassword" autocomplete="new-password">
-        <span asp-validation-for="Input.ConfirmPassword"></span>
-        <button type="submit">Create the account</button>
-    </form>
+    }
+    @if (Model.ExternalProviders.Count > 0)
+    {
+        <form method="post" asp-page-handler="External">
+            <input type="hidden" asp-for="Token">
+            @foreach (var provider in Model.ExternalProviders)
+            {
+                <button type="submit" class="secondary" name="provider" value="@provider.Name">Accept with @provider.DisplayName</button>
+            }
+        </form>
+    }
 }

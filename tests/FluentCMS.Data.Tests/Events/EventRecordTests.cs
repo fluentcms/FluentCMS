@@ -98,6 +98,8 @@ public sealed class EventRecordTests
             "SiteUpdatedEvent",
             "UserCreatedEvent",
             "UserDeactivatedEvent",
+            "UserLoginLinkedEvent",
+            "UserLoginUnlinkedEvent",
             "UserRoleChangedEvent",
             "UserUpdatedEvent",
         ]);

@@ -14,17 +14,22 @@ namespace FluentCMS.Core.Identity.Sso;
 // The sign-in of the external login page. A user linked to the external login signs in. Through a provider of cms.Sso,
 // someone with no user yet gets one, linked in cms_user_login, with the provider's default role and mapped roles; at every
 // sign-in after that the mapped roles follow the token's groups. An email address that belongs to a user not linked to the
-// provider is refused rather than taken over. The provider's amr=mfa counts as the second factor only when the provider is
-// trusted for it; otherwise a role that requires two-factor asks for the local one after the provider.
+// provider is refused rather than taken over, unless the provider links existing users and the token says the address is
+// verified. An invitation is accepted through a provider whose address for the person is the invitation's. The provider's
+// amr=mfa counts as the second factor only when the provider is trusted for it; otherwise a role that requires two-factor
+// asks for the local one after the provider.
 internal sealed class SsoSignIn(
     SsoOptions options,
     CmsUserManager users,
     CmsSignInManager signIn,
     SignInEvents events,
     IdentityChanges changes,
+    InvitationService invitations,
     SystemDbContext context,
     ILogger<SsoSignIn> logger)
 {
+    private const string EmailVerifiedClaim = "email_verified";
+
     public async Task<SignInResult> SignInAsync(ExternalLoginInfo info, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(info);
@@ -35,36 +40,127 @@ internal sealed class SsoSignIn(
         }
 
         var user = await users.FindByLoginAsync(info.LoginProvider, info.ProviderKey);
-        if (user is null && provider.AutoProvision)
+        if (user is null)
         {
-            user = await ProvisionAsync(info, provider, cancellationToken);
-            if (user is null)
+            var existing = Email(info, provider) is { } email ? await users.FindByEmailAsync(email) : null;
+            if (existing is not null && provider.LinkExistingUsers)
             {
-                return SignInResult.NotAllowed;
+                user = await LinkAsync(existing, info, cancellationToken);
+                if (user is null)
+                {
+                    return SignInResult.NotAllowed;
+                }
+            }
+            else if (provider.AutoProvision)
+            {
+                return await ProvisionAsync(info, provider, existing, cancellationToken) is null ? SignInResult.NotAllowed : await ExternalSignInAsync(info, provider);
             }
         }
-        else if (user is { DeactivatedAt: null } && !await users.IsLockedOutAsync(user))
+
+        if (user is { DeactivatedAt: null } && !await users.IsLockedOutAsync(user))
         {
             await FollowGroupsAsync(user, info, provider, cancellationToken);
         }
 
-        return await signIn.ExternalSignInAsync(info.LoginProvider, info.ProviderKey, multiFactor: provider.TrustMfaClaim && info.Principal.HasClaim(Claims.AuthenticationMethodReference, TokenClaims.MultiFactor));
+        return await ExternalSignInAsync(info, provider);
     }
 
-    private async Task<CmsUser?> ProvisionAsync(ExternalLoginInfo info, SsoProvider provider, CancellationToken cancellationToken)
+    // The invitation becomes a user linked to the external login, with the invitation's roles, who then signs in as at any
+    // sign-in through the provider. The provider's address must be the invitation's and not one it says it has not
+    // verified; the link of the email already showed that the person reads that mailbox.
+    public async Task<(IdentityResult Accepted, SignInResult SignedIn)> AcceptInvitationAsync(ExternalLoginInfo info, string token, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(info);
+        ArgumentNullException.ThrowIfNull(token);
+
+        if (!options.Providers.TryGetValue(info.LoginProvider, out var provider))
+        {
+            return (await RefusedLinkAsync(info, IdentityErrorCodes.InvitationLoginRefused, "the provider is not one of cms.Sso.", "Only a single sign-on provider of this instance accepts an invitation."), SignInResult.Failed);
+        }
+
+        if (Email(info, provider) is not { } email)
+        {
+            return (await RefusedLinkAsync(info, IdentityErrorCodes.SsoNoEmail, $"the token has no email address in the claim '{provider.EmailClaim}'.", "The provider gave no email address for you."), SignInResult.Failed);
+        }
+
+        if (string.Equals(info.Principal.FindFirstValue(EmailVerifiedClaim), "false", StringComparison.OrdinalIgnoreCase))
+        {
+            return (await RefusedLinkAsync(info, IdentityErrorCodes.SsoNoEmail, "the provider says the email address is not verified.", "The provider says your email address is not verified."), SignInResult.Failed);
+        }
+
+        var accepted = await invitations.AcceptAsync(token, email, new UserLoginInfo(info.LoginProvider, info.ProviderKey, info.ProviderDisplayName), cancellationToken);
+        if (!accepted.Succeeded)
+        {
+            SsoLog.LinkRefused(logger, IdentityErrorCodes.InvitationLoginRefused, info.LoginProvider, "the invitation was not accepted: " + string.Join(", ", accepted.Errors.Select(error => error.Code)));
+            await events.FailedAsync(signIn.Context, null, LoginMethods.External, LoginFailureReasons.NotAllowed);
+            return (accepted, SignInResult.Failed);
+        }
+
+        if (await users.FindByLoginAsync(info.LoginProvider, info.ProviderKey) is { } user)
+        {
+            SsoLog.InvitationAccepted(logger, user.Id, info.LoginProvider);
+        }
+
+        return (accepted, await SignInAsync(info, cancellationToken));
+    }
+
+    private Task<SignInResult> ExternalSignInAsync(ExternalLoginInfo info, SsoProvider provider) =>
+        signIn.ExternalSignInAsync(info.LoginProvider, info.ProviderKey, multiFactor: provider.TrustMfaClaim && info.Principal.HasClaim(Claims.AuthenticationMethodReference, TokenClaims.MultiFactor));
+
+    // The plain address of the provider's EmailClaim, or null.
+    private static string? Email(ExternalLoginInfo info, SsoProvider provider)
     {
         var email = info.Principal.FindFirstValue(provider.EmailClaim)?.Trim();
-        if (string.IsNullOrEmpty(email) || !MailAddress.TryCreate(email, out var parsed) || parsed.Address != email)
+        return !string.IsNullOrEmpty(email) && MailAddress.TryCreate(email, out var parsed) && parsed.Address == email ? email : null;
+    }
+
+    // Only for a token that says the address is verified, and a user who may sign in now and has no other login of the
+    // provider, so that a second account at the provider does not join the first.
+    private async Task<CmsUser?> LinkAsync(CmsUser user, ExternalLoginInfo info, CancellationToken cancellationToken)
+    {
+        if (!string.Equals(info.Principal.FindFirstValue(EmailVerifiedClaim), "true", StringComparison.OrdinalIgnoreCase))
+        {
+            await RefusedLinkAsync(info, IdentityErrorCodes.SsoNoEmail, "the token does not say the email address is verified, so the user it belongs to is not linked.", null);
+            return null;
+        }
+
+        if (!await signIn.CanSignInAsync(user) || await users.IsLockedOutAsync(user))
+        {
+            await RefusedLinkAsync(info, IdentityErrorCodes.SsoEmailTaken, "the email address belongs to a user who cannot sign in now.", null);
+            return null;
+        }
+
+        if ((await users.GetLoginsAsync(user)).Any(login => string.Equals(login.LoginProvider, info.LoginProvider, StringComparison.OrdinalIgnoreCase)))
+        {
+            await RefusedLinkAsync(info, IdentityErrorCodes.SsoEmailTaken, "the email address belongs to a user linked to another account of this provider.", null);
+            return null;
+        }
+
+        var linked = await changes.RunAsync(() => users.AddLoginAsync(user, new UserLoginInfo(info.LoginProvider, info.ProviderKey, info.ProviderDisplayName)), cancellationToken);
+        if (!linked.Succeeded)
+        {
+            await RefusedLinkAsync(info, IdentityErrorCodes.SsoProvisioningFailed, string.Join(", ", linked.Errors.Select(error => error.Code)), null);
+            return null;
+        }
+
+        SsoLog.UserLinked(logger, user.Id, info.LoginProvider);
+        return user;
+    }
+
+    // Existing is the user the token's address belongs to, if any.
+    private async Task<CmsUser?> ProvisionAsync(ExternalLoginInfo info, SsoProvider provider, CmsUser? existing, CancellationToken cancellationToken)
+    {
+        if (Email(info, provider) is not { } email)
         {
             return await RefusedAsync(info, IdentityErrorCodes.SsoNoEmail, $"the token has no email address in the claim '{provider.EmailClaim}'.");
         }
 
-        if (info.Principal.FindFirstValue("email_verified") is "false")
+        if (info.Principal.FindFirstValue(EmailVerifiedClaim) is "false")
         {
             return await RefusedAsync(info, IdentityErrorCodes.SsoNoEmail, "the provider says the email address is not verified.");
         }
 
-        if (await users.FindByEmailAsync(email) is not null)
+        if (existing is not null)
         {
             return await RefusedAsync(info, IdentityErrorCodes.SsoEmailTaken, "the email address belongs to a user who is not linked to this provider.");
         }
@@ -199,5 +295,13 @@ internal sealed class SsoSignIn(
         SsoLog.ProvisioningRefused(logger, code, info.LoginProvider, reason);
         await events.FailedAsync(signIn.Context, null, LoginMethods.External, LoginFailureReasons.NotAllowed);
         return null;
+    }
+
+    // The reason goes to the log; the description is what a page shows.
+    private async Task<IdentityResult> RefusedLinkAsync(ExternalLoginInfo info, string code, string reason, string? description)
+    {
+        SsoLog.LinkRefused(logger, code, info.LoginProvider, reason);
+        await events.FailedAsync(signIn.Context, null, LoginMethods.External, LoginFailureReasons.NotAllowed);
+        return IdentityResult.Failed(new IdentityError { Code = code, Description = description ?? reason });
     }
 }

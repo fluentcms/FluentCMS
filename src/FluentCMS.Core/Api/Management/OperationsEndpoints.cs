@@ -20,8 +20,8 @@ using Microsoft.Extensions.DependencyInjection;
 namespace FluentCMS.Core.Api.Management;
 
 // The jobs, activity and me groups of spec 4.10. Jobs need jobs.manage for the instance; the activity log needs activity.read
-// in the site of the request, and shows the rows of no site only to a reader of the instance; /me is the caller itself, and
-// /me/two-factor its second factor.
+// in the site of the request, and shows the rows of no site only to a reader of the instance; /me is the caller itself,
+// /me/two-factor its second factor and /me/logins its external logins.
 internal static class OperationsEndpoints
 {
     public static IServiceCollection AddManagementOperationsApi(this IServiceCollection services) =>
@@ -47,6 +47,8 @@ internal static class OperationsEndpoints
         me.MapPost("/two-factor/verify", VerifyAsync).Takes<TwoFactorCodeRequest>().Produces<RecoveryCodesResponse>();
         me.MapPost("/two-factor/recovery-codes", RecoveryCodesAsync).Takes<TwoFactorCodeRequest>().Produces<RecoveryCodesResponse>();
         me.MapPost("/two-factor/disable", DisableTwoFactorAsync).Takes<TwoFactorCodeRequest>().Produces(StatusCodes.Status204NoContent);
+        me.MapGet("/logins", MyLoginsAsync).Produces<ItemList<UserLogin>>();
+        me.MapDelete("/logins/{provider}", RemoveMyLoginAsync).Produces(StatusCodes.Status204NoContent);
     }
 
     private static async Task<IResult> ListJobsAsync(HttpContext httpContext, [FromServices] JobAdministration jobs)
@@ -162,6 +164,19 @@ internal static class OperationsEndpoints
     private static async Task<IResult> DisableTwoFactorAsync(HttpContext httpContext, [FromServices] CurrentUser current)
     {
         await current.DisableTwoFactorAsync(await CodeAsync(httpContext));
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> MyLoginsAsync(HttpContext httpContext, [FromServices] CurrentUser current)
+    {
+        ManagementQuery.Only(httpContext.Request);
+        return AdminJson.Items(await current.LoginsAsync());
+    }
+
+    private static async Task<IResult> RemoveMyLoginAsync(string provider, HttpContext httpContext, [FromServices] CurrentUser current)
+    {
+        ManagementQuery.Only(httpContext.Request);
+        await current.RemoveLoginAsync(provider, httpContext.RequestAborted);
         return Results.NoContent();
     }
 

@@ -16,7 +16,7 @@ public sealed class LoginModel : AccountPageModel
     [BindProperty(SupportsGet = true)]
     public string? ReturnUrl { get; set; }
 
-    // What the page that sent the user here reports: invitation-accepted, password-reset or external-failed.
+    // What the page that sent the user here reports: invitation-accepted, invitation-linked, password-reset or external-failed.
     [BindProperty(SupportsGet = true)]
     public string? Status { get; set; }
 
@@ -28,6 +28,7 @@ public sealed class LoginModel : AccountPageModel
     public string? Notice => Status switch
     {
         "invitation-accepted" => "Your account is ready. Sign in with your new password.",
+        "invitation-linked" => "Your account is ready. Sign in with your provider.",
         "password-reset" => "Your password was changed. Sign in with the new one.",
         _ => null,
     };

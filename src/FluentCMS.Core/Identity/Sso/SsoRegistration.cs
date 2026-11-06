@@ -42,6 +42,7 @@ internal static class SsoRegistration
         });
 
         services.AddSingleton<IConfigureOptions<OpenIdConnectOptions>, HandlerOptions>();
+        services.AddSingleton<IPostConfigureOptions<OpenIdConnectOptions>, PublicOriginCallback>();
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IPostConfigureOptions<OpenIdConnectOptions>, OpenIdConnectPostConfigureOptions>());
         services.AddScoped<SsoSignIn>();
     }
@@ -101,7 +102,8 @@ internal static class SsoRegistration
         }
 
         // A refusal or an error of the provider, or a callback that does not belong to a sign-in started here, goes back to
-        // the login page as a failed sign-in rather than an error page.
+        // the login page as a failed sign-in rather than an error page; one started on the page that accepts an invitation
+        // goes back there, which then finds no external login and says so.
         private static async Task BackToLoginAsync(RemoteFailureContext context)
         {
             var services = context.HttpContext.RequestServices;
@@ -109,6 +111,13 @@ internal static class SsoRegistration
             await services.GetRequiredService<SignInEvents>().FailedAsync(context.HttpContext, null, LoginMethods.External, LoginFailureReasons.InvalidCredentials);
 
             var redirect = context.Properties?.RedirectUri;
+            if (redirect is not null && redirect.StartsWith(context.Request.PathBase + HostedPagePaths.AcceptInvitation + "?", StringComparison.Ordinal))
+            {
+                context.Response.Redirect(redirect);
+                context.HandleResponse();
+                return;
+            }
+
             var returnUrl = redirect?.IndexOf('?', StringComparison.Ordinal) is int start and >= 0
                 ? QueryHelpers.ParseQuery(redirect[start..]).GetValueOrDefault("ReturnUrl").ToString()
                 : null;
@@ -120,6 +129,31 @@ internal static class SsoRegistration
 
             context.Response.Redirect(context.Request.PathBase + HostedPagePaths.Login + query);
             context.HandleResponse();
+        }
+    }
+
+    // The callback a provider is given is on the public origin when one is set, as links in emails are; the handler keeps
+    // the redirect_uri it sends for the code's redemption, so both use it. It runs after every Configure, and before the
+    // event a host set, so a host's own OnRedirectToIdentityProvider keeps it.
+    private sealed class PublicOriginCallback(SsoOptions sso, PublicOrigin origin) : IPostConfigureOptions<OpenIdConnectOptions>
+    {
+        public void PostConfigure(string? name, OpenIdConnectOptions options)
+        {
+            if (name is null || !sso.Providers.ContainsKey(name))
+            {
+                return;
+            }
+
+            var next = options.Events.OnRedirectToIdentityProvider;
+            options.Events.OnRedirectToIdentityProvider = context =>
+            {
+                if (origin.Base is { } publicBase)
+                {
+                    context.ProtocolMessage.RedirectUri = publicBase + context.Options.CallbackPath;
+                }
+
+                return next(context);
+            };
         }
     }
 }
