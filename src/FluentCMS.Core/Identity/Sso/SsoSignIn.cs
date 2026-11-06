@@ -43,7 +43,7 @@ internal sealed class SsoSignIn(
                 return SignInResult.NotAllowed;
             }
         }
-        else if (user is { DeactivatedAt: null })
+        else if (user is { DeactivatedAt: null } && !await users.IsLockedOutAsync(user))
         {
             await FollowGroupsAsync(user, info, provider, cancellationToken);
         }
@@ -59,6 +59,11 @@ internal sealed class SsoSignIn(
             return await RefusedAsync(info, IdentityErrorCodes.SsoNoEmail, $"the token has no email address in the claim '{provider.EmailClaim}'.");
         }
 
+        if (info.Principal.FindFirstValue("email_verified") is "false")
+        {
+            return await RefusedAsync(info, IdentityErrorCodes.SsoNoEmail, "the provider says the email address is not verified.");
+        }
+
         if (await users.FindByEmailAsync(email) is not null)
         {
             return await RefusedAsync(info, IdentityErrorCodes.SsoEmailTaken, "the email address belongs to a user who is not linked to this provider.");
@@ -71,7 +76,7 @@ internal sealed class SsoSignIn(
             given.Add(role);
         }
 
-        var user = new CmsUser { UserName = email, Email = email, EmailConfirmed = info.Principal.FindFirstValue("email_verified") is not "false" };
+        var user = new CmsUser { UserName = email, Email = email, EmailConfirmed = true };
         var result = await changes.RunAsync(
             async () =>
             {
@@ -139,7 +144,17 @@ internal sealed class SsoSignIn(
     // the token's groups, Governed every role a mapping names.
     private async Task<(Guid? Default, HashSet<Guid> Mapped, HashSet<Guid> Governed)> RolesAsync(ExternalLoginInfo info, SsoProvider provider, CancellationToken cancellationToken)
     {
-        var known = await context.Set<Role>().AsNoTracking().Select(role => new { role.Id, role.Name, role.SiteId }).ToListAsync(cancellationToken);
+        List<string> references = [.. provider.RoleMappings.Select(mapping => mapping.Role.Trim())];
+        if (!string.IsNullOrWhiteSpace(provider.DefaultRole))
+        {
+            references.Add(provider.DefaultRole.Trim());
+        }
+
+        List<Guid> ids = [.. references.Select(reference => Guid.TryParse(reference, out var id) ? id : Guid.Empty).Where(id => id != Guid.Empty)];
+        var known = await context.Set<Role>().AsNoTracking()
+            .Where(role => ids.Contains(role.Id) || (role.SiteId == null && references.Contains(role.Name)))
+            .Select(role => new { role.Id, role.Name, role.SiteId })
+            .ToListAsync(cancellationToken);
 
         Guid? Find(string reference)
         {
@@ -156,6 +171,12 @@ internal sealed class SsoSignIn(
         }
 
         var groups = info.Principal.FindAll(provider.GroupsClaim).Select(claim => claim.Value).ToHashSet(StringComparer.Ordinal);
+        if (groups.Count == 0 && provider.RoleMappings.Count > 0)
+        {
+            // Fails closed: the mapped roles go. Said in the log, since a provider that leaves the claim out by mistake
+            // (Entra ID's group overage, a missing scope or mapper) looks the same.
+            SsoLog.NoGroups(logger, info.LoginProvider, provider.GroupsClaim);
+        }
         HashSet<Guid> mapped = [];
         HashSet<Guid> governed = [];
         foreach (var mapping in provider.RoleMappings)

@@ -75,6 +75,11 @@ internal sealed class FakeOidcProvider : IDisposable
             claims["email"] = grant.User.Email;
         }
 
+        if (grant.User.EmailVerified is { } verified)
+        {
+            claims["email_verified"] = verified;
+        }
+
         if (grant.User.Groups.Length > 0)
         {
             claims["groups"] = grant.User.Groups;
@@ -170,6 +175,8 @@ internal sealed class FakeOidcProvider : IDisposable
 internal sealed record FakeIdentity(string Subject, string? Email, string[] Groups, string[] Amr)
 {
     public string Name => Email ?? Subject;
+
+    public bool? EmailVerified { get; init; }
 
     public static FakeIdentity Of(string? email, params string[] groups) => new("sub-" + Guid.NewGuid().ToString("N"), email, groups, ["pwd"]);
 }

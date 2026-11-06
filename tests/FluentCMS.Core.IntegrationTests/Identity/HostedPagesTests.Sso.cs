@@ -222,6 +222,25 @@ public sealed partial class HostedPagesTests
     }
 
     [Fact]
+    public async Task AnAddressTheProviderHasNotVerifiedCreatesNoUser()
+    {
+        using var idp = new FakeOidcProvider();
+        await using var host = SsoHost(idp);
+        using var browser = new HostedPagesBrowser(host);
+
+        using var back = await SignInWithProviderAsync(browser, idp, FakeIdentity.Of("someone-else@corp.example") with { EmailVerified = false });
+        using var page = await browser.FollowAsync(back);
+
+        (await page.Content.ReadAsStringAsync(Token)).ShouldContain("is not linked to a user here");
+        await using (var scope = host.Services.CreateAsyncScope())
+        {
+            (await scope.ServiceProvider.GetRequiredService<CmsUserManager>().FindByEmailAsync("someone-else@corp.example")).ShouldBeNull();
+        }
+
+        Details((await ActivityAsync(host, "user.login_failed", count: 1)).Single())["reason"].ShouldBe(LoginFailureReasons.NotAllowed);
+    }
+
+    [Fact]
     public async Task WithoutAutoProvisioningSomeoneWithNoUserIsToldSo()
     {
         using var idp = new FakeOidcProvider();

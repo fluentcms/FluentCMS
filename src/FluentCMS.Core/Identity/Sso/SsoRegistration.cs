@@ -29,7 +29,10 @@ internal static class SsoRegistration
         {
             foreach (var (name, provider) in options.Providers)
             {
-                SsoOptions.Require(!authentication.SchemeMap.ContainsKey(name), $"{nameof(SsoOptions.Providers)}:{name}: '{name}' is the name of another authentication scheme.");
+                // Providers are found by name ignoring case, so another scheme may not differ from one only in case.
+                SsoOptions.Require(
+                    !authentication.SchemeMap.Keys.Any(scheme => string.Equals(scheme, name, StringComparison.OrdinalIgnoreCase)),
+                    $"{nameof(SsoOptions.Providers)}:{name}: '{name}' is the name of another authentication scheme.");
                 authentication.AddScheme(name, scheme =>
                 {
                     scheme.HandlerType = typeof(OpenIdConnectHandler);

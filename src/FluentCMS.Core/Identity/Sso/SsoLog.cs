@@ -9,6 +9,7 @@ internal static partial class SsoLog
     public const int RemoteFailureId = 9041;
     public const int RoleNotFoundId = 9042;
     public const int ProvisioningRefusedId = 9043;
+    public const int NoGroupsId = 9044;
 
     [LoggerMessage(EventId = UserProvisionedId, EventName = "SsoUserProvisioned", Level = LogLevel.Information, Message = "Created user {UserId} at the first sign-in through the SSO provider {Provider}.")]
     public static partial void UserProvisioned(ILogger logger, Guid userId, string provider);
@@ -21,4 +22,7 @@ internal static partial class SsoLog
 
     [LoggerMessage(EventId = ProvisioningRefusedId, EventName = "SsoProvisioningRefused", Level = LogLevel.Warning, Message = "{Code}: no user was created at the sign-in through the SSO provider {Provider}: {Reason}")]
     public static partial void ProvisioningRefused(ILogger logger, string code, string provider, string reason);
+
+    [LoggerMessage(EventId = NoGroupsId, EventName = "SsoNoGroups", Level = LogLevel.Warning, Message = "The token of the SSO provider {Provider} has no '{GroupsClaim}' claim, so the user holds none of the roles the provider maps.")]
+    public static partial void NoGroups(ILogger logger, string provider, string groupsClaim);
 }
