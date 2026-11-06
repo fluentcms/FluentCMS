@@ -21,7 +21,7 @@ internal static class PluginDiscovery
         var types = new List<Type>();
         foreach (var assembly in Assemblies())
         {
-            foreach (var attribute in assembly.GetCustomAttributes<FluentCmsPluginAttribute>())
+            foreach (var attribute in AttributesOf(assembly))
             {
                 if (attribute.PluginType is null)
                 {
@@ -38,6 +38,21 @@ internal static class PluginDiscovery
         }
 
         return types;
+    }
+
+    // A typeof that names a type the app cannot load fails here, and the host stops naming the assembly.
+    private static List<FluentCmsPluginAttribute> AttributesOf(Assembly assembly)
+    {
+        try
+        {
+            return [.. assembly.GetCustomAttributes<FluentCmsPluginAttribute>()];
+        }
+        catch (Exception exception) when (exception is FileNotFoundException or FileLoadException or TypeLoadException or CustomAttributeFormatException or BadImageFormatException)
+        {
+            throw new FluentCmsConfigurationException(
+                PluginErrorCodes.InvalidPlugin,
+                $"The plugins that the assembly {assembly.GetName().Name} names could not be read ({exception.GetType().Name}: {exception.Message}).");
+        }
     }
 
     private static IEnumerable<Assembly> Assemblies()

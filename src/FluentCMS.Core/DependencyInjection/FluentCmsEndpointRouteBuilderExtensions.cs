@@ -46,9 +46,13 @@ public static class FluentCmsEndpointRouteBuilderExtensions
             }
         }
 
-        foreach (var plugin in endpoints.ServiceProvider.GetRequiredService<PluginRegistry>().Plugins)
+        var plugins = endpoints.ServiceProvider.GetRequiredService<PluginRegistry>();
+        if (plugins.TryStartConfigure())
         {
-            plugin.Instance.Configure(new PluginAppBuilder(plugin.Name, endpoints.ServiceProvider));
+            foreach (var plugin in plugins.Plugins)
+            {
+                plugin.Instance.Configure(new PluginAppBuilder(plugin.Name, endpoints.ServiceProvider));
+            }
         }
 
         return new Conventions(cms, HostedPages.Map(endpoints));

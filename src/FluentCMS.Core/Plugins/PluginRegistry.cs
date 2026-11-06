@@ -28,6 +28,7 @@ internal sealed class PluginRegistry : IHookTiebreaker
 {
     private readonly FrozenDictionary<Type, int> _types;
     private readonly FrozenDictionary<Assembly, int> _assemblies;
+    private int _configured;
 
     public PluginRegistry(IReadOnlyList<RegisteredPlugin> plugins, IReadOnlyDictionary<Type, int> types, IReadOnlyDictionary<Assembly, int> assemblies)
     {
@@ -37,6 +38,9 @@ internal sealed class PluginRegistry : IHookTiebreaker
     }
 
     public IReadOnlyList<RegisteredPlugin> Plugins { get; }
+
+    // Configure runs once per host, however many times MapFluentCms is called.
+    public bool TryStartConfigure() => Interlocked.Exchange(ref _configured, 1) == 0;
 
     public int Rank(Type hookType) =>
         _types.TryGetValue(hookType, out var rank)

@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Runtime.ExceptionServices;
 using System.Text.RegularExpressions;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Diagnostics;
@@ -93,11 +94,25 @@ internal static partial class PluginHost
             manifest.DependsOn,
             manifest.Type,
             manifest.Source,
-            manifest.Instance ?? (IPlugin)Activator.CreateInstance(manifest.Type)!))];
+            manifest.Instance ?? Create(manifest.Type)))];
+    }
+
+    // The plugin's own exception, not the reflection wrapper, so that the host stops with what went wrong.
+    private static IPlugin Create(Type type)
+    {
+        try
+        {
+            return (IPlugin)Activator.CreateInstance(type)!;
+        }
+        catch (TargetInvocationException exception) when (exception.InnerException is not null)
+        {
+            ExceptionDispatchInfo.Capture(exception.InnerException).Throw();
+            throw;
+        }
     }
 
     // A hook or handler belongs to the plugin whose ConfigureServices registered its type, or else to the plugin whose class
-    // is the only one in the hook's assembly.
+    // is the only one in the hook's assembly, unless that is the app's own assembly, whose other types are the host's.
     public static PluginRegistry ConfigureServices(FluentCmsBuilder cms, IReadOnlyList<RegisteredPlugin> plugins)
     {
         var types = new Dictionary<Type, int>();
@@ -120,7 +135,7 @@ internal static partial class PluginHost
         var assemblies = plugins
             .Select((plugin, index) => (plugin.Type.Assembly, Index: index))
             .GroupBy(item => item.Assembly)
-            .Where(group => group.Count() == 1)
+            .Where(group => group.Count() == 1 && group.Key != Assembly.GetEntryAssembly())
             .ToDictionary(group => group.Key, group => group.Single().Index);
 
         return new PluginRegistry(plugins, types, assemblies);
