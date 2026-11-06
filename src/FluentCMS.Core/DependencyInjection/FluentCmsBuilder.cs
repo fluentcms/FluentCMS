@@ -45,6 +45,10 @@ public sealed class FluentCmsBuilder
 
     public ReverseProxyOptions ReverseProxy { get; } = new();
 
+    // The address users reach the instance at, such as https://cms.example.com, which links in emails and the issuer are
+    // built from. FluentCms:PublicOrigin wins over it.
+    public string? PublicOrigin { get; set; }
+
     public DeliveryCacheOptions DeliveryCache { get; } = new();
 
     public OpenApiDocumentOptions OpenApi { get; } = new();

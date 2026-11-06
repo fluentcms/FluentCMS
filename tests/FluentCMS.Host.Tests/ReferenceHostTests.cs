@@ -33,6 +33,7 @@ public sealed class ReferenceHostTests : IAsyncDisposable
         report["dataProvider"]!["provider"]!.GetValue<string>().ShouldBe("SQLite");
         var insecure = Operator.InsecureDefaults(report);
         insecure.ShouldContain("allowed-hosts-any");
+        insecure.ShouldContain("public-origin-unset");
         insecure.ShouldContain("generated-signing-key");
         insecure.ShouldNotContain("development-email-sender");
         insecure.ShouldNotContain("schema-sync-outside-development");
@@ -224,6 +225,22 @@ public sealed class ReferenceHostTests : IAsyncDisposable
         (await allowed.GetAsync(new Uri("/health/live", UriKind.Relative), Token)).StatusCode.ShouldBe(HttpStatusCode.OK);
         (await forged.GetAsync(new Uri("/health/live", UriKind.Relative), Token)).StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         (await forged.GetAsync(new Uri("/account/forgot-password", UriKind.Relative), Token)).StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task APublicOriginNamesTheIssuerWhateverHostTheRequestNames()
+    {
+        var settings = Operator.Settings();
+        settings["FluentCms:PublicOrigin"] = "https://cms.example.com";
+        await _host.StartAsync(settings);
+
+        using var forged = _host.Client(new Uri("https://evil.example/"));
+        using var discovery = await forged.GetAsync(new Uri("/.well-known/openid-configuration", UriKind.Relative), Token);
+        var (status, body) = await HostUnderTest.ReadAsync(discovery);
+
+        status.ShouldBe(HttpStatusCode.OK);
+        body!["issuer"]!.GetValue<string>().ShouldBe("https://cms.example.com/");
+        Operator.InsecureDefaults(await Operator.ReportAsync(_host)).ShouldNotContain("public-origin-unset");
     }
 
     [Fact]

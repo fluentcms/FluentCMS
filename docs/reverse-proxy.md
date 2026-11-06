@@ -10,7 +10,7 @@ A FluentCMS host often sits behind a proxy that ends TLS, a CDN, or a path prefi
 | `ForwardedHeaders:Enabled` | `false` | Reads the `X-Forwarded-*` headers of a trusted proxy. |
 | `ForwardedHeaders:ForwardFor` | `true` | `X-Forwarded-For` sets the client address. |
 | `ForwardedHeaders:ForwardProto` | `true` | `X-Forwarded-Proto` sets the scheme. |
-| `ForwardedHeaders:ForwardHost` | `false` | `X-Forwarded-Host` sets the host. |
+| `ForwardedHeaders:ForwardHost` | `false` | `X-Forwarded-Host` sets the host, when the host is in `AllowedHosts`. |
 | `ForwardedHeaders:KnownProxies` | none | Addresses of the proxies to trust, written in full (`10.0.0.1`, not `10.1`). |
 | `ForwardedHeaders:KnownNetworks` | none | Networks to trust, in CIDR notation with a full address (`10.0.0.0/8`). |
 | `ForwardedHeaders:ForwardLimit` | `1` | How many proxies in a row may add an entry to `X-Forwarded-For`. |
@@ -24,6 +24,12 @@ A FluentCMS host often sits behind a proxy that ends TLS, a CDN, or a path prefi
 With no proxy and no network listed, only the loopback addresses are trusted, which is the framework's default. A proxy that is not on the list is ignored: its headers change nothing, and the address the host sees is the proxy's. Listing `0.0.0.0/0` trusts every caller, which lets any client choose its own address and scheme, and the startup report names it as an insecure default.
 
 The client address matters beyond logs: the rate limits partition by it, so a host behind a proxy without forwarded headers puts every caller in one partition.
+
+## Host names and the public origin
+
+Host filtering (`AllowedHosts`) runs before the forwarded headers and checks the `Host` the proxy sent. With `ForwardHost` on, `X-Forwarded-Host` is therefore applied only for a host in `AllowedHosts`, and one outside it is ignored, so a forwarded host cannot get past host filtering. With `AllowedHosts` at `*` or unset, any forwarded host is applied.
+
+Set `FluentCms:PublicOrigin` to the address users reach the instance at, such as `https://cms.example.com`, so that password reset and invitation links and the issuer do not depend on the host at all; see [public origin](host-configuration.md#public-origin). Its path is empty or `PathBase`, which is added when it is left out.
 
 Environment variables use `__`, for example `FluentCms__ReverseProxy__ForwardedHeaders__Enabled=true`. ASP.NET Core adds its own forwarded headers middleware when `ASPNETCORE_FORWARDEDHEADERS_ENABLED` is set, and that trusts every address; leave it unset and use the options above.
 
@@ -41,7 +47,7 @@ Set `PathBase` and keep the prefix when the proxy forwards the request:
 FluentCms__ReverseProxy__PathBase=/cms
 ```
 
-Every route of FluentCMS is then under it (`/cms/api/delivery/v1`, `/cms/api/management/v1`, `/cms/connect`, `/cms/account`, `/cms/health/live`, and any group added later) and the same routes without the prefix answer a 404 problem. Routes the host maps itself, such as its own endpoints, `/openapi/v1.json`, `/scalar` or the media routes, are not held to it: they answer under the prefix and without it. Read under the prefix, the OpenAPI document names it in its server and in the URLs of the authorization server. A proxy that strips the prefix before forwarding does not need the option, but then the host cannot build links that include it. Health probes that call the host directly must use the prefixed path.
+Every route of FluentCMS is then under it (`/cms/api/delivery/v1`, `/cms/api/management/v1`, `/cms/connect`, `/cms/account`, `/cms/health/live`, and any group added later) and the same routes without the prefix answer a 404 problem. Routes the host maps itself, such as its own endpoints, `/openapi/v1.json`, `/scalar` or the media routes, are not held to it: they answer under the prefix and without it. Read under the prefix, the OpenAPI document names it in its server and in the URLs of the authorization server. A proxy that strips the prefix before forwarding does not need the option, but then the host cannot build links that include it, and `FluentCms:PublicOrigin` takes a path only when it is `PathBase`. Health probes that call the host directly must use the prefixed path.
 
 ## Nginx
 
