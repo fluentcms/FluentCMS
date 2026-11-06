@@ -974,6 +974,10 @@ namespace FluentCMS.Data.PostgreSql.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("permissions_version");
 
+                    b.Property<bool>("RequireTwoFactor")
+                        .HasColumnType("boolean")
+                        .HasColumnName("require_two_factor");
+
                     b.Property<Guid?>("SiteId")
                         .HasColumnType("uuid")
                         .HasColumnName("site_id");
@@ -999,7 +1003,8 @@ namespace FluentCMS.Data.PostgreSql.Migrations
                             BuiltIn = true,
                             Description = "Holds every permission.",
                             Name = "Super Admin",
-                            PermissionsVersion = 1L
+                            PermissionsVersion = 1L,
+                            RequireTwoFactor = false
                         },
                         new
                         {
@@ -1007,7 +1012,8 @@ namespace FluentCMS.Data.PostgreSql.Migrations
                             BuiltIn = true,
                             Description = "Creates, edits, publishes and removes any content.",
                             Name = "Editor",
-                            PermissionsVersion = 1L
+                            PermissionsVersion = 1L,
+                            RequireTwoFactor = false
                         },
                         new
                         {
@@ -1015,7 +1021,8 @@ namespace FluentCMS.Data.PostgreSql.Migrations
                             BuiltIn = true,
                             Description = "Creates content, and reads, edits or removes only their own entries.",
                             Name = "Author",
-                            PermissionsVersion = 1L
+                            PermissionsVersion = 1L,
+                            RequireTwoFactor = false
                         },
                         new
                         {
@@ -1023,7 +1030,8 @@ namespace FluentCMS.Data.PostgreSql.Migrations
                             BuiltIn = true,
                             Description = "The anonymous visitor. Grants here open public Delivery access.",
                             Name = "Public",
-                            PermissionsVersion = 1L
+                            PermissionsVersion = 1L,
+                            RequireTwoFactor = false
                         },
                         new
                         {
@@ -1031,7 +1039,8 @@ namespace FluentCMS.Data.PostgreSql.Migrations
                             BuiltIn = true,
                             Description = "The default role of a registered member.",
                             Name = "Member",
-                            PermissionsVersion = 1L
+                            PermissionsVersion = 1L,
+                            RequireTwoFactor = false
                         },
                         new
                         {
@@ -1040,6 +1049,7 @@ namespace FluentCMS.Data.PostgreSql.Migrations
                             Description = "The anonymous visitor. Grants here open public Delivery access.",
                             Name = "Public",
                             PermissionsVersion = 1L,
+                            RequireTwoFactor = false,
                             SiteId = new Guid("00000000-0000-7000-8002-000000000001")
                         });
                 });
