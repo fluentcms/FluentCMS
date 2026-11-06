@@ -32,6 +32,7 @@ internal static class AuthorizationServerRegistration
         services.AddSingleton<DataProtectionKeyRepository>();
 
         services.AddOptions<KeyManagementOptions>().Configure<DataProtectionKeyRepository>((options, repository) => options.XmlRepository ??= repository);
+        LockedKeyManager.Register(services);
 
         // The cookie of the hosted pages, which only they and the authorize endpoint read.
         services.AddAuthentication().AddIdentityCookies();

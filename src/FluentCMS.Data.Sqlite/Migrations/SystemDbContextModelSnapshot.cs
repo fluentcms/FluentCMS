@@ -743,6 +743,31 @@ namespace FluentCMS.Data.Sqlite.Migrations
                     b.ToTable("cms_job_attempt", (string)null);
                 });
 
+            modelBuilder.Entity("FluentCMS.Core.Storage.Entities.LockRow", b =>
+                {
+                    b.Property<string>("Name")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("name");
+
+                    b.Property<long?>("AcquiredAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("acquired_at");
+
+                    b.Property<long?>("LeaseUntil")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("lease_until");
+
+                    b.Property<string>("Owner")
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("owner");
+
+                    b.HasKey("Name");
+
+                    b.ToTable("cms_lock", (string)null);
+                });
+
             modelBuilder.Entity("FluentCMS.Core.Storage.Entities.OutboxMessage", b =>
                 {
                     b.Property<Guid>("Id")
@@ -967,10 +992,6 @@ namespace FluentCMS.Data.Sqlite.Migrations
                         .HasColumnType("INTEGER")
                         .HasColumnName("permissions_version");
 
-                    b.Property<bool>("RequireTwoFactor")
-                        .HasColumnType("INTEGER")
-                        .HasColumnName("require_two_factor");
-
                     b.Property<Guid?>("SiteId")
                         .HasColumnType("TEXT")
                         .HasColumnName("site_id");
@@ -996,8 +1017,7 @@ namespace FluentCMS.Data.Sqlite.Migrations
                             BuiltIn = true,
                             Description = "Holds every permission.",
                             Name = "Super Admin",
-                            PermissionsVersion = 1L,
-                            RequireTwoFactor = false
+                            PermissionsVersion = 1L
                         },
                         new
                         {
@@ -1005,8 +1025,7 @@ namespace FluentCMS.Data.Sqlite.Migrations
                             BuiltIn = true,
                             Description = "Creates, edits, publishes and removes any content.",
                             Name = "Editor",
-                            PermissionsVersion = 1L,
-                            RequireTwoFactor = false
+                            PermissionsVersion = 1L
                         },
                         new
                         {
@@ -1014,8 +1033,7 @@ namespace FluentCMS.Data.Sqlite.Migrations
                             BuiltIn = true,
                             Description = "Creates content, and reads, edits or removes only their own entries.",
                             Name = "Author",
-                            PermissionsVersion = 1L,
-                            RequireTwoFactor = false
+                            PermissionsVersion = 1L
                         },
                         new
                         {
@@ -1023,8 +1041,7 @@ namespace FluentCMS.Data.Sqlite.Migrations
                             BuiltIn = true,
                             Description = "The anonymous visitor. Grants here open public Delivery access.",
                             Name = "Public",
-                            PermissionsVersion = 1L,
-                            RequireTwoFactor = false
+                            PermissionsVersion = 1L
                         },
                         new
                         {
@@ -1032,8 +1049,7 @@ namespace FluentCMS.Data.Sqlite.Migrations
                             BuiltIn = true,
                             Description = "The default role of a registered member.",
                             Name = "Member",
-                            PermissionsVersion = 1L,
-                            RequireTwoFactor = false
+                            PermissionsVersion = 1L
                         },
                         new
                         {
@@ -1042,7 +1058,6 @@ namespace FluentCMS.Data.Sqlite.Migrations
                             Description = "The anonymous visitor. Grants here open public Delivery access.",
                             Name = "Public",
                             PermissionsVersion = 1L,
-                            RequireTwoFactor = false,
                             SiteId = new Guid("00000000-0000-7000-8002-000000000001")
                         });
                 });
