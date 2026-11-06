@@ -51,10 +51,10 @@ public static class ReferenceHost
         return app;
     }
 
-    private static bool UsesBlogSample(string? sample) => sample switch
+    private static bool UsesBlogSample(string? sample) => sample?.Trim() switch
     {
         null or "" => false,
-        _ when string.Equals(sample, BlogSampleName, StringComparison.OrdinalIgnoreCase) => true,
+        var name when string.Equals(name, BlogSampleName, StringComparison.OrdinalIgnoreCase) => true,
         _ => throw new ReferenceHostException(ReferenceHostErrorCodes.UnknownSample, $"{SampleVariable} is '{sample}'; the one sample is '{BlogSampleName}'."),
     };
 
@@ -72,12 +72,14 @@ public static class ReferenceHost
 
         if (!string.IsNullOrWhiteSpace(file))
         {
-            if (!File.Exists(file))
+            try
             {
-                throw new ReferenceHostException(ReferenceHostErrorCodes.SchemaFileNotFound, $"{SchemaVariable} names {file}, which does not exist or cannot be read.");
+                schema.LoadSchemaFile(file);
             }
-
-            schema.LoadSchemaFile(file);
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                throw new ReferenceHostException(ReferenceHostErrorCodes.SchemaFileNotFound, $"{SchemaVariable} names {file}, which does not exist or cannot be read: {exception.Message}");
+            }
         }
 
         return schema.Build();

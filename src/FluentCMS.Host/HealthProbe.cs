@@ -10,7 +10,8 @@ internal static class HealthProbe
 
     public static async Task<int> RunAsync(TimeSpan timeout)
     {
-        var pathBase = Environment.GetEnvironmentVariable("FluentCms__ReverseProxy__PathBase") ?? "";
+        // Read as the host reads it, so that any casing of the variable counts.
+        var pathBase = new ConfigurationBuilder().AddEnvironmentVariables().Build()["FluentCms:ReverseProxy:PathBase"] ?? "";
 
         using var client = new HttpClient { Timeout = timeout };
         try

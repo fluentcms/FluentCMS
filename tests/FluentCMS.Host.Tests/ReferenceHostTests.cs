@@ -140,6 +140,16 @@ public sealed class ReferenceHostTests : IAsyncDisposable
         error.Message.ShouldContain("absent.json");
     }
 
+    [Theory]
+    [InlineData(" ", false)]
+    [InlineData(" Blog ", true)]
+    public void ABlankSampleIsUnsetAndTheNameIgnoresSpacesAndCase(string sample, bool loaded)
+    {
+        var app = _host.Build(new() { [ReferenceHost.SampleVariable] = sample });
+
+        (app.Services.GetRequiredService<SchemaModel>().FindContentType("article") is not null).ShouldBe(loaded);
+    }
+
     [Fact]
     public void AnUnknownSampleStopsTheHost()
     {

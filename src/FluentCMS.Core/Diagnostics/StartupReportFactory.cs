@@ -119,7 +119,7 @@ internal sealed class StartupReportFactory(
             found.Add(new InsecureDefault { Id = "allowed-hosts-any", Message = "AllowedHosts is '*' or not set in Production, so a request with a forged Host header gets links to that host in password reset and invitation emails. Set AllowedHosts to the host names of the instance." });
         }
 
-        if (startup.SchemaSync == SchemaSyncMode.Auto && environment?.IsDevelopment() != true)
+        if (startup.MigrateOnStartup && startup.SchemaSync == SchemaSyncMode.Auto && environment?.IsDevelopment() != true)
         {
             found.Add(new InsecureDefault { Id = "schema-sync-outside-development", Message = "Content tables follow the schema at start outside Development: additive changes apply with no reviewed migration, and destructive ones are logged and left undone. The host allowed it with AllowSchemaSyncOutsideDevelopment." });
         }

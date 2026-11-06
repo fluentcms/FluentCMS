@@ -13,8 +13,21 @@ try
     await ReferenceHost.Build(WebApplication.CreateBuilder(args)).RunAsync();
     return 0;
 }
-catch (Exception exception) when (exception is ReferenceHostException or SchemaValidationException or FluentCmsConfigurationException)
+catch (Exception exception) when (IsConfiguration(exception))
 {
-    await Console.Error.WriteLineAsync(exception.Message);
+    IReadOnlyList<Exception> errors = exception is AggregateException aggregate ? aggregate.InnerExceptions : [exception];
+    foreach (var error in errors)
+    {
+        await Console.Error.WriteLineAsync(error.Message);
+    }
+
     return 1;
 }
+
+// Production refuses several settings at once as an AggregateException of them.
+static bool IsConfiguration(Exception exception) => exception switch
+{
+    ReferenceHostException or SchemaValidationException or FluentCmsConfigurationException => true,
+    AggregateException aggregate => aggregate.InnerExceptions.All(IsConfiguration),
+    _ => false,
+};
