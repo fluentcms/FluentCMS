@@ -56,6 +56,27 @@ public sealed class OpenApiHostingTests : IAsyncDisposable
         page.ShouldContain("\"url\":\"openapi/v1.json\"");
     }
 
+    // The document is asked for on another host, as a forged Host header would name it.
+    [Theory]
+    [InlineData("https://cms.example.com", null, "https://cms.example.com")]
+    [InlineData("https://cms.example.com", "/cms", "https://cms.example.com/cms")]
+    [InlineData("https://cms.example.com/cms/", "/cms", "https://cms.example.com/cms")]
+    [InlineData(null, "/cms", "http://elsewhere.example/cms")]
+    public async Task WithAPublicOriginTheServerAndTheAuthorizationServerAreAtIt(string? origin, string? pathBase, string expected)
+    {
+        using var client = await StartAsync(Environments.Development, new() { ["FluentCms:PublicOrigin"] = origin, ["FluentCms:ReverseProxy:PathBase"] = pathBase }, app => app.MapFluentCmsOpenApi());
+        client.BaseAddress = new Uri("http://elsewhere.example/");
+
+        var document = JsonNode.Parse(await client.GetStringAsync(new Uri($"{pathBase}/openapi/v1.json", UriKind.Relative), Token))!;
+        var flows = document["components"]!["securitySchemes"]!["oauth2"]!["flows"]!;
+
+        document["servers"]!.AsArray().ShouldHaveSingleItem()!["url"]!.GetValue<string>().TrimEnd('/').ShouldBe(expected);
+        flows["authorizationCode"]!["authorizationUrl"]!.GetValue<string>().ShouldBe($"{expected}/connect/authorize");
+        flows["authorizationCode"]!["tokenUrl"]!.GetValue<string>().ShouldBe($"{expected}/connect/token");
+        flows["authorizationCode"]!["refreshUrl"]!.GetValue<string>().ShouldBe($"{expected}/connect/token");
+        flows["clientCredentials"]!["tokenUrl"]!.GetValue<string>().ShouldBe($"{expected}/connect/token");
+    }
+
     [Fact]
     public async Task InAGroupTheUiFindsTheDocumentBesideIt()
     {

@@ -3,10 +3,13 @@ using FluentCMS.Content;
 using FluentCMS.Core.ActivityLog;
 using FluentCMS.Core.Api.Account;
 using FluentCMS.Core.Api.Common;
+using FluentCMS.Core.Api.OpenApi;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Identity;
+using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Core.Jobs;
+using FluentCMS.Jobs;
 using FluentCMS.Settings;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -27,25 +30,25 @@ internal static class OperationsEndpoints
     private static void Map(RouteGroupBuilder management)
     {
         var jobs = management.MapGroup("/jobs").WithFluentCmsOperation(Origin.Api).RequireManagementScope();
-        jobs.MapGet("", ListJobsAsync);
-        jobs.MapGet("/dead-letter", DeadLettersAsync);
-        jobs.MapGet("/{id}", GetJobAsync);
-        jobs.MapPost("/{id}/retry", RetryAsync);
-        jobs.MapPost("/{id}/cancel", CancelAsync);
+        jobs.MapGet("", ListJobsAsync).Produces<ItemPage<JobInfo>>();
+        jobs.MapGet("/dead-letter", DeadLettersAsync).Produces<ItemList<DeadLetteredJob>>();
+        jobs.MapGet("/{id}", GetJobAsync).Produces<JobResponse>();
+        jobs.MapPost("/{id}/retry", RetryAsync).Produces<JobResponse>();
+        jobs.MapPost("/{id}/cancel", CancelAsync).Produces<JobResponse>();
 
-        management.MapGroup("/activity").WithFluentCmsOperation(Origin.Api).RequireManagementScope().MapGet("", ActivityAsync);
+        management.MapGroup("/activity").WithFluentCmsOperation(Origin.Api).RequireManagementScope().MapGet("", ActivityAsync).Produces<ItemPage<ActivityItem>>();
 
         var me = management.MapGroup("/me").WithFluentCmsOperation(Origin.Api).RequireManagementScope();
-        me.MapGet("", MeAsync);
-        me.MapGet("/sessions", MySessionsAsync);
-        me.MapDelete("/sessions/{sessionId}", RevokeMySessionAsync);
-        me.MapGet("/two-factor", TwoFactorAsync);
-        me.MapPost("/two-factor/enrol", EnrolAsync);
-        me.MapPost("/two-factor/verify", VerifyAsync);
-        me.MapPost("/two-factor/recovery-codes", RecoveryCodesAsync);
-        me.MapPost("/two-factor/disable", DisableTwoFactorAsync);
-        me.MapGet("/logins", MyLoginsAsync);
-        me.MapDelete("/logins/{provider}", RemoveMyLoginAsync);
+        me.MapGet("", MeAsync).Produces<MeResponse>();
+        me.MapGet("/sessions", MySessionsAsync).Produces<ItemList<UserSession>>();
+        me.MapDelete("/sessions/{sessionId}", RevokeMySessionAsync).Produces(StatusCodes.Status204NoContent);
+        me.MapGet("/two-factor", TwoFactorAsync).Produces<TwoFactorStatus>();
+        me.MapPost("/two-factor/enrol", EnrolAsync).Produces<AuthenticatorSetup>();
+        me.MapPost("/two-factor/verify", VerifyAsync).Takes<TwoFactorCodeRequest>().Produces<RecoveryCodesResponse>();
+        me.MapPost("/two-factor/recovery-codes", RecoveryCodesAsync).Takes<TwoFactorCodeRequest>().Produces<RecoveryCodesResponse>();
+        me.MapPost("/two-factor/disable", DisableTwoFactorAsync).Takes<TwoFactorCodeRequest>().Produces(StatusCodes.Status204NoContent);
+        me.MapGet("/logins", MyLoginsAsync).Produces<ItemList<UserLogin>>();
+        me.MapDelete("/logins/{provider}", RemoveMyLoginAsync).Produces(StatusCodes.Status204NoContent);
     }
 
     private static async Task<IResult> ListJobsAsync(HttpContext httpContext, [FromServices] JobAdministration jobs)
@@ -115,8 +118,8 @@ internal static class OperationsEndpoints
         ManagementQuery.Only(httpContext.Request);
         var me = await current.GetAsync(httpContext.RequestAborted);
         return me.User is { } user
-            ? AdminJson.Ok(new { id = me.Id, kind = me.Kind, name = me.Name, user.UserName, user.Email, user.EmailConfirmed, user.MustChangePassword, user.TwoFactorEnabled, user.Roles })
-            : AdminJson.Ok(new { id = me.Id, kind = me.Kind, name = me.Name });
+            ? AdminJson.Ok(MeResponse.From(me, user))
+            : AdminJson.Ok(new PrincipalResponse(me.Id, me.Kind, me.Name));
     }
 
     private static async Task<IResult> MySessionsAsync(HttpContext httpContext, [FromServices] CurrentUser current)
@@ -149,13 +152,13 @@ internal static class OperationsEndpoints
     private static async Task<IResult> VerifyAsync(HttpContext httpContext, [FromServices] CurrentUser current)
     {
         var code = await CodeAsync(httpContext);
-        return AdminJson.Ok(new { recoveryCodes = await current.VerifyAuthenticatorAsync(code) });
+        return AdminJson.Ok(new RecoveryCodesResponse(await current.VerifyAuthenticatorAsync(code)));
     }
 
     private static async Task<IResult> RecoveryCodesAsync(HttpContext httpContext, [FromServices] CurrentUser current)
     {
         var code = await CodeAsync(httpContext);
-        return AdminJson.Ok(new { recoveryCodes = await current.RegenerateRecoveryCodesAsync(code) });
+        return AdminJson.Ok(new RecoveryCodesResponse(await current.RegenerateRecoveryCodesAsync(code)));
     }
 
     private static async Task<IResult> DisableTwoFactorAsync(HttpContext httpContext, [FromServices] CurrentUser current)
@@ -186,23 +189,5 @@ internal static class OperationsEndpoints
         return code;
     }
 
-    private static IResult Job(JobDetail detail) =>
-        AdminJson.Ok(new
-        {
-            detail.Job.Id,
-            detail.Job.Type,
-            detail.Job.Queue,
-            detail.Job.SiteId,
-            detail.Job.Status,
-            detail.Job.Attempts,
-            detail.Job.MaxAttempts,
-            detail.Job.Priority,
-            detail.Job.RunAt,
-            detail.Job.LastError,
-            detail.Job.CreatedAt,
-            detail.Job.CreatedBy,
-            detail.Job.Origin,
-            detail.Job.CompletedAt,
-            history = detail.Attempts,
-        });
+    private static IResult Job(JobDetail detail) => AdminJson.Ok(JobResponse.From(detail));
 }

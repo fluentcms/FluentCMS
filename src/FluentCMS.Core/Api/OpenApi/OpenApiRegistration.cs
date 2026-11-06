@@ -29,6 +29,7 @@ internal static class OpenApiRegistration
             openApi.OpenApiVersion = OpenApiSpecVersion.OpenApi3_1;
             openApi.ShouldInclude = description => SurfaceOf(description) is { } surface && Surfaces.Contains(surface, StringComparer.Ordinal);
             openApi.AddSchemaTransformer(EnumsAsNames);
+            openApi.AddSchemaTransformer(NumbersAsNumbers);
             openApi.AddOperationTransformer<FluentCmsOperationTransformer>();
             openApi.AddDocumentTransformer<FluentCmsDocumentTransformer>();
         });
@@ -62,6 +63,19 @@ internal static class OpenApiRegistration
             {
                 schema.Enum.Add(JsonNullSentinel.JsonNull);
             }
+        }
+
+        return Task.CompletedTask;
+    }
+
+    // FluentCMS writes numbers as numbers and reads them in a body only as numbers; the web defaults of a host's JsonOptions
+    // would describe them as a number or a numeric string.
+    private static Task NumbersAsNumbers(OpenApiSchema schema, OpenApiSchemaTransformerContext context, CancellationToken cancellationToken)
+    {
+        if (schema.Type is { } type && type.HasFlag(JsonSchemaType.String) && (type & (JsonSchemaType.Integer | JsonSchemaType.Number)) != 0)
+        {
+            schema.Type = type & ~JsonSchemaType.String;
+            schema.Pattern = null;
         }
 
         return Task.CompletedTask;
