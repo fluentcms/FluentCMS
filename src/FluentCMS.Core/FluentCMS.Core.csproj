@@ -1,4 +1,9 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <!-- The hosted pages of /account are Razor Pages compiled into this assembly; a host overrides one by its path. -->
+  <PropertyGroup>
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+  </PropertyGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="FluentCMS.Core.Tests" />

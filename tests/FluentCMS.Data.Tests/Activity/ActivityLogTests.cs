@@ -50,6 +50,8 @@ public sealed class ActivityLogTests
         new UserUpdatedEvent(Entry, "ann", ["email"]),
         new UserDeactivatedEvent(Entry, "ann"),
         new UserRoleChangedEvent(Entry, "ann", [Job], []),
+        new LoginSucceededEvent(Entry, "ann", LoginMethods.Password, "10.0.0.7"),
+        new LoginFailedEvent(null, null, LoginMethods.Password, LoginFailureReasons.UnknownUser, "10.0.0.8"),
         new ApiKeyCreatedEvent(Entry, "site key", "delivery"),
         new ApiKeyRevokedEvent(Entry, "site key"),
         new ApiKeyExpiryChangedEvent(Entry, "site key", new DateTimeOffset(2026, 12, 1, 8, 0, 0, TimeSpan.Zero)),

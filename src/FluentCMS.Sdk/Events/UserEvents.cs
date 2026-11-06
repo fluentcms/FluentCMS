@@ -53,3 +53,50 @@ public static class UserChanges
     /// <summary>A deactivated user was reactivated. Deactivation is <see cref="UserDeactivatedEvent"/>.</summary>
     public const string Reactivated = "reactivated";
 }
+
+/// <summary>An admin user signed in on the hosted pages.</summary>
+/// <param name="UserId">The id of the user.</param>
+/// <param name="UserName">Its user name.</param>
+/// <param name="Method">The step that completed the sign-in: one of <see cref="LoginMethods"/>.</param>
+/// <param name="Ip">The client address of the request, when it is known.</param>
+public sealed record LoginSucceededEvent(Guid UserId, string UserName, string Method, string? Ip) : CmsEvent;
+
+/// <summary>A sign-in on the hosted pages was refused. It never carries what was typed: a name that matched no user is not kept.</summary>
+/// <param name="UserId">The id of the user the sign-in was for, or <see langword="null"/> when no user matched.</param>
+/// <param name="UserName">That user's name, or <see langword="null"/> when no user matched.</param>
+/// <param name="Method">The step that was refused: one of <see cref="LoginMethods"/>.</param>
+/// <param name="Reason">Why it was refused: one of <see cref="LoginFailureReasons"/>.</param>
+/// <param name="Ip">The client address of the request, when it is known.</param>
+public sealed record LoginFailedEvent(Guid? UserId, string? UserName, string Method, string Reason, string? Ip) : CmsEvent;
+
+/// <summary>The names <see cref="LoginSucceededEvent.Method"/> and <see cref="LoginFailedEvent.Method"/> use for a step of a sign-in.</summary>
+public static class LoginMethods
+{
+    /// <summary>A user name or email address and a password.</summary>
+    public const string Password = "password";
+
+    /// <summary>A code of the user's authenticator app, after the password.</summary>
+    public const string TwoFactor = "two_factor";
+
+    /// <summary>A recovery code, in place of the authenticator's code.</summary>
+    public const string RecoveryCode = "recovery_code";
+
+    /// <summary>An external identity provider.</summary>
+    public const string External = "external";
+}
+
+/// <summary>The names <see cref="LoginFailedEvent.Reason"/> uses.</summary>
+public static class LoginFailureReasons
+{
+    /// <summary>No user has that name, email address or external login.</summary>
+    public const string UnknownUser = "unknown_user";
+
+    /// <summary>The password or code was wrong.</summary>
+    public const string InvalidCredentials = "invalid_credentials";
+
+    /// <summary>The user is locked out after too many failures.</summary>
+    public const string LockedOut = "locked_out";
+
+    /// <summary>The user may not sign in, such as a deactivated one.</summary>
+    public const string NotAllowed = "not_allowed";
+}

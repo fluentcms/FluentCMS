@@ -69,5 +69,8 @@ public sealed class ClientRegistration
 
     public IList<string> Roles { get; } = [];
 
+    // A third-party client: the user allows it on the consent page before it gets a code, once for the scopes it asks.
+    public bool RequireConsent { get; set; }
+
     internal bool IsConfidential => !string.IsNullOrEmpty(Secret);
 }

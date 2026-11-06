@@ -1,0 +1,18 @@
+@page "/account/consent"
+@model ConsentModel
+@{
+    ViewData["Title"] = "Allow access?";
+}
+<p><strong>@Model.ClientName</strong> asks to use your account@(Model.UserName is null ? "" : $" ({Model.UserName})"). It will be able to:</p>
+<ul>
+    @foreach (var scope in Model.Scopes)
+    {
+        <li>@ConsentModel.Describe(scope)</li>
+    }
+</ul>
+<p class="muted">Allow only applications you trust. You can end its access later by ending its session.</p>
+@* No action, so that the form posts to this URL with the request of the client in its query. *@
+<form method="post">
+    <button type="submit" name="decision" value="allow">Allow</button>
+    <button type="submit" class="secondary" name="decision" value="deny">Deny</button>
+</form>

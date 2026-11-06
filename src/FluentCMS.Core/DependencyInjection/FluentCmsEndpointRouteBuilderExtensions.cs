@@ -1,3 +1,4 @@
+using FluentCMS.Core.Api.Account;
 using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.Api.Delivery;
 using FluentCMS.Core.Storage;
@@ -11,7 +12,7 @@ namespace FluentCMS.Core.DependencyInjection;
 public static class FluentCmsEndpointRouteBuilderExtensions
 {
     // The routes are relative to the request's PathBase, which UseFluentCms sets from FluentCms:ReverseProxy:PathBase.
-    // The returned builder applies conventions to every FluentCMS endpoint.
+    // The returned builder applies conventions to every FluentCMS endpoint, the hosted pages included.
     public static IEndpointConventionBuilder MapFluentCms(this IEndpointRouteBuilder endpoints)
     {
         ArgumentNullException.ThrowIfNull(endpoints);
@@ -41,7 +42,7 @@ public static class FluentCmsEndpointRouteBuilderExtensions
             }
         }
 
-        return cms;
+        return new Conventions(cms, HostedPages.Map(endpoints));
     }
 
     // The admin application calls /connect and reads the discovery document from its own origin, so those groups answer
@@ -80,5 +81,24 @@ public static class FluentCmsEndpointRouteBuilderExtensions
         }
 
         return routes;
+    }
+
+    private sealed class Conventions(params IEndpointConventionBuilder[] builders) : IEndpointConventionBuilder
+    {
+        public void Add(Action<EndpointBuilder> convention)
+        {
+            foreach (var builder in builders)
+            {
+                builder.Add(convention);
+            }
+        }
+
+        public void Finally(Action<EndpointBuilder> finallyConvention)
+        {
+            foreach (var builder in builders)
+            {
+                builder.Finally(finallyConvention);
+            }
+        }
     }
 }

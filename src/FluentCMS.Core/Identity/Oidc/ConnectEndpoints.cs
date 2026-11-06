@@ -41,12 +41,20 @@ internal static class ConnectEndpoints
     private static IResult AnsweredByServer() => Results.NotFound();
 
     // The user signs in on the hosted pages, which hold the Identity cookie; without it the request goes there and comes back.
+    // So does a user who must choose a new password, and one who has not allowed a third-party client what it asks.
     private static async Task<IResult> AuthorizeAsync(HttpContext context)
     {
+        if (context.GetOpenIddictServerResponse() is { Error: not null } failed)
+        {
+            return ErrorPage(context, failed);
+        }
+
         var request = ServerRequest(context);
         var cookie = await context.AuthenticateAsync(IdentityConstants.ApplicationScheme);
         var signIn = context.RequestServices.GetRequiredService<SignInManager<CmsUser>>();
         var user = cookie.Succeeded ? await signIn.ValidateSecurityStampAsync(cookie.Principal) : null;
+        var parameters = context.Request.HasFormContentType ? context.Request.Form.ToList() : context.Request.Query.ToList();
+        var returnUrl = context.Request.PathBase + context.Request.Path + QueryString.Create(parameters);
 
         if (user is null || !await MaySignInAsync(signIn, user))
         {
@@ -55,13 +63,44 @@ internal static class ConnectEndpoints
                 return Refuse(Errors.LoginRequired, "The user is not signed in.");
             }
 
-            var parameters = context.Request.HasFormContentType ? context.Request.Form.ToList() : context.Request.Query.ToList();
-            return Results.Challenge(
-                new AuthenticationProperties { RedirectUri = context.Request.PathBase + context.Request.Path + QueryString.Create(parameters) },
-                [IdentityConstants.ApplicationScheme]);
+            return Results.Challenge(new AuthenticationProperties { RedirectUri = returnUrl }, [IdentityConstants.ApplicationScheme]);
+        }
+
+        if (user.MustChangePassword)
+        {
+            return request.HasPromptValue(PromptValues.None)
+                ? Refuse(Errors.InteractionRequired, "The user must choose a new password.")
+                : Results.Redirect(context.Request.PathBase + HostedPagePaths.ChangePassword + QueryString.Create("ReturnUrl", returnUrl));
         }
 
         var identity = TokenClaims.ForUser(TokenClaims.Identity(), user, await signIn.UserManager.GetSecurityStampAsync(user), request.GetScopes());
+        var applications = context.RequestServices.GetRequiredService<IOpenIddictApplicationManager>();
+        var application = await applications.FindByClientIdAsync(request.ClientId!, context.RequestAborted)
+            ?? throw new InvalidOperationException("The authorization server passed a client it did not find.");
+        if (await applications.HasConsentTypeAsync(application, ConsentTypes.Explicit, context.RequestAborted))
+        {
+            var consents = context.RequestServices.GetRequiredService<ClientConsents>();
+            var consent = request.HasPromptValue(PromptValues.Consent)
+                ? null
+                : await consents.FindAsync(user.Id, await applications.GetIdAsync(application, context.RequestAborted) ?? "", request.GetScopes(), context.RequestAborted);
+            if (consent is null)
+            {
+                if (request.HasPromptValue(PromptValues.None))
+                {
+                    return Refuse(Errors.ConsentRequired, "The user has not allowed the client what it asks for.");
+                }
+
+                if ((string?)request.GetParameter(ClientConsents.DecisionParameter) == ClientConsents.Denied)
+                {
+                    return Refuse(Errors.AccessDenied, "The user did not allow the client what it asks for.");
+                }
+
+                return Results.Redirect(context.Request.PathBase + HostedPagePaths.Consent + QueryString.Create(parameters));
+            }
+
+            identity.SetAuthorizationId(await context.RequestServices.GetRequiredService<IOpenIddictAuthorizationManager>().GetIdAsync(consent, context.RequestAborted));
+        }
+
         return Results.SignIn(new ClaimsPrincipal(identity), properties: null, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
     }
 
@@ -140,27 +179,36 @@ internal static class ConnectEndpoints
         return Results.Ok(claims);
     }
 
-    // Ends the user's sign-in on the hosted pages; the server then returns to the client's post-logout URI when it gave one.
-    // A cross-site GET would sign anyone out, so a GET needs a valid id_token_hint of the signed-in user; the cookie is
-    // SameSite=Lax, so a cross-site POST does not carry it. The logout page (#2779) asks the rest.
+    // Ends the user's sign-in on the hosted pages; the server then returns to the client's post-logout URI when it gave one,
+    // or to the logout page. A cross-site GET would sign anyone out, so a GET needs a valid id_token_hint of the signed-in
+    // user; the cookie is SameSite=Lax, so a cross-site POST does not carry it. Any other GET goes to the logout page, which
+    // asks the user and posts the request back.
     private static async Task<IResult> LogoutAsync(HttpContext context)
     {
+        if (context.GetOpenIddictServerResponse() is { Error: not null } failed)
+        {
+            return ErrorPage(context, failed);
+        }
+
         if (HttpMethods.IsGet(context.Request.Method) && !await HintsSignedInUserAsync(context))
         {
-            return Results.Json(
-                new Dictionary<string, string>
-                {
-                    [Parameters.Error] = Errors.InvalidRequest,
-                    [Parameters.ErrorDescription] = "A logout by GET needs the id_token_hint of the session; post the form instead.",
-                },
-                statusCode: StatusCodes.Status400BadRequest);
+            return Results.Redirect(context.Request.PathBase + HostedPagePaths.Logout + context.Request.QueryString);
         }
 
         await context.SignOutAsync(IdentityConstants.ApplicationScheme);
         return Results.SignOut(
-            new AuthenticationProperties { RedirectUri = context.Request.PathBase.HasValue ? context.Request.PathBase.Value : "/" },
+            new AuthenticationProperties { RedirectUri = context.Request.PathBase + HostedPagePaths.Logout },
             [OpenIddictServerAspNetCoreDefaults.AuthenticationScheme]);
     }
+
+    // An error the server could not return to the client, such as an unknown client or redirect URI. The error page shows
+    // the code; the description stays in the query for whoever debugs the client.
+    private static IResult ErrorPage(HttpContext context, OpenIddictResponse response) =>
+        Results.Redirect(context.Request.PathBase + HostedPagePaths.Error + QueryString.Create(new Dictionary<string, string?>
+        {
+            [Parameters.Error] = response.Error,
+            [Parameters.ErrorDescription] = response.ErrorDescription,
+        }));
 
     // OpenIddict passes a hint it cannot read through without a principal, so the hint is checked here.
     private static async Task<bool> HintsSignedInUserAsync(HttpContext context)
