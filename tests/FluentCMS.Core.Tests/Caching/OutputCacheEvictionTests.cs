@@ -52,6 +52,15 @@ public sealed class OutputCacheEvictionTests
     }
 
     [Fact]
+    public async Task AChangedSiteEvictsTheSite()
+    {
+        await _eviction.HandleAsync(new SiteUpdatedEvent(Site, "main"), new EventDelivery(Guid.CreateVersion7(), 1), Token);
+
+        _store.Evicted.ShouldBe([$"site:{Site:D}"]);
+        _bus.Published.ShouldHaveSingleItem().Tags.ShouldBe([$"site:{Site:D}"]);
+    }
+
+    [Fact]
     public async Task ATypeTheSchemaNoLongerHasIsStillEvicted()
     {
         await _eviction.HandleAsync(Source(new EntryUnpublishedEvent("gone", Entry, "en", 1)), new EventDelivery(Guid.CreateVersion7(), 1), Token);

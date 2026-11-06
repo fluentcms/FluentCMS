@@ -27,6 +27,8 @@ internal sealed class DeliveryOutputCachePolicy : IOutputCachePolicy
     private const string StatusParameter = "status";
     private const string Published = "published";
 
+    private static readonly object HitItem = new();
+
     ValueTask IOutputCachePolicy.CacheRequestAsync(OutputCacheContext context, CancellationToken cancellationToken)
     {
         var http = context.HttpContext;
@@ -34,6 +36,17 @@ internal sealed class DeliveryOutputCachePolicy : IOutputCachePolicy
         var caller = options.OutputCache ? Caller(http) : null;
 
         context.EnableOutputCaching = caller is not null;
+        if (caller is not null)
+        {
+            // Counted when the response is done, so that a lookup whose endpoint throws is a miss too.
+            http.Response.OnCompleted(static state =>
+            {
+                var items = ((HttpContext)state).Items;
+                FluentCmsTelemetry.RecordCache(CacheName, hit: items.ContainsKey(HitItem));
+                return Task.CompletedTask;
+            }, http);
+        }
+
         context.AllowCacheLookup = true;
         context.AllowCacheStorage = true;
         context.AllowLocking = true;
@@ -53,15 +66,16 @@ internal sealed class DeliveryOutputCachePolicy : IOutputCachePolicy
 
     ValueTask IOutputCachePolicy.ServeFromCacheAsync(OutputCacheContext context, CancellationToken cancellationToken)
     {
-        FluentCmsTelemetry.RecordCache(CacheName, hit: true);
+        context.HttpContext.Items[HitItem] = true;
         return ValueTask.CompletedTask;
     }
 
     ValueTask IOutputCachePolicy.ServeResponseAsync(OutputCacheContext context, CancellationToken cancellationToken)
     {
-        FluentCmsTelemetry.RecordCache(CacheName, hit: false);
-
+        // The middleware asks ServeFromCacheAsync before it checks that the entry is fresh, so an entry it then turned down
+        // ran the endpoint after all.
         var http = context.HttpContext;
+        http.Items.Remove(HitItem);
         if (http.Response.StatusCode == StatusCodes.Status200OK && http.Response.Headers.SetCookie.Count == 0 && http.Features.Get<ApiRequest>() is { } request)
         {
             context.Tags.Add(CacheTags.Site(request.Operation.Site.Value));

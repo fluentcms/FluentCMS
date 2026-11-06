@@ -1,7 +1,15 @@
 using System.Net;
+using FluentCMS.Content;
 using FluentCMS.Core.Api.Delivery;
+using FluentCMS.Core.Caching;
 using FluentCMS.Core.DependencyInjection;
+using FluentCMS.Core.Events;
 using FluentCMS.Core.IntegrationTests.Hosting;
+using FluentCMS.Core.Sites;
+using FluentCMS.Core.Storage;
+using FluentCMS.Core.Storage.Entities;
+using FluentCMS.Events;
+using FluentCMS.Testing;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.OutputCaching;
@@ -52,6 +60,33 @@ public sealed class DeliveryCacheHostTests : IAsyncDisposable
 
         exception.Code.ShouldBe("FCMS1101");
         exception.Message.ShouldContain($"FluentCms:Delivery:Cache:{key}");
+    }
+
+    [Fact]
+    public async Task WithTheOutputCacheOffAReadKeepsItsHeadersAndIsNotStored()
+    {
+        await using var host = new FluentCmsTestHost()
+            .WithContentTypes<Note, Topic>()
+            .Configure(cms => cms.DeliveryCache.OutputCache = false)
+            .Seed(async services =>
+            {
+                var context = services.GetRequiredService<CmsDbContext>();
+                context.Set<RoleGrant>().Add(new RoleGrant { Id = Guid.CreateVersion7(), RoleId = DefaultSite.PublicRole, Permission = "content.note.read" });
+                await context.SaveChangesAsync();
+
+                var notes = services.GetRequiredService<IContentService<Note>>();
+                await notes.PublishAsync((await notes.CreateAsync(new Note { Title = "First", Slug = "first" })).Id);
+            });
+        using var client = host.CreateClient();
+
+        using var first = await client.GetAsync(new Uri("/api/delivery/v1/note", UriKind.Relative), Token);
+        using var second = await client.GetAsync(new Uri("/api/delivery/v1/note", UriKind.Relative), Token);
+
+        first.StatusCode.ShouldBe(HttpStatusCode.OK);
+        first.Headers.ETag.ShouldNotBeNull();
+        first.Headers.NonValidated["Cache-Control"].ToString().ShouldBe(DeliveryCacheOptions.DefaultCacheControl);
+        second.Headers.Age.ShouldBeNull();
+        host.Services.GetRequiredService<OutboxRegistry>().ForEvent(typeof(EntryPublishedEvent)).ShouldNotContain(registration => registration.Handler == typeof(OutputCacheEviction));
     }
 
     // A base policy of the host's that would cache anything reaches the host's own routes and none of FluentCMS's but Delivery.
