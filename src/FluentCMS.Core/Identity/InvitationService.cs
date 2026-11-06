@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using FluentCMS.Content;
+using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Providers;
@@ -15,14 +16,20 @@ internal sealed record InvitationSent(Guid Id, string Email, DateTimeOffset Expi
 
 internal sealed record PendingInvitation(Guid Id, string Email, DateTimeOffset ExpiresAt);
 
+internal sealed record InvitationInfo(Guid Id, string Email, IReadOnlyList<Guid> RoleIds, DateTimeOffset CreatedAt, Guid CreatedBy, DateTimeOffset ExpiresAt);
+
 // An invitation is a random token sent by email; the row keeps only its hash. Accepting it creates the user with the roles
-// it names and uses it up, in one transaction. A new invitation to the same address ends the one before.
+// it names and uses it up, in one transaction. A new invitation to the same address ends the one before. Sending, listing
+// and revoking need users.manage for the instance, since the user it becomes belongs to no site, and the sender must hold
+// every grant of the roles it names.
 internal sealed class InvitationService(
     SystemDbContext context,
     CmsUserManager users,
     IdentityChanges changes,
     IEmailSender email,
     IOperationContextAccessor accessor,
+    ManagementAuthority authority,
+    RoleService roleService,
     AdminUserOptions options,
     TimeProvider time)
 {
@@ -39,19 +46,22 @@ internal sealed class InvitationService(
             throw new ArgumentException("The page that accepts an invitation is linked from an email, so its address is absolute.", nameof(acceptUrl));
         }
 
+        await authority.RequireAsync(CorePermissions.UsersManage, site: null, cancellationToken);
+
         var trimmed = address.Trim();
         if (!MailAddress.TryCreate(trimmed, out var parsed) || parsed.Address != trimmed)
         {
             throw new ValidationException([new ValidationError("email", IdentityErrorCodes.InvalidEmail, "The address is not a valid email address.")]);
         }
 
-        // Whether the caller may give these roles is the Management API's to decide (#2786): this checks only that they exist.
         List<Guid> roles = [.. roleIds.Distinct()];
         var found = await context.Set<Role>().AsNoTracking().CountAsync(role => roles.Contains(role.Id), cancellationToken);
         if (found != roles.Count)
         {
             throw new ValidationException([new ValidationError("roles", IdentityErrorCodes.UnknownRole, "An invitation names only roles that exist.")]);
         }
+
+        await roleService.RequireAssignableAsync(roles, cancellationToken);
 
         var normalized = users.NormalizeEmail(trimmed) ?? trimmed;
         if (await users.FindByEmailAsync(trimmed) is not null)
@@ -97,6 +107,33 @@ internal sealed class InvitationService(
         }
 
         return new InvitationSent(invitation.Id, invitation.Email, invitation.ExpiresAt);
+    }
+
+    // The invitations that could still be accepted, the newest first.
+    public async Task<IReadOnlyList<InvitationInfo>> ListPendingAsync(CancellationToken cancellationToken = default)
+    {
+        await authority.RequireAsync(CorePermissions.UsersManage, site: null, cancellationToken);
+
+        var now = time.GetUtcNow();
+        var rows = await context.Set<Invitation>().AsNoTracking()
+            .Where(row => row.AcceptedAt == null && row.RevokedAt == null)
+            .ToListAsync(cancellationToken);
+
+        return [.. rows.Where(row => row.ExpiresAt > now)
+            .OrderByDescending(row => row.CreatedAt).ThenByDescending(row => row.Id)
+            .Select(row => new InvitationInfo(row.Id, row.Email, JsonSerializer.Deserialize<List<Guid>>(row.RoleIds) ?? [], row.CreatedAt, row.CreatedBy, row.ExpiresAt))];
+    }
+
+    // False when no invitation with this id could still be accepted.
+    public async Task<bool> RevokeAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        await authority.RequireAsync(CorePermissions.UsersManage, site: null, cancellationToken);
+
+        var now = time.GetUtcNow();
+        var revoked = await context.Set<Invitation>()
+            .Where(row => row.Id == id && row.AcceptedAt == null && row.RevokedAt == null)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(row => row.RevokedAt, now), cancellationToken);
+        return revoked == 1;
     }
 
     // For the page that accepts it: whether the token is one that would be accepted now.

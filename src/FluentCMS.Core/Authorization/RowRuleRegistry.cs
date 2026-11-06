@@ -35,6 +35,8 @@ internal sealed class RowRuleRegistry
     public RowRule? Find(string name, string typeName) =>
         _rules.GetValueOrDefault((name, typeName)) ?? _rules.GetValueOrDefault((name, null));
 
+    public bool Has(string name) => _rules.Keys.Any(key => string.Equals(key.Name, name, StringComparison.Ordinal));
+
     private static void Check(SchemaModel schema, ContentQueryOptions options, QueryPaths paths, RowRule rule)
     {
         var type = rule.TypeName is null ? null : schema.FindContentType(rule.TypeName) ?? throw new FluentCmsConfigurationException(

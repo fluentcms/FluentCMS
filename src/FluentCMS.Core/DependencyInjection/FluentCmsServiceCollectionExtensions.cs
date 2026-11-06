@@ -116,6 +116,8 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddHostedService<RowRuleStartupCheck>();
         IdentityRegistration.Add(services, builder.Users, builder.Clients);
         services.TryAddScoped<IAuthorizationEvaluator, AuthorizationEvaluator>();
+        services.AddScoped<ManagementAuthority>();
+        services.AddScoped<RoleService>();
         services.TryAddScoped<IContentQueryAccess, ContentQueryAccess>();
         services.AddScoped<ContentQueryEngine>();
 
@@ -128,6 +130,9 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddScoped<RequestBridge>();
         services.AddDeliveryApi(builder.DeliveryCache);
         services.AddManagementContentApi();
+        services.AddManagementIdentityApi();
+        services.AddManagementSiteApi();
+        services.AddManagementOperationsApi();
         services.AddFluentCmsHealth();
         services.AddSystemApi();
 
@@ -159,6 +164,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.TryAddSingleton<IJobScheduler, JobScheduler>();
         services.TryAddSingleton<IJobRunner, JobRunner>();
         services.TryAddSingleton<IJobDeadLetters, JobDeadLetters>();
+        services.AddScoped<JobAdministration>();
         services.AddHostedService<JobRunnerHostedService>();
 
         builder.Jobs.AddJob<TrashPurgeJob, TrashPurgePayload>(TrashPurgeJob.Type);
@@ -198,6 +204,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddScoped<ActivityLogWriter>();
         services.TryAddScoped<IActivityLog>(serviceProvider => serviceProvider.GetRequiredService<ActivityLogWriter>());
         services.TryAddScoped<IActivityQuery, ActivityQuery>();
+        services.AddScoped<ActivityReader>();
         ActivityEvents.Register(builder.Events);
         services.AddHostedService<ActivityScheduleService>();
 
