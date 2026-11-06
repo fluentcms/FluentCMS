@@ -7,6 +7,7 @@ using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.Api.Delivery;
 using FluentCMS.Core.Api.Management;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Caching;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Content.Hooks;
 using FluentCMS.Core.Content.Query;
@@ -125,7 +126,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddScoped<LocaleFallbackReader>();
         services.AddScoped<SiteManager>();
         services.AddScoped<RequestBridge>();
-        services.AddDeliveryApi();
+        services.AddDeliveryApi(builder.DeliveryCache);
         services.AddManagementContentApi();
         services.AddFluentCmsHealth();
         services.AddSystemApi();
@@ -199,6 +200,9 @@ public static class FluentCmsServiceCollectionExtensions
         services.TryAddScoped<IActivityQuery, ActivityQuery>();
         ActivityEvents.Register(builder.Events);
         services.AddHostedService<ActivityScheduleService>();
+
+        services.AddOutputCache();
+        OutputCacheEviction.Register(builder.Events, () => builder.DeliveryCache.OutputCache);
 
         services.AddSingleton(builder.Seeding);
         services.AddScoped<SeedStateStore>();

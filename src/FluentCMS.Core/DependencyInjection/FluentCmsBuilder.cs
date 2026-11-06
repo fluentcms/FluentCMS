@@ -1,5 +1,6 @@
 using System.Reflection;
 using FluentCMS.Core.ActivityLog;
+using FluentCMS.Core.Api.Delivery;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Events;
 using FluentCMS.Core.Identity;
@@ -40,6 +41,8 @@ public sealed class FluentCmsBuilder
     public ClientOptions Clients { get; } = new();
 
     public ReverseProxyOptions ReverseProxy { get; } = new();
+
+    public DeliveryCacheOptions DeliveryCache { get; } = new();
 
     internal IDataProvider? DataProvider { get; private set; }
 
