@@ -52,6 +52,57 @@ public sealed class OutboxFailureTests
         }
     }
 
+    // Each attempt the drain starts is the update that adds one to the attempts of the row.
+    private sealed class AttemptStarts : DbCommandInterceptor
+    {
+        private int _count;
+
+        public int Count => Volatile.Read(ref _count);
+
+        public override ValueTask<int> NonQueryExecutedAsync(DbCommand command, CommandExecutedEventData eventData, int result, CancellationToken cancellationToken = default)
+        {
+            if (result == 1 && command.CommandText.Contains("cms_outbox", StringComparison.Ordinal) && command.CommandText.Contains("\"attempts\" + 1", StringComparison.Ordinal))
+            {
+                Interlocked.Increment(ref _count);
+            }
+
+            return ValueTask.FromResult(result);
+        }
+    }
+
+    // The cut-off of a delivery is armed before the thread pool runs the handler, so on a busy machine it can use up an
+    // attempt whose handler never ran. This holds each cut-off until the handler of every attempt started has been called.
+    private sealed class CutOffAfterTheCall(TimeSpan cutOff, Func<bool> called) : TimeProvider
+    {
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+        {
+            if (dueTime != cutOff)
+            {
+                return base.CreateTimer(callback, state, dueTime, period);
+            }
+
+            ITimer? timer = null;
+            timer = base.CreateTimer(_ =>
+            {
+                if (called())
+                {
+                    callback(state);
+                    return;
+                }
+
+                try
+                {
+                    timer!.Change(TimeSpan.FromMilliseconds(5), Timeout.InfiniteTimeSpan);
+                }
+                catch (ObjectDisposedException)
+                {
+                }
+            }, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+            timer.Change(dueTime, period);
+            return timer;
+        }
+    }
+
     [Fact]
     public async Task AWriteThatFailsToRecordItsRowLeavesNothingForTheNextWriteOfTheScopeToCommit()
     {
@@ -259,19 +310,26 @@ public sealed class OutboxFailureTests
     {
         var seen = new Seen();
         seen.Behavior = (_, _) => new TaskCompletionSource().Task;
+        var starts = new AttemptStarts();
+        var cutOff = TimeSpan.FromMilliseconds(150);
         using var database = new ServiceDatabase(EventRegistrations.With(seen, Fast(cms =>
         {
-            cms.Events.Outbox.DeliveryTimeout = TimeSpan.FromMilliseconds(150);
+            cms.Events.Outbox.DeliveryTimeout = cutOff;
             cms.Events.Outbox.LeaseDuration = TimeSpan.FromSeconds(30);
             cms.Events.Outbox.MaxAttempts = 2;
+            cms.Services.AddSingleton<TimeProvider>(new CutOffAfterTheCall(cutOff, () => seen.Deliveries.Count >= starts.Count));
+            cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(starts));
         })));
         await database.CreateAsync(Editor, Titled("T"));
 
-        (await DrainAsync(database.Database.Services)).ShouldBe(0);
+        // The bound fails the test, instead of hanging it, if the handler is never called.
+        (await DrainAsync(database.Database.Services).WaitAsync(TimeSpan.FromSeconds(30), Token)).ShouldBe(0);
 
-        seen.Deliveries.Count.ShouldBe(2);
+        starts.Count.ShouldBe(2);
+        seen.Deliveries.Select(delivery => delivery.Attempt).ShouldBe([1, 2]);
         var row = database.Rows().Single();
         row.Status.ShouldBe(OutboxStatus.Failed);
+        row.Attempts.ShouldBe(2);
         row.LastError!.ShouldContain("did not finish");
     }
 
