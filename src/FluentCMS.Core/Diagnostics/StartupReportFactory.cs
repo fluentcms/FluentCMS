@@ -8,6 +8,7 @@ using FluentCMS.Providers;
 using FluentCMS.Schema;
 using FluentCMS.Core.Schema;
 using FluentCMS.Diagnostics;
+using Microsoft.AspNetCore.HostFiltering;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -55,7 +56,7 @@ internal sealed class StartupReportFactory(
                 Drifted = schema.Drifted,
                 Changes = schema.Changes is null ? null : SecretScrubber.Of(schema.Changes),
             },
-            InsecureDefaults = InsecureDefaults(),
+            InsecureDefaults = InsecureDefaults(startup),
         };
     }
 
@@ -86,7 +87,7 @@ internal sealed class StartupReportFactory(
     }
 
     // The checks that refuse a start in Production are the first source, so that the report and the refusal never disagree.
-    private List<InsecureDefault> InsecureDefaults()
+    private List<InsecureDefault> InsecureDefaults(DatabaseStartup startup)
     {
         List<InsecureDefault> found = [.. checks
             .Select(check => check.Check())
@@ -113,6 +114,16 @@ internal sealed class StartupReportFactory(
             found.Add(new InsecureDefault { Id = "https-redirection-off", Message = $"HTTPS redirection is off in Production. Turn on {FluentCmsOptions.Section}:{ReverseProxyOptions.Section}:{nameof(ReverseProxyOptions.HttpsRedirection)}:Enabled unless the proxy in front redirects." });
         }
 
+        if (environment?.IsProduction() == true && AllowsAnyHost())
+        {
+            found.Add(new InsecureDefault { Id = "allowed-hosts-any", Message = "AllowedHosts is '*' or not set in Production, so a request with a forged Host header gets links to that host in password reset and invitation emails. Set AllowedHosts to the host names of the instance." });
+        }
+
+        if (startup.MigrateOnStartup && startup.SchemaSync == SchemaSyncMode.Auto && environment?.IsDevelopment() != true)
+        {
+            found.Add(new InsecureDefault { Id = "schema-sync-outside-development", Message = "Content tables follow the schema at start outside Development: additive changes apply with no reviewed migration, and destructive ones are logged and left undone. The host allowed it with AllowSchemaSyncOutsideDevelopment." });
+        }
+
         if (proxy.ForwardedHeaders is { Enabled: true } forwarded && forwarded.TrustsEveryAddress)
         {
             found.Add(new InsecureDefault { Id = "forwarded-headers-trust-any", Message = "Forwarded headers are trusted from every address, so any caller can choose the scheme and client address the host sees. List the proxies or networks." });
@@ -120,6 +131,10 @@ internal sealed class StartupReportFactory(
 
         return found;
     }
+
+    // Web host defaults read AllowedHosts into these options and make an unset value "*"; without them nothing filters hosts.
+    private bool AllowsAnyHost() =>
+        services.GetService<IOptions<HostFilteringOptions>>()?.Value.AllowedHosts is not { Count: > 0 } hosts || hosts.Contains("*");
 
     // The assemblies of FluentCMS in the process, which is the SDK, core, the data provider and whatever else the host
     // referenced. A plugin shows here and, once the plugin host exists, in Plugins.

@@ -89,6 +89,7 @@ public sealed class StartupReportTests : IAsyncDisposable
 
         report.Environment.ShouldBe("Production");
         report.InsecureDefaults.Select(item => item.Id).ShouldContain("https-redirection-off");
+        report.InsecureDefaults.Select(item => item.Id).ShouldContain("allowed-hosts-any");
         report.InsecureDefaults.Select(item => item.Id).ShouldNotContain("development-email-sender");
         report.Schema.Hash.ShouldNotBeNullOrWhiteSpace();
         report.Schema.Drifted.ShouldBeFalse();
@@ -101,6 +102,37 @@ public sealed class StartupReportTests : IAsyncDisposable
         await app.StartAsync(Token);
 
         app.Services.GetRequiredService<StartupReportHolder>().Current!.InsecureDefaults.Select(item => item.Id).ShouldNotContain("https-redirection-off");
+    }
+
+    [Theory]
+    [InlineData("cms.example.com", false)]
+    [InlineData("cms.example.com;localhost", false)]
+    [InlineData("*", true)]
+    [InlineData("cms.example.com;*", true)]
+    public async Task AllowedHostsIsReportedInProductionOnlyWhenItAcceptsAnyHost(string allowedHosts, bool reported)
+    {
+        var app = _host.Build(Environments.Production, new Dictionary<string, string?> { ["AllowedHosts"] = allowedHosts });
+        await app.StartAsync(Token);
+
+        var insecure = app.Services.GetRequiredService<StartupReportHolder>().Current!.InsecureDefaults.Select(item => item.Id).ToList();
+
+        if (reported)
+        {
+            insecure.ShouldContain("allowed-hosts-any");
+        }
+        else
+        {
+            insecure.ShouldNotContain("allowed-hosts-any");
+        }
+    }
+
+    [Fact]
+    public async Task AllowedHostsIsNotReportedOutsideProduction()
+    {
+        var app = _host.Build(Environments.Staging);
+        await app.StartAsync(Token);
+
+        app.Services.GetRequiredService<StartupReportHolder>().Current!.InsecureDefaults.Select(item => item.Id).ShouldNotContain("allowed-hosts-any");
     }
 
     [Fact]

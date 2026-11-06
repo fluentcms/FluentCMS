@@ -58,8 +58,15 @@ public static class FluentCmsServiceCollectionExtensions
             StorageErrorCodes.NoDataProvider,
             "AddFluentCms has no data provider. Add the package for your database and call cms.UseSqlite(...), cms.UsePostgreSql(...) or cms.UseSqlServer(...) inside AddFluentCms.");
 
+        if (builder.SchemaSyncOutsideDevelopment && !provider.SupportsSchemaSync)
+        {
+            throw new FluentCmsConfigurationException(
+                StorageErrorCodes.SchemaSyncNotSupported,
+                $"AllowSchemaSyncOutsideDevelopment needs a data provider with schema sync, and {provider.Name} has none; its content tables come from migrations.");
+        }
+
         services.AddProductionStartupChecks();
-        services.AddFluentCmsOptions(DatabaseOptions.Section, StorageErrorCodes.InvalidDatabaseSetting, new DatabaseOptions());
+        services.AddFluentCmsOptions(DatabaseOptions.Section, StorageErrorCodes.InvalidDatabaseSetting, new DatabaseOptions { SchemaSyncOutsideDevelopment = builder.SchemaSyncOutsideDevelopment });
         services.AddFluentCmsOptions(SecurityOptions.Section, HostErrorCodes.InvalidOption, new SecurityOptions(), security => security.Validate());
         services.AddFluentCmsOptions(ReverseProxyOptions.Section, HostErrorCodes.InvalidOption, builder.ReverseProxy, proxy => proxy.Validate());
         services.AddReverseProxyHttpsPolicy();

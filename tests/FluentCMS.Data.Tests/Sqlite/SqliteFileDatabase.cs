@@ -49,7 +49,8 @@ internal sealed class SqliteFileDatabase : IDisposable
         string environment,
         Assembly? contentMigrations = null,
         Dictionary<string, string?>? settings = null,
-        Action<IServiceCollection>? services = null)
+        Action<IServiceCollection>? services = null,
+        Action<FluentCmsBuilder>? configure = null)
     {
         var builder = Host.CreateEmptyApplicationBuilder(new HostApplicationBuilderSettings { EnvironmentName = environment });
         // These hosts sign no tokens, so Production may start with the key the authorization server would generate.
@@ -65,6 +66,7 @@ internal sealed class SqliteFileDatabase : IDisposable
             // Their outbox handlers start a schedule in the background, which a test that disposes the host without stopping it leaves running against a file it then deletes.
             cms.Activity.Enabled = false;
             cms.DeliveryCache.OutputCache = false;
+            configure?.Invoke(cms);
         });
 
         return builder.Build();

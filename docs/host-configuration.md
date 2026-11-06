@@ -1,5 +1,7 @@
 # Host configuration
 
+To run FluentCMS without writing a host, use the reference host and its image; see [Run with Docker](docker.md).
+
 A host registers the engine with `AddFluentCms()` and puts its HTTP surfaces on the routes with `MapFluentCms()`:
 
 ```csharp
@@ -31,6 +33,7 @@ Everything is read from the `FluentCms` section of the host's configuration, so 
 | `FluentCms:Database` | `MigrateOnStartup`, `SchemaSync` (see [content migrations](content-migrations.md)) |
 | `FluentCms:Security` | `AllowGeneratedSigningKey`, `SigningCertificate:Path`, `SigningCertificate:Password`, `Cors:Delivery:AllowedOrigins`, `Cors:Management:AllowedOrigins`, `ReferrerPolicy`, `FrameAncestors` |
 | `FluentCms:Users` | `Password`, `Lockout`, `InvitationLifetime` (7 days), `PasswordResetLifetime` (1 hour) (see [hosted pages](#hosted-pages)) |
+| `FluentCms:Email` | `Smtp:Host`, `Smtp:Port` (587), `Smtp:Security` (`StartTls`, `SslOnConnect` or `None`), `Smtp:UserName`, `Smtp:Password`, `Smtp:From` (see [email](#email)) |
 | `FluentCms:Clients` | `AdminClientId`, and `Applications:{clientId}` with `DisplayName`, `Secret`, `RedirectUris`, `PostLogoutRedirectUris`, `Scopes`, `Roles`, `RequireConsent` (see [authorization server](#authorization-server)) |
 | `FluentCms:Sso` | `DisableLocalLogin`, and `Providers:{name}` with `Preset`, `DisplayName`, `Authority`, `TenantId`, `Domain`, `AuthorizationServerId`, `BaseUrl`, `Realm`, `ClientId`, `ClientSecret`, `Scopes`, `AutoProvision`, `DefaultRole`, `EmailClaim`, `GroupsClaim`, `RoleMappings`, `TrustMfaClaim`, `RequireHttpsMetadata` (see [single sign-on](#single-sign-on)) |
 | `FluentCms:ReverseProxy` | `PathBase`, `ForwardedHeaders`, `HttpsRedirection`, `Hsts` (see [reverse proxy](reverse-proxy.md)) |
@@ -123,7 +126,7 @@ The server of the document is the request's origin and path base, and so are the
 
 ## Startup report and diagnostics
 
-Once the migrations have run, the host logs one `StartupReport` (event id 1100, Information) and a warning per insecure default (event id 1101). The report is a public type of the SDK (`FluentCMS.Diagnostics.StartupReport`). It names the environment, the FluentCMS and data provider versions, the FluentCMS assemblies in the process, the plugins (none until the plugin host exists), the pending migrations of the system, plugin and content streams, the schema hash in code against the one last applied, and the insecure defaults: the refusals of the production checks below even in an environment that does not enforce them, a generated signing key that `AllowGeneratedSigningKey` accepted, the Development email sender, the HTTPS redirect being off in Production, and forwarded headers trusted from every address. It holds no connection string, key or password. If the report cannot be made, the log says so (event id 1102, with the scrubbed message) and the report is reduced to what needs no database, with `failure` naming the exception type; a request that arrives before any report exists gets a 503 (`FCMS3106`).
+Once the migrations have run, the host logs one `StartupReport` (event id 1100, Information) and a warning per insecure default (event id 1101). The report is a public type of the SDK (`FluentCMS.Diagnostics.StartupReport`). It names the environment, the FluentCMS and data provider versions, the FluentCMS assemblies in the process, the plugins (none until the plugin host exists), the pending migrations of the system, plugin and content streams, the schema hash in code against the one last applied, and the insecure defaults: the refusals of the production checks below even in an environment that does not enforce them, a generated signing key that `AllowGeneratedSigningKey` accepted, the Development email sender, the HTTPS redirect being off in Production, `AllowedHosts` left at `*` or unset in Production, schema sync running outside Development (see [content migrations](content-migrations.md#schema-sync)), and forwarded headers trusted from every address. It holds no connection string, key or password. If the report cannot be made, the log says so (event id 1102, with the scrubbed message) and the report is reduced to what needs no database, with `failure` naming the exception type; a request that arrives before any report exists gets a 503 (`FCMS3106`).
 
 `GET /api/management/v1/system/diagnostics` returns the same report as JSON. It needs the instance-wide permission `system.read` (a Super Admin has it), which a role of one site, a grant limited to sites and a key bound to sites do not reach, and which a Delivery or Preview key never gets because it lacks the management scope.
 
@@ -195,3 +198,17 @@ A first sign-in of someone with no user creates one when `AutoProvision` is on (
 A provider's `amr` claim does not count as the second factor unless `TrustMfaClaim` is set for it. When it is, a token whose `amr` holds `mfa` signs in as if the user had given the local second factor. Otherwise a user whose role requires two-factor gives the local one after the provider, or sets it up on first use. Set `TrustMfaClaim` only for a provider that enforces multi-factor sign-in itself.
 
 `DisableLocalLogin` hides the password form and the forgotten-password link, and refuses every password sign-in, so admin users sign in through a provider only. It needs at least one provider. An invited user then cannot sign in, and a provider refuses the address because the user is not linked to it, so let users sign in through the provider first and give them roles afterwards. Without `DisableLocalLogin`, a user created by a provider can still get a password through a reset link.
+
+## Email
+
+Invitations and password resets go through `IEmailSender`. In Development the default writes each message, link included, to the log and the startup report lists `development-email-sender`; anywhere else it refuses to send (`FCMS3008`) until a sender is set up. Setting `FluentCms:Email:Smtp:Host` sends through that SMTP server in every environment, Development included:
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `Smtp:Host` | none | The SMTP server. Without it, the defaults above apply. |
+| `Smtp:Port` | `587` | Its port. |
+| `Smtp:Security` | `StartTls` | `StartTls` refuses a server that does not offer TLS; `SslOnConnect` is TLS from the first byte, as on port 465; `None` sends in the clear and is for a relay on a trusted network only. |
+| `Smtp:UserName`, `Smtp:Password` | none | The account to sign in with. Without a user name the server is not asked to authenticate. Keep the password in a secret store. |
+| `Smtp:From` | none, required with a host | The sender, such as `cms@example.com` or `FluentCMS <cms@example.com>`. |
+
+A missing or invalid `From` stops the host with `FCMS1101`. A host or a plugin that registers its own `IEmailSender` replaces all of this.

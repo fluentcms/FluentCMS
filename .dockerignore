@@ -1,0 +1,14 @@
+# Only what src/FluentCMS.Host/Dockerfile copies.
+*
+!global.json
+!Directory.Build.props
+!Directory.Packages.props
+!docs/resources/icon.png
+!src/
+!samples/Blog/
+
+**/bin/
+**/obj/
+**/*.db
+**/*.db-shm
+**/*.db-wal

@@ -35,7 +35,7 @@ This builds the project and writes the migration to `Migrations/Content`. The ru
 | `FluentCms:Database:MigrateOnStartup` | `true`, `false` | `true` on SQLite, `false` otherwise |
 | `FluentCms:Database:SchemaSync` | `Auto`, `Off` | `Auto` in Development on SQLite, `Off` otherwise |
 
-`Auto` anywhere other than Development on SQLite logs a warning and acts as `Off`. An invalid value stops startup with `FCMS1304`.
+`Auto` anywhere other than Development on SQLite logs a warning and acts as `Off`, unless the host calls `cms.AllowSchemaSyncOutsideDevelopment()` inside `AddFluentCms`: then the default is `Auto` on SQLite in every environment, and `Off` still turns it off. It is for a host whose types have no compiled migrations, such as the [Docker image](docker.md) with a schema file; it cannot be set from configuration, a provider other than SQLite refuses it with `FCMS3154`, and the startup report lists it as `schema-sync-outside-development`. An invalid value stops startup with `FCMS1304`.
 
 With `MigrateOnStartup` set to `false`, startup changes nothing in the database, including schema sync. `MigrationRunner.MigrateAsync` applies every stream whatever the setting, and `MigrationRunner.GetPendingMigrationsAsync` lists what is pending.
 

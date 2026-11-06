@@ -23,13 +23,16 @@ public sealed class DatabaseOptions
 
     [EnumDataType(typeof(SchemaSyncMode))]
     public SchemaSyncMode? SchemaSync { get; set; }
+
+    // From FluentCmsBuilder.AllowSchemaSyncOutsideDevelopment. Internal, so that configuration does not bind it.
+    internal bool SchemaSyncOutsideDevelopment { get; init; }
 }
 
 internal sealed record DatabaseStartup(bool MigrateOnStartup, SchemaSyncMode SchemaSync)
 {
     public static DatabaseStartup Resolve(IDataProvider provider, DatabaseOptions? options, IHostEnvironment? environment, ILogger logger)
     {
-        var syncAllowed = provider.SupportsSchemaSync && environment?.IsDevelopment() == true;
+        var syncAllowed = provider.SupportsSchemaSync && (environment?.IsDevelopment() == true || options?.SchemaSyncOutsideDevelopment == true);
         var migrateOnStartup = options?.MigrateOnStartup ?? provider.MigrateOnStartup;
         var schemaSync = options?.SchemaSync ?? (syncAllowed ? SchemaSyncMode.Auto : SchemaSyncMode.Off);
 
