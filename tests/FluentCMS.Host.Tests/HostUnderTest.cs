@@ -11,11 +11,20 @@ using Xunit;
 
 namespace FluentCMS.Host.Tests;
 
-// The reference host as the image runs it, on a TestServer: Production, the generated signing key accepted as the
-// Dockerfile accepts it, and SQLite with no configuration in a directory of its own, which is the content root.
+// The reference host as the image runs it, on a TestServer: Production, the opt-ins of an evaluation run unless a test
+// leaves them out, and SQLite with no configuration in a directory of its own, which is the content root.
 internal sealed class HostUnderTest : IAsyncDisposable
 {
     public static readonly Uri Https = new("https://localhost/");
+
+    // The image lifts no Production refusal itself, so a run with nothing set stops. These are the opt-ins docs/docker.md
+    // names, with AllowRequestOrigin in place of a public origin, which a test sets when it is about one.
+    public static readonly IReadOnlyDictionary<string, string?> EvaluationOptIns = new Dictionary<string, string?>
+    {
+        ["FluentCms:Security:AllowGeneratedSigningKey"] = "true",
+        ["FluentCms:Security:AllowUnencryptedKeyRing"] = "true",
+        ["FluentCms:Security:AllowRequestOrigin"] = "true",
+    };
 
     private static readonly CancellationToken Token = TestContext.Current.CancellationToken;
 
@@ -27,19 +36,23 @@ internal sealed class HostUnderTest : IAsyncDisposable
 
     public WebApplication App => _app ?? throw new InvalidOperationException("The host is not built.");
 
-    public WebApplication Build(Dictionary<string, string?>? settings = null, Action<IServiceCollection>? services = null, string environment = "Production")
+    public WebApplication Build(Dictionary<string, string?>? settings = null, Action<IServiceCollection>? services = null, string environment = "Production", bool optIns = true)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = environment, ContentRootPath = Root });
         builder.WebHost.UseTestServer();
-        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["FluentCms:Security:AllowGeneratedSigningKey"] = "true" });
+        if (optIns)
+        {
+            builder.Configuration.AddInMemoryCollection(EvaluationOptIns);
+        }
+
         builder.Configuration.AddInMemoryCollection(settings ?? []);
         services?.Invoke(builder.Services);
         return _app = ReferenceHost.Build(builder);
     }
 
-    public async Task<WebApplication> StartAsync(Dictionary<string, string?>? settings = null, Action<IServiceCollection>? services = null, string environment = "Production")
+    public async Task<WebApplication> StartAsync(Dictionary<string, string?>? settings = null, Action<IServiceCollection>? services = null, string environment = "Production", bool optIns = true)
     {
-        var app = Build(settings, services, environment);
+        var app = Build(settings, services, environment, optIns);
         await app.StartAsync(Token);
         return app;
     }

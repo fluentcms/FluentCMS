@@ -12,13 +12,25 @@ docker build -f src/FluentCMS.Host/Dockerfile -t fluentcms .
 
 The Dockerfile builds for the platform it runs on, and for both `linux/amd64` and `linux/arm64` with `docker buildx build --platform linux/amd64,linux/arm64`. The SDK compiles for the target on the build machine, so no emulation is needed. The image is `mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled-extra`: no shell and no package manager, ICU and time zone data for localized content and schedules, and the non-root user `app` (uid 1654).
 
-Run it with no configuration:
+The image runs in the Production environment, which refuses to start on the defaults that are only safe for a trial. Run with nothing set, it stops before it touches the database, exits with code 1 and prints one line per refusal, each naming the setting and the key that lifts it:
+
+- `FCMS1102`: tokens would be signed with a key the server generates, because no signing certificate is configured.
+- `FCMS1105`: links in password reset and invitation emails would follow the request's `Host`, because `FluentCms__PublicOrigin` is not set.
+- `FCMS1106`: the Data Protection key ring would be stored in the database unencrypted.
+
+[Before production](#before-production) fixes each of them. To evaluate the image, set the public origin and lift the other two explicitly:
 
 ```bash
-docker run -d --name fluentcms -p 8080:8080 -v fluentcms-data:/data fluentcms
+docker run -d --name fluentcms -p 8080:8080 -v fluentcms-data:/data \
+  -e FluentCms__PublicOrigin=https://cms.example.com \
+  -e FluentCms__Security__AllowGeneratedSigningKey=true \
+  -e FluentCms__Security__AllowUnencryptedKeyRing=true \
+  fluentcms
 ```
 
-It starts in the Production environment on SQLite, in `/data/fluentcms.db`, and applies the migrations on start. To start with nothing set, the image accepts the token signing key the server generates and keeps in the database; the startup report lists it, and [before production](#before-production) says how to replace it with a certificate. Keep `/data` on a volume, or the database goes with the container. `GET http://localhost:8080/health/ready` answers `Healthy` once the database and the job runner are up, and `docker ps` shows the container as healthy: the image's `HEALTHCHECK` runs the host itself with `--probe`, because a chiseled image has no `curl`.
+`FluentCms__PublicOrigin` is the https address you reach the instance at through the proxy that ends TLS, which sign-in needs (see [before production](#before-production)). With no such address yet, `FluentCms__Security__AllowRequestOrigin=true` in its place builds links from each request. The startup report keeps listing each opt-in, as `generated-signing-key`, `data-protection-keys-unencrypted` or `public-origin-unset`.
+
+It runs on SQLite, in `/data/fluentcms.db`, and applies the migrations on start. Keep `/data` on a volume, or the database goes with the container. `GET http://localhost:8080/health/ready` answers `Healthy` once the database and the job runner are up, and `docker ps` shows the container as healthy: the image's `HEALTHCHECK` runs the host itself with `--probe`, because a chiseled image has no `curl`.
 
 ## Content types
 
@@ -64,7 +76,11 @@ A schema file has no compiled migrations, so the host creates and extends its ta
 | `ConnectionStrings__FluentCms` | `Data Source=/data/fluentcms.db` | The connection string. PostgreSQL and SQL Server have no default and stop the host with `FCMS3151` without one. |
 | `FluentCms__PublicOrigin` | none | The address users reach the instance at, such as `https://cms.example.com`. Password reset and invitation links and the issuer are built from it. See [the checklist](#before-production). |
 | `AllowedHosts` | `*` | The host names the instance answers, separated by `;`. See [the checklist](#before-production). |
-| `FluentCms__Security__AllowGeneratedSigningKey` | `true` in the image | Accepts the token signing key the server generates. |
+| `FluentCms__Security__SigningCertificate__Path` and `__Password` | none | The PKCS#12 file tokens are signed with. See [the checklist](#before-production). |
+| `FluentCms__DataProtection__Certificate__Path` and `__Password` | none | The PKCS#12 file with an RSA key that the Data Protection key ring is encrypted with. A file that cannot be read stops the host with `FCMS3155`. See [the checklist](#before-production). |
+| `FluentCms__Security__AllowGeneratedSigningKey` | `false` | `true` accepts the token signing key the server generates (`FCMS1102` otherwise). |
+| `FluentCms__Security__AllowRequestOrigin` | `false` | `true` accepts an unset `FluentCms__PublicOrigin` (`FCMS1105` otherwise). |
+| `FluentCms__Security__AllowUnencryptedKeyRing` | `false` | `true` accepts the key ring stored unencrypted (`FCMS1106` otherwise). |
 | `FluentCms__Email__Smtp__Host` and the rest of `FluentCms__Email__Smtp__*` | none | The SMTP server that invitations and password resets go through; see [email](host-configuration.md#email). |
 | `FluentCms__Sso__Providers__{name}__*` | none | An OpenID Connect provider that admin users sign in with; see [single sign-on](#single-sign-on). |
 | `FluentCms__OpenApi__Enabled` | off | `true` serves the OpenAPI document at `/openapi/v1.json` and the Scalar UI at `/scalar`. See [the API description](#the-api-description). |
@@ -109,12 +125,30 @@ The image serves no OpenAPI document and no Scalar UI, because the document name
 ## Before production
 
 - **TLS.** The authorization server, and so sign-in, answers HTTPS only, and the image listens on plain HTTP. Put it behind a proxy that ends TLS and forward the scheme with `FluentCms__ReverseProxy__ForwardedHeaders__Enabled=true` and the proxy's address in `FluentCms__ReverseProxy__ForwardedHeaders__KnownProxies__0` or its network in `KnownNetworks__0`; see [reverse proxy](reverse-proxy.md).
-- **Public address.** Set `FluentCms__PublicOrigin` to the address users reach the instance at, such as `https://cms.example.com`, with the path base when there is one. Password reset and invitation links and the issuer are then built from it, and tokens issued before it was set stop working; without it they follow the request's host, so a request with a forged `Host` header gets a link to the attacker's host emailed to a real user.
+- **Public address.** Set `FluentCms__PublicOrigin` to the address users reach the instance at, such as `https://cms.example.com`, with the path base when there is one. Password reset and invitation links and the issuer are then built from it, and tokens issued before it was set stop working; without it they follow the request's host, so a request with a forged `Host` header gets a link to the attacker's host emailed to a real user. That is why the host refuses to start without it (`FCMS1105`) unless `FluentCms__Security__AllowRequestOrigin=true`.
 - **Host names.** Set `AllowedHosts` to the host names of the instance, such as `AllowedHosts=cms.example.com;localhost`, so that the instance answers no other host and a proxy's `X-Forwarded-Host` is applied only for those. Keep `localhost` in the list, or the `HEALTHCHECK`, which calls `localhost`, is turned away with 400.
-- **Signing key.** Mount a PKCS#12 (`.pfx`) file with an RSA key read-only, such as `-v ./signing.pfx:/certs/signing.pfx:ro`, and set `FluentCms__Security__SigningCertificate__Path=/certs/signing.pfx` and `FluentCms__Security__SigningCertificate__Password` from your secret store. Then set `FluentCms__Security__AllowGeneratedSigningKey=false`, so that settings that lose the certificate stop the host (`FCMS1102`) instead of falling back to the generated key. Until then the report lists `generated-signing-key`.
+- **Signing key.** Mount a PKCS#12 (`.pfx`) file with an RSA key read-only, such as `-v ./certs:/certs:ro`, and set `FluentCms__Security__SigningCertificate__Path=/certs/signing.pfx` and `FluentCms__Security__SigningCertificate__Password` from your secret store. Drop `FluentCms__Security__AllowGeneratedSigningKey` from an evaluation setup, so that settings that lose the certificate stop the host (`FCMS1102`) instead of falling back to the generated key.
+- **Key ring.** The Data Protection key ring protects the generated keys, the sign-in cookie and reset tokens, and is kept in the database, so a reader of the database could forge a sign-in. Mount a second PKCS#12 file with an RSA key and set `FluentCms__DataProtection__Certificate__Path=/certs/ring.pfx` and `FluentCms__DataProtection__Certificate__Password` from your secret store; the ring is then encrypted for that certificate, and `FluentCms__Security__AllowUnencryptedKeyRing` can go. Keys written before stay readable. With Azure Key Vault, keep the certificate there and let the platform mount it as that file, such as the Secrets Store CSI driver on AKS or a secret volume on Azure Container Apps. To wrap the ring with a Key Vault key instead, build a host of your own on `AddFluentCms` with `ProtectKeysWithAzureKeyVault`, as [the authorization server](host-configuration.md#authorization-server) shows.
 - **Email.** Set `FluentCms__Email__Smtp__Host`, `__Port`, `__UserName`, `__Password` and `__From`; without them invitations and password resets fail with `FCMS3008`.
 
-The startup report, logged at start and served at `GET /api/management/v1/system/diagnostics`, lists each of these while it is still a default. It also lists `data-protection-keys-unencrypted`, which the reference host cannot clear from the environment yet: the Data Protection key ring is stored in the database unencrypted, so protect the database and its backups as secrets.
+Together, behind a proxy that ends TLS:
+
+```bash
+docker run -d --name fluentcms -p 8080:8080 -v fluentcms-data:/data -v ./certs:/certs:ro \
+  -e FluentCms__PublicOrigin=https://cms.example.com \
+  -e "AllowedHosts=cms.example.com;localhost" \
+  -e FluentCms__ReverseProxy__ForwardedHeaders__Enabled=true \
+  -e FluentCms__ReverseProxy__ForwardedHeaders__KnownProxies__0=<address of the proxy> \
+  -e FluentCms__Security__SigningCertificate__Path=/certs/signing.pfx \
+  -e FluentCms__Security__SigningCertificate__Password=<from your secret store> \
+  -e FluentCms__DataProtection__Certificate__Path=/certs/ring.pfx \
+  -e FluentCms__DataProtection__Certificate__Password=<from your secret store> \
+  -e FluentCms__Email__Smtp__Host=smtp.example.com \
+  -e "FluentCms__Email__Smtp__From=FluentCMS <cms@example.com>" \
+  fluentcms
+```
+
+The startup report, logged at start and served at `GET /api/management/v1/system/diagnostics`, lists each of these while it is still a default or lifted by an opt-in. Keep the database and its backups as secrets all the same: they still hold the key that encrypts codes and refresh tokens, and the sessions.
 
 ## Other databases
 

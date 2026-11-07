@@ -131,6 +131,8 @@ public sealed class HostRegistrationTests : IAsyncDisposable
     [InlineData("FluentCms:Database:SchemaSync", "Sometimes", "FCMS1304")]
     [InlineData("FluentCms:Jobs:PollInterval", "soon", "FCMS2506")]
     [InlineData("FluentCms:Security:AllowGeneratedSigningKey", "yes", "FCMS1101")]
+    [InlineData("FluentCms:Security:AllowRequestOrigin", "yes", "FCMS1101")]
+    [InlineData("FluentCms:Security:AllowUnencryptedKeyRing", "yes", "FCMS1101")]
     public async Task AValueThatDoesNotBindStopsTheHostAndNamesTheKey(string key, string value, string code)
     {
         var app = _host.Build(Environments.Production, new Dictionary<string, string?> { [key] = value });

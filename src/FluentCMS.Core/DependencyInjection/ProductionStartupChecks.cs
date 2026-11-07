@@ -52,5 +52,7 @@ internal static class ProductionStartupCheckRegistration
     {
         services.AddHostedService<ProductionStartupChecks>();
         services.AddSingleton<IProductionStartupCheck, GeneratedSigningKeyCheck>();
+        services.AddSingleton<IProductionStartupCheck, PublicOriginCheck>();
+        services.AddSingleton<IProductionStartupCheck, UnencryptedKeyRingCheck>();
     }
 }

@@ -107,7 +107,7 @@ internal sealed class StartupReportFactory(
             found.Add(new InsecureDefault { Id = "generated-signing-key", Message = $"Tokens are signed with a key the server generated; {GeneratedSigningKeyCheck.Key} accepts it. Configure a signing certificate." });
         }
 
-        if (services.GetService<IDataProtectionStatus>()?.KeysEncrypted == false)
+        if (services.GetService<IDataProtectionStatus>()?.KeysEncrypted == false && found.All(item => item.Id != HostErrorCodes.UnencryptedKeyRingInProduction))
         {
             found.Add(new InsecureDefault { Id = "data-protection-keys-unencrypted", Message = "The Data Protection key ring is stored unencrypted, so a reader of the database can forge sign-in cookies. Add an XML encryptor such as ProtectKeysWithCertificate." });
         }
@@ -128,9 +128,9 @@ internal sealed class StartupReportFactory(
             found.Add(new InsecureDefault { Id = "allowed-hosts-any", Message = $"AllowedHosts is '*' or not set in Production, so the instance answers a request with any Host header{links}. Set AllowedHosts to the host names of the instance." });
         }
 
-        if (environment?.IsProduction() == true && origin.Base is null)
+        if (environment?.IsProduction() == true && origin.Base is null && found.All(item => item.Id != HostErrorCodes.PublicOriginUnsetInProduction))
         {
-            found.Add(new InsecureDefault { Id = "public-origin-unset", Message = $"{FluentCmsOptions.Section}:{PublicOrigin.Key} is not set in Production, so links in password reset and invitation emails and the issuer of the authorization server follow the request's scheme, host and path base. Set it to the address users reach the instance at, such as https://cms.example.com." });
+            found.Add(new InsecureDefault { Id = "public-origin-unset", Message = $"{FluentCmsOptions.Section}:{PublicOrigin.Key} is not set in Production and {PublicOriginCheck.Key} accepts it, so links in password reset and invitation emails and the issuer of the authorization server follow the request's scheme, host and path base. Set it to the address users reach the instance at, such as https://cms.example.com." });
         }
 
         if (startup.MigrateOnStartup && startup.SchemaSync == SchemaSyncMode.Auto && environment?.IsDevelopment() != true)

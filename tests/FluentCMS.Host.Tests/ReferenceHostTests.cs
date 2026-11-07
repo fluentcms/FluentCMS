@@ -1,10 +1,17 @@
 using System.Globalization;
 using System.Net;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Schema;
 using FluentCMS.Providers;
 using FluentCMS.Schema;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
+using Microsoft.AspNetCore.DataProtection.XmlEncryption;
+using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using Shouldly;
 using Xunit;
 
@@ -19,7 +26,23 @@ public sealed class ReferenceHostTests : IAsyncDisposable
     public ValueTask DisposeAsync() => _host.DisposeAsync();
 
     [Fact]
-    public async Task WithNoConfigurationItStartsOnSqliteInTheContentRootAndIsReady()
+    public async Task WithNothingSetProductionRefusesBeforeTouchingTheDatabaseAndNamesWhatToSet()
+    {
+        var app = _host.Build(optIns: false);
+
+        var exception = await Should.ThrowAsync<AggregateException>(() => app.StartAsync(Token));
+
+        var refusals = exception.InnerExceptions.Cast<FluentCmsConfigurationException>().ToDictionary(refusal => refusal.Code, refusal => refusal.Message);
+        refusals.Keys.ShouldBe(["FCMS1102", "FCMS1105", "FCMS1106"], ignoreOrder: true);
+        refusals["FCMS1102"].ShouldContain("FluentCms:Security:AllowGeneratedSigningKey");
+        refusals["FCMS1105"].ShouldContain("FluentCms:PublicOrigin");
+        refusals["FCMS1105"].ShouldContain("FluentCms:Security:AllowRequestOrigin");
+        refusals["FCMS1106"].ShouldContain("FluentCms:Security:AllowUnencryptedKeyRing");
+        File.Exists(Path.Combine(_host.Root, "fluentcms.db")).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task WithTheEvaluationOptInsItStartsOnSqliteInTheContentRootAndIsReady()
     {
         await _host.StartAsync(Operator.Settings());
 
@@ -35,6 +58,7 @@ public sealed class ReferenceHostTests : IAsyncDisposable
         insecure.ShouldContain("allowed-hosts-any");
         insecure.ShouldContain("public-origin-unset");
         insecure.ShouldContain("generated-signing-key");
+        insecure.ShouldContain("data-protection-keys-unencrypted");
         insecure.ShouldNotContain("development-email-sender");
         insecure.ShouldNotContain("schema-sync-outside-development");
         insecure.ShouldNotContain("webhooks-private-networks");
@@ -261,6 +285,61 @@ public sealed class ReferenceHostTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task AKeyRingCertificateEncryptsTheRingSoProductionNeedsNoOptInForIt()
+    {
+        var settings = Operator.Settings();
+        settings[ReferenceHost.KeyRingCertificatePathKey] = WriteCertificate("ring.pfx", "ring-password");
+        settings[ReferenceHost.KeyRingCertificatePasswordKey] = "ring-password";
+        settings["FluentCms:Security:AllowUnencryptedKeyRing"] = "false";
+        var app = await _host.StartAsync(settings);
+
+        // The token is signed with the generated key, which is kept protected with a key of the ring.
+        var report = await Operator.ReportAsync(_host);
+
+        app.Services.GetRequiredService<IOptions<KeyManagementOptions>>().Value.XmlEncryptor.ShouldBeOfType<CertificateXmlEncryptor>();
+        app.Services.GetServices<IHostedService>().Select(service => service.GetType().Name).ShouldNotContain("DataProtectionHostedService");
+        Operator.InsecureDefaults(report).ShouldNotContain("data-protection-keys-unencrypted");
+        var ring = RingXml();
+        ring.ShouldNotBeEmpty();
+        ring.ShouldAllBe(xml => xml.Contains("encryptedSecret", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("missing.pfx", null)]
+    [InlineData("ring.pfx", "wrong-password")]
+    public void AKeyRingCertificateThatCannotBeReadStopsTheHost(string file, string? password)
+    {
+        WriteCertificate("ring.pfx", "ring-password");
+
+        var error = Should.Throw<ReferenceHostException>(() => _host.Build(new()
+        {
+            [ReferenceHost.KeyRingCertificatePathKey] = Path.Combine(_host.Root, file),
+            [ReferenceHost.KeyRingCertificatePasswordKey] = password,
+        }));
+
+        error.Code.ShouldBe("FCMS3155");
+        error.Message.ShouldContain(ReferenceHost.KeyRingCertificatePathKey);
+    }
+
+    [Fact]
+    public void AKeyRingCertificateWithoutAnRsaKeyStopsTheHost()
+    {
+        using var ecdsa = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        using var certificate = new CertificateRequest("CN=FluentCMS test key ring", ecdsa, HashAlgorithmName.SHA256)
+            .CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(30));
+        var path = Path.Combine(_host.Root, "ring.pfx");
+        File.WriteAllBytes(path, certificate.Export(X509ContentType.Pkcs12, "ring-password"));
+
+        var error = Should.Throw<ReferenceHostException>(() => _host.Build(new()
+        {
+            [ReferenceHost.KeyRingCertificatePathKey] = path,
+            [ReferenceHost.KeyRingCertificatePasswordKey] = "ring-password",
+        }));
+
+        error.Code.ShouldBe("FCMS3155");
+    }
+
+    [Fact]
     public async Task EmailGoesThroughTheConfiguredSmtpServerWithItsCredentials()
     {
         await using var smtp = new FakeSmtpServer();
@@ -283,5 +362,31 @@ public sealed class ReferenceHostTests : IAsyncDisposable
         message.Subject.ShouldBe("Hello");
         message.TextBody.ShouldNotBeNull().Trim().ShouldBe("Plain words.");
         message.HtmlBody.ShouldNotBeNull().Trim().ShouldBe("<p>Rich words.</p>");
+    }
+
+    private string WriteCertificate(string name, string password)
+    {
+        using var rsa = RSA.Create(2048);
+        using var certificate = new CertificateRequest("CN=FluentCMS test key ring", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1)
+            .CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(30));
+        var path = Path.Combine(_host.Root, name);
+        File.WriteAllBytes(path, certificate.Export(X509ContentType.Pkcs12, password));
+        return path;
+    }
+
+    private List<string> RingXml()
+    {
+        using var connection = new SqliteConnection($"Data Source={Path.Combine(_host.Root, "fluentcms.db")};Mode=ReadOnly;Pooling=False");
+        connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT xml FROM cms_data_protection_key";
+        using var reader = command.ExecuteReader();
+        List<string> rows = [];
+        while (reader.Read())
+        {
+            rows.Add(reader.GetString(0));
+        }
+
+        return rows;
     }
 }
