@@ -39,6 +39,7 @@ internal sealed class OutboxDrainer(
     public async Task<int> DrainAsync(bool prune, CancellationToken cancellationToken)
     {
         var delivered = 0;
+        // A row whose handler never started waits for a later drain, so a starved thread pool cannot keep one drain going.
         HashSet<Guid> deferred = [];
         while (!cancellationToken.IsCancellationRequested)
         {
@@ -71,7 +72,6 @@ internal sealed class OutboxDrainer(
         return delivered;
     }
 
-    // The rows in deferred are not claimed again by the same drain.
     private async Task<List<OutboxMessage>> ClaimAsync(HashSet<Guid> deferred, CancellationToken cancellationToken)
     {
         await using var scope = scopes.CreateAsyncScope();
@@ -156,7 +156,7 @@ internal sealed class OutboxDrainer(
             return false;
         }
 
-        var handOff = new HandOffState();
+        var state = new HandOffState();
         try
         {
             var @event = registration.Read(message.Payload)
@@ -171,7 +171,7 @@ internal sealed class OutboxDrainer(
             try
             {
                 var delivery = new EventDelivery(message.Id, message.Attempts);
-                await HandOff(() => handOff.TryStart() ? registration.Invoke(scope.ServiceProvider, @event, delivery, attempt.Token).AsTask() : Task.CompletedTask)
+                await HandOff(() => state.TryStart() ? registration.Invoke(scope.ServiceProvider, @event, delivery, attempt.Token).AsTask() : Task.CompletedTask)
                     .WaitAsync(options.DeliveryTimeout, time, cancellationToken);
             }
             finally
@@ -179,7 +179,7 @@ internal sealed class OutboxDrainer(
                 operation.Current = previous;
 
                 // Before the scope goes, so that a handler which has not started by now never starts on it.
-                handOff.Abandon();
+                state.Abandon();
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -190,7 +190,7 @@ internal sealed class OutboxDrainer(
         catch (TimeoutException)
         {
             // Read here and not in a filter, which would run before the finally that abandons the hand-off.
-            if (handOff.WasAbandoned)
+            if (state.WasAbandoned)
             {
                 EventLog.HandOffAbandoned(logger, message.Id, message.Handler, options.DeliveryTimeout);
                 deferred.Add(message.Id);
