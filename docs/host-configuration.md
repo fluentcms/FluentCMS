@@ -237,6 +237,16 @@ Invitations and password resets go through `IEmailSender`. In Development the de
 
 A missing or invalid `From` stops the host with `FCMS1101`. A host or a plugin that registers its own `IEmailSender`, or chooses one through the [provider slots](#provider-slots), replaces all of this.
 
+## SQLite
+
+`cms.UseSqlite(connectionString)` opens a database file in WAL mode, where readers and the writer do not block each other, and gives every connection `synchronous = NORMAL` and a busy timeout of 5 seconds. While the database is open, SQLite keeps two more files beside it, `{name}-wal` and `{name}-shm`. Keep them with the database, and copy all three with the host stopped, since a copy of the database alone misses the commits still in `-wal`. Put the database on a local disk: WAL needs memory shared by every process that opens the file, which a network share such as NFS, SMB or Azure Files does not give, and SQLite's locks are not reliable there either. A file that cannot change mode keeps the rollback journal and `synchronous = FULL`. An in-memory database is left as it is.
+
+To keep the rollback journal, pass `writeAheadLog: false`. Every connection then gets SQLite's defaults, and the file keeps the journal mode it has. EF creates a new database in WAL mode, so run `PRAGMA journal_mode = DELETE` on it once to go back.
+
+```csharp
+builder.Services.AddFluentCms(cms => cms.UseSqlite(builder.Configuration.GetConnectionString("cms"), writeAheadLog: false));
+```
+
 ## Provider slots
 
 A provider slot is a service with one implementation that core fills with a default and that the host or a plugin replaces:

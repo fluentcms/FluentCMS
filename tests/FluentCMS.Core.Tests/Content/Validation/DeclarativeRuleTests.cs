@@ -187,6 +187,63 @@ public class DeclarativeRuleTests
         result.IsValid.ShouldBeTrue();
     }
 
+    [Theory]
+    [InlineData("slug", 200)]
+    [InlineData("link", 2048)]
+    [InlineData("contact", 254)]
+    public async Task AFieldWithoutAMaximumIsLimitedToTheLengthOfItsColumn(string field, int length)
+    {
+        var model = ValidationFixtures.Model(thing => thing
+            .Field("slug", "slug")
+            .Field("link", "url")
+            .Field("contact", "email")
+            .Field("notes", "longText"));
+
+        string Value(int size) => new('a', size);
+
+        (await ValidationFixtures.ValidateAsync(model, "thing", new() { [field] = Value(length), ["notes"] = Value(100_000) }, ValidationMode.Draft)).IsValid.ShouldBeTrue();
+
+        var result = await ValidationFixtures.ValidateAsync(model, "thing", new() { [field] = Value(length + 1) }, ValidationMode.Draft);
+        result.Errors.ShouldHaveSingleItem().ShouldBe(new ValidationError(field, ValidationErrorCodes.MaxLength, $"Must have at most {length} characters, has {length + 1}."));
+    }
+
+    [Fact]
+    public async Task ASelectIsLimitedTo64OrItsLongestOption()
+    {
+        var longest = new string('x', 80);
+        var model = ValidationFixtures.Model(thing => thing
+            .Field("short", "select", f => f.Setting(FieldSettings.Options, new[] { "a" }))
+            .Field("long", "select", f => f.Setting(FieldSettings.Options, new[] { "a", longest })));
+
+        (await ValidationFixtures.ValidateAsync(model, "thing", new() { ["long"] = longest }, ValidationMode.Publish)).IsValid.ShouldBeTrue();
+        ValidationFixtures.Describe(await ValidationFixtures.ValidateAsync(model, "thing", new() { ["short"] = new string('a', 65) }, ValidationMode.Publish))
+            .ShouldBe(["short|FCMS2103", "short|FCMS2107"]);
+    }
+
+    [Fact]
+    public async Task ADeclaredMaximumReplacesTheDefault()
+    {
+        var model = ValidationFixtures.Model(thing => thing
+            .Field("longer", "slug", f => f.Length(null, 300))
+            .Field("shorter", "url", f => f.Length(null, 30)));
+
+        (await ValidationFixtures.ValidateAsync(model, "thing", new() { ["longer"] = new string('a', 300) }, ValidationMode.Publish)).IsValid.ShouldBeTrue();
+        ValidationFixtures.Describe(await ValidationFixtures.ValidateAsync(model, "thing", new() { ["shorter"] = "https://example.com/" + new string('a', 11) }, ValidationMode.Publish))
+            .ShouldBe(["shorter|FCMS2103"]);
+    }
+
+    [Fact]
+    public async Task TheDefaultHoldsInsideABlock()
+    {
+        var model = ValidationFixtures.Model(
+            thing => thing.Field("body", "blocks", f => f.Setting(FieldSettings.Blocks, new[] { "card" })),
+            others => others.AddBlock("card", block => block.Field("link", "url")));
+
+        var body = new[] { new Dictionary<string, object?> { ["type"] = "card", ["link"] = new string('a', 2049) } };
+
+        ValidationFixtures.Describe(await ValidationFixtures.ValidateAsync(model, "thing", new() { ["body"] = body }, ValidationMode.Draft)).ShouldBe(["body[0].link|FCMS2103"]);
+    }
+
     [Fact]
     public async Task LengthOnAMultipleFieldCountsItems()
     {

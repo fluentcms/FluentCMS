@@ -66,6 +66,65 @@ public class QueryPlanTests
         Plan(rows).ShouldContain("SCAN");
     }
 
+    // Without the state index each of these read cms_document of every type in id order.
+    [Fact]
+    public void TheDefaultListSeeksTheStateIndexOfItsType()
+    {
+        using var database = new QueryDatabase();
+
+        string List(string type, string query) => Plan(database.Engine().Compile(type, BracketQueryParser.Parse(query)).Rows);
+
+        var author = List("author", $"site={QueryDatabase.SiteA}");
+        author.ShouldContain("ix_cms_author_state (site_id=? AND state=?)");
+        author.ShouldNotContain("SCAN");
+
+        var article = List("article", $"locale=en&site={QueryDatabase.SiteA}");
+        article.ShouldContain("ix_cms_article_i18n_state (site_id=? AND locale=? AND state=?)");
+        article.ShouldNotContain("SCAN");
+
+        var tag = List("tag", "");
+        tag.ShouldContain("ix_cms_tag_state (state=?)");
+        tag.ShouldNotContain("SCAN");
+    }
+
+    // As TrashPurgeJob pages through a type's trash: the first page, then the pages after the last entry read.
+    [Fact]
+    public void TheTrashPurgeSeeksTheTrashOfItsType()
+    {
+        using var database = new QueryDatabase();
+        var before = DateTimeOffset.UtcNow;
+        var lastAt = before.AddDays(-1);
+        var lastId = Guid.CreateVersion7();
+
+        var due = database.Context.Documents.IgnoreQueryFilters().AsNoTracking()
+            .Where(document => document.Type == "article" && document.DeletedAt != null && document.DeletedAt < before);
+        var after = due.Where(document => document.DeletedAt > lastAt || (document.DeletedAt == lastAt && document.DocumentId.CompareTo(lastId) > 0));
+
+        foreach (var rows in new[] { due, after })
+        {
+            var page = rows
+                .OrderBy(document => document.DeletedAt).ThenBy(document => document.DocumentId)
+                .Select(document => new { document.DocumentId, document.SiteId, At = document.DeletedAt!.Value })
+                .Take(100);
+
+            var plan = Plan(page);
+            plan.ShouldContain("ix_cms_document_trash (type=? AND deleted_at>? AND deleted_at<?)");
+            plan.ShouldNotContain("SCAN");
+        }
+    }
+
+    // As EntryStore.AnyEntryAsync asks before a singleton is created.
+    [Fact]
+    public void TheSingletonCheckSeeksTypeAndSite()
+    {
+        using var database = new QueryDatabase();
+        var site = (Guid?)QueryDatabase.SiteA;
+        var documents = database.Context.Documents.IgnoreQueryFilters();
+
+        Plan(documents.Where(document => document.Type == "settings" && document.SiteId == site)).ShouldContain("ix_cms_document_type_site (type=? AND site_id=?)");
+        Plan(documents.Where(document => document.Type == "brand")).ShouldContain("ix_cms_document_type_site (type=?)");
+    }
+
     [Fact]
     public void WhatReferencesATargetUsesTheTargetIndex()
     {

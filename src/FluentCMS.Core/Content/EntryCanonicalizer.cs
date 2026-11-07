@@ -19,7 +19,6 @@ internal sealed class EntryCanonicalizer(SchemaModel schema)
 {
     private const string Discriminator = "type";
     private const string IdKey = "id";
-    private const int SlugLength = 200;
 
     private readonly BlockIds _blocks = new(schema);
 
@@ -84,7 +83,7 @@ internal sealed class EntryCanonicalizer(SchemaModel schema)
             if (into[field.Name] is null or "" && Source(owner, field) is { } source && into.GetValueOrDefault(source.Name) is string text)
             {
                 into[field.Name] = mayDerive(owner, source)
-                    ? SlugFieldType.Slugify(text, field.MaxLength ?? SlugLength)
+                    ? SlugFieldType.Slugify(text, FieldLengths.Max(field))
                     : stored?.GetValueOrDefault(field.Name) ?? into[field.Name];
             }
         }

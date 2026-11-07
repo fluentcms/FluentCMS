@@ -74,8 +74,10 @@ public class ModelCacheTests
 
         ModelOf(schema, new OptionalIndexConventions(index: false)).ShouldBeSameAs(plain);
         indexed.ShouldNotBeSameAs(plain);
-        plain.FindEntityType("cms_page")!.GetIndexes().Count().ShouldBe(1);
-        indexed.FindEntityType("cms_page")!.GetIndexes().Count().ShouldBe(2);
+
+        // The document key and ix_cms_page_state, and the JSON index on top.
+        plain.FindEntityType("cms_page")!.GetIndexes().Count().ShouldBe(2);
+        indexed.FindEntityType("cms_page")!.GetIndexes().Count().ShouldBe(3);
     }
 
     // A provider option that changes the model, such as the json column type on SQL Server.

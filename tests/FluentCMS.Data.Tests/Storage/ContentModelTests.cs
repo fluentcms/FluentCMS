@@ -293,7 +293,7 @@ public class ContentModelTests
             ] } ] }
             """).Build();
 
-        Table(ModelOf(schema), "cms_page").GetIndexes().Select(index => index.GetDatabaseName()).ShouldBe(["uq_cms_page_document_state"]);
+        Table(ModelOf(schema), "cms_page").GetIndexes().Select(index => index.GetDatabaseName()).ShouldBe(["ix_cms_page_state", "uq_cms_page_document_state"], ignoreOrder: true);
     }
 
     [Fact]
@@ -316,8 +316,28 @@ public class ContentModelTests
         brand.IsUnique.ShouldBeTrue();
         IndexColumns(brand).ShouldBe(["state"]);
 
-        Table(model, "cms_home_i18n").GetIndexes().Select(index => index.GetDatabaseName()).ShouldBe(["uq_cms_home_i18n_document_locale_state"]);
-        Table(model, "cms_page").GetIndexes().Select(index => index.GetDatabaseName()).ShouldBe(["uq_cms_page_document_state"]);
+        Table(model, "cms_home").GetIndexes().Select(index => index.GetDatabaseName()).ShouldBe(["uq_cms_home_document_state", "uq_cms_home_singleton"], ignoreOrder: true);
+        Table(model, "cms_home_i18n").GetIndexes().Select(index => index.GetDatabaseName()).ShouldBe(["ix_cms_home_i18n_state", "uq_cms_home_i18n_document_locale_state"], ignoreOrder: true);
+        Table(model, "cms_page").GetIndexes().Select(index => index.GetDatabaseName()).ShouldBe(["ix_cms_page_state", "uq_cms_page_document_state"], ignoreOrder: true);
+    }
+
+    [Fact]
+    public void EveryContentTableHasAStateIndexScopedLikeItsFieldIndexes()
+    {
+        var schema = SampleSchema.NewBuilder()
+            .AddCollection("page", type => type.Localized().Field("title", "text", field => field.Localizable()))
+            .AddCollection("term", type => type.Localized().Scope(ContentScope.Global).Field("label", "text", field => field.Localizable()))
+            .Build();
+        var model = ModelOf(schema);
+
+        IIndex State(string table) => Index(Table(model, table), $"ix_{table}_state");
+
+        IndexColumns(State("cms_page")).ShouldBe(["site_id", "state"]);
+        IndexColumns(State("cms_page_i18n")).ShouldBe(["site_id", "locale", "state"]);
+        IndexColumns(State("cms_term")).ShouldBe(["state"]);
+        IndexColumns(State("cms_term_i18n")).ShouldBe(["locale", "state"]);
+        State("cms_page").IsUnique.ShouldBeFalse();
+        State("cms_page").GetFilter().ShouldBeNull();
     }
 
     [Fact]

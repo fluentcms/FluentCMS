@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using FluentCMS.Content;
 using FluentCMS.Core.ProseMirror;
+using FluentCMS.Core.Schema.FieldTypes;
 using FluentCMS.Schema;
 
 namespace FluentCMS.Core.Content.Validation;
@@ -72,7 +73,8 @@ internal sealed class DeclarativeValidator(SchemaModel model, ContentEntryMapper
         }
     }
 
-    // A text is limited in characters; a multiple field, and blocks, in items.
+    // A text is limited in characters, to the storage default of its type when it declares no maximum; a multiple field,
+    // and blocks, in items.
     private static void CheckLength(SchemaField field, string path, object? value, ValidationContext context)
     {
         int length;
@@ -97,7 +99,7 @@ internal sealed class DeclarativeValidator(SchemaModel model, ContentEntryMapper
             context.AddError(path, ValidationErrorCodes.MinLength, $"Must have at least {min} {unit}, has {length}.");
         }
 
-        if (field.MaxLength is { } max && length > max)
+        if (FieldLengths.Max(field) is { } max && length > max)
         {
             context.AddError(path, ValidationErrorCodes.MaxLength, $"Must have at most {max} {unit}, has {length}.");
         }

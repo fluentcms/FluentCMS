@@ -131,6 +131,15 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
             .IsUnique()
             .HasDatabaseName("uq_cms_document_document_locale");
 
+        entity.HasIndex(document => new { document.Type, document.SiteId, document.DeletedAt })
+            .HasDatabaseName("ix_cms_document_type_site");
+
+        // The purge reads one type's trash in the order it was trashed. On deleted_at alone, SQLite took the index above
+        // instead and sorted every document of the type.
+        entity.HasIndex(document => new { document.Type, document.DeletedAt })
+            .HasFilter("deleted_at IS NOT NULL")
+            .HasDatabaseName("ix_cms_document_trash");
+
         // Trashed rows stay in the table; IgnoreQueryFilters() reads them.
         entity.HasQueryFilter(document => document.DeletedAt == null);
     }

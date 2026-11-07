@@ -19,16 +19,10 @@ internal sealed record StoredField(
     string? DefaultValue = null);
 
 // Where a field lives comes from IFieldType.StorageKind of the registry the schema was built with. This
-// class adds what the registry does not say: the CLR type and length defaults of the core types. A plugin
-// type that stores a column gets a nullable string, one that stores JSON a nullable JSON string.
+// class adds what the registry does not say: the CLR type of the core types and, from FieldLengths, the length of their
+// columns. A plugin type that stores a column gets a nullable string, one that stores JSON a nullable JSON string.
 internal static class FieldStorage
 {
-    // Appendix A sizes these columns although the sample fields declare no length.
-    private const int SlugLength = 200;
-    private const int UrlLength = 2048;
-    private const int SelectLength = 64;
-    private const int EmailLength = 254;
-
     private const string EmptyList = "[]";
 
     public static IEnumerable<StoredField> Of(SchemaModel schema, SchemaType type) =>
@@ -72,8 +66,8 @@ internal static class FieldStorage
 
         var (precision, scale) = DecimalPrecision(field);
 
-        StoredField Text(bool required = false, int? maxLength = null) =>
-            new(field, location, column, kind, typeof(string), localized, required && !flattened, field.MaxLength ?? maxLength);
+        StoredField Text(bool required = false) =>
+            new(field, location, column, kind, typeof(string), localized, required && !flattened, FieldLengths.Max(field));
 
         StoredField Value(Type clrType) =>
             new(field, location, column, kind, clrType, localized);
@@ -81,10 +75,7 @@ internal static class FieldStorage
         return field.FieldType switch
         {
             FieldTypeNames.Text or FieldTypeNames.LongText => Text(field.Required),
-            FieldTypeNames.Slug => Text(required: true, SlugLength),
-            FieldTypeNames.Email => Text(maxLength: EmailLength),
-            FieldTypeNames.Url => Text(maxLength: UrlLength),
-            FieldTypeNames.Select => Text(maxLength: SelectColumnLength(field)),
+            FieldTypeNames.Slug => Text(required: true),
             FieldTypeNames.Integer => Value(typeof(long?)),
             FieldTypeNames.Decimal => Value(typeof(decimal?)) with { Precision = precision, Scale = scale },
             FieldTypeNames.Boolean => Value(typeof(bool?)),
@@ -93,11 +84,6 @@ internal static class FieldStorage
             _ => Text(),
         };
     }
-
-    private static int SelectColumnLength(SchemaField field) =>
-        field.Settings.TryGetValue(FieldSettings.Options, out var options) && options is IEnumerable<string> list
-            ? list.Select(option => option.Length).Append(SelectLength).Max()
-            : SelectLength;
 
     // A scale counts only together with a precision; without one the provider decides both.
     private static (int? Precision, int? Scale) DecimalPrecision(SchemaField field) =>

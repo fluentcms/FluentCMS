@@ -34,6 +34,7 @@ internal sealed class ContentModelBuilder(SchemaModel schema, IStorageConvention
             entity.Property(type.Scope == ContentScope.Global ? typeof(Guid?) : typeof(Guid), StorageNames.SiteId);
             entity.Property<short>(StorageNames.State);
 
+            string[] scopeAndState = [.. Scope(type, hasLocale), StorageNames.State];
             if (hasLocale)
             {
                 entity.Property<string>(StorageNames.Locale).HasMaxLength(StorageNames.LocaleLength).IsRequired();
@@ -47,9 +48,15 @@ internal sealed class ContentModelBuilder(SchemaModel schema, IStorageConvention
                 // per site. A trashed one keeps its rows and so its place, as the check before the insert counts it.
                 if (type.Kind == SchemaTypeKind.Singleton)
                 {
-                    string[] key = type.Scope == ContentScope.Global ? [StorageNames.State] : [StorageNames.SiteId, StorageNames.State];
-                    entity.HasIndex(key).IsUnique().HasDatabaseName($"uq_{table}_singleton");
+                    entity.HasIndex(scopeAndState).IsUnique().HasDatabaseName($"uq_{table}_singleton");
                 }
+            }
+
+            // Without it a list that filters on no [Indexed] field reads cms_document of every type in id order. The
+            // singleton key above already covers these columns, and state is a system column, so no field index takes the name.
+            if (hasLocale || type.Kind != SchemaTypeKind.Singleton)
+            {
+                entity.HasIndex(scopeAndState).HasDatabaseName($"ix_{table}_state");
             }
 
             foreach (var field in fields)
@@ -96,10 +103,13 @@ internal sealed class ContentModelBuilder(SchemaModel schema, IStorageConvention
         MapIndexes(entity, type, table, field, hasLocale);
     }
 
+    // A null site_id would defeat a unique index and tells an ordinary one nothing.
+    private static string[] Scope(SchemaType type, bool hasLocale) =>
+        [.. type.Scope == ContentScope.Global ? [] : new[] { StorageNames.SiteId }, .. hasLocale ? new[] { StorageNames.Locale } : []];
+
     private void MapIndexes(EntityTypeBuilder entity, SchemaType type, string table, StoredField field, bool hasLocale)
     {
-        // A null site_id would defeat a unique index and tells an ordinary one nothing.
-        string[] scope = [.. type.Scope == ContentScope.Global ? [] : new[] { StorageNames.SiteId }, .. hasLocale ? new[] { StorageNames.Locale } : []];
+        var scope = Scope(type, hasLocale);
 
         if (field.Field.Unique)
         {

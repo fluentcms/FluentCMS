@@ -609,6 +609,13 @@ namespace FluentCMS.Data.Sqlite.Migrations
                         .IsUnique()
                         .HasDatabaseName("uq_cms_document_document_locale");
 
+                    b.HasIndex("Type", "DeletedAt")
+                        .HasDatabaseName("ix_cms_document_trash")
+                        .HasFilter("deleted_at IS NOT NULL");
+
+                    b.HasIndex("Type", "SiteId", "DeletedAt")
+                        .HasDatabaseName("ix_cms_document_type_site");
+
                     b.ToTable("cms_document", (string)null);
                 });
 
