@@ -18,13 +18,17 @@ internal static class TypeAccess
     }
 
     // The engine refuses an unreadable type as it refuses an unknown one; asking first makes both the same 404.
-    public static async Task<SchemaType> EnsureReadableAsync(HttpContext httpContext, string type)
+    public static async Task<SchemaType> EnsureReadableAsync(HttpContext httpContext, string type) =>
+        (await ReadableAsync(httpContext, type)).Type;
+
+    // The type and what the principal may read of it, for a route that asks about a field before the engine runs.
+    public static async Task<(SchemaType Type, IContentQueryAccess Access)> ReadableAsync(HttpContext httpContext, string type)
     {
         var services = httpContext.RequestServices;
         var operation = ApiRequest.Of(httpContext).Operation;
         var access = await services.GetRequiredService<IContentQueryAccess>().ForQueryAsync(operation.Site, operation.Locale, httpContext.RequestAborted);
         return services.GetRequiredService<SchemaModel>().FindContentType(type) is { } found && access.CanReadType(found)
-            ? found
+            ? (found, access)
             : throw RequestErrors.TypeNotFound(type);
     }
 }

@@ -129,11 +129,17 @@ public sealed class DeliveryApiTests(DeliveryFixture fixture) : IClassFixture<De
         byId["title"]!.GetValue<string>().ShouldBe("Welcome to FluentCMS");
     }
 
+    // by/ checks the field before the query runs, so publishedOn's bad date is never parsed, and a field the principal
+    // may not read (an author's bio) is the unknown field the query would report.
     [Theory]
     [InlineData("article/by/slug/no-such-article", HttpStatusCode.NotFound, "FCMS3104", "value")]
     [InlineData("article/by/nothing/x", HttpStatusCode.BadRequest, "FCMS2202", "field")]
-    [InlineData("article/by/publishedOn/yesterday", HttpStatusCode.BadRequest, "FCMS2204", "value")]
+    [InlineData("article/by/publishedOn/yesterday", HttpStatusCode.BadRequest, "FCMS3123", "field")]
     [InlineData("article/by/title/Welcome", HttpStatusCode.BadRequest, "FCMS3123", "field")]
+    [InlineData("article/by/seo.metaTitle/x", HttpStatusCode.BadRequest, "FCMS3123", "field")]
+    [InlineData("article/by/createdAt/x", HttpStatusCode.BadRequest, "FCMS3123", "field")]
+    [InlineData("author/by/name/Ada", HttpStatusCode.BadRequest, "FCMS3123", "field")]
+    [InlineData("author/by/bio/x", HttpStatusCode.BadRequest, "FCMS2202", "field")]
     [InlineData("article/0192f2a4-7b1c-7d2e-9f10-2a3b4c5d6e7f", HttpStatusCode.NotFound, "FCMS3104", null)]
     [InlineData("article/not-an-id", HttpStatusCode.BadRequest, "FCMS2204", "id")]
     [InlineData("article/0192f2a4-7b1c-7d2e-9f10-2a3b4c5d6e7f?sort=title", HttpStatusCode.BadRequest, "FCMS2201", "sort")]

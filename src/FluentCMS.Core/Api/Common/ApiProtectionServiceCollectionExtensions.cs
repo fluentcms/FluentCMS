@@ -20,6 +20,8 @@ internal static class ApiProtectionServiceCollectionExtensions
         services.AddSingleton(provider => new AuthRateLimitPolicy(provider.GetRequiredService<RateLimitOptions>(), provider.GetRequiredService<TimeProvider>()));
         services.AddSingleton<PreAuthRateLimiter>();
 
+        // UseFluentCms adds UseAuthorization, which needs these whether or not the host has policies of its own.
+        services.AddAuthorization();
         services.AddRateLimiter(options => options.RejectionStatusCode = StatusCodes.Status429TooManyRequests);
         services.AddOptions<RateLimiterOptions>().Configure<RateLimitOptions, TimeProvider, AuthRateLimitPolicy>((options, limits, time, auth) =>
         {

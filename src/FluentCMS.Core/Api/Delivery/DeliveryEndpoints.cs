@@ -69,8 +69,8 @@ internal static class DeliveryEndpoints
             return entry is not null ? DeliveryResponse.Entry(ContentJson.Entry(entry), found, IsDraft(query)) : throw new EntryNotFoundException(type, entryId);
         });
 
-    // The query runs before the field is checked, so that a type or field the principal cannot read is refused the way
-    // an unknown one is, and a non-unique field is reported only to a principal that may filter on it.
+    // The field is checked before the query runs, so that a field that is not unique costs no query. One the principal
+    // may not read is refused as the unknown field the query would report, so that no field is shown to exist by its error.
     private static Task<IResult> GetByFieldAsync(string type, string field, string value, HttpContext httpContext, [FromServices] IContentService content) =>
         RunAsync(httpContext, type, field, async found =>
         {
@@ -81,11 +81,6 @@ internal static class DeliveryEndpoints
             };
 
             var entries = await content.QueryAsync(type, query, httpContext.RequestAborted);
-            if (found.FindField(field) is not { Unique: true })
-            {
-                throw new ValidationException([new ValidationError(RequestErrors.Field, DeliveryErrorCodes.FieldNotUnique, $"'{field}' is not a unique field of {type}.")]);
-            }
-
             return entries.Items.Count > 0
                 ? DeliveryResponse.Entry(ContentJson.Entry(entries.Items[0]), found, IsDraft(query))
                 : throw NotFound(RequestErrors.Value, $"There is no {type} whose {field} is '{value}'.");
@@ -93,15 +88,36 @@ internal static class DeliveryEndpoints
 
     private static async Task<IResult> RunAsync(HttpContext httpContext, string type, string? byField, Func<SchemaType, Task<IResult>> handler)
     {
-        var found = await TypeAccess.EnsureReadableAsync(httpContext, type);
+        var (found, access) = await TypeAccess.ReadableAsync(httpContext, type);
         try
         {
+            if (byField is not null)
+            {
+                EnsureUnique(found, byField, access);
+            }
+
             return await handler(found);
         }
         catch (ValidationException exception)
         {
             throw RequestErrors.ForRequest(exception, httpContext.Request, byField);
         }
+    }
+
+    // A unique field the principal may not read is left to the query, which refuses it as unknown.
+    private static void EnsureUnique(SchemaType type, string field, IContentQueryAccess access)
+    {
+        if (type.FindField(field) is { Unique: true })
+        {
+            return;
+        }
+
+        var dot = field.IndexOf('.', StringComparison.Ordinal);
+        var top = dot < 0 ? field : field[..dot];
+        var readable = (SystemField.Find(top) is not null || type.FindField(top) is { Hidden: false }) && access.CanReadField(type, top);
+        throw new ValidationException([readable
+            ? new ValidationError(RequestErrors.Field, DeliveryErrorCodes.FieldNotUnique, $"'{field}' is not a unique field of {type.Name}.")
+            : new ValidationError(field, QueryErrorCodes.UnknownField, $"'{field}' is not a field of {type.Name} that can be read.")]);
     }
 
     private static ContentQuery Parse(HttpContext httpContext, ApiRequest api, bool single)

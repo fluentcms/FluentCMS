@@ -1,5 +1,4 @@
 using System.Buffers.Text;
-using System.Globalization;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -16,35 +15,28 @@ using Microsoft.Net.Http.Headers;
 namespace FluentCMS.Core.Api.Delivery;
 
 // A Delivery read with its cache headers. The ETag hashes the body, which holds the version and locale of every entry in
-// it, populated ones included, and follows from the query, so it changes whenever what the caller reads does. Last-Modified
-// is the latest publishedAt or updatedAt of the entries the response is about, and is not a validator: an entry that
-// leaves a list, or a populated target that is unpublished, moves no date. A response the output cache is about to store is
-// sent whole even to a matching If-None-Match, so that the copy exists for the next request.
+// it, populated ones included, and follows from the query, so it changes whenever what the caller reads does. There is no
+// Last-Modified: no date in the body moves when an entry leaves a list, a populated target is unpublished or a role
+// changes what the caller reads, so a 304 by date would keep a stale copy. A response the output cache is about to store
+// is sent whole even to a matching If-None-Match, so that the copy exists for the next request.
 internal sealed class DeliveryResponse : IResult
 {
     public const string Vary = "Authorization, X-Api-Key, X-Cms-Site, X-Cms-Locale";
 
-    private static readonly string[] Dates = ["publishedAt", "updatedAt"];
-
     private readonly JsonObject _body;
-    private readonly IReadOnlyList<JsonObject> _entries;
     private readonly SchemaType _type;
     private readonly bool _draft;
 
-    private DeliveryResponse(JsonObject body, IReadOnlyList<JsonObject> entries, SchemaType type, bool draft)
+    private DeliveryResponse(JsonObject body, SchemaType type, bool draft)
     {
         _body = body;
-        _entries = entries;
         _type = type;
         _draft = draft;
     }
 
-    // Under locale=all an entry is { id, locales }, and the entries are its locales.
-    public static DeliveryResponse Entry(JsonObject entry, SchemaType type, bool draft) =>
-        new(entry, entry["locales"] is JsonObject locales ? [.. locales.Select(pair => pair.Value).OfType<JsonObject>()] : [entry], type, draft);
+    public static DeliveryResponse Entry(JsonObject entry, SchemaType type, bool draft) => new(entry, type, draft);
 
-    public static DeliveryResponse List(JsonObject list, SchemaType type, bool draft) =>
-        new(list, list["items"] is JsonArray items ? [.. items.OfType<JsonObject>()] : [], type, draft);
+    public static DeliveryResponse List(JsonObject list, SchemaType type, bool draft) => new(list, type, draft);
 
     public async Task ExecuteAsync(HttpContext httpContext)
     {
@@ -57,9 +49,7 @@ internal sealed class DeliveryResponse : IResult
         var api = ApiRequest.Of(httpContext);
 
         var response = httpContext.Response;
-        var headers = response.GetTypedHeaders();
-        headers.ETag = etag;
-        headers.LastModified = LastModified(services.GetRequiredService<TimeProvider>().GetUtcNow());
+        response.GetTypedHeaders().ETag = etag;
         var options = services.GetRequiredService<DeliveryCacheOptions>();
         response.Headers.CacheControl = _draft ? "no-store" : api.Operation.Principal.IsAnonymous ? options.SharedCacheControl : options.PrivateCacheControl;
         response.Headers.Vary = Vary;
@@ -83,25 +73,6 @@ internal sealed class DeliveryResponse : IResult
         response.ContentType = "application/json; charset=utf-8";
         response.ContentLength = bytes.Length;
         await response.Body.WriteAsync(bytes, httpContext.RequestAborted);
-    }
-
-    private DateTimeOffset? LastModified(DateTimeOffset now)
-    {
-        DateTimeOffset? latest = null;
-        foreach (var entry in _entries)
-        {
-            foreach (var name in Dates)
-            {
-                if (entry[name] is JsonValue value && value.TryGetValue<string>(out var text)
-                    && DateTimeOffset.TryParse(text, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var moment)
-                    && (latest is null || moment > latest))
-                {
-                    latest = moment;
-                }
-            }
-        }
-
-        return latest > now ? now : latest;
     }
 
     // Every entry in the body, populated targets and references included, so that a change to one evicts what shows it.

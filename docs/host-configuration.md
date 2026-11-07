@@ -16,7 +16,20 @@ app.Run();
 
 `MapFluentCms()` creates the route groups `/api/delivery/v1`, `/api/management/v1`, `/connect`, `/account` and `/health`, and maps the [hosted pages](#hosted-pages). They are relative to the request's `PathBase`, which `UseFluentCms()` sets from `FluentCms:ReverseProxy:PathBase` (see [reverse proxy](reverse-proxy.md)), so a host on a sub-path does not call `UsePathBase` itself. The builder it returns applies conventions to every FluentCMS endpoint.
 
-`UseFluentCms()` puts the request pipeline in place, in the order it works in: what `FluentCms:ReverseProxy` asks for (forwarded headers, the path base, HSTS and the HTTPS redirect), the exception handler (problem details), routing, security headers, CORS, the gate that holds FluentCMS routes to the path base, a coarse limit per client address, authentication, the rate limiter of the endpoints and the request limits. Call it once, before `MapFluentCms()`, which needs it (the endpoints carry CORS and rate limit metadata that only these middleware read), and add `UseAuthorization()` after it. It includes `UseExceptionHandler()`, `UseRouting()` and `UseAuthentication()`, so a host does not add them again. The order matters: CORS comes before the limiters so that a 429 still carries CORS headers, the coarse limit comes before authentication so that a flood is turned away before it reaches a key lookup or the token endpoint, and authentication comes before the endpoint limiter because that partitions by API key or principal. `MapFluentCms()` throws `FCMS1104` at startup when `UseFluentCms()` was not called.
+`UseFluentCms()` puts the request pipeline in place, in the order it works in: what `FluentCms:ReverseProxy` asks for (forwarded headers, the path base, HSTS and the HTTPS redirect), the exception handler (problem details), routing, security headers, CORS, the gate that holds FluentCMS routes to the path base, a coarse limit per client address, the request limits, authentication, the rate limiter of the endpoints, authorization and the output cache. Call it once, before `MapFluentCms()`, which needs it (the endpoints carry CORS and rate limit metadata that only these middleware read). It includes `UseExceptionHandler()`, `UseRouting()`, `UseAuthentication()`, `UseAuthorization()` and `UseOutputCache()`, so a host does not add them again; a host that still calls `UseAuthorization()` after it runs its policies twice, which changes nothing but the cost. The order matters: CORS comes before the limiters so that a 429 still carries CORS headers, the coarse limit comes before authentication so that a flood is turned away before it reaches a key lookup or the token endpoint, authentication comes before the endpoint limiter because that partitions by API key or principal, and authorization comes before the output cache, so that a policy put on `MapFluentCms()`, as in `app.MapFluentCms().RequireAuthorization("cms")`, holds for a cached answer too. `MapFluentCms()` throws `FCMS1104` at startup when `UseFluentCms()` was not called.
+
+Response compression goes before `UseFluentCms()`, so that the output cache keeps the body as the endpoint wrote it and each answer is encoded for the request it goes to:
+
+```csharp
+builder.Services.AddResponseCompression();
+
+var app = builder.Build();
+app.UseResponseCompression();
+app.UseFluentCms();
+app.MapFluentCms();
+```
+
+Compression after `UseFluentCms()` would sit inside the output cache, which does not vary on `Accept-Encoding`, so a body compressed for one client would go to every other; FluentCMS does not keep such a copy, and every compressed read then runs the endpoint.
 
 ## Requests
 
@@ -68,7 +81,7 @@ Cookie authentication schemes and the antiforgery cookie are `Secure` and `HttpO
 
 ## Rate limits
 
-ASP.NET Core's rate limiter runs three policies, each a fixed window of one minute. The groups carry their policy as endpoint metadata:
+ASP.NET Core's rate limiter runs three policies, each a token bucket per caller that holds the limit and fills again over a minute. The groups carry their policy as endpoint metadata:
 
 | Policy | Group | Partitioned by | Default per minute |
 | --- | --- | --- | --- |
@@ -82,7 +95,7 @@ An API key whose principal has an `fcms_rate_limit` claim gets that many request
 
 The coarse limit is checked before authentication on every endpoint that `MapFluentCms()` maps, those of plugins included, and on every path under the groups of core, so it also covers requests that no endpoint answers, such as `/connect/token` from the authorization server. A flood of API keys sent to a plugin's route is turned away there too, before any key is looked up. It adds no `RateLimit-*` headers, and neither does the `Health` limit; a refusal is the same 429 problem. The strict `auth` limit is checked there too, for every path under `/connect` and `/account`, because the authorization server answers `/connect/token`, `/connect/introspect` and `/connect/revoke` without routing; the endpoints of those groups do not count a request a second time.
 
-A response carries `RateLimit-Limit`, `RateLimit-Remaining` and `RateLimit-Reset` (seconds to the end of the window), from the IETF draft. A refused request is a 429 `application/problem+json` with code `FCMS3110` and a `Retry-After` in seconds.
+A caller that has been quiet may send the whole limit at once, and then one request per minute divided by the limit (every tenth of a second at 600), so a burst at the turn of a minute is not let through twice, as a fixed window of one minute would let it. A response carries `RateLimit-Limit`, `RateLimit-Remaining` (the requests that may be sent now) and `RateLimit-Reset` (seconds until the bucket is full again), from the IETF draft. A refused request is a 429 `application/problem+json` with code `FCMS3110` and a `Retry-After` in seconds until the next request is let through.
 
 The key and the principal are those of the `FluentCms` authentication scheme when the host has one (the API key registration adds it, as a policy scheme that forwards to the key scheme when a key is presented and otherwise to the default scheme), so a cookie or token default scheme does not hide a key. Without it they are those of the default scheme.
 
@@ -100,7 +113,7 @@ A request to a FluentCMS endpoint, or to any path under its groups such as `/con
 
 ## Delivery caching
 
-The options are `FluentCms:Delivery:Cache` (`cms.DeliveryCache` in code). A Delivery response carries an `ETag`, a `Last-Modified` and a `Cache-Control`, and varies on `Authorization`, `X-Api-Key`, `X-Cms-Site` and `X-Cms-Locale`. A request with a matching `If-None-Match` gets a 304; `If-Modified-Since` alone is answered in full, because an entry that leaves a list moves no date. `HEAD` is answered with the headers of the `GET`, `Content-Length` included, and no body.
+The options are `FluentCms:Delivery:Cache` (`cms.DeliveryCache` in code). A Delivery response carries an `ETag` and a `Cache-Control`, and varies on `Authorization`, `X-Api-Key`, `X-Cms-Site` and `X-Cms-Locale`. A request with a matching `If-None-Match` gets a 304. There is no `Last-Modified`, because no date in a response moves when an entry leaves a list, a populated entry is unpublished or a role changes what the caller may read, so `If-Modified-Since` is ignored and such a request is answered in full, from the output cache when it holds a copy. `HEAD` is answered with the headers of the `GET`, `Content-Length` included, and no body.
 
 | Key | Default | Meaning |
 | --- | --- | --- |
@@ -108,9 +121,9 @@ The options are `FluentCms:Delivery:Cache` (`cms.DeliveryCache` in code). A Deli
 | `OutputCache` | `true` | Whether the server keeps published reads in the ASP.NET Core output cache. Off, nothing is evicted and no `CacheInvalidatedEvent` is raised. |
 | `OutputCacheDuration` | `00:01:00` | How long it keeps one, at most. |
 
-The server keeps one copy for every request without credentials and one per API key, and keeps nothing for a bearer token, a draft read, credentials it refuses, an error or a request with `If-Modified-Since` and no `If-None-Match`. Publishing, unpublishing, trashing and restoring an entry evict the tags `entry:{id}` and `type:{site}:{type}` (`type:global:{type}` for a global type) through the outbox and raise `CacheInvalidatedEvent` with them, so a CDN can purge the same; a change to a site or its locales evicts `site:{id}` the same way. Every read is tagged with its site, its type and every entry in it, populated ones included. A change to a role's permissions, or a newly published target of a relation, shows when the copy expires.
+The server keeps one copy for every request without credentials and one per API key, and keeps nothing for a bearer token, a draft read, credentials it refuses or an error. Publishing, unpublishing, trashing and restoring an entry evict the tags `entry:{id}` and `type:{site}:{type}` (`type:global:{type}` for a global type) through the outbox and raise `CacheInvalidatedEvent` with them, so a CDN can purge the same; a change to a site or its locales evicts `site:{id}` the same way, and so does a change to a role or its grants, since the Public role decides what the shared copy holds and a key's role what its own copy holds: a role of a site evicts that site, and a role of the instance every site. Every read is tagged with its site, its type and every entry in it, populated ones included. A newly published target of a relation shows when the copy expires.
 
-`UseFluentCms()` adds the output cache middleware, so a host that caches its own endpoints does not call `UseOutputCache()` again. FluentCMS routes other than Delivery are never cached, even under a base policy of the host's. The store is in memory: with several instances, only the instance that delivers the outbox event evicts its copies, and the others serve theirs until `OutputCacheDuration` runs out. A shared `IOutputCacheStore`, such as the Redis one from `Microsoft.AspNetCore.OutputCaching.StackExchangeRedis`, removes that lag.
+`UseFluentCms()` adds the output cache middleware, so a host that caches its own endpoints does not call `UseOutputCache()` again. FluentCMS routes other than Delivery are never cached, even under a base policy of the host's. The store is the [provider slot](#provider-slots) `IOutputCacheStore`, in memory by default, and an eviction reaches only the store of the instance that delivers the outbox event: with several instances on the in-memory store, the others serve their copies until `OutputCacheDuration` runs out. A shared store removes that lag, such as the Redis one of `Microsoft.AspNetCore.OutputCaching.StackExchangeRedis`, which `AddStackExchangeRedisOutputCache()` registers when it is called before `AddFluentCms()`. The key of a copy holds the schema hash, so a shared store never serves an instance a copy made for another schema, during a rolling deployment or after a restart with a new one.
 
 ## OpenAPI and the Scalar UI
 
@@ -124,7 +137,7 @@ app.MapFluentCmsOpenApi();
 
 They are mapped in Development only, because the document names every content type, field, component and block of the schema to whoever can reach it, whatever that caller may read. `FluentCms:OpenApi:Enabled = true` maps them in any environment, and `false` leaves them out in Development too. The builder the method returns applies conventions to both, so a host can require a policy of its own, as in `app.MapFluentCmsOpenApi().RequireAuthorization("docs")`. A browser opening the page sends no bearer token or API key, so such a policy needs a credential the browser carries, such as a cookie of the host's.
 
-Both routes carry the security headers, count against the coarse limit and the Delivery limit of the client address, and never look up an API key sent to them. The document is built once and served from the output cache, except on a route with an authorization policy, which builds it per request so that no kept copy reaches a caller the policy refuses. The Scalar page loads its scripts and styles from beside it, not from a CDN, and its `Content-Security-Policy` allows only those, the inline script that starts it (by a nonce made per request), and requests to its own origin and to `FluentCms:PublicOrigin`. Scalar's CDN fonts, telemetry and agent chat are off.
+Both routes carry the security headers, count against the coarse limit and the Delivery limit of the client address, and never look up an API key sent to them. The document is built once and served from the output cache, which runs after authorization, so a policy on the routes holds for the kept copy too. The Scalar page loads its scripts and styles from beside it, not from a CDN, and its `Content-Security-Policy` allows only those, the inline script that starts it (by a nonce made per request), and requests to its own origin and to `FluentCms:PublicOrigin`. Scalar's CDN fonts, telemetry and agent chat are off.
 
 The document holds the Delivery and Management routes and none of the host's. A content route is written once per content type, such as `/api/delivery/v1/article` and `/api/management/v1/content/article/{id}/publish`, with the type's `entry-{type}` schema for what it reads and `input-{type}` for what it writes. Components and blocks are `component-{name}` and `block-{name}`, and a block list is a `oneOf` of its blocks with `type` as the discriminator. A field is described by its field type's fragment (`IFieldType.OpenApiSchema`), so a plugin's field type is described the way it says. The `filter` parameter of a type (`style: deepObject`) lists the fields it can filter with their operators, and `sort` lists its sort keys. The security schemes are `oauth2`, with the authorization code flow and PKCE against `/connect/authorize` and `/connect/token` and client credentials, and `apiKey`, the `X-Api-Key` header. Examples come from `cms.OpenApi.AddExample<T>(json)`, which the Blog sample calls for its types. The other routes describe their bodies, and their query parameters with their types, defaults and limits.
 
@@ -278,6 +291,7 @@ A provider slot is a service with one implementation that core fills with a defa
 | `IEmailSender` | SMTP, the log or a refusal, as in [email](#email) |
 | `IDistributedLock` | a lease in the `cms_lock` table |
 | `IDistributedCache` | the framework's in-memory cache, one per instance |
+| `IOutputCacheStore` | the framework's in-memory output cache store, one per instance, which evicts only its own copies |
 
 Choose an implementation with `cms.Providers.Use<TSlot, TImplementation>()`, which registers it as a singleton; a plugin calls the same `Use` on `plugin.Providers` in its `ConfigureServices`:
 

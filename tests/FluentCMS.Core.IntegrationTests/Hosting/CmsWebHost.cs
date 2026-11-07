@@ -22,7 +22,8 @@ internal sealed class CmsWebHost : IAsyncDisposable
         Dictionary<string, string?>? settings = null,
         Action<WebApplicationBuilder>? configure = null,
         Action<WebApplication>? pipeline = null,
-        Action<FluentCmsBuilder>? cms = null)
+        Action<FluentCmsBuilder>? cms = null,
+        Action<IEndpointConventionBuilder>? endpoints = null)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = environment });
         builder.WebHost.UseTestServer();
@@ -53,7 +54,8 @@ internal sealed class CmsWebHost : IAsyncDisposable
             pipeline(app);
         }
 
-        app.MapFluentCms();
+        var conventions = app.MapFluentCms();
+        endpoints?.Invoke(conventions);
         return _app = app;
     }
 
