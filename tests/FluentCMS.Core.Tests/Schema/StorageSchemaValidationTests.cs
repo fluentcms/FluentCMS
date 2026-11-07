@@ -262,6 +262,86 @@ public class StorageSchemaValidationTests
         error.Message.ShouldContain("page.tint");
     }
 
+    [Theory]
+    [InlineData(59, false)]
+    [InlineData(54, true)]
+    public void TypeWhoseTablesFitBuilds(int length, bool localized) =>
+        SampleSchema.NewBuilder().AddCollection(new string('a', length), type => type.Localized(localized)).Build();
+
+    [Theory]
+    [InlineData(60, false, "")]
+    [InlineData(55, true, "_i18n")]
+    public void TypeWhoseTableIsOverTheIdentifierBudgetIsReported(int length, bool localized, string suffix)
+    {
+        var name = new string('a', length);
+
+        var error = Fails(SampleSchema.NewBuilder().AddCollection(name, type => type.Localized(localized))).Errors.ShouldHaveSingleItem();
+
+        error.Code.ShouldBe(SchemaErrorCodes.NameTooLong);
+        error.Message.ShouldContain($"cms_{name}{suffix}");
+        error.Message.ShouldContain("63");
+    }
+
+    [Fact]
+    public void TypeNameOverTheLimitIsReportedOnce()
+    {
+        var component = new string('c', 65);
+        var collection = new string('p', 65);
+
+        var errors = Fails(SampleSchema.NewBuilder().AddComponent(component, _ => { }).AddCollection(collection, _ => { })).Errors;
+
+        errors.Select(error => error.Code).ShouldBe([SchemaErrorCodes.NameTooLong, SchemaErrorCodes.NameTooLong]);
+        errors.ShouldContain(error => error.Message.Contains($"component '{component}'"));
+        errors.ShouldContain(error => error.Message.Contains($"collection '{collection}'"));
+    }
+
+    [Fact]
+    public void FieldNameOverTheLimitIsReportedOnce()
+    {
+        var name = "a" + new string('b', 64);
+        var builder = SampleSchema.NewBuilder()
+            .AddComponent("seo", type => type.Field(name, "text"))
+            .AddCollection("page", type => type.Field(name, "text").Field("seo", "component", field => field.Setting(FieldSettings.Component, "seo")));
+
+        var errors = Fails(builder).Errors;
+
+        errors.Select(error => error.Code).ShouldBe([SchemaErrorCodes.NameTooLong, SchemaErrorCodes.NameTooLong]);
+        errors.ShouldContain(error => error.Message.Contains($"page.{name}"));
+        errors.ShouldContain(error => error.Message.Contains($"seo.{name}"));
+    }
+
+    [Fact]
+    public void FlattenedColumnOverTheIdentifierBudgetIsReported()
+    {
+        var builder = SampleSchema.NewBuilder()
+            .AddComponent("hero", type => type.Field("backgroundImageAlternativeText", "text"))
+            .AddCollection("page", type => type.Field("heroSectionConfigurationForTheLandingPage", "component", field => field.Setting(FieldSettings.Component, "hero")));
+
+        var error = Fails(builder).Errors.ShouldHaveSingleItem();
+
+        error.Code.ShouldBe(SchemaErrorCodes.NameTooLong);
+        error.Message.ShouldContain("page.heroSectionConfigurationForTheLandingPage.backgroundImageAlternativeText");
+        error.Message.ShouldContain("hero_section_configuration_for_the_landing_page_background_image_alternative_text");
+    }
+
+    [Fact]
+    public void ReferencePathOverTheLimitIsReported()
+    {
+        var builder = SampleSchema.NewBuilder()
+            .AddComponent("hero", type => type.Field("relatedTestimonialAuthorProfile", "relation", field => field.Relation("page")))
+            .AddCollection("page", type => type.Field("heroSectionConfigurationForTheLandingPage", "component", field => field.Setting(FieldSettings.Component, "hero")));
+
+        var error = Fails(builder).Errors.ShouldHaveSingleItem();
+
+        error.Code.ShouldBe(SchemaErrorCodes.NameTooLong);
+        error.Message.ShouldContain("page.heroSectionConfigurationForTheLandingPage.relatedTestimonialAuthorProfile");
+        error.Message.ShouldContain(StorageNames.Reference);
+    }
+
+    [Fact]
+    public void LongIndexNamesAloneAreNoError() =>
+        SampleSchema.LongNames().Build();
+
     [Collection]
     private sealed class ListsOfScalars : ContentItem
     {

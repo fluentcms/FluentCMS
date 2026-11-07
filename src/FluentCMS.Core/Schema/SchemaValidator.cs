@@ -86,6 +86,11 @@ internal sealed class SchemaValidator(IFieldTypeRegistry fieldTypes)
             Report(SchemaErrorCodes.InvalidName, $"{Describe(type)} must be lower kebab-case: lower case letters and digits separated by single hyphens");
         }
 
+        if (type.Name.Length > StorageNames.NameLength)
+        {
+            Report(SchemaErrorCodes.NameTooLong, $"{Describe(type)} has a name of {type.Name.Length} characters; a type name has at most {StorageNames.NameLength}");
+        }
+
         if (type.Localized && !type.IsContentType)
         {
             Report(SchemaErrorCodes.InvalidType, $"{Describe(type)} cannot be localized; only collections and singletons are");
@@ -123,6 +128,11 @@ internal sealed class SchemaValidator(IFieldTypeRegistry fieldTypes)
         else if (type.Kind == SchemaTypeKind.Block && string.Equals(field.Name, BlockId, StringComparison.OrdinalIgnoreCase))
         {
             Report(SchemaErrorCodes.ReservedName, $"field name '{field.Name}' of {location} is reserved for the block id");
+        }
+
+        if (field.Name.Length > StorageNames.NameLength)
+        {
+            Report(SchemaErrorCodes.NameTooLong, $"field name '{field.Name}' of {location} has {field.Name.Length} characters; a field name has at most {StorageNames.NameLength}");
         }
 
         var fieldType = fieldTypes.Find(field.FieldType);
@@ -418,6 +428,13 @@ internal sealed class SchemaValidator(IFieldTypeRegistry fieldTypes)
             {
                 Report(SchemaErrorCodes.ReservedName, $"{Describe(type)} needs table {table}, which is the locale table of {Describe(owner)}");
             }
+
+            // A name over the type name limit was reported as such.
+            var longest = type.Localized ? StorageNames.LocaleTable(type.Name) : table;
+            if (type.Name.Length <= StorageNames.NameLength && longest.Length > StorageNames.MaxIdentifierLength)
+            {
+                Report(SchemaErrorCodes.NameTooLong, $"{Describe(type)} needs table {longest} of {longest.Length} characters; a table name has at most {StorageNames.MaxIdentifierLength}");
+            }
         }
     }
 
@@ -436,7 +453,7 @@ internal sealed class SchemaValidator(IFieldTypeRegistry fieldTypes)
     private static IEnumerable<FieldDraft> DistinctFields(TypeDraft type) =>
         type.Fields.DistinctBy(field => field.Name, StringComparer.OrdinalIgnoreCase);
 
-    private void ValidateColumn(TypeDraft type, FieldDraft field, string owner, string prefix, bool localized, Dictionary<(bool Localized, string Column), string> holders, Dictionary<string, TypeDraft> components, HashSet<string> path)
+    private void ValidateColumn(TypeDraft type, FieldDraft field, string owner, string prefix, bool localized, Dictionary<(bool Localized, string Column), string> holders, Dictionary<string, TypeDraft> components, HashSet<string> path, bool lengthReported = false)
     {
         var fieldType = fieldTypes.Find(field.FieldType);
         if (fieldType is null || !SchemaNaming.IsValidFieldName(field.Name))
@@ -448,13 +465,16 @@ internal sealed class SchemaValidator(IFieldTypeRegistry fieldTypes)
         var column = prefix + StorageNames.Column(field.Name);
         var kind = fieldType.StorageKind(SchemaModelFactory.Create(field));
 
+        // A field name over the limit was reported as such, and the paths and columns below it are longer still.
+        var reportedLength = lengthReported || field.Name.Length > StorageNames.NameLength;
+
         if (field.FieldType == FieldTypeNames.Component && kind == FieldStorageKind.Column)
         {
             if (SettingText(field, FieldSettings.Component) is { } name && components.TryGetValue(name, out var component) && path.Add(name))
             {
                 foreach (var inner in DistinctFields(component))
                 {
-                    ValidateColumn(type, inner, location, column + "_", localized, holders, components, path);
+                    ValidateColumn(type, inner, location, column + "_", localized, holders, components, path, reportedLength);
                 }
 
                 path.Remove(name);
@@ -472,11 +492,22 @@ internal sealed class SchemaValidator(IFieldTypeRegistry fieldTypes)
 
         if (kind == FieldStorageKind.Reference)
         {
+            var apiPath = location[(type.Name.Length + 1)..];
+            if (!reportedLength && apiPath.Length > StorageNames.NameLength)
+            {
+                Report(SchemaErrorCodes.NameTooLong, $"field {location} is stored in {StorageNames.Reference} by its path {apiPath} of {apiPath.Length} characters; a path has at most {StorageNames.NameLength}");
+            }
+
             return;
         }
 
         var table = localized ? StorageNames.LocaleTable(type.Name) : StorageNames.Table(type.Name);
         var systemColumns = localized ? StorageNames.LocaleTableColumns : StorageNames.SystemColumns;
+
+        if (!reportedLength && column.Length > StorageNames.MaxIdentifierLength)
+        {
+            Report(SchemaErrorCodes.NameTooLong, $"field {location} maps to column {column} of {table}, which has {column.Length} characters; a column name has at most {StorageNames.MaxIdentifierLength}");
+        }
 
         // A top-level field named like a system field was reported already, by name.
         var reportedByName = prefix.Length == 0 && ContentItem.ReservedFieldNames.Contains(field.Name);

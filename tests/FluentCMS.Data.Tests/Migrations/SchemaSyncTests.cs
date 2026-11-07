@@ -99,7 +99,7 @@ public sealed class SchemaSyncTests : IDisposable
 
         _database.Tables().ShouldContain("cms_tag");
         _database.ReadStrings("select name from sqlite_master where type = 'index' and name = 'ix_cms_article_title'").ShouldHaveSingleItem();
-        _database.ReadStrings("select sql from sqlite_master where name = 'ux_cms_tag_name'").ShouldHaveSingleItem().ShouldEndWith("WHERE state = 1");
+        _database.ReadStrings("select sql from sqlite_master where name = 'ux_cms_tag_name'").ShouldHaveSingleItem().ShouldEndWith("WHERE state = 1 AND \"name\" IS NOT NULL");
     }
 
     [Fact]
@@ -205,6 +205,31 @@ public sealed class SchemaSyncTests : IDisposable
         report.Applied.ShouldBe(["add column sections to table cms_article"]);
         report.NotApplied.ShouldBe(["add check constraint ck_cms_article_sections_json to table cms_article"]);
         _database.ReadStrings("select sections from cms_article").ShouldBe(["[]"]);
+    }
+
+    [Fact]
+    public async Task APluginsTableIsNotAStaleContentTableAndTheSyncIsRecorded()
+    {
+        var logs = new ListLoggerProvider();
+        using var host = _database.CreateHost(ArticleSchemas.Titled, Environments.Development, services: services =>
+        {
+            DemoPlugin.Add(services, _database.ConnectionString);
+            services.AddSingleton<ILoggerProvider>(logs);
+        });
+
+        await host.StartAsync(Token);
+
+        _database.Tables().ShouldContain(DemoPlugin.Table);
+        _database.ReadStrings($"select MigrationId from {DemoPlugin.HistoryTable}").ShouldBe([DemoPlugin.MigrationId]);
+        _database.ReadStrings("select hash from cms_schema_history").ShouldHaveSingleItem();
+        logs.Messages.ShouldNotContain(message => message.Contains($"drop table {DemoPlugin.Table}", StringComparison.Ordinal));
+
+        var report = await Runner(host).SyncContentSchemaAsync(ArticleSchemas.WithSubtitle, Token);
+
+        report.Applied.ShouldBe(["add column subtitle to table cms_article"]);
+        report.NotApplied.ShouldBeEmpty();
+        _database.ReadStrings("select hash from cms_schema_history").Count.ShouldBe(2);
+        await host.StopAsync(Token);
     }
 
     [Fact]

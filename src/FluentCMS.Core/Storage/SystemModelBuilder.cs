@@ -12,7 +12,7 @@ namespace FluentCMS.Core.Storage;
 // Maps the system tables that have a CLR class. Columns are the snake_case of the property names.
 internal sealed class SystemModelBuilder(IStorageConventions conventions)
 {
-    private const int NameLength = 64;
+    private const int NameLength = StorageNames.NameLength;
     private const int StatusLength = 16;
     private const int RoleNameLength = 128;
     private const int RoleDescriptionLength = 512;

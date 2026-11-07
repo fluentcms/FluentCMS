@@ -28,6 +28,14 @@ fluentcms migrations add AddSubtitle
 
 This builds the project and writes the migration to `Migrations/Content`. The runner looks for content migrations in the entry assembly; call `cms.UseContentMigrations(assembly)` inside `AddFluentCms` if they live elsewhere.
 
+The migrations are for the provider the factory names, and they carry its column types. Startup and `MigrationRunner.MigrateAsync` refuse a content or plugin set scaffolded for another provider with `FCMS1306`, before anything is applied:
+
+```text
+FCMS1306: stream content was scaffolded for SQLite; this host runs PostgreSQL, and a migration set applies only to the provider it was scaffolded for
+```
+
+Moving an existing database to another provider is not supported. For another provider, scaffold a new content set with a factory for that provider and start from a new database. Schema sync skips the content stream, so a host can sync on SQLite in Development while its content migrations are for its server provider.
+
 ## Settings
 
 | Setting | Values | Default |
@@ -37,14 +45,14 @@ This builds the project and writes the migration to `Migrations/Content`. The ru
 
 `Auto` anywhere other than Development on SQLite logs a warning and acts as `Off`, unless the host calls `cms.AllowSchemaSyncOutsideDevelopment()` inside `AddFluentCms`: then the default is `Auto` on SQLite in every environment, and `Off` still turns it off. It is for a host whose types have no compiled migrations, such as the [Docker image](docker.md) with a schema file; it cannot be set from configuration, a provider other than SQLite refuses it with `FCMS3154`, and the startup report lists it as `schema-sync-outside-development`. An invalid value stops startup with `FCMS1304`.
 
-With `MigrateOnStartup` set to `false`, startup changes nothing in the database, including schema sync. `MigrationRunner.MigrateAsync` applies every stream whatever the setting, and `MigrationRunner.GetPendingMigrationsAsync` lists what is pending.
+With `MigrateOnStartup` set to `false`, startup changes nothing in the database, including schema sync. `MigrationRunner.MigrateAsync` applies every stream whatever the setting, and `MigrationRunner.GetPendingMigrationsAsync` lists what is pending. The `fluentcms migrate` and `fluentcms migrate --check` commands come with the CLI in M6; until then, start one instance with `MigrateOnStartup` set to `true` to apply what is pending.
 
 ## Startup validation
 
 With `MigrateOnStartup` set to `false`, startup first stops with `FCMS1305` if the system or a plugin stream has a pending migration, which is what an upgrade to a new FluentCMS version can bring:
 
 ```text
-FCMS1305: stream system has not applied 20270101000000_AddSites; run 'fluentcms migrate'
+FCMS1305: stream system has not applied 20270101000000_AddSites; set FluentCms:Database:MigrateOnStartup to true to apply the pending migrations
 ```
 
 Unless schema sync ran, startup then compares the content model with the database and stops with `FCMS1301` if a table or column is missing:
@@ -53,7 +61,7 @@ Unless schema sync ran, startup then compares the content model with the databas
 FCMS1301: table cms_article is missing column subtitle; run 'fluentcms migrations add AddSubtitle'
 ```
 
-It asks for `fluentcms migrate` instead if a content migration exists but is not applied. It checks tables and columns only, not indexes or column types.
+If a content migration exists but is not applied, it asks to set `MigrateOnStartup` to `true` instead. It checks tables and columns only, not indexes or column types.
 
 ## Schema sync
 
@@ -67,6 +75,6 @@ With `Auto`, startup skips the content stream and applies additive changes by co
 | Check constraint of a new JSON column | Reported, because SQLite adds one only by rebuilding the table |
 | Dropped table, column or index; changed column type, nullability or index | Reported |
 
-Reported changes are logged as warnings and never applied. To get them, recreate the development database.
+Reported changes are logged as warnings and never applied. To get them, recreate the development database. A table under a plugin's prefix (`cms_{plugin}_`) belongs to that plugin's stream, so schema sync never reports it as a dropped table.
 
 A database that schema sync has changed has no content history, so the first migration of the content stream will not apply to it. Switch to `Off` on a new database.

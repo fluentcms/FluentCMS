@@ -12,6 +12,7 @@ using FluentCMS.Core.Schema;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
+using FluentCMS.Data.PostgreSql;
 using FluentCMS.Data.Sqlite;
 using FluentCMS.Events;
 using FluentCMS.Jobs;
@@ -110,6 +111,35 @@ public sealed class PluginContributionTests
             SqliteConnection.ClearAllPools();
             File.Delete(file);
         }
+    }
+
+    [Fact]
+    public async Task SchemaSyncLeavesThePluginsTableAloneAndRecordsTheSchema()
+    {
+        await using var host = new FluentCmsTestHost();
+        var runner = host.Services.GetRequiredService<MigrationRunner>();
+
+        var report = await runner.SyncContentSchemaAsync(cancellationToken: Token);
+
+        report.NotApplied.ShouldBeEmpty();
+        (await runner.GetSchemaStatusAsync(Token)).AppliedHash.ShouldNotBeNull();
+    }
+
+    // The sample's set is scaffolded on SQLite, and the late plugin's hand-written migration has no target model to tell.
+    [Fact]
+    public async Task APostgreSqlHostRefusesThePluginsSqliteSetBeforeTouchingTheDatabase()
+    {
+        var services = new ServiceCollection().AddLogging();
+        services.AddFluentCms(cms => cms.UsePostgreSql("Host=localhost;Database=never_opened").AddPlugin<LatePlugin>());
+        await using var provider = services.BuildServiceProvider();
+        var runner = provider.GetRequiredService<MigrationRunner>();
+
+        var atStartup = await Should.ThrowAsync<FluentCmsConfigurationException>(() => runner.RunAtStartupAsync(Token));
+        var migrate = await Should.ThrowAsync<FluentCmsConfigurationException>(() => runner.MigrateAsync(Token));
+
+        atStartup.Code.ShouldBe("FCMS1306");
+        atStartup.Message.ShouldBe("FCMS1306: stream sample was scaffolded for SQLite; this host runs PostgreSQL, and a migration set applies only to the provider it was scaffolded for");
+        migrate.Message.ShouldBe(atStartup.Message);
     }
 
     [Fact]

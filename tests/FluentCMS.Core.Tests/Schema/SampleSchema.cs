@@ -26,6 +26,17 @@ internal static class SampleSchema
 
     public static string Canonical(SchemaBuilder builder) => SchemaJsonWriter.Write(builder.Build());
 
+    // Its tables and columns fit in 63 bytes, but its index and check names do not, and the two unique ones share
+    // their first 63 characters.
+    public static SchemaBuilder LongNames() => NewBuilder()
+        .AddComponent("hero-section-configuration", type => type
+            .Field("backgroundImageAltText", "text", field => field.Unique())
+            .Field("backgroundImageCaption", "text", field => field.Unique().Indexed())
+            .Field("backgroundImageMetadata", "json", field => field.Indexed()))
+        .AddCollection("customer-testimonial-highlight", type => type
+            .Localized()
+            .Field("heroSectionConfiguration", "component", field => field.Localizable().Setting(FieldSettings.Component, "hero-section-configuration")));
+
     // Limits an assembly to the sample types, so the invalid classes of other tests are not scanned.
     public static Assembly SamplesOnly() => new FilteredAssembly(
         typeof(Article).Assembly,

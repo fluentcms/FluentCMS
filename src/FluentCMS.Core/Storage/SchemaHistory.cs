@@ -166,9 +166,9 @@ internal static partial class SchemaHistoryLog
     [LoggerMessage(EventId = 9313, Level = LogLevel.Warning, Message = "The schema in code could not be compared with the schema history ({ExceptionType}); the host starts without the check.")]
     public static partial void NotChecked(ILogger logger, string exceptionType, Exception exception);
 
-    [LoggerMessage(EventId = 9314, Level = LogLevel.Information, Message = "The schema history is empty, so the schema in code cannot be compared; 'fluentcms migrate' records it.")]
+    [LoggerMessage(EventId = 9314, Level = LogLevel.Information, Message = "The schema history is empty, so the schema in code cannot be compared; a start with FluentCms:Database:MigrateOnStartup = true records it.")]
     public static partial void NoHistory(ILogger logger);
 
-    [LoggerMessage(EventId = 9315, Level = LogLevel.Warning, Message = "The schema in code differs from the one applied on {AppliedAt:u} by FluentCMS {Version} (hash {Applied}, code {Current}): {Changes}. 'fluentcms migrate' applies and records it.")]
+    [LoggerMessage(EventId = 9315, Level = LogLevel.Warning, Message = "The schema in code differs from the one applied on {AppliedAt:u} by FluentCMS {Version} (hash {Applied}, code {Current}): {Changes}. A start with FluentCms:Database:MigrateOnStartup = true applies and records it.")]
     public static partial void Drift(ILogger logger, DateTimeOffset appliedAt, string version, string applied, string current, string changes);
 }
