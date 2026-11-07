@@ -33,7 +33,9 @@ public sealed class SystemOperationTests
         refused.Message.ShouldStartWith(AuthorizationErrorCodes.NoOperation + ":");
         refused.Message.ShouldContain("SystemOperation.Begin");
 
-        await Should.ThrowAsync<InvalidOperationException>(() => CreateKeyAsync(scope.ServiceProvider, "outside"));
+        var service = await Should.ThrowAsync<InvalidOperationException>(() =>
+            scope.ServiceProvider.GetRequiredService<ApiKeyService>().CreateAsync(new ApiKeyRequest("outside", ApiKeyClass.Delivery, BuiltInRoles.Public), Token));
+        service.Message.ShouldStartWith(AuthorizationErrorCodes.NoOperation + ":");
         (await KeyExistsAsync(host, "outside")).ShouldBeFalse();
     }
 
