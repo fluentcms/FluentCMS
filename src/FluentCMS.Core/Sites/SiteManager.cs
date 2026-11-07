@@ -47,7 +47,8 @@ internal sealed partial class SiteManager(
     IActivityLog activity,
     ManagementAuthority authority,
     IEventBus bus,
-    IOperationContextAccessor accessor)
+    IOperationContextAccessor accessor,
+    IDataProvider provider)
 {
     private const int SlugLength = 64;
     private const int NameLength = 128;
@@ -70,7 +71,7 @@ internal sealed partial class SiteManager(
         }
         else if (await context.Set<Site>().AnyAsync(site => site.Slug == slug, cancellationToken))
         {
-            errors.Add(new("slug", SiteErrorCodes.InvalidSite, $"A site with the slug '{slug}' exists."));
+            errors.Add(SlugTaken(slug));
         }
 
         if (!LocaleTag.TryNormalize(defaultLocale, out var locale))
@@ -93,12 +94,27 @@ internal sealed partial class SiteManager(
             CreatedAt = time.GetUtcNow(),
         };
 
-        context.Add(site);
-        context.Add(new SiteLocale { SiteId = site.Id, Code = locale, Position = 0, Enabled = true });
-        context.Add(RoleSeed.PublicOf(Guid.CreateVersion7(), site.Id));
-        await context.SaveChangesAsync(cancellationToken);
+        object[] rows = [site, new SiteLocale { SiteId = site.Id, Code = locale, Position = 0, Enabled = true }, RoleSeed.PublicOf(Guid.CreateVersion7(), site.Id)];
+        context.AddRange(rows);
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException exception) when (provider.IsUniqueViolation(exception))
+        {
+            // Another create took the slug after the check; the other rows are keyed on the new site's id.
+            foreach (var row in rows)
+            {
+                context.Entry(row).State = EntityState.Detached;
+            }
+
+            throw new ValidationException([SlugTaken(slug)]);
+        }
+
         return site;
     }
+
+    private static ValidationError SlugTaken(string slug) => new("slug", SiteErrorCodes.InvalidSite, $"A site with the slug '{slug}' exists.");
 
     // Adds a locale to a site's allow-list if it has none by that code, after the others. A locale that exists is left as it is, enabled or not.
     public async Task EnsureLocaleAsync(Guid siteId, string code, CancellationToken cancellationToken = default)

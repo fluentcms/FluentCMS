@@ -42,6 +42,14 @@ internal sealed class ContentModelBuilder(SchemaModel schema, IStorageConvention
             else
             {
                 entity.HasIndex(StorageNames.DocumentId, StorageNames.State).IsUnique().HasDatabaseName($"uq_{table}_document_state");
+
+                // Every entry has one shared row per state, whatever its locales, so this holds a singleton to one entry
+                // per site. A trashed one keeps its rows and so its place, as the check before the insert counts it.
+                if (type.Kind == SchemaTypeKind.Singleton)
+                {
+                    string[] key = type.Scope == ContentScope.Global ? [StorageNames.State] : [StorageNames.SiteId, StorageNames.State];
+                    entity.HasIndex(key).IsUnique().HasDatabaseName($"uq_{table}_singleton");
+                }
             }
 
             foreach (var field in fields)

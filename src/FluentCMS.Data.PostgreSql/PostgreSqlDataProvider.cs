@@ -1,6 +1,7 @@
 using System.Reflection;
 using FluentCMS.Core.Storage;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace FluentCMS.Data.PostgreSql;
 
@@ -19,6 +20,9 @@ public sealed class PostgreSqlDataProvider(string connectionString) : IDataProvi
     public IJobClaimDialect JobClaimDialect { get; } = new PostgreSqlJobClaimDialect();
 
     public IDatabaseSchemaReader SchemaReader { get; } = new InformationSchemaReader("current_schema()");
+
+    public bool IsUniqueViolation(Exception exception) =>
+        (exception as PostgresException ?? exception.InnerException as PostgresException) is { SqlState: PostgresErrorCodes.UniqueViolation };
 
     public void ConfigureContentMigrations(DbContextOptionsBuilder options, Assembly migrationsAssembly) =>
         options.UseNpgsql(connectionString, npgsql => npgsql

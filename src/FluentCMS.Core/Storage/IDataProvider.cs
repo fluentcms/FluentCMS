@@ -22,6 +22,10 @@ public interface IDataProvider
 
     IDatabaseSchemaReader SchemaReader { get; }
 
+    // Whether the exception, or the database error that a DbUpdateException wraps, is a write that broke a unique key:
+    // what a writer gets that lost a race to the row its checks found free (spec 4.4).
+    bool IsUniqueViolation(Exception exception);
+
     // Points the options of CmsDbContext at the database, with the host's content migrations and their history table.
     void ConfigureContentMigrations(DbContextOptionsBuilder options, Assembly migrationsAssembly);
 

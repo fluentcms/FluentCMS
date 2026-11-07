@@ -26,6 +26,7 @@ public class OfflineProviderTests
             .Field("publishedOn", "dateTime")
             .Field("sections", "blocks", field => field.Setting(FieldSettings.Blocks, new[] { "hero" }))
             .Field("metadata", "json", field => field.Indexed()))
+        .AddSingleton("brand", type => type.Field("name", "text"))
         .Build();
 
     private static ServiceProvider PostgreSql() => Host(cms => cms.UsePostgreSql("Host=localhost;Database=never_opened"));
@@ -81,6 +82,20 @@ public class OfflineProviderTests
             .Single(index => index.Properties.Any(property => property.Name == "metadata"));
 
         index.GetMethod().ShouldBe("gin");
+    }
+
+    [Fact]
+    public void BothProvidersCreateTheSingletonKey()
+    {
+        using var postgreSql = PostgreSql();
+        using var postgreSqlScope = postgreSql.CreateScope();
+        using var sqlServer = SqlServer();
+        using var sqlServerScope = sqlServer.CreateScope();
+
+        postgreSqlScope.ServiceProvider.GetRequiredService<CmsDbContext>().Database.GenerateCreateScript()
+            .ShouldContain("CREATE UNIQUE INDEX uq_cms_brand_singleton ON cms_brand (site_id, state);");
+        sqlServerScope.ServiceProvider.GetRequiredService<CmsDbContext>().Database.GenerateCreateScript()
+            .ShouldContain("CREATE UNIQUE INDEX [uq_cms_brand_singleton] ON [cms_brand] ([site_id], [state]);");
     }
 
     [Fact]
