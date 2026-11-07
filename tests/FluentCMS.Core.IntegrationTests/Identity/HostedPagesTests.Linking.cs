@@ -110,7 +110,7 @@ public sealed partial class HostedPagesTests
         using var idp = new FakeOidcProvider();
         await using var host = SsoHost(idp, provider => provider.LinkExistingUsers = true);
         var editor = await CreateUserAsync(host);
-        var subject = FakeIdentity.Of(editor.Email);
+        var subject = FakeIdentity.Of(editor.Email) with { EmailVerified = null };
 
         foreach (var unverified in new[] { subject, subject with { EmailVerified = false } })
         {

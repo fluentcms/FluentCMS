@@ -21,4 +21,8 @@ internal sealed class EffectiveGrantCache
     }
 
     public void Set(Guid role, long version, IReadOnlyList<EffectiveGrant> grants) => _roles[role] = (version, grants);
+
+    // A deleted role is never asked for again, so its entry would stay as long as the process. Another instance keeps its
+    // own until it restarts, bounded by the number of roles.
+    public void Remove(Guid role) => _roles.TryRemove(role, out _);
 }

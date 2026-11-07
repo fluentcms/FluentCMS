@@ -176,7 +176,8 @@ internal sealed record FakeIdentity(string Subject, string? Email, string[] Grou
 {
     public string Name => Email ?? Subject;
 
-    public bool? EmailVerified { get; init; }
+    // As a provider that verifies addresses says; null leaves the claim out.
+    public bool? EmailVerified { get; init; } = true;
 
     public static FakeIdentity Of(string? email, params string[] groups) => new("sub-" + Guid.NewGuid().ToString("N"), email, groups, ["pwd"]);
 }

@@ -1,13 +1,17 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Events;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Sites;
+using FluentCMS.Core.Storage;
+using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Testing;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
@@ -44,11 +48,22 @@ public sealed class IdentityEndpointsTests(AdminFixture fixture) : IClassFixture
         updated.Json["description"].ShouldBeNull();
         updated.Json["grants"]!.AsArray().ShouldHaveSingleItem()!["permission"]!.GetValue<string>().ShouldBe("content.*.read");
 
+        // role.updated says which grants came and went.
+        var changed = Details(await RoleActivityAsync("role.updated", id));
+        changed["added"].ShouldBe("content.*.read");
+        changed["removed"]!.ShouldStartWith("content.page.read {");
+        changed["removed"]!.ShouldContain("\"en\"");
+        changed["removed"]!.ShouldEndWith("; schema.read");
+
         var listed = (await fixture.GetAsync("roles")).Json["items"]!.AsArray().Select(item => item!["name"]!.GetValue<string>()).ToList();
         listed.ShouldContain("Reader");
         listed.ShouldContain(BuiltInRoles.SuperAdminName);
 
+        // The grants of a deleted role leave the cache of this instance.
+        var cache = fixture.Host.Services.GetRequiredService<EffectiveGrantCache>();
+        cache.Set(Guid.Parse(id), 1, []);
         (await fixture.DeleteAsync($"roles/{id}")).Status.ShouldBe(HttpStatusCode.NoContent);
+        cache.TryGet(Guid.Parse(id), 1, out _).ShouldBeFalse();
         var gone = await fixture.GetAsync($"roles/{id}");
         gone.Status.ShouldBe(HttpStatusCode.NotFound);
         gone.Json["code"]!.GetValue<string>().ShouldBe("FCMS3040");
@@ -284,6 +299,16 @@ public sealed class IdentityEndpointsTests(AdminFixture fixture) : IClassFixture
         listed.ShouldNotContain(unbound.Json["id"]!.GetValue<string>());
         (await fixture.DeleteAsync($"api-keys/{unbound.Json["id"]!.GetValue<string>()}", key)).Status.ShouldBe(HttpStatusCode.NotFound);
     }
+
+    private async Task<ActivityRow> RoleActivityAsync(string action, string roleId)
+    {
+        await using var scope = fixture.Host.Services.CreateAsyncScope();
+        return await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<ActivityRow>().AsNoTracking()
+            .SingleAsync(row => row.Action == action && row.TargetId == roleId, TestContext.Current.CancellationToken);
+    }
+
+    private static Dictionary<string, string?> Details(ActivityRow row) =>
+        JsonSerializer.Deserialize<Dictionary<string, string?>>(row.Details ?? "{}")!;
 
     private static List<string> RoleIds(JsonNode user) => [.. user["roles"]!.AsArray().Select(role => role!["id"]!.GetValue<string>())];
 

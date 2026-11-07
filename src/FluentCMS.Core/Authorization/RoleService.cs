@@ -38,6 +38,7 @@ internal sealed class RoleService(
     SuperAdminGuard superAdmins,
     IActivityLog activity,
     IOperationContextAccessor accessor,
+    EffectiveGrantCache cache,
     TimeProvider time)
 {
     private const int NameLength = 128;
@@ -109,7 +110,7 @@ internal sealed class RoleService(
         context.AddRange(Rows(role.Id, grants));
         await SaveAsync(role, cancellationToken);
 
-        await LogAsync("role.created", role, cancellationToken);
+        await LogAsync("role.created", role, null, cancellationToken);
         return Info(role, grants);
     }
 
@@ -155,7 +156,7 @@ internal sealed class RoleService(
             await SaveAsync(role, cancellationToken);
         }
 
-        await LogAsync("role.updated", role, cancellationToken);
+        await LogAsync("role.updated", role, Changes([.. stored.Select(Grant)], grants), cancellationToken);
         return Info(role, grants);
     }
 
@@ -191,7 +192,8 @@ internal sealed class RoleService(
                 $"The role is held by {users} user(s) and {keys} API key(s) that are not revoked. Take it from the users and revoke the keys first.")]);
         }
 
-        await LogAsync("role.deleted", role, cancellationToken);
+        cache.Remove(id);
+        await LogAsync("role.deleted", role, null, cancellationToken);
     }
 
     // For a user or an invitation: the caller must hold every grant of each role. A role that does not exist is the caller's
@@ -379,11 +381,26 @@ internal sealed class RoleService(
     }
 
     // A role of a site is that site's business; an instance-wide one belongs to no site.
-    private async Task LogAsync(string action, Role role, CancellationToken cancellationToken)
+    private async Task LogAsync(string action, Role role, IReadOnlyDictionary<string, string?>? details, CancellationToken cancellationToken)
     {
         var source = accessor.Current is { } operation ? EventSource.From(operation) : EventSource.FromSystem(time.GetUtcNow());
-        var entry = new ActivityEntry(action) { TargetType = "role", TargetId = role.Id.ToString("D"), TargetLabel = role.Name };
+        var entry = new ActivityEntry(action) { TargetType = "role", TargetId = role.Id.ToString("D"), TargetLabel = role.Name, Details = details };
         await activity.WriteAsync(entry, source with { SiteId = role.SiteId ?? Guid.Empty }, cancellationToken);
+    }
+
+    // The grants an update added and took away, each as its permission and its constraints, if it has any.
+    private static Dictionary<string, string?> Changes(List<PermissionGrant> before, IReadOnlyList<PermissionGrant> after)
+    {
+        var old = before.Select(Key).ToHashSet();
+        var kept = after.Select(Key).ToHashSet();
+        return new Dictionary<string, string?>
+        {
+            ["added"] = Text(kept.Where(grant => !old.Contains(grant))),
+            ["removed"] = Text(old.Where(grant => !kept.Contains(grant))),
+        };
+
+        static string Text(IEnumerable<(string Permission, string? Constraints)> grants) =>
+            string.Join("; ", grants.Order().Select(grant => grant.Constraints is null ? grant.Permission : $"{grant.Permission} {grant.Constraints}"));
     }
 
     private static IEnumerable<RoleGrant> Rows(Guid roleId, IEnumerable<PermissionGrant> grants) =>

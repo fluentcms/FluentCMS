@@ -13,7 +13,7 @@ else
     {
         <p>You are signed in as <strong>@Model.UserName</strong>.</p>
     }
-    <form method="post" action="@Url.Content("~/connect/logout")" asp-antiforgery="false">
+    <form method="post" action="@Url.Content("~/connect/logout")" asp-antiforgery="true">
         @foreach (var parameter in Model.Parameters)
         {
             <input type="hidden" name="@parameter.Key" value="@parameter.Value">

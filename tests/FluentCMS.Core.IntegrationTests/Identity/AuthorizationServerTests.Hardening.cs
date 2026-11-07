@@ -40,13 +40,17 @@ public sealed partial class AuthorizationServerTests
     }
 
     [Fact]
-    public async Task ReusingARefreshTokenRevokesTheWholeChain()
+    public async Task ReusingARefreshTokenAfterTheLeewayRevokesTheWholeChain()
     {
         var editor = await _host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
         var first = await _host.SignInAsync(editor);
         using var client = _host.CreateSecureClient();
         var second = await TokenAsync(client, Refresh(first.RefreshToken!), Token);
 
+        // Within OpenIddict's leeway a second use gets tokens too, as two tabs of one application that refresh at once need.
+        (await TokenAsync(client, Refresh(first.RefreshToken!), Token)).RefreshToken.ShouldNotBe(second.RefreshToken);
+
+        _host.Time.Advance(TimeSpan.FromMinutes(1));
         using (var reused = await PostTokenAsync(client, Refresh(first.RefreshToken!)))
         {
             reused.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
@@ -310,8 +314,6 @@ public sealed partial class AuthorizationServerTests
             hinted.Headers.GetValues("Set-Cookie").ShouldContain(value => value.StartsWith(".AspNetCore.Identity.Application=;", StringComparison.Ordinal));
         }
 
-        using var posted = await SendAsync(client, HttpMethod.Post, "/connect/logout", cookie, new FormUrlEncodedContent([]));
-        posted.StatusCode.ShouldBe(HttpStatusCode.Redirect);
     }
 
     [Fact]
@@ -382,7 +384,11 @@ public sealed partial class AuthorizationServerTests
     private static async Task<HttpResponseMessage> SendAsync(HttpClient client, HttpMethod method, string path, string cookie, HttpContent? content = null)
     {
         using var request = new HttpRequestMessage(method, path) { Content = content };
-        request.Headers.Add("Cookie", cookie);
+        if (cookie.Length > 0)
+        {
+            request.Headers.Add("Cookie", cookie);
+        }
+
         return await client.SendAsync(request, Token);
     }
 

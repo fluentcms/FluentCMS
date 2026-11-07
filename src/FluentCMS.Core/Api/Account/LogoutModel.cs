@@ -3,8 +3,9 @@ using Microsoft.AspNetCore.Identity;
 
 namespace FluentCMS.Core.Api.Account;
 
-// Asks before signing out. The form posts the request of the client, if one sent the user here, to /connect/logout, which
-// ends the sign-in and returns to the client or to this page. There is no sign-out by GET.
+// Asks before signing out. The form posts the request of the client, if one sent the user here, to /connect/logout with an
+// antiforgery token, which the endpoint checks before it ends the sign-in and returns to the client or to this page. There
+// is no sign-out by GET without the session's id_token_hint.
 public sealed class LogoutModel : AccountPageModel
 {
     public string? UserName { get; private set; }

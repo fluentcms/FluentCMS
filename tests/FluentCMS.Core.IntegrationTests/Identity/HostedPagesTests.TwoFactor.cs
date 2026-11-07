@@ -194,7 +194,7 @@ public sealed partial class HostedPagesTests
             browser.HasCookie(IdentityConstants.TwoFactorRememberMeScheme).ShouldBeTrue();
         }
 
-        (await browser.PostAsync("/connect/logout", new Dictionary<string, string>())).Dispose();
+        await SignOutAsync(browser);
 
         // Not required yet: the remembered device skips the second factor, and the token says so.
         var first = AuthorizeRequest.For(FluentCmsTestHost.OAuthClientId, FluentCmsTestHost.OAuthRedirectUri);

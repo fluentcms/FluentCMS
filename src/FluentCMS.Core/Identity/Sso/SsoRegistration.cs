@@ -63,6 +63,7 @@ internal static class SsoRegistration
             }
 
             options.SignInScheme = IdentityConstants.ExternalScheme;
+            options.SignOutScheme = IdentityConstants.ApplicationScheme;
             options.Authority = provider.ResolveAuthority();
             options.RequireHttpsMetadata = provider.RequireHttpsMetadata;
             options.ClientId = provider.ClientId;
@@ -87,6 +88,19 @@ internal static class SsoRegistration
 
             options.Events.OnTokenValidated = KeepSubject;
             options.Events.OnRemoteFailure = BackToLoginAsync;
+            options.Events.OnRemoteSignOut = OwnSignInOnlyAsync;
+        }
+
+        // The provider's front-channel logout ends the sign-in on the hosted pages, the admin session. The cookie holds no
+        // session id of the provider for the handler to match, so a sign-in made another way, with a password or another
+        // provider, is left as it is.
+        private static async Task OwnSignInOnlyAsync(RemoteSignOutContext context)
+        {
+            var cookie = await context.HttpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme);
+            if (!string.Equals(cookie.Principal?.FindFirstValue(ClaimTypes.AuthenticationMethod), context.Scheme.Name, StringComparison.OrdinalIgnoreCase))
+            {
+                context.HandleResponse();
+            }
         }
 
         // Identity takes the external login's key from the name identifier, which the token calls sub.

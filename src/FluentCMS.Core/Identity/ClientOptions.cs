@@ -14,14 +14,38 @@ public sealed class ClientOptions
     // OpenIddict's column for a client id is this long.
     private const int ClientIdLength = 100;
 
+    // The longest lifetime, which also keeps the expiry dates worked out from one in range.
+    private static readonly TimeSpan MaximumLifetime = TimeSpan.FromDays(365);
+
     // The client of the admin application, whose requests run with Origin.Admin.
     public string AdminClientId { get; set; } = DefaultAdminClientId;
+
+    // OpenIddict's defaults. A refresh token is good for its lifetime if it is not used, and using one gives a new one.
+    public TimeSpan AccessTokenLifetime { get; set; } = TimeSpan.FromHours(1);
+
+    public TimeSpan RefreshTokenLifetime { get; set; } = TimeSpan.FromDays(14);
+
+    // Identity's default. The sign-in cookie of the hosted pages lasts this long unused, and each use slides it on.
+    public TimeSpan SignInCookieLifetime { get; set; } = TimeSpan.FromDays(14);
+
+    // How long a session lasts after the user signed in, however often its refresh token or the cookie is used; past it the
+    // token endpoint refuses the refresh and the authorize endpoint asks the user to sign in again. Null sets no limit.
+    public TimeSpan? AbsoluteSessionLifetime { get; set; }
 
     public IDictionary<string, ClientRegistration> Applications { get; } = new Dictionary<string, ClientRegistration>(StringComparer.Ordinal);
 
     internal void Validate()
     {
         Require(!string.IsNullOrWhiteSpace(AdminClientId), $"{nameof(AdminClientId)} must not be empty.");
+        RequireLifetime(AccessTokenLifetime, nameof(AccessTokenLifetime));
+        RequireLifetime(RefreshTokenLifetime, nameof(RefreshTokenLifetime));
+        RequireLifetime(SignInCookieLifetime, nameof(SignInCookieLifetime));
+        if (AbsoluteSessionLifetime is { } absolute)
+        {
+            RequireLifetime(absolute, nameof(AbsoluteSessionLifetime));
+        }
+
+        Require(AccessTokenLifetime <= RefreshTokenLifetime, $"{nameof(AccessTokenLifetime)} is longer than {nameof(RefreshTokenLifetime)}, so a client would refresh a token that outlives the refresh token.");
 
         foreach (var (clientId, client) in Applications)
         {
@@ -41,6 +65,9 @@ public sealed class ClientOptions
             }
         }
     }
+
+    private static void RequireLifetime(TimeSpan lifetime, string name) =>
+        Require(lifetime > TimeSpan.Zero && lifetime <= MaximumLifetime, $"{name} is {lifetime}; a lifetime is more than zero and at most {MaximumLifetime.TotalDays:0} days.");
 
     private static void Require(bool condition, string message)
     {

@@ -11,11 +11,14 @@ namespace FluentCMS.Core.Identity.Oidc;
 
 // The claims of FluentCMS tokens, on the way out and on the way in. A token carries sub, name, fcms_kind and, for a
 // service account, the roles of its client; the user's roles are read from cms_user_role on each request instead. A user's
-// tokens carry amr, how the user signed in on the hosted pages.
+// tokens carry amr, how the user signed in on the hosted pages, and its identity token auth_time, when.
 internal static class TokenClaims
 {
     // Kept in codes and refresh tokens only, which the server alone reads, so that a password change or reset ends them.
     public const string SecurityStamp = "fcms_security_stamp";
+
+    // When the session began, in Unix seconds, for its absolute lifetime; in codes and refresh tokens only, too.
+    public const string SessionStart = "fcms_session_start";
 
     // The authentication method reference Identity gives a sign-in with a second factor.
     public const string MultiFactor = "mfa";
@@ -93,6 +96,7 @@ internal static class TokenClaims
         Claims.Name when claim.Subject?.HasScope(Scopes.Profile) == true => [OpenIddictConstants.Destinations.AccessToken, OpenIddictConstants.Destinations.IdentityToken],
         Claims.Email when claim.Subject?.HasScope(Scopes.Email) == true => [OpenIddictConstants.Destinations.IdentityToken],
         Claims.AuthenticationMethodReference => [OpenIddictConstants.Destinations.AccessToken, OpenIddictConstants.Destinations.IdentityToken],
+        Claims.AuthenticationTime => [OpenIddictConstants.Destinations.IdentityToken],
         Claims.Name or CmsClaimTypes.Kind or CmsClaimTypes.Roles => [OpenIddictConstants.Destinations.AccessToken],
         _ => [],
     };

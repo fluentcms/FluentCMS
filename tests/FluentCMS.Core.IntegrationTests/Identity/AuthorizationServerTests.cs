@@ -56,6 +56,7 @@ public sealed partial class AuthorizationServerTests : IAsyncDisposable
         second.RefreshToken.ShouldNotBeNull();
         second.RefreshToken.ShouldNotBe(first.RefreshToken);
 
+        _host.Time.Advance(TimeSpan.FromMinutes(1));
         using var reused = await PostTokenAsync(client, Refresh(first.RefreshToken));
         reused.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         (await ErrorAsync(reused)).ShouldBe("invalid_grant");

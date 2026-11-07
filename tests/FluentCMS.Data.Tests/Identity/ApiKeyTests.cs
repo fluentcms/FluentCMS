@@ -45,6 +45,9 @@ public sealed class ApiKeyTests : IDisposable
     private Task<AuthenticateResult> AuthenticateAsync(string secret) =>
         AuthenticateAsync(request => request.Headers.Authorization = $"ApiKey {secret}");
 
+    private Task<ApiKeyCheck> CheckAsync(string secret) =>
+        _fixture.WithAsync(services => services.GetRequiredService<ApiKeyService>().AuthenticateAsync(secret, Token));
+
     // What the API layer builds from the handler's claims (#2783): the kind, id and name from their claims, the rest as they are.
     private static Principal PrincipalOf(ClaimsPrincipal user)
     {
@@ -177,7 +180,7 @@ public sealed class ApiKeyTests : IDisposable
     }
 
     [Fact]
-    public async Task AWrongExpiredOrRevokedKeyIsRefusedWithoutNamingIt()
+    public async Task AWrongExpiredOrRevokedKeyIsRefusedWithOneCodeWithoutNamingIt()
     {
         var created = await CreateAsync(ApiKeyClass.Delivery);
         var expiring = await CreateAsync(new ApiKeyRequest("short", ApiKeyClass.Delivery, BuiltInRoles.Editor) { ExpiresAt = IdentityFixture.Start.AddHours(1) });
@@ -196,12 +199,14 @@ public sealed class ApiKeyTests : IDisposable
             (revoked.Secret, ApiKeyErrorCodes.Revoked),
         };
 
+        // The client is told one code; the service still says why, for the server's log.
         foreach (var (secret, code) in cases)
         {
             var result = await AuthenticateAsync(secret);
             result.Succeeded.ShouldBeFalse(secret);
-            result.Failure!.Message.ShouldStartWith(code);
+            result.Failure!.Message.ShouldStartWith(ApiKeyErrorCodes.InvalidKey);
             result.Failure.Message.ShouldNotContain(secret);
+            (await CheckAsync(secret)).Failure.ShouldBe(code, secret);
         }
 
         (await AuthenticateAsync(created.Secret)).Succeeded.ShouldBeTrue();
@@ -316,7 +321,7 @@ public sealed class ApiKeyTests : IDisposable
         (await AuthenticateAsync(created.Secret)).Succeeded.ShouldBeTrue();
 
         await Expire(null);
-        (await AuthenticateAsync(created.Secret)).Failure!.Message.ShouldStartWith(ApiKeyErrorCodes.Expired);
+        (await CheckAsync(created.Secret)).Failure.ShouldBe(ApiKeyErrorCodes.Expired);
     }
 
     [Fact]
