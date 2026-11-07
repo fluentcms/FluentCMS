@@ -87,6 +87,12 @@ public static class ErrorCodeRegistry
         Startup(PluginErrorCodes.SecondMigrations, "Plugin migrations added twice"),
         Startup(PluginErrorCodes.RequiredFieldReference, "Required field reference"),
 
+        // 154x provider slots, found when the host starts
+        Startup(ProviderErrorCodes.SeveralPluginsReplaceSlot, "Provider slot replaced by several plugins"),
+        Startup(ProviderErrorCodes.NotASlot, "Not a provider slot"),
+        Startup(ProviderErrorCodes.NotAnImplementation, "Provider slot implementation cannot be created"),
+        Startup(ProviderErrorCodes.SlotsSettled, "Provider slots already settled"),
+
         // 21xx validation
         Invalid(ApiErrorCodes.ValidationFailed, "Validation failed"),
         Invalid(ValidationErrorCodes.Required, "Value required"),

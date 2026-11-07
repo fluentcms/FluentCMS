@@ -26,6 +26,7 @@ internal sealed class StartupReportFactory(
     ReverseProxyOptions proxy,
     PublicOrigin origin,
     PluginRegistry plugins,
+    ProviderSlotRegistry slots,
     IEnumerable<IProductionStartupCheck> checks,
     TimeProvider time,
     IHostEnvironment? environment = null)
@@ -50,6 +51,7 @@ internal sealed class StartupReportFactory(
             },
             Assemblies = Assemblies(),
             Plugins = Plugins(),
+            ProviderSlots = slots.Describe(services),
             PendingMigrations = [.. pending.Select(migration => new StartupMigration { Stream = migration.Stream, Id = SecretScrubber.Of(migration.Id) })],
             Schema = new StartupSchema
             {
@@ -74,6 +76,7 @@ internal sealed class StartupReportFactory(
         DataProvider = new StartupDataProvider { Provider = provider.Name, ProviderVersion = VersionOf(provider.GetType().Assembly) },
         Assemblies = Assemblies(),
         Plugins = Plugins(),
+        ProviderSlots = slots.Describe(services),
     };
 
     private string EnvironmentName => environment?.EnvironmentName ?? "Unknown";

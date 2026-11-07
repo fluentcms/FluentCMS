@@ -127,7 +127,7 @@ The server of the document is the request's origin and path base, and so are the
 
 ## Startup report and diagnostics
 
-Once the migrations have run, the host logs one `StartupReport` (event id 1100, Information) and a warning per insecure default (event id 1101). The report is a public type of the SDK (`FluentCMS.Diagnostics.StartupReport`). It names the environment, the FluentCMS and data provider versions, the FluentCMS assemblies in the process, the plugins (none until the plugin host exists), the pending migrations of the system, plugin and content streams, the schema hash in code against the one last applied, and the insecure defaults: the refusals of the production checks below even in an environment that does not enforce them, a generated signing key that `AllowGeneratedSigningKey` accepted, the Development email sender, the HTTPS redirect being off in Production, `AllowedHosts` left at `*` or unset in Production, `FluentCms:PublicOrigin` unset in Production, schema sync running outside Development (see [content migrations](content-migrations.md#schema-sync)), forwarded headers trusted from every address, and those a plugin reports through `IInsecureDefaultSource`, such as `webhooks-private-networks`. It holds no connection string, key or password. If the report cannot be made, the log says so (event id 1102, with the scrubbed message) and the report is reduced to what needs no database, with `failure` naming the exception type; a request that arrives before any report exists gets a 503 (`FCMS3106`).
+Once the migrations have run, the host logs one `StartupReport` (event id 1100, Information) and a warning per insecure default (event id 1101). The report is a public type of the SDK (`FluentCMS.Diagnostics.StartupReport`). It names the environment, the FluentCMS and data provider versions, the FluentCMS assemblies in the process, the plugins, the [provider slots](#provider-slots) and the implementation each resolves to, the pending migrations of the system, plugin and content streams, the schema hash in code against the one last applied, and the insecure defaults: the refusals of the production checks below even in an environment that does not enforce them, a generated signing key that `AllowGeneratedSigningKey` accepted, the Development email sender, the HTTPS redirect being off in Production, `AllowedHosts` left at `*` or unset in Production, `FluentCms:PublicOrigin` unset in Production, schema sync running outside Development (see [content migrations](content-migrations.md#schema-sync)), forwarded headers trusted from every address, and those a plugin reports through `IInsecureDefaultSource`, such as `webhooks-private-networks`. It holds no connection string, key or password. If the report cannot be made, the log says so (event id 1102, with the scrubbed message) and the report is reduced to what needs no database, with `failure` naming the exception type; a request that arrives before any report exists gets a 503 (`FCMS3106`).
 
 `GET /api/management/v1/system/diagnostics` returns the same report as JSON. It needs the instance-wide permission `system.read` (a Super Admin has it), which a role of one site, a grant limited to sites and a key bound to sites do not reach, and which a Delivery or Preview key never gets because it lacks the management scope.
 
@@ -220,7 +220,37 @@ Invitations and password resets go through `IEmailSender`. In Development the de
 | `Smtp:UserName`, `Smtp:Password` | none | The account to sign in with. Without a user name the server is not asked to authenticate. Keep the password in a secret store. |
 | `Smtp:From` | none, required with a host | The sender, such as `cms@example.com` or `FluentCMS <cms@example.com>`. |
 
-A missing or invalid `From` stops the host with `FCMS1101`. A host or a plugin that registers its own `IEmailSender` replaces all of this.
+A missing or invalid `From` stops the host with `FCMS1101`. A host or a plugin that registers its own `IEmailSender`, or chooses one through the [provider slots](#provider-slots), replaces all of this.
+
+## Provider slots
+
+A provider slot is a service with one implementation that core fills with a default and that the host or a plugin replaces:
+
+| Slot | Default |
+| --- | --- |
+| `IEmailSender` | SMTP, the log or a refusal, as in [email](#email) |
+| `IDistributedLock` | a lease in the `cms_lock` table |
+| `IDistributedCache` | the framework's in-memory cache, one per instance |
+
+Choose an implementation with `cms.Providers.Use<TSlot, TImplementation>()`, which registers it as a singleton; a plugin calls the same `Use` on `plugin.Providers` in its `ConfigureServices`:
+
+```csharp
+builder.Services.Configure<RedisCacheOptions>(options => options.Configuration = "redis:6379");
+builder.Services.AddFluentCms(cms =>
+{
+    cms.UseSqlite(builder.Configuration.GetConnectionString("cms"));
+    cms.Providers.Use<IDistributedCache, RedisCache>();
+});
+```
+
+What fills a slot is settled when `AddFluentCms()` ends, in this order:
+
+1. the host's `Use`; of two for one slot, the last;
+2. a plugin's `Use`; two plugins that replace one slot stop the host with `FCMS1540`, which names both, unless the host chooses with its own `Use`;
+3. a service registered for the slot directly, by the host before `AddFluentCms()` or inside it, or by a plugin;
+4. the default.
+
+A `Use` takes out every other registration of its slot, so it wins whatever order the calls and the registrations come in. A registration made after `AddFluentCms()` comes last and wins, as it would for any service. A `Use` of a type that is not a slot stops the host with `FCMS1541`, one of an abstract class or an interface with `FCMS1542`, and one made after `AddFluentCms()` has settled the slots with `FCMS1543`. The startup report and `/system/diagnostics` list each slot under `providerSlots` with the type in use and where it came from (`default`, `host`, `plugin` with the plugin's name, or `services`).
 
 ## Webhooks
 

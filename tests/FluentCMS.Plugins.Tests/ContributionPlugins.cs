@@ -170,6 +170,8 @@ public sealed class FakeServiceBuilder : IPluginServiceBuilder
 
     public Microsoft.Extensions.DependencyInjection.IServiceCollection Services { get; } = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
 
+    public FluentCMS.Providers.IProviderSlots Providers => throw new NotSupportedException();
+
     public IPluginServiceBuilder AddFieldType<TFieldType>()
         where TFieldType : class, IFieldType, new() => this;
 
