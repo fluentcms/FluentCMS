@@ -978,8 +978,19 @@ FluentCMS.Plugins.IPluginAppBuilder
 FluentCMS.Plugins.IPluginAppBuilder.Name.get -> string!
 FluentCMS.Plugins.IPluginAppBuilder.Services.get -> System.IServiceProvider!
 FluentCMS.Plugins.IPluginServiceBuilder
+FluentCMS.Plugins.IPluginServiceBuilder.AddActivity<TEvent>(string! name, System.Func<TEvent!, FluentCMS.Activity.ActivityEntry!>! describe) -> FluentCMS.Plugins.IPluginServiceBuilder!
+FluentCMS.Plugins.IPluginServiceBuilder.AddErrorCode(string! code, int status, string! title) -> FluentCMS.Plugins.IPluginServiceBuilder!
+FluentCMS.Plugins.IPluginServiceBuilder.AddEventHandler<TEvent, THandler>() -> FluentCMS.Plugins.IPluginServiceBuilder!
+FluentCMS.Plugins.IPluginServiceBuilder.AddFieldType<TFieldType>() -> FluentCMS.Plugins.IPluginServiceBuilder!
+FluentCMS.Plugins.IPluginServiceBuilder.AddJob<TJob, TPayload>(string! type, System.TimeSpan? attemptTimeout = null) -> FluentCMS.Plugins.IPluginServiceBuilder!
+FluentCMS.Plugins.IPluginServiceBuilder.AddOutboxHandler<TEvent, THandler>(string! name) -> FluentCMS.Plugins.IPluginServiceBuilder!
+FluentCMS.Plugins.IPluginServiceBuilder.AddPermissions<TProvider>() -> FluentCMS.Plugins.IPluginServiceBuilder!
+FluentCMS.Plugins.IPluginServiceBuilder.AddSettings<TSettings>() -> FluentCMS.Plugins.IPluginServiceBuilder!
 FluentCMS.Plugins.IPluginServiceBuilder.Name.get -> string!
 FluentCMS.Plugins.IPluginServiceBuilder.Services.get -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+FluentCMS.Plugins.PluginException
+FluentCMS.Plugins.PluginException.Code.get -> string!
+FluentCMS.Plugins.PluginException.PluginException(string! code, string! message) -> void
 FluentCMS.Providers.EmailMessage
 FluentCMS.Providers.EmailMessage.<Clone>$() -> FluentCMS.Providers.EmailMessage!
 FluentCMS.Providers.EmailMessage.Deconstruct(out string! To, out string! Subject, out string! TextBody) -> void
@@ -1271,6 +1282,7 @@ FluentCMS.Schema.FieldSettingDescriptor.Required.init -> void
 FluentCMS.Schema.FieldSettingKind
 FluentCMS.Schema.FieldSettingKind.Boolean = 1 -> FluentCMS.Schema.FieldSettingKind
 FluentCMS.Schema.FieldSettingKind.Decimal = 3 -> FluentCMS.Schema.FieldSettingKind
+FluentCMS.Schema.FieldSettingKind.FieldReference = 5 -> FluentCMS.Schema.FieldSettingKind
 FluentCMS.Schema.FieldSettingKind.Integer = 2 -> FluentCMS.Schema.FieldSettingKind
 FluentCMS.Schema.FieldSettingKind.String = 0 -> FluentCMS.Schema.FieldSettingKind
 FluentCMS.Schema.FieldSettingKind.StringList = 4 -> FluentCMS.Schema.FieldSettingKind

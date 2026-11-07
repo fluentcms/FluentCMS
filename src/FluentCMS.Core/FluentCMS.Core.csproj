@@ -41,6 +41,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../FluentCMS.Sdk/FluentCMS.Sdk.csproj" />
+    <ProjectReference Include="../FluentCMS.Plugins.Abstractions/FluentCMS.Plugins.Abstractions.csproj" />
   </ItemGroup>
 
 </Project>

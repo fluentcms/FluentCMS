@@ -10,9 +10,9 @@ namespace FluentCMS.Core.Schema;
 // The schema as the principal of the operation may see it (spec 4.2, 4.8): schema.read in the site of the operation, then
 // what the evaluator lets it read there in the operation's locale, which is what TypeAccess asks of a content route. A
 // field outside the allow-lists is left out, and so is a relation to a type it may not read, with the reverse sides of
-// what went, so that no name of such a type shows, and a condition or a slug source that reads a field that went. A
-// component or block that only what went used goes too; one that nothing uses stays. Outside an operation the caller is
-// the host's own code, which sees the whole schema.
+// what went, so that no name of such a type shows, and a condition, a slug source or a field reference that reads a field
+// that went. A component or block that only what went used goes too; one that nothing uses stays. Outside an operation
+// the caller is the host's own code, which sees the whole schema.
 internal sealed class SchemaIntrospection(
     SchemaModel schema,
     IAuthorizationEvaluator evaluator,
@@ -67,6 +67,7 @@ internal sealed class SchemaIntrospection(
         }
 
         List<SchemaType> contentTypes = [.. readable.Values.Select(type => Narrowed(
+            schema.FieldTypes,
             type,
             type.Fields.Where(field => fieldsOf[type.Name].Contains(field.Name)),
             type.ReverseRelations.Where(relation => fieldsOf.TryGetValue(relation.SourceType, out var source) && source.Contains(relation.SourceField))))];
@@ -75,7 +76,7 @@ internal sealed class SchemaIntrospection(
         var stillUsed = Used(schema, contentTypes);
         List<SchemaType> parts = [.. schema.Components.Concat(schema.Blocks)
             .Where(part => !used.Contains(part) || stillUsed.Contains(part))
-            .Select(part => Narrowed(part, part.Fields.Where(field => Reaches(field, readable)), part.ReverseRelations))];
+            .Select(part => Narrowed(schema.FieldTypes, part, part.Fields.Where(field => Reaches(field, readable)), part.ReverseRelations))];
 
         HashSet<SchemaType> originals = [.. schema.ContentTypes, .. schema.Components, .. schema.Blocks];
         List<SchemaType> types = [.. contentTypes, .. parts];
@@ -114,7 +115,7 @@ internal sealed class SchemaIntrospection(
     }
 
     // The original when nothing of it was left out, so that a model nothing was taken from is the instance's own.
-    private static SchemaType Narrowed(SchemaType type, IEnumerable<SchemaField> fields, IEnumerable<ReverseRelation> reverseRelations)
+    private static SchemaType Narrowed(IFieldTypeRegistry fieldTypes, SchemaType type, IEnumerable<SchemaField> fields, IEnumerable<ReverseRelation> reverseRelations)
     {
         List<SchemaField> keptFields = [.. fields];
         List<ReverseRelation> keptReverse = [.. reverseRelations];
@@ -124,7 +125,7 @@ internal sealed class SchemaIntrospection(
         }
 
         HashSet<string> kept = [.. keptFields.Select(field => field.Name)];
-        keptFields = [.. keptFields.Select(field => Narrowed(field, kept))];
+        keptFields = [.. keptFields.Select(field => Narrowed(fieldTypes, field, kept))];
 
         // Every property of SchemaType, as SchemaModelFactory sets them.
         return new SchemaType
@@ -142,23 +143,23 @@ internal sealed class SchemaIntrospection(
         };
     }
 
-    // A condition or a slug source that reads a field that went would name it, so it goes as that field did. A condition
-    // goes whole: what is left of it would state a rule other than the one declared.
-    private static SchemaField Narrowed(SchemaField field, HashSet<string> kept)
+    // A condition, a slug source or a field reference that reads a field that went would name it, so it goes as that field
+    // did. A condition goes whole: what is left of it would state a rule other than the one declared.
+    private static SchemaField Narrowed(IFieldTypeRegistry fieldTypes, SchemaField field, HashSet<string> kept)
     {
         var visibleWhen = field.VisibleWhen is { } visible && !Reads(visible, kept) ? null : field.VisibleWhen;
         var requiredWhen = field.RequiredWhen is { } required && !Reads(required, kept) ? null : field.RequiredWhen;
-        var dropSource = field.FieldType == FieldTypeNames.Slug
-            && SettingValues.Text(field, FieldSettings.Source) is { } source
-            && !kept.Contains(source);
-        if (visibleWhen == field.VisibleWhen && requiredWhen == field.RequiredWhen && !dropSource)
+        var references = fieldTypes.Find(field.FieldType)?.Settings.Where(setting => setting.Kind == FieldSettingKind.FieldReference).Select(setting => setting.Key) ?? [];
+        HashSet<string> dropped = [.. (field.FieldType == FieldTypeNames.Slug ? references.Append(FieldSettings.Source) : references)
+            .Where(key => SettingValues.Text(field, key) is { } name && !kept.Contains(name))];
+        if (visibleWhen == field.VisibleWhen && requiredWhen == field.RequiredWhen && dropped.Count == 0)
         {
             return field;
         }
 
-        var settings = dropSource
+        var settings = dropped.Count > 0
             ? new ReadOnlyDictionary<string, object>(new SortedDictionary<string, object>(
-                field.Settings.Where(setting => setting.Key != FieldSettings.Source).ToDictionary(), StringComparer.Ordinal))
+                field.Settings.Where(setting => !dropped.Contains(setting.Key)).ToDictionary(), StringComparer.Ordinal))
             : field.Settings;
 
         // Every property of SchemaField, as SchemaModelFactory sets them.

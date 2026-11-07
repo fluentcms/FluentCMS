@@ -197,7 +197,7 @@ internal static class ContentEndpoints
             var filter = ContentRequests.BulkFilter(httpContext.Request, ApiRequest.Of(httpContext));
             var request = ContentRequests.Bulk(await RequestBody.ObjectAsync(httpContext.Request), filter);
             var result = await content.BulkAsync(type, request, httpContext.RequestAborted);
-            return Results.Json(ManagementJson.Bulk(result, httpContext.User.Identity?.IsAuthenticated == true));
+            return Results.Json(ManagementJson.Bulk(result, httpContext.User.Identity?.IsAuthenticated == true, httpContext.RequestServices.GetService<ErrorCodeCatalogue>()));
         },
         bulk: true);
 

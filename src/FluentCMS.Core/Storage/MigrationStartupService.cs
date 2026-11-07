@@ -1,11 +1,17 @@
+using FluentCMS.Core.Plugins;
+using FluentCMS.Schema;
 using Microsoft.Extensions.Hosting;
 
 namespace FluentCMS.Core.Storage;
 
 // Runs in the Starting phase, so the database is ready before any hosted service starts and a failure stops the host.
-internal sealed class MigrationStartupService(MigrationRunner runner) : IHostedLifecycleService
+internal sealed class MigrationStartupService(MigrationRunner runner, SchemaModel schema, PluginRegistry? plugins = null) : IHostedLifecycleService
 {
-    public Task StartingAsync(CancellationToken cancellationToken) => runner.RunAtStartupAsync(cancellationToken);
+    public Task StartingAsync(CancellationToken cancellationToken)
+    {
+        plugins?.Contributions.CheckContentTables(schema);
+        return runner.RunAtStartupAsync(cancellationToken);
+    }
 
     public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 

@@ -1,3 +1,4 @@
+using FluentCMS.Core.Plugins;
 using FluentCMS.Core.Schema;
 using FluentCMS.Schema;
 using Microsoft.EntityFrameworkCore;
@@ -12,12 +13,16 @@ public static class CmsDbContextOptionsExtensions
     // Gives CmsDbContext the schema to build its model from. Without conventions the model stays neutral, and
     // without a dialect it has no JSON functions; a data provider package passes its own.
     public static TBuilder UseCmsModel<TBuilder>(this TBuilder builder, SchemaModel schema, IStorageConventions? conventions = null, IJsonSqlDialect? jsonDialect = null)
+        where TBuilder : DbContextOptionsBuilder =>
+        builder.UseCmsModel(schema, conventions, jsonDialect, plugins: null);
+
+    internal static TBuilder UseCmsModel<TBuilder>(this TBuilder builder, SchemaModel schema, IStorageConventions? conventions, IJsonSqlDialect? jsonDialect, PluginModels? plugins)
         where TBuilder : DbContextOptionsBuilder
     {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(schema);
 
-        ((IDbContextOptionsBuilderInfrastructure)builder).AddOrUpdateExtension(new CmsModelOptionsExtension(schema, conventions ?? new StorageConventions(), jsonDialect));
+        ((IDbContextOptionsBuilderInfrastructure)builder).AddOrUpdateExtension(new CmsModelOptionsExtension(schema, conventions ?? new StorageConventions(), jsonDialect, plugins));
         builder.ReplaceService<IModelCacheKeyFactory, CmsModelCacheKeyFactory>();
         return builder;
     }

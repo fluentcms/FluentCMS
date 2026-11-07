@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/FluentCMS.Sdk/FluentCMS.Sdk.csproj" />
+    <Project Path="src/FluentCMS.Plugins.Abstractions/FluentCMS.Plugins.Abstractions.csproj" />
     <Project Path="src/FluentCMS.Core/FluentCMS.Core.csproj" />
     <Project Path="src/FluentCMS.Data.PostgreSql/FluentCMS.Data.PostgreSql.csproj" />
     <Project Path="src/FluentCMS.Data.Sqlite/FluentCMS.Data.Sqlite.csproj" />

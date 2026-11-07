@@ -25,6 +25,11 @@ public sealed class SqlServerDataProvider(string connectionString, bool nativeJs
             .MigrationsAssembly(migrationsAssembly)
             .MigrationsHistoryTable(CmsDbContext.HistoryTable));
 
+    public void ConfigurePluginMigrations(DbContextOptionsBuilder options, Assembly migrationsAssembly, string historyTable) =>
+        options.UseSqlServer(connectionString, sqlServer => sqlServer
+            .MigrationsAssembly(migrationsAssembly)
+            .MigrationsHistoryTable(historyTable));
+
     public void ConfigureSystemMigrations(DbContextOptionsBuilder options) =>
         options.UseSqlServer(connectionString, sqlServer => sqlServer
             .MigrationsAssembly(typeof(SqlServerDataProvider).Assembly)

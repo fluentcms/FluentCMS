@@ -134,6 +134,7 @@ internal sealed class SchemaValidator(IFieldTypeRegistry fieldTypes)
         else
         {
             wrongKind = ValidateSettingKeys(fieldType, field, location);
+            ValidateFieldReferences(type, fieldType, field, location, wrongKind);
         }
 
         if (field.Localizable && !(type.IsContentType && type.Localized))
@@ -187,6 +188,19 @@ internal sealed class SchemaValidator(IFieldTypeRegistry fieldTypes)
         return wrongKind;
     }
 
+    // A setting that names a field names a sibling, which introspection can then leave out with that field.
+    private void ValidateFieldReferences(TypeDraft type, IFieldType fieldType, FieldDraft field, string location, HashSet<string> wrongKind)
+    {
+        foreach (var descriptor in fieldType.Settings.Where(setting => setting.Kind == FieldSettingKind.FieldReference && !wrongKind.Contains(setting.Key)))
+        {
+            if (SettingText(field, descriptor.Key) is { } name
+                && (string.Equals(name, field.Name, StringComparison.Ordinal) || type.Fields.All(other => other.Name != name)))
+            {
+                Report(SchemaErrorCodes.FieldReferenceMissing, $"setting '{descriptor.Key}' of {fieldType.Name} field {location} names '{name}', which is not another field of {Describe(type)}");
+            }
+        }
+    }
+
     private void ValidateDecimalBounds(FieldDraft field, string location)
     {
         long? precision = field.Settings.TryGetValue(FieldSettings.Precision, out var p) && p is long digits ? digits : null;
@@ -213,7 +227,7 @@ internal sealed class SchemaValidator(IFieldTypeRegistry fieldTypes)
 
     private static bool HasKind(object value, FieldSettingKind kind) => kind switch
     {
-        FieldSettingKind.String => value is string,
+        FieldSettingKind.String or FieldSettingKind.FieldReference => value is string,
         FieldSettingKind.Boolean => value is bool,
         FieldSettingKind.Integer => value is long,
         FieldSettingKind.Decimal => value is long or decimal,
@@ -227,6 +241,7 @@ internal sealed class SchemaValidator(IFieldTypeRegistry fieldTypes)
         FieldSettingKind.Boolean => "true or false",
         FieldSettingKind.Integer => "a whole number",
         FieldSettingKind.Decimal => "a number",
+        FieldSettingKind.FieldReference => "the name of another field",
         _ => "a list of strings",
     };
 

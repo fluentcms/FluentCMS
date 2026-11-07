@@ -1,8 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- The sample plugin of the plugin tests: a referenced assembly that names its plugin, as a plugin package does. -->
+  <!-- The sample plugin of the plugin tests: a referenced assembly that names its plugin, as a plugin package does. It stands
+       in for the plugin template of M6, so it references the two contract packages and never Core. -->
   <ItemGroup>
     <ProjectReference Include="../../src/FluentCMS.Sdk/FluentCMS.Sdk.csproj" />
+    <ProjectReference Include="../../src/FluentCMS.Plugins.Abstractions/FluentCMS.Plugins.Abstractions.csproj" />
   </ItemGroup>
 
 </Project>

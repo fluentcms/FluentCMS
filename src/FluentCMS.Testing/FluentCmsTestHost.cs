@@ -250,7 +250,6 @@ public sealed class FluentCmsTestHost : IAsyncDisposable, IDisposable
     private IHostBuilder CreateHostBuilder()
     {
         var connectionString = OpenDatabase();
-        var schema = BuildSchema();
 
         return new HostBuilder()
             .UseEnvironment(Environments.Development)
@@ -263,7 +262,8 @@ public sealed class FluentCmsTestHost : IAsyncDisposable, IDisposable
             .ConfigureServices(services =>
             {
                 services.AddRouting();
-                services.AddSingleton(schema);
+                // Built with the registry of the container, so that the field types of plugins are known.
+                services.AddSingleton(provider => BuildSchema(provider.GetRequiredService<IFieldTypeRegistry>()));
                 services.AddSingleton<TimeProvider>(Time);
                 foreach (var configure in _services)
                 {
@@ -306,9 +306,9 @@ public sealed class FluentCmsTestHost : IAsyncDisposable, IDisposable
         }
     }
 
-    private SchemaModel BuildSchema()
+    private SchemaModel BuildSchema(IFieldTypeRegistry fieldTypes)
     {
-        var builder = new SchemaBuilder();
+        var builder = new SchemaBuilder(fieldTypes);
         foreach (var type in _contentTypes)
         {
             builder.AddContentType(type);

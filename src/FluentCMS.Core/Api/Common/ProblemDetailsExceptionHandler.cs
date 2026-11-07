@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Core.Api.Common;
 
-internal sealed partial class ProblemDetailsExceptionHandler(ILogger<ProblemDetailsExceptionHandler> logger) : IExceptionHandler
+internal sealed partial class ProblemDetailsExceptionHandler(ILogger<ProblemDetailsExceptionHandler> logger, ErrorCodeCatalogue? codes = null) : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
     {
@@ -13,7 +13,7 @@ internal sealed partial class ProblemDetailsExceptionHandler(ILogger<ProblemDeta
             return false;
         }
 
-        var problem = ProblemMapper.Map(exception, httpContext.User.Identity?.IsAuthenticated == true);
+        var problem = ProblemMapper.Map(exception, httpContext.User.Identity?.IsAuthenticated == true, codes);
         if (problem.Status >= StatusCodes.Status500InternalServerError)
         {
             LogUnhandled(logger, exception, problem.Code);
