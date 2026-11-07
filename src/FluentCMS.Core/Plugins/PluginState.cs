@@ -50,7 +50,7 @@ internal sealed class PluginState(PluginRegistry registry, IServiceScopeFactory 
     {
         if (!await IsEnabledAsync(plugin, site, cancellationToken))
         {
-            throw new PluginDisabledException($"The plugin '{plugin}' is not enabled for the site {site.Value:D}.");
+            throw new PluginDisabledException($"The plugin '{plugin}' is not enabled for this site.");
         }
     }
 
@@ -67,6 +67,8 @@ internal sealed class PluginState(PluginRegistry registry, IServiceScopeFactory 
             ? items
             : [.. items.Where(item => registry.OwnerOf(typeOf(item)) is not { } plugin || !disabled.Contains(plugin.Name))];
     }
+
+    public List<T> WithoutPlugins<T>(List<T> items, Func<T, Type> typeOf) => [.. items.Where(item => registry.OwnerOf(typeOf(item)) is null)];
 
     // The plugin of a job type or an outbox handler when it is disabled in the site, else null.
     public ValueTask<string?> DisabledJobAsync(string type, Guid? site, CancellationToken cancellationToken) =>

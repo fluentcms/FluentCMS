@@ -38,12 +38,22 @@ internal sealed class EventDispatcher(IServiceProvider services, PluginState plu
         try
         {
             handlers = HandlerOrder.Sort(services.GetServices<IEventHandler<TEvent>>(), handler => handler.GetType(), services.GetService<IHookTiebreaker>());
-            handlers = await plugins.EnabledAsync(handlers, handler => handler.GetType(), @event.Source.SiteId, shutdown);
         }
         catch (Exception exception)
         {
             EventLog.HandlersUnavailable(logger, exception, typeof(TEvent).Name, @event.EventId);
             return;
+        }
+
+        try
+        {
+            handlers = await plugins.EnabledAsync(handlers, handler => handler.GetType(), @event.Source.SiteId, shutdown);
+        }
+        catch (Exception exception)
+        {
+            // Without the state no plugin's handler may run, but core's and the host's still do.
+            PluginLog.StateUnavailable(logger, exception);
+            handlers = plugins.WithoutPlugins(handlers, handler => handler.GetType());
         }
         foreach (var handler in handlers)
         {

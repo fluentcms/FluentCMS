@@ -141,8 +141,12 @@ internal sealed class PluginAdministration(
             }
             catch (DbUpdateException) when (attempt == 0)
             {
-                // Another writer added the row first; what it holds now decides.
+                // Another writer added the row first, and what it holds now decides, unless the site went in between.
                 context.Entry(row).State = EntityState.Detached;
+                if (!await context.Set<Site>().AnyAsync(item => item.Id == site, cancellationToken))
+                {
+                    throw new ValidationException([new ValidationError("site", SiteErrorCodes.SiteNotFound, $"There is no site {site}.")]);
+                }
             }
         }
     }

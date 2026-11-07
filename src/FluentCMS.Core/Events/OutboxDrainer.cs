@@ -154,9 +154,23 @@ internal sealed class OutboxDrainer(
             return false;
         }
 
-        if (await plugins.DisabledOutboxHandlerAsync(message.Handler, message.SiteId, cancellationToken) is { } plugin)
+        string? disabled;
+        try
         {
-            PluginLog.DeliveryWaits(logger, message.Id, message.Handler, plugin, message.SiteId!.Value);
+            disabled = await plugins.DisabledOutboxHandlerAsync(message.Handler, message.SiteId, cancellationToken);
+        }
+        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            // Given back for a later drain, so that the rest of the batch is not left leased.
+            PluginLog.StateUnavailable(logger, exception);
+            deferred.Add(message.Id);
+            await ReleaseAsync(message, delay: null, started: false);
+            return false;
+        }
+
+        if (disabled is not null)
+        {
+            PluginLog.DeliveryWaits(logger, message.Id, message.Handler, disabled, message.SiteId!.Value);
             await ReleaseAsync(message, options.MissingHandlerDelay, started: false);
             return false;
         }
