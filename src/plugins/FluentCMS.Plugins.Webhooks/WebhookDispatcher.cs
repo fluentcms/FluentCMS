@@ -4,7 +4,6 @@ using System.Text.Json.Serialization;
 using FluentCMS.Content;
 using FluentCMS.Events;
 using FluentCMS.Jobs;
-using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
 
 namespace FluentCMS.Plugins.Webhooks;
@@ -19,7 +18,7 @@ internal sealed class WebhookEventHandler<TEvent>(WebhookDispatcher dispatcher) 
 
 // Matches an event against the enabled webhooks of its site, by event name and content type, and enqueues the first
 // attempt of a delivery to each. The delivery id follows from the outbox delivery and the webhook, so a handler that runs
-// again enqueues jobs that find their attempt recorded.
+// again enqueues jobs that find their attempt claimed.
 internal sealed class WebhookDispatcher(PluginDbContext<WebhooksPlugin> database, IJobScheduler scheduler)
 {
     public async ValueTask DispatchAsync(CmsEvent message, EventDelivery delivery, CancellationToken cancellationToken)
@@ -47,7 +46,7 @@ internal sealed class WebhookDispatcher(PluginDbContext<WebhooksPlugin> database
             }
 
             var attempt = new WebhookAttempt(webhook.Id, DeliveryIdOf(delivery.Key, webhook.Id), message.EventId, name, 1, Manual: false, body);
-            await scheduler.EnqueueAsync<WebhookDeliveryJob, WebhookAttempt>(attempt, new JobOptions { Site = new SiteId(site) }, cancellationToken);
+            await scheduler.EnqueueAsync<WebhookDeliveryJob, WebhookAttempt>(attempt, WebhookDeliveryJob.Options(site), cancellationToken);
         }
     }
 

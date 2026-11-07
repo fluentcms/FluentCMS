@@ -18,6 +18,9 @@ public sealed class WebhooksOptions
 
     // How long the delivery log keeps an attempt.
     public TimeSpan Retention { get; set; } = TimeSpan.FromDays(30);
+
+    // Workers of the webhooks queue on this instance, unless FluentCms:Jobs:Queues:webhooks sets them.
+    public int Workers { get; set; } = 2;
 }
 
 internal sealed class WebhookInsecureDefaults(IOptions<WebhooksOptions> options, IHostEnvironment environment) : IInsecureDefaultSource

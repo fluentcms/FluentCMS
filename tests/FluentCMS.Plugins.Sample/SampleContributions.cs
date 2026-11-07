@@ -58,6 +58,8 @@ public sealed class SampleNoteJob(PluginDbContext<SamplePlugin> database, IEvent
 {
     public const string Type = "sample.note";
 
+    public const string Queue = "sample";
+
     public async Task ExecuteAsync(SampleNotePayload payload, JobContext context)
     {
         var note = new SampleNote { Id = Guid.CreateVersion7(), Text = payload.Text, CreatedAt = time.GetUtcNow() };

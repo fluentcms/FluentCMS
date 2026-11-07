@@ -125,6 +125,10 @@ namespace FluentCMS.Plugins.Webhooks.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("event_id");
 
+                    b.Property<bool>("Manual")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("manual");
+
                     b.Property<long?>("NextRetryAt")
                         .HasColumnType("INTEGER")
                         .HasColumnName("next_retry_at");
@@ -157,6 +161,11 @@ namespace FluentCMS.Plugins.Webhooks.Migrations
 
                     b.HasIndex("CreatedAt")
                         .HasDatabaseName("ix_cms_webhooks_delivery_created_at");
+
+                    b.HasIndex("WebhookId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_cms_webhooks_delivery_in_flight")
+                        .HasFilter("state = 'pending'");
 
                     b.HasIndex("DeliveryId", "Attempt")
                         .IsUnique()

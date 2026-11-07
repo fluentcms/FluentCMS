@@ -22,4 +22,10 @@ internal static partial class WebhookLog
 
     [LoggerMessage(EventId = 9245, Level = LogLevel.Error, Message = "Could not register the recurring retention of the webhook delivery log; old attempts stay until it is registered.")]
     public static partial void RetentionNotScheduled(ILogger logger, Exception exception);
+
+    [LoggerMessage(EventId = 9246, Level = LogLevel.Debug, Message = "Webhook {WebhookId} delivery {DeliveryId} attempt {Attempt} waits until {RunAt:u}: an attempt to the webhook is in flight.")]
+    public static partial void Deferred(ILogger logger, Guid webhookId, Guid deliveryId, int attempt, DateTimeOffset runAt);
+
+    [LoggerMessage(EventId = 9247, Level = LogLevel.Warning, Message = "Webhook {WebhookId} delivery {DeliveryId} attempt {Attempt}, claimed at {ClaimedAt:u}, was never recorded and counts as failed.")]
+    public static partial void TakenOver(ILogger logger, Guid webhookId, Guid deliveryId, int attempt, DateTimeOffset claimedAt);
 }

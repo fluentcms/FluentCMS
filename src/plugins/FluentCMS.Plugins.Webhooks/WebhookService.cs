@@ -203,7 +203,7 @@ internal sealed partial class WebhookService(
     {
         var deliveryId = Guid.CreateVersion7();
         var attempt = new WebhookAttempt(webhook.Id, deliveryId, eventId, name, 1, Manual: true, body);
-        await scheduler.EnqueueAsync<WebhookDeliveryJob, WebhookAttempt>(attempt, new JobOptions { Site = new SiteId(webhook.SiteId) }, cancellationToken);
+        await scheduler.EnqueueAsync<WebhookDeliveryJob, WebhookAttempt>(attempt, WebhookDeliveryJob.Options(webhook.SiteId), cancellationToken);
         return deliveryId;
     }
 

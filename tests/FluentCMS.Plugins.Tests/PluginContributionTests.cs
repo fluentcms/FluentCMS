@@ -60,6 +60,15 @@ public sealed class PluginContributionTests
         catalogue.Contains("settings.sample.manage").ShouldBeTrue();
         (await scope.ServiceProvider.GetRequiredService<ISettings<SampleSettings>>().GetDefaultAsync(Token)).Greeting.ShouldBe("hello");
         host.Services.GetServices<JobRegistration>().ShouldContain(job => job.Type == SampleNoteJob.Type);
+        host.Services.GetRequiredService<JobRunnerOptions>().Queues[SampleNoteJob.Queue].ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task TheHostsWorkersForAPluginsQueueWin()
+    {
+        await using var host = new FluentCmsTestHost().Configure(cms => cms.Jobs.Options.Queues[SampleNoteJob.Queue] = 0);
+
+        host.Services.GetRequiredService<JobRunnerOptions>().Queues[SampleNoteJob.Queue].ShouldBe(0);
     }
 
     [Fact]

@@ -61,6 +61,16 @@ public interface IPluginServiceBuilder
     IPluginServiceBuilder AddJob<TJob, TPayload>(string type, TimeSpan? attemptTimeout = null)
         where TJob : class, IJob<TPayload>;
 
+    /// <summary>
+    /// Adds a job queue with workers on every instance, so that the plugin's jobs, enqueued with <see cref="JobOptions.Queue"/>,
+    /// hold up no other job. A worker count that the host sets for the queue, in code or under <c>FluentCms:Jobs:Queues</c>,
+    /// wins over the plugin's.
+    /// </summary>
+    /// <param name="name">The name of the queue, at most 64 characters.</param>
+    /// <param name="workers">The workers of the queue on this instance, read once from the host's services when the job runner's options are built.</param>
+    /// <returns>This builder.</returns>
+    IPluginServiceBuilder AddJobQueue(string name, Func<IServiceProvider, int> workers);
+
     /// <summary>Adds a handler that hears events of one type in this process, after the commit.</summary>
     /// <typeparam name="TEvent">The type of the event.</typeparam>
     /// <typeparam name="THandler">The handler, scoped.</typeparam>
