@@ -11,15 +11,24 @@ namespace FluentCMS.Core.Authorization;
 // locale the entry has or is about to have, for the fields they share; null means Locale alone.
 internal readonly record struct AccessTarget(SiteId? Site, string? Locale, string? RowLocale = null, IReadOnlyCollection<string>? EntryLocales = null);
 
-// One row of cms_role_permission, with the site of its role: a role of one site grants nothing in another.
-internal sealed record EffectiveGrant(string Pattern, PermissionConstraints Constraints, Guid? RoleSite)
+// One row of cms_role_permission, with the site of its role: a role of one site grants nothing in another. The pattern is
+// split when the grant is built, which is before it enters EffectiveGrantCache, since every check matches it again.
+internal sealed class EffectiveGrant(string pattern, PermissionConstraints constraints, Guid? roleSite)
 {
+    private readonly string[]? _segments = PermissionPattern.Segments(pattern);
+
+    public string Pattern { get; } = pattern;
+
+    public PermissionConstraints Constraints { get; } = constraints;
+
+    public Guid? RoleSite { get; } = roleSite;
+
     public bool Applies(string permission, AccessTarget target) =>
         AppliesInSomeLocale(permission, target)
         && (Constraints.Locales is null || (!string.IsNullOrEmpty(target.Locale) && Constraints.Locales.Contains(target.Locale, StringComparer.OrdinalIgnoreCase)));
 
     public bool AppliesInSomeLocale(string permission, AccessTarget target) =>
-        PermissionPattern.Matches(Pattern, permission)
+        PermissionPattern.Matches(_segments, permission)
         && (RoleSite is null || target.Site?.Value == RoleSite)
         && (Constraints.Sites is null || (target.Site is { } site && Constraints.Sites.Contains(site)));
 
@@ -38,9 +47,16 @@ internal sealed record EffectiveGrant(string Pattern, PermissionConstraints Cons
 // only remove: nothing here allows what no grant does. Without a scope claim a principal has no scopes, so a token
 // that lost its scopes can read published content and nothing more. Site and locale limits are applied before the
 // union, so they stay tied to their grant. A principal bound to sites or types, as an API key may be, is held to them
-// on top of everything else.
+// on top of everything else. It lives for one request, so the content answers are kept per type, operation, site and
+// locale: a list asks the same questions for every entry and field.
 internal sealed class EffectivePermissions(OperationContext context, IReadOnlyList<EffectiveGrant> grants, RowRuleRegistry rules)
 {
+    private readonly Dictionary<Asked, IReadOnlyList<EffectiveGrant>> _grantsOf = [];
+
+    private readonly Dictionary<Asked, IReadOnlySet<string>?> _readableFields = [];
+
+    private readonly Dictionary<Asked, ContentFilter?> _rowRules = [];
+
     private readonly HashSet<string> _scopes = (context.Principal.Claim(TokenScopes.Claim) ?? "")
         .Split(' ', StringSplitOptions.RemoveEmptyEntries)
         .ToHashSet(StringComparer.Ordinal);
@@ -98,8 +114,15 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
     // The grants behind an operation, with what the scopes leave. A caller that knows the entry decides per grant.
     public IReadOnlyList<EffectiveGrant> GrantsOf(SchemaType type, ContentOperation operation, AccessTarget target)
     {
-        var permission = CorePermissions.Content(type.Name, operation);
-        return Permits(permission, target) ? [.. Applying(type, operation, permission, target)] : [];
+        var asked = new Asked(type, operation, target);
+        if (!_grantsOf.TryGetValue(asked, out var applying))
+        {
+            var permission = CorePermissions.Content(type.Name, operation);
+            applying = Permits(permission, target) ? [.. Applying(type, operation, permission, target)] : [];
+            _grantsOf[asked] = applying;
+        }
+
+        return applying;
     }
 
     private IEnumerable<EffectiveGrant> Applying(SchemaType type, ContentOperation operation, string permission, AccessTarget target)
@@ -147,6 +170,18 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
             return null;
         }
 
+        var asked = new Asked(type, ContentOperation.Read, target);
+        if (!_readableFields.TryGetValue(asked, out var fields))
+        {
+            fields = ReadableFields(type, target);
+            _readableFields[asked] = fields;
+        }
+
+        return fields;
+    }
+
+    private HashSet<string>? ReadableFields(SchemaType type, AccessTarget target)
+    {
         var applying = GrantsOf(type, ContentOperation.Read, target);
         if (applying.Count == 0)
         {
@@ -203,7 +238,8 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
     }
 
     // Null when the operation reaches every row: a grant with no rule does. Rules of several grants are a union. A rule
-    // this version does not have adds no rows, which is the same as what an unknown constraint does: never widen.
+    // this version does not have adds no rows, which is the same as what an unknown constraint does: never widen. One
+    // answer is one instance for the request, since the query compiler recognises the rule in a filter by reference.
     public ContentFilter? RowRuleOf(SchemaType type, ContentOperation operation, AccessTarget target)
     {
         if (IsSystem)
@@ -211,14 +247,21 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
             return null;
         }
 
-        var permission = CorePermissions.Content(type.Name, operation);
-        if (!Permits(permission, target))
+        var asked = new Asked(type, operation, target);
+        if (!_rowRules.TryGetValue(asked, out var rule))
         {
-            return RowRule.NoRows;
+            rule = RowRuleOfGrants(type, GrantsOf(type, operation, target));
+            _rowRules[asked] = rule;
         }
 
+        return rule;
+    }
+
+    // No grant, whether the scopes or a binding left none or none applies, is no rows.
+    private ContentFilter? RowRuleOfGrants(SchemaType type, IReadOnlyList<EffectiveGrant> applying)
+    {
         SortedSet<string> names = new(StringComparer.Ordinal);
-        foreach (var grant in Applying(type, operation, permission, target))
+        foreach (var grant in applying)
         {
             if (grant.Constraints.RowRule is not { } name)
             {
@@ -256,6 +299,16 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
     private static bool IsContentRead(string permission) =>
         permission.StartsWith(FluentCMS.Authorization.Permission.ContentPrefix + ".", StringComparison.Ordinal)
         && permission.EndsWith("." + CorePermissions.OperationName(ContentOperation.Read), StringComparison.Ordinal);
+
+    // What the content answers depend on: the type's name and scope, and the target's site and locale. The row locale and
+    // the entry's locales are asked about per grant by the callers that know the entry.
+    private readonly record struct Asked(string Type, ContentScope Scope, ContentOperation Operation, SiteId? Site, string? Locale)
+    {
+        public Asked(SchemaType type, ContentOperation operation, AccessTarget target)
+            : this(type.Name, type.Scope, operation, target.Site, target.Locale)
+        {
+        }
+    }
 }
 
 // What one write may touch, decided per grant against the entry. Null fields means every field.

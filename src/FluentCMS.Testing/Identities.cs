@@ -5,6 +5,7 @@ using FluentCMS.Core.Identity.ApiKeys;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
+using FluentCMS.Sites;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -66,7 +67,12 @@ internal static class Identities
 
         await using var scope = services.CreateAsyncScope();
         var keys = scope.ServiceProvider.GetRequiredService<ApiKeyService>();
-        var created = await keys.CreateAsync(new ApiKeyRequest(keyName, ClassOf(keyClass), stored.Id), cancellationToken);
+        CreatedApiKey created;
+        using (SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, new SiteId(DefaultSite.Id)))
+        {
+            created = await keys.CreateAsync(new ApiKeyRequest(keyName, ClassOf(keyClass), stored.Id), cancellationToken);
+        }
+
         var key = await scope.ServiceProvider.GetRequiredService<ApiKeyPrincipals>().CurrentAsync(created.Key.Id, cancellationToken)
             ?? throw new InvalidOperationException($"The key '{keyName}' was not stored.");
 

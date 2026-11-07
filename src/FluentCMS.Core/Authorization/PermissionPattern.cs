@@ -22,25 +22,38 @@ internal static class PermissionPattern
         return segments.Length >= 2 && segments.All(segment => segment == Wildcard || FluentCMS.Authorization.Permission.IsValidName("a." + segment));
     }
 
-    public static bool Matches(string grant, string permission)
+    public static bool Matches(string grant, string permission) => Matches(Segments(grant), permission);
+
+    // A grant split once, for matching it many times; null for every permission.
+    public static string[]? Segments(string grant) => grant == CorePermissions.All ? null : grant.Split('.');
+
+    // The permission is walked in place, so that a match allocates nothing.
+    public static bool Matches(string[]? segments, string permission)
     {
-        if (grant == CorePermissions.All)
+        if (segments is null)
         {
             return true;
         }
 
-        var pattern = grant.Split('.');
-        var name = permission.Split('.');
-        if (pattern.Length != name.Length)
+        var rest = permission.AsSpan();
+        for (var index = 0; index < segments.Length; index++)
         {
-            return false;
-        }
-
-        for (var index = 0; index < pattern.Length; index++)
-        {
-            if (pattern[index] != Wildcard && !string.Equals(pattern[index], name[index], StringComparison.Ordinal))
+            var end = rest.IndexOf('.');
+            var last = index == segments.Length - 1;
+            if (last != (end < 0))
             {
                 return false;
+            }
+
+            var segment = last ? rest : rest[..end];
+            if (segments[index] != Wildcard && !segment.Equals(segments[index], StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            if (!last)
+            {
+                rest = rest[(end + 1)..];
             }
         }
 

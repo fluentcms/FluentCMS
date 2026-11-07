@@ -1,8 +1,11 @@
 using System.Net;
+using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.IntegrationTests.Management;
+using FluentCMS.Core.Sites;
 using FluentCMS.Events;
+using FluentCMS.Sites;
 using FluentCMS.Testing;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Identity;
@@ -366,6 +369,7 @@ public sealed partial class HostedPagesTests
     {
         await using (var scope = host.Services.CreateAsyncScope())
         {
+            using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, new SiteId(DefaultSite.Id));
             await scope.ServiceProvider.GetRequiredService<InvitationService>().InviteAsync(address, [BuiltInRoles.Editor], new Uri("https://localhost/account/accept-invitation"), Token);
         }
 

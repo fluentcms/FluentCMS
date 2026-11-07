@@ -7,6 +7,7 @@ using FluentCMS.Core.Identity.ApiKeys;
 using FluentCMS.Core.IntegrationTests.Testing;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
+using FluentCMS.Sites;
 using FluentCMS.Testing;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -166,6 +167,7 @@ public sealed class HealthEndpointsTests : IAsyncDisposable
     private async Task<string> CreateKeyAsync(Guid role, Core.Identity.ApiKeys.ApiKeyClass keyClass, params Guid[] sites)
     {
         await using var scope = _host.Services.CreateAsyncScope();
+        using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, new SiteId(DefaultSite.Id));
         var keys = scope.ServiceProvider.GetRequiredService<ApiKeyService>();
         var created = await keys.CreateAsync(new ApiKeyRequest($"{keyClass} key", keyClass, role) { SiteIds = sites.Length > 0 ? sites : null }, Token);
         return created.Secret;

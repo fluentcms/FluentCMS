@@ -103,9 +103,11 @@ internal sealed class IdentityFixture : IDisposable
 
     public static CancellationToken Token => ServiceDatabase.Token;
 
+    // The host's own code, which acts as the system.
     public async Task<T> WithAsync<T>(Func<IServiceProvider, Task<T>> work)
     {
         using var scope = Database.Database.NewScope();
+        using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, ServiceDatabase.SiteA);
         return await work(scope.ServiceProvider);
     }
 

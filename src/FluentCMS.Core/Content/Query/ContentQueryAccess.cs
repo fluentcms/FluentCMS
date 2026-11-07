@@ -32,8 +32,6 @@ internal sealed class ContentQueryAccess(IAuthorizationEvaluator evaluator, IOpe
     // belong to no site, and the question is then about the site the operation runs in.
     private sealed class Bound(EffectivePermissions permissions, SiteId operationSite, SiteId? site, string locale) : IContentQueryAccess
     {
-        private readonly Dictionary<SchemaType, ContentFilter?> _rules = [];
-
         public bool CanReadType(SchemaType type) => permissions.Allows(type, ContentOperation.Read, Target(type));
 
         public bool CanReadDraft(SchemaType type) => permissions.CanReadDraft(type, Target(type));
@@ -42,17 +40,8 @@ internal sealed class ContentQueryAccess(IAuthorizationEvaluator evaluator, IOpe
 
         public IReadOnlySet<string>? ReadLocales(SchemaType type) => permissions.ReadLocalesOf(type, Target(type));
 
-        public ContentFilter? RowRule(SchemaType type)
-        {
-            // One instance per type, because the compiler recognises the rule in a filter by reference.
-            if (!_rules.TryGetValue(type, out var rule))
-            {
-                rule = permissions.RowRuleOf(type, ContentOperation.Read, Target(type));
-                _rules[type] = rule;
-            }
-
-            return rule;
-        }
+        // One instance per type, because the compiler recognises the rule in a filter by reference: the permissions keep it.
+        public ContentFilter? RowRule(SchemaType type) => permissions.RowRuleOf(type, ContentOperation.Read, Target(type));
 
         private AccessTarget Target(SchemaType type) => new(type.Scope == ContentScope.Global ? operationSite : site, locale);
     }
