@@ -6,7 +6,8 @@ Thank you for your interest. FluentCMS is starting over, so there is little to b
 
 | Ref | Role |
 | --- | --- |
-| `main` | Development and the default branch. All pull requests target it. |
+| `main` | The default branch. Pull requests into it must pass the full CI suite. |
+| `feature/*` | Integration branches for a group of related issues. Issue pull requests into them run fast checks. |
 | `archive/*` | Earlier code, kept for reference. Read-only and not maintained. |
 
 | Path | Role |
@@ -17,9 +18,21 @@ Thank you for your interest. FluentCMS is starting over, so there is little to b
 ## Workflow: issue first
 
 1. **Every change starts from an issue.** For anything beyond a small fix, wait for a maintainer to confirm the approach before writing code.
-2. **Branch from `main`**, named `<issue-number>-<short-slug>`, for example `2680-contributing-guide`.
-3. **Open a pull request against `main`.** Put `Closes #<issue-number>` in the description, and keep the pull request to its issue.
+2. **Branch from the intended target**, named `<issue-number>-<short-slug>`, for example `2680-contributing-guide`. Use the agreed `feature/*` branch when the issue belongs to a batch of related work; otherwise use `main`.
+3. **Open a pull request against that target.** Put `Closes #<issue-number>` in the description, and keep an issue pull request to its issue.
 4. **CI must pass.** Pull requests are squash-merged, so the pull request title becomes the commit title. Keep it short and imperative.
+
+### Feature branches and validation
+
+For a batch of related issues, create a branch such as `feature/media` from `main`. Each issue branches from it and opens its pull request back into it. The `Feature CI` workflow builds the whole solution on Linux and Windows and runs SDK unit tests, core unit tests, architecture tests and Markdown lint. Integration, data, host and plugin tests, and packaging, run in full CI.
+
+Merge the issue pull requests into the feature branch as they pass review and fast checks. When the batch is ready, open one pull request from the feature branch into `main`. The `CI` workflow automatically runs all test projects on Linux and Windows, the SQLite data job, Markdown lint and packaging. Fix any failures on the feature branch and push again; the full checks rerun. Keep the feature branch current with `main` and rerun validation after incorporating changes from it. A passing run from before a change does not validate the updated code.
+
+The fast checks have different names from the full checks required by `main`. Keep `main` protected by `Markdown lint`, `Build and test (ubuntu-latest)`, `Build and test (windows-latest)`, `Data tests (sqlite)` and `Pack`. For protected feature branches, require `Feature markdown lint`, `Fast checks (ubuntu-latest)` and `Fast checks (windows-latest)` instead.
+
+To check the combined work before opening the final pull request, go to **Actions → CI → Run workflow**, choose the feature branch and select **Run workflow**. This runs the full suite on that branch whenever needed. The workflow must first be present on `main` for GitHub to show the manual trigger, and the selected branch must contain the updated workflow. Manual runs provide early feedback; the pull request into `main` still runs its own full validation, including the proposed merge with `main`.
+
+List the included issues with `Closes #<issue-number>` in the final pull request into `main`, so GitHub closes them when the batch reaches the default branch. A pull request targeting a feature branch does not close them on merge.
 
 ## Labels
 
@@ -64,11 +77,22 @@ The description contains, in this order:
 
 You need the .NET 10 SDK, at the version in `global.json`. SQLite is the only database used during implementation, so no database server is needed and Docker is not required.
 
-Before opening a pull request, run what CI runs:
+During implementation, run the test project or test class affected by the change. Before opening an issue pull request into a feature branch, run the fast checks:
 
 ```bash
 dotnet build -c Release -warnaserror
-dotnet test -c Release
+dotnet test --project tests/FluentCMS.Sdk.Tests -c Release --no-build
+dotnet test --project tests/FluentCMS.Core.Tests -c Release --no-build
+dotnet test --project tests/FluentCMS.Architecture.Tests -c Release --no-build
+npx --yes markdownlint-cli2 "**/*.md"
+```
+
+Before opening a pull request into `main`, run the full checks:
+
+```bash
+dotnet build -c Release -warnaserror
+dotnet test -c Release --no-build
+dotnet pack -c Release --no-build -o artifacts/packages
 npx --yes markdownlint-cli2 "**/*.md"
 ```
 

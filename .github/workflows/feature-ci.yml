@@ -1,0 +1,72 @@
+name: Feature CI
+
+on:
+  pull_request:
+    branches: ["feature/**"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  markdown:
+    name: Feature markdown lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Lint markdown
+        uses: DavidAnson/markdownlint-cli2-action@v24
+        with:
+          globs: "**/*.md"
+
+  fast-checks:
+    # Separate names keep these checks from satisfying main's full-suite requirements.
+    name: Fast checks (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: |
+            Directory.Packages.props
+            **/*.csproj
+
+      # Compile the whole solution, including the tests deferred to full CI.
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build -c Release --no-restore -warnaserror
+
+      - name: Test SDK
+        run: dotnet test --project tests/FluentCMS.Sdk.Tests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results
+
+      - name: Test core units
+        run: dotnet test --project tests/FluentCMS.Core.Tests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results
+
+      - name: Test architecture
+        run: dotnet test --project tests/FluentCMS.Architecture.Tests -c Release --no-build --report-xunit-trx --results-directory artifacts/test-results
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: feature-test-results-${{ matrix.os }}
+          path: artifacts/test-results
+          retention-days: 14
