@@ -1,3 +1,4 @@
+using FluentCMS.Authorization;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.ProseMirror;
@@ -31,6 +32,7 @@ internal static class ProblemMapper
         ServiceUnavailableException unavailable => Known(ApiErrorCodes.Unavailable, unavailable.Message),
         InstanceAccessDeniedException denied => Denied(denied.Message, authenticated),
         ManagementAccessDeniedException denied => Denied(denied.Message, authenticated),
+        PermissionDeniedException denied => Denied(denied.Message, authenticated),
         ScopeDeniedException denied => Denied(denied.Message, authenticated),
         RequestAuthenticationException unauthenticated => Known(unauthenticated.Code ?? ApiErrorCodes.Unauthorized, unauthenticated.Message),
         EntryNotFoundException notFound => Known(ApiErrorCodes.NotFound, notFound.Message),

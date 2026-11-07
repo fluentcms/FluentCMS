@@ -37,7 +37,7 @@ internal sealed class PluginStorage(RegisteredPlugin plugin)
 
     public string TablePrefix => StorageNames.Prefix + plugin.Name.Replace('-', '_') + "_";
 
-    public string HistoryTable => StorageNames.Prefix + plugin.Name.Replace('-', '_') + StorageNames.HistoryTableSuffix;
+    public string HistoryTable => HistoryTableOf(plugin.Name);
 
     // Mapped on a model without conventions, which is enough to read the names of the tables and views. A name can still be
     // another's, since one plugin's prefix can hold another's (cms_ai_ holds cms_ai_assist_) or a system table's, and
@@ -92,21 +92,25 @@ internal sealed class PluginStorage(RegisteredPlugin plugin)
         where TPlugin : class, IPlugin
     {
         var contributors = PluginModels.Of(_contributors);
-        var key = $"{provider.Conventions.CacheKey}|{contributors.Key}";
         var assembly = Migrations ?? plugin.Type.Assembly;
         var history = HistoryTable;
 
-        services.AddDbContext<PluginDbContext<TPlugin>>(options =>
-        {
-            provider.ConfigurePluginMigrations(options, assembly, history);
-            PluginModelOptionsExtension.Use(options, contributors.Contributors, provider.Conventions.ConfigureConventions, key);
-            options.ReplaceService<IModelCacheKeyFactory, CmsModelCacheKeyFactory>();
-        });
+        services.AddDbContext<PluginDbContext<TPlugin>>(options => Configure(options, provider, contributors, assembly, history));
 
         if (Migrations is not null)
         {
             services.AddSingleton<IPluginMigrations>(new Stream<TPlugin>(plugin.Name));
         }
+    }
+
+    public static string HistoryTableOf(string plugin) => StorageNames.Prefix + plugin.Replace('-', '_') + StorageNames.HistoryTableSuffix;
+
+    // The options of a plugin's context, at run time and at design time alike.
+    public static void Configure(DbContextOptionsBuilder options, IDataProvider provider, PluginModels contributors, Assembly migrations, string history)
+    {
+        provider.ConfigurePluginMigrations(options, migrations, history);
+        PluginModelOptionsExtension.Use(options, contributors.Contributors, provider.Conventions.ConfigureConventions, $"{provider.Conventions.CacheKey}|{contributors.Key}");
+        options.ReplaceService<IModelCacheKeyFactory, CmsModelCacheKeyFactory>();
     }
 
     private sealed class Stream<TPlugin>(string name) : IPluginMigrations

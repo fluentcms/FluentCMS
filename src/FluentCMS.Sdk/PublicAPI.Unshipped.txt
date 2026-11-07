@@ -82,12 +82,19 @@ FluentCMS.Activity.IActivityLog.WriteAsync(FluentCMS.Activity.ActivityEntry! ent
 FluentCMS.Activity.IActivityLog.WriteAsync(FluentCMS.Activity.ActivityEntry! entry, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
 FluentCMS.Activity.IActivityQuery
 FluentCMS.Activity.IActivityQuery.QueryAsync(FluentCMS.Activity.ActivityFilter? filter = null, FluentCMS.Content.PageRequest? page = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.PagedResult<FluentCMS.Activity.ActivityItem!>!>!
+FluentCMS.Authorization.IPermissionChecker
+FluentCMS.Authorization.IPermissionChecker.AllowsAsync(string! permission, FluentCMS.Sites.SiteId? site, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<bool>
+FluentCMS.Authorization.IPermissionChecker.RequireAsync(string! permission, FluentCMS.Sites.SiteId? site, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
 FluentCMS.Authorization.IPermissionProvider
 FluentCMS.Authorization.IPermissionProvider.GetPermissions() -> System.Collections.Generic.IEnumerable<FluentCMS.Authorization.Permission!>!
 FluentCMS.Authorization.Permission
 FluentCMS.Authorization.Permission.Description.get -> string!
 FluentCMS.Authorization.Permission.Name.get -> string!
 FluentCMS.Authorization.Permission.Permission(string! name, string! description) -> void
+FluentCMS.Authorization.PermissionDeniedException
+FluentCMS.Authorization.PermissionDeniedException.Permission.get -> string!
+FluentCMS.Authorization.PermissionDeniedException.PermissionDeniedException(string! permission, FluentCMS.Sites.SiteId? site) -> void
+FluentCMS.Authorization.PermissionDeniedException.Site.get -> FluentCMS.Sites.SiteId?
 FluentCMS.Content.And
 FluentCMS.Content.And.And(params System.Collections.Generic.IReadOnlyList<FluentCMS.Content.ContentFilter!>! Filters) -> void
 FluentCMS.Content.And.Deconstruct(out System.Collections.Generic.IReadOnlyList<FluentCMS.Content.ContentFilter!>! Filters) -> void
@@ -440,6 +447,8 @@ FluentCMS.Content.VersionConflictException.CurrentVersion.get -> int
 FluentCMS.Content.VersionConflictException.ExpectedVersion.get -> int
 FluentCMS.Content.VersionConflictException.VersionConflictException(int expectedVersion, int currentVersion, FluentCMS.Content.ContentDocument? current) -> void
 FluentCMS.Diagnostics.FluentCmsHealthCheckTags
+FluentCMS.Diagnostics.IInsecureDefaultSource
+FluentCMS.Diagnostics.IInsecureDefaultSource.GetInsecureDefaults() -> System.Collections.Generic.IEnumerable<FluentCMS.Diagnostics.InsecureDefault!>!
 FluentCMS.Diagnostics.InsecureDefault
 FluentCMS.Diagnostics.InsecureDefault.<Clone>$() -> FluentCMS.Diagnostics.InsecureDefault!
 FluentCMS.Diagnostics.InsecureDefault.Equals(FluentCMS.Diagnostics.InsecureDefault? other) -> bool
