@@ -62,8 +62,8 @@ static bool Verifies(string signature, string secret, string body, DateTimeOffse
         return false;
     }
 
-    var expected = HMACSHA256.HashData(Encoding.UTF8.GetBytes(secret), Encoding.UTF8.GetBytes(t + "." + body));
-    return parts.Where(part => part[0] == "v1").Any(part =>
-        part[1].Length == expected.Length * 2 && CryptographicOperations.FixedTimeEquals(expected, Convert.FromHexString(part[1])));
+    var mac = HMACSHA256.HashData(Encoding.UTF8.GetBytes(secret), Encoding.UTF8.GetBytes(t + "." + body));
+    var expected = Encoding.ASCII.GetBytes(Convert.ToHexStringLower(mac));
+    return parts.Where(part => part[0] == "v1").Any(part => CryptographicOperations.FixedTimeEquals(expected, Encoding.ASCII.GetBytes(part[1])));
 }
 ```
