@@ -484,6 +484,18 @@ FluentCMS.Diagnostics.StartupPlugin.Name.init -> void
 FluentCMS.Diagnostics.StartupPlugin.StartupPlugin() -> void
 FluentCMS.Diagnostics.StartupPlugin.Version.get -> string!
 FluentCMS.Diagnostics.StartupPlugin.Version.init -> void
+FluentCMS.Diagnostics.StartupProviderSlot
+FluentCMS.Diagnostics.StartupProviderSlot.<Clone>$() -> FluentCMS.Diagnostics.StartupProviderSlot!
+FluentCMS.Diagnostics.StartupProviderSlot.Equals(FluentCMS.Diagnostics.StartupProviderSlot? other) -> bool
+FluentCMS.Diagnostics.StartupProviderSlot.Implementation.get -> string?
+FluentCMS.Diagnostics.StartupProviderSlot.Implementation.init -> void
+FluentCMS.Diagnostics.StartupProviderSlot.Plugin.get -> string?
+FluentCMS.Diagnostics.StartupProviderSlot.Plugin.init -> void
+FluentCMS.Diagnostics.StartupProviderSlot.Slot.get -> string!
+FluentCMS.Diagnostics.StartupProviderSlot.Slot.init -> void
+FluentCMS.Diagnostics.StartupProviderSlot.Source.get -> string!
+FluentCMS.Diagnostics.StartupProviderSlot.Source.init -> void
+FluentCMS.Diagnostics.StartupProviderSlot.StartupProviderSlot() -> void
 FluentCMS.Diagnostics.StartupReport
 FluentCMS.Diagnostics.StartupReport.<Clone>$() -> FluentCMS.Diagnostics.StartupReport!
 FluentCMS.Diagnostics.StartupReport.Assemblies.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Diagnostics.StartupAssembly!>!
@@ -501,6 +513,8 @@ FluentCMS.Diagnostics.StartupReport.PendingMigrations.get -> System.Collections.
 FluentCMS.Diagnostics.StartupReport.PendingMigrations.init -> void
 FluentCMS.Diagnostics.StartupReport.Plugins.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Diagnostics.StartupPlugin!>!
 FluentCMS.Diagnostics.StartupReport.Plugins.init -> void
+FluentCMS.Diagnostics.StartupReport.ProviderSlots.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Diagnostics.StartupProviderSlot!>!
+FluentCMS.Diagnostics.StartupReport.ProviderSlots.init -> void
 FluentCMS.Diagnostics.StartupReport.Schema.get -> FluentCMS.Diagnostics.StartupSchema!
 FluentCMS.Diagnostics.StartupReport.Schema.init -> void
 FluentCMS.Diagnostics.StartupReport.StartedAt.get -> System.DateTimeOffset
@@ -1005,6 +1019,7 @@ FluentCMS.Plugins.IPluginServiceBuilder.AddOutboxHandler<TEvent, THandler>(strin
 FluentCMS.Plugins.IPluginServiceBuilder.AddPermissions<TProvider>() -> FluentCMS.Plugins.IPluginServiceBuilder!
 FluentCMS.Plugins.IPluginServiceBuilder.AddSettings<TSettings>() -> FluentCMS.Plugins.IPluginServiceBuilder!
 FluentCMS.Plugins.IPluginServiceBuilder.Name.get -> string!
+FluentCMS.Plugins.IPluginServiceBuilder.Providers.get -> FluentCMS.Providers.IProviderSlots!
 FluentCMS.Plugins.IPluginServiceBuilder.Services.get -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 FluentCMS.Plugins.PluginException
 FluentCMS.Plugins.PluginException.Code.get -> string!
@@ -1029,6 +1044,8 @@ FluentCMS.Providers.IDistributedLockHandle.Lost.get -> System.Threading.Cancella
 FluentCMS.Providers.IDistributedLockHandle.Name.get -> string!
 FluentCMS.Providers.IEmailSender
 FluentCMS.Providers.IEmailSender.SendAsync(FluentCMS.Providers.EmailMessage! message, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+FluentCMS.Providers.IProviderSlots
+FluentCMS.Providers.IProviderSlots.Use<TSlot, TImplementation>() -> FluentCMS.Providers.IProviderSlots!
 FluentCMS.Publishing.EntryStatus
 FluentCMS.Publishing.EntryStatus.Draft = 0 -> FluentCMS.Publishing.EntryStatus
 FluentCMS.Publishing.EntryStatus.Modified = 2 -> FluentCMS.Publishing.EntryStatus
@@ -1799,6 +1816,9 @@ override FluentCMS.Diagnostics.StartupMigration.ToString() -> string!
 override FluentCMS.Diagnostics.StartupPlugin.Equals(object? obj) -> bool
 override FluentCMS.Diagnostics.StartupPlugin.GetHashCode() -> int
 override FluentCMS.Diagnostics.StartupPlugin.ToString() -> string!
+override FluentCMS.Diagnostics.StartupProviderSlot.Equals(object? obj) -> bool
+override FluentCMS.Diagnostics.StartupProviderSlot.GetHashCode() -> int
+override FluentCMS.Diagnostics.StartupProviderSlot.ToString() -> string!
 override FluentCMS.Diagnostics.StartupReport.Equals(object? obj) -> bool
 override FluentCMS.Diagnostics.StartupReport.GetHashCode() -> int
 override FluentCMS.Diagnostics.StartupReport.ToString() -> string!
@@ -2107,6 +2127,8 @@ static FluentCMS.Diagnostics.StartupMigration.operator !=(FluentCMS.Diagnostics.
 static FluentCMS.Diagnostics.StartupMigration.operator ==(FluentCMS.Diagnostics.StartupMigration? left, FluentCMS.Diagnostics.StartupMigration? right) -> bool
 static FluentCMS.Diagnostics.StartupPlugin.operator !=(FluentCMS.Diagnostics.StartupPlugin? left, FluentCMS.Diagnostics.StartupPlugin? right) -> bool
 static FluentCMS.Diagnostics.StartupPlugin.operator ==(FluentCMS.Diagnostics.StartupPlugin? left, FluentCMS.Diagnostics.StartupPlugin? right) -> bool
+static FluentCMS.Diagnostics.StartupProviderSlot.operator !=(FluentCMS.Diagnostics.StartupProviderSlot? left, FluentCMS.Diagnostics.StartupProviderSlot? right) -> bool
+static FluentCMS.Diagnostics.StartupProviderSlot.operator ==(FluentCMS.Diagnostics.StartupProviderSlot? left, FluentCMS.Diagnostics.StartupProviderSlot? right) -> bool
 static FluentCMS.Diagnostics.StartupReport.operator !=(FluentCMS.Diagnostics.StartupReport? left, FluentCMS.Diagnostics.StartupReport? right) -> bool
 static FluentCMS.Diagnostics.StartupReport.operator ==(FluentCMS.Diagnostics.StartupReport? left, FluentCMS.Diagnostics.StartupReport? right) -> bool
 static FluentCMS.Diagnostics.StartupSchema.operator !=(FluentCMS.Diagnostics.StartupSchema? left, FluentCMS.Diagnostics.StartupSchema? right) -> bool

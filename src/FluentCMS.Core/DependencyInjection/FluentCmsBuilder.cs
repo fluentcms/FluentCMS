@@ -56,6 +56,8 @@ public sealed class FluentCmsBuilder
 
     public OpenApiDocumentOptions OpenApi { get; } = new();
 
+    public ProvidersBuilder Providers { get; } = new();
+
     internal IDataProvider? DataProvider { get; private set; }
 
     internal Assembly? ContentMigrationsAssembly { get; private set; }

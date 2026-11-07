@@ -345,7 +345,7 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
 
         var diagnostics = Response(Paths[$"{Management}/system/diagnostics"]!["get"]!, "200");
         diagnostics["properties"]!.AsObject().Select(item => item.Key)
-            .ShouldBe(["startedAt", "environment", "version", "failure", "dataProvider", "assemblies", "plugins", "pendingMigrations", "schema", "insecureDefaults"]);
+            .ShouldBe(["startedAt", "environment", "version", "failure", "dataProvider", "assemblies", "plugins", "providerSlots", "pendingMigrations", "schema", "insecureDefaults"]);
         Resolve(diagnostics["properties"]!["schema"]!)["properties"]!["drifted"]!["type"]!.GetValue<string>().ShouldBe("boolean");
     }
 

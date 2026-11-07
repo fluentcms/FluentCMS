@@ -10,6 +10,7 @@ using FluentCMS.Core.Storage;
 using FluentCMS.Events;
 using FluentCMS.Jobs;
 using FluentCMS.Plugins;
+using FluentCMS.Providers;
 using FluentCMS.Schema;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
@@ -144,6 +145,8 @@ internal sealed class PluginServiceBuilder(FluentCmsBuilder cms, RegisteredPlugi
     public string Name => plugin.Name;
 
     public IServiceCollection Services => cms.Services;
+
+    public IProviderSlots Providers { get; } = cms.Providers.For(plugin.Name);
 
     public IPluginServiceBuilder AddFieldType<TFieldType>()
         where TFieldType : class, IFieldType, new()
