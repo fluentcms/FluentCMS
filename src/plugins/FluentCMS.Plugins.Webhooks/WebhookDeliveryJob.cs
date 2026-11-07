@@ -32,8 +32,8 @@ internal sealed class WebhookDeliveryJob(
     public static readonly IReadOnlyList<TimeSpan> Retries =
         [TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(30), TimeSpan.FromHours(2), TimeSpan.FromHours(24)];
 
-    // How long a job waits while another attempt to its webhook is in flight, plus up to as much again so that the waiting
-    // jobs do not all return together.
+    // While another attempt to its webhook is in flight, a job waits until that attempt's send must have ended, and at least
+    // this long, plus up to as much again so that the waiting jobs do not all return together.
     public static readonly TimeSpan Busy = TimeSpan.FromSeconds(2);
 
     // A pending attempt is abandoned once the send timeout and this have passed since its claim. It covers the writes around
@@ -132,7 +132,10 @@ internal sealed class WebhookDeliveryJob(
             {
                 if (!IsAbandoned(busy, now))
                 {
-                    await DeferAsync(attempt, webhook, now + (Busy * (1 + Random.Shared.NextDouble())), cancellationToken);
+                    // A burst to a receiver that hangs then wakes once per send instead of every few seconds.
+                    var sent = busy.CreatedAt + options.Value.Timeout;
+                    var at = sent > now + Busy ? sent : now + Busy;
+                    await DeferAsync(attempt, webhook, at + (Busy * Random.Shared.NextDouble()), cancellationToken);
                     return null;
                 }
 

@@ -18,7 +18,8 @@ public sealed class WebhookClaimTests
     private static readonly TimeSpan Patience = TimeSpan.FromSeconds(30);
 
     // The send timeout of the tests' host, which is the default, and the margin after it.
-    private static readonly TimeSpan Abandoned = new WebhooksOptions().Timeout + WebhookDeliveryJob.AbandonMargin;
+    private static readonly TimeSpan SendTimeout = new WebhooksOptions().Timeout;
+    private static readonly TimeSpan Abandoned = SendTimeout + WebhookDeliveryJob.AbandonMargin;
 
     [Fact]
     public async Task AFailedWriteAfterASendNeverSendsThatAttemptAgain()
@@ -102,8 +103,10 @@ public sealed class WebhookClaimTests
         await articles.PublishAsync((await articles.CreateAsync(new Article { Title = "After a crash" }, Token)).Id, cancellationToken: Token);
 
         await PumpAsync(host);
-        host.Time.Advance(WebhookDeliveryJob.Busy * 2);
-        (await RunDueJobsAsync(host)).ShouldBe(1);
+        host.Time.Set(crashed.CreatedAt + SendTimeout + WebhookDeliveryJob.Busy);
+        (await RunDueJobsAsync(host)).ShouldBe(1, "the delivery waits until the claim's send must have ended");
+        host.Time.Advance(WebhookDeliveryJob.Busy - TimeSpan.FromSeconds(1));
+        (await RunDueJobsAsync(host)).ShouldBe(0, "and then at least a little longer each time");
         receiver.Requests.ShouldBeEmpty("the claim of another attempt is in flight until it is abandoned");
 
         host.Time.Advance(Abandoned);

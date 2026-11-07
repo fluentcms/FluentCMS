@@ -17,7 +17,7 @@ The options are in `FluentCms:Webhooks`:
 
 Every attempt runs on the job queue `webhooks`: the first attempt of a delivery, its retries at 1m, 5m, 30m, 2h and 24h, a redelivery and a ping. A receiver that hangs holds the workers of this queue for its timeout, and scheduled publishing and the other jobs of the `default` queue keep running. `FluentCms:Jobs:Queues:webhooks` sets the workers too, and wins over `Workers`.
 
-One attempt of a webhook is in flight at a time, on every instance together. A job claims its attempt by writing the attempt's row as `pending` before it sends, and a job that finds another attempt of its webhook pending waits a few seconds and tries again. So a slow receiver delays its own deliveries and nobody else's.
+One attempt of a webhook is in flight at a time, on every instance together. A job claims its attempt by writing the attempt's row as `pending` before it sends, and a job that finds another attempt of its webhook pending waits until that attempt's send must have ended, at least a few seconds, and tries again. So a slow receiver delays its own deliveries and nobody else's.
 
 A claim that is still pending a minute after the timeout has passed is abandoned, because its worker stopped before it recorded the result. The next job to find it marks the attempt `failed` and schedules the next attempt, without sending this one again. Since the receiver may have got the abandoned attempt, it can get a delivery more than once, and ignores a repeat by its `X-FluentCMS-Delivery` header.
 

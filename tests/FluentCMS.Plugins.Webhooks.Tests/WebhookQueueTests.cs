@@ -132,8 +132,12 @@ public sealed class WebhookQueueTests
 
         receiver.Release();
         (await Task.WhenAll(workers).WaitAsync(Patience, Token)).ShouldAllBe(ran => ran);
-        (await RunDueJobsAsync(host)).ShouldBe(0, "the second delivery waits a few seconds");
-        host.Time.Advance(WebhookDeliveryJob.Busy * 2);
+
+        // The second delivery waits until the first one's send must have ended, at its claim plus the timeout.
+        var sent = pending.CreatedAt + new WebhooksOptions().Timeout;
+        host.Time.Set(sent - TimeSpan.FromSeconds(1));
+        (await RunDueJobsAsync(host)).ShouldBe(0, "the send in flight may still be running");
+        host.Time.Set(sent + WebhookDeliveryJob.Busy + TimeSpan.FromSeconds(1));
         (await RunDueJobsAsync(host)).ShouldBe(1);
 
         receiver.Requests.Count.ShouldBe(2);
