@@ -15,13 +15,14 @@ using Microsoft.Extensions.Hosting;
 namespace FluentCMS.Data.Tests.Sqlite;
 
 // A database file of its own, reached through the real package. Pooling is off so that the file can be deleted.
-internal sealed class SqliteFileDatabase : IDisposable
+// writeAheadLog false is the provider of a host that keeps the rollback journal.
+internal sealed class SqliteFileDatabase(bool writeAheadLog = true) : IDisposable
 {
     private readonly DirectoryInfo _directory = Directory.CreateTempSubdirectory("fluentcms-data-tests-");
 
     public string ConnectionString => $"Data Source={Path.Combine(_directory.FullName, "cms.db")};Pooling=False";
 
-    public void UseSqlite(FluentCmsBuilder cms) => cms.UseDataProvider(new UnflushedSqliteProvider(new SqliteDataProvider(ConnectionString)));
+    public void UseSqlite(FluentCmsBuilder cms) => cms.UseDataProvider(new UnflushedSqliteProvider(new SqliteDataProvider(ConnectionString, writeAheadLog)));
 
     public ServiceProvider CreateServices(SchemaModel? schema = null, Action<FluentCmsBuilder>? configure = null)
     {

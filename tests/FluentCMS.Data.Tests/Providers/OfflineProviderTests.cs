@@ -99,6 +99,27 @@ public class OfflineProviderTests
     }
 
     [Fact]
+    public void BothProvidersCreateTheListAndTrashIndexes()
+    {
+        using var postgreSql = PostgreSql();
+        using var postgreSqlScope = postgreSql.CreateScope();
+        using var sqlServer = SqlServer();
+        using var sqlServerScope = sqlServer.CreateScope();
+
+        var postgreSqlSystem = postgreSqlScope.ServiceProvider.GetRequiredService<SystemDbContext>().Database.GenerateCreateScript();
+        postgreSqlSystem.ShouldContain("CREATE INDEX ix_cms_document_trash ON cms_document (type, deleted_at) WHERE deleted_at IS NOT NULL;");
+        postgreSqlSystem.ShouldContain("CREATE INDEX ix_cms_document_type_site ON cms_document (type, site_id, deleted_at);");
+        postgreSqlScope.ServiceProvider.GetRequiredService<CmsDbContext>().Database.GenerateCreateScript()
+            .ShouldContain("CREATE INDEX ix_cms_post_state ON cms_post (site_id, state);");
+
+        var sqlServerSystem = sqlServerScope.ServiceProvider.GetRequiredService<SystemDbContext>().Database.GenerateCreateScript();
+        sqlServerSystem.ShouldContain("CREATE INDEX [ix_cms_document_trash] ON [cms_document] ([type], [deleted_at]) WHERE deleted_at IS NOT NULL;");
+        sqlServerSystem.ShouldContain("CREATE INDEX [ix_cms_document_type_site] ON [cms_document] ([type], [site_id], [deleted_at]);");
+        sqlServerScope.ServiceProvider.GetRequiredService<CmsDbContext>().Database.GenerateCreateScript()
+            .ShouldContain("CREATE INDEX [ix_cms_post_state] ON [cms_post] ([site_id], [state]);");
+    }
+
+    [Fact]
     public void SqlServerStoresCheckedJsonAsNvarcharMax()
     {
         using var services = SqlServer();
@@ -142,7 +163,7 @@ public class OfflineProviderTests
         using var scope = services.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<SystemDbContext>().Database;
 
-        database.GetMigrations().Count().ShouldBe(16);
+        database.GetMigrations().Count().ShouldBe(17);
         database.HasPendingModelChanges().ShouldBeFalse();
     }
 
@@ -153,7 +174,7 @@ public class OfflineProviderTests
         using var scope = services.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<SystemDbContext>().Database;
 
-        database.GetMigrations().Count().ShouldBe(16);
+        database.GetMigrations().Count().ShouldBe(17);
         database.HasPendingModelChanges().ShouldBeFalse();
     }
 

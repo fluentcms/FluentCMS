@@ -6,11 +6,9 @@ namespace FluentCMS.Core.Schema.FieldTypes;
 internal sealed class EmailFieldType()
     : StringFieldType(FieldTypeNames.Email, [typeof(string)], FilterSets.Text, sortable: true, indexable: true)
 {
-    private const int MaxAddressLength = 254;
-
     protected override string? Check(string text)
     {
-        var isAddress = text.Length <= MaxAddressLength
+        var isAddress = text.Length <= FieldLengths.Email
             && !text.Any(char.IsWhiteSpace)
             && MailAddress.TryCreate(text, out var address)
             && address.DisplayName.Length == 0

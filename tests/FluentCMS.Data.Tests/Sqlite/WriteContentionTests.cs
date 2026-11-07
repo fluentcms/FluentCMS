@@ -8,26 +8,40 @@ using Xunit;
 
 namespace FluentCMS.Data.Tests.Sqlite;
 
-// The rollback journal, where a writer needs a moment with no reader to commit.
-public sealed class WriteContentionTests : IDisposable
+// The rollback journal of a host that opts out of WAL, where a writer needs a moment with no reader to commit.
+public sealed class RollbackJournalWriteContentionTests() : WriteContentionTests(writeAheadLog: false);
+
+// The provider's default, where readers do not hold the writer back.
+public sealed class WalWriteContentionTests() : WriteContentionTests(writeAheadLog: true);
+
+public abstract class WriteContentionTests : IDisposable
 {
     private const int CommandTimeoutSeconds = 3;
 
-    private readonly SqliteFileDatabase _database = new();
+    private readonly SqliteFileDatabase _database;
     private readonly ServiceProvider _services;
 
-    public WriteContentionTests()
+    protected WriteContentionTests(bool writeAheadLog)
     {
+        _database = new SqliteFileDatabase(writeAheadLog);
         _services = _database.CreateServices();
         using var scope = _services.CreateScope();
         scope.ServiceProvider.GetRequiredService<SystemDbContext>().Database.Migrate();
-        _database.Execute("PRAGMA journal_mode = delete");
+
+        // EF creates a new database file in WAL mode.
+        if (!writeAheadLog)
+        {
+            _database.Execute("PRAGMA journal_mode = delete");
+        }
+
+        _database.ReadStrings("PRAGMA journal_mode").ShouldBe([writeAheadLog ? "wal" : "delete"]);
     }
 
     public void Dispose()
     {
         _services.Dispose();
         _database.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     [Fact]

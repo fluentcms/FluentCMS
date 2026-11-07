@@ -30,7 +30,7 @@ docker run -d --name fluentcms -p 8080:8080 -v fluentcms-data:/data \
 
 `FluentCms__PublicOrigin` is the https address you reach the instance at through the proxy that ends TLS, which sign-in needs (see [before production](#before-production)). With no such address yet, `FluentCms__Security__AllowRequestOrigin=true` in its place builds links from each request. The startup report keeps listing each opt-in, as `generated-signing-key`, `data-protection-keys-unencrypted` or `public-origin-unset`.
 
-It runs on SQLite, in `/data/fluentcms.db`, and applies the migrations on start. Keep `/data` on a volume, or the database goes with the container. `GET http://localhost:8080/health/ready` answers `Healthy` once the database and the job runner are up, and `docker ps` shows the container as healthy: the image's `HEALTHCHECK` runs the host itself with `--probe`, because a chiseled image has no `curl`.
+It runs on SQLite, in `/data/fluentcms.db`, and applies the migrations on start. Keep `/data` on a volume, or the database goes with the container. The database is in WAL mode, so `/data` also holds `fluentcms.db-wal` and `fluentcms.db-shm` while the host runs: keep the three files together, and stop the container before copying them, since `fluentcms.db` alone misses the commits still in `-wal`. Put the volume on a local disk, not a network share such as NFS, SMB or Azure Files, where SQLite's locks and the shared memory WAL needs do not work (see [SQLite](host-configuration.md#sqlite)). `GET http://localhost:8080/health/ready` answers `Healthy` once the database and the job runner are up, and `docker ps` shows the container as healthy: the image's `HEALTHCHECK` runs the host itself with `--probe`, because a chiseled image has no `curl`.
 
 ## Content types
 

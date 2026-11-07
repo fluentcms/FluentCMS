@@ -7,9 +7,12 @@ using SQLitePCL;
 
 namespace FluentCMS.Data.Sqlite;
 
-public sealed class SqliteDataProvider(string connectionString) : IDataProvider
+public sealed class SqliteDataProvider(string connectionString, bool writeAheadLog = true) : IDataProvider
 {
+    // The write interceptors keep writers from starving in the rollback journal, which a host may keep with writeAheadLog false.
     private static readonly IInterceptor[] WriteInterceptors = [new SqliteWriteInterceptor(), new SqliteCommandTransactions()];
+
+    private readonly IInterceptor[] _interceptors = writeAheadLog ? [new SqliteWriteAheadLog(), .. WriteInterceptors] : WriteInterceptors;
 
     public string Name => "SQLite";
 
@@ -33,17 +36,17 @@ public sealed class SqliteDataProvider(string connectionString) : IDataProvider
         options.UseSqlite(connectionString, sqlite => sqlite
             .MigrationsAssembly(migrationsAssembly)
             .MigrationsHistoryTable(CmsDbContext.HistoryTable))
-            .AddInterceptors(WriteInterceptors);
+            .AddInterceptors(_interceptors);
 
     public void ConfigurePluginMigrations(DbContextOptionsBuilder options, Assembly migrationsAssembly, string historyTable) =>
         options.UseSqlite(connectionString, sqlite => sqlite
             .MigrationsAssembly(migrationsAssembly)
             .MigrationsHistoryTable(historyTable))
-            .AddInterceptors(WriteInterceptors);
+            .AddInterceptors(_interceptors);
 
     public void ConfigureSystemMigrations(DbContextOptionsBuilder options) =>
         options.UseSqlite(connectionString, sqlite => sqlite
             .MigrationsAssembly(typeof(SqliteDataProvider).Assembly)
             .MigrationsHistoryTable(SystemDbContext.HistoryTable))
-            .AddInterceptors(WriteInterceptors);
+            .AddInterceptors(_interceptors);
 }
