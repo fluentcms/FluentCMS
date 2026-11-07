@@ -9,12 +9,14 @@ internal sealed class ApiPipelineState
     public bool Configured { get; set; }
 }
 
-// Puts the principal of the FluentCms scheme where the rate limit policies read it.
+// Puts the principal of the FluentCms scheme where the rate limit policies read it. The probes need no principal, so a key
+// sent to /health is never looked up.
 internal sealed class ApiAuthenticationMiddleware(RequestDelegate next)
 {
     public async Task InvokeAsync(HttpContext context)
     {
-        if (context.GetEndpoint()?.Metadata.GetMetadata<FluentCmsEndpointMetadata>() is not null)
+        var endpoint = context.GetEndpoint();
+        if (endpoint?.Metadata.GetMetadata<FluentCmsEndpointMetadata>() is not null && !FluentCmsSurfaceMetadata.IsHealth(endpoint))
         {
             await ApiAuthentication.AuthenticateAsync(context);
         }

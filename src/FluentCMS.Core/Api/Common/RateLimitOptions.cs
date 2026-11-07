@@ -17,9 +17,13 @@ public sealed class RateLimitOptions
     // Per client address, on /connect and /account: sign-in, token and password endpoints.
     public RateLimitPolicyOptions Auth { get; } = new() { PermitLimit = 20 };
 
-    // Per client address on every FluentCMS route but /health, and it runs before authentication. It is what keeps a flood of
-    // requests with a key or a sign-in from reaching the key lookup and the token endpoint.
+    // Per client address on every FluentCMS route but /health, plugin routes included, and it runs before authentication. It
+    // is what keeps a flood of requests with a key or a sign-in from reaching the key lookup and the token endpoint.
     public RateLimitPolicyOptions PreAuth { get; } = new() { PermitLimit = 6000 };
+
+    // Per client address on /health, counted apart from PreAuth and also before authentication. An orchestrator that probes
+    // an instance several times a second stays far below it; a flood of probes does not.
+    public RateLimitPolicyOptions Health { get; } = new() { PermitLimit = 1200 };
 
     internal void Validate()
     {
@@ -27,6 +31,7 @@ public sealed class RateLimitOptions
         Management.Validate(nameof(Management));
         Auth.Validate(nameof(Auth));
         PreAuth.Validate(nameof(PreAuth));
+        Health.Validate(nameof(Health));
 
         // The coarse limit holds all the callers behind one address together, so a key may not be allowed more than it.
         if (Delivery.MaxKeyLimit > PreAuth.PermitLimit)

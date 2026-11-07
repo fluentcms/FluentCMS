@@ -139,6 +139,12 @@ internal sealed class PreAuthRateLimitPolicy(RateLimitOptions options, TimeProvi
     protected override (string Caller, int Limit) Partition(HttpContext context) => (Address(context), DefaultLimit);
 }
 
+// The probes' own partition of the check before authentication, with no headers either.
+internal sealed class HealthRateLimitPolicy(RateLimitOptions options, TimeProvider time) : FluentCmsRateLimitPolicy(options.Health.PermitLimit, time, reportsHeaders: false)
+{
+    protected override (string Caller, int Limit) Partition(HttpContext context) => (Address(context), DefaultLimit);
+}
+
 internal static class ClientAddress
 {
     // An IPv4-mapped address is its IPv4 address, and an IPv6 address is its /64, which is what one subscriber gets.

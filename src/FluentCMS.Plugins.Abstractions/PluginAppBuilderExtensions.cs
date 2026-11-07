@@ -8,8 +8,10 @@ public static class PluginAppBuilderExtensions
     /// <summary>
     /// A group under the route group of FluentCMS, such as <c>/media</c>, behind the path base. Its endpoints run inside the
     /// operation of their request, with the principal of the FluentCMS authentication scheme, the Delivery rate limit and
-    /// CORS policy, and no output cache unless an endpoint adds one. A prefix under a group of core, such as
-    /// <c>/api/management/v1</c>, stops the host; <see cref="MapManagement"/> is for the Management API.
+    /// CORS policy, and no output cache unless an endpoint adds one. They need a signed-in caller, a bearer token or an API
+    /// key, and answer 401 to any other; an endpoint that is public on purpose opts out with <c>AllowAnonymous()</c>.
+    /// What the caller may do is still the plugin's to check, with <c>IPermissionChecker</c>. A prefix under a group of
+    /// core, such as <c>/api/management/v1</c>, stops the host; <see cref="MapManagement"/> is for the Management API.
     /// </summary>
     /// <param name="app">The builder of the plugin.</param>
     /// <param name="prefix">The prefix, starting with a slash.</param>

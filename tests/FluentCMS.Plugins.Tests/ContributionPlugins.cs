@@ -3,6 +3,7 @@ using FluentCMS.Content;
 using FluentCMS.Plugins.Sample;
 using FluentCMS.Schema;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
@@ -161,6 +162,7 @@ public sealed class RoutedPlugin : IPlugin
     {
         var group = Management ? app.MapManagement(Prefix) : app.MapGroup(Prefix);
         group.MapGet("/ping", () => "pong");
+        group.MapGet("/raw", (RequestDelegate)(context => context.Response.WriteAsync("raw")));
     }
 }
 

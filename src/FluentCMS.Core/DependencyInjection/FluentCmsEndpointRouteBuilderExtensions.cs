@@ -83,7 +83,9 @@ public static class FluentCmsEndpointRouteBuilderExtensions
     }
 
     // A plugin's own group, under the CMS group and outside those of core, so that nothing reaches the Management API without
-    // its scope. Its surface is the plugin's, which keeps it out of the OpenAPI document of Delivery and Management.
+    // its scope. Its surface is the plugin's, which keeps it out of the OpenAPI document of Delivery and Management. Its
+    // endpoints need a signed-in caller unless one carries AllowAnonymous(), and the caller is checked before the plugin's
+    // enablement, so that an anonymous caller learns nothing of a site's plugins.
     internal static RouteGroupBuilder MapPluginGroup(RouteGroupBuilder cms, RegisteredPlugin plugin, string prefix)
     {
         CheckPrefix(plugin, prefix, "MapGroup");
@@ -105,7 +107,7 @@ public static class FluentCmsEndpointRouteBuilderExtensions
 
         var routes = cms.MapGroup(prefix).WithMetadata(new FluentCmsSurfaceMetadata(plugin.Name));
         routes.CacheOutput(policy => policy.NoCache()).RequireRateLimiting(RateLimitPolicyNames.Delivery).RequireCors(CorsPolicies.Delivery);
-        return WhenEnabled(routes.WithFluentCmsOperation(Origin.Api), plugin);
+        return WhenEnabled(routes.WithFluentCmsOperation(Origin.Api).RequireSignedIn(), plugin);
     }
 
     internal static RouteGroupBuilder MapPluginManagement(RouteGroupBuilder cms, RegisteredPlugin plugin, string prefix)
@@ -153,7 +155,7 @@ public static class FluentCmsEndpointRouteBuilderExtensions
     {
         // Discovery and the key set belong to the authorization server, so they count as its surface.
         var surface = group == FluentCmsEndpointGroup.WellKnown ? FluentCmsEndpointGroup.Connect : group;
-        routes.WithMetadata(new FluentCmsSurfaceMetadata(surface.ToString().ToLowerInvariant()));
+        routes.WithMetadata(group == FluentCmsEndpointGroup.Health ? FluentCmsSurfaceMetadata.Health : new FluentCmsSurfaceMetadata(surface.ToString().ToLowerInvariant()));
         if (group == FluentCmsEndpointGroup.Delivery)
         {
             routes.CacheOutput(DeliveryOutputCachePolicy.Instance);
