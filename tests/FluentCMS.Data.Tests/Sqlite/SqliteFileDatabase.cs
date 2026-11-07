@@ -140,6 +140,12 @@ internal sealed class SqliteFileDatabase : IDisposable
             inner.ConfigureSystemMigrations(options);
             options.AddInterceptors(Interceptor);
         }
+
+        public void ConfigurePluginMigrations(DbContextOptionsBuilder options, Assembly migrationsAssembly, string historyTable)
+        {
+            inner.ConfigurePluginMigrations(options, migrationsAssembly, historyTable);
+            options.AddInterceptors(Interceptor);
+        }
     }
 
     private sealed class NoFlush : DbConnectionInterceptor

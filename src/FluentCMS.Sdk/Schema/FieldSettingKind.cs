@@ -20,4 +20,11 @@ public enum FieldSettingKind
 
     /// <summary>A list of strings.</summary>
     StringList,
+
+    /// <summary>
+    /// The name of another field of the same type, component or block, such as the field a value is derived from. Schema
+    /// validation refuses one that names no sibling, and schema introspection leaves the setting out for a caller who cannot
+    /// read that field.
+    /// </summary>
+    FieldReference,
 }

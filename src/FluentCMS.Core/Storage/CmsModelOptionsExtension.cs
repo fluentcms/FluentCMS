@@ -1,3 +1,4 @@
+using FluentCMS.Core.Plugins;
 using FluentCMS.Schema;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
@@ -6,9 +7,12 @@ namespace FluentCMS.Core.Storage;
 
 // Carries the schema to CmsDbContext through its options, so the context has the one constructor that
 // AddDbContext, pooling and design-time factories expect.
-internal sealed class CmsModelOptionsExtension(SchemaModel schema, IStorageConventions conventions, IJsonSqlDialect? jsonDialect) : IDbContextOptionsExtension
+internal sealed class CmsModelOptionsExtension(SchemaModel schema, IStorageConventions conventions, IJsonSqlDialect? jsonDialect, PluginModels? plugins = null) : IDbContextOptionsExtension
 {
     private ExtensionInfo? _info;
+
+    // The plugins' tables, which CmsDbContext maps and leaves to the plugins' own streams.
+    public PluginModels Plugins { get; } = plugins ?? PluginModels.None;
 
     public SchemaModel Schema { get; } = schema;
 

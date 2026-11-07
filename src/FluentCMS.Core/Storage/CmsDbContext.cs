@@ -30,6 +30,8 @@ public sealed class CmsDbContext : DbContext
 
     internal string? JsonDialectKey => _model.JsonDialect?.GetType().FullName;
 
+    internal string PluginModelKey => _model.Plugins.Key;
+
     // The rows of a content table, such as cms_article or cms_article_i18n.
     public DbSet<Dictionary<string, object>> Rows(string table) => Set<Dictionary<string, object>>(table);
 
@@ -39,9 +41,12 @@ public sealed class CmsDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         new SystemModelBuilder(_model.Conventions).Apply(modelBuilder);
+        foreach (var contributor in _model.Plugins.Contributors)
+        {
+            contributor.Configure(modelBuilder);
+        }
 
-        // What is mapped before the content tables belongs to another stream: the system tables, and the plugin
-        // tables once the plugin host of M3 adds them here.
+        // What is mapped before the content tables belongs to another stream: the system tables and the plugins' tables.
         foreach (var entity in modelBuilder.Model.GetEntityTypes())
         {
             entity.SetIsTableExcludedFromMigrations(true);

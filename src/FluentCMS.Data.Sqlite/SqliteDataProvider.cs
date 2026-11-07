@@ -29,6 +29,12 @@ public sealed class SqliteDataProvider(string connectionString) : IDataProvider
             .MigrationsHistoryTable(CmsDbContext.HistoryTable))
             .AddInterceptors(WriteInterceptors);
 
+    public void ConfigurePluginMigrations(DbContextOptionsBuilder options, Assembly migrationsAssembly, string historyTable) =>
+        options.UseSqlite(connectionString, sqlite => sqlite
+            .MigrationsAssembly(migrationsAssembly)
+            .MigrationsHistoryTable(historyTable))
+            .AddInterceptors(WriteInterceptors);
+
     public void ConfigureSystemMigrations(DbContextOptionsBuilder options) =>
         options.UseSqlite(connectionString, sqlite => sqlite
             .MigrationsAssembly(typeof(SqliteDataProvider).Assembly)

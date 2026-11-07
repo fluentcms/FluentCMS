@@ -155,6 +155,24 @@ public class SchemaIntrospectionTests
         Field(Part(described.Components, "card"), "hint").VisibleWhen!.Field.ShouldBe("link");
     }
 
+    [Fact]
+    public async Task AFieldReferenceOfAPluginTypeThatReadsAFieldOutsideTheAllowListIsLeftOut()
+    {
+        var model = FieldTypes.ReferenceFieldType.Builder()
+            .AddCollection("memo", type => type
+                .Field("title", "text")
+                .Field("body", "text")
+                .Field("summary", FieldTypes.ReferenceFieldType.TypeName, field => field.Setting(FieldTypes.ReferenceFieldType.From, "title"))
+                .Field("teaser", FieldTypes.ReferenceFieldType.TypeName, field => field.Setting(FieldTypes.ReferenceFieldType.From, "body")))
+            .Build();
+
+        var described = await DescribeAsync(model, new EffectiveGrant("content.memo.read", new PermissionConstraints { Fields = ["body", "summary", "teaser"] }, null));
+
+        var memo = Type(described, "memo");
+        Field(memo, "summary").Settings.ShouldBeEmpty();
+        Field(memo, "teaser").Settings[FieldTypes.ReferenceFieldType.From].ShouldBe("body");
+    }
+
     // Without one of its clauses an "or" would hold less often and an "and" more often than the condition declared.
     [Fact]
     public async Task AConditionGoesWholeWhenOnlyOneOfItsClausesReadsAFieldThatWent()

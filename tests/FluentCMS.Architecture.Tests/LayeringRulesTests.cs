@@ -7,10 +7,11 @@ using static ArchUnitNET.Fluent.ArchRuleDefinition;
 
 namespace FluentCMS.Architecture.Tests;
 
-// The four rules of section 3.4 of the backend technical specification, one test each.
+// The rules of section 3.4 of the backend technical specification, one test each.
 public class LayeringRulesTests
 {
     private const string Sdk = "FluentCMS.Sdk";
+    private const string PluginAbstractions = "FluentCMS.Plugins.Abstractions";
     private const string PluginPrefix = "FluentCMS.Plugins.";
 
     private const string ApiNamespace = "FluentCMS.Core.Api";
@@ -40,10 +41,10 @@ public class LayeringRulesTests
     }
 
     [Fact]
-    public void PluginsReferenceOnlyTheSdkAmongFluentCmsProjects()
+    public void PluginsReferenceOnlyTheContractPackagesAmongFluentCmsProjects()
     {
         var plugins = ProjectFile.SourceProjects
-            .Where(project => project.Name.StartsWith(PluginPrefix, StringComparison.Ordinal))
+            .Where(project => project.Name.StartsWith(PluginPrefix, StringComparison.Ordinal) && project.Name != PluginAbstractions)
             .ToList();
 
         plugins.ShouldNotBeEmpty();
@@ -70,6 +71,24 @@ public class LayeringRulesTests
             .ToList();
 
         violations.ShouldBeEmpty();
+    }
+
+    // The contracts of ADR 0003 that need EF Core or ASP.NET Core, which the framework reference brings.
+    [Fact]
+    public void PluginAbstractionsReferenceOnlyTheSdkAndEfCore()
+    {
+        var abstractions = ProjectFile.SourceProjects.Single(project => project.Name == PluginAbstractions);
+
+        var violations = abstractions.ProjectReferences
+            .Where(reference => reference != Sdk)
+            .Select(reference => $"{PluginAbstractions} references project {reference}")
+            .Concat(abstractions.PackageReferences
+                .Where(package => !package.DevelopmentOnly && !package.Name.StartsWith("Microsoft.EntityFrameworkCore", StringComparison.Ordinal) && !IsExtensionsAbstractions(package.Name))
+                .Select(package => $"{PluginAbstractions} references package {package.Name}"))
+            .ToList();
+
+        violations.ShouldBeEmpty();
+        abstractions.ProjectReferences.ShouldContain(Sdk);
     }
 
     [Fact]
@@ -168,6 +187,7 @@ public class LayeringRulesTests
     private static IEnumerable<string> AllowedPluginReferences(ProjectFile plugin, IReadOnlyList<ProjectFile> plugins)
     {
         yield return Sdk;
+        yield return PluginAbstractions;
 
         var parent = plugin.Name[..plugin.Name.LastIndexOf('.')];
         if (plugins.Any(other => other.Name == parent))

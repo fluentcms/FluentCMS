@@ -25,6 +25,11 @@ public sealed class PostgreSqlDataProvider(string connectionString) : IDataProvi
             .MigrationsAssembly(migrationsAssembly)
             .MigrationsHistoryTable(CmsDbContext.HistoryTable));
 
+    public void ConfigurePluginMigrations(DbContextOptionsBuilder options, Assembly migrationsAssembly, string historyTable) =>
+        options.UseNpgsql(connectionString, npgsql => npgsql
+            .MigrationsAssembly(migrationsAssembly)
+            .MigrationsHistoryTable(historyTable));
+
     public void ConfigureSystemMigrations(DbContextOptionsBuilder options) =>
         options.UseNpgsql(connectionString, npgsql => npgsql
             .MigrationsAssembly(typeof(PostgreSqlDataProvider).Assembly)
