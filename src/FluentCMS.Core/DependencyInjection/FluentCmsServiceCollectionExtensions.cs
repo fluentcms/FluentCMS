@@ -238,6 +238,8 @@ public static class FluentCmsServiceCollectionExtensions
         builder.Jobs.Options.Queues.TryAdd(OutboxDrainJob.Queue, 1);
         builder.Jobs.AddJob<OutboxDrainJob, OutboxDrainPayload>(OutboxDrainJob.Type);
         services.AddFluentCmsOptions(OutboxSection, EventErrorCodes.InvalidOutboxOptions, builder.Events.Outbox, outbox => outbox.Validate());
+        builder.Events.Handlers.Validate();
+        services.AddFluentCmsOptions(EventHandlerOptions.Section, HostErrorCodes.InvalidOption, builder.Events.Handlers, handlers => handlers.Validate());
         services.AddSingleton<OutboxRegistry>();
         services.AddSingleton<OutboxKick>();
         services.AddSingleton<OutboxRows>();
@@ -247,6 +249,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddScoped<EventDispatcher>();
         services.AddScoped<OutboxWriter>();
         services.AddScoped<EventBuffer>();
+        services.AddScoped<PluginTransactions>();
         services.AddScoped<ITransactionProbe, ContentTransactionProbe>();
         services.TryAddScoped<IEventBus, EventBus>();
         services.AddScoped<EntryChangeSink>();

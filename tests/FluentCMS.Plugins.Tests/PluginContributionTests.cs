@@ -11,7 +11,9 @@ using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
+using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Data.Sqlite;
+using FluentCMS.Events;
 using FluentCMS.Jobs;
 using FluentCMS.Plugins.Sample;
 using FluentCMS.Schema;
@@ -306,6 +308,40 @@ public sealed class PluginContributionTests
         item.Action.ShouldBe("sample.note_added");
         item.TargetLabel.ShouldBe("from a job");
         item.Origin.ShouldBe(Origin.Job);
+    }
+
+    // #2885: the end of a plugin's own transaction cannot be seen, so a publish inside it is refused as on a core context.
+    [Fact]
+    public async Task APublishInsideATransactionOnThePluginsContextIsRefusedAndLeavesNoOutboxRow()
+    {
+        var calls = new PluginCalls();
+        await using var host = new FluentCmsTestHost().WithServices(services => services.AddSingleton(calls));
+
+        await using (var scope = host.Services.CreateAsyncScope())
+        {
+            var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<SamplePlugin>>();
+            var events = scope.ServiceProvider.GetRequiredService<IEventBus>();
+            await using (var transaction = await database.Database.BeginTransactionAsync(Token))
+            {
+                var note = new SampleNote { Id = Guid.CreateVersion7(), Text = "rolled back", CreatedAt = host.Time.GetUtcNow() };
+                database.Add(note);
+                await database.SaveChangesAsync(Token);
+
+                var refused = await Should.ThrowAsync<InvalidOperationException>(async () => await events.PublishAsync(new SampleNoteAdded(note.Id, note.Text), Token));
+                refused.Message.ShouldStartWith("FCMS2602");
+                await transaction.RollbackAsync(Token);
+            }
+
+            await events.PublishAsync(new SampleNoteAdded(Guid.CreateVersion7(), "after the transaction"), Token);
+        }
+
+        await using var read = host.Services.CreateAsyncScope();
+        (await read.ServiceProvider.GetRequiredService<PluginDbContext<SamplePlugin>>().Set<SampleNote>().CountAsync(Token)).ShouldBe(0);
+        var rows = await read.ServiceProvider.GetRequiredService<SystemDbContext>().Set<OutboxMessage>().AsNoTracking().ToListAsync(Token);
+        rows.ShouldNotBeEmpty();
+        rows.ShouldAllBe(row => row.Payload.Contains("after the transaction"));
+        calls.All.ShouldContain("sample.event:after the transaction");
+        calls.All.ShouldNotContain("sample.event:rolled back");
     }
 
     [Fact]

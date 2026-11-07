@@ -31,6 +31,7 @@ public static class FluentCmsTelemetry
         public const string Cache = "fluentcms.cache";
         public const string Result = "fluentcms.result";
         public const string Code = "fluentcms.code";
+        public const string Handler = "fluentcms.handler";
     }
 
     public static class Instruments
@@ -41,6 +42,7 @@ public static class FluentCmsTelemetry
         public const string CacheRequests = "fluentcms.cache.requests";
         public const string CacheHitRatio = "fluentcms.cache.hit_ratio";
         public const string ApiKeysRefused = "fluentcms.api_keys.refused";
+        public const string EventHandlerDuration = "fluentcms.event.handler.duration";
     }
 
     internal static readonly Counter<long> Requests = Meter.CreateCounter<long>(
@@ -51,6 +53,9 @@ public static class FluentCmsTelemetry
 
     internal static readonly Histogram<double> JobLatency = Meter.CreateHistogram<double>(
         Instruments.JobLatency, "s", "How long one attempt of a job takes from the claim to the end, by job type and outcome.");
+
+    internal static readonly Histogram<double> EventHandlerDuration = Meter.CreateHistogram<double>(
+        Instruments.EventHandlerDuration, "s", "How long an in-process event handler takes after the commit, by event type, handler and outcome (succeeded, failed or timed-out).");
 
     internal static readonly Counter<long> CacheRequests = Meter.CreateCounter<long>(
         Instruments.CacheRequests, "{request}", "Lookups in a cache, by cache and result (hit or miss).");

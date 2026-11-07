@@ -5,7 +5,8 @@ namespace FluentCMS.Plugins;
 /// <summary>
 /// The context of a plugin's tables: the one its migrations name in <c>[DbContext(typeof(PluginDbContext&lt;MyPlugin&gt;))]</c>,
 /// with the history table <c>cms_{plugin}__migrations</c>, and the one its code queries them through. Core configures it with
-/// the host's database and the plugin's model contributors; a plugin resolves it from the services of a scope.
+/// the host's database and the plugin's model contributors; a plugin resolves it from the services of a scope. Core sees its
+/// transactions: <c>IEventBus.PublishAsync</c> inside one that is open is refused, so a plugin publishes after it commits.
 /// </summary>
 /// <typeparam name="TPlugin">The plugin the context belongs to.</typeparam>
 public sealed class PluginDbContext<TPlugin> : DbContext, IPluginModelKey

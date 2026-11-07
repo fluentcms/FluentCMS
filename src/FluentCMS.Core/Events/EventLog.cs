@@ -43,6 +43,15 @@ internal static partial class EventLog
     [LoggerMessage(EventId = 9614, Level = LogLevel.Warning, Message = "The handler of outbox delivery {Id} to {Handler} did not start within {Timeout}, so the delivery was put back without using an attempt; a later drain delivers it.")]
     public static partial void HandOffAbandoned(ILogger logger, Guid id, string handler, TimeSpan timeout);
 
+    [LoggerMessage(EventId = 9615, Level = LogLevel.Warning, Message = "The handler {Handler} of {EventType} {EventId} did not finish within {Timeout}; its token was cancelled and the caller went on without it.")]
+    public static partial void HandlerAbandoned(ILogger logger, string handler, string eventType, Guid eventId, TimeSpan timeout);
+
+    [LoggerMessage(EventId = 9616, Level = LogLevel.Warning, Message = "The handler {Handler} of {EventType} {EventId} took {Duration}, which the caller waited for.")]
+    public static partial void HandlerSlow(ILogger logger, string handler, string eventType, Guid eventId, TimeSpan duration);
+
+    [LoggerMessage(EventId = 9617, Level = LogLevel.Warning, Message = "The handler {Handler} of {EventType} {EventId} failed after it was abandoned; the write stands.")]
+    public static partial void AbandonedHandlerFailed(ILogger logger, Exception exception, string handler, string eventType, Guid eventId);
+
     [LoggerMessage(EventId = 9610, Level = LogLevel.Error, Message = "The drain of the outbox hit an error.")]
     public static partial void DrainFailed(ILogger logger, Exception exception);
 }
