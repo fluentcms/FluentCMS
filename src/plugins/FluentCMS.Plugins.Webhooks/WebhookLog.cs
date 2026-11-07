@@ -28,4 +28,10 @@ internal static partial class WebhookLog
 
     [LoggerMessage(EventId = 9247, Level = LogLevel.Warning, Message = "Webhook {WebhookId} delivery {DeliveryId} attempt {Attempt}, claimed at {ClaimedAt:u}, was never recorded and counts as failed.")]
     public static partial void TakenOver(ILogger logger, Guid webhookId, Guid deliveryId, int attempt, DateTimeOffset claimedAt);
+
+    [LoggerMessage(EventId = 9248, Level = LogLevel.Information, Message = "Protected the headers of {Count} webhooks that were stored before headers were protected.")]
+    public static partial void HeadersProtected(ILogger logger, int count);
+
+    [LoggerMessage(EventId = 9249, Level = LogLevel.Error, Message = "Could not protect the headers of the webhooks stored before headers were protected; they stay readable in the database until it succeeds or the webhook is saved.")]
+    public static partial void HeadersNotProtected(ILogger logger, Exception exception);
 }

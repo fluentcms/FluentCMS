@@ -20,14 +20,14 @@ public sealed class WebhooksPlugin : IPlugin
         plugin.Services.AddOptions<WebhooksOptions>()
             .BindConfiguration(WebhooksOptions.Section)
             .Validate(
-                options => options.Timeout > TimeSpan.Zero && options.Timeout <= TimeSpan.FromMinutes(5) && options.Retention > TimeSpan.Zero && options.Workers >= 0,
-                $"{WebhooksOptions.Section}: Timeout must be positive and at most five minutes, Retention positive, and Workers not negative.");
+                options => options.Timeout > TimeSpan.Zero && options.Timeout <= TimeSpan.FromMinutes(5) && options.Retention > TimeSpan.Zero && options.Workers >= 0 && options.SecretOverlap >= TimeSpan.Zero,
+                $"{WebhooksOptions.Section}: Timeout must be positive and at most five minutes, Retention positive, and Workers and SecretOverlap not negative.");
         plugin.Services.AddSingleton<WebhookSender>();
         plugin.Services.AddSingleton<WebhookSigning>();
         plugin.Services.AddScoped<WebhookService>();
         plugin.Services.AddScoped<WebhookDispatcher>();
         plugin.Services.AddSingleton<IInsecureDefaultSource, WebhookInsecureDefaults>();
-        plugin.Services.AddHostedService<WebhookRetentionSchedule>();
+        plugin.Services.AddHostedService<WebhookStartup>();
 
         plugin
             .AddPermissions<WebhookPermissions>()

@@ -21,6 +21,9 @@ public sealed class WebhooksOptions
 
     // Workers of the webhooks queue on this instance, unless FluentCms:Jobs:Queues:webhooks sets them.
     public int Workers { get; set; } = 2;
+
+    // How long the secret a rotation replaces keeps signing deliveries beside the new one. Zero ends it at the rotation.
+    public TimeSpan SecretOverlap { get; set; } = TimeSpan.FromHours(24);
 }
 
 internal sealed class WebhookInsecureDefaults(IOptions<WebhooksOptions> options, IHostEnvironment environment) : IInsecureDefaultSource

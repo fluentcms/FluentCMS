@@ -38,6 +38,10 @@ public sealed record WebhookInfo(
     // Only in the answer of a create that generated the secret.
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Secret { get; init; }
+
+    // While the secret that the last rotation replaced still signs deliveries.
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public DateTimeOffset? PreviousSecretExpiresAt { get; init; }
 }
 
 public sealed record DeliveryInfo(
@@ -58,7 +62,7 @@ public sealed record DeliveryInfo(
 public sealed record DeliveryPage(IReadOnlyList<DeliveryInfo> Items, long Total, int Page, int PageSize);
 
 // The webhooks of the site of the current operation. Every call needs webhooks.manage in that site; a webhook of another
-// site is not found.
+// site is not found. Header values are secrets like the webhook's own: no answer holds them, the one to a create included.
 internal sealed partial class WebhookService(
     PluginDbContext<WebhooksPlugin> database,
     IPermissionChecker permissions,
@@ -74,6 +78,9 @@ internal sealed partial class WebhookService(
     public const int MaxPageSize = 100;
     public const int MaxHeaders = 20;
     public const int HeaderValueMaxLength = 1024;
+
+    // What an answer gives for the value of every header. Sent back in a PUT, it keeps the value stored under that name.
+    public const string RedactedValue = "***";
 
     private static readonly HashSet<string> ReservedHeaders = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -98,7 +105,7 @@ internal sealed partial class WebhookService(
         ArgumentNullException.ThrowIfNull(request);
 
         var site = await RequireAsync(cancellationToken);
-        var valid = await ValidateAsync(request, cancellationToken);
+        var valid = await ValidateAsync(request, new Dictionary<string, string>(), cancellationToken);
         var generated = request.Secret is null ? WebhookSigning.NewSecret() : null;
         var actor = Operation().AuditPrincipal.Id;
         var now = time.GetUtcNow();
@@ -112,7 +119,7 @@ internal sealed partial class WebhookService(
             UpdatedAt = now,
             UpdatedBy = actor,
         };
-        valid.ApplyTo(webhook);
+        valid.ApplyTo(webhook, signing);
 
         database.Add(webhook);
         await SaveAsync(site, webhook, cancellationToken);
@@ -120,21 +127,34 @@ internal sealed partial class WebhookService(
         return Info(webhook) with { Secret = generated };
     }
 
-    // The whole webhook; a request without a secret keeps the one that is stored.
+    // The whole webhook; a request without a secret keeps the one that is stored. A new secret keeps the one it replaces
+    // signing beside it for SecretOverlap, and every write drops a replaced secret whose overlap has ended. Writing
+    // protects headers that a row from before their protection holds in plain JSON.
     public async Task<WebhookInfo> UpdateAsync(Guid id, WebhookRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
 
         var site = await RequireAsync(cancellationToken);
         var webhook = await FindAsync(site, id, tracked: true, cancellationToken);
-        var valid = await ValidateAsync(request, cancellationToken);
-        valid.ApplyTo(webhook);
+        var valid = await ValidateAsync(request, signing.TryUnprotectHeaders(webhook.Headers) ?? new Dictionary<string, string>(), cancellationToken);
+        valid.ApplyTo(webhook, signing);
+
+        var now = time.GetUtcNow();
+        if (webhook.PreviousSecretExpiresAt <= now)
+        {
+            webhook.PreviousSecret = null;
+            webhook.PreviousSecretExpiresAt = null;
+        }
+
         if (request.Secret is not null)
         {
+            var overlap = options.Value.SecretOverlap;
+            webhook.PreviousSecret = overlap > TimeSpan.Zero ? webhook.Secret : null;
+            webhook.PreviousSecretExpiresAt = overlap > TimeSpan.Zero ? now + overlap : null;
             webhook.Secret = signing.Protect(request.Secret);
         }
 
-        webhook.UpdatedAt = time.GetUtcNow();
+        webhook.UpdatedAt = now;
         webhook.UpdatedBy = Operation().AuditPrincipal.Id;
 
         await SaveAsync(site, webhook, cancellationToken);
@@ -252,7 +272,8 @@ internal sealed partial class WebhookService(
 
     private static PluginException NameTaken(string name) => new(WebhookErrorCodes.NameTaken, $"The site has a webhook named '{name}'.");
 
-    private async Task<ValidRequest> ValidateAsync(WebhookRequest request, CancellationToken cancellationToken)
+    // Stored holds the headers of the webhook being replaced, whose values a redacted value keeps.
+    private async Task<ValidRequest> ValidateAsync(WebhookRequest request, IReadOnlyDictionary<string, string> stored, CancellationToken cancellationToken)
     {
         List<ValidationError> errors = [];
         var name = request.Name?.Trim();
@@ -305,11 +326,13 @@ internal sealed partial class WebhookService(
         }
 
         var named = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var (header, value) in headers)
+        foreach (var (header, given) in headers)
         {
+            var value = given == RedactedValue && stored.FirstOrDefault(pair => string.Equals(pair.Key, header, StringComparison.OrdinalIgnoreCase)).Value is { } kept ? kept : given;
             var problem = !HeaderName().IsMatch(header) ? "is not a header name"
                 : !named.TryAdd(header, value) ? "is named twice"
                 : ReservedHeaders.Contains(header) || header.StartsWith("X-FluentCMS-", StringComparison.OrdinalIgnoreCase) ? "is set by the delivery"
+                : value == RedactedValue ? $"has no stored value for '{RedactedValue}' to keep, so it needs its value"
                 : value is null || value.Length > HeaderValueMaxLength || value.AsSpan().IndexOfAny('\r', '\n', '\0') >= 0 ? $"needs a value of at most {HeaderValueMaxLength} characters on one line"
                 : null;
             if (problem is not null)
@@ -333,19 +356,24 @@ internal sealed partial class WebhookService(
 
     private static ValidationException Invalid(string path, string message) => new([new ValidationError(path, WebhookErrorCodes.InvalidField, message)]);
 
-    private static WebhookInfo Info(Webhook webhook) => new(
+    // The names of the headers, each with the redacted value; none when the key ring cannot read them, as a delivery then
+    // reports.
+    private WebhookInfo Info(Webhook webhook) => new(
         webhook.Id,
         webhook.SiteId,
         webhook.Name,
         webhook.Url,
         WebhookJson.List(webhook.Events),
         WebhookJson.List(webhook.Types),
-        WebhookJson.Map(webhook.Headers),
+        (signing.TryUnprotectHeaders(webhook.Headers) ?? new Dictionary<string, string>()).ToDictionary(header => header.Key, _ => RedactedValue),
         webhook.Enabled,
         webhook.CreatedAt,
         webhook.CreatedBy,
         webhook.UpdatedAt,
-        webhook.UpdatedBy);
+        webhook.UpdatedBy)
+    {
+        PreviousSecretExpiresAt = webhook.PreviousSecretExpiresAt > time.GetUtcNow() ? webhook.PreviousSecretExpiresAt : null,
+    };
 
     private static DeliveryInfo Info(WebhookDelivery delivery) => new(
         delivery.Id,
@@ -368,13 +396,13 @@ internal sealed partial class WebhookService(
 
     private sealed record ValidRequest(string Name, string Url, List<string> Events, List<string> Types, Dictionary<string, string> Headers, bool Enabled)
     {
-        public void ApplyTo(Webhook webhook)
+        public void ApplyTo(Webhook webhook, WebhookSigning signing)
         {
             webhook.Name = Name;
             webhook.Url = Url;
             webhook.Events = WebhookJson.Of(Events);
             webhook.Types = WebhookJson.Of(Types);
-            webhook.Headers = WebhookJson.Of(Headers);
+            webhook.Headers = signing.ProtectHeaders(Headers);
             webhook.Enabled = Enabled;
         }
     }

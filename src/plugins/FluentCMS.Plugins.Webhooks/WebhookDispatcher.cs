@@ -59,10 +59,13 @@ internal sealed class WebhookDispatcher(PluginDbContext<WebhooksPlugin> database
     }
 }
 
-// The body of a delivery: { id, event, occurredAt, site, origin, actor, data, links }. Links are relative to the root of the
-// instance, behind its path base.
+// The body of a delivery: { version, id, event, occurredAt, site, origin, actor, data, links }. Links are relative to the
+// root of the instance, behind its path base.
 internal static class WebhookPayload
 {
+    // Changes only with a change of the body's shape that a receiver of the current version could misread.
+    public const int Version = 1;
+
     private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web)
     {
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
@@ -91,9 +94,9 @@ internal static class WebhookPayload
     }
 
     private static string Serialize(Guid id, string name, DateTimeOffset occurredAt, Guid site, Origin origin, Actor actor, object data, object links) =>
-        JsonSerializer.Serialize(new Body(id, name, occurredAt, site, origin, actor, data, links), Options);
+        JsonSerializer.Serialize(new Body(Version, id, name, occurredAt, site, origin, actor, data, links), Options);
 
-    private sealed record Body(Guid Id, string Event, DateTimeOffset OccurredAt, Guid Site, Origin Origin, Actor Actor, object Data, object Links);
+    private sealed record Body(int Version, Guid Id, string Event, DateTimeOffset OccurredAt, Guid Site, Origin Origin, Actor Actor, object Data, object Links);
 
     private sealed record Actor(PrincipalKind Kind, Guid Id, string Name);
 

@@ -51,6 +51,14 @@ namespace FluentCMS.Plugins.Webhooks.Migrations
                         .HasColumnType("TEXT")
                         .HasColumnName("name");
 
+                    b.Property<string>("PreviousSecret")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("previous_secret");
+
+                    b.Property<long?>("PreviousSecretExpiresAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("previous_secret_expires_at");
+
                     b.Property<string>("Secret")
                         .IsRequired()
                         .HasColumnType("TEXT")

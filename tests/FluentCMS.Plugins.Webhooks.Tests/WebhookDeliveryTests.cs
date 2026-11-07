@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
 using System.Security.Cryptography;
@@ -39,10 +38,14 @@ public sealed class WebhookDeliveryTests
         request.Headers[WebhookSender.EventHeader].ShouldBe("content.published");
         var delivery = (await DeliveriesAsync(host)).ShouldHaveSingleItem();
         request.Headers[WebhookSender.DeliveryHeader].ShouldBe(delivery.DeliveryId.ToString("D"));
-        Verifies(request.Headers[WebhookSender.SignatureHeader], Secret, request.Body).ShouldBeTrue();
-        Verifies(request.Headers[WebhookSender.SignatureHeader], "another-secret-of-16", request.Body).ShouldBeFalse();
+        var signature = request.Headers[WebhookSender.SignatureHeader];
+        Signatures(signature).ShouldBe(1);
+        Verifies(signature, Secret, request.Body, host.Time.GetUtcNow()).ShouldBeTrue();
+        Verifies(signature, "another-secret-of-16", request.Body, host.Time.GetUtcNow()).ShouldBeFalse();
+        Verifies(signature, Secret, request.Body, host.Time.GetUtcNow().AddMinutes(6)).ShouldBeFalse("a receiver refuses a replay after five minutes");
 
         var body = JsonNode.Parse(request.Body)!;
+        body["version"]!.GetValue<int>().ShouldBe(1);
         body["event"]!.GetValue<string>().ShouldBe("content.published");
         Guid.Parse(body["id"]!.GetValue<string>()).ShouldBe(delivery.EventId);
         Guid.Parse(body["site"]!.GetValue<string>()).ShouldBe(DefaultSite.Id);
@@ -191,6 +194,7 @@ public sealed class WebhookDeliveryTests
         receiver.Requests.Count.ShouldBe(3);
         receiver.Requests[2].Headers[WebhookSender.EventHeader].ShouldBe("ping");
         JsonNode.Parse(receiver.Requests[2].Body)!["event"]!.GetValue<string>().ShouldBe("ping");
+        JsonNode.Parse(receiver.Requests[2].Body)!["version"]!.GetValue<int>().ShouldBe(1);
 
         using var missing = await client.PostAsync(new Uri($"{root}/deliveries/{Guid.CreateVersion7():D}/redeliver", UriKind.Relative), null, Token);
         missing.StatusCode.ShouldBe(HttpStatusCode.NotFound);
@@ -233,20 +237,15 @@ public sealed class WebhookDeliveryTests
     }
 
     [Fact]
-    public void TheSignatureIsTheHmacOfTheTimestampAndTheBody()
+    public void TheSignatureIsTheHmacOfTheTimestampAndTheBodyWithAV1ForEachSecret()
     {
-        var signature = WebhookSigning.Signature("secret-of-the-hook", 1_700_000_000, """{"id":1}""");
+        var one = WebhookSigning.Signature(1_700_000_000, """{"id":1}""", "secret-of-the-hook");
+        var two = WebhookSigning.Signature(1_700_000_000, """{"id":1}""", "secret-of-the-hook", "the-secret-it-replaced");
 
-        var expected = Convert.ToHexStringLower(HMACSHA256.HashData(Encoding.UTF8.GetBytes("secret-of-the-hook"), Encoding.UTF8.GetBytes("""1700000000.{"id":1}""")));
-        signature.ShouldBe($"t=1700000000,v1={expected}");
-    }
+        var expected = Hmac("secret-of-the-hook");
+        one.ShouldBe($"t=1700000000,v1={expected}");
+        two.ShouldBe($"t=1700000000,v1={expected},v1={Hmac("the-secret-it-replaced")}");
 
-    // What a receiver does: recompute the HMAC over t + "." + body and compare in constant time.
-    private static bool Verifies(string header, string secret, string body)
-    {
-        var parts = header.Split(',').Select(part => part.Split('=', 2)).ToDictionary(part => part[0], part => part[1]);
-        long.Parse(parts["t"], CultureInfo.InvariantCulture).ShouldBeGreaterThan(0);
-        var expected = HMACSHA256.HashData(Encoding.UTF8.GetBytes(secret), Encoding.UTF8.GetBytes(parts["t"] + "." + body));
-        return CryptographicOperations.FixedTimeEquals(expected, Convert.FromHexString(parts["v1"]));
+        static string Hmac(string secret) => Convert.ToHexStringLower(HMACSHA256.HashData(Encoding.UTF8.GetBytes(secret), Encoding.UTF8.GetBytes("""1700000000.{"id":1}""")));
     }
 }
