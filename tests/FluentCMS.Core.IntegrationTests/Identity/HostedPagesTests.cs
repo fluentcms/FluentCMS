@@ -158,6 +158,7 @@ public sealed partial class HostedPagesTests : IAsyncDisposable
         await using (var scope = _host.Services.CreateAsyncScope())
         {
             var role = await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<Role>().AsNoTracking().SingleAsync(role => role.Name == BuiltInRoles.EditorName && role.SiteId == null, Token);
+            using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, new SiteId(DefaultSite.Id));
             await scope.ServiceProvider.GetRequiredService<InvitationService>().InviteAsync("ada@example.com", [role.Id], new Uri("https://localhost/account/accept-invitation"), Token);
         }
 

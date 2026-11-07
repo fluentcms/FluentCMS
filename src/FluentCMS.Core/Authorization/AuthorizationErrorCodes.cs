@@ -8,4 +8,5 @@ internal static class AuthorizationErrorCodes
     public const string DuplicateRowRule = "FCMS1404";
     public const string InvalidRowRule = "FCMS1405";
     public const string FieldNotWritable = "FCMS1406";
+    public const string NoOperation = "FCMS1408";
 }

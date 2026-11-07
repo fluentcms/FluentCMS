@@ -2,12 +2,15 @@ using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
+using FluentCMS.Content;
 using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Identity.ApiKeys;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.IntegrationTests.Hosting;
+using FluentCMS.Core.Sites;
+using FluentCMS.Sites;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -396,6 +399,7 @@ public sealed class HttpProtectionHardeningTests : IAsyncDisposable
     private async Task<string> CreateKey(string name, int? rateLimit)
     {
         await using var scope = _app!.Services.CreateAsyncScope();
+        using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, new SiteId(DefaultSite.Id));
         var keys = scope.ServiceProvider.GetRequiredService<ApiKeyService>();
         var created = await keys.CreateAsync(new ApiKeyRequest(name, ApiKeyClass.Delivery, BuiltInRoles.Public) { RateLimit = rateLimit }, Token);
         return created.Secret;

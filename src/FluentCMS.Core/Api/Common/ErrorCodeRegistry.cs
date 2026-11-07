@@ -71,6 +71,7 @@ public static class ErrorCodeRegistry
         Startup(AuthorizationErrorCodes.InvalidRowRule, "Invalid row rule"),
         Invalid(AuthorizationErrorCodes.FieldNotWritable, "Field not writable"),
         Invalid(ContentErrorCodes.DuplicateBlockId, "Duplicate block id"),
+        Startup(AuthorizationErrorCodes.NoOperation, "No operation context"),
 
         // 15xx plugin host and plugin contributions, found when the host starts, and per-site enablement; codes not listed up to 1599 are kept for later plugin work
         Startup(PluginErrorCodes.InvalidPlugin, "Invalid plugin"),
