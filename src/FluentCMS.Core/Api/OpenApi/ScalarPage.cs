@@ -10,7 +10,7 @@ namespace FluentCMS.Core.Api.OpenApi;
 // scripts: the bundle and the helper that Scalar.AspNetCore serves from its embedded assets beside the page, and the inline
 // script that starts it, by a nonce made per request. Its styles are its own too, though the bundle injects them inline.
 // It reads the document from its own origin and sends requests to the document's server, which is the public origin when
-// one is set. The CDN fonts, the telemetry and the AI chat would leave the origin, so they are off.
+// one is set. The CDN fonts, the telemetry and the agent chat would leave the origin, so they are off.
 internal static class ScalarPage
 {
     public static readonly ContentSecurityPolicyMetadata Policy = new(PolicyFor);
