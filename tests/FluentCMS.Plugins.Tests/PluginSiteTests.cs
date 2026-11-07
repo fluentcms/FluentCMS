@@ -262,6 +262,7 @@ public sealed class PluginSiteTests
     private static async Task SetStateAsync(FluentCmsTestHost host, Guid site, bool enabled)
     {
         await using var scope = host.Services.CreateAsyncScope();
+        using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, new SiteId(DefaultSite.Id));
         await scope.ServiceProvider.GetRequiredService<PluginAdministration>().SetEnabledAsync("sample", site, enabled, Token);
     }
 

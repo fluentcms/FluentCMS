@@ -7,18 +7,13 @@ namespace FluentCMS.Core.Authorization;
 internal sealed class ManagementAccessDeniedException(string message) : Exception(message);
 
 // The permission checks of the services the Management API calls: users, roles, keys, sites, jobs and the activity log.
-// A null site is the instance as a whole, which only a grant with no site limit reaches. Without an operation the call is
-// the host's own code, which these services already take as the system for their audit columns.
+// A null site is the instance as a whole, which only a grant with no site limit reaches. Without an operation nothing is
+// allowed: host code that means to act as the system says so with SystemOperation.Begin, the one way to skip the checks.
 internal sealed class ManagementAuthority(IAuthorizationEvaluator evaluator, IOperationContextAccessor accessor)
 {
     public async ValueTask<bool> AllowsAsync(string permission, Guid? site, CancellationToken cancellationToken)
     {
-        if (accessor.Current is not { } operation)
-        {
-            return true;
-        }
-
-        var permissions = await evaluator.ResolveAsync(operation, cancellationToken);
+        var permissions = await evaluator.ResolveAsync(Operation(), cancellationToken);
         return permissions.Allows(permission, Target(site));
     }
 
@@ -37,16 +32,15 @@ internal sealed class ManagementAuthority(IAuthorizationEvaluator evaluator, IOp
     {
         ArgumentNullException.ThrowIfNull(grants);
 
-        if (accessor.Current is not { } operation)
-        {
-            return true;
-        }
-
-        var permissions = await evaluator.ResolveAsync(operation, cancellationToken);
+        var permissions = await evaluator.ResolveAsync(Operation(), cancellationToken);
         return grants.SelectMany(grant => GrantReach.Of(grant.Pattern, grant.Constraints, roleSite, binding)).All(permissions.Covers);
     }
 
     public SiteId? CurrentSite => accessor.Current?.Site;
+
+    // Thrown rather than answered false, so that code which forgot its operation fails where it runs and not as a 403.
+    private OperationContext Operation() => accessor.Current ?? throw new InvalidOperationException(
+        $"{AuthorizationErrorCodes.NoOperation}: a permission was checked with no current operation. Host code, a job or a seed that acts as the system runs inside SystemOperation.Begin.");
 
     private static AccessTarget Target(Guid? site) => new(site is { } one ? new SiteId(one) : null, null);
 }

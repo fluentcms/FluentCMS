@@ -71,6 +71,7 @@ public static class ErrorCodeRegistry
         Startup(AuthorizationErrorCodes.InvalidRowRule, "Invalid row rule"),
         Invalid(AuthorizationErrorCodes.FieldNotWritable, "Field not writable"),
         Invalid(ContentErrorCodes.DuplicateBlockId, "Duplicate block id"),
+        Startup(AuthorizationErrorCodes.NoOperation, "No operation context"),
 
         // 15xx plugin host and plugin contributions, found when the host starts, and per-site enablement; codes not listed up to 1599 are kept for later plugin work
         Startup(PluginErrorCodes.InvalidPlugin, "Invalid plugin"),
@@ -211,10 +212,12 @@ public static class ErrorCodeRegistry
         Invalid(IdentityErrorCodes.InvalidUser, "Invalid user"),
         new(IdentityErrorCodes.RoleAlreadyHeld, StatusCodes.Status409Conflict, "Role already held"),
         new(IdentityErrorCodes.RoleNotHeld, StatusCodes.Status404NotFound, "Role not held"),
+        new(IdentityErrorCodes.LastSuperAdmin, StatusCodes.Status409Conflict, "Last active Super Admin"),
         new(IdentityErrorCodes.TwoFactorEnabled, StatusCodes.Status409Conflict, "Two-factor sign-in is on"),
         new(IdentityErrorCodes.TwoFactorNotEnabled, StatusCodes.Status409Conflict, "Two-factor sign-in is off"),
         new(IdentityErrorCodes.NoAuthenticator, StatusCodes.Status409Conflict, "No authenticator enrolled"),
         Invalid(IdentityErrorCodes.InvalidTwoFactorCode, "Invalid two-factor code"),
+        new(IdentityErrorCodes.SecondFactorRequired, StatusCodes.Status403Forbidden, "Second factor required"),
 
         // Admin SSO: options found when the host starts, and refusals of a sign-in that the hosted pages log
         Startup(IdentityErrorCodes.InvalidSsoOptions, "Invalid single sign-on options"),

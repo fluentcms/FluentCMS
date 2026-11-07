@@ -1,11 +1,13 @@
 using System.Net;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Diagnostics;
 using FluentCMS.Core.IntegrationTests.Hosting;
 using FluentCMS.Core.Storage;
+using FluentCMS.Sites;
 using FluentCMS.Testing;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.TestHost;
@@ -264,6 +266,7 @@ public sealed class StartupReportTests : IAsyncDisposable
         string secret;
         await using (var scope = host.Services.CreateAsyncScope())
         {
+            using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, new SiteId(FluentCMS.Core.Sites.DefaultSite.Id));
             var created = await scope.ServiceProvider.GetRequiredService<FluentCMS.Core.Identity.ApiKeys.ApiKeyService>().CreateAsync(
                 new FluentCMS.Core.Identity.ApiKeys.ApiKeyRequest("bound", FluentCMS.Core.Identity.ApiKeys.ApiKeyClass.Management, role) { SiteIds = [FluentCMS.Core.Sites.DefaultSite.Id] },
                 Token);

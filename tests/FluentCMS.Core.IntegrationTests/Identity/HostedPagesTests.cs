@@ -158,6 +158,7 @@ public sealed partial class HostedPagesTests : IAsyncDisposable
         await using (var scope = _host.Services.CreateAsyncScope())
         {
             var role = await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<Role>().AsNoTracking().SingleAsync(role => role.Name == BuiltInRoles.EditorName && role.SiteId == null, Token);
+            using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, new SiteId(DefaultSite.Id));
             await scope.ServiceProvider.GetRequiredService<InvitationService>().InviteAsync("ada@example.com", [role.Id], new Uri("https://localhost/account/accept-invitation"), Token);
         }
 
@@ -516,9 +517,9 @@ public sealed partial class HostedPagesTests : IAsyncDisposable
             RequireConsent = true,
         });
 
-    private static async Task<TestUser> CreateUserAsync(FluentCmsTestHost host)
+    private static async Task<TestUser> CreateUserAsync(FluentCmsTestHost host, string role = BuiltInRoles.EditorName)
     {
-        var editor = await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+        var editor = await host.CreateUserAsync(role, cancellationToken: Token);
         await using var scope = host.Services.CreateAsyncScope();
         var users = scope.ServiceProvider.GetRequiredService<CmsUserManager>();
         (await users.AddPasswordAsync((await users.FindByIdAsync(editor.Id.ToString()))!, Password)).Succeeded.ShouldBeTrue();

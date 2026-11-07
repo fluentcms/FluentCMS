@@ -14,4 +14,7 @@ internal static class CmsClaimTypes
 
     // The OAuth client a bearer token was issued to; the request's OperationContext.ClientId.
     public const string ClientId = "client_id";
+
+    // How a user's bearer token was signed in to, such as "mfa"; a key or a service account has none.
+    public const string AuthenticationMethods = "amr";
 }
