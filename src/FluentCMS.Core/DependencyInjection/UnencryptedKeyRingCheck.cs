@@ -11,6 +11,6 @@ internal sealed class UnencryptedKeyRingCheck(SecurityOptions options, IDataProt
     public StartupRefusal? Check() => environment?.IsProduction() == true && keyRing?.KeysEncrypted == false && !options.AllowUnencryptedKeyRing
         ? new StartupRefusal(
             HostErrorCodes.UnencryptedKeyRingInProduction,
-            $"Production stores the Data Protection key ring unencrypted, so a reader of the database can forge sign-in cookies. Add an XML encryptor, such as AddDataProtection().ProtectKeysWithCertificate(...) after AddFluentCms, or set {Key} to true to accept the unencrypted ring.")
+            $"Production stores the Data Protection key ring unencrypted, so a reader of the database can forge sign-in cookies. Add an XML encryptor, such as AddDataProtection().ProtectKeysWithCertificate(...) before AddFluentCms, or set {Key} to true to accept the unencrypted ring.")
         : null;
 }
