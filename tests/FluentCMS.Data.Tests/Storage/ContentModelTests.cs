@@ -3,6 +3,7 @@ using FluentCMS.Core.Storage;
 using FluentCMS.Core.Tests.Schema;
 using FluentCMS.Schema;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Shouldly;
 using Xunit;
@@ -279,7 +280,7 @@ public class ContentModelTests
 
         var unique = Index(table, "ux_cms_page_seo_meta_title");
         unique.IsUnique.ShouldBeTrue();
-        unique.GetFilter().ShouldBe("state = 1");
+        unique.GetFilter().ShouldBe("state = 1 AND \"seo_meta_title\" IS NOT NULL");
         IndexColumns(unique).ShouldBe(["site_id", "seo_meta_title"]);
     }
 
@@ -338,6 +339,44 @@ public class ContentModelTests
         IndexColumns(State("cms_term_i18n")).ShouldBe(["locale", "state"]);
         State("cms_page").IsUnique.ShouldBeFalse();
         State("cms_page").GetFilter().ShouldBeNull();
+    }
+
+    [Fact]
+    public void ANullableUniqueColumnLeavesNullOutOfItsIndex()
+    {
+        var schema = SampleSchema.NewBuilder().AddCollection("page", type => type
+            .Field("title", "text", field => field.Required().Unique())
+            .Field("path", "slug", field => field.Unique())
+            .Field("contact", "email", field => field.Required().Unique())
+            .Field("rank", "integer", field => field.Unique()))
+            .Build();
+        var table = Table(ModelOf(schema), "cms_page");
+
+        Index(table, "ux_cms_page_title").GetFilter().ShouldBe("state = 1");
+        Index(table, "ux_cms_page_path").GetFilter().ShouldBe("state = 1");
+        Index(table, "ux_cms_page_contact").GetFilter().ShouldBe("state = 1 AND \"contact\" IS NOT NULL");
+        Index(table, "ux_cms_page_rank").GetFilter().ShouldBe("state = 1 AND \"rank\" IS NOT NULL");
+    }
+
+    [Fact]
+    public void NamesOverTheIdentifierBudgetAreShortenedApart()
+    {
+        using var database = new StorageDatabase(SampleSchema.LongNames().Build(), new SqliteLikeConventions());
+        using var context = database.CreateCreatedContext();
+        var table = Table(context.GetService<IDesignTimeModel>().Model, "cms_customer_testimonial_highlight_i18n");
+        const string column = "hero_section_configuration_background_image";
+
+        string[] names = [.. table.GetIndexes().Select(index => index.GetDatabaseName()!), .. table.GetCheckConstraints().Select(check => check.Name!)];
+
+        names.ShouldAllBe(name => name.Length <= StorageNames.MaxIdentifierLength);
+        names.ShouldBeUnique();
+        IndexColumns(Index(table, StorageNames.Identifier($"ux_{table.GetTableName()}_{column}_alt_text"))).ShouldBe(["site_id", "locale", $"{column}_alt_text"]);
+        IndexColumns(Index(table, StorageNames.Identifier($"ux_{table.GetTableName()}_{column}_caption"))).ShouldBe(["site_id", "locale", $"{column}_caption"]);
+        IndexColumns(Index(table, StorageNames.Identifier($"ix_{table.GetTableName()}_{column}_caption"))).ShouldBe(["site_id", "locale", "state", $"{column}_caption"]);
+        IndexColumns(Index(table, StorageNames.Identifier($"gin_{table.GetTableName()}_{column}_metadata"))).ShouldBe([$"{column}_metadata"]);
+        Index(table, StorageNames.Identifier($"uq_{table.GetTableName()}_document_locale_state")).IsUnique.ShouldBeTrue();
+        names.ShouldContain(StorageNames.Identifier($"ck_{table.GetTableName()}_{column}_metadata_json"));
+        names.ShouldContain("ix_cms_customer_testimonial_highlight_i18n_state");
     }
 
     [Fact]

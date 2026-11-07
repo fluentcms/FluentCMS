@@ -63,7 +63,29 @@ internal sealed class ContentModelBuilder(SchemaModel schema, IStorageConvention
             {
                 MapField(entity, type, table, field, hasLocale);
             }
+
+            FitNames(entity);
         });
+    }
+
+    // Covers the names the provider conventions gave too. A name that already fits stays as it is.
+    private static void FitNames(EntityTypeBuilder entity)
+    {
+        foreach (var index in entity.Metadata.GetIndexes())
+        {
+            if (index.GetDatabaseName() is { Length: > StorageNames.MaxIdentifierLength } name)
+            {
+                index.SetDatabaseName(StorageNames.Identifier(name));
+            }
+        }
+
+        foreach (var check in entity.Metadata.GetCheckConstraints())
+        {
+            if (check.Name is { Length: > StorageNames.MaxIdentifierLength } name)
+            {
+                check.Name = StorageNames.Identifier(name);
+            }
+        }
     }
 
     private void MapField(EntityTypeBuilder entity, SchemaType type, string table, StoredField field, bool hasLocale)
@@ -99,23 +121,28 @@ internal sealed class ContentModelBuilder(SchemaModel schema, IStorageConvention
         {
             conventions.ConfigureJsonColumn(entity, property);
         }
+        else if (field.ClrType == typeof(string))
+        {
+            conventions.ConfigureTextColumn(entity, property);
+        }
 
-        MapIndexes(entity, type, table, field, hasLocale);
+        MapIndexes(entity, type, table, field, property.Metadata.IsNullable, hasLocale);
     }
 
     // A null site_id would defeat a unique index and tells an ordinary one nothing.
     private static string[] Scope(SchemaType type, bool hasLocale) =>
         [.. type.Scope == ContentScope.Global ? [] : new[] { StorageNames.SiteId }, .. hasLocale ? new[] { StorageNames.Locale } : []];
 
-    private void MapIndexes(EntityTypeBuilder entity, SchemaType type, string table, StoredField field, bool hasLocale)
+    private void MapIndexes(EntityTypeBuilder entity, SchemaType type, string table, StoredField field, bool nullable, bool hasLocale)
     {
         var scope = Scope(type, hasLocale);
 
+        // SQL Server holds NULLs equal in a unique index, and EF adds its own IS NOT NULL only to an index with no filter.
         if (field.Field.Unique)
         {
             entity.HasIndex([.. scope, field.Column])
                 .IsUnique()
-                .HasFilter(StorageNames.PublishedOnly)
+                .HasFilter(nullable ? $"{StorageNames.PublishedOnly} AND \"{field.Column}\" IS NOT NULL" : StorageNames.PublishedOnly)
                 .HasDatabaseName($"ux_{table}_{field.Column}");
         }
 

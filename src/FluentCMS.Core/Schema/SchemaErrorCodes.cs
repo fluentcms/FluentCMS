@@ -19,6 +19,7 @@ internal static class SchemaErrorCodes
     public const string InvalidType = "FCMS1215";
     public const string InvalidProperty = "FCMS1216";
     public const string ReverseRelationOutsideContentType = "FCMS1217";
+    public const string NameTooLong = "FCMS1218";
 
     // In the block of the plugin contributions, which brought it.
     public const string FieldReferenceMissing = "FCMS1520";

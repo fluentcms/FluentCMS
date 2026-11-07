@@ -55,6 +55,7 @@ public static class ErrorCodeRegistry
         Startup(SchemaErrorCodes.InvalidType, "Invalid content type"),
         Startup(SchemaErrorCodes.InvalidProperty, "Invalid property"),
         Startup(SchemaErrorCodes.ReverseRelationOutsideContentType, "Reverse relation outside a content type"),
+        Startup(SchemaErrorCodes.NameTooLong, "Name too long"),
 
         // 13xx storage
         Startup(StorageErrorCodes.MissingContentSchema, "Content tables out of date"),
@@ -62,6 +63,7 @@ public static class ErrorCodeRegistry
         Startup(StorageErrorCodes.SeveralDataProviders, "Several data providers"),
         Startup(StorageErrorCodes.InvalidDatabaseSetting, "Invalid database setting"),
         Startup(StorageErrorCodes.PendingStreamMigrations, "Pending stream migrations"),
+        Startup(StorageErrorCodes.ForeignMigrations, "Migrations of another provider"),
 
         // 14xx authorization and content writes
         Startup(AuthorizationErrorCodes.DuplicatePermission, "Duplicate permission"),

@@ -27,6 +27,15 @@ public static class CmsDbContextOptionsExtensions
         return builder;
     }
 
+    // The options of the host's content context with another schema, and the same provider, plugins and interceptors.
+    internal static DbContextOptions<CmsDbContext> WithSchema(this DbContextOptions<CmsDbContext> options, SchemaModel schema)
+    {
+        var model = options.FindExtension<CmsModelOptionsExtension>()
+            ?? throw new InvalidOperationException($"{nameof(CmsDbContext)} needs a schema; call {nameof(UseCmsModel)} on its options.");
+
+        return (DbContextOptions<CmsDbContext>)options.WithExtension(new CmsModelOptionsExtension(schema, model.Conventions, model.JsonDialect, model.Plugins));
+    }
+
     // Gives SystemDbContext the conventions to build its model with.
     public static TBuilder UseSystemModel<TBuilder>(this TBuilder builder, IStorageConventions conventions)
         where TBuilder : DbContextOptionsBuilder
