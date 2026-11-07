@@ -20,6 +20,8 @@ public sealed class EventsBuilder
 
     public OutboxOptions Outbox { get; } = new();
 
+    public EventHandlerOptions Handlers { get; } = new();
+
     public EventsBuilder AddHandler<TEvent, THandler>()
         where TEvent : CmsEvent
         where THandler : class, IEventHandler<TEvent>

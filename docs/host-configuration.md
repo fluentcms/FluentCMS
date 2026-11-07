@@ -57,6 +57,7 @@ Everything is read from the `FluentCms` section of the host's configuration, so 
 | `FluentCms:OpenApi` | `Enabled` (see [OpenAPI and the Scalar UI](#openapi-and-the-scalar-ui)) |
 | `FluentCms:Query` | `DefaultPageSize`, `MaxPageSize`, `MaxPopulateDepth`, `MaxFilterNodes`, `MaxPopulatedEntries` |
 | `FluentCms:Jobs` | the job runner: `Queues`, `PollInterval`, `LeaseDuration`, retries, retention |
+| `FluentCms:Events:Handlers` | the in-process event handlers: `Timeout` (5 seconds), `SlowThreshold` (1 second) (see [event handlers](#event-handlers)) |
 | `FluentCms:Events:Outbox` | the outbox: `BatchSize`, `MaxAttempts`, `LeaseDuration`, retries, retention |
 | `FluentCms:Activity` | the activity log: `Enabled`, `Retention`, `SiteRetention`, `PruneSchedule` |
 | `FluentCms:Health` | `JobRunnerHeartbeatTimeout` |
@@ -74,6 +75,10 @@ The probes stay reachable without credentials, because the image's `HEALTHCHECK`
 `FluentCms:Health:JobRunnerHeartbeatTimeout` is how old the last beat of the job runner may be before `/health/ready` is unhealthy. The runner beats every `FluentCms:Jobs:MaintenanceInterval` (15 seconds), so keep this well above it. The default is `00:02:00`. An instance that runs no jobs leaves the runner out of the check with the infinite value, which as a `TimeSpan` string is `-00:00:00.001` (`Timeout.InfiniteTimeSpan` in code).
 
 FluentCMS exports nothing. To send traces and metrics to your own tools, subscribe your OpenTelemetry setup to the source and the meter both named `FluentCMS`, with `AddSource("FluentCMS")` and `AddMeter("FluentCMS")`.
+
+### Event handlers
+
+An in-process event handler (`IEventHandler<T>`) runs after the commit, and the request that made the write or the publish waits for it. Each handler gets `FluentCms:Events:Handlers:Timeout` (5 seconds). One that takes longer has its token cancelled, is logged as abandoned (event 9615) and left to end on its own, and the request goes on to the next handler. Handlers run in a scope of their own, not the request's, so one left running cannot disturb the request. A handler that ends after `FluentCms:Events:Handlers:SlowThreshold` (1 second) is logged as slow (event 9616). Every run is recorded in the `fluentcms.event.handler.duration` histogram, by event type, handler and outcome (`succeeded`, `failed` or `timed-out`). Work that may be slow belongs in an outbox handler or a job.
 
 ## Security defaults
 

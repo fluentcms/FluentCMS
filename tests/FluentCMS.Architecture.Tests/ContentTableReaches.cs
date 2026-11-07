@@ -10,7 +10,8 @@ internal static class ContentTableReaches
 {
     private static readonly string[] Allowed = ["FluentCMS.Core.Content", "FluentCMS.Core.Storage", "FluentCMS.Data", "FluentCMS.Cli"];
 
-    // These open transactions on SystemDbContext for the job and identity tables, or ask whether one is open, and reach no content.
+    // These open transactions on SystemDbContext for the job and identity tables, or ask whether one is open on a core or a
+    // plugin context, and reach no content.
     private static readonly string[] AllowedTypes =
     [
         "FluentCMS.Core.Jobs.JobStore",
@@ -18,6 +19,7 @@ internal static class ContentTableReaches
         "FluentCMS.Core.Jobs.JobRetentionJob",
         "FluentCMS.Core.Identity.IdentityChanges",
         "FluentCMS.Core.Authorization.RoleVersionInterceptor",
+        "FluentCMS.Core.Plugins.PluginTransactions",
     ];
 
     public static IEnumerable<string> SourceAssemblies() =>
