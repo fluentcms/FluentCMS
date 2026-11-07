@@ -37,6 +37,23 @@ public sealed class ReferenceHostTests : IAsyncDisposable
         insecure.ShouldContain("generated-signing-key");
         insecure.ShouldNotContain("development-email-sender");
         insecure.ShouldNotContain("schema-sync-outside-development");
+        insecure.ShouldNotContain("webhooks-private-networks");
+    }
+
+    [Fact]
+    public async Task TheHostRunsTheWebhooksPluginAndReportsPrivateNetworksInProduction()
+    {
+        var settings = Operator.Settings();
+        settings["FluentCms:Webhooks:AllowPrivateNetworks"] = "true";
+        await _host.StartAsync(settings);
+
+        using var api = await Operator.SignInAsync(_host);
+        using var webhooks = await api.GetAsync(new Uri("/api/management/v1/webhooks", UriKind.Relative), Token);
+        var report = await Operator.ReportAsync(_host);
+
+        webhooks.StatusCode.ShouldBe(HttpStatusCode.OK);
+        report["plugins"]!.AsArray().Select(plugin => plugin!["name"]!.GetValue<string>()).ShouldContain("webhooks");
+        Operator.InsecureDefaults(report).ShouldContain("webhooks-private-networks");
     }
 
     [Fact]

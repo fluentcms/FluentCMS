@@ -143,6 +143,10 @@ internal sealed class StartupReportFactory(
             found.Add(new InsecureDefault { Id = "forwarded-headers-trust-any", Message = "Forwarded headers are trusted from every address, so any caller can choose the scheme and client address the host sees. List the proxies or networks." });
         }
 
+        found.AddRange(services.GetServices<IInsecureDefaultSource>()
+            .SelectMany(source => source.GetInsecureDefaults())
+            .Select(item => item with { Message = SecretScrubber.Of(item.Message) }));
+
         return found;
     }
 

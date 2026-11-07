@@ -65,7 +65,7 @@ internal static class StorageNames
         "job", "job_attempt", "recurring_job", "lock", "outbox",
         "setting", "plugin_site",
         "media_asset", "media_folder", "media_variant", "media_preset",
-        "webhook", "webhook_delivery",
+        "webhooks_subscription", "webhooks_delivery",
         "mcp_instruction", "mcp_prompt",
         "ai_usage",
         "site_host",

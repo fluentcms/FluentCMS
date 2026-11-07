@@ -48,6 +48,7 @@ public partial class ErrorCodeRegistryTests
         declared.Where(code => ErrorCodeRegistry.Find(code) is null).ShouldBeEmpty();
     }
 
+    // A code written under src/plugins/{project} is listed when core has it or when that plugin adds it with AddErrorCode.
     [Fact]
     public void EveryCodeWrittenInSourceIsListed()
     {
@@ -56,12 +57,23 @@ public partial class ErrorCodeRegistryTests
             .Where(path => !IsBuildOutput(source, path))
             .SelectMany(path => CodePattern().Matches(File.ReadAllText(path)).Select(match => (match.Value, Path.GetRelativePath(source, path))))
             .ToList();
+        var plugins = Directory.EnumerateDirectories(Path.Combine(source, "plugins"))
+            .ToDictionary(directory => Path.GetFileName(directory), CodesAddedBy, StringComparer.Ordinal);
 
         used.ShouldNotBeEmpty();
-        used.Where(item => ErrorCodeRegistry.Find(item.Value) is null)
+        used.Where(item => ErrorCodeRegistry.Find(item.Value) is null && !(PluginOf(item.Item2) is { } plugin && plugins[plugin].Contains(item.Value)))
             .Select(item => $"{item.Value} in {item.Item2}")
             .Distinct()
             .ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void TheCodesAPluginAddsAreFoundInItsSource()
+    {
+        var webhooks = CodesAddedBy(Path.Combine(RepositoryRoot(), "src", "plugins", "FluentCMS.Plugins.Webhooks"));
+
+        webhooks.ShouldContain("FCMS1560");
+        webhooks.ShouldNotContain(code => ErrorCodeRegistry.Find(code) != null);
     }
 
     [Theory]
@@ -82,6 +94,27 @@ public partial class ErrorCodeRegistryTests
         ErrorCodeRegistry.Find("ACME0001").ShouldBeNull();
         ErrorCodeRegistry.Find(null).ShouldBeNull();
     }
+
+    private static string? PluginOf(string relative) =>
+        relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) is ["plugins", var project, _, ..] ? project : null;
+
+    // The codes of AddErrorCode calls, written as a literal or as a constant of the project.
+    private static HashSet<string> CodesAddedBy(string project)
+    {
+        var text = string.Join('\n', Directory.EnumerateFiles(project, "*.cs", SearchOption.AllDirectories)
+            .Where(path => !IsBuildOutput(project, path))
+            .Select(File.ReadAllText));
+        var constants = ConstantPattern().Matches(text).ToDictionary(match => match.Groups["name"].Value, match => match.Groups["code"].Value, StringComparer.Ordinal);
+        return [.. AddErrorCodePattern().Matches(text)
+            .Select(match => match.Groups["code"].Success ? match.Groups["code"].Value : constants.GetValueOrDefault(match.Groups["name"].Value))
+            .OfType<string>()];
+    }
+
+    [GeneratedRegex("""(?<name>\w+)\s*=\s*"(?<code>FCMS\d{4})"\s*;""")]
+    private static partial Regex ConstantPattern();
+
+    [GeneratedRegex("""AddErrorCode\(\s*(?:"(?<code>FCMS\d{4})"|(?:\w+\.)*(?<name>\w+)\s*,)""")]
+    private static partial Regex AddErrorCodePattern();
 
     private static bool IsBuildOutput(string source, string path) =>
         Path.GetRelativePath(source, path).Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Any(part => part is "bin" or "obj");
