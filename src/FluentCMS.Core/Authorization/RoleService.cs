@@ -28,12 +28,14 @@ internal sealed record RoleRequest(string Name, string? Description, IReadOnlyLi
 // only what the caller holds itself: no grant above one's own reach, neither added nor taken from a role the caller could not
 // have made. Users, invitations and keys ask here whether the caller may hand a role out. A role is written through
 // CmsDbContext, whose interceptor raises its permissions version with the change, and deleted only while no user holds it
-// and no key that is not revoked uses it, so the cascade of the database drops no holder without its event.
+// and no key that is not revoked uses it, so the cascade of the database drops no holder without its event. An edit that
+// takes `*` from an instance-wide role keeps the last Super Admin.
 internal sealed class RoleService(
     CmsDbContext context,
     PermissionCatalogue catalogue,
     RowRuleRegistry rules,
     ManagementAuthority authority,
+    SuperAdminGuard superAdmins,
     IActivityLog activity,
     IOperationContextAccessor accessor,
     TimeProvider time)
@@ -144,7 +146,14 @@ internal sealed class RoleService(
             context.AddRange(Rows(role.Id, grants));
         }
 
-        await SaveAsync(role, cancellationToken);
+        if (role.SiteId is null && stored.Select(Grant).Any(SuperAdminGuard.IsSuperGrant) && !grants.Any(SuperAdminGuard.IsSuperGrant))
+        {
+            await superAdmins.ChangeRoleAsync(context, role, () => SaveAsync(role, cancellationToken), cancellationToken);
+        }
+        else
+        {
+            await SaveAsync(role, cancellationToken);
+        }
 
         await LogAsync("role.updated", role, cancellationToken);
         return Info(role, grants);

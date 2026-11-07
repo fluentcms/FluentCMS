@@ -54,6 +54,7 @@ public sealed class ActivityLogTests
         new UserRoleChangedEvent(Entry, "ann", [Job], []),
         new UserLoginLinkedEvent(Entry, "ann", "corp"),
         new UserLoginUnlinkedEvent(Entry, "ann", "corp"),
+        new UserTwoFactorResetEvent(Entry, "ann"),
         new LoginSucceededEvent(Entry, "ann", LoginMethods.Password, "10.0.0.7"),
         new LoginFailedEvent(null, null, LoginMethods.Password, LoginFailureReasons.UnknownUser, "10.0.0.8"),
         new ApiKeyCreatedEvent(Entry, "site key", "delivery"),

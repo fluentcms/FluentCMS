@@ -76,8 +76,17 @@ internal static class TokenClaims
             identity.AddClaim(new Claim(CmsClaimTypes.Roles, role));
         }
 
+        foreach (var method in token.GetClaims(Claims.AuthenticationMethodReference))
+        {
+            identity.AddClaim(new Claim(CmsClaimTypes.AuthenticationMethods, method));
+        }
+
         return new ClaimsPrincipal(identity);
     }
+
+    // RequestPrincipal joins the values of a claim with spaces.
+    public static bool SignedInWithSecondFactor(Principal principal) =>
+        principal.Claim(CmsClaimTypes.AuthenticationMethods)?.Split(' ').Contains(MultiFactor, StringComparer.Ordinal) == true;
 
     private static IEnumerable<string> Destinations(Claim claim) => claim.Type switch
     {

@@ -516,9 +516,9 @@ public sealed partial class HostedPagesTests : IAsyncDisposable
             RequireConsent = true,
         });
 
-    private static async Task<TestUser> CreateUserAsync(FluentCmsTestHost host)
+    private static async Task<TestUser> CreateUserAsync(FluentCmsTestHost host, string role = BuiltInRoles.EditorName)
     {
-        var editor = await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+        var editor = await host.CreateUserAsync(role, cancellationToken: Token);
         await using var scope = host.Services.CreateAsyncScope();
         var users = scope.ServiceProvider.GetRequiredService<CmsUserManager>();
         (await users.AddPasswordAsync((await users.FindByIdAsync(editor.Id.ToString()))!, Password)).Succeeded.ShouldBeTrue();

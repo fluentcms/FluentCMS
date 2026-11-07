@@ -66,6 +66,7 @@ internal static class ActivityEvents
         {
             ["provider"] = message.LoginProvider,
         }));
+        events.AddActivity<UserTwoFactorResetEvent>("user.two_factor_reset", message => User("user.two_factor_reset", message.UserId, message.UserName, null));
 
         events.AddActivity<LoginSucceededEvent>("user.login_succeeded", message => User("user.login_succeeded", message.UserId, message.UserName, new Dictionary<string, string?>
         {

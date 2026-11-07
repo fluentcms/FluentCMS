@@ -15,9 +15,9 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Core.Api.Management;
 
-// The identity group of spec 4.10: users with their sessions and external logins, invitations, roles, the permission
-// catalogue and API keys. The routes read the request and the services decide who may do what (users.manage,
-// roles.manage, apikeys.manage, and no grant above the caller's own reach).
+// The identity group of spec 4.10: users with their sessions, external logins and two-factor reset, invitations, roles,
+// the permission catalogue and API keys. The routes read the request and the services decide who may do what
+// (users.manage, roles.manage, apikeys.manage, and no grant above the caller's own reach).
 internal static class IdentityEndpoints
 {
     private static readonly string Prefix = FluentCmsEndpointGroups.Prefixes.Single(item => item.Group == FluentCmsEndpointGroup.Management).Prefix;
@@ -41,6 +41,7 @@ internal static class IdentityEndpoints
         users.MapDelete("/{id}/sessions/{sessionId}", RevokeSessionAsync).Produces(StatusCodes.Status204NoContent);
         users.MapGet("/{id}/logins", LoginsAsync).Produces<ItemList<UserLogin>>();
         users.MapDelete("/{id}/logins/{provider}", RemoveLoginAsync).Produces(StatusCodes.Status204NoContent);
+        users.MapPost("/{id}/two-factor/reset", ResetTwoFactorAsync).Produces<UserInfo>();
 
         var invitations = management.MapGroup("/invitations").WithFluentCmsOperation(Origin.Api).RequireManagementScope();
         invitations.MapGet("", ListInvitationsAsync).Produces<ItemList<InvitationInfo>>();
@@ -139,6 +140,12 @@ internal static class IdentityEndpoints
         ManagementQuery.Only(httpContext.Request);
         await users.RemoveLoginAsync(ManagementQuery.RouteId(id, nameof(id)), provider, httpContext.RequestAborted);
         return Results.NoContent();
+    }
+
+    private static async Task<IResult> ResetTwoFactorAsync(string id, HttpContext httpContext, [FromServices] UserAdministration users)
+    {
+        ManagementQuery.Only(httpContext.Request);
+        return AdminJson.Ok(await users.ResetTwoFactorAsync(ManagementQuery.RouteId(id, nameof(id)), httpContext.RequestAborted));
     }
 
     private static async Task<IResult> ListInvitationsAsync(HttpContext httpContext, [FromServices] InvitationService invitations)

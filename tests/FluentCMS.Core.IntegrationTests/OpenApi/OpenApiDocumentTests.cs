@@ -420,6 +420,11 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
         Response(Paths[$"{Management}/me"]!["get"]!, "200")["required"]!.AsArray().Select(item => item!.GetValue<string>()).ShouldBe(["id", "kind", "name"]);
         Response(Paths[$"{Management}/activity"]!["get"]!, "200")["properties"]!["items"]!["items"]!["$ref"]!.GetValue<string>().ShouldBe("#/components/schemas/ActivityItem");
 
+        var reset = Paths[$"{Management}/users/{{id}}/two-factor/reset"]!["post"]!;
+        reset["requestBody"].ShouldBeNull();
+        reset["responses"]!["200"]!["content"]!["application/json"]!["schema"]!["$ref"]!.GetValue<string>().ShouldBe("#/components/schemas/UserInfo");
+        reset["tags"]!.AsArray().Select(tag => tag!.GetValue<string>()).ShouldBe(["Users"]);
+
         foreach (var path in new[] { "users/{id}/logins", "me/logins" })
         {
             var login = Resolve(Response(Paths[$"{Management}/{path}"]!["get"]!, "200")["properties"]!["items"]!["items"]!);

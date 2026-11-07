@@ -35,6 +35,14 @@ public sealed record UserLoginLinkedEvent(Guid UserId, string UserName, string L
 /// <param name="LoginProvider">The name of the provider, as <c>cms_user_login</c> kept it.</param>
 public sealed record UserLoginUnlinkedEvent(Guid UserId, string UserName, string LoginProvider) : CmsEvent;
 
+/// <summary>
+/// An administrator reset another admin user's two-factor sign-in: its authenticator key and recovery codes are gone,
+/// two-factor is off and its sessions are ended. The source names the administrator.
+/// </summary>
+/// <param name="UserId">The id of the user whose two-factor sign-in was reset.</param>
+/// <param name="UserName">Its user name.</param>
+public sealed record UserTwoFactorResetEvent(Guid UserId, string UserName) : CmsEvent;
+
 /// <summary>The names <see cref="UserUpdatedEvent.Changes"/> uses for what changed on an admin user.</summary>
 public static class UserChanges
 {

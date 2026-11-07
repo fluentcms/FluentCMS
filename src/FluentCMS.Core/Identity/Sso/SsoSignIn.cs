@@ -1,5 +1,6 @@
 using System.Net.Mail;
 using System.Security.Claims;
+using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
@@ -17,13 +18,15 @@ namespace FluentCMS.Core.Identity.Sso;
 // provider is refused rather than taken over, unless the provider links existing users and the token says the address is
 // verified. An invitation is accepted through a provider whose address for the person is the invitation's. The provider's
 // amr=mfa counts as the second factor only when the provider is trusted for it; otherwise a role that requires two-factor
-// asks for the local one after the provider.
+// asks for the local one after the provider. Groups that would take Super Admin from its last active holder change no role
+// and refuse the sign-in, since the provider no longer vouches for it.
 internal sealed class SsoSignIn(
     SsoOptions options,
     CmsUserManager users,
     CmsSignInManager signIn,
     SignInEvents events,
     IdentityChanges changes,
+    SuperAdminGuard superAdmins,
     InvitationService invitations,
     SystemDbContext context,
     ILogger<SsoSignIn> logger)
@@ -57,9 +60,10 @@ internal sealed class SsoSignIn(
             }
         }
 
-        if (user is { DeactivatedAt: null } && !await users.IsLockedOutAsync(user))
+        if (user is { DeactivatedAt: null } && !await users.IsLockedOutAsync(user) && !await FollowGroupsAsync(user, info, provider, cancellationToken))
         {
-            await FollowGroupsAsync(user, info, provider, cancellationToken);
+            await events.FailedAsync(signIn.Context, user, LoginMethods.External, LoginFailureReasons.NotAllowed);
+            return SignInResult.NotAllowed;
         }
 
         return await ExternalSignInAsync(info, provider);
@@ -201,12 +205,12 @@ internal sealed class SsoSignIn(
     }
 
     // Adds the roles mapped to the token's groups and takes away the other roles the provider maps; the default role and roles
-    // the provider does not map stay as they are.
-    private async Task FollowGroupsAsync(CmsUser user, ExternalLoginInfo info, SsoProvider provider, CancellationToken cancellationToken)
+    // the provider does not map stay as they are. False when that would take Super Admin from its last active holder.
+    private async Task<bool> FollowGroupsAsync(CmsUser user, ExternalLoginInfo info, SsoProvider provider, CancellationToken cancellationToken)
     {
         if (provider.RoleMappings.Count == 0)
         {
-            return;
+            return true;
         }
 
         var roles = await RolesAsync(info, provider, cancellationToken);
@@ -215,25 +219,35 @@ internal sealed class SsoSignIn(
         List<Guid> removed = [.. roles.Governed.Where(role => role != roles.Default && !roles.Mapped.Contains(role) && held.Contains(role))];
         if (added.Count == 0 && removed.Count == 0)
         {
-            return;
+            return true;
         }
 
-        var result = await changes.RunAsync(
-            async () =>
+        async Task<IdentityResult> FollowAsync()
+        {
+            if (added.Count > 0 && await users.AddToRolesAsync(user, added) is { Succeeded: false } failed)
             {
-                if (added.Count > 0 && await users.AddToRolesAsync(user, added) is { Succeeded: false } failed)
-                {
-                    return failed;
-                }
+                return failed;
+            }
 
-                return removed.Count > 0 ? await users.RemoveFromRolesAsync(user, removed) : IdentityResult.Success;
-            },
-            cancellationToken);
+            return removed.Count > 0 ? await users.RemoveFromRolesAsync(user, removed) : IdentityResult.Success;
+        }
+
+        var result = removed.Count > 0
+            ? await superAdmins.ChangeUserAsync(user, "follow_groups", FollowAsync, cancellationToken)
+            : await changes.RunAsync(FollowAsync, cancellationToken);
+
+        if (result.Errors.Any(error => error.Code == IdentityErrorCodes.LastSuperAdmin))
+        {
+            SsoLog.LastSuperAdminKept(logger, IdentityErrorCodes.LastSuperAdmin, info.LoginProvider, user.Id);
+            return false;
+        }
 
         if (!result.Succeeded)
         {
             throw new InvalidOperationException($"{IdentityErrorCodes.SsoProvisioningFailed}: the roles of user {user.Id:D} could not follow the groups of the provider {info.LoginProvider}: {string.Join(", ", result.Errors.Select(error => error.Code))}.");
         }
+
+        return true;
     }
 
     // The roles the provider names that exist: a role id, or the exact name of an instance-wide role. Mapped are the roles of

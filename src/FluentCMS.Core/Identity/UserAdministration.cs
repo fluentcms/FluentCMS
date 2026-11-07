@@ -4,6 +4,7 @@ using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
+using FluentCMS.Events;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -37,14 +38,16 @@ internal sealed record UserChange
 internal sealed record UserPage(IReadOnlyList<UserInfo> Items, long Total, int Page, int PageSize);
 
 // Admin users for the Management API. A user belongs to no site, so everything here needs users.manage for the instance.
-// Changing a user, deactivating or reactivating it, ending its sessions or removing its external logins also needs every
-// grant of the user's roles, so no one acts on a user who can do more; a role is given or taken only by one who holds all it
-// grants.
+// Changing a user, deactivating or reactivating it, ending its sessions, removing its external logins or resetting its
+// two-factor sign-in also needs every grant of the user's roles, so no one acts on a user who can do more; a role is given or
+// taken only by one who holds all it grants. Deactivating a user or taking a role from it keeps the last Super Admin.
 internal sealed class UserAdministration(
     CmsUserManager users,
     SystemDbContext context,
     ManagementAuthority authority,
     RoleService roles,
+    SuperAdminGuard superAdmins,
+    IdentityChanges changes,
     UserSessions sessions,
     UserLogins logins,
     IOperationContextAccessor accessor)
@@ -110,12 +113,12 @@ internal sealed class UserAdministration(
     public async Task<UserInfo> DeactivateAsync(Guid id, CancellationToken cancellationToken)
     {
         var user = await TargetAsync(id, cancellationToken);
-        if (accessor.Current?.Principal is { Kind: PrincipalKind.AdminUser } caller && caller.Id == id)
+        if (IsCaller(id))
         {
             throw new ValidationException([new ValidationError("id", IdentityErrorCodes.InvalidUser, "A user cannot deactivate itself.")]);
         }
 
-        UserViews.Check(await users.DeactivateAsync(user));
+        UserViews.Check(await superAdmins.ChangeUserAsync(user, "deactivate", () => users.DeactivateAsync(user), cancellationToken));
         return await InfoAsync(user, cancellationToken);
     }
 
@@ -142,7 +145,46 @@ internal sealed class UserAdministration(
         var user = await FindAsync(id);
         await roles.RequireAssignableAsync([roleId], cancellationToken);
 
-        UserViews.Check(await users.RemoveFromRoleAsync(user, roleId));
+        UserViews.Check(await superAdmins.ChangeUserAsync(user, "remove_role", () => users.RemoveFromRoleAsync(user, roleId), cancellationToken));
+        return await InfoAsync(user, cancellationToken);
+    }
+
+    // For a user who lost the authenticator and its recovery codes: the key and the codes go, two-factor is off, and a new
+    // security stamp and the end of every session sign the user out, so a role that requires two-factor asks it to enrol
+    // again. The caller must have signed in with a second factor itself, which a key or a service account never has, and
+    // turns its own off through /me/two-factor.
+    public async Task<UserInfo> ResetTwoFactorAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var user = await TargetAsync(id, cancellationToken);
+        if (IsCaller(id))
+        {
+            throw new ValidationException([new ValidationError("id", IdentityErrorCodes.InvalidUser, "A user does not reset its own two-factor sign-in; it turns it off with a code through /me/two-factor/disable.")]);
+        }
+
+        if (accessor.Current?.Principal is not { Kind: PrincipalKind.AdminUser } caller || !TokenClaims.SignedInWithSecondFactor(caller))
+        {
+            throw new ValidationException([new ValidationError("", IdentityErrorCodes.SecondFactorRequired, "Resetting another user's two-factor sign-in needs a user signed in with a second factor (amr mfa); an API key or a service account has none.")]);
+        }
+
+        if (!await users.GetTwoFactorEnabledAsync(user) && string.IsNullOrEmpty(await users.GetAuthenticatorKeyAsync(user)))
+        {
+            throw new ValidationException([new ValidationError("twoFactor", IdentityErrorCodes.TwoFactorNotEnabled, "The user has no two-factor sign-in and no authenticator that waits; there is nothing to reset.")]);
+        }
+
+        UserViews.Check(await changes.RunAsync(
+            async () =>
+            {
+                var reset = await users.DisableTwoFactorAsync(user);
+                if (reset.Succeeded)
+                {
+                    await changes.RaiseAsync(new UserTwoFactorResetEvent(user.Id, user.UserName ?? ""), cancellationToken);
+                }
+
+                return reset;
+            },
+            cancellationToken));
+
+        await sessions.RevokeAllAsync(user.Id, cancellationToken);
         return await InfoAsync(user, cancellationToken);
     }
 
@@ -170,6 +212,8 @@ internal sealed class UserAdministration(
 
     public async Task RemoveLoginAsync(Guid id, string provider, CancellationToken cancellationToken) =>
         await logins.RemoveAsync(await TargetAsync(id, cancellationToken), provider, cancellationToken);
+
+    private bool IsCaller(Guid id) => accessor.Current?.Principal is { Kind: PrincipalKind.AdminUser } caller && caller.Id == id;
 
     private ValueTask RequireAsync(CancellationToken cancellationToken) =>
         authority.RequireAsync(CorePermissions.UsersManage, site: null, cancellationToken);
@@ -233,6 +277,7 @@ internal static class UserViews
         nameof(IdentityErrorDescriber.DuplicateUserName) or nameof(IdentityErrorDescriber.InvalidUserName) => "userName",
         nameof(IdentityErrorDescriber.DuplicateEmail) or nameof(IdentityErrorDescriber.InvalidEmail) => "email",
         nameof(IdentityErrorDescriber.UserAlreadyInRole) or nameof(IdentityErrorDescriber.UserNotInRole) or IdentityErrorCodes.UnknownRole => "roleId",
+        IdentityErrorCodes.LastSuperAdmin => "id",
         _ => "",
     };
 }
