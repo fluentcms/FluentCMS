@@ -450,6 +450,7 @@ internal sealed partial class ContentService(
             return await InSavepointAsync(outer, work, cancellationToken);
         }
 
+        var tracked = TrackerSnapshot.Take(context);
         try
         {
             return await InOwnTransactionAsync(work, cancellationToken);
@@ -457,8 +458,10 @@ internal sealed partial class ContentService(
         catch (Exception exception) when (provider.IsUniqueViolation(exception))
         {
             // Another writer committed the same key between this write's checks and its insert, which only a database
-            // that does not serialise writers lets happen. Run once more: the checks then see that writer and refuse as
-            // they would have had it come first (spec 4.4). A write joined to this one runs again with it.
+            // that does not serialise writers lets happen. Run once more, on the context as it was: the checks then
+            // see that writer and refuse as they would have had it come first (spec 4.4). A write joined to this one
+            // runs again with it.
+            tracked.Restore();
             return await InOwnTransactionAsync(work, cancellationToken);
         }
     }
