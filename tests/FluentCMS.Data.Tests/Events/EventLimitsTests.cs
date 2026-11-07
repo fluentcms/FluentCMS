@@ -146,6 +146,8 @@ public sealed class EventLimitsTests
             }
             finally
             {
+                // Its scope is disposed only after this returns, and Windows cannot delete the test's file while the connection is open.
+                await context.Database.CloseConnectionAsync();
                 overlap.Done.TrySetResult();
             }
         }
