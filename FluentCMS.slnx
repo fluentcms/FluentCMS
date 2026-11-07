@@ -32,6 +32,7 @@
     <Project Path="tests/FluentCMS.Host.Tests/FluentCMS.Host.Tests.csproj" />
     <Project Path="tests/FluentCMS.Plugins.Tests/FluentCMS.Plugins.Tests.csproj" />
     <Project Path="tests/FluentCMS.Plugins.Sample/FluentCMS.Plugins.Sample.csproj" />
+    <Project Path="tests/FluentCMS.Plugins.Webhooks.Tests/FluentCMS.Plugins.Webhooks.Tests.csproj" />
   </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/Blog/Blog.csproj" />

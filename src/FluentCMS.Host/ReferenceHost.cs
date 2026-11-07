@@ -3,6 +3,7 @@ using FluentCMS.Core.Schema;
 using FluentCMS.Data.PostgreSql;
 using FluentCMS.Data.Sqlite;
 using FluentCMS.Data.SqlServer;
+using FluentCMS.Plugins.Webhooks;
 using FluentCMS.Samples.Blog;
 using FluentCMS.Schema;
 
@@ -30,6 +31,7 @@ public static class ReferenceHost
         {
             UseDatabase(cms, configuration, builder.Environment);
             cms.UseContentMigrations(typeof(ReferenceHost).Assembly);
+            cms.AddPlugin<WebhooksPlugin>();
 
             // Types that are data have no compiled migrations, so their tables follow the schema at start (Q2, until the
             // CLI generates migrations from a schema file). Core refuses this on a provider without schema sync.

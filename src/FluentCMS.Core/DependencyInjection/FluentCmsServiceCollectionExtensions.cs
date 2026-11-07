@@ -158,6 +158,7 @@ public static class FluentCmsServiceCollectionExtensions
         IdentityRegistration.Add(services, builder.Users, builder.Clients, builder.Sso, builder.Providers);
         services.TryAddScoped<IAuthorizationEvaluator, AuthorizationEvaluator>();
         services.AddScoped<ManagementAuthority>();
+        services.TryAddScoped<IPermissionChecker, PermissionChecker>();
         services.AddScoped<RoleService>();
         services.TryAddScoped<IContentQueryAccess, ContentQueryAccess>();
         services.AddScoped<ContentQueryEngine>();
