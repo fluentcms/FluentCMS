@@ -36,6 +36,7 @@ using FluentCMS.Schema;
 using FluentCMS.Seeding;
 using FluentCMS.Settings;
 using FluentCMS.Sites;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -73,6 +74,7 @@ public static class FluentCmsServiceCollectionExtensions
         var plugins = PluginHost.ConfigureServices(builder, PluginHost.Compose(builder.Plugins, PluginDiscovery.Types, PluginHost.RunningSdk));
         services.AddSingleton(plugins);
         services.TryAddSingleton<IHookTiebreaker>(plugins);
+        builder.Providers.BeforeCore(services);
 
         services.AddProductionStartupChecks();
         services.AddFluentCmsOptions(DatabaseOptions.Section, StorageErrorCodes.InvalidDatabaseSetting, new DatabaseOptions { SchemaSyncOutsideDevelopment = builder.SchemaSyncOutsideDevelopment });
@@ -143,7 +145,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddHostedService<RowRuleStartupCheck>();
         // Before the identity registration, which takes out the Data Protection hosted service that the pages' antiforgery adds.
         HostedPages.Add(services);
-        IdentityRegistration.Add(services, builder.Users, builder.Clients, builder.Sso);
+        IdentityRegistration.Add(services, builder.Users, builder.Clients, builder.Sso, builder.Providers);
         services.TryAddScoped<IAuthorizationEvaluator, AuthorizationEvaluator>();
         services.AddScoped<ManagementAuthority>();
         services.AddScoped<RoleService>();
@@ -151,7 +153,8 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddScoped<ContentQueryEngine>();
 
         services.TryAddSingleton(TimeProvider.System);
-        services.TryAddSingleton<IDistributedLock, DatabaseDistributedLock>();
+        builder.Providers.Default<IDistributedLock, DatabaseDistributedLock>();
+        builder.Providers.Default<IDistributedCache, MemoryDistributedCache>();
         services.TryAddScoped<ISiteResolver, SiteResolver>();
         services.TryAddScoped<ILocaleResolver, LocaleResolver>();
         services.AddScoped<LocaleRegistry>();
@@ -252,6 +255,9 @@ public static class FluentCmsServiceCollectionExtensions
         {
             services.AddHostedService<SeedStartupService>();
         }
+
+        // Last, so that a replacement wins over every registration of its slot that came before.
+        services.AddSingleton(builder.Providers.Apply(services));
 
         return services;
     }

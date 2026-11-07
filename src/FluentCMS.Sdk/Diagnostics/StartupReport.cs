@@ -30,6 +30,9 @@ public sealed record StartupReport
     /// <summary>The plugins the host runs, in plugin order.</summary>
     public IReadOnlyList<StartupPlugin> Plugins { get; init; } = [];
 
+    /// <summary>The provider slots and the implementation each one resolves to.</summary>
+    public IReadOnlyList<StartupProviderSlot> ProviderSlots { get; init; } = [];
+
     /// <summary>The migrations of the system, plugin and content streams that are not applied yet.</summary>
     public IReadOnlyList<StartupMigration> PendingMigrations { get; init; } = [];
 
