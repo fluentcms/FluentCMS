@@ -38,6 +38,10 @@ internal sealed class WebhookDeliveryJob(
         var webhook = await database.Set<Webhook>().AsNoTracking().FirstOrDefaultAsync(item => item.Id == attempt.WebhookId, cancellationToken);
         if (webhook is null || (!webhook.Enabled && !attempt.Manual))
         {
+            // The attempt before this one said another would follow; now none does.
+            await deliveries
+                .Where(item => item.DeliveryId == attempt.DeliveryId && item.Attempt == attempt.Attempt - 1 && item.State == DeliveryStates.Failed)
+                .ExecuteUpdateAsync(item => item.SetProperty(row => row.State, DeliveryStates.Dead).SetProperty(row => row.NextRetryAt, (DateTimeOffset?)null), cancellationToken);
             WebhookLog.Skipped(logger, attempt.WebhookId, attempt.DeliveryId, attempt.Attempt);
             return;
         }

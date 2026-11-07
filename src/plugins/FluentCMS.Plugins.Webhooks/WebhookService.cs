@@ -158,9 +158,14 @@ internal sealed partial class WebhookService(
     public async Task<DeliveryPage> DeliveriesAsync(Guid id, int page, int pageSize, CancellationToken cancellationToken)
     {
         var site = await RequireAsync(cancellationToken);
-        if (page < 1 || pageSize < 1 || pageSize > MaxPageSize)
+        if (pageSize < 1 || pageSize > MaxPageSize)
         {
-            throw Invalid(page < 1 ? "page" : "pageSize", page < 1 ? "The page number starts at 1." : $"The page size is from 1 to {MaxPageSize}.");
+            throw Invalid("pageSize", $"The page size is from 1 to {MaxPageSize}.");
+        }
+
+        if (page < 1 || (long)(page - 1) * pageSize > int.MaxValue)
+        {
+            throw Invalid("page", "The page number starts at 1 and is not past the end of every log.");
         }
 
         var webhook = await FindAsync(site, id, tracked: false, cancellationToken);

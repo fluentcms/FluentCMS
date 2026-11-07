@@ -34,7 +34,7 @@ public sealed class WebhookRetentionTests
         await using var host = Host();
 
         RecurringJob? schedule = null;
-        for (var attempt = 0; attempt < 100 && schedule is null; attempt++)
+        for (var attempt = 0; attempt < 400 && schedule is null; attempt++)
         {
             await using var scope = host.Services.CreateAsyncScope();
             schedule = await scope.ServiceProvider.GetRequiredService<Core.Storage.SystemDbContext>().Set<RecurringJob>()

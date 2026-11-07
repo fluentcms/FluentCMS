@@ -37,6 +37,10 @@ public sealed class WebhookAddressTests
     [InlineData("::ffff:10.0.0.5")]
     [InlineData("::ffff:169.254.169.254")]
     [InlineData("64:ff9b::a00:5")]
+    [InlineData("2002:a00:5::1")]
+    [InlineData("2001:0:4136:e378:8000:63bf:3fff:fdd2")]
+    [InlineData("192.0.0.8")]
+    [InlineData("198.18.0.1")]
     public void AnAddressThatIsNotPublicIsRefused(string address) =>
         WebhookAddresses.IsPublic(IPAddress.Parse(address)).ShouldBeFalse();
 
@@ -48,6 +52,7 @@ public sealed class WebhookAddressTests
     [InlineData("2606:4700:4700::1111")]
     [InlineData("::ffff:8.8.8.8")]
     [InlineData("64:ff9b::808:808")]
+    [InlineData("2002:808:808::1")]
     public void APublicAddressIsAllowed(string address) =>
         WebhookAddresses.IsPublic(IPAddress.Parse(address)).ShouldBeTrue();
 

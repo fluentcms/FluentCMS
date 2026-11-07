@@ -18,7 +18,9 @@ public sealed class WebhooksPlugin : IPlugin
 
         plugin.Services.AddOptions<WebhooksOptions>()
             .BindConfiguration(WebhooksOptions.Section)
-            .Validate(options => options.Timeout > TimeSpan.Zero && options.Retention > TimeSpan.Zero, $"{WebhooksOptions.Section}: Timeout and Retention must be positive.");
+            .Validate(
+                options => options.Timeout > TimeSpan.Zero && options.Timeout <= TimeSpan.FromMinutes(5) && options.Retention > TimeSpan.Zero,
+                $"{WebhooksOptions.Section}: Timeout must be positive and at most five minutes, and Retention positive.");
         plugin.Services.AddSingleton<WebhookSender>();
         plugin.Services.AddSingleton<WebhookSigning>();
         plugin.Services.AddScoped<WebhookService>();

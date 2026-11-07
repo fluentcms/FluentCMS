@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Net;
+using System.Net.Http.Json;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Nodes;
@@ -130,6 +131,29 @@ public sealed class WebhookDeliveryTests
         var newest = page["items"]!.AsArray()[0]!;
         (newest["attempt"]!.GetValue<int>(), newest["state"]!.GetValue<string>(), newest["statusCode"]!.GetValue<int>()).ShouldBe((6, "dead", 503));
         newest["durationMs"].ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task AWebhookDisabledBeforeItsRetryGetsNoMoreAttemptsAndItsDeliveryIsDead()
+    {
+        await using var receiver = await TestReceiver.StartAsync();
+        receiver.Status = 500;
+        await using var host = Host();
+        using var client = await AdminAsync(host);
+        var url = receiver.Url().ToString();
+        var webhook = await CreateAsync(client, new { name = "paused", url, events = new List<string> { "content.published" } });
+        var articles = host.As(await host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token)).Content<Article>();
+        await articles.PublishAsync((await articles.CreateAsync(new Article { Title = "Paused" }, Token)).Id, cancellationToken: Token);
+        await PumpAsync(host);
+
+        using var disabled = await client.PutAsJsonAsync(new Uri($"/api/management/v1/webhooks/{Id(webhook):D}", UriKind.Relative), new { name = "paused", url, events = new List<string> { "content.published" }, enabled = false }, Token);
+        disabled.StatusCode.ShouldBe(HttpStatusCode.OK, await TextAsync(disabled));
+        host.Time.Advance(TimeSpan.FromMinutes(1));
+        (await RunDueJobsAsync(host)).ShouldBe(1);
+
+        receiver.Requests.Count.ShouldBe(1);
+        var attempt = (await DeliveriesAsync(host)).ShouldHaveSingleItem();
+        (attempt.State, attempt.NextRetryAt).ShouldBe((DeliveryStates.Dead, (DateTimeOffset?)null));
     }
 
     [Fact]
