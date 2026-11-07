@@ -83,7 +83,7 @@ internal sealed class RoleVersionInterceptor(IServiceProvider services, IOperati
         return result;
     }
 
-    // A save that fails leaves its rows to the next one, which stages its own.
+    // A save that fails drops the rows it staged; the next save stages its own.
     public override void SaveChangesFailed(DbContextErrorEventData eventData) => Unstage(eventData.Context);
 
     public override Task SaveChangesFailedAsync(DbContextErrorEventData eventData, CancellationToken cancellationToken = default)
