@@ -960,6 +960,8 @@ The headers are `X-FluentCMS-Event`, `X-FluentCMS-Delivery` (the same for every 
 
 **Log.** `cms_webhooks_delivery` holds a row per attempt: the state (`succeeded`, `failed` with `next_retry_at`, or `dead`), the status code, the duration, the body sent, the first 1024 characters of the answer and the error. `GET /{id}/deliveries` pages them newest first (`page`, and `pageSize` up to 100). `POST /{id}/deliveries/{deliveryId}/redeliver` sends the body of a delivery again, and `POST /{id}/ping` sends a `ping` event. Each is a new delivery that is tried once, even when the webhook is disabled, and answers 202 with its `deliveryId`. The recurring job `webhooks.retention` (daily at 04:15 UTC, stored once the host has started) removes attempts older than `FluentCms:Webhooks:Retention` (30 days) in batches of 500.
 
+**Per-site enablement.** Core gates the plugin by site (4.13) and the plugin checks nothing itself. In a site where it is disabled, an event records no `webhooks.{event}` row, its endpoints answer 404 and a `webhooks.deliver` job of that site completes without sending. `webhooks.retention` has no site and runs. A retry that was already scheduled when the plugin was disabled completes without sending, so the attempt before it keeps the state `failed` with its `next_retry_at`.
+
 **Codes.** `FCMS1560` an invalid field, `FCMS1561` an invalid URL, `FCMS1562` a URL that is not public, `FCMS1563` an unknown event, `FCMS1564` no such webhook, `FCMS1565` no such delivery and `FCMS1566` a name that is taken. Event ids 9240 to 9245.
 
 ### 5.3 GraphQL plugin
