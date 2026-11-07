@@ -40,6 +40,9 @@ internal static partial class EventLog
     [LoggerMessage(EventId = 9613, Level = LogLevel.Error, Message = "The in-process handlers of {EventType} {EventId} did not finish within {Timeout} and were abandoned; they may still be running.")]
     public static partial void DispatchAbandoned(ILogger logger, string eventType, Guid eventId, TimeSpan timeout);
 
+    [LoggerMessage(EventId = 9614, Level = LogLevel.Warning, Message = "The handler of outbox delivery {Id} to {Handler} did not start within {Timeout}, so the delivery was put back without using an attempt; a later drain delivers it.")]
+    public static partial void HandOffAbandoned(ILogger logger, Guid id, string handler, TimeSpan timeout);
+
     [LoggerMessage(EventId = 9610, Level = LogLevel.Error, Message = "The drain of the outbox hit an error.")]
     public static partial void DrainFailed(ILogger logger, Exception exception);
 }
