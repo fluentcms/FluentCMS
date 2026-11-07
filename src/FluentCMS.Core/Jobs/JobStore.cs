@@ -66,7 +66,7 @@ internal sealed class JobStore(
 
         // The event is recorded for the outbox handlers in the same commit as the fact it reports.
         var expiredEvent = expired > 0 ? Failed(job.Id, job.SiteId, job.Type, job.Queue, job.Attempts - 1, job.MaxAttempts, LeaseExpiredError) : null;
-        var rows = expiredEvent is null ? [] : outbox.Build([expiredEvent]);
+        var rows = expiredEvent is null ? [] : await outbox.BuildAsync([expiredEvent], cancellationToken);
         context.AddRange(rows);
         await context.SaveChangesAsync(cancellationToken);
 
@@ -112,7 +112,7 @@ internal sealed class JobStore(
 
         var failedEvent = Failed(job.Id, job.SiteId, job.Type, job.Queue, job.Attempt, job.MaxAttempts, error);
         var deadEvent = deadLetter ? DeadLettered(job.Id, job.SiteId, job.Type, job.Queue, job.Attempt, error) : null;
-        var rows = outbox.Build(deadEvent is null ? [failedEvent] : [failedEvent, deadEvent]);
+        var rows = await outbox.BuildAsync(deadEvent is null ? [failedEvent] : [failedEvent, deadEvent], CancellationToken.None);
 
         var held = await SettleAsync(job, JobAttemptOutcome.Failed, error, now, rows, row =>
         {
@@ -194,7 +194,7 @@ internal sealed class JobStore(
 
             var failedEvent = Failed(job.Id, job.SiteId, job.Type, job.Queue, job.Attempts, job.MaxAttempts, OutOfAttemptsError);
             var deadEvent = DeadLettered(job.Id, job.SiteId, job.Type, job.Queue, job.Attempts, OutOfAttemptsError);
-            var rows = outbox.Build([failedEvent, deadEvent]);
+            var rows = await outbox.BuildAsync([failedEvent, deadEvent], CancellationToken.None);
             context.AddRange(rows);
             await context.SaveChangesAsync();
 
@@ -235,7 +235,7 @@ internal sealed class JobStore(
 
         var job = await context.Set<Job>().AsNoTracking().SingleAsync(row => row.Id == id, cancellationToken);
         var deadEvent = new JobDeadLetteredEvent(job.Id, job.Type, job.Queue, job.Attempts, CancelledError) { Source = source with { SiteId = job.SiteId ?? Guid.Empty } };
-        var rows = outbox.Build([deadEvent]);
+        var rows = await outbox.BuildAsync([deadEvent], cancellationToken);
         context.AddRange(rows);
         await context.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(CancellationToken.None);

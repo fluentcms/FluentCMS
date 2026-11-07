@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Reflection;
 using FluentCMS.Content;
 using FluentCMS.Core.Content.Query;
+using FluentCMS.Core.Plugins;
 using FluentCMS.Core.Telemetry;
 using FluentCMS.Hooks;
 using FluentCMS.Schema;
@@ -14,7 +15,7 @@ namespace FluentCMS.Core.Content.Hooks;
 // The first hook that cancels throws HookRejectedException and the hooks after it do not run.
 // The changed paths are those between previous and entry, computed again before each before hook so that a hook sees the
 // changes of the hooks before it; an operation that changes no field passes the stored state as previous.
-// Only before hooks change the entry: an after hook works on a copy.
+// Only before hooks change the entry: an after hook works on a copy. A hook of a plugin disabled in the operation's site does not run.
 public sealed class HookPipeline(IServiceProvider services)
 {
     private static readonly ConcurrentDictionary<Type, int> Orders = new();
@@ -32,6 +33,11 @@ public sealed class HookPipeline(IServiceProvider services)
         ArgumentNullException.ThrowIfNull(entry);
 
         var hooks = Resolve(kind, type);
+        if (hooks.Count > 0 && services.GetService(typeof(PluginState)) is PluginState plugins)
+        {
+            hooks = await plugins.EnabledAsync(hooks, hook => hook.ImplementationType, operation.Site.Value, cancellationToken);
+        }
+
         if (hooks.Count == 0)
         {
             return;

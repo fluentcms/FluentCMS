@@ -58,6 +58,7 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         modelBuilder.Entity<ActivityRow>(MapActivity);
         modelBuilder.Entity<ScheduleRow>(MapSchedule);
         modelBuilder.Entity<SettingRow>(MapSetting);
+        modelBuilder.Entity<PluginSiteRow>(MapPluginSite);
         modelBuilder.Entity<SchemaHistoryRow>(MapSchemaHistory);
         modelBuilder.Entity<Site>(MapSite);
         modelBuilder.Entity<SiteLocale>(MapSiteLocale);
@@ -513,6 +514,17 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
             .IsUnique()
             .HasFilter("site_id IS NOT NULL")
             .HasDatabaseName("uq_cms_setting_site_key");
+    }
+
+    // A plugin's rows go with the site; a plugin that is no longer registered keeps its rows, which say nothing then.
+    private static void MapPluginSite(EntityTypeBuilder<PluginSiteRow> entity)
+    {
+        entity.ToTable(StorageNames.PluginSite);
+        MapColumnNames(entity);
+        entity.HasKey(row => new { row.Plugin, row.SiteId });
+        entity.Property(row => row.Plugin).HasMaxLength(PluginSiteRow.PluginMaxLength);
+
+        entity.HasOne<Site>().WithMany().HasForeignKey(row => row.SiteId).OnDelete(DeleteBehavior.Cascade);
     }
 
     private static void MapSchemaHistory(EntityTypeBuilder<SchemaHistoryRow> entity)

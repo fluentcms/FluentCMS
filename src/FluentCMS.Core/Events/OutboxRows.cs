@@ -1,18 +1,20 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using FluentCMS.Core.Plugins;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Events;
 
 namespace FluentCMS.Core.Events;
 
 // Turns events into the rows of the outbox handlers registered for them, in a sequence that rises with the order they are
-// built in, so that the events of one commit are delivered in the order they were raised.
-internal sealed class OutboxRows(OutboxRegistry registry, TimeProvider time)
+// built in, so that the events of one commit are delivered in the order they were raised. A handler of a plugin disabled in
+// the event's site gets no row, as an in-process handler is not called: what happens there while it is off is not its.
+internal sealed class OutboxRows(OutboxRegistry registry, PluginState plugins, TimeProvider time)
 {
     private long _last;
 
-    public List<OutboxMessage> Build(IEnumerable<CmsEvent> events)
+    public async ValueTask<List<OutboxMessage>> BuildAsync(IEnumerable<CmsEvent> events, CancellationToken cancellationToken)
     {
         var now = time.GetUtcNow();
         List<OutboxMessage> rows = [];
@@ -26,10 +28,12 @@ internal sealed class OutboxRows(OutboxRegistry registry, TimeProvider time)
                 continue;
             }
 
+            var disabled = await plugins.DisabledAsync(@event.Source.SiteId, cancellationToken);
             var payload = JsonSerializer.Serialize(@event, type, EventJson.Options);
             foreach (var handler in handlers)
             {
-                if (!seen.Add((@event.EventId, handler.Name)))
+                if (!seen.Add((@event.EventId, handler.Name))
+                    || (disabled.Count > 0 && plugins.OutboxHandlerOwner(handler.Name) is { } owner && disabled.Contains(owner)))
                 {
                     continue;
                 }

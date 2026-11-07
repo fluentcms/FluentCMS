@@ -1,4 +1,5 @@
 using FluentCMS.Content;
+using FluentCMS.Core.Plugins;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Events;
@@ -17,9 +18,12 @@ namespace FluentCMS.Core.Events;
 // The attempt counts only once the handler is entered: a cut-off that comes before the handler starts, as when the thread pool
 // is starved, gives the attempt back and leaves the row for a later drain. A handler that has to be abandoned once it has
 // started may still be running, on a thread of its own; nothing here can stop it.
+// A row of a plugin that is now disabled in the row's site was recorded while it was enabled, so it is owed to the plugin: it
+// waits, as a row with no handler does, without using an attempt, and is delivered once the plugin is enabled there again.
 internal sealed class OutboxDrainer(
     IServiceScopeFactory scopes,
     OutboxRegistry registry,
+    PluginState plugins,
     OutboxOptions options,
     IOperationContextAccessor operation,
     TimeProvider time,
@@ -146,6 +150,13 @@ internal sealed class OutboxDrainer(
             // Another instance may have the handler: this one is mid-deploy, or the plugin is gone. The row waits, and a
             // plugin that stays removed leaves its rows pending.
             EventLog.HandlerMissing(logger, message.Id, message.Handler);
+            await ReleaseAsync(message, options.MissingHandlerDelay, started: false);
+            return false;
+        }
+
+        if (await plugins.DisabledOutboxHandlerAsync(message.Handler, message.SiteId, cancellationToken) is { } plugin)
+        {
+            PluginLog.DeliveryWaits(logger, message.Id, message.Handler, plugin, message.SiteId!.Value);
             await ReleaseAsync(message, options.MissingHandlerDelay, started: false);
             return false;
         }

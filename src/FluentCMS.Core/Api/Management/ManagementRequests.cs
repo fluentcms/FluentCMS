@@ -30,7 +30,7 @@ internal sealed class BodyReader
     public string? String(string key, bool required = false) => Read(key, required, "a string", value =>
         value.ValueKind == JsonValueKind.String ? (true, value.GetString()) : (false, null));
 
-    public bool? Boolean(string key) => Read<bool?>(key, required: false, "true or false", value =>
+    public bool? Boolean(string key, bool required = false) => Read<bool?>(key, required, "true or false", value =>
         value.ValueKind is JsonValueKind.True or JsonValueKind.False ? (true, value.GetBoolean()) : (false, null));
 
     public int? Integer(string key) => Read<int?>(key, required: false, "a whole number", value =>

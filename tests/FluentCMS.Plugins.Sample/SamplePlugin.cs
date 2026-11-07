@@ -28,6 +28,7 @@ public sealed class SamplePlugin : IPlugin
             .AddModel<SampleModel>()
             .AddMigrations(typeof(SamplePlugin).Assembly)
             .AddJob<SampleNoteJob, SampleNotePayload>(SampleNoteJob.Type)
+            .AddEventHandler<SampleNoteAdded, SampleNoteSeenHandler>()
             .AddOutboxHandler<SampleNoteAdded, SampleNoteHandler>("sample.note-added")
             .AddActivity<SampleNoteAdded>("sample.note_added", added => new ActivityEntry("sample.note_added")
             {

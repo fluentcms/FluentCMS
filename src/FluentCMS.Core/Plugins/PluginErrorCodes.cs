@@ -1,6 +1,6 @@
 namespace FluentCMS.Core.Plugins;
 
-// 1527 to 1599 are kept for later plugin work.
+// The codes up to 1599 that are not listed here are kept for later plugin work.
 internal static class PluginErrorCodes
 {
     public const string InvalidPlugin = "FCMS1501";
@@ -18,4 +18,7 @@ internal static class PluginErrorCodes
     public const string InvalidEndpointPrefix = "FCMS1524";
     public const string SecondMigrations = "FCMS1525";
     public const string RequiredFieldReference = "FCMS1526";
+
+    public const string PluginDisabled = "FCMS1550";
+    public const string PluginNotFound = "FCMS1551";
 }

@@ -6,6 +6,7 @@ using FluentCMS.Core.Api.OpenApi;
 using FluentCMS.Core.Plugins;
 using FluentCMS.Core.Storage;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
@@ -104,17 +105,32 @@ public static class FluentCmsEndpointRouteBuilderExtensions
 
         var routes = cms.MapGroup(prefix).WithMetadata(new FluentCmsSurfaceMetadata(plugin.Name));
         routes.CacheOutput(policy => policy.NoCache()).RequireRateLimiting(RateLimitPolicyNames.Delivery).RequireCors(CorsPolicies.Delivery);
-        return routes.WithFluentCmsOperation(Origin.Api);
+        return WhenEnabled(routes.WithFluentCmsOperation(Origin.Api), plugin);
     }
 
     internal static RouteGroupBuilder MapPluginManagement(RouteGroupBuilder cms, RegisteredPlugin plugin, string prefix)
     {
         CheckPrefix(plugin, prefix, "MapManagement");
         var management = FluentCmsEndpointGroups.Prefixes.Single(group => group.Group == FluentCmsEndpointGroup.Management).Prefix;
-        return Protect(cms.MapGroup(management), FluentCmsEndpointGroup.Management)
-            .MapGroup(prefix)
-            .WithFluentCmsOperation(Origin.Api)
-            .RequireManagementScope();
+        return WhenEnabled(
+            Protect(cms.MapGroup(management), FluentCmsEndpointGroup.Management)
+                .MapGroup(prefix)
+                .WithFluentCmsOperation(Origin.Api)
+                .RequireManagementScope(),
+            plugin);
+    }
+
+    // After the filter of the operation, whose site it reads, so that a plugin disabled in that site answers 404 there.
+    private static RouteGroupBuilder WhenEnabled(RouteGroupBuilder routes, RegisteredPlugin plugin)
+    {
+        routes.WithMetadata(new PluginEndpointMetadata(plugin.Name)).AddEndpointFilter(async (context, next) =>
+        {
+            var httpContext = context.HttpContext;
+            await httpContext.RequestServices.GetRequiredService<PluginState>()
+                .RequireEnabledAsync(plugin.Name, ApiRequest.Of(httpContext).Operation.Site, httpContext.RequestAborted);
+            return await next(context);
+        });
+        return routes;
     }
 
     private static void CheckPrefix(RegisteredPlugin plugin, string prefix, string method)
