@@ -245,6 +245,46 @@ public sealed class HttpProtectionHardeningTests : IAsyncDisposable
         (await small.Content.ReadAsStringAsync(Token)).ShouldBe("3");
     }
 
+    // The authorization server reads the body of a token, introspection or revocation request while the request
+    // authenticates, before the endpoint runs, so the cap has to hold it before then.
+    [Theory]
+    [InlineData("/connect/token")]
+    [InlineData("/connect/introspect")]
+    [InlineData("/connect/revoke")]
+    public async Task TheBodyCapCoversTheAuthorizationServerBeforeAuthentication(string path)
+    {
+        var client = await Start(new Dictionary<string, string?> { ["FluentCms:Limits:MaxBodySize"] = "100" });
+        var form = "grant_type=client_credentials&client_id=probe&client_secret=" + new string('a', 500);
+
+        using var declared = await PostForm(client, path, form, chunked: false);
+        using var streamed = await PostForm(client, path, form, chunked: true);
+        using var small = await PostForm(client, path, "grant_type=client_credentials&client_id=probe", chunked: false);
+
+        foreach (var refused in new[] { declared, streamed })
+        {
+            refused.StatusCode.ShouldBe(HttpStatusCode.RequestEntityTooLarge, path);
+            refused.Content.Headers.ContentType!.MediaType.ShouldBe("application/problem+json");
+            (await Problem(refused)).GetProperty("code").GetString().ShouldBe("FCMS3111");
+        }
+
+        small.StatusCode.ShouldNotBe(HttpStatusCode.RequestEntityTooLarge);
+    }
+
+    [Theory]
+    [InlineData("/connect/unknown")]
+    [InlineData("/api/management/v1/unknown")]
+    public async Task APathUnderAGroupOfCoreThatNoEndpointAnswersIsCappedByItsPrefix(string path)
+    {
+        var client = await Start(new Dictionary<string, string?> { ["FluentCms:Limits:MaxBodySize"] = "100" });
+
+        using var refused = await PostForm(client, path, new string('a', 500), chunked: false);
+        using var small = await PostForm(client, path, "a=1", chunked: false);
+
+        refused.StatusCode.ShouldBe(HttpStatusCode.RequestEntityTooLarge);
+        (await Problem(refused)).GetProperty("code").GetString().ShouldBe("FCMS3111");
+        small.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+    }
+
     [Theory]
     [InlineData("1000", 5000, 1000)]
     [InlineData("10000", 5000, 5000)]
@@ -449,6 +489,18 @@ public sealed class HttpProtectionHardeningTests : IAsyncDisposable
             Content = chunked ? new StreamContent(new UnseekableStream(bytes)) : new ByteArrayContent(bytes),
         };
         request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+        return client.SendAsync(request, Token);
+    }
+
+    private static Task<HttpResponseMessage> PostForm(HttpClient client, string path, string form, bool chunked)
+    {
+        var bytes = Encoding.UTF8.GetBytes(form);
+        // The authorization server answers only HTTPS, and would refuse a plain request before it reads the body.
+        var request = new HttpRequestMessage(HttpMethod.Post, new Uri("https://localhost" + path))
+        {
+            Content = chunked ? new StreamContent(new UnseekableStream(bytes)) : new ByteArrayContent(bytes),
+        };
+        request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/x-www-form-urlencoded");
         return client.SendAsync(request, Token);
     }
 

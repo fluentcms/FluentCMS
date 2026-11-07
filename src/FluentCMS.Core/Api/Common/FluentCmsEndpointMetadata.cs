@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.RateLimiting;
 
 namespace FluentCMS.Core.Api.Common;
@@ -13,6 +14,13 @@ internal sealed class FluentCmsEndpointMetadata
 internal sealed class HostedPageMetadata
 {
     public static readonly HostedPageMetadata Instance = new();
+}
+
+// The Content-Security-Policy of an endpoint's responses, made per request, for a page whose policy names a nonce or an
+// origin. A policy the endpoint set itself stays.
+internal sealed class ContentSecurityPolicyMetadata(Func<HttpContext, string> policy)
+{
+    public string For(HttpContext context) => policy(context);
 }
 
 internal static class HostedPageConventions

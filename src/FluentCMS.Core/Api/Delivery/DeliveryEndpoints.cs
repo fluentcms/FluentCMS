@@ -18,6 +18,9 @@ namespace FluentCMS.Core.Api.Delivery;
 // here, where the engine would also let a managing principal.
 internal static class DeliveryEndpoints
 {
+    // Minimal APIs do not answer HEAD with a GET route, and CDNs and uptime checks send it.
+    private static readonly string[] Reads = [HttpMethods.Get, HttpMethods.Head];
+
     public static IServiceCollection AddDeliveryApi(this IServiceCollection services, DeliveryCacheOptions cache)
     {
         services.AddFluentCmsOptions(DeliveryCacheOptions.Section, HostErrorCodes.InvalidOption, cache, options => options.Validate());
@@ -27,11 +30,11 @@ internal static class DeliveryEndpoints
     private static void Map(RouteGroupBuilder delivery)
     {
         var routes = delivery.MapGroup("").WithFluentCmsOperation(Origin.Api);
-        routes.MapGet("/{type}", ListAsync)
+        routes.MapMethods("/{type}", Reads, ListAsync)
             .Describe(new("list", "Lists the published entries; a singleton answers its entry") { Query = ContentParameters.List, Response = ContentPayload.EntryOrList });
-        routes.MapGet("/{type}/{id}", GetAsync)
+        routes.MapMethods("/{type}/{id}", Reads, GetAsync)
             .Describe(new("get", "Reads an entry") { Query = ContentParameters.Single });
-        routes.MapGet("/{type}/by/{field}/{value}", GetByFieldAsync)
+        routes.MapMethods("/{type}/by/{field}/{value}", Reads, GetByFieldAsync)
             .Describe(new("getBy", "Reads the entry whose unique field has the value") { Query = ContentParameters.Single });
     }
 

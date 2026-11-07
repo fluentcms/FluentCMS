@@ -62,7 +62,9 @@ public static class FluentCmsEndpointRouteBuilderExtensions
 
     // /openapi/v1.json and the Scalar UI at /scalar, which a host maps itself, so they are where it puts them: not held to
     // the path base, and under any group it maps them in. FluentCms:OpenApi:Enabled turns them on outside Development; off,
-    // nothing is mapped. The returned builder applies conventions to both, such as RequireAuthorization.
+    // nothing is mapped. The returned builder applies conventions to both, such as RequireAuthorization. They are FluentCMS
+    // endpoints of the docs surface, so they get its headers, the coarse limit before authentication and the Delivery limit
+    // by client address, and they never look up a key, since nothing on them reads one.
     public static IEndpointConventionBuilder MapFluentCmsOpenApi(this IEndpointRouteBuilder endpoints)
     {
         ArgumentNullException.ThrowIfNull(endpoints);
@@ -76,10 +78,11 @@ public static class FluentCmsEndpointRouteBuilderExtensions
             return new Conventions();
         }
 
-        var document = endpoints.MapOpenApi(OpenApiRegistration.DocumentRoute);
-        var scalar = endpoints.MapScalarApiReference(OpenApiRegistration.ScalarRoute, (ui, context) =>
-            ui.WithTitle("FluentCMS API").WithOpenApiRoutePattern(OpenApiRegistration.DocumentUrl(context)));
-        return new Conventions(document, scalar);
+        var document = endpoints.MapOpenApi(OpenApiRegistration.DocumentRoute).CacheOutput(OpenApiDocumentCachePolicy.Instance);
+        var scalar = endpoints.MapScalarApiReference(OpenApiRegistration.ScalarRoute, ScalarPage.Configure).WithMetadata(ScalarPage.Policy);
+        var docs = new Conventions(document, scalar);
+        docs.WithMetadata(FluentCmsEndpointMetadata.Instance, FluentCmsSurfaceMetadata.Docs).RequireRateLimiting(RateLimitPolicyNames.Delivery);
+        return docs;
     }
 
     // A plugin's own group, under the CMS group and outside those of core, so that nothing reaches the Management API without
@@ -155,7 +158,12 @@ public static class FluentCmsEndpointRouteBuilderExtensions
     {
         // Discovery and the key set belong to the authorization server, so they count as its surface.
         var surface = group == FluentCmsEndpointGroup.WellKnown ? FluentCmsEndpointGroup.Connect : group;
-        routes.WithMetadata(group == FluentCmsEndpointGroup.Health ? FluentCmsSurfaceMetadata.Health : new FluentCmsSurfaceMetadata(surface.ToString().ToLowerInvariant()));
+        routes.WithMetadata(group switch
+        {
+            FluentCmsEndpointGroup.Health => FluentCmsSurfaceMetadata.Health,
+            FluentCmsEndpointGroup.Delivery => FluentCmsSurfaceMetadata.Delivery,
+            _ => new FluentCmsSurfaceMetadata(surface.ToString().ToLowerInvariant()),
+        });
         if (group == FluentCmsEndpointGroup.Delivery)
         {
             routes.CacheOutput(DeliveryOutputCachePolicy.Instance);

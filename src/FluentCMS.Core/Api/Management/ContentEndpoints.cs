@@ -91,8 +91,12 @@ internal static class ContentEndpoints
             var body = RequestBody.Document(await RequestBody.ObjectAsync(httpContext.Request));
             var created = await content.CreateAsync(type, body, httpContext.RequestAborted);
 
+            // A site named in the query stays in the Location, which would otherwise read the default site.
             var name = schema.FindContentType(type)!.Name;
-            httpContext.Response.Headers.Location = $"{httpContext.Request.PathBase}{Prefix}/content/{Uri.EscapeDataString(name)}/{created.Get<Guid>("id"):D}";
+            var site = httpContext.Request.Query[RequestBridge.SiteParameter] is [{ } named] && !string.IsNullOrWhiteSpace(named)
+                ? $"?{RequestBridge.SiteParameter}={Uri.EscapeDataString(named.Trim())}"
+                : "";
+            httpContext.Response.Headers.Location = $"{httpContext.Request.PathBase}{Prefix}/content/{Uri.EscapeDataString(name)}/{created.Get<Guid>("id"):D}{site}";
             return Entry(httpContext, created, statusCode: StatusCodes.Status201Created);
         });
 

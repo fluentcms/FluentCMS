@@ -17,7 +17,7 @@ namespace FluentCMS.Core.Api.Delivery;
 // key reads a copy of its own, keyed by its claims, which name its role, sites and scope. Nothing else is cached: a bearer
 // token's roles live in the database, credentials that fail are refused rather than served, and a draft changes with every
 // save. A request with If-Modified-Since and no If-None-Match goes to the endpoint, which decides a 304 by the ETag alone.
-// Only a 200 is stored, with the tag of its site.
+// Only a 200 is stored, with the tag of its site. A HEAD is stored apart from its GET, since the key carries the method.
 internal sealed class DeliveryOutputCachePolicy : IOutputCachePolicy
 {
     public const string CacheName = "delivery";
@@ -91,7 +91,7 @@ internal sealed class DeliveryOutputCachePolicy : IOutputCachePolicy
     private static string? Caller(HttpContext context)
     {
         var request = context.Request;
-        if (!HttpMethods.IsGet(request.Method)
+        if (!(HttpMethods.IsGet(request.Method) || HttpMethods.IsHead(request.Method))
             || ApiAuthentication.Failed(context)
             || (request.Query.TryGetValue(StatusParameter, out var status) && status.Any(value => value != Published))
             || (request.Headers.IfNoneMatch.Count == 0 && request.Headers.IfModifiedSince.Count > 0))

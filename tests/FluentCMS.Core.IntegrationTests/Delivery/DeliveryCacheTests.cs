@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics.Metrics;
 using System.Globalization;
 using System.Net;
+using System.Text;
 using System.Text.Json.Nodes;
 using System.Threading.Channels;
 using FluentCMS.Content;
@@ -83,6 +84,40 @@ public sealed class DeliveryCacheTests : IAsyncLifetime
             reply.Vary.ShouldBe(DeliveryResponse.Vary);
             reply.LastModified.ShouldBe(Seconds(PublishedAt(reply.Json["items"]?[0] ?? reply.Json)));
         }
+    }
+
+    // CDNs and uptime checks send HEAD, which minimal APIs would answer 405 on a GET route.
+    [Fact]
+    public async Task AHeadHasTheHeadersOfTheGetAndNoBody()
+    {
+        foreach (var path in new[] { $"note/{_first.Id}", "note/by/slug/first", "note" })
+        {
+            var get = await GetAsync(path);
+            var head = await HeadAsync(path);
+
+            head.Status.ShouldBe(HttpStatusCode.OK, path);
+            head.Body.ShouldBeEmpty();
+            head.ContentLength.ShouldBe(Encoding.UTF8.GetByteCount(get.Body));
+            head.ETag.ShouldBe(get.ETag);
+            head.LastModified.ShouldBe(get.LastModified);
+            head.CacheControl.ShouldBe(get.CacheControl);
+            head.Vary.ShouldBe(get.Vary);
+        }
+    }
+
+    [Fact]
+    public async Task ARepeatedHeadIsServedFromTheOutputCache()
+    {
+        var first = await HeadAsync($"note/{_first.Id}");
+        var second = await HeadAsync($"note/{_first.Id}");
+        var get = await GetAsync($"note/{_first.Id}");
+
+        first.FromCache.ShouldBeFalse();
+        second.FromCache.ShouldBeTrue();
+        second.ContentLength.ShouldBe(first.ContentLength);
+        second.Body.ShouldBeEmpty();
+        get.FromCache.ShouldBeFalse();
+        get.Body.ShouldNotBeEmpty();
     }
 
     [Fact]
@@ -304,9 +339,14 @@ public sealed class DeliveryCacheTests : IAsyncLifetime
 
     private Task<Reply> GetAsync(string path, params (string Name, string Value)[] headers) => SendAsync(_client, path, headers);
 
-    private static async Task<Reply> SendAsync(HttpClient client, string path, params (string Name, string Value)[] headers)
+    private Task<Reply> HeadAsync(string path) => SendAsync(_client, path, HttpMethod.Head, []);
+
+    private static Task<Reply> SendAsync(HttpClient client, string path, params (string Name, string Value)[] headers) =>
+        SendAsync(client, path, HttpMethod.Get, headers);
+
+    private static async Task<Reply> SendAsync(HttpClient client, string path, HttpMethod method, (string Name, string Value)[] headers)
     {
-        using var request = new HttpRequestMessage(HttpMethod.Get, new Uri("/api/delivery/v1/" + path, UriKind.Relative));
+        using var request = new HttpRequestMessage(method, new Uri("/api/delivery/v1/" + path, UriKind.Relative));
         foreach (var (name, value) in headers)
         {
             request.Headers.TryAddWithoutValidation(name, value);
@@ -320,6 +360,7 @@ public sealed class DeliveryCacheTests : IAsyncLifetime
             response.Headers.NonValidated.TryGetValues("Cache-Control", out var cacheControl) ? cacheControl.ToString() : null,
             response.Headers.NonValidated.TryGetValues("Vary", out var vary) ? vary.ToString() : null,
             response.Headers.Age is not null,
+            response.Content.Headers.ContentLength,
             await response.Content.ReadAsStringAsync(Token));
     }
 
@@ -366,7 +407,7 @@ public sealed class DeliveryCacheTests : IAsyncLifetime
         return listener;
     }
 
-    private sealed record Reply(HttpStatusCode Status, string? ETag, DateTimeOffset? LastModified, string? CacheControl, string? Vary, bool FromCache, string Body)
+    private sealed record Reply(HttpStatusCode Status, string? ETag, DateTimeOffset? LastModified, string? CacheControl, string? Vary, bool FromCache, long? ContentLength, string Body)
     {
         public JsonNode Json => JsonNode.Parse(Body)!;
     }

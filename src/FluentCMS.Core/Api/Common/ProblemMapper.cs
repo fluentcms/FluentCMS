@@ -45,6 +45,7 @@ internal static class ProblemMapper
         PluginException refused => Refused(refused.Code, refused.Message, "Refused by a plugin", codes ?? ErrorCodeCatalogue.Core),
         RichTextValidationException richText => FromRichText(richText),
         BadHttpRequestException { StatusCode: StatusCodes.Status413PayloadTooLarge } tooLarge => Known(LimitErrorCodes.RequestTooLarge, tooLarge.Message),
+        BadHttpRequestException { StatusCode: StatusCodes.Status415UnsupportedMediaType } mediaType => Known(ApiErrorCodes.UnsupportedMediaType, mediaType.Message),
         BadHttpRequestException badRequest => Known(ApiErrorCodes.BadRequest, badRequest.Message) with { Status = badRequest.StatusCode },
         _ => Known(ApiErrorCodes.InternalError, "An unexpected error occurred."),
     };

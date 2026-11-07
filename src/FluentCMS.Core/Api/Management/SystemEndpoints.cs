@@ -20,7 +20,7 @@ internal static class SystemEndpoints
 
     private static void Map(RouteGroupBuilder management)
     {
-        var system = management.MapGroup("/system").WithFluentCmsOperation(Origin.Api);
+        var system = management.MapGroup("/system").WithFluentCmsOperation(Origin.Api).RequireManagementScope();
         system.MapGet("/diagnostics", DiagnosticsAsync).Produces<StartupReport>();
     }
 

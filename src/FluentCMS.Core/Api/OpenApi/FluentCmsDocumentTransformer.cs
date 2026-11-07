@@ -3,6 +3,7 @@ using FluentCMS.Core.Authorization;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Identity.ApiKeys;
 using FluentCMS.Schema;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 
@@ -59,7 +60,7 @@ internal sealed class FluentCmsDocumentTransformer(SchemaModel schema, OpenApiDo
         List<ContentRoute> routes = [.. context.DescriptionGroups
             .SelectMany(group => group.Items)
             .Select(description => (Description: description, Operation: description.ActionDescriptor.EndpointMetadata.OfType<ContentOperation>().LastOrDefault()))
-            .Where(item => item.Operation is not null && item.Description.HttpMethod is not null && item.Description.RelativePath is not null)
+            .Where(item => item.Operation is not null && item.Description.HttpMethod is { } method && !HttpMethods.IsHead(method) && item.Description.RelativePath is not null)
             .Select(item => new ContentRoute(
                 "/" + item.Description.RelativePath!.Trim('/'),
                 item.Description.HttpMethod!,

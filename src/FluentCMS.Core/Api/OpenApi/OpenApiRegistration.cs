@@ -27,7 +27,10 @@ internal static class OpenApiRegistration
         return services.AddOpenApi(DocumentName, openApi =>
         {
             openApi.OpenApiVersion = OpenApiSpecVersion.OpenApi3_1;
-            openApi.ShouldInclude = description => SurfaceOf(description) is { } surface && Surfaces.Contains(surface, StringComparer.Ordinal);
+            // A Delivery read also answers HEAD, which HTTP gives every GET, so only the GET is described, here and by the
+            // document transformer, which reads every description.
+            openApi.ShouldInclude = description => !HttpMethods.IsHead(description.HttpMethod ?? "")
+                && SurfaceOf(description) is { } surface && Surfaces.Contains(surface, StringComparer.Ordinal);
             openApi.AddSchemaTransformer(EnumsAsNames);
             openApi.AddSchemaTransformer(NumbersAsNumbers);
             openApi.AddOperationTransformer<FluentCmsOperationTransformer>();
