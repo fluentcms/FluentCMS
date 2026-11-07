@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using FluentCMS.Publishing;
 
 namespace FluentCMS.Schema;
@@ -5,6 +6,8 @@ namespace FluentCMS.Schema;
 /// <summary>A collection, singleton, component or block of a <see cref="SchemaModel"/>.</summary>
 public sealed class SchemaType
 {
+    private readonly FrozenDictionary<string, SchemaField> _fieldsByName = FrozenDictionary<string, SchemaField>.Empty;
+
     internal SchemaType()
     {
     }
@@ -34,7 +37,23 @@ public sealed class SchemaType
     public Type? ClrType { get; internal init; }
 
     /// <summary>The fields, in the order they were declared.</summary>
-    public IReadOnlyList<SchemaField> Fields { get; internal init; } = [];
+    public IReadOnlyList<SchemaField> Fields
+    {
+        get;
+        internal init
+        {
+            field = value;
+
+            // The first of a repeated name wins, as a scan of the list finds it. Validation refuses a repeat before a model is built.
+            Dictionary<string, SchemaField> byName = new(StringComparer.Ordinal);
+            foreach (var item in value)
+            {
+                byName.TryAdd(item.Name, item);
+            }
+
+            _fieldsByName = byName.ToFrozenDictionary(StringComparer.Ordinal);
+        }
+    } = [];
 
     /// <summary>The reverse sides of the relations that point to this type, ordered by name.</summary>
     public IReadOnlyList<ReverseRelation> ReverseRelations { get; internal init; } = [];
@@ -42,16 +61,5 @@ public sealed class SchemaType
     /// <summary>Finds a field by name.</summary>
     /// <param name="name">The field name, in camelCase.</param>
     /// <returns>The field, or <see langword="null"/> if there is none with that name.</returns>
-    public SchemaField? FindField(string name)
-    {
-        foreach (var field in Fields)
-        {
-            if (field.Name == name)
-            {
-                return field;
-            }
-        }
-
-        return null;
-    }
+    public SchemaField? FindField(string name) => name is not null && _fieldsByName.TryGetValue(name, out var field) ? field : null;
 }

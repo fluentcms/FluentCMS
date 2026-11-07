@@ -56,7 +56,14 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
             .FirstOrDefaultAsync(cancellationToken);
 
     // The entry as it is stored, hidden fields included, in the form EntryCanonicalizer gives. Not for a response.
-    public async Task<ContentDocument> ReadAsync(SchemaType type, Document row, short state, CancellationToken cancellationToken)
+    public async Task<ContentDocument> ReadAsync(SchemaType type, Document row, short state, CancellationToken cancellationToken) =>
+        (await ReadStoredAsync(type, row, state, cancellationToken)).Entry;
+
+    // The draft and the rows it was read from, so that writing over it in the same transaction need not read them again.
+    public Task<StoredDraft> ReadDraftAsync(SchemaType type, Document row, CancellationToken cancellationToken) =>
+        ReadStoredAsync(type, row, ContentState.Draft, cancellationToken);
+
+    private async Task<StoredDraft> ReadStoredAsync(SchemaType type, Document row, short state, CancellationToken cancellationToken)
     {
         var id = row.DocumentId;
         var locale = row.Locale;
@@ -76,7 +83,7 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
         ContentDocument entry = [];
         ApplySystem(entry, row);
         FillFields(type, type, "", entry, shared, localized, byField, locale);
-        return entry;
+        return new StoredDraft(entry, new StoredRows(shared, localized));
     }
 
     public static void ApplySystem(ContentDocument entry, Document row)
@@ -102,7 +109,7 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
         ILookup<(string Field, string Locale), Reference> references,
         string locale)
     {
-        var stored = FieldStorage.Of(schema, root).ToDictionary(item => QueryPaths.ApiPath(root, item), StringComparer.Ordinal);
+        var stored = FieldStorage.ByPath(schema, root);
         foreach (var field in owner.Fields)
         {
             var path = prefix + field.Name;
@@ -218,8 +225,9 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
     }
 
     // Saves the draft of one locale: the document when it is new, the shared row, the locale row, the references and the
-    // version, in one save, and prunes the versions over the cap of the type.
-    public Task WriteDraftAsync(SchemaType type, Document row, bool isNewDocument, ContentDocument entry, Origin origin, string? clientId, CancellationToken cancellationToken, string? message = null) =>
+    // version, in one save, and prunes the versions over the cap of the type. over holds the draft rows this transaction
+    // read, which are the rows written over, and fields is EntryJson.Fields of the entry.
+    public Task WriteDraftAsync(SchemaType type, Document row, bool isNewDocument, StoredRows over, ContentDocument entry, JsonObject fields, Origin origin, string? clientId, CancellationToken cancellationToken, string? message = null) =>
         SaveOwnRowsAsync(
             async () =>
             {
@@ -228,11 +236,11 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
                     context.Documents.Add(row);
                 }
 
-                var stored = FieldStorage.Of(schema, type).ToList();
-                await WriteRowAsync(StorageNames.Table(type), type, row, null, stored.Where(item => !item.Localized), entry, cancellationToken);
+                var stored = FieldStorage.Of(schema, type);
+                WriteRow(StorageNames.Table(type), type, row, null, stored.Where(item => !item.Localized), entry, over.Shared);
                 if (type.Localized)
                 {
-                    await WriteRowAsync(StorageNames.LocaleTable(type), type, row, row.Locale, stored.Where(item => item.Localized), entry, cancellationToken);
+                    WriteRow(StorageNames.LocaleTable(type), type, row, row.Locale, stored.Where(item => item.Localized), entry, over.Localized);
                 }
 
                 await ReplaceReferencesAsync(type, row, stored, entry, cancellationToken);
@@ -242,7 +250,7 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
                     DocumentId = row.DocumentId,
                     Locale = row.Locale,
                     Number = row.DraftVersion,
-                    Snapshot = EntryJson.Text(EntryJson.Fields(type, entry)),
+                    Snapshot = EntryJson.Text(fields),
                     StatusAfter = row.Status == EntryStatus.Published ? EntryStatus.Modified : row.Status,
                     AuthorId = row.UpdatedBy,
                     Origin = origin,
@@ -383,21 +391,22 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
         context.Versions.AsNoTracking()
             .FirstOrDefaultAsync(version => version.DocumentId == id && version.Locale == locale && version.Number == number, cancellationToken);
 
-    // The rows of a target, one per locale. The query filter on Document leaves out the trash, and a target of another type
-    // or another site has none.
-    public async Task<List<ReferenceTargetRow>> TargetRowsAsync(SchemaType target, Guid id, SiteId site, CancellationToken cancellationToken)
+    // The rows of targets of one type, one per locale, in one query. The query filter on Document leaves out the trash, and
+    // a target of another type or another site has none.
+    public async Task<Dictionary<Guid, List<ReferenceTargetRow>>> TargetRowsAsync(SchemaType target, IReadOnlyCollection<Guid> ids, SiteId site, CancellationToken cancellationToken)
     {
         var typeName = target.Name;
         var siteId = (Guid?)site.Value;
-        var rows = context.Documents.AsNoTracking().Where(document => document.DocumentId == id && document.Type == typeName);
+        List<Guid> wanted = [.. ids.Distinct()];
+        var rows = context.Documents.AsNoTracking().Where(document => wanted.Contains(document.DocumentId) && document.Type == typeName);
         if (target.Scope == ContentScope.Site)
         {
             rows = rows.Where(document => document.SiteId == siteId);
         }
 
-        return await rows.Select(document => new ReferenceTargetRow(document.Locale, document.PublishedVersion != null)).ToListAsync(cancellationToken);
+        var found = await rows.Select(document => new { document.DocumentId, document.Locale, IsPublished = document.PublishedVersion != null }).ToListAsync(cancellationToken);
+        return found.GroupBy(row => row.DocumentId).ToDictionary(group => group.Key, group => group.Select(row => new ReferenceTargetRow(row.Locale, row.IsPublished)).ToList());
     }
-
 
     // What an entry refers to, with whether the reference is outside what hidden fields hide. Media has no row here to check.
     public List<EntryTarget> TargetsOf(SchemaType type, ContentDocument entry)
@@ -448,14 +457,19 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
     }
 
     // The context may hold what a caller has not saved, in a transaction of its own: that is not this write's to save, or
-    // to lose if this write is rolled back, so it stays pending and only this write's rows go.
+    // to lose if this write is rolled back, so it stays pending and only this write's rows go. The content service's
+    // transaction or savepoint takes back a save that fails, so the savepoint EF would put around it is two round trips
+    // that undo nothing more.
     private async Task SaveOwnRowsAsync(Func<Task> add, Func<Task>? afterSave, CancellationToken cancellationToken)
     {
         var held = HeldChanges.Take(context);
+        var savepoints = context.Database.AutoSavepointsEnabled;
         try
         {
             await add();
+            context.Database.AutoSavepointsEnabled = false;
             await context.SaveChangesAsync(cancellationToken);
+            context.Database.AutoSavepointsEnabled = savepoints;
             if (afterSave is not null)
             {
                 await afterSave();
@@ -463,17 +477,24 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
         }
         finally
         {
+            context.Database.AutoSavepointsEnabled = savepoints;
             held.Release();
         }
     }
 
     // The oldest go first and the cap counts every version, so an entry with more published versions than the cap keeps
-    // those and no other. The one just written stays whatever its status.
+    // those and no other. The one just written stays whatever its status. Versions are numbered by the draft version and
+    // the numbers are unique, so an entry whose draft version is within the cap has nothing to prune.
     private async Task PruneVersionsAsync(SchemaType type, Document row, CancellationToken cancellationToken)
     {
         var id = row.DocumentId;
         var locale = row.Locale;
         var number = row.DraftVersion;
+        if (number <= type.MaxVersions)
+        {
+            return;
+        }
+
         var versions = context.Versions.Where(version => version.DocumentId == id && version.Locale == locale);
         var excess = await versions.CountAsync(cancellationToken) - type.MaxVersions;
         if (excess <= 0)
@@ -538,9 +559,11 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
         return await rows.Select(document => document.DocumentId).Distinct().ToListAsync(cancellationToken);
     }
 
-    private async Task WriteRowAsync(string table, SchemaType type, Document document, string? locale, IEnumerable<StoredField> fields, ContentDocument entry, CancellationToken cancellationToken)
+    // read is the draft row as this transaction read it, or null when it had none. Every field column is written, so the
+    // save sets them all whatever changed since the read, as a save over a row read just now would.
+    private void WriteRow(string table, SchemaType type, Document document, string? locale, IEnumerable<StoredField> fields, ContentDocument entry, Dictionary<string, object>? read)
     {
-        var row = await RowAsync(table, document.DocumentId, ContentState.Draft, locale, tracked: true, cancellationToken);
+        var row = Track(table, read);
         var isNew = row is null;
         row ??= new Dictionary<string, object>
         {
@@ -558,15 +581,43 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
             row[StorageNames.Locale] = locale;
         }
 
+        List<string> columns = [];
         foreach (var stored in fields.Where(item => item.Kind != FieldStorageKind.Reference))
         {
             row[stored.Column] = ToColumn(stored, EntryPaths.ValueAt(entry, stored, type))!;
+            columns.Add(stored.Column);
         }
 
         if (isNew)
         {
             context.Rows(table).Add(row);
+            return;
         }
+
+        var tracked = context.Entry(row);
+        foreach (var column in columns)
+        {
+            tracked.Property(column).IsModified = true;
+        }
+    }
+
+    // The instance the context tracks for that row, as a tracked query would give it, or the row as read, attached.
+    private Dictionary<string, object>? Track(string table, Dictionary<string, object>? read)
+    {
+        if (read is null)
+        {
+            return null;
+        }
+
+        var rows = context.Rows(table);
+        if (rows.Local.FindEntry((Guid)read[StorageNames.Id]) is { } tracked)
+        {
+            return tracked.Entity;
+        }
+
+        Dictionary<string, object> row = new(read);
+        rows.Attach(row);
+        return row;
     }
 
     private Task<Dictionary<string, object>?> RowAsync(string table, Guid id, short state, string? locale, bool tracked, CancellationToken cancellationToken)
@@ -616,7 +667,7 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
 
     // A reference inside JSON or rich text has no output of its own: it is stored under the field that holds it, which
     // the query engine does not read for a relation, so that "what references X" and integrity on publish see it too.
-    private async Task ReplaceReferencesAsync(SchemaType type, Document row, List<StoredField> stored, ContentDocument entry, CancellationToken cancellationToken)
+    private async Task ReplaceReferencesAsync(SchemaType type, Document row, IReadOnlyList<StoredField> stored, ContentDocument entry, CancellationToken cancellationToken)
     {
         var typeName = type.Name;
         var id = row.DocumentId;
@@ -790,6 +841,15 @@ internal enum ReferenceTargetState
 }
 
 internal sealed record ReferenceTargetRow(string Locale, bool IsPublished);
+
+// The content rows of one draft as a transaction read them: the shared row, and the locale row of a localized type. Null
+// is no row. None is a draft that has no rows yet.
+internal sealed record StoredRows(Dictionary<string, object>? Shared, Dictionary<string, object>? Localized)
+{
+    public static readonly StoredRows None = new(null, null);
+}
+
+internal sealed record StoredDraft(ContentDocument Entry, StoredRows Rows);
 
 // One reference of an entry. Path is the stored field, Field the top-level field that holds it.
 internal sealed record EntryTarget(string Path, string Field, string TargetType, Guid Id, bool IsShown);

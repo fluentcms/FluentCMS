@@ -82,8 +82,9 @@ internal sealed class BlockIds(SchemaModel schema)
     }
 
     // Gives each block that has no id a new one, in place, before the entry is written.
-    public void Assign(SchemaType type, ContentDocument entry)
+    public List<string> Assign(SchemaType type, ContentDocument entry)
     {
+        List<string> assigned = [];
         foreach (var field in type.Fields.Where(MayHoldBlocks))
         {
             var parts = Parts(field, entry).ToList();
@@ -100,9 +101,15 @@ internal sealed class BlockIds(SchemaModel schema)
                 if (missing.Count > 0)
                 {
                     parts[index].Commit?.Invoke();
+                    if (!assigned.Contains(field.Name))
+                    {
+                        assigned.Add(field.Name);
+                    }
                 }
             }
         }
+
+        return assigned;
     }
 
     private static string New(HashSet<string> used)

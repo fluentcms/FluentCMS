@@ -4,6 +4,7 @@ using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Schema;
+using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
 
 namespace FluentCMS.Core.Authorization;
@@ -63,6 +64,35 @@ internal sealed class AuthorizationEvaluator(
 
         return permissions.RowRuleOf(type, operation, target) is not { } rule
             || await MatchesAsync(type, operation, entry, target, status, rule, cancellationToken);
+    }
+
+    public async ValueTask<IReadOnlySet<Guid>> AccessibleEntriesAsync(
+        OperationContext context,
+        SchemaType type,
+        ContentOperation operation,
+        IReadOnlyCollection<Guid> entries,
+        AccessTarget target,
+        QueryStatus status = QueryStatus.Published,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(type);
+        ArgumentNullException.ThrowIfNull(entries);
+
+        var permissions = await ResolveAsync(context, cancellationToken);
+        if (entries.Count == 0
+            || !permissions.Allows(type, operation, target)
+            || (operation == ContentOperation.Read && status == QueryStatus.Draft && !permissions.CanReadDraft(type, target)))
+        {
+            return new HashSet<Guid>();
+        }
+
+        var reached = await InReachAsync(type, operation, entries, target, permissions, cancellationToken);
+        if (reached.Count == 0 || permissions.RowRuleOf(type, operation, target) is not { } rule)
+        {
+            return reached;
+        }
+
+        return await MatchingAsync(type, operation, reached, target, status, rule, cancellationToken);
     }
 
     public async ValueTask<WritableFields> WritableFieldsAsync(
@@ -133,8 +163,7 @@ internal sealed class AuthorizationEvaluator(
     // the locale asked about. A write may add a locale, so this is for reads alone.
     private async Task<bool> IsInReachAsync(SchemaType type, ContentOperation operation, Guid entry, AccessTarget target, EffectivePermissions permissions, CancellationToken cancellationToken)
     {
-        var locales = operation == ContentOperation.Read && type.Localized && permissions.RowRuleOf(type, operation, target) is null ? permissions.ReadLocalesOf(type, target) : null;
-        var site = type.Scope == ContentScope.Site ? target.Site : null;
+        var (site, locales) = ReachOf(type, operation, target, permissions);
         if (site is null && locales is null)
         {
             return true;
@@ -156,7 +185,57 @@ internal sealed class AuthorizationEvaluator(
         return (await documents.Select(document => document.Locale).ToListAsync(cancellationToken)).Any(locales.Contains);
     }
 
+    // Which of the entries are in reach, in one query.
+    private async Task<HashSet<Guid>> InReachAsync(SchemaType type, ContentOperation operation, IReadOnlyCollection<Guid> entries, AccessTarget target, EffectivePermissions permissions, CancellationToken cancellationToken)
+    {
+        HashSet<Guid> ids = [.. entries];
+        var (site, locales) = ReachOf(type, operation, target, permissions);
+        if (site is null && locales is null)
+        {
+            return ids;
+        }
+
+        var typeName = type.Name;
+        List<Guid> asked = [.. ids];
+        IQueryable<Document> documents = ReachesTrash(operation) ? database.Documents.IgnoreQueryFilters() : database.Documents;
+        documents = documents.AsNoTracking().Where(document => asked.Contains(document.DocumentId) && document.Type == typeName);
+        if (site is { } one)
+        {
+            documents = documents.Where(document => document.SiteId == one.Value);
+        }
+
+        if (locales is null)
+        {
+            return [.. await documents.Select(document => document.DocumentId).ToListAsync(cancellationToken)];
+        }
+
+        var rows = await documents.Select(document => new { document.DocumentId, document.Locale }).ToListAsync(cancellationToken);
+        return [.. rows.Where(row => locales.Contains(row.Locale)).Select(row => row.DocumentId)];
+    }
+
+    // An entry the caller found in the target's site, outside the trash, is known to be in that site.
+    private static (SiteId? Site, IReadOnlySet<string>? Locales) ReachOf(SchemaType type, ContentOperation operation, AccessTarget target, EffectivePermissions permissions)
+    {
+        var locales = operation == ContentOperation.Read && type.Localized && permissions.RowRuleOf(type, operation, target) is null ? permissions.ReadLocalesOf(type, target) : null;
+        var site = type.Scope != ContentScope.Site || (target.Found && !ReachesTrash(operation)) ? null : target.Site;
+        return (site, locales);
+    }
+
     private async Task<bool> MatchesAsync(SchemaType type, ContentOperation operation, Guid entry, AccessTarget target, QueryStatus status, ContentFilter rule, CancellationToken cancellationToken)
+    {
+        var rows = RuleRows(type, operation, target, status, rule).Where(item => item.Document.DocumentId == entry);
+        return await (ReachesTrash(operation) ? rows.IgnoreQueryFilters() : rows).AnyAsync(cancellationToken);
+    }
+
+    // Which of the entries have a row the rule lets through, in one query.
+    private async Task<HashSet<Guid>> MatchingAsync(SchemaType type, ContentOperation operation, IReadOnlyCollection<Guid> entries, AccessTarget target, QueryStatus status, ContentFilter rule, CancellationToken cancellationToken)
+    {
+        List<Guid> ids = [.. entries];
+        var rows = RuleRows(type, operation, target, status, rule).Where(item => ids.Contains(item.Document.DocumentId));
+        return [.. await (ReachesTrash(operation) ? rows.IgnoreQueryFilters() : rows).Select(item => item.Document.DocumentId).ToListAsync(cancellationToken)];
+    }
+
+    private IQueryable<QueryRow> RuleRows(SchemaType type, ContentOperation operation, AccessTarget target, QueryStatus status, ContentFilter rule)
     {
         var state = operation == ContentOperation.Read && status == QueryStatus.Published ? ContentState.Published : ContentState.Draft;
         var scope = new QueryScope(database, schema, dialect, new ContentQueryAccess.RuleOnly(type, rule), options, state, target.RowLocale ?? target.Locale ?? "", target.Site);
@@ -165,11 +244,7 @@ internal sealed class AuthorizationEvaluator(
         var condition = new FilterCompiler(scope).Where(type, null, row)!;
         scope.ThrowIfInvalid();
 
-        var rows = scope.Rows(type)
-            .Where(item => item.Document.DocumentId == entry)
-            .Where(Expression.Lambda<Func<QueryRow, bool>>(condition, row));
-
-        return await (ReachesTrash(operation) ? rows.IgnoreQueryFilters() : rows).AnyAsync(cancellationToken);
+        return scope.Rows(type).Where(Expression.Lambda<Func<QueryRow, bool>>(condition, row));
     }
 
     // These two work on trashed entries, which the query filter on Document otherwise hides.

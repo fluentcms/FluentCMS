@@ -80,8 +80,9 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         }
 
         var entries = rows.Select(row => Materialize(compiled.Plan, row, new ContentDocument(), parent: null)).ToList();
-        await FillReferencesAsync(compiled.Scope, compiled.Plan, entries, cancellationToken);
-        await FilterNestedTargetsAsync(compiled.Scope, compiled.Type, entries, cancellationToken);
+        var readable = new ReadableTargets();
+        await FillReferencesAsync(compiled.Scope, compiled.Plan, entries, readable, cancellationToken);
+        await FilterNestedTargetsAsync(compiled.Scope, compiled.Type, entries, readable, cancellationToken);
 
         var last = hasMore ? rows[^1] : null;
         var nextCursor = last is null ? null : SortKeys.Encode(compiled.Keys, compiled.KeyColumns.Select(column => last[column]).ToList());
@@ -349,7 +350,7 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
     private static bool IsAbsent(GroupOutput group, ContentDocument document) =>
         group.Children.All(child => child is ValueOutput) && document.Values.All(value => value is null or JsonArray { Count: 0 });
 
-    private async Task FillReferencesAsync(QueryScope query, EntryPlan plan, List<Materialized> entries, CancellationToken cancellationToken)
+    private async Task FillReferencesAsync(QueryScope query, EntryPlan plan, List<Materialized> entries, ReadableTargets readable, CancellationToken cancellationToken)
     {
         var outputs = plan.References.ToList();
         if (entries.Count == 0 || outputs.Count == 0)
@@ -372,15 +373,42 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
 
         var bySource = references.ToLookup(reference => (reference.SourceDocumentId, reference.Field, reference.Locale));
 
+        // The targets of every relation of these entries, and of the relations nested in them, are asked once per type.
+        List<(SchemaType Target, IEnumerable<Guid> Ids)> asked = [];
         foreach (var output in outputs)
         {
-            var readable = await ReadableTargetsAsync(query, output, references, cancellationToken);
+            if (Target(output) is { } target)
+            {
+                asked.Add((target, references.Where(reference => reference.Field == output.ApiPath).Select(reference => reference.TargetId)));
+            }
+        }
+
+        var nested = new NestedTargets(schema);
+        foreach (var entry in entries)
+        {
+            foreach (var (name, ids) in nested.Collect(plan.Type, entry.Document))
+            {
+                if (schema.FindContentType(name) is { } target)
+                {
+                    asked.Add((target, ids));
+                }
+            }
+        }
+
+        foreach (var group in asked.GroupBy(item => item.Target))
+        {
+            await ReadableIdsAsync(query, group.Key, [.. group.SelectMany(item => item.Ids).Distinct()], readable, cancellationToken);
+        }
+
+        foreach (var output in outputs)
+        {
+            var known = await ReadableTargetsAsync(query, output, references, readable, cancellationToken);
 
             List<(Materialized Parent, ContentDocument Reference, Guid Target)> wanted = [];
             foreach (var entry in entries)
             {
                 var values = bySource[(entry.Id, output.ApiPath, output.Stored.Localized ? locale : "")]
-                    .Where(reference => readable?.Contains(reference.TargetId) != false)
+                    .Where(reference => known?.Contains(reference.TargetId) != false)
                     .Select(reference => (Reference: Stub(reference), reference.TargetId))
                     .ToList();
 
@@ -396,7 +424,7 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
             if (output.Plan is { } child && wanted.Count > 0)
             {
                 query.CountPopulated(wanted.Count);
-                await PopulateAsync(query, child, wanted, cancellationToken);
+                await PopulateAsync(query, child, wanted, readable, cancellationToken);
             }
         }
     }
@@ -408,19 +436,21 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
     // rule, a target with no row in this state and locale cannot be shown to pass, so it goes too. A published read shows
     // only what is published (spec 4.5): a target in the trash or with no published row in any locale is not there. A target
     // only in locales the principal's grants do not cover is not there either.
-    private async Task<HashSet<Guid>?> ReadableTargetsAsync(QueryScope query, ReferenceOutput output, List<Reference> references, CancellationToken cancellationToken)
+    private async Task<HashSet<Guid>?> ReadableTargetsAsync(QueryScope query, ReferenceOutput output, List<Reference> references, ReadableTargets readable, CancellationToken cancellationToken)
     {
-        var target = output.Stored.Field.Relation is { } relation ? schema.FindContentType(relation.Target) : null;
-        if (target is null)
+        if (Target(output) is not { } target)
         {
             return null;
         }
 
         var ids = references.Where(reference => reference.Field == output.ApiPath).Select(reference => reference.TargetId).Distinct().ToList();
-        return await ReadableIdsAsync(query, target, ids, cancellationToken);
+        return await ReadableIdsAsync(query, target, ids, readable, cancellationToken);
     }
 
-    private async Task FilterNestedTargetsAsync(QueryScope query, SchemaType type, List<Materialized> entries, CancellationToken cancellationToken)
+    private SchemaType? Target(ReferenceOutput output) =>
+        output.Stored.Field.Relation is { } relation ? schema.FindContentType(relation.Target) : null;
+
+    private async Task FilterNestedTargetsAsync(QueryScope query, SchemaType type, List<Materialized> entries, ReadableTargets known, CancellationToken cancellationToken)
     {
         var nested = new NestedTargets(schema);
         Dictionary<string, HashSet<Guid>?> readable = new(StringComparer.Ordinal);
@@ -428,14 +458,14 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         {
             foreach (var (name, ids) in nested.Collect(type, entry.Document))
             {
-                readable[name] = readable.TryGetValue(name, out var known) ? [.. known ?? [], .. ids] : ids;
+                readable[name] = readable.TryGetValue(name, out var found) ? [.. found ?? [], .. ids] : ids;
             }
         }
 
         foreach (var (name, ids) in readable.ToList())
         {
             readable[name] = schema.FindContentType(name) is { } target
-                ? await ReadableIdsAsync(query, target, [.. ids!], cancellationToken)
+                ? await ReadableIdsAsync(query, target, [.. ids!], known, cancellationToken)
                 : [];
         }
 
@@ -446,6 +476,18 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
                 nested.Filter(type, entry.Document, (name, id) => readable[name]?.Contains(id) != false);
             }
         }
+    }
+
+    // Asks the database only about the ids this run has not asked about yet. What is returned is to be asked whether it
+    // contains an id, and may hold more than the ids given.
+    private async Task<HashSet<Guid>?> ReadableIdsAsync(QueryScope query, SchemaType target, List<Guid> ids, ReadableTargets readable, CancellationToken cancellationToken)
+    {
+        if (readable.TryAnswer(target, ids, out var answer, out var unknown))
+        {
+            return answer;
+        }
+
+        return readable.Add(target, unknown, await ReadableIdsAsync(query, target, unknown, cancellationToken));
     }
 
     private async Task<HashSet<Guid>?> ReadableIdsAsync(QueryScope query, SchemaType target, List<Guid> ids, CancellationToken cancellationToken)
@@ -501,7 +543,7 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
     }
 
     // A target that has no row in this state and locale stays a reference: in a published read, one published in another locale.
-    private async Task PopulateAsync(QueryScope query, EntryPlan plan, List<(Materialized Parent, ContentDocument Reference, Guid Target)> wanted, CancellationToken cancellationToken)
+    private async Task PopulateAsync(QueryScope query, EntryPlan plan, List<(Materialized Parent, ContentDocument Reference, Guid Target)> wanted, ReadableTargets readable, CancellationToken cancellationToken)
     {
         var ids = wanted.Select(item => item.Target).Distinct().ToList();
         var row = plan.Row;
@@ -523,6 +565,47 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
             }
         }
 
-        await FillReferencesAsync(query, plan, children, cancellationToken);
+        await FillReferencesAsync(query, plan, children, readable, cancellationToken);
+    }
+
+    // What one run has found readable of each target type. The answer for a type depends on the scope of the run, which
+    // every level shares, and not on the other ids asked with it; null is every target of the type.
+    private sealed class ReadableTargets
+    {
+        private readonly Dictionary<SchemaType, (HashSet<Guid> Asked, HashSet<Guid>? Readable)> _byType = [];
+
+        public bool TryAnswer(SchemaType target, List<Guid> ids, out HashSet<Guid>? readable, out List<Guid> unknown)
+        {
+            if (!_byType.TryGetValue(target, out var known))
+            {
+                readable = null;
+                unknown = ids;
+                return false;
+            }
+
+            readable = known.Readable;
+            unknown = known.Readable is null ? [] : [.. ids.Where(id => !known.Asked.Contains(id))];
+            return unknown.Count == 0;
+        }
+
+        public HashSet<Guid>? Add(SchemaType target, List<Guid> ids, HashSet<Guid>? readable)
+        {
+            if (!_byType.TryGetValue(target, out var known))
+            {
+                _byType[target] = ([.. ids], readable);
+                return readable;
+            }
+
+            known.Asked.UnionWith(ids);
+            if (readable is null || known.Readable is null)
+            {
+                // A type the scope does not limit answers null whatever the ids, so the two cannot differ.
+                _byType[target] = (known.Asked, null);
+                return null;
+            }
+
+            known.Readable.UnionWith(readable);
+            return known.Readable;
+        }
     }
 }

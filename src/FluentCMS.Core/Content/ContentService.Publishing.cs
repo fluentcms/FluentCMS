@@ -33,29 +33,31 @@ internal sealed partial class ContentService
                 var (documents, document, target) = await ReachLocaleAsync(write, ContentOperation.Publish, id, cancellationToken);
                 await ThrowIfNotExpectedAsync(write, id, document, expectedVersion, cancellationToken);
 
-                var draft = await store.ReadAsync(write.Type, document, ContentState.Draft, cancellationToken);
+                var (draft, rows) = await store.ReadDraftAsync(write.Type, document, cancellationToken);
                 var published = await store.ReadAsync(write.Type, document, ContentState.Published, cancellationToken);
                 var previous = document.PublishedVersion is null ? null : published;
 
                 var writable = await CheckPublishGrantAsync(write, documents, document, target, draft, published, cancellationToken);
 
+                // Settling what is settled changes nothing, so it is done again only after a hook that ran.
                 var original = EntryJson.Fields(write.Type, draft);
                 var working = ContentCopy.Of(draft);
                 await hooks.RunAsync(HookKind.BeforeValidate, write.Type, write.Operation, working, CopyOf(previous), cancellationToken);
-                working = Settle(write, working, original, draft, writable);
-                await ValidateForPublishAsync(write, working, document, target, warnings, cancellationToken);
+                (working, var validated) = Settle(write, working, original, draft, writable);
+                await ValidateForPublishAsync(write, working, validated, document, target, warnings, cancellationToken);
 
-                var validated = EntryJson.Fields(write.Type, working);
-                await hooks.RunAsync(HookKind.BeforePublish, write.Type, write.Operation, working, CopyOf(previous), cancellationToken);
-                working = Settle(write, working, validated, draft, writable);
-                var settled = EntryJson.Fields(write.Type, working);
-                if (!JsonNode.DeepEquals(validated, settled))
+                var settled = validated;
+                if (await hooks.RunAsync(HookKind.BeforePublish, write.Type, write.Operation, working, CopyOf(previous), beforeFirst: null, cancellationToken))
                 {
-                    await ValidateForPublishAsync(write, working, document, target, warnings, cancellationToken);
+                    (working, settled) = Settle(write, working, validated, draft, writable);
+                    if (!JsonNode.DeepEquals(validated, settled))
+                    {
+                        await ValidateForPublishAsync(write, working, settled, document, target, warnings, cancellationToken);
+                    }
                 }
 
                 // A hook can call the service. What it saved, in another locale too, would go out with the shared row unvalidated.
-                if (!SameFields(write.Type, draft, await store.ReadAsync(write.Type, document, ContentState.Draft, cancellationToken)))
+                if (!JsonNode.DeepEquals(original, EntryJson.Fields(write.Type, await store.ReadAsync(write.Type, document, ContentState.Draft, cancellationToken))))
                 {
                     throw new HookRejectedException(ContentErrorCodes.DraftMovedByHook, "A hook changed the draft being published.");
                 }
@@ -63,7 +65,7 @@ internal sealed partial class ContentService
                 if (!JsonNode.DeepEquals(original, settled))
                 {
                     var status = document.Status == EntryStatus.Published ? EntryStatus.Modified : document.Status;
-                    await WriteOverDraftAsync(write, id, document, working, status, null, cancellationToken);
+                    await WriteOverDraftAsync(write, id, document, rows, working, settled, status, null, cancellationToken);
                     await ThrowIfOutOfReachAsync(write, ContentOperation.Publish, id, cancellationToken);
                 }
 
@@ -138,9 +140,10 @@ internal sealed partial class ContentService
                 var writable = await evaluator.WritableFieldsAsync(write.Operation, write.Type, ContentOperation.Update, id, target, cancellationToken);
                 ThrowIfWritesBlind(write, writable);
 
-                var stored = await store.ReadAsync(write.Type, document, ContentState.Draft, cancellationToken);
+                var (stored, rows) = await store.ReadDraftAsync(write.Type, document, cancellationToken);
                 var published = await store.ReadAsync(write.Type, document, ContentState.Published, cancellationToken);
-                if (SameFields(write.Type, stored, published))
+                var publishedFields = EntryJson.Fields(write.Type, published);
+                if (JsonNode.DeepEquals(EntryJson.Fields(write.Type, stored), publishedFields))
                 {
                     if (document.Status != EntryStatus.Published)
                     {
@@ -156,9 +159,9 @@ internal sealed partial class ContentService
                     composer.CarryProtected(write.Type, stored, working, includingGroups: true);
                 }
 
-                working = await RunBeforeHooksAsync(write, HookKind.BeforeUpdate, working, new SaveContext(stored, [], writable, document), cancellationToken);
+                (working, var fields) = await RunBeforeHooksAsync(write, HookKind.BeforeUpdate, working, new SaveContext(stored, [], writable, document), cancellationToken);
 
-                await WriteOverDraftAsync(write, id, document, working, SameFields(write.Type, working, published) ? EntryStatus.Published : EntryStatus.Modified, "Discarded the draft.", cancellationToken);
+                await WriteOverDraftAsync(write, id, document, rows, working, fields, JsonNode.DeepEquals(fields, publishedFields) ? EntryStatus.Published : EntryStatus.Modified, "Discarded the draft.", cancellationToken);
                 await RecomputeOtherLocalesAsync(write, documents, document, cancellationToken);
                 await ThrowIfOutOfReachAsync(write, ContentOperation.Update, id, cancellationToken);
 
@@ -257,7 +260,7 @@ internal sealed partial class ContentService
                 var writable = await evaluator.WritableFieldsAsync(write.Operation, write.Type, ContentOperation.Update, id, target, cancellationToken);
                 ThrowIfWritesBlind(write, writable);
 
-                var stored = await store.ReadAsync(write.Type, document, ContentState.Draft, cancellationToken);
+                var (stored, rows) = await store.ReadDraftAsync(write.Type, document, cancellationToken);
                 var restored = await RestorableFieldsAsync(write, version, writable, cancellationToken);
 
                 var isSystem = write.Permissions.IsSystem;
@@ -270,17 +273,17 @@ internal sealed partial class ContentService
                     await KeepUnreadableTargetsAsync(write, stored, shown, working, isPatch: false, cancellationToken);
                 }
 
-                working = await RunBeforeHooksAsync(write, HookKind.BeforeUpdate, working, new SaveContext(stored, Client(restored), writable, document), cancellationToken);
+                (working, var fields) = await RunBeforeHooksAsync(write, HookKind.BeforeUpdate, working, new SaveContext(stored, Client(restored), writable, document), cancellationToken);
 
                 var status = document.Status;
                 if (document.PublishedVersion is not null)
                 {
                     var published = await store.ReadAsync(write.Type, document, ContentState.Published, cancellationToken);
-                    status = SameFields(write.Type, working, published) ? EntryStatus.Published : EntryStatus.Modified;
+                    status = JsonNode.DeepEquals(fields, EntryJson.Fields(write.Type, published)) ? EntryStatus.Published : EntryStatus.Modified;
                 }
 
                 var message = string.Create(CultureInfo.InvariantCulture, $"Restored version {number}.");
-                await WriteOverDraftAsync(write, id, document, working, status, message, cancellationToken);
+                await WriteOverDraftAsync(write, id, document, rows, working, fields, status, message, cancellationToken);
                 await RecomputeOtherLocalesAsync(write, documents, document, cancellationToken);
                 await ThrowIfOutOfReachAsync(write, ContentOperation.Update, id, cancellationToken);
 
@@ -308,7 +311,10 @@ internal sealed partial class ContentService
             throw new EntryNotFoundException(write.Type.Name, id);
         }
 
-        return VersionDiff.Between(await ReadableFieldsOfAsync(write, before, cancellationToken), await ReadableFieldsOfAsync(write, after, cancellationToken));
+        var from = VisibleFieldsOf(write, before);
+        var to = VisibleFieldsOf(write, after);
+        await DropUnreadableTargetsAsync(write, cancellationToken, from, to);
+        return VersionDiff.Between(from, to);
     }
 
     // A preview key shows the draft as it is, not everything it has been, so versions also need the Management scope. An
@@ -339,7 +345,7 @@ internal sealed partial class ContentService
         var document = documents.Find(item => item.Locale == write.DocumentLocale)
             ?? throw new EntryNotFoundException(write.Type.Name, id);
 
-        var target = write.Target with { EntryLocales = [.. documents.Select(item => item.Locale)] };
+        var target = write.Target with { EntryLocales = [.. documents.Select(item => item.Locale)], Found = true };
         if (!await evaluator.CanAccessEntryAsync(write.Operation, write.Type, operation, id, target, QueryStatus.Draft, cancellationToken))
         {
             throw new EntryNotFoundException(write.Type.Name, id);
@@ -416,15 +422,16 @@ internal sealed partial class ContentService
     }
 
     // A publish makes no slug: the draft's values are what was reviewed.
-    private ContentDocument Settle(WriteScope write, ContentDocument working, JsonObject baseline, ContentDocument stored, WritableFields writable)
+    private (ContentDocument Working, JsonObject Fields) Settle(WriteScope write, ContentDocument working, JsonObject baseline, ContentDocument stored, WritableFields writable)
     {
         var canonical = canonicalizer.Canonicalize(write.Type, working, static (_, _) => false, stored);
         var fields = EntryJson.Fields(write.Type, canonical);
         write.Access.RejectHookChanges(write.Type.Fields.Select(field => field.Name).Where(name => !JsonNode.DeepEquals(baseline[name], fields[name])), write.Type, writable);
-        return canonical;
+        return (canonical, fields);
     }
 
-    private async Task ValidateForPublishAsync(WriteScope write, ContentDocument working, Document document, AccessTarget target, List<PublishWarning> warnings, CancellationToken cancellationToken)
+    // fields is EntryJson.Fields of working.
+    private async Task ValidateForPublishAsync(WriteScope write, ContentDocument working, JsonObject fields, Document document, AccessTarget target, List<PublishWarning> warnings, CancellationToken cancellationToken)
     {
         warnings.Clear();
         var entry = write.Type.ClrType is { } clrType ? mapper.ToEntry(clrType, working) : null;
@@ -441,7 +448,7 @@ internal sealed partial class ContentService
                 await CheckReferencesAsync(write, working, document.DocumentId, target, context, warnings, token);
             });
 
-        var errors = new EntryErrors(schema, write.Type, write.Permissions, write.Target).ForPublish(result.Errors, EntryJson.Fields(write.Type, working));
+        var errors = new EntryErrors(schema, write.Type, write.Permissions, write.Target).ForPublish(result.Errors, fields);
         if (errors.Count > 0)
         {
             throw new ValidationException(errors);
@@ -462,22 +469,25 @@ internal sealed partial class ContentService
 
         void Refuse() => context.AddError("", PublishWarningCodes.UnavailableReference, "The entry refers to an entry the principal cannot confirm.");
 
-        foreach (var reference in store.TargetsOf(write.Type, working))
-        {
-            if (reference.Id == id && reference.TargetType == write.Type.Name)
-            {
-                continue;
-            }
+        bool IsChosenBlind(EntryTarget reference) => !isSystem && !(reference.IsShown && write.Permissions.CanReadField(write.Type, reference.Field, write.Target));
 
-            var target = schema.FindContentType(reference.TargetType);
-            if (!isSystem && !(reference.IsShown && write.Permissions.CanReadField(write.Type, reference.Field, write.Target)))
+        // What is asked of the targets is asked of all of them first, a query or two per target type, and then answered in order.
+        var references = store.TargetsOf(write.Type, working).Where(reference => reference.Id != id || reference.TargetType != write.Type.Name).ToList();
+        var published = tolerateTargetState || !blocks ? [] : await PublishedTargetsAsync(write, references.Where(IsChosenBlind), locales, cancellationToken);
+        var states = tolerateTargetState
+            ? []
+            : await TargetStatesAsync(write, references.Where(reference => !IsChosenBlind(reference) && IsReadableType(write, reference.TargetType)), locales, cancellationToken);
+
+        foreach (var reference in references)
+        {
+            if (IsChosenBlind(reference))
             {
                 if (blocks)
                 {
                     updatable ??= await evaluator.WritableFieldsAsync(write.Operation, write.Type, ContentOperation.Update, id, entryTarget, cancellationToken);
                     creatable ??= await evaluator.WritableFieldsAsync(write.Operation, write.Type, ContentOperation.Create, id, entryTarget, cancellationToken);
                     var chose = reference.IsShown && (updatable.Includes(reference.Field) || creatable.Includes(reference.Field));
-                    if (chose || (!tolerateTargetState && !await IsPublishedTargetAsync(write, target, reference.Id, locales, cancellationToken)))
+                    if (chose || (!tolerateTargetState && !published.Contains((reference.TargetType, reference.Id))))
                     {
                         Refuse();
                     }
@@ -486,7 +496,7 @@ internal sealed partial class ContentService
                 continue;
             }
 
-            if (!isSystem && (target is null || !write.Permissions.Allows(target, ContentOperation.Read, write.Target)))
+            if (!IsReadableType(write, reference.TargetType))
             {
                 if (blocks)
                 {
@@ -496,8 +506,13 @@ internal sealed partial class ContentService
                 continue;
             }
 
-            var state = await TargetStateAsync(write, target, reference.Id, locales, cancellationToken);
-            if (state == ReferenceTargetState.Published || tolerateTargetState)
+            if (tolerateTargetState)
+            {
+                continue;
+            }
+
+            var state = states[(reference.TargetType, reference.Id)];
+            if (state == ReferenceTargetState.Published)
             {
                 continue;
             }
@@ -520,48 +535,101 @@ internal sealed partial class ContentService
         }
     }
 
-    private async Task<bool> IsPublishedTargetAsync(WriteScope write, SchemaType? target, Guid id, IReadOnlyList<string> locales, CancellationToken cancellationToken) =>
-        target is not null && IsPublishedIn(target, await store.TargetRowsAsync(target, id, write.Site, cancellationToken), locales);
+    private bool IsReadableType(WriteScope write, string typeName) =>
+        write.Permissions.IsSystem || (schema.FindContentType(typeName) is { } target && write.Permissions.Allows(target, ContentOperation.Read, write.Target));
+
+    // The targets that are published, asked whatever the principal may read of them, in one query per target type.
+    private async Task<HashSet<(string Type, Guid Id)>> PublishedTargetsAsync(WriteScope write, IEnumerable<EntryTarget> references, IReadOnlyList<string> locales, CancellationToken cancellationToken)
+    {
+        HashSet<(string Type, Guid Id)> published = [];
+        foreach (var (target, ids) in ByTargetType(references))
+        {
+            foreach (var (id, rows) in await store.TargetRowsAsync(target, ids, write.Site, cancellationToken))
+            {
+                if (IsPublishedIn(target, rows, locales))
+                {
+                    published.Add((target.Name, id));
+                }
+            }
+        }
+
+        return published;
+    }
 
     private static bool IsPublishedIn(SchemaType target, List<ReferenceTargetRow> rows, IReadOnlyList<string> locales) =>
         rows.Any(row => row.IsPublished && (!target.Localized || locales.Contains(row.Locale, StringComparer.OrdinalIgnoreCase)));
 
-    // What a principal that may read the type may know of a target. A row only in locales its grant does not cover, and a
-    // row its rule refuses, read the same as no row. The rule is asked of the locale that serves the target, not the entry's.
-    private async Task<ReferenceTargetState> TargetStateAsync(WriteScope write, SchemaType? target, Guid id, IReadOnlyList<string> locales, CancellationToken cancellationToken)
+    // What a principal that may read the type may know of each target. A row only in locales its grant does not cover, and a
+    // row its rule refuses, read the same as no row. The rule is asked of the locale that serves the target, not the entry's,
+    // so the targets of one type are asked in one query for their rows and one per locale that serves them.
+    private async Task<Dictionary<(string Type, Guid Id), ReferenceTargetState>> TargetStatesAsync(WriteScope write, IEnumerable<EntryTarget> references, IReadOnlyList<string> locales, CancellationToken cancellationToken)
     {
-        if (target is null)
+        List<EntryTarget> all = [.. references];
+        Dictionary<(string Type, Guid Id), ReferenceTargetState> states = [];
+        foreach (var reference in all)
         {
-            return ReferenceTargetState.Unavailable;
+            states[(reference.TargetType, reference.Id)] = ReferenceTargetState.Unavailable;
         }
 
-        var rows = await store.TargetRowsAsync(target, id, write.Site, cancellationToken);
-        if (!write.Permissions.IsSystem)
+        var isSystem = write.Permissions.IsSystem;
+        foreach (var (target, ids) in ByTargetType(all))
         {
-            rows = [.. rows.Where(row => !target.Localized || write.Permissions.Allows(target, ContentOperation.Read, write.Target with { Locale = row.Locale }))];
-        }
-
-        if (rows.Count == 0)
-        {
-            return ReferenceTargetState.Unavailable;
-        }
-
-        if (!write.Permissions.IsSystem)
-        {
-            var serving = locales.Select(locale => rows.Find(row => row.IsPublished && string.Equals(row.Locale, locale, StringComparison.OrdinalIgnoreCase))).FirstOrDefault(row => row is not null)
-                ?? locales.Select(locale => rows.Find(row => string.Equals(row.Locale, locale, StringComparison.OrdinalIgnoreCase))).FirstOrDefault(row => row is not null)
-                ?? rows[0];
-            var asked = target.Localized ? write.Target with { Locale = serving.Locale } : write.Target;
-            if (!await evaluator.CanAccessEntryAsync(write.Operation, target, ContentOperation.Read, id, asked, QueryStatus.Draft, cancellationToken))
+            var found = await store.TargetRowsAsync(target, ids, write.Site, cancellationToken);
+            Dictionary<string, List<Guid>> toAsk = new(StringComparer.Ordinal);
+            foreach (var id in ids)
             {
-                return ReferenceTargetState.Unavailable;
+                var rows = found.GetValueOrDefault(id) ?? [];
+                if (!isSystem)
+                {
+                    rows = [.. rows.Where(row => !target.Localized || write.Permissions.Allows(target, ContentOperation.Read, write.Target with { Locale = row.Locale }))];
+                }
+
+                if (rows.Count == 0)
+                {
+                    continue;
+                }
+
+                states[(target.Name, id)] = IsPublishedIn(target, rows, locales) ? ReferenceTargetState.Published : ReferenceTargetState.Unpublished;
+                if (!isSystem)
+                {
+                    var serving = locales.Select(locale => rows.Find(row => row.IsPublished && string.Equals(row.Locale, locale, StringComparison.OrdinalIgnoreCase))).FirstOrDefault(row => row is not null)
+                        ?? locales.Select(locale => rows.Find(row => string.Equals(row.Locale, locale, StringComparison.OrdinalIgnoreCase))).FirstOrDefault(row => row is not null)
+                        ?? rows[0];
+                    var locale = target.Localized ? serving.Locale : "";
+                    if (!toAsk.TryGetValue(locale, out var waiting))
+                    {
+                        waiting = [];
+                        toAsk[locale] = waiting;
+                    }
+
+                    waiting.Add(id);
+                }
+            }
+
+            foreach (var (locale, waiting) in toAsk)
+            {
+                var asked = target.Localized ? write.Target with { Locale = locale } : write.Target;
+                var accessible = await evaluator.AccessibleEntriesAsync(write.Operation, target, ContentOperation.Read, waiting, asked, QueryStatus.Draft, cancellationToken);
+                foreach (var id in waiting.Where(id => !accessible.Contains(id)))
+                {
+                    states[(target.Name, id)] = ReferenceTargetState.Unavailable;
+                }
             }
         }
 
-        return IsPublishedIn(target, rows, locales) ? ReferenceTargetState.Published : ReferenceTargetState.Unpublished;
+        return states;
     }
 
-    private async Task WriteOverDraftAsync(WriteScope write, Guid id, Document document, ContentDocument working, EntryStatus status, string? message, CancellationToken cancellationToken)
+    // An unknown type has no rows to ask about.
+    private IEnumerable<(SchemaType Target, List<Guid> Ids)> ByTargetType(IEnumerable<EntryTarget> references) =>
+        references
+            .GroupBy(reference => reference.TargetType, StringComparer.Ordinal)
+            .Select(group => (Target: schema.FindContentType(group.Key), Ids: group.Select(reference => reference.Id).Distinct().ToList()))
+            .Where(group => group.Target is not null)
+            .Select(group => (group.Target!, group.Ids));
+
+    // rows are the draft rows this transaction read, and fields EntryJson.Fields of working.
+    private async Task WriteOverDraftAsync(WriteScope write, Guid id, Document document, StoredRows rows, ContentDocument working, JsonObject fields, EntryStatus status, string? message, CancellationToken cancellationToken)
     {
         var expected = document.DraftVersion;
         if (!await store.AdvanceVersionAsync(id, document.Locale, expected, status, write.Operation.Timestamp, write.Operation.AuditPrincipal.Id, cancellationToken))
@@ -573,12 +641,13 @@ internal sealed partial class ContentService
         document.Status = status;
         document.UpdatedAt = write.Operation.Timestamp;
         document.UpdatedBy = write.Operation.AuditPrincipal.Id;
-        await store.WriteDraftAsync(write.Type, document, isNewDocument: false, working, write.Operation.Origin, write.Operation.ClientId, cancellationToken, message);
+        await store.WriteDraftAsync(write.Type, document, isNewDocument: false, rows, working, fields, write.Operation.Origin, write.Operation.ClientId, cancellationToken, message);
     }
 
+    // Asked after the entry's draft was written over, so it is known to be in its site.
     private async Task ThrowIfOutOfReachAsync(WriteScope write, ContentOperation operation, Guid id, CancellationToken cancellationToken)
     {
-        if (!await evaluator.CanAccessEntryAsync(write.Operation, write.Type, operation, id, write.Target, QueryStatus.Draft, cancellationToken))
+        if (!await evaluator.CanAccessEntryAsync(write.Operation, write.Type, operation, id, write.Target with { Found = true }, QueryStatus.Draft, cancellationToken))
         {
             throw new ContentAccessDeniedException(write.Type.Name, CorePermissions.OperationName(operation));
         }
@@ -607,8 +676,15 @@ internal sealed partial class ContentService
     private static bool SameFields(SchemaType type, ContentDocument left, ContentDocument right) =>
         JsonNode.DeepEquals(EntryJson.Fields(type, left), EntryJson.Fields(type, right));
 
-    // Hidden fields show to no one, the system principal included.
     private async Task<JsonObject> ReadableFieldsOfAsync(WriteScope write, ContentVersion version, CancellationToken cancellationToken)
+    {
+        var fields = VisibleFieldsOf(write, version);
+        await DropUnreadableTargetsAsync(write, cancellationToken, fields);
+        return fields;
+    }
+
+    // Hidden fields show to no one, the system principal included.
+    private JsonObject VisibleFieldsOf(WriteScope write, ContentVersion version)
     {
         var snapshot = ParseSnapshot(version);
         JsonObject fields = [];
@@ -622,7 +698,6 @@ internal sealed partial class ContentService
             }
         }
 
-        await DropUnreadableTargetsAsync(write, fields, cancellationToken);
         return fields;
     }
 
@@ -643,7 +718,7 @@ internal sealed partial class ContentService
             }
         }
 
-        await DropUnreadableTargetsAsync(write, fields, cancellationToken);
+        await DropUnreadableTargetsAsync(write, cancellationToken, fields);
         ContentDocument restored = [];
         foreach (var field in taken)
         {
@@ -656,8 +731,9 @@ internal sealed partial class ContentService
     private static JsonObject ParseSnapshot(ContentVersion version) =>
         JsonDepth.Parse(version.Snapshot) as JsonObject ?? [];
 
-    // Fails closed on a target since trashed, which only a draft read of the entry itself would show.
-    private async Task DropUnreadableTargetsAsync(WriteScope write, JsonObject fields, CancellationToken cancellationToken)
+    // Fails closed on a target since trashed, which only a draft read of the entry itself would show. The targets of all the
+    // snapshots are asked together, one query or two per target type.
+    private async Task DropUnreadableTargetsAsync(WriteScope write, CancellationToken cancellationToken, params JsonObject[] snapshots)
     {
         if (write.Permissions.IsSystem)
         {
@@ -665,24 +741,40 @@ internal sealed partial class ContentService
         }
 
         var nested = new NestedTargets(schema);
+        Dictionary<string, HashSet<Guid>> wanted = new(StringComparer.Ordinal);
+        foreach (var fields in snapshots)
+        {
+            foreach (var (name, ids) in nested.Collect(write.Type, fields))
+            {
+                if (wanted.TryGetValue(name, out var known))
+                {
+                    known.UnionWith(ids);
+                }
+                else
+                {
+                    wanted[name] = ids;
+                }
+            }
+        }
+
         HashSet<(string Type, Guid Id)> readable = [];
-        foreach (var (name, ids) in nested.Collect(write.Type, fields))
+        foreach (var (name, ids) in wanted)
         {
             if (schema.FindContentType(name) is not { } target || !write.Permissions.Allows(target, ContentOperation.Read, write.Target))
             {
                 continue;
             }
 
-            foreach (var id in ids)
+            foreach (var id in await evaluator.AccessibleEntriesAsync(write.Operation, target, ContentOperation.Read, ids, write.Target, QueryStatus.Draft, cancellationToken))
             {
-                if (await evaluator.CanAccessEntryAsync(write.Operation, target, ContentOperation.Read, id, write.Target, QueryStatus.Draft, cancellationToken))
-                {
-                    readable.Add((name, id));
-                }
+                readable.Add((name, id));
             }
         }
 
-        nested.Filter(write.Type, fields, (name, id) => readable.Contains((name, id)));
+        foreach (var fields in snapshots)
+        {
+            nested.Filter(write.Type, fields, (name, id) => readable.Contains((name, id)));
+        }
     }
 
     private object? AsRead(SchemaField field, object? value)

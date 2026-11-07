@@ -157,7 +157,8 @@ internal sealed class EntryComposer(SchemaModel schema)
     // The blocks of a top-level field by id. A stored block Pairs answers with is one of before's own nodes.
     public BlockScope Scope(SchemaField field, JsonNode? before, JsonNode? after) => _blocks.Scope(field, before, after);
 
-    public void AssignBlockIds(SchemaType type, ContentDocument entry) => _blocks.Assign(type, entry);
+    // The top-level fields in which a block got an id.
+    public List<string> AssignBlockIds(SchemaType type, ContentDocument entry) => _blocks.Assign(type, entry);
 
     private RichText CarryRichText(SchemaField field, RichText before, RichText after, BlockScope blocks, IReadOnlySet<Guid> unseen)
     {

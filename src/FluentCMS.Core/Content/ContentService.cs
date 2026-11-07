@@ -63,7 +63,11 @@ internal sealed partial class ContentService(
     public Task<ContentDocument?> GetAsync(string type, Guid id, GetOptions? options = null, CancellationToken cancellationToken = default) =>
         GetAsync(type, id, options, everySystemField: false, cancellationToken);
 
-    public async Task<ContentDocument?> GetAsync(string type, Guid id, GetOptions? options, bool everySystemField, CancellationToken cancellationToken)
+    public Task<ContentDocument?> GetAsync(string type, Guid id, GetOptions? options, bool everySystemField, CancellationToken cancellationToken) =>
+        ReadEntryAsync(type, id, options, everySystemField, resolvedLocale: null, cancellationToken);
+
+    // A write's own reads pass on the locale its operation resolved for this site, which need not be resolved again.
+    private async Task<ContentDocument?> ReadEntryAsync(string type, Guid id, GetOptions? options, bool everySystemField, string? resolvedLocale, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(type);
 
@@ -81,7 +85,7 @@ internal sealed partial class ContentService(
             RichTextFormat = options.RichTextFormat,
         };
 
-        var items = (await ReadAsync(type, query, id, everySystemField, cancellationToken)).Items;
+        var items = (await ReadAsync(type, query, id, everySystemField, cancellationToken, resolvedLocale: resolvedLocale)).Items;
         return items.Count > 0 ? items[0] : null;
     }
 
@@ -163,20 +167,20 @@ internal sealed partial class ContentService(
 
                 var working = Prepare(write, composed, document, null);
                 var prepared = EntryJson.Fields(write.Type, working);
-                working = await RunBeforeHooksAsync(write, HookKind.BeforeCreate, working, new SaveContext(null, Client(sent), writable, document), cancellationToken);
+                (working, var fields) = await RunBeforeHooksAsync(write, HookKind.BeforeCreate, working, new SaveContext(null, Client(sent), writable, document), cancellationToken, prepared);
 
-                await store.WriteDraftAsync(write.Type, document, isNewDocument: true, working, write.Operation.Origin, write.Operation.ClientId, cancellationToken);
+                await store.WriteDraftAsync(write.Type, document, isNewDocument: true, StoredRows.None, working, fields, write.Operation.Origin, write.Operation.ClientId, cancellationToken);
 
                 // A row rule on a create grant has no entry to read until now. Each grant then answers for its own
                 // fields (spec 4.8): what was written must be allowed by a grant whose rule holds for this entry.
-                if (!await evaluator.CanAccessEntryAsync(write.Operation, write.Type, ContentOperation.Create, id, write.Target, QueryStatus.Draft, cancellationToken))
+                var written = write.Target with { Found = true };
+                if (!await evaluator.CanAccessEntryAsync(write.Operation, write.Type, ContentOperation.Create, id, written, QueryStatus.Draft, cancellationToken))
                 {
                     throw new ContentAccessDeniedException(write.Type.Name, CorePermissions.OperationName(ContentOperation.Create));
                 }
 
-                var allowed = await evaluator.WritableFieldsAsync(write.Operation, write.Type, ContentOperation.Create, id, write.Target, cancellationToken);
+                var allowed = await evaluator.WritableFieldsAsync(write.Operation, write.Type, ContentOperation.Create, id, written, cancellationToken);
                 Reject(write, sent, allowed);
-                var fields = EntryJson.Fields(write.Type, working);
                 write.Access.RejectHookChanges(write.Type.Fields.Select(field => field.Name).Where(name => !JsonNode.DeepEquals(prepared[name], fields[name])), write.Type, allowed);
 
                 await hooks.RunAsync(HookKind.AfterCreate, write.Type, write.Operation, working, null, cancellationToken);
@@ -277,7 +281,7 @@ internal sealed partial class ContentService(
         await locales.ResolveAsync(new LocaleRequest(site) { Parameter = locale }, cancellationToken);
 
     // Reads ask the engine, which holds the permission on the type, the row rule, the site and the field limits as one query.
-    private async Task<PagedResult<ContentDocument>> ReadAsync(string typeName, ContentQuery query, Guid? id, bool everySystemField, CancellationToken cancellationToken, bool trashed = false)
+    private async Task<PagedResult<ContentDocument>> ReadAsync(string typeName, ContentQuery query, Guid? id, bool everySystemField, CancellationToken cancellationToken, bool trashed = false, string? resolvedLocale = null)
     {
         // A read of the trash has the span of QueryTrashAsync.
         using var span = trashed ? null : Span(id is null ? "query" : "get", typeName);
@@ -293,7 +297,7 @@ internal sealed partial class ContentService(
         }
 
         var site = query.Site ?? operation.Site;
-        var locale = await ResolveLocaleAsync(site, query.Locale ?? operation.Locale, cancellationToken);
+        var locale = resolvedLocale ?? await ResolveLocaleAsync(site, query.Locale ?? operation.Locale, cancellationToken);
         var everyLocale = locale == ILocaleResolver.All;
         if (trashed && everyLocale)
         {
@@ -620,7 +624,7 @@ internal sealed partial class ContentService(
                 var existing = documents.Find(item => item.Locale == write.DocumentLocale);
                 var addsLocale = existing is null;
                 var target = addsLocale ? write.Target with { RowLocale = documents[0].Locale } : write.Target;
-                target = target with { EntryLocales = [.. documents.Select(item => item.Locale).Append(write.DocumentLocale).Distinct(StringComparer.OrdinalIgnoreCase)] };
+                target = target with { EntryLocales = [.. documents.Select(item => item.Locale).Append(write.DocumentLocale).Distinct(StringComparer.OrdinalIgnoreCase)], Found = true };
 
                 if (!await evaluator.CanAccessEntryAsync(write.Operation, type, ContentOperation.Update, id, target, QueryStatus.Draft, cancellationToken))
                 {
@@ -647,7 +651,7 @@ internal sealed partial class ContentService(
                 }
 
                 var writable = await evaluator.WritableFieldsAsync(write.Operation, type, ContentOperation.Update, id, target, cancellationToken);
-                var stored = await store.ReadAsync(type, document, ContentState.Draft, cancellationToken);
+                var (stored, rows) = await store.ReadDraftAsync(type, document, cancellationToken);
                 var sent = WithoutFallbacks(changes);
                 if (!isPatch)
                 {
@@ -668,9 +672,9 @@ internal sealed partial class ContentService(
                 composer.CarryProtected(type, stored, working, includingGroups: !isPatch || !write.Permissions.IsSystem, unseen);
                 await KeepUnreadableTargetsAsync(write, stored, shown, working, isPatch, cancellationToken);
 
-                working = await RunBeforeHooksAsync(write, HookKind.BeforeUpdate, working, new SaveContext(stored, Client(refused), writable, document), cancellationToken);
+                (working, var fields) = await RunBeforeHooksAsync(write, HookKind.BeforeUpdate, working, new SaveContext(stored, Client(refused), writable, document), cancellationToken);
 
-                var sharedChanged = type.Localized && type.Fields.Any(field => !field.Localizable && !EntryJson.Same(working[field.Name], stored[field.Name]));
+                var sharedChanged = type.Localized && type.Fields.Any(field => !field.Localizable && !JsonNode.DeepEquals(fields[field.Name], EntryJson.ToNode(stored[field.Name])));
                 var next = expectedVersion + 1;
                 var status = document.Status == EntryStatus.Published ? EntryStatus.Modified : document.Status;
                 if (addsLocale)
@@ -689,14 +693,15 @@ internal sealed partial class ContentService(
                     throw await ConflictAsync(write, id, expectedVersion, await store.DraftVersionAsync(id, document.Locale, cancellationToken), cancellationToken);
                 }
 
-                await store.WriteDraftAsync(type, document, isNewDocument: addsLocale, working, write.Operation.Origin, write.Operation.ClientId, cancellationToken);
+                await store.WriteDraftAsync(type, document, isNewDocument: addsLocale, rows, working, fields, write.Operation.Origin, write.Operation.ClientId, cancellationToken);
                 if (sharedChanged)
                 {
                     await store.MarkOtherLocalesModifiedAsync(id, document.Locale, cancellationToken);
                 }
 
-                // A write may not take an entry out of the reach of the rule that let the principal change it.
-                if (!await evaluator.CanAccessEntryAsync(write.Operation, type, ContentOperation.Update, id, write.Target, QueryStatus.Draft, cancellationToken))
+                // A write may not take an entry out of the reach of the rule that let the principal change it. With no
+                // rule there is nothing to ask: the write has not moved the entry out of its site.
+                if (!await evaluator.CanAccessEntryAsync(write.Operation, type, ContentOperation.Update, id, write.Target with { Found = true }, QueryStatus.Draft, cancellationToken))
                 {
                     throw new ContentAccessDeniedException(type.Name, CorePermissions.OperationName(ContentOperation.Update));
                 }
@@ -950,40 +955,49 @@ internal sealed partial class ContentService(
     // Validation runs on what hooks left, and again if BeforeCreate or BeforeUpdate changed it, so that a hook cannot get
     // a value past it. A hook is held to the principal's field limits as well, except on a hidden or read-only field,
     // which no client can reach and which is what a hook is for. Hooks get a copy of the stored state, so they cannot
-    // change what the write compares with.
-    private async Task<ContentDocument> RunBeforeHooksAsync(WriteScope write, HookKind before, ContentDocument working, SaveContext save, CancellationToken cancellationToken)
+    // change what the write compares with. The entry is serialised once before the hooks and once after each kind that
+    // ran: a preparation of a prepared entry changes nothing, so it is skipped where no hook ran. What comes back with
+    // the entry is EntryJson.Fields of what is written, which no one else holds. baseline is that of working, when the
+    // caller has it.
+    private async Task<(ContentDocument Working, JsonObject Fields)> RunBeforeHooksAsync(WriteScope write, HookKind before, ContentDocument working, SaveContext save, CancellationToken cancellationToken, JsonObject? baseline = null)
     {
-        var sent = EntryJson.Fields(write.Type, working);
+        var sent = baseline ?? EntryJson.Fields(write.Type, working);
 
         await hooks.RunAsync(HookKind.BeforeValidate, write.Type, write.Operation, working, CopyOf(save.Stored), cancellationToken);
-        working = AfterHook(write, working, sent, save);
-        await ValidateAsync(write, working, sent, save, cancellationToken);
+        (working, var validated) = AfterHook(write, working, sent, save);
+        await ValidateAsync(write, working, validated, sent, save, cancellationToken);
 
-        var validated = EntryJson.Fields(write.Type, working);
-        await hooks.RunAsync(before, write.Type, write.Operation, working, CopyOf(save.Stored), cancellationToken);
-        working = AfterHook(write, working, validated, save);
-
-        if (!JsonNode.DeepEquals(validated, EntryJson.Fields(write.Type, working)))
+        var fields = validated;
+        if (await hooks.RunAsync(before, write.Type, write.Operation, working, CopyOf(save.Stored), beforeFirst: null, cancellationToken))
         {
-            await ValidateAsync(write, working, sent, save, cancellationToken);
+            (working, fields) = AfterHook(write, working, validated, save);
+            if (!JsonNode.DeepEquals(validated, fields))
+            {
+                await ValidateAsync(write, working, fields, sent, save, cancellationToken);
+            }
         }
 
         // What is written now is final, so a block that has no id yet gets one here, before a status is decided on it.
-        composer.AssignBlockIds(write.Type, working);
-        return working;
+        foreach (var name in composer.AssignBlockIds(write.Type, working))
+        {
+            fields[name] = EntryJson.ToNode(working.GetValueOrDefault(name));
+        }
+
+        return (working, fields);
     }
 
     private static ContentDocument? CopyOf(ContentDocument? stored) => stored is null ? null : ContentCopy.Of(stored);
 
-    private ContentDocument AfterHook(WriteScope write, ContentDocument working, JsonObject baseline, SaveContext save)
+    private (ContentDocument Working, JsonObject Fields) AfterHook(WriteScope write, ContentDocument working, JsonObject baseline, SaveContext save)
     {
         var after = Prepare(write, working, save.Document, save.Stored);
         var fields = EntryJson.Fields(write.Type, after);
         write.Access.RejectHookChanges(write.Type.Fields.Select(field => field.Name).Where(name => !JsonNode.DeepEquals(baseline[name], fields[name])), write.Type, save.Writable);
-        return after;
+        return (after, fields);
     }
 
-    private async Task ValidateAsync(WriteScope write, ContentDocument working, JsonObject sent, SaveContext save, CancellationToken cancellationToken)
+    // now is EntryJson.Fields of working; sent is that of the entry before the hooks.
+    private async Task ValidateAsync(WriteScope write, ContentDocument working, JsonObject now, JsonObject sent, SaveContext save, CancellationToken cancellationToken)
     {
         var id = save.Document.DocumentId;
         var entry = write.Type.ClrType is { } clrType ? mapper.ToEntry(clrType, working) : null;
@@ -1002,7 +1016,6 @@ internal sealed partial class ContentService(
                 return new ValueTask(store.CheckUniqueAsync(write.Type, working, id, write.Site, write.Locale, context, token));
             });
 
-        var now = EntryJson.Fields(write.Type, working);
         var errors = await ReportableAsync(write, result.Errors, now, sent, save, cancellationToken);
 
         // The pipeline skips uniqueness after an error, and a dropped error is no reason to.
@@ -1054,7 +1067,7 @@ internal sealed partial class ContentService(
         var reached = 0;
         foreach (var document in documents)
         {
-            var target = new AccessTarget(write.Site, write.Type.Localized ? document.Locale : write.Locale);
+            var target = new AccessTarget(write.Site, write.Type.Localized ? document.Locale : write.Locale, Found: !trashed);
             if (await evaluator.CanAccessEntryAsync(write.Operation, write.Type, operation, id, target, QueryStatus.Draft, cancellationToken))
             {
                 reached++;
@@ -1086,9 +1099,10 @@ internal sealed partial class ContentService(
 
     private async Task<ContentDocument?> ReadDraftOrNullAsync(WriteScope write, Guid id, string locale, LocaleFallback fallbacks, CancellationToken cancellationToken)
     {
+        var asked = string.IsNullOrEmpty(locale) ? write.Locale : locale;
         try
         {
-            return await GetAsync(write.Type.Name, id, new GetOptions { Status = QueryStatus.Draft, Locale = string.IsNullOrEmpty(locale) ? write.Locale : locale, Fallback = fallbacks }, everySystemField: false, cancellationToken);
+            return await ReadEntryAsync(write.Type.Name, id, new GetOptions { Status = QueryStatus.Draft, Locale = asked, Fallback = fallbacks }, everySystemField: false, asked == write.Locale ? write.Locale : null, cancellationToken);
         }
         catch (ValidationException exception) when (exception.Errors.All(error => error.Path is "type" or "status" or "locale"))
         {

@@ -22,6 +22,31 @@ internal interface IAuthorizationEvaluator
         QueryStatus status = QueryStatus.Published,
         CancellationToken cancellationToken = default);
 
+    // The same question for entries of one type at once: those that pass. The evaluator asks it in one query for the reach
+    // and one for the row rule, whatever their number; this default asks it of each entry.
+    async ValueTask<IReadOnlySet<Guid>> AccessibleEntriesAsync(
+        OperationContext context,
+        SchemaType type,
+        ContentOperation operation,
+        IReadOnlyCollection<Guid> entries,
+        AccessTarget target,
+        QueryStatus status = QueryStatus.Published,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(entries);
+
+        HashSet<Guid> passed = [];
+        foreach (var entry in entries.Distinct())
+        {
+            if (await CanAccessEntryAsync(context, type, operation, entry, target, status, cancellationToken))
+            {
+                passed.Add(entry);
+            }
+        }
+
+        return passed;
+    }
+
     // Which fields a write may touch: a field counts when a grant that allows it also matches the entry. A create has
     // no entry at first, so a row rule on its grant holds nothing back until it is asked again with the new entry; any
     // other write without an entry gets only what grants with no row rule allow.
