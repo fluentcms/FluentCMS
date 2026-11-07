@@ -120,6 +120,29 @@ public sealed class ProvidersBuilderTests
     }
 
     [Fact]
+    public void AnImplementationThatCannotBeCreatedIsRefusedWhenChosen()
+    {
+        var refused = Should.Throw<FluentCmsConfigurationException>(() => new ProvidersBuilder().Use<ISlot, AbstractSlot>());
+        refused.Code.ShouldBe("FCMS1542");
+        refused.Message.ShouldContain($"The host fills the provider slot {typeof(ISlot).FullName} with {typeof(AbstractSlot).FullName}");
+
+        refused = Should.Throw<FluentCmsConfigurationException>(() => new ProvidersBuilder().For("first").Use<ISlot, ISlot>());
+        refused.Code.ShouldBe("FCMS1542");
+        refused.Message.ShouldContain("The plugin 'first'");
+    }
+
+    [Fact]
+    public void AChoiceAfterTheSlotsAreSettledIsRefused()
+    {
+        var providers = new ProvidersBuilder().Default<ISlot, DefaultSlot>();
+        var plugin = providers.For("first");
+        providers.Apply(new ServiceCollection());
+
+        Should.Throw<FluentCmsConfigurationException>(() => providers.Use<ISlot, HostSlot>()).Code.ShouldBe("FCMS1543");
+        Should.Throw<FluentCmsConfigurationException>(() => plugin.Use<ISlot, PluginSlot>()).Message.ShouldContain("The plugin 'first' chooses");
+    }
+
+    [Fact]
     public void ARegistrationAfterTheChoiceComesLastAndTheReportSaysSo()
     {
         var services = new ServiceCollection();
@@ -168,6 +191,8 @@ public sealed class ProvidersBuilderTests
     public interface IOther;
 
     public sealed class DefaultSlot : ISlot;
+
+    public abstract class AbstractSlot : ISlot;
 
     public sealed class RegisteredSlot : ISlot;
 

@@ -13,6 +13,7 @@ public sealed class ProvidersBuilder : IProviderSlots
     private readonly Dictionary<Type, Type> _host = [];
     private readonly Dictionary<Type, List<(string Plugin, Type Implementation)>> _plugins = [];
     private HashSet<ServiceDescriptor>? _beforeCore;
+    private bool _applied;
 
     internal ProvidersBuilder()
     {
@@ -22,6 +23,7 @@ public sealed class ProvidersBuilder : IProviderSlots
         where TSlot : class
         where TImplementation : class, TSlot
     {
+        Check(typeof(TSlot), typeof(TImplementation), "The host");
         _host[typeof(TSlot)] = typeof(TImplementation);
         return this;
     }
@@ -42,6 +44,7 @@ public sealed class ProvidersBuilder : IProviderSlots
 
     private ProvidersBuilder Default(ServiceDescriptor descriptor)
     {
+        Check(descriptor.ServiceType, null, "Core");
         if (_defaults.Any(slot => slot.ServiceType == descriptor.ServiceType))
         {
             throw new InvalidOperationException($"The provider slot {descriptor.ServiceType.FullName} has a default already.");
@@ -100,17 +103,39 @@ public sealed class ProvidersBuilder : IProviderSlots
             }
         }
 
+        _applied = true;
+        _beforeCore = null;
         return new ProviderSlotRegistry(services, choices);
     }
 
     private void UseFor(string plugin, Type slot, Type implementation)
     {
+        Check(slot, implementation, $"The plugin '{plugin}'");
         if (!_plugins.TryGetValue(slot, out var replacements))
         {
             _plugins[slot] = replacements = [];
         }
 
         replacements.Add((plugin, implementation));
+    }
+
+    // A choice made once AddFluentCms has settled the slots would change nothing, and a class that cannot be created would
+    // fail only at its first use.
+    private void Check(Type slot, Type? implementation, string who)
+    {
+        if (_applied)
+        {
+            throw new FluentCmsConfigurationException(
+                ProviderErrorCodes.SlotsSettled,
+                $"{who} chooses the provider slot {slot.FullName} after AddFluentCms has settled the slots; call Providers.Use inside AddFluentCms or in a plugin's ConfigureServices.");
+        }
+
+        if (implementation is { IsAbstract: true } or { IsInterface: true })
+        {
+            throw new FluentCmsConfigurationException(
+                ProviderErrorCodes.NotAnImplementation,
+                $"{who} fills the provider slot {slot.FullName} with {implementation.FullName}, which is abstract and cannot be created; name a concrete class.");
+        }
     }
 
     private bool RegisteredBeforeCore(ServiceDescriptor descriptor) => _beforeCore?.Contains(descriptor) ?? true;
@@ -172,6 +197,8 @@ internal static class ProviderErrorCodes
 {
     public const string SeveralPluginsReplaceSlot = "FCMS1540";
     public const string NotASlot = "FCMS1541";
+    public const string NotAnImplementation = "FCMS1542";
+    public const string SlotsSettled = "FCMS1543";
 }
 
 // The slots as AddFluentCms left them. The report looks at the service collection again, because a registration after
