@@ -297,6 +297,30 @@ public class ContentModelTests
     }
 
     [Fact]
+    public void ASingletonHasOneSharedRowPerSiteAndState()
+    {
+        var schema = SampleSchema.NewBuilder().AddSchemaJson("""
+            { "collections": [ { "name": "page", "fields": [ { "name": "title", "type": "text" } ] } ],
+              "singletons": [
+                { "name": "home", "localized": true, "fields": [ { "name": "title", "type": "text", "localizable": true } ] },
+                { "name": "brand", "scope": "global", "fields": [ { "name": "name", "type": "text" } ] } ] }
+            """).Build();
+        var model = ModelOf(schema);
+
+        var home = Index(Table(model, "cms_home"), "uq_cms_home_singleton");
+        home.IsUnique.ShouldBeTrue();
+        home.GetFilter().ShouldBeNull();
+        IndexColumns(home).ShouldBe(["site_id", "state"]);
+
+        var brand = Index(Table(model, "cms_brand"), "uq_cms_brand_singleton");
+        brand.IsUnique.ShouldBeTrue();
+        IndexColumns(brand).ShouldBe(["state"]);
+
+        Table(model, "cms_home_i18n").GetIndexes().Select(index => index.GetDatabaseName()).ShouldBe(["uq_cms_home_i18n_document_locale_state"]);
+        Table(model, "cms_page").GetIndexes().Select(index => index.GetDatabaseName()).ShouldBe(["uq_cms_page_document_state"]);
+    }
+
+    [Fact]
     public void ContextWithoutASchemaSaysSo()
     {
         var options = new DbContextOptionsBuilder<CmsDbContext>().UseSqlite("Data Source=:memory:").Options;

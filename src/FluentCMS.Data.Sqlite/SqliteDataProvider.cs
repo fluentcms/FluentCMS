@@ -1,7 +1,9 @@
 using System.Reflection;
 using FluentCMS.Core.Storage;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using SQLitePCL;
 
 namespace FluentCMS.Data.Sqlite;
 
@@ -22,6 +24,10 @@ public sealed class SqliteDataProvider(string connectionString) : IDataProvider
     public IJobClaimDialect JobClaimDialect { get; } = new SqliteJobClaimDialect();
 
     public IDatabaseSchemaReader SchemaReader { get; } = new SqliteSchemaReader();
+
+    // A primary key counts, as it does on the other providers.
+    public bool IsUniqueViolation(Exception exception) =>
+        (exception as SqliteException ?? exception.InnerException as SqliteException) is { SqliteExtendedErrorCode: raw.SQLITE_CONSTRAINT_UNIQUE or raw.SQLITE_CONSTRAINT_PRIMARYKEY };
 
     public void ConfigureContentMigrations(DbContextOptionsBuilder options, Assembly migrationsAssembly) =>
         options.UseSqlite(connectionString, sqlite => sqlite

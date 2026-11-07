@@ -50,6 +50,7 @@ internal sealed partial class ContentService(
     ScheduleStore schedules,
     JobFactory jobs,
     ApiKeyPrincipals keys,
+    IDataProvider provider,
     TimeProvider time,
     ILogger<ContentService> logger) : IContentService
 {
@@ -449,6 +450,21 @@ internal sealed partial class ContentService(
             return await InSavepointAsync(outer, work, cancellationToken);
         }
 
+        try
+        {
+            return await InOwnTransactionAsync(work, cancellationToken);
+        }
+        catch (Exception exception) when (provider.IsUniqueViolation(exception))
+        {
+            // Another writer committed the same key between this write's checks and its insert, which only a database
+            // that does not serialise writers lets happen. Run once more: the checks then see that writer and refuse as
+            // they would have had it come first (spec 4.4). A write joined to this one runs again with it.
+            return await InOwnTransactionAsync(work, cancellationToken);
+        }
+    }
+
+    private async Task<T> InOwnTransactionAsync<T>(Func<Task<T>> work, CancellationToken cancellationToken)
+    {
         // On SQLite this takes the write lock at once, so a second writer waits here and then sees the first one's version.
         var committed = false;
         T result;

@@ -129,6 +129,8 @@ internal sealed class SqliteFileDatabase : IDisposable
 
         public IDatabaseSchemaReader SchemaReader => inner.SchemaReader;
 
+        public bool IsUniqueViolation(Exception exception) => inner.IsUniqueViolation(exception);
+
         public void ConfigureContentMigrations(DbContextOptionsBuilder options, Assembly migrationsAssembly)
         {
             inner.ConfigureContentMigrations(options, migrationsAssembly);
