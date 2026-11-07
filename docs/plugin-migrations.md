@@ -2,6 +2,8 @@
 
 A plugin with tables has a migration stream of its own: the migrations in its assembly that name `PluginDbContext<TPlugin>` in `[DbContext]`, with the history table `cms_{plugin}__migrations` ([ADR 0003](decisions/0003-plugin-contribution-contracts.md)). Until [#2711](https://github.com/fluentcms/FluentCMS/issues/2711), a plugin holds the SQLite set only.
 
+A migration set applies only to the provider it was scaffolded for. A host on another provider refuses the set at startup with `FCMS1306`, before anything is applied, so a host on PostgreSQL or SQL Server cannot run a plugin that holds the SQLite set only. Moving an existing database to another provider is not supported.
+
 ## The design-time factory
 
 `PluginDbContext<TPlugin>` is generic, and a plugin references neither Core nor a data provider, so `dotnet ef` cannot build the context from the plugin's project. A startup project that references the plugin and the SQLite provider holds a design-time factory for the closed type, which builds the context as a host does with `PluginDbContextDesignTime.Create`. For the webhooks plugin that is the test project:

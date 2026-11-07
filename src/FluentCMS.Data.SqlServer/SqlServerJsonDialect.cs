@@ -14,7 +14,6 @@ namespace FluentCMS.Data.SqlServer;
 public sealed class SqlServerJsonDialect : IJsonSqlDialect
 {
     private const string BlockTypeField = "type";
-    private const string BinaryCollation = "Latin1_General_100_BIN2";
 
     // The values of the type column of OPENJSON.
     private const int JsonString = 1;
@@ -117,7 +116,7 @@ public sealed class SqlServerJsonDialect : IJsonSqlDialect
     }
 
     private static MethodCallExpression Binary(Expression text) =>
-        Expression.Call(Collate, Expression.Property(null, typeof(EF), nameof(EF.Functions)), text, Expression.Constant(BinaryCollation));
+        Expression.Call(Collate, Expression.Property(null, typeof(EF), nameof(EF.Functions)), text, Expression.Constant(SqlServerStorageConventions.BinaryCollation));
 
     private static SqlFunctionExpression TryConvert(string storeType, SqlExpression value, Type type, RelationalTypeMapping typeMapping) => new(
         "TRY_CONVERT",
