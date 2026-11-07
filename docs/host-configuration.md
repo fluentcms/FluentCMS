@@ -232,7 +232,7 @@ A provider slot is a service with one implementation that core fills with a defa
 | `IDistributedLock` | a lease in the `cms_lock` table |
 | `IDistributedCache` | the framework's in-memory cache, one per instance |
 
-Choose an implementation with `cms.Providers.Use<TSlot, TImplementation>()`, which registers it as a singleton:
+Choose an implementation with `cms.Providers.Use<TSlot, TImplementation>()`, which registers it as a singleton; a plugin calls the same `Use` on `plugin.Providers` in its `ConfigureServices`:
 
 ```csharp
 builder.Services.Configure<RedisCacheOptions>(options => options.Configuration = "redis:6379");

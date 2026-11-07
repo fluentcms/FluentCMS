@@ -1,5 +1,4 @@
 using System.Net;
-using System.Reflection;
 using System.Text.Json.Nodes;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Caching;
@@ -157,20 +156,16 @@ public sealed class ProviderSlotTests
         return services;
     }
 
-    // Until IPluginServiceBuilder hands a plugin its slots (B-61), the test gives it the hook the plugin builder will call.
     private static void Add<TPlugin>(FluentCmsBuilder cms, Action<IProviderSlots>? replace = null, Action<IServiceCollection>? register = null)
         where TPlugin : SlotsPlugin, new() =>
         cms.AddPlugin<TPlugin>(plugin =>
         {
-            plugin.Slots = cms.Providers.For(typeof(TPlugin).GetCustomAttribute<FluentCmsPluginAttribute>()!.Name!);
             plugin.Replace = replace;
             plugin.Register = register;
         });
 
     public abstract class SlotsPlugin : IPlugin
     {
-        public IProviderSlots? Slots { get; set; }
-
         public Action<IProviderSlots>? Replace { get; set; }
 
         public Action<IServiceCollection>? Register { get; set; }
@@ -178,7 +173,7 @@ public sealed class ProviderSlotTests
         public void ConfigureServices(IPluginServiceBuilder plugin)
         {
             Register?.Invoke(plugin.Services);
-            Replace?.Invoke(Slots!);
+            Replace?.Invoke(plugin.Providers);
         }
 
         public void Configure(IPluginAppBuilder app)

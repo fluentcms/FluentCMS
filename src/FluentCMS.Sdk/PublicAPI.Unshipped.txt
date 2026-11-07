@@ -1001,6 +1001,7 @@ FluentCMS.Plugins.IPluginServiceBuilder.AddOutboxHandler<TEvent, THandler>(strin
 FluentCMS.Plugins.IPluginServiceBuilder.AddPermissions<TProvider>() -> FluentCMS.Plugins.IPluginServiceBuilder!
 FluentCMS.Plugins.IPluginServiceBuilder.AddSettings<TSettings>() -> FluentCMS.Plugins.IPluginServiceBuilder!
 FluentCMS.Plugins.IPluginServiceBuilder.Name.get -> string!
+FluentCMS.Plugins.IPluginServiceBuilder.Providers.get -> FluentCMS.Providers.IProviderSlots!
 FluentCMS.Plugins.IPluginServiceBuilder.Services.get -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 FluentCMS.Plugins.PluginException
 FluentCMS.Plugins.PluginException.Code.get -> string!
