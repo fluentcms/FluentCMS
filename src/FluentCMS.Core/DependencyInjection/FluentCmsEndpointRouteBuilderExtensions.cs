@@ -5,6 +5,7 @@ using FluentCMS.Core.Api.Delivery;
 using FluentCMS.Core.Api.OpenApi;
 using FluentCMS.Core.Plugins;
 using FluentCMS.Core.Storage;
+using FluentCMS.Schema;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.RateLimiting;
@@ -105,7 +106,7 @@ public static class FluentCmsEndpointRouteBuilderExtensions
         {
             throw new FluentCmsConfigurationException(
                 PluginErrorCodes.InvalidEndpointPrefix,
-                $"The plugin '{plugin.Name}' ({plugin.Type.FullName}) maps the group '{prefix}', which is under {core} of core; MapManagement maps a group under the Management API.");
+                $"The plugin '{plugin.Name}' ({plugin.Type.FullName}) maps the group '{prefix}', which is under {core} of core; MapManagement maps a group under the Management API, and MapDelivery one under the Delivery API.");
         }
 
         var routes = cms.MapGroup(prefix).WithMetadata(new FluentCmsSurfaceMetadata(plugin.Name));
@@ -116,14 +117,43 @@ public static class FluentCmsEndpointRouteBuilderExtensions
     internal static RouteGroupBuilder MapPluginManagement(RouteGroupBuilder cms, RegisteredPlugin plugin, string prefix)
     {
         CheckPrefix(plugin, prefix, "MapManagement");
-        var management = FluentCmsEndpointGroups.Prefixes.Single(group => group.Group == FluentCmsEndpointGroup.Management).Prefix;
         return WhenEnabled(
-            Protect(cms.MapGroup(management), FluentCmsEndpointGroup.Management)
+            Protect(cms.MapGroup(PrefixOf(FluentCmsEndpointGroup.Management)), FluentCmsEndpointGroup.Management)
                 .MapGroup(prefix)
                 .WithFluentCmsOperation(Origin.Api)
                 .RequireManagementScope(),
             plugin);
     }
+
+    // What core's Delivery group has, an anonymous caller read as its site's Public role included. A literal segment outranks
+    // the {type} of core's routes, so a first segment that names a content type would take that type's reads, and one that
+    // is a route parameter would match the same paths as core's.
+    internal static RouteGroupBuilder MapPluginDelivery(RouteGroupBuilder cms, RegisteredPlugin plugin, string prefix, SchemaModel schema)
+    {
+        CheckPrefix(plugin, prefix, "MapDelivery");
+        if (prefix[1] is '{' or '*')
+        {
+            throw new FluentCmsConfigurationException(
+                PluginErrorCodes.InvalidEndpointPrefix,
+                $"The plugin '{plugin.Name}' ({plugin.Type.FullName}) calls MapDelivery with '{prefix}', whose first segment is a route parameter; a plugin's group starts with a name of its own, such as '/{plugin.Name}'.");
+        }
+
+        var first = prefix[1..].Split('/')[0];
+        if (schema.ContentTypes.FirstOrDefault(type => string.Equals(type.Name, first, StringComparison.OrdinalIgnoreCase)) is { } type)
+        {
+            throw new FluentCmsConfigurationException(
+                PluginErrorCodes.InvalidEndpointPrefix,
+                $"The plugin '{plugin.Name}' ({plugin.Type.FullName}) calls MapDelivery with '{prefix}', whose first segment is the content type '{type.Name}', whose Delivery routes it would take.");
+        }
+
+        return WhenEnabled(
+            Protect(cms.MapGroup(PrefixOf(FluentCmsEndpointGroup.Delivery)), FluentCmsEndpointGroup.Delivery)
+                .MapGroup(prefix)
+                .WithFluentCmsOperation(Origin.Api),
+            plugin);
+    }
+
+    private static string PrefixOf(FluentCmsEndpointGroup group) => FluentCmsEndpointGroups.Prefixes.Single(item => item.Group == group).Prefix;
 
     // After the filter of the operation, whose site it reads, so that a plugin disabled in that site answers 404 there.
     private static RouteGroupBuilder WhenEnabled(RouteGroupBuilder routes, RegisteredPlugin plugin)

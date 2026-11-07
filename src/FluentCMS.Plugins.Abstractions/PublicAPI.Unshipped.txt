@@ -5,6 +5,7 @@ FluentCMS.Plugins.PluginAppBuilderExtensions
 FluentCMS.Plugins.PluginDbContext<TPlugin>
 FluentCMS.Plugins.PluginDbContext<TPlugin>.PluginDbContext(Microsoft.EntityFrameworkCore.DbContextOptions<FluentCMS.Plugins.PluginDbContext<TPlugin!>!>! options) -> void
 FluentCMS.Plugins.PluginServiceBuilderExtensions
+static FluentCMS.Plugins.PluginAppBuilderExtensions.MapDelivery(this FluentCMS.Plugins.IPluginAppBuilder! app, string! prefix) -> Microsoft.AspNetCore.Routing.RouteGroupBuilder!
 static FluentCMS.Plugins.PluginAppBuilderExtensions.MapGroup(this FluentCMS.Plugins.IPluginAppBuilder! app, string! prefix) -> Microsoft.AspNetCore.Routing.RouteGroupBuilder!
 static FluentCMS.Plugins.PluginAppBuilderExtensions.MapManagement(this FluentCMS.Plugins.IPluginAppBuilder! app, string! prefix) -> Microsoft.AspNetCore.Routing.RouteGroupBuilder!
 static FluentCMS.Plugins.PluginServiceBuilderExtensions.AddMigrations(this FluentCMS.Plugins.IPluginServiceBuilder! plugin, System.Reflection.Assembly! assembly) -> FluentCMS.Plugins.IPluginServiceBuilder!

@@ -237,4 +237,7 @@ internal sealed class PluginAppBuilder(RegisteredPlugin plugin, IServiceProvider
     public RouteGroupBuilder MapGroup(string prefix) => FluentCmsEndpointRouteBuilderExtensions.MapPluginGroup(cms, plugin, prefix);
 
     public RouteGroupBuilder MapManagement(string prefix) => FluentCmsEndpointRouteBuilderExtensions.MapPluginManagement(cms, plugin, prefix);
+
+    public RouteGroupBuilder MapDelivery(string prefix) =>
+        FluentCmsEndpointRouteBuilderExtensions.MapPluginDelivery(cms, plugin, prefix, services.GetRequiredService<SchemaModel>());
 }
