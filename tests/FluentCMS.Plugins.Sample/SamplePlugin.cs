@@ -53,14 +53,19 @@ public sealed class SamplePlugin : IPlugin
 
         app.MapGroup("/sample").MapSampleEndpoints();
         app.MapManagement("/sample").MapSampleManagementEndpoints();
+        app.MapDelivery("/sample").MapSampleDeliveryEndpoints();
     }
 }
 
 public sealed class SampleGreeting(string text)
 {
+    private int _served;
+
     public string Text => text;
 
     public bool Configured { get; set; }
+
+    public int Serve() => Interlocked.Increment(ref _served);
 }
 
 [HookOrder(5)]

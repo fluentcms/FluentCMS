@@ -47,6 +47,7 @@ internal static class IdentityRegistration
         services.AddScoped<TwoFactorService>();
         services.AddScoped<ApiKeyService>();
         services.AddScoped<ApiKeyPrincipals>();
+        services.AddHttpContextAccessor();
         services.TryAddScoped<IPrincipalRoles, UserPrincipalRoles>();
 
         AuthorizationServerRegistration.Add(services, clients);

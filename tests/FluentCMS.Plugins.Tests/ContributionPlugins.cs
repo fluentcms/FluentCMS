@@ -154,13 +154,15 @@ public sealed class RoutedPlugin : IPlugin
 
     public bool Management { get; set; }
 
+    public bool Delivery { get; set; }
+
     public void ConfigureServices(IPluginServiceBuilder plugin)
     {
     }
 
     public void Configure(IPluginAppBuilder app)
     {
-        var group = Management ? app.MapManagement(Prefix) : app.MapGroup(Prefix);
+        var group = Management ? app.MapManagement(Prefix) : Delivery ? app.MapDelivery(Prefix) : app.MapGroup(Prefix);
         group.MapGet("/ping", () => "pong");
 
         // Each way an endpoint ends up a plain RequestDelegate: cast, bound by overload resolution, and given to Map.

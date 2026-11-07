@@ -172,6 +172,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.TryAddSingleton(TimeProvider.System);
         builder.Providers.Default<IDistributedLock, DatabaseDistributedLock>();
         builder.Providers.Default<IDistributedCache, MemoryDistributedCache>();
+        services.TryAddSingleton<SiteCache>();
         services.TryAddScoped<ISiteResolver, SiteResolver>();
         services.TryAddScoped<ILocaleResolver, LocaleResolver>();
         services.AddScoped<LocaleRegistry>();
@@ -226,6 +227,7 @@ public static class FluentCmsServiceCollectionExtensions
         builder.Jobs.AddJob<ScheduledPublishJob, ScheduledPayload>(ScheduledPublishJob.Type);
         builder.Jobs.AddJob<ScheduledUnpublishJob, ScheduledPayload>(ScheduledUnpublishJob.Type);
         builder.Events.AddHandler<JobDeadLetteredEvent, ScheduleDeadLetterHandler>();
+        builder.Events.AddHandler<SiteUpdatedEvent, SiteCacheInvalidation>();
         services.AddHostedService<TrashPurgeScheduleService>();
 
         builder.Jobs.AddJob<JobRetentionJob, JobRetentionPayload>(JobRetentionJob.Type, JobRetentionJob.AttemptTimeout);

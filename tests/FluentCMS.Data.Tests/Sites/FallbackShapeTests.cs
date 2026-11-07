@@ -1,6 +1,7 @@
 using FluentCMS.Content;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.Localization;
+using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Tests.Schema;
@@ -105,7 +106,7 @@ public sealed class FallbackShapeTests : IDisposable
     {
         var parsed = BracketQueryParser.Parse(query) with { Site = Site };
         var engine = _database.Engine();
-        var reader = new LocaleFallbackReader(engine, Model, new LocaleRegistry(_database.Context), new ContentQueryOptions());
+        var reader = new LocaleFallbackReader(engine, Model, new LocaleRegistry(_database.Context, new SiteCache(TimeProvider.System)), new ContentQueryOptions());
 
         var result = await engine.ExecuteAsync("page", parsed, Token);
         await reader.ApplyAsync("page", parsed, result.Items, await reader.ChainAsync(Site, parsed.Locale!, parsed.Fallback, Token), Token);

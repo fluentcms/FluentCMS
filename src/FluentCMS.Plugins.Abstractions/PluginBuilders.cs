@@ -16,4 +16,6 @@ internal interface IPluginEndpointBuilder
     RouteGroupBuilder MapGroup(string prefix);
 
     RouteGroupBuilder MapManagement(string prefix);
+
+    RouteGroupBuilder MapDelivery(string prefix);
 }
