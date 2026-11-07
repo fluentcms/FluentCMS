@@ -1,4 +1,5 @@
 using System.Buffers.Text;
+using System.Globalization;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
@@ -41,10 +42,9 @@ internal static class OAuthFlows
 
         var options = provider.GetRequiredService<IOptionsMonitor<CookieAuthenticationOptions>>().Get(IdentityConstants.ApplicationScheme);
         var now = provider.GetRequiredService<TimeProvider>().GetUtcNow();
-        var ticket = new AuthenticationTicket(
-            principal,
-            new AuthenticationProperties { IssuedUtc = now, ExpiresUtc = now + options.ExpireTimeSpan },
-            IdentityConstants.ApplicationScheme);
+        var properties = new AuthenticationProperties { IssuedUtc = now, ExpiresUtc = now + options.ExpireTimeSpan };
+        properties.Items[CmsSignInManager.SignedInAtItem] = now.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture);
+        var ticket = new AuthenticationTicket(principal, properties, IdentityConstants.ApplicationScheme);
         return $"{options.Cookie.Name}={options.TicketDataFormat.Protect(ticket)}";
     }
 

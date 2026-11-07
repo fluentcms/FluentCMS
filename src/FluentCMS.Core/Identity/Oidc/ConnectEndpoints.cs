@@ -1,9 +1,11 @@
-using System.Security.Claims;
 using System.Collections.Immutable;
+using System.Globalization;
+using System.Security.Claims;
 using System.Text.Json;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using Microsoft.AspNetCore;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -11,6 +13,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Primitives;
 using OpenIddict.Abstractions;
 using OpenIddict.Server.AspNetCore;
 using static OpenIddict.Abstractions.OpenIddictConstants;
@@ -41,8 +45,9 @@ internal static class ConnectEndpoints
     private static IResult AnsweredByServer() => Results.NotFound();
 
     // The user signs in on the hosted pages, which hold the Identity cookie; without it the request goes there and comes back.
-    // So does a user whose role requires a second factor the sign-in did not give, one who must choose a new password, and
-    // one who has not allowed a third-party client what it asks.
+    // So does a user whose sign-in is older than the client or the server accepts, one whose role requires a second factor
+    // the sign-in did not give, one who must choose a new password, and one who has not allowed a third-party client what it
+    // asks.
     private static async Task<IResult> AuthorizeAsync(HttpContext context)
     {
         if (context.GetOpenIddictServerResponse() is { Error: not null } failed)
@@ -56,6 +61,7 @@ internal static class ConnectEndpoints
         var user = cookie.Succeeded ? await signIn.ValidateSecurityStampAsync(cookie.Principal) : null;
         var parameters = context.Request.HasFormContentType ? context.Request.Form.ToList() : context.Request.Query.ToList();
         var returnUrl = context.Request.PathBase + context.Request.Path + QueryString.Create(parameters);
+        var afterSignIn = context.Request.PathBase + context.Request.Path + QueryString.Create(WithoutReauthentication(parameters));
 
         if (user is null || !await MaySignInAsync(signIn, user))
         {
@@ -64,7 +70,25 @@ internal static class ConnectEndpoints
                 return Refuse(Errors.LoginRequired, "The user is not signed in.");
             }
 
-            return Results.Challenge(new AuthenticationProperties { RedirectUri = returnUrl }, [IdentityConstants.ApplicationScheme]);
+            return Results.Challenge(new AuthenticationProperties { RedirectUri = afterSignIn }, [IdentityConstants.ApplicationScheme]);
+        }
+
+        // prompt=login, a max_age the sign-in is older than, or a sign-in older than the absolute session lifetime: the user
+        // signs in again, as for the second factor below.
+        var now = context.RequestServices.GetRequiredService<TimeProvider>().GetUtcNow();
+        var signedInAt = CmsSignInManager.SignedInAt(cookie.Properties!) ?? now;
+        var sessionCap = context.RequestServices.GetRequiredService<ClientOptions>().AbsoluteSessionLifetime;
+        if (request.HasPromptValue(PromptValues.Login)
+            || (request.MaxAge is { } maxAge && now - signedInAt > TimeSpan.FromSeconds(maxAge))
+            || (sessionCap is { } cap && now - signedInAt > cap))
+        {
+            if (request.HasPromptValue(PromptValues.None))
+            {
+                return Refuse(Errors.LoginRequired, "The sign-in is older than the client or the server accepts.");
+            }
+
+            await context.SignOutAsync(IdentityConstants.ApplicationScheme);
+            return Results.Challenge(new AuthenticationProperties { RedirectUri = afterSignIn }, [IdentityConstants.ApplicationScheme]);
         }
 
         // The cookie says how the user signed in: amr=mfa after the second factor, pwd after a password alone, which is also
@@ -82,7 +106,7 @@ internal static class ConnectEndpoints
                 }
 
                 await context.SignOutAsync(IdentityConstants.ApplicationScheme);
-                return Results.Challenge(new AuthenticationProperties { RedirectUri = returnUrl }, [IdentityConstants.ApplicationScheme]);
+                return Results.Challenge(new AuthenticationProperties { RedirectUri = afterSignIn }, [IdentityConstants.ApplicationScheme]);
             }
 
             return request.HasPromptValue(PromptValues.None)
@@ -97,7 +121,10 @@ internal static class ConnectEndpoints
                 : Results.Redirect(context.Request.PathBase + HostedPagePaths.ChangePassword + QueryString.Create("ReturnUrl", returnUrl));
         }
 
-        var identity = TokenClaims.ForUser(TokenClaims.Identity(), user, await signIn.UserManager.GetSecurityStampAsync(user), request.GetScopes(), methods);
+        var identity = TokenClaims.Identity()
+            .SetClaim(Claims.AuthenticationTime, signedInAt.ToUnixTimeSeconds())
+            .SetClaim(TokenClaims.SessionStart, now.ToUnixTimeSeconds());
+        TokenClaims.ForUser(identity, user, await signIn.UserManager.GetSecurityStampAsync(user), request.GetScopes(), methods);
         var applications = context.RequestServices.GetRequiredService<IOpenIddictApplicationManager>();
         var application = await applications.FindByClientIdAsync(request.ClientId!, context.RequestAborted)
             ?? throw new InvalidOperationException("The authorization server passed a client it did not find.");
@@ -157,7 +184,22 @@ internal static class ConnectEndpoints
                 return Refuse(Errors.InvalidGrant, "The user's role requires a sign-in with a second factor.");
             }
 
-            var identity = TokenClaims.ForUser(TokenClaims.Identity(result.Principal), user, stamp, result.Principal!.GetScopes());
+            // Rolling refresh tokens would keep a session for ever; the absolute lifetime ends it however often it is refreshed.
+            // A session from before the start was kept counts from its first refresh since.
+            var identity = TokenClaims.Identity(result.Principal);
+            var now = context.RequestServices.GetRequiredService<TimeProvider>().GetUtcNow();
+            if (!long.TryParse(identity.GetClaim(TokenClaims.SessionStart), NumberStyles.None, CultureInfo.InvariantCulture, out var started))
+            {
+                identity.SetClaim(TokenClaims.SessionStart, started = now.ToUnixTimeSeconds());
+            }
+
+            if (context.RequestServices.GetRequiredService<ClientOptions>().AbsoluteSessionLifetime is { } cap
+                && now - DateTimeOffset.FromUnixTimeSeconds(started) > cap)
+            {
+                return Refuse(Errors.InvalidGrant, "The session has reached its absolute lifetime; the user signs in again.");
+            }
+
+            TokenClaims.ForUser(identity, user, stamp, result.Principal!.GetScopes());
             return Results.SignIn(new ClaimsPrincipal(identity), properties: null, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
         }
 
@@ -211,9 +253,9 @@ internal static class ConnectEndpoints
     }
 
     // Ends the user's sign-in on the hosted pages; the server then returns to the client's post-logout URI when it gave one,
-    // or to the logout page. A cross-site GET would sign anyone out, so a GET needs a valid id_token_hint of the signed-in
-    // user; the cookie is SameSite=Lax, so a cross-site POST does not carry it. Any other GET goes to the logout page, which
-    // asks the user and posts the request back.
+    // or to the logout page. The user confirms on the logout page, whose form posts back with an antiforgery token, or the
+    // client sends a valid id_token_hint of the signed-in user. Anything else, a cross-site POST included, goes to the logout
+    // page, which asks. A request without the sign-in cookie has no sign-in to end, so it sends no expiring cookie either.
     private static async Task<IResult> LogoutAsync(HttpContext context)
     {
         if (context.GetOpenIddictServerResponse() is { Error: not null } failed)
@@ -221,15 +263,37 @@ internal static class ConnectEndpoints
             return ErrorPage(context, failed);
         }
 
-        if (HttpMethods.IsGet(context.Request.Method) && !await HintsSignedInUserAsync(context))
+        var cookie = await context.AuthenticateAsync(IdentityConstants.ApplicationScheme);
+        if (!await ConfirmedAsync(context) && !await HintsSignedInUserAsync(context, cookie))
         {
-            return Results.Redirect(context.Request.PathBase + HostedPagePaths.Logout + context.Request.QueryString);
+            return Results.Redirect(context.Request.PathBase + HostedPagePaths.Logout + QueryString.Create(LogoutParameters(context)));
         }
 
-        await context.SignOutAsync(IdentityConstants.ApplicationScheme);
+        if (cookie.Succeeded)
+        {
+            await context.SignOutAsync(IdentityConstants.ApplicationScheme);
+        }
+
         return Results.SignOut(
             new AuthenticationProperties { RedirectUri = context.Request.PathBase + HostedPagePaths.Logout },
             [OpenIddictServerAspNetCoreDefaults.AuthenticationScheme]);
+    }
+
+    // The form of the logout page, with the antiforgery token the page rendered.
+    private static async Task<bool> ConfirmedAsync(HttpContext context) =>
+        HttpMethods.IsPost(context.Request.Method) && context.Request.HasFormContentType
+        && await context.RequestServices.GetRequiredService<IAntiforgery>().IsRequestValidAsync(context);
+
+    // What the logout page posts back: the client's request, without a token of an earlier form.
+    private static IEnumerable<KeyValuePair<string, StringValues>> LogoutParameters(HttpContext context)
+    {
+        if (!context.Request.HasFormContentType)
+        {
+            return context.Request.Query;
+        }
+
+        var token = context.RequestServices.GetRequiredService<IOptions<AntiforgeryOptions>>().Value.FormFieldName;
+        return context.Request.Form.Where(parameter => !string.Equals(parameter.Key, token, StringComparison.Ordinal));
     }
 
     // An error the server could not return to the client, such as an unknown client or redirect URI. The error page shows
@@ -241,8 +305,9 @@ internal static class ConnectEndpoints
             [Parameters.ErrorDescription] = response.ErrorDescription,
         }));
 
-    // OpenIddict passes a hint it cannot read through without a principal, so the hint is checked here.
-    private static async Task<bool> HintsSignedInUserAsync(HttpContext context)
+    // OpenIddict passes a hint it cannot read through without a principal, so the hint is checked here. Without the cookie
+    // a GET, which a browser sends with it, has no one signed in; a POST may be a cross-site one, which never carries it.
+    private static async Task<bool> HintsSignedInUserAsync(HttpContext context, AuthenticateResult cookie)
     {
         var hint = await context.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
         if (hint.Principal?.GetClaim(Claims.Subject) is not { } subject)
@@ -250,9 +315,29 @@ internal static class ConnectEndpoints
             return false;
         }
 
-        var cookie = await context.AuthenticateAsync(IdentityConstants.ApplicationScheme);
-        return !cookie.Succeeded
-            || context.RequestServices.GetRequiredService<UserManager<CmsUser>>().GetUserId(cookie.Principal) == subject;
+        return cookie.Succeeded
+            ? context.RequestServices.GetRequiredService<UserManager<CmsUser>>().GetUserId(cookie.Principal) == subject
+            : HttpMethods.IsGet(context.Request.Method);
+    }
+
+    // A new sign-in answers prompt=login and max_age, so the request it comes back with no longer asks for one.
+    private static IEnumerable<KeyValuePair<string, StringValues>> WithoutReauthentication(List<KeyValuePair<string, StringValues>> parameters)
+    {
+        foreach (var (name, value) in parameters)
+        {
+            if (name == Parameters.Prompt)
+            {
+                var prompts = value.ToString().Split(' ', StringSplitOptions.RemoveEmptyEntries).Where(prompt => prompt != PromptValues.Login).ToArray();
+                if (prompts.Length > 0)
+                {
+                    yield return KeyValuePair.Create(name, new StringValues(string.Join(' ', prompts)));
+                }
+            }
+            else if (name != Parameters.MaxAge)
+            {
+                yield return KeyValuePair.Create(name, value);
+            }
+        }
     }
 
     // Active and not locked out; CanSignInAsync does not look at lockout, which the password check alone applies.

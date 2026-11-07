@@ -413,9 +413,16 @@ public sealed partial class HostedPagesTests : IAsyncDisposable
         var page = await browser.PageAsync("/account/logout");
         page.ShouldContain("Sign out?");
         page.ShouldContain("action=\"/connect/logout\"");
-        page.ShouldNotContain("__RequestVerificationToken");
+        page.ShouldContain("__RequestVerificationToken");
 
-        using (var posted = await browser.PostAsync("/connect/logout", new Dictionary<string, string>()))
+        // Without the page's token the POST is sent back to the page, signed in still.
+        using (var forged = await browser.PostAsync("/connect/logout", new Dictionary<string, string>()))
+        {
+            forged.Headers.Location!.OriginalString.ShouldBe("/account/logout");
+            browser.HasCookie(".AspNetCore.Identity.Application").ShouldBeTrue();
+        }
+
+        using (var posted = await browser.PostAsync("/connect/logout", page, new Dictionary<string, string>()))
         {
             posted.StatusCode.ShouldBe(HttpStatusCode.Redirect);
             posted.Headers.Location!.OriginalString.ShouldBe("/account/logout");
@@ -432,7 +439,7 @@ public sealed partial class HostedPagesTests : IAsyncDisposable
         var fields = HiddenFields().Matches(form).ToDictionary(match => match.Groups[1].Value, match => WebUtility.HtmlDecode(match.Groups[2].Value));
         fields["post_logout_redirect_uri"].ShouldBe(ThirdPartySignedOutUri);
 
-        using var back = await browser.PostAsync("/connect/logout", fields);
+        using var back = await browser.PostAsync("/connect/logout", form, fields);
         back.Headers.Location!.AbsoluteUri.ShouldBe(ThirdPartySignedOutUri + "?state=s1");
         browser.HasCookie(".AspNetCore.Identity.Application").ShouldBeFalse();
     }
@@ -529,6 +536,14 @@ public sealed partial class HostedPagesTests : IAsyncDisposable
     private static async Task SignInAsync(HostedPagesBrowser browser, string userName)
     {
         using var response = await browser.SubmitAsync("/account/login", Credentials(userName, Password));
+        response.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+    }
+
+    // The logout page's button.
+    private static async Task SignOutAsync(HostedPagesBrowser browser)
+    {
+        var page = await browser.PageAsync("/account/logout");
+        using var response = await browser.PostAsync("/connect/logout", page, new Dictionary<string, string>());
         response.StatusCode.ShouldBe(HttpStatusCode.Redirect);
     }
 

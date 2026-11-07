@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Telemetry;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -58,7 +59,8 @@ internal static class ApiKeyAuthentication
 
 // Authorization: ApiKey <key>, or X-Api-Key: <key>. A request with neither is not this handler's, so another scheme may
 // take it; one with a key that is wrong, expired or revoked fails, and so does one with a key and any other credential,
-// which would otherwise be read as whichever came first. The failure names a code and never the key.
+// which would otherwise be read as whichever came first. The failure names a code and never the key, and a wrong, expired
+// or revoked key gets the same one, so that the answer does not tell that a secret was ever a key.
 internal sealed class ApiKeyAuthenticationHandler(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder)
     : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
 {
@@ -71,6 +73,7 @@ internal sealed class ApiKeyAuthenticationHandler(IOptionsMonitor<Authentication
 
         if (keys.Count > 1 || other)
         {
+            Refused(ApiKeyErrorCodes.SeveralCredentials, null);
             return AuthenticateResult.Fail($"{ApiKeyErrorCodes.SeveralCredentials}: a request carries one credential, and this one carries an API key and another.");
         }
 
@@ -78,7 +81,8 @@ internal sealed class ApiKeyAuthenticationHandler(IOptionsMonitor<Authentication
         var check = await service.AuthenticateAsync(keys[0], Context.RequestAborted);
         if (check.Key is not { } key)
         {
-            return AuthenticateResult.Fail($"{check.Failure}: the API key is not valid, has expired or was revoked.");
+            Refused(check.Failure!, check.RefusedKeyId);
+            return AuthenticateResult.Fail($"{ApiKeyErrorCodes.InvalidKey}: the API key is not valid, has expired or was revoked.");
         }
 
         var identity = new ClaimsIdentity(
@@ -93,5 +97,13 @@ internal sealed class ApiKeyAuthenticationHandler(IOptionsMonitor<Authentication
     {
         Response.Headers[HeaderNames.WWWAuthenticate] = ApiKeyAuthentication.Scheme;
         return base.HandleChallengeAsync(properties);
+    }
+
+    // A refusal writes no activity row: a row per refused key would let a flood of keys write as fast as it is sent, and the
+    // limit before authentication already bounds it. The log and the metric keep the reason, which the client is not told.
+    private void Refused(string code, Guid? keyId)
+    {
+        ApiKeyLog.Refused(Logger, code, Context.Connection.RemoteIpAddress, keyId);
+        FluentCmsTelemetry.ApiKeysRefused.Add(1, new KeyValuePair<string, object?>(FluentCmsTelemetry.Tags.Code, code));
     }
 }

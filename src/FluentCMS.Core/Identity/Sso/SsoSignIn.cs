@@ -13,13 +13,14 @@ using static OpenIddict.Abstractions.OpenIddictConstants;
 namespace FluentCMS.Core.Identity.Sso;
 
 // The sign-in of the external login page. A user linked to the external login signs in. Through a provider of cms.Sso,
-// someone with no user yet gets one, linked in cms_user_login, with the provider's default role and mapped roles; at every
-// sign-in after that the mapped roles follow the token's groups. An email address that belongs to a user not linked to the
-// provider is refused rather than taken over, unless the provider links existing users and the token says the address is
-// verified. An invitation is accepted through a provider whose address for the person is the invitation's. The provider's
-// amr=mfa counts as the second factor only when the provider is trusted for it; otherwise a role that requires two-factor
-// asks for the local one after the provider. Groups that would take Super Admin from its last active holder change no role
-// and refuse the sign-in, since the provider no longer vouches for it.
+// someone with no user yet gets one, linked in cms_user_login, with the provider's default role and mapped roles, when the
+// token says the address is verified (RequireVerifiedEmail); at every sign-in after that the mapped roles follow the
+// token's groups. An email address that belongs to a user not linked to the provider is refused rather than taken over,
+// unless the provider links existing users and the token says the address is verified. An invitation is accepted through
+// a provider whose address for the person is the invitation's. The provider's amr=mfa counts as the second factor only when
+// the provider is trusted for it; otherwise a role that requires two-factor asks for the local one after the provider.
+// Groups that would take Super Admin from its last active holder change no role and refuse the sign-in, since the provider
+// no longer vouches for it.
 internal sealed class SsoSignIn(
     SsoOptions options,
     CmsUserManager users,
@@ -159,9 +160,15 @@ internal sealed class SsoSignIn(
             return await RefusedAsync(info, IdentityErrorCodes.SsoNoEmail, $"the token has no email address in the claim '{provider.EmailClaim}'.");
         }
 
-        if (info.Principal.FindFirstValue(EmailVerifiedClaim) is "false")
+        var verified = info.Principal.FindFirstValue(EmailVerifiedClaim);
+        if (string.Equals(verified, "false", StringComparison.OrdinalIgnoreCase))
         {
             return await RefusedAsync(info, IdentityErrorCodes.SsoNoEmail, "the provider says the email address is not verified.");
+        }
+
+        if (provider.RequireVerifiedEmail && !string.Equals(verified, "true", StringComparison.OrdinalIgnoreCase))
+        {
+            return await RefusedAsync(info, IdentityErrorCodes.SsoNoEmail, $"the token does not say the email address is verified, which {nameof(SsoProvider.RequireVerifiedEmail)} asks for.");
         }
 
         if (existing is not null)

@@ -30,6 +30,7 @@ public static class FluentCmsTelemetry
         public const string Outcome = "fluentcms.outcome";
         public const string Cache = "fluentcms.cache";
         public const string Result = "fluentcms.result";
+        public const string Code = "fluentcms.code";
     }
 
     public static class Instruments
@@ -39,6 +40,7 @@ public static class FluentCmsTelemetry
         public const string JobLatency = "fluentcms.job.latency";
         public const string CacheRequests = "fluentcms.cache.requests";
         public const string CacheHitRatio = "fluentcms.cache.hit_ratio";
+        public const string ApiKeysRefused = "fluentcms.api_keys.refused";
     }
 
     internal static readonly Counter<long> Requests = Meter.CreateCounter<long>(
@@ -52,6 +54,9 @@ public static class FluentCmsTelemetry
 
     internal static readonly Counter<long> CacheRequests = Meter.CreateCounter<long>(
         Instruments.CacheRequests, "{request}", "Lookups in a cache, by cache and result (hit or miss).");
+
+    internal static readonly Counter<long> ApiKeysRefused = Meter.CreateCounter<long>(
+        Instruments.ApiKeysRefused, "{request}", "Requests whose API key was refused, by the FCMS code of the reason: wrong, expired, revoked, or sent with another credential.");
 
     // Reports hits / (hits + misses) per cache since the process started. A cache that nothing has looked up reports nothing.
     internal static readonly ObservableGauge<double> CacheHitRatio = Meter.CreateObservableGauge(

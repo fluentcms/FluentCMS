@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Claims;
 using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Events;
@@ -23,9 +24,23 @@ internal sealed class CmsSignInManager(
     IUserConfirmation<CmsUser> confirmation,
     SignInEvents events,
     TwoFactorService twoFactor,
-    SsoOptions sso)
+    SsoOptions sso,
+    TimeProvider time)
     : SignInManager<CmsUser>(userManager, contextAccessor, claimsFactory, optionsAccessor, logger, schemes, confirmation)
 {
+    // When the user signed in, in the cookie's properties, which its renewals and the stamp check keep while they move its
+    // issue time: prompt=login, max_age and the absolute session lifetime read it.
+    internal const string SignedInAtItem = ".fcms.signed_in_at";
+
+    public static DateTimeOffset? SignedInAt(AuthenticationProperties properties)
+    {
+        ArgumentNullException.ThrowIfNull(properties);
+
+        return properties.Items.TryGetValue(SignedInAtItem, out var value) && long.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var seconds)
+            ? DateTimeOffset.FromUnixTimeSeconds(seconds)
+            : properties.IssuedUtc;
+    }
+
     public override async Task<bool> CanSignInAsync(CmsUser user)
     {
         ArgumentNullException.ThrowIfNull(user);
@@ -74,8 +89,38 @@ internal sealed class CmsSignInManager(
         return result;
     }
 
-    public override Task<SignInResult> CheckPasswordSignInAsync(CmsUser user, string password, bool lockoutOnFailure) =>
-        sso.DisableLocalLogin ? Task.FromResult(SignInResult.NotAllowed) : base.CheckPasswordSignInAsync(user, password, lockoutOnFailure);
+    // A user who may not sign in, deactivated or locked out, is refused before Identity checks the password, so the hash
+    // runs anyway: the answer takes as long as for a wrong password or an unknown name.
+    public override async Task<SignInResult> CheckPasswordSignInAsync(CmsUser user, string password, bool lockoutOnFailure)
+    {
+        ArgumentNullException.ThrowIfNull(user);
+        ArgumentNullException.ThrowIfNull(password);
+
+        if (sso.DisableLocalLogin)
+        {
+            return SignInResult.NotAllowed;
+        }
+
+        if (await PreSignInCheck(user) is { } refused)
+        {
+            _ = UserManager.PasswordHasher.HashPassword(user, password);
+            return refused;
+        }
+
+        return await base.CheckPasswordSignInAsync(user, password, lockoutOnFailure);
+    }
+
+    // Every sign-in that makes a new cookie comes here; a renewal passes the cookie's properties, which keep the time.
+    public override Task SignInWithClaimsAsync(CmsUser user, AuthenticationProperties? authenticationProperties, IEnumerable<Claim> additionalClaims)
+    {
+        var properties = authenticationProperties ?? new AuthenticationProperties();
+        if (!properties.Items.ContainsKey(SignedInAtItem))
+        {
+            properties.Items[SignedInAtItem] = time.GetUtcNow().ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture);
+        }
+
+        return base.SignInWithClaimsAsync(user, properties, additionalClaims);
+    }
 
     public override async Task<SignInResult> TwoFactorAuthenticatorSignInAsync(string code, bool isPersistent, bool rememberClient)
     {
@@ -93,10 +138,26 @@ internal sealed class CmsSignInManager(
         return result;
     }
 
+    // Identity's recovery code sign-in neither looks at lockout nor counts a wrong code, so both are done here, as the
+    // authenticator's sign-in and TwoFactorService do: a wrong code counts towards the lockout of cms.Users.
     public override async Task<SignInResult> TwoFactorRecoveryCodeSignInAsync(string recoveryCode)
     {
         var user = await GetTwoFactorAuthenticationUserAsync();
-        var result = await base.TwoFactorRecoveryCodeSignInAsync(recoveryCode);
+        if (user is null)
+        {
+            return SignInResult.Failed;
+        }
+
+        var result = await PreSignInCheck(user) ?? await base.TwoFactorRecoveryCodeSignInAsync(recoveryCode);
+        if (result is { Succeeded: false, IsLockedOut: false, IsNotAllowed: false, RequiresTwoFactor: false } && UserManager.SupportsUserLockout)
+        {
+            await UserManager.AccessFailedAsync(user);
+            if (await UserManager.IsLockedOutAsync(user))
+            {
+                result = SignInResult.LockedOut;
+            }
+        }
+
         await RecordAsync(user, LoginMethods.RecoveryCode, result);
         return result;
     }

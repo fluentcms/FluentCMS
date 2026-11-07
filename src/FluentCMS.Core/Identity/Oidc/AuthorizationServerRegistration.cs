@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Storage;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.AspNetCore.Identity;
@@ -21,7 +22,8 @@ internal static class AuthorizationServerRegistration
 {
     public const string ApplicationName = "FluentCMS";
 
-    private const string DataProtectionHostedService = "Microsoft.AspNetCore.DataProtection.Internal.DataProtectionHostedService";
+    // An internal type of Data Protection, so a test fails when a framework version renames it.
+    internal const string DataProtectionHostedService = "Microsoft.AspNetCore.DataProtection.Internal.DataProtectionHostedService";
 
     public static void Add(IServiceCollection services, ClientOptions clients)
     {
@@ -42,9 +44,11 @@ internal static class AuthorizationServerRegistration
             options.LogoutPath = HostedPagePaths.Logout;
             options.AccessDeniedPath = HostedPagePaths.Error;
         });
+        services.AddOptions<CookieAuthenticationOptions>(IdentityConstants.ApplicationScheme)
+            .Configure<ClientOptions>((cookie, options) => cookie.ExpireTimeSpan = options.SignInCookieLifetime);
 
         // The stamp check rebuilds the cookie's principal from the user every half hour, which would drop how the user
-        // signed in, and amr is what a role that requires two-factor reads.
+        // signed in: amr is what a role that requires two-factor reads, and the provider the remote sign-out of SSO does.
         services.Configure<SecurityStampValidatorOptions>(options =>
         {
             var next = options.OnRefreshingPrincipal;
@@ -68,10 +72,11 @@ internal static class AuthorizationServerRegistration
                     .SetConfigurationEndpointUris(".well-known/openid-configuration")
                     .SetJsonWebKeySetEndpointUris(".well-known/jwks");
 
-                // PKCE for every client, which OAuth 2.1 asks of public ones; a used refresh token is refused at once.
+                // PKCE for every client, which OAuth 2.1 asks of public ones. A used refresh token is refused once OpenIddict's
+                // reuse leeway is over, which lets two refreshes that cross, as two tabs of a SPA make, both succeed.
                 server.AllowAuthorizationCodeFlow().RequireProofKeyForCodeExchange();
                 server.Configure(options => options.CodeChallengeMethods.Remove(OpenIddictConstants.CodeChallengeMethods.Plain));
-                server.AllowRefreshTokenFlow().SetRefreshTokenReuseLeeway(TimeSpan.Zero);
+                server.AllowRefreshTokenFlow();
                 server.AllowClientCredentialsFlow();
                 server.RegisterScopes(AuthorizationServer.KnownScopes);
 
@@ -104,9 +109,15 @@ internal static class AuthorizationServerRegistration
         // Without a public origin OpenIddict takes the issuer and the URLs of the discovery document from the request, as the
         // links in emails do.
         services.AddOptions<OpenIddictServerOptions>().Configure<PublicOrigin>((server, origin) => server.Issuer = origin.Issuer ?? server.Issuer);
+        services.AddOptions<OpenIddictServerOptions>().Configure<ClientOptions>((server, options) =>
+        {
+            server.AccessTokenLifetime = options.AccessTokenLifetime;
+            server.RefreshTokenLifetime = options.RefreshTokenLifetime;
+        });
 
-        // A revoked session stops its access tokens at once, not when they expire. After the local server's own setup,
-        // which sets these from the server's options.
+        // A revoked session stops its access tokens at once, not when they expire, at the cost of reading the token and its
+        // authorization on every bearer request; a cache of them would let a revoked token through until it expired. After the
+        // local server's own setup, which sets these from the server's options.
         services.PostConfigure<OpenIddictValidationOptions>(options =>
         {
             options.EnableAuthorizationEntryValidation = true;
@@ -142,7 +153,9 @@ internal static class AuthorizationServerRegistration
     {
         if (context.NewPrincipal?.Identity is ClaimsIdentity identity && context.CurrentPrincipal is { } current)
         {
-            identity.AddClaims(current.FindAll(OpenIddictConstants.Claims.AuthenticationMethodReference).Select(claim => new Claim(claim.Type, claim.Value)));
+            identity.AddClaims(current.FindAll(claim => claim.Type is OpenIddictConstants.Claims.AuthenticationMethodReference or ClaimTypes.AuthenticationMethod)
+                .Where(claim => !identity.HasClaim(claim.Type, claim.Value))
+                .Select(claim => new Claim(claim.Type, claim.Value)));
         }
     }
 }

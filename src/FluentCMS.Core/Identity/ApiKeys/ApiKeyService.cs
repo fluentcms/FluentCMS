@@ -47,8 +47,8 @@ internal sealed record CreatedApiKey(ApiKeyInfo Key, string Secret)
     public override string ToString() => $"CreatedApiKey {{ Key = {Key} }}";
 }
 
-// The key a request presented, or why it is refused.
-internal sealed record ApiKeyCheck(ApiKey? Key, string? Failure);
+// The key a request presented, or why it is refused: for the server's log only, with the id of a key that was found.
+internal sealed record ApiKeyCheck(ApiKey? Key, string? Failure, Guid? RefusedKeyId = null);
 
 // A key is managed with apikeys.manage where it reaches: for the instance when it is bound to no site, and in each of its
 // sites otherwise, so a caller limited to some sites, a key bound to them included, never makes or touches a key that reaches
@@ -265,12 +265,12 @@ internal sealed class ApiKeyService(
 
         if (found.RevokedAt is not null)
         {
-            return new ApiKeyCheck(null, ApiKeyErrorCodes.Revoked);
+            return new ApiKeyCheck(null, ApiKeyErrorCodes.Revoked, found.Id);
         }
 
         if (!found.IsActive(now))
         {
-            return new ApiKeyCheck(null, ApiKeyErrorCodes.Expired);
+            return new ApiKeyCheck(null, ApiKeyErrorCodes.Expired, found.Id);
         }
 
         await TouchAsync(found, now, cancellationToken);
