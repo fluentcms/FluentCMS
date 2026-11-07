@@ -15,7 +15,7 @@ namespace FluentCMS.Core.Identity;
 
 internal static class IdentityRegistration
 {
-    public static void Add(IServiceCollection services, AdminUserOptions options, ClientOptions clients, SsoOptions sso)
+    public static void Add(IServiceCollection services, AdminUserOptions options, ClientOptions clients, SsoOptions sso, ProvidersBuilder providers)
     {
         services.AddFluentCmsOptions(AdminUserOptions.Section, IdentityErrorCodes.InvalidOptions, options, users => users.Validate());
 
@@ -53,7 +53,7 @@ internal static class IdentityRegistration
         SsoRegistration.Add(services, sso);
 
         services.AddFluentCmsOptions(EmailOptions.Section, HostErrorCodes.InvalidOption, new EmailOptions(), email => email.Validate());
-        services.TryAddSingleton<IEmailSender>(provider =>
+        providers.Default<IEmailSender>(provider =>
         {
             var email = provider.GetRequiredService<EmailOptions>();
             if (email.UsesSmtp)

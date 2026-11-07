@@ -23,6 +23,12 @@ public interface IPluginServiceBuilder
     IServiceCollection Services { get; }
 
     /// <summary>
+    /// The provider slots, to replace one such as <see cref="Providers.IEmailSender"/> whatever the order of registration.
+    /// The host's choice wins over a plugin's, and two plugins that replace one slot stop the host unless the host chooses.
+    /// </summary>
+    Providers.IProviderSlots Providers { get; }
+
+    /// <summary>
     /// Adds a field type. Its name must not be one of core's or another plugin's. A setting of kind
     /// <see cref="FieldSettingKind.FieldReference"/> must name a sibling field, and is optional.
     /// </summary>
