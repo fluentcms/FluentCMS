@@ -48,21 +48,55 @@ public sealed class PluginEndpointTests
         refusedKey.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
     }
 
+    // The sign-in, the scope and the operation are endpoint filters. ASP.NET Core runs a group's filters for an endpoint that
+    // is a plain RequestDelegate as it does for a route handler; these keep that from changing unseen.
     [Fact]
-    public async Task AnEndpointMappedWithARequestDelegateNeedsASignedInCallerToo()
+    public async Task EveryShapeOfEndpointInAGroupNeedsASignedInCallerUnlessItAllowsAnonymous()
     {
         await using var host = new FluentCmsTestHost().Configure(cms => cms.AddPlugin<RoutedPlugin>());
         var key = await host.CreateApiKeyAsync(TestKeyClass.Delivery, BuiltInRoles.PublicName, cancellationToken: Token);
         using var anonymous = host.CreateClient();
         using var signedIn = host.AsKey(key);
 
-        foreach (var path in new[] { "/routed/ping", "/routed/raw" })
+        foreach (var (path, body) in new[] { ("/routed/ping", "pong"), ("/routed/raw", "raw"), ("/routed/context", "context"), ("/routed/mapped", "mapped") })
         {
             using var refused = await anonymous.GetAsync(new Uri(path, UriKind.Relative), Token);
             using var allowed = await signedIn.GetAsync(new Uri(path, UriKind.Relative), Token);
 
             refused.StatusCode.ShouldBe(HttpStatusCode.Unauthorized, path);
+            (await CodeAsync(refused)).ShouldBe("FCMS3102", path);
             allowed.StatusCode.ShouldBe(HttpStatusCode.OK, path);
+            (await allowed.Content.ReadAsStringAsync(Token)).ShouldBe(body, path);
+        }
+
+        using var open = await anonymous.GetAsync(new Uri("/routed/open", UriKind.Relative), Token);
+        open.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await open.Content.ReadAsStringAsync(Token)).ShouldBe("open");
+    }
+
+    // AllowAnonymous() lifts the sign-in of MapGroup only: the Management API's scope holds whatever an endpoint says.
+    [Fact]
+    public async Task EveryShapeOfEndpointInAManagementGroupNeedsTheManagementScope()
+    {
+        await using var host = new FluentCmsTestHost().Configure(cms => cms.AddPlugin<RoutedPlugin>(routed => routed.Management = true));
+        var delivery = await host.CreateApiKeyAsync(TestKeyClass.Delivery, BuiltInRoles.SuperAdminName, cancellationToken: Token);
+        var management = await host.CreateApiKeyAsync(TestKeyClass.Management, BuiltInRoles.SuperAdminName, cancellationToken: Token);
+        using var anonymous = host.CreateClient();
+        using var deliveryKey = host.AsKey(delivery);
+        using var managementKey = host.AsKey(management);
+
+        foreach (var (name, body) in new[] { ("ping", "pong"), ("raw", "raw"), ("context", "context"), ("mapped", "mapped"), ("open", "open") })
+        {
+            var path = new Uri($"/api/management/v1/routed/{name}", UriKind.Relative);
+            using var signedOut = await anonymous.GetAsync(path, Token);
+            using var withoutScope = await deliveryKey.GetAsync(path, Token);
+            using var allowed = await managementKey.GetAsync(path, Token);
+
+            signedOut.StatusCode.ShouldBe(HttpStatusCode.Unauthorized, name);
+            withoutScope.StatusCode.ShouldBe(HttpStatusCode.Forbidden, name);
+            (await CodeAsync(withoutScope)).ShouldBe("FCMS3103", name);
+            allowed.StatusCode.ShouldBe(HttpStatusCode.OK, name);
+            (await allowed.Content.ReadAsStringAsync(Token)).ShouldBe(body, name);
         }
     }
 
