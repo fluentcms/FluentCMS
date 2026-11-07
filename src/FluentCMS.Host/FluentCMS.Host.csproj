@@ -1,11 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
-  <!-- The plugins join once the plugin host exists and they have code; until then the host references what it runs. -->
+  <!-- The host references the plugins it runs, and adds each one. -->
   <ItemGroup>
     <ProjectReference Include="../FluentCMS.Core/FluentCMS.Core.csproj" />
     <ProjectReference Include="../FluentCMS.Data.PostgreSql/FluentCMS.Data.PostgreSql.csproj" />
     <ProjectReference Include="../FluentCMS.Data.Sqlite/FluentCMS.Data.Sqlite.csproj" />
     <ProjectReference Include="../FluentCMS.Data.SqlServer/FluentCMS.Data.SqlServer.csproj" />
+    <ProjectReference Include="../plugins/FluentCMS.Plugins.Webhooks/FluentCMS.Plugins.Webhooks.csproj" />
     <ProjectReference Include="../../samples/Blog/Blog.csproj" />
   </ItemGroup>
 
