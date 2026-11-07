@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using System.Text.RegularExpressions;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
@@ -18,23 +19,33 @@ namespace FluentCMS.Data.Tests.Providers;
 
 // PostgreSQL and SQL Server run on a database only in #2711. These tests never open a connection: they check
 // the model and the SQL text that EF produces, not how a server behaves.
-public class OfflineProviderTests
+public partial class OfflineProviderTests
 {
     private static readonly SchemaModel Schema = SampleSchema.NewBuilder()
         .AddBlock("hero", block => block.Field("heading", "text"))
         .AddCollection("post", type => type
             .Field("publishedOn", "dateTime")
             .Field("sections", "blocks", field => field.Setting(FieldSettings.Blocks, new[] { "hero" }))
-            .Field("metadata", "json", field => field.Indexed()))
+            .Field("metadata", "json", field => field.Indexed())
+            .Field("contact", "email", field => field.Unique()))
         .AddSingleton("brand", type => type.Field("name", "text"))
         .Build();
 
-    private static ServiceProvider PostgreSql() => Host(cms => cms.UsePostgreSql("Host=localhost;Database=never_opened"));
+    private static ServiceProvider PostgreSql(SchemaModel? schema = null) => Host(cms => cms.UsePostgreSql("Host=localhost;Database=never_opened"), schema);
 
-    private static ServiceProvider SqlServer(bool nativeJson = false) => Host(cms => cms.UseSqlServer("Server=localhost;Database=never_opened", nativeJson));
+    private static ServiceProvider SqlServer(bool nativeJson = false, SchemaModel? schema = null) => Host(cms => cms.UseSqlServer("Server=localhost;Database=never_opened", nativeJson), schema);
 
-    private static ServiceProvider Host(Action<FluentCmsBuilder> provider) =>
-        new ServiceCollection().AddSingleton(Schema).AddFluentCms(provider).BuildServiceProvider();
+    private static ServiceProvider Host(Action<FluentCmsBuilder> provider, SchemaModel? schema) =>
+        new ServiceCollection().AddSingleton(schema ?? Schema).AddFluentCms(provider).BuildServiceProvider();
+
+    private static string ContentScript(ServiceProvider services)
+    {
+        using var scope = services.CreateScope();
+        return scope.ServiceProvider.GetRequiredService<CmsDbContext>().Database.GenerateCreateScript();
+    }
+
+    [GeneratedRegex("""(?:INDEX|CONSTRAINT) [\["]?(?<name>\w+)""")]
+    private static partial Regex IndexOrConstraintName();
 
     private static IModel DesignModel(IServiceProvider services) =>
         services.GetRequiredService<CmsDbContext>().GetService<IDesignTimeModel>().Model;
@@ -267,6 +278,71 @@ public class OfflineProviderTests
             .ShouldContain("[key] = N'labels'");
         Sql(services, (dialect, row) => dialect.ListContains(Metadata(row), Bind("x")))
             .ShouldContain("OPENJSON([c].[metadata])");
+    }
+
+    [Fact]
+    public void BothProvidersFitTheNamesOfTheirIndexesAndChecks()
+    {
+        using var postgreSql = PostgreSql(SampleSchema.LongNames().Build());
+        using var sqlServer = SqlServer(schema: SampleSchema.LongNames().Build());
+
+        foreach (var script in new[] { ContentScript(postgreSql), ContentScript(sqlServer) })
+        {
+            var names = IndexOrConstraintName().Matches(script).Select(match => match.Groups["name"].Value).ToList();
+
+            names.ShouldAllBe(name => name.Length <= StorageNames.MaxIdentifierLength);
+            names.ShouldBeUnique();
+            names.Count(name => name.StartsWith("ux_cms_customer_testimonial_highlight_i18n_hero_sectio", StringComparison.Ordinal)).ShouldBe(2);
+        }
+
+        const string metadata = "cms_customer_testimonial_highlight_i18n_hero_section_configuration_background_image_metadata";
+        ContentScript(postgreSql).ShouldContain($"CREATE INDEX {StorageNames.Identifier($"gin_{metadata}")} ON");
+        ContentScript(sqlServer).ShouldContain($"CONSTRAINT [{StorageNames.Identifier($"ck_{metadata}_json")}] CHECK");
+    }
+
+    [Fact]
+    public void BothProvidersLeaveNullOutOfANullableUniqueIndex()
+    {
+        using var postgreSql = PostgreSql();
+        using var sqlServer = SqlServer();
+
+        ContentScript(postgreSql).ShouldContain("CREATE UNIQUE INDEX ux_cms_post_contact ON cms_post (site_id, contact) WHERE state = 1 AND \"contact\" IS NOT NULL;");
+        ContentScript(sqlServer).ShouldContain("CREATE UNIQUE INDEX [ux_cms_post_contact] ON [cms_post] ([site_id], [contact]) WHERE state = 1 AND \"contact\" IS NOT NULL;");
+    }
+
+    [Fact]
+    public void SqlServerComparesContentTextUnderABinaryCollation()
+    {
+        using var sqlServer = SqlServer();
+        using var postgreSql = PostgreSql();
+        using var sqlServerScope = sqlServer.CreateScope();
+        using var postgreSqlScope = postgreSql.CreateScope();
+        var model = DesignModel(sqlServerScope.ServiceProvider);
+
+        model.FindEntityType("cms_post")!.FindProperty("contact")!.GetCollation().ShouldBe("Latin1_General_100_BIN2");
+        model.FindEntityType("cms_brand")!.FindProperty("name")!.GetCollation().ShouldBe("Latin1_General_100_BIN2");
+        model.FindEntityType("cms_post")!.FindProperty("metadata")!.GetCollation().ShouldBeNull();
+        model.FindEntityType(typeof(Document).FullName!)!.FindProperty(nameof(Document.Type))!.GetCollation().ShouldBeNull();
+        ContentScript(sqlServer).ShouldContain("[contact] nvarchar(254) COLLATE Latin1_General_100_BIN2 NULL");
+
+        DesignModel(postgreSqlScope.ServiceProvider).FindEntityType("cms_post")!.FindProperty("contact")!.GetCollation().ShouldBeNull();
+    }
+
+    [Fact]
+    public void SqlServerStoresDatesInUtc()
+    {
+        using var services = SqlServer();
+        using var scope = services.CreateScope();
+        var model = scope.ServiceProvider.GetRequiredService<CmsDbContext>().Model;
+        var local = new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.FromHours(5));
+
+        foreach (var property in new[] { model.FindEntityType("cms_post")!.FindProperty("published_on")!, model.FindEntityType(typeof(Document))!.FindProperty(nameof(Document.SchedulePublishAt))! })
+        {
+            var stored = (DateTimeOffset)property.GetTypeMapping().Converter!.ConvertToProvider(local)!;
+
+            stored.Offset.ShouldBe(TimeSpan.Zero);
+            stored.ShouldBe(local);
+        }
     }
 
     [Fact]

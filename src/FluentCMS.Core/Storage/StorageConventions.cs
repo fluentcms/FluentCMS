@@ -17,6 +17,10 @@ public class StorageConventions : IStorageConventions
     {
     }
 
+    public virtual void ConfigureTextColumn(EntityTypeBuilder entity, PropertyBuilder column)
+    {
+    }
+
     public virtual void ConfigureJsonIndex(EntityTypeBuilder entity, string column)
     {
     }
