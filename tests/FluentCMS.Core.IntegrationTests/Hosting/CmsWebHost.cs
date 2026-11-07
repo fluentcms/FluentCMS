@@ -26,6 +26,13 @@ internal sealed class CmsWebHost : IAsyncDisposable
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = environment });
         builder.WebHost.UseTestServer();
+
+        // These hosts send no links; a test of the public origin or key ring refusal sets the flag back to false.
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["FluentCms:Security:AllowRequestOrigin"] = "true",
+            ["FluentCms:Security:AllowUnencryptedKeyRing"] = "true",
+        });
         builder.Configuration.AddInMemoryCollection(settings ?? []);
         builder.Services.AddFluentCms(options =>
         {

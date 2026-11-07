@@ -53,8 +53,14 @@ internal sealed class SqliteFileDatabase : IDisposable
         Action<FluentCmsBuilder>? configure = null)
     {
         var builder = Host.CreateEmptyApplicationBuilder(new HostApplicationBuilderSettings { EnvironmentName = environment });
-        // These hosts sign no tokens, so Production may start with the key the authorization server would generate.
-        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?> { ["FluentCms:Security:AllowGeneratedSigningKey"] = "true" });
+        // These hosts sign no tokens and send no links, so Production may start with the key the authorization server would
+        // generate, no public origin and the key ring unencrypted.
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["FluentCms:Security:AllowGeneratedSigningKey"] = "true",
+            ["FluentCms:Security:AllowRequestOrigin"] = "true",
+            ["FluentCms:Security:AllowUnencryptedKeyRing"] = "true",
+        });
         builder.Configuration.AddInMemoryCollection(settings ?? []);
         builder.Services.AddSingleton(schema);
         services?.Invoke(builder.Services);

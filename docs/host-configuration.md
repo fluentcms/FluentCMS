@@ -31,7 +31,7 @@ Everything is read from the `FluentCms` section of the host's configuration, so 
 | Section | Holds |
 | --- | --- |
 | `FluentCms:Database` | `MigrateOnStartup`, `SchemaSync` (see [content migrations](content-migrations.md)) |
-| `FluentCms:Security` | `AllowGeneratedSigningKey`, `SigningCertificate:Path`, `SigningCertificate:Password`, `Cors:Delivery:AllowedOrigins`, `Cors:Management:AllowedOrigins`, `ReferrerPolicy`, `FrameAncestors` |
+| `FluentCms:Security` | `AllowGeneratedSigningKey`, `AllowRequestOrigin`, `AllowUnencryptedKeyRing` (see [Production refusals](#production-refusals)), `SigningCertificate:Path`, `SigningCertificate:Password`, `Cors:Delivery:AllowedOrigins`, `Cors:Management:AllowedOrigins`, `ReferrerPolicy`, `FrameAncestors` |
 | `FluentCms:Users` | `Password`, `Lockout`, `InvitationLifetime` (7 days), `PasswordResetLifetime` (1 hour) (see [hosted pages](#hosted-pages)) |
 | `FluentCms:Email` | `Smtp:Host`, `Smtp:Port` (587), `Smtp:Security` (`StartTls`, `SslOnConnect` or `None`), `Smtp:UserName`, `Smtp:Password`, `Smtp:From` (see [email](#email)) |
 | `FluentCms:Clients` | `AdminClientId`, and `Applications:{clientId}` with `DisplayName`, `Secret`, `RedirectUris`, `PostLogoutRedirectUris`, `Scopes`, `Roles`, `RequireConsent` (see [authorization server](#authorization-server)) |
@@ -127,17 +127,21 @@ The server of the document is the request's origin and path base, and so are the
 
 ## Startup report and diagnostics
 
-Once the migrations have run, the host logs one `StartupReport` (event id 1100, Information) and a warning per insecure default (event id 1101). The report is a public type of the SDK (`FluentCMS.Diagnostics.StartupReport`). It names the environment, the FluentCMS and data provider versions, the FluentCMS assemblies in the process, the plugins, the [provider slots](#provider-slots) and the implementation each resolves to, the pending migrations of the system, plugin and content streams, the schema hash in code against the one last applied, and the insecure defaults: the refusals of the production checks below even in an environment that does not enforce them, a generated signing key that `AllowGeneratedSigningKey` accepted, the Development email sender, the HTTPS redirect being off in Production, `AllowedHosts` left at `*` or unset in Production, `FluentCms:PublicOrigin` unset in Production, schema sync running outside Development (see [content migrations](content-migrations.md#schema-sync)), forwarded headers trusted from every address, and those a plugin reports through `IInsecureDefaultSource`, such as `webhooks-private-networks`. It holds no connection string, key or password. If the report cannot be made, the log says so (event id 1102, with the scrubbed message) and the report is reduced to what needs no database, with `failure` naming the exception type; a request that arrives before any report exists gets a 503 (`FCMS3106`).
+Once the migrations have run, the host logs one `StartupReport` (event id 1100, Information) and a warning per insecure default (event id 1101). The report is a public type of the SDK (`FluentCMS.Diagnostics.StartupReport`). It names the environment, the FluentCMS and data provider versions, the FluentCMS assemblies in the process, the plugins, the [provider slots](#provider-slots) and the implementation each resolves to, the pending migrations of the system, plugin and content streams, the schema hash in code against the one last applied, and the insecure defaults: the refusals of the production checks below (a generated signing key even in an environment that does not enforce it), a generated signing key that `AllowGeneratedSigningKey` accepted, the key ring stored unencrypted where it is not refused (`data-protection-keys-unencrypted`), the Development email sender, the HTTPS redirect being off in Production, `AllowedHosts` left at `*` or unset in Production, `FluentCms:PublicOrigin` unset in Production and accepted with `AllowRequestOrigin` (`public-origin-unset`), schema sync running outside Development (see [content migrations](content-migrations.md#schema-sync)), forwarded headers trusted from every address, and those a plugin reports through `IInsecureDefaultSource`, such as `webhooks-private-networks`. It holds no connection string, key or password. If the report cannot be made, the log says so (event id 1102, with the scrubbed message) and the report is reduced to what needs no database, with `failure` naming the exception type; a request that arrives before any report exists gets a 503 (`FCMS3106`).
 
 `GET /api/management/v1/system/diagnostics` returns the same report as JSON. It needs the instance-wide permission `system.read` (a Super Admin has it), which a role of one site, a grant limited to sites and a key bound to sites do not reach, and which a Delivery or Preview key never gets because it lacks the management scope.
 
 ## Production refusals
 
-In the Production environment some settings that are fine in development stop the host before it touches the database:
+In the Production environment some settings that are fine in development stop the host before it touches the database. Each refusal names its setting and the key that lifts it, and when several apply the host names them all at once:
 
-| Code | Refusal | Lifted by |
-| --- | --- | --- |
-| `FCMS1102` | Tokens are signed with a generated key, because no signing certificate is configured | `FluentCms:Security:AllowGeneratedSigningKey = true` |
+| Code | Refusal | Fixed by | Lifted by |
+| --- | --- | --- | --- |
+| `FCMS1102` | Tokens are signed with a generated key, because no signing certificate is configured | `FluentCms:Security:SigningCertificate` ([authorization server](#authorization-server)) | `FluentCms:Security:AllowGeneratedSigningKey = true` |
+| `FCMS1105` | Links in emails follow the request's `Host`, because `FluentCms:PublicOrigin` is not set | `FluentCms:PublicOrigin` ([public origin](#public-origin)) | `FluentCms:Security:AllowRequestOrigin = true` |
+| `FCMS1106` | The Data Protection key ring is stored unencrypted, because no XML encryptor is registered | an encryptor ([authorization server](#authorization-server)) | `FluentCms:Security:AllowUnencryptedKeyRing = true` |
+
+A setting that is lifted rather than fixed stays in the startup report, as `generated-signing-key`, `public-origin-unset` or `data-protection-keys-unencrypted`. Other environments start with all three, and their report is as it was.
 
 ## API keys
 
@@ -153,13 +157,20 @@ Clients are registered when the host starts, from `FluentCms:Clients:Application
 
 Tokens are signed with `SigningCertificate` (a PKCS#12 file with an RSA key) when it is set. Otherwise the server generates an RSA key and keeps it in `cms_signing_key`, protected with Data Protection, so every instance and every restart uses the same one; Production refuses that unless `AllowGeneratedSigningKey` is set. The key that encrypts codes and refresh tokens is always kept there. The Data Protection key ring is kept in `cms_data_protection_key` under the application name `FluentCMS`, unless the host persists it elsewhere, and is loaded on its first use rather than when the host starts. A new key is made under the distributed lock (`IDistributedLock`, kept in `cms_lock` with no configuration), so instances that start together on an empty database share the first one.
 
-The key ring is not encrypted at rest unless the host adds an encryptor, and anyone who can read the database (a backup, a read-only user) can then read it and forge the sign-in cookie the authorize endpoint accepts. In production, add one after `AddFluentCms`, with a certificate from the host's secret store:
+The key ring is not encrypted at rest unless the host adds an encryptor, and anyone who can read the database (a backup, a read-only user) can then read it and forge the sign-in cookie the authorize endpoint accepts. Production refuses to start without one (`FCMS1106`) unless `FluentCms:Security:AllowUnencryptedKeyRing` is true. Add it with Data Protection's own builder, before `AddFluentCms` so that the ring still loads on its first use, with a certificate from the host's secret store (an RSA key, with its private key):
 
 ```csharp
 builder.Services.AddDataProtection().ProtectKeysWithCertificate(certificate);
 ```
 
-or with Azure Key Vault (`ProtectKeysWithAzureKeyVault` from `Azure.Extensions.AspNetCore.DataProtection.Keys`). Keys written before the encryptor was added stay readable. Until one is added, the startup report lists `data-protection-keys-unencrypted`. Keep `cms_data_protection_key`, `cms_signing_key` and the `cms_oidc_*` tables out of exports, and treat a database backup as holding secrets.
+or with a key in Azure Key Vault, through `Azure.Extensions.AspNetCore.DataProtection.Keys` and `Azure.Identity`:
+
+```csharp
+builder.Services.AddDataProtection()
+    .ProtectKeysWithAzureKeyVault(new Uri("https://my-vault.vault.azure.net/keys/fluentcms-ring"), new DefaultAzureCredential());
+```
+
+Any other `IXmlEncryptor`, such as DPAPI on Windows, counts the same. Keys written before the encryptor was added stay readable. When the certificate is replaced, pass the old one to `UnprotectKeysWithAnyCertificate` until the keys it protected have expired. The [Docker image](docker.md#before-production) reads a certificate from `FluentCms:DataProtection:Certificate:Path` and `Password` instead. Keep `cms_data_protection_key`, `cms_signing_key` and the `cms_oidc_*` tables out of exports, and treat a database backup as holding secrets.
 
 OpenIddict logs whole tokens at the `Trace` level. Do not set the `OpenIddict` log category to `Trace` in production.
 
@@ -167,7 +178,7 @@ OpenIddict logs whole tokens at the `Trace` level. Do not set the `OpenIddict` l
 
 `FluentCms:PublicOrigin`, or `cms.PublicOrigin` in code, is the address users reach the instance at, such as `https://cms.example.com`. Password reset and invitation links, the issuer, the URLs of the discovery document, and the server and authorization server URLs of the OpenAPI document are built from it, so the `Host` a request names, forged or not, plays no part in them. It is an absolute `https` URL (`http` too in Development) with no user, query or fragment. Its path is empty or the path base: with `FluentCms:ReverseProxy:PathBase` set to `/cms`, `https://cms.example.com` and `https://cms.example.com/cms` both give links under `https://cms.example.com/cms`. Another path, or a path without a path base, stops the host with `FCMS1101`. Tokens carry the issuer, so setting the origin or changing it refuses the access tokens, codes and refresh tokens issued before: users and clients sign in again.
 
-Without it, those links and URLs are built from the request's scheme, host and path base, and the startup report lists `public-origin-unset` in Production. Set it in production, and set `AllowedHosts` as well, since the instance still answers any host that host filtering lets through.
+Without it, those links and URLs are built from the request's scheme, host and path base, so a forged `Host` gets a reset link to the attacker's host emailed to a real user. Production refuses to start without it (`FCMS1105`) unless `FluentCms:Security:AllowRequestOrigin` is true, which is for an instance whose `AllowedHosts` or proxy lets through only its own host names; the startup report then lists `public-origin-unset`. Set `AllowedHosts` as well, since the instance still answers any host that host filtering lets through.
 
 ## Hosted pages
 

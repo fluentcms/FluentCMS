@@ -45,6 +45,8 @@ public sealed class JobRunnerTests : IDisposable
         using var database = new SqliteFileDatabase();
         var builder = Host.CreateEmptyApplicationBuilder(new HostApplicationBuilderSettings { EnvironmentName = "Production" });
         builder.Configuration["FluentCms:Security:AllowGeneratedSigningKey"] = "true";
+        builder.Configuration["FluentCms:Security:AllowRequestOrigin"] = "true";
+        builder.Configuration["FluentCms:Security:AllowUnencryptedKeyRing"] = "true";
         var probe = new JobProbe { Behavior = (_, _) => { ran.SetResult(); return Task.CompletedTask; } };
         builder.Services.AddSingleton(probe);
         builder.Services.AddSingleton(new SchemaBuilder().Build());
@@ -335,6 +337,8 @@ public sealed class JobRunnerTests : IDisposable
         var replacement = new ReplacementRunner();
         var builder = Host.CreateEmptyApplicationBuilder(new HostApplicationBuilderSettings { EnvironmentName = "Production" });
         builder.Configuration["FluentCms:Security:AllowGeneratedSigningKey"] = "true";
+        builder.Configuration["FluentCms:Security:AllowRequestOrigin"] = "true";
+        builder.Configuration["FluentCms:Security:AllowUnencryptedKeyRing"] = "true";
         builder.Services.AddSingleton<IJobRunner>(replacement);
         builder.Services.AddSingleton(new SchemaBuilder().Build());
         builder.Services.AddFluentCms(cms =>

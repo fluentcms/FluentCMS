@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Schema;
 using FluentCMS.Data.PostgreSql;
@@ -6,6 +8,7 @@ using FluentCMS.Data.SqlServer;
 using FluentCMS.Plugins.Webhooks;
 using FluentCMS.Samples.Blog;
 using FluentCMS.Schema;
+using Microsoft.AspNetCore.DataProtection;
 
 namespace FluentCMS.Host;
 
@@ -17,6 +20,8 @@ public static class ReferenceHost
     public const string ProviderKey = "FluentCms:Database:Provider";
     public const string ConnectionStringName = "FluentCms";
     public const string BlogSampleName = "blog";
+    public const string KeyRingCertificatePathKey = "FluentCms:DataProtection:Certificate:Path";
+    public const string KeyRingCertificatePasswordKey = "FluentCms:DataProtection:Certificate:Password";
 
     public static WebApplication Build(WebApplicationBuilder builder)
     {
@@ -27,6 +32,7 @@ public static class ReferenceHost
         var file = configuration[SchemaVariable];
 
         builder.Services.AddSingleton(BuildSchema(file, blog));
+        ProtectKeyRing(builder.Services, configuration);
         builder.Services.AddFluentCms(cms =>
         {
             UseDatabase(cms, configuration, builder.Environment);
@@ -111,6 +117,39 @@ public static class ReferenceHost
         {
             throw new ReferenceHostException(ReferenceHostErrorCodes.UnknownDataProvider, $"{ProviderKey} is '{provider}'; use Sqlite, PostgreSql or SqlServer.");
         }
+    }
+
+    // The image is set up by environment variables alone, so it cannot call ProtectKeysWithCertificate the way a host of
+    // its own does. Before AddFluentCms, which keeps the ring loading on first use rather than at start.
+    private static void ProtectKeyRing(IServiceCollection services, ConfigurationManager configuration)
+    {
+        var path = configuration[KeyRingCertificatePathKey];
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return;
+        }
+
+        X509Certificate2 certificate;
+        try
+        {
+            certificate = X509CertificateLoader.LoadPkcs12FromFile(path, configuration[KeyRingCertificatePasswordKey]);
+        }
+        catch (Exception exception) when (exception is CryptographicException or IOException or UnauthorizedAccessException)
+        {
+            throw new ReferenceHostException(ReferenceHostErrorCodes.KeyRingCertificateUnusable, $"{KeyRingCertificatePathKey} is '{path}', which cannot be read as a PKCS#12 file with this password: {exception.Message}");
+        }
+
+        // Data Protection encrypts the ring for the certificate's RSA key and needs the private key to read it back.
+        using (var rsa = certificate.GetRSAPrivateKey())
+        {
+            if (rsa is null)
+            {
+                certificate.Dispose();
+                throw new ReferenceHostException(ReferenceHostErrorCodes.KeyRingCertificateUnusable, $"{KeyRingCertificatePathKey} is '{path}', which holds no RSA private key.");
+            }
+        }
+
+        services.AddDataProtection().ProtectKeysWithCertificate(certificate);
     }
 
     private static bool Is(string provider, string name) => string.Equals(provider, name, StringComparison.OrdinalIgnoreCase);

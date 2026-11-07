@@ -34,6 +34,8 @@ public static class ErrorCodeRegistry
         Startup(HostErrorCodes.GeneratedSigningKeyInProduction, "Generated signing key in Production"),
         Startup(HostErrorCodes.NotRegistered, "FluentCMS not registered"),
         Startup(HostErrorCodes.PipelineMissing, "FluentCMS pipeline missing"),
+        Startup(HostErrorCodes.PublicOriginUnsetInProduction, "Public origin unset in Production"),
+        Startup(HostErrorCodes.UnencryptedKeyRingInProduction, "Unencrypted key ring in Production"),
 
         // 12xx schema, found when the host starts
         Startup(SchemaErrorCodes.DuplicateType, "Duplicate content type"),
@@ -255,6 +257,7 @@ public static class ErrorCodeRegistry
         Startup("FCMS3152", "Unknown sample"),
         Startup("FCMS3153", "Schema file not found"),
         Startup(StorageErrorCodes.SchemaSyncNotSupported, "Schema sync not supported"),
+        Startup("FCMS3155", "Key ring certificate unusable"),
     ];
 
     private static readonly FrozenDictionary<string, ErrorCodeInfo> byCode = All.ToFrozenDictionary(info => info.Code);

@@ -24,6 +24,12 @@ public sealed class SecurityOptions
     // Lets Production start with the signing key the authorization server generates when no certificate is configured.
     public bool AllowGeneratedSigningKey { get; set; }
 
+    // Lets Production start without FluentCms:PublicOrigin, building links from the request, when a proxy filters the Host.
+    public bool AllowRequestOrigin { get; set; }
+
+    // Lets Production start with the Data Protection key ring stored unencrypted, when no XML encryptor is registered.
+    public bool AllowUnencryptedKeyRing { get; set; }
+
     // The certificate the authorization server signs tokens with. Without one it signs with a key it generates and stores.
     public SigningCertificateOptions SigningCertificate { get; } = new();
 

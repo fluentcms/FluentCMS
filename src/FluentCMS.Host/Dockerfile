@@ -31,10 +31,9 @@ WORKDIR /app
 COPY --from=build /app .
 COPY --from=build --chown=$APP_UID:$APP_UID /data /data
 
-# SQLite in the /data volume with no configuration. The generated signing key is accepted so that the image starts
-# with nothing set; the startup report lists it until a certificate is configured.
-ENV ConnectionStrings__FluentCms="Data Source=/data/fluentcms.db" \
-    FluentCms__Security__AllowGeneratedSigningKey=true
+# SQLite in the /data volume with no configuration. No Production refusal is lifted here, so a run with nothing else
+# set stops and names what to set; docs/docker.md shows the settings, and the opt-ins of an evaluation run.
+ENV ConnectionStrings__FluentCms="Data Source=/data/fluentcms.db"
 VOLUME /data
 EXPOSE 8080
 USER $APP_UID
