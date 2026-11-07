@@ -134,6 +134,28 @@ public sealed class OperationsEndpointsTests(AdminFixture fixture) : IClassFixtu
         (await fixture.GetAsync(path, delivery)).Status.ShouldBe(HttpStatusCode.Forbidden);
     }
 
+    // A Super Admin's key of the Delivery class and its token without the management scope hold system.read, so only the
+    // scope refuses them, before the permission is looked at.
+    [Theory]
+    [InlineData("system/diagnostics")]
+    [InlineData("system/health")]
+    public async Task TheSystemGroupNeedsTheManagementScope(string path)
+    {
+        var deliveryKey = await fixture.Host.CreateApiKeyAsync(ApiKeyClass.Delivery, BuiltInRoles.SuperAdminName, cancellationToken: TestContext.Current.CancellationToken);
+        using var delivery = fixture.Host.AsKey(deliveryKey);
+        using var scopeless = await fixture.Host.AsUserAsync(await fixture.Host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: TestContext.Current.CancellationToken), "openid");
+
+        foreach (var client in new[] { delivery, scopeless })
+        {
+            var refused = await fixture.GetAsync(path, client);
+            refused.Status.ShouldBe(HttpStatusCode.Forbidden, refused.Body?.ToJsonString());
+            refused.Json["code"]!.GetValue<string>().ShouldBe("FCMS3103");
+            refused.Json["detail"]!.GetValue<string>().ShouldContain("management scope");
+        }
+
+        (await fixture.GetAsync("system/health")).Status.ShouldBe(HttpStatusCode.OK);
+    }
+
     [Fact]
     public async Task WritesAreRefusedWithoutThePermissionToo()
     {

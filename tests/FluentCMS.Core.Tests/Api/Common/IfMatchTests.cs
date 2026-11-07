@@ -17,6 +17,16 @@ public sealed class IfMatchTests
         IfMatch.Optional(Request(header)).ShouldBe(version);
     }
 
+    // A proxy that compresses responses weakens the ETag it passes on, and the client sends back what it was given.
+    [Theory]
+    [InlineData("W/\"7\"", 7)]
+    [InlineData(" W/\"0\" ", 0)]
+    public void AWeakTagIsReadByItsOpaqueValue(string header, int version)
+    {
+        IfMatch.Required(Request(header)).ShouldBe(version);
+        IfMatch.Optional(Request(header)).ShouldBe(version);
+    }
+
     [Fact]
     public void NoneOrAnyIsNoVersionWhereOneIsOptional()
     {
@@ -36,7 +46,11 @@ public sealed class IfMatchTests
 
     [Theory]
     [InlineData("*")]
-    [InlineData("W/\"7\"")]
+    [InlineData("W/*")]
+    [InlineData("W/7")]
+    [InlineData("w/\"7\"")]
+    [InlineData("W/\"seven\"")]
+    [InlineData("W/\"7\", W/\"8\"")]
     [InlineData("\"7\", \"8\"")]
     [InlineData("7")]
     [InlineData("\"-1\"")]

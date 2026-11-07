@@ -24,7 +24,9 @@ internal sealed class PathBaseGateMiddleware(RequestDelegate next, ReverseProxyO
         return next(context);
     }
 
+    // The document and the Scalar UI are where the host maps them.
     private static bool IsFluentCms(HttpContext context) =>
-        context.GetEndpoint()?.Metadata.GetMetadata<FluentCmsEndpointMetadata>() is not null
-        || FluentCmsEndpointGroups.Prefixes.Any(entry => context.Request.Path.StartsWithSegments(entry.Prefix));
+        context.GetEndpoint() is { } endpoint && endpoint.Metadata.GetMetadata<FluentCmsEndpointMetadata>() is not null
+            ? !FluentCmsSurfaceMetadata.IsDocs(endpoint)
+            : FluentCmsEndpointGroups.Prefixes.Any(entry => context.Request.Path.StartsWithSegments(entry.Prefix));
 }

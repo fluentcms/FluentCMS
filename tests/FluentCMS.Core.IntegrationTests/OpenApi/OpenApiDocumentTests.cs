@@ -248,6 +248,16 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
         operationIds.ShouldContain("getUsersById");
     }
 
+    // A Delivery read also answers HEAD, which HTTP gives every GET, so the document describes the GET alone.
+    [Fact]
+    public void ADeliveryReadIsDescribedAsAGetOnly()
+    {
+        Paths.Where(path => path.Key.StartsWith("/api/delivery/v1/", StringComparison.Ordinal))
+            .SelectMany(path => path.Value!.AsObject().Select(operation => operation.Key))
+            .Distinct()
+            .ShouldBe(["get"]);
+    }
+
     [Fact]
     public void RoutesBesideContentComeFromTheirEndpoints()
     {

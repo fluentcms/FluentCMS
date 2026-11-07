@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Net;
 using System.Text.Json.Nodes;
+using FluentCMS.Core.Sites;
 using FluentCMS.Testing;
 using Shouldly;
 using Xunit;
@@ -111,6 +112,38 @@ public sealed class ContentEndpointsTests(ManagementFixture fixture) : IClassFix
         created.Headers.Location!.ToString().ShouldBe($"{ManagementFixture.Root}page/{created.Json["id"]!.GetValue<string>()}");
     }
 
+    // Following the Location reads the site the entry was created in, not the default one.
+    [Fact]
+    public async Task TheLocationKeepsTheSiteTheRequestNamed()
+    {
+        var site = DefaultSite.Id.ToString("D");
+        var created = await fixture.PostAsync($"page?site={site}", """{ "title": "Sited" }""");
+        var unsited = await fixture.PostAsync("page", """{ "title": "Unsited" }""");
+
+        var id = created.Json["id"]!.GetValue<string>();
+        var location = created.Headers.Location!.ToString();
+        location.ShouldBe($"{ManagementFixture.Root}page/{id}?site={site}");
+        unsited.Headers.Location!.ToString().ShouldNotContain("?");
+        var followed = await ManagementFixture.SendAsync(fixture.Editor, HttpMethod.Get, location[ManagementFixture.Root.Length..]);
+        followed.Status.ShouldBe(HttpStatusCode.OK);
+        followed.Json["id"]!.GetValue<string>().ShouldBe(id);
+    }
+
+    [Fact]
+    public async Task ABodyOfAnotherMediaTypeIsUnsupported()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(ManagementFixture.Root + "page", UriKind.Relative))
+        {
+            Content = new StringContent("""{ "title": "Plain" }""", System.Text.Encoding.UTF8, "text/plain"),
+        };
+        using var response = await fixture.Editor.SendAsync(request, TestContext.Current.CancellationToken);
+        var problem = JsonNode.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken))!;
+
+        response.StatusCode.ShouldBe(HttpStatusCode.UnsupportedMediaType);
+        problem["code"]!.GetValue<string>().ShouldBe("FCMS3107");
+        problem["title"]!.GetValue<string>().ShouldBe("Unsupported media type");
+    }
+
     [Fact]
     public async Task AStaleIfMatchReturns412WithTheCurrentEntry()
     {
@@ -136,7 +169,7 @@ public sealed class ContentEndpointsTests(ManagementFixture fixture) : IClassFix
     [Theory]
     [InlineData(null, HttpStatusCode.PreconditionRequired, "FCMS3130")]
     [InlineData("*", HttpStatusCode.BadRequest, "FCMS3131")]
-    [InlineData("W/\"1\"", HttpStatusCode.BadRequest, "FCMS3131")]
+    [InlineData("W/*", HttpStatusCode.BadRequest, "FCMS3131")]
     [InlineData("\"1\", \"2\"", HttpStatusCode.BadRequest, "FCMS3131")]
     [InlineData("1", HttpStatusCode.BadRequest, "FCMS3131")]
     public async Task ASaveNeedsOneVersionInIfMatch(string? ifMatch, HttpStatusCode status, string code)
@@ -148,6 +181,21 @@ public sealed class ContentEndpointsTests(ManagementFixture fixture) : IClassFix
         refused.Status.ShouldBe(status);
         refused.Json["code"]!.GetValue<string>().ShouldBe(code);
         refused.Json["errors"]![0]!["path"]!.GetValue<string>().ShouldBe("If-Match");
+    }
+
+    // nginx with gzip on hands the client W/"1" for the ETag "1", which it then sends back.
+    [Fact]
+    public async Task ASaveBehindAProxyThatWeakensTheTagIsReadByItsVersion()
+    {
+        var id = await fixture.CreatePageAsync("Proxied");
+
+        var saved = await fixture.PatchAsync($"page/{id}", """{ "title": "Through the proxy" }""", "W/\"1\"");
+        var stale = await fixture.PatchAsync($"page/{id}", """{ "title": "Lost" }""", "W/\"1\"");
+
+        saved.Status.ShouldBe(HttpStatusCode.OK);
+        saved.ETag.ShouldBe("\"2\"");
+        stale.Status.ShouldBe(HttpStatusCode.PreconditionFailed);
+        stale.Json["code"]!.GetValue<string>().ShouldBe("FCMS3105");
     }
 
     [Fact]

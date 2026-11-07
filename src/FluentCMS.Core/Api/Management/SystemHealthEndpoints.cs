@@ -20,7 +20,7 @@ internal static class SystemHealthEndpoints
         services.AddFluentCmsEndpoints(FluentCmsEndpointGroup.Management, Map);
 
     private static void Map(RouteGroupBuilder management) =>
-        management.MapGroup("/system").WithFluentCmsOperation(Origin.Api).MapGet("/health", GetAsync).Produces<HealthReportResponse>();
+        management.MapGroup("/system").WithFluentCmsOperation(Origin.Api).RequireManagementScope().MapGet("/health", GetAsync).Produces<HealthReportResponse>();
 
     private static async Task<IResult> GetAsync(HttpContext httpContext, [FromServices] IAuthorizationEvaluator evaluator, [FromServices] HealthCheckService health)
     {

@@ -264,6 +264,37 @@ public sealed class HttpProtectionTests : IAsyncDisposable
         method.Headers.Contains("Access-Control-Allow-Methods").ShouldBeFalse();
     }
 
+    // A front-end of a site other than the default names it in X-Cms-Site, which the browser asks about first.
+    [Theory]
+    [InlineData(DeliveryPath, "GET")]
+    [InlineData("/api/management/v1/echo", "POST")]
+    public async Task APreflightThatNamesTheSiteHeaderIsAnswered(string path, string method)
+    {
+        var client = await Start(Origins(delivery: "https://site.example.com", management: "https://site.example.com"));
+
+        using var preflight = await Preflight(client, path, "https://site.example.com", method, "X-Cms-Site, X-Cms-Locale");
+
+        preflight.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        preflight.Headers.GetValues("Access-Control-Allow-Origin").ShouldBe(["https://site.example.com"]);
+        AllowedHeaders(preflight).ShouldContain("x-cms-site");
+        AllowedHeaders(preflight).ShouldContain("x-cms-locale");
+    }
+
+    // An admin application reads where a 201 put the entry.
+    [Fact]
+    public async Task ABrowserMayReadTheLocationOfAResponse()
+    {
+        var client = await Start(Origins(delivery: "https://site.example.com", management: "https://admin.example.com"));
+
+        using var management = await Send(client, ManagementPath, ("Origin", "https://admin.example.com"));
+        using var delivery = await Send(client, DeliveryPath, ("Origin", "https://site.example.com"));
+
+        foreach (var response in new[] { management, delivery })
+        {
+            response.Headers.GetValues("Access-Control-Expose-Headers").Single().Split(',').Select(name => name.Trim()).ShouldContain("Location");
+        }
+    }
+
     [Fact]
     public async Task ARateLimitedResponseStillCarriesCorsHeadersSoTheBrowserCanReadIt()
     {
@@ -298,6 +329,30 @@ public sealed class HttpProtectionTests : IAsyncDisposable
 
         response.Headers.GetValues("X-Content-Type-Options").ShouldBe(["nosniff"]);
         response.Headers.GetValues("Referrer-Policy").ShouldBe(["no-referrer"]);
+    }
+
+    // Only Delivery answers for shared caches; a key's secret or /me must not be kept by a browser or a proxy.
+    [Fact]
+    public async Task AResponseOtherThanDeliveryThatSaysNothingOfCachingIsNotStored()
+    {
+        var client = await Start();
+
+        foreach (var path in new[] { ManagementPath, ConnectPath, AccountPath, "/health/probe", "/.well-known/probe" })
+        {
+            using var response = await Send(client, path);
+
+            response.StatusCode.ShouldBe(HttpStatusCode.OK, path);
+            response.Headers.CacheControl!.NoStore.ShouldBeTrue(path);
+        }
+
+        using var delivery = await Send(client, DeliveryPath);
+        using var own = await Send(client, "/api/management/v1/cached");
+        using var host = await Send(client, "/host");
+
+        delivery.Headers.CacheControl.ShouldBeNull();
+        own.Headers.CacheControl!.NoStore.ShouldBeFalse();
+        own.Headers.CacheControl.MaxAge.ShouldBe(TimeSpan.FromSeconds(5));
+        host.Headers.CacheControl.ShouldBeNull();
     }
 
     [Fact]
@@ -499,13 +554,21 @@ public sealed class HttpProtectionTests : IAsyncDisposable
         return client.SendAsync(request, Token);
     }
 
-    private static Task<HttpResponseMessage> Preflight(HttpClient client, string path, string origin, string method)
+    private static Task<HttpResponseMessage> Preflight(HttpClient client, string path, string origin, string method, string? headers = null)
     {
         var request = new HttpRequestMessage(HttpMethod.Options, path);
         request.Headers.Add("Origin", origin);
         request.Headers.Add("Access-Control-Request-Method", method);
+        if (headers is not null)
+        {
+            request.Headers.Add("Access-Control-Request-Headers", headers);
+        }
+
         return client.SendAsync(request, Token);
     }
+
+    private static string[] AllowedHeaders(HttpResponseMessage response) =>
+        [.. response.Headers.GetValues("Access-Control-Allow-Headers").SelectMany(value => value.Split(',')).Select(name => name.Trim().ToLowerInvariant())];
 
     internal static Task<HttpResponseMessage> Post(HttpClient client, string body, bool chunked)
     {
@@ -529,6 +592,11 @@ public sealed class HttpProtectionTests : IAsyncDisposable
                     builder.Services.AddFluentCmsEndpoints(group, routes =>
                     {
                         routes.MapGet("/probe", () => "ok");
+                        routes.MapGet("/cached", (HttpContext context) =>
+                        {
+                            context.Response.Headers.CacheControl = "private, max-age=5";
+                            return "ok";
+                        });
                         routes.MapGet("/boom", IResult () => throw new InvalidOperationException("boom"));
                         routes.MapPost("/echo", async (HttpRequest request) =>
                         {

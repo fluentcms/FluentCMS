@@ -10,5 +10,6 @@ internal static class ApiErrorCodes
     public const string NotFound = "FCMS3104";
     public const string VersionConflict = "FCMS3105";
     public const string Unavailable = "FCMS3106";
+    public const string UnsupportedMediaType = "FCMS3107";
     public const string InternalError = "FCMS3199";
 }

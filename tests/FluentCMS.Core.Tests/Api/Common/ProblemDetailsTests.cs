@@ -52,6 +52,7 @@ public sealed class ProblemDetailsTests : IAsyncLifetime
         ["hook-engine"] = () => new HookRejectedException("FCMS2405", "A hook changed the draft being published."),
         ["rich-text"] = () => new RichTextValidationException([new RichTextValidationError("content[0]", "Unknown node.")]),
         ["bad-request"] = () => new BadHttpRequestException("The JSON is not valid.", StatusCodes.Status400BadRequest),
+        ["media-type"] = () => new BadHttpRequestException("The body must be application/json.", StatusCodes.Status415UnsupportedMediaType),
         ["unexpected"] = () => new InvalidOperationException("connection string password=hunter2"),
     };
 
@@ -104,6 +105,7 @@ public sealed class ProblemDetailsTests : IAsyncLifetime
     [InlineData("hook-engine", 409, "FCMS2405")]
     [InlineData("rich-text", 422, "FCMS2100")]
     [InlineData("bad-request", 400, "FCMS3101")]
+    [InlineData("media-type", 415, "FCMS3107")]
     [InlineData("unexpected", 500, "FCMS3199")]
     public async Task AnExceptionBecomesItsStatusAndCode(string name, int status, string code)
     {
