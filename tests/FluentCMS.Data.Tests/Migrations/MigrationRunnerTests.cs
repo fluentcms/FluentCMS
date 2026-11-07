@@ -125,7 +125,7 @@ public sealed class MigrationRunnerTests : IDisposable
 
         var exception = await Should.ThrowAsync<FluentCmsConfigurationException>(() => host.StartAsync(Token));
 
-        exception.Message.ShouldBe("FCMS1301: table cms_article is missing; run 'fluentcms migrate'");
+        exception.Message.ShouldBe("FCMS1301: table cms_article is missing; set FluentCms:Database:MigrateOnStartup to true to apply the pending migrations");
     }
 
     [Fact]
@@ -137,7 +137,7 @@ public sealed class MigrationRunnerTests : IDisposable
         var exception = await Should.ThrowAsync<FluentCmsConfigurationException>(() => host.StartAsync(Token));
 
         exception.Code.ShouldBe("FCMS1305");
-        exception.Message.ShouldBe($"FCMS1305: stream system has not applied {string.Join(", ", pending.Select(migration => migration.Id))}; run 'fluentcms migrate'");
+        exception.Message.ShouldBe($"FCMS1305: stream system has not applied {string.Join(", ", pending.Select(migration => migration.Id))}; set FluentCms:Database:MigrateOnStartup to true to apply the pending migrations");
     }
 
     [Fact]
@@ -149,7 +149,7 @@ public sealed class MigrationRunnerTests : IDisposable
 
         var exception = await Should.ThrowAsync<FluentCmsConfigurationException>(() => host.StartAsync(Token));
 
-        exception.Message.ShouldBe($"FCMS1305: stream {DemoPlugin.PluginName} has not applied {DemoPlugin.MigrationId}; run 'fluentcms migrate'");
+        exception.Message.ShouldBe($"FCMS1305: stream {DemoPlugin.PluginName} has not applied {DemoPlugin.MigrationId}; set FluentCms:Database:MigrateOnStartup to true to apply the pending migrations");
     }
 
     [Fact]
@@ -274,12 +274,5 @@ public sealed class MigrationRunnerTests : IDisposable
         }
     }
 
-    private void AddDemoPlugin(IServiceCollection services)
-    {
-        services.AddDbContext<DemoPluginDbContext>(options =>
-            options.UseSqlite(_database.ConnectionString, sqlite => sqlite
-                .MigrationsAssembly(typeof(DemoPluginDbContext).Assembly)
-                .MigrationsHistoryTable(DemoPlugin.HistoryTable)));
-        services.AddSingleton<IPluginMigrations, DemoPlugin>();
-    }
+    private void AddDemoPlugin(IServiceCollection services) => DemoPlugin.Add(services, _database.ConnectionString);
 }

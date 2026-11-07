@@ -208,6 +208,31 @@ public sealed class SchemaSyncTests : IDisposable
     }
 
     [Fact]
+    public async Task APluginsTableIsNotAStaleContentTableAndTheSyncIsRecorded()
+    {
+        var logs = new ListLoggerProvider();
+        using var host = _database.CreateHost(ArticleSchemas.Titled, Environments.Development, services: services =>
+        {
+            DemoPlugin.Add(services, _database.ConnectionString);
+            services.AddSingleton<ILoggerProvider>(logs);
+        });
+
+        await host.StartAsync(Token);
+
+        _database.Tables().ShouldContain(DemoPlugin.Table);
+        _database.ReadStrings($"select MigrationId from {DemoPlugin.HistoryTable}").ShouldBe([DemoPlugin.MigrationId]);
+        _database.ReadStrings("select hash from cms_schema_history").ShouldHaveSingleItem();
+        logs.Messages.ShouldNotContain(message => message.Contains($"drop table {DemoPlugin.Table}", StringComparison.Ordinal));
+
+        var report = await Runner(host).SyncContentSchemaAsync(ArticleSchemas.WithSubtitle, Token);
+
+        report.Applied.ShouldBe(["add column subtitle to table cms_article"]);
+        report.NotApplied.ShouldBeEmpty();
+        _database.ReadStrings("select hash from cms_schema_history").Count.ShouldBe(2);
+        await host.StopAsync(Token);
+    }
+
+    [Fact]
     public async Task SyncingTwiceAppliesNothingTheSecondTime()
     {
         using var host = DevelopmentHost(ArticleSchemas.Titled);

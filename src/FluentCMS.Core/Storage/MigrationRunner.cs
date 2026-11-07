@@ -1,4 +1,5 @@
 using FluentCMS.Core.DependencyInjection;
+using FluentCMS.Core.Plugins;
 using FluentCMS.Schema;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -19,7 +20,7 @@ public sealed record StreamMigration(string Stream, string Id);
 public sealed record SchemaSyncReport(IReadOnlyList<string> Applied, IReadOnlyList<string> NotApplied);
 
 // Applies the streams in the order system, plugins, content. MigrationStartupService calls it at startup, and
-// `fluentcms migrate` and `migrate --check` of M6 call MigrateAsync and GetPendingMigrationsAsync.
+// `fluentcms migrate` and `migrate --check` of M6 will call MigrateAsync and GetPendingMigrationsAsync.
 public sealed class MigrationRunner(
     IServiceScopeFactory scopes,
     IDataProvider provider,
@@ -33,23 +34,30 @@ public sealed class MigrationRunner(
     public const string SystemStream = "system";
     public const string ContentStream = "content";
 
+    private const string ApplyPending = $"set {DatabaseOptions.MigrateOnStartupKey} to true to apply the pending migrations";
+
     private static readonly Stream System = new(SystemStream, services => services.GetRequiredService<SystemDbContext>());
     private static readonly Stream Content = new(ContentStream, services => services.GetRequiredService<CmsDbContext>());
 
     private readonly SchemaHistory _history = new(scopes, time ?? TimeProvider.System, logger);
 
-    private IEnumerable<Stream> SystemAndPlugins =>
-        [System, .. plugins.Select(plugin => new Stream(plugin.Name, plugin.ResolveContext))];
+    private IEnumerable<Stream> Plugins => plugins.Select(plugin => new Stream(plugin.Name, plugin.ResolveContext));
+
+    private IEnumerable<Stream> SystemAndPlugins => [System, .. Plugins];
 
     public async Task RunAtStartupAsync(CancellationToken cancellationToken = default)
     {
         var options = ResolveOptions();
 
+        // Schema sync leaves the content stream out, so a host may sync on SQLite with content migrations of its server provider.
+        var sync = options.MigrateOnStartup && options.SchemaSync == SchemaSyncMode.Auto;
+        await RefuseForeignMigrationsAsync(sync ? Plugins : [.. Plugins, Content], cancellationToken);
+
         if (options.MigrateOnStartup)
         {
             await ApplyAsync(SystemAndPlugins, cancellationToken);
 
-            if (options.SchemaSync == SchemaSyncMode.Auto)
+            if (sync)
             {
                 var report = await SyncAsync(schema, cancellationToken);
                 if (report.NotApplied.Count > 0)
@@ -74,11 +82,12 @@ public sealed class MigrationRunner(
     // Whatever FluentCms:Database:MigrateOnStartup says.
     public async Task<IReadOnlyList<StreamMigration>> MigrateAsync(CancellationToken cancellationToken = default)
     {
+        await RefuseForeignMigrationsAsync([.. Plugins, Content], cancellationToken);
         var applied = await ApplyAsync([.. SystemAndPlugins, Content], cancellationToken);
 
         // A database that lacks a column of the schema has not been brought up to it, so the history keeps its old row.
         await using var scope = scopes.CreateAsyncScope();
-        var diff = await ContentSchemaDiff.CompareAsync(scope.ServiceProvider.GetRequiredService<CmsDbContext>(), provider.SchemaReader, cancellationToken);
+        var diff = await ContentSchemaDiff.CompareAsync(scope.ServiceProvider.GetRequiredService<CmsDbContext>(), provider.SchemaReader, PluginTablePrefixes(scope.ServiceProvider), cancellationToken);
         if (diff.Missing.Count == 0)
         {
             await _history.RecordAsync(schema, cancellationToken);
@@ -110,7 +119,7 @@ public sealed class MigrationRunner(
         await using var scope = scopes.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
 
-        var diff = await ContentSchemaDiff.CompareAsync(context, provider.SchemaReader, cancellationToken);
+        var diff = await ContentSchemaDiff.CompareAsync(context, provider.SchemaReader, PluginTablePrefixes(scope.ServiceProvider), cancellationToken);
         if (diff.Missing.Count == 0)
         {
             return;
@@ -118,9 +127,9 @@ public sealed class MigrationRunner(
 
         // A migration that exists only needs applying, which is what FluentCms:Database:MigrateOnStartup = false leaves to do.
         var pending = await context.Database.GetPendingMigrationsAsync(cancellationToken);
-        var fix = pending.Any() ? "fluentcms migrate" : $"fluentcms migrations add {diff.SuggestedMigrationName}";
+        var fix = pending.Any() ? ApplyPending : $"run 'fluentcms migrations add {diff.SuggestedMigrationName}'";
 
-        throw new FluentCmsConfigurationException(StorageErrorCodes.MissingContentSchema, $"{string.Join("; ", diff.Missing)}; run '{fix}'");
+        throw new FluentCmsConfigurationException(StorageErrorCodes.MissingContentSchema, $"{string.Join("; ", diff.Missing)}; {fix}");
     }
 
     private DatabaseStartup ResolveOptions() => DatabaseStartup.Resolve(provider, databaseOptions?.Value, environment, logger);
@@ -139,8 +148,38 @@ public sealed class MigrationRunner(
             .GroupBy(migration => migration.Stream)
             .Select(stream => $"stream {stream.Key} has not applied {string.Join(", ", stream.Select(migration => migration.Id))}");
 
-        throw new FluentCmsConfigurationException(StorageErrorCodes.PendingStreamMigrations, $"{string.Join("; ", streams)}; run 'fluentcms migrate'");
+        throw new FluentCmsConfigurationException(StorageErrorCodes.PendingStreamMigrations, $"{string.Join("; ", streams)}; {ApplyPending}");
     }
+
+    // EF would apply a set scaffolded for another provider with that provider's store types, and startup validation compares
+    // names only, so a switch of provider would go unnoticed. The system stream comes with the provider package.
+    private async Task RefuseForeignMigrationsAsync(IEnumerable<Stream> streams, CancellationToken cancellationToken)
+    {
+        var foreign = new List<string>();
+        foreach (var stream in streams)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await using var scope = scopes.CreateAsyncScope();
+            if (MigrationProviders.ForeignTo(stream.ResolveContext(scope.ServiceProvider)) is { } other)
+            {
+                foreign.Add($"stream {stream.Name} was scaffolded for {other}");
+            }
+        }
+
+        if (foreign.Count > 0)
+        {
+            throw new FluentCmsConfigurationException(
+                StorageErrorCodes.ForeignMigrations,
+                $"{string.Join("; ", foreign)}; this host runs {provider.Name}, and a migration set applies only to the provider it was scaffolded for");
+        }
+    }
+
+    // Every plugin's tables belong to its own stream: the plugins of the plugin host and the streams registered through the seam.
+    private List<string> PluginTablePrefixes(IServiceProvider services) =>
+        [.. plugins.Select(plugin => plugin.Name)
+            .Concat(services.GetService<PluginRegistry>()?.Plugins.Select(plugin => plugin.Name) ?? [])
+            .Distinct(StringComparer.Ordinal)
+            .Select(PluginStorage.TablePrefixOf)];
 
     private async Task<IReadOnlyList<StreamMigration>> GetPendingAsync(IEnumerable<Stream> streams, CancellationToken cancellationToken)
     {
@@ -180,9 +219,11 @@ public sealed class MigrationRunner(
 
     private async Task<SchemaSyncReport> SyncAsync(SchemaModel target, CancellationToken cancellationToken)
     {
-        await using var context = ContentMigrations.CreateContext(provider, target, typeof(CmsDbContext).Assembly);
+        // The host's context for the target schema, so that its model maps the plugins' tables as the host's does.
+        await using var scope = scopes.CreateAsyncScope();
+        await using var context = new CmsDbContext(scope.ServiceProvider.GetRequiredService<DbContextOptions<CmsDbContext>>().WithSchema(target));
 
-        var diff = await ContentSchemaDiff.CompareAsync(context, provider.SchemaReader, cancellationToken);
+        var diff = await ContentSchemaDiff.CompareAsync(context, provider.SchemaReader, PluginTablePrefixes(scope.ServiceProvider), cancellationToken);
         if (diff.Additive.Count > 0)
         {
             var commands = context.GetService<IMigrationsSqlGenerator>().Generate(diff.Additive, context.GetService<IDesignTimeModel>().Model);
