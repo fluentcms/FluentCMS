@@ -83,6 +83,8 @@ internal sealed class SuperAdminGuard(
             {
                 if (await AnyAsync(roles, beside: null, cancellationToken) && !await AnyAsync(roles, beside: role.Id, cancellationToken))
                 {
+                    // What the edit staged must not reach a later save of the same scope.
+                    roles.ChangeTracker.Clear();
                     return true;
                 }
 
