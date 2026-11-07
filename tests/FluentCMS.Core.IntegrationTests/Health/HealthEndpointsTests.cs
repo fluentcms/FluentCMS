@@ -1,3 +1,4 @@
+using System.Data.Common;
 using System.Net;
 using System.Text.Json.Nodes;
 using FluentCMS.Content;
@@ -11,6 +12,7 @@ using FluentCMS.Sites;
 using FluentCMS.Testing;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Shouldly;
@@ -41,6 +43,32 @@ public sealed class HealthEndpointsTests : IAsyncDisposable
             response.StatusCode.ShouldBe(HttpStatusCode.OK);
             (await response.Content.ReadAsStringAsync(Token)).ShouldBe("Healthy");
         }
+    }
+
+    [Fact]
+    public async Task AKeySentToTheProbesIsNeverLookedUp()
+    {
+        var lookups = new KeyLookups();
+        await using var host = new FluentCmsTestHost()
+            .WithContentTypes<Note>()
+            .Configure(cms => cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(lookups)));
+        using var client = host.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Api-Key", ApiKeyFormat.Generate(Core.Identity.ApiKeys.ApiKeyClass.Delivery));
+
+        foreach (var path in new[] { "/health/live", "/health/ready" })
+        {
+            using var response = await client.GetAsync(new Uri(path, UriKind.Relative), Token);
+
+            response.StatusCode.ShouldBe(HttpStatusCode.OK);
+            (await response.Content.ReadAsStringAsync(Token)).ShouldBe("Healthy");
+        }
+
+        lookups.Count.ShouldBe(0);
+
+        // The same key on another route is looked up, so the count sees a lookup when there is one.
+        using var refused = await client.GetAsync(new Uri(Detailed, UriKind.Relative), Token);
+        refused.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        lookups.Count.ShouldBeGreaterThan(0);
     }
 
     [Fact]
@@ -202,5 +230,33 @@ public sealed class HealthEndpointsTests : IAsyncDisposable
     {
         public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default) =>
             throw new InvalidOperationException("Server=db.internal;Password=hunter2;");
+    }
+
+    // Counts the queries of the API key table, which is what an API key lookup reads.
+    private sealed class KeyLookups : DbCommandInterceptor
+    {
+        private int _count;
+
+        public int Count => Volatile.Read(ref _count);
+
+        public override InterceptionResult<DbDataReader> ReaderExecuting(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result)
+        {
+            Record(command);
+            return base.ReaderExecuting(command, eventData, result);
+        }
+
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
+        {
+            Record(command);
+            return base.ReaderExecutingAsync(command, eventData, result, cancellationToken);
+        }
+
+        private void Record(DbCommand command)
+        {
+            if (command.CommandText.Contains("\"cms_api_key\"", StringComparison.Ordinal))
+            {
+                Interlocked.Increment(ref _count);
+            }
+        }
     }
 }

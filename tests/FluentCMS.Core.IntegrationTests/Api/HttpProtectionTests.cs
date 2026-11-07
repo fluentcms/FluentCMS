@@ -156,17 +156,41 @@ public sealed class HttpProtectionTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task TheHealthGroupIsNotRateLimited()
+    public async Task TheHealthGroupHasNoPolicyOfTheApiAndALimitOfItsOwn()
     {
-        var client = await Start(Limits(delivery: 1, auth: 1, management: 1));
+        var settings = Limits(delivery: 1, auth: 1, management: 1);
+        settings["FluentCms:RateLimits:Health:PermitLimit"] = "5";
+        var client = await Start(settings);
 
+        (await Status(client, DeliveryPath, ("X-Test-Ip", "10.0.0.1"))).ShouldBe(HttpStatusCode.OK);
         for (var request = 0; request < 5; request++)
         {
-            using var response = await Send(client, "/health/probe");
+            using var response = await Send(client, "/health/probe", ("X-Test-Ip", "10.0.0.1"));
 
             response.StatusCode.ShouldBe(HttpStatusCode.OK);
             response.Headers.Contains("RateLimit-Limit").ShouldBeFalse();
         }
+
+        using var refused = await Send(client, "/health/probe", ("X-Test-Ip", "10.0.0.1"));
+
+        refused.StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
+        (await Problem(refused)).GetProperty("code").GetString().ShouldBe("FCMS3110");
+        Seconds(refused, "Retry-After").ShouldBeInRange(1, 60);
+        (await Status(client, "/health/probe", ("X-Test-Ip", "10.0.0.2"))).ShouldBe(HttpStatusCode.OK);
+    }
+
+    // Three probes a second, every second for a minute, from one address: more than an orchestrator sends one instance.
+    [Fact]
+    public async Task TheDefaultHealthLimitLeavesAnOrchestratorsProbesAlone()
+    {
+        var client = await Start();
+
+        for (var request = 0; request < 180; request++)
+        {
+            (await Status(client, "/health/probe", ("X-Test-Ip", "10.0.0.1"))).ShouldBe(HttpStatusCode.OK);
+        }
+
+        _app!.Services.GetRequiredService<RateLimitOptions>().Health.PermitLimit.ShouldBeGreaterThanOrEqualTo(600);
     }
 
     [Fact]

@@ -3,6 +3,7 @@ using FluentCMS.Content;
 using FluentCMS.Plugins.Sample;
 using FluentCMS.Schema;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
@@ -161,6 +162,12 @@ public sealed class RoutedPlugin : IPlugin
     {
         var group = Management ? app.MapManagement(Prefix) : app.MapGroup(Prefix);
         group.MapGet("/ping", () => "pong");
+
+        // Each way an endpoint ends up a plain RequestDelegate: cast, bound by overload resolution, and given to Map.
+        group.MapGet("/raw", (RequestDelegate)(context => context.Response.WriteAsync("raw")));
+        group.MapGet("/context", (HttpContext context) => context.Response.WriteAsync("context"));
+        group.Map("/mapped", context => context.Response.WriteAsync("mapped"));
+        group.MapGet("/open", (HttpContext context) => context.Response.WriteAsync("open")).AllowAnonymous();
     }
 }
 

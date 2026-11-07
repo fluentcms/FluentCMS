@@ -176,17 +176,53 @@ public sealed class HttpProtectionHardeningTests : IAsyncDisposable
         (await Status(client, path, ("X-Test-Ip", "10.0.0.1"))).ShouldBe(HttpStatusCode.TooManyRequests);
     }
 
+    // The host's own endpoints are its concern, and the probes count in their own partition, so a used-up coarse limit
+    // takes neither out of service.
     [Fact]
-    public async Task TheCoarseLimitLeavesHealthAndTheHostsOwnEndpointsAlone()
+    public async Task TheCoarseLimitLeavesTheHostsOwnEndpointsAloneAndHealthCountsApart()
     {
         var settings = Coarse(1);
         var client = await Start(settings);
 
+        (await Status(client, DeliveryPath)).ShouldBe(HttpStatusCode.OK);
+        (await Status(client, DeliveryPath)).ShouldBe(HttpStatusCode.TooManyRequests);
         for (var request = 0; request < 4; request++)
         {
             (await Status(client, "/health/probe")).ShouldBe(HttpStatusCode.OK);
             (await Status(client, "/host")).ShouldBe(HttpStatusCode.OK);
         }
+    }
+
+    // A flood of probes, with a key each, is cut before authentication runs, and the API from that address is not.
+    [Fact]
+    public async Task AFloodOfProbesIsCutByTheirOwnLimitBeforeAuthentication()
+    {
+        var settings = Coarse(100);
+        settings["FluentCms:RateLimits:Health:PermitLimit"] = "2";
+        var client = await Start(settings);
+        var calls = _app!.Services.GetRequiredService<AuthCalls>();
+
+        (await Status(client, "/health/probe", ("X-Test-Ip", "10.0.0.1"))).ShouldBe(HttpStatusCode.OK);
+        (await Status(client, "/health/unknown", ("X-Test-Ip", "10.0.0.1"))).ShouldBe(HttpStatusCode.NotFound);
+        var before = calls.Count;
+        using var refused = await Send(client, "/health/probe", ("X-Test-Ip", "10.0.0.1"), ("X-Test-Sub", "key-a"));
+
+        refused.StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
+        (await Problem(refused)).GetProperty("code").GetString().ShouldBe("FCMS3110");
+        calls.Count.ShouldBe(before);
+        (await Status(client, DeliveryPath, ("X-Test-Ip", "10.0.0.1"))).ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task AHealthLimitBelowOneStopsTheHost()
+    {
+        var settings = Coarse(10);
+        settings["FluentCms:RateLimits:Health:PermitLimit"] = "0";
+
+        var exception = await Should.ThrowAsync<FluentCmsConfigurationException>(() => Start(settings));
+
+        exception.Code.ShouldBe("FCMS1101");
+        exception.Message.ShouldContain("FluentCms:RateLimits:Health:PermitLimit");
     }
 
     [Fact]

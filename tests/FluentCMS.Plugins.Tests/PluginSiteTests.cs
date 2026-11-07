@@ -50,6 +50,26 @@ public sealed class PluginSiteTests
         (await host.Services.GetRequiredService<IPluginState>().IsEnabledAsync("sample", new SiteId(docs), Token)).ShouldBeTrue();
     }
 
+    // The caller is checked before the plugin's state, so an anonymous caller learns nothing of where the plugin is off.
+    [Fact]
+    public async Task AnAnonymousCallerIsRefusedBeforeTheDisabledPluginAnswers404()
+    {
+        await using var host = new FluentCmsTestHost();
+        var docs = await CreateSiteAsync(host);
+        using var admin = await AdminAsync(host);
+        (await SetStatusAsync(admin, docs, enabled: false)).ShouldBe(HttpStatusCode.OK);
+        using var anonymous = host.CreateClient();
+
+        using var greeting = await SendAsync(anonymous, HttpMethod.Get, "/sample/greeting", docs);
+        using var banner = await SendAsync(anonymous, HttpMethod.Get, "/sample/banner", docs);
+
+        greeting.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        (await CodeAsync(greeting)).ShouldBe("FCMS3102");
+        banner.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        (await CodeAsync(banner)).ShouldBe("FCMS1550");
+        (await StatusAsync(anonymous, "/sample/banner", DefaultSite.Id)).ShouldBe(HttpStatusCode.OK);
+    }
+
     [Fact]
     public async Task InTheDisabledSiteItsHooksHandlersAndJobsDoNotRunWhileOtherSitesAreUnaffected()
     {
@@ -140,7 +160,7 @@ public sealed class PluginSiteTests
         Strings(contributions["permissions"]!).ShouldBe([SamplePermissions.NotesManage]);
         Strings(contributions["jobs"]!).ShouldBe([SampleNoteJob.Type]);
         contributions["endpoints"]!.AsArray().Select(endpoint => $"{endpoint!["method"]!.GetValue<string>()} {endpoint["route"]!.GetValue<string>()}")
-            .ShouldBe(["GET /api/management/v1/sample/notes", "POST /api/management/v1/sample/notes", "GET /sample/greeting"]);
+            .ShouldBe(["GET /api/management/v1/sample/notes", "POST /api/management/v1/sample/notes", "GET /sample/banner", "GET /sample/greeting"]);
         sample["sites"]!.AsArray().Select(site => (site!["siteId"]!.GetValue<Guid>(), site["slug"]!.GetValue<string>(), site["enabled"]!.GetValue<bool>()))
             .ShouldBe([(DefaultSite.Id, DefaultSite.Slug, true), (docs, "docs", false)]);
 

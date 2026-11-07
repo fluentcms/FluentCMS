@@ -9,9 +9,12 @@ public sealed record SampleNoteRequest(string Text);
 
 public static class SampleEndpoints
 {
+    // The greeting needs a signed-in caller, as every endpoint of the group does by default. The banner is public on purpose,
+    // as a media plugin's Delivery route is, so it says so.
     public static RouteGroupBuilder MapSampleEndpoints(this RouteGroupBuilder group)
     {
         group.MapGet("/greeting", (SampleGreeting greeting) => Results.Ok(new { text = greeting.Text }));
+        group.MapGet("/banner", (SampleGreeting greeting) => Results.Ok(new { text = greeting.Text })).AllowAnonymous();
         return group;
     }
 
