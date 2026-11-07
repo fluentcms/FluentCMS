@@ -1,4 +1,6 @@
 using System.Collections.Frozen;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using FluentCMS.Schema;
 
@@ -47,6 +49,14 @@ internal static class StorageNames
 
     public const int LocaleLength = 16;
 
+    // PostgreSQL keeps the first 63 bytes of an identifier and drops the rest without a word; SQL Server allows 128.
+    public const int MaxIdentifierLength = 63;
+
+    // Type names and field paths are stored in the name columns of cms_document, cms_reference and cms_activity.
+    public const int NameLength = 64;
+
+    private const int HashLength = 8;
+
     // Columns every content table has, and the one a locale table adds.
     public static readonly FrozenSet<string> SystemColumns = new[] { Id, DocumentId, SiteId, State }.ToFrozenSet(StringComparer.Ordinal);
 
@@ -89,4 +99,17 @@ internal static class StorageNames
     public static string LocaleTable(string typeName) => Table(typeName) + "_i18n";
 
     public static string Column(string name) => JsonNamingPolicy.SnakeCaseLower.ConvertName(name);
+
+    // As EF shortens the names it makes, but with a hash of the whole name in place of a counter, so that the result
+    // does not depend on the order of the model and two long names with the same start stay apart. Names are ASCII.
+    public static string Identifier(string name)
+    {
+        if (name.Length <= MaxIdentifierLength)
+        {
+            return name;
+        }
+
+        var hash = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(name)))[..HashLength];
+        return $"{name[..(MaxIdentifierLength - HashLength - 1)].TrimEnd('_')}_{hash}";
+    }
 }

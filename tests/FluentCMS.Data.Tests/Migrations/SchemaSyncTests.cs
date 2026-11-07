@@ -99,7 +99,7 @@ public sealed class SchemaSyncTests : IDisposable
 
         _database.Tables().ShouldContain("cms_tag");
         _database.ReadStrings("select name from sqlite_master where type = 'index' and name = 'ix_cms_article_title'").ShouldHaveSingleItem();
-        _database.ReadStrings("select sql from sqlite_master where name = 'ux_cms_tag_name'").ShouldHaveSingleItem().ShouldEndWith("WHERE state = 1");
+        _database.ReadStrings("select sql from sqlite_master where name = 'ux_cms_tag_name'").ShouldHaveSingleItem().ShouldEndWith("WHERE state = 1 AND \"name\" IS NOT NULL");
     }
 
     [Fact]
