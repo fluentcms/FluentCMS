@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Data.Common;
 using FluentCMS.Content;
 using FluentCMS.Core.Events;
@@ -70,8 +71,9 @@ public sealed class OutboxFailureTests
         }
     }
 
-    // The cut-off of a delivery is armed before the thread pool runs the handler, so on a busy machine it can use up an
-    // attempt whose handler never ran. This holds each cut-off until the handler of every attempt started has been called.
+    // The cut-off of a delivery is armed before the thread pool runs the handler, so on a busy machine it can come before the
+    // handler starts, which puts the delivery back. This holds each cut-off until the handler of every attempt started has
+    // been called, so that every cut-off is of a handler that ran too long.
     private sealed class CutOffAfterTheCall(TimeSpan cutOff, Func<bool> called) : TimeProvider
     {
         public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
@@ -100,6 +102,39 @@ public sealed class OutboxFailureTests
             }, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
             timer.Change(dueTime, period);
             return timer;
+        }
+    }
+
+    // Holds back every work item the drain hands off, as a starved thread pool would, until the test lets them all run late.
+    private sealed class HeldHandOffs
+    {
+        private readonly TaskCompletionSource _gate = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource _handed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly ConcurrentQueue<Task> _late = new();
+
+        public int Count => _late.Count;
+
+        public Task Handed => _handed.Task;
+
+        public Task HandOff(Func<Task> work)
+        {
+            var late = RunAsync(work);
+            _late.Enqueue(late);
+            _handed.TrySetResult();
+            return late;
+        }
+
+        // Fails with what any work item threw, which no one would otherwise observe.
+        public Task RunLateAsync()
+        {
+            _gate.SetResult();
+            return Task.WhenAll(_late);
+        }
+
+        private async Task RunAsync(Func<Task> work)
+        {
+            await _gate.Task;
+            await work();
         }
     }
 
@@ -311,6 +346,7 @@ public sealed class OutboxFailureTests
         var seen = new Seen();
         seen.Behavior = (_, _) => new TaskCompletionSource().Task;
         var starts = new AttemptStarts();
+        var logs = new RecordingLogs();
         var cutOff = TimeSpan.FromMilliseconds(150);
         using var database = new ServiceDatabase(EventRegistrations.With(seen, Fast(cms =>
         {
@@ -319,6 +355,7 @@ public sealed class OutboxFailureTests
             cms.Events.Outbox.MaxAttempts = 2;
             cms.Services.AddSingleton<TimeProvider>(new CutOffAfterTheCall(cutOff, () => seen.Deliveries.Count >= starts.Count));
             cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(starts));
+            cms.Services.AddSingleton<ILoggerProvider>(logs);
         })));
         await database.CreateAsync(Editor, Titled("T"));
 
@@ -331,6 +368,109 @@ public sealed class OutboxFailureTests
         row.Status.ShouldBe(OutboxStatus.Failed);
         row.Attempts.ShouldBe(2);
         row.LastError!.ShouldContain("did not finish");
+        logs.Count("DeliveryAbandoned").ShouldBe(2);
+        logs.Count("HandOffAbandoned").ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task AHandlerTheCutOffComesBeforeUsesNoAttemptAndIsDeliveredOnTheNextDrain()
+    {
+        var seen = new Seen();
+        var logs = new RecordingLogs();
+        using var database = new ServiceDatabase(EventRegistrations.With(seen, Fast(cms =>
+        {
+            cms.Events.Outbox.DeliveryTimeout = TimeSpan.FromMilliseconds(50);
+            cms.Services.AddSingleton<ILoggerProvider>(logs);
+        })));
+        await database.CreateAsync(Editor, Titled("T"));
+        var drainer = database.Database.Services.GetRequiredService<OutboxDrainer>();
+        var held = new HeldHandOffs();
+        drainer.HandOff = held.HandOff;
+
+        (await drainer.DrainAsync(Token)).ShouldBe(0);
+
+        held.Count.ShouldBe(1);
+        logs.Count("HandOffAbandoned").ShouldBe(1);
+        logs.Count("DeliveryAbandoned").ShouldBe(0);
+        logs.Count("DeliveryFailed").ShouldBe(0);
+        var row = database.Rows().Single();
+        row.Status.ShouldBe(OutboxStatus.Pending);
+        row.Attempts.ShouldBe(0);
+        row.LeaseOwner.ShouldBeNull();
+        row.LastError.ShouldBeNull();
+
+        // The work item that starts late finds its hand-off abandoned and returns, without calling the handler.
+        await held.RunLateAsync();
+        seen.Deliveries.ShouldBeEmpty();
+
+        // Inline, so that the handler starts before its cut-off is armed.
+        drainer.HandOff = work => work();
+        (await drainer.DrainAsync(Token)).ShouldBe(1);
+
+        seen.Deliveries.ShouldHaveSingleItem().Attempt.ShouldBe(1);
+        database.Rows().Single().Status.ShouldBe(OutboxStatus.Delivered);
+    }
+
+    [Fact]
+    public async Task HandOffsThatNeverStartNeverUseUpTheAttempts()
+    {
+        var seen = new Seen();
+        var logs = new RecordingLogs();
+        using var database = new ServiceDatabase(EventRegistrations.With(seen, Fast(cms =>
+        {
+            cms.Events.Outbox.DeliveryTimeout = TimeSpan.FromMilliseconds(50);
+            cms.Events.Outbox.MaxAttempts = 1;
+            cms.Services.AddSingleton<ILoggerProvider>(logs);
+        })));
+        await database.CreateAsync(Editor, Titled("T"));
+        var drainer = database.Database.Services.GetRequiredService<OutboxDrainer>();
+        var held = new HeldHandOffs();
+        drainer.HandOff = held.HandOff;
+
+        for (var drain = 0; drain < 3; drain++)
+        {
+            (await drainer.DrainAsync(Token)).ShouldBe(0);
+        }
+
+        held.Count.ShouldBe(3);
+        logs.Count("HandOffAbandoned").ShouldBe(3);
+        logs.Count("DeliveryGaveUp").ShouldBe(0);
+        logs.Count("Exhausted").ShouldBe(0);
+        var row = database.Rows().Single();
+        row.Status.ShouldBe(OutboxStatus.Pending);
+        row.Attempts.ShouldBe(0);
+        row.LastError.ShouldBeNull();
+
+        await held.RunLateAsync();
+        seen.Deliveries.ShouldBeEmpty();
+
+        drainer.HandOff = work => work();
+        (await drainer.DrainAsync(Token)).ShouldBe(1);
+        seen.Deliveries.ShouldHaveSingleItem().Attempt.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task AHandOffTheHostStopsBeforeItStartsNeverCallsTheHandlerLate()
+    {
+        var seen = new Seen();
+        using var database = new ServiceDatabase(EventRegistrations.With(seen, Fast()));
+        await database.CreateAsync(Editor, Titled("T"));
+        var drainer = database.Database.Services.GetRequiredService<OutboxDrainer>();
+        var held = new HeldHandOffs();
+        drainer.HandOff = held.HandOff;
+        using var stopping = new CancellationTokenSource();
+
+        var drain = DrainWithAsync(database.Database.Services, stopping.Token);
+        await held.Handed.WaitAsync(TimeSpan.FromSeconds(30), Token);
+        await stopping.CancelAsync();
+        (await drain).ShouldBe(0);
+
+        await held.RunLateAsync();
+        seen.Deliveries.ShouldBeEmpty();
+        var row = database.Rows().Single();
+        row.Status.ShouldBe(OutboxStatus.Pending);
+        row.Attempts.ShouldBe(0);
+        row.LeaseOwner.ShouldBeNull();
     }
 
     [Fact]
