@@ -252,16 +252,11 @@ internal sealed class AuthorizationEvaluator(
 
     private async Task<List<EffectiveGrant>> GrantsAsync(OperationContext context, CancellationToken cancellationToken)
     {
-        List<Guid> ids = context.Principal.IsAnonymous
-            ? [await PublicRoleAsync(context, cancellationToken)]
-            : [.. await principalRoles.RolesOfAsync(context.Principal, cancellationToken)];
-
         // Stamps first: a role that changes between the two reads is then cached under its older stamp, and the next
         // request reloads it. The other order would keep the old grants under the new stamp.
-        var roles = await database.Set<Role>().AsNoTracking()
-            .Where(role => ids.Contains(role.Id))
-            .Select(role => new { role.Id, role.PermissionsVersion, role.SiteId })
-            .ToListAsync(cancellationToken);
+        var roles = context.Principal.IsAnonymous
+            ? await PublicRoleAsync(context.Site.Value, cancellationToken)
+            : await StampsAsync([.. await principalRoles.RolesOfAsync(context.Principal, cancellationToken)], cancellationToken);
 
         List<EffectiveGrant> grants = [];
         List<Guid> staleIds = [];
@@ -297,15 +292,38 @@ internal sealed class AuthorizationEvaluator(
         return grants;
     }
 
-    // A site's own Public role, if it has one (#2691), and otherwise the seeded instance-wide one.
-    private async Task<Guid> PublicRoleAsync(OperationContext context, CancellationToken cancellationToken)
-    {
-        var site = context.Site.Value;
-        var own = await database.Set<Role>().AsNoTracking()
-            .Where(role => role.SiteId == site && role.Name == BuiltInRoles.PublicName)
-            .Select(role => (Guid?)role.Id)
-            .FirstOrDefaultAsync(cancellationToken);
+    private Task<List<RoleStamp>> StampsAsync(List<Guid> ids, CancellationToken cancellationToken) =>
+        database.Set<Role>().AsNoTracking()
+            .Where(role => ids.Contains(role.Id))
+            .Select(role => new RoleStamp(role.Id, role.PermissionsVersion, role.SiteId))
+            .ToListAsync(cancellationToken);
 
-        return own ?? BuiltInRoles.Public;
+    // A site's own Public role, if it has one (#2691), and otherwise the seeded instance-wide one. Which one it is stays
+    // known while its stamp does, so a warm request reads the stamp alone; a stamp that moved or a role that is gone looks
+    // again, in one query with the stamps.
+    private async Task<List<RoleStamp>> PublicRoleAsync(Guid site, CancellationToken cancellationToken)
+    {
+        if (cache.TryGetPublic(site, out var known))
+        {
+            var stamps = await StampsAsync([known.Role], cancellationToken);
+            if (stamps is [{ } stamp] && stamp.PermissionsVersion == known.Version)
+            {
+                return stamps;
+            }
+        }
+
+        var found = await database.Set<Role>().AsNoTracking()
+            .Where(role => (role.SiteId == site && role.Name == BuiltInRoles.PublicName) || role.Id == BuiltInRoles.Public)
+            .Select(role => new RoleStamp(role.Id, role.PermissionsVersion, role.SiteId))
+            .ToListAsync(cancellationToken);
+        if ((found.Find(role => role.SiteId == site) ?? found.Find(role => role.Id == BuiltInRoles.Public)) is not { } chosen)
+        {
+            return [];
+        }
+
+        cache.SetPublic(site, chosen.Id, chosen.PermissionsVersion);
+        return [chosen];
     }
+
+    private sealed record RoleStamp(Guid Id, long PermissionsVersion, Guid? SiteId);
 }

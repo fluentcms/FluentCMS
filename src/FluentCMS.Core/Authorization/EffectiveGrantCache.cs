@@ -3,10 +3,16 @@ using System.Collections.Concurrent;
 namespace FluentCMS.Core.Authorization;
 
 // The grants of a role at one permissions_version, across requests and without a shared cache between instances: every
-// request reads the stamps, so a change that another instance committed is seen on the next request.
+// request reads the stamps, so a change that another instance committed is seen on the next request. The Public role of
+// each site is kept the same way, with the stamp it had when it was found.
 internal sealed class EffectiveGrantCache
 {
     private readonly ConcurrentDictionary<Guid, (long Version, IReadOnlyList<EffectiveGrant> Grants)> _roles = new();
+    private readonly ConcurrentDictionary<Guid, (Guid Role, long Version)> _public = new();
+
+    public bool TryGetPublic(Guid site, out (Guid Role, long Version) role) => _public.TryGetValue(site, out role);
+
+    public void SetPublic(Guid site, Guid role, long version) => _public[site] = (role, version);
 
     public bool TryGet(Guid role, long version, out IReadOnlyList<EffectiveGrant> grants)
     {

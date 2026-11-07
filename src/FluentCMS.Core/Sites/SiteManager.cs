@@ -39,11 +39,13 @@ internal sealed record SiteLocaleChange
 }
 
 // What creating and deleting a site does to the rows around it, and the site and locale changes of the Management API.
-// Those check sites.manage for the site; creating, deleting and EnsureLocaleAsync are the host's and the seeder's.
+// Those check sites.manage for the site; creating, deleting and EnsureLocaleAsync are the host's and the seeder's. Each write
+// drops what SiteCache keeps.
 internal sealed partial class SiteManager(
     CmsDbContext context,
     TimeProvider time,
     SettingsCache settings,
+    SiteCache sites,
     IActivityLog activity,
     ManagementAuthority authority,
     IEventBus bus,
@@ -111,6 +113,7 @@ internal sealed partial class SiteManager(
             throw new ValidationException([SlugTaken(slug)]);
         }
 
+        sites.Invalidate();
         return site;
     }
 
@@ -142,12 +145,14 @@ internal sealed partial class SiteManager(
             context.Entry(row).State = EntityState.Detached;
             if (await context.Set<SiteLocale>().AsNoTracking().AnyAsync(item => item.SiteId == siteId && item.Code == locale, cancellationToken))
             {
+                sites.Invalidate();
                 return;
             }
 
             throw;
         }
 
+        sites.Invalidate();
         await activity.WriteAsync(new ActivityEntry("site.locale-added") { TargetType = "site", TargetId = siteId.ToString("D"), Locale = locale }, cancellationToken);
     }
 
@@ -170,6 +175,7 @@ internal sealed partial class SiteManager(
 
         await context.Set<Site>().Where(item => item.Id == id).ExecuteDeleteAsync(cancellationToken);
         settings.InvalidateSite(id);
+        sites.Invalidate();
     }
 
     // The sites the caller manages, the default first.
@@ -246,6 +252,7 @@ internal sealed partial class SiteManager(
         if (context.Entry(site).State == EntityState.Modified)
         {
             await context.SaveChangesAsync(cancellationToken);
+            sites.Invalidate();
             await bus.PublishAsync(new SiteUpdatedEvent(site.Id, site.Slug) { Source = SourceOf(site.Id) }, cancellationToken);
         }
 
@@ -309,6 +316,7 @@ internal sealed partial class SiteManager(
             throw new ValidationException([new ValidationError("code", LocaleErrorCodes.LocaleExists, $"The site has the locale '{locale}'.")]);
         }
 
+        sites.Invalidate();
         await LogAsync("site.locale-added", site, locale, cancellationToken);
         return Info(added);
     }
@@ -349,6 +357,7 @@ internal sealed partial class SiteManager(
         }
 
         await context.SaveChangesAsync(cancellationToken);
+        sites.Invalidate();
         await LogAsync("site.locale-updated", site, tracked.Code, cancellationToken);
         return Info(tracked);
     }
@@ -377,6 +386,7 @@ internal sealed partial class SiteManager(
             throw new ValidationException([new ValidationError("code", LocaleErrorCodes.LocaleInUse, $"The site has entries in '{locale}'. Disable the locale instead, or delete them first.")]);
         }
 
+        sites.Invalidate();
         await LogAsync("site.locale-removed", site, locale, cancellationToken);
     }
 

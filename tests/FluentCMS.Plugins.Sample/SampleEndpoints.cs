@@ -1,7 +1,9 @@
+using FluentCMS.Content;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Plugins.Sample;
 
@@ -10,11 +12,24 @@ public sealed record SampleNoteRequest(string Text);
 public static class SampleEndpoints
 {
     // The greeting needs a signed-in caller, as every endpoint of the group does by default. The banner is public on purpose,
-    // as a media plugin's Delivery route is, so it says so.
+    // so it says so.
     public static RouteGroupBuilder MapSampleEndpoints(this RouteGroupBuilder group)
     {
         group.MapGet("/greeting", (SampleGreeting greeting) => Results.Ok(new { text = greeting.Text }));
         group.MapGet("/banner", (SampleGreeting greeting) => Results.Ok(new { text = greeting.Text })).AllowAnonymous();
+        return group;
+    }
+
+    // Public as the Delivery API is, in the site and locale the request names. Served counts the answers the endpoint made,
+    // so a copy from the output cache shows the count of the answer it kept.
+    public static RouteGroupBuilder MapSampleDeliveryEndpoints(this RouteGroupBuilder group)
+    {
+        group.MapGet("/greeting", (SampleGreeting greeting, IOperationContextAccessor operations) =>
+        {
+            var operation = operations.Current!;
+            return Results.Ok(new { text = greeting.Text, site = operation.Site.Value, locale = operation.Locale, served = greeting.Serve() });
+        });
+        group.MapGet("/fresh", (SampleGreeting greeting) => Results.Ok(new { served = greeting.Serve() })).CacheOutput(policy => policy.NoCache());
         return group;
     }
 

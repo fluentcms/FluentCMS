@@ -160,7 +160,7 @@ public sealed class PluginSiteTests
         Strings(contributions["permissions"]!).ShouldBe([SamplePermissions.NotesManage]);
         Strings(contributions["jobs"]!).ShouldBe([SampleNoteJob.Type]);
         contributions["endpoints"]!.AsArray().Select(endpoint => $"{endpoint!["method"]!.GetValue<string>()} {endpoint["route"]!.GetValue<string>()}")
-            .ShouldBe(["GET /api/management/v1/sample/notes", "POST /api/management/v1/sample/notes", "GET /sample/banner", "GET /sample/greeting"]);
+            .ShouldBe(["GET /api/delivery/v1/sample/fresh", "GET /api/delivery/v1/sample/greeting", "GET /api/management/v1/sample/notes", "POST /api/management/v1/sample/notes", "GET /sample/banner", "GET /sample/greeting"]);
         sample["sites"]!.AsArray().Select(site => (site!["siteId"]!.GetValue<Guid>(), site["slug"]!.GetValue<string>(), site["enabled"]!.GetValue<bool>()))
             .ShouldBe([(DefaultSite.Id, DefaultSite.Slug, true), (docs, "docs", false)]);
 

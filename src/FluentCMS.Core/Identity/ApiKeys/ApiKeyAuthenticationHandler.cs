@@ -16,6 +16,15 @@ internal static class ApiKeyAuthentication
     public const string Scheme = "ApiKey";
     public const string Header = "X-Api-Key";
 
+    private static readonly object VerifiedItem = new();
+
+    // The row of the key the handler verified for this request, so that what asks for the key's role before the request
+    // ends does not read it again. Null for another key, and outside a request, as in a job.
+    public static ApiKey? Verified(HttpContext? context, Guid id) =>
+        context is not null && context.Items.TryGetValue(VerifiedItem, out var item) && item is ApiKey key && key.Id == id ? key : null;
+
+    public static void Verify(HttpContext context, ApiKey key) => context.Items[VerifiedItem] = key;
+
     public static bool IsPresented(HttpRequest request) =>
         request.Headers.ContainsKey(Header) || request.Headers.Authorization.Any(value => IsApiKeyScheme(SchemeOf(value)));
 
@@ -85,6 +94,7 @@ internal sealed class ApiKeyAuthenticationHandler(IOptionsMonitor<Authentication
             return AuthenticateResult.Fail($"{ApiKeyErrorCodes.InvalidKey}: the API key is not valid, has expired or was revoked.");
         }
 
+        ApiKeyAuthentication.Verify(Context, key);
         var identity = new ClaimsIdentity(
             ApiKeyClaims.Of(key).Select(claim => new Claim(claim.Key, claim.Value)),
             Scheme.Name,
