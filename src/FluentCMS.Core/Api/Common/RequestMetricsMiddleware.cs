@@ -1,5 +1,6 @@
 using FluentCMS.Core.Telemetry;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Core.Api.Common;
 
@@ -24,7 +25,7 @@ internal sealed class RequestMetricsMiddleware(RequestDelegate next)
         }
         catch (Exception exception)
         {
-            status = ProblemMapper.Map(exception, context.User.Identity?.IsAuthenticated == true).Status;
+            status = ProblemMapper.Map(exception, context.User.Identity?.IsAuthenticated == true, context.RequestServices.GetService<ErrorCodeCatalogue>()).Status;
             throw;
         }
         finally

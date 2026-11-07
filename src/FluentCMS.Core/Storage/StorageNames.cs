@@ -70,6 +70,13 @@ internal static class StorageNames
         "site_host",
     }.Select(name => Prefix + name).Concat([Document, Reference, Version]).ToFrozenSet(StringComparer.Ordinal);
 
+    // The tables core maps itself: every constant above that names one.
+    public static readonly FrozenSet<string> CoreTables = typeof(StorageNames)
+        .GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+        .Where(field => field.IsLiteral && field.GetRawConstantValue() is string value && value.StartsWith(Prefix, StringComparison.Ordinal) && value != Prefix)
+        .Select(field => (string)field.GetRawConstantValue()!)
+        .ToFrozenSet(StringComparer.Ordinal);
+
     public const string PublishedOnly = "state = 1";
 
     public static string Table(SchemaType type) => Table(type.Name);

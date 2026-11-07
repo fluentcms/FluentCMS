@@ -116,11 +116,12 @@ internal static partial class PluginHost
     public static PluginRegistry ConfigureServices(FluentCmsBuilder cms, IReadOnlyList<RegisteredPlugin> plugins)
     {
         var types = new Dictionary<Type, int>();
+        var contributions = new PluginContributions();
         for (var index = 0; index < plugins.Count; index++)
         {
             var plugin = plugins[index];
             var before = new HashSet<ServiceDescriptor>(cms.Services, ReferenceEqualityComparer.Instance);
-            plugin.Instance.ConfigureServices(new PluginServiceBuilder(cms, plugin.Name));
+            plugin.Instance.ConfigureServices(new PluginServiceBuilder(cms, plugin, contributions));
 
             types.TryAdd(plugin.Type, index);
             foreach (var descriptor in cms.Services.Where(descriptor => !before.Contains(descriptor)))
@@ -138,7 +139,7 @@ internal static partial class PluginHost
             .Where(group => group.Count() == 1 && group.Key != Assembly.GetEntryAssembly())
             .ToDictionary(group => group.Key, group => group.Single().Index);
 
-        return new PluginRegistry(plugins, types, assemblies);
+        return new PluginRegistry(plugins, types, assemblies, contributions);
     }
 
     private static Type? ImplementationOf(ServiceDescriptor descriptor) =>

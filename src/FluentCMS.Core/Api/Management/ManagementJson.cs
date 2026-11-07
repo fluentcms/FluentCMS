@@ -54,13 +54,13 @@ internal static class ManagementJson
     };
 
     // A failed entry carries the problem the single call would have answered, without the trace id of the request.
-    public static JsonObject Bulk(BulkResult result, bool authenticated) => new()
+    public static JsonObject Bulk(BulkResult result, bool authenticated, ErrorCodeCatalogue? codes = null) => new()
     {
-        ["items"] = new JsonArray([.. result.Items.Select(item => (JsonNode)Item(item, authenticated))]),
+        ["items"] = new JsonArray([.. result.Items.Select(item => (JsonNode)Item(item, authenticated, codes))]),
         ["cancelled"] = result.Cancelled,
     };
 
-    private static JsonObject Item(BulkItemResult item, bool authenticated)
+    private static JsonObject Item(BulkItemResult item, bool authenticated, ErrorCodeCatalogue? codes)
     {
         JsonObject json = new()
         {
@@ -80,7 +80,7 @@ internal static class ManagementJson
 
         if (item.Problem is { } exception)
         {
-            json["problem"] = JsonSerializer.SerializeToNode(ProblemWriter.Details(ProblemMapper.Map(exception, authenticated)), JsonSerializerOptions.Web);
+            json["problem"] = JsonSerializer.SerializeToNode(ProblemWriter.Details(ProblemMapper.Map(exception, authenticated, codes)), JsonSerializerOptions.Web);
         }
 
         return json;

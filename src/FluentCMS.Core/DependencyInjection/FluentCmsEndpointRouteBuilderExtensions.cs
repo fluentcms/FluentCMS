@@ -1,3 +1,4 @@
+using FluentCMS.Content;
 using FluentCMS.Core.Api.Account;
 using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.Api.Delivery;
@@ -51,7 +52,7 @@ public static class FluentCmsEndpointRouteBuilderExtensions
         {
             foreach (var plugin in plugins.Plugins)
             {
-                plugin.Instance.Configure(new PluginAppBuilder(plugin.Name, endpoints.ServiceProvider));
+                plugin.Instance.Configure(new PluginAppBuilder(plugin, endpoints.ServiceProvider, cms));
             }
         }
 
@@ -79,6 +80,56 @@ public static class FluentCmsEndpointRouteBuilderExtensions
             ui.WithTitle("FluentCMS API").WithOpenApiRoutePattern(OpenApiRegistration.DocumentUrl(context)));
         return new Conventions(document, scalar);
     }
+
+    // A plugin's own group, under the CMS group and outside those of core, so that nothing reaches the Management API without
+    // its scope. Its surface is the plugin's, which keeps it out of the OpenAPI document of Delivery and Management.
+    internal static RouteGroupBuilder MapPluginGroup(RouteGroupBuilder cms, RegisteredPlugin plugin, string prefix)
+    {
+        CheckPrefix(plugin, prefix, "MapGroup");
+
+        // A first segment that is a parameter would match the paths of core's groups too.
+        if (prefix[1] is '{' or '*')
+        {
+            throw new FluentCmsConfigurationException(
+                PluginErrorCodes.InvalidEndpointPrefix,
+                $"The plugin '{plugin.Name}' ({plugin.Type.FullName}) maps the group '{prefix}', whose first segment is a route parameter; a plugin's group starts with a name of its own, such as '/{plugin.Name}'.");
+        }
+
+        if (FluentCmsEndpointGroups.Prefixes.FirstOrDefault(group => Covers(group.Prefix, prefix)) is { Prefix: { } core })
+        {
+            throw new FluentCmsConfigurationException(
+                PluginErrorCodes.InvalidEndpointPrefix,
+                $"The plugin '{plugin.Name}' ({plugin.Type.FullName}) maps the group '{prefix}', which is under {core} of core; MapManagement maps a group under the Management API.");
+        }
+
+        var routes = cms.MapGroup(prefix).WithMetadata(new FluentCmsSurfaceMetadata(plugin.Name));
+        routes.CacheOutput(policy => policy.NoCache()).RequireRateLimiting(RateLimitPolicyNames.Delivery).RequireCors(CorsPolicies.Delivery);
+        return routes.WithFluentCmsOperation(Origin.Api);
+    }
+
+    internal static RouteGroupBuilder MapPluginManagement(RouteGroupBuilder cms, RegisteredPlugin plugin, string prefix)
+    {
+        CheckPrefix(plugin, prefix, "MapManagement");
+        var management = FluentCmsEndpointGroups.Prefixes.Single(group => group.Group == FluentCmsEndpointGroup.Management).Prefix;
+        return Protect(cms.MapGroup(management), FluentCmsEndpointGroup.Management)
+            .MapGroup(prefix)
+            .WithFluentCmsOperation(Origin.Api)
+            .RequireManagementScope();
+    }
+
+    private static void CheckPrefix(RegisteredPlugin plugin, string prefix, string method)
+    {
+        if (prefix is not ['/', _, ..] || prefix.EndsWith('/'))
+        {
+            throw new FluentCmsConfigurationException(
+                PluginErrorCodes.InvalidEndpointPrefix,
+                $"The plugin '{plugin.Name}' ({plugin.Type.FullName}) calls {method} with '{prefix}'; a prefix starts with a slash and names a path, such as '/{plugin.Name}'.");
+        }
+    }
+
+    // Routing ignores case, so a group covers a prefix in any case.
+    private static bool Covers(string group, string prefix) =>
+        prefix.StartsWith(group, StringComparison.OrdinalIgnoreCase) && (prefix.Length == group.Length || prefix[group.Length] == '/');
 
     // The admin application calls /connect and reads the discovery document from its own origin, so those groups answer
     // the Management origins. Only Delivery is cached; the others say so, so that a base policy of the host's leaves them alone.

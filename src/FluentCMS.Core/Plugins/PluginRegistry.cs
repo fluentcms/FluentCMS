@@ -1,9 +1,7 @@
 using System.Collections.Frozen;
 using System.Reflection;
 using FluentCMS.Core.Content.Hooks;
-using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Plugins;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Core.Plugins;
 
@@ -30,14 +28,17 @@ internal sealed class PluginRegistry : IHookTiebreaker
     private readonly FrozenDictionary<Assembly, int> _assemblies;
     private int _configured;
 
-    public PluginRegistry(IReadOnlyList<RegisteredPlugin> plugins, IReadOnlyDictionary<Type, int> types, IReadOnlyDictionary<Assembly, int> assemblies)
+    public PluginRegistry(IReadOnlyList<RegisteredPlugin> plugins, IReadOnlyDictionary<Type, int> types, IReadOnlyDictionary<Assembly, int> assemblies, PluginContributions contributions)
     {
         Plugins = plugins;
+        Contributions = contributions;
         _types = types.ToFrozenDictionary(item => item.Key, item => item.Value - plugins.Count);
         _assemblies = assemblies.ToFrozenDictionary(item => item.Key, item => item.Value - plugins.Count);
     }
 
     public IReadOnlyList<RegisteredPlugin> Plugins { get; }
+
+    public PluginContributions Contributions { get; }
 
     // Configure runs once per host, however many times MapFluentCms is called.
     public bool TryStartConfigure() => Interlocked.Exchange(ref _configured, 1) == 0;
@@ -48,18 +49,4 @@ internal sealed class PluginRegistry : IHookTiebreaker
         || _assemblies.TryGetValue(hookType.Assembly, out rank)
             ? rank
             : 0;
-}
-
-internal sealed class PluginServiceBuilder(FluentCmsBuilder cms, string name) : IPluginServiceBuilder
-{
-    public string Name => name;
-
-    public IServiceCollection Services => cms.Services;
-}
-
-internal sealed class PluginAppBuilder(string name, IServiceProvider services) : IPluginAppBuilder
-{
-    public string Name => name;
-
-    public IServiceProvider Services => services;
 }

@@ -1,4 +1,5 @@
 using System.Reflection;
+using FluentCMS.Core.Plugins;
 using FluentCMS.Schema;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -20,10 +21,10 @@ public static class ContentMigrations
         return new CmsDbContext(options.Options);
     }
 
-    internal static void Configure(DbContextOptionsBuilder options, IDataProvider provider, SchemaModel schema, Assembly migrationsAssembly)
+    internal static void Configure(DbContextOptionsBuilder options, IDataProvider provider, SchemaModel schema, Assembly migrationsAssembly, PluginModels? plugins = null)
     {
         provider.ConfigureContentMigrations(options, migrationsAssembly);
-        options.UseCmsModel(schema, provider.Conventions, provider.JsonDialect);
+        options.UseCmsModel(schema, provider.Conventions, provider.JsonDialect, plugins);
 
         // A model ahead of its migrations must reach the runner's validation, which names the fix; EF would throw first.
         options.ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.PendingModelChangesWarning));

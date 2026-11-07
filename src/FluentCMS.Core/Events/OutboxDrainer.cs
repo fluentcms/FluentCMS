@@ -14,7 +14,9 @@ namespace FluentCMS.Core.Events;
 // comes was never tried: the worker starts an attempt, and takes its lease again, with one conditional update before each
 // delivery, which matches nothing once another instance has the row. A delivery is cut off before its lease can end, so that
 // a worker never delivers on a lease it has lost, and a write of the outcome is conditional on the claim in the same way.
-// A handler that has to be abandoned may still be running, on a thread of its own; nothing here can stop it.
+// The attempt counts only once the handler is entered: a cut-off that comes before the handler starts, as when the thread pool
+// is starved, gives the attempt back and leaves the row for a later drain. A handler that has to be abandoned once it has
+// started may still be running, on a thread of its own; nothing here can stop it.
 internal sealed class OutboxDrainer(
     IServiceScopeFactory scopes,
     OutboxRegistry registry,
@@ -27,15 +29,21 @@ internal sealed class OutboxDrainer(
 
     private readonly string _owner = $"{Environment.MachineName}/{Guid.NewGuid():N}";
 
+    // On a thread of its own, since a handler that blocks before its first await would never hand control back to the
+    // cut-off. A test replaces it to hold a handler back past its cut-off.
+    internal Func<Func<Task>, Task> HandOff { get; set; } = work => Task.Run(work);
+
     public Task<int> DrainAsync(CancellationToken cancellationToken = default) => DrainAsync(prune: false, cancellationToken);
 
     // The number of deliveries that succeeded.
     public async Task<int> DrainAsync(bool prune, CancellationToken cancellationToken)
     {
         var delivered = 0;
+        // A row whose handler never started waits for a later drain, so a starved thread pool cannot keep one drain going.
+        HashSet<Guid> deferred = [];
         while (!cancellationToken.IsCancellationRequested)
         {
-            var batch = await ClaimAsync(cancellationToken);
+            var batch = await ClaimAsync(deferred, cancellationToken);
             if (batch.Count == 0)
             {
                 break;
@@ -49,7 +57,7 @@ internal sealed class OutboxDrainer(
                     continue;
                 }
 
-                if (await DeliverAsync(message, cancellationToken))
+                if (await DeliverAsync(message, deferred, cancellationToken))
                 {
                     delivered++;
                 }
@@ -64,7 +72,7 @@ internal sealed class OutboxDrainer(
         return delivered;
     }
 
-    private async Task<List<OutboxMessage>> ClaimAsync(CancellationToken cancellationToken)
+    private async Task<List<OutboxMessage>> ClaimAsync(HashSet<Guid> deferred, CancellationToken cancellationToken)
     {
         await using var scope = scopes.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
@@ -88,6 +96,7 @@ internal sealed class OutboxDrainer(
         }
 
         var candidates = await Open(context, now)
+            .Where(message => !deferred.Contains(message.Id))
             .OrderBy(message => message.Sequence).ThenBy(message => message.Id)
             .Select(message => message.Id)
             .Take(options.BatchSize)
@@ -129,7 +138,7 @@ internal sealed class OutboxDrainer(
         context.Set<OutboxMessage>().Where(row =>
             row.Id == message.Id && row.Status == OutboxStatus.Pending && row.LeaseOwner == owner && row.Attempts == message.Attempts);
 
-    private async Task<bool> DeliverAsync(OutboxMessage message, CancellationToken cancellationToken)
+    private async Task<bool> DeliverAsync(OutboxMessage message, HashSet<Guid> deferred, CancellationToken cancellationToken)
     {
         var registration = registry.Find(message.Handler);
         if (registration is null)
@@ -147,6 +156,7 @@ internal sealed class OutboxDrainer(
             return false;
         }
 
+        var state = new HandOffState();
         try
         {
             var @event = registration.Read(message.Payload)
@@ -160,15 +170,16 @@ internal sealed class OutboxDrainer(
             operation.Current = await EventOperation.CreateAsync(scope.ServiceProvider, @event.Source, message.EventId, message.SiteId, time.GetUtcNow());
             try
             {
-                // On a thread of its own, since a handler that blocks before its first await would never hand control back
-                // to the timeout.
                 var delivery = new EventDelivery(message.Id, message.Attempts);
-                await Task.Run(() => registration.Invoke(scope.ServiceProvider, @event, delivery, attempt.Token).AsTask(), CancellationToken.None)
+                await HandOff(() => state.TryStart() ? registration.Invoke(scope.ServiceProvider, @event, delivery, attempt.Token).AsTask() : Task.CompletedTask)
                     .WaitAsync(options.DeliveryTimeout, time, cancellationToken);
             }
             finally
             {
                 operation.Current = previous;
+
+                // Before the scope goes, so that a handler which has not started by now never starts on it.
+                state.Abandon();
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -178,6 +189,15 @@ internal sealed class OutboxDrainer(
         }
         catch (TimeoutException)
         {
+            // Read here and not in a filter, which would run before the finally that abandons the hand-off.
+            if (state.WasAbandoned)
+            {
+                EventLog.HandOffAbandoned(logger, message.Id, message.Handler, options.DeliveryTimeout);
+                deferred.Add(message.Id);
+                await ReleaseAsync(message, delay: null, started: true);
+                return false;
+            }
+
             EventLog.DeliveryAbandoned(logger, message.Id, message.Handler, options.DeliveryTimeout);
             await FailAsync(message, $"The handler did not finish within {options.DeliveryTimeout}.");
             return false;
@@ -292,5 +312,21 @@ internal sealed class OutboxDrainer(
         catch (OperationCanceledException)
         {
         }
+    }
+
+    // Decides once between the handler starting and the hand-off being abandoned, so exactly one of them happens.
+    private sealed class HandOffState
+    {
+        private const int Pending = 0;
+        private const int Started = 1;
+        private const int Abandoned = 2;
+
+        private int _state;
+
+        public bool WasAbandoned => Volatile.Read(ref _state) == Abandoned;
+
+        public bool TryStart() => Interlocked.CompareExchange(ref _state, Started, Pending) == Pending;
+
+        public void Abandon() => Interlocked.CompareExchange(ref _state, Abandoned, Pending);
     }
 }

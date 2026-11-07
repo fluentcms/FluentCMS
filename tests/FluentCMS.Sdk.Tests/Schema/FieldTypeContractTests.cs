@@ -27,7 +27,7 @@ public class FieldTypeContractTests
     [Fact]
     public void SettingKindsAreTheValuesASchemaCanHold()
     {
-        Enum.GetNames<FieldSettingKind>().ShouldBe(["String", "Boolean", "Integer", "Decimal", "StringList"]);
+        Enum.GetNames<FieldSettingKind>().ShouldBe(["String", "Boolean", "Integer", "Decimal", "StringList", "FieldReference"]);
     }
 
     [Fact]

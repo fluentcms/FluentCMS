@@ -24,6 +24,7 @@ using FluentCMS.Core.Localization;
 using FluentCMS.Core.Plugins;
 using FluentCMS.Core.ProseMirror;
 using FluentCMS.Core.Schema;
+using FluentCMS.Core.Schema.FieldTypes;
 using FluentCMS.Core.Seeding;
 using FluentCMS.Core.Settings;
 using FluentCMS.Core.Sites;
@@ -75,6 +76,12 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddSingleton(plugins);
         services.TryAddSingleton<IHookTiebreaker>(plugins);
         builder.Providers.BeforeCore(services);
+        foreach (var storage in plugins.Contributions.Storage)
+        {
+            storage.Register(services, provider);
+        }
+
+        services.AddSingleton(new ErrorCodeCatalogue(plugins.Contributions.ErrorCodes));
 
         services.AddProductionStartupChecks();
         services.AddFluentCmsOptions(DatabaseOptions.Section, StorageErrorCodes.InvalidDatabaseSetting, new DatabaseOptions { SchemaSyncOutsideDevelopment = builder.SchemaSyncOutsideDevelopment });
@@ -97,7 +104,9 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddSingleton(provider.JobClaimDialect);
 
         // Until content types can be added to the builder, a schema comes from the container, and none means system tables only.
-        services.TryAddSingleton(_ => new SchemaBuilder().Build());
+        // A host that builds its own with the registry of the container gets the plugins' field types.
+        services.TryAddSingleton<IFieldTypeRegistry>(serviceProvider => new FieldTypeRegistry(serviceProvider.GetServices<IFieldType>()));
+        services.TryAddSingleton(serviceProvider => new SchemaBuilder(serviceProvider.GetRequiredService<IFieldTypeRegistry>()).Build());
 
         builder.Seeding.Validate();
         if (builder.Seeding.Types.Count > 0)
@@ -117,9 +126,10 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddSingleton<RoleVersionInterceptor>();
 
         var contentMigrations = builder.ContentMigrationsAssembly ?? Assembly.GetEntryAssembly() ?? typeof(CmsDbContext).Assembly;
+        var pluginModels = plugins.Contributions.Models;
         services.AddDbContext<CmsDbContext>((serviceProvider, options) =>
         {
-            ContentMigrations.Configure(options, provider, serviceProvider.GetRequiredService<SchemaModel>(), contentMigrations);
+            ContentMigrations.Configure(options, provider, serviceProvider.GetRequiredService<SchemaModel>(), contentMigrations, pluginModels);
             options.AddInterceptors(serviceProvider.GetRequiredService<RoleVersionInterceptor>());
         });
 
