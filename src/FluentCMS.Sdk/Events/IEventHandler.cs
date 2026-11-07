@@ -8,6 +8,7 @@ namespace FluentCMS.Events;
 /// or with <c>cms.Events.AddHandler</c>. Handlers run in <see cref="Hooks.HookOrderAttribute"/> order. The caller of the write
 /// waits for each one up to the host's timeout (<c>FluentCms:Events:Handlers:Timeout</c>, five seconds by default); one that
 /// takes longer has its token cancelled and is left to end on its own, so slow work belongs in an outbox handler or a job.
+/// It is built in a scope of its own, not the scope of the request that raised the event, so its scoped services are not the request's.
 /// </summary>
 /// <typeparam name="TEvent">The type of the event, which is matched exactly.</typeparam>
 [SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix", Justification = "The specification names the contract IEventHandler.")]

@@ -52,6 +52,9 @@ internal static partial class EventLog
     [LoggerMessage(EventId = 9617, Level = LogLevel.Warning, Message = "The handler {Handler} of {EventType} {EventId} failed after it was abandoned; the write stands.")]
     public static partial void AbandonedHandlerFailed(ILogger logger, Exception exception, string handler, string eventType, Guid eventId);
 
+    [LoggerMessage(EventId = 9618, Level = LogLevel.Warning, Message = "The scope of the handlers of {EventType} {EventId} failed while it was disposed; the write stands.")]
+    public static partial void HandlerScopeFailed(ILogger logger, Exception exception, string eventType, Guid eventId);
+
     [LoggerMessage(EventId = 9610, Level = LogLevel.Error, Message = "The drain of the outbox hit an error.")]
     public static partial void DrainFailed(ILogger logger, Exception exception);
 }

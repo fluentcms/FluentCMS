@@ -78,7 +78,7 @@ FluentCMS exports nothing. To send traces and metrics to your own tools, subscri
 
 ### Event handlers
 
-An in-process event handler (`IEventHandler<T>`) runs after the commit, and the request that made the write or the publish waits for it. Each handler gets `FluentCms:Events:Handlers:Timeout` (5 seconds). One that takes longer has its token cancelled, is logged as abandoned (event 9615) and left to end on its own, and the request goes on to the next handler. A handler that ends after `FluentCms:Events:Handlers:SlowThreshold` (1 second) is logged as slow (event 9616). Every run is recorded in the `fluentcms.event.handler.duration` histogram, by event type, handler and outcome (`succeeded`, `failed` or `timed-out`). Work that may be slow belongs in an outbox handler or a job.
+An in-process event handler (`IEventHandler<T>`) runs after the commit, and the request that made the write or the publish waits for it. Each handler gets `FluentCms:Events:Handlers:Timeout` (5 seconds). One that takes longer has its token cancelled, is logged as abandoned (event 9615) and left to end on its own, and the request goes on to the next handler. Handlers run in a scope of their own, not the request's, so one left running cannot disturb the request. A handler that ends after `FluentCms:Events:Handlers:SlowThreshold` (1 second) is logged as slow (event 9616). Every run is recorded in the `fluentcms.event.handler.duration` histogram, by event type, handler and outcome (`succeeded`, `failed` or `timed-out`). Work that may be slow belongs in an outbox handler or a job.
 
 ## Security defaults
 
