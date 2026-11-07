@@ -2,7 +2,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FluentCMS.Plugins.Webhooks;
 
-// A subscription of a site. Secret is protected with Data Protection; events, types and headers are JSON.
+// A subscription of a site. Secret, PreviousSecret and Headers, a JSON map, are protected with Data Protection; events and
+// types are JSON. PreviousSecret signs beside Secret until PreviousSecretExpiresAt, after a rotation.
 internal sealed class Webhook
 {
     public Guid Id { get; set; }
@@ -14,6 +15,10 @@ internal sealed class Webhook
     public string Url { get; set; } = "";
 
     public string Secret { get; set; } = "";
+
+    public string? PreviousSecret { get; set; }
+
+    public DateTimeOffset? PreviousSecretExpiresAt { get; set; }
 
     public string Events { get; set; } = "[]";
 
@@ -105,6 +110,8 @@ internal sealed class WebhookModel : IPluginModelContributor
             webhook.Property(item => item.Name).HasColumnName("name").HasMaxLength(NameMaxLength).IsRequired();
             webhook.Property(item => item.Url).HasColumnName("url").HasMaxLength(UrlMaxLength).IsRequired();
             webhook.Property(item => item.Secret).HasColumnName("secret").IsRequired();
+            webhook.Property(item => item.PreviousSecret).HasColumnName("previous_secret");
+            webhook.Property(item => item.PreviousSecretExpiresAt).HasColumnName("previous_secret_expires_at");
             webhook.Property(item => item.Events).HasColumnName("events").IsRequired();
             webhook.Property(item => item.Types).HasColumnName("types").IsRequired();
             webhook.Property(item => item.Headers).HasColumnName("headers").IsRequired();

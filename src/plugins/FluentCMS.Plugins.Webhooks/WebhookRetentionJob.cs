@@ -1,6 +1,5 @@
 using FluentCMS.Jobs;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -37,52 +36,5 @@ internal sealed class WebhookRetentionJob(PluginDbContext<WebhooksPlugin> databa
         }
 
         WebhookLog.Pruned(logger, removed);
-    }
-}
-
-// Stores the daily schedule once the host has started, which is after the migrations, and keeps trying while the database
-// is out of reach.
-internal sealed class WebhookRetentionSchedule(IJobScheduler scheduler, IHostApplicationLifetime lifetime, TimeProvider time, ILogger<WebhookRetentionSchedule> logger)
-    : BackgroundService
-{
-    private static readonly TimeSpan Retry = TimeSpan.FromSeconds(30);
-
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        using (lifetime.ApplicationStarted.Register(() => started.TrySetResult()))
-        using (stoppingToken.Register(() => started.TrySetCanceled(stoppingToken)))
-        {
-            try
-            {
-                await started.Task;
-            }
-            catch (OperationCanceledException)
-            {
-                return;
-            }
-        }
-
-        while (!stoppingToken.IsCancellationRequested)
-        {
-            try
-            {
-                await scheduler.AddRecurringAsync<WebhookRetentionJob, WebhookRetentionPayload>(WebhookRetentionJob.Type, WebhookRetentionJob.Schedule, new WebhookRetentionPayload(), cancellationToken: stoppingToken);
-                return;
-            }
-            catch (Exception exception) when (!stoppingToken.IsCancellationRequested)
-            {
-                WebhookLog.RetentionNotScheduled(logger, exception);
-            }
-
-            try
-            {
-                await Task.Delay(Retry, time, stoppingToken);
-            }
-            catch (OperationCanceledException)
-            {
-                return;
-            }
-        }
     }
 }

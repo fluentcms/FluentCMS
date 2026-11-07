@@ -206,16 +206,23 @@ internal sealed class WebhookDeliveryJob(
 
     private async Task<WebhookResult> SendAsync(Webhook webhook, WebhookAttempt attempt, CancellationToken cancellationToken)
     {
-        string secret;
-        try
-        {
-            secret = signing.Unprotect(webhook.Secret);
-        }
-        catch (System.Security.Cryptography.CryptographicException)
+        if (signing.TryUnprotect(webhook.Secret) is not { } secret)
         {
             return new WebhookResult(false, null, 0, null, "The secret of the webhook could not be read; set a new one.");
         }
 
-        return await sender.SendAsync(webhook.Url, secret, WebhookJson.Map(webhook.Headers), attempt, cancellationToken);
+        if (signing.TryUnprotectHeaders(webhook.Headers) is not { } headers)
+        {
+            return new WebhookResult(false, null, 0, null, "The headers of the webhook could not be read; set them again.");
+        }
+
+        // Until the overlap after a rotation ends, the secret it replaced signs too. One that cannot be read is left out.
+        List<string> secrets = [secret];
+        if (webhook.PreviousSecret is { } previous && webhook.PreviousSecretExpiresAt > time.GetUtcNow() && signing.TryUnprotect(previous) is { } old && old != secret)
+        {
+            secrets.Add(old);
+        }
+
+        return await sender.SendAsync(webhook.Url, secrets, headers, attempt, cancellationToken);
     }
 }

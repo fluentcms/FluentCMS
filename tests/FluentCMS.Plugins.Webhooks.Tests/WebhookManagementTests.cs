@@ -38,7 +38,7 @@ public sealed class WebhookManagementTests
         read.StatusCode.ShouldBe(HttpStatusCode.OK);
         var stored = JsonNode.Parse(await TextAsync(read))!;
         stored["name"]!.GetValue<string>().ShouldBe("builds");
-        stored["headers"]!["X-Build"]!.GetValue<string>().ShouldBe("site");
+        stored["headers"]!["X-Build"]!.GetValue<string>().ShouldBe(WebhookService.RedactedValue);
         stored.AsObject().ContainsKey("secret").ShouldBeFalse();
         JsonNode.Parse(await TextAsync(list))!["items"]!.AsArray().ShouldHaveSingleItem()!["id"]!.GetValue<string>().ShouldBe(id.ToString("D"));
         changed.StatusCode.ShouldBe(HttpStatusCode.OK, await TextAsync(changed));
@@ -185,7 +185,7 @@ public sealed class WebhookManagementTests
         await using var scope = host.Services.CreateAsyncScope();
         var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<WebhooksPlugin>>();
         var applied = await Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.GetAppliedMigrationsAsync(database.Database, Token);
-        applied.Select(migration => migration[15..]).ShouldBe(["InitialWebhooks", "AddDeliveryClaim"]);
+        applied.Select(migration => migration[15..]).ShouldBe(["InitialWebhooks", "AddDeliveryClaim", "AddPreviousSecret"]);
         Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.HasPendingModelChanges(database.Database).ShouldBeFalse();
         using var design = new WebhooksDbContextFactory().CreateDbContext([]);
         Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.HasPendingModelChanges(design.Database).ShouldBeFalse();

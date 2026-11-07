@@ -1,6 +1,9 @@
 using System.Collections.Concurrent;
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Json;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json.Nodes;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Events;
@@ -111,6 +114,25 @@ internal static class WebhookTesting
             .OrderBy(delivery => delivery.CreatedAt).ThenBy(delivery => delivery.Attempt)
             .ToListAsync(Token);
     }
+
+    // What a receiver does, as the plugin's README has it: refuse a timestamp more than five minutes from its own clock,
+    // recompute the HMAC over t + "." + body, and accept the body when any v1 matches, compared in constant time.
+    public static bool Verifies(string signature, string secret, string body, DateTimeOffset now)
+    {
+        var parts = signature.Split(',').Select(part => part.Split('=', 2)).Where(part => part.Length == 2).ToList();
+        if (parts.FirstOrDefault(part => part[0] == "t")?[1] is not { } t
+            || !long.TryParse(t, NumberStyles.None, CultureInfo.InvariantCulture, out var seconds)
+            || Math.Abs(now.ToUnixTimeSeconds() - seconds) > 300)
+        {
+            return false;
+        }
+
+        var expected = HMACSHA256.HashData(Encoding.UTF8.GetBytes(secret), Encoding.UTF8.GetBytes(t + "." + body));
+        return parts.Where(part => part[0] == "v1").Any(part =>
+            part[1].Length == expected.Length * 2 && CryptographicOperations.FixedTimeEquals(expected, Convert.FromHexString(part[1])));
+    }
+
+    public static int Signatures(string header) => header.Split(',').Count(part => part.StartsWith("v1=", StringComparison.Ordinal));
 
     public static async Task<string> TextAsync(HttpResponseMessage response) => await response.Content.ReadAsStringAsync(Token);
 

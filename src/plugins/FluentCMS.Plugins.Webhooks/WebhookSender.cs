@@ -31,7 +31,8 @@ internal sealed class WebhookSender : IDisposable
         _client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("FluentCMS-Webhooks", "1.0"));
     }
 
-    public async Task<WebhookResult> SendAsync(string url, string secret, IReadOnlyDictionary<string, string> headers, WebhookAttempt attempt, CancellationToken cancellationToken)
+    // Signed with each of the secrets, the current one first.
+    public async Task<WebhookResult> SendAsync(string url, IReadOnlyList<string> secrets, IReadOnlyDictionary<string, string> headers, WebhookAttempt attempt, CancellationToken cancellationToken)
     {
         var started = _time.GetTimestamp();
         if (WebhookAddresses.UrlRefusal(url, _development) is { } refusal)
@@ -51,7 +52,7 @@ internal sealed class WebhookSender : IDisposable
 
             request.Headers.Add(EventHeader, attempt.Event);
             request.Headers.Add(DeliveryHeader, attempt.DeliveryId.ToString("D"));
-            request.Headers.Add(SignatureHeader, WebhookSigning.Signature(secret, _time.GetUtcNow().ToUnixTimeSeconds(), attempt.Body));
+            request.Headers.Add(SignatureHeader, WebhookSigning.Signature(_time.GetUtcNow().ToUnixTimeSeconds(), attempt.Body, secrets));
 
             using var response = await _client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token);
             var excerpt = await ExcerptAsync(response, timeout.Token);
