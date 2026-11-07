@@ -105,6 +105,7 @@ public sealed class EventRecordTests
             "UserLoginLinkedEvent",
             "UserLoginUnlinkedEvent",
             "UserRoleChangedEvent",
+            "UserTwoFactorResetEvent",
             "UserUpdatedEvent",
         ]);
     }

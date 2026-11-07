@@ -850,6 +850,14 @@ FluentCMS.Events.UserRoleChangedEvent.UserId.init -> void
 FluentCMS.Events.UserRoleChangedEvent.UserName.get -> string!
 FluentCMS.Events.UserRoleChangedEvent.UserName.init -> void
 FluentCMS.Events.UserRoleChangedEvent.UserRoleChangedEvent(System.Guid UserId, string! UserName, System.Collections.Generic.IReadOnlyList<System.Guid>! Added, System.Collections.Generic.IReadOnlyList<System.Guid>! Removed) -> void
+FluentCMS.Events.UserTwoFactorResetEvent
+FluentCMS.Events.UserTwoFactorResetEvent.Deconstruct(out System.Guid UserId, out string! UserName) -> void
+FluentCMS.Events.UserTwoFactorResetEvent.Equals(FluentCMS.Events.UserTwoFactorResetEvent? other) -> bool
+FluentCMS.Events.UserTwoFactorResetEvent.UserId.get -> System.Guid
+FluentCMS.Events.UserTwoFactorResetEvent.UserId.init -> void
+FluentCMS.Events.UserTwoFactorResetEvent.UserName.get -> string!
+FluentCMS.Events.UserTwoFactorResetEvent.UserName.init -> void
+FluentCMS.Events.UserTwoFactorResetEvent.UserTwoFactorResetEvent(System.Guid UserId, string! UserName) -> void
 FluentCMS.Events.UserUpdatedEvent
 FluentCMS.Events.UserUpdatedEvent.Changes.get -> System.Collections.Generic.IReadOnlyList<string!>!
 FluentCMS.Events.UserUpdatedEvent.Changes.init -> void
@@ -1963,6 +1971,10 @@ override FluentCMS.Events.UserRoleChangedEvent.<Clone>$() -> FluentCMS.Events.Us
 override FluentCMS.Events.UserRoleChangedEvent.Equals(object? obj) -> bool
 override FluentCMS.Events.UserRoleChangedEvent.GetHashCode() -> int
 override FluentCMS.Events.UserRoleChangedEvent.ToString() -> string!
+override FluentCMS.Events.UserTwoFactorResetEvent.<Clone>$() -> FluentCMS.Events.UserTwoFactorResetEvent!
+override FluentCMS.Events.UserTwoFactorResetEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.UserTwoFactorResetEvent.GetHashCode() -> int
+override FluentCMS.Events.UserTwoFactorResetEvent.ToString() -> string!
 override FluentCMS.Events.UserUpdatedEvent.<Clone>$() -> FluentCMS.Events.UserUpdatedEvent!
 override FluentCMS.Events.UserUpdatedEvent.Equals(object? obj) -> bool
 override FluentCMS.Events.UserUpdatedEvent.GetHashCode() -> int
@@ -2083,6 +2095,7 @@ override sealed FluentCMS.Events.UserDeactivatedEvent.Equals(FluentCMS.Events.Cm
 override sealed FluentCMS.Events.UserLoginLinkedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
 override sealed FluentCMS.Events.UserLoginUnlinkedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
 override sealed FluentCMS.Events.UserRoleChangedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+override sealed FluentCMS.Events.UserTwoFactorResetEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
 override sealed FluentCMS.Events.UserUpdatedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
 static FluentCMS.Activity.ActivityEntry.operator !=(FluentCMS.Activity.ActivityEntry? left, FluentCMS.Activity.ActivityEntry? right) -> bool
 static FluentCMS.Activity.ActivityEntry.operator ==(FluentCMS.Activity.ActivityEntry? left, FluentCMS.Activity.ActivityEntry? right) -> bool
@@ -2210,6 +2223,8 @@ static FluentCMS.Events.UserLoginUnlinkedEvent.operator !=(FluentCMS.Events.User
 static FluentCMS.Events.UserLoginUnlinkedEvent.operator ==(FluentCMS.Events.UserLoginUnlinkedEvent? left, FluentCMS.Events.UserLoginUnlinkedEvent? right) -> bool
 static FluentCMS.Events.UserRoleChangedEvent.operator !=(FluentCMS.Events.UserRoleChangedEvent? left, FluentCMS.Events.UserRoleChangedEvent? right) -> bool
 static FluentCMS.Events.UserRoleChangedEvent.operator ==(FluentCMS.Events.UserRoleChangedEvent? left, FluentCMS.Events.UserRoleChangedEvent? right) -> bool
+static FluentCMS.Events.UserTwoFactorResetEvent.operator !=(FluentCMS.Events.UserTwoFactorResetEvent? left, FluentCMS.Events.UserTwoFactorResetEvent? right) -> bool
+static FluentCMS.Events.UserTwoFactorResetEvent.operator ==(FluentCMS.Events.UserTwoFactorResetEvent? left, FluentCMS.Events.UserTwoFactorResetEvent? right) -> bool
 static FluentCMS.Events.UserUpdatedEvent.operator !=(FluentCMS.Events.UserUpdatedEvent? left, FluentCMS.Events.UserUpdatedEvent? right) -> bool
 static FluentCMS.Events.UserUpdatedEvent.operator ==(FluentCMS.Events.UserUpdatedEvent? left, FluentCMS.Events.UserUpdatedEvent? right) -> bool
 static FluentCMS.Jobs.DeadLetteredJob.operator !=(FluentCMS.Jobs.DeadLetteredJob? left, FluentCMS.Jobs.DeadLetteredJob? right) -> bool

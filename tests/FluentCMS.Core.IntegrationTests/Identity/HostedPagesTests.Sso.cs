@@ -107,6 +107,50 @@ public sealed partial class HostedPagesTests
         changes.ShouldAllBe(row => row.TargetId == user.Id.ToString("D"));
     }
 
+    // #2850: the groups do not take Super Admin from its last active holder. The roles stay as they are, and the provider,
+    // which no longer vouches for the user, does not sign it in.
+    [Fact]
+    public async Task GroupsThatWouldTakeSuperAdminFromItsLastHolderChangeNoRoleAndRefuseTheSignIn()
+    {
+        using var idp = new FakeOidcProvider();
+        await using var host = SsoHost(idp, provider => provider.RoleMappings.Add(new SsoRoleMapping { Group = "cms-owners", Role = BuiltInRoles.SuperAdminName }));
+        var grace = FakeIdentity.Of("grace@corp.example", "cms-owners");
+        using (var browser = new HostedPagesBrowser(host))
+        {
+            using var back = await SignInWithProviderAsync(browser, idp, grace);
+            (await ExternalLoginAsync(browser, back)).ShouldBe("/");
+        }
+
+        var user = await LinkedUserAsync(host, Corp, grace.Subject);
+        (await RoleIdsAsync(host, user)).ShouldContain(BuiltInRoles.SuperAdmin);
+
+        using (var browser = new HostedPagesBrowser(host))
+        {
+            using var back = await SignInWithProviderAsync(browser, idp, grace with { Groups = ["cms-editors"] });
+            back.Headers.Location!.OriginalString.ShouldStartWith("/account/external-login?");
+            using var page = await browser.GetAsync(back.Headers.Location.OriginalString);
+            page.StatusCode.ShouldBe(HttpStatusCode.OK);
+            browser.HasCookie(".AspNetCore.Identity.Application").ShouldBeFalse();
+        }
+
+        (await RoleIdsAsync(host, user)).ShouldBe([BuiltInRoles.Author, BuiltInRoles.SuperAdmin], ignoreOrder: true);
+        var refused = (await ActivityAsync(host, "user.change_refused", count: 1)).ShouldHaveSingleItem();
+        refused.TargetId.ShouldBe(user.Id.ToString("D"));
+        Details(refused)["change"].ShouldBe("follow_groups");
+        Details(refused)["code"].ShouldBe(IdentityErrorCodes.LastSuperAdmin);
+        (await ActivityAsync(host, "user.login_failed", count: 1)).ShouldContain(row => row.TargetId == user.Id.ToString("D"));
+
+        // With another holder, the same groups take the role and the user signs in.
+        await host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token);
+        using (var browser = new HostedPagesBrowser(host))
+        {
+            using var back = await SignInWithProviderAsync(browser, idp, grace with { Groups = ["cms-editors"] });
+            (await ExternalLoginAsync(browser, back)).ShouldBe("/");
+        }
+
+        (await RoleIdsAsync(host, user)).ShouldBe([BuiltInRoles.Author]);
+    }
+
     [Fact]
     public async Task WithLocalLoginDisabledThePasswordFormIsNotOfferedAndAPasswordSignInIsRefused()
     {

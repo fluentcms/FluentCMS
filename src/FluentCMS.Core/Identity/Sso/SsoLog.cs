@@ -11,6 +11,7 @@ internal static partial class SsoLog
     public const int RoleNotFoundId = 9042;
     public const int ProvisioningRefusedId = 9043;
     public const int NoGroupsId = 9044;
+    public const int LastSuperAdminKeptId = 9045;
     public const int UserLinkedId = 9060;
     public const int InvitationAcceptedId = 9061;
     public const int LinkRefusedId = 9062;
@@ -29,6 +30,9 @@ internal static partial class SsoLog
 
     [LoggerMessage(EventId = NoGroupsId, EventName = "SsoNoGroups", Level = LogLevel.Warning, Message = "The token of the SSO provider {Provider} has no '{GroupsClaim}' claim, so the user holds none of the roles the provider maps.")]
     public static partial void NoGroups(ILogger logger, string provider, string groupsClaim);
+
+    [LoggerMessage(EventId = LastSuperAdminKeptId, EventName = "SsoLastSuperAdminKept", Level = LogLevel.Warning, Message = "{Code}: the groups of the SSO provider {Provider} would take Super Admin from user {UserId}, its last active holder, so the user keeps its roles and the sign-in is refused.")]
+    public static partial void LastSuperAdminKept(ILogger logger, string code, string provider, Guid userId);
 
     [LoggerMessage(EventId = UserLinkedId, EventName = "SsoUserLinked", Level = LogLevel.Information, Message = "Linked user {UserId}, found by its email address, to the SSO provider {Provider} at its first sign-in through it.")]
     public static partial void UserLinked(ILogger logger, Guid userId, string provider);

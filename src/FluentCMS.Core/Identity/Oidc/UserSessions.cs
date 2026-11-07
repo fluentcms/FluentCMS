@@ -42,6 +42,25 @@ internal sealed class UserSessions(IOpenIddictAuthorizationManager authorization
         return revoked;
     }
 
+    // Every valid session of the user, with its tokens, so that its access tokens stop at once too.
+    public async Task RevokeAllAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        List<string> ids = [];
+        await foreach (var authorization in authorizations.FindBySubjectAsync(userId.ToString("D"), cancellationToken))
+        {
+            if (await authorizations.HasStatusAsync(authorization, Statuses.Valid, cancellationToken)
+                && await authorizations.GetIdAsync(authorization, cancellationToken) is { } id)
+            {
+                ids.Add(id);
+            }
+        }
+
+        foreach (var id in ids)
+        {
+            await RevokeAsync(userId, Guid.Parse(id), cancellationToken);
+        }
+    }
+
     private async Task<bool> HasLiveTokenAsync(object authorization, CancellationToken cancellationToken)
     {
         var id = await authorizations.GetIdAsync(authorization, cancellationToken) ?? "";
