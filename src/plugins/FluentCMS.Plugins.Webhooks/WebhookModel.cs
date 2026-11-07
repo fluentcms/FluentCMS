@@ -62,11 +62,18 @@ internal sealed class WebhookDelivery
 
     public DateTimeOffset? NextRetryAt { get; set; }
 
+    // A ping or a redelivery, which is tried once.
+    public bool Manual { get; set; }
+
+    // When the attempt was claimed.
     public DateTimeOffset CreatedAt { get; set; }
 }
 
 internal static class DeliveryStates
 {
+    // Claimed and being sent. At most one attempt of a webhook is pending, which ux_cms_webhooks_delivery_in_flight holds.
+    public const string Pending = "pending";
+
     public const string Succeeded = "succeeded";
 
     // Failed, and another attempt follows at NextRetryAt.
@@ -126,8 +133,10 @@ internal sealed class WebhookModel : IPluginModelContributor
             delivery.Property(item => item.ResponseExcerpt).HasColumnName("response_excerpt").HasMaxLength(ResponseExcerptMaxLength);
             delivery.Property(item => item.Error).HasColumnName("error").HasMaxLength(ErrorMaxLength);
             delivery.Property(item => item.NextRetryAt).HasColumnName("next_retry_at");
+            delivery.Property(item => item.Manual).HasColumnName("manual");
             delivery.Property(item => item.CreatedAt).HasColumnName("created_at");
             delivery.HasIndex(item => new { item.DeliveryId, item.Attempt }).IsUnique().HasDatabaseName("ux_cms_webhooks_delivery_attempt");
+            delivery.HasIndex(item => item.WebhookId).IsUnique().HasFilter($"state = '{DeliveryStates.Pending}'").HasDatabaseName("ux_cms_webhooks_delivery_in_flight");
             delivery.HasIndex(item => new { item.WebhookId, item.CreatedAt }).HasDatabaseName("ix_cms_webhooks_delivery_webhook");
             delivery.HasIndex(item => item.CreatedAt).HasDatabaseName("ix_cms_webhooks_delivery_created_at");
         });

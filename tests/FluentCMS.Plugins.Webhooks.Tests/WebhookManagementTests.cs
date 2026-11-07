@@ -185,7 +185,7 @@ public sealed class WebhookManagementTests
         await using var scope = host.Services.CreateAsyncScope();
         var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<WebhooksPlugin>>();
         var applied = await Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.GetAppliedMigrationsAsync(database.Database, Token);
-        applied.ShouldHaveSingleItem().ShouldEndWith("_InitialWebhooks");
+        applied.Select(migration => migration[15..]).ShouldBe(["InitialWebhooks", "AddDeliveryClaim"]);
         Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.HasPendingModelChanges(database.Database).ShouldBeFalse();
         using var design = new WebhooksDbContextFactory().CreateDbContext([]);
         Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.HasPendingModelChanges(design.Database).ShouldBeFalse();

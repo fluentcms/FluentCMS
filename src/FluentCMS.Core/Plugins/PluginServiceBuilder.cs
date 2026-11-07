@@ -4,6 +4,7 @@ using FluentCMS.Activity;
 using FluentCMS.Authorization;
 using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.DependencyInjection;
+using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Schema.FieldTypes;
 using FluentCMS.Core.Storage;
@@ -14,6 +15,7 @@ using FluentCMS.Providers;
 using FluentCMS.Schema;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace FluentCMS.Core.Plugins;
 
@@ -177,6 +179,16 @@ internal sealed class PluginServiceBuilder(FluentCmsBuilder cms, RegisteredPlugi
     {
         cms.Jobs.AddJob<TJob, TPayload>(type, attemptTimeout);
         contributions.AddJob(plugin, type);
+        return this;
+    }
+
+    // Registered before core binds FluentCms:Jobs, so that the configuration, and the host's own Queues, win.
+    public IPluginServiceBuilder AddJobQueue(string name, Func<IServiceProvider, int> workers)
+    {
+        JobFactory.CheckedQueue(name);
+        ArgumentNullException.ThrowIfNull(workers);
+        cms.Services.AddSingleton<IConfigureOptions<JobRunnerOptions>>(services =>
+            new ConfigureOptions<JobRunnerOptions>(options => options.Queues.TryAdd(name, workers(services))));
         return this;
     }
 

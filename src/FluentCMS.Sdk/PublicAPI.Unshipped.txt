@@ -1024,6 +1024,7 @@ FluentCMS.Plugins.IPluginServiceBuilder.AddErrorCode(string! code, int status, s
 FluentCMS.Plugins.IPluginServiceBuilder.AddEventHandler<TEvent, THandler>() -> FluentCMS.Plugins.IPluginServiceBuilder!
 FluentCMS.Plugins.IPluginServiceBuilder.AddFieldType<TFieldType>() -> FluentCMS.Plugins.IPluginServiceBuilder!
 FluentCMS.Plugins.IPluginServiceBuilder.AddJob<TJob, TPayload>(string! type, System.TimeSpan? attemptTimeout = null) -> FluentCMS.Plugins.IPluginServiceBuilder!
+FluentCMS.Plugins.IPluginServiceBuilder.AddJobQueue(string! name, System.Func<System.IServiceProvider!, int>! workers) -> FluentCMS.Plugins.IPluginServiceBuilder!
 FluentCMS.Plugins.IPluginServiceBuilder.AddOutboxHandler<TEvent, THandler>(string! name) -> FluentCMS.Plugins.IPluginServiceBuilder!
 FluentCMS.Plugins.IPluginServiceBuilder.AddPermissions<TProvider>() -> FluentCMS.Plugins.IPluginServiceBuilder!
 FluentCMS.Plugins.IPluginServiceBuilder.AddSettings<TSettings>() -> FluentCMS.Plugins.IPluginServiceBuilder!

@@ -4,6 +4,7 @@ using FluentCMS.Events;
 using FluentCMS.Plugins;
 using FluentCMS.Plugins.Webhooks;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 [assembly: FluentCmsPlugin(typeof(WebhooksPlugin))]
 
@@ -19,8 +20,8 @@ public sealed class WebhooksPlugin : IPlugin
         plugin.Services.AddOptions<WebhooksOptions>()
             .BindConfiguration(WebhooksOptions.Section)
             .Validate(
-                options => options.Timeout > TimeSpan.Zero && options.Timeout <= TimeSpan.FromMinutes(5) && options.Retention > TimeSpan.Zero,
-                $"{WebhooksOptions.Section}: Timeout must be positive and at most five minutes, and Retention positive.");
+                options => options.Timeout > TimeSpan.Zero && options.Timeout <= TimeSpan.FromMinutes(5) && options.Retention > TimeSpan.Zero && options.Workers >= 0,
+                $"{WebhooksOptions.Section}: Timeout must be positive and at most five minutes, Retention positive, and Workers not negative.");
         plugin.Services.AddSingleton<WebhookSender>();
         plugin.Services.AddSingleton<WebhookSigning>();
         plugin.Services.AddScoped<WebhookService>();
@@ -33,6 +34,7 @@ public sealed class WebhooksPlugin : IPlugin
             .AddModel<WebhookModel>()
             .AddMigrations(typeof(WebhooksPlugin).Assembly)
             .AddJob<WebhookDeliveryJob, WebhookAttempt>(WebhookDeliveryJob.Type)
+            .AddJobQueue(WebhookDeliveryJob.Queue, services => services.GetRequiredService<IOptions<WebhooksOptions>>().Value.Workers)
             .AddJob<WebhookRetentionJob, WebhookRetentionPayload>(WebhookRetentionJob.Type)
             .AddErrorCode(WebhookErrorCodes.InvalidField, 422, "Invalid webhook")
             .AddErrorCode(WebhookErrorCodes.InvalidUrl, 422, "Invalid webhook URL")

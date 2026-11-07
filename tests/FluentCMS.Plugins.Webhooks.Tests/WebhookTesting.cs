@@ -35,6 +35,7 @@ internal static class WebhookTesting
             {
                 cms.Jobs.Options.Queues[JobRunnerOptions.DefaultQueue] = 0;
                 cms.Jobs.Options.Queues[OutboxDrainJob.Queue] = 0;
+                cms.Jobs.Options.Queues[WebhookDeliveryJob.Queue] = 0;
             });
 
     public static async Task<HttpClient> AdminAsync(FluentCmsTestHost host) =>
@@ -73,13 +74,32 @@ internal static class WebhookTesting
         var ran = 0;
         while (true)
         {
-            await using var scope = host.Services.CreateAsyncScope();
-            if (!await scope.ServiceProvider.GetRequiredService<JobExecutor>().RunNextAsync(JobRunnerOptions.DefaultQueue, "test", Token))
+            var round = 0;
+            foreach (var queue in (string[])[JobRunnerOptions.DefaultQueue, WebhookDeliveryJob.Queue])
+            {
+                round += await RunNextAsync(host, queue) ? 1 : 0;
+            }
+
+            if (round == 0)
             {
                 return ran;
             }
 
-            ran++;
+            ran += round;
+        }
+    }
+
+    // Runs the next due job of the queue, if there is one.
+    public static async Task<bool> RunNextAsync(FluentCmsTestHost host, string queue)
+    {
+        await using var scope = host.Services.CreateAsyncScope();
+        return await scope.ServiceProvider.GetRequiredService<JobExecutor>().RunNextAsync(queue, "test", Token);
+    }
+
+    public static async Task DrainOutboxAsync(FluentCmsTestHost host)
+    {
+        while (await host.Services.GetRequiredService<OutboxDrainer>().DrainAsync(Token) > 0)
+        {
         }
     }
 
