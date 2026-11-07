@@ -4,7 +4,9 @@ using FluentCMS.Activity;
 using FluentCMS.Authorization;
 using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.DependencyInjection;
+using FluentCMS.Core.Schema;
 using FluentCMS.Core.Schema.FieldTypes;
+using FluentCMS.Core.Storage;
 using FluentCMS.Events;
 using FluentCMS.Jobs;
 using FluentCMS.Plugins;
@@ -22,6 +24,7 @@ internal sealed class PluginContributions
 
     private readonly Dictionary<string, string> _fieldTypes = new(StringComparer.Ordinal);
     private readonly Dictionary<string, (ErrorCodeInfo Info, string Plugin)> _errorCodes = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _tables = new(StringComparer.Ordinal);
     private readonly List<PluginStorage> _storage = [];
 
     public IReadOnlyDictionary<string, ErrorCodeInfo> ErrorCodes => _errorCodes.ToDictionary(item => item.Key, item => item.Value.Info, StringComparer.Ordinal);
@@ -38,6 +41,15 @@ internal sealed class PluginContributions
             throw new FluentCmsConfigurationException(
                 PluginErrorCodes.DuplicateFieldType,
                 $"The plugin '{plugin.Name}' ({plugin.Type.FullName}) adds the field type '{fieldType.Name}' ({fieldType.GetType().FullName}), which {owner} already has.");
+        }
+
+        // Introspection leaves a reference out for a caller who cannot read its field, and a schema without a required setting
+        // would not load again.
+        if (fieldType.Settings.FirstOrDefault(setting => setting is { Kind: FieldSettingKind.FieldReference, Required: true }) is { } required)
+        {
+            throw new FluentCmsConfigurationException(
+                PluginErrorCodes.RequiredFieldReference,
+                $"The plugin '{plugin.Name}' ({plugin.Type.FullName}) adds the field type '{fieldType.Name}', whose field reference '{required.Key}' is required; a field reference is optional, as a slug's source is.");
         }
 
         _fieldTypes[fieldType.Name] = plugin.Name;
@@ -59,6 +71,34 @@ internal sealed class PluginContributions
         }
 
         _errorCodes[code!] = (new ErrorCodeInfo(code!, status, title), plugin.Name);
+    }
+
+    public void AddModel(RegisteredPlugin plugin, IPluginModelContributor contributor)
+    {
+        var names = StorageOf(plugin).AddModel(contributor, name =>
+            StorageNames.CoreTables.Contains(name) ? "core"
+            : _tables.GetValueOrDefault(name) is { } other && other != plugin.Name ? $"the plugin '{other}'"
+            : null);
+        foreach (var name in names)
+        {
+            _tables.TryAdd(name, plugin.Name);
+        }
+    }
+
+    // Schema validation reserves the system tables but cannot know the plugins'.
+    public void CheckContentTables(SchemaModel schema)
+    {
+        foreach (var type in schema.ContentTypes)
+        {
+            var table = StorageNames.Table(type);
+            var locale = StorageNames.LocaleTable(type);
+            if ((_tables.GetValueOrDefault(table) ?? (type.Localized ? _tables.GetValueOrDefault(locale) : null)) is { } plugin)
+            {
+                throw new FluentCmsConfigurationException(
+                    SchemaErrorCodes.ReservedName,
+                    $"The content type '{type.Name}' needs a table that the plugin '{plugin}' maps, {(_tables.ContainsKey(table) ? table : locale)}.");
+            }
+        }
     }
 
     public PluginStorage StorageOf(RegisteredPlugin plugin)
@@ -140,7 +180,7 @@ internal sealed class PluginServiceBuilder(FluentCmsBuilder cms, RegisteredPlugi
         return this;
     }
 
-    public void AddModel(IPluginModelContributor contributor) => contributions.StorageOf(plugin).AddModel(contributor);
+    public void AddModel(IPluginModelContributor contributor) => contributions.AddModel(plugin, contributor);
 
     public void AddMigrations(Assembly assembly) => contributions.StorageOf(plugin).AddMigrations(assembly);
 }

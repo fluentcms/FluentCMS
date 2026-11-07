@@ -70,7 +70,7 @@ public static class ErrorCodeRegistry
         Invalid(AuthorizationErrorCodes.FieldNotWritable, "Field not writable"),
         Invalid(ContentErrorCodes.DuplicateBlockId, "Duplicate block id"),
 
-        // 15xx plugin host and plugin contributions, found when the host starts; 1526 to 1599 are kept for later plugin work
+        // 15xx plugin host and plugin contributions, found when the host starts; 1527 to 1599 are kept for later plugin work
         Startup(PluginErrorCodes.InvalidPlugin, "Invalid plugin"),
         Startup(PluginErrorCodes.InvalidName, "Invalid plugin name"),
         Startup(PluginErrorCodes.InvalidVersion, "Invalid plugin version"),
@@ -85,6 +85,7 @@ public static class ErrorCodeRegistry
         Startup(PluginErrorCodes.TableOutsidePrefix, "Plugin table outside its prefix"),
         Startup(PluginErrorCodes.InvalidEndpointPrefix, "Invalid plugin endpoint prefix"),
         Startup(PluginErrorCodes.SecondMigrations, "Plugin migrations added twice"),
+        Startup(PluginErrorCodes.RequiredFieldReference, "Required field reference"),
 
         // 21xx validation
         Invalid(ApiErrorCodes.ValidationFailed, "Validation failed"),

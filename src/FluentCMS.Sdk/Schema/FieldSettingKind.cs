@@ -24,7 +24,7 @@ public enum FieldSettingKind
     /// <summary>
     /// The name of another field of the same type, component or block, such as the field a value is derived from. Schema
     /// validation refuses one that names no sibling, and schema introspection leaves the setting out for a caller who cannot
-    /// read that field.
+    /// read that field. A plugin's field type cannot make one required.
     /// </summary>
     FieldReference,
 }

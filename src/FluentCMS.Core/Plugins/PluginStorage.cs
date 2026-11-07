@@ -39,27 +39,37 @@ internal sealed class PluginStorage(RegisteredPlugin plugin)
 
     public string HistoryTable => StorageNames.Prefix + plugin.Name.Replace('-', '_') + StorageNames.HistoryTableSuffix;
 
-    // Mapped on a model without conventions, which is enough to read the names of the tables and views.
-    public void AddModel(IPluginModelContributor contributor)
+    // Mapped on a model without conventions, which is enough to read the names of the tables and views. A name can still be
+    // another's, since one plugin's prefix can hold another's (cms_ai_ holds cms_ai_assist_) or a system table's, and
+    // takenBy names its owner. Returns the names.
+    public IReadOnlyList<string> AddModel(IPluginModelContributor contributor, Func<string, string?> takenBy)
     {
         ArgumentNullException.ThrowIfNull(contributor);
 
         var model = new ModelBuilder();
         contributor.Configure(model);
+        List<string> names = [];
         foreach (var entity in model.Model.GetEntityTypes())
         {
             foreach (var name in new[] { entity.GetTableName(), entity.GetViewName() }.OfType<string>())
             {
-                if (!name.StartsWith(TablePrefix, StringComparison.Ordinal) || name == HistoryTable)
+                var problem = !name.StartsWith(TablePrefix, StringComparison.Ordinal) ? $"the tables of a plugin are named {TablePrefix}..."
+                    : name == HistoryTable ? $"{HistoryTable} is its migration history"
+                    : takenBy(name) is { } owner ? $"which is a table of {owner}"
+                    : null;
+                if (problem is not null)
                 {
                     throw new FluentCmsConfigurationException(
                         PluginErrorCodes.TableOutsidePrefix,
-                        $"The plugin '{plugin.Name}' ({plugin.Type.FullName}) maps {entity.DisplayName()} to '{name}' in {contributor.GetType().FullName}; the tables of a plugin are named {TablePrefix}..., and {HistoryTable} is its migration history.");
+                        $"The plugin '{plugin.Name}' ({plugin.Type.FullName}) maps {entity.DisplayName()} to '{name}' in {contributor.GetType().FullName}; {problem}.");
                 }
+
+                names.Add(name);
             }
         }
 
         _contributors.Add(contributor);
+        return names;
     }
 
     public void AddMigrations(Assembly assembly)

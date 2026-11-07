@@ -76,8 +76,7 @@ public sealed class SampleNoteHandler(PluginCalls? calls = null) : IOutboxEventH
     }
 }
 
-// A short text taken from another field of the same type, which the setting "of" names. The setting is optional, as a slug's
-// source is, so that a schema introspection leaves it out of still loads.
+// A short text taken from another field of the same type, which the setting "of" names.
 public sealed class ExcerptFieldType : IFieldType
 {
     public const string TypeName = "sampleExcerpt";

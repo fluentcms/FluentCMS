@@ -124,7 +124,7 @@ public abstract class ImpostorFieldType(string name) : IFieldType
 
     public IReadOnlySet<FilterOperator> FilterOperators { get; } = new HashSet<FilterOperator>();
 
-    public IReadOnlyList<FieldSettingDescriptor> Settings { get; } = [];
+    public virtual IReadOnlyList<FieldSettingDescriptor> Settings { get; } = [];
 
     public bool Sortable(SchemaField field) => false;
 
@@ -196,3 +196,59 @@ public sealed class FakeServiceBuilder : IPluginServiceBuilder
     public IPluginServiceBuilder AddErrorCode(string code, int status, string title) => this;
 }
 
+
+// A plugin's prefix can hold another plugin's tables or a system table, which the prefix check alone would let through.
+[FluentCmsPlugin("ai", SdkRange = "[1.0.0,2.0.0)")]
+public sealed class AiPlugin : IPlugin
+{
+    public void ConfigureServices(IPluginServiceBuilder plugin) => plugin.AddModel<AssistUsageModel>();
+
+    public void Configure(IPluginAppBuilder app)
+    {
+    }
+}
+
+[FluentCmsPlugin("ai-assist", SdkRange = "[1.0.0,2.0.0)")]
+public sealed class AiAssistPlugin : IPlugin
+{
+    public void ConfigureServices(IPluginServiceBuilder plugin) => plugin.AddModel<AssistUsageModel>();
+
+    public void Configure(IPluginAppBuilder app)
+    {
+    }
+}
+
+public sealed class AssistUsageModel : IPluginModelContributor
+{
+    public void Configure(ModelBuilder modelBuilder) => modelBuilder.Entity<SampleNote>().ToTable("cms_ai_assist_usage");
+}
+
+[FluentCmsPlugin("site", SdkRange = "[1.0.0,2.0.0)")]
+public sealed class SiteTablePlugin : IPlugin
+{
+    public void ConfigureServices(IPluginServiceBuilder plugin) => plugin.AddModel<SiteLocaleModel>();
+
+    public void Configure(IPluginAppBuilder app)
+    {
+    }
+}
+
+public sealed class SiteLocaleModel : IPluginModelContributor
+{
+    public void Configure(ModelBuilder modelBuilder) => modelBuilder.Entity<SampleNote>().ToTable("cms_site_locale");
+}
+
+[FluentCmsPlugin("required", SdkRange = "[1.0.0,2.0.0)")]
+public sealed class RequiredReferencePlugin : IPlugin
+{
+    public void ConfigureServices(IPluginServiceBuilder plugin) => plugin.AddFieldType<RequiredReferenceFieldType>();
+
+    public void Configure(IPluginAppBuilder app)
+    {
+    }
+}
+
+public sealed class RequiredReferenceFieldType() : ImpostorFieldType("requiredExcerpt")
+{
+    public override IReadOnlyList<FieldSettingDescriptor> Settings { get; } = [new FieldSettingDescriptor { Key = "of", Kind = FieldSettingKind.FieldReference, Required = true }];
+}

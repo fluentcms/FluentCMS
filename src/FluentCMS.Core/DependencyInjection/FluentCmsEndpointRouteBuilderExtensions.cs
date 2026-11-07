@@ -86,6 +86,15 @@ public static class FluentCmsEndpointRouteBuilderExtensions
     internal static RouteGroupBuilder MapPluginGroup(RouteGroupBuilder cms, RegisteredPlugin plugin, string prefix)
     {
         CheckPrefix(plugin, prefix, "MapGroup");
+
+        // A first segment that is a parameter would match the paths of core's groups too.
+        if (prefix[1] is '{' or '*')
+        {
+            throw new FluentCmsConfigurationException(
+                PluginErrorCodes.InvalidEndpointPrefix,
+                $"The plugin '{plugin.Name}' ({plugin.Type.FullName}) maps the group '{prefix}', whose first segment is a route parameter; a plugin's group starts with a name of its own, such as '/{plugin.Name}'.");
+        }
+
         if (FluentCmsEndpointGroups.Prefixes.FirstOrDefault(group => Covers(group.Prefix, prefix)) is { Prefix: { } core })
         {
             throw new FluentCmsConfigurationException(

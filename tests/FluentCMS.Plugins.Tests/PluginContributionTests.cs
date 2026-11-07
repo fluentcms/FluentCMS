@@ -106,7 +106,26 @@ public sealed class PluginContributionTests
     {
         Refused(cms => cms.AddPlugin<StrayTablePlugin>(), "FCMS1523", "'stray'", "'cms_other_item'", "cms_stray_");
         Refused(cms => cms.AddPlugin<HistoryTablePlugin>(), "FCMS1523", "'cms_history__migrations'");
+        Refused(cms => cms.AddPlugin<AiPlugin>().AddPlugin<AiAssistPlugin>(), "FCMS1523", "'ai-assist'", "'cms_ai_assist_usage'", "the plugin 'ai'");
+        Refused(cms => cms.AddPlugin<SiteTablePlugin>(), "FCMS1523", "'cms_site_locale'", "core");
     }
+
+    [Fact]
+    public async Task AContentTypeWhoseTableAPluginMapsStopsTheHost()
+    {
+        await using var host = new FluentCmsTestHost().WithServices(services => services.AddSingleton(provider => new SchemaBuilder(provider.GetRequiredService<IFieldTypeRegistry>())
+            .AddCollection("sample-note", note => note.Field("title", "text"))
+            .Build()));
+
+        var exception = Should.Throw<FluentCmsConfigurationException>(() => host.Services);
+
+        exception.Code.ShouldBe("FCMS1206");
+        exception.Message.ShouldContain("cms_sample_note");
+    }
+
+    [Fact]
+    public void ARequiredFieldReferenceStopsTheHost() =>
+        Refused(cms => cms.AddPlugin<RequiredReferencePlugin>(), "FCMS1526", "'required'", "'of'");
 
     [Fact]
     public void APluginHasOneMigrationStream() =>
@@ -189,6 +208,8 @@ public sealed class PluginContributionTests
     [InlineData("/api/management/v1/routed", false)]
     [InlineData("/API/Delivery/v1", false)]
     [InlineData("/connect/routed", false)]
+    [InlineData("/{area}", false)]
+    [InlineData("/*rest", false)]
     [InlineData("routed", false)]
     [InlineData("/", true)]
     [InlineData("/routed/", true)]

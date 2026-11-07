@@ -24,7 +24,7 @@ public interface IPluginServiceBuilder
 
     /// <summary>
     /// Adds a field type. Its name must not be one of core's or another plugin's. A setting of kind
-    /// <see cref="FieldSettingKind.FieldReference"/> must name a sibling field.
+    /// <see cref="FieldSettingKind.FieldReference"/> must name a sibling field, and is optional.
     /// </summary>
     /// <typeparam name="TFieldType">The field type, created once with its parameterless constructor.</typeparam>
     /// <returns>This builder.</returns>
