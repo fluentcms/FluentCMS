@@ -1,3 +1,4 @@
+using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Events;
 using FluentCMS.Events;
 using FluentCMS.Schema;
@@ -8,14 +9,17 @@ namespace FluentCMS.Core.Caching;
 // What changes the published state of an entry changes what the Delivery API answers, so it evicts the entry's tag and
 // its type's from the output cache and raises CacheInvalidatedEvent with them, for a CDN to purge the same. It runs
 // through the outbox, so a crash after the commit does not leave the cache stale; a retried delivery evicts again and
-// raises the event again. Only the store of the instance that delivers is evicted. With the output cache off nothing is
-// recorded for it, as nothing was stored. A change to a site's locales changes what fallback reads give, so it evicts the site.
+// raises the event again. Only the store of the instance that delivers is evicted, unless the store is shared. With the
+// output cache off nothing is recorded for it, as nothing was stored. A change to a site's locales changes what fallback
+// reads give, so it evicts the site, and so does a change to a role or its grants, which changes what the site's callers
+// may read: the Public role decides the shared copy, and a key's role its own.
 internal sealed class OutputCacheEviction(IOutputCacheStore store, IEventBus events, SchemaModel schema)
     : IOutboxEventHandler<EntryPublishedEvent>,
       IOutboxEventHandler<EntryUnpublishedEvent>,
       IOutboxEventHandler<EntryTrashedEvent>,
       IOutboxEventHandler<EntryRestoredEvent>,
-      IOutboxEventHandler<SiteUpdatedEvent>
+      IOutboxEventHandler<SiteUpdatedEvent>,
+      IOutboxEventHandler<RolePermissionsChangedEvent>
 {
     public static void Register(EventsBuilder events, Func<bool> active) =>
         events
@@ -23,10 +27,14 @@ internal sealed class OutputCacheEviction(IOutputCacheStore store, IEventBus eve
             .AddOutboxHandler<EntryUnpublishedEvent, OutputCacheEviction>("cache.content.unpublished", active)
             .AddOutboxHandler<EntryTrashedEvent, OutputCacheEviction>("cache.content.trashed", active)
             .AddOutboxHandler<EntryRestoredEvent, OutputCacheEviction>("cache.content.restored", active)
-            .AddOutboxHandler<SiteUpdatedEvent, OutputCacheEviction>("cache.site.updated", active);
+            .AddOutboxHandler<SiteUpdatedEvent, OutputCacheEviction>("cache.site.updated", active)
+            .AddOutboxHandler<RolePermissionsChangedEvent, OutputCacheEviction>("cache.role.changed", active);
 
     public ValueTask HandleAsync(SiteUpdatedEvent message, EventDelivery delivery, CancellationToken cancellationToken) =>
         EvictAsync([CacheTags.Site(message.SiteId)], cancellationToken);
+
+    public ValueTask HandleAsync(RolePermissionsChangedEvent message, EventDelivery delivery, CancellationToken cancellationToken) =>
+        message.Sites.Count == 0 ? ValueTask.CompletedTask : EvictAsync([.. message.Sites.Select(CacheTags.Site)], cancellationToken);
 
     public ValueTask HandleAsync(EntryPublishedEvent message, EventDelivery delivery, CancellationToken cancellationToken) => EvictAsync(message, cancellationToken);
 

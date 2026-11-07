@@ -16,6 +16,8 @@ using FluentCMS.Core.Telemetry;
 using FluentCMS.Events;
 using FluentCMS.Schema;
 using FluentCMS.Testing;
+using Microsoft.AspNetCore.OutputCaching;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
@@ -27,6 +29,8 @@ namespace FluentCMS.Core.IntegrationTests.Delivery;
 public sealed class DeliveryCacheTests : IAsyncLifetime
 {
     private const string PrivateCacheControl = "max-age=60, private, stale-while-revalidate=300";
+
+    private static readonly string SiteTag = $"site:{DefaultSite.Id:D}";
 
     private static readonly CancellationToken Token = TestContext.Current.CancellationToken;
 
@@ -60,6 +64,8 @@ public sealed class DeliveryCacheTests : IAsyncLifetime
             await context.SaveChangesAsync(Token);
         }
 
+        // A change to a role's grants evicts its site, and the next eviction a test waits for is its own.
+        (await InvalidatedAsync()).ShouldBe([SiteTag]);
         _editor = _host.As(await _host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token));
         _first = await PublishedAsync(new Note { Title = "First", Slug = "first" });
         _client = _host.CreateClient();
@@ -71,8 +77,9 @@ public sealed class DeliveryCacheTests : IAsyncLifetime
         await _host.DisposeAsync();
     }
 
+    // No date in a body moves when an entry leaves a list or a role changes what the caller reads, so none is sent.
     [Fact]
-    public async Task AReadCarriesAnETagLastModifiedAndTheConfiguredCacheControl()
+    public async Task AReadCarriesAnETagAndTheConfiguredCacheControlAndNoLastModified()
     {
         foreach (var path in new[] { $"note/{_first.Id}", "note/by/slug/first", "note" })
         {
@@ -82,7 +89,7 @@ public sealed class DeliveryCacheTests : IAsyncLifetime
             reply.ETag.ShouldNotBeNull().ShouldStartWith("\"");
             reply.CacheControl.ShouldBe(DeliveryCacheOptions.DefaultCacheControl);
             reply.Vary.ShouldBe(DeliveryResponse.Vary);
-            reply.LastModified.ShouldBe(Seconds(PublishedAt(reply.Json["items"]?[0] ?? reply.Json)));
+            reply.LastModified.ShouldBeNull();
         }
     }
 
@@ -176,17 +183,23 @@ public sealed class DeliveryCacheTests : IAsyncLifetime
         uncached.CacheControl.ShouldBe(PrivateCacheControl);
     }
 
+    // A date later than any copy would have the output cache answer 304 by the date it stored the copy, if it were asked.
     [Fact]
-    public async Task IfModifiedSinceAloneIsAnsweredInFull()
+    public async Task IfModifiedSinceAloneIsServedFromTheCacheInFull()
     {
         var path = $"note/{_first.Id}";
         var full = await GetAsync(path);
-        await GetAsync(path);
+        var date = DateTimeOffset.UtcNow.AddDays(1).ToString("R", CultureInfo.InvariantCulture);
 
-        var since = await GetAsync(path, ("If-Modified-Since", full.LastModified!.Value.ToString("R", CultureInfo.InvariantCulture)));
+        var since = await GetAsync(path, ("If-Modified-Since", date));
+        var head = await SendAsync(_client, path, HttpMethod.Head, [("If-Modified-Since", date)]);
+        var both = await GetAsync(path, ("If-Modified-Since", date), ("If-None-Match", full.ETag!));
 
         since.Status.ShouldBe(HttpStatusCode.OK);
+        since.FromCache.ShouldBeTrue();
         since.Body.ShouldBe(full.Body);
+        head.Status.ShouldBe(HttpStatusCode.OK);
+        both.Status.ShouldBe(HttpStatusCode.NotModified);
     }
 
     [Fact]
@@ -260,6 +273,70 @@ public sealed class DeliveryCacheTests : IAsyncLifetime
         (await InvalidatedAsync()).ShouldBe(tags);
     }
 
+    // The Public role decides what the shared copy holds, so a change to its grants evicts the site.
+    [Fact]
+    public async Task AChangeToARoleOfTheSiteEvictsTheSiteAndTheNextReadFollowsTheNewGrants()
+    {
+        var path = $"note/{_first.Id}";
+        await GetAsync(path);
+        (await GetAsync(path)).FromCache.ShouldBeTrue();
+
+        await using (var scope = _host.Services.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+            context.Remove(await context.Set<RoleGrant>().SingleAsync(grant => grant.RoleId == DefaultSite.PublicRole && grant.Permission == "content.note.read", Token));
+            await context.SaveChangesAsync(Token);
+        }
+
+        (await InvalidatedAsync()).ShouldBe([SiteTag]);
+        (await GetAsync(path)).Status.ShouldBe(HttpStatusCode.NotFound);
+    }
+
+    // A key's copy follows its role; a role of the instance evicts every site, since a key of any site may hold it.
+    [Fact]
+    public async Task AChangeToARoleOfTheInstanceEvictsEverySite()
+    {
+        var memos = _editor.Content<Memo>();
+        await memos.PublishAsync((await memos.CreateAsync(new Memo { Title = "Memo" }, Token)).Id, cancellationToken: Token);
+        await InvalidatedAsync();
+        using var editor = _host.AsKey(await _host.CreateApiKeyAsync(ApiKeyClass.Delivery, BuiltInRoles.EditorName, cancellationToken: Token));
+        await SendAsync(editor, "memo");
+        (await SendAsync(editor, "memo")).FromCache.ShouldBeTrue();
+
+        await using (var scope = _host.Services.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+            context.Set<RoleGrant>().Add(new RoleGrant { Id = Guid.CreateVersion7(), RoleId = BuiltInRoles.Editor, Permission = "settings.branding.manage" });
+            await context.SaveChangesAsync(Token);
+        }
+
+        (await InvalidatedAsync()).ShouldBe([SiteTag]);
+        (await SendAsync(editor, "memo")).FromCache.ShouldBeFalse();
+    }
+
+    // A store that outlives the process, or that instances on another schema share, would otherwise hand them this copy.
+    [Fact]
+    public async Task AStoreSharedWithAnotherSchemaServesItNoCopyOfThisOne()
+    {
+        await using var services = new ServiceCollection().AddOptions().AddOutputCache().BuildServiceProvider();
+        var store = services.GetRequiredService<IOutputCacheStore>();
+        await using var first = await SharingAsync(store, other: false, grant: true);
+        await using var same = await SharingAsync(store, other: false, grant: false);
+        await using var other = await SharingAsync(store, other: true, grant: false);
+        using var firstClient = first.CreateClient();
+        using var sameClient = same.CreateClient();
+        using var otherClient = other.CreateClient();
+
+        (await SendAsync(firstClient, "note")).Status.ShouldBe(HttpStatusCode.OK);
+        var shared = await SendAsync(sameClient, "note");
+        var refused = await SendAsync(otherClient, "note");
+
+        shared.Status.ShouldBe(HttpStatusCode.OK);
+        shared.FromCache.ShouldBeTrue();
+        refused.Status.ShouldBe(HttpStatusCode.NotFound);
+        refused.FromCache.ShouldBeFalse();
+    }
+
     [Fact]
     public async Task AKeyReadsACopyOfItsOwnWhichItsCacheControlKeepsPrivate()
     {
@@ -321,6 +398,21 @@ public sealed class DeliveryCacheTests : IAsyncLifetime
         again.FromCache.ShouldBeFalse();
     }
 
+    private static async Task<FluentCmsTestHost> SharingAsync(IOutputCacheStore store, bool other, bool grant)
+    {
+        var host = new FluentCmsTestHost().WithServices(services => services.AddSingleton(store));
+        host = other ? host.WithContentTypes<Note, Topic>() : host.WithContentTypes<Note, Memo, Topic>();
+        if (grant)
+        {
+            await using var scope = host.Services.CreateAsyncScope();
+            var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+            context.Set<RoleGrant>().Add(new RoleGrant { Id = Guid.CreateVersion7(), RoleId = DefaultSite.PublicRole, Permission = "content.note.read" });
+            await context.SaveChangesAsync(Token);
+        }
+
+        return host;
+    }
+
     private async Task<Note> PublishedAsync(Note note)
     {
         var notes = _editor.Content<Note>();
@@ -372,10 +464,6 @@ public sealed class DeliveryCacheTests : IAsyncLifetime
     ];
 
     private static string[] Titles(Reply reply) => [.. reply.Json["items"]!.AsArray().Select(item => item!["title"]!.GetValue<string>())];
-
-    private static DateTimeOffset PublishedAt(JsonNode entry) => DateTimeOffset.Parse(entry["publishedAt"]!.GetValue<string>(), CultureInfo.InvariantCulture);
-
-    private static DateTimeOffset Seconds(DateTimeOffset moment) => new(moment.Ticks - (moment.Ticks % TimeSpan.TicksPerSecond), moment.Offset);
 
     private static MeterListener ListenToCacheLookups(ConcurrentBag<string?> lookups)
     {

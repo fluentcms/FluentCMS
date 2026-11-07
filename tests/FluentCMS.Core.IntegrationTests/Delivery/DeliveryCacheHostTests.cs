@@ -1,10 +1,13 @@
+using System.IO.Compression;
 using System.Net;
 using FluentCMS.Content;
 using FluentCMS.Core.Api.Delivery;
 using FluentCMS.Core.Caching;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Events;
+using FluentCMS.Core.Identity;
 using FluentCMS.Core.IntegrationTests.Hosting;
+using FluentCMS.Core.Schema;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
@@ -108,6 +111,135 @@ public sealed class DeliveryCacheHostTests : IAsyncDisposable
         host.Headers.Age.ShouldNotBeNull();
         health.StatusCode.ShouldBe(HttpStatusCode.OK);
         health.Headers.Age.ShouldBeNull();
+    }
+
+    // UseFluentCms authorizes before the output cache, so a policy on MapFluentCms holds for a kept copy as for a fresh one,
+    // and a host that still calls UseAuthorization after it gets the same answers.
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AHostPolicyOnMapFluentCmsHoldsForACachedRead(bool callsUseAuthorization)
+    {
+        var client = await StartAsync(
+            app =>
+            {
+                app.UseFluentCms();
+                if (callsUseAuthorization)
+                {
+                    app.UseAuthorization();
+                }
+            },
+            builder => builder.Services.AddAuthorizationBuilder().AddPolicy("cms", policy => policy
+                .AddAuthenticationSchemes(FluentCmsAuthentication.Scheme)
+                .RequireAssertion(context => context.Resource is HttpContext http && http.Request.Headers.ContainsKey("X-Allowed"))),
+            conventions => conventions.RequireAuthorization("cms"));
+
+        using var allowed = await GetAsync(client, ("X-Allowed", "1"));
+        using var cached = await GetAsync(client, ("X-Allowed", "1"));
+        using var refused = await GetAsync(client);
+
+        allowed.StatusCode.ShouldBe(HttpStatusCode.OK);
+        cached.StatusCode.ShouldBe(HttpStatusCode.OK);
+        cached.Headers.Age.ShouldNotBeNull();
+        refused.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        refused.Headers.Age.ShouldBeNull();
+    }
+
+    // Compression that wraps UseFluentCms encodes each answer for the request it goes to from the one copy the cache keeps
+    // as the endpoint wrote it, so the key does not vary on Accept-Encoding.
+    [Fact]
+    public async Task CompressionBeforeUseFluentCmsEncodesEachAnswerFromOneCopy()
+    {
+        var client = await StartAsync(
+            app =>
+            {
+                app.UseResponseCompression();
+                app.UseFluentCms();
+            },
+            builder => builder.Services.AddResponseCompression());
+
+        using var gzip = await GetAsync(client, ("Accept-Encoding", "gzip"));
+        using var plain = await GetAsync(client);
+        using var again = await GetAsync(client, ("Accept-Encoding", "gzip"));
+        using var head = await SendAsync(client, HttpMethod.Head);
+
+        gzip.Content.Headers.ContentEncoding.ShouldBe(["gzip"]);
+        gzip.Headers.Vary.ShouldContain("Accept-Encoding");
+        plain.Headers.Age.ShouldNotBeNull();
+        plain.Content.Headers.ContentEncoding.ShouldBeEmpty();
+        again.Headers.Age.ShouldNotBeNull();
+        again.Content.Headers.ContentEncoding.ShouldBe(["gzip"]);
+        (await DecompressAsync(again)).ShouldBe(await plain.Content.ReadAsStringAsync(Token));
+        head.StatusCode.ShouldBe(HttpStatusCode.OK);
+        head.Content.Headers.ContentLength.ShouldBe(plain.Content.Headers.ContentLength);
+        (await head.Content.ReadAsByteArrayAsync(Token)).ShouldBeEmpty();
+    }
+
+    // Inside the cache, a body compressed for one request would be served to every other, so it is not kept.
+    [Fact]
+    public async Task ABodyCompressedInsideTheOutputCacheIsNotKept()
+    {
+        var client = await StartAsync(
+            app =>
+            {
+                app.UseFluentCms();
+                app.UseResponseCompression();
+            },
+            builder => builder.Services.AddResponseCompression());
+
+        using var gzip = await GetAsync(client, ("Accept-Encoding", "gzip"));
+        using var plain = await GetAsync(client);
+        using var again = await GetAsync(client);
+
+        gzip.Content.Headers.ContentEncoding.ShouldBe(["gzip"]);
+        plain.Headers.Age.ShouldBeNull();
+        plain.Content.Headers.ContentEncoding.ShouldBeEmpty();
+        again.Headers.Age.ShouldNotBeNull();
+    }
+
+    // A host of its own with one content type that the Public role reads, so that an empty list is a read the cache keeps.
+    private async Task<HttpClient> StartAsync(Action<WebApplication> pipeline, Action<WebApplicationBuilder> configure, Action<IEndpointConventionBuilder>? endpoints = null)
+    {
+        var app = _host.Build(
+            Environments.Development,
+            configure: builder =>
+            {
+                builder.Services.AddSingleton(new SchemaBuilder().AddContentType<Note>().AddContentType<Topic>().Build());
+                configure(builder);
+            },
+            pipeline: pipeline,
+            cms: cms => cms.UseContentMigrations(typeof(CmsDbContext).Assembly),
+            endpoints: endpoints);
+        await app.StartAsync(Token);
+
+        await using (var scope = app.Services.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+            context.Set<RoleGrant>().Add(new RoleGrant { Id = Guid.CreateVersion7(), RoleId = DefaultSite.PublicRole, Permission = "content.note.read" });
+            await context.SaveChangesAsync(Token);
+        }
+
+        return app.GetTestClient();
+    }
+
+    private static Task<HttpResponseMessage> GetAsync(HttpClient client, params (string Name, string Value)[] headers) => SendAsync(client, HttpMethod.Get, headers);
+
+    private static async Task<HttpResponseMessage> SendAsync(HttpClient client, HttpMethod method, params (string Name, string Value)[] headers)
+    {
+        using var request = new HttpRequestMessage(method, new Uri("/api/delivery/v1/note", UriKind.Relative));
+        foreach (var (name, value) in headers)
+        {
+            request.Headers.TryAddWithoutValidation(name, value);
+        }
+
+        return await client.SendAsync(request, Token);
+    }
+
+    private static async Task<string> DecompressAsync(HttpResponseMessage response)
+    {
+        await using var gzip = new GZipStream(await response.Content.ReadAsStreamAsync(Token), CompressionMode.Decompress);
+        using var reader = new StreamReader(gzip);
+        return await reader.ReadToEndAsync(Token);
     }
 
     private sealed class CacheEverything : IOutputCachePolicy

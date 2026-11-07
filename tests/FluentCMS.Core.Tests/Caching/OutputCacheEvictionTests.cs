@@ -1,3 +1,4 @@
+using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Caching;
 using FluentCMS.Core.Schema;
 using FluentCMS.Events;
@@ -58,6 +59,18 @@ public sealed class OutputCacheEvictionTests
 
         _store.Evicted.ShouldBe([$"site:{Site:D}"]);
         _bus.Published.ShouldHaveSingleItem().Tags.ShouldBe([$"site:{Site:D}"]);
+    }
+
+    [Fact]
+    public async Task AChangedRoleEvictsTheSitesWhoseCallersMayHoldIt()
+    {
+        var other = Guid.CreateVersion7();
+        string[] tags = [$"site:{Site:D}", $"site:{other:D}"];
+
+        await _eviction.HandleAsync(new RolePermissionsChangedEvent(Guid.CreateVersion7(), [Site, other]), new EventDelivery(Guid.CreateVersion7(), 1), Token);
+
+        _store.Evicted.ShouldBe(tags);
+        _bus.Published.ShouldHaveSingleItem().Tags.ShouldBe(tags);
     }
 
     [Fact]

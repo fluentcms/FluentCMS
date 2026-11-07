@@ -8,6 +8,7 @@ using FluentCMS.Core.Identity;
 using FluentCMS.Data.Sqlite;
 using FluentCMS.Providers;
 using FluentCMS.Testing;
+using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
@@ -31,11 +32,16 @@ public sealed class ProviderSlotTests
         host.Services.GetRequiredService<IEmailSender>().ShouldBeOfType<LogEmailSender>();
         host.Services.GetRequiredService<IDistributedLock>().ShouldBeOfType<DatabaseDistributedLock>();
 
+        // The framework's in-memory output cache store is internal, so it is known by its name.
+        var store = host.Services.GetRequiredService<IOutputCacheStore>().GetType().FullName!;
+        store.ShouldBe("Microsoft.AspNetCore.OutputCaching.Memory.MemoryOutputCacheStore");
+
         (string, string, string)[] expected =
         [
             (typeof(IEmailSender).FullName!, typeof(LogEmailSender).FullName!, "default"),
             (typeof(IDistributedLock).FullName!, typeof(DatabaseDistributedLock).FullName!, "default"),
             (typeof(IDistributedCache).FullName!, typeof(MemoryDistributedCache).FullName!, "default"),
+            (typeof(IOutputCacheStore).FullName!, store, "default"),
         ];
         using var response = await host.AsKey(key).GetAsync(new Uri("/api/management/v1/system/diagnostics", UriKind.Relative), Token);
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -51,16 +57,19 @@ public sealed class ProviderSlotTests
         await using var host = new FluentCmsTestHost().Configure(cms => cms.Providers
             .Use<IEmailSender, HostSender>()
             .Use<IDistributedLock, HostLock>()
-            .Use<IDistributedCache, HostCache>());
+            .Use<IDistributedCache, HostCache>()
+            .Use<IOutputCacheStore, HostOutputCacheStore>());
 
         host.Services.GetRequiredService<IEmailSender>().ShouldBeOfType<HostSender>();
         host.Services.GetRequiredService<IDistributedLock>().ShouldBeOfType<HostLock>();
         host.Services.GetRequiredService<IDistributedCache>().ShouldBeOfType<HostCache>();
+        host.Services.GetRequiredService<IOutputCacheStore>().ShouldBeOfType<HostOutputCacheStore>();
         Report(host).Select(slot => (slot.Implementation, slot.Source)).ShouldBe(
         [
             (typeof(HostSender).FullName, "host"),
             (typeof(HostLock).FullName, "host"),
             (typeof(HostCache).FullName, "host"),
+            (typeof(HostOutputCacheStore).FullName, "host"),
         ]);
     }
 
@@ -203,6 +212,15 @@ public sealed class ProviderSlotTests
     public sealed class OtherCache(IOptions<MemoryDistributedCacheOptions> options) : MemoryDistributedCache(options);
 
     public sealed class FrozenTime : TimeProvider;
+
+    public sealed class HostOutputCacheStore : IOutputCacheStore
+    {
+        public ValueTask EvictByTagAsync(string tag, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+
+        public ValueTask<byte[]?> GetAsync(string key, CancellationToken cancellationToken) => ValueTask.FromResult<byte[]?>(null);
+
+        public ValueTask SetAsync(string key, byte[] value, string[]? tags, TimeSpan validFor, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+    }
 
     public sealed class HostLock : IDistributedLock
     {

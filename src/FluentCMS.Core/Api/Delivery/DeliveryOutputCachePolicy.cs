@@ -1,12 +1,9 @@
-using System.Security.Claims;
-using System.Security.Cryptography;
-using System.Text;
-using FluentCMS.Content;
 using FluentCMS.Core.Api.Common;
-using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Caching;
 using FluentCMS.Core.Identity.ApiKeys;
+using FluentCMS.Core.Schema;
 using FluentCMS.Core.Telemetry;
+using FluentCMS.Schema;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,8 +13,10 @@ namespace FluentCMS.Core.Api.Delivery;
 // The output cache of the Delivery API. A request without credentials reads the copy every such caller shares, and an API
 // key reads a copy of its own, keyed by its claims, which name its role, sites and scope. Nothing else is cached: a bearer
 // token's roles live in the database, credentials that fail are refused rather than served, and a draft changes with every
-// save. A request with If-Modified-Since and no If-None-Match goes to the endpoint, which decides a 304 by the ETag alone.
-// Only a 200 is stored, with the tag of its site. A HEAD is stored apart from its GET, since the key carries the method.
+// save. The key carries the schema hash, so a store that outlives the process, or that instances on another schema share,
+// never serves a copy made for another schema. Only a 200 is stored, with the tag of its site, and never one that a
+// middleware inside the cache encoded, since the key does not vary on Accept-Encoding. A HEAD is stored apart from its GET,
+// since the key carries the method.
 internal sealed class DeliveryOutputCachePolicy : IOutputCachePolicy
 {
     public const string CacheName = "delivery";
@@ -52,15 +51,20 @@ internal sealed class DeliveryOutputCachePolicy : IOutputCachePolicy
         context.AllowLocking = true;
         context.ResponseExpirationTimeSpan = options.OutputCacheDuration;
 
+        // The routes have no modification date, so If-Modified-Since is ignored (RFC 9110, 13.1.3) rather than left for the
+        // output cache, which would answer it by the date the copy was stored.
+        var request = http.Request;
+        request.Headers.IfModifiedSince = default;
+
         // What the request bridge reads, exactly as sent: the framework's key folds the case of the path and sorts repeated
         // values, where the bridge takes the first.
-        var request = http.Request;
         var vary = context.CacheVaryByRules.VaryByValues;
         vary["path"] = request.Path.Value ?? "";
         vary["query"] = request.QueryString.Value ?? "";
         vary["site"] = string.Join('\n', request.Headers[RequestBridge.SiteHeader].ToArray());
         vary["locale"] = string.Join('\n', request.Headers[RequestBridge.LocaleHeader].ToArray());
         vary["caller"] = caller ?? "";
+        vary["schema"] = SchemaSnapshot.Of(http.RequestServices.GetRequiredService<SchemaModel>()).Hash;
         return ValueTask.CompletedTask;
     }
 
@@ -76,7 +80,9 @@ internal sealed class DeliveryOutputCachePolicy : IOutputCachePolicy
         // ran the endpoint after all.
         var http = context.HttpContext;
         http.Items.Remove(HitItem);
-        if (http.Response.StatusCode == StatusCodes.Status200OK && http.Response.Headers.SetCookie.Count == 0 && http.Features.Get<ApiRequest>() is { } request)
+        var response = http.Response;
+        if (response.StatusCode == StatusCodes.Status200OK && response.Headers.SetCookie.Count == 0 && !CachedEncoding.EncodedInside(http)
+            && http.Features.Get<ApiRequest>() is { } request)
         {
             context.Tags.Add(CacheTags.Site(request.Operation.Site.Value));
         }
@@ -93,24 +99,17 @@ internal sealed class DeliveryOutputCachePolicy : IOutputCachePolicy
         var request = context.Request;
         if (!(HttpMethods.IsGet(request.Method) || HttpMethods.IsHead(request.Method))
             || ApiAuthentication.Failed(context)
-            || (request.Query.TryGetValue(StatusParameter, out var status) && status.Any(value => value != Published))
-            || (request.Headers.IfNoneMatch.Count == 0 && request.Headers.IfModifiedSince.Count > 0))
+            || (request.Query.TryGetValue(StatusParameter, out var status) && status.Any(value => value != Published)))
         {
             return null;
         }
 
-        var user = ApiAuthentication.Of(context);
-        if (user.Identity?.IsAuthenticated == true)
+        var caller = ApiCaller.Of(context);
+        if (caller.IsAuthenticated)
         {
-            return user.FindFirst(CmsClaimTypes.Kind)?.Value == nameof(PrincipalKind.ApiKey) ? "key:" + Hash(user.Claims) : null;
+            return caller.IsApiKey ? caller.KeyCacheKey : null;
         }
 
         return request.Headers.Authorization.Count == 0 && !ApiKeyAuthentication.IsPresented(request) ? "anonymous" : null;
-    }
-
-    private static string Hash(IEnumerable<Claim> claims)
-    {
-        var text = string.Join('\n', claims.Select(claim => $"{claim.Type}={claim.Value}").Order(StringComparer.Ordinal));
-        return Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
     }
 }
