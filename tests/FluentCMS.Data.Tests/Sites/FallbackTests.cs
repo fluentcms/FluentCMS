@@ -1,6 +1,7 @@
 using FluentCMS.Content;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.Localization;
+using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Data.Tests.Query;
 using FluentCMS.Localization;
@@ -40,7 +41,7 @@ public sealed class FallbackTests : IDisposable
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
     private LocaleFallbackReader Reader(IContentQueryAccess? access = null, ContentQueryOptions? options = null) =>
-        new(_database.Engine(access, options), QueryDatabase.Schema, new LocaleRegistry(_database.Context), options ?? new ContentQueryOptions());
+        new(_database.Engine(access, options), QueryDatabase.Schema, new LocaleRegistry(_database.Context, new SiteCache(TimeProvider.System)), options ?? new ContentQueryOptions());
 
     private async Task<IReadOnlyList<ContentDocument>> ReadAsync(string query, IContentQueryAccess? access = null, ContentQueryOptions? options = null, LocaleFallbackReader? reader = null)
     {

@@ -6,7 +6,7 @@ Thank you for your interest. FluentCMS is starting over, so there is little to b
 
 | Ref | Role |
 | --- | --- |
-| `main` | The default branch. Pull requests into it must pass the full CI suite. |
+| `main` | The default branch. Pull requests into it must pass CI. |
 | `feature/*` | Integration branches for a group of related issues. Issue pull requests into them run fast checks. |
 | `archive/*` | Earlier code, kept for reference. Read-only and not maintained. |
 
@@ -21,6 +21,10 @@ Thank you for your interest. FluentCMS is starting over, so there is little to b
 2. **Branch from the intended target**, named `<issue-number>-<short-slug>`, for example `2680-contributing-guide`. Use the agreed `feature/*` branch when the issue belongs to a batch of related work; otherwise use `main`.
 3. **Open a pull request against that target.** Put `Closes #<issue-number>` in the description, and keep an issue pull request to its issue.
 4. **CI must pass.** Pull requests are squash-merged, so the pull request title becomes the commit title. Keep it short and imperative.
+
+### What CI runs
+
+An issue pull request into `main` runs every test project on Linux, the SQLite data job, Markdown lint and packaging. On Windows it builds the whole solution and runs the SDK unit, core unit and architecture tests. The full Windows suite runs for pull requests from `feature/*` branches, on every push to `main`, nightly and on manual runs, so a Windows-only failure shows up there rather than on the issue pull request.
 
 ### Feature branches and validation
 
@@ -70,14 +74,16 @@ The description contains, in this order:
 ### Review and merge
 
 - Every pull request is reviewed before it merges. One approval is not required, but a review always happens.
-- Every required check must pass.
+- Review your own diff before opening the pull request and include the fixes in it, so CI validates the reviewed code once instead of again after a follow-up push.
+- Every required check must pass. Once the review is done, enable auto-merge with `gh pr merge <number> --auto --squash`; GitHub merges the pull request as soon as every required check passes.
+- Branch protection does not require an issue branch to be up to date with its target. Merge the target into the issue branch only to resolve a conflict.
 - Pull requests are squash-merged into a linear history. The title becomes the commit title, so it is short and imperative, for example "Update the contributing guide and add decision records".
 
 ## Local development
 
 You need the .NET 10 SDK, at the version in `global.json`. SQLite is the only database used during implementation, so no database server is needed and Docker is not required.
 
-During implementation, run the test project or test class affected by the change. Before opening an issue pull request into a feature branch, run the fast checks:
+During implementation, run the test project or test class affected by the change. Before opening an issue pull request, into a feature branch or `main`, run the fast checks once:
 
 ```bash
 dotnet build -c Release -warnaserror
@@ -87,7 +93,7 @@ dotnet test --project tests/FluentCMS.Architecture.Tests -c Release --no-build
 npx --yes markdownlint-cli2 "**/*.md"
 ```
 
-Before opening a pull request into `main`, run the full checks:
+CI runs the full suite, so there is no need to run it locally for an issue pull request. Run the full checks to reproduce a CI failure, or before opening the pull request from a feature branch into `main`:
 
 ```bash
 dotnet build -c Release -warnaserror

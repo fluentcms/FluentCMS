@@ -7,8 +7,8 @@ using Microsoft.EntityFrameworkCore;
 namespace FluentCMS.Core.Sites;
 
 // The first of these that names a site wins, and a later one is not looked at: the API key binding, the header, the
-// parameter, the host (the multi-site plugin's resolvers), the default site.
-internal sealed class SiteResolver(CmsDbContext context, IEnumerable<ISiteHostResolver> hosts) : ISiteResolver
+// parameter, the host (the multi-site plugin's resolvers), the default site. What it finds is kept in SiteCache.
+internal sealed class SiteResolver(CmsDbContext context, IEnumerable<ISiteHostResolver> hosts, SiteCache cache) : ISiteResolver
 {
     public async ValueTask<SiteId> ResolveAsync(SiteRequest request, CancellationToken cancellationToken = default)
     {
@@ -40,12 +40,24 @@ internal sealed class SiteResolver(CmsDbContext context, IEnumerable<ISiteHostRe
             }
         }
 
+        if (cache.TryGet<Guid>(SiteCache.DefaultKey, out var cached))
+        {
+            return new SiteId(cached);
+        }
+
+        var generation = cache.Generation;
         var defaultSite = await context.Set<Site>().AsNoTracking()
             .Where(site => site.IsDefault)
             .Select(site => (Guid?)site.Id)
             .FirstOrDefaultAsync(cancellationToken);
 
-        return defaultSite is { } id ? new SiteId(id) : throw new InvalidOperationException("The database has no default site.");
+        if (defaultSite is not { } id)
+        {
+            throw new InvalidOperationException("The database has no default site.");
+        }
+
+        cache.Set(SiteCache.DefaultKey, id, generation);
+        return new SiteId(id);
     }
 
     private async ValueTask<SiteId> NamedAsync(string value, string source, CancellationToken cancellationToken)
@@ -56,20 +68,44 @@ internal sealed class SiteResolver(CmsDbContext context, IEnumerable<ISiteHostRe
         }
 
         var slug = value.ToLowerInvariant();
+        var key = SiteCache.SlugKey(slug);
+        if (cache.TryGet<Guid>(key, out var cached))
+        {
+            return new SiteId(cached);
+        }
+
+        var generation = cache.Generation;
         var bySlug = await context.Set<Site>().AsNoTracking()
             .Where(site => site.Slug == slug)
             .Select(site => (Guid?)site.Id)
             .FirstOrDefaultAsync(cancellationToken);
 
-        return bySlug is { } found ? new SiteId(found) : throw NotFound(source, $"There is no site '{value}'.");
+        if (bySlug is not { } found)
+        {
+            throw NotFound(source, $"There is no site '{value}'.");
+        }
+
+        cache.Set(key, found, generation);
+        return new SiteId(found);
     }
 
     private async ValueTask<SiteId> ExistingAsync(SiteId site, string source, CancellationToken cancellationToken)
     {
         var id = site.Value;
-        return await context.Set<Site>().AsNoTracking().AnyAsync(item => item.Id == id, cancellationToken)
-            ? site
-            : throw NotFound(source, $"There is no site {site}.");
+        var key = SiteCache.SiteKey(id);
+        if (cache.TryGet<bool>(key, out _))
+        {
+            return site;
+        }
+
+        var generation = cache.Generation;
+        if (!await context.Set<Site>().AsNoTracking().AnyAsync(item => item.Id == id, cancellationToken))
+        {
+            throw NotFound(source, $"There is no site {site}.");
+        }
+
+        cache.Set(key, true, generation);
+        return site;
     }
 
     private static ValidationException NotFound(string source, string message) => new([new ValidationError(source, SiteErrorCodes.SiteNotFound, message)]);
