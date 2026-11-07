@@ -763,6 +763,22 @@ FluentCMS.Events.LoginSucceededEvent.UserId.get -> System.Guid
 FluentCMS.Events.LoginSucceededEvent.UserId.init -> void
 FluentCMS.Events.LoginSucceededEvent.UserName.get -> string!
 FluentCMS.Events.LoginSucceededEvent.UserName.init -> void
+FluentCMS.Events.PluginDisabledEvent
+FluentCMS.Events.PluginDisabledEvent.Deconstruct(out string! Plugin, out System.Guid SiteId) -> void
+FluentCMS.Events.PluginDisabledEvent.Equals(FluentCMS.Events.PluginDisabledEvent? other) -> bool
+FluentCMS.Events.PluginDisabledEvent.Plugin.get -> string!
+FluentCMS.Events.PluginDisabledEvent.Plugin.init -> void
+FluentCMS.Events.PluginDisabledEvent.PluginDisabledEvent(string! Plugin, System.Guid SiteId) -> void
+FluentCMS.Events.PluginDisabledEvent.SiteId.get -> System.Guid
+FluentCMS.Events.PluginDisabledEvent.SiteId.init -> void
+FluentCMS.Events.PluginEnabledEvent
+FluentCMS.Events.PluginEnabledEvent.Deconstruct(out string! Plugin, out System.Guid SiteId) -> void
+FluentCMS.Events.PluginEnabledEvent.Equals(FluentCMS.Events.PluginEnabledEvent? other) -> bool
+FluentCMS.Events.PluginEnabledEvent.Plugin.get -> string!
+FluentCMS.Events.PluginEnabledEvent.Plugin.init -> void
+FluentCMS.Events.PluginEnabledEvent.PluginEnabledEvent(string! Plugin, System.Guid SiteId) -> void
+FluentCMS.Events.PluginEnabledEvent.SiteId.get -> System.Guid
+FluentCMS.Events.PluginEnabledEvent.SiteId.init -> void
 FluentCMS.Events.SettingsChangedEvent
 FluentCMS.Events.SettingsChangedEvent.Area.get -> string!
 FluentCMS.Events.SettingsChangedEvent.Area.init -> void
@@ -1000,6 +1016,8 @@ FluentCMS.Plugins.IPlugin.ConfigureServices(FluentCMS.Plugins.IPluginServiceBuil
 FluentCMS.Plugins.IPluginAppBuilder
 FluentCMS.Plugins.IPluginAppBuilder.Name.get -> string!
 FluentCMS.Plugins.IPluginAppBuilder.Services.get -> System.IServiceProvider!
+FluentCMS.Plugins.IPluginState
+FluentCMS.Plugins.IPluginState.IsEnabledAsync(string! plugin, FluentCMS.Sites.SiteId site, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<bool>
 FluentCMS.Plugins.IPluginServiceBuilder
 FluentCMS.Plugins.IPluginServiceBuilder.AddActivity<TEvent>(string! name, System.Func<TEvent!, FluentCMS.Activity.ActivityEntry!>! describe) -> FluentCMS.Plugins.IPluginServiceBuilder!
 FluentCMS.Plugins.IPluginServiceBuilder.AddErrorCode(string! code, int status, string! title) -> FluentCMS.Plugins.IPluginServiceBuilder!
@@ -1905,6 +1923,14 @@ override FluentCMS.Events.LoginSucceededEvent.<Clone>$() -> FluentCMS.Events.Log
 override FluentCMS.Events.LoginSucceededEvent.Equals(object? obj) -> bool
 override FluentCMS.Events.LoginSucceededEvent.GetHashCode() -> int
 override FluentCMS.Events.LoginSucceededEvent.ToString() -> string!
+override FluentCMS.Events.PluginDisabledEvent.<Clone>$() -> FluentCMS.Events.PluginDisabledEvent!
+override FluentCMS.Events.PluginDisabledEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.PluginDisabledEvent.GetHashCode() -> int
+override FluentCMS.Events.PluginDisabledEvent.ToString() -> string!
+override FluentCMS.Events.PluginEnabledEvent.<Clone>$() -> FluentCMS.Events.PluginEnabledEvent!
+override FluentCMS.Events.PluginEnabledEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.PluginEnabledEvent.GetHashCode() -> int
+override FluentCMS.Events.PluginEnabledEvent.ToString() -> string!
 override FluentCMS.Events.SettingsChangedEvent.<Clone>$() -> FluentCMS.Events.SettingsChangedEvent!
 override FluentCMS.Events.SettingsChangedEvent.Equals(object? obj) -> bool
 override FluentCMS.Events.SettingsChangedEvent.GetHashCode() -> int
@@ -2047,6 +2073,8 @@ override sealed FluentCMS.Events.JobDeadLetteredEvent.Equals(FluentCMS.Events.Cm
 override sealed FluentCMS.Events.JobFailedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
 override sealed FluentCMS.Events.LoginFailedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
 override sealed FluentCMS.Events.LoginSucceededEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+override sealed FluentCMS.Events.PluginDisabledEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
+override sealed FluentCMS.Events.PluginEnabledEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
 override sealed FluentCMS.Events.SettingsChangedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
 override sealed FluentCMS.Events.SiteCreatedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
 override sealed FluentCMS.Events.SiteUpdatedEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
@@ -2162,6 +2190,10 @@ static FluentCMS.Events.LoginFailedEvent.operator !=(FluentCMS.Events.LoginFaile
 static FluentCMS.Events.LoginFailedEvent.operator ==(FluentCMS.Events.LoginFailedEvent? left, FluentCMS.Events.LoginFailedEvent? right) -> bool
 static FluentCMS.Events.LoginSucceededEvent.operator !=(FluentCMS.Events.LoginSucceededEvent? left, FluentCMS.Events.LoginSucceededEvent? right) -> bool
 static FluentCMS.Events.LoginSucceededEvent.operator ==(FluentCMS.Events.LoginSucceededEvent? left, FluentCMS.Events.LoginSucceededEvent? right) -> bool
+static FluentCMS.Events.PluginDisabledEvent.operator !=(FluentCMS.Events.PluginDisabledEvent? left, FluentCMS.Events.PluginDisabledEvent? right) -> bool
+static FluentCMS.Events.PluginDisabledEvent.operator ==(FluentCMS.Events.PluginDisabledEvent? left, FluentCMS.Events.PluginDisabledEvent? right) -> bool
+static FluentCMS.Events.PluginEnabledEvent.operator !=(FluentCMS.Events.PluginEnabledEvent? left, FluentCMS.Events.PluginEnabledEvent? right) -> bool
+static FluentCMS.Events.PluginEnabledEvent.operator ==(FluentCMS.Events.PluginEnabledEvent? left, FluentCMS.Events.PluginEnabledEvent? right) -> bool
 static FluentCMS.Events.SettingsChangedEvent.operator !=(FluentCMS.Events.SettingsChangedEvent? left, FluentCMS.Events.SettingsChangedEvent? right) -> bool
 static FluentCMS.Events.SettingsChangedEvent.operator ==(FluentCMS.Events.SettingsChangedEvent? left, FluentCMS.Events.SettingsChangedEvent? right) -> bool
 static FluentCMS.Events.SiteCreatedEvent.operator !=(FluentCMS.Events.SiteCreatedEvent? left, FluentCMS.Events.SiteCreatedEvent? right) -> bool

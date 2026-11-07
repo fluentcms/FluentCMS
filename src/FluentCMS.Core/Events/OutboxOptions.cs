@@ -26,7 +26,8 @@ public sealed class OutboxOptions
     // How long the job runner waits for the in-process handlers of a job event before it goes on. They are not stopped.
     public TimeSpan JobEventTimeout { get; set; } = TimeSpan.FromSeconds(5);
 
-    // How long a row waits when no handler is registered under its name, as in a rolling deploy or after a plugin was removed.
+    // How long a row waits when no handler is registered under its name, as in a rolling deploy or after a plugin was removed,
+    // or when the handler's plugin is disabled in the row's site.
     public TimeSpan MissingHandlerDelay { get; set; } = TimeSpan.FromMinutes(5);
 
     // How long a delivered row stays for diagnosis.

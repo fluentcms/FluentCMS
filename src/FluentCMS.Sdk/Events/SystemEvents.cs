@@ -14,6 +14,16 @@ public sealed record SiteCreatedEvent(Guid SiteId, string Slug) : CmsEvent;
 /// <param name="Slug">Its slug.</param>
 public sealed record SiteUpdatedEvent(Guid SiteId, string Slug) : CmsEvent;
 
+/// <summary>A plugin was enabled for a site.</summary>
+/// <param name="Plugin">The name of the plugin.</param>
+/// <param name="SiteId">The id of the site.</param>
+public sealed record PluginEnabledEvent(string Plugin, Guid SiteId) : CmsEvent;
+
+/// <summary>A plugin was disabled for a site.</summary>
+/// <param name="Plugin">The name of the plugin.</param>
+/// <param name="SiteId">The id of the site.</param>
+public sealed record PluginDisabledEvent(string Plugin, Guid SiteId) : CmsEvent;
+
 /// <summary>Cached output was evicted, for a CDN to purge too.</summary>
 /// <param name="Tags">The cache tags that were evicted.</param>
 public sealed record CacheInvalidatedEvent(IReadOnlyList<string> Tags) : CmsEvent;

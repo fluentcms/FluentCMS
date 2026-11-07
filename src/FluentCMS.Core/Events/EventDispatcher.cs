@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Reflection;
 using FluentCMS.Core.Content.Hooks;
+using FluentCMS.Core.Plugins;
 using FluentCMS.Events;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -11,8 +12,9 @@ namespace FluentCMS.Core.Events;
 // Runs the handlers of an event in this process, in order. The write has committed by the time this runs, so a handler
 // that throws changes nothing: the failure is logged and the next handler runs. A handler that cannot even be built
 // (a constructor that throws) is the same failure for the handlers of that event, since the container builds them together.
-// The token is the host's shutdown, never the request's, which has ended or may end at any time.
-internal sealed class EventDispatcher(IServiceProvider services, ILogger<EventDispatcher> logger, IHostApplicationLifetime? lifetime = null)
+// The token is the host's shutdown, never the request's, which has ended or may end at any time. A handler of a plugin
+// disabled in the event's site does not run.
+internal sealed class EventDispatcher(IServiceProvider services, PluginState plugins, ILogger<EventDispatcher> logger, IHostApplicationLifetime? lifetime = null)
 {
     private static readonly ConcurrentDictionary<Type, Func<EventDispatcher, CmsEvent, ValueTask>> Dispatchers = new();
 
@@ -31,6 +33,7 @@ internal sealed class EventDispatcher(IServiceProvider services, ILogger<EventDi
         where TEvent : CmsEvent
     {
         var typed = (TEvent)@event;
+        var shutdown = lifetime?.ApplicationStopping ?? CancellationToken.None;
         List<IEventHandler<TEvent>> handlers;
         try
         {
@@ -42,7 +45,16 @@ internal sealed class EventDispatcher(IServiceProvider services, ILogger<EventDi
             return;
         }
 
-        var shutdown = lifetime?.ApplicationStopping ?? CancellationToken.None;
+        try
+        {
+            handlers = await plugins.EnabledAsync(handlers, handler => handler.GetType(), @event.Source.SiteId, shutdown);
+        }
+        catch (Exception exception)
+        {
+            // Without the state no plugin's handler may run, but core's and the host's still do.
+            PluginLog.StateUnavailable(logger, exception);
+            handlers = plugins.WithoutPlugins(handlers, handler => handler.GetType());
+        }
         foreach (var handler in handlers)
         {
             try

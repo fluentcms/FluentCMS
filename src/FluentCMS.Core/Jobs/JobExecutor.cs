@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using FluentCMS.Content;
+using FluentCMS.Core.Plugins;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
@@ -12,9 +13,11 @@ using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Core.Jobs;
 
+// A job of a plugin disabled in the job's site completes without running; one of no site is the instance's and always runs.
 internal sealed class JobExecutor(
     JobStore store,
     JobRegistry registry,
+    PluginState plugins,
     IServiceScopeFactory scopes,
     IOperationContextAccessor operation,
     JobRunnerOptions options,
@@ -82,8 +85,7 @@ internal sealed class JobExecutor(
         Func<Task<bool>> settle;
         try
         {
-            await InvokeAsync(job, attempt);
-            Record(job, started, "succeeded");
+            Record(job, started, await InvokeAsync(job, attempt) ? "succeeded" : "skipped");
             settle = () => store.SucceedAsync(job);
         }
         catch (OperationCanceledException) when (shutdown.IsCancellationRequested)
@@ -151,10 +153,17 @@ internal sealed class JobExecutor(
         }
     }
 
-    private async Task InvokeAsync(ClaimedJob job, CancellationToken attempt)
+    // False when the job's plugin is disabled in its site, so that it did not run.
+    private async Task<bool> InvokeAsync(ClaimedJob job, CancellationToken attempt)
     {
         var registration = registry.Find(job.Type)
             ?? throw new JobInvocationException($"{JobErrorCodes.UnknownJobType}: no job is registered for the type '{job.Type}'.");
+
+        if (await plugins.DisabledJobAsync(job.Type, job.SiteId, attempt) is { } plugin)
+        {
+            PluginLog.JobSkipped(logger, job.Id, job.Type, plugin, job.SiteId!.Value);
+            return false;
+        }
 
         var payload = ReadPayload(registration, job);
 
@@ -168,6 +177,7 @@ internal sealed class JobExecutor(
         try
         {
             await registration.Invoke(scope.ServiceProvider, payload, context);
+            return true;
         }
         catch (Exception)
         {

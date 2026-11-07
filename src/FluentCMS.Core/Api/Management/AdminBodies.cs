@@ -179,6 +179,13 @@ internal sealed record SiteLocaleUpdateRequest
     public IReadOnlyList<string>? Fallbacks { get; init; }
 }
 
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+internal sealed record PluginSiteRequest
+{
+    [Description("Whether the plugin is enabled for the site. A plugin is enabled for every site until it is disabled for one.")]
+    public required bool Enabled { get; init; }
+}
+
 internal sealed record SettingResponse(
     string Area,
     Guid? SiteId,

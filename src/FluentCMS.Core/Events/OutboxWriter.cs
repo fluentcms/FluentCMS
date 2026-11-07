@@ -16,7 +16,7 @@ internal sealed class OutboxWriter(IServiceScopeFactory scopes, OutboxRows rows,
 
     public async ValueTask StageAsync(DbContext context, IEnumerable<CmsEvent> events, CancellationToken cancellationToken)
     {
-        var built = rows.Build(events);
+        var built = await rows.BuildAsync(events, cancellationToken);
         if (built.Count == 0)
         {
             return;
@@ -28,7 +28,7 @@ internal sealed class OutboxWriter(IServiceScopeFactory scopes, OutboxRows rows,
 
     public async ValueTask RecordAsync(IEnumerable<CmsEvent> events, CancellationToken cancellationToken)
     {
-        var built = rows.Build(events);
+        var built = await rows.BuildAsync(events, cancellationToken);
         if (built.Count == 0)
         {
             return;

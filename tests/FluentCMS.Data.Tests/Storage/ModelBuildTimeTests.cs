@@ -51,7 +51,7 @@ public class ModelBuildTimeTests
         var model = context.Model;
         watch.Stop();
 
-        model.GetEntityTypes().Count().ShouldBe(TypeCount + (TypeCount / 2) + 29);
+        model.GetEntityTypes().Count().ShouldBe(TypeCount + (TypeCount / 2) + 30);
         return watch.Elapsed;
     }
 

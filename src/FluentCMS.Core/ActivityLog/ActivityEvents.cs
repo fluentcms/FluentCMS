@@ -44,6 +44,9 @@ internal static class ActivityEvents
         events.AddActivity<SiteCreatedEvent>("site.created", message => Site("site.created", message.SiteId, message.Slug));
         events.AddActivity<SiteUpdatedEvent>("site.updated", message => Site("site.updated", message.SiteId, message.Slug));
 
+        events.AddActivity<PluginEnabledEvent>("plugin.enabled", message => Plugin("plugin.enabled", message.Plugin));
+        events.AddActivity<PluginDisabledEvent>("plugin.disabled", message => Plugin("plugin.disabled", message.Plugin));
+
         events.AddActivity<UserCreatedEvent>("user.created", message => User("user.created", message.UserId, message.UserName, null));
         events.AddActivity<UserUpdatedEvent>("user.updated", message => User("user.updated", message.UserId, message.UserName, new Dictionary<string, string?>
         {
@@ -149,6 +152,14 @@ internal static class ActivityEvents
             TargetType = "site",
             TargetId = siteId.ToString("D"),
             TargetLabel = slug,
+        };
+
+    private static ActivityEntry Plugin(string action, string plugin) =>
+        new(action)
+        {
+            TargetType = "plugin",
+            TargetId = plugin,
+            TargetLabel = plugin,
         };
 
     private static ActivityEntry User(string action, Guid userId, string userName, Dictionary<string, string?>? details) =>

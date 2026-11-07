@@ -845,6 +845,28 @@ namespace FluentCMS.Data.PostgreSql.Migrations
                     b.ToTable("cms_outbox", (string)null);
                 });
 
+            modelBuilder.Entity("FluentCMS.Core.Storage.Entities.PluginSiteRow", b =>
+                {
+                    b.Property<string>("Plugin")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("plugin");
+
+                    b.Property<Guid>("SiteId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("site_id");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("enabled");
+
+                    b.HasKey("Plugin", "SiteId");
+
+                    b.HasIndex("SiteId");
+
+                    b.ToTable("cms_plugin_site", (string)null);
+                });
+
             modelBuilder.Entity("FluentCMS.Core.Storage.Entities.RecurringJob", b =>
                 {
                     b.Property<string>("Name")
@@ -1805,6 +1827,15 @@ namespace FluentCMS.Data.PostgreSql.Migrations
                     b.HasOne("FluentCMS.Core.Storage.Entities.Job", null)
                         .WithMany()
                         .HasForeignKey("JobId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FluentCMS.Core.Storage.Entities.PluginSiteRow", b =>
+                {
+                    b.HasOne("FluentCMS.Core.Storage.Entities.Site", null)
+                        .WithMany()
+                        .HasForeignKey("SiteId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

@@ -70,7 +70,7 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
 {
     private const string Management = "/api/management/v1";
 
-    private static readonly string[] AdminGroups = ["users", "invitations", "roles", "permissions", "api-keys", "sites", "settings", "jobs", "activity", "me", "system"];
+    private static readonly string[] AdminGroups = ["users", "invitations", "roles", "permissions", "api-keys", "sites", "settings", "jobs", "activity", "me", "plugins", "system"];
 
     private static readonly Dictionary<string, string[]> ReadsQuery = new(StringComparer.Ordinal)
     {
@@ -84,6 +84,7 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
     [
         "patch /users/{id}", "post /invitations", "post /roles", "put /roles/{id}", "post /api-keys", "post /api-keys/{id}/expire",
         "patch /sites/{id}", "post /sites/{id}/locales", "patch /sites/{id}/locales/{code}", "put /settings/{area}", "put /settings/{area}/defaults",
+        "put /plugins/{name}/sites/{site}",
         "post /me/two-factor/verify", "post /me/two-factor/recovery-codes", "post /me/two-factor/disable",
     ];
 

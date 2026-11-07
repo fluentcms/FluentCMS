@@ -1,6 +1,7 @@
 using FluentCMS.Authorization;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Plugins;
 using FluentCMS.Core.ProseMirror;
 using FluentCMS.Hooks;
 using FluentCMS.Plugins;
@@ -36,6 +37,7 @@ internal static class ProblemMapper
         ScopeDeniedException denied => Denied(denied.Message, authenticated),
         RequestAuthenticationException unauthenticated => Known(unauthenticated.Code ?? ApiErrorCodes.Unauthorized, unauthenticated.Message),
         EntryNotFoundException notFound => Known(ApiErrorCodes.NotFound, notFound.Message),
+        PluginDisabledException disabled => Known(PluginErrorCodes.PluginDisabled, disabled.Message),
         VersionConflictException conflict => Known(ApiErrorCodes.VersionConflict, conflict.Message) with { Current = conflict.Current },
         ValidationException validation => FromValidation(validation, codes ?? ErrorCodeCatalogue.Core),
         HookRejectedException rejected => Refused(rejected.Code, rejected.Message, "Rejected by a hook", codes ?? ErrorCodeCatalogue.Core),

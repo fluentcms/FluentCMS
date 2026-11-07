@@ -18,7 +18,8 @@ using Microsoft.Extensions.DependencyInjection;
 namespace FluentCMS.Core.Plugins;
 
 // What every plugin of the host contributed that core reads after the plugins have run: field type names and error codes,
-// which must be unique across core and the plugins, and the tables of each plugin in plugin order.
+// which must be unique across core and the plugins, the tables of each plugin in plugin order, and the permission providers,
+// jobs and outbox handlers of each plugin, which the plugin list shows and per-site enablement gates.
 internal sealed class PluginContributions
 {
     private static readonly Regex CodePattern = new("^[A-Z]{2,}[0-9]{4}\\z", RegexOptions.CultureInvariant);
@@ -27,12 +28,32 @@ internal sealed class PluginContributions
     private readonly Dictionary<string, (ErrorCodeInfo Info, string Plugin)> _errorCodes = new(StringComparer.Ordinal);
     private readonly Dictionary<string, string> _tables = new(StringComparer.Ordinal);
     private readonly List<PluginStorage> _storage = [];
+    private readonly List<(Type Provider, string Plugin)> _permissions = [];
+    private readonly Dictionary<string, string> _jobs = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _outboxHandlers = new(StringComparer.Ordinal);
 
     public IReadOnlyDictionary<string, ErrorCodeInfo> ErrorCodes => _errorCodes.ToDictionary(item => item.Key, item => item.Value.Info, StringComparer.Ordinal);
 
     public IReadOnlyList<PluginStorage> Storage => _storage;
 
     public PluginModels Models => PluginModels.Of(_storage.SelectMany(storage => storage.Contributors));
+
+    public IReadOnlyList<string> FieldTypesOf(string plugin) => Of(_fieldTypes, plugin);
+
+    public IReadOnlyList<Type> PermissionProvidersOf(string plugin) => [.. _permissions.Where(item => item.Plugin == plugin).Select(item => item.Provider)];
+
+    public IReadOnlyList<string> JobsOf(string plugin) => Of(_jobs, plugin);
+
+    // The plugin that added the job type or the outbox handler; null for core's and the host's.
+    public string? JobOwner(string type) => _jobs.GetValueOrDefault(type);
+
+    public string? OutboxHandlerOwner(string name) => _outboxHandlers.GetValueOrDefault(name);
+
+    public void AddPermissions(RegisteredPlugin plugin, Type provider) => _permissions.Add((provider, plugin.Name));
+
+    public void AddJob(RegisteredPlugin plugin, string type) => _jobs[type] = plugin.Name;
+
+    public void AddOutboxHandler(RegisteredPlugin plugin, string name) => _outboxHandlers[name] = plugin.Name;
 
     public void AddFieldType(RegisteredPlugin plugin, IFieldType fieldType)
     {
@@ -113,6 +134,9 @@ internal sealed class PluginContributions
 
         return storage;
     }
+
+    private static List<string> Of(Dictionary<string, string> owners, string plugin) =>
+        [.. owners.Where(item => item.Value == plugin).Select(item => item.Key).Order(StringComparer.Ordinal)];
 }
 
 internal sealed class PluginServiceBuilder(FluentCmsBuilder cms, RegisteredPlugin plugin, PluginContributions contributions)
@@ -137,6 +161,7 @@ internal sealed class PluginServiceBuilder(FluentCmsBuilder cms, RegisteredPlugi
         where TProvider : class, IPermissionProvider
     {
         cms.Services.AddSingleton<IPermissionProvider, TProvider>();
+        contributions.AddPermissions(plugin, typeof(TProvider));
         return this;
     }
 
@@ -151,6 +176,7 @@ internal sealed class PluginServiceBuilder(FluentCmsBuilder cms, RegisteredPlugi
         where TJob : class, IJob<TPayload>
     {
         cms.Jobs.AddJob<TJob, TPayload>(type, attemptTimeout);
+        contributions.AddJob(plugin, type);
         return this;
     }
 
@@ -167,6 +193,7 @@ internal sealed class PluginServiceBuilder(FluentCmsBuilder cms, RegisteredPlugi
         where THandler : class, IOutboxEventHandler<TEvent>
     {
         cms.Events.AddOutboxHandler<TEvent, THandler>(name);
+        contributions.AddOutboxHandler(plugin, name);
         return this;
     }
 

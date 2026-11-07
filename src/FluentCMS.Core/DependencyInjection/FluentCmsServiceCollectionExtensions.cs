@@ -32,6 +32,7 @@ using FluentCMS.Core.Storage;
 using FluentCMS.Events;
 using FluentCMS.Jobs;
 using FluentCMS.Localization;
+using FluentCMS.Plugins;
 using FluentCMS.Providers;
 using FluentCMS.Schema;
 using FluentCMS.Seeding;
@@ -76,6 +77,9 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddSingleton(plugins);
         services.TryAddSingleton<IHookTiebreaker>(plugins);
         builder.Providers.BeforeCore(services);
+        services.AddSingleton<PluginState>();
+        services.AddSingleton<IPluginState>(serviceProvider => serviceProvider.GetRequiredService<PluginState>());
+        services.AddScoped<PluginAdministration>();
         foreach (var storage in plugins.Contributions.Storage)
         {
             storage.Register(services, provider);
@@ -177,6 +181,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddManagementIdentityApi();
         services.AddManagementSiteApi();
         services.AddManagementOperationsApi();
+        services.AddManagementPluginApi();
         services.AddScoped<SchemaIntrospection>();
         services.TryAddScoped<ISchemaIntrospection>(serviceProvider => serviceProvider.GetRequiredService<SchemaIntrospection>());
         services.AddManagementSchemaApi();

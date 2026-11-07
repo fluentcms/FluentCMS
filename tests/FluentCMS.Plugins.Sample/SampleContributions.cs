@@ -76,6 +76,15 @@ public sealed class SampleNoteHandler(PluginCalls? calls = null) : IOutboxEventH
     }
 }
 
+public sealed class SampleNoteSeenHandler(PluginCalls? calls = null) : IEventHandler<SampleNoteAdded>
+{
+    public ValueTask HandleAsync(SampleNoteAdded message, CancellationToken cancellationToken)
+    {
+        calls?.Add($"sample.event:{message.Text}");
+        return ValueTask.CompletedTask;
+    }
+}
+
 // A short text taken from another field of the same type, which the setting "of" names.
 public sealed class ExcerptFieldType : IFieldType
 {

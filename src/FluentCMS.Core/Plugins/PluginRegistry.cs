@@ -43,6 +43,9 @@ internal sealed class PluginRegistry : IHookTiebreaker
     // Configure runs once per host, however many times MapFluentCms is called.
     public bool TryStartConfigure() => Interlocked.Exchange(ref _configured, 1) == 0;
 
+    // The plugin a hook or handler belongs to, by the same rule as its rank; null for one of the host or core.
+    public RegisteredPlugin? OwnerOf(Type hookType) => Rank(hookType) is < 0 and var rank ? Plugins[rank + Plugins.Count] : null;
+
     public int Rank(Type hookType) =>
         _types.TryGetValue(hookType, out var rank)
         || (hookType.IsConstructedGenericType && _types.TryGetValue(hookType.GetGenericTypeDefinition(), out rank))

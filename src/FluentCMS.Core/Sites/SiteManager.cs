@@ -135,7 +135,7 @@ internal sealed partial class SiteManager(
         await activity.WriteAsync(new ActivityEntry("site.locale-added") { TargetType = "site", TargetId = siteId.ToString("D"), Locale = locale }, cancellationToken);
     }
 
-    // The foreign keys delete the site's locales, its roles with their grants, and its settings. A site with documents stays, because
+    // The foreign keys delete the site's locales, its roles with their grants, its settings and its plugin rows. A site with documents stays, because
     // they would be left in a site that no longer exists; trashed ones count, since restoring one needs its site.
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
