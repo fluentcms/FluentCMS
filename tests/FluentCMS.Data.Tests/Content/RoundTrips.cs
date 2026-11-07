@@ -25,16 +25,11 @@ internal sealed class RoundTrips : DbCommandInterceptor, IDbTransactionIntercept
 
     public int Count => Sent.Count;
 
-    public int Commands => Sent.Count(text => !text.StartsWith("--", StringComparison.Ordinal));
-
-    public int Saved { get; private set; }
-
     public void Reset()
     {
         lock (_sent)
         {
             _sent.Clear();
-            Saved = 0;
         }
     }
 
@@ -197,7 +192,6 @@ internal sealed class RoundTrips : DbCommandInterceptor, IDbTransactionIntercept
         {
             if (Volatile.Read(ref _saving) > 0 && !text.StartsWith("--", StringComparison.Ordinal))
             {
-                Saved++;
                 return;
             }
 
