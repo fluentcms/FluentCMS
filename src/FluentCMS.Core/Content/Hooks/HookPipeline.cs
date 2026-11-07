@@ -26,6 +26,18 @@ public sealed class HookPipeline(IServiceProvider services)
         OperationContext operation,
         ContentDocument entry,
         ContentDocument? previous,
+        CancellationToken cancellationToken) =>
+        await RunAsync(kind, type, operation, entry, previous, beforeFirst: null, cancellationToken);
+
+    // Whether a hook ran. beforeFirst runs just before the first hook does, while the entry is still as it was given, so that
+    // a caller compares with it only when there is something to compare.
+    internal async ValueTask<bool> RunAsync(
+        HookKind kind,
+        SchemaType type,
+        OperationContext operation,
+        ContentDocument entry,
+        ContentDocument? previous,
+        Action? beforeFirst,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(type);
@@ -40,8 +52,10 @@ public sealed class HookPipeline(IServiceProvider services)
 
         if (hooks.Count == 0)
         {
-            return;
+            return false;
         }
+
+        beforeFirst?.Invoke();
 
         using var span = FluentCmsTelemetry.Start("hook", kind.ToString(), type.Name, operation);
         span?.SetTag(FluentCmsTelemetry.Tags.Hooks, hooks.Count);
@@ -68,6 +82,8 @@ public sealed class HookPipeline(IServiceProvider services)
 
             await hook.InvokeAsync(session, mutable, cancellationToken);
         }
+
+        return true;
     }
 
     private List<BoundHook> Resolve(HookKind kind, SchemaType type)

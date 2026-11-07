@@ -46,7 +46,7 @@ internal sealed class EntryCanonicalizer(SchemaModel schema)
         try
         {
             ReadFields(type, entry, result, "", flattened: false, errors, mayDerive, stored);
-            EntryJson.ThrowIfUnreadable(EntryJson.Fields(type, result));
+            EntryJson.ThrowIfUnreadable(type, result);
             _blocks.CheckUnique(type, result, errors);
         }
         catch (ArgumentException exception)

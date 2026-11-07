@@ -19,8 +19,6 @@ internal sealed record FieldPath(StoredField Stored, string ApiPath, string[] Re
 // that a client cannot probe for a field. Trusted paths, which come from a row rule, skip the access checks.
 internal sealed class QueryPaths(SchemaModel schema, IContentQueryAccess access)
 {
-    private readonly Dictionary<SchemaType, Dictionary<string, StoredField>> _fields = [];
-
     public ResolvedPath? Resolve(SchemaType type, string path, bool trusted = false)
     {
         var segments = string.IsNullOrEmpty(path) ? [""] : path.Split('.');
@@ -51,7 +49,7 @@ internal sealed class QueryPaths(SchemaModel schema, IContentQueryAccess access)
             if (field.FieldType != FieldTypeNames.Component || field.Multiple)
             {
                 var apiPath = string.Join('.', segments[..(index + 1)]);
-                return new FieldPath(FieldsOf(type)[apiPath], apiPath, segments[(index + 1)..]);
+                return new FieldPath(FieldStorage.ByPath(schema, type)[apiPath], apiPath, segments[(index + 1)..]);
             }
 
             owner = schema.FindComponent((string)field.Settings[FieldSettings.Component])!;
@@ -60,18 +58,7 @@ internal sealed class QueryPaths(SchemaModel schema, IContentQueryAccess access)
         return new GroupPath(owner);
     }
 
-    public StoredField Field(SchemaType type, string apiPath) => FieldsOf(type)[apiPath];
+    public StoredField Field(SchemaType type, string apiPath) => FieldStorage.ByPath(schema, type)[apiPath];
 
     public static string ApiPath(SchemaType type, StoredField stored) => stored.Location[(type.Name.Length + 1)..];
-
-    private Dictionary<string, StoredField> FieldsOf(SchemaType type)
-    {
-        if (!_fields.TryGetValue(type, out var fields))
-        {
-            fields = FieldStorage.Of(schema, type).ToDictionary(stored => ApiPath(type, stored), StringComparer.Ordinal);
-            _fields[type] = fields;
-        }
-
-        return fields;
-    }
 }

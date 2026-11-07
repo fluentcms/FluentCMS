@@ -50,7 +50,7 @@ internal sealed partial class ContentService
                     var draft = await store.ReadAsync(write.Type, document, ContentState.Draft, cancellationToken);
                     var published = await store.ReadAsync(write.Type, document, ContentState.Published, cancellationToken);
                     await CheckPublishGrantAsync(write, documents, document, target, draft, published, cancellationToken);
-                    await CheckScheduledReferencesAsync(write, document, target, strict: false, cancellationToken);
+                    await CheckScheduledReferencesAsync(write, document, draft, target, strict: false, cancellationToken);
                     shared = SharedHashOf(write.Type, draft);
                 }
                 else
@@ -242,7 +242,7 @@ internal sealed partial class ContentService
             var draft = await store.ReadAsync(write.Type, document, ContentState.Draft, cancellationToken);
             var published = await store.ReadAsync(write.Type, document, ContentState.Published, cancellationToken);
             await CheckPublishGrantAsync(write, documents, document, target, draft, published, cancellationToken);
-            await CheckScheduledReferencesAsync(write, document, target, strict: true, cancellationToken);
+            await CheckScheduledReferencesAsync(write, document, draft, target, strict: true, cancellationToken);
         }
         else
         {
@@ -252,15 +252,14 @@ internal sealed partial class ContentService
 
     // The reference rules of a publish that a system principal would not meet, asked as the principal that schedules. When it
     // is scheduled, a target that is not published yet is let through, since it may be by then; what the principal could never
-    // reference is not. When it runs, everything counts.
-    private async Task CheckScheduledReferencesAsync(WriteScope write, Document document, AccessTarget target, bool strict, CancellationToken cancellationToken)
+    // reference is not. When it runs, everything counts. draft is the draft as this transaction read it.
+    private async Task CheckScheduledReferencesAsync(WriteScope write, Document document, ContentDocument draft, AccessTarget target, bool strict, CancellationToken cancellationToken)
     {
         if (write.Type.UnpublishedReferences != UnpublishedReferencePolicy.Block)
         {
             return;
         }
 
-        var draft = await store.ReadAsync(write.Type, document, ContentState.Draft, cancellationToken);
         var check = new ValidationContext(write.Type, mapper.ValidationValues(write.Type, draft), write.Operation, ValidationMode.Publish);
         await CheckReferencesAsync(write, draft, document.DocumentId, target, check, [], cancellationToken, tolerateTargetState: !strict);
 

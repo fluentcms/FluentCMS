@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Content;
@@ -22,9 +23,17 @@ internal static class EntryJson
 
     public static string Moment(DateTimeOffset moment) => moment.UtcDateTime.ToString(MomentFormat, CultureInfo.InvariantCulture);
 
+    // Counts the calls of Fields in the flow that set it, so that a test can see how often a write copies its entry.
+    public static AsyncLocal<StrongBox<int>?> FieldsCalls { get; } = new();
+
     // The fields of an entry, which is what a version holds and what a change is decided on. System fields are not in it.
     public static JsonObject Fields(SchemaType type, ContentDocument entry)
     {
+        if (FieldsCalls.Value is { } calls)
+        {
+            calls.Value++;
+        }
+
         JsonObject fields = [];
         foreach (var field in type.Fields)
         {
@@ -33,6 +42,50 @@ internal static class EntryJson
         }
 
         return fields;
+    }
+
+    // The fields of an entry as Fields reads them, without copying them.
+    public static void ThrowIfUnreadable(SchemaType type, ContentDocument entry)
+    {
+        foreach (var field in type.Fields)
+        {
+            if (entry.TryGetValue(field.Name, out var value))
+            {
+                ThrowIfUnreadableValue(value);
+            }
+        }
+    }
+
+    private static void ThrowIfUnreadableValue(object? value)
+    {
+        switch (value)
+        {
+            case JsonNode node:
+                ThrowIfUnreadable(node);
+                break;
+            case JsonElement { ValueKind: not (JsonValueKind.Undefined or JsonValueKind.Null) } element:
+                ThrowIfUnreadable(JsonDepth.Parse(element.GetRawText()));
+                break;
+            case RichText document:
+                ThrowIfUnreadable(JsonDepth.Parse(document.Json));
+                break;
+            case string:
+                break;
+            case IEnumerable<KeyValuePair<string, object?>> pairs:
+                foreach (var (_, inner) in pairs)
+                {
+                    ThrowIfUnreadableValue(inner);
+                }
+
+                break;
+            case IEnumerable items:
+                foreach (var item in items)
+                {
+                    ThrowIfUnreadableValue(item);
+                }
+
+                break;
+        }
     }
 
     // A JsonObject reads its keys when they are first asked for, and only then finds one that is repeated.

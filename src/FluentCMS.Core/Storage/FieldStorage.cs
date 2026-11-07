@@ -1,4 +1,7 @@
+using System.Collections.Concurrent;
+using System.Collections.Frozen;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using FluentCMS.Core.Schema.FieldTypes;
 using FluentCMS.Schema;
 
@@ -25,8 +28,21 @@ internal static class FieldStorage
 {
     private const string EmptyList = "[]";
 
-    public static IEnumerable<StoredField> Of(SchemaModel schema, SchemaType type) =>
-        type.Fields.SelectMany(field => Flatten(schema, field, type.Name, "", flattened: false, field.Localizable));
+    // A model and its types do not change once built, so the leaves of a type are worked out once per model.
+    private static readonly ConditionalWeakTable<SchemaModel, ConcurrentDictionary<SchemaType, Leaves>> Computed = new();
+
+    public static IReadOnlyList<StoredField> Of(SchemaModel schema, SchemaType type) => LeavesOf(schema, type).All;
+
+    // The leaves by their path in the type, such as seo.metaTitle, which is QueryPaths.ApiPath.
+    public static FrozenDictionary<string, StoredField> ByPath(SchemaModel schema, SchemaType type) => LeavesOf(schema, type).ByPath;
+
+    private static Leaves LeavesOf(SchemaModel schema, SchemaType type) =>
+        Computed.GetValue(schema, static _ => new ConcurrentDictionary<SchemaType, Leaves>())
+            .GetOrAdd(type, static (type, schema) =>
+            {
+                StoredField[] all = [.. type.Fields.SelectMany(field => Flatten(schema, field, type.Name, "", flattened: false, field.Localizable))];
+                return new Leaves(all, all.ToFrozenDictionary(stored => stored.Location[(type.Name.Length + 1)..], StringComparer.Ordinal));
+            }, schema);
 
     private static IEnumerable<StoredField> Flatten(SchemaModel schema, SchemaField field, string owner, string prefix, bool flattened, bool localized)
     {
@@ -91,4 +107,6 @@ internal static class FieldStorage
             ? (Convert.ToInt32(precision, CultureInfo.InvariantCulture),
                 field.Settings.TryGetValue(FieldSettings.Scale, out var scale) ? Convert.ToInt32(scale, CultureInfo.InvariantCulture) : 0)
             : (null, null);
+
+    private sealed record Leaves(StoredField[] All, FrozenDictionary<string, StoredField> ByPath);
 }
