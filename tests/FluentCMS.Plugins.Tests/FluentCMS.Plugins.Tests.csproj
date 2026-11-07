@@ -8,6 +8,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../../src/FluentCMS.Data.PostgreSql/FluentCMS.Data.PostgreSql.csproj" />
     <ProjectReference Include="../../src/FluentCMS.Testing/FluentCMS.Testing.csproj" />
     <ProjectReference Include="../FluentCMS.Plugins.Sample/FluentCMS.Plugins.Sample.csproj" />
   </ItemGroup>

@@ -13,9 +13,9 @@ internal static class GeneratedMigrations
 {
     public const string Namespace = "FluentCMS.Generated";
 
-    public static GeneratedMigration Scaffold(SchemaModel schema, string name, Assembly? previous = null) =>
+    public static GeneratedMigration Scaffold(SchemaModel schema, string name, Assembly? previous = null, IDataProvider? provider = null) =>
         ContentMigrationGenerator.Scaffold(
-            () => ContentMigrations.CreateContext(new SqliteDataProvider("Data Source=:memory:"), schema, previous ?? typeof(CmsDbContext).Assembly),
+            () => ContentMigrations.CreateContext(provider ?? new SqliteDataProvider("Data Source=:memory:"), schema, previous ?? typeof(CmsDbContext).Assembly),
             name,
             Namespace);
 
@@ -42,9 +42,9 @@ internal static class GeneratedMigrations
         return AssemblyLoadContext.Default.LoadFromStream(output);
     }
 
-    public static Assembly CompileFirst(SchemaModel schema, string name = "Initial")
+    public static Assembly CompileFirst(SchemaModel schema, string name = "Initial", IDataProvider? provider = null)
     {
-        var migration = Scaffold(schema, name);
+        var migration = Scaffold(schema, name, provider: provider);
         return Compile(migration.MigrationCode, migration.MetadataCode, migration.SnapshotCode);
     }
 }

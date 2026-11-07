@@ -35,7 +35,7 @@ internal sealed class PluginStorage(RegisteredPlugin plugin)
 
     public Assembly? Migrations { get; private set; }
 
-    public string TablePrefix => StorageNames.Prefix + plugin.Name.Replace('-', '_') + "_";
+    public string TablePrefix => TablePrefixOf(plugin.Name);
 
     public string HistoryTable => HistoryTableOf(plugin.Name);
 
@@ -102,6 +102,8 @@ internal sealed class PluginStorage(RegisteredPlugin plugin)
             services.AddSingleton<IPluginMigrations>(new Stream<TPlugin>(plugin.Name));
         }
     }
+
+    public static string TablePrefixOf(string plugin) => StorageNames.Prefix + plugin.Replace('-', '_') + "_";
 
     public static string HistoryTableOf(string plugin) => StorageNames.Prefix + plugin.Replace('-', '_') + StorageNames.HistoryTableSuffix;
 

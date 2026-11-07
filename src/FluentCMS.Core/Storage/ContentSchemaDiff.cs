@@ -27,7 +27,8 @@ internal sealed class ContentSchemaDiff
     // A name for the migration that fixes the first of Missing.
     public string SuggestedMigrationName => $"Add{_firstMissingName}";
 
-    public static async Task<ContentSchemaDiff> CompareAsync(CmsDbContext context, IDatabaseSchemaReader reader, CancellationToken cancellationToken)
+    // A table under a plugin's prefix belongs to the plugin, whether it maps the table, migrates it or neither.
+    public static async Task<ContentSchemaDiff> CompareAsync(CmsDbContext context, IDatabaseSchemaReader reader, IReadOnlyCollection<string> pluginTablePrefixes, CancellationToken cancellationToken)
     {
         var model = context.GetService<IDesignTimeModel>().Model.GetRelationalModel();
         var operations = context.GetService<IMigrationsModelDiffer>().GetDifferences(null, model);
@@ -41,7 +42,7 @@ internal sealed class ContentSchemaDiff
         }
 
         var known = model.Tables.Select(table => table.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        foreach (var table in database.Tables.Keys.Where(table => IsStaleContentTable(table, known)).Order(StringComparer.Ordinal))
+        foreach (var table in database.Tables.Keys.Where(table => IsStaleContentTable(table, known, pluginTablePrefixes)).Order(StringComparer.Ordinal))
         {
             diff._notApplied.Add($"drop table {table}");
         }
@@ -155,11 +156,12 @@ internal sealed class ContentSchemaDiff
         _firstMissingName ??= string.Concat(name.Split('_', StringSplitOptions.RemoveEmptyEntries).Select(part => char.ToUpperInvariant(part[0]) + part[1..]));
     }
 
-    private static bool IsStaleContentTable(string table, HashSet<string> known) =>
+    private static bool IsStaleContentTable(string table, HashSet<string> known, IReadOnlyCollection<string> pluginTablePrefixes) =>
         table.StartsWith(StorageNames.Prefix, StringComparison.Ordinal)
         && !table.EndsWith(StorageNames.HistoryTableSuffix, StringComparison.Ordinal)
         && !known.Contains(table)
-        && !StorageNames.SystemTables.Contains(table);
+        && !StorageNames.SystemTables.Contains(table)
+        && !pluginTablePrefixes.Any(prefix => table.StartsWith(prefix, StringComparison.Ordinal));
 
     private static bool Same(string? left, string? right) => string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
 

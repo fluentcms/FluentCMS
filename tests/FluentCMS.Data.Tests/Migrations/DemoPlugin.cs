@@ -17,6 +17,15 @@ internal sealed class DemoPlugin : IPluginMigrations
 
     public string Name => PluginName;
 
+    public static void Add(IServiceCollection services, string connectionString)
+    {
+        services.AddDbContext<DemoPluginDbContext>(options =>
+            options.UseSqlite(connectionString, sqlite => sqlite
+                .MigrationsAssembly(typeof(DemoPluginDbContext).Assembly)
+                .MigrationsHistoryTable(HistoryTable)));
+        services.AddSingleton<IPluginMigrations, DemoPlugin>();
+    }
+
     public DbContext ResolveContext(IServiceProvider scopedServices) => scopedServices.GetRequiredService<DemoPluginDbContext>();
 }
 
