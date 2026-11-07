@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using FluentCMS.Core.DependencyInjection;
+using FluentCMS.Core.Identity;
 using FluentCMS.Core.IntegrationTests.Hosting;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -184,24 +185,21 @@ public sealed partial class OpenApiHostingTests : IAsyncDisposable
         Server(second).ShouldBe(origin ?? "http://two.example");
     }
 
-    // The output cache runs before UseAuthorization, so a copy kept for one caller would reach a caller the policy refuses.
+    // UseFluentCms authorizes before the output cache, so the kept copy reaches only a caller the policy lets through.
     [Fact]
-    public async Task ADocumentBehindAnAuthorizationPolicyIsBuiltForEachRequest()
+    public async Task ADocumentBehindAnAuthorizationPolicyIsKeptAndStillRefusedToWhomThePolicyRefuses()
     {
         var builds = new Builds();
         using var client = await StartAsync(
             Environments.Development,
             [],
-            app =>
-            {
-                app.UseAuthorization();
-                app.MapFluentCmsOpenApi().RequireAuthorization("docs");
-            },
+            app => app.MapFluentCmsOpenApi().RequireAuthorization("docs"),
             builder =>
             {
                 builds.Count(builder);
-                builder.Services.AddAuthorizationBuilder().AddPolicy("docs", policy => policy.RequireAssertion(context =>
-                    context.Resource is HttpContext http && http.Request.Headers.ContainsKey("X-Docs")));
+                builder.Services.AddAuthorizationBuilder().AddPolicy("docs", policy => policy
+                    .AddAuthenticationSchemes(FluentCmsAuthentication.Scheme)
+                    .RequireAssertion(context => context.Resource is HttpContext http && http.Request.Headers.ContainsKey("X-Docs")));
             });
 
         using var allowed = await SendAsync(client, "/openapi/v1.json", ("X-Docs", "1"));
@@ -209,9 +207,10 @@ public sealed partial class OpenApiHostingTests : IAsyncDisposable
         using var again = await SendAsync(client, "/openapi/v1.json", ("X-Docs", "1"));
 
         allowed.StatusCode.ShouldBe(HttpStatusCode.OK);
-        refused.StatusCode.ShouldNotBe(HttpStatusCode.OK);
+        refused.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         again.StatusCode.ShouldBe(HttpStatusCode.OK);
-        builds.Value.ShouldBe(2);
+        again.Headers.Age.ShouldNotBeNull();
+        builds.Value.ShouldBe(1);
     }
 
     // Scalar serves its bundle and helper beside the page from its embedded assets, and starts it with an inline script.

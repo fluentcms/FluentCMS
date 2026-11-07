@@ -42,7 +42,7 @@ public sealed class ProvidersBuilder : IProviderSlots
         where TSlot : class =>
         Default(ServiceDescriptor.Singleton(factory));
 
-    private ProvidersBuilder Default(ServiceDescriptor descriptor)
+    internal ProvidersBuilder Default(ServiceDescriptor descriptor)
     {
         Check(descriptor.ServiceType, null, "Core");
         if (_defaults.Any(slot => slot.ServiceType == descriptor.ServiceType))

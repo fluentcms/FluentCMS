@@ -38,6 +38,7 @@ using FluentCMS.Schema;
 using FluentCMS.Seeding;
 using FluentCMS.Settings;
 using FluentCMS.Sites;
+using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -263,6 +264,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddHostedService<ActivityScheduleService>();
 
         services.AddOutputCache();
+        builder.Providers.Default(MemoryOutputCacheStore());
         OutputCacheEviction.Register(builder.Events, () => builder.DeliveryCache.OutputCache);
 
         services.AddSingleton(builder.Seeding);
@@ -278,4 +280,8 @@ public static class FluentCmsServiceCollectionExtensions
 
         return services;
     }
+
+    // The framework's in-memory store is internal, so the slot's default is the registration AddOutputCache makes for it.
+    private static ServiceDescriptor MemoryOutputCacheStore() =>
+        new ServiceCollection().AddOutputCache().Single(descriptor => ProvidersBuilder.Fills(descriptor, typeof(IOutputCacheStore)));
 }

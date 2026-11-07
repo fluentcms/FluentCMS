@@ -7,61 +7,98 @@ using Xunit;
 
 namespace FluentCMS.Core.Tests.Api.Common;
 
-public sealed class WindowLimiterTests
+public sealed class TokenBucketLimiterTests
 {
     private readonly ClockProvider _time = new();
-    private readonly ConcurrentDictionary<string, WindowLimiter> _owner = new();
+    private readonly ConcurrentDictionary<string, TokenBucketLimiter> _owner = new();
 
     [Fact]
-    public void ALimiterGrantsItsLimitPerWindowAndThenRefusesWithTheTimeLeft()
+    public void ALimiterGrantsItsLimitAtOnceAndThenOnePermitPerShareOfTheMinute()
     {
         var limiter = Create("a", limit: 2);
 
         limiter.AttemptAcquire().IsAcquired.ShouldBeTrue();
-        _time.Advance(TimeSpan.FromSeconds(10));
         limiter.AttemptAcquire().IsAcquired.ShouldBeTrue();
         limiter.Remaining.ShouldBe(0);
         using var refused = limiter.AttemptAcquire();
 
         refused.IsAcquired.ShouldBeFalse();
         refused.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter).ShouldBeTrue();
-        retryAfter.ShouldBe(TimeSpan.FromSeconds(50));
-        limiter.SecondsToReset.ShouldBe(50);
-    }
+        retryAfter.ShouldBe(TimeSpan.FromSeconds(30));
+        limiter.SecondsToRetry.ShouldBe(30);
+        limiter.SecondsToReset.ShouldBe(60);
 
-    [Fact]
-    public void ANewWindowStartsAfterTheOldOneEnds()
-    {
-        var limiter = Create("a", limit: 1);
-        limiter.AttemptAcquire().IsAcquired.ShouldBeTrue();
-        limiter.AttemptAcquire().IsAcquired.ShouldBeFalse();
-
-        _time.Advance(WindowLimiter.Window);
+        _time.Advance(TimeSpan.FromSeconds(30));
 
         limiter.Remaining.ShouldBe(1);
+        limiter.SecondsToReset.ShouldBe(30);
         limiter.AttemptAcquire().IsAcquired.ShouldBeTrue();
+        limiter.AttemptAcquire().IsAcquired.ShouldBeFalse();
+    }
+
+    // A fixed window lets the limit through at the end of one window and again at the start of the next.
+    [Fact]
+    public void ABurstAtTheTurnOfAMinuteIsNotLetThroughTwice()
+    {
+        var limiter = Create("a", limit: 60);
+        _time.Advance(TimeSpan.FromSeconds(59));
+
+        Enumerable.Range(0, 60).Count(_ => limiter.AttemptAcquire().IsAcquired).ShouldBe(60);
+        _time.Advance(TimeSpan.FromSeconds(1));
+
+        Enumerable.Range(0, 60).Count(_ => limiter.AttemptAcquire().IsAcquired).ShouldBe(1);
+        _time.Advance(TimeSpan.FromSeconds(30));
+        Enumerable.Range(0, 60).Count(_ => limiter.AttemptAcquire().IsAcquired).ShouldBe(30);
     }
 
     [Fact]
-    public void AClockThatMovesBackStartsANewWindow()
+    public void TheBucketFillsAgainOverAMinuteAndHoldsNoMoreThanTheLimit()
+    {
+        var limiter = Create("a", limit: 3);
+        Enumerable.Range(0, 3).Count(_ => limiter.AttemptAcquire().IsAcquired).ShouldBe(3);
+
+        _time.Advance(TokenBucketLimiter.Window * 5);
+
+        limiter.Remaining.ShouldBe(3);
+        Enumerable.Range(0, 4).Count(_ => limiter.AttemptAcquire().IsAcquired).ShouldBe(3);
+    }
+
+    [Fact]
+    public void AClockThatMovesBackKeepsTheBucketAsItWas()
     {
         var limiter = Create("a", limit: 1);
         limiter.AttemptAcquire().IsAcquired.ShouldBeTrue();
 
         _time.Advance(TimeSpan.FromHours(-1));
 
+        limiter.AttemptAcquire().IsAcquired.ShouldBeFalse();
+        limiter.SecondsToRetry.ShouldBe(60);
+        _time.Advance(TokenBucketLimiter.Window);
         limiter.AttemptAcquire().IsAcquired.ShouldBeTrue();
     }
 
     [Fact]
-    public void ALimiterIsNotIdleWhileItsWindowRunsAndIsIdleForTheTimeSinceItEnded()
+    public void AskingForNoPermitsSaysWhetherOneIsThere()
     {
         var limiter = Create("a", limit: 1);
+
+        limiter.AttemptAcquire(0).IsAcquired.ShouldBeTrue();
+        limiter.Remaining.ShouldBe(1);
+        limiter.AttemptAcquire().IsAcquired.ShouldBeTrue();
+        limiter.AttemptAcquire(0).IsAcquired.ShouldBeFalse();
+    }
+
+    [Fact]
+    public void ALimiterIsNotIdleUntilItsBucketIsFullAndIsIdleForTheTimeSince()
+    {
+        var limiter = Create("a", limit: 2);
         limiter.AttemptAcquire();
 
         limiter.IdleDuration.ShouldBeNull();
+        _time.Advance(TimeSpan.FromSeconds(20));
+        limiter.IdleDuration.ShouldBeNull();
 
-        _time.Advance(WindowLimiter.Window + TimeSpan.FromSeconds(30));
+        _time.Advance(TimeSpan.FromSeconds(40));
 
         limiter.IdleDuration.ShouldBe(TimeSpan.FromSeconds(30));
     }
@@ -98,7 +135,7 @@ public sealed class WindowLimiterTests
     }
 
     [Fact]
-    public async Task APartitionedLimiterReleasesAnIdlePartitionAfterItsWindow()
+    public async Task APartitionedLimiterReleasesAnIdlePartitionOnceItsBucketIsFull()
     {
         using var partitioned = PartitionedRateLimiter.Create<string, string>(key =>
             RateLimitPartition.Get(key, name => Create(name, limit: 1)));
@@ -108,7 +145,7 @@ public sealed class WindowLimiterTests
         }
 
         _owner.Count.ShouldBe(3);
-        _time.Advance(WindowLimiter.Window + TimeSpan.FromMinutes(1));
+        _time.Advance(TokenBucketLimiter.Window + TimeSpan.FromMinutes(1));
 
         // The partitioned limiter looks for idle partitions every few seconds on its own timer.
         var until = DateTime.UtcNow.AddSeconds(40);
@@ -141,9 +178,9 @@ public sealed class WindowLimiterTests
         ClientAddress.Partition(null).ShouldBe("unknown");
     }
 
-    private WindowLimiter Create(string key, int limit)
+    private TokenBucketLimiter Create(string key, int limit)
     {
-        var limiter = new WindowLimiter(key, limit, _time, _owner);
+        var limiter = new TokenBucketLimiter(key, limit, _time, _owner);
         _owner[key] = limiter;
         return limiter;
     }
