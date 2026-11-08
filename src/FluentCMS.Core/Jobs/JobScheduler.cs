@@ -23,7 +23,7 @@ internal sealed class JobScheduler(
         where TJob : class, IJob<TPayload> =>
         AddAsync<TJob, TPayload>(payload, runAt, jobOptions, cancellationToken);
 
-    public Task AddRecurringAsync<TJob, TPayload>(string name, string cron, TPayload payload, string? queue = null, CancellationToken cancellationToken = default)
+    public Task AddRecurringAsync<TJob, TPayload>(string name, string cron, TPayload payload, string? queue, CancellationToken cancellationToken = default)
         where TJob : class, IJob<TPayload>
     {
         ArgumentNullException.ThrowIfNull(payload);

@@ -126,7 +126,7 @@ public sealed class JobRetentionTests : IDisposable
     [Fact]
     public async Task RecurringDefinitionsAreLeftAlone()
     {
-        await _fixture.Scheduler.AddRecurringAsync<ProbeJob, ProbePayload>("keep", "0 * * * *", new ProbePayload("r"), cancellationToken: Token);
+        await _fixture.Scheduler.AddRecurringAsync<ProbeJob, ProbePayload>("keep", "0 * * * *", new ProbePayload("r"), queue: null, cancellationToken: Token);
         using (var scope = _fixture.Services.CreateScope())
         {
             await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<RecurringJob>().ExecuteUpdateAsync(set => set.SetProperty(job => job.NextRunAt, Now - TimeSpan.FromDays(100)), Token);

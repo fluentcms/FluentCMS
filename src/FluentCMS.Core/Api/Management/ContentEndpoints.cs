@@ -130,20 +130,20 @@ internal static class ContentEndpoints
         WriteAsync(httpContext, type, async () =>
         {
             var entryId = EntryId(id);
-            var result = await content.PublishAsync(type, entryId, locale: null, IfMatch.Optional(httpContext.Request), httpContext.RequestAborted);
+            var result = await content.PublishAsync(type, entryId, new LocaleWriteOptions { ExpectedVersion = IfMatch.Optional(httpContext.Request) }, httpContext.RequestAborted);
             SetETag(httpContext, result.Entry);
             return Results.Json(ManagementJson.Published(result));
         });
 
     private static Task<IResult> UnpublishAsync(string type, string id, HttpContext httpContext, [FromServices] IContentService content) =>
         WriteAsync(httpContext, type, async () =>
-            Entry(httpContext, await content.UnpublishAsync(type, EntryId(id), locale: null, httpContext.RequestAborted)));
+            Entry(httpContext, await content.UnpublishAsync(type, EntryId(id), cancellationToken: httpContext.RequestAborted)));
 
     private static Task<IResult> DiscardAsync(string type, string id, HttpContext httpContext, [FromServices] IContentService content) =>
         WriteAsync(httpContext, type, async () =>
         {
             var entryId = EntryId(id);
-            return Entry(httpContext, await content.DiscardDraftAsync(type, entryId, locale: null, IfMatch.Optional(httpContext.Request), httpContext.RequestAborted));
+            return Entry(httpContext, await content.DiscardDraftAsync(type, entryId, new LocaleWriteOptions { ExpectedVersion = IfMatch.Optional(httpContext.Request) }, httpContext.RequestAborted));
         });
 
     private static Task<IResult> ScheduleAsync(string type, string id, HttpContext httpContext, [FromServices] IContentService content) =>
@@ -151,27 +151,27 @@ internal static class ContentEndpoints
         {
             var entryId = EntryId(id);
             var request = ContentRequests.Schedule(await RequestBody.ObjectAsync(httpContext.Request));
-            return Results.Json(ManagementJson.Schedule(await content.ScheduleAsync(type, entryId, request, locale: null, httpContext.RequestAborted)));
+            return Results.Json(ManagementJson.Schedule(await content.ScheduleAsync(type, entryId, request, cancellationToken: httpContext.RequestAborted)));
         });
 
     private static Task<IResult> CancelScheduleAsync(string type, string id, string action, HttpContext httpContext, [FromServices] IContentService content) =>
         WriteAsync(httpContext, type, async () =>
         {
             var entryId = EntryId(id);
-            await content.CancelScheduleAsync(type, entryId, ContentRequests.Action(action), locale: null, httpContext.RequestAborted);
+            await content.CancelScheduleAsync(type, entryId, ContentRequests.Action(action), cancellationToken: httpContext.RequestAborted);
             return Results.NoContent();
         });
 
     private static Task<IResult> VersionsAsync(string type, string id, HttpContext httpContext, [FromServices] IContentService content) =>
         VersionReadAsync(httpContext, type, async () =>
-            Results.Json(ManagementJson.Versions(await content.GetVersionsAsync(type, EntryId(id), locale: null, httpContext.RequestAborted))));
+            Results.Json(ManagementJson.Versions(await content.GetVersionsAsync(type, EntryId(id), cancellationToken: httpContext.RequestAborted))));
 
     private static Task<IResult> VersionAsync(string type, string id, string number, HttpContext httpContext, [FromServices] IContentService content) =>
         VersionReadAsync(httpContext, type, async () =>
         {
             var entryId = EntryId(id);
             var version = Number(number, nameof(number));
-            var found = await content.GetVersionAsync(type, entryId, version, locale: null, httpContext.RequestAborted)
+            var found = await content.GetVersionAsync(type, entryId, version, cancellationToken: httpContext.RequestAborted)
                 ?? throw new ValidationException([new ValidationError(nameof(number), ApiErrorCodes.NotFound, $"The entry has no version {version} in this locale.")]);
             return Results.Json(ContentJson.Entry(found));
         });
@@ -182,7 +182,7 @@ internal static class ContentEndpoints
             var entryId = EntryId(id);
             var version = Number(number, nameof(number));
             var expected = IfMatch.Optional(httpContext.Request);
-            return Entry(httpContext, await content.RestoreVersionAsync(type, entryId, version, locale: null, expected, httpContext.RequestAborted));
+            return Entry(httpContext, await content.RestoreVersionAsync(type, entryId, version, new LocaleWriteOptions { ExpectedVersion = expected }, httpContext.RequestAborted));
         });
 
     private static Task<IResult> DiffAsync(string type, string id, string from, string to, HttpContext httpContext, [FromServices] IContentService content) =>
@@ -190,7 +190,7 @@ internal static class ContentEndpoints
         {
             var entryId = EntryId(id);
             var (earlier, later) = (Number(from, nameof(from)), Number(to, nameof(to)));
-            var changes = await content.DiffAsync(type, entryId, earlier, later, locale: null, httpContext.RequestAborted);
+            var changes = await content.DiffAsync(type, entryId, earlier, later, cancellationToken: httpContext.RequestAborted);
             return Results.Json(ManagementJson.Diff(earlier, later, changes));
         });
 

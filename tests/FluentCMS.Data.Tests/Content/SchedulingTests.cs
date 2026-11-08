@@ -34,11 +34,11 @@ public sealed class SchedulingTests : IDisposable
     {
         var id = await _fixture.DraftAsync();
 
-        var winter = await _fixture.ScheduleAsync(Editor, id, new ScheduleRequest(ScheduleAction.Publish, new DateTime(2027, 3, 27, 12, 0, 0, DateTimeKind.Unspecified), "Europe/Berlin"));
+        var winter = await _fixture.ScheduleAsync(Editor, id, ScheduleRequest.AtLocalTime(ScheduleAction.Publish, new DateTime(2027, 3, 27, 12, 0, 0, DateTimeKind.Unspecified), "Europe/Berlin"));
         winter.RunAt.ShouldBe(new DateTimeOffset(2027, 3, 27, 11, 0, 0, TimeSpan.Zero));
         winter.TimeZone.ShouldBe("Europe/Berlin");
 
-        var summer = await _fixture.ScheduleAsync(Editor, id, new ScheduleRequest(ScheduleAction.Publish, new DateTime(2027, 3, 29, 12, 0, 0, DateTimeKind.Unspecified), "Europe/Berlin"));
+        var summer = await _fixture.ScheduleAsync(Editor, id, ScheduleRequest.AtLocalTime(ScheduleAction.Publish, new DateTime(2027, 3, 29, 12, 0, 0, DateTimeKind.Unspecified), "Europe/Berlin"));
         var instant = new DateTimeOffset(2027, 3, 29, 10, 0, 0, TimeSpan.Zero);
         summer.RunAt.ShouldBe(instant);
 
@@ -427,7 +427,7 @@ public sealed class SchedulingTests : IDisposable
         var theirs = await _fixture.DraftAsync("Theirs");
         var own = OwnPublisher();
         var past = At(Start.AddHours(-1));
-        var badZone = new ScheduleRequest(ScheduleAction.Publish, new DateTime(2027, 5, 1, 8, 0, 0, DateTimeKind.Unspecified), "Nowhere/Atlantis");
+        var badZone = ScheduleRequest.AtLocalTime(ScheduleAction.Publish, new DateTime(2027, 5, 1, 8, 0, 0, DateTimeKind.Unspecified), "Nowhere/Atlantis");
 
         foreach (var request in new[] { past, badZone })
         {
@@ -951,8 +951,8 @@ public sealed class SchedulingTests : IDisposable
         var before = Database.Trace(id);
 
         await Should.ThrowAsync<ValidationException>(() => _fixture.ScheduleAsync(Editor, id, At(Start.AddHours(-1))));
-        await Should.ThrowAsync<ValidationException>(() => _fixture.ScheduleAsync(Editor, id, new ScheduleRequest(ScheduleAction.Publish, new DateTime(2027, 5, 1), "Nowhere/Atlantis")));
-        await Should.ThrowAsync<ValidationException>(() => _fixture.ScheduleAsync(Editor, id, new ScheduleRequest((ScheduleAction)7, Start.UtcDateTime.AddDays(1))));
+        await Should.ThrowAsync<ValidationException>(() => _fixture.ScheduleAsync(Editor, id, ScheduleRequest.AtLocalTime(ScheduleAction.Publish, new DateTime(2027, 5, 1), "Nowhere/Atlantis")));
+        await Should.ThrowAsync<ValidationException>(() => _fixture.ScheduleAsync(Editor, id, ScheduleRequest.At((ScheduleAction)7, Start.AddDays(1))));
 
         _fixture.Schedules(id).ShouldBeEmpty();
         _fixture.Jobs().ShouldBeEmpty();

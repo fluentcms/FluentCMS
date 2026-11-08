@@ -17,7 +17,7 @@ public interface IJobDeadLetters
     /// <param name="limit">The most jobs to return.</param>
     /// <param name="cancellationToken">Cancels the read.</param>
     /// <returns>The jobs.</returns>
-    Task<IReadOnlyList<DeadLetteredJob>> ListAsync(int offset = 0, int limit = 50, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<DeadLetteredJob>> ListAsync(int offset, int limit, CancellationToken cancellationToken = default);
 
     /// <summary>Queues a dead-lettered job to run now, with the runner's default number of further attempts.</summary>
     /// <param name="id">The id of the job.</param>

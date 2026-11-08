@@ -26,7 +26,11 @@ public sealed class HookContext<T>
     /// <summary>Who performs the operation, from where, on which site and in which locale.</summary>
     public OperationContext Operation { get; }
 
-    /// <summary>The entry the operation works on. A before hook may change it, and the change is what gets stored.</summary>
+    /// <summary>
+    /// The entry the operation works on. A before hook may change it, and the change is what gets stored. An after hook gets a
+    /// copy of what was written: the write is done, so a change to the copy is discarded and never stored.
+    /// The type cannot say so, because a content class or a <see cref="ContentDocument"/> can always be written to.
+    /// </summary>
     public T Entry { get; }
 
     /// <summary>The stored state before the operation; <see langword="null"/> when an entry is created.</summary>

@@ -22,6 +22,19 @@ public class ContentQueryTests
     }
 
     [Fact]
+    public void TheHashCodeOfAGroupFollowsItsConditions()
+    {
+        var hashes = Enumerable.Range(0, 50)
+            .Select(index => new And(new FieldFilter($"field{index}", FilterOperator.Equal, "a"), Views).GetHashCode())
+            .Distinct()
+            .Count();
+        hashes.ShouldBeGreaterThan(1);
+
+        new Or(Title, Views).GetHashCode().ShouldBe(new Or(new FieldFilter("title", FilterOperator.Equal, "a"), Views).GetHashCode());
+        new Or(Title, Views).GetHashCode().ShouldNotBe(new Or(new FieldFilter("other", FilterOperator.Equal, "a"), Views).GetHashCode());
+    }
+
+    [Fact]
     public void FiltersDifferByPathOperatorOperandAndOrder()
     {
         new FieldFilter("other", FilterOperator.Equal, "a").ShouldNotBe(Title);

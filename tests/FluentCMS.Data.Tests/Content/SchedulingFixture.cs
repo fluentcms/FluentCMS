@@ -52,17 +52,17 @@ internal sealed class SchedulingFixture : IDisposable
 
     public ServiceDatabase Database { get; }
 
-    public static ScheduleRequest At(DateTimeOffset when, ScheduleAction action = ScheduleAction.Publish) => new(action, when.UtcDateTime);
+    public static ScheduleRequest At(DateTimeOffset when, ScheduleAction action = ScheduleAction.Publish) => ScheduleRequest.At(action, when);
 
     public Task<ScheduleInfo> ScheduleAsync(Principal principal, Guid id, ScheduleRequest request, string? locale = null, string type = "article", SiteId? site = null) =>
-        Database.AsAsync(principal, services => services.GetRequiredService<IContentService>().ScheduleAsync(type, id, request, locale, Token), site: site);
+        Database.AsAsync(principal, services => services.GetRequiredService<IContentService>().ScheduleAsync(type, id, request, new LocaleOptions { Locale = locale }, Token), site: site);
 
     public Task CancelAsync(Principal principal, Guid id, ScheduleAction action = ScheduleAction.Publish, string? locale = null, string type = "article") =>
         Database.AsAsync<object?>(
             principal,
             async services =>
             {
-                await services.GetRequiredService<IContentService>().CancelScheduleAsync(type, id, action, locale, Token);
+                await services.GetRequiredService<IContentService>().CancelScheduleAsync(type, id, action, new LocaleOptions { Locale = locale }, Token);
                 return null;
             });
 

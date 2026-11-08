@@ -163,5 +163,33 @@ public class SampleSchemaTests
         SampleSchema.Canonical(reversed).ShouldBe(SampleSchema.Canonical(SampleSchema.FromClasses()));
     }
 
+    [Fact]
+    public void TheShortFormsOfTheBuildersAreTheirDefaults()
+    {
+        var note = SampleSchema.NewBuilder()
+            .AddCollection("tag", type => type.Field("name", "text"))
+            .AddCollection("note", type => type
+                .Localized()
+                .Field("title", "text", field => field.Required().Display(new FieldDisplayDescription { Label = "Title", Width = 6 }))
+                .Field("body", "text", field => field.Required(false).Display(new FieldDisplayDescription()))
+                .Field("tag", "relation", field => field.Relation("tag"))
+                .Field("plain", "text"))
+            .Build()
+            .FindContentType("note")!;
+
+        note.Localized.ShouldBeTrue();
+        var title = note.Fields.Single(field => field.Name == "title");
+        title.Required.ShouldBeTrue();
+        (title.Display!.Label, title.Display.Width, title.Display.Help).ShouldBe(("Title", 6, null));
+
+        var body = note.Fields.Single(field => field.Name == "body");
+        body.Required.ShouldBeFalse();
+        body.Display.ShouldBeNull();
+
+        var tag = note.Fields.Single(field => field.Name == "tag").Relation.ShouldNotBeNull();
+        (tag.Target, tag.Reverse, tag.Ordered).ShouldBe(("tag", null, false));
+        note.Fields.Single(field => field.Name == "plain").Display.ShouldBeNull();
+    }
+
     private static IEnumerable<string> Strings(object value) => (IEnumerable<string>)value;
 }

@@ -133,18 +133,18 @@ public sealed class JobExecutionTests : IDisposable
         var letters = _fixture.Services.GetRequiredService<IJobDeadLetters>();
         var token = TestContext.Current.CancellationToken;
 
-        var listed = (await letters.ListAsync(cancellationToken: token)).ShouldHaveSingleItem();
+        var listed = (await letters.ListAsync(0, 50, token)).ShouldHaveSingleItem();
         listed.Id.ShouldBe(id);
         listed.Type.ShouldBe(JobFixture.ProbeType);
         listed.Attempts.ShouldBe(1);
         listed.LastError.ShouldNotBeNull().ShouldContain("It broke.");
         listed.DeadLetteredAt.ShouldBe(JobFixture.Start);
-        (await letters.ListAsync(offset: 1, cancellationToken: token)).ShouldBeEmpty();
+        (await letters.ListAsync(1, 50, token)).ShouldBeEmpty();
 
         (await letters.RetryAsync(Guid.CreateVersion7(), token)).ShouldBeFalse();
         (await letters.RetryAsync(id, token)).ShouldBeTrue();
         (await letters.RetryAsync(id, token)).ShouldBeFalse("it is no longer dead-lettered");
-        (await letters.ListAsync(cancellationToken: token)).ShouldBeEmpty();
+        (await letters.ListAsync(0, 50, token)).ShouldBeEmpty();
 
         _fixture.Probe.Behavior = (_, _) => Task.CompletedTask;
         (await RunNextAsync()).ShouldBeTrue();

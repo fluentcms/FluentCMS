@@ -159,7 +159,7 @@ internal sealed class TrashPurgeScheduleService(IJobScheduler scheduler, TimePro
     {
         try
         {
-            await scheduler.AddRecurringAsync<TrashPurgeJob, TrashPurgePayload>(TrashPurgeJob.RecurringName, TrashPurgeJob.Cron, new TrashPurgePayload(), cancellationToken: cancellationToken);
+            await scheduler.AddRecurringAsync<TrashPurgeJob, TrashPurgePayload>(TrashPurgeJob.RecurringName, TrashPurgeJob.Cron, new TrashPurgePayload(), queue: null, cancellationToken: cancellationToken);
             return true;
         }
         catch (Exception exception) when (!cancellationToken.IsCancellationRequested)

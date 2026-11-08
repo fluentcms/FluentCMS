@@ -8,7 +8,7 @@ namespace FluentCMS.Core.Events;
 
 internal sealed class OutboxDeadLetters(IServiceScopeFactory scopes, OutboxKick kick, TimeProvider time) : IEventDeadLetters
 {
-    public async Task<IReadOnlyList<FailedEventDelivery>> ListAsync(int offset = 0, int limit = 50, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<FailedEventDelivery>> ListAsync(int offset, int limit, CancellationToken cancellationToken = default)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(offset);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(limit);

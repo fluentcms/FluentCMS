@@ -23,7 +23,10 @@ internal sealed partial class ContentService
 {
     private const string DraftChanged = ContentErrorCodes.ScheduledDraftChanged + ": the draft changed after it was scheduled.";
 
-    public async Task<ScheduleInfo> ScheduleAsync(string type, Guid id, ScheduleRequest request, string? locale = null, CancellationToken cancellationToken = default)
+    public Task<ScheduleInfo> ScheduleAsync(string type, Guid id, ScheduleRequest request, LocaleOptions? options = null, CancellationToken cancellationToken = default) =>
+        ScheduleAsync(type, id, request, options?.Locale, cancellationToken);
+
+    internal async Task<ScheduleInfo> ScheduleAsync(string type, Guid id, ScheduleRequest request, string? locale, CancellationToken cancellationToken)
     {
         using var span = Span("schedule", type);
 
@@ -92,7 +95,10 @@ internal sealed partial class ContentService
         return new ScheduleInfo(request.Action, document.Locale, runAt, zone, document.DraftVersion);
     }
 
-    public async Task CancelScheduleAsync(string type, Guid id, ScheduleAction action, string? locale = null, CancellationToken cancellationToken = default)
+    public Task CancelScheduleAsync(string type, Guid id, ScheduleAction action, LocaleOptions? options = null, CancellationToken cancellationToken = default) =>
+        CancelScheduleAsync(type, id, action, options?.Locale, cancellationToken);
+
+    internal async Task CancelScheduleAsync(string type, Guid id, ScheduleAction action, string? locale, CancellationToken cancellationToken)
     {
         using var span = Span("cancel-schedule", type);
 

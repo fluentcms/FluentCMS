@@ -5,7 +5,7 @@ namespace FluentCMS.Core.Schema;
 
 internal sealed class TypeBuilder(TypeDraft draft) : ITypeBuilder
 {
-    public ITypeBuilder Localized(bool localized = true)
+    public ITypeBuilder Localized(bool localized)
     {
         draft.Localized = localized;
         return this;
@@ -39,14 +39,15 @@ internal sealed class TypeBuilder(TypeDraft draft) : ITypeBuilder
         return this;
     }
 
-    public ITypeBuilder Field(string name, string fieldType, Action<IFieldBuilder>? configure = null)
+    public ITypeBuilder Field(string name, string fieldType, Action<IFieldBuilder> configure)
     {
         ArgumentException.ThrowIfNullOrEmpty(name);
         ArgumentException.ThrowIfNullOrEmpty(fieldType);
+        ArgumentNullException.ThrowIfNull(configure);
 
         var field = new FieldDraft(name, fieldType);
         draft.Fields.Add(field);
-        configure?.Invoke(new FieldBuilder(field));
+        configure(new FieldBuilder(field));
         return this;
     }
 }

@@ -121,7 +121,7 @@ FluentCMS.Content.BulkItemResult.Id.get -> System.Guid?
 FluentCMS.Content.BulkItemResult.Id.init -> void
 FluentCMS.Content.BulkItemResult.Index.get -> int
 FluentCMS.Content.BulkItemResult.Index.init -> void
-FluentCMS.Content.BulkItemResult.Problem.get -> System.Exception?
+FluentCMS.Content.BulkItemResult.Problem.get -> FluentCMS.Content.BulkProblem?
 FluentCMS.Content.BulkItemResult.Problem.init -> void
 FluentCMS.Content.BulkItemResult.Status.get -> FluentCMS.Content.BulkItemStatus
 FluentCMS.Content.BulkItemResult.Status.init -> void
@@ -140,6 +140,19 @@ FluentCMS.Content.BulkOperation.Delete = 4 -> FluentCMS.Content.BulkOperation
 FluentCMS.Content.BulkOperation.Publish = 2 -> FluentCMS.Content.BulkOperation
 FluentCMS.Content.BulkOperation.Unpublish = 3 -> FluentCMS.Content.BulkOperation
 FluentCMS.Content.BulkOperation.Update = 1 -> FluentCMS.Content.BulkOperation
+FluentCMS.Content.BulkProblem
+FluentCMS.Content.BulkProblem.<Clone>$() -> FluentCMS.Content.BulkProblem!
+FluentCMS.Content.BulkProblem.BulkProblem(string! Code, string! Message) -> void
+FluentCMS.Content.BulkProblem.Code.get -> string!
+FluentCMS.Content.BulkProblem.Code.init -> void
+FluentCMS.Content.BulkProblem.Current.get -> FluentCMS.Content.ContentDocument?
+FluentCMS.Content.BulkProblem.Current.init -> void
+FluentCMS.Content.BulkProblem.Deconstruct(out string! Code, out string! Message) -> void
+FluentCMS.Content.BulkProblem.Equals(FluentCMS.Content.BulkProblem? other) -> bool
+FluentCMS.Content.BulkProblem.Errors.get -> System.Collections.Generic.IReadOnlyList<FluentCMS.Content.ValidationError!>!
+FluentCMS.Content.BulkProblem.Errors.init -> void
+FluentCMS.Content.BulkProblem.Message.get -> string!
+FluentCMS.Content.BulkProblem.Message.init -> void
 FluentCMS.Content.BulkRequest
 FluentCMS.Content.BulkRequest.<Clone>$() -> FluentCMS.Content.BulkRequest!
 FluentCMS.Content.BulkRequest.BulkRequest() -> void
@@ -219,6 +232,14 @@ FluentCMS.Content.ContentQuery.Sort.get -> System.Collections.Generic.IReadOnlyL
 FluentCMS.Content.ContentQuery.Sort.init -> void
 FluentCMS.Content.ContentQuery.Status.get -> FluentCMS.Content.QueryStatus?
 FluentCMS.Content.ContentQuery.Status.init -> void
+FluentCMS.Content.CountOptions
+FluentCMS.Content.CountOptions.<Clone>$() -> FluentCMS.Content.CountOptions!
+FluentCMS.Content.CountOptions.CountOptions() -> void
+FluentCMS.Content.CountOptions.Equals(FluentCMS.Content.CountOptions? other) -> bool
+FluentCMS.Content.CountOptions.Filter.get -> FluentCMS.Content.ContentFilter?
+FluentCMS.Content.CountOptions.Filter.init -> void
+FluentCMS.Content.CountOptions.Status.get -> FluentCMS.Content.QueryStatus
+FluentCMS.Content.CountOptions.Status.init -> void
 FluentCMS.Content.EntryNotFoundException
 FluentCMS.Content.EntryNotFoundException.EntryNotFoundException(string! type, System.Guid id) -> void
 FluentCMS.Content.EntryNotFoundException.Id.get -> System.Guid
@@ -268,45 +289,47 @@ FluentCMS.Content.GetOptions.Status.get -> FluentCMS.Content.QueryStatus
 FluentCMS.Content.GetOptions.Status.init -> void
 FluentCMS.Content.IContentService
 FluentCMS.Content.IContentService.BulkAsync(string! type, FluentCMS.Content.BulkRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.BulkResult!>!
-FluentCMS.Content.IContentService.CancelScheduleAsync(string! type, System.Guid id, FluentCMS.Publishing.ScheduleAction action, string? locale = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-FluentCMS.Content.IContentService.CountAsync(string! type, FluentCMS.Content.ContentFilter? filter = null, FluentCMS.Content.QueryStatus status = FluentCMS.Content.QueryStatus.Published, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<long>!
+FluentCMS.Content.IContentService.CancelScheduleAsync(string! type, System.Guid id, FluentCMS.Publishing.ScheduleAction action, FluentCMS.Content.LocaleOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+FluentCMS.Content.IContentService.CountAsync(string! type, FluentCMS.Content.CountOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<long>!
 FluentCMS.Content.IContentService.CreateAsync(string! type, FluentCMS.Content.ContentDocument! entry, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.ContentDocument!>!
 FluentCMS.Content.IContentService.DeleteAsync(string! type, System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-FluentCMS.Content.IContentService.DiffAsync(string! type, System.Guid id, int fromVersion, int toVersion, string? locale = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<FluentCMS.Publishing.VersionChange!>!>!
-FluentCMS.Content.IContentService.DiscardDraftAsync(string! type, System.Guid id, string? locale = null, int? expectedVersion = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.ContentDocument!>!
+FluentCMS.Content.IContentService.DiffAsync(string! type, System.Guid id, int fromVersion, int toVersion, FluentCMS.Content.LocaleOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<FluentCMS.Publishing.VersionChange!>!>!
+FluentCMS.Content.IContentService.DiscardDraftAsync(string! type, System.Guid id, FluentCMS.Content.LocaleWriteOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.ContentDocument!>!
 FluentCMS.Content.IContentService.GetAsync(string! type, System.Guid id, FluentCMS.Content.GetOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.ContentDocument?>!
-FluentCMS.Content.IContentService.GetVersionAsync(string! type, System.Guid id, int number, string? locale = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.ContentDocument?>!
-FluentCMS.Content.IContentService.GetVersionsAsync(string! type, System.Guid id, string? locale = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<FluentCMS.Publishing.VersionInfo!>!>!
+FluentCMS.Content.IContentService.GetVersionAsync(string! type, System.Guid id, int number, FluentCMS.Content.LocaleOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.ContentDocument?>!
+FluentCMS.Content.IContentService.GetVersionsAsync(string! type, System.Guid id, FluentCMS.Content.LocaleOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<FluentCMS.Publishing.VersionInfo!>!>!
 FluentCMS.Content.IContentService.PatchAsync(string! type, System.Guid id, FluentCMS.Content.ContentDocument! patch, int expectedVersion, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.ContentDocument!>!
-FluentCMS.Content.IContentService.PublishAsync(string! type, System.Guid id, string? locale = null, int? expectedVersion = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Publishing.PublishResult<FluentCMS.Content.ContentDocument!>!>!
+FluentCMS.Content.IContentService.PublishAsync(string! type, System.Guid id, FluentCMS.Content.LocaleWriteOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Publishing.PublishResult<FluentCMS.Content.ContentDocument!>!>!
 FluentCMS.Content.IContentService.PurgeAsync(string! type, System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 FluentCMS.Content.IContentService.QueryAsync(string! type, FluentCMS.Content.ContentQuery! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.PagedResult<FluentCMS.Content.ContentDocument!>!>!
 FluentCMS.Content.IContentService.QueryTrashAsync(string! type, FluentCMS.Content.ContentQuery! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.PagedResult<FluentCMS.Content.ContentDocument!>!>!
 FluentCMS.Content.IContentService.RestoreAsync(string! type, System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.ContentDocument!>!
-FluentCMS.Content.IContentService.RestoreVersionAsync(string! type, System.Guid id, int number, string? locale = null, int? expectedVersion = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.ContentDocument!>!
-FluentCMS.Content.IContentService.ScheduleAsync(string! type, System.Guid id, FluentCMS.Publishing.ScheduleRequest! request, string? locale = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Publishing.ScheduleInfo!>!
-FluentCMS.Content.IContentService.UnpublishAsync(string! type, System.Guid id, string? locale = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.ContentDocument!>!
+FluentCMS.Content.IContentService.RestoreVersionAsync(string! type, System.Guid id, int number, FluentCMS.Content.LocaleWriteOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.ContentDocument!>!
+FluentCMS.Content.IContentService.ScheduleAsync(string! type, System.Guid id, FluentCMS.Publishing.ScheduleRequest! request, FluentCMS.Content.LocaleOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Publishing.ScheduleInfo!>!
+FluentCMS.Content.IContentService.UnpublishAsync(string! type, System.Guid id, FluentCMS.Content.LocaleOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.ContentDocument!>!
 FluentCMS.Content.IContentService.UpdateAsync(string! type, System.Guid id, FluentCMS.Content.ContentDocument! entry, int expectedVersion, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.ContentDocument!>!
 FluentCMS.Content.IContentService<T>
 FluentCMS.Content.IContentService<T>.BulkAsync(FluentCMS.Content.BulkRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.BulkResult!>!
-FluentCMS.Content.IContentService<T>.CancelScheduleAsync(System.Guid id, FluentCMS.Publishing.ScheduleAction action, string? locale = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-FluentCMS.Content.IContentService<T>.CountAsync(FluentCMS.Content.ContentFilter? filter = null, FluentCMS.Content.QueryStatus status = FluentCMS.Content.QueryStatus.Published, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<long>!
+FluentCMS.Content.IContentService<T>.CancelScheduleAsync(System.Guid id, FluentCMS.Publishing.ScheduleAction action, FluentCMS.Content.LocaleOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+FluentCMS.Content.IContentService<T>.CountAsync(FluentCMS.Content.CountOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<long>!
 FluentCMS.Content.IContentService<T>.CreateAsync(T! entry, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
 FluentCMS.Content.IContentService<T>.DeleteAsync(System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-FluentCMS.Content.IContentService<T>.DiffAsync(System.Guid id, int fromVersion, int toVersion, string? locale = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<FluentCMS.Publishing.VersionChange!>!>!
-FluentCMS.Content.IContentService<T>.DiscardDraftAsync(System.Guid id, string? locale = null, int? expectedVersion = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
+FluentCMS.Content.IContentService<T>.DiffAsync(System.Guid id, int fromVersion, int toVersion, FluentCMS.Content.LocaleOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<FluentCMS.Publishing.VersionChange!>!>!
+FluentCMS.Content.IContentService<T>.DiscardDraftAsync(System.Guid id, FluentCMS.Content.LocaleWriteOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
+FluentCMS.Content.IContentService<T>.Documents.get -> FluentCMS.Content.IContentService!
 FluentCMS.Content.IContentService<T>.GetAsync(System.Guid id, FluentCMS.Content.GetOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T?>!
-FluentCMS.Content.IContentService<T>.GetVersionAsync(System.Guid id, int number, string? locale = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T?>!
-FluentCMS.Content.IContentService<T>.GetVersionsAsync(System.Guid id, string? locale = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<FluentCMS.Publishing.VersionInfo!>!>!
+FluentCMS.Content.IContentService<T>.GetVersionAsync(System.Guid id, int number, FluentCMS.Content.LocaleOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T?>!
+FluentCMS.Content.IContentService<T>.GetVersionsAsync(System.Guid id, FluentCMS.Content.LocaleOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<FluentCMS.Publishing.VersionInfo!>!>!
 FluentCMS.Content.IContentService<T>.PatchAsync(System.Guid id, FluentCMS.Content.ContentDocument! patch, int expectedVersion, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
-FluentCMS.Content.IContentService<T>.PublishAsync(System.Guid id, string? locale = null, int? expectedVersion = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Publishing.PublishResult<T!>!>!
+FluentCMS.Content.IContentService<T>.PublishAsync(System.Guid id, FluentCMS.Content.LocaleWriteOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Publishing.PublishResult<T!>!>!
 FluentCMS.Content.IContentService<T>.PurgeAsync(System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 FluentCMS.Content.IContentService<T>.QueryAsync(FluentCMS.Content.ContentQuery! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.PagedResult<T!>!>!
 FluentCMS.Content.IContentService<T>.QueryTrashAsync(FluentCMS.Content.ContentQuery! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.PagedResult<T!>!>!
 FluentCMS.Content.IContentService<T>.RestoreAsync(System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
-FluentCMS.Content.IContentService<T>.RestoreVersionAsync(System.Guid id, int number, string? locale = null, int? expectedVersion = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
-FluentCMS.Content.IContentService<T>.ScheduleAsync(System.Guid id, FluentCMS.Publishing.ScheduleRequest! request, string? locale = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Publishing.ScheduleInfo!>!
-FluentCMS.Content.IContentService<T>.UnpublishAsync(System.Guid id, string? locale = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
+FluentCMS.Content.IContentService<T>.RestoreVersionAsync(System.Guid id, int number, FluentCMS.Content.LocaleWriteOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
+FluentCMS.Content.IContentService<T>.ScheduleAsync(System.Guid id, FluentCMS.Publishing.ScheduleRequest! request, FluentCMS.Content.LocaleOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Publishing.ScheduleInfo!>!
+FluentCMS.Content.IContentService<T>.Type.get -> string!
+FluentCMS.Content.IContentService<T>.UnpublishAsync(System.Guid id, FluentCMS.Content.LocaleOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
 FluentCMS.Content.IContentService<T>.UpdateAsync(System.Guid id, T! entry, int expectedVersion, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T!>!
 FluentCMS.Content.IEntryValidator<T>
 FluentCMS.Content.IEntryValidator<T>.ValidateAsync(T entry, FluentCMS.Content.ValidationContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.ValueTask
@@ -318,6 +341,20 @@ FluentCMS.Content.IOperationContextAccessor.Current.set -> void
 FluentCMS.Content.LocaleFallback
 FluentCMS.Content.LocaleFallback.Chain = 0 -> FluentCMS.Content.LocaleFallback
 FluentCMS.Content.LocaleFallback.None = 1 -> FluentCMS.Content.LocaleFallback
+FluentCMS.Content.LocaleOptions
+FluentCMS.Content.LocaleOptions.<Clone>$() -> FluentCMS.Content.LocaleOptions!
+FluentCMS.Content.LocaleOptions.Equals(FluentCMS.Content.LocaleOptions? other) -> bool
+FluentCMS.Content.LocaleOptions.Locale.get -> string?
+FluentCMS.Content.LocaleOptions.Locale.init -> void
+FluentCMS.Content.LocaleOptions.LocaleOptions() -> void
+FluentCMS.Content.LocaleWriteOptions
+FluentCMS.Content.LocaleWriteOptions.<Clone>$() -> FluentCMS.Content.LocaleWriteOptions!
+FluentCMS.Content.LocaleWriteOptions.Equals(FluentCMS.Content.LocaleWriteOptions? other) -> bool
+FluentCMS.Content.LocaleWriteOptions.ExpectedVersion.get -> int?
+FluentCMS.Content.LocaleWriteOptions.ExpectedVersion.init -> void
+FluentCMS.Content.LocaleWriteOptions.Locale.get -> string?
+FluentCMS.Content.LocaleWriteOptions.Locale.init -> void
+FluentCMS.Content.LocaleWriteOptions.LocaleWriteOptions() -> void
 FluentCMS.Content.Not
 FluentCMS.Content.Not.Deconstruct(out FluentCMS.Content.ContentFilter! Filter) -> void
 FluentCMS.Content.Not.Equals(FluentCMS.Content.Not? other) -> bool
@@ -700,7 +737,7 @@ FluentCMS.Events.FailedEventDelivery.OccurredAt.init -> void
 FluentCMS.Events.IEventBus
 FluentCMS.Events.IEventBus.PublishAsync<TEvent>(TEvent! message, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask
 FluentCMS.Events.IEventDeadLetters
-FluentCMS.Events.IEventDeadLetters.ListAsync(int offset = 0, int limit = 50, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<FluentCMS.Events.FailedEventDelivery!>!>!
+FluentCMS.Events.IEventDeadLetters.ListAsync(int offset, int limit, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<FluentCMS.Events.FailedEventDelivery!>!>!
 FluentCMS.Events.IEventDeadLetters.RemoveAsync(System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
 FluentCMS.Events.IEventDeadLetters.RetryAsync(System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
 FluentCMS.Events.IEventHandler<TEvent>
@@ -936,13 +973,13 @@ FluentCMS.Jobs.IJob<TPayload>.ExecuteAsync(TPayload payload, FluentCMS.Jobs.JobC
 FluentCMS.Jobs.IJobActorPayload
 FluentCMS.Jobs.IJobActorPayload.Actor.get -> FluentCMS.Jobs.JobActor?
 FluentCMS.Jobs.IJobDeadLetters
-FluentCMS.Jobs.IJobDeadLetters.ListAsync(int offset = 0, int limit = 50, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<FluentCMS.Jobs.DeadLetteredJob!>!>!
+FluentCMS.Jobs.IJobDeadLetters.ListAsync(int offset, int limit, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<FluentCMS.Jobs.DeadLetteredJob!>!>!
 FluentCMS.Jobs.IJobDeadLetters.RetryAsync(System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
 FluentCMS.Jobs.IJobRunner
 FluentCMS.Jobs.IJobRunner.StartAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 FluentCMS.Jobs.IJobRunner.StopAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 FluentCMS.Jobs.IJobScheduler
-FluentCMS.Jobs.IJobScheduler.AddRecurringAsync<TJob, TPayload>(string! name, string! cron, TPayload payload, string? queue = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+FluentCMS.Jobs.IJobScheduler.AddRecurringAsync<TJob, TPayload>(string! name, string! cron, TPayload payload, string? queue, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 FluentCMS.Jobs.IJobScheduler.EnqueueAsync<TJob, TPayload>(TPayload payload, FluentCMS.Jobs.JobOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Guid>!
 FluentCMS.Jobs.IJobScheduler.ScheduleAsync<TJob, TPayload>(TPayload payload, System.DateTimeOffset runAt, FluentCMS.Jobs.JobOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Guid>!
 FluentCMS.Jobs.JobActor
@@ -1028,6 +1065,8 @@ FluentCMS.Plugins.IPlugin.ConfigureServices(FluentCMS.Plugins.IPluginServiceBuil
 FluentCMS.Plugins.IPluginAppBuilder
 FluentCMS.Plugins.IPluginAppBuilder.Name.get -> string!
 FluentCMS.Plugins.IPluginAppBuilder.Services.get -> System.IServiceProvider!
+FluentCMS.Plugins.IPluginServiceBuilder.AddJob<TJob, TPayload>(string! type) -> FluentCMS.Plugins.IPluginServiceBuilder!
+FluentCMS.Plugins.IPluginServiceBuilder.AddJob<TJob, TPayload>(string! type, System.TimeSpan? attemptTimeout) -> FluentCMS.Plugins.IPluginServiceBuilder!
 FluentCMS.Plugins.IPluginState
 FluentCMS.Plugins.IPluginState.IsEnabledAsync(string! plugin, FluentCMS.Sites.SiteId site, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.ValueTask<bool>
 FluentCMS.Plugins.IPluginServiceBuilder
@@ -1035,7 +1074,6 @@ FluentCMS.Plugins.IPluginServiceBuilder.AddActivity<TEvent>(string! name, System
 FluentCMS.Plugins.IPluginServiceBuilder.AddErrorCode(string! code, int status, string! title) -> FluentCMS.Plugins.IPluginServiceBuilder!
 FluentCMS.Plugins.IPluginServiceBuilder.AddEventHandler<TEvent, THandler>() -> FluentCMS.Plugins.IPluginServiceBuilder!
 FluentCMS.Plugins.IPluginServiceBuilder.AddFieldType<TFieldType>() -> FluentCMS.Plugins.IPluginServiceBuilder!
-FluentCMS.Plugins.IPluginServiceBuilder.AddJob<TJob, TPayload>(string! type, System.TimeSpan? attemptTimeout = null) -> FluentCMS.Plugins.IPluginServiceBuilder!
 FluentCMS.Plugins.IPluginServiceBuilder.AddJobQueue(string! name, System.Func<System.IServiceProvider!, int>! workers) -> FluentCMS.Plugins.IPluginServiceBuilder!
 FluentCMS.Plugins.IPluginServiceBuilder.AddOutboxHandler<TEvent, THandler>(string! name) -> FluentCMS.Plugins.IPluginServiceBuilder!
 FluentCMS.Plugins.IPluginServiceBuilder.AddPermissions<TProvider>() -> FluentCMS.Plugins.IPluginServiceBuilder!
@@ -1146,14 +1184,10 @@ FluentCMS.Publishing.ScheduleInfo.Version.init -> void
 FluentCMS.Publishing.ScheduleRequest
 FluentCMS.Publishing.ScheduleRequest.<Clone>$() -> FluentCMS.Publishing.ScheduleRequest!
 FluentCMS.Publishing.ScheduleRequest.Action.get -> FluentCMS.Publishing.ScheduleAction
-FluentCMS.Publishing.ScheduleRequest.Action.init -> void
-FluentCMS.Publishing.ScheduleRequest.At.get -> System.DateTime
-FluentCMS.Publishing.ScheduleRequest.At.init -> void
-FluentCMS.Publishing.ScheduleRequest.Deconstruct(out FluentCMS.Publishing.ScheduleAction Action, out System.DateTime At, out string? TimeZone) -> void
 FluentCMS.Publishing.ScheduleRequest.Equals(FluentCMS.Publishing.ScheduleRequest? other) -> bool
-FluentCMS.Publishing.ScheduleRequest.ScheduleRequest(FluentCMS.Publishing.ScheduleAction Action, System.DateTime At, string? TimeZone = null) -> void
+FluentCMS.Publishing.ScheduleRequest.Instant.get -> System.DateTimeOffset?
+FluentCMS.Publishing.ScheduleRequest.LocalTime.get -> System.DateTime?
 FluentCMS.Publishing.ScheduleRequest.TimeZone.get -> string?
-FluentCMS.Publishing.ScheduleRequest.TimeZone.init -> void
 FluentCMS.Publishing.UnpublishedReferencePolicy
 FluentCMS.Publishing.UnpublishedReferencePolicy.Block = 1 -> FluentCMS.Publishing.UnpublishedReferencePolicy
 FluentCMS.Publishing.UnpublishedReferencePolicy.Warn = 0 -> FluentCMS.Publishing.UnpublishedReferencePolicy
@@ -1392,22 +1426,31 @@ FluentCMS.Schema.HiddenAttribute
 FluentCMS.Schema.HiddenAttribute.HiddenAttribute() -> void
 FluentCMS.Schema.IFieldBuilder
 FluentCMS.Schema.IFieldBuilder.DefaultValue(object? value) -> FluentCMS.Schema.IFieldBuilder!
-FluentCMS.Schema.IFieldBuilder.Display(string? label = null, string? help = null, string? placeholder = null, string? group = null, string? tab = null, int width = 0) -> FluentCMS.Schema.IFieldBuilder!
+FluentCMS.Schema.IFieldBuilder.Display(FluentCMS.Schema.FieldDisplayDescription! display) -> FluentCMS.Schema.IFieldBuilder!
 FluentCMS.Schema.IFieldBuilder.FormerNames(params string![]! names) -> FluentCMS.Schema.IFieldBuilder!
-FluentCMS.Schema.IFieldBuilder.Hidden(bool hidden = true) -> FluentCMS.Schema.IFieldBuilder!
-FluentCMS.Schema.IFieldBuilder.Indexed(bool indexed = true) -> FluentCMS.Schema.IFieldBuilder!
-FluentCMS.Schema.IFieldBuilder.IsReadOnly(bool isReadOnly = true) -> FluentCMS.Schema.IFieldBuilder!
+FluentCMS.Schema.IFieldBuilder.Hidden() -> FluentCMS.Schema.IFieldBuilder!
+FluentCMS.Schema.IFieldBuilder.Hidden(bool hidden) -> FluentCMS.Schema.IFieldBuilder!
+FluentCMS.Schema.IFieldBuilder.Indexed() -> FluentCMS.Schema.IFieldBuilder!
+FluentCMS.Schema.IFieldBuilder.Indexed(bool indexed) -> FluentCMS.Schema.IFieldBuilder!
+FluentCMS.Schema.IFieldBuilder.IsReadOnly() -> FluentCMS.Schema.IFieldBuilder!
+FluentCMS.Schema.IFieldBuilder.IsReadOnly(bool isReadOnly) -> FluentCMS.Schema.IFieldBuilder!
 FluentCMS.Schema.IFieldBuilder.Length(int? min, int? max) -> FluentCMS.Schema.IFieldBuilder!
-FluentCMS.Schema.IFieldBuilder.Localizable(bool localizable = true) -> FluentCMS.Schema.IFieldBuilder!
-FluentCMS.Schema.IFieldBuilder.Multiple(bool multiple = true) -> FluentCMS.Schema.IFieldBuilder!
+FluentCMS.Schema.IFieldBuilder.Localizable() -> FluentCMS.Schema.IFieldBuilder!
+FluentCMS.Schema.IFieldBuilder.Localizable(bool localizable) -> FluentCMS.Schema.IFieldBuilder!
+FluentCMS.Schema.IFieldBuilder.Multiple() -> FluentCMS.Schema.IFieldBuilder!
+FluentCMS.Schema.IFieldBuilder.Multiple(bool multiple) -> FluentCMS.Schema.IFieldBuilder!
 FluentCMS.Schema.IFieldBuilder.Pattern(string! pattern) -> FluentCMS.Schema.IFieldBuilder!
 FluentCMS.Schema.IFieldBuilder.Range(decimal? min, decimal? max) -> FluentCMS.Schema.IFieldBuilder!
-FluentCMS.Schema.IFieldBuilder.Relation(string! target, string? reverse = null, bool ordered = false) -> FluentCMS.Schema.IFieldBuilder!
-FluentCMS.Schema.IFieldBuilder.Required(bool required = true) -> FluentCMS.Schema.IFieldBuilder!
+FluentCMS.Schema.IFieldBuilder.Relation(string! target) -> FluentCMS.Schema.IFieldBuilder!
+FluentCMS.Schema.IFieldBuilder.Relation(string! target, string? reverse, bool ordered) -> FluentCMS.Schema.IFieldBuilder!
+FluentCMS.Schema.IFieldBuilder.Required() -> FluentCMS.Schema.IFieldBuilder!
+FluentCMS.Schema.IFieldBuilder.Required(bool required) -> FluentCMS.Schema.IFieldBuilder!
 FluentCMS.Schema.IFieldBuilder.RequiredWhen(FluentCMS.Schema.Condition! condition) -> FluentCMS.Schema.IFieldBuilder!
-FluentCMS.Schema.IFieldBuilder.Searchable(bool searchable = true) -> FluentCMS.Schema.IFieldBuilder!
+FluentCMS.Schema.IFieldBuilder.Searchable() -> FluentCMS.Schema.IFieldBuilder!
+FluentCMS.Schema.IFieldBuilder.Searchable(bool searchable) -> FluentCMS.Schema.IFieldBuilder!
 FluentCMS.Schema.IFieldBuilder.Setting(string! name, object! value) -> FluentCMS.Schema.IFieldBuilder!
-FluentCMS.Schema.IFieldBuilder.Unique(bool unique = true) -> FluentCMS.Schema.IFieldBuilder!
+FluentCMS.Schema.IFieldBuilder.Unique() -> FluentCMS.Schema.IFieldBuilder!
+FluentCMS.Schema.IFieldBuilder.Unique(bool unique) -> FluentCMS.Schema.IFieldBuilder!
 FluentCMS.Schema.IFieldBuilder.VisibleWhen(FluentCMS.Schema.Condition! condition) -> FluentCMS.Schema.IFieldBuilder!
 FluentCMS.Schema.IFieldType
 FluentCMS.Schema.IFieldType.AcceptsAnySetting.get -> bool
@@ -1450,8 +1493,10 @@ FluentCMS.Schema.ISchemaIntrospection
 FluentCMS.Schema.ISchemaIntrospection.DescribeAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Schema.SchemaDescription!>!
 FluentCMS.Schema.ISchemaIntrospection.DescribeTypeAsync(string! name, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Schema.SchemaTypeDescription?>!
 FluentCMS.Schema.ITypeBuilder
-FluentCMS.Schema.ITypeBuilder.Field(string! name, string! fieldType, System.Action<FluentCMS.Schema.IFieldBuilder!>? configure = null) -> FluentCMS.Schema.ITypeBuilder!
-FluentCMS.Schema.ITypeBuilder.Localized(bool localized = true) -> FluentCMS.Schema.ITypeBuilder!
+FluentCMS.Schema.ITypeBuilder.Field(string! name, string! fieldType) -> FluentCMS.Schema.ITypeBuilder!
+FluentCMS.Schema.ITypeBuilder.Field(string! name, string! fieldType, System.Action<FluentCMS.Schema.IFieldBuilder!>! configure) -> FluentCMS.Schema.ITypeBuilder!
+FluentCMS.Schema.ITypeBuilder.Localized() -> FluentCMS.Schema.ITypeBuilder!
+FluentCMS.Schema.ITypeBuilder.Localized(bool localized) -> FluentCMS.Schema.ITypeBuilder!
 FluentCMS.Schema.ITypeBuilder.PublishPolicy(FluentCMS.Publishing.UnpublishedReferencePolicy unpublishedReferences = FluentCMS.Publishing.UnpublishedReferencePolicy.Warn, int maxVersions = 50, int trashRetentionDays = 30) -> FluentCMS.Schema.ITypeBuilder!
 FluentCMS.Schema.ITypeBuilder.Scope(FluentCMS.Schema.ContentScope scope) -> FluentCMS.Schema.ITypeBuilder!
 FluentCMS.Schema.IndexedAttribute
@@ -1801,6 +1846,9 @@ override FluentCMS.Content.BulkItem.ToString() -> string!
 override FluentCMS.Content.BulkItemResult.Equals(object? obj) -> bool
 override FluentCMS.Content.BulkItemResult.GetHashCode() -> int
 override FluentCMS.Content.BulkItemResult.ToString() -> string!
+override FluentCMS.Content.BulkProblem.Equals(object? obj) -> bool
+override FluentCMS.Content.BulkProblem.GetHashCode() -> int
+override FluentCMS.Content.BulkProblem.ToString() -> string!
 override FluentCMS.Content.BulkRequest.Equals(object? obj) -> bool
 override FluentCMS.Content.BulkRequest.GetHashCode() -> int
 override FluentCMS.Content.BulkRequest.ToString() -> string!
@@ -1813,6 +1861,9 @@ override FluentCMS.Content.ContentFilter.ToString() -> string!
 override FluentCMS.Content.ContentQuery.Equals(object? obj) -> bool
 override FluentCMS.Content.ContentQuery.GetHashCode() -> int
 override FluentCMS.Content.ContentQuery.ToString() -> string!
+override FluentCMS.Content.CountOptions.Equals(object? obj) -> bool
+override FluentCMS.Content.CountOptions.GetHashCode() -> int
+override FluentCMS.Content.CountOptions.ToString() -> string!
 override FluentCMS.Content.FieldFilter.<Clone>$() -> FluentCMS.Content.FieldFilter!
 override FluentCMS.Content.FieldFilter.Equals(object? obj) -> bool
 override FluentCMS.Content.FieldFilter.GetHashCode() -> int
@@ -1820,6 +1871,12 @@ override FluentCMS.Content.FieldFilter.ToString() -> string!
 override FluentCMS.Content.GetOptions.Equals(object? obj) -> bool
 override FluentCMS.Content.GetOptions.GetHashCode() -> int
 override FluentCMS.Content.GetOptions.ToString() -> string!
+override FluentCMS.Content.LocaleOptions.Equals(object? obj) -> bool
+override FluentCMS.Content.LocaleOptions.GetHashCode() -> int
+override FluentCMS.Content.LocaleOptions.ToString() -> string!
+override FluentCMS.Content.LocaleWriteOptions.Equals(object? obj) -> bool
+override FluentCMS.Content.LocaleWriteOptions.GetHashCode() -> int
+override FluentCMS.Content.LocaleWriteOptions.ToString() -> string!
 override FluentCMS.Content.Not.<Clone>$() -> FluentCMS.Content.Not!
 override FluentCMS.Content.Not.Equals(object? obj) -> bool
 override FluentCMS.Content.Not.GetHashCode() -> int
@@ -2138,6 +2195,8 @@ static FluentCMS.Content.BulkItem.operator !=(FluentCMS.Content.BulkItem? left, 
 static FluentCMS.Content.BulkItem.operator ==(FluentCMS.Content.BulkItem? left, FluentCMS.Content.BulkItem? right) -> bool
 static FluentCMS.Content.BulkItemResult.operator !=(FluentCMS.Content.BulkItemResult? left, FluentCMS.Content.BulkItemResult? right) -> bool
 static FluentCMS.Content.BulkItemResult.operator ==(FluentCMS.Content.BulkItemResult? left, FluentCMS.Content.BulkItemResult? right) -> bool
+static FluentCMS.Content.BulkProblem.operator !=(FluentCMS.Content.BulkProblem? left, FluentCMS.Content.BulkProblem? right) -> bool
+static FluentCMS.Content.BulkProblem.operator ==(FluentCMS.Content.BulkProblem? left, FluentCMS.Content.BulkProblem? right) -> bool
 static FluentCMS.Content.BulkRequest.operator !=(FluentCMS.Content.BulkRequest? left, FluentCMS.Content.BulkRequest? right) -> bool
 static FluentCMS.Content.BulkRequest.operator ==(FluentCMS.Content.BulkRequest? left, FluentCMS.Content.BulkRequest? right) -> bool
 static FluentCMS.Content.BulkResult.operator !=(FluentCMS.Content.BulkResult? left, FluentCMS.Content.BulkResult? right) -> bool
@@ -2146,10 +2205,16 @@ static FluentCMS.Content.ContentFilter.operator !=(FluentCMS.Content.ContentFilt
 static FluentCMS.Content.ContentFilter.operator ==(FluentCMS.Content.ContentFilter? left, FluentCMS.Content.ContentFilter? right) -> bool
 static FluentCMS.Content.ContentQuery.operator !=(FluentCMS.Content.ContentQuery? left, FluentCMS.Content.ContentQuery? right) -> bool
 static FluentCMS.Content.ContentQuery.operator ==(FluentCMS.Content.ContentQuery? left, FluentCMS.Content.ContentQuery? right) -> bool
+static FluentCMS.Content.CountOptions.operator !=(FluentCMS.Content.CountOptions? left, FluentCMS.Content.CountOptions? right) -> bool
+static FluentCMS.Content.CountOptions.operator ==(FluentCMS.Content.CountOptions? left, FluentCMS.Content.CountOptions? right) -> bool
 static FluentCMS.Content.FieldFilter.operator !=(FluentCMS.Content.FieldFilter? left, FluentCMS.Content.FieldFilter? right) -> bool
 static FluentCMS.Content.FieldFilter.operator ==(FluentCMS.Content.FieldFilter? left, FluentCMS.Content.FieldFilter? right) -> bool
 static FluentCMS.Content.GetOptions.operator !=(FluentCMS.Content.GetOptions? left, FluentCMS.Content.GetOptions? right) -> bool
 static FluentCMS.Content.GetOptions.operator ==(FluentCMS.Content.GetOptions? left, FluentCMS.Content.GetOptions? right) -> bool
+static FluentCMS.Content.LocaleOptions.operator !=(FluentCMS.Content.LocaleOptions? left, FluentCMS.Content.LocaleOptions? right) -> bool
+static FluentCMS.Content.LocaleOptions.operator ==(FluentCMS.Content.LocaleOptions? left, FluentCMS.Content.LocaleOptions? right) -> bool
+static FluentCMS.Content.LocaleWriteOptions.operator !=(FluentCMS.Content.LocaleWriteOptions? left, FluentCMS.Content.LocaleWriteOptions? right) -> bool
+static FluentCMS.Content.LocaleWriteOptions.operator ==(FluentCMS.Content.LocaleWriteOptions? left, FluentCMS.Content.LocaleWriteOptions? right) -> bool
 static FluentCMS.Content.Not.operator !=(FluentCMS.Content.Not? left, FluentCMS.Content.Not? right) -> bool
 static FluentCMS.Content.Not.operator ==(FluentCMS.Content.Not? left, FluentCMS.Content.Not? right) -> bool
 static FluentCMS.Content.OperationContext.operator !=(FluentCMS.Content.OperationContext? left, FluentCMS.Content.OperationContext? right) -> bool
@@ -2279,6 +2344,8 @@ static FluentCMS.Publishing.PublishWarning.operator !=(FluentCMS.Publishing.Publ
 static FluentCMS.Publishing.PublishWarning.operator ==(FluentCMS.Publishing.PublishWarning? left, FluentCMS.Publishing.PublishWarning? right) -> bool
 static FluentCMS.Publishing.ScheduleInfo.operator !=(FluentCMS.Publishing.ScheduleInfo? left, FluentCMS.Publishing.ScheduleInfo? right) -> bool
 static FluentCMS.Publishing.ScheduleInfo.operator ==(FluentCMS.Publishing.ScheduleInfo? left, FluentCMS.Publishing.ScheduleInfo? right) -> bool
+static FluentCMS.Publishing.ScheduleRequest.At(FluentCMS.Publishing.ScheduleAction action, System.DateTimeOffset instant) -> FluentCMS.Publishing.ScheduleRequest!
+static FluentCMS.Publishing.ScheduleRequest.AtLocalTime(FluentCMS.Publishing.ScheduleAction action, System.DateTime localTime, string! timeZone) -> FluentCMS.Publishing.ScheduleRequest!
 static FluentCMS.Publishing.ScheduleRequest.operator !=(FluentCMS.Publishing.ScheduleRequest? left, FluentCMS.Publishing.ScheduleRequest? right) -> bool
 static FluentCMS.Publishing.ScheduleRequest.operator ==(FluentCMS.Publishing.ScheduleRequest? left, FluentCMS.Publishing.ScheduleRequest? right) -> bool
 static FluentCMS.Publishing.VersionChange.operator !=(FluentCMS.Publishing.VersionChange? left, FluentCMS.Publishing.VersionChange? right) -> bool

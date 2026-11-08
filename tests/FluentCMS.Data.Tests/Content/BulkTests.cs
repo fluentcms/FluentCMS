@@ -1,4 +1,5 @@
 using FluentCMS.Content;
+using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Content.Query;
@@ -142,7 +143,7 @@ public sealed class BulkTests : IDisposable
         result.Cancelled.ShouldBeFalse();
         result.Items.Select(item => (item.Index, item.Id, item.Status)).ShouldBe([(0, first, BulkItemStatus.Succeeded), (1, theirs, BulkItemStatus.Failed), (2, last, BulkItemStatus.Succeeded)]);
         result.Items[0].Version.ShouldBe(2);
-        result.Items[1].Problem.ShouldBeOfType<EntryNotFoundException>();
+        result.Items[1].Problem!.Code.ShouldBe(ApiErrorCodes.NotFound);
         (await _database.GetAsync(Editor, first))!["subtitle"].ShouldBe("Bulk");
         (await _database.GetAsync(Editor, theirs))!["version"].ShouldBe(1);
         (await _database.GetAsync(Editor, last))!["subtitle"].ShouldBe("Bulk");
@@ -158,7 +159,7 @@ public sealed class BulkTests : IDisposable
 
         var result = await BulkAsync(_database, WithRole(english), new BulkRequest { Operation = BulkOperation.Delete, Items = [new BulkItem(translated), new BulkItem(single)] });
 
-        result.Items[0].Problem.ShouldBeOfType<ContentAccessDeniedException>();
+        result.Items[0].Problem!.Code.ShouldBe(ApiErrorCodes.Forbidden);
         result.Items[1].Status.ShouldBe(BulkItemStatus.Succeeded);
         (await _database.GetAsync(Editor, translated)).ShouldNotBeNull();
         (await _database.GetAsync(Editor, single)).ShouldBeNull();
@@ -179,8 +180,9 @@ public sealed class BulkTests : IDisposable
         {
             var result = await BulkAsync(_database, author, request);
 
-            var unreadable = result.Items[0].Problem.ShouldBeOfType<EntryNotFoundException>();
-            var absent = result.Items[1].Problem.ShouldBeOfType<EntryNotFoundException>();
+            var unreadable = result.Items[0].Problem.ShouldNotBeNull();
+            var absent = result.Items[1].Problem.ShouldNotBeNull();
+            (unreadable.Code, absent.Code).ShouldBe((ApiErrorCodes.NotFound, ApiErrorCodes.NotFound));
             unreadable.Message.Replace(theirs.ToString(), "id", StringComparison.Ordinal).ShouldBe(absent.Message.Replace(missing.ToString(), "id", StringComparison.Ordinal));
             result.Items.Select(item => (item.Status, item.Version, item.Warnings.Count)).Distinct().ShouldHaveSingleItem();
         }
@@ -325,9 +327,13 @@ public sealed class BulkTests : IDisposable
         var result = await BulkAsync(database, Editor, request);
 
         result.Items.Select(item => item.Status).ShouldBe([BulkItemStatus.Succeeded, BulkItemStatus.Failed, BulkItemStatus.Failed, BulkItemStatus.Failed]);
-        result.Items[1].Problem.ShouldBeOfType<HookRejectedException>().Code.ShouldBe("ACME0001");
-        result.Items[2].Problem.ShouldBeOfType<ValidationException>().Errors.ShouldHaveSingleItem().Path.ShouldBe("views");
-        result.Items[3].Problem.ShouldBeOfType<VersionConflictException>().CurrentVersion.ShouldBe(1);
+        result.Items[1].Problem!.Code.ShouldBe("ACME0001");
+        var invalid = result.Items[2].Problem.ShouldNotBeNull();
+        invalid.Errors.ShouldHaveSingleItem().Path.ShouldBe("views");
+        invalid.Code.ShouldBe(invalid.Errors[0].Code);
+        var stale = result.Items[3].Problem.ShouldNotBeNull();
+        stale.Code.ShouldBe(ApiErrorCodes.VersionConflict);
+        stale.Current.ShouldNotBeNull()["version"].ShouldBe(1);
         (await database.GetAsync(Editor, ids[0]))!["title"].ShouldBe("Changed");
         ids.Skip(1).Select(database.Trace).ShouldBe(before.Skip(1));
     }
@@ -353,7 +359,7 @@ public sealed class BulkTests : IDisposable
         }
 
         var blocked = await PublishBothAsync("blocked");
-        blocked.Items[0].Problem.ShouldBeOfType<ValidationException>();
+        blocked.Items[0].Problem!.Errors.ShouldNotBeEmpty();
         blocked.Items[1].Status.ShouldBe(BulkItemStatus.Succeeded);
         database.Document(blocked.Items[0].Id!.Value, "").Status.ShouldBe(EntryStatus.Draft);
 
@@ -373,7 +379,7 @@ public sealed class BulkTests : IDisposable
         var result = await BulkAsync(_database, Editor, new BulkRequest { Operation = BulkOperation.Unpublish, Items = [new BulkItem(one), new BulkItem(two)] });
 
         result.Items[0].Status.ShouldBe(BulkItemStatus.Succeeded);
-        result.Items[1].Problem.ShouldBeOfType<ValidationException>();
+        result.Items[1].Problem!.Errors.ShouldNotBeEmpty();
         _database.Document(one).Status.ShouldBe(EntryStatus.Unpublished);
     }
 
@@ -484,9 +490,8 @@ public sealed class BulkTests : IDisposable
         var result = await BulkAsync(database, Editor, request);
 
         result.Items.Select(item => item.Status).ShouldBe([BulkItemStatus.Succeeded, BulkItemStatus.Failed, BulkItemStatus.Succeeded]);
-        var problem = result.Items[1].Problem.ShouldBeOfType<InvalidOperationException>();
-        problem.Message.ShouldBe(ContentService.UnexpectedFailure);
-        problem.InnerException.ShouldBeNull();
+        var problem = result.Items[1].Problem.ShouldNotBeNull();
+        (problem.Code, problem.Message, problem.Errors.Count, problem.Current).ShouldBe((ApiErrorCodes.InternalError, ContentService.UnexpectedFailure, 0, null));
         database.Trace(two).ShouldBe(before);
         (await database.GetAsync(Editor, three))!["title"].ShouldBe("Go");
     }
@@ -511,7 +516,7 @@ public sealed class BulkTests : IDisposable
         var result = await BulkAsync(database, Editor, new BulkRequest { Operation = BulkOperation.Publish, Filter = Every, Cap = 2 });
 
         result.Items[0].Status.ShouldBe(BulkItemStatus.Succeeded);
-        result.Items[1].Problem.ShouldBeOfType<VersionConflictException>().CurrentVersion.ShouldBe(2);
+        result.Items[1].Problem!.Current.ShouldNotBeNull()["version"].ShouldBe(2);
         database.Document(result.Items[1].Id!.Value).Status.ShouldBe(EntryStatus.Draft);
     }
 
