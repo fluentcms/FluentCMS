@@ -75,7 +75,9 @@ public sealed class ActivityLogTests
     [Fact]
     public void EveryEventOfTheCatalogueHasASampleHere()
     {
-        var catalogue = typeof(CmsEvent).Assembly.GetTypes().Where(type => !type.IsAbstract && type.IsAssignableTo(typeof(CmsEvent)));
+        // The media plugin logs its own events, and its tests cover them.
+        var catalogue = typeof(CmsEvent).Assembly.GetTypes()
+            .Where(type => !type.IsAbstract && type.IsAssignableTo(typeof(CmsEvent)) && !type.IsAssignableTo(typeof(MediaAssetEvent)));
 
         catalogue.ShouldBe(Samples.Select(sample => sample.GetType()), ignoreOrder: true);
     }

@@ -151,7 +151,8 @@ public sealed class HealthEndpointsTests : IAsyncDisposable
         var report = JsonNode.Parse(await granted.Content.ReadAsStringAsync(Token))!;
         report["status"]!.GetValue<string>().ShouldBe("Healthy");
         var checks = report["checks"]!.AsArray();
-        checks.Select(check => check!["name"]!.GetValue<string>()).ShouldBe(["database", "job-runner", "process"]);
+        // The Blog sample brings the media plugin into every host here, with its storage check.
+        checks.Select(check => check!["name"]!.GetValue<string>()).ShouldBe(["database", "job-runner", "media-storage", "process"]);
         checks.Select(check => check!["durationMs"]!.GetValue<double>()).ShouldAllBe(duration => duration >= 0);
     }
 
