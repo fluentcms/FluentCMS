@@ -148,14 +148,21 @@ internal sealed class JobStore(
     }
 
     // The attempt keeps its row, because attempts are numbered on, so max_attempts rises by one to give it back.
-    public Task<bool> ReleaseAsync(ClaimedJob job)
+    // The attempt is given back. A job released before it ran waits until runAt, when that is given.
+    public Task<bool> ReleaseAsync(ClaimedJob job, DateTimeOffset? runAt = null)
     {
         var now = time.GetUtcNow();
-        return SettleAsync(job, JobAttemptOutcome.Released, error: null, now, [], row => row
-            .SetProperty(column => column.Status, JobStatus.Pending)
-            .SetProperty(column => column.MaxAttempts, column => column.MaxAttempts + 1)
-            .SetProperty(column => column.LeaseOwner, (string?)null)
-            .SetProperty(column => column.LeaseUntil, (DateTimeOffset?)null));
+        return SettleAsync(job, JobAttemptOutcome.Released, error: null, now, [], row =>
+        {
+            row.SetProperty(column => column.Status, JobStatus.Pending)
+                .SetProperty(column => column.MaxAttempts, column => column.MaxAttempts + 1)
+                .SetProperty(column => column.LeaseOwner, (string?)null)
+                .SetProperty(column => column.LeaseUntil, (DateTimeOffset?)null);
+            if (runAt is { } at)
+            {
+                row.SetProperty(column => column.RunAt, at);
+            }
+        });
     }
 
     // A claim requires attempts < max_attempts, so a job whose worker died on its last attempt never comes back and
