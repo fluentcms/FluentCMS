@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Schema;
+using FluentCMS.Core.Storage;
 using FluentCMS.Providers;
 using FluentCMS.Schema;
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
@@ -268,7 +269,19 @@ public sealed class ReferenceHostTests : IAsyncDisposable
     {
         var app = _host.Build(new() { [ReferenceHost.ProviderKey] = provider, [$"ConnectionStrings:{ReferenceHost.ConnectionStringName}"] = connectionString });
 
-        app.Services.GetRequiredService<FluentCMS.Core.Storage.IDataProvider>().Name.ShouldBe(name);
+        app.Services.GetRequiredService<IDataProvider>().Name.ShouldBe(name);
+    }
+
+    // The webhooks and media plugins hold a migration set per provider, which the check before any migration takes (#2711).
+    [Theory]
+    [InlineData("PostgreSql", "Host=db;Database=cms;Username=cms;Password=secret")]
+    [InlineData("SqlServer", "Server=db;Database=cms;User Id=cms;Password=secret;TrustServerCertificate=true")]
+    public async Task OnAServerProviderThePluginsTakeTheMigrationSetsOfThatProvider(string provider, string connectionString)
+    {
+        var app = _host.Build(new() { [ReferenceHost.ProviderKey] = provider, [$"ConnectionStrings:{ReferenceHost.ConnectionStringName}"] = connectionString });
+
+        app.Services.GetServices<IPluginMigrations>().Select(stream => stream.Name).ShouldBe(["media", "webhooks"], ignoreOrder: true);
+        await app.Services.GetRequiredService<MigrationRunner>().RefuseForeignMigrationsAsync(Token);
     }
 
     [Fact]
