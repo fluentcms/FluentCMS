@@ -58,7 +58,7 @@ Everything is read from the `FluentCms` section of the host's configuration, so 
 | `FluentCms:Query` | `DefaultPageSize`, `MaxPageSize`, `MaxPopulateDepth`, `MaxFilterNodes`, `MaxPopulatedEntries` |
 | `FluentCms:Jobs` | the job runner: `Queues`, `PollInterval`, `LeaseDuration`, retries, retention |
 | `FluentCms:Events:Handlers` | the in-process event handlers: `Timeout` (5 seconds), `SlowThreshold` (1 second) (see [event handlers](#event-handlers)) |
-| `FluentCms:Events:Outbox` | the outbox: `BatchSize`, `MaxAttempts`, `LeaseDuration`, retries, retention |
+| `FluentCms:Events:Outbox` | the outbox: `BatchSize`, `MaxAttempts`, `LeaseDuration`, retries, `OrphanAfter`, `Retention`, `FailedRetention` (off by default), `PruneBatchSize` |
 | `FluentCms:Activity` | the activity log: `Enabled`, `Retention`, `SiteRetention`, `PruneSchedule` |
 | `FluentCms:Health` | `JobRunnerHeartbeatTimeout`, `PendingJobAgeLimit` |
 

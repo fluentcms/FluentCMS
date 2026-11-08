@@ -6,9 +6,11 @@ using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.Api.OpenApi;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.DependencyInjection;
+using FluentCMS.Core.Events;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Core.Jobs;
+using FluentCMS.Events;
 using FluentCMS.Jobs;
 using FluentCMS.Settings;
 using Microsoft.AspNetCore.Builder;
@@ -19,7 +21,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Core.Api.Management;
 
-// The jobs, activity and me groups of spec 4.10. Jobs need jobs.manage for the instance; the activity log needs activity.read
+// The jobs, events, activity and me groups of spec 4.10. Jobs and the failed deliveries of the outbox need jobs.manage for the
+// instance; the activity log needs activity.read
 // in the site of the request, and shows the rows of no site only to a reader of the instance; /me is the caller itself,
 // /me/two-factor its second factor and /me/logins its external logins.
 internal static class OperationsEndpoints
@@ -43,6 +46,14 @@ internal static class OperationsEndpoints
         jobs.MapGet("/{id}", GetJobAsync).Produces<JobResponse>();
         jobs.MapPost("/{id}/retry", RetryAsync).Produces<JobResponse>();
         jobs.MapPost("/{id}/cancel", CancelAsync).Produces<JobResponse>();
+
+        var events = management.MapGroup("/events").WithFluentCmsOperation(Origin.Api).RequireManagementScope();
+        events.MapGet("/dead-letter", EventDeadLettersAsync).Query(ManagementQuery.Paging).Produces<ItemList<FailedEventDelivery>>();
+        events.MapPost("/dead-letter/{id}/retry", RetryDeliveryAsync).Produces(StatusCodes.Status204NoContent);
+        events.MapDelete("/dead-letter/{id}", RemoveDeliveryAsync).Produces(StatusCodes.Status204NoContent);
+        events.MapDelete("/dead-letter", PurgeDeliveriesAsync)
+            .Query([QueryParameter.Text("handler", "The handler whose failed deliveries are all removed, such as one of a plugin that was removed.")])
+            .Produces<DeadLettersPurged>();
 
         management.MapGroup("/activity").WithFluentCmsOperation(Origin.Api).RequireManagementScope().MapGet("", ActivityAsync)
             .Query(
@@ -111,6 +122,33 @@ internal static class OperationsEndpoints
     {
         ManagementQuery.Only(httpContext.Request);
         return Job(await jobs.CancelAsync(ManagementQuery.RouteId(id, nameof(id)), httpContext.RequestAborted));
+    }
+
+    private static async Task<IResult> EventDeadLettersAsync(HttpContext httpContext, [FromServices] EventAdministration events)
+    {
+        ManagementQuery.Only(httpContext.Request);
+        var (page, pageSize) = ManagementQuery.Page(httpContext.Request);
+        return AdminJson.Items(await events.DeadLettersAsync(page, pageSize, httpContext.RequestAborted));
+    }
+
+    private static async Task<IResult> RetryDeliveryAsync(string id, HttpContext httpContext, [FromServices] EventAdministration events)
+    {
+        ManagementQuery.Only(httpContext.Request);
+        await events.RetryAsync(ManagementQuery.RouteId(id, nameof(id)), httpContext.RequestAborted);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> RemoveDeliveryAsync(string id, HttpContext httpContext, [FromServices] EventAdministration events)
+    {
+        ManagementQuery.Only(httpContext.Request);
+        await events.RemoveAsync(ManagementQuery.RouteId(id, nameof(id)), httpContext.RequestAborted);
+        return Results.NoContent();
+    }
+
+    private static async Task<IResult> PurgeDeliveriesAsync(HttpContext httpContext, [FromServices] EventAdministration events)
+    {
+        ManagementQuery.Only(httpContext.Request);
+        return AdminJson.Ok(await events.PurgeAsync(ManagementQuery.Text(httpContext.Request, "handler"), httpContext.RequestAborted));
     }
 
     private static async Task<IResult> ActivityAsync(HttpContext httpContext, [FromServices] ActivityReader activity)
