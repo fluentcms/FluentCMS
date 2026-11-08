@@ -1,3 +1,4 @@
+using System.Data.SqlTypes;
 using System.Linq.Expressions;
 using System.Text.RegularExpressions;
 using FluentCMS.Core.DependencyInjection;
@@ -7,6 +8,7 @@ using FluentCMS.Core.Tests.Schema;
 using FluentCMS.Data.PostgreSql;
 using FluentCMS.Data.SqlServer;
 using FluentCMS.Schema;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -29,6 +31,15 @@ public partial class OfflineProviderTests
             .Field("metadata", "json", field => field.Indexed())
             .Field("contact", "email", field => field.Unique()))
         .AddSingleton("brand", type => type.Field("name", "text"))
+        .Build();
+
+    // A column of each kind that the information schema describes with a size.
+    private static readonly SchemaModel TypedSchema = SampleSchema.NewBuilder()
+        .AddCollection("post", type => type
+            .Field("contact", "email")
+            .Field("metadata", "json")
+            .Field("price", "decimal", field => field.Setting(FieldSettings.Precision, 10L).Setting(FieldSettings.Scale, 3L))
+            .Field("publishedOn", "dateTime"))
         .Build();
 
     private static ServiceProvider PostgreSql(SchemaModel? schema = null) => Host(cms => cms.UsePostgreSql("Host=localhost;Database=never_opened"), schema);
@@ -358,5 +369,100 @@ public partial class OfflineProviderTests
 
         ColumnType(textModel, typeof(ContentVersion).FullName!, nameof(ContentVersion.Snapshot)).ShouldBe("nvarchar(max)");
         ColumnType(nativeModel, typeof(ContentVersion).FullName!, nameof(ContentVersion.Snapshot)).ShouldBe("json");
+    }
+
+    [Fact]
+    public void SqlServerGeneratesKeysThatRiseInTheOrderOfUniqueidentifier()
+    {
+        using var services = SqlServer();
+        using var scope = services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+
+        var documents = Enumerable.Range(0, 5).Select(_ => context.Add(new Document()).Entity.Id).ToList();
+        var rows = Enumerable.Range(0, 5).Select(_ => (Guid)context.Set<Dictionary<string, object>>("cms_post").Add(new Dictionary<string, object>()).Entity["id"]).ToList();
+
+        documents.Select(id => new SqlGuid(id)).ShouldBeInOrder(SortDirection.Ascending);
+        rows.Select(id => new SqlGuid(id)).ShouldBeInOrder(SortDirection.Ascending);
+    }
+
+    [Fact]
+    public void PostgreSqlGeneratesVersion7Keys()
+    {
+        using var services = PostgreSql();
+        using var scope = services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+
+        context.Add(new Document()).Entity.Id.Version.ShouldBe(7);
+        ((Guid)context.Set<Dictionary<string, object>>("cms_post").Add(new Dictionary<string, object>()).Entity["id"]).Version.ShouldBe(7);
+    }
+
+    [Fact]
+    public async Task TheInformationSchemaReaderGivesThePostgreSqlStoreTypesOfTheModel()
+    {
+        using var services = PostgreSql(TypedSchema);
+        var read = await InformationSchemaAsync("public", services,
+            ("contact", "character varying", 254, null, null),
+            ("metadata", "jsonb", null, null, null),
+            ("price", "numeric", null, 10, 3),
+            ("published_on", "timestamp with time zone", null, null, null),
+            ("state", "smallint", null, 16, 0),
+            ("id", "uuid", null, null, null));
+
+        read.ShouldBe(["contact:character varying(254)", "metadata:jsonb", "price:numeric(10,3)", "published_on:timestamp with time zone", "state:smallint", "id:uuid"]);
+    }
+
+    [Fact]
+    public async Task TheInformationSchemaReaderGivesTheSqlServerStoreTypesOfTheModel()
+    {
+        using var services = SqlServer(schema: TypedSchema);
+        var read = await InformationSchemaAsync("dbo", services,
+            ("contact", "nvarchar", 254, null, null),
+            ("metadata", "nvarchar", -1, null, null),
+            ("price", "decimal", null, 10, 3),
+            ("published_on", "datetimeoffset", null, null, null),
+            ("state", "smallint", null, 5, 0),
+            ("id", "uniqueidentifier", null, null, null));
+
+        read.ShouldBe(["contact:nvarchar(254)", "metadata:nvarchar(max)", "price:decimal(10,3)", "published_on:datetimeoffset", "state:smallint", "id:uniqueidentifier"]);
+    }
+
+    // INFORMATION_SCHEMA.COLUMNS as the server gives it for these columns of cms_post, played by an attached SQLite database,
+    // and a column of another schema that the reader leaves out. Each column read is checked against the model's store type.
+    private static async Task<List<string>> InformationSchemaAsync(string schema, ServiceProvider services, params (string Column, string DataType, int? Length, int? Precision, int? Scale)[] columns)
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync(TestContext.Current.CancellationToken);
+        await ExecuteAsync(connection, "ATTACH DATABASE ':memory:' AS INFORMATION_SCHEMA");
+        await ExecuteAsync(connection, "CREATE TABLE INFORMATION_SCHEMA.COLUMNS (TABLE_SCHEMA TEXT, TABLE_NAME TEXT, COLUMN_NAME TEXT, DATA_TYPE TEXT, IS_NULLABLE TEXT, CHARACTER_MAXIMUM_LENGTH INTEGER, NUMERIC_PRECISION INTEGER, NUMERIC_SCALE INTEGER)");
+        foreach (var (column, dataType, length, precision, scale) in columns.Append(("title", "text", null, null, null)))
+        {
+            await ExecuteAsync(
+                connection,
+                "INSERT INTO INFORMATION_SCHEMA.COLUMNS VALUES ($schema, 'cms_post', $column, $type, 'YES', $length, $precision, $scale)",
+                ("$schema", column == "title" ? "other" : schema), ("$column", column), ("$type", dataType), ("$length", length), ("$precision", precision), ("$scale", scale));
+        }
+
+        var table = (await new InformationSchemaReader($"'{schema}'").ReadAsync(connection, TestContext.Current.CancellationToken)).Tables["cms_post"];
+
+        using var scope = services.CreateScope();
+        var model = DesignModel(scope.ServiceProvider).FindEntityType("cms_post")!;
+        foreach (var column in table.Columns)
+        {
+            column.StoreType.ShouldBe(model.GetProperties().Single(property => property.GetColumnName() == column.Name).GetColumnType(), column.Name);
+        }
+
+        return [.. table.Columns.Select(column => $"{column.Name}:{column.StoreType}")];
+    }
+
+    private static async Task ExecuteAsync(SqliteConnection connection, string sql, params (string Name, object? Value)[] parameters)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        foreach (var (name, value) in parameters)
+        {
+            command.Parameters.AddWithValue(name, value ?? DBNull.Value);
+        }
+
+        await command.ExecuteNonQueryAsync(TestContext.Current.CancellationToken);
     }
 }

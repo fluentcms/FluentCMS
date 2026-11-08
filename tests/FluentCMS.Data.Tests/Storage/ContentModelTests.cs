@@ -202,6 +202,17 @@ public class ContentModelTests
     }
 
     [Fact]
+    public void ASelectColumnKeepsItsWidthWhenAnOptionIsAdded()
+    {
+        SchemaModel Select(params string[] options) => SampleSchema.NewBuilder()
+            .AddCollection("sample", type => type.Field("choice", "select", field => field.Setting(FieldSettings.Options, options)))
+            .Build();
+
+        Table(ModelOf(Select("a")), "cms_sample").FindProperty("choice")!.GetMaxLength().ShouldBe(64);
+        Table(ModelOf(Select("a", new string('x', 64))), "cms_sample").FindProperty("choice")!.GetMaxLength().ShouldBe(64);
+    }
+
+    [Fact]
     public void FieldTypesMapToTheirColumns()
     {
         var schema = SampleSchema.NewBuilder()
@@ -221,7 +232,7 @@ public class ContentModelTests
                 .Field("active", "boolean")
                 .Field("day", "date")
                 .Field("at", "dateTime")
-                .Field("choice", "select", field => field.Setting(FieldSettings.Options, LongOption))
+                .Field("choice", "select", field => field.Length(null, 80).Setting(FieldSettings.Options, LongOption))
                 .Field("choices", "select", field => field.Multiple().Setting(FieldSettings.Options, Options))
                 .Field("data", "json")
                 .Field("home", "component", field => field.Setting(FieldSettings.Component, "address"))

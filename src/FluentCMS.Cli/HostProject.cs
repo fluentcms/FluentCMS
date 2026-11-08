@@ -12,6 +12,8 @@ namespace FluentCMS.Cli;
 // one CmsDbContext. Whatever else the host needs, such as its data provider, resolves through its deps.json.
 internal sealed class HostProject : IDisposable
 {
+    private const string CoreName = "FluentCMS.Core";
+
     private readonly AssemblyDependencyResolver _resolver;
     private readonly Assembly _assembly;
     private readonly string _rootNamespace;
@@ -50,19 +52,26 @@ internal sealed class HostProject : IDisposable
 
     public IReadOnlyList<string> AddMigration(string name)
     {
-        var factories = _assembly.GetTypes()
-            .Where(type => type is { IsClass: true, IsAbstract: false } && typeof(IDesignTimeDbContextFactory<CmsDbContext>).IsAssignableFrom(type))
-            .ToList();
-
-        if (factories.Count != 1)
+        try
         {
-            throw new InvalidOperationException(
-                $"{_assembly.GetName().Name} has {factories.Count} implementations of IDesignTimeDbContextFactory<CmsDbContext>; it needs exactly one, which returns ContentMigrations.CreateContext(...).");
-        }
+            var factories = _assembly.GetTypes()
+                .Where(type => type is { IsClass: true, IsAbstract: false } && typeof(IDesignTimeDbContextFactory<CmsDbContext>).IsAssignableFrom(type))
+                .ToList();
 
-        var factory = (IDesignTimeDbContextFactory<CmsDbContext>)Activator.CreateInstance(factories[0])!;
-        var files = ContentMigrationGenerator.Add(() => factory.CreateDbContext([]), name, _rootNamespace, _directory);
-        return [files.MigrationFile, files.MetadataFile, files.SnapshotFile];
+            if (factories.Count != 1)
+            {
+                throw new InvalidOperationException(
+                    $"{_assembly.GetName().Name} has {factories.Count} implementations of IDesignTimeDbContextFactory<CmsDbContext>; it needs exactly one, which returns ContentMigrations.CreateContext(...).");
+            }
+
+            var factory = (IDesignTimeDbContextFactory<CmsDbContext>)Activator.CreateInstance(factories[0])!;
+            var files = ContentMigrationGenerator.Add(() => factory.CreateDbContext([]), name, _rootNamespace, _directory);
+            return [files.MigrationFile, files.MetadataFile, files.SnapshotFile];
+        }
+        catch (Exception exception) when (exception is ReflectionTypeLoadException or TargetInvocationException or TypeLoadException or MissingMemberException or FileLoadException)
+        {
+            throw new InvalidOperationException(LoadFailure(exception), exception);
+        }
     }
 
     public void Dispose()
@@ -76,6 +85,28 @@ internal sealed class HostProject : IDisposable
 
     private IntPtr ResolveNativeLibrary(Assembly assembly, string name) =>
         _resolver.ResolveUnmanagedDllToPath(name) is { } path ? NativeLibrary.Load(path) : IntPtr.Zero;
+
+    // The host binds to this tool's FluentCMS.Core and EF Core, so a host built against other versions of them fails with
+    // a type or a member that this tool's copies do not have.
+    private string LoadFailure(Exception exception)
+    {
+        var cause = exception switch
+        {
+            ReflectionTypeLoadException load => load.LoaderExceptions.FirstOrDefault(inner => inner is not null) ?? load,
+            TargetInvocationException { InnerException: { } inner } => inner,
+            _ => exception,
+        };
+
+        var (tool, host) = _resolver.ResolveAssemblyToPath(new AssemblyName(CoreName)) is { } path
+            ? (ProductVersion(typeof(CmsDbContext).Assembly.Location), ProductVersion(path))
+            : (typeof(CmsDbContext).Assembly.GetName().Version?.ToString(), _assembly.GetReferencedAssemblies().FirstOrDefault(reference => reference.Name == CoreName)?.Version?.ToString());
+
+        var advice = host is not null && host != tool ? $", so use fluentcms {host}" : "";
+        return $"{_assembly.GetName().Name} could not be used by this fluentcms, which has {CoreName} {tool ?? "unknown"}; the host has {host ?? "none"}{advice}. {cause.Message}";
+    }
+
+    // The package version, without the commit that the build appends.
+    private static string? ProductVersion(string path) => path.Length == 0 ? null : FileVersionInfo.GetVersionInfo(path).ProductVersion?.Split('+')[0];
 
     private static string RunDotnet(params string[] arguments)
     {
