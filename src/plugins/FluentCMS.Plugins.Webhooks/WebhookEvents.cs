@@ -29,6 +29,10 @@ internal static class WebhookEvents
         [typeof(EntryScheduledEvent)] = "content.scheduled",
         [typeof(EntryScheduleCancelledEvent)] = "content.schedule_cancelled",
         [typeof(CacheInvalidatedEvent)] = CacheInvalidated,
+        [typeof(MediaAssetUploadedEvent)] = "media.uploaded",
+        [typeof(MediaAssetUpdatedEvent)] = "media.updated",
+        [typeof(MediaAssetMovedEvent)] = "media.moved",
+        [typeof(MediaAssetDeletedEvent)] = "media.deleted",
     };
 
     public static readonly IReadOnlySet<string> Subscribable = Names.Values.ToHashSet(StringComparer.Ordinal);

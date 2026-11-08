@@ -81,6 +81,22 @@ public sealed class ReferenceHostTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task TheHostRunsTheMediaPluginOnTheLocalDiskAndListsItInProduction()
+    {
+        await _host.StartAsync(Operator.Settings());
+
+        using var api = await Operator.SignInAsync(_host);
+        using var media = await api.GetAsync(new Uri("/api/management/v1/media", UriKind.Relative), Token);
+        var report = await Operator.ReportAsync(_host);
+
+        media.StatusCode.ShouldBe(HttpStatusCode.OK);
+        report["plugins"]!.AsArray().Select(plugin => plugin!["name"]!.GetValue<string>()).ShouldContain("media");
+        var storage = report["providerSlots"]!.AsArray().Single(slot => slot!["slot"]!.GetValue<string>() == "FluentCMS.Media.IFileStorage")!;
+        (storage["implementation"]!.GetValue<string>(), storage["source"]!.GetValue<string>(), storage["plugin"]!.GetValue<string>()).ShouldBe(("FluentCMS.Plugins.Media.LocalFileStorage", "default", "media"));
+        Operator.InsecureDefaults(report).ShouldContain("media-local-storage");
+    }
+
+    [Fact]
     public async Task TheBlogSampleServesItsSeededContentThroughTheDeliveryApi()
     {
         var settings = Operator.Settings();

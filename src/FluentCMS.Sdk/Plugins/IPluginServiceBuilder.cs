@@ -52,6 +52,18 @@ public interface IPluginServiceBuilder
     IPluginServiceBuilder AddSettings<TSettings>()
         where TSettings : class, new();
 
+    /// <summary>
+    /// Declares a provider slot that the plugin owns, such as the media plugin's file storage, filled with a singleton of
+    /// <typeparamref name="TDefault"/> unless the host or another plugin replaces it through <see cref="Providers"/>. The
+    /// startup report lists it with core's slots. A slot that core or another plugin declares already stops the host.
+    /// </summary>
+    /// <typeparam name="TSlot">The slot, an interface or class of the SDK or of the plugin.</typeparam>
+    /// <typeparam name="TDefault">The class that fills it by default.</typeparam>
+    /// <returns>This builder.</returns>
+    IPluginServiceBuilder AddProviderSlot<TSlot, TDefault>()
+        where TSlot : class
+        where TDefault : class, TSlot;
+
     /// <summary>Adds a job that the runner executes.</summary>
     /// <typeparam name="TJob">The job, created per attempt.</typeparam>
     /// <typeparam name="TPayload">Its payload.</typeparam>

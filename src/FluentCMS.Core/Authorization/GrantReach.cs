@@ -1,8 +1,9 @@
 namespace FluentCMS.Core.Authorization;
 
 // What one grant gives once its role's site, its constraints and a principal's binding are applied: the permissions of a
-// pattern, in sites (null for every site) and locales and fields (null for all), on the rows of a rule (null for every row).
-internal sealed record GrantReach(string Pattern, IReadOnlySet<Guid>? Sites, IReadOnlyList<string>? Locales, IReadOnlyList<string>? Fields, string? RowRule)
+// pattern, in sites (null for every site) and locales and fields (null for all), on the rows of a rule (null for every row)
+// and on a plugin's resources (null for every resource).
+internal sealed record GrantReach(string Pattern, IReadOnlySet<Guid>? Sites, IReadOnlyList<string>? Locales, IReadOnlyList<string>? Fields, string? RowRule, IReadOnlyList<string>? Resources = null)
 {
     private const string ContentPrefix = FluentCMS.Authorization.Permission.ContentPrefix + ".";
 
@@ -22,7 +23,7 @@ internal sealed record GrantReach(string Pattern, IReadOnlySet<Guid>? Sites, IRe
             ? types.Select(type => PermissionPattern.Intersect(pattern, ContentPrefix + type + ".*")).OfType<string>()
             : [pattern];
 
-        return [.. patterns.Distinct(StringComparer.Ordinal).Select(narrowed => new GrantReach(narrowed, sites, constraints.Locales, constraints.Fields, constraints.RowRule))];
+        return [.. patterns.Distinct(StringComparer.Ordinal).Select(narrowed => new GrantReach(narrowed, sites, constraints.Locales, constraints.Fields, constraints.RowRule, constraints.Resources))];
     }
 
     // Whether this gives everything the other gives, with no fewer limits.
@@ -31,7 +32,8 @@ internal sealed record GrantReach(string Pattern, IReadOnlySet<Guid>? Sites, IRe
         && (Sites is null || (other.Sites is not null && other.Sites.IsSubsetOf(Sites)))
         && (Locales is null || (other.Locales is not null && other.Locales.All(locale => Locales.Contains(locale, StringComparer.OrdinalIgnoreCase))))
         && (Fields is null || (other.Fields is not null && other.Fields.All(field => Fields.Contains(field, StringComparer.Ordinal))))
-        && (RowRule is null || string.Equals(RowRule, other.RowRule, StringComparison.Ordinal));
+        && (RowRule is null || string.Equals(RowRule, other.RowRule, StringComparison.Ordinal))
+        && (Resources is null || (other.Resources is not null && other.Resources.All(resource => Resources.Contains(resource, StringComparer.Ordinal))));
 
     private static HashSet<Guid>? Intersect(IEnumerable<Guid>? left, IEnumerable<Guid>? right)
     {

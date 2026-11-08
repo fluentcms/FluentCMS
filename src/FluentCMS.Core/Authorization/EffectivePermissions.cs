@@ -25,11 +25,18 @@ internal sealed class EffectiveGrant(string pattern, PermissionConstraints const
 
     public Guid? RoleSite { get; } = roleSite;
 
-    public bool Applies(string permission, AccessTarget target) =>
-        AppliesInSomeLocale(permission, target)
+    public bool Applies(string permission, AccessTarget target) => Constraints.Resources is null && Reaches(permission, target);
+
+    // A grant limited to resources holds only where a plugin asks which resources it reaches, since no other check can say
+    // which resource it acts on.
+    public bool AppliesInSomeLocale(string permission, AccessTarget target) =>
+        Constraints.Resources is null && ReachesInSomeLocale(permission, target);
+
+    public bool Reaches(string permission, AccessTarget target) =>
+        ReachesInSomeLocale(permission, target)
         && (Constraints.Locales is null || (!string.IsNullOrEmpty(target.Locale) && Constraints.Locales.Contains(target.Locale, StringComparer.OrdinalIgnoreCase)));
 
-    public bool AppliesInSomeLocale(string permission, AccessTarget target) =>
+    private bool ReachesInSomeLocale(string permission, AccessTarget target) =>
         PermissionPattern.Matches(_segments, permission)
         && (RoleSite is null || target.Site?.Value == RoleSite)
         && (Constraints.Sites is null || (target.Site is { } site && Constraints.Sites.Contains(site)));
@@ -82,6 +89,36 @@ internal sealed class EffectivePermissions(OperationContext context, IReadOnlyLi
 
     public bool Allows(SchemaType type, ContentOperation operation, AccessTarget target) =>
         IsSystem || GrantsOf(type, operation, target).Count > 0;
+
+    // The resources a permission reaches: null when a grant with no resource limit holds it, otherwise the union of the
+    // resources of the grants that do, empty when none does.
+    public IReadOnlySet<string>? ResourcesOf(string permission, AccessTarget target)
+    {
+        ArgumentNullException.ThrowIfNull(permission);
+
+        if (IsSystem)
+        {
+            return null;
+        }
+
+        HashSet<string> resources = new(StringComparer.Ordinal);
+        if (!Permits(permission, target))
+        {
+            return resources;
+        }
+
+        foreach (var grant in grants.Where(grant => grant.Reaches(permission, target)))
+        {
+            if (grant.Constraints.Resources is not { } limited)
+            {
+                return null;
+            }
+
+            resources.UnionWith(limited);
+        }
+
+        return resources;
+    }
 
     // Whether the principal holds everything a grant gives, wherever it gives it, with no fewer limits, so that handing it to a
     // role, a user or a key gives nothing the principal does not have. Only managing principals hand anything out. A grant

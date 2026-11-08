@@ -58,6 +58,10 @@ public sealed class WebhooksPlugin : IPlugin
         Subscribe<EntryScheduledEvent>(plugin);
         Subscribe<EntryScheduleCancelledEvent>(plugin);
         Subscribe<CacheInvalidatedEvent>(plugin);
+        Subscribe<MediaAssetUploadedEvent>(plugin);
+        Subscribe<MediaAssetUpdatedEvent>(plugin);
+        Subscribe<MediaAssetMovedEvent>(plugin);
+        Subscribe<MediaAssetDeletedEvent>(plugin);
     }
 
     public void Configure(IPluginAppBuilder app) => app.MapManagement("/webhooks").MapWebhookEndpoints();
