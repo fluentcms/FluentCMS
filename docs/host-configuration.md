@@ -333,7 +333,7 @@ A target URL uses `https` outside Development. Deliveries do not follow redirect
 
 ## Media
 
-The media plugin (`FluentCMS.Plugins.Media`, which the reference host adds) keeps the assets and folders of each site under `/api/management/v1/media`, and serves signed image transforms at `/media/{id}/{fileName}`. Its instance options are in `FluentCms:Media`:
+The media plugin (`FluentCMS.Plugins.Media`, which the reference host adds) keeps the assets and folders of each site under `/api/management/v1/media`, answers `/api/delivery/v1/media/{id}`, and serves signed image transforms at `/media/{id}/{fileName}` and original files at `/media/{id}/original/{fileName}`. Its instance options are in `FluentCms:Media`:
 
 | Key | Default | Meaning |
 | --- | --- | --- |
@@ -341,6 +341,7 @@ The media plugin (`FluentCMS.Plugins.Media`, which the reference host adds) keep
 | `MaxRequestBodySize` | `268435456` | The largest upload request, in bytes. |
 | `RequireSignedUrls` | `true` | `false` serves unsigned transform URLs. The startup report lists `media-unsigned-urls` while it is off in Production. |
 | `SigningKey` | none | The base64 of at least 32 bytes that signs transform URLs. Left out, the plugin generates one key at its first start and stores it protected by Data Protection. Changing the key invalidates every URL signed before. |
-| `CacheControl` | `public, max-age=86400` | The `Cache-Control` of a transformed image. |
+| `CacheControl` | `public, max-age=86400` | The `Cache-Control` of a transformed image and of the original file of a public asset. |
+| `DeletedRetention` | `30.00:00:00` | How long a deleted asset keeps its file and its row before the daily cleanup purges them. |
 
 The limits of uploads and transforms are each site's, in the settings area `media`. The default image processor is [SkiaSharp](https://github.com/mono/SkiaSharp) (MIT), with its Linux assets that need no fontconfig, for containers. A host replaces it with `cms.Providers.Use<IImageProcessor, T>()`, for example to use ImageSharp under its own Six Labors license. The plugin's [README](../src/plugins/FluentCMS.Plugins.Media/README.md#image-transforms) has the parameters and the signing.

@@ -21,9 +21,12 @@ public sealed class MediaPlugin : IPlugin
             .BindConfiguration(MediaOptions.Section)
             .Validate(
                 options => options.IsValid(),
-                $"{MediaOptions.Section}: Local:Root must name a directory, MaxRequestBodySize must be positive, SigningKey must be the base64 of at least {MediaSigning.KeyLength} bytes when set, and CacheControl a Cache-Control value.");
+                $"{MediaOptions.Section}: Local:Root must name a directory, MaxRequestBodySize must be positive, SigningKey must be the base64 of at least {MediaSigning.KeyLength} bytes when set, CacheControl a Cache-Control value, and DeletedRetention positive.");
+        plugin.Services.AddOptions<DeliveryCacheControl>().BindConfiguration(DeliveryCacheControl.Section);
         plugin.Services.AddScoped<IMediaService, MediaService>();
         plugin.Services.AddScoped<MediaTransforms>();
+        plugin.Services.AddScoped<MediaOriginals>();
+        plugin.Services.AddScoped<MediaCache>();
         plugin.Services.AddSingleton<MediaSigning>();
         plugin.Services.AddSingleton<IInsecureDefaultSource, MediaInsecureDefaults>();
         plugin.Services.AddHostedService<MediaStartup>();
@@ -50,8 +53,15 @@ public sealed class MediaPlugin : IPlugin
             .AddErrorCode(MediaErrorCodes.TransformLimit, 422, "Image transform over a limit")
             .AddErrorCode(MediaErrorCodes.NotTransformable, 415, "Media asset not transformable")
             .AddErrorCode(MediaErrorCodes.PresetNotFound, 404, "Media preset not found")
+            .AddErrorCode(MediaErrorCodes.AssetInUse, 409, "Media asset in use")
+            .AddErrorCode(MediaErrorCodes.DownloadExpired, 403, "Media download URL expired")
+            .AddOutboxHandler<MediaAssetUpdatedEvent, MediaCache>("media.cache.updated")
+            .AddOutboxHandler<MediaAssetMovedEvent, MediaCache>("media.cache.moved")
+            .AddOutboxHandler<MediaAssetReplacedEvent, MediaCache>("media.cache.replaced")
+            .AddOutboxHandler<MediaAssetDeletedEvent, MediaCache>("media.cache.deleted")
             .AddActivity<MediaAssetUploadedEvent>("media.uploaded", uploaded => Activity("media.uploaded", uploaded, new Dictionary<string, string?> { ["mimeType"] = uploaded.MimeType, ["size"] = uploaded.Size.ToString(System.Globalization.CultureInfo.InvariantCulture) }))
             .AddActivity<MediaAssetUpdatedEvent>("media.updated", updated => Activity("media.updated", updated, null))
+            .AddActivity<MediaAssetReplacedEvent>("media.replaced", replaced => Activity("media.replaced", replaced, new Dictionary<string, string?> { ["mimeType"] = replaced.MimeType, ["size"] = replaced.Size.ToString(System.Globalization.CultureInfo.InvariantCulture) }))
             .AddActivity<MediaAssetMovedEvent>("media.moved", moved => Activity("media.moved", moved, new Dictionary<string, string?> { ["from"] = moved.PreviousFolderId?.ToString("D"), ["to"] = moved.FolderId?.ToString("D") }))
             .AddActivity<MediaAssetDeletedEvent>("media.deleted", deleted => Activity("media.deleted", deleted, null));
     }
@@ -61,6 +71,7 @@ public sealed class MediaPlugin : IPlugin
         ArgumentNullException.ThrowIfNull(app);
 
         app.MapManagement("/media").MapMediaEndpoints();
+        app.MapDelivery("/media").MapDeliveryEndpoints();
         app.MapGroup("/media").MapImageEndpoints();
     }
 
