@@ -32,15 +32,19 @@ public sealed class PaginationTests : IDisposable
 
     private static string[] Titles(ContentQueryResult result) => result.Items.Select(item => (string)item["title"]!).ToArray();
 
-    private async Task<string[]> AllByCursor(string query)
+    private static Guid[] Ids(ContentQueryResult result) => result.Items.Select(item => (Guid)item["id"]!).ToArray();
+
+    private Task<string[]> AllByCursor(string query) => AllByCursor(query, Titles);
+
+    private async Task<T[]> AllByCursor<T>(string query, Func<ContentQueryResult, T[]> read)
     {
-        List<string> seen = [];
+        List<T> seen = [];
         string? cursor = null;
         do
         {
             var result = await _database.RunAsync($"{query}&locale=en&limit=2{(cursor is null ? "" : $"&cursor={cursor}")}");
             result.Items.Count.ShouldBeLessThanOrEqualTo(2);
-            seen.AddRange(Titles(result));
+            seen.AddRange(read(result));
             cursor = result.NextCursor;
         }
         while (cursor is not null);
@@ -156,9 +160,12 @@ public sealed class PaginationTests : IDisposable
     {
         var ids = new[] { Add("Same"), Add("Same"), Add("Same") };
 
-        var result = await _database.RunAsync("sort=title&locale=en");
+        // The order of the ids is the provider's: SQL Server sorts uniqueidentifier by its last bytes first, not as text.
+        var byId = Ids(await _database.RunAsync("sort=id&locale=en"));
 
-        result.Items.Select(item => (Guid)item["id"]!).ShouldBe(ids.OrderBy(id => id.ToString().ToUpperInvariant()));
+        byId.ShouldBe(ids, ignoreOrder: true);
+        Ids(await _database.RunAsync("sort=title&locale=en")).ShouldBe(byId);
+        (await AllByCursor("sort=title", Ids)).ShouldBe(byId);
     }
 
     [Theory]

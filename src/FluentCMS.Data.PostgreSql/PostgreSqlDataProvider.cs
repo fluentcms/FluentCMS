@@ -25,6 +25,20 @@ public sealed class PostgreSqlDataProvider(string connectionString) : IDataProvi
     public bool IsUniqueViolation(Exception exception) =>
         (exception as PostgresException ?? exception.InnerException as PostgresException) is { SqlState: PostgresErrorCodes.UniqueViolation };
 
+    // EF's execution strategy wraps a deadlock met in SaveChanges as a transient failure, so the whole chain is read.
+    public bool IsDeadlock(Exception exception)
+    {
+        for (Exception? current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is PostgresException { SqlState: PostgresErrorCodes.DeadlockDetected })
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public void ConfigureContentMigrations(DbContextOptionsBuilder options, Assembly migrationsAssembly) =>
         options.UseNpgsql(connectionString, npgsql => npgsql
             .MigrationsAssembly(migrationsAssembly)

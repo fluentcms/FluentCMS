@@ -8,9 +8,8 @@ using Microsoft.EntityFrameworkCore.Storage;
 namespace FluentCMS.Data.SqlServer;
 
 // JSON_VALUE returns every scalar as text, so a number would equal the text '12'. OPENJSON exposes the JSON type of
-// each key instead, and works on nvarchar(max) and on the native json type alike. Text compares under a binary
-// collation, because the other providers are case-sensitive and a database's default usually is not.
-// Not yet run on a database (#2711).
+// each key instead. Text compares under a binary collation, because the other providers are case-sensitive and a
+// database's default usually is not.
 public sealed class SqlServerJsonDialect : IJsonSqlDialect
 {
     private const string BlockTypeField = "type";
@@ -24,7 +23,6 @@ public sealed class SqlServerJsonDialect : IJsonSqlDialect
     private const string DecimalStoreType = "decimal(38,18)";
 
     private static readonly MethodInfo OpenJson = Function(nameof(SqlServerJsonFunctions.OpenJson));
-    private static readonly MethodInfo TryBigint = Function(nameof(SqlServerJsonFunctions.TryBigint));
     private static readonly MethodInfo TryDecimal = Function(nameof(SqlServerJsonFunctions.TryDecimal));
     private static readonly MethodInfo Collate = typeof(RelationalDbFunctionsExtensions).GetMethod(nameof(RelationalDbFunctionsExtensions.Collate))!.MakeGenericMethod(typeof(string));
     private static readonly MethodInfo StringContains = typeof(string).GetMethod(nameof(string.Contains), [typeof(string)])!;
@@ -38,8 +36,6 @@ public sealed class SqlServerJsonDialect : IJsonSqlDialect
         modelBuilder.HasDbFunction(OpenJson).HasName("OPENJSON").IsBuiltIn();
 
         // TRY_CONVERT takes a type keyword as its first argument, which a plain mapping cannot express.
-        modelBuilder.HasDbFunction(TryBigint).HasName("TRY_CONVERT").IsBuiltIn()
-            .HasTranslation(arguments => TryConvert("bigint", arguments[0], typeof(long), new LongTypeMapping("bigint")));
         modelBuilder.HasDbFunction(TryDecimal).HasName("TRY_CONVERT").IsBuiltIn()
             .HasTranslation(arguments => TryConvert(DecimalStoreType, arguments[0], typeof(decimal), new DecimalTypeMapping(DecimalStoreType)));
     }
@@ -66,7 +62,8 @@ public sealed class SqlServerJsonDialect : IJsonSqlDialect
         }, text => type switch
         {
             JsonScalarType.Text => Expression.Equal(Binary(text), value),
-            JsonScalarType.WholeNumber => Expression.Equal(Expression.Call(TryBigint, text), Expression.Convert(value, typeof(long?))),
+            // TRY_CONVERT(bigint, '12.0') is null, and a stored 12.0 is the whole number 12 on the other providers.
+            JsonScalarType.WholeNumber => Expression.Equal(Expression.Call(TryDecimal, text), Expression.Convert(Expression.Convert(value, typeof(decimal)), typeof(decimal?))),
             JsonScalarType.DecimalNumber => Expression.Equal(Expression.Call(TryDecimal, text), Expression.Convert(value, typeof(decimal?))),
             JsonScalarType.Boolean => Expression.Equal(text, Expression.Condition(value, Expression.Constant("true"), Expression.Constant("false"))),
             _ => throw new ArgumentOutOfRangeException(nameof(type), type, null),

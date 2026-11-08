@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Data.Common;
 using System.Reflection;
 using DotNet.Testcontainers.Containers;
@@ -30,6 +31,9 @@ public sealed class DatabaseServer : IAsyncLifetime
     private const string SqlServer2025Image = "mcr.microsoft.com/mssql/server@sha256:245f6b1c8903edae52cb20fa31419cefcde1a49938bb8c3447099011fc871ca3";
 
     private static readonly TimeSpan StartTimeout = TimeSpan.FromMinutes(10);
+
+    // Emptied SQL Server databases, which the next tests take instead of creating their own.
+    private static readonly ConcurrentBag<string> Emptied = [];
 
     private static string? _adminConnectionString;
 
@@ -79,8 +83,13 @@ public sealed class DatabaseServer : IAsyncLifetime
             return new ServerDatabase(name, new NpgsqlConnectionStringBuilder(admin) { Database = name, IncludeErrorDetail = true }.ToString());
         }
 
-        Run(new SqlConnection(admin), $"CREATE DATABASE [{name}]");
-        return new ServerDatabase(name, new SqlConnectionStringBuilder(admin) { InitialCatalog = name }.ToString());
+        if (!Emptied.TryTake(out var emptied))
+        {
+            Run(new SqlConnection(admin), $"CREATE DATABASE [{name}]");
+            emptied = name;
+        }
+
+        return new ServerDatabase(emptied, new SqlConnectionStringBuilder(admin) { InitialCatalog = emptied }.ToString());
     }
 
     internal static void DropDatabase(string name, string connectionString)
@@ -97,7 +106,52 @@ public sealed class DatabaseServer : IAsyncLifetime
             SqlConnection.ClearPool(connection);
         }
 
-        Run(new SqlConnection(admin), $"IF DB_ID('{name}') IS NOT NULL BEGIN ALTER DATABASE [{name}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [{name}]; END");
+        var renamed = $"t_{Guid.NewGuid():N}";
+        if (TryEmpty(admin, name, renamed))
+        {
+            Emptied.Add(renamed);
+            return;
+        }
+
+        foreach (var left in new[] { name, renamed })
+        {
+            Run(new SqlConnection(admin), $"IF DB_ID('{left}') IS NOT NULL BEGIN ALTER DATABASE [{left}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [{left}]; END");
+        }
+    }
+
+    // SQL Server takes seconds to create and to drop a database, and a fraction of that to empty one. The database is
+    // renamed first, with every session of the test ended, so that work the test left running fails as it would on a
+    // dropped database instead of reaching the next test's. One that still holds anything of its own afterwards is dropped.
+    private static bool TryEmpty(string admin, string name, string renamed)
+    {
+        try
+        {
+            Run(new SqlConnection(admin), $"""
+                ALTER DATABASE [{name}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+                ALTER DATABASE [{name}] MODIFY NAME = [{renamed}];
+                ALTER DATABASE [{renamed}] SET MULTI_USER;
+                """);
+
+            using var connection = new SqlConnection(new SqlConnectionStringBuilder(admin) { InitialCatalog = renamed, Pooling = false }.ToString());
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = """
+                DECLARE @drop nvarchar(max) = N'';
+                SELECT @drop += N'ALTER TABLE ' + QUOTENAME(SCHEMA_NAME(schema_id)) + N'.' + QUOTENAME(OBJECT_NAME(parent_object_id)) + N' DROP CONSTRAINT ' + QUOTENAME(name) + N';' FROM sys.foreign_keys;
+                SELECT @drop += N'DROP VIEW ' + QUOTENAME(SCHEMA_NAME(schema_id)) + N'.' + QUOTENAME(name) + N';' FROM sys.views WHERE is_ms_shipped = 0;
+                SELECT @drop += N'DROP TABLE ' + QUOTENAME(SCHEMA_NAME(schema_id)) + N'.' + QUOTENAME(name) + N';' FROM sys.tables WHERE is_ms_shipped = 0;
+                SELECT @drop += N'DROP SEQUENCE ' + QUOTENAME(SCHEMA_NAME(schema_id)) + N'.' + QUOTENAME(name) + N';' FROM sys.sequences;
+                EXEC sp_executesql @drop;
+                SELECT (SELECT COUNT(*) FROM sys.objects WHERE is_ms_shipped = 0)
+                    + (SELECT COUNT(*) FROM sys.types WHERE is_user_defined = 1)
+                    + (SELECT COUNT(*) FROM sys.schemas WHERE schema_id BETWEEN 5 AND 16383);
+                """;
+            return (int)command.ExecuteScalar()! == 0;
+        }
+        catch (SqlException)
+        {
+            return false;
+        }
     }
 
     private static void Run(DbConnection connection, string sql)
@@ -129,7 +183,7 @@ internal sealed class ServerDatabase(string name, string connectionString) : Tes
         }
         else
         {
-            cms.UseSqlServer(connectionString, nativeJson: TestProvider.Name == TestProvider.SqlServer2025);
+            cms.UseSqlServer(connectionString);
         }
     }
 

@@ -6,13 +6,12 @@ using Microsoft.EntityFrameworkCore.ValueGeneration;
 
 namespace FluentCMS.Data.SqlServer;
 
-// JSON is the native json type on SQL Server 2025 and checked nvarchar(max) text below it.
-public sealed class SqlServerStorageConventions(bool nativeJson = false) : StorageConventions
+// JSON is nvarchar(max) text with an ISJSON check on every version, including 2025, whose native json type the
+// system migrations do not create (ADR 0001).
+public sealed class SqlServerStorageConventions : StorageConventions
 {
     // The other providers compare text case-sensitively, and a database's default collation usually does not.
     internal const string BinaryCollation = "Latin1_General_100_BIN2";
-
-    public override string CacheKey => $"{base.CacheKey}|{nativeJson}";
 
     // datetimeoffset keeps the offset it is given, so a date would read back in the writer's offset.
     public override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
@@ -20,12 +19,6 @@ public sealed class SqlServerStorageConventions(bool nativeJson = false) : Stora
 
     public override void ConfigureJsonColumn(EntityTypeBuilder entity, PropertyBuilder column)
     {
-        if (nativeJson)
-        {
-            column.HasColumnType("json");
-            return;
-        }
-
         column.HasColumnType("nvarchar(max)");
 
         var name = column.Metadata.GetColumnName();

@@ -1,5 +1,7 @@
 using System.Collections.Frozen;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Jobs;
 using Microsoft.Extensions.DependencyInjection;
@@ -37,13 +39,31 @@ internal sealed class JobRegistration
             typeof(TJob),
             typeof(TPayload),
             attemptTimeout,
-            json => JsonSerializer.Deserialize<TPayload>(json, JobJson.Options),
+            JobJson.Deserialize<TPayload>,
             (services, payload, context) => services.GetRequiredService<TJob>().ExecuteAsync((TPayload)payload, context));
 }
 
 internal static class JobJson
 {
     public static readonly JsonSerializerOptions Options = JsonSerializerOptions.Web;
+
+    // SQL Server's ISJSON check takes an object or an array, so a payload whose type writes a scalar, such as the int of an
+    // IJob<int>, is stored in an object of its own: {"value":12}. The type decides, so a reader unwraps what a writer wrapped.
+    public static string Serialize<TPayload>(TPayload payload) => IsScalar<TPayload>()
+        ? JsonSerializer.Serialize(new Scalar<TPayload> { Value = payload }, Options)
+        : JsonSerializer.Serialize(payload, Options);
+
+    public static object? Deserialize<TPayload>(string json) => IsScalar<TPayload>()
+        ? JsonSerializer.Deserialize<Scalar<TPayload>>(json, Options) is { } scalar ? scalar.Value : null
+        : JsonSerializer.Deserialize<TPayload>(json, Options);
+
+    private static bool IsScalar<TPayload>() => Options.GetTypeInfo(typeof(TPayload)).Kind == JsonTypeInfoKind.None;
+
+    private sealed class Scalar<T>
+    {
+        [JsonRequired]
+        public T Value { get; init; } = default!;
+    }
 }
 
 internal sealed class JobRegistry

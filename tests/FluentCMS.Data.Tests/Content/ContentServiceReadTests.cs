@@ -248,7 +248,7 @@ public sealed class ContentServiceReadTests : IDisposable
 
         count.ShouldBe(2);
         var reads = trips.Sent.Where(sql => sql.Contains(TestProvider.Quote("cms_document"), StringComparison.Ordinal) || sql.Contains(TestProvider.Quote("cms_reference"), StringComparison.Ordinal)).ToList();
-        reads.ShouldHaveSingleItem().ShouldContain("COUNT(");
+        reads.ShouldHaveSingleItem().ShouldMatch(@"(?i)COUNT(_BIG)?\(");
     }
 
     [Fact]

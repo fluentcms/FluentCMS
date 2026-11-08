@@ -24,15 +24,11 @@ public sealed class WebhookMigrationSetTests
         PluginMigrationSetChecks.MatchesTheSqliteSet(context, sqlite);
     }
 
-    // The plugin maps no JSON column of its own, so the native json type of SQL Server 2025 leaves its model, and its set, alone.
     [Theory]
-    [InlineData(PluginMigrationSets.Sqlite, false)]
-    [InlineData(PluginMigrationSets.PostgreSql, false)]
-    [InlineData(PluginMigrationSets.SqlServer, false)]
-    [InlineData(PluginMigrationSets.SqlServer, true)]
-    public void AHostTakesTheSetOfItsProvider(string set, bool nativeJson)
+    [MemberData(nameof(Sets))]
+    public void AHostTakesTheSetOfItsProvider(string set)
     {
-        using var services = PluginMigrationSetChecks.Host(set, nativeJson, cms => cms.AddPlugin<WebhooksPlugin>());
+        using var services = PluginMigrationSetChecks.Host(set, cms => cms.AddPlugin<WebhooksPlugin>());
         using var scope = services.CreateScope();
 
         PluginMigrationSetChecks.IsTheSetOf(scope.ServiceProvider.GetRequiredService<PluginDbContext<WebhooksPlugin>>(), set);

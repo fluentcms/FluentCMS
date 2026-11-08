@@ -113,9 +113,7 @@ jobs:
           - provider: postgresql
             preview: true
           - provider: sqlserver-2019
-            preview: true
           - provider: sqlserver-2025
-            preview: true
     env:
       FLUENTCMS_TEST_PROVIDER: ${{ matrix.provider }}
     steps:

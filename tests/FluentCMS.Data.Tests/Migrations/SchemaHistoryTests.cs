@@ -241,12 +241,16 @@ public sealed class SchemaHistoryTests : IDisposable
         await StartAndStopAsync(_database.CreateHost(ArticleSchemas.Titled, Production, migrations));
         _database.Execute("delete from cms_schema_history");
 
-        var hosts = Enumerable.Range(0, 4).Select(_ => _database.CreateHost(ArticleSchemas.Titled, Production, migrations, NoMigrationOnStartup)).ToList();
+        var logs = new CapturedLogs();
+        var hosts = Enumerable.Range(0, 4).Select(_ => _database.CreateHost(ArticleSchemas.Titled, Production, migrations, NoMigrationOnStartup, Capture(logs))).ToList();
         try
         {
             await Task.WhenAll(hosts.Select(host => Task.Run(() => host.Services.GetRequiredService<MigrationRunner>().MigrateAsync(Token))));
 
             (await RowsAsync(hosts[0])).Count.ShouldBe(1);
+
+            // A node that a server failed (a deadlock, a serialization failure) read again, rather than giving up.
+            logs.Warnings.ShouldNotContain(message => message.Contains("was not recorded", StringComparison.Ordinal), string.Join(Environment.NewLine, logs.Warnings));
         }
         finally
         {

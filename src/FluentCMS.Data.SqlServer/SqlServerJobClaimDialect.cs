@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace FluentCMS.Data.SqlServer;
 
-// Not yet run on a database (#2711).
 public sealed class SqlServerJobClaimDialect : IJobClaimDialect
 {
     public async Task<Guid?> ClaimAsync(DatabaseFacade database, JobClaim claim, CancellationToken cancellationToken = default)

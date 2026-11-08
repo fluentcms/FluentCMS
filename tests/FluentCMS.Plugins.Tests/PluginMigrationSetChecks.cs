@@ -20,7 +20,7 @@ internal static class PluginMigrationSetChecks
     public static TheoryData<string> Sets => [PluginMigrationSets.Sqlite, PluginMigrationSets.PostgreSql, PluginMigrationSets.SqlServer];
 
     // The services of a host on the provider of the set, which never open its database.
-    public static ServiceProvider Host(string set, bool nativeJson, Action<FluentCmsBuilder> plugins)
+    public static ServiceProvider Host(string set, Action<FluentCmsBuilder> plugins)
     {
         var services = new ServiceCollection().AddLogging();
         services.AddFluentCms(cms =>
@@ -35,7 +35,7 @@ internal static class PluginMigrationSetChecks
             }
             else
             {
-                cms.UseSqlServer("Server=localhost;Database=never_opened", nativeJson);
+                cms.UseSqlServer("Server=localhost;Database=never_opened");
             }
 
             plugins(cms);

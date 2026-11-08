@@ -58,16 +58,27 @@ public static class TestProvider
     public static bool IsDeleteFrom(string sql, string table) =>
         Regex.IsMatch(sql, $@"^DELETE FROM {(IsSqlServer ? @"\[\w+\]\s+FROM " : "")}{Regex.Escape(Quote(table))}(\s|$)");
 
+    // The same for an ExecuteUpdate: UPDATE [c] SET ... FROM [table] AS [c] on SQL Server.
+    public static bool IsUpdateOf(string sql, string table) =>
+        Regex.IsMatch(sql, IsSqlServer ? $@"^UPDATE \[\w+\]\s+SET\s.*?\sFROM {Regex.Escape(Quote(table))}\s" : $@"^UPDATE {Regex.Escape(Quote(table))}(\s|$)", RegexOptions.Singleline);
+
+    // Whether a command that SaveChanges built inserts into the table. SQL Server sends SET NOCOUNT ON before it.
+    public static bool IsInsertInto(string sql, string table) =>
+        Regex.IsMatch(sql, $@"(?m)^INSERT INTO {Regex.Escape(Quote(table))}(\s|$)");
+
     // The run's provider for work that never opens a connection, such as scaffolding a migration.
     public static IDataProvider Offline() => Name switch
     {
         Sqlite => new SqliteDataProvider("Data Source=:memory:"),
         PostgreSql => new PostgreSqlDataProvider("Host=localhost;Database=never_opened"),
-        _ => new SqlServerDataProvider("Server=localhost;Database=never_opened", nativeJson: Name == SqlServer2025),
+        _ => new SqlServerDataProvider("Server=localhost;Database=never_opened"),
     };
 
     public static string SqliteOnlyReason(string? because) =>
         $"Runs on {Sqlite} only{(because is null ? "" : $", because it tests {because}")}; this run is {Name}.";
+
+    public static string SqlServerOnlyReason(string because) =>
+        $"Runs on SQL Server only, because it tests {because}; this run is {Name}.";
 
     private static string Read()
     {
@@ -105,6 +116,19 @@ public sealed class SqliteTheoryAttribute : TheoryAttribute
         if (!TestProvider.IsSqlite)
         {
             Skip = TestProvider.SqliteOnlyReason(because);
+        }
+    }
+}
+
+// A test of SQL Server itself, skipped with the reason on the other providers.
+public sealed class SqlServerFactAttribute : FactAttribute
+{
+    public SqlServerFactAttribute(string because, [CallerFilePath] string? sourceFilePath = null, [CallerLineNumber] int sourceLineNumber = -1)
+        : base(sourceFilePath, sourceLineNumber)
+    {
+        if (!TestProvider.IsSqlServer)
+        {
+            Skip = TestProvider.SqlServerOnlyReason(because);
         }
     }
 }

@@ -7,9 +7,11 @@ using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Tests.Schema;
 using FluentCMS.Core.Tests.Schema.Samples;
 using FluentCMS.Data.Tests.Authorization;
+using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Data.Tests.Query;
 using FluentCMS.Publishing;
 using FluentCMS.Schema;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -624,6 +626,9 @@ public sealed class ContentServiceJoinedTransactionTests
                 transaction.SupportsSavepoints.ShouldBeFalse();
                 await service.CreateAsync("article", Titled("One"), Token);
                 await Should.ThrowAsync<ValidationException>(() => service.CreateAsync("article", new() { ["views"] = 5000 }, Token));
+
+                // As a hook that caught the failure would carry on: the write must not commit outside the transaction.
+                await Should.ThrowAsync<InvalidOperationException>(() => service.CreateAsync("article", Titled("Two"), Token));
                 await Should.ThrowAsync<InvalidOperationException>(() => transaction.CommitAsync(Token));
             }
 
@@ -631,6 +636,19 @@ public sealed class ContentServiceJoinedTransactionTests
         });
 
         database.Footprint().ShouldBe(before);
+    }
+
+    // The test above stands in for a SQL Server connection with MARS, on which EF takes no savepoints.
+    [SqlServerFact("MARS, with which EF takes no savepoints")]
+    public async Task OnSqlServerWithMarsATransactionHasNoSavepoints()
+    {
+        using var database = TestDatabase.Create();
+        var mars = new SqlConnectionStringBuilder(database.ConnectionString) { MultipleActiveResultSets = true }.ConnectionString;
+        await using var context = new DbContext(new DbContextOptionsBuilder().UseSqlServer(mars).Options);
+
+        await using var transaction = await context.Database.BeginTransactionAsync(Token);
+
+        transaction.SupportsSavepoints.ShouldBeFalse();
     }
 
     [Fact]

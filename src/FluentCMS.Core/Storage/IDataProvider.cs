@@ -26,6 +26,9 @@ public interface IDataProvider
     // what a writer gets that lost a race to the row its checks found free (spec 4.4).
     bool IsUniqueViolation(Exception exception);
 
+    // Whether the database ended the transaction as the victim of a deadlock, which it asks to be run again.
+    bool IsDeadlock(Exception exception);
+
     // Points the options of CmsDbContext at the database, with the host's content migrations and their history table.
     void ConfigureContentMigrations(DbContextOptionsBuilder options, Assembly migrationsAssembly);
 

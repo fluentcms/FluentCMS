@@ -37,7 +37,7 @@ public sealed class PluginMigrationSetTests
     [MemberData(nameof(Sets))]
     public async Task AHostTakesTheSampleSetOfItsProviderAndAHandWrittenSetOnAnyProvider(string set)
     {
-        using var services = PluginMigrationSetChecks.Host(set, nativeJson: false, cms => cms.AddPlugin<LatePlugin>());
+        using var services = PluginMigrationSetChecks.Host(set, cms => cms.AddPlugin<LatePlugin>());
         using var scope = services.CreateScope();
 
         PluginMigrationSetChecks.IsTheSetOf(scope.ServiceProvider.GetRequiredService<PluginDbContext<SamplePlugin>>(), set);
@@ -50,7 +50,7 @@ public sealed class PluginMigrationSetTests
     [InlineData(PluginMigrationSets.SqlServer, "SQL Server", "stream legacy was scaffolded for SQLite and has no set in a namespace ending in .SqlServer; stream partial has no set in a namespace ending in .SqlServer")]
     public async Task AServerHostRefusesAnotherProvidersSetOrNoneBeforeTouchingTheDatabase(string set, string provider, string streams)
     {
-        using var services = PluginMigrationSetChecks.Host(set, nativeJson: false, cms => cms.AddPlugin<LegacySetPlugin>().AddPlugin<PartialSetPlugin>());
+        using var services = PluginMigrationSetChecks.Host(set, cms => cms.AddPlugin<LegacySetPlugin>().AddPlugin<PartialSetPlugin>());
         var runner = services.GetRequiredService<MigrationRunner>();
 
         var atStartup = await Should.ThrowAsync<FluentCmsConfigurationException>(() => runner.RunAtStartupAsync(Token));
