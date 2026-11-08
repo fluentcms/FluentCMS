@@ -111,7 +111,6 @@ jobs:
         # continue-on-error, once the suite passes on that provider.
         include:
           - provider: postgresql
-            preview: true
           - provider: sqlserver-2019
             preview: true
           - provider: sqlserver-2025

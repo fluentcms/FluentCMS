@@ -5,6 +5,7 @@ using FluentCMS.Core.Content;
 using FluentCMS.Core.Content.Hooks;
 using FluentCMS.Core.Tests.Schema;
 using FluentCMS.Data.Tests.Authorization;
+using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Hooks;
 using FluentCMS.Publishing;
 using FluentCMS.Schema;
@@ -519,7 +520,7 @@ public sealed class PublishingAccessTests : IDisposable
         row["views"].ShouldBe(2L);
         row["secret"].ShouldBe("s2");
         var sections = row["sections"].ShouldBeOfType<string>();
-        sections.ShouldContain("\"heading\":\"Hi\"");
+        StoredJson.Parse(sections)[0]!["heading"]!.GetValue<string>().ShouldBe("Hi");
         sections.ShouldContain("hidden-2");
         sections.ShouldNotContain("hidden-in-block");
     }

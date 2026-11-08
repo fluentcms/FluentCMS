@@ -20,7 +20,7 @@ public sealed class SystemDbContext : DbContext
     internal string ConventionsKey => _model.Conventions.CacheKey;
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
-        _model.Conventions.ConfigureConventions(configurationBuilder);
+        StorageConventions.Configure(_model.Conventions, configurationBuilder);
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

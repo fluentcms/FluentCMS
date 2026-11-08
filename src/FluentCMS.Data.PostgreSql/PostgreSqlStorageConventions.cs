@@ -7,6 +7,8 @@ namespace FluentCMS.Data.PostgreSql;
 
 public sealed class PostgreSqlStorageConventions : StorageConventions
 {
+    public override bool ReordersJson => true;
+
     // Npgsql writes a DateTimeOffset to timestamptz only with offset 0.
     public override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
         configurationBuilder.Properties<DateTimeOffset>().HaveConversion<UtcConverter>();

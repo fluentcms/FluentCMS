@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Tests.Schema;
+using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Publishing;
 using FluentCMS.Schema;
 using Microsoft.EntityFrameworkCore;
@@ -140,7 +141,8 @@ public sealed class InlineBlockRulesTests : IDisposable
 
         var id = IdOf(await _database.CreateAsync(Editor, Placed(inline, $$"""card:{"who":"{{author}}","count":2}""")));
 
-        Stored(id, inline).ShouldContain($$"""{"id":"{{author}}","type":"author"}""");
+        var stored = StoredJson.Parse(Stored(id, inline));
+        (inline ? stored["content"]![0]!["content"]![1]!["attrs"]!["data"]!["who"] : stored[0]!["who"]).ShouldBeJson($$"""{"id":"{{author}}","type":"author"}""");
         _database.References(id).ShouldHaveSingleItem().TargetId.ShouldBe(author);
     }
 
@@ -200,10 +202,10 @@ public sealed class InlineBlockRulesTests : IDisposable
     {
         var id = await SystemCreateAsync(inline, """gated:{"label":"A","kind":"ok"}""");
         var column = Field(inline);
-        var corrupt = inline
-            ? """UPDATE cms_article SET body = replace(body, '"ok"', '"LEAKED"')"""
-            : """UPDATE cms_article SET cards = replace(cards, '"ok"', '"LEAKED"')""";
-        _database.Read(context => context.Database.ExecuteSqlRaw(corrupt));
+        var corrupt = ((string)_database.Row("cms_article", id)[column]).Replace("\"ok\"", "\"LEAKED\"", StringComparison.Ordinal);
+        _database.Read(context => context.Rows("cms_article")
+            .Where(row => EF.Property<Guid>(row, "document_id") == id)
+            .ExecuteUpdate(set => set.SetProperty(row => EF.Property<string>(row, column), corrupt)));
 
         var read = (await _database.GetAsync(Editor, id))!;
         Text(read).ShouldNotContain("LEAKED");

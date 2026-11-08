@@ -7,6 +7,7 @@ using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Tests.Schema;
 using FluentCMS.Data.Tests.Authorization;
+using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Hooks;
 using FluentCMS.Publishing;
 using FluentCMS.Schema;
@@ -69,9 +70,10 @@ public sealed class ContentServiceWriteTests : IDisposable
     [Fact]
     public async Task RichTextIsStoredInItsCanonicalForm()
     {
-        var entry = await _database.CreateAsync(Editor, new() { ["title"] = "Hello", ["body"] = Body });
+        var id = IdOf(await _database.CreateAsync(Editor, new() { ["title"] = "Hello", ["body"] = Body }));
 
-        _database.Row("cms_article_i18n", IdOf(entry), "en")["body"].ShouldBe(CanonicalBody);
+        _database.Row("cms_article_i18n", id, "en")["body"].ShouldBeJson(CanonicalBody);
+        (await _database.GetAsync(Editor, id))!["body"].ShouldBeOfType<RichText>().Json.ShouldBe(CanonicalBody);
     }
 
     [Fact]
@@ -91,7 +93,7 @@ public sealed class ContentServiceWriteTests : IDisposable
         var row = _database.Row("cms_article_i18n", IdOf(entry), "en");
         row["title"].ShouldBe("");
         row["slug"].ShouldBe("");
-        row["body"].ShouldBe(RichText.Empty.Json);
+        row["body"].ShouldBeJson(RichText.Empty.Json);
         row["subtitle"].ShouldBeNull();
 
         var shared = _database.Row("cms_article", IdOf(entry));
@@ -163,7 +165,7 @@ public sealed class ContentServiceWriteTests : IDisposable
         var stored = JsonNode.Parse((string)_database.Row("cms_article", IdOf(entry))["sections"])!;
         stored[0]!["at"]!.GetValue<string>().ShouldBe("2026-11-02T08:00:00Z");
         stored[0]!["on"]!.GetValue<string>().ShouldBe("2026-11-02");
-        stored[0]!["note"]!.ToJsonString().ShouldBe(RichText.Empty.Json);
+        stored[0]!["note"].ShouldBeJson(RichText.Empty.Json);
     }
 
     [Fact]
@@ -825,17 +827,49 @@ public sealed class ContentServiceWriteTests : IDisposable
         var model = SampleSchema.NewBuilder()
             .AddCollection("clip", type => type
                 .Field("labels", "select", field => field.Multiple().Setting(FieldSettings.Options, Clip))
-                .Field("url", "text", field => field.Length(null, 5).VisibleWhen(Condition.Field("labels").Equals("video"))))
+                .Field("url", "text", field => field.Length(3, 5).VisibleWhen(Condition.Field("labels").Equals("video"))))
             .Build();
         using var database = new ServiceDatabase(schema: model);
 
-        var hidden = IdOf(await database.CreateAsync(Editor, new() { ["labels"] = News, ["url"] = "far too long" }, "clip"));
+        var hidden = IdOf(await database.CreateAsync(Editor, new() { ["labels"] = News, ["url"] = "ab" }, "clip"));
         await database.PatchAsync(Editor, hidden, new() { ["labels"] = Array.Empty<string>() }, 1, "clip");
-        (await database.GetAsync(Editor, hidden, type: "clip"))!["url"].ShouldBe("far too long");
+        (await database.GetAsync(Editor, hidden, type: "clip"))!["url"].ShouldBe("ab");
 
-        var shown = await Should.ThrowAsync<ValidationException>(() => database.CreateAsync(Editor, new() { ["labels"] = Clip, ["url"] = "far too long" }, "clip"));
+        var shown = await Should.ThrowAsync<ValidationException>(() => database.CreateAsync(Editor, new() { ["labels"] = Clip, ["url"] = "ab" }, "clip"));
         shown.Errors.ShouldHaveSingleItem().ShouldSatisfyAllConditions(
             error => error.Path.ShouldBe("url"),
+            error => error.Code.ShouldBe(ValidationErrorCodes.MinLength));
+    }
+
+    // A hidden value is kept, so it is still held to the length of the column that keeps it, on every provider.
+    [Fact]
+    public async Task AFieldItsConditionHidesMustStillFitItsColumn()
+    {
+        var model = SampleSchema.NewBuilder()
+            .AddComponent("clip-seo", component => component
+                .Field("caption", "text", field => field.Length(null, 5))
+                .Field("note", "text", field => field.Length(null, 5).VisibleWhen(Condition.Field("caption").IsEmpty())))
+            .AddCollection("clip", type => type
+                .Field("labels", "select", field => field.Multiple().Setting(FieldSettings.Options, Clip))
+                .Field("url", "text", field => field.Length(null, 5).VisibleWhen(Condition.Field("labels").Equals("video")))
+                .Field("seo", "component", field => field.Setting(FieldSettings.Component, "clip-seo").VisibleWhen(Condition.Field("labels").Equals("video"))))
+            .Build();
+        using var database = new ServiceDatabase(schema: model);
+
+        var refused = await Should.ThrowAsync<ValidationException>(() => database.CreateAsync(
+            Editor,
+            new() { ["labels"] = News, ["url"] = "far too long", ["seo"] = new ContentDocument { ["caption"] = "far too long" } },
+            "clip"));
+        refused.Errors.Select(error => (error.Path, error.Code)).ShouldBe(
+            [("url", ValidationErrorCodes.MaxLength), ("seo.caption", ValidationErrorCodes.MaxLength)],
+            ignoreOrder: true);
+
+        var inner = await Should.ThrowAsync<ValidationException>(() => database.CreateAsync(
+            Editor,
+            new() { ["labels"] = Clip, ["url"] = "short", ["seo"] = new ContentDocument { ["caption"] = "hi", ["note"] = "far too long" } },
+            "clip"));
+        inner.Errors.ShouldHaveSingleItem().ShouldSatisfyAllConditions(
+            error => error.Path.ShouldBe("seo.note"),
             error => error.Code.ShouldBe(ValidationErrorCodes.MaxLength));
     }
 }

@@ -14,8 +14,8 @@ public static class ContentChanges
     // A missing field counts as null, so a create (no previous state) lists the fields that hold a value. Lists of the same
     // length are compared by index; a list whose length changed is reported as the list itself. Components and blocks are
     // compared field by field whether they are dictionaries, JSON objects or instances of a component or block class;
-    // JSON values compare as the scalars they hold. Every other value compares by value as a schema stores it (a Ref by its
-    // id) or, failing that, by Equals (RichText, MediaRef).
+    // JSON values compare as the scalars they hold, and rich text as the JSON document it holds. Every other value compares by
+    // value as a schema stores it (a Ref by its id) or, failing that, by Equals (MediaRef).
     public static IReadOnlyList<string> Between(IReadOnlyDictionary<string, object?>? previous, IReadOnlyDictionary<string, object?> current)
     {
         ArgumentNullException.ThrowIfNull(current);
@@ -66,6 +66,13 @@ public static class ContentChanges
             for (var index = 0; index < afterList.Count; index++)
             {
                 CompareValues(beforeList[index], afterList[index], $"{path}[{index}]", paths);
+            }
+        }
+        else if (before is RichText beforeText && after is RichText afterText)
+        {
+            if (!EntryJson.SameDocument(beforeText, afterText))
+            {
+                paths.Add(path);
             }
         }
         else if (!Equals(FieldValue.Normalize(before), FieldValue.Normalize(after)))

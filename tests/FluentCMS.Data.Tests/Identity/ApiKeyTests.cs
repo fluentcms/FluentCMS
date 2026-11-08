@@ -86,8 +86,7 @@ public sealed class ApiKeyTests : IDisposable
         var row = Row(created.Key.Id);
         row.KeyHash.ShouldBe(Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(created.Secret))));
         row.KeyPrefix.ShouldBe(created.Secret[..16]);
-        _fixture.Read(context => context.Set<ApiKey>().AsNoTracking().Select(key => key.Name + key.KeyHash + key.KeyPrefix + key.SiteIds + key.TypeNames).Single())
-            .ShouldNotContain(created.Secret[16..]);
+        string.Concat(row.Name, row.KeyHash, row.KeyPrefix, row.SiteIds, row.TypeNames).ShouldNotContain(created.Secret[16..]);
 
         var listed = await _fixture.WithAsync(services => services.GetRequiredService<ApiKeyService>().ListAsync(Token));
         listed.ShouldHaveSingleItem().ShouldBe(created.Key);
