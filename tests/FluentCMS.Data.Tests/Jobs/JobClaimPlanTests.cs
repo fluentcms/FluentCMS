@@ -78,7 +78,8 @@ public sealed class JobClaimPlanTests : IDisposable
     // The plan SQL Server ran, with what the dialect bound.
     private string ActualPlan(string sql, List<SqlParameter> parameters)
     {
-        using var connection = new SqlConnection(_fixture.Database.ConnectionString);
+        // Not pooled, so that no later command of the test gets a plan with its rows.
+        using var connection = new SqlConnection(new SqlConnectionStringBuilder(_fixture.Database.ConnectionString) { Pooling = false }.ConnectionString);
         connection.Open();
         using (var statistics = new SqlCommand("SET STATISTICS XML ON", connection))
         {

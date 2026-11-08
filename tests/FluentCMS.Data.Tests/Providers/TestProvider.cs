@@ -58,9 +58,9 @@ public static class TestProvider
     public static bool IsDeleteFrom(string sql, string table) =>
         Regex.IsMatch(sql, $@"^DELETE FROM {(IsSqlServer ? @"\[\w+\]\s+FROM " : "")}{Regex.Escape(Quote(table))}(\s|$)");
 
-    // The same for an ExecuteUpdate: UPDATE [c] SET ... FROM [table] AS [c] on SQL Server.
+    // The same for an ExecuteUpdate: UPDATE [c] SET ... FROM [table] AS [c] on SQL Server, the alias named twice.
     public static bool IsUpdateOf(string sql, string table) =>
-        Regex.IsMatch(sql, IsSqlServer ? $@"^UPDATE \[\w+\]\s+SET\s.*?\sFROM {Regex.Escape(Quote(table))}\s" : $@"^UPDATE {Regex.Escape(Quote(table))}(\s|$)", RegexOptions.Singleline);
+        Regex.IsMatch(sql, IsSqlServer ? $@"^UPDATE \[(\w+)\]\s+SET\s.*\sFROM {Regex.Escape(Quote(table))} AS \[\1\](\s|$)" : $@"^UPDATE {Regex.Escape(Quote(table))}(\s|$)", RegexOptions.Singleline);
 
     // Whether a command that SaveChanges built inserts into the table. SQL Server sends SET NOCOUNT ON before it.
     public static bool IsInsertInto(string sql, string table) =>

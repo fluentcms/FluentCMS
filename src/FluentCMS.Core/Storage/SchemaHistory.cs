@@ -85,7 +85,8 @@ internal sealed class SchemaHistory(IServiceScopeFactory scopes, TimeProvider ti
             }
             catch (Exception exception) when (attempt < Attempts && IsDatabaseFailure(exception))
             {
-                await Task.Delay(TimeSpan.FromMilliseconds(25 * attempt), cancellationToken);
+                // Jittered, so that nodes the server failed together do not meet again at the same moment.
+                await Task.Delay(TimeSpan.FromMilliseconds(25 * attempt * (1 + Random.Shared.NextDouble())), cancellationToken);
             }
         }
     }

@@ -59,6 +59,12 @@ public sealed class DatabaseServer : IAsyncLifetime
         using var timeout = new CancellationTokenSource(StartTimeout);
         await _container.StartAsync(timeout.Token);
         _adminConnectionString = _container.GetConnectionString();
+
+        // SQL Server's way of not flushing: a commit does not wait for the log. Every database it creates takes it from model.
+        if (TestProvider.IsSqlServer)
+        {
+            Run(new SqlConnection(_adminConnectionString), "ALTER DATABASE model SET DELAYED_DURABILITY = FORCED");
+        }
     }
 
     public async ValueTask DisposeAsync()
