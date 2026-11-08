@@ -58,6 +58,25 @@ internal sealed class QueryPaths(SchemaModel schema, IContentQueryAccess access)
         return new GroupPath(owner);
     }
 
+    // Reverse relations are metadata only (spec 4.4), so a path through one is refused by name rather than as an unknown
+    // field, to a principal who sees it in introspection: one who can read the relation field it mirrors.
+    public ReverseRelation? Reverse(SchemaType type, string path, bool trusted = false)
+    {
+        var name = path.Split('.')[0];
+        var reverse = type.ReverseRelations.FirstOrDefault(relation => relation.Name == name);
+        if (reverse is null || trusted)
+        {
+            return reverse;
+        }
+
+        return schema.FindContentType(reverse.SourceType) is { } source && access.CanReadType(source) && access.CanReadField(source, reverse.SourceField)
+            ? reverse
+            : null;
+    }
+
+    public static string ReverseMessage(SchemaType type, string path, ReverseRelation reverse) =>
+        $"'{reverse.Name}' of {type.Name} is the reverse side of {reverse.SourceType}.{reverse.SourceField}, and reverse relations are metadata only, so '{path}' cannot be filtered, sorted, selected or populated. Query {reverse.SourceType} by {reverse.SourceField} instead.";
+
     public StoredField Field(SchemaType type, string apiPath) => FieldStorage.ByPath(schema, type)[apiPath];
 
     public static string ApiPath(SchemaType type, StoredField stored) => stored.Location[(type.Name.Length + 1)..];

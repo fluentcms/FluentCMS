@@ -182,6 +182,34 @@ public sealed class DeliveryApiTests(DeliveryFixture fixture) : IClassFixture<De
         body["errors"]![0]!["path"]!.GetValue<string>().ShouldBe(parameter[..parameter.IndexOf('=', StringComparison.Ordinal)]);
     }
 
+    // The Blog sample's article.author declares author.articles, which the Public role sees in introspection.
+    [Theory]
+    [InlineData("author?populate=articles", "populate")]
+    [InlineData("author?fields=articles", "fields")]
+    [InlineData("author?sort=articles", "sort")]
+    [InlineData("author?filter[articles.title][eq]=x", "filter[articles.title][eq]")]
+    [InlineData("article?populate=author.articles", "populate")]
+    [InlineData("article?filter[author.articles.slug][eq]=x", "filter[author.articles.slug][eq]")]
+    public async Task APathThatNamesAReverseRelationIsRefusedAsMetadataOnly(string path, string parameter)
+    {
+        var (status, body) = await fixture.GetAsync(path);
+
+        status.ShouldBe(HttpStatusCode.BadRequest);
+        body["code"]!.GetValue<string>().ShouldBe("FCMS2210");
+        body["errors"]![0]!["path"]!.GetValue<string>().ShouldBe(parameter);
+        body["errors"]![0]!["message"]!.GetValue<string>().ShouldContain("'articles' of author is the reverse side of article.author");
+    }
+
+    [Fact]
+    public async Task WithNoSearchIndexASearchIsRefused()
+    {
+        var (status, body) = await fixture.GetAsync("article?q=dotnet");
+
+        status.ShouldBe(HttpStatusCode.BadRequest);
+        body["code"]!.GetValue<string>().ShouldBe("FCMS2211");
+        body["errors"]![0]!["path"]!.GetValue<string>().ShouldBe("q");
+    }
+
     [Theory]
     [InlineData("page=0", "page")]
     [InlineData("pageSize=many", "pageSize")]

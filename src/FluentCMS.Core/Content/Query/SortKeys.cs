@@ -33,6 +33,10 @@ internal static class SortKeys
             {
                 keys.Add(new(token, value.Expression, field.Descending, value.Nullable));
             }
+            else if (query.Paths.Reverse(type, field.Path) is { } reverse)
+            {
+                query.Report("sort", QueryErrorCodes.ReverseRelation, QueryPaths.ReverseMessage(type, field.Path, reverse));
+            }
             else
             {
                 query.Report("sort", QueryErrorCodes.NotSortable, $"'{field.Path}' is not a field of {type.Name} that can be sorted.");

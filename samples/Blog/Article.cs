@@ -14,7 +14,8 @@ public sealed class Article : ContentItem
     [RichText, Localizable]
     public RichText Body { get; set; } = RichText.Empty;
 
-    [Relation(Reverse = nameof(Blog.Author.Articles))]
+    // The reverse side shows in introspection only; an author's articles are a list of article filtered by author.
+    [Relation(Reverse = "articles")]
     public Ref<Author> Author { get; set; }
 
     [Relation(Ordered = true)]

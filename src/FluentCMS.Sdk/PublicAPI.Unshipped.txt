@@ -222,6 +222,8 @@ FluentCMS.Content.ContentQuery.PopulateDepth.get -> int?
 FluentCMS.Content.ContentQuery.PopulateDepth.init -> void
 FluentCMS.Content.ContentQuery.RichTextFormat.get -> string?
 FluentCMS.Content.ContentQuery.RichTextFormat.init -> void
+FluentCMS.Content.ContentQuery.Search.get -> string?
+FluentCMS.Content.ContentQuery.Search.init -> void
 FluentCMS.Content.ContentQuery.Select.get -> System.Collections.Generic.IReadOnlyList<string!>!
 FluentCMS.Content.ContentQuery.Select.init -> void
 FluentCMS.Content.ContentQuery.Site.get -> FluentCMS.Sites.SiteId?
@@ -1104,6 +1106,25 @@ FluentCMS.Providers.IEmailSender
 FluentCMS.Providers.IEmailSender.SendAsync(FluentCMS.Providers.EmailMessage! message, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 FluentCMS.Providers.IProviderSlots
 FluentCMS.Providers.IProviderSlots.Use<TSlot, TImplementation>() -> FluentCMS.Providers.IProviderSlots!
+FluentCMS.Providers.ISearchIndex
+FluentCMS.Providers.ISearchIndex.SearchAsync(FluentCMS.Providers.SearchRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<System.Guid>!>!
+FluentCMS.Providers.SearchRequest
+FluentCMS.Providers.SearchRequest.<Clone>$() -> FluentCMS.Providers.SearchRequest!
+FluentCMS.Providers.SearchRequest.Deconstruct(out string! Type, out string! Text, out int Limit) -> void
+FluentCMS.Providers.SearchRequest.Equals(FluentCMS.Providers.SearchRequest? other) -> bool
+FluentCMS.Providers.SearchRequest.Limit.get -> int
+FluentCMS.Providers.SearchRequest.Limit.init -> void
+FluentCMS.Providers.SearchRequest.Locale.get -> string!
+FluentCMS.Providers.SearchRequest.Locale.init -> void
+FluentCMS.Providers.SearchRequest.SearchRequest(string! Type, string! Text, int Limit) -> void
+FluentCMS.Providers.SearchRequest.Site.get -> FluentCMS.Sites.SiteId?
+FluentCMS.Providers.SearchRequest.Site.init -> void
+FluentCMS.Providers.SearchRequest.Status.get -> FluentCMS.Content.QueryStatus
+FluentCMS.Providers.SearchRequest.Status.init -> void
+FluentCMS.Providers.SearchRequest.Text.get -> string!
+FluentCMS.Providers.SearchRequest.Text.init -> void
+FluentCMS.Providers.SearchRequest.Type.get -> string!
+FluentCMS.Providers.SearchRequest.Type.init -> void
 FluentCMS.Publishing.EntryStatus
 FluentCMS.Publishing.EntryStatus.Draft = 0 -> FluentCMS.Publishing.EntryStatus
 FluentCMS.Publishing.EntryStatus.Modified = 2 -> FluentCMS.Publishing.EntryStatus
@@ -2060,6 +2081,9 @@ override FluentCMS.Media.MediaRefList.ToString() -> string!
 override FluentCMS.Providers.EmailMessage.Equals(object? obj) -> bool
 override FluentCMS.Providers.EmailMessage.GetHashCode() -> int
 override FluentCMS.Providers.EmailMessage.ToString() -> string!
+override FluentCMS.Providers.SearchRequest.Equals(object? obj) -> bool
+override FluentCMS.Providers.SearchRequest.GetHashCode() -> int
+override FluentCMS.Providers.SearchRequest.ToString() -> string!
 override FluentCMS.Publishing.PublishResult<T>.Equals(object? obj) -> bool
 override FluentCMS.Publishing.PublishResult<T>.GetHashCode() -> int
 override FluentCMS.Publishing.PublishResult<T>.ToString() -> string!
@@ -2312,6 +2336,8 @@ static FluentCMS.Media.MediaRefList.operator !=(FluentCMS.Media.MediaRefList? le
 static FluentCMS.Media.MediaRefList.operator ==(FluentCMS.Media.MediaRefList? left, FluentCMS.Media.MediaRefList? right) -> bool
 static FluentCMS.Providers.EmailMessage.operator !=(FluentCMS.Providers.EmailMessage? left, FluentCMS.Providers.EmailMessage? right) -> bool
 static FluentCMS.Providers.EmailMessage.operator ==(FluentCMS.Providers.EmailMessage? left, FluentCMS.Providers.EmailMessage? right) -> bool
+static FluentCMS.Providers.SearchRequest.operator !=(FluentCMS.Providers.SearchRequest? left, FluentCMS.Providers.SearchRequest? right) -> bool
+static FluentCMS.Providers.SearchRequest.operator ==(FluentCMS.Providers.SearchRequest? left, FluentCMS.Providers.SearchRequest? right) -> bool
 static FluentCMS.Publishing.PublishResult<T>.operator !=(FluentCMS.Publishing.PublishResult<T>? left, FluentCMS.Publishing.PublishResult<T>? right) -> bool
 static FluentCMS.Publishing.PublishResult<T>.operator ==(FluentCMS.Publishing.PublishResult<T>? left, FluentCMS.Publishing.PublishResult<T>? right) -> bool
 static FluentCMS.Publishing.PublishWarning.operator !=(FluentCMS.Publishing.PublishWarning? left, FluentCMS.Publishing.PublishWarning? right) -> bool

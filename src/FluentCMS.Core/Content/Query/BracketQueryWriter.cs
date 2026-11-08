@@ -24,6 +24,11 @@ internal static class BracketQueryWriter
             WriteFilter(filter, "filter", pairs);
         }
 
+        if (query.Search is { } search)
+        {
+            pairs.Add(("q", search));
+        }
+
         if (query.Sort.Count > 0)
         {
             pairs.Add(("sort", string.Join(',', query.Sort.Select(field => (field.Descending ? "-" : "") + field.Path))));

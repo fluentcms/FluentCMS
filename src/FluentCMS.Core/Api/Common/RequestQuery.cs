@@ -8,7 +8,7 @@ namespace FluentCMS.Core.Api.Common;
 // site and the locale, so the parser never sees site and the locale is the one the bridge resolved.
 internal static class RequestQuery
 {
-    private static readonly string[] ListOnly = ["sort", "page", "pageSize", "offset", "limit", "cursor", "withTotal"];
+    private static readonly string[] ListOnly = ["q", "sort", "page", "pageSize", "offset", "limit", "cursor", "withTotal"];
 
     // What a read of one entry takes from a query parsed with single set.
     public static GetOptions Options(ContentQuery query)
