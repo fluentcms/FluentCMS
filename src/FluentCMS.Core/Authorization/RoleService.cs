@@ -43,6 +43,8 @@ internal sealed class RoleService(
 {
     private const int NameLength = 128;
     private const int DescriptionLength = 512;
+    private const int MaxResources = 100;
+    private const int ResourceLength = 128;
 
     private static readonly PrincipalBinding Unbound = new(null, null);
 
@@ -343,12 +345,18 @@ internal sealed class RoleService(
             errors.Add(Invalid(path + ".constraints.rowRule", $"There is no row rule '{rule}'."));
         }
 
+        if (constraints.Resources is { } resources && (resources.Count is 0 or > MaxResources || resources.Any(resource => string.IsNullOrWhiteSpace(resource) || resource.Length > ResourceLength)))
+        {
+            errors.Add(Invalid(path + ".constraints.resources", $"A grant is limited to from 1 to {MaxResources} resources, each an id of at most {ResourceLength} characters, or to none by leaving resources out."));
+        }
+
         return new PermissionGrant(grant.Permission, new PermissionConstraints
         {
             Sites = constraints.Sites,
             Locales = locales?.Distinct(StringComparer.OrdinalIgnoreCase).ToList(),
             Fields = constraints.Fields,
             RowRule = constraints.RowRule,
+            Resources = constraints.Resources?.Distinct(StringComparer.Ordinal).ToList(),
         });
     }
 

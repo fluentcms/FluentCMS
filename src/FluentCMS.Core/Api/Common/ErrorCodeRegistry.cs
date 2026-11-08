@@ -99,6 +99,7 @@ public static class ErrorCodeRegistry
         Startup(ProviderErrorCodes.NotASlot, "Not a provider slot"),
         Startup(ProviderErrorCodes.NotAnImplementation, "Provider slot implementation cannot be created"),
         Startup(ProviderErrorCodes.SlotsSettled, "Provider slots already settled"),
+        Startup(ProviderErrorCodes.SlotDeclaredTwice, "Provider slot declared twice"),
 
         // 21xx validation
         Invalid(ApiErrorCodes.ValidationFailed, "Validation failed"),

@@ -28,16 +28,19 @@ public class PermissionConstraintsTests
             Locales = ["en", "fr"],
             Fields = ["title", "slug"],
             RowRule = "own-entries",
+            Resources = ["folder-a"],
         };
 
         var json = constraints.ToJson();
         var back = PermissionConstraints.FromJson(json);
 
-        json.ShouldBe($$"""{"sites":["{{Site}}"],"locales":["en","fr"],"fields":["title","slug"],"rowRule":"own-entries"}""");
+        json.ShouldBe($$"""{"sites":["{{Site}}"],"locales":["en","fr"],"fields":["title","slug"],"rowRule":"own-entries","resources":["folder-a"]}""");
         back.Sites.ShouldBe([new SiteId(Site)]);
         back.Locales.ShouldBe(["en", "fr"]);
         back.Fields.ShouldBe(["title", "slug"]);
         back.RowRule.ShouldBe("own-entries");
+        back.Resources.ShouldBe(["folder-a"]);
+        new PermissionConstraints { Resources = ["folder-a"] }.IsEmpty.ShouldBeFalse();
     }
 
     [Fact]

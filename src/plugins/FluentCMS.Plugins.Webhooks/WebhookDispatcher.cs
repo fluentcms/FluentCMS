@@ -78,11 +78,15 @@ internal static class WebhookPayload
         {
             EntryEvent entry => new EntryData(entry.Type, entry.EntryId, entry.Locale, WebhookEvents.StatusOf(entry), entry.Version),
             CacheInvalidatedEvent cache => new CacheData(cache.Tags),
+            MediaAssetEvent asset => new MediaData(asset.AssetId, asset.FolderId, asset.FileName),
             _ => new { },
         };
-        object links = message is EntryEvent linked
-            ? new EntryLinks($"api/management/v1/content/{linked.Type}/{linked.EntryId:D}", $"api/delivery/v1/{linked.Type}/{linked.EntryId:D}")
-            : new { };
+        object links = message switch
+        {
+            EntryEvent linked => new EntryLinks($"api/management/v1/content/{linked.Type}/{linked.EntryId:D}", $"api/delivery/v1/{linked.Type}/{linked.EntryId:D}"),
+            MediaAssetEvent asset => new MediaLinks($"api/management/v1/media/{asset.AssetId:D}"),
+            _ => new { },
+        };
 
         return Serialize(message.EventId, name, source.OccurredAt, source.SiteId, source.Origin, new Actor(source.ActorKind, source.ActorId, source.ActorName), data, links);
     }
@@ -105,6 +109,10 @@ internal static class WebhookPayload
     private sealed record CacheData(IReadOnlyList<string> Tags);
 
     private sealed record EntryLinks(string Management, string Delivery);
+
+    private sealed record MediaData(Guid AssetId, Guid? FolderId, string FileName);
+
+    private sealed record MediaLinks(string Management);
 }
 
 internal static class WebhookJson

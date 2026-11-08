@@ -6,7 +6,8 @@ namespace FluentCMS.Authorization;
 /// Checks a permission of the principal of the current operation, so that a plugin's service enforces its own permissions
 /// as core's services do: the HTTP layer carries the identity and the service decides. A check needs a current operation:
 /// code that acts as the system, such as a job, a seed or the host's own startup code, runs inside
-/// <see cref="FluentCMS.Content.SystemOperation.Begin"/>, which every check allows.
+/// <see cref="FluentCMS.Content.SystemOperation.Begin"/>, which every check allows. A grant limited to resources, such as
+/// media folders, counts only in <see cref="ResourcesAsync"/>, because the other checks cannot say which resource they act on.
 /// </summary>
 public interface IPermissionChecker
 {
@@ -26,4 +27,18 @@ public interface IPermissionChecker
     /// <exception cref="PermissionDeniedException">The principal does not hold the permission there.</exception>
     /// <exception cref="InvalidOperationException">There is no current operation.</exception>
     ValueTask RequireAsync(string permission, SiteId? site, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// The resources in a site that the principal holds a permission for, for a plugin whose grants can be limited to its own
+    /// resources, such as the folders of the media plugin. The ids are the plugin's: core stores and compares them as text.
+    /// </summary>
+    /// <param name="permission">The name of the permission, such as <c>media.read</c>.</param>
+    /// <param name="site">The site, or <see langword="null"/> for the instance as a whole, which only a grant with no site limit reaches.</param>
+    /// <param name="cancellationToken">Cancels the check.</param>
+    /// <returns>
+    /// <see langword="null"/> when a grant with no resource limit holds the permission there, so that every resource is reached;
+    /// otherwise the union of the resources named by the grants that hold it, which is empty when none does.
+    /// </returns>
+    /// <exception cref="InvalidOperationException">There is no current operation.</exception>
+    ValueTask<IReadOnlySet<string>?> ResourcesAsync(string permission, SiteId? site, CancellationToken cancellationToken = default);
 }

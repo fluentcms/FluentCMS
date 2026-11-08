@@ -6,7 +6,7 @@ A migration set applies only to the provider it was scaffolded for. A host on an
 
 ## The design-time factory
 
-`PluginDbContext<TPlugin>` is generic, and a plugin references neither Core nor a data provider, so `dotnet ef` cannot build the context from the plugin's project. A startup project that references the plugin and the SQLite provider holds a design-time factory for the closed type, which builds the context as a host does with `PluginDbContextDesignTime.Create`. For the webhooks plugin that is the test project:
+`PluginDbContext<TPlugin>` is generic, and a plugin references neither Core nor a data provider, so `dotnet ef` cannot build the context from the plugin's project. A startup project that references the plugin and the SQLite provider holds a design-time factory for the closed type, which builds the context as a host does with `PluginDbContextDesignTime.Create`. For the webhooks plugin, and the media plugin, that is the plugin's test project:
 
 ```csharp
 public sealed class WebhooksDbContextFactory : IDesignTimeDbContextFactory<PluginDbContext<WebhooksPlugin>>

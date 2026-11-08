@@ -1,7 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <PropertyGroup>
+    <Description>Media for FluentCMS: folders, uploads checked by their bytes, metadata per locale, and file storage on the local disk.</Description>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="../../FluentCMS.Sdk/FluentCMS.Sdk.csproj" />
+    <ProjectReference Include="../../FluentCMS.Plugins.Abstractions/FluentCMS.Plugins.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="FluentCMS.Plugins.Media.Tests" />
   </ItemGroup>
 
 </Project>

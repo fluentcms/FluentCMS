@@ -328,7 +328,7 @@ internal static class IdentityEndpoints
             }
             catch (JsonException)
             {
-                body.Error(path + ".constraints", "The constraints are an object of sites, locales, fields and rowRule, and nothing else.");
+                body.Error(path + ".constraints", "The constraints are an object of sites, locales, fields, rowRule and resources, and nothing else.");
             }
         }
 
