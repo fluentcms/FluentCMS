@@ -646,7 +646,7 @@ public sealed class OutboxFailureTests
         rows["acme-new"].Status.ShouldBe(OutboxStatus.Pending);
         logs.Count("Orphaned").ShouldBe(1);
 
-        var dead = await database.Database.Services.GetRequiredService<IEventDeadLetters>().ListAsync(cancellationToken: Token);
+        var dead = await database.Database.Services.GetRequiredService<IEventDeadLetters>().ListAsync(0, 50, Token);
         dead.ShouldHaveSingleItem().Handler.ShouldBe("acme-old");
     }
 
