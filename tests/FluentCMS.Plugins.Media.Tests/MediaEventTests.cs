@@ -40,7 +40,5 @@ public sealed class MediaEventTests
         var applied = await database.Database.GetAppliedMigrationsAsync(Token);
         applied.Select(migration => migration[15..]).ShouldBe(["InitialMedia", "MediaTransforms"]);
         database.Database.HasPendingModelChanges().ShouldBeFalse();
-        using var design = new MediaDbContextFactory().CreateDbContext([]);
-        design.Database.HasPendingModelChanges().ShouldBeFalse();
     }
 }

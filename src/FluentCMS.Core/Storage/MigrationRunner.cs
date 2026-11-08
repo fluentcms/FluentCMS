@@ -86,7 +86,7 @@ public sealed class MigrationRunner(
     // Whatever FluentCms:Database:MigrateOnStartup says.
     public async Task<IReadOnlyList<StreamMigration>> MigrateAsync(CancellationToken cancellationToken = default)
     {
-        await RefuseForeignMigrationsAsync([.. Plugins, Content], cancellationToken);
+        await RefuseForeignMigrationsAsync(cancellationToken);
         var applied = await ApplyAsync([.. SystemAndPlugins, Content], cancellationToken);
 
         // A database that lacks a column of the schema has not been brought up to it, so the history keeps its old row.
@@ -155,6 +155,10 @@ public sealed class MigrationRunner(
         throw new FluentCmsConfigurationException(StorageErrorCodes.PendingStreamMigrations, $"{string.Join("; ", streams)}; {ApplyPending}");
     }
 
+    // What MigrateAsync checks first, for every stream that it applies.
+    internal Task RefuseForeignMigrationsAsync(CancellationToken cancellationToken = default) =>
+        RefuseForeignMigrationsAsync([.. Plugins, Content], cancellationToken);
+
     // EF would apply a set scaffolded for another provider with that provider's store types, and startup validation compares
     // names only, so a switch of provider would go unnoticed. The system stream comes with the provider package.
     private async Task RefuseForeignMigrationsAsync(IEnumerable<Stream> streams, CancellationToken cancellationToken)
@@ -164,9 +168,9 @@ public sealed class MigrationRunner(
         {
             cancellationToken.ThrowIfCancellationRequested();
             await using var scope = scopes.CreateAsyncScope();
-            if (MigrationProviders.ForeignTo(stream.ResolveContext(scope.ServiceProvider)) is { } other)
+            if (MigrationProviders.RefusalOf(stream.ResolveContext(scope.ServiceProvider)) is { } refusal)
             {
-                foreign.Add($"stream {stream.Name} was scaffolded for {other}");
+                foreign.Add($"stream {stream.Name} {refusal}");
             }
         }
 
