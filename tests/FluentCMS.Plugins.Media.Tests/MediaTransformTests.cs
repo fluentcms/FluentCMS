@@ -5,6 +5,7 @@ using FluentCMS.Media;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
+using SkiaSharp;
 using Xunit;
 using static FluentCMS.Plugins.Media.Tests.MediaHost;
 using static FluentCMS.Plugins.Media.Tests.Transforms;
@@ -193,12 +194,12 @@ public sealed class MediaTransformTests
         var asset = await UploadAsync(admin, Bands(400, 100));
         var square = new MediaImageOptions { Width = 100, Height = 100, Fit = ImageFit.Cover, Format = MediaImageFormat.Png };
 
-        async Task<SixLabors.ImageSharp.PixelFormats.Rgba32> CentreAsync(MediaImageOptions options)
+        async Task<SKColor> CentreAsync(MediaImageOptions options)
         {
             using var response = await FetchAsync(anonymous, await UrlAsync(media, asset, options));
             using var image = Decode((await ImageAsync(response)).Bytes);
             (image.Width, image.Height).ShouldBe((100, 100));
-            return image[50, 50];
+            return image.GetPixel(50, 50);
         }
 
         using (var patch = await admin.PatchAsJsonAsync(new Uri($"{Root}/{asset.Id:D}", UriKind.Relative), new { focalPoint = new { x = 0.875, y = 0.5 } }, Token))
@@ -209,6 +210,35 @@ public sealed class MediaTransformTests
         (await CentreAsync(square)).ShouldBe(Yellow);
         (await CentreAsync(square with { FocalPoint = new MediaFocalPoint(0.125, 0.5) })).ShouldBe(Red);
         (await CentreAsync(square with { FocalPoint = new MediaFocalPoint(0.625, 0.5) })).ShouldBe(Blue);
+    }
+
+    [Fact]
+    public async Task APhotoIsTurnedAsItsExifSaysAndAGifBecomesAPng()
+    {
+        await using var media = new MediaHost();
+        using var admin = await media.AdminAsync();
+        using var anonymous = media.Host.CreateClient();
+        var turned = await UploadAsync(admin, TurnedJpeg(400, 100), "turned.jpg");
+        var gif = await UploadAsync(admin, Gif(), "pixel.gif");
+
+        using var photo = await FetchAsync(anonymous, await UrlAsync(media, turned, new MediaImageOptions { Width = 50, Format = MediaImageFormat.Png }));
+        using var still = await FetchAsync(anonymous, await UrlAsync(media, gif, new MediaImageOptions { Width = 10 }));
+
+        using (var image = Decode((await ImageAsync(photo)).Bytes))
+        {
+            (image.Width, image.Height).ShouldBe((50, 200));
+            var top = image.GetPixel(25, 10);
+            var bottom = image.GetPixel(25, 190);
+            (top.Red > 200 && top.Green < 60 && top.Blue < 60).ShouldBeTrue(top.ToString());
+            (bottom.Red > 200 && bottom.Green > 200 && bottom.Blue < 60).ShouldBeTrue(bottom.ToString());
+        }
+
+        var (type, bytes) = await ImageAsync(still);
+        type.ShouldBe("image/png");
+        using (var image = Decode(bytes))
+        {
+            (image.Width, image.Height).ShouldBe((10, 10));
+        }
     }
 
     [Fact]

@@ -35,6 +35,7 @@ internal sealed class MediaTransforms(
 
     private const string Avif = "image/avif";
     private const string Webp = "image/webp";
+    private const string Png = "image/png";
 
     public async Task<TransformedImage> TransformAsync(Guid id, IEnumerable<KeyValuePair<string, string?>> query, IReadOnlyCollection<string> accepted, CancellationToken cancellationToken)
     {
@@ -188,20 +189,22 @@ internal sealed class MediaTransforms(
     }
 
     // f=auto takes AVIF, then WebP, where both the request accepts it and the processor encodes it, and the asset's own type
-    // otherwise. A fit counts only with both sides, and a focal point only for a cover, where the parameters win over the
-    // asset's own; what does not count is left out, so that it makes no second variant of the same image.
+    // otherwise; an own type the processor does not encode, such as GIF with SkiaSharp, becomes PNG. A fit counts only with
+    // both sides, and a focal point only for a cover, where the parameters win over the asset's own; what does not count is
+    // left out, so that it makes no second variant of the same image.
     private ImageTransform Resolve(Asset asset, MediaImageOptions options, IReadOnlyCollection<string> accepted)
     {
+        var own = processor.CanEncode(asset.MimeType) ? asset.MimeType : Png;
         var type = options.Format switch
         {
             MediaImageFormat.Auto => accepted.Contains(Avif) && processor.CanEncode(Avif) ? Avif
                 : accepted.Contains(Webp) && processor.CanEncode(Webp) ? Webp
-                : asset.MimeType,
+                : own,
             MediaImageFormat.Webp => Webp,
             MediaImageFormat.Avif => Avif,
             MediaImageFormat.Jpeg => "image/jpeg",
-            MediaImageFormat.Png => "image/png",
-            _ => asset.MimeType,
+            MediaImageFormat.Png => Png,
+            _ => own,
         };
 
         if (!processor.CanEncode(type))

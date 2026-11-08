@@ -2,7 +2,7 @@ namespace FluentCMS.Media;
 
 /// <summary>
 /// Decodes, resizes and encodes the images of the media plugin's transforms: a provider slot whose default uses
-/// SixLabors.ImageSharp, replaced by a plugin or the host. The plugin checks the limits of the site before it calls the
+/// SkiaSharp, replaced by a plugin or the host. The plugin checks the limits of the site before it calls the
 /// processor, and the size an image declares, read with <see cref="IdentifyAsync"/>, before it decodes the image.
 /// </summary>
 public interface IImageProcessor

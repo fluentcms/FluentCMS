@@ -69,7 +69,7 @@ curl -H "Authorization: ApiKey $KEY" -F folderId=$FOLDER -F files=@photo.jpg -F 
 | `w`, `h` | The width and height in pixels. With one of them, the other follows the aspect ratio. |
 | `fit` | With both: `contain` (the default) fits the image inside, `cover` fills them and crops around the focal point, `fill` stretches. |
 | `q` | The quality of JPEG and WebP, from 1 to 100; 80 by default. |
-| `f` | `auto`, `webp`, `avif`, `jpeg` or `png`; the asset's own type when left out. `auto` picks WebP when `Accept` lists it, AVIF only where the processor encodes it, and the asset's type otherwise, and answers with `Vary: Accept`. |
+| `f` | `auto`, `webp`, `avif`, `jpeg` or `png`; the asset's own type when left out. `auto` picks WebP when `Accept` lists it, AVIF only where the processor encodes it, and the asset's type otherwise, and answers with `Vary: Accept`. The default processor encodes no AVIF. |
 | `fx`, `fy` | The focal point of a `cover`, from 0 to 1, given together; the asset's own focal point, or its centre, by default. |
 | `preset` | A preset of the site, whose parameters apply under those of the URL. |
 | `sig` | The signature. |
@@ -99,9 +99,9 @@ A signature is the HMAC-SHA256 of the asset id and the URL's parameters, sorted 
 
 Replacing the key invalidates every URL signed before, in content and in CDN caches. To replace it, set `SigningKey`, or delete the row of `cms_media_signing_key`, and restart every instance. Keep the Data Protection key ring in backups: without the key that protected the signing key, the instance cannot read it, and only setting `SigningKey` or deleting the row brings transforms back.
 
-## ImageSharp
+## SkiaSharp
 
-The default `IImageProcessor` uses [SixLabors.ImageSharp](https://github.com/SixLabors/ImageSharp), which is under the [Six Labors Split License](https://github.com/SixLabors/ImageSharp/blob/main/LICENSE). It is free under the Apache License 2.0 for open source and source-available software, for a transitive dependency, and for companies with less than USD 1 million of annual gross revenue; others need a commercial license from Six Labors. ImageSharp 4 checks a Six Labors license key when the project that references it is built in Release, through `SixLaborsLicenseKey`, `SixLaborsLicenseFile` or a `sixlabors.lic` file. A host that does not want ImageSharp replaces the provider slot:
+The default `IImageProcessor` uses [SkiaSharp](https://github.com/mono/SkiaSharp), under the MIT License, with `SkiaSharp.NativeAssets.Linux.NoDependencies`, so that it runs on Linux and in containers without fontconfig. It reads JPEG, PNG, GIF (its first frame) and WebP, and writes JPEG, PNG and WebP; it writes no AVIF and no GIF, so `f=avif` is refused and a GIF without `f` is served as a PNG. ImageSharp was not chosen: version 4 needs a Six Labors license key to build in Release, and the last version without that check has open advisories. A host that wants another processor, ImageSharp under its own Six Labors license included, replaces the provider slot:
 
 ```csharp
 builder.Services.AddFluentCms(cms => cms.Providers.Use<IImageProcessor, MyImageProcessor>());

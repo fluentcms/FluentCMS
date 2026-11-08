@@ -2,9 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentCMS.Media;
 using Microsoft.Extensions.DependencyInjection;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Processing;
+using SkiaSharp;
 using Shouldly;
 using static FluentCMS.Plugins.Media.Tests.MediaHost;
 
@@ -12,10 +10,10 @@ namespace FluentCMS.Plugins.Media.Tests;
 
 internal static class Transforms
 {
-    public static readonly Rgba32 Red = new(255, 0, 0);
-    public static readonly Rgba32 Green = new(0, 255, 0);
-    public static readonly Rgba32 Blue = new(0, 0, 255);
-    public static readonly Rgba32 Yellow = new(255, 255, 0);
+    public static readonly SKColor Red = new(255, 0, 0);
+    public static readonly SKColor Green = new(0, 255, 0);
+    public static readonly SKColor Blue = new(0, 0, 255);
+    public static readonly SKColor Yellow = new(255, 255, 0);
 
     // A media host whose image processor is the default wrapped in a RecordingProcessor.
     public static MediaHost RecordingHost(Action<ProcessorCalls>? configure = null)
@@ -32,25 +30,35 @@ internal static class Transforms
     public static ProcessorCalls Calls(MediaHost media) => media.Services.GetRequiredService<ProcessorCalls>();
 
     // Four bands from left to right, a quarter of the width each: red, green, blue and yellow.
-    public static byte[] Bands(int width, int height)
+    public static byte[] Bands(int width, int height, SKEncodedImageFormat format = SKEncodedImageFormat.Png)
     {
-        using var image = new Image<Rgba32>(width, height);
-        Rgba32[] colours = [Red, Green, Blue, Yellow];
-        image.ProcessPixelRows(rows =>
+        using var bitmap = new SKBitmap(width, height);
+        using (var canvas = new SKCanvas(bitmap))
         {
-            for (var y = 0; y < rows.Height; y++)
+            SKColor[] colours = [Red, Green, Blue, Yellow];
+            for (var band = 0; band < 4; band++)
             {
-                var row = rows.GetRowSpan(y);
-                for (var x = 0; x < row.Length; x++)
-                {
-                    row[x] = colours[x * 4 / width];
-                }
+                using var paint = new SKPaint { Color = colours[band] };
+                canvas.DrawRect(SKRect.Create(band * width / 4f, 0, width / 4f, height), paint);
             }
-        });
-        using var output = new MemoryStream();
-        image.SaveAsPng(output);
-        return output.ToArray();
+        }
+
+        using var data = bitmap.Encode(format, 95);
+        return data.ToArray();
     }
+
+    // A JPEG of the bands whose EXIF says to turn it a quarter clockwise to show it (orientation 6).
+    public static byte[] TurnedJpeg(int width, int height)
+    {
+        var jpeg = Bands(width, height, SKEncodedImageFormat.Jpeg);
+        byte[] tiff = [.. "MM"u8, 0x00, 0x2A, 0x00, 0x00, 0x00, 0x08, 0x00, 0x01, 0x01, 0x12, 0x00, 0x03, 0x00, 0x00, 0x00, 0x01, 0x00, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+        byte[] app1 = [0xFF, 0xE1, 0x00, (byte)(2 + 6 + tiff.Length), .. "Exif\0\0"u8, .. tiff];
+        return [.. jpeg.AsSpan(0, 2), .. app1, .. jpeg.AsSpan(2)];
+    }
+
+    // A GIF of one white pixel.
+    public static byte[] Gif() =>
+        [.. "GIF89a"u8, 0x01, 0x00, 0x01, 0x00, 0x80, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x2C, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x02, 0x02, 0x44, 0x01, 0x00, 0x3B];
 
     public static async Task<MediaAsset> UploadAsync(HttpClient admin, byte[] bytes, string name = "photo.png")
     {
@@ -82,7 +90,7 @@ internal static class Transforms
         return (response.Content.Headers.ContentType?.MediaType, bytes);
     }
 
-    public static Image<Rgba32> Decode(byte[] bytes) => Image.Load<Rgba32>(bytes);
+    public static SKBitmap Decode(byte[] bytes) => SKBitmap.Decode(bytes) ?? throw new InvalidDataException("No image.");
 
     public static async Task<string?> ErrorCodeAsync(HttpResponseMessage response)
     {
@@ -128,7 +136,7 @@ internal sealed class ProcessorCalls
 // The default processor, counting its calls; with EncodesAvif, it also claims AVIF and writes four bytes for it.
 internal sealed class RecordingProcessor(ProcessorCalls calls) : IImageProcessor
 {
-    private readonly ImageSharpImageProcessor _inner = new();
+    private readonly SkiaImageProcessor _inner = new();
 
     public bool CanDecode(string mimeType) => _inner.CanDecode(mimeType);
 

@@ -11,7 +11,7 @@ Media is a first-party plugin on the provider slots: a storage abstraction with 
 | 5 | On-demand image transforms | Must | URL parameters for width, height, fit (cover, contain, fill), quality, format (auto WebP/AVIF by `Accept`), focal-point crop; results cached in storage; limits on dimensions and operations per request. |
 | 6 | Signed transform URLs | Must | HMAC-signed parameters so only server-issued variants can be generated; unsigned mode optional for trusted setups. |
 | 7 | Focal point and crop presets | Must | Focal point set in the admin; named crop presets per site (hero, thumbnail) usable in URLs and SDKs. |
-| 8 | Image processing provider | Must | ImageSharp by default behind an `IImageProcessor` slot; replaceable by a CDN transformer (Cloudflare Images, Imgix) that maps the same URL grammar. |
+| 8 | Image processing provider | Must | SkiaSharp by default behind an `IImageProcessor` slot; replaceable by a CDN transformer (Cloudflare Images, Imgix) that maps the same URL grammar. |
 | 9 | Media Delivery API | Must | Public read of asset metadata and URLs with the same key classes and caching rules as content; `srcset` helpers in the SDKs. |
 | 10 | Usage tracking | Must | Which entries reference an asset; block delete or warn when in use; replace file keeping the ID. |
 | 11 | Private assets | Must | Assets gated by access rules, served via short-lived signed download URLs; never public by storage default. |

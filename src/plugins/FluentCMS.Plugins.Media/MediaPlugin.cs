@@ -30,7 +30,7 @@ public sealed class MediaPlugin : IPlugin
 
         plugin
             .AddProviderSlot<IFileStorage, LocalFileStorage>()
-            .AddProviderSlot<IImageProcessor, ImageSharpImageProcessor>()
+            .AddProviderSlot<IImageProcessor, SkiaImageProcessor>()
             .AddPermissions<MediaPermissions>()
             .AddSettings<MediaSettings>()
             .AddModel<MediaModel>()
