@@ -13,6 +13,18 @@ namespace FluentCMS.Plugins.Media;
 [FluentCmsPlugin("media", SdkRange = "[1.0.0,2.0.0)")]
 public sealed class MediaPlugin : IPlugin
 {
+    private Action<IPluginServiceBuilder>? _storage;
+
+    // The seam of a storage package's UseXxx, such as UseS3: what it adds to the services once the plugin's own are in, and
+    // the IFileStorage it puts in the slot for new uploads. The last call wins, and the host's own Providers.Use wins over it.
+    public MediaPlugin UseStorage(Action<IPluginServiceBuilder> configure)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+
+        _storage = configure;
+        return this;
+    }
+
     public void ConfigureServices(IPluginServiceBuilder plugin)
     {
         ArgumentNullException.ThrowIfNull(plugin);
@@ -27,6 +39,10 @@ public sealed class MediaPlugin : IPlugin
         plugin.Services.AddSingleton<MediaSigning>();
         plugin.Services.AddSingleton<IInsecureDefaultSource, MediaInsecureDefaults>();
         plugin.Services.AddHostedService<MediaStartup>();
+        plugin.Services.AddSingleton<MediaStorage>();
+        plugin.Services.AddKeyedSingleton<IFileStorage, LocalFileStorage>(LocalFileStorage.ProviderName);
+        plugin.Services.AddHealthChecks()
+            .AddCheck<MediaStorageHealthCheck>(MediaStorageHealthCheck.Name, failureStatus: null, [FluentCmsHealthCheckTags.Ready], MediaStorageHealthCheck.Timeout);
 
         plugin
             .AddProviderSlot<IFileStorage, LocalFileStorage>()
@@ -54,6 +70,8 @@ public sealed class MediaPlugin : IPlugin
             .AddActivity<MediaAssetUpdatedEvent>("media.updated", updated => Activity("media.updated", updated, null))
             .AddActivity<MediaAssetMovedEvent>("media.moved", moved => Activity("media.moved", moved, new Dictionary<string, string?> { ["from"] = moved.PreviousFolderId?.ToString("D"), ["to"] = moved.FolderId?.ToString("D") }))
             .AddActivity<MediaAssetDeletedEvent>("media.deleted", deleted => Activity("media.deleted", deleted, null));
+
+        _storage?.Invoke(plugin);
     }
 
     public void Configure(IPluginAppBuilder app)

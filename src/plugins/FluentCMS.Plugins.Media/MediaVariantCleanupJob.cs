@@ -10,7 +10,7 @@ internal sealed record MediaVariantCleanupPayload;
 // Removes the variants of assets that are deleted, or gone, in batches: the file from the asset's storage, then the row. A
 // file that cannot be deleted keeps its row for the next run. The rows a run leaves are the first in its order, since each
 // batch is the first of what remains, so the next batch skips past them.
-internal sealed class MediaVariantCleanupJob(PluginDbContext<MediaPlugin> database, IFileStorage storage, ILogger<MediaVariantCleanupJob> logger)
+internal sealed class MediaVariantCleanupJob(PluginDbContext<MediaPlugin> database, MediaStorage storages, ILogger<MediaVariantCleanupJob> logger)
     : IJob<MediaVariantCleanupPayload>
 {
     public const string Type = "media.variants.cleanup";
@@ -43,8 +43,8 @@ internal sealed class MediaVariantCleanupJob(PluginDbContext<MediaPlugin> databa
             var done = 0;
             foreach (var variant in batch)
             {
-                var provider = providers.GetValueOrDefault(variant.AssetId, storage.Name);
-                if (provider != storage.Name)
+                var provider = providers.GetValueOrDefault(variant.AssetId, storages.Current.Name);
+                if (storages.Find(provider) is not { } storage)
                 {
                     MediaLog.VariantNotDeleted(logger, provider, variant.StorageKey, null);
                     continue;

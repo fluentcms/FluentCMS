@@ -24,7 +24,7 @@ internal sealed class MediaTransforms(
     PluginDbContext<MediaPlugin> database,
     IOperationContextAccessor operations,
     ISettings<MediaSettings> settings,
-    IFileStorage storage,
+    MediaStorage storages,
     IImageProcessor processor,
     MediaSigning signing,
     IOptions<MediaOptions> options,
@@ -262,11 +262,7 @@ internal sealed class MediaTransforms(
         database.Entry(variant).State = EntityState.Detached;
     }
 
-    // An asset written with another storage is read through it once storage plugins can name theirs (#2836).
-    private IFileStorage StorageOf(Asset asset) =>
-        asset.StorageProvider == storage.Name
-            ? storage
-            : throw new InvalidOperationException($"The media asset {asset.Id:D} is in the storage '{asset.StorageProvider}', and this instance has '{storage.Name}'.");
+    private IFileStorage StorageOf(Asset asset) => storages.Of(asset.StorageProvider);
 
     private async Task ForgetAsync(IFileStorage target, string key)
     {
