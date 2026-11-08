@@ -2,6 +2,7 @@ using System.Data;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Tests.Schema;
+using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Data.Tests.Query;
 using Microsoft.EntityFrameworkCore;
 using Shouldly;
@@ -35,7 +36,7 @@ public class QueryPlanTests
         return string.Join('\n', steps);
     }
 
-    [Fact]
+    [SqliteFact("SQLite's query plans")]
     public void ASlugLookupUsesThePartialIndexForAPublishedStateHoweverItIsWritten()
     {
         using var database = new StorageDatabase(SampleSchema.FromClasses().Build());
@@ -56,7 +57,7 @@ public class QueryPlanTests
         Plan(boundDraft).ShouldNotContain(SlugIndex);
     }
 
-    [Fact]
+    [SqliteFact("SQLite's query plans")]
     public void ABlockFilterIsAFullScanOfTheSharedTable()
     {
         using var database = new QueryDatabase();
@@ -67,7 +68,7 @@ public class QueryPlanTests
     }
 
     // Without the state index each of these read cms_document of every type in id order.
-    [Fact]
+    [SqliteFact("SQLite's query plans")]
     public void TheDefaultListSeeksTheStateIndexOfItsType()
     {
         using var database = new QueryDatabase();
@@ -88,7 +89,7 @@ public class QueryPlanTests
     }
 
     // As TrashPurgeJob pages through a type's trash: the first page, then the pages after the last entry read.
-    [Fact]
+    [SqliteFact("SQLite's query plans")]
     public void TheTrashPurgeSeeksTheTrashOfItsType()
     {
         using var database = new QueryDatabase();
@@ -114,7 +115,7 @@ public class QueryPlanTests
     }
 
     // As EntryStore.AnyEntryAsync asks before a singleton is created.
-    [Fact]
+    [SqliteFact("SQLite's query plans")]
     public void TheSingletonCheckSeeksTypeAndSite()
     {
         using var database = new QueryDatabase();
@@ -125,7 +126,7 @@ public class QueryPlanTests
         Plan(documents.Where(document => document.Type == "brand")).ShouldContain("ix_cms_document_type_site (type=?)");
     }
 
-    [Fact]
+    [SqliteFact("SQLite's query plans")]
     public void WhatReferencesATargetUsesTheTargetIndex()
     {
         using var database = new QueryDatabase();

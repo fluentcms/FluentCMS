@@ -1,7 +1,8 @@
+using System.Data.Common;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Storage;
+using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Jobs;
-using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
@@ -284,7 +285,7 @@ public sealed class JobFailureTests : IDisposable
         _fixture.Job(id).Attempts.ShouldBe(0);
     }
 
-    [Fact]
+    [SqliteFact("ids that SQLite stores as text")]
     public async Task ARowWithALowercaseIdDoesNotStopTheQueue()
     {
         const string Lowercase = "018f0000-0000-7000-8000-00000000abcd";
@@ -301,7 +302,7 @@ public sealed class JobFailureTests : IDisposable
         _fixture.Database.ReadStrings("select id from cms_job where id = upper(id)").Count.ShouldBe(2);
     }
 
-    [Fact]
+    [SqliteFact("ids that SQLite stores as text")]
     public async Task ARowWhoseIdIsNotAGuidDoesNotStopTheQueue()
     {
         AddRawRow("not-a-guid");
@@ -386,7 +387,7 @@ public sealed class JobFailureTests : IDisposable
         var recurring = _fixture.NewInstance(faults: _faults).GetRequiredService<RecurringJobs>();
         var brokenDue = _fixture.Recurring("broken").NextRunAt;
         _faults.Fail(command => command.CommandText.StartsWith("UPDATE", StringComparison.Ordinal)
-            && command.Parameters.Cast<SqliteParameter>().Any(parameter => Equals(parameter.Value, "broken")));
+            && command.Parameters.Cast<DbParameter>().Any(parameter => Equals(parameter.Value, "broken")));
 
         await recurring.FireDueAsync(Token);
 

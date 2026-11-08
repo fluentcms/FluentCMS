@@ -1,6 +1,7 @@
 using FluentCMS.Content;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
+using FluentCMS.Data.Tests.Providers;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -83,7 +84,7 @@ public sealed class JobClaimTests : IDisposable
         return await dialect.ClaimAsync(context.Database, new JobClaim(queue, owner, Now, LeaseUntil), TestContext.Current.CancellationToken);
     }
 
-    [Fact]
+    [SqliteFact("the SQLite claim statement and the values SQLite stores")]
     public async Task ClaimingTakesTheLeaseAndCountsTheAttempt()
     {
         var job = AddJob();
@@ -96,10 +97,10 @@ public sealed class JobClaimTests : IDisposable
         Read(job, "attempts").ShouldBe(1L);
     }
 
-    [Fact]
+    [SqliteFact("the SQLite claim statement and the values SQLite stores")]
     public async Task NothingToClaimGivesNull() => (await ClaimAsync()).ShouldBeNull();
 
-    [Fact]
+    [SqliteFact("the SQLite claim statement and the values SQLite stores")]
     public async Task AClaimedJobIsNotClaimedAgain()
     {
         var job = AddJob();
@@ -110,7 +111,7 @@ public sealed class JobClaimTests : IDisposable
         Read(job, "lease_owner").ShouldBe("worker-1");
     }
 
-    [Fact]
+    [SqliteFact("the SQLite claim statement and the values SQLite stores")]
     public async Task OnlyAJobThatIsDueOnTheQueueAndStillHasAttemptsIsClaimed()
     {
         AddJob(runAt: Now.AddSeconds(1));
@@ -122,7 +123,7 @@ public sealed class JobClaimTests : IDisposable
         (await ClaimAsync()).ShouldBeNull();
     }
 
-    [Fact]
+    [SqliteFact("the SQLite claim statement and the values SQLite stores")]
     public async Task AnExpiredLeaseIsClaimedAgain()
     {
         var job = AddJob(status: JobClaimStatus.Running, attempts: 1, leaseUntil: Now.AddTicks(-1), leaseOwner: "dead-worker");
@@ -133,7 +134,7 @@ public sealed class JobClaimTests : IDisposable
         Read(job, "attempts").ShouldBe(2L);
     }
 
-    [Fact]
+    [SqliteFact("the SQLite claim statement and the values SQLite stores")]
     public async Task TheHighestPriorityGoesFirstThenTheEarliestRunAt()
     {
         var later = AddJob(runAt: Now.AddMinutes(-1));
@@ -146,7 +147,7 @@ public sealed class JobClaimTests : IDisposable
     }
 
     // EF creates a database in WAL mode; one created by other means keeps the rollback journal.
-    [Theory]
+    [SqliteTheory("the SQLite claim statement and the values SQLite stores")]
     [InlineData("delete")]
     [InlineData("wal")]
     public async Task OfTwoConcurrentClaimersOnlyOneWins(string journalMode)
@@ -175,7 +176,7 @@ public sealed class JobClaimTests : IDisposable
         }
     }
 
-    [Theory]
+    [SqliteTheory("the SQLite claim statement and the values SQLite stores")]
     [InlineData("delete")]
     [InlineData("wal")]
     public async Task ConcurrentClaimersGetEachJobOnce(string journalMode)

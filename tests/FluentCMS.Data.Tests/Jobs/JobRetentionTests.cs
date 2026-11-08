@@ -6,6 +6,7 @@ using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
+using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Jobs;
 using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
@@ -260,7 +261,7 @@ public sealed class JobRetentionTests : IDisposable
         AttemptOwners().ShouldBe([kept, kept], ignoreOrder: true);
     }
 
-    [Fact]
+    [SqliteFact("SQLite's query plans")]
     public async Task EveryBatchIsSelectedFromAnIndexWithNoSort()
     {
         var plans = new List<string>();

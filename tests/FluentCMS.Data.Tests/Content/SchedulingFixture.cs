@@ -23,7 +23,7 @@ internal sealed class Heard<TEvent>(Seen seen) : IEventHandler<TEvent>
     public ValueTask HandleAsync(TEvent message, CancellationToken cancellationToken) => seen.HeardAsync(typeof(TEvent).Name, message, null, cancellationToken);
 }
 
-// The real service on a real SQLite file with a clock that moves only when a test says so, so that a schedule comes due when
+// The real service on the database of the run with a clock that moves only when a test says so, so that a schedule comes due when
 // the test advances the clock and the job runner is asked to run what is due.
 internal sealed class SchedulingFixture : IDisposable
 {

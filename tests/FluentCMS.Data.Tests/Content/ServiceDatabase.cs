@@ -14,7 +14,7 @@ using Xunit;
 
 namespace FluentCMS.Data.Tests.Content;
 
-// The real service on a real SQLite file, with sites A and B that list en, fr and fr-CA. Every call is a request of its
+// The real service on the database of the run, with sites A and B that list en, fr and fr-CA. Every call is a request of its
 // own: a new scope, so a new DbContext, under the operation the entry point would set.
 internal sealed class ServiceDatabase : IDisposable
 {

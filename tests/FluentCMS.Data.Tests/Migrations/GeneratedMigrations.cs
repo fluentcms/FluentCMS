@@ -1,21 +1,22 @@
 using System.Reflection;
 using System.Runtime.Loader;
 using FluentCMS.Core.Storage;
-using FluentCMS.Data.Sqlite;
+using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Schema;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
 namespace FluentCMS.Data.Tests.Migrations;
 
-// Generated content migrations, compiled the way a host project would and loaded as its migrations assembly.
+// Generated content migrations, for the provider of the run unless a test names one, compiled the way a host project
+// would and loaded as its migrations assembly.
 internal static class GeneratedMigrations
 {
     public const string Namespace = "FluentCMS.Generated";
 
     public static GeneratedMigration Scaffold(SchemaModel schema, string name, Assembly? previous = null, IDataProvider? provider = null) =>
         ContentMigrationGenerator.Scaffold(
-            () => ContentMigrations.CreateContext(provider ?? new SqliteDataProvider("Data Source=:memory:"), schema, previous ?? typeof(CmsDbContext).Assembly),
+            () => ContentMigrations.CreateContext(provider ?? TestProvider.Offline(), schema, previous ?? typeof(CmsDbContext).Assembly),
             name,
             Namespace);
 

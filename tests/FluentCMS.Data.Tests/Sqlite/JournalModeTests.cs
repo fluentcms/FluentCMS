@@ -1,5 +1,6 @@
 using FluentCMS.Core.Storage;
 using FluentCMS.Data.Sqlite;
+using FluentCMS.Data.Tests.Providers;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Shouldly;
@@ -45,7 +46,7 @@ public sealed class JournalModeTests : IDisposable
         command.ExecuteNonQuery();
     }
 
-    [Fact]
+    [SqliteFact("SQLite's journal modes")]
     public void AFileDatabaseIsOpenedInWalModeWithABusyTimeout()
     {
         CreateInRollbackJournal();
@@ -58,7 +59,7 @@ public sealed class JournalModeTests : IDisposable
         Pragma(context, "busy_timeout").ShouldBe(5000L);
     }
 
-    [Fact]
+    [SqliteFact("SQLite's journal modes")]
     public void EveryConnectionGetsItsOwnSettings()
     {
         var provider = new SqliteDataProvider(FileConnectionString);
@@ -75,7 +76,7 @@ public sealed class JournalModeTests : IDisposable
         Pragma(second, "busy_timeout").ShouldBe(5000L);
     }
 
-    [Fact]
+    [SqliteFact("SQLite's journal modes")]
     public void AHostThatOptsOutKeepsTheJournalModeAndSqliteDefaults()
     {
         CreateInRollbackJournal();
@@ -88,7 +89,7 @@ public sealed class JournalModeTests : IDisposable
         Pragma(context, "busy_timeout").ShouldBe(0L);
     }
 
-    [Theory]
+    [SqliteTheory("SQLite's journal modes")]
     [InlineData("Data Source=:memory:")]
     [InlineData("Data Source=journal-tests;Mode=Memory;Cache=Shared")]
     public void AnInMemoryDatabaseIsLeftAsItIs(string connectionString)

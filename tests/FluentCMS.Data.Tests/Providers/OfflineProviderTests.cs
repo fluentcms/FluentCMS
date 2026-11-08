@@ -15,7 +15,7 @@ using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
-using static FluentCMS.Data.Tests.Sqlite.RowFilter;
+using static FluentCMS.Data.Tests.Query.RowFilter;
 
 namespace FluentCMS.Data.Tests.Providers;
 

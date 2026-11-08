@@ -1,5 +1,6 @@
 using System.Data.Common;
 using FluentCMS.Core.Jobs;
+using FluentCMS.Data.Tests.Providers;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
@@ -13,7 +14,7 @@ public sealed class JobClaimPlanTests : IDisposable
 
     public void Dispose() => _fixture.Dispose();
 
-    [Fact]
+    [SqliteFact("SQLite's query plan")]
     public async Task TheClaimSeeksItsIndexWithoutASort()
     {
         var faults = new JobFaults();

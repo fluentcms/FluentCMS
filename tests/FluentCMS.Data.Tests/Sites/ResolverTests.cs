@@ -3,7 +3,7 @@ using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Tests.Schema;
-using FluentCMS.Data.Tests.Sqlite;
+using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Localization;
 using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
@@ -15,7 +15,7 @@ namespace FluentCMS.Data.Tests.Sites;
 
 public sealed class ResolverTests : IDisposable
 {
-    private readonly SqliteFileDatabase _database = new();
+    private readonly TestDatabase _database = TestDatabase.Create();
     private readonly HostTable _hosts = new();
     private readonly ServiceProvider _services;
     private readonly SiteId _docs;

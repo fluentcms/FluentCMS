@@ -5,7 +5,7 @@ using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Tests.Schema;
-using FluentCMS.Data.Tests.Sqlite;
+using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Jobs;
 using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
@@ -457,7 +457,7 @@ public sealed class JobExecutionTests : IDisposable
     [Fact]
     public void TwoJobsCannotShareAType()
     {
-        using var database = new SqliteFileDatabase();
+        using var database = TestDatabase.Create();
         using var services = database.CreateServices(configure: cms => cms.Jobs
             .AddJob<ProbeJob, ProbePayload>("same")
             .AddJob<UnregisteredJob, ProbePayload>("same"));

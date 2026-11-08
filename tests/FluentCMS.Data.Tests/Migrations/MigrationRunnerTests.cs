@@ -2,7 +2,7 @@ using FluentCMS.Core.Authorization;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
-using FluentCMS.Data.Tests.Sqlite;
+using FluentCMS.Data.Tests.Providers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -20,7 +20,7 @@ public sealed class MigrationRunnerTests : IDisposable
 
     private static readonly Dictionary<string, string?> NoMigrationOnStartup = new() { ["FluentCms:Database:MigrateOnStartup"] = "false" };
 
-    private readonly SqliteFileDatabase _database = new();
+    private readonly TestDatabase _database = TestDatabase.Create();
 
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
@@ -33,11 +33,16 @@ public sealed class MigrationRunnerTests : IDisposable
 
         await host.StartAsync(Token);
 
-        _database.Tables().ShouldBe(
-            ["__EFMigrationsLock", "cms__migrations", "cms_activity", "cms_api_key", "cms_data_protection_key", "cms_oidc_application", "cms_oidc_authorization", "cms_oidc_scope", "cms_oidc_token", "cms_signing_key", "cms_article", "cms_content__migrations", "cms_document", "cms_invitation", "cms_job", "cms_job_attempt", "cms_lock", "cms_outbox", "cms_plugin_site", "cms_recurring_job", "cms_reference", "cms_role", "cms_role_permission", "cms_schedule", "cms_schema_history", "cms_setting", "cms_site", "cms_site_locale", "cms_user", "cms_user_claim", "cms_user_login", "cms_user_role", "cms_user_token", "cms_version"],
-            ignoreOrder: true);
-        _database.ReadStrings("select MigrationId from cms__migrations").ShouldContain(id => id.EndsWith("_InitialSystem", StringComparison.Ordinal));
-        _database.ReadStrings("select MigrationId from cms_content__migrations").ShouldHaveSingleItem().ShouldEndWith("_Initial");
+        // EF locks a SQLite database for its migrations with a table of its own, and a server without one.
+        List<string> tables = ["cms__migrations", "cms_activity", "cms_api_key", "cms_data_protection_key", "cms_oidc_application", "cms_oidc_authorization", "cms_oidc_scope", "cms_oidc_token", "cms_signing_key", "cms_article", "cms_content__migrations", "cms_document", "cms_invitation", "cms_job", "cms_job_attempt", "cms_lock", "cms_outbox", "cms_plugin_site", "cms_recurring_job", "cms_reference", "cms_role", "cms_role_permission", "cms_schedule", "cms_schema_history", "cms_setting", "cms_site", "cms_site_locale", "cms_user", "cms_user_claim", "cms_user_login", "cms_user_role", "cms_user_token", "cms_version"];
+        if (TestProvider.IsSqlite)
+        {
+            tables.Add("__EFMigrationsLock");
+        }
+
+        _database.Tables().ShouldBe(tables, ignoreOrder: true);
+        _database.ReadStrings("select \"MigrationId\" from cms__migrations").ShouldContain(id => id.EndsWith("_InitialSystem", StringComparison.Ordinal));
+        _database.ReadStrings("select \"MigrationId\" from cms_content__migrations").ShouldHaveSingleItem().ShouldEndWith("_Initial");
         (await host.Services.GetRequiredService<MigrationRunner>().GetPendingMigrationsAsync(Token)).ShouldBeEmpty();
     }
 
@@ -59,7 +64,7 @@ public sealed class MigrationRunnerTests : IDisposable
 
         applied.ShouldBe(pending);
         _database.Tables().ShouldContain(DemoPlugin.Table);
-        _database.ReadStrings($"select MigrationId from {DemoPlugin.HistoryTable}").ShouldBe([DemoPlugin.MigrationId]);
+        _database.ReadStrings($"select \"MigrationId\" from {DemoPlugin.HistoryTable}").ShouldBe([DemoPlugin.MigrationId]);
         (await runner.GetPendingMigrationsAsync(Token)).ShouldBeEmpty();
     }
 
@@ -75,7 +80,7 @@ public sealed class MigrationRunnerTests : IDisposable
         await StartAndStopAsync(_database.CreateHost(ArticleSchemas.WithSubtitle, Production, secondAssembly));
 
         _database.Columns("cms_article").ShouldContain("subtitle");
-        _database.ReadStrings("select MigrationId from cms_content__migrations").Count.ShouldBe(2);
+        _database.ReadStrings("select \"MigrationId\" from cms_content__migrations").Count.ShouldBe(2);
     }
 
     [Fact]
@@ -160,7 +165,7 @@ public sealed class MigrationRunnerTests : IDisposable
 
         await StartAndStopAsync(_database.CreateHost(ArticleSchemas.Titled, Production, migrations, NoMigrationOnStartup));
 
-        _database.ReadStrings("select MigrationId from cms_content__migrations").ShouldHaveSingleItem();
+        _database.ReadStrings("select \"MigrationId\" from cms_content__migrations").ShouldHaveSingleItem();
     }
 
     [Fact]
@@ -274,5 +279,5 @@ public sealed class MigrationRunnerTests : IDisposable
         }
     }
 
-    private void AddDemoPlugin(IServiceCollection services) => DemoPlugin.Add(services, _database.ConnectionString);
+    private void AddDemoPlugin(IServiceCollection services) => DemoPlugin.Add(services, _database);
 }
