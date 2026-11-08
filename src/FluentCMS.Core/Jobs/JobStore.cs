@@ -88,7 +88,7 @@ internal sealed class JobStore(
         await using var scope = scopes.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
 
-        var until = time.GetUtcNow() + options.LeaseDuration;
+        var until = StorageConventions.ToMicroseconds(time.GetUtcNow() + options.LeaseDuration);
         var renewed = await Held(context, job).ExecuteUpdateAsync(row => row.SetProperty(column => column.LeaseUntil, until));
 
         return renewed == 1 ? until : null;

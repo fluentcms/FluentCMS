@@ -28,6 +28,8 @@ public sealed class CmsDbContext : DbContext
 
     internal string ConventionsKey => _model.Conventions.CacheKey;
 
+    internal bool ReordersJson => _model.Conventions.ReordersJson;
+
     internal string? JsonDialectKey => _model.JsonDialect?.GetType().FullName;
 
     internal string PluginModelKey => _model.Plugins.Key;

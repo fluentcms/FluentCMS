@@ -205,7 +205,7 @@ internal sealed class LocaleFallbackReader(ContentQueryEngine engine, SchemaMode
     {
         null => true,
         string text => text.Length == 0,
-        RichText richText => EntryJson.SameDocument(richText, RichText.Empty),
+        RichText richText => EntryJson.IsEmptyDocument(richText),
         JsonArray array => array.Count == 0,
         ICollection collection => collection.Count == 0,
         _ => false,

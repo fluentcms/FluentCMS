@@ -57,7 +57,7 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
         var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
 
         var now = time.GetUtcNow();
-        var until = now + Lease;
+        var until = StorageConventions.ToMicroseconds(now + Lease);
 
         var current = await context.Set<LockRow>().AsNoTracking().SingleOrDefaultAsync(row => row.Name == name, cancellationToken);
 
@@ -121,7 +121,7 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
         await using var scope = scopes.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
 
-        var until = time.GetUtcNow() + Lease;
+        var until = StorageConventions.ToMicroseconds(time.GetUtcNow() + Lease);
         var renewed = await context.Set<LockRow>()
             .Where(row => row.Name == name && row.Owner == holder)
             .ExecuteUpdateAsync(row => row.SetProperty(column => column.LeaseUntil, until), cancellationToken);

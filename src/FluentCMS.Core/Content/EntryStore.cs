@@ -144,9 +144,13 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
             return value;
         }
 
-        return stored.Field.FieldType == FieldTypeNames.RichText
-            ? StoredOrder.Of(schema, new RichText(json))
-            : StoredOrder.Of(schema, stored.Field, JsonDepth.Parse(json));
+        if (stored.Field.FieldType == FieldTypeNames.RichText)
+        {
+            return context.ReordersJson ? StoredOrder.Of(schema, new RichText(json)) : new RichText(json);
+        }
+
+        var node = JsonDepth.Parse(json);
+        return context.ReordersJson ? StoredOrder.Of(schema, stored.Field, node) : node;
     }
 
     // The compare and swap that makes one of two concurrent writers lose. The filter on Document keeps trash out.

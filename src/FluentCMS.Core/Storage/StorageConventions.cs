@@ -15,6 +15,8 @@ public class StorageConventions : IStorageConventions
 
     public virtual string CacheKey => GetType().FullName!;
 
+    public virtual bool ReordersJson => false;
+
     public virtual void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
     }

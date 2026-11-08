@@ -131,6 +131,10 @@ internal static class EntryJson
         }
     }
 
+    // Only a short text can hold the empty document, so a longer one is not parsed to learn that it does not.
+    public static bool IsEmptyDocument(RichText document) =>
+        document.Json.Length <= 2 * RichText.Empty.Json.Length && SameDocument(document, RichText.Empty);
+
     public static JsonNode? ToNode(object? value) => value switch
     {
         null => null,
