@@ -59,10 +59,11 @@ public sealed partial class HostedPagesTests
             again.HasCookie(".AspNetCore.Identity.Application").ShouldBeTrue();
         }
 
-        var rows = await ActivityAsync(host, "user.", count: 4);
-        rows.Single(row => row.Action == "user.created").TargetId.ShouldBe(user.Id.ToString("D"));
-        rows.Where(row => row.Action == "user.login_succeeded").ShouldAllBe(row => row.TargetId == user.Id.ToString("D") && row.Ip == "10.3.0.1");
-        rows.Count(row => row.Action == "user.login_succeeded" && Details(row)["method"] == LoginMethods.External).ShouldBe(2);
+        // Each action is awaited on its own: the rows of one prefix arrive in any order.
+        (await ActivityAsync(host, "user.created", count: 1)).Single().TargetId.ShouldBe(user.Id.ToString("D"));
+        var logins = await ActivityAsync(host, "user.login_succeeded", count: 2);
+        logins.ShouldAllBe(row => row.TargetId == user.Id.ToString("D") && row.Ip == "10.3.0.1");
+        logins.Count(row => Details(row)["method"] == LoginMethods.External).ShouldBe(2);
     }
 
     [Fact]
