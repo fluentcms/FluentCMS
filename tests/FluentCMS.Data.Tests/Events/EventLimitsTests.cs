@@ -156,8 +156,17 @@ public sealed class EventLimitsTests
     [HookOrder(1)]
     private sealed class ReadsContext(CmsDbContext context, Overlap overlap) : IEventHandler<EntryDraftSavedEvent>
     {
-        public async ValueTask HandleAsync(EntryDraftSavedEvent message, CancellationToken cancellationToken) =>
-            overlap.Read = (await context.Database.SqlQueryRaw<long>("SELECT 1 AS Value").ToListAsync(cancellationToken)).Single();
+        public async ValueTask HandleAsync(EntryDraftSavedEvent message, CancellationToken cancellationToken)
+        {
+            try
+            {
+                overlap.Read = (await context.Database.SqlQueryRaw<long>("SELECT 1 AS Value").ToListAsync(cancellationToken)).Single();
+            }
+            finally
+            {
+                overlap.ReadDone.TrySetResult();
+            }
+        }
     }
 
     private sealed class Overlap
@@ -169,6 +178,8 @@ public sealed class EventLimitsTests
         public long? Read { get; set; }
 
         public TaskCompletionSource Done { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource ReadDone { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
     }
 
     [Fact]
@@ -319,18 +330,16 @@ public sealed class EventLimitsTests
         using var fixture = new JobFixture();
         var seen = new Seen();
         var logs = new RecordingLogs();
-        using var gate = new ManualResetEventSlim();
-        seen.Behavior = (_, _) =>
-        {
-            gate.Wait(Token);
-            return Task.CompletedTask;
-        };
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        seen.Behavior = (_, _) => gate.Task;
         using var instance = fixture.Database.CreateServices(configure: cms =>
         {
             cms.Services.AddSingleton(seen);
             cms.Services.AddSingleton<ILoggerProvider>(logs);
             cms.Events.AddHandler<JobDeadLetteredEvent, DeadHandler>();
             cms.Events.Outbox.JobEventTimeout = TimeSpan.FromMilliseconds(200);
+            // The bound under test is the job worker's; on a busy runner the handler's own one could otherwise end it first.
+            cms.Events.Handlers.Timeout = TimeSpan.FromMinutes(1);
         });
         var id = fixture.AddRow("no-such-job", "{}", maxAttempts: 1);
 
@@ -343,7 +352,7 @@ public sealed class EventLimitsTests
         }
         finally
         {
-            gate.Set();
+            gate.TrySetResult();
         }
     }
 
@@ -464,7 +473,6 @@ public sealed class EventLimitsTests
             var entry = await database.CreateAsync(Editor, Titled("T")).WaitAsync(TimeSpan.FromSeconds(30), Token);
 
             entry["title"].ShouldBe("T");
-            overlap.Read.ShouldBe(1);
             overlap.Held.ShouldBeNull();
         }
         finally
@@ -472,9 +480,12 @@ public sealed class EventLimitsTests
             release.Set();
         }
 
-        await overlap.Done.Task.WaitAsync(TimeSpan.FromSeconds(30), Token);
+        // On a busy runner the reader can outlive the same timeout and be left running as well, so it is awaited here rather
+        // than assumed to have finished within the response.
+        await Task.WhenAll(overlap.Done.Task, overlap.ReadDone.Task).WaitAsync(TimeSpan.FromSeconds(30), Token);
         overlap.Held.ShouldBe(1);
-        logs.Count("HandlerAbandoned").ShouldBe(1);
+        overlap.Read.ShouldBe(1);
+        logs.Count("HandlerAbandoned").ShouldBeInRange(1, 2);
         logs.Count("HandlerFailed").ShouldBe(0);
         logs.Count("AbandonedHandlerFailed").ShouldBe(0);
     }

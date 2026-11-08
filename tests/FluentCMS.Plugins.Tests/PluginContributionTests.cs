@@ -310,7 +310,14 @@ public sealed class PluginContributionTests
     public async Task ThePluginsJobRunsAndItsEventReachesItsOutboxHandlerAndTheActivityLog()
     {
         var calls = new PluginCalls();
-        await using var host = new FluentCmsTestHost().WithServices(services => services.AddSingleton(calls));
+        // The test runs the job and drains the outbox itself; the host's own workers would race it for the job on a slow runner.
+        await using var host = new FluentCmsTestHost()
+            .WithServices(services => services.AddSingleton(calls))
+            .Configure(cms =>
+            {
+                cms.Jobs.Options.Queues[JobRunnerOptions.DefaultQueue] = 0;
+                cms.Jobs.Options.Queues[OutboxDrainJob.Queue] = 0;
+            });
         var admin = host.As(await host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token));
 
         await host.Services.GetRequiredService<IJobScheduler>().EnqueueAsync<SampleNoteJob, SampleNotePayload>(new SampleNotePayload("from a job"), cancellationToken: Token);
