@@ -70,13 +70,15 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
 {
     private const string Management = "/api/management/v1";
 
-    private static readonly string[] AdminGroups = ["users", "invitations", "roles", "permissions", "api-keys", "sites", "settings", "jobs", "activity", "me", "plugins", "system"];
+    private static readonly string[] AdminGroups = ["users", "invitations", "roles", "permissions", "api-keys", "sites", "settings", "jobs", "events", "activity", "me", "plugins", "system"];
 
     private static readonly Dictionary<string, string[]> ReadsQuery = new(StringComparer.Ordinal)
     {
         ["get /users"] = ["search", "page", "pageSize"],
         ["get /jobs"] = ["status", "type", "queue", "page", "pageSize"],
         ["get /jobs/dead-letter"] = ["page", "pageSize"],
+        ["get /events/dead-letter"] = ["page", "pageSize"],
+        ["delete /events/dead-letter"] = ["handler"],
         ["get /activity"] = ["actorId", "actorKind", "origin", "action", "targetType", "targetId", "from", "to", "page", "pageSize"],
     };
 

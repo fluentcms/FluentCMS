@@ -14,6 +14,8 @@ using Microsoft.Extensions.Logging;
 namespace FluentCMS.Core.Jobs;
 
 // A job of a plugin disabled in the job's site completes without running; one of no site is the instance's and always runs.
+// When which plugins are disabled cannot be read, the job is put back without using an attempt, as the outbox does with a
+// delivery, and waits one poll so that the worker does not claim it again at once.
 internal sealed class JobExecutor(
     JobStore store,
     JobRegistry registry,
@@ -26,6 +28,13 @@ internal sealed class JobExecutor(
 {
     private static readonly TimeSpan FirstSettleRetry = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan LastSettleRetry = TimeSpan.FromSeconds(30);
+
+    private enum Invocation
+    {
+        Ran,
+        Skipped,
+        Deferred,
+    }
 
     // False when the queue has nothing due.
     public async Task<bool> RunNextAsync(
@@ -85,8 +94,18 @@ internal sealed class JobExecutor(
         Func<Task<bool>> settle;
         try
         {
-            Record(job, started, await InvokeAsync(job, attempt) ? "succeeded" : "skipped");
-            settle = () => store.SucceedAsync(job);
+            var invocation = await InvokeAsync(job, attempt);
+            if (invocation == Invocation.Deferred)
+            {
+                Record(job, started, "released");
+                var runAt = time.GetUtcNow() + options.PollInterval;
+                settle = () => store.ReleaseAsync(job, runAt);
+            }
+            else
+            {
+                Record(job, started, invocation == Invocation.Ran ? "succeeded" : "skipped");
+                settle = () => store.SucceedAsync(job);
+            }
         }
         catch (OperationCanceledException) when (shutdown.IsCancellationRequested)
         {
@@ -153,16 +172,26 @@ internal sealed class JobExecutor(
         }
     }
 
-    // False when the job's plugin is disabled in its site, so that it did not run.
-    private async Task<bool> InvokeAsync(ClaimedJob job, CancellationToken attempt)
+    private async Task<Invocation> InvokeAsync(ClaimedJob job, CancellationToken attempt)
     {
         var registration = registry.Find(job.Type)
             ?? throw new JobInvocationException($"{JobErrorCodes.UnknownJobType}: no job is registered for the type '{job.Type}'.");
 
-        if (await plugins.DisabledJobAsync(job.Type, job.SiteId, attempt) is { } plugin)
+        string? disabled;
+        try
         {
-            PluginLog.JobSkipped(logger, job.Id, job.Type, plugin, job.SiteId!.Value);
-            return false;
+            disabled = await plugins.DisabledJobAsync(job.Type, job.SiteId, attempt);
+        }
+        catch (Exception exception) when (!attempt.IsCancellationRequested)
+        {
+            PluginLog.JobDeferred(logger, exception, job.Id, job.Type);
+            return Invocation.Deferred;
+        }
+
+        if (disabled is not null)
+        {
+            PluginLog.JobSkipped(logger, job.Id, job.Type, disabled, job.SiteId!.Value);
+            return Invocation.Skipped;
         }
 
         var payload = ReadPayload(registration, job);
@@ -177,7 +206,7 @@ internal sealed class JobExecutor(
         try
         {
             await registration.Invoke(scope.ServiceProvider, payload, context);
-            return true;
+            return Invocation.Ran;
         }
         catch (Exception)
         {
