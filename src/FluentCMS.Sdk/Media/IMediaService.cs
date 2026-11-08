@@ -4,7 +4,7 @@ namespace FluentCMS.Media;
 
 /// <summary>
 /// The assets, folders and image presets of the media plugin in the site of the current operation, for its endpoints, the
-/// media field type and other plugins. Every call but <see cref="GetImageUrlAsync"/> checks the permission it needs
+/// media field type and other plugins. Every call but <see cref="GetImageUrlAsync"/> and <see cref="DeliverAsync"/> checks the permission it needs
 /// (<c>media.read</c>, <c>media.upload</c>, <c>media.update</c>, <c>media.delete</c>, <c>media.folders.manage</c> or
 /// <c>media.presets.manage</c>) and throws <see cref="Authorization.PermissionDeniedException"/> without it. A grant of one of them may be limited to folders, and then reaches those folders and their subfolders only.
 /// An asset or folder of another site, or outside the caller's folders, is not found. Refusals are
@@ -48,11 +48,57 @@ public interface IMediaService
     /// <returns>The asset as it is now.</returns>
     Task<MediaAsset> MoveAsync(Guid id, Guid? folderId, CancellationToken cancellationToken = default);
 
-    /// <summary>Deletes an asset softly: it is found no more, and its bytes stay in the storage.</summary>
+    /// <summary>
+    /// Deletes an asset softly: it is found no more, and the daily cleanup removes its bytes and its row once the deleted
+    /// retention of the instance has passed. An asset that entries outside the trash refer to is refused, unless
+    /// <paramref name="force"/>, which deletes it and removes every reference to it, so that the fields that held it read as empty.
+    /// </summary>
     /// <param name="id">The id of the asset.</param>
+    /// <param name="force">Whether to delete an asset that entries refer to.</param>
     /// <param name="cancellationToken">Cancels the work.</param>
     /// <returns>A task that completes when the asset is deleted.</returns>
-    Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
+    Task DeleteAsync(Guid id, bool force = false, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Replaces the file of an asset. It needs <c>media.update</c>. The new file passes the checks of an upload, and its name,
+    /// type, size, checksum and image size replace those of the old one; the id, the metadata and the references stay, and
+    /// the variants of the old file are removed, so that the next transform reads the new one.
+    /// </summary>
+    /// <param name="id">The id of the asset.</param>
+    /// <param name="file">The new file.</param>
+    /// <param name="cancellationToken">Cancels the work.</param>
+    /// <returns>The asset as it is now.</returns>
+    Task<MediaAsset> ReplaceAsync(Guid id, MediaUploadFile file, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lists the fields, blocks and rich text of entries outside the trash that refer to an asset. It needs <c>media.read</c>,
+    /// and leaves out the entries, locales and fields the caller may not read.
+    /// </summary>
+    /// <param name="id">The id of the asset.</param>
+    /// <param name="cancellationToken">Cancels the work.</param>
+    /// <returns>The references.</returns>
+    Task<IReadOnlyList<ContentReference>> GetUsageAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Builds a short-lived signed URL of the original file of an asset, private or public,
+    /// <c>/media/{id}/original/{fileName}?exp=&amp;sig=</c>, relative to the base of the CMS. It needs <c>media.read</c> in the
+    /// asset's folder. The URL lives for the <c>DownloadUrlSeconds</c> of the site's media settings, and serves the file of
+    /// the asset as it is when the URL is used.
+    /// </summary>
+    /// <param name="id">The id of the asset.</param>
+    /// <param name="cancellationToken">Cancels the work.</param>
+    /// <returns>The URL and when it expires.</returns>
+    Task<MediaDownloadUrl> GetDownloadUrlAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Reads an asset for the Delivery API, with its alternative text and caption in the locale of the operation. A public
+    /// asset is read by any caller, with its URLs; a private one only by a caller whose <c>media.read</c> reaches its folder,
+    /// and without URLs. Any other asset is not found.
+    /// </summary>
+    /// <param name="id">The id of the asset.</param>
+    /// <param name="cancellationToken">Cancels the work.</param>
+    /// <returns>The asset and its URLs.</returns>
+    Task<MediaDelivery> DeliverAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>Lists the folders the caller may read, by name within their parent.</summary>
     /// <param name="cancellationToken">Cancels the work.</param>

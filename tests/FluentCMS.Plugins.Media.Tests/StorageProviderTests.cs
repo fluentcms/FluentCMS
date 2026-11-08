@@ -1,8 +1,11 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Text.Json.Nodes;
 using Amazon.S3.Model;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using FluentCMS.Core.Jobs;
+using FluentCMS.Jobs;
 using FluentCMS.Media;
 using FluentCMS.Plugins.Media.AzureBlob;
 using FluentCMS.Plugins.Media.S3;
@@ -100,6 +103,68 @@ public sealed class StorageProviderTests(StorageServices services) : IDisposable
 
     [Theory]
     [MemberData(nameof(CloudProviders))]
+    public async Task AnAssetWrittenToTheLocalDiskIsStillDownloadedReplacedAndPurgedAfterTheStorageMoves(string provider)
+    {
+        var database = Path.Combine(_local.FullName, "cms.db");
+        var media = _local.CreateSubdirectory("media");
+        var key = StorageHosts.SigningKey();
+        var pdf = Files.Pdf();
+        MediaAsset document;
+        MediaAsset photo;
+        await using (var local = StorageHosts.Create(media, key, database: database))
+        {
+            using var admin = await StorageHosts.AdminAsync(local);
+            using var client = local.CreateClient();
+            document = await UploadAsync(admin, pdf, "plan.pdf");
+            photo = await UploadAsync(admin, Bands(40, 20));
+            using var variant = await FetchAsync(client, await ImageUrlAsync(local, photo, new MediaImageOptions { Width = 10 }));
+            variant.StatusCode.ShouldBe(HttpStatusCode.OK);
+        }
+
+        Directory.EnumerateFiles(media.FullName, "*", SearchOption.AllDirectories).Count().ShouldBe(3);
+        var cloud = await CloudAsync(provider);
+        await using var host = StorageHosts.Create(media, key, cloud.Use, database);
+        using var administrator = await StorageHosts.AdminAsync(host);
+        using var anonymous = host.CreateClient();
+
+        (await DownloadAsync(host, administrator, anonymous, document.Id)).ShouldBe(pdf);
+
+        // The new file goes to the new storage; the old one and its variant leave the disk.
+        var replacement = Bands(20, 10);
+        using (var replaced = await ReplaceAsync(administrator, photo.Id, ("small.png", replacement)))
+        {
+            replaced.StatusCode.ShouldBe(HttpStatusCode.OK, await replaced.Content.ReadAsStringAsync(Token));
+        }
+
+        var (now, _) = await KeysAsync(host, photo.Id, variants: false);
+        now.Provider.ShouldBe(cloud.Name);
+        (await cloud.ListAsync(now.Key[..now.Key.LastIndexOf('/')])).ShouldBe([now.Key]);
+        Directory.Exists(Path.Combine(media.FullName, photo.SiteId.ToString("N"), photo.Id.ToString("N"))).ShouldBeTrue();
+        Directory.EnumerateFiles(Path.Combine(media.FullName, photo.SiteId.ToString("N"), photo.Id.ToString("N"))).ShouldBeEmpty();
+        (await DownloadAsync(host, administrator, anonymous, photo.Id)).ShouldBe(replacement);
+
+        // Purged from the disk once deleted longer ago than the retention.
+        (await administrator.DeleteAsync(new Uri($"{Root}/{document.Id:D}", UriKind.Relative), Token)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        host.Time.Advance(TimeSpan.FromDays(31));
+        await host.Services.GetRequiredService<IJobScheduler>().EnqueueAsync<MediaVariantCleanupJob, MediaVariantCleanupPayload>(new MediaVariantCleanupPayload(), cancellationToken: Token);
+        await using (var scope = host.Services.CreateAsyncScope())
+        {
+            var executor = scope.ServiceProvider.GetRequiredService<JobExecutor>();
+            while (await executor.RunNextAsync(JobRunnerOptions.DefaultQueue, "test", Token))
+            {
+            }
+        }
+
+        await using (var scope = host.Services.CreateAsyncScope())
+        {
+            (await scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>().Set<Asset>().AsNoTracking().AnyAsync(asset => asset.Id == document.Id, Token)).ShouldBeFalse();
+        }
+
+        Directory.EnumerateFiles(media.FullName, "*", SearchOption.AllDirectories).ShouldBeEmpty();
+    }
+
+    [Theory]
+    [MemberData(nameof(CloudProviders))]
     public async Task ReadyIsUnhealthyWhileTheBucketOrContainerCannotBeReached(string provider)
     {
         var cloud = await CloudAsync(provider);
@@ -160,6 +225,23 @@ public sealed class StorageProviderTests(StorageServices services) : IDisposable
         using var admin = await StorageHosts.AdminAsync(host);
         var report = await GetAsync(admin, Health);
         return report["checks"]!.AsArray().Single(check => check!["name"]!.GetValue<string>() == MediaStorageHealthCheck.Name)!;
+    }
+
+    private static async Task<byte[]> DownloadAsync(FluentCmsTestHost host, HttpClient admin, HttpClient anonymous, Guid id)
+    {
+        using var issued = await admin.PostAsync(new Uri($"{Root}/{id:D}/download-url", UriKind.Relative), null, Token);
+        using var served = await FetchAsync(anonymous, (await JsonAsync(issued))["url"]!.GetValue<string>());
+        served.StatusCode.ShouldBe(HttpStatusCode.OK);
+        return await served.Content.ReadAsByteArrayAsync(Token);
+    }
+
+    private static async Task<HttpResponseMessage> ReplaceAsync(HttpClient client, Guid id, (string Name, byte[] Bytes) file)
+    {
+        using var form = new MultipartFormDataContent();
+        var content = new ByteArrayContent(file.Bytes);
+        content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+        form.Add(content, "file", file.Name);
+        return await client.PostAsync(new Uri($"{Root}/{id:D}/replace", UriKind.Relative), form, Token);
     }
 
     private static async Task<((string Provider, string Key) Original, string Variant)> KeysAsync(FluentCmsTestHost host, Guid id, bool variants = true)

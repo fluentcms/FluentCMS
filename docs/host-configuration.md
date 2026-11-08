@@ -333,7 +333,7 @@ A target URL uses `https` outside Development. Deliveries do not follow redirect
 
 ## Media
 
-The media plugin (`FluentCMS.Plugins.Media`, which the reference host adds) keeps the assets and folders of each site under `/api/management/v1/media`, and serves signed image transforms at `/media/{id}/{fileName}`. Its instance options are in `FluentCms:Media`:
+The media plugin (`FluentCMS.Plugins.Media`, which the reference host adds) keeps the assets and folders of each site under `/api/management/v1/media`, answers `/api/delivery/v1/media/{id}`, and serves signed image transforms at `/media/{id}/{fileName}` and original files at `/media/{id}/original/{fileName}`. Its instance options are in `FluentCms:Media`:
 
 | Key | Default | Meaning |
 | --- | --- | --- |
@@ -341,7 +341,8 @@ The media plugin (`FluentCMS.Plugins.Media`, which the reference host adds) keep
 | `MaxRequestBodySize` | `268435456` | The largest upload request, in bytes. |
 | `RequireSignedUrls` | `true` | `false` serves unsigned transform URLs. The startup report lists `media-unsigned-urls` while it is off in Production. |
 | `SigningKey` | none | The base64 of at least 32 bytes that signs transform URLs. Left out, the plugin generates one key at its first start and stores it protected by Data Protection. Changing the key invalidates every URL signed before. |
-| `CacheControl` | `public, max-age=86400` | The `Cache-Control` of a transformed image. |
+| `CacheControl` | `public, max-age=86400` | The `Cache-Control` of a transformed image and of the original file of a public asset. |
+| `DeletedRetention` | `30.00:00:00` | How long a deleted asset keeps its file and its row before the daily cleanup purges them. |
 
 New uploads go to the local disk unless a storage package replaces it: `media.UseS3(section)` from `FluentCMS.Plugins.Media.S3` (AWS or an S3-compatible service such as MinIO) or `media.UseAzureBlob(section)` from `FluentCMS.Plugins.Media.AzureBlob` (a connection string, or a container URL with a SAS), in `cms.AddPlugin<MediaPlugin>(media => ...)`. The section's keys are in the plugin's [README](../src/plugins/FluentCMS.Plugins.Media/README.md#storage-on-s3-or-azure-blob). Objects stay private and are served through `/media` only, and assets written on the local disk before the move are still served from `Local:Root`. `/health/ready` includes `media-storage`, which is Unhealthy while the bucket or container cannot be reached.
 

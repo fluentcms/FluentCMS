@@ -31,6 +31,7 @@ internal static class WebhookEvents
         [typeof(CacheInvalidatedEvent)] = CacheInvalidated,
         [typeof(MediaAssetUploadedEvent)] = "media.uploaded",
         [typeof(MediaAssetUpdatedEvent)] = "media.updated",
+        [typeof(MediaAssetReplacedEvent)] = "media.replaced",
         [typeof(MediaAssetMovedEvent)] = "media.moved",
         [typeof(MediaAssetDeletedEvent)] = "media.deleted",
     };

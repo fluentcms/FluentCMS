@@ -30,7 +30,9 @@ public sealed class StorageServices : IAsyncLifetime
     public const string Azurite = "azure-blob";
     public const string AzuriteSas = "azure-blob-sas";
 
-    private const string MinioImage = "pgsty/minio:RELEASE.2026-08-04T00-00-00Z";
+    // MinIO publishes no images any more; this is the Pigsty project's continuation of the MinIO community build, pinned by
+    // the digest of its RELEASE.2026-08-04T00-00-00Z index.
+    private const string MinioImage = "pgsty/minio@sha256:b6bfe7239bfc83fb90d31612d9704d86039dd714f7904b3f1ad68f211e602372";
     private const string AzuriteImage = "mcr.microsoft.com/azure-storage/azurite:3.35.0";
 
     private static readonly TimeSpan StartTimeout = TimeSpan.FromMinutes(5);

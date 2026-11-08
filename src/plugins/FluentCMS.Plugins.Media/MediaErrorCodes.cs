@@ -17,4 +17,6 @@ internal static class MediaErrorCodes
     public const string TransformLimit = "FCMS1591";
     public const string NotTransformable = "FCMS1592";
     public const string PresetNotFound = "FCMS1593";
+    public const string AssetInUse = "FCMS1594";
+    public const string DownloadExpired = "FCMS1595";
 }
