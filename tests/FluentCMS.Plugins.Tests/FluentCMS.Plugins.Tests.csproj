@@ -5,10 +5,16 @@
     <PackageReference Include="xunit.v3" />
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="Shouldly" />
+    <!-- For `dotnet ef migrations add`, which uses this project as the startup project of the sample plugin's stream. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="../../src/FluentCMS.Data.PostgreSql/FluentCMS.Data.PostgreSql.csproj" />
+    <ProjectReference Include="../../src/FluentCMS.Data.SqlServer/FluentCMS.Data.SqlServer.csproj" />
     <ProjectReference Include="../../src/FluentCMS.Testing/FluentCMS.Testing.csproj" />
     <ProjectReference Include="../FluentCMS.Plugins.Sample/FluentCMS.Plugins.Sample.csproj" />
   </ItemGroup>

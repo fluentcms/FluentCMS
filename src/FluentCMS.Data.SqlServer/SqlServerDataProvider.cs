@@ -1,4 +1,5 @@
 using System.Reflection;
+using FluentCMS.Core.Plugins;
 using FluentCMS.Core.Storage;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -33,7 +34,8 @@ public sealed class SqlServerDataProvider(string connectionString, bool nativeJs
     public void ConfigurePluginMigrations(DbContextOptionsBuilder options, Assembly migrationsAssembly, string historyTable) =>
         options.UseSqlServer(connectionString, sqlServer => sqlServer
             .MigrationsAssembly(migrationsAssembly)
-            .MigrationsHistoryTable(historyTable));
+            .MigrationsHistoryTable(historyTable))
+            .UsePluginMigrationSet(PluginMigrationSets.SqlServer);
 
     public void ConfigureSystemMigrations(DbContextOptionsBuilder options) =>
         options.UseSqlServer(connectionString, sqlServer => sqlServer

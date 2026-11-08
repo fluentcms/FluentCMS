@@ -32,6 +32,7 @@ public interface IDataProvider
     // The same, for SystemDbContext: adds the assembly that holds the system migrations and their history table.
     void ConfigureSystemMigrations(DbContextOptionsBuilder options);
 
-    // The same, for the context of a plugin's stream, with its assembly and its history table cms_{plugin}__migrations.
+    // The same, for the context of a plugin's stream, with its assembly and its history table cms_{plugin}__migrations, and
+    // UsePluginMigrationSet with the name of the provider's set in that assembly.
     void ConfigurePluginMigrations(DbContextOptionsBuilder options, Assembly migrationsAssembly, string historyTable);
 }

@@ -1,4 +1,5 @@
 using System.Reflection;
+using FluentCMS.Core.Plugins;
 using FluentCMS.Core.Storage;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -42,7 +43,8 @@ public sealed class SqliteDataProvider(string connectionString, bool writeAheadL
         options.UseSqlite(connectionString, sqlite => sqlite
             .MigrationsAssembly(migrationsAssembly)
             .MigrationsHistoryTable(historyTable))
-            .AddInterceptors(_interceptors);
+            .AddInterceptors(_interceptors)
+            .UsePluginMigrationSet(PluginMigrationSets.Sqlite);
 
     public void ConfigureSystemMigrations(DbContextOptionsBuilder options) =>
         options.UseSqlite(connectionString, sqlite => sqlite

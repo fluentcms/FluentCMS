@@ -14,7 +14,14 @@
     </PackageReference>
   </ItemGroup>
 
+  <!-- The checks of a plugin's migration sets, shared with the plugin host tests. -->
   <ItemGroup>
+    <Compile Include="../FluentCMS.Plugins.Tests/PluginMigrationSetChecks.cs" Link="PluginMigrationSetChecks.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/FluentCMS.Data.PostgreSql/FluentCMS.Data.PostgreSql.csproj" />
+    <ProjectReference Include="../../src/FluentCMS.Data.SqlServer/FluentCMS.Data.SqlServer.csproj" />
     <ProjectReference Include="../../src/FluentCMS.Testing/FluentCMS.Testing.csproj" />
     <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.Media/FluentCMS.Plugins.Media.csproj" />
     <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.Media.AzureBlob/FluentCMS.Plugins.Media.AzureBlob.csproj" />

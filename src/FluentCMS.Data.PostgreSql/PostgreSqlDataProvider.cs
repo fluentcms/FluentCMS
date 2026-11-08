@@ -1,4 +1,5 @@
 using System.Reflection;
+using FluentCMS.Core.Plugins;
 using FluentCMS.Core.Storage;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -32,7 +33,8 @@ public sealed class PostgreSqlDataProvider(string connectionString) : IDataProvi
     public void ConfigurePluginMigrations(DbContextOptionsBuilder options, Assembly migrationsAssembly, string historyTable) =>
         options.UseNpgsql(connectionString, npgsql => npgsql
             .MigrationsAssembly(migrationsAssembly)
-            .MigrationsHistoryTable(historyTable));
+            .MigrationsHistoryTable(historyTable))
+            .UsePluginMigrationSet(PluginMigrationSets.PostgreSql);
 
     public void ConfigureSystemMigrations(DbContextOptionsBuilder options) =>
         options.UseNpgsql(connectionString, npgsql => npgsql
