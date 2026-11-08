@@ -79,6 +79,25 @@ public readonly record struct MediaFocalPoint(double X, double Y);
 /// <param name="Name">Its name, unique within its parent.</param>
 public sealed record MediaFolder(Guid Id, Guid SiteId, Guid? ParentId, string Name);
 
+/// <summary>A signed URL of the original file of an asset, and when it stops working.</summary>
+/// <param name="Url">The URL, relative to the base of the CMS.</param>
+/// <param name="ExpiresAt">When the URL is refused from.</param>
+public sealed record MediaDownloadUrl(string Url, DateTimeOffset ExpiresAt);
+
+/// <summary>An asset as the Delivery API gives it.</summary>
+/// <param name="Asset">The asset, with its alternative text and caption in the locale of the operation.</param>
+/// <param name="Urls">Its URLs, or <see langword="null"/> for a private asset, whose file only a download URL serves.</param>
+public sealed record MediaDelivery(MediaAsset Asset, MediaUrls? Urls);
+
+/// <summary>The URLs of a public asset, relative to the base of the CMS, each signed when the instance requires signed URLs.</summary>
+/// <param name="Original">The original file, <c>/media/{id}/original/{fileName}</c>.</param>
+/// <param name="Presets">For an image the image processor reads, a transform URL for each preset of the site, by name; otherwise empty.</param>
+/// <param name="Template">
+/// For such an image where the instance serves unsigned URLs, a transform URL whose <c>{w}</c>, <c>{h}</c>, <c>{fit}</c>,
+/// <c>{q}</c> and <c>{f}</c> a client fills in or leaves out with their parameter; otherwise <see langword="null"/>.
+/// </param>
+public sealed record MediaUrls(string Original, IReadOnlyDictionary<string, string> Presets, string? Template);
+
 /// <summary>Files to store as new assets.</summary>
 /// <param name="FolderId">The folder they go to, or <see langword="null"/> for the root.</param>
 /// <param name="Files">The files.</param>

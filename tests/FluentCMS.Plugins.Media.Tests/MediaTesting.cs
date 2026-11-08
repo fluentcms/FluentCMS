@@ -9,9 +9,12 @@ using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Events;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Sites;
+using FluentCMS.Core.Storage;
+using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Settings;
 using FluentCMS.Sites;
 using FluentCMS.Testing;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
@@ -74,6 +77,27 @@ internal sealed class MediaHost : IAsyncDisposable
     {
         await using var scope = Services.CreateAsyncScope();
         await scope.ServiceProvider.GetRequiredService<SiteManager>().EnsureLocaleAsync(DefaultSite.Id, code, Token);
+    }
+
+    public static async Task<Guid> EntryAsync(HttpClient admin, string type, string title)
+    {
+        using var response = await admin.PostAsJsonAsync(new Uri($"/api/management/v1/content/{type}", UriKind.Relative), new { title }, Token);
+        return Id(await JsonAsync(response, HttpStatusCode.Created));
+    }
+
+    // A reference written straight into cms_reference, as the media field type will write it (#2835).
+    public async Task ReferAsync(string type, Guid entry, string field, Guid asset, short state = ContentState.Draft, string locale = "")
+    {
+        await using var scope = Services.CreateAsyncScope();
+        var database = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+        database.References.Add(new Reference { Id = Guid.CreateVersion7(), SourceType = type, SourceDocumentId = entry, State = state, Locale = locale, Field = field, TargetType = MediaService.ReferenceTarget, TargetId = asset });
+        await database.SaveChangesAsync(Token);
+    }
+
+    public async Task<int> ReferencesToAsync(Guid asset)
+    {
+        await using var scope = Services.CreateAsyncScope();
+        return await scope.ServiceProvider.GetRequiredService<CmsDbContext>().References.CountAsync(reference => reference.TargetType == MediaService.ReferenceTarget && reference.TargetId == asset, Token);
     }
 
     public async Task DrainOutboxAsync()

@@ -97,6 +97,42 @@ public sealed class MediaVariantCleanupTests
     }
 
     [Fact]
+    public async Task TheCleanupPurgesTheAssetsDeletedLongerAgoThanTheRetentionWithTheirFiles()
+    {
+        await using var media = new MediaHost();
+        using var admin = await media.AdminAsync();
+        using var anonymous = media.Host.CreateClient();
+        var old = await UploadAsync(admin, Bands(8, 8));
+        var recent = await UploadAsync(admin, Bands(8, 8));
+        var kept = await UploadAsync(admin, Bands(8, 8));
+        using (var response = await FetchAsync(anonymous, await UrlAsync(media, old, new MediaImageOptions { Width = 4 })))
+        {
+            response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        }
+
+        (await admin.DeleteAsync(new Uri($"{Root}/{old.Id:D}", UriKind.Relative), Token)).Dispose();
+        media.Host.Time.Advance(TimeSpan.FromDays(20));
+        (await admin.DeleteAsync(new Uri($"{Root}/{recent.Id:D}", UriKind.Relative), Token)).Dispose();
+        media.Host.Time.Advance(TimeSpan.FromDays(10) + TimeSpan.FromSeconds(1));
+
+        await media.Services.GetRequiredService<IJobScheduler>().EnqueueAsync<MediaVariantCleanupJob, MediaVariantCleanupPayload>(new MediaVariantCleanupPayload(), cancellationToken: Token);
+        await using (var scope = media.Services.CreateAsyncScope())
+        {
+            var executor = scope.ServiceProvider.GetRequiredService<JobExecutor>();
+            while (await executor.RunNextAsync(JobRunnerOptions.DefaultQueue, "test", Token))
+            {
+            }
+        }
+
+        await using var check = media.Services.CreateAsyncScope();
+        var left = await check.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>().Set<Asset>().AsNoTracking().Select(asset => asset.Id).ToListAsync(Token);
+        left.ShouldBe([recent.Id, kept.Id], ignoreOrder: true);
+        (await VariantsAsync(media)).ShouldBeEmpty();
+        Directory.EnumerateFiles(Path.Combine(media.StorageRoot, old.SiteId.ToString("N"), old.Id.ToString("N"))).ShouldBeEmpty();
+        Directory.EnumerateFiles(Path.Combine(media.StorageRoot, recent.SiteId.ToString("N"), recent.Id.ToString("N"))).Count().ShouldBe(1);
+    }
+
+    [Fact]
     public async Task TheCleanupRunsDailyOnceTheHostHasStarted()
     {
         await using var media = new MediaHost();
