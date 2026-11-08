@@ -24,27 +24,36 @@ public sealed class ResolverTests : IDisposable
 
     public ResolverTests()
     {
-        _services = _database.CreateServices(SampleSchema.FromClasses().Build(), cms => cms.Services.AddSingleton<ISiteHostResolver>(_hosts));
-        using var scope = _services.CreateScope();
-        scope.ServiceProvider.GetRequiredService<SystemDbContext>().Database.Migrate();
+        try
+        {
+            _services = _database.CreateServices(SampleSchema.FromClasses().Build(), cms => cms.Services.AddSingleton<ISiteHostResolver>(_hosts));
+            using var scope = _services.CreateScope();
+            scope.ServiceProvider.GetRequiredService<SystemDbContext>().Database.Migrate();
 
-        var manager = scope.ServiceProvider.GetRequiredService<SiteManager>();
-        _docs = new SiteId(manager.CreateAsync("Docs", "docs", "fr", Token).GetAwaiter().GetResult().Id);
-        _blog = new SiteId(manager.CreateAsync("Blog", "blog", "en", Token).GetAwaiter().GetResult().Id);
-        _shop = new SiteId(manager.CreateAsync("Shop", "shop", "en", Token).GetAwaiter().GetResult().Id);
-        _hosts.Sites["shop.example.com"] = _shop;
+            var manager = scope.ServiceProvider.GetRequiredService<SiteManager>();
+            _docs = new SiteId(manager.CreateAsync("Docs", "docs", "fr", Token).GetAwaiter().GetResult().Id);
+            _blog = new SiteId(manager.CreateAsync("Blog", "blog", "en", Token).GetAwaiter().GetResult().Id);
+            _shop = new SiteId(manager.CreateAsync("Shop", "shop", "en", Token).GetAwaiter().GetResult().Id);
+            _hosts.Sites["shop.example.com"] = _shop;
 
-        var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
-        context.AddRange(
-            new SiteLocale { SiteId = _docs.Value, Code = "en", Position = 1 },
-            new SiteLocale { SiteId = _docs.Value, Code = "fr-CA", Position = 2 },
-            new SiteLocale { SiteId = _docs.Value, Code = "de", Position = 3, Enabled = false });
-        context.SaveChanges();
+            var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+            context.AddRange(
+                new SiteLocale { SiteId = _docs.Value, Code = "en", Position = 1 },
+                new SiteLocale { SiteId = _docs.Value, Code = "fr-CA", Position = 2 },
+                new SiteLocale { SiteId = _docs.Value, Code = "de", Position = 3, Enabled = false });
+            context.SaveChanges();
+        }
+        catch
+        {
+            // xunit disposes no test class whose constructor throws, and the database would outlive the test.
+            Dispose();
+            throw;
+        }
     }
 
     public void Dispose()
     {
-        _services.Dispose();
+        _services?.Dispose();
         _database.Dispose();
     }
 

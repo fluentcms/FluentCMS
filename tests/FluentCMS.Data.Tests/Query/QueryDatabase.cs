@@ -90,13 +90,22 @@ internal sealed class QueryDatabase : IDisposable
     public QueryDatabase(Action<FluentCmsBuilder>? configure = null, SchemaModel? schema = null)
     {
         _schema = schema ?? Schema;
-        _services = _database.CreateServices(_schema, configure);
-        _scope = _services.CreateScope();
-        Context = _scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+        try
+        {
+            _services = _database.CreateServices(_schema, configure);
+            _scope = _services.CreateScope();
+            Context = _scope.ServiceProvider.GetRequiredService<CmsDbContext>();
 
-        // Creating the tables of CmsDbContext would skip the system tables, because they are excluded from its migrations.
-        _database.CreateSystemTables(Services.GetRequiredService<SystemDbContext>());
-        Context.GetService<IRelationalDatabaseCreator>().CreateTables();
+            // Creating the tables of CmsDbContext would skip the system tables, because they are excluded from its migrations.
+            _database.CreateSystemTables(Services.GetRequiredService<SystemDbContext>());
+            Context.GetService<IRelationalDatabaseCreator>().CreateTables();
+        }
+        catch
+        {
+            // xunit disposes no test class whose constructor throws, and the database would outlive the test.
+            Dispose();
+            throw;
+        }
     }
 
     public CmsDbContext Context { get; }
@@ -263,8 +272,8 @@ internal sealed class QueryDatabase : IDisposable
 
     public void Dispose()
     {
-        _scope.Dispose();
-        _services.Dispose();
+        _scope?.Dispose();
+        _services?.Dispose();
         _database.Dispose();
     }
 

@@ -2,6 +2,7 @@ using FluentCMS.Content;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.Localization;
 using FluentCMS.Core.Storage;
+using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Schema;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -246,7 +247,7 @@ public sealed class ContentServiceReadTests : IDisposable
         var count = await trips.CountAsync(() => database.AsAsync(Editor, services => services.GetRequiredService<IContentService>().CountAsync("article", new CountOptions { Status = QueryStatus.Draft }, Token)));
 
         count.ShouldBe(2);
-        var reads = trips.Sent.Where(sql => sql.Contains("\"cms_document\"", StringComparison.Ordinal) || sql.Contains("\"cms_reference\"", StringComparison.Ordinal)).ToList();
+        var reads = trips.Sent.Where(sql => sql.Contains(TestProvider.Quote("cms_document"), StringComparison.Ordinal) || sql.Contains(TestProvider.Quote("cms_reference"), StringComparison.Ordinal)).ToList();
         reads.ShouldHaveSingleItem().ShouldContain("COUNT(");
     }
 

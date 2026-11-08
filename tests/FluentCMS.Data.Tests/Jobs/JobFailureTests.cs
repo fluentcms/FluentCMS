@@ -149,7 +149,7 @@ public sealed class JobFailureTests : IDisposable
 
         _faults.Fail(command =>
         {
-            if (!command.CommandText.Contains("\"lease_until\"", StringComparison.Ordinal))
+            if (!command.CommandText.Contains(TestProvider.Quote("lease_until"), StringComparison.Ordinal))
             {
                 return false;
             }
@@ -248,9 +248,13 @@ public sealed class JobFailureTests : IDisposable
         _fixture.ShouldHaveRecorded(id, (1, JobAttemptOutcome.LeaseExpired), (2, JobAttemptOutcome.Succeeded));
     }
 
+    // The insert of the attempt, and on SQLite the select that its claim begins with.
+    public static TheoryData<string> ClaimCommands => TestProvider.IsSqlite
+        ? new() { "INSERT INTO \"cms_job_attempt\"", "SELECT \"c\".\"id\"" }
+        : new() { $"INSERT INTO {TestProvider.Quote("cms_job_attempt")}" };
+
     [Theory]
-    [InlineData("INSERT INTO \"cms_job_attempt\"")]
-    [InlineData("SELECT \"c\".\"id\"")]
+    [MemberData(nameof(ClaimCommands))]
     public async Task AFailedClaimDoesNotUseUpAnAttempt(string failingCommand)
     {
         var id = await _fixture.EnqueueAsync(options: new JobOptions { MaxAttempts = 1 });

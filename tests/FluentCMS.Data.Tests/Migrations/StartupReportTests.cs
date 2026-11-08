@@ -21,7 +21,7 @@ public sealed class StartupReportTests : IDisposable
 
     public void Dispose() => _database.Dispose();
 
-    [Fact]
+    [SqliteFact("schema sync, which only SQLite supports")]
     public async Task ContentMigrationsThatSchemaSyncLeavesAloneArePending()
     {
         using var host = _database.CreateHost(ArticleSchemas.Titled, Environments.Development, GeneratedMigrations.CompileFirst(ArticleSchemas.Titled));

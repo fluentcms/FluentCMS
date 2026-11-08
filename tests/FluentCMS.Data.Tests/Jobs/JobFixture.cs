@@ -146,9 +146,18 @@ internal sealed class JobFixture : IDisposable
 
     public JobFixture()
     {
-        Services = NewInstance();
-        using var scope = Services.CreateScope();
-        scope.ServiceProvider.GetRequiredService<SystemDbContext>().Database.Migrate();
+        try
+        {
+            Services = NewInstance();
+            using var scope = Services.CreateScope();
+            scope.ServiceProvider.GetRequiredService<SystemDbContext>().Database.Migrate();
+        }
+        catch
+        {
+            // xunit disposes no test class whose constructor throws, and the database would outlive the test.
+            Dispose();
+            throw;
+        }
     }
 
     public TestDatabase Database { get; } = TestDatabase.Create();

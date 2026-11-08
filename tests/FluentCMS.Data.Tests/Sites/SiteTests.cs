@@ -21,14 +21,23 @@ public sealed class SiteTests : IDisposable
 
     public SiteTests()
     {
-        _services = _database.CreateServices(SampleSchema.FromClasses().Build());
-        using var scope = _services.CreateScope();
-        scope.ServiceProvider.GetRequiredService<SystemDbContext>().Database.Migrate();
+        try
+        {
+            _services = _database.CreateServices(SampleSchema.FromClasses().Build());
+            using var scope = _services.CreateScope();
+            scope.ServiceProvider.GetRequiredService<SystemDbContext>().Database.Migrate();
+        }
+        catch
+        {
+            // xunit disposes no test class whose constructor throws, and the database would outlive the test.
+            Dispose();
+            throw;
+        }
     }
 
     public void Dispose()
     {
-        _services.Dispose();
+        _services?.Dispose();
         _database.Dispose();
     }
 

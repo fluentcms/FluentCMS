@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
 using FluentCMS.Core.Storage;
 using FluentCMS.Data.PostgreSql;
 using FluentCMS.Data.SqlServer;
@@ -35,6 +36,27 @@ public static class TestProvider
         PostgreSql => "PostgresException",
         _ => "SqlException",
     };
+
+    // How ToQueryString lists a parameter above the statement.
+    public static string ParameterLinePrefix => Name switch
+    {
+        Sqlite => ".param",
+        PostgreSql => "-- @",
+        _ => "DECLARE @",
+    };
+
+    // An identifier as the run's provider writes it in the SQL that EF builds, for a test that recognises a command.
+    // PostgreSQL quotes only the names that need it, and these tests name none of those.
+    public static string Quote(string identifier) => Name switch
+    {
+        Sqlite => $"\"{identifier}\"",
+        PostgreSql => identifier,
+        _ => $"[{identifier}]",
+    };
+
+    // Whether a command EF built deletes rows of the table. SQL Server names the alias first: DELETE FROM [c] FROM [table] AS [c].
+    public static bool IsDeleteFrom(string sql, string table) =>
+        Regex.IsMatch(sql, $@"^DELETE FROM {(IsSqlServer ? @"\[\w+\]\s+FROM " : "")}{Regex.Escape(Quote(table))}(\s|$)");
 
     // The run's provider for work that never opens a connection, such as scaffolding a migration.
     public static IDataProvider Offline() => Name switch

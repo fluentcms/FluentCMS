@@ -92,7 +92,7 @@ public sealed class JsonFilterTests : IDisposable
         Ids(row => _dialect.HasBlock(Sections(row), Bind("video"))).ShouldBeEmpty();
     }
 
-    [Fact]
+    [SqliteFact("the SQL text that SQLite is sent")]
     public void HasBlockTranslatesToExistsOverJsonEach()
     {
         var sql = Filter(row => _dialect.HasBlock(Sections(row), Bind("hero"))).ToQueryString();
@@ -293,7 +293,7 @@ public sealed class JsonFilterTests : IDisposable
             _dialect.HasBlock(Sections(row), Bind("hero"))));
 
         query.Select(row => EF.Property<Guid>(row, "document_id")).ToList().ShouldBe([_hero]);
-        query.ToQueryString().ShouldContain("\"c\".\"state\" = 1");
+        query.ToQueryString().ShouldMatch(@"state[""\]]? = (CAST\()?1\b");
     }
 
     [Fact]
@@ -302,7 +302,7 @@ public sealed class JsonFilterTests : IDisposable
         var sql = Filter(row => _dialect.AnyBlock(Sections(row), Bind("hero"), block =>
             _dialect.ScalarEquals(block, "heading", JsonScalarType.Text, Bind("Welcome")))).ToQueryString();
 
-        sql.ShouldContain(".param set");
+        sql.ShouldContain(TestProvider.ParameterLinePrefix);
         sql.ShouldNotContain("= 'Welcome'");
     }
 

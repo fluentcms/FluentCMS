@@ -209,7 +209,7 @@ public sealed class JobRetentionTests : IDisposable
         var seen = 0;
         faults.Fail(command =>
         {
-            var batch = command.CommandText.StartsWith("DELETE FROM \"cms_job\"", StringComparison.Ordinal) && Interlocked.Increment(ref seen) == 2;
+            var batch = TestProvider.IsDeleteFrom(command.CommandText, "cms_job") && Interlocked.Increment(ref seen) == 2;
             return batch;
         });
         using var small = _fixture.NewInstance(configure: options => options.RetentionBatchSize = 2, faults: faults);
@@ -391,7 +391,7 @@ public sealed class JobRetentionTests : IDisposable
     {
         public override ValueTask<int> NonQueryExecutedAsync(DbCommand command, CommandExecutedEventData eventData, int result, CancellationToken cancellationToken = default)
         {
-            if (command.CommandText.StartsWith("DELETE FROM \"cms_job\"", StringComparison.Ordinal))
+            if (TestProvider.IsDeleteFrom(command.CommandText, "cms_job"))
             {
                 lock (deletes)
                 {

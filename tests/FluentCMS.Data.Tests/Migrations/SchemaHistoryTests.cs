@@ -114,7 +114,7 @@ public sealed class SchemaHistoryTests : IDisposable
         (await RowsAsync(host)).ShouldHaveSingleItem().Hash.ShouldBe(SchemaSnapshot.Of(ArticleSchemas.Titled).Hash);
     }
 
-    [Fact]
+    [SqliteFact("schema sync, which only SQLite supports")]
     public async Task DevelopmentSyncRecordsTheSchemaOnceAndNoMore()
     {
         using var host = _database.CreateHost(ArticleSchemas.Titled, Environments.Development);
@@ -254,7 +254,7 @@ public sealed class SchemaHistoryTests : IDisposable
         }
     }
 
-    [Fact]
+    [SqliteFact("schema sync, which only SQLite supports")]
     public async Task ARuntimeSyncIsRecorded()
     {
         using var host = _database.CreateHost(ArticleSchemas.Titled, Environments.Development);
