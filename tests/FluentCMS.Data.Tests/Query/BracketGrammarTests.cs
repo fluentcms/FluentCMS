@@ -15,6 +15,7 @@ public class BracketGrammarTests
         + "&filter[author.name][contains]=amir"
         + "&filter[or][0][title][startsWith]=A&filter[or][1][title][startsWith]=B"
         + "&filter[sections][hasBlock]=hero"
+        + "&q=dotnet"
         + "&sort=-publishedOn,title"
         + "&page=2&pageSize=20"
         + "&fields=title,slug,author.name"
@@ -39,6 +40,7 @@ public class BracketGrammarTests
             new FieldFilter("author.name", Contains, "amir"),
             new Or(new FieldFilter("title", StartsWith, "A"), new FieldFilter("title", StartsWith, "B")),
             new FieldFilter("sections", HasBlock, "hero")));
+        query.Search.ShouldBe("dotnet");
         query.Sort.ShouldBe([new SortField("publishedOn", Descending: true), new SortField("title")]);
         query.Page.ShouldBe(new PageRequest { Number = 2, Size = 20, WithTotal = false });
         query.Select.ShouldBe(["title", "slug", "author.name"]);
@@ -81,6 +83,8 @@ public class BracketGrammarTests
     [InlineData("filter[and][0][a][eq]=1&filter[and][1][a][eq]=2")]
     [InlineData("filter[title][eq]=a%20b%26c%3Dd%2Be")]
     [InlineData("filter[title][in]=a%5C,b,c%5C%5Cd")]
+    [InlineData("filter[title][eq]=a&q=net%20core%26more")]
+    [InlineData("q=")]
     [InlineData("sort=-a,b")]
     [InlineData("page=2&pageSize=20")]
     [InlineData("pageSize=2")]
@@ -253,6 +257,7 @@ public class BracketGrammarTests
     private static void ShouldBeTheSameQuery(ContentQuery actual, ContentQuery expected)
     {
         actual.Filter.ShouldBe(expected.Filter);
+        actual.Search.ShouldBe(expected.Search);
         actual.Sort.ShouldBe(expected.Sort);
         actual.Page.ShouldBe(expected.Page);
         actual.Cursor.ShouldBe(expected.Cursor);

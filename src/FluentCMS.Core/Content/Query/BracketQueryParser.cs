@@ -90,6 +90,7 @@ internal static class BracketQueryParser
         var query = new ContentQuery
         {
             Filter = filters.Count == 0 ? null : Node(filters, 0, 0, keepSources, errors),
+            Search = Take(single, "q"),
             Sort = Sort(single, errors),
             Page = Page(single, errors),
             Cursor = Take(single, "cursor"),

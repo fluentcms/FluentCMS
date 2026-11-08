@@ -8,6 +8,13 @@ public sealed record ContentQuery
     /// <summary>The filter, or <see langword="null"/> for every entry.</summary>
     public ContentFilter? Filter { get; init; }
 
+    /// <summary>
+    /// The text to search for, or <see langword="null"/> for no search. The <see cref="Providers.ISearchIndex"/> finds the
+    /// matching entries and the query is narrowed to them; the filter, row rule, site, locale, status and sort still apply.
+    /// A query with a search is refused when no index fills the slot.
+    /// </summary>
+    public string? Search { get; init; }
+
     /// <summary>The sort keys, most significant first. The document id is always the final key.</summary>
     public IReadOnlyList<SortField> Sort { get; init; } = [];
 

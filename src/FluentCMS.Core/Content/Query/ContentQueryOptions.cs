@@ -31,6 +31,11 @@ public sealed class ContentQueryOptions
     [Range(1, int.MaxValue)]
     public int MaxPopulatedEntries { get; init; } = 1000;
 
+    // The most entries a search asks the index for: a list with q is the best of these matches that the rest of the
+    // query lets through.
+    [Range(1, int.MaxValue)]
+    public int MaxSearchResults { get; init; } = 1000;
+
     internal void Validate()
     {
         if (DefaultPageSize > MaxPageSize)

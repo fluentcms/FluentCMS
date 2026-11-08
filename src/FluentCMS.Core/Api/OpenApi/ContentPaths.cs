@@ -89,6 +89,7 @@ internal sealed class ContentPaths(SchemaModel schema, ContentSchemas schemas)
 
         if (list)
         {
+            parameters.Add(SharedComponents.ParameterRef("q"));
             parameters.Add(SharedComponents.ParameterRef($"sort-{type.Name}"));
             foreach (var name in SharedComponents.PageParameters)
             {
