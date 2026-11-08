@@ -204,10 +204,10 @@ internal sealed class ContentPaths(SchemaModel schema, ContentSchemas schemas)
                 ["properties"] = new JsonObject
                 {
                     ["items"] = new JsonObject { ["type"] = "array", ["items"] = entry },
-                    ["total"] = new JsonObject { ["type"] = "integer", ["format"] = "int64", ["description"] = "Left out with withTotal=false or a cursor." },
+                    ["total"] = new JsonObject { ["type"] = "integer", ["format"] = "int64", ["description"] = "Left out when not counted (see withTotal) and on a page read by cursor." },
                     ["page"] = new JsonObject { ["type"] = "integer", ["format"] = "int32" },
                     ["pageSize"] = new JsonObject { ["type"] = "integer", ["format"] = "int32" },
-                    ["nextCursor"] = new JsonObject { ["type"] = "string", ["description"] = "The cursor of the next page, when there is one." },
+                    ["nextCursor"] = new JsonObject { ["type"] = "string", ["description"] = "The cursor of the next page, when there is one. Send it back as it came: it is neither opaque nor signed, and its form may change." },
                 },
                 ["required"] = new JsonArray("items", "pageSize"),
             },

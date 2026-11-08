@@ -51,7 +51,7 @@ internal static class DeliveryEndpoints
                     : throw NotFound("type", $"The {type} singleton has no entry.");
             }
 
-            var query = Parse(httpContext, api, single: false);
+            var query = CountedOnlyIfAsked(httpContext.Request, Parse(httpContext, api, single: false));
             var result = await content.QueryAsync(type, query, httpContext.RequestAborted);
             return DeliveryResponse.List(ContentJson.List(result), found, IsDraft(query));
         });
@@ -130,6 +130,10 @@ internal static class DeliveryEndpoints
 
         return query;
     }
+
+    // A total is a second query on every list, which a site rarely shows, so Delivery counts only on withTotal=true.
+    private static ContentQuery CountedOnlyIfAsked(HttpRequest request, ContentQuery query) =>
+        request.Query.ContainsKey("withTotal") ? query : query with { Page = (query.Page ?? new PageRequest()) with { WithTotal = false } };
 
     private static bool IsDraft(ContentQuery query) => query.Status == QueryStatus.Draft;
 

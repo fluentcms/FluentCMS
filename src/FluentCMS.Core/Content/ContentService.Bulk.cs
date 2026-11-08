@@ -18,7 +18,11 @@ internal sealed partial class ContentService
     // are skipped; a filter that reaches this many of them for each one the cap allows is refused rather than walked.
     private const int SkippedPerCapped = 10;
 
-    public async Task<BulkResult> BulkAsync(string type, BulkRequest request, CancellationToken cancellationToken = default)
+    // Held as one write, so that no other write of the scope can move _commits between an entry and its result.
+    public Task<BulkResult> BulkAsync(string type, BulkRequest request, CancellationToken cancellationToken = default) =>
+        OneAtATimeAsync(() => RunBulkAsync(type, request, cancellationToken));
+
+    private async Task<BulkResult> RunBulkAsync(string type, BulkRequest request, CancellationToken cancellationToken)
     {
         using var span = Span("bulk", type);
 

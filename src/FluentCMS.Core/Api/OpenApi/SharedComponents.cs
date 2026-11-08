@@ -183,8 +183,8 @@ internal static class SharedComponents
         yield return ("pageSize", Query("pageSize", new JsonObject { ["type"] = "integer", ["minimum"] = 1 }));
         yield return ("offset", Query("offset", new JsonObject { ["type"] = "integer", ["minimum"] = 0 }, "How many entries to skip, with limit."));
         yield return ("limit", Query("limit", new JsonObject { ["type"] = "integer", ["minimum"] = 1 }));
-        yield return ("cursor", Query("cursor", String(), "The nextCursor of the previous page."));
-        yield return ("withTotal", Query("withTotal", new JsonObject { ["type"] = "boolean" }, "false leaves the total out, which saves a count."));
+        yield return ("cursor", Query("cursor", String(), "The nextCursor of the previous page, sent back as it came. A cursor is neither opaque nor signed, and its form may change, so do not read or build one."));
+        yield return ("withTotal", Query("withTotal", new JsonObject { ["type"] = "boolean" }, "Whether the list carries its total, which costs a count. Delivery counts only with true, the Management API unless it is false."));
         yield return ("if-match", Header("If-Match", required: true, "The version read, as its ETag, such as \"7\"; \"0\" adds a locale the entry does not have."));
         yield return ("if-match-optional", Header("If-Match", required: false, "The version read, as its ETag, such as \"7\". Without it, or with *, the current version is used."));
     }

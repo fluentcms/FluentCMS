@@ -876,6 +876,8 @@ FluentCMS.Hooks.HookContext<T>.ChangedPaths.get -> System.Collections.Generic.IR
 FluentCMS.Hooks.HookContext<T>.Entry.get -> T
 FluentCMS.Hooks.HookContext<T>.HookContext(FluentCMS.Content.OperationContext! operation, T entry, T? previous, System.Collections.Generic.IReadOnlyList<string!>! changedPaths) -> void
 FluentCMS.Hooks.HookContext<T>.IsCancelled.get -> bool
+FluentCMS.Hooks.HookContext<T>.Locales.get -> System.Collections.Generic.IReadOnlyList<string!>!
+FluentCMS.Hooks.HookContext<T>.Locales.init -> void
 FluentCMS.Hooks.HookContext<T>.Operation.get -> FluentCMS.Content.OperationContext!
 FluentCMS.Hooks.HookContext<T>.Previous.get -> T?
 FluentCMS.Hooks.HookOrderAttribute

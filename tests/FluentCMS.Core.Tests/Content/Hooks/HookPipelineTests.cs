@@ -605,4 +605,56 @@ public class HookPipelineTests
 
         entry.Count.ShouldBe(1);
     }
+
+    [Fact]
+    public async Task AHookSeesTheEntrysOwnLocaleOrEveryLocaleOfAWholeEntryOperation()
+    {
+        var log = new Log();
+        var pipeline = HookFixtures.Pipeline(services =>
+        {
+            services.AddSingleton(log);
+            services.AddSingleton<IBeforeUpdateHook<ContentDocument>, CaptureUpdate>();
+        });
+
+        await HookFixtures.RunAsync(pipeline, HookKind.BeforeUpdate, new ContentDocument { ["locale"] = "fr", ["title"] = "Un" });
+        await pipeline.RunAsync(HookKind.BeforeUpdate, HookFixtures.ArticleType, HookFixtures.Operation, Doc(), null, ["en", "fr"], CancellationToken.None);
+        await HookFixtures.RunAsync(pipeline, HookKind.BeforeUpdate, Doc());
+
+        log.Contexts.Select(context => string.Join(',', context.Locales)).ShouldBe(["fr", "en,fr", ""]);
+        new HookContext<ContentDocument>(HookFixtures.Operation, Doc(), null, []).Locales.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task AScopeResolvesAndOrdersTheHooksOfAKindOnce()
+    {
+        var log = new Log();
+        var resolved = new Dictionary<string, int>(StringComparer.Ordinal);
+        var pipeline = HookFixtures.Pipeline(services =>
+        {
+            services.AddSingleton(log);
+            services.AddTransient<IBeforeCreateHook<ContentDocument>>(_ => Count(new Default(log)));
+            services.AddTransient<IBeforeCreateHook<ContentDocument>>(_ => Count(new Early(log)));
+            services.AddTransient<IAfterCreateHook<ContentDocument>>(_ => Count(new RejectingAfter()));
+        });
+
+        T Count<T>(T hook)
+        {
+            resolved[typeof(T).Name] = resolved.GetValueOrDefault(typeof(T).Name) + 1;
+            return hook;
+        }
+
+        for (var round = 0; round < 3; round++)
+        {
+            await HookFixtures.RunAsync(pipeline, HookKind.BeforeCreate, Doc());
+        }
+
+        await Should.ThrowAsync<HookRejectedException>(() => HookFixtures.RunAsync(pipeline, HookKind.AfterCreate, Doc()).AsTask());
+
+        log.Entries.ShouldBe(["early", "default", "early", "default", "early", "default"]);
+        resolved.ShouldBe(new Dictionary<string, int> { ["Default"] = 1, ["Early"] = 1, ["RejectingAfter"] = 1 }, ignoreOrder: true);
+
+        var nextScope = HookFixtures.Pipeline(services => services.AddTransient<IBeforeCreateHook<ContentDocument>>(_ => Count(new Default(log))));
+        await HookFixtures.RunAsync(nextScope, HookKind.BeforeCreate, Doc());
+        resolved["Default"].ShouldBe(2);
+    }
 }

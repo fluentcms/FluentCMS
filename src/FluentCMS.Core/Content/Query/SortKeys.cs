@@ -78,6 +78,8 @@ internal static class SortKeys
         return Expression.OrElse(strict, Expression.AndAlso(Tie(keys[index], values[index]), After(keys, values, index + 1)));
     }
 
+    // Base64url of the sort values as JSON, neither opaque nor signed. That leaks nothing, since a value the cursor holds was
+    // in the page that gave it and decoding binds every value as a parameter, but clients are told not to read or build one.
     public static string Encode(IReadOnlyList<SortKey> keys, IReadOnlyList<object?> values)
     {
         var buffer = new ArrayBufferWriter<byte>();

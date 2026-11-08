@@ -35,6 +35,13 @@ public sealed class HookContext<T>
     /// <summary>The paths of the fields that differ between <see cref="Previous"/> and <see cref="Entry"/>, such as <c>title</c>, <c>seo.metaTitle</c> or <c>sections[2].heading</c>. A list whose length changed is reported as the list.</summary>
     public IReadOnlyList<string> ChangedPaths { get; }
 
+    /// <summary>
+    /// The locales the operation acts on. A delete or a restore acts on every locale of the entry, while <see cref="Entry"/>
+    /// holds the values of one of them; any other operation acts on the one locale of <see cref="Entry"/>. A type that is
+    /// not localized has the one locale <c>""</c>, as in its events.
+    /// </summary>
+    public IReadOnlyList<string> Locales { get; init; } = [];
+
     /// <summary>Whether <see cref="Cancel"/> was called.</summary>
     public bool IsCancelled { get; private set; }
 

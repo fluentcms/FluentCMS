@@ -48,17 +48,30 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
     public Task<ContentQueryResult> ExecuteWithRuleAsync(string typeName, ContentQuery query, ContentFilter? rule, CancellationToken cancellationToken) =>
         ExecuteAsync(typeName, query, everySystemField: false, trashed: false, cancellationToken, rule);
 
+    // The number of entries a list would have, with the filter, the row rule and the site of a list, and no page or reference read.
+    public async Task<long> CountAsync(string typeName, ContentQuery query, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+
+        var compiled = Compile(await access.ForQueryAsync(query.Site, query.Locale ?? "", cancellationToken), typeName, query with { Page = null, Cursor = null });
+        return await TimedAsync(compiled, () => compiled.Filtered.LongCountAsync(cancellationToken));
+    }
+
     private async Task<ContentQueryResult> ExecuteAsync(string typeName, ContentQuery query, bool everySystemField, bool trashed, CancellationToken cancellationToken, ContentFilter? rule = null)
     {
         ArgumentNullException.ThrowIfNull(query);
 
         var compiled = Compile(await access.ForQueryAsync(query.Site, query.Locale ?? "", cancellationToken), typeName, query, everySystemField, trashed, rule);
+        return await TimedAsync(compiled, () => RunAsync(compiled, cancellationToken));
+    }
 
-        // Timed from here, so that a query refused as invalid is not recorded, and tagged with the type the schema resolved.
+    // Timed from here, so that a query refused as invalid is not recorded, and tagged with the type the schema resolved.
+    private static async Task<T> TimedAsync<T>(CompiledQuery compiled, Func<Task<T>> run)
+    {
         var started = Stopwatch.GetTimestamp();
         try
         {
-            return await RunAsync(compiled, cancellationToken);
+            return await run();
         }
         finally
         {
@@ -193,9 +206,12 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         }
 
         var skip = page.Number is { } number ? (number - 1L) * size : page.Offset ?? 0L;
-        if (skip > int.MaxValue)
+        if (skip > options.MaxOffset)
         {
-            scope.Report("page", QueryErrorCodes.LimitExceeded, "The page is too far into the list.");
+            scope.Report(
+                page.Number is null ? "offset" : "page",
+                QueryErrorCodes.LimitExceeded,
+                $"A page may skip at most {options.MaxOffset} entries. Read further with the cursor of the previous page.");
             skip = 0;
         }
 

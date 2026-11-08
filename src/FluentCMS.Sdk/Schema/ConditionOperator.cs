@@ -3,10 +3,10 @@ namespace FluentCMS.Schema;
 /// <summary>The operation a <see cref="Condition"/> performs.</summary>
 public enum ConditionOperator
 {
-    /// <summary>The field equals a single value.</summary>
+    /// <summary>The field equals a single value. A list equals a value it contains, and an empty list equals <see langword="null"/>.</summary>
     Equal = 1,
 
-    /// <summary>The field equals one of several values.</summary>
+    /// <summary>The field equals one of several values, as <see cref="Equal"/> compares them.</summary>
     In = 2,
 
     /// <summary>The field has no value.</summary>
