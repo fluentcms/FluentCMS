@@ -1,7 +1,8 @@
+using System.Data.Common;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Storage;
+using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Jobs;
-using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
@@ -148,7 +149,7 @@ public sealed class JobFailureTests : IDisposable
 
         _faults.Fail(command =>
         {
-            if (!command.CommandText.Contains("\"lease_until\"", StringComparison.Ordinal))
+            if (!command.CommandText.Contains(TestProvider.Quote("lease_until"), StringComparison.Ordinal))
             {
                 return false;
             }
@@ -247,9 +248,13 @@ public sealed class JobFailureTests : IDisposable
         _fixture.ShouldHaveRecorded(id, (1, JobAttemptOutcome.LeaseExpired), (2, JobAttemptOutcome.Succeeded));
     }
 
+    // The insert of the attempt, and on SQLite the select that its claim begins with.
+    public static TheoryData<string> ClaimCommands => TestProvider.IsSqlite
+        ? new() { "INSERT INTO \"cms_job_attempt\"", "SELECT \"c\".\"id\"" }
+        : new() { $"INSERT INTO {TestProvider.Quote("cms_job_attempt")}" };
+
     [Theory]
-    [InlineData("INSERT INTO \"cms_job_attempt\"")]
-    [InlineData("SELECT \"c\".\"id\"")]
+    [MemberData(nameof(ClaimCommands))]
     public async Task AFailedClaimDoesNotUseUpAnAttempt(string failingCommand)
     {
         var id = await _fixture.EnqueueAsync(options: new JobOptions { MaxAttempts = 1 });
@@ -284,7 +289,7 @@ public sealed class JobFailureTests : IDisposable
         _fixture.Job(id).Attempts.ShouldBe(0);
     }
 
-    [Fact]
+    [SqliteFact("ids that SQLite stores as text")]
     public async Task ARowWithALowercaseIdDoesNotStopTheQueue()
     {
         const string Lowercase = "018f0000-0000-7000-8000-00000000abcd";
@@ -301,7 +306,7 @@ public sealed class JobFailureTests : IDisposable
         _fixture.Database.ReadStrings("select id from cms_job where id = upper(id)").Count.ShouldBe(2);
     }
 
-    [Fact]
+    [SqliteFact("ids that SQLite stores as text")]
     public async Task ARowWhoseIdIsNotAGuidDoesNotStopTheQueue()
     {
         AddRawRow("not-a-guid");
@@ -386,7 +391,7 @@ public sealed class JobFailureTests : IDisposable
         var recurring = _fixture.NewInstance(faults: _faults).GetRequiredService<RecurringJobs>();
         var brokenDue = _fixture.Recurring("broken").NextRunAt;
         _faults.Fail(command => command.CommandText.StartsWith("UPDATE", StringComparison.Ordinal)
-            && command.Parameters.Cast<SqliteParameter>().Any(parameter => Equals(parameter.Value, "broken")));
+            && command.Parameters.Cast<DbParameter>().Any(parameter => Equals(parameter.Value, "broken")));
 
         await recurring.FireDueAsync(Token);
 

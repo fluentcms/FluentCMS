@@ -3,6 +3,7 @@ using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Tests.Schema;
+using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -11,26 +12,35 @@ using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
 
-namespace FluentCMS.Data.Tests.Sqlite;
+namespace FluentCMS.Data.Tests.Authorization;
 
 public sealed class RoleTests : IDisposable
 {
     private static readonly Guid SiteA = Guid.Parse("0192e0a0-0000-7000-8000-0000000000a1");
     private static readonly Guid SiteB = Guid.Parse("0192e0a0-0000-7000-8000-0000000000b2");
 
-    private readonly SqliteFileDatabase _database = new();
+    private readonly TestDatabase _database = TestDatabase.Create();
     private readonly ServiceProvider _services;
 
     public RoleTests()
     {
-        _services = _database.CreateServices(SampleSchema.FromClasses().Build());
-        using var scope = _services.CreateScope();
-        scope.ServiceProvider.GetRequiredService<SystemDbContext>().Database.Migrate();
+        try
+        {
+            _services = _database.CreateServices(SampleSchema.FromClasses().Build());
+            using var scope = _services.CreateScope();
+            scope.ServiceProvider.GetRequiredService<SystemDbContext>().Database.Migrate();
+        }
+        catch
+        {
+            // xunit disposes no test class whose constructor throws, and the database would outlive the test.
+            Dispose();
+            throw;
+        }
     }
 
     public void Dispose()
     {
-        _services.Dispose();
+        _services?.Dispose();
         _database.Dispose();
     }
 
@@ -112,7 +122,7 @@ public sealed class RoleTests : IDisposable
     [Fact]
     public void TheMigrationRaisesTheStampOfALiveAuthorRoleRelativeToWhereItIs()
     {
-        using var database = new SqliteFileDatabase();
+        using var database = TestDatabase.Create();
         using var services = database.CreateServices();
         using (var scope = services.CreateScope())
         {

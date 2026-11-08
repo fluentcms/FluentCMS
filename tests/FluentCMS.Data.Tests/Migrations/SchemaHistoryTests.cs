@@ -5,7 +5,7 @@ using FluentCMS.Core.Schema;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Tests.Schema;
-using FluentCMS.Data.Tests.Sqlite;
+using FluentCMS.Data.Tests.Providers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -22,7 +22,7 @@ public sealed class SchemaHistoryTests : IDisposable
 
     private static readonly Dictionary<string, string?> NoMigrationOnStartup = new() { ["FluentCms:Database:MigrateOnStartup"] = "false" };
 
-    private readonly SqliteFileDatabase _database = new();
+    private readonly TestDatabase _database = TestDatabase.Create();
 
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
@@ -114,7 +114,7 @@ public sealed class SchemaHistoryTests : IDisposable
         (await RowsAsync(host)).ShouldHaveSingleItem().Hash.ShouldBe(SchemaSnapshot.Of(ArticleSchemas.Titled).Hash);
     }
 
-    [Fact]
+    [SqliteFact("schema sync, which only SQLite supports")]
     public async Task DevelopmentSyncRecordsTheSchemaOnceAndNoMore()
     {
         using var host = _database.CreateHost(ArticleSchemas.Titled, Environments.Development);
@@ -215,7 +215,7 @@ public sealed class SchemaHistoryTests : IDisposable
 
         var warning = logs.Warnings.ShouldHaveSingleItem();
         warning.ShouldContain("not recorded");
-        warning.ShouldContain("SqliteException");
+        warning.ShouldContain(TestProvider.DriverException);
     }
 
     [Fact]
@@ -231,7 +231,7 @@ public sealed class SchemaHistoryTests : IDisposable
 
         var warning = logs.Warnings.ShouldHaveSingleItem();
         warning.ShouldContain("could not be compared");
-        warning.ShouldContain("SqliteException");
+        warning.ShouldContain(TestProvider.DriverException);
     }
 
     [Fact]
@@ -254,7 +254,7 @@ public sealed class SchemaHistoryTests : IDisposable
         }
     }
 
-    [Fact]
+    [SqliteFact("schema sync, which only SQLite supports")]
     public async Task ARuntimeSyncIsRecorded()
     {
         using var host = _database.CreateHost(ArticleSchemas.Titled, Environments.Development);

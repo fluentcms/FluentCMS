@@ -3,6 +3,7 @@ using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Tests.Schema;
+using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Data.Tests.Storage;
 using FluentCMS.Publishing;
 using FluentCMS.Schema;
@@ -49,26 +50,26 @@ public sealed class QueryIndexTests : IDisposable
 
     public void Dispose() => _database.Dispose();
 
-    [Fact]
+    [SqliteFact("SQLite's query plans")]
     public void ALocalizedLookupSeeksInTheUniqueIndexWithTheSiteAndTheLocale()
     {
         Plan("post", $"filter[slug][eq]=s5&locale=en&site={QueryDatabase.SiteA}").ShouldContain("ux_cms_post_i18n_slug (site_id=? AND locale=? AND slug=?)");
     }
 
-    [Fact]
+    [SqliteFact("SQLite's query plans")]
     public void ANonLocalizedLookupSeeksInTheUniqueIndexWithTheSite()
     {
         Plan("page", $"filter[path][eq]=/p5&site={QueryDatabase.SiteA}").ShouldContain("ux_cms_page_path (site_id=? AND path=?)");
     }
 
-    [Fact]
+    [SqliteFact("SQLite's query plans")]
     public void AGlobalTypeSeeksInAnIndexWithoutTheSite()
     {
         Plan("label", "filter[name][eq]=l5").ShouldContain("ux_cms_label_name (name=?)");
         Plan("note", "filter[slug][eq]=n5&locale=en").ShouldContain("ux_cms_note_i18n_slug (locale=? AND slug=?)");
     }
 
-    [Fact]
+    [SqliteFact("SQLite's query plans")]
     public void ADraftLookupDoesNotUseThePublishedIndex()
     {
         var plan = Plan("post", $"filter[slug][eq]=s5&locale=en&status=draft&site={QueryDatabase.SiteA}", new QueryAccess());
@@ -76,7 +77,7 @@ public sealed class QueryIndexTests : IDisposable
         plan.ShouldNotContain("ux_cms_post_i18n_slug");
     }
 
-    [Fact]
+    [SqliteFact("SQLite's query plans")]
     public async Task TheLookupStillReturnsOnlyTheEntryOfTheSite()
     {
         var other = AddPost("s5", QueryDatabase.SiteB);

@@ -1,9 +1,8 @@
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Tests.Schema;
 using FluentCMS.Data.PostgreSql;
-using FluentCMS.Data.Sqlite;
 using FluentCMS.Data.SqlServer;
-using FluentCMS.Data.Tests.Sqlite;
+using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Schema;
 using Microsoft.EntityFrameworkCore;
 using Shouldly;
@@ -13,7 +12,7 @@ namespace FluentCMS.Data.Tests.Migrations;
 
 public sealed class ContentMigrationGeneratorTests : IDisposable
 {
-    private readonly SqliteFileDatabase _database = new();
+    private readonly TestDatabase _database = TestDatabase.Create();
 
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
@@ -64,7 +63,7 @@ public sealed class ContentMigrationGeneratorTests : IDisposable
     {
         var migrations = GeneratedMigrations.CompileFirst(ArticleSchemas.Titled);
 
-        using (var checking = ContentMigrations.CreateContext(new SqliteDataProvider("Data Source=:memory:"), ArticleSchemas.WithSubtitle, migrations))
+        using (var checking = ContentMigrations.CreateContext(TestProvider.Offline(), ArticleSchemas.WithSubtitle, migrations))
         {
             checking.Database.HasPendingModelChanges().ShouldBeTrue();
         }

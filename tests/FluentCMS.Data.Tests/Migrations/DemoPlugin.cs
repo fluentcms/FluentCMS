@@ -1,4 +1,5 @@
 using FluentCMS.Core.Storage;
+using FluentCMS.Data.Tests.Providers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
@@ -17,12 +18,9 @@ internal sealed class DemoPlugin : IPluginMigrations
 
     public string Name => PluginName;
 
-    public static void Add(IServiceCollection services, string connectionString)
+    public static void Add(IServiceCollection services, TestDatabase database)
     {
-        services.AddDbContext<DemoPluginDbContext>(options =>
-            options.UseSqlite(connectionString, sqlite => sqlite
-                .MigrationsAssembly(typeof(DemoPluginDbContext).Assembly)
-                .MigrationsHistoryTable(HistoryTable)));
+        services.AddDbContext<DemoPluginDbContext>(options => database.UseDriver(options, typeof(DemoPluginDbContext).Assembly, HistoryTable));
         services.AddSingleton<IPluginMigrations, DemoPlugin>();
     }
 

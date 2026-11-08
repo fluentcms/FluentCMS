@@ -33,7 +33,7 @@ public sealed class MigrationProviderTests : IDisposable
     [InlineData(SqlServer)]
     public async Task AServerHostRefusesASqliteContentSetBeforeTouchingTheDatabase(string provider)
     {
-        using var host = ServerHost(provider, GeneratedMigrations.CompileFirst(ArticleSchemas.Titled));
+        using var host = ServerHost(provider, GeneratedMigrations.CompileFirst(ArticleSchemas.Titled, provider: Provider(Sqlite)));
 
         var exception = await Should.ThrowAsync<FluentCmsConfigurationException>(() => host.StartAsync(Token));
         var migrate = await Should.ThrowAsync<FluentCmsConfigurationException>(() => host.Services.GetRequiredService<MigrationRunner>().MigrateAsync(Token));

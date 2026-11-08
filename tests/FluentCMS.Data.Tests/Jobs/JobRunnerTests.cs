@@ -5,9 +5,10 @@ using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Storage;
 using FluentCMS.Data.Sqlite;
-using FluentCMS.Data.Tests.Sqlite;
+using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Jobs;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Shouldly;
@@ -44,17 +45,18 @@ public sealed class JobRunnerTests : IDisposable
     public async Task AHostStartsTheRunnerAfterMigratingAndStopsIt()
     {
         var ran = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        using var database = new SqliteFileDatabase();
+        using var database = TestDatabase.Create();
         var builder = Host.CreateEmptyApplicationBuilder(new HostApplicationBuilderSettings { EnvironmentName = "Production" });
         builder.Configuration["FluentCms:Security:AllowGeneratedSigningKey"] = "true";
         builder.Configuration["FluentCms:Security:AllowRequestOrigin"] = "true";
         builder.Configuration["FluentCms:Security:AllowUnencryptedKeyRing"] = "true";
+        builder.Configuration.AddInMemoryCollection(database.HostSettings);
         var probe = new JobProbe { Behavior = (_, _) => { ran.SetResult(); return Task.CompletedTask; } };
         builder.Services.AddSingleton(probe);
         builder.Services.AddSingleton(new SchemaBuilder().Build());
         builder.Services.AddFluentCms(cms =>
         {
-            database.UseSqlite(cms);
+            database.UseProvider(cms);
             cms.UseContentMigrations(typeof(CmsDbContext).Assembly);
             cms.Jobs.AddJob<ProbeJob, ProbePayload>(JobFixture.ProbeType);
             cms.Jobs.Options.PollInterval = QuickPoll;
@@ -71,11 +73,10 @@ public sealed class JobRunnerTests : IDisposable
     }
 
     [Theory]
-    [InlineData("delete")]
-    [InlineData("wal")]
+    [MemberData(nameof(TestProvider.JournalModes), MemberType = typeof(TestProvider))]
     public async Task TwoRunnersOnOneDatabaseNeverRunAJobTwice(string journalMode)
     {
-        _fixture.Database.Execute($"PRAGMA journal_mode = {journalMode}");
+        _fixture.Database.UseJournalMode(journalMode);
 
         const int Jobs = 60;
         var ids = new List<Guid>();
@@ -391,17 +392,18 @@ public sealed class JobRunnerTests : IDisposable
     [Fact]
     public async Task AReplacementRunnerIsWhatTheHostStarts()
     {
-        using var database = new SqliteFileDatabase();
+        using var database = TestDatabase.Create();
         var replacement = new ReplacementRunner();
         var builder = Host.CreateEmptyApplicationBuilder(new HostApplicationBuilderSettings { EnvironmentName = "Production" });
         builder.Configuration["FluentCms:Security:AllowGeneratedSigningKey"] = "true";
         builder.Configuration["FluentCms:Security:AllowRequestOrigin"] = "true";
         builder.Configuration["FluentCms:Security:AllowUnencryptedKeyRing"] = "true";
+        builder.Configuration.AddInMemoryCollection(database.HostSettings);
         builder.Services.AddSingleton<IJobRunner>(replacement);
         builder.Services.AddSingleton(new SchemaBuilder().Build());
         builder.Services.AddFluentCms(cms =>
         {
-            database.UseSqlite(cms);
+            database.UseProvider(cms);
             cms.UseContentMigrations(typeof(CmsDbContext).Assembly);
         });
 

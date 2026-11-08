@@ -1,14 +1,15 @@
 using System.Linq.Expressions;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Tests.Schema;
+using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Schema;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
-using static FluentCMS.Data.Tests.Sqlite.RowFilter;
+using static FluentCMS.Data.Tests.Query.RowFilter;
 
-namespace FluentCMS.Data.Tests.Sqlite;
+namespace FluentCMS.Data.Tests.Query;
 
 public sealed class JsonFilterTests : IDisposable
 {
@@ -23,7 +24,7 @@ public sealed class JsonFilterTests : IDisposable
             .Field("metadata", "json"))
         .Build();
 
-    private readonly SqliteFileDatabase _database = new();
+    private readonly TestDatabase _database = TestDatabase.Create();
     private readonly ServiceProvider _services;
     private readonly IServiceScope _scope;
     private readonly CmsDbContext _context;
@@ -91,7 +92,7 @@ public sealed class JsonFilterTests : IDisposable
         Ids(row => _dialect.HasBlock(Sections(row), Bind("video"))).ShouldBeEmpty();
     }
 
-    [Fact]
+    [SqliteFact("the SQL text that SQLite is sent")]
     public void HasBlockTranslatesToExistsOverJsonEach()
     {
         var sql = Filter(row => _dialect.HasBlock(Sections(row), Bind("hero"))).ToQueryString();
@@ -292,7 +293,7 @@ public sealed class JsonFilterTests : IDisposable
             _dialect.HasBlock(Sections(row), Bind("hero"))));
 
         query.Select(row => EF.Property<Guid>(row, "document_id")).ToList().ShouldBe([_hero]);
-        query.ToQueryString().ShouldContain("\"c\".\"state\" = 1");
+        query.ToQueryString().ShouldMatch(@"state[""\]]? = (CAST\()?1\b");
     }
 
     [Fact]
@@ -301,7 +302,7 @@ public sealed class JsonFilterTests : IDisposable
         var sql = Filter(row => _dialect.AnyBlock(Sections(row), Bind("hero"), block =>
             _dialect.ScalarEquals(block, "heading", JsonScalarType.Text, Bind("Welcome")))).ToQueryString();
 
-        sql.ShouldContain(".param set");
+        sql.ShouldContain(TestProvider.ParameterLinePrefix);
         sql.ShouldNotContain("= 'Welcome'");
     }
 

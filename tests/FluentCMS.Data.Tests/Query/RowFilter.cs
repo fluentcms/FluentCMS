@@ -2,7 +2,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 
-namespace FluentCMS.Data.Tests.Sqlite;
+namespace FluentCMS.Data.Tests.Query;
 
 // What the query compiler of #2692 hands to IJsonSqlDialect: columns of a property bag and values on a holder.
 internal static class RowFilter

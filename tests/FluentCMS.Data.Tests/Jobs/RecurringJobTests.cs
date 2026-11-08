@@ -2,6 +2,7 @@ using FluentCMS.Content;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
+using FluentCMS.Data.Tests.Providers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
@@ -73,11 +74,10 @@ public sealed class RecurringJobTests : IDisposable
     }
 
     [Theory]
-    [InlineData("delete")]
-    [InlineData("wal")]
+    [MemberData(nameof(TestProvider.JournalModes), MemberType = typeof(TestProvider))]
     public async Task AnOccurrenceFiresOnceAcrossTwoRunners(string journalMode)
     {
-        _fixture.Database.Execute($"PRAGMA journal_mode = {journalMode}");
+        _fixture.Database.UseJournalMode(journalMode);
         await AddAsync();
 
         var instances = new[] { _fixture.NewInstance(), _fixture.NewInstance() }

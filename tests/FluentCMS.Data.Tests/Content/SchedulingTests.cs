@@ -4,6 +4,7 @@ using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Storage;
+using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Jobs;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Data.Tests.Activity;
@@ -814,7 +815,7 @@ public sealed class SchedulingTests : IDisposable
         public override ValueTask<int> NonQueryExecutedAsync(DbCommand command, CommandExecutedEventData eventData, int result, CancellationToken cancellationToken = default)
         {
             if (Armed
-                && command.CommandText.Contains("UPDATE \"cms_schedule\"", StringComparison.Ordinal)
+                && command.CommandText.Contains($"UPDATE {TestProvider.Quote("cms_schedule")}", StringComparison.Ordinal)
                 && command.Parameters.Cast<DbParameter>().Any(parameter => parameter.Value is ScheduleRow.Executed))
             {
                 // Another writer's save, as if it landed between the checks and the publish.

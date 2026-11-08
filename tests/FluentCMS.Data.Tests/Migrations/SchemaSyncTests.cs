@@ -5,6 +5,7 @@ using FluentCMS.Core.Tests.Schema;
 using FluentCMS.Data.PostgreSql;
 using FluentCMS.Data.Sqlite;
 using FluentCMS.Data.SqlServer;
+using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Data.Tests.Sqlite;
 using FluentCMS.Providers;
 using FluentCMS.Schema;
@@ -40,7 +41,7 @@ public sealed class SchemaSyncTests : IDisposable
     private void InsertArticle(string column, string value) =>
         _database.Execute($"insert into cms_article (id, document_id, site_id, state, {column}) values ('{Guid.CreateVersion7()}', '{Guid.CreateVersion7()}', '{Guid.Empty}', 0, '{value}')");
 
-    [Fact]
+    [SqliteFact("schema sync, which only SQLite supports")]
     public async Task AFreshDatabaseGetsTheContentTablesWithoutTheContentStream()
     {
         await StartAndStopAsync(ArticleSchemas.Titled);
@@ -51,7 +52,7 @@ public sealed class SchemaSyncTests : IDisposable
         _database.ReadStrings("select name from cms_role").Count.ShouldBe(6);
     }
 
-    [Fact]
+    [SqliteFact("schema sync, which only SQLite supports")]
     public async Task AddingAFieldAppliesWithoutARestartInDevelopment()
     {
         using var host = DevelopmentHost(ArticleSchemas.Titled);
@@ -69,7 +70,7 @@ public sealed class SchemaSyncTests : IDisposable
         context.Rows("cms_article").Single()["subtitle"].ShouldBeNull();
     }
 
-    [Fact]
+    [SqliteFact("schema sync, which only SQLite supports")]
     public async Task AddingAFieldAppliesAtTheNextStartupToo()
     {
         await StartAndStopAsync(ArticleSchemas.Titled);
@@ -81,7 +82,7 @@ public sealed class SchemaSyncTests : IDisposable
         _database.ReadStrings("select title from cms_article").ShouldBe(["Kept"]);
     }
 
-    [Fact]
+    [SqliteFact("schema sync, which only SQLite supports")]
     public async Task ANewTypeAndANewIndexApply()
     {
         await StartAndStopAsync(ArticleSchemas.Titled);
@@ -103,7 +104,7 @@ public sealed class SchemaSyncTests : IDisposable
         _database.ReadStrings("select sql from sqlite_master where name = 'ux_cms_tag_name'").ShouldHaveSingleItem().ShouldEndWith("WHERE state = 1 AND \"name\" IS NOT NULL");
     }
 
-    [Fact]
+    [SqliteFact("schema sync, which only SQLite supports")]
     public async Task ADestructiveChangeIsReportedAndNotApplied()
     {
         await StartAndStopAsync(ArticleSchemas.Article("title", "legacy"));
@@ -119,7 +120,7 @@ public sealed class SchemaSyncTests : IDisposable
         _database.ReadStrings("select legacy from cms_article").ShouldBe(["Kept"]);
     }
 
-    [Fact]
+    [SqliteFact("schema sync, which only SQLite supports")]
     public async Task ADestructiveChangeAtStartupIsLogged()
     {
         await StartAndStopAsync(ArticleSchemas.Article("title", "legacy"));
@@ -132,7 +133,7 @@ public sealed class SchemaSyncTests : IDisposable
         logs.Messages.ShouldContain(message => message.Contains("drop column legacy from table cms_article", StringComparison.Ordinal));
     }
 
-    [Fact]
+    [SqliteFact("schema sync, which only SQLite supports")]
     public async Task ARemovedTypeATypeChangeAndARemovedIndexAreReported()
     {
         var before = SampleSchema.NewBuilder()
@@ -165,7 +166,7 @@ public sealed class SchemaSyncTests : IDisposable
         _database.Tables().ShouldContain("cms_old");
     }
 
-    [Fact]
+    [SqliteFact("schema sync, which only SQLite supports")]
     public async Task ARequiredColumnWithNoDefaultIsReportedAndNotApplied()
     {
         await StartAndStopAsync(ArticleSchemas.Titled);
@@ -185,7 +186,7 @@ public sealed class SchemaSyncTests : IDisposable
         _database.Columns("cms_article").ShouldNotContain("code");
     }
 
-    [Fact]
+    [SqliteFact("schema sync, which only SQLite supports")]
     public async Task AListColumnHasADefaultSoItAppliesButItsCheckConstraintIsReported()
     {
         await StartAndStopAsync(ArticleSchemas.Titled);
@@ -208,13 +209,13 @@ public sealed class SchemaSyncTests : IDisposable
         _database.ReadStrings("select sections from cms_article").ShouldBe(["[]"]);
     }
 
-    [Fact]
+    [SqliteFact("schema sync, which only SQLite supports")]
     public async Task APluginsTableIsNotAStaleContentTableAndTheSyncIsRecorded()
     {
         var logs = new ListLoggerProvider();
         using var host = _database.CreateHost(ArticleSchemas.Titled, Environments.Development, services: services =>
         {
-            DemoPlugin.Add(services, _database.ConnectionString);
+            DemoPlugin.Add(services, _database);
             services.AddSingleton<ILoggerProvider>(logs);
         });
 
@@ -233,7 +234,7 @@ public sealed class SchemaSyncTests : IDisposable
         await host.StopAsync(Token);
     }
 
-    [Fact]
+    [SqliteFact("schema sync, which only SQLite supports")]
     public async Task SyncingTwiceAppliesNothingTheSecondTime()
     {
         using var host = DevelopmentHost(ArticleSchemas.Titled);
@@ -243,7 +244,7 @@ public sealed class SchemaSyncTests : IDisposable
         (await Runner(host).SyncContentSchemaAsync(ArticleSchemas.WithSubtitle, Token)).Applied.ShouldBeEmpty();
     }
 
-    [Fact]
+    [SqliteFact("schema sync, which only SQLite supports")]
     public async Task ASyncWaitsForAnotherNodeAndAppliesOnlyWhatIsStillMissing()
     {
         using var host = DevelopmentHost(ArticleSchemas.Titled);
@@ -268,7 +269,7 @@ public sealed class SchemaSyncTests : IDisposable
         _database.Columns("cms_article").ShouldContain("subtitle");
     }
 
-    [Fact]
+    [SqliteFact("schema sync, which only SQLite supports")]
     public async Task SchemaSyncOffInDevelopmentUsesTheContentStream()
     {
         using var host = _database.CreateHost(
@@ -282,7 +283,7 @@ public sealed class SchemaSyncTests : IDisposable
         _database.Tables().ShouldContain("cms_content__migrations");
     }
 
-    [Fact]
+    [SqliteFact("schema sync, which only SQLite supports")]
     public async Task SchemaSyncAutoOutsideDevelopmentIsRefused()
     {
         using var host = _database.CreateHost(ArticleSchemas.Titled, "Production", settings: new Dictionary<string, string?> { ["FluentCms:Database:SchemaSync"] = "Auto" });
@@ -294,7 +295,7 @@ public sealed class SchemaSyncTests : IDisposable
         await Should.ThrowAsync<InvalidOperationException>(() => Runner(host).SyncContentSchemaAsync(cancellationToken: Token));
     }
 
-    [Fact]
+    [SqliteFact("schema sync, which only SQLite supports")]
     public async Task AHostThatAllowsItSyncsOutsideDevelopmentAndTheReportSaysSo()
     {
         await StartAndStopAsync(ArticleSchemas.Titled);
@@ -311,7 +312,7 @@ public sealed class SchemaSyncTests : IDisposable
         await host.StopAsync(Token);
     }
 
-    [Fact]
+    [SqliteFact("schema sync, which only SQLite supports")]
     public async Task OutsideDevelopmentADestructiveChangeIsStillOnlyReported()
     {
         await StartAndStopAsync(ArticleSchemas.WithSubtitle);
@@ -323,7 +324,7 @@ public sealed class SchemaSyncTests : IDisposable
         await host.StopAsync(Token);
     }
 
-    [Fact]
+    [SqliteFact("schema sync, which only SQLite supports")]
     public async Task ConfigurationCanStillTurnTheAllowedSyncOff()
     {
         using var host = _database.CreateHost(
@@ -337,7 +338,7 @@ public sealed class SchemaSyncTests : IDisposable
         exception.Code.ShouldBe("FCMS1301");
     }
 
-    [Fact]
+    [SqliteFact("schema sync, which only SQLite supports")]
     public async Task InDevelopmentTheReportDoesNotListTheSync()
     {
         using var host = DevelopmentHost(ArticleSchemas.Titled);
@@ -347,7 +348,7 @@ public sealed class SchemaSyncTests : IDisposable
         await host.StopAsync(Token);
     }
 
-    [Fact]
+    [SqliteFact("schema sync, which only SQLite supports")]
     public void AProviderWithoutSchemaSyncRefusesTheOptIn()
     {
         var postgres = Should.Throw<FluentCmsConfigurationException>(() => new ServiceCollection().AddFluentCms(cms => cms.UsePostgreSql("Host=localhost").AllowSchemaSyncOutsideDevelopment()));
@@ -358,7 +359,7 @@ public sealed class SchemaSyncTests : IDisposable
         sqlServer.Code.ShouldBe("FCMS3154");
     }
 
-    [Fact]
+    [SqliteFact("schema sync, which only SQLite supports")]
     public void OnlySqliteSupportsSchemaSync()
     {
         new SqliteDataProvider("Data Source=:memory:").SupportsSchemaSync.ShouldBeTrue();

@@ -151,7 +151,7 @@ internal sealed class CapturedLogs : ILoggerProvider
     }
 }
 
-// The real service on a real SQLite file with sites A and B, the media and seo areas, and the activity log on.
+// The real service on the database of the run with sites A and B, the media and seo areas, and the activity log on.
 internal sealed class SettingsDatabase : IDisposable
 {
     public static readonly SiteId SiteA = ServiceDatabase.SiteA;

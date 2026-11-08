@@ -24,13 +24,13 @@ Thank you for your interest. FluentCMS is starting over, so there is little to b
 
 ### What CI runs
 
-An issue pull request into `main` runs every test project on Linux, the SQLite data job, Markdown lint and packaging. On Windows it builds the whole solution and runs the SDK unit, core unit and architecture tests. The full Windows suite runs for pull requests from `feature/*` branches, on every push to `main`, nightly and on manual runs, so a Windows-only failure shows up there rather than on the issue pull request.
+An issue pull request into `main` runs every test project on Linux, the data jobs, Markdown lint and packaging. The data jobs run the data tests on SQLite, PostgreSQL 15, SQL Server 2019 and SQL Server 2025; a server provider's job does not fail the run until the suite passes on it ([#2711](https://github.com/fluentcms/FluentCMS/issues/2711)). On Windows it builds the whole solution and runs the SDK unit, core unit and architecture tests. The full Windows suite runs for pull requests from `feature/*` branches, on every push to `main`, nightly and on manual runs, so a Windows-only failure shows up there rather than on the issue pull request.
 
 ### Feature branches and validation
 
 For a batch of related issues, create a branch such as `feature/media` from `main`. Each issue branches from it and opens its pull request back into it. The `Feature CI` workflow builds the whole solution on Linux and Windows and runs SDK unit tests, core unit tests, architecture tests and Markdown lint. Integration, data, host and plugin tests, and packaging, run in full CI.
 
-Merge the issue pull requests into the feature branch as they pass review and fast checks. When the batch is ready, open one pull request from the feature branch into `main`. The `CI` workflow automatically runs all test projects on Linux and Windows, the SQLite data job, Markdown lint and packaging. Fix any failures on the feature branch and push again; the full checks rerun. Keep the feature branch current with `main` and rerun validation after incorporating changes from it. A passing run from before a change does not validate the updated code.
+Merge the issue pull requests into the feature branch as they pass review and fast checks. When the batch is ready, open one pull request from the feature branch into `main`. The `CI` workflow automatically runs all test projects on Linux and Windows, the data jobs, Markdown lint and packaging. Fix any failures on the feature branch and push again; the full checks rerun. Keep the feature branch current with `main` and rerun validation after incorporating changes from it. A passing run from before a change does not validate the updated code.
 
 The fast checks have different names from the full checks required by `main`. Keep `main` protected by `Markdown lint`, `Build and test (ubuntu-latest)`, `Build and test (windows-latest)`, `Data tests (sqlite)` and `Pack`. For protected feature branches, require `Feature markdown lint`, `Fast checks (ubuntu-latest)` and `Fast checks (windows-latest)` instead.
 
@@ -83,7 +83,13 @@ The description contains, in this order:
 
 ## Local development
 
-You need the .NET 10 SDK, at the version in `global.json`. SQLite is the only database used during implementation, so no database server is needed and Docker is not required.
+You need the .NET 10 SDK, at the version in `global.json`. The tests use SQLite by default, so no database server is needed and Docker is not required.
+
+To run the data tests on another provider, set `FLUENTCMS_TEST_PROVIDER` to `postgresql`, `sqlserver-2019` or `sqlserver-2025`. The tests then start that server once in a container through Testcontainers and give each test a database of its own on it, so they need Docker with Linux containers. Tests of SQLite itself, such as its journal modes, file locking, conventions and query plans, are skipped on the other providers with the reason. Run one provider at a time:
+
+```bash
+FLUENTCMS_TEST_PROVIDER=postgresql dotnet test --project tests/FluentCMS.Data.Tests -c Release
+```
 
 The S3 and Azure Blob media storage tests run MinIO and Azurite through Testcontainers and need Docker with Linux containers; without it they are skipped, and the test output says why.
 

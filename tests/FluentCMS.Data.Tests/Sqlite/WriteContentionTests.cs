@@ -1,5 +1,6 @@
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
+using FluentCMS.Data.Tests.Providers;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -44,7 +45,7 @@ public abstract class WriteContentionTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    [Fact]
+    [SqliteFact("SQLite's file locking")]
     public async Task ASaveWaitsForAReaderInsteadOfFailing()
     {
         using var reader = new SqliteConnection(_database.ConnectionString);
@@ -73,7 +74,7 @@ public abstract class WriteContentionTests : IDisposable
         _database.ReadStrings("select name from cms_site where is_default = 1").ShouldBe(["Renamed"]);
     }
 
-    [Fact]
+    [SqliteFact("SQLite's file locking")]
     public async Task ASaveIsNotStarvedByReadersThatKeepComing()
     {
         using var readers = new Readers(_database.ConnectionString);
@@ -87,7 +88,7 @@ public abstract class WriteContentionTests : IDisposable
         _database.ReadStrings("select slug from cms_site where slug = 'second'").ShouldHaveSingleItem();
     }
 
-    [Fact]
+    [SqliteFact("SQLite's file locking")]
     public async Task ABulkWriteIsNotStarvedByReadersThatKeepComing()
     {
         using var readers = new Readers(_database.ConnectionString);
