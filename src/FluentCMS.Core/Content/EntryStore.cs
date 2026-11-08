@@ -432,6 +432,21 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
         return targets;
     }
 
+    // What an entry refers to that is no content type, such as media, by the path of the stored field that holds it.
+    public List<(string Path, string Target, Guid Id)> OtherTargetsOf(SchemaType type, ContentDocument entry)
+    {
+        List<(string Path, string Target, Guid Id)> targets = [];
+        foreach (var item in FieldStorage.Of(schema, type))
+        {
+            List<(string Target, Guid Id)> all = [];
+            Collect(item.Field, EntryPaths.ValueAt(entry, item, type), all);
+            var path = QueryPaths.ApiPath(type, item);
+            targets.AddRange(all.Where(found => schema.FindContentType(found.Target) is null).Select(found => (path, found.Target, found.Id)));
+        }
+
+        return targets;
+    }
+
     private object? WithoutHidden(SchemaField field, object? value)
     {
         if (value is RichText document)

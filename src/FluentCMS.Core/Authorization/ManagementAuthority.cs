@@ -17,6 +17,12 @@ internal sealed class ManagementAuthority(IAuthorizationEvaluator evaluator, IOp
         return permissions.Allows(permission, Target(site));
     }
 
+    public async ValueTask<IReadOnlySet<string>?> ResourcesAsync(string permission, Guid? site, CancellationToken cancellationToken)
+    {
+        var permissions = await evaluator.ResolveAsync(Operation(), cancellationToken);
+        return permissions.ResourcesOf(permission, Target(site));
+    }
+
     public async ValueTask RequireAsync(string permission, Guid? site, CancellationToken cancellationToken)
     {
         if (!await AllowsAsync(permission, site, cancellationToken))

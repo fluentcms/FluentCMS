@@ -1,3 +1,4 @@
+using FluentCMS.Media;
 using FluentCMS.Schema;
 
 namespace FluentCMS.Samples.Blog;
@@ -13,4 +14,7 @@ public sealed class Author : ContentItem
 
     [RichText]
     public RichText Bio { get; set; } = RichText.Empty;
+
+    [Media]
+    public MediaRef? Avatar { get; set; }
 }

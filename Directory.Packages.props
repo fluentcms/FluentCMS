@@ -5,6 +5,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageVersion Include="AWSSDK.S3" Version="4.0.104.11" />
+    <PackageVersion Include="Azure.Storage.Blobs" Version="12.30.1" />
     <PackageVersion Include="Cronos" Version="0.13.0" />
     <PackageVersion Include="MailKit" Version="4.18.2" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.14" />
@@ -31,6 +33,10 @@
     <PackageVersion Include="xunit.v3" Version="4.0.2" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.1" />
     <PackageVersion Include="Shouldly" Version="4.3.0" />
+    <PackageVersion Include="SkiaSharp" Version="3.119.4" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="3.119.4" />
+    <PackageVersion Include="Testcontainers.Azurite" Version="4.16.0" />
+    <PackageVersion Include="Testcontainers.Minio" Version="4.15.0" />
     <PackageVersion Include="TngTech.ArchUnitNET" Version="0.13.5" />
     <PackageVersion Include="TngTech.ArchUnitNET.xUnitV3" Version="0.13.5" />
   </ItemGroup>

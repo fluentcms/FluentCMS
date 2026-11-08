@@ -68,7 +68,7 @@ public sealed partial class HostedPagesTests
         var linked = (await ActivityAsync(host, "user.login_linked", count: 1)).Single();
         linked.TargetId.ShouldBe(user.Id.ToString("D"));
         Details(linked)["provider"].ShouldBe(Corp);
-        (await ActivityAsync(host, "user.", count: 5)).Count(row => row.Action == "user.login_succeeded" && row.TargetId == user.Id.ToString("D")).ShouldBe(2);
+        (await ActivityAsync(host, "user.login_succeeded", count: 2)).Count(row => row.TargetId == user.Id.ToString("D")).ShouldBe(2);
     }
 
     [Fact]

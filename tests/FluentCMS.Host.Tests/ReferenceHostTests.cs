@@ -81,6 +81,22 @@ public sealed class ReferenceHostTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task TheHostRunsTheMediaPluginOnTheLocalDiskAndListsItInProduction()
+    {
+        await _host.StartAsync(Operator.Settings());
+
+        using var api = await Operator.SignInAsync(_host);
+        using var media = await api.GetAsync(new Uri("/api/management/v1/media", UriKind.Relative), Token);
+        var report = await Operator.ReportAsync(_host);
+
+        media.StatusCode.ShouldBe(HttpStatusCode.OK);
+        report["plugins"]!.AsArray().Select(plugin => plugin!["name"]!.GetValue<string>()).ShouldContain("media");
+        var storage = report["providerSlots"]!.AsArray().Single(slot => slot!["slot"]!.GetValue<string>() == "FluentCMS.Media.IFileStorage")!;
+        (storage["implementation"]!.GetValue<string>(), storage["source"]!.GetValue<string>(), storage["plugin"]!.GetValue<string>()).ShouldBe(("FluentCMS.Plugins.Media.LocalFileStorage", "default", "media"));
+        Operator.InsecureDefaults(report).ShouldContain("media-local-storage");
+    }
+
+    [Fact]
     public async Task TheBlogSampleServesItsSeededContentThroughTheDeliveryApi()
     {
         var settings = Operator.Settings();
@@ -141,10 +157,35 @@ public sealed class ReferenceHostTests : IAsyncDisposable
         Operator.InsecureDefaults(await Operator.ReportAsync(_host)).ShouldContain("schema-sync-outside-development");
     }
 
+    // The schema is built with the field types of the container, so the plugins' are known.
+    [Fact]
+    public void ASchemaFileCanUseTheMediaFieldTypeOfThePlugin()
+    {
+        var file = _host.WriteFile("schema.json", """
+            {
+              "collections": [
+                {
+                  "name": "page",
+                  "fields": [
+                    { "name": "hero", "type": "media" },
+                    { "name": "gallery", "type": "media", "multiple": true }
+                  ]
+                }
+              ]
+            }
+            """);
+
+        var app = _host.Build(new() { [ReferenceHost.SchemaVariable] = file });
+
+        var page = app.Services.GetRequiredService<SchemaModel>().FindContentType("page").ShouldNotBeNull();
+        (page.FindField("hero")!.FieldType, page.FindField("hero")!.Multiple).ShouldBe(("media", false));
+        (page.FindField("gallery")!.FieldType, page.FindField("gallery")!.Multiple).ShouldBe(("media", true));
+    }
+
     [Theory]
     [InlineData("{ \"collections\": [ ", "FCMS1213")]
     [InlineData("{ \"pages\": [] }", "FCMS1213")]
-    [InlineData("{ \"collections\": [ { \"name\": \"page\", \"fields\": [ { \"name\": \"hero\", \"type\": \"media\" } ] } ] }", "FCMS1203")]
+    [InlineData("{ \"collections\": [ { \"name\": \"page\", \"fields\": [ { \"name\": \"hero\", \"type\": \"colour\" } ] } ] }", "FCMS1203")]
     [InlineData("{ \"collections\": [ { \"name\": \"page\", \"fields\": [ { \"name\": \"author\", \"type\": \"relation\", \"target\": \"person\" } ] } ] }", "FCMS1204")]
     public void AnInvalidSchemaFileStopsTheHostWithItsCode(string json, string code)
     {

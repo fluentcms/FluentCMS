@@ -102,6 +102,22 @@
           "settings": {}
         },
         {
+          "name": "hero",
+          "type": "media",
+          "multiple": false,
+          "localizable": false,
+          "indexed": false,
+          "searchable": false,
+          "readOnly": false,
+          "hidden": false,
+          "formerNames": [],
+          "validation": {
+            "required": false,
+            "unique": false
+          },
+          "settings": {}
+        },
+        {
           "name": "sections",
           "type": "blocks",
           "multiple": false,
@@ -271,6 +287,22 @@
             "unique": false
           },
           "settings": {}
+        },
+        {
+          "name": "avatar",
+          "type": "media",
+          "multiple": false,
+          "localizable": false,
+          "indexed": false,
+          "searchable": false,
+          "readOnly": false,
+          "hidden": false,
+          "formerNames": [],
+          "validation": {
+            "required": false,
+            "unique": false
+          },
+          "settings": {}
         }
       ],
       "reverseRelations": [
@@ -410,6 +442,22 @@
             "unique": false
           },
           "settings": {}
+        },
+        {
+          "name": "images",
+          "type": "media",
+          "multiple": true,
+          "localizable": false,
+          "indexed": false,
+          "searchable": false,
+          "readOnly": false,
+          "hidden": false,
+          "formerNames": [],
+          "validation": {
+            "required": false,
+            "unique": false
+          },
+          "settings": {}
         }
       ],
       "reverseRelations": []
@@ -438,6 +486,22 @@
         {
           "name": "subheading",
           "type": "text",
+          "multiple": false,
+          "localizable": false,
+          "indexed": false,
+          "searchable": false,
+          "readOnly": false,
+          "hidden": false,
+          "formerNames": [],
+          "validation": {
+            "required": false,
+            "unique": false
+          },
+          "settings": {}
+        },
+        {
+          "name": "image",
+          "type": "media",
           "multiple": false,
           "localizable": false,
           "indexed": false,

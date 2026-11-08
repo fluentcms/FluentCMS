@@ -1,6 +1,7 @@
 using System.Net;
 using System.Text.Json.Nodes;
 using FluentCMS.Content;
+using FluentCMS.Core.IntegrationTests.Blog;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
@@ -21,6 +22,7 @@ public sealed class DeliveryFixture : IAsyncLifetime
 
     public FluentCmsTestHost Host { get; } = new FluentCmsTestHost()
         .WithContentTypes([.. BlogSample.ContentTypes, typeof(Homepage), typeof(Product)])
+        .WithMediaDirectory()
         .WithServices(TestScheme.Add)
         .Configure(cms => cms.AddBlogSample())
         .Seed(async services =>

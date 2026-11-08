@@ -10,6 +10,7 @@ namespace FluentCMS.Core.DependencyInjection;
 public sealed class ProvidersBuilder : IProviderSlots
 {
     private readonly List<ServiceDescriptor> _defaults = [];
+    private readonly Dictionary<Type, string> _declaredBy = [];
     private readonly Dictionary<Type, Type> _host = [];
     private readonly Dictionary<Type, List<(string Plugin, Type Implementation)>> _plugins = [];
     private HashSet<ServiceDescriptor>? _beforeCore;
@@ -45,12 +46,34 @@ public sealed class ProvidersBuilder : IProviderSlots
     internal ProvidersBuilder Default(ServiceDescriptor descriptor)
     {
         Check(descriptor.ServiceType, null, "Core");
+        if (_declaredBy.ContainsKey(descriptor.ServiceType))
+        {
+            throw Declared(descriptor.ServiceType, null);
+        }
+
         if (_defaults.Any(slot => slot.ServiceType == descriptor.ServiceType))
         {
             throw new InvalidOperationException($"The provider slot {descriptor.ServiceType.FullName} has a default already.");
         }
 
         _defaults.Add(descriptor);
+        return this;
+    }
+
+    // A slot a plugin declares, which the report lists with that plugin. Plugins run before core adds its defaults, so a
+    // slot of core declared again is found when core adds it.
+    internal ProvidersBuilder DefaultOf(string plugin, ServiceDescriptor descriptor)
+    {
+        ArgumentNullException.ThrowIfNull(descriptor);
+
+        Check(descriptor.ServiceType, descriptor.ImplementationType, $"The plugin '{plugin}'");
+        if (_defaults.Any(slot => slot.ServiceType == descriptor.ServiceType))
+        {
+            throw Declared(descriptor.ServiceType, plugin);
+        }
+
+        _defaults.Add(descriptor);
+        _declaredBy[descriptor.ServiceType] = plugin;
         return this;
     }
 
@@ -99,7 +122,7 @@ public sealed class ProvidersBuilder : IProviderSlots
             {
                 // What the framework registered for the slot on core's behalf, such as the memory cache of Razor Pages,
                 // gives way to the default.
-                choices.Add(new ProviderSlotChoice(type, Replace(services, type, slot), ProviderSlotSources.Default, null));
+                choices.Add(new ProviderSlotChoice(type, Replace(services, type, slot), ProviderSlotSources.Default, _declaredBy.GetValueOrDefault(type)));
             }
         }
 
@@ -137,6 +160,10 @@ public sealed class ProvidersBuilder : IProviderSlots
                 $"{who} fills the provider slot {slot.FullName} with {implementation.FullName}, which is abstract and cannot be created; name a concrete class.");
         }
     }
+
+    private FluentCmsConfigurationException Declared(Type slot, string? plugin) => new(
+        ProviderErrorCodes.SlotDeclaredTwice,
+        $"{(plugin is null ? "Core" : $"The plugin '{plugin}'")} declares the provider slot {slot.FullName}, which {(_declaredBy.TryGetValue(slot, out var owner) ? $"the plugin '{owner}'" : "core")} declares already; a slot has one owner, and the others replace it with Providers.Use.");
 
     private bool RegisteredBeforeCore(ServiceDescriptor descriptor) => _beforeCore?.Contains(descriptor) ?? true;
 
@@ -199,6 +226,7 @@ internal static class ProviderErrorCodes
     public const string NotASlot = "FCMS1541";
     public const string NotAnImplementation = "FCMS1542";
     public const string SlotsSettled = "FCMS1543";
+    public const string SlotDeclaredTwice = "FCMS1544";
 }
 
 // The slots as AddFluentCms left them. The report looks at the service collection again, because a registration after

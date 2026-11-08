@@ -157,6 +157,43 @@ public sealed class ProviderSlotTests
         exception.Message.ShouldContain(typeof(TimeProvider).FullName!);
     }
 
+    [Fact]
+    public async Task APluginDeclaresASlotWithItsDefaultWhichAnotherPluginReplaces()
+    {
+        await using (var declared = new FluentCmsTestHost().Configure(cms => Add<FirstSlotsPlugin>(cms, declare: plugin => plugin.AddProviderSlot<IWidgetStore, DefaultWidgetStore>())))
+        {
+            declared.Services.GetRequiredService<IWidgetStore>().ShouldBeOfType<DefaultWidgetStore>();
+            Report(declared).Single(slot => slot.Slot == typeof(IWidgetStore).FullName).ShouldBe(new() { Slot = typeof(IWidgetStore).FullName!, Implementation = typeof(DefaultWidgetStore).FullName, Source = "default", Plugin = "first-slots" });
+        }
+
+        await using var replaced = new FluentCmsTestHost().Configure(cms =>
+        {
+            Add<SecondSlotsPlugin>(cms, replace: slots => slots.Use<IWidgetStore, OtherWidgetStore>());
+            Add<FirstSlotsPlugin>(cms, declare: plugin => plugin.AddProviderSlot<IWidgetStore, DefaultWidgetStore>());
+        });
+
+        replaced.Services.GetServices<IWidgetStore>().ShouldHaveSingleItem().ShouldBeOfType<OtherWidgetStore>();
+        Report(replaced).Single(slot => slot.Slot == typeof(IWidgetStore).FullName).ShouldBe(new() { Slot = typeof(IWidgetStore).FullName!, Implementation = typeof(OtherWidgetStore).FullName, Source = "plugin", Plugin = "second-slots" });
+    }
+
+    [Fact]
+    public void ASlotDeclaredTwiceStopsTheHostNamingItsOwner()
+    {
+        var twice = Should.Throw<FluentCmsConfigurationException>(() => Compose(cms =>
+        {
+            Add<FirstSlotsPlugin>(cms, declare: plugin => plugin.AddProviderSlot<IWidgetStore, DefaultWidgetStore>());
+            Add<SecondSlotsPlugin>(cms, declare: plugin => plugin.AddProviderSlot<IWidgetStore, OtherWidgetStore>());
+        }));
+        var core = Should.Throw<FluentCmsConfigurationException>(() => Compose(cms => Add<FirstSlotsPlugin>(cms, declare: plugin => plugin.AddProviderSlot<IEmailSender, PluginSender>())));
+
+        twice.Code.ShouldBe("FCMS1544");
+        twice.Message.ShouldContain("'second-slots'");
+        twice.Message.ShouldContain("'first-slots'");
+        core.Code.ShouldBe("FCMS1544");
+        core.Message.ShouldContain("'first-slots'");
+        core.Message.ShouldContain(typeof(IEmailSender).FullName!);
+    }
+
     private static IReadOnlyList<FluentCMS.Diagnostics.StartupProviderSlot> Report(FluentCmsTestHost host) =>
         host.Services.GetRequiredService<StartupReportHolder>().Current!.ProviderSlots;
 
@@ -171,12 +208,13 @@ public sealed class ProviderSlotTests
         return services;
     }
 
-    private static void Add<TPlugin>(FluentCmsBuilder cms, Action<IProviderSlots>? replace = null, Action<IServiceCollection>? register = null)
+    private static void Add<TPlugin>(FluentCmsBuilder cms, Action<IProviderSlots>? replace = null, Action<IServiceCollection>? register = null, Action<IPluginServiceBuilder>? declare = null)
         where TPlugin : SlotsPlugin, new() =>
         cms.AddPlugin<TPlugin>(plugin =>
         {
             plugin.Replace = replace;
             plugin.Register = register;
+            plugin.Declare = declare;
         });
 
     public abstract class SlotsPlugin : IPlugin
@@ -185,8 +223,11 @@ public sealed class ProviderSlotTests
 
         public Action<IServiceCollection>? Register { get; set; }
 
+        public Action<IPluginServiceBuilder>? Declare { get; set; }
+
         public void ConfigureServices(IPluginServiceBuilder plugin)
         {
+            Declare?.Invoke(plugin);
             Register?.Invoke(plugin.Services);
             Replace?.Invoke(plugin.Providers);
         }
@@ -218,6 +259,12 @@ public sealed class ProviderSlotTests
     public sealed class OtherCache(IOptions<MemoryDistributedCacheOptions> options) : MemoryDistributedCache(options);
 
     public sealed class FrozenTime : TimeProvider;
+
+    public interface IWidgetStore;
+
+    public sealed class DefaultWidgetStore : IWidgetStore;
+
+    public sealed class OtherWidgetStore : IWidgetStore;
 
     public sealed class HostOutputCacheStore : IOutputCacheStore
     {

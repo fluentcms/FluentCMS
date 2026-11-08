@@ -1,5 +1,6 @@
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Content;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Storage;
@@ -113,7 +114,8 @@ internal sealed class QueryDatabase : IDisposable
         Services.GetRequiredService<IJsonSqlDialect>(),
         access ?? new OpenContentQueryAccess(),
         options ?? new ContentQueryOptions(),
-        search ?? Services.GetRequiredService<ISearchIndex>());
+        search ?? Services.GetRequiredService<ISearchIndex>(),
+        Services.GetRequiredService<ReferenceResolvers>());
 
     public Guid AddArticle(string title, Dictionary<string, object?>? values = null, string locale = "en", short state = ContentState.Published, Guid? id = null, Guid? site = null, Guid? createdBy = null)
     {

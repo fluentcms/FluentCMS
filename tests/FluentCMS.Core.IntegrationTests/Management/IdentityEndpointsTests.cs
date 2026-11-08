@@ -76,13 +76,14 @@ public sealed class IdentityEndpointsTests(AdminFixture fixture) : IClassFixture
             { "name": "Broken", "grants": [
               { "permission": "nothing.here" },
               { "permission": "content.page.update", "constraints": { "rowRule": "no-such-rule" } },
-              { "permission": "content.page.read", "constraints": { "sites": [] } } ] }
+              { "permission": "content.page.read", "constraints": { "sites": [] } },
+              { "permission": "content.page.read", "constraints": { "resources": [] } } ] }
             """);
 
         refused.Status.ShouldBe(HttpStatusCode.UnprocessableEntity);
         refused.Json["code"]!.GetValue<string>().ShouldBe("FCMS3042");
         refused.Json["errors"]!.AsArray().Select(error => error!["path"]!.GetValue<string>())
-            .ShouldBe(["grants[0].permission", "grants[1].constraints.rowRule", "grants[2].constraints.sites"], ignoreOrder: true);
+            .ShouldBe(["grants[0].permission", "grants[1].constraints.rowRule", "grants[2].constraints.sites", "grants[3].constraints.resources"], ignoreOrder: true);
 
         var unknown = await fixture.PostAsync("roles", """{ "name": "Broken", "grants": [ { "permission": "content.page.read", "constraints": { "colour": "red" } } ] }""");
         unknown.Status.ShouldBe(HttpStatusCode.UnprocessableEntity);

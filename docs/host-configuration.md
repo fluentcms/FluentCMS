@@ -68,7 +68,7 @@ A CORS origin is an `http` or `https` origin with no path, such as `https://app.
 
 ## Health and telemetry
 
-`/health/live` answers while the process runs, and `/health/ready` also needs the database and the job runner. Both need no authentication, answer 200 or 503, and print the status and nothing else. `GET /api/management/v1/system/health` lists every check with its duration and needs the `system.read` permission.
+`/health/live` answers while the process runs, and `/health/ready` also needs the database and the job runner, and with the media plugin its storage. Both need no authentication, answer 200 or 503, and print the status and nothing else. `GET /api/management/v1/system/health` lists every check with its duration and needs the `system.read` permission.
 
 The probes stay reachable without credentials, because the image's `HEALTHCHECK`, a load balancer and an orchestrator call them, so they are kept cheap and bounded. An API key sent to them is never looked up, and each client address gets `FluentCms:RateLimits:Health:PermitLimit` requests a minute (1200), counted before authentication and apart from the coarse limit (see [rate limits](#rate-limits)). That is far above what an orchestrator sends one instance, even with several probes every second; raise it only when many probers share one address, such as health checks that reach the instance through a proxy without forwarded headers. Where the network allows it, still let only the orchestrator and the load balancer reach `/health`, for example with a proxy rule or a network policy.
 
@@ -333,3 +333,20 @@ The webhooks plugin (`FluentCMS.Plugins.Webhooks`, which the reference host adds
 | `DisableAfter` | unset | Disables a webhook when a delivery to it dies and every attempt to it has failed for at least this long. Unset never disables one. At most `Retention`. |
 
 A target URL uses `https` outside Development. Deliveries do not follow redirects and do not go through a system proxy. A receiver checks `X-FluentCMS-Signature: t=<unix>,v1=<hex>` by computing HMAC-SHA256 with the webhook's secret over `t + "." + body` and accepting any `v1`, of which there are two while a rotated secret overlaps, refuses a `t` more than five minutes old, and ignores a repeat by `X-FluentCMS-Delivery`. A webhook's header values are secrets: they are stored with Data Protection, like the secret, and no answer returns them. The plugin's [README](../src/plugins/FluentCMS.Plugins.Webhooks/README.md#receivers) has the receiver's code.
+
+## Media
+
+The media plugin (`FluentCMS.Plugins.Media`, which the reference host adds) keeps the assets and folders of each site under `/api/management/v1/media`, answers `/api/delivery/v1/media/{id}`, and serves signed image transforms at `/media/{id}/{fileName}` and original files at `/media/{id}/original/{fileName}`. Its instance options are in `FluentCms:Media`:
+
+| Key | Default | Meaning |
+| --- | --- | --- |
+| `Local:Root` | `App_Data/media` | The directory of the local storage, under the content root unless it is absolute. The startup report lists `media-local-storage` in Production. |
+| `MaxRequestBodySize` | `268435456` | The largest upload request, in bytes. |
+| `RequireSignedUrls` | `true` | `false` serves unsigned transform URLs. The startup report lists `media-unsigned-urls` while it is off in Production. |
+| `SigningKey` | none | The base64 of at least 32 bytes that signs transform URLs. Left out, the plugin generates one key at its first start and stores it protected by Data Protection. Changing the key invalidates every URL signed before. |
+| `CacheControl` | `public, max-age=86400` | The `Cache-Control` of a transformed image and of the original file of a public asset. |
+| `DeletedRetention` | `30.00:00:00` | How long a deleted asset keeps its file and its row before the daily cleanup purges them. |
+
+New uploads go to the local disk unless a storage package replaces it: `media.UseS3(section)` from `FluentCMS.Plugins.Media.S3` (AWS or an S3-compatible service such as MinIO) or `media.UseAzureBlob(section)` from `FluentCMS.Plugins.Media.AzureBlob` (a connection string, or a container URL with a SAS), in `cms.AddPlugin<MediaPlugin>(media => ...)`. The section's keys are in the plugin's [README](../src/plugins/FluentCMS.Plugins.Media/README.md#storage-on-s3-or-azure-blob). Objects stay private and are served through `/media` only, and assets written on the local disk before the move are still served from `Local:Root`. `/health/ready` includes `media-storage`, which is Unhealthy while the bucket or container cannot be reached.
+
+The limits of uploads and transforms are each site's, in the settings area `media`. The default image processor is [SkiaSharp](https://github.com/mono/SkiaSharp) (MIT), with its Linux assets that need no fontconfig, for containers. A host replaces it with `cms.Providers.Use<IImageProcessor, T>()`, for example to use ImageSharp under its own Six Labors license. The plugin's [README](../src/plugins/FluentCMS.Plugins.Media/README.md#image-transforms) has the parameters and the signing.

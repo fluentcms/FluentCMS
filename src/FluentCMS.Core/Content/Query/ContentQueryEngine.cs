@@ -14,7 +14,7 @@ namespace FluentCMS.Core.Content.Query;
 // Runs a ContentQuery. IContentService (#2693) is its caller, and resolves the locale and site first. Bad input is a
 // ValidationException, before anything runs. RichTextFormat and Fallback are carried, not applied: this returns the
 // stored rich text and the requested locale's values. LocaleFallbackReader fills the fields that fall back.
-internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schema, IJsonSqlDialect dialect, IContentQueryAccess access, ContentQueryOptions options, ISearchIndex search)
+internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schema, IJsonSqlDialect dialect, IContentQueryAccess access, ContentQueryOptions options, ISearchIndex search, ReferenceResolvers resolvers)
 {
     private const string All = "*";
     private const string EveryLocale = "all";
@@ -123,8 +123,10 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
 
         var entries = rows.Select(row => Materialize(compiled.Plan, row, new ContentDocument(), parent: null)).ToList();
         var readable = new ReadableTargets();
-        await FillReferencesAsync(compiled.Scope, compiled.Plan, entries, readable, cancellationToken);
+        var resolvable = new ResolvableReferences(schema, resolvers);
+        await FillReferencesAsync(compiled.Scope, compiled.Plan, entries, readable, resolvable, cancellationToken);
         await FilterNestedTargetsAsync(compiled.Scope, compiled.Type, entries, readable, cancellationToken);
+        await resolvable.ResolveAsync(compiled.Scope.Locale, cancellationToken);
 
         var last = hasMore ? rows[^1] : null;
         var nextCursor = last is null ? null : SortKeys.Encode(compiled.Keys, compiled.KeyColumns.Select(column => last[column]).ToList());
@@ -375,7 +377,8 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
                     : (QueryErrorCodes.UnknownField, $"'{path}' is not a field of {type.Name} that can be read.");
         }
 
-        if (field.Stored.Kind != FieldStorageKind.Reference)
+        // A block list or a repeated component is named to populate the references inside it.
+        if (field.Stored.Kind != FieldStorageKind.Reference && !(field.Rest.Length == 0 && EntryPlan.HoldsReferences(field.Stored.Field)))
         {
             return (QueryErrorCodes.NotARelation, $"'{path}' of {type.Name} is not a relation.");
         }
@@ -401,8 +404,9 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         return AddPopulatePath(scope, target, child, string.Join('.', field.Rest), depth, level + 1);
     }
 
-    // An entry with the documents its references go into, and the ids above it, which a relation must not return to.
-    private sealed record Materialized(Guid Id, ContentDocument Document, Dictionary<ReferenceOutput, ContentDocument> Holders, Materialized? Parent)
+    // An entry with the documents its references and the block lists to resolve inside go into, and the ids above it, which
+    // a relation must not return to.
+    private sealed record Materialized(Guid Id, ContentDocument Document, Dictionary<ReferenceOutput, ContentDocument> Holders, List<(ValueOutput Value, ContentDocument Holder)> Inside, Materialized? Parent)
     {
         public bool HasAncestorOrSelf(Guid id) => Id == id || (Parent?.HasAncestorOrSelf(id) ?? false);
     }
@@ -415,7 +419,7 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
             document["id"] = id;
         }
 
-        var entry = new Materialized(id, document, [], parent);
+        var entry = new Materialized(id, document, [], [], parent);
         Fill(plan.Nodes, row, document, entry);
         return entry;
     }
@@ -428,6 +432,11 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
             {
                 case ValueOutput value:
                     document[value.Name] = value.Read(row[value.Column]);
+                    if (value.Inside is not null)
+                    {
+                        entry.Inside.Add((value, document));
+                    }
+
                     break;
                 case ReferenceOutput reference:
                     document[reference.Name] = null;
@@ -446,8 +455,13 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
     private static bool IsAbsent(GroupOutput group, ContentDocument document) =>
         group.Children.All(child => child is ValueOutput) && document.Values.All(value => value is null or JsonArray { Count: 0 });
 
-    private async Task FillReferencesAsync(QueryScope query, EntryPlan plan, List<Materialized> entries, ReadableTargets readable, CancellationToken cancellationToken)
+    private async Task FillReferencesAsync(QueryScope query, EntryPlan plan, List<Materialized> entries, ReadableTargets readable, ResolvableReferences resolvable, CancellationToken cancellationToken)
     {
+        foreach (var (value, holder) in entries.SelectMany(entry => entry.Inside))
+        {
+            resolvable.AddInside(value.Inside!, holder[value.Name] as JsonNode);
+        }
+
         var outputs = plan.References.ToList();
         if (entries.Count == 0 || outputs.Count == 0)
         {
@@ -508,9 +522,14 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
                     .Select(reference => (Reference: Stub(reference), reference.TargetId))
                     .ToList();
 
-                entry.Holders[output][output.Name] = output.Stored.Field.Multiple
+                var holder = entry.Holders[output];
+                holder[output.Name] = output.Stored.Field.Multiple
                     ? values.Select(value => value.Reference).ToList()
                     : values.Select(value => value.Reference).FirstOrDefault();
+                if (output.Resolve)
+                {
+                    resolvable.AddField(holder, output.Name, output.Stored.Field);
+                }
 
                 wanted.AddRange(values
                     .Where(value => output.Plan is not null && !entry.HasAncestorOrSelf(value.TargetId))
@@ -520,7 +539,7 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
             if (output.Plan is { } child && wanted.Count > 0)
             {
                 query.CountPopulated(wanted.Count);
-                await PopulateAsync(query, child, wanted, readable, cancellationToken);
+                await PopulateAsync(query, child, wanted, readable, resolvable, cancellationToken);
             }
         }
     }
@@ -639,7 +658,7 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
     }
 
     // A target that has no row in this state and locale stays a reference: in a published read, one published in another locale.
-    private async Task PopulateAsync(QueryScope query, EntryPlan plan, List<(Materialized Parent, ContentDocument Reference, Guid Target)> wanted, ReadableTargets readable, CancellationToken cancellationToken)
+    private async Task PopulateAsync(QueryScope query, EntryPlan plan, List<(Materialized Parent, ContentDocument Reference, Guid Target)> wanted, ReadableTargets readable, ResolvableReferences resolvable, CancellationToken cancellationToken)
     {
         var ids = wanted.Select(item => item.Target).Distinct().ToList();
         var row = plan.Row;
@@ -661,7 +680,7 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
             }
         }
 
-        await FillReferencesAsync(query, plan, children, readable, cancellationToken);
+        await FillReferencesAsync(query, plan, children, readable, resolvable, cancellationToken);
     }
 
     // What one run has found readable of each target type. The answer for a type depends on the scope of the run, which

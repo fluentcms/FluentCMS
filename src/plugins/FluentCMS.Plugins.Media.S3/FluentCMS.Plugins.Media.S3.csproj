@@ -1,7 +1,19 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <PropertyGroup>
+    <Description>Media storage for FluentCMS on Amazon S3 and S3-compatible services, with private objects.</Description>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="../FluentCMS.Plugins.Media/FluentCMS.Plugins.Media.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AWSSDK.S3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="FluentCMS.Plugins.Media.Tests" />
   </ItemGroup>
 
 </Project>

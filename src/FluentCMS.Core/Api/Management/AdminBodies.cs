@@ -52,6 +52,9 @@ internal sealed record GrantConstraints
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? RowRule { get; init; }
 
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<string>? Resources { get; init; }
+
     public static GrantConstraints? From(PermissionConstraints constraints) => constraints.IsEmpty
         ? null
         : new()
@@ -60,6 +63,7 @@ internal sealed record GrantConstraints
             Locales = constraints.Locales,
             Fields = constraints.Fields,
             RowRule = constraints.RowRule,
+            Resources = constraints.Resources,
         };
 }
 

@@ -1,3 +1,4 @@
+using FluentCMS.Media;
 using FluentCMS.Schema;
 
 namespace FluentCMS.Samples.Blog;
@@ -10,6 +11,9 @@ public sealed class HeroBlock
 
     [Text]
     public string? Subheading { get; set; }
+
+    [Media]
+    public MediaRef? Image { get; set; }
 }
 
 [Block("quote")]
@@ -30,4 +34,7 @@ public sealed class GalleryBlock
 
     [Integer]
     public int Columns { get; set; } = 3;
+
+    [Media]
+    public MediaRefList Images { get; set; } = [];
 }

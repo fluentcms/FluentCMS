@@ -190,6 +190,10 @@ public sealed class FakeServiceBuilder : IPluginServiceBuilder
     public IPluginServiceBuilder AddSettings<TSettings>()
         where TSettings : class, new() => this;
 
+    public IPluginServiceBuilder AddProviderSlot<TSlot, TDefault>()
+        where TSlot : class
+        where TDefault : class, TSlot => this;
+
     public IPluginServiceBuilder AddJob<TJob, TPayload>(string type, TimeSpan? attemptTimeout)
         where TJob : class, FluentCMS.Jobs.IJob<TPayload> => this;
 

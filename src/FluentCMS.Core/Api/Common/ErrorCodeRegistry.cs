@@ -99,6 +99,7 @@ public static class ErrorCodeRegistry
         Startup(ProviderErrorCodes.NotASlot, "Not a provider slot"),
         Startup(ProviderErrorCodes.NotAnImplementation, "Provider slot implementation cannot be created"),
         Startup(ProviderErrorCodes.SlotsSettled, "Provider slots already settled"),
+        Startup(ProviderErrorCodes.SlotDeclaredTwice, "Provider slot declared twice"),
 
         // 21xx validation
         Invalid(ApiErrorCodes.ValidationFailed, "Validation failed"),
@@ -114,6 +115,7 @@ public static class ErrorCodeRegistry
         Invalid(ValidationErrorCodes.RequiredByCondition, "Value required by a condition"),
         Invalid(ValidationErrorCodes.NotUnique, "Value not unique"),
         Invalid(ValidationErrorCodes.EmptySlug, "No slug from the source"),
+        Invalid(ValidationErrorCodes.UnknownReference, "Reference not found"),
 
         // 22xx query
         BadQuery(QueryErrorCodes.InvalidParameter, "Invalid query parameter"),

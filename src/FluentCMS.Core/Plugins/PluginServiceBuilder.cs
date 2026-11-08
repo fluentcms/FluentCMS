@@ -174,6 +174,14 @@ internal sealed class PluginServiceBuilder(FluentCmsBuilder cms, RegisteredPlugi
         return this;
     }
 
+    public IPluginServiceBuilder AddProviderSlot<TSlot, TDefault>()
+        where TSlot : class
+        where TDefault : class, TSlot
+    {
+        cms.Providers.DefaultOf(plugin.Name, ServiceDescriptor.Singleton<TSlot, TDefault>());
+        return this;
+    }
+
     public IPluginServiceBuilder AddJob<TJob, TPayload>(string type, TimeSpan? attemptTimeout)
         where TJob : class, IJob<TPayload>
     {

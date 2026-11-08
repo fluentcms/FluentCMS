@@ -85,6 +85,8 @@ The description contains, in this order:
 
 You need the .NET 10 SDK, at the version in `global.json`. SQLite is the only database used during implementation, so no database server is needed and Docker is not required.
 
+The S3 and Azure Blob media storage tests run MinIO and Azurite through Testcontainers and need Docker with Linux containers; without it they are skipped, and the test output says why.
+
 During implementation, run the test project or test class affected by the change. Before opening an issue pull request, into a feature branch or `main`, run the fast checks once:
 
 ```bash

@@ -5,8 +5,9 @@ using FluentCMS.Sites;
 namespace FluentCMS.Core.Authorization;
 
 // What narrows a grant in cms_role_permission.constraints. A null member does not narrow: null sites means every
-// site, null locales every locale, null fields every field, null row rule every row. Grants only add, so these
-// never deny anything.
+// site, null locales every locale, null fields every field, null row rule every row, null resources every resource.
+// Grants only add, so these never deny anything. Resources are a plugin's own ids, such as media folders, which only
+// IPermissionChecker.ResourcesAsync answers (ADR 0004).
 public sealed class PermissionConstraints
 {
     private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web)
@@ -26,7 +27,9 @@ public sealed class PermissionConstraints
 
     public string? RowRule { get; init; }
 
-    public bool IsEmpty => Sites is null && Locales is null && Fields is null && RowRule is null;
+    public IReadOnlyList<string>? Resources { get; init; }
+
+    public bool IsEmpty => Sites is null && Locales is null && Fields is null && RowRule is null && Resources is null;
 
     // Null for a grant without constraints, which is stored as NULL.
     public string? ToJson() => IsEmpty
@@ -37,6 +40,7 @@ public sealed class PermissionConstraints
             Locales = Locales?.ToList(),
             Fields = Fields?.ToList(),
             RowRule = RowRule,
+            Resources = Resources?.ToList(),
         }, Options);
 
     public static PermissionConstraints FromJson(string? json)
@@ -53,6 +57,7 @@ public sealed class PermissionConstraints
             Locales = stored.Locales,
             Fields = stored.Fields,
             RowRule = stored.RowRule,
+            Resources = stored.Resources,
         };
     }
 
@@ -65,5 +70,7 @@ public sealed class PermissionConstraints
         public List<string>? Fields { get; set; }
 
         public string? RowRule { get; set; }
+
+        public List<string>? Resources { get; set; }
     }
 }

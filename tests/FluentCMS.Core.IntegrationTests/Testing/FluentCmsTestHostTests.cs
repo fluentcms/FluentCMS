@@ -25,38 +25,6 @@ public sealed class FluentCmsTestHostTests : IAsyncDisposable
     public ValueTask DisposeAsync() => _host.DisposeAsync();
 
     [Fact]
-    public async Task ABootSeedsTheTypesAndQueriesThemInUnderTwoSeconds()
-    {
-        // The first run of a process pays for JIT and for building the EF models, about 1.8 s on its own. The bound is on the best
-        // of a few runs after it, so that neither the first run nor a busy shared runner fails the test, while a boot an order of
-        // magnitude slower still does.
-        await BootAsync();
-        List<TimeSpan> boots = [];
-        for (var run = 0; run < 3; run++)
-        {
-            boots.Add(await BootAsync());
-        }
-
-        TestContext.Current.TestOutputHelper?.WriteLine($"Warm boots took {string.Join(", ", boots.Select(boot => $"{boot.TotalMilliseconds:F0}"))} ms");
-        boots.Min().ShouldBeLessThan(TimeSpan.FromSeconds(2));
-
-        static async Task<TimeSpan> BootAsync()
-        {
-            var clock = Stopwatch.StartNew();
-            await using var host = new FluentCmsTestHost()
-                .WithContentTypes<Note>()
-                .Seed(new Note { Title = "First" }, new Note { Title = "Second" });
-            var editor = await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
-
-            var result = await host.As(editor).Content<Note>().QueryAsync(new ContentQuery { Status = QueryStatus.Draft }, Token);
-            clock.Stop();
-
-            result.Items.Select(note => note.Title).Order().ToArray().ShouldBe(["First", "Second"]);
-            return clock.Elapsed;
-        }
-    }
-
-    [Fact]
     public async Task ACallRunsAsAnonymousUntilATestSaysOtherwise()
     {
         var accessorSeen = await _host.Anonymous.RunAsync<IOperationContextAccessor, OperationContext?>(accessor => Task.FromResult(accessor.Current));
@@ -380,5 +348,47 @@ public sealed class FluentCmsTestHostTests : IAsyncDisposable
     private sealed class CaptiveProbe(ScopedProbe scoped)
     {
         public ScopedProbe Scoped { get; } = scoped;
+    }
+}
+
+// A bound on time measures the boot only when nothing else of this assembly runs beside it.
+[CollectionDefinition(nameof(BootTiming), DisableParallelization = true)]
+public sealed class BootTiming;
+
+[Collection(nameof(BootTiming))]
+public sealed class FluentCmsTestHostBootTests
+{
+    private static readonly CancellationToken Token = TestContext.Current.CancellationToken;
+
+    [Fact]
+    public async Task ABootSeedsTheTypesAndQueriesThemInUnderTwoSeconds()
+    {
+        // The first run of a process pays for JIT and for building the EF models, about 1.8 s on its own. The bound is on the best
+        // of a few runs after it, so that neither the first run nor a busy shared runner fails the test, while a boot an order of
+        // magnitude slower still does.
+        await BootAsync();
+        List<TimeSpan> boots = [];
+        for (var run = 0; run < 3; run++)
+        {
+            boots.Add(await BootAsync());
+        }
+
+        TestContext.Current.TestOutputHelper?.WriteLine($"Warm boots took {string.Join(", ", boots.Select(boot => $"{boot.TotalMilliseconds:F0}"))} ms");
+        boots.Min().ShouldBeLessThan(TimeSpan.FromSeconds(2));
+
+        static async Task<TimeSpan> BootAsync()
+        {
+            var clock = Stopwatch.StartNew();
+            await using var host = new FluentCmsTestHost()
+                .WithContentTypes<Note>()
+                .Seed(new Note { Title = "First" }, new Note { Title = "Second" });
+            var editor = await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+
+            var result = await host.As(editor).Content<Note>().QueryAsync(new ContentQuery { Status = QueryStatus.Draft }, Token);
+            clock.Stop();
+
+            result.Items.Select(note => note.Title).Order().ToArray().ShouldBe(["First", "Second"]);
+            return clock.Elapsed;
+        }
     }
 }
