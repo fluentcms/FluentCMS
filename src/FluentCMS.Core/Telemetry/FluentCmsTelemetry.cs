@@ -68,11 +68,6 @@ public static class FluentCmsTelemetry
     internal static readonly ObservableGauge<double> CacheHitRatio = Meter.CreateObservableGauge(
         Instruments.CacheHitRatio, CacheTotals.Ratios, "1", "The share of lookups in a cache that found their entry.");
 
-    // Reports what the job runner last measured: every queue of this instance's options, at zero when nothing waits, and
-    // every other queue with a job pending.
-    internal static readonly ObservableGauge<double> JobOldestPendingAge = Meter.CreateObservableGauge(
-        Instruments.JobOldestPendingAge, JobQueueAges.Measurements, "s", "How long the oldest pending job of a queue, due and held by no worker, had waited when the job runner last looked.");
-
     internal static void RecordJobQueueAges(IReadOnlyDictionary<string, TimeSpan> ages) => JobQueueAges.Record(ages);
 
     // A span for an operation, with no value of content. Null when nothing listens, which every caller tolerates.
@@ -113,8 +108,14 @@ public static class FluentCmsTelemetry
         CacheRequests.Add(1, new KeyValuePair<string, object?>(Tags.Cache, cache), new KeyValuePair<string, object?>(Tags.Result, hit ? "hit" : "miss"));
     }
 
+    // Reports what the job runner last measured: every queue of this instance's options, at zero when nothing waits, and
+    // every other queue with a job pending. The gauge is made here, so that the first record publishes it whether or not
+    // anything else of FluentCmsTelemetry has been touched.
     private static class JobQueueAges
     {
+        public static ObservableGauge<double> Gauge { get; } = Meter.CreateObservableGauge(
+            Instruments.JobOldestPendingAge, Measurements, "s", "How long the oldest pending job of a queue, due and held by no worker, had waited when the job runner last looked.");
+
         private static IReadOnlyDictionary<string, TimeSpan> _ages = new Dictionary<string, TimeSpan>();
 
         public static void Record(IReadOnlyDictionary<string, TimeSpan> ages) => Volatile.Write(ref _ages, ages);
