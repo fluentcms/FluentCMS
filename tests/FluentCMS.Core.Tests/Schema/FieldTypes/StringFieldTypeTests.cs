@@ -95,6 +95,11 @@ public class StringFieldTypeTests
     [InlineData("hello-world")]
     [InlineData("a1-b2-c3")]
     [InlineData("2026")]
+    [InlineData("привет-мир")]
+    [InlineData("日本語-2026")]
+    [InlineData("مرحبا")]
+    [InlineData("𠮷野家")]
+    [InlineData("héllo")]
     public void SlugAcceptsLowerCaseWordsWithSingleHyphens(string text)
     {
         TestFields.Coerce("slug", text).ShouldBe(text);
@@ -102,15 +107,28 @@ public class StringFieldTypeTests
 
     [Theory]
     [InlineData("Hello")]
+    [InlineData("Привет")]
     [InlineData("hello--world")]
     [InlineData("-hello")]
     [InlineData("hello-")]
     [InlineData("hello world")]
+    [InlineData("日本 語")]
     [InlineData("hello_world")]
-    [InlineData("héllo")]
+    [InlineData("héllo")]
+    [InlineData("한")]
+    [InlineData("aboutㅤ")]
+    [InlineData("مـرحبا")]
     [InlineData("")]
     public void SlugRejectsOtherText(string text)
     {
+        TestFields.Reject("slug", text).ShouldStartWith("is not a slug");
+    }
+
+    [Fact]
+    public void SlugRejectsAnUnpairedSurrogate()
+    {
+        var text = new string(['a', '\uD842']);
+
         TestFields.Reject("slug", text).ShouldStartWith("is not a slug");
     }
 }

@@ -7,6 +7,7 @@ using FluentCMS.Data.Tests.Authorization;
 using FluentCMS.Hooks;
 using FluentCMS.Publishing;
 using FluentCMS.Schema;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
@@ -193,19 +194,61 @@ public sealed class PublishingTransitionTests : IDisposable
     }
 
     [Fact]
-    public async Task DiscardingADraftThatWasEditedBackPutsTheStatusRightAndWritesNoVersion()
+    public async Task ASaveThatEditsTheDraftBackLeavesItPublishedAndDiscardAgrees()
     {
         var id = await PublishedAsync("One");
-        await _database.PatchAsync(Editor, id, Titled("Two"), 1);
-        await _database.PatchAsync(Editor, id, Titled("One"), 2);
-        _database.Document(id).Status.ShouldBe(EntryStatus.Modified);
+        (await _database.PatchAsync(Editor, id, Titled("Two"), 1))["status"].ShouldBe(EntryStatus.Modified);
+
+        (await _database.PatchAsync(Editor, id, Titled("One"), 2))["status"].ShouldBe(EntryStatus.Published);
+        _database.Document(id).Status.ShouldBe(EntryStatus.Published);
 
         var entry = await _database.DiscardAsync(Editor, id);
 
         entry["status"].ShouldBe(EntryStatus.Published);
         entry["version"].ShouldBe(3);
-        _database.Document(id).Status.ShouldBe(EntryStatus.Published);
         _database.Versions(id).Count.ShouldBe(3);
+    }
+
+    // A row written before saves decided the status by content can be Modified with nothing to discard.
+    [Fact]
+    public async Task DiscardingADraftLeftModifiedThatEqualsThePublishedStatePutsTheStatusRightAndWritesNoVersion()
+    {
+        var id = await PublishedAsync();
+        _database.Read(context => context.Documents.Where(document => document.DocumentId == id).ExecuteUpdate(set => set.SetProperty(document => document.Status, EntryStatus.Modified)));
+
+        var entry = await _database.DiscardAsync(Editor, id);
+
+        entry["status"].ShouldBe(EntryStatus.Published);
+        entry["version"].ShouldBe(1);
+        _database.Document(id).Status.ShouldBe(EntryStatus.Published);
+        _database.Versions(id).ShouldHaveSingleItem();
+    }
+
+    [Fact]
+    public async Task ASharedEditThatIsTakenBackGetsTheSameStatusFromSaveRecomputeAndDiscard()
+    {
+        var id = IdOf(await _database.CreateAsync(Editor, new() { ["title"] = "Hello", ["views"] = 1 }));
+        await _database.PatchAsync(Editor, id, Titled("Bonjour"), 0, locale: "fr");
+        await _database.PublishAsync(Editor, id);
+        await _database.PublishAsync(Editor, id, "fr");
+
+        await _database.PatchAsync(Editor, id, new() { ["views"] = 2 }, 1);
+        _database.Document(id).Status.ShouldBe(EntryStatus.Modified);
+        _database.Document(id, "fr").Status.ShouldBe(EntryStatus.Modified);
+
+        // The save decides the status of fr, the recompute that of en.
+        (await _database.PatchAsync(Editor, id, new() { ["views"] = 1 }, 1, locale: "fr"))["status"].ShouldBe(EntryStatus.Published);
+        _database.Document(id).Status.ShouldBe(EntryStatus.Published);
+        _database.Document(id, "fr").Status.ShouldBe(EntryStatus.Published);
+
+        var english = await _database.DiscardAsync(Editor, id);
+        var french = await _database.DiscardAsync(Editor, id, "fr");
+
+        english["status"].ShouldBe(EntryStatus.Published);
+        english["version"].ShouldBe(2);
+        french["status"].ShouldBe(EntryStatus.Published);
+        french["version"].ShouldBe(2);
+        _database.PublishedRow("cms_article", id)!["views"].ShouldBe(1L);
     }
 
     [Fact]

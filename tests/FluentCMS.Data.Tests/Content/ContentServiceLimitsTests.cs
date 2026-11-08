@@ -291,7 +291,8 @@ public sealed class ContentServiceLimitsTests : IDisposable
         var entry = await database.CreateAsync(Editor, new() { ["title"] = "Hello", ["views"] = 1 });
         var id = IdOf(entry);
         await database.PatchAsync(Editor, id, Titled("Bonjour"), 0, locale: "fr");
-        database.Read(context => context.Documents.Where(document => document.DocumentId == id).ExecuteUpdate(set => set.SetProperty(document => document.Status, EntryStatus.Published)));
+        await database.PublishAsync(Editor, id);
+        await database.PublishAsync(Editor, id, "fr");
 
         await database.PatchAsync(Editor, id, new() { ["views"] = 2 }, 1);
 

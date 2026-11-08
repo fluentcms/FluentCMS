@@ -1716,6 +1716,7 @@ const FluentCMS.Content.BulkRequest.MaxItems = 1000 -> int
 const FluentCMS.Content.ValidationErrorCodes.AboveMaximum = "FCMS2105" -> string!
 const FluentCMS.Content.ValidationErrorCodes.BelowMinimum = "FCMS2104" -> string!
 const FluentCMS.Content.ValidationErrorCodes.Custom = "FCMS2109" -> string!
+const FluentCMS.Content.ValidationErrorCodes.EmptySlug = "FCMS2112" -> string!
 const FluentCMS.Content.ValidationErrorCodes.InvalidValue = "FCMS2108" -> string!
 const FluentCMS.Content.ValidationErrorCodes.MaxLength = "FCMS2103" -> string!
 const FluentCMS.Content.ValidationErrorCodes.MinLength = "FCMS2102" -> string!

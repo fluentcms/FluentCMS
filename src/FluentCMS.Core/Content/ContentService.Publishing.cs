@@ -676,6 +676,10 @@ internal sealed partial class ContentService
     private static bool SameFields(SchemaType type, ContentDocument left, ContentDocument right) =>
         JsonNode.DeepEquals(EntryJson.Fields(type, left), EntryJson.Fields(type, right));
 
+    // fields is EntryJson.Fields of the one side; the other is compared field by field rather than copied whole.
+    private static bool SameFields(SchemaType type, JsonObject fields, ContentDocument entry) =>
+        type.Fields.All(field => JsonNode.DeepEquals(fields[field.Name], EntryJson.ToNode(entry.GetValueOrDefault(field.Name))));
+
     private async Task<JsonObject> ReadableFieldsOfAsync(WriteScope write, ContentVersion version, CancellationToken cancellationToken)
     {
         var fields = VisibleFieldsOf(write, version);
