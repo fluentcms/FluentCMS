@@ -37,7 +37,7 @@ public sealed class TestActor
     public TestActor In(SiteId site) => new(_services, _time, Principal, Origin, _clientId, site, Locale);
 
     public IContentService<T> Content<T>()
-        where T : ContentItem => new ScopedContentService<T>(_runner);
+        where T : ContentItem => new ScopedContentService<T>(_runner, _services);
 
     public IContentService Content() => new ScopedContentService(_runner);
 

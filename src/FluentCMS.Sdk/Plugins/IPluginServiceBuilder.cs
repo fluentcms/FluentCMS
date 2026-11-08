@@ -52,13 +52,21 @@ public interface IPluginServiceBuilder
     IPluginServiceBuilder AddSettings<TSettings>()
         where TSettings : class, new();
 
+    /// <summary>Adds a job that the runner executes, with the runner's limit on one attempt.</summary>
+    /// <typeparam name="TJob">The job, created per attempt.</typeparam>
+    /// <typeparam name="TPayload">Its payload.</typeparam>
+    /// <param name="type">What the job table stores, so it must outlive renames of the class.</param>
+    /// <returns>This builder.</returns>
+    IPluginServiceBuilder AddJob<TJob, TPayload>(string type)
+        where TJob : class, IJob<TPayload> => AddJob<TJob, TPayload>(type, null);
+
     /// <summary>Adds a job that the runner executes.</summary>
     /// <typeparam name="TJob">The job, created per attempt.</typeparam>
     /// <typeparam name="TPayload">Its payload.</typeparam>
     /// <param name="type">What the job table stores, so it must outlive renames of the class.</param>
     /// <param name="attemptTimeout">The limit of one attempt, or null for the runner's.</param>
     /// <returns>This builder.</returns>
-    IPluginServiceBuilder AddJob<TJob, TPayload>(string type, TimeSpan? attemptTimeout = null)
+    IPluginServiceBuilder AddJob<TJob, TPayload>(string type, TimeSpan? attemptTimeout)
         where TJob : class, IJob<TPayload>;
 
     /// <summary>

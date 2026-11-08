@@ -14,25 +14,25 @@ internal static class PublishingDatabase
     private static readonly string[] ArticleTables = ["cms_article", "cms_article_i18n"];
 
     public static Task<PublishResult<ContentDocument>> PublishAsync(this ServiceDatabase database, Principal principal, Guid id, string? locale = null, int? expected = null, string type = "article", string operationLocale = "en") =>
-        database.AsAsync(principal, services => services.GetRequiredService<IContentService>().PublishAsync(type, id, locale, expected, Token), operationLocale);
+        database.AsAsync(principal, services => services.GetRequiredService<IContentService>().PublishAsync(type, id, new LocaleWriteOptions { Locale = locale, ExpectedVersion = expected }, Token), operationLocale);
 
     public static Task<ContentDocument> UnpublishAsync(this ServiceDatabase database, Principal principal, Guid id, string? locale = null, string type = "article", string operationLocale = "en") =>
-        database.AsAsync(principal, services => services.GetRequiredService<IContentService>().UnpublishAsync(type, id, locale, Token), operationLocale);
+        database.AsAsync(principal, services => services.GetRequiredService<IContentService>().UnpublishAsync(type, id, new LocaleOptions { Locale = locale }, Token), operationLocale);
 
     public static Task<ContentDocument> DiscardAsync(this ServiceDatabase database, Principal principal, Guid id, string? locale = null, int? expected = null, string type = "article", string operationLocale = "en") =>
-        database.AsAsync(principal, services => services.GetRequiredService<IContentService>().DiscardDraftAsync(type, id, locale, expected, Token), operationLocale);
+        database.AsAsync(principal, services => services.GetRequiredService<IContentService>().DiscardDraftAsync(type, id, new LocaleWriteOptions { Locale = locale, ExpectedVersion = expected }, Token), operationLocale);
 
     public static Task<IReadOnlyList<VersionInfo>> VersionsAsync(this ServiceDatabase database, Principal principal, Guid id, string? locale = null, string type = "article") =>
-        database.AsAsync(principal, services => services.GetRequiredService<IContentService>().GetVersionsAsync(type, id, locale, Token));
+        database.AsAsync(principal, services => services.GetRequiredService<IContentService>().GetVersionsAsync(type, id, new LocaleOptions { Locale = locale }, Token));
 
     public static Task<ContentDocument?> VersionAsync(this ServiceDatabase database, Principal principal, Guid id, int number, string? locale = null, string type = "article") =>
-        database.AsAsync(principal, services => services.GetRequiredService<IContentService>().GetVersionAsync(type, id, number, locale, Token));
+        database.AsAsync(principal, services => services.GetRequiredService<IContentService>().GetVersionAsync(type, id, number, new LocaleOptions { Locale = locale }, Token));
 
     public static Task<ContentDocument> RestoreVersionAsync(this ServiceDatabase database, Principal principal, Guid id, int number, string? locale = null, int? expected = null, string type = "article") =>
-        database.AsAsync(principal, services => services.GetRequiredService<IContentService>().RestoreVersionAsync(type, id, number, locale, expected, Token));
+        database.AsAsync(principal, services => services.GetRequiredService<IContentService>().RestoreVersionAsync(type, id, number, new LocaleWriteOptions { Locale = locale, ExpectedVersion = expected }, Token));
 
     public static Task<IReadOnlyList<VersionChange>> DiffAsync(this ServiceDatabase database, Principal principal, Guid id, int from, int to, string? locale = null, string type = "article") =>
-        database.AsAsync(principal, services => services.GetRequiredService<IContentService>().DiffAsync(type, id, from, to, locale, Token));
+        database.AsAsync(principal, services => services.GetRequiredService<IContentService>().DiffAsync(type, id, from, to, new LocaleOptions { Locale = locale }, Token));
 
     public static Document Document(this ServiceDatabase database, Guid id, string locale = "en") =>
         database.Read(context => context.Documents.IgnoreQueryFilters().AsNoTracking().Single(document => document.DocumentId == id && document.Locale == locale));

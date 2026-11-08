@@ -64,7 +64,7 @@ internal sealed class OidcPruneScheduleService(IJobScheduler scheduler, TimeProv
     {
         try
         {
-            await scheduler.AddRecurringAsync<OidcPruneJob, OidcPrunePayload>(OidcPruneJob.RecurringName, OidcPruneJob.Schedule, new OidcPrunePayload(), cancellationToken: cancellationToken);
+            await scheduler.AddRecurringAsync<OidcPruneJob, OidcPrunePayload>(OidcPruneJob.RecurringName, OidcPruneJob.Schedule, new OidcPrunePayload(), queue: null, cancellationToken: cancellationToken);
             return true;
         }
         catch (Exception exception) when (!cancellationToken.IsCancellationRequested)

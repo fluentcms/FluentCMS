@@ -110,7 +110,7 @@ internal sealed class JobRetentionScheduleService(IJobScheduler scheduler, JobRu
     {
         try
         {
-            await scheduler.AddRecurringAsync<JobRetentionJob, JobRetentionPayload>(JobRetentionJob.RecurringName, options.RetentionSchedule, new JobRetentionPayload(), cancellationToken: cancellationToken);
+            await scheduler.AddRecurringAsync<JobRetentionJob, JobRetentionPayload>(JobRetentionJob.RecurringName, options.RetentionSchedule, new JobRetentionPayload(), queue: null, cancellationToken: cancellationToken);
             return true;
         }
         catch (Exception exception) when (!cancellationToken.IsCancellationRequested)

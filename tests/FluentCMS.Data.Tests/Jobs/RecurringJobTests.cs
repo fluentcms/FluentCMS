@@ -21,7 +21,7 @@ public sealed class RecurringJobTests : IDisposable
     public void Dispose() => _fixture.Dispose();
 
     private Task AddAsync(string cron = EveryFiveMinutes, string name = Name) =>
-        _fixture.Scheduler.AddRecurringAsync<ProbeJob, ProbePayload>(name, cron, new ProbePayload(name), cancellationToken: Token);
+        _fixture.Scheduler.AddRecurringAsync<ProbeJob, ProbePayload>(name, cron, new ProbePayload(name), queue: null, cancellationToken: Token);
 
     private Task FireAsync() => _fixture.Services.GetRequiredService<RecurringJobs>().FireDueAsync(Token);
 
@@ -150,7 +150,7 @@ public sealed class RecurringJobTests : IDisposable
             .Select(_ => _fixture.NewInstance().GetRequiredService<FluentCMS.Jobs.IJobScheduler>());
 
         await Task.WhenAll(schedulers.Select(scheduler => Task.Run(
-            () => scheduler.AddRecurringAsync<ProbeJob, ProbePayload>(Name, EveryFiveMinutes, new ProbePayload(Name), cancellationToken: Token),
+            () => scheduler.AddRecurringAsync<ProbeJob, ProbePayload>(Name, EveryFiveMinutes, new ProbePayload(Name), queue: null, cancellationToken: Token),
             Token)));
 
         _fixture.Recurring(Name).Cron.ShouldBe(EveryFiveMinutes);

@@ -101,7 +101,7 @@ public sealed class WebhookQueueTests
         await receiver.ArrivedAsync(2).WaitAsync(Patience, Token);
 
         var scheduled = await articles.CreateAsync(new Article { Title = "Scheduled" }, Token);
-        await articles.ScheduleAsync(scheduled.Id, new ScheduleRequest(ScheduleAction.Publish, host.Time.GetUtcNow().UtcDateTime.AddSeconds(30)), cancellationToken: Token);
+        await articles.ScheduleAsync(scheduled.Id, ScheduleRequest.At(ScheduleAction.Publish, host.Time.GetUtcNow().AddSeconds(30)), cancellationToken: Token);
         host.Time.Advance(TimeSpan.FromSeconds(30));
 
         await published.Of(scheduled.Id).WaitAsync(Patience, Token);

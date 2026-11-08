@@ -379,8 +379,8 @@ public sealed class JobFailureTests : IDisposable
     public async Task OneScheduleThatCannotFireDoesNotStopTheOthers()
     {
         var scheduler = _fixture.Scheduler;
-        await scheduler.AddRecurringAsync<ProbeJob, ProbePayload>("broken", "* * * * *", new ProbePayload("broken"), cancellationToken: Token);
-        await scheduler.AddRecurringAsync<ProbeJob, ProbePayload>("fine", "* * * * *", new ProbePayload("fine"), cancellationToken: Token);
+        await scheduler.AddRecurringAsync<ProbeJob, ProbePayload>("broken", "* * * * *", new ProbePayload("broken"), queue: null, cancellationToken: Token);
+        await scheduler.AddRecurringAsync<ProbeJob, ProbePayload>("fine", "* * * * *", new ProbePayload("fine"), queue: null, cancellationToken: Token);
         _fixture.Clock.Advance(TimeSpan.FromMinutes(1));
 
         var recurring = _fixture.NewInstance(faults: _faults).GetRequiredService<RecurringJobs>();

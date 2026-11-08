@@ -121,7 +121,7 @@ internal sealed class ActivityScheduleService(IJobScheduler scheduler, ActivityO
         {
             if (options.Enabled)
             {
-                await scheduler.AddRecurringAsync<ActivityRetentionJob, ActivityRetentionPayload>(ActivityRetentionJob.RecurringName, options.PruneSchedule, new ActivityRetentionPayload(), cancellationToken: cancellationToken);
+                await scheduler.AddRecurringAsync<ActivityRetentionJob, ActivityRetentionPayload>(ActivityRetentionJob.RecurringName, options.PruneSchedule, new ActivityRetentionPayload(), queue: null, cancellationToken: cancellationToken);
             }
 
             return true;

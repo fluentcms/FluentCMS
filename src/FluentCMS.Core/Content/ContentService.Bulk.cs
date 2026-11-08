@@ -76,15 +76,15 @@ internal sealed partial class ContentService
                     cancelled = true;
                     results.Add(new BulkItemResult(step.Index, step.Id, BulkItemStatus.NotRun));
                 }
-                catch (Exception exception) when (exception is EntryNotFoundException or ContentAccessDeniedException or VersionConflictException or ValidationException or HookRejectedException)
+                catch (Exception exception) when (ProblemOf(exception) is { } problem)
                 {
-                    results.Add(new BulkItemResult(step.Index, step.Id, BulkItemStatus.Failed) { Problem = exception });
+                    results.Add(new BulkItemResult(step.Index, step.Id, BulkItemStatus.Failed) { Problem = problem });
                 }
                 catch (Exception exception) when (exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
                 {
                     // A bug or a database failure says nothing the caller may read, and its message can hold a value of the entry.
                     ContentLog.BulkItemFailed(logger, exception, ApiErrorCodes.InternalError, step.Index, request.Operation, type);
-                    results.Add(new BulkItemResult(step.Index, step.Id, BulkItemStatus.Failed) { Problem = new InvalidOperationException(UnexpectedFailure) });
+                    results.Add(new BulkItemResult(step.Index, step.Id, BulkItemStatus.Failed) { Problem = new BulkProblem(ApiErrorCodes.InternalError, UnexpectedFailure) });
                 }
             }
         }
@@ -111,6 +111,23 @@ internal sealed partial class ContentService
                 return new BulkItemResult(step.Index, id, BulkItemStatus.Succeeded);
         }
     }
+
+    // The refusals of the single call, with the codes its problem details carry; the HTTP layer adds the status and the title.
+    // Any other exception is not one to report.
+    internal static BulkProblem? ProblemOf(Exception exception) => exception switch
+    {
+        EntryNotFoundException => new BulkProblem(ApiErrorCodes.NotFound, exception.Message),
+        ContentAccessDeniedException => new BulkProblem(ApiErrorCodes.Forbidden, exception.Message),
+        VersionConflictException conflict => new BulkProblem(ApiErrorCodes.VersionConflict, conflict.Message) { Current = conflict.Current },
+        ValidationException validation => new BulkProblem(
+            validation.Errors.Select(error => error.Code).Distinct().Count() == 1 ? validation.Errors[0].Code : ApiErrorCodes.ValidationFailed,
+            validation.Errors.Count == 1 ? validation.Errors[0].Message : $"The request has {validation.Errors.Count} errors; see errors.")
+        {
+            Errors = validation.Errors,
+        },
+        HookRejectedException rejected => new BulkProblem(rejected.Code, rejected.Message),
+        _ => null,
+    };
 
     private static BulkItemResult Succeeded(BulkStep step, ContentDocument entry) =>
         new(step.Index, (Guid)entry["id"]!, BulkItemStatus.Succeeded) { Version = entry["version"] as int? };

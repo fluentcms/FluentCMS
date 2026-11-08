@@ -40,6 +40,6 @@ public interface IJobScheduler
     /// <param name="cancellationToken">Cancels the write.</param>
     /// <returns>A task that completes when the schedule is stored.</returns>
     /// <exception cref="ArgumentException">The cron expression is not valid, or never occurs.</exception>
-    Task AddRecurringAsync<TJob, TPayload>(string name, string cron, TPayload payload, string? queue = null, CancellationToken cancellationToken = default)
+    Task AddRecurringAsync<TJob, TPayload>(string name, string cron, TPayload payload, string? queue, CancellationToken cancellationToken = default)
         where TJob : class, IJob<TPayload>;
 }

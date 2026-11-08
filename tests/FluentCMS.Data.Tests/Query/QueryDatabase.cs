@@ -69,7 +69,7 @@ internal sealed class QueryDatabase : IDisposable
             .Field("summary", "longText")
             .Field("region", "text")
             .Field("author", "relation", field => field.Relation("author"))
-            .Field("tags", "relation", field => field.Multiple().Relation("tag", ordered: true))
+            .Field("tags", "relation", field => field.Multiple().Relation("tag", null, true))
             .Field("related", "relation", field => field.Multiple().Relation("article"))
             .Field("sponsor", "relation", field => field.Localizable().Relation("author"))
             .Field("hero", "media")

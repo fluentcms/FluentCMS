@@ -18,34 +18,25 @@ internal static class ScheduleTime
 
         string? zone = null;
         DateTimeOffset runAt;
-        if (request.TimeZone is null)
+        if (request.Instant is { } instant)
         {
-            if (request.At.Kind != DateTimeKind.Utc)
-            {
-                throw Refuse("at", ValidationErrorCodes.InvalidValue, "A time without a time zone must be UTC.");
-            }
-
-            runAt = new DateTimeOffset(request.At);
+            runAt = instant.ToUniversalTime();
         }
         else
         {
-            if (request.At.Kind != DateTimeKind.Unspecified)
-            {
-                throw Refuse("at", ValidationErrorCodes.InvalidValue, "A time in a time zone is the wall-clock time there, and has no kind.");
-            }
-
-            var info = Find(request.TimeZone);
+            var local = request.LocalTime!.Value;
+            var info = Find(request.TimeZone!);
             zone = request.TimeZone;
-            if (info.IsInvalidTime(request.At))
+            if (info.IsInvalidTime(local))
             {
                 throw Refuse("at", ContentErrorCodes.NonexistentLocalTime, $"That time does not exist in {zone}: the clocks skip it.");
             }
 
             // A time that happens twice runs the first time, when the offset is the larger.
-            var offset = info.IsAmbiguousTime(request.At) ? info.GetAmbiguousTimeOffsets(request.At).Max() : info.GetUtcOffset(request.At);
+            var offset = info.IsAmbiguousTime(local) ? info.GetAmbiguousTimeOffsets(local).Max() : info.GetUtcOffset(local);
             try
             {
-                runAt = new DateTimeOffset(request.At, offset);
+                runAt = new DateTimeOffset(local, offset);
                 _ = runAt.UtcDateTime;
             }
             catch (ArgumentOutOfRangeException)
@@ -69,14 +60,23 @@ internal static class ScheduleTime
             throw Refuse("timeZone", ValidationErrorCodes.InvalidValue, "The time zone is not valid.");
         }
 
+        TimeZoneInfo info;
         try
         {
-            return TimeZoneInfo.FindSystemTimeZoneById(id);
+            info = TimeZoneInfo.FindSystemTimeZoneById(id);
         }
         catch (Exception exception) when (exception is TimeZoneNotFoundException or InvalidTimeZoneException)
         {
             throw Refuse("timeZone", ValidationErrorCodes.InvalidValue, "The time zone is not known.");
         }
+
+        // Each platform also finds the zones by their Windows ids, which the other does not hold, so only an IANA id is taken.
+        if (!info.HasIanaId && !TimeZoneInfo.TryConvertIanaIdToWindowsId(id, out _))
+        {
+            throw Refuse("timeZone", ValidationErrorCodes.InvalidValue, "The time zone is an IANA id, such as Europe/Berlin.");
+        }
+
+        return info;
     }
 
     private static ValidationException Refuse(string path, string code, string message) =>

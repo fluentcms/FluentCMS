@@ -105,7 +105,10 @@ internal sealed partial class ContentService(
         return ReadAsync(type, query, null, everySystemField, cancellationToken);
     }
 
-    public async Task<long> CountAsync(string type, ContentFilter? filter = null, QueryStatus status = QueryStatus.Published, CancellationToken cancellationToken = default)
+    public Task<long> CountAsync(string type, CountOptions? options = null, CancellationToken cancellationToken = default) =>
+        CountAsync(type, options?.Filter, options?.Status ?? QueryStatus.Published, cancellationToken);
+
+    internal async Task<long> CountAsync(string type, ContentFilter? filter, QueryStatus status, CancellationToken cancellationToken)
     {
         using var span = Span("count", type);
 

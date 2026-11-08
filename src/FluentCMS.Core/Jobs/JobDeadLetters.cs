@@ -8,7 +8,7 @@ namespace FluentCMS.Core.Jobs;
 
 internal sealed class JobDeadLetters(IServiceScopeFactory scopes, JobRunnerOptions options, TimeProvider time) : IJobDeadLetters
 {
-    public async Task<IReadOnlyList<DeadLetteredJob>> ListAsync(int offset = 0, int limit = 50, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<DeadLetteredJob>> ListAsync(int offset, int limit, CancellationToken cancellationToken = default)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(offset);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(limit);

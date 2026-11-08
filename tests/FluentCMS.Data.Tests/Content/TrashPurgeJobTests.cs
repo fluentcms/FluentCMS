@@ -299,7 +299,7 @@ public sealed class TrashPurgeJobTests
         public Task<Guid> ScheduleAsync<TJob, TPayload>(TPayload payload, DateTimeOffset runAt, JobOptions? options = null, CancellationToken cancellationToken = default)
             where TJob : class, IJob<TPayload> => throw new NotSupportedException();
 
-        public Task AddRecurringAsync<TJob, TPayload>(string name, string cron, TPayload payload, string? queue = null, CancellationToken cancellationToken = default)
+        public Task AddRecurringAsync<TJob, TPayload>(string name, string cron, TPayload payload, string? queue, CancellationToken cancellationToken = default)
             where TJob : class, IJob<TPayload>
         {
             if (Failures > 0)
