@@ -24,7 +24,7 @@ Thank you for your interest. FluentCMS is starting over, so there is little to b
 
 ### What CI runs
 
-An issue pull request into `main` runs every test project on Linux, the SQLite data job, Markdown lint and packaging. On Windows it builds the whole solution and runs the SDK unit, core unit and architecture tests. The full Windows suite runs for pull requests from `feature/*` branches, on every push to `main`, nightly and on manual runs, so a Windows-only failure shows up there rather than on the issue pull request.
+An issue pull request into `main` builds the whole solution on Linux and runs every test project there in three shards (units, integration, plugins and host), plus the SQLite data job, Markdown lint and packaging. On Windows it builds the whole solution and runs the SDK unit, core unit and architecture tests. The full Windows suite runs for pull requests from `feature/*` branches, on every push to `main`, nightly and on manual runs, so a Windows-only failure shows up there rather than on the issue pull request.
 
 ### Feature branches and validation
 
@@ -32,7 +32,7 @@ For a batch of related issues, create a branch such as `feature/media` from `mai
 
 Merge the issue pull requests into the feature branch as they pass review and fast checks. When the batch is ready, open one pull request from the feature branch into `main`. The `CI` workflow automatically runs all test projects on Linux and Windows, the SQLite data job, Markdown lint and packaging. Fix any failures on the feature branch and push again; the full checks rerun. Keep the feature branch current with `main` and rerun validation after incorporating changes from it. A passing run from before a change does not validate the updated code.
 
-The fast checks have different names from the full checks required by `main`. Keep `main` protected by `Markdown lint`, `Build and test (ubuntu-latest)`, `Build and test (windows-latest)`, `Data tests (sqlite)` and `Pack`. For protected feature branches, require `Feature markdown lint`, `Fast checks (ubuntu-latest)` and `Fast checks (windows-latest)` instead.
+The fast checks have different names from the full checks required by `main`. Keep `main` protected by `Markdown lint`, `Build and check (ubuntu-latest)`, `Tests (units)`, `Tests (integration)`, `Tests (plugins)`, `Build and test (windows-latest)`, `Data tests (sqlite)` and `Pack`. A repository ruleset on `feature/**` requires `Feature markdown lint`, `Fast checks (ubuntu-latest)` and `Fast checks (windows-latest)` instead, so auto-merge works on pull requests into feature branches too.
 
 To check the combined work before opening the final pull request, go to **Actions → CI → Run workflow**, choose the feature branch and select **Run workflow**. This runs the full suite on that branch whenever needed. The workflow must first be present on `main` for GitHub to show the manual trigger, and the selected branch must contain the updated workflow. Manual runs provide early feedback; the pull request into `main` still runs its own full validation, including the proposed merge with `main`.
 
