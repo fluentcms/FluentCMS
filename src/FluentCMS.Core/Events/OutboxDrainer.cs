@@ -10,8 +10,9 @@ using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Core.Events;
 
-// Delivers the rows of cms_outbox at least once. A batch is claimed with a conditional update that only one of any number
-// of instances wins per row, and holds a lease. Claiming costs no attempt, since a row whose lease runs out before its turn
+// Delivers the rows of cms_outbox at least once. A batch is claimed with one conditional update over its ids, which only one
+// of any number of instances wins for each row, and holds a lease under an owner of that claim alone, so that two drains of
+// one instance never take each other's rows when they read back what they won. Claiming costs no attempt, since a row whose lease runs out before its turn
 // comes was never tried: the worker starts an attempt, and takes its lease again, with one conditional update before each
 // delivery, which matches nothing once another instance has the row. A delivery is cut off before its lease can end, so that
 // a worker never delivers on a lease it has lost, and a write of the outcome is conditional on the claim in the same way.
@@ -20,6 +21,8 @@ namespace FluentCMS.Core.Events;
 // started may still be running, on a thread of its own; nothing here can stop it.
 // A row of a plugin that is now disabled in the row's site was recorded while it was enabled, so it is owed to the plugin: it
 // waits, as a row with no handler does, without using an attempt, and is delivered once the plugin is enabled there again.
+// Either waits OrphanAfter at most, from when its event happened; then it is left as failed, so that a plugin that is gone
+// for good leaves rows in the dead-letter list rather than rows claimed again for ever.
 internal sealed class OutboxDrainer(
     IServiceScopeFactory scopes,
     OutboxRegistry registry,
@@ -31,16 +34,16 @@ internal sealed class OutboxDrainer(
 {
     private const string ExhaustedError = "The worker of the last attempt stopped without finishing it, and no attempts are left.";
 
-    private readonly string _owner = $"{Environment.MachineName}/{Guid.NewGuid():N}";
+    private readonly string _instance = $"{Environment.MachineName}/{Guid.NewGuid():N}";
+
+    private long _claims;
 
     // On a thread of its own, since a handler that blocks before its first await would never hand control back to the
     // cut-off. A test replaces it to hold a handler back past its cut-off.
     internal Func<Func<Task>, Task> HandOff { get; set; } = work => Task.Run(work);
 
-    public Task<int> DrainAsync(CancellationToken cancellationToken = default) => DrainAsync(prune: false, cancellationToken);
-
     // The number of deliveries that succeeded.
-    public async Task<int> DrainAsync(bool prune, CancellationToken cancellationToken)
+    public async Task<int> DrainAsync(CancellationToken cancellationToken = default)
     {
         var delivered = 0;
         // A row whose handler never started waits for a later drain, so a starved thread pool cannot keep one drain going.
@@ -68,11 +71,6 @@ internal sealed class OutboxDrainer(
             }
         }
 
-        if (prune)
-        {
-            await PruneAsync(cancellationToken);
-        }
-
         return delivered;
     }
 
@@ -90,6 +88,7 @@ internal sealed class OutboxDrainer(
             message => message
                 .SetProperty(row => row.Status, OutboxStatus.Failed)
                 .SetProperty(row => row.LastError, ExhaustedError)
+                .SetProperty(row => row.AvailableAt, now)
                 .SetProperty(row => row.LeaseOwner, (string?)null)
                 .SetProperty(row => row.LeaseUntil, (DateTimeOffset?)null),
             cancellationToken);
@@ -106,28 +105,26 @@ internal sealed class OutboxDrainer(
             .Take(options.BatchSize)
             .ToListAsync(cancellationToken);
 
-        List<Guid> claimed = [];
-        foreach (var id in candidates)
+        if (candidates.Count == 0)
         {
-            var won = await Open(context, now).Where(message => message.Id == id).ExecuteUpdateAsync(
-                message => message
-                    .SetProperty(row => row.LeaseOwner, _owner)
-                    .SetProperty(row => row.LeaseUntil, leaseUntil),
-                cancellationToken);
-
-            if (won == 1)
-            {
-                claimed.Add(id);
-            }
+            return [];
         }
 
-        if (claimed.Count == 0)
+        // The update checks every condition of the read again, so a row another drain took in between is left to it.
+        var owner = $"{_instance}/{Interlocked.Increment(ref _claims)}";
+        var won = await Open(context, now).Where(message => candidates.Contains(message.Id)).ExecuteUpdateAsync(
+            message => message
+                .SetProperty(row => row.LeaseOwner, owner)
+                .SetProperty(row => row.LeaseUntil, leaseUntil),
+            cancellationToken);
+
+        if (won == 0)
         {
             return [];
         }
 
         return await context.Set<OutboxMessage>().AsNoTracking()
-            .Where(message => claimed.Contains(message.Id))
+            .Where(message => candidates.Contains(message.Id) && message.Status == OutboxStatus.Pending && message.LeaseOwner == owner)
             .OrderBy(message => message.Sequence).ThenBy(message => message.Id)
             .ToListAsync(cancellationToken);
     }
@@ -138,9 +135,9 @@ internal sealed class OutboxDrainer(
             && message.AvailableAt <= now
             && (message.LeaseUntil == null || message.LeaseUntil < now));
 
-    private static IQueryable<OutboxMessage> Held(SystemDbContext context, OutboxMessage message, string owner) =>
+    private static IQueryable<OutboxMessage> Held(SystemDbContext context, OutboxMessage message) =>
         context.Set<OutboxMessage>().Where(row =>
-            row.Id == message.Id && row.Status == OutboxStatus.Pending && row.LeaseOwner == owner && row.Attempts == message.Attempts);
+            row.Id == message.Id && row.Status == OutboxStatus.Pending && row.LeaseOwner == message.LeaseOwner && row.Attempts == message.Attempts);
 
     private async Task<bool> DeliverAsync(OutboxMessage message, HashSet<Guid> deferred, CancellationToken cancellationToken)
     {
@@ -148,7 +145,13 @@ internal sealed class OutboxDrainer(
         if (registration is null)
         {
             // Another instance may have the handler: this one is mid-deploy, or the plugin is gone. The row waits, and a
-            // plugin that stays removed leaves its rows pending.
+            // plugin that stays removed leaves its rows failed once they are old enough.
+            if (Orphaned(message))
+            {
+                await OrphanAsync(message, $"No handler is registered as '{message.Handler}', and the delivery waited longer than {options.OrphanAfter} for one.");
+                return false;
+            }
+
             EventLog.HandlerMissing(logger, message.Id, message.Handler);
             await ReleaseAsync(message, options.MissingHandlerDelay, started: false);
             return false;
@@ -170,6 +173,12 @@ internal sealed class OutboxDrainer(
 
         if (disabled is not null)
         {
+            if (Orphaned(message))
+            {
+                await OrphanAsync(message, $"The handler '{message.Handler}' belongs to the plugin '{disabled}', which is disabled in the site {message.SiteId:D}, and the delivery waited longer than {options.OrphanAfter} for it to be enabled.");
+                return false;
+            }
+
             PluginLog.DeliveryWaits(logger, message.Id, message.Handler, disabled, message.SiteId!.Value);
             await ReleaseAsync(message, options.MissingHandlerDelay, started: false);
             return false;
@@ -187,24 +196,26 @@ internal sealed class OutboxDrainer(
             var @event = registration.Read(message.Payload)
                 ?? throw new InvalidOperationException($"The payload of the event for '{message.Handler}' is null.");
 
-            await using var scope = scopes.CreateAsyncScope();
-            using var limit = new CancellationTokenSource(options.DeliveryTimeout, time);
-            using var attempt = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, limit.Token);
+            var scope = scopes.CreateAsyncScope();
+            var limit = new CancellationTokenSource(options.DeliveryTimeout, time);
+            var attempt = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, limit.Token);
+            Task? run = null;
 
             var previous = operation.Current;
-            operation.Current = await EventOperation.CreateAsync(scope.ServiceProvider, @event.Source, message.EventId, message.SiteId, time.GetUtcNow());
             try
             {
+                operation.Current = await EventOperation.CreateAsync(scope.ServiceProvider, @event.Source, message.EventId, message.SiteId, time.GetUtcNow());
                 var delivery = new EventDelivery(message.Id, message.Attempts);
-                await HandOff(() => state.TryStart() ? registration.Invoke(scope.ServiceProvider, @event, delivery, attempt.Token).AsTask() : Task.CompletedTask)
-                    .WaitAsync(options.DeliveryTimeout, time, cancellationToken);
+                run = HandOff(() => state.TryStart() ? registration.Invoke(scope.ServiceProvider, @event, delivery, attempt.Token).AsTask() : Task.CompletedTask);
+                await run.WaitAsync(options.DeliveryTimeout, time, cancellationToken);
             }
             finally
             {
                 operation.Current = previous;
 
-                // Before the scope goes, so that a handler which has not started by now never starts on it.
+                // So that a handler which has not started by now never starts on the scope.
                 state.Abandon();
+                await EndAsync(run, scope, limit, attempt, message);
             }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -251,7 +262,7 @@ internal sealed class OutboxDrainer(
             await using var scope = scopes.CreateAsyncScope();
             var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
             var until = time.GetUtcNow() + options.LeaseDuration;
-            var started = await Held(context, message, _owner).ExecuteUpdateAsync(row => row
+            var started = await Held(context, message).ExecuteUpdateAsync(row => row
                 .SetProperty(column => column.LeaseUntil, until)
                 .SetProperty(column => column.Attempts, column => column.Attempts + 1)) == 1;
 
@@ -274,11 +285,7 @@ internal sealed class OutboxDrainer(
         if (message.Attempts >= options.MaxAttempts)
         {
             EventLog.DeliveryGaveUp(logger, message.Id, message.Handler, message.Attempts, error);
-            await SettleAsync(message, row => row
-                .SetProperty(column => column.Status, OutboxStatus.Failed)
-                .SetProperty(column => column.LastError, error)
-                .SetProperty(column => column.LeaseOwner, (string?)null)
-                .SetProperty(column => column.LeaseUntil, (DateTimeOffset?)null));
+            await SettleFailedAsync(message, error);
             return;
         }
 
@@ -287,6 +294,27 @@ internal sealed class OutboxDrainer(
         await SettleAsync(message, row => row
             .SetProperty(column => column.AvailableAt, retryAt)
             .SetProperty(column => column.LastError, error)
+            .SetProperty(column => column.LeaseOwner, (string?)null)
+            .SetProperty(column => column.LeaseUntil, (DateTimeOffset?)null));
+    }
+
+    private bool Orphaned(OutboxMessage message) => message.OccurredAt <= time.GetUtcNow() - options.OrphanAfter;
+
+    // Moved to the dead-letter list without using an attempt, since no handler ran.
+    private Task OrphanAsync(OutboxMessage message, string error)
+    {
+        EventLog.Orphaned(logger, message.Id, message.Handler, options.OrphanAfter);
+        return SettleFailedAsync(message, error);
+    }
+
+    // A failed row is never available again, so its available_at says when it failed, which FailedRetention counts from.
+    private Task SettleFailedAsync(OutboxMessage message, string error)
+    {
+        var now = time.GetUtcNow();
+        return SettleAsync(message, row => row
+            .SetProperty(column => column.Status, OutboxStatus.Failed)
+            .SetProperty(column => column.LastError, error)
+            .SetProperty(column => column.AvailableAt, now)
             .SetProperty(column => column.LeaseOwner, (string?)null)
             .SetProperty(column => column.LeaseUntil, (DateTimeOffset?)null));
     }
@@ -311,7 +339,7 @@ internal sealed class OutboxDrainer(
         {
             await using var scope = scopes.CreateAsyncScope();
             var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
-            await Held(context, message, _owner).ExecuteUpdateAsync(update);
+            await Held(context, message).ExecuteUpdateAsync(update);
         }
         catch (Exception exception)
         {
@@ -319,23 +347,44 @@ internal sealed class OutboxDrainer(
         }
     }
 
-    private async Task PruneAsync(CancellationToken cancellationToken)
+    // A handler that was cut off, or left by a stopping host, may still be running on its scope and its token, so they go only
+    // once it ends. What it throws then comes after its delivery was settled, and is only logged.
+    private async ValueTask EndAsync(Task? run, AsyncServiceScope scope, CancellationTokenSource limit, CancellationTokenSource attempt, OutboxMessage message)
     {
-        var before = time.GetUtcNow() - options.Retention;
+        if (run is not { IsCompleted: false })
+        {
+            // Observed, in case it faulted after its cut-off.
+            _ = run?.Exception;
+            await DisposeAsync(scope, limit, attempt, message);
+            return;
+        }
+
+        _ = run.ContinueWith(
+            async ended =>
+            {
+                if (ended.Exception?.InnerException is { } exception and not OperationCanceledException)
+                {
+                    EventLog.AbandonedDeliveryFailed(logger, exception, message.Id, message.Handler);
+                }
+
+                await DisposeAsync(scope, limit, attempt, message);
+            },
+            CancellationToken.None,
+            TaskContinuationOptions.None,
+            TaskScheduler.Default).Unwrap();
+    }
+
+    private async ValueTask DisposeAsync(AsyncServiceScope scope, CancellationTokenSource limit, CancellationTokenSource attempt, OutboxMessage message)
+    {
+        attempt.Dispose();
+        limit.Dispose();
         try
         {
-            await using var scope = scopes.CreateAsyncScope();
-            var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
-            await context.Set<OutboxMessage>()
-                .Where(row => row.Status == OutboxStatus.Delivered && row.DeliveredAt < before)
-                .ExecuteDeleteAsync(cancellationToken);
+            await scope.DisposeAsync();
         }
-        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
+        catch (Exception exception)
         {
-            EventLog.DrainFailed(logger, exception);
-        }
-        catch (OperationCanceledException)
-        {
+            EventLog.DeliveryScopeFailed(logger, exception, message.Id, message.Handler);
         }
     }
 

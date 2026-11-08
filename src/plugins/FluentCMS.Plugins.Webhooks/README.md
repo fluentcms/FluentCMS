@@ -13,6 +13,7 @@ The options are in `FluentCms:Webhooks`:
 | `Retention` | `30.00:00:00` | How long the delivery log keeps an attempt. |
 | `Workers` | `2` | Workers of the `webhooks` job queue on this instance. 0 runs no deliveries here. |
 | `SecretOverlap` | `1.00:00:00` | How long the secret a rotation replaces keeps signing beside the new one. `00:00:00` ends it at the rotation. |
+| `DisableAfter` | unset | Disables a webhook when a delivery to it dies and every attempt to it has failed for at least this long. Unset never disables one. At most `Retention`. |
 
 ## The webhooks queue
 
@@ -21,6 +22,10 @@ Every attempt runs on the job queue `webhooks`: the first attempt of a delivery,
 One attempt of a webhook is in flight at a time, on every instance together. A job claims its attempt by writing the attempt's row as `pending` before it sends, and a job that finds another attempt of its webhook pending waits until that attempt's send must have ended, at least a few seconds, and tries again. So a slow receiver delays its own deliveries and nobody else's.
 
 A claim that is still pending a minute after the timeout has passed is abandoned, because its worker stopped before it recorded the result. The next job to find it marks the attempt `failed` and schedules the next attempt, without sending this one again. Since the receiver may have got the abandoned attempt, it can get a delivery more than once, and ignores a repeat by its `X-FluentCMS-Delivery` header.
+
+## Dead deliveries
+
+A delivery whose sixth attempt fails is dead, and its activity row is `webhook.delivery_dead`, with the delivery id, the event and the number of attempts. A ping or a redelivery is tried once and makes no such row. The webhook stays enabled unless `DisableAfter` is set: then, when a delivery dies and every attempt to the webhook has failed for at least that long, the webhook is disabled, with the activity row `webhook.disabled` and the time it started failing. A ping that succeeds counts as a success, and so does a change of the webhook: the time starts again from it. Turn the webhook back on with a `PUT` once the receiver works.
 
 ## Secrets and headers
 
@@ -33,6 +38,8 @@ Webhooks saved before the headers were protected hold them in plain JSON. They a
 ## The body
 
 `{ version, id, event, occurredAt, site, origin, actor, data, links }`, where `version` is `1`. It changes only with a change that a receiver of version 1 could misread, and a new field is not one. A redelivery sends the body exactly as it was first sent.
+
+The body names the entry and carries none of its fields. A receiver that needs the entry fetches it when the delivery arrives: it reads `data.type`, `data.documentId` and `data.locale`, and gets the entry from `links.delivery` with a Delivery key and `locale`, or from `links.management` with a Management key for a draft. It then has the entry as its own key sees it and as it is now, even for a retry that arrives hours later, and `data.version` tells it whether what it read is older or newer than the event.
 
 ## Receivers
 

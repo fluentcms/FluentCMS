@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json.Nodes;
 using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Events;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Jobs;
 using FluentCMS.Providers;
@@ -80,6 +81,9 @@ public sealed class AdminFixture : IAsyncLifetime
             .Configure(cms =>
             {
                 cms.Jobs.Options.PollInterval = TimeSpan.FromDays(1);
+                // Enqueueing wakes the host's own workers, so the queues the tests drive by hand have none.
+                cms.Jobs.Options.Queues[JobRunnerOptions.DefaultQueue] = 0;
+                cms.Jobs.Options.Queues[OutboxDrainJob.Queue] = 0;
                 cms.Settings.Add<MailSettings>();
                 cms.Jobs.AddJob<FailingJob, FailingPayload>(FailingJob.Type);
             });

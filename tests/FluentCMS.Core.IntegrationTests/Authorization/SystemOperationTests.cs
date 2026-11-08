@@ -45,6 +45,8 @@ public sealed class SystemOperationTests
         await using var host = new FluentCmsTestHost().Configure(cms =>
         {
             cms.Jobs.Options.PollInterval = TimeSpan.FromDays(1);
+            // Enqueueing wakes the host's own worker, which would take the job the test runs by hand.
+            cms.Jobs.Options.Queues[JobRunnerOptions.DefaultQueue] = 0;
             cms.Jobs.AddJob<ManagingJob, ManagingPayload>(ManagingJob.Type);
         });
 
