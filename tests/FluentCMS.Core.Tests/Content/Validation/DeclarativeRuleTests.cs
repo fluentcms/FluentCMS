@@ -208,12 +208,12 @@ public class DeclarativeRuleTests
     }
 
     [Fact]
-    public async Task ASelectIsLimitedTo64OrItsLongestOption()
+    public async Task ASelectIsLimitedTo64OrItsMaximumLength()
     {
         var longest = new string('x', 80);
         var model = ValidationFixtures.Model(thing => thing
             .Field("short", "select", f => f.Setting(FieldSettings.Options, new[] { "a" }))
-            .Field("long", "select", f => f.Setting(FieldSettings.Options, new[] { "a", longest })));
+            .Field("long", "select", f => f.Length(null, 80).Setting(FieldSettings.Options, new[] { "a", longest })));
 
         (await ValidationFixtures.ValidateAsync(model, "thing", new() { ["long"] = longest }, ValidationMode.Publish)).IsValid.ShouldBeTrue();
         ValidationFixtures.Describe(await ValidationFixtures.ValidateAsync(model, "thing", new() { ["short"] = new string('a', 65) }, ValidationMode.Publish))

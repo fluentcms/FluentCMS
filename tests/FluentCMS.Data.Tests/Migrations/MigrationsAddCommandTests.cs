@@ -1,5 +1,7 @@
 using System.Reflection;
 using FluentCMS.Cli;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using FluentCMS.Core.Storage;
 using FluentCMS.Data.Sqlite;
 using FluentCMS.Data.Tests.Sqlite;
@@ -17,6 +19,7 @@ public sealed class MigrationsAddCommandTests : IDisposable
 
     private readonly SqliteFileDatabase _database = new();
     private readonly DirectoryInfo _project = Directory.CreateTempSubdirectory("fluentcms-cli-tests-");
+    private readonly DirectoryInfo _hosts = Directory.CreateTempSubdirectory("fluentcms-cli-hosts-");
     private readonly StringWriter _output = new();
     private readonly StringWriter _error = new();
 
@@ -25,6 +28,15 @@ public sealed class MigrationsAddCommandTests : IDisposable
     public void Dispose()
     {
         _project.Delete(recursive: true);
+        try
+        {
+            _hosts.Delete(recursive: true);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Windows keeps a loaded assembly's file open until the process ends.
+        }
+
         _database.Dispose();
         _output.Dispose();
         _error.Dispose();
@@ -89,6 +101,64 @@ public sealed class MigrationsAddCommandTests : IDisposable
         _error.ToString().ShouldContain("IDesignTimeDbContextFactory<CmsDbContext>");
     }
 
+    [Fact]
+    public void AHostWhoseTypesDoNotLoadGetsTheVersionsAndNoStackTrace()
+    {
+        var missing = Compile("namespace Missing { public class Base { } }");
+        var host = Compile(
+            "public sealed class Factory : Missing.Base, Microsoft.EntityFrameworkCore.Design.IDesignTimeDbContextFactory<FluentCMS.Core.Storage.CmsDbContext> { public FluentCMS.Core.Storage.CmsDbContext CreateDbContext(string[] args) => null!; }",
+            missing.Image);
+
+        // Without the assembly it was built against, as a host built against another FluentCMS.Core misses a type.
+        var path = Path.Combine(_hosts.FullName, $"{host.Name}.dll");
+        File.WriteAllBytes(path, host.Image);
+
+        Run("migrations", "add", "Initial", "--assembly", path, "--project", _project.FullName).ShouldBe(1);
+
+        var error = _error.ToString();
+        error.ShouldContain($"{host.Name} could not be used by this fluentcms, which has FluentCMS.Core ");
+        error.ShouldContain("; the host has ");
+        error.ShouldContain(missing.Name);
+        error.ShouldNotContain("   at ");
+    }
+
+    [Fact]
+    public void AFactoryThatFailsToStartGetsTheVersionsAndItsOwnMessage()
+    {
+        TestHostFactory.Fails = true;
+        try
+        {
+            Add("Initial", ArticleSchemas.Titled).ShouldBe(1);
+        }
+        finally
+        {
+            TestHostFactory.Fails = false;
+        }
+
+        var error = _error.ToString();
+        error.ShouldContain("could not be used by this fluentcms, which has FluentCMS.Core ");
+        error.ShouldContain("Method 'FluentCMS.Core.Storage.ContentMigrations.CreateContext' not found.");
+        error.ShouldNotContain("   at ");
+    }
+
+    private static (string Name, byte[] Image) Compile(string source, params byte[][] references)
+    {
+        var name = $"Assembly{Guid.NewGuid():N}";
+        var compilation = CSharpCompilation.Create(
+            name,
+            [CSharpSyntaxTree.ParseText(source)],
+            [
+                .. ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!).Split(Path.PathSeparator).Select(path => MetadataReference.CreateFromFile(path)),
+                .. references.Select(image => MetadataReference.CreateFromImage(image)),
+            ],
+            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, nullableContextOptions: NullableContextOptions.Enable));
+
+        using var image = new MemoryStream();
+        var result = compilation.Emit(image);
+        result.Success.ShouldBeTrue(string.Join(Environment.NewLine, result.Diagnostics));
+        return (name, image.ToArray());
+    }
+
     [Theory]
     [InlineData]
     [InlineData("migrations")]
@@ -109,6 +179,17 @@ public sealed class MigrationsAddCommandTests : IDisposable
         public static SchemaModel Schema { get; set; } = ArticleSchemas.Titled;
 
         public static Assembly Migrations { get; set; } = typeof(CmsDbContext).Assembly;
+
+        // As a host built against another FluentCMS.Core fails when this tool's copy lacks what it calls.
+        public static bool Fails { get; set; }
+
+        public TestHostFactory()
+        {
+            if (Fails)
+            {
+                throw new MissingMethodException("FluentCMS.Core.Storage.ContentMigrations", "CreateContext");
+            }
+        }
 
         public CmsDbContext CreateDbContext(string[] args) =>
             ContentMigrations.CreateContext(new SqliteDataProvider("Data Source=:memory:"), Schema, Migrations);
