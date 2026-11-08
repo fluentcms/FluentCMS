@@ -1,4 +1,5 @@
 using FluentCMS.Activity;
+using FluentCMS.Content;
 using FluentCMS.Diagnostics;
 using FluentCMS.Events;
 using FluentCMS.Media;
@@ -35,7 +36,10 @@ public sealed class MediaPlugin : IPlugin
                 options => options.IsValid(),
                 $"{MediaOptions.Section}: Local:Root must name a directory, MaxRequestBodySize must be positive, SigningKey must be the base64 of at least {MediaSigning.KeyLength} bytes when set, CacheControl a Cache-Control value, and DeletedRetention positive.");
         plugin.Services.AddOptions<DeliveryCacheControl>().BindConfiguration(DeliveryCacheControl.Section);
-        plugin.Services.AddScoped<IMediaService, MediaService>();
+        plugin.Services.AddScoped<MediaService>();
+        plugin.Services.AddScoped<IMediaService>(services => services.GetRequiredService<MediaService>());
+        plugin.Services.AddScoped<IMediaResolver, MediaResolver>();
+        plugin.Services.AddScoped<IReferenceResolver, MediaReferenceResolver>();
         plugin.Services.AddScoped<MediaTransforms>();
         plugin.Services.AddScoped<MediaOriginals>();
         plugin.Services.AddScoped<MediaCache>();
@@ -48,6 +52,7 @@ public sealed class MediaPlugin : IPlugin
             .AddCheck<MediaStorageHealthCheck>(MediaStorageHealthCheck.Name, failureStatus: null, [FluentCmsHealthCheckTags.Ready], MediaStorageHealthCheck.Timeout);
 
         plugin
+            .AddFieldType<MediaFieldType>()
             .AddProviderSlot<IFileStorage, LocalFileStorage>()
             .AddProviderSlot<IImageProcessor, SkiaImageProcessor>()
             .AddPermissions<MediaPermissions>()

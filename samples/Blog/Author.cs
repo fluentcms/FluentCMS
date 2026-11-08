@@ -1,3 +1,4 @@
+using FluentCMS.Media;
 using FluentCMS.Schema;
 
 namespace FluentCMS.Samples.Blog;
@@ -13,6 +14,9 @@ public sealed class Author : ContentItem
 
     [RichText]
     public RichText Bio { get; set; } = RichText.Empty;
+
+    [Media]
+    public MediaRef? Avatar { get; set; }
 
     // The reverse side of Article.Author. It has no field attribute, so it is not a field of the schema.
     public RefList<Article> Articles { get; set; } = [];

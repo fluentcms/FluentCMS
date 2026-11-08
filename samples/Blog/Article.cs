@@ -1,3 +1,4 @@
+using FluentCMS.Media;
 using FluentCMS.Schema;
 
 namespace FluentCMS.Samples.Blog;
@@ -19,6 +20,9 @@ public sealed class Article : ContentItem
 
     [Relation(Ordered = true)]
     public RefList<Tag> Tags { get; set; } = [];
+
+    [Media]
+    public MediaRef? Hero { get; set; }
 
     [Blocks(typeof(HeroBlock), typeof(QuoteBlock), typeof(GalleryBlock))]
     public BlockList Sections { get; set; } = [];

@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace FluentCMS.Media;
 
 /// <summary>An asset of the media plugin, with its alternative text and caption in one locale.</summary>
@@ -70,6 +72,7 @@ public sealed record MediaAsset
 /// <summary>A point of an image, as fractions of its width and height from the top left corner, each from 0 to 1.</summary>
 /// <param name="X">The fraction of the width.</param>
 /// <param name="Y">The fraction of the height.</param>
+[JsonNumberHandling(JsonNumberHandling.Strict)]
 public readonly record struct MediaFocalPoint(double X, double Y);
 
 /// <summary>A folder of the media plugin.</summary>

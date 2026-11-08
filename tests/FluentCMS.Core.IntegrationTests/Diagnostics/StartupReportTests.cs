@@ -47,7 +47,8 @@ public sealed class StartupReportTests : IAsyncDisposable
         logged["environment"]!.GetValue<string>().ShouldBe("Development");
         logged["dataProvider"]!["provider"]!.GetValue<string>().ShouldBe("SQLite");
         logged["dataProvider"]!["providerVersion"]!.GetValue<string>().ShouldNotBeNullOrWhiteSpace();
-        logged["plugins"]!.AsArray().ShouldBeEmpty();
+        // The Blog sample, which this project references, brings the media plugin, and discovery finds it.
+        logged["plugins"]!.AsArray().Select(plugin => plugin!["name"]!.GetValue<string>()).ShouldBe(["media"]);
         logged["assemblies"]!.AsArray().Select(assembly => assembly!["name"]!.GetValue<string>()).ShouldContain("FluentCMS.Core");
 
         var runner = host.Services.GetRequiredService<MigrationRunner>();

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using FluentCMS.Content;
+using FluentCMS.Media;
 using FluentCMS.Publishing;
 using FluentCMS.Schema;
 using FluentCMS.Seeding;
@@ -23,10 +24,30 @@ public class BlogSeeder : ISeeder
     public const string DotnetSlug = "dotnet";
     public const string HeadlessSlug = "headless-cms";
     public const string ReleasesSlug = "release-notes";
+    public const string MediaTag = "blog-sample";
+    public const string WelcomeHeroFile = "welcome-hero.png";
+    public const string AdaAvatarFile = "ada-lovelace.png";
+    public const string GraceAvatarFile = "grace-hopper.png";
+    public const string LogoFile = "logo.png";
+    public const string FirstScreenshotFile = "screenshot-1.png";
+    public const string SecondScreenshotFile = "screenshot-2.png";
 
     public static readonly TimeSpan ScheduleDelay = TimeSpan.FromDays(30);
 
     private static readonly GetOptions Draft = new() { Status = QueryStatus.Draft, Fallback = LocaleFallback.None };
+
+    // A 16 by 9 PNG of one colour, so that the seed has images without shipping files.
+    private static readonly byte[] Image = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAABAAAAAJCAIAAAC0SDtlAAAAFElEQVR42mPQztlAEmIY1TAoNAAALmO38Z6fgBcAAAAASUVORK5CYII=");
+
+    private static readonly (string File, string Title, string Alt)[] Images =
+    [
+        (WelcomeHeroFile, "Welcome", "The FluentCMS welcome banner"),
+        (AdaAvatarFile, "Ada Lovelace", "Portrait of Ada Lovelace"),
+        (GraceAvatarFile, "Grace Hopper", "Portrait of Grace Hopper"),
+        (LogoFile, "Logo", "The logo of the blog"),
+        (FirstScreenshotFile, "Screenshot 1", "The content list of the admin"),
+        (SecondScreenshotFile, "Screenshot 2", "The entry editor of the admin"),
+    ];
 
     // A subclass can raise the version, as a release that changes the seed content would.
     protected virtual int SeedVersion => 1;
@@ -41,20 +62,21 @@ public class BlogSeeder : ISeeder
 
         var first = context.AppliedVersion == 0;
 
-        await SeedSettingsAsync(context, cancellationToken);
+        var images = await SeedMediaAsync(context, cancellationToken);
+        await SeedSettingsAsync(context, images[LogoFile], cancellationToken);
 
         var authors = context.Get<IContentService<Author>>();
         var tags = context.Get<IContentService<Tag>>();
         var articles = context.Get<IContentService<Article>>();
 
-        var ada = await EnsureAuthorAsync(authors, first, AdaSlug, "Ada Lovelace", "Writes about analytical engines and typed content.", cancellationToken);
-        var grace = await EnsureAuthorAsync(authors, first, GraceSlug, "Grace Hopper", "Believes in readable code and compilers that help.", cancellationToken);
+        var ada = await EnsureAuthorAsync(authors, first, AdaSlug, "Ada Lovelace", "Writes about analytical engines and typed content.", images[AdaAvatarFile], cancellationToken);
+        var grace = await EnsureAuthorAsync(authors, first, GraceSlug, "Grace Hopper", "Believes in readable code and compilers that help.", images[GraceAvatarFile], cancellationToken);
 
         var dotnet = await EnsureTagAsync(tags, first, DotnetSlug, "dotnet", cancellationToken);
         var headless = await EnsureTagAsync(tags, first, HeadlessSlug, "headless cms", cancellationToken);
         var releases = await EnsureTagAsync(tags, first, ReleasesSlug, "release notes", cancellationToken);
 
-        await SeedWelcomeAsync(context, articles, first, ada, [dotnet, headless], cancellationToken);
+        await SeedWelcomeAsync(context, articles, first, ada, [dotnet, headless], images[WelcomeHeroFile], cancellationToken);
 
         var typed = await EnsureAsync(
             articles,
@@ -85,7 +107,7 @@ public class BlogSeeder : ISeeder
                 Tags = [headless],
                 Category = ArticleCategory.Video,
                 VideoUrl = "https://example.com/videos/blog-sample-tour",
-                Sections = [new GalleryBlock { Caption = "Screenshots", Columns = 2 }],
+                Sections = [new GalleryBlock { Caption = "Screenshots", Columns = 2, Images = [images[FirstScreenshotFile], images[SecondScreenshotFile]] }],
             },
             cancellationToken);
 
@@ -119,7 +141,7 @@ public class BlogSeeder : ISeeder
                 Author = ada,
                 Tags = [releases, dotnet],
                 Category = ArticleCategory.News,
-                Sections = [new HeroBlock { Heading = "FluentCMS 1.0", Subheading = "Out now" }],
+                Sections = [new HeroBlock { Heading = "FluentCMS 1.0", Subheading = "Out now", Image = images[WelcomeHeroFile] }],
             },
             cancellationToken);
         if (!notes.InTrash && (first || notes.Created) && notes.Entry.Status == EntryStatus.Draft)
@@ -129,7 +151,33 @@ public class BlogSeeder : ISeeder
         }
     }
 
-    private static async Task SeedSettingsAsync(SeedContext context, CancellationToken cancellationToken)
+    // Each image is found by its file name among the assets with the sample's tag, so that a run finds what an earlier one
+    // uploaded. The welcome banner has its alternative text in both locales.
+    private static async Task<Dictionary<string, MediaRef>> SeedMediaAsync(SeedContext context, CancellationToken cancellationToken)
+    {
+        var media = context.Get<IMediaService>();
+        var listed = await media.ListAsync(new MediaQuery { Tag = MediaTag, PageSize = 100 }, cancellationToken);
+        var found = listed.Items.GroupBy(asset => asset.FileName, StringComparer.Ordinal).ToDictionary(group => group.Key, group => new MediaRef(group.Last().Id), StringComparer.Ordinal);
+        foreach (var (file, title, alt) in Images.Where(image => !found.ContainsKey(image.File)))
+        {
+            using var content = new MemoryStream(Image, writable: false);
+            var asset = (await media.UploadAsync(new MediaUpload(null, [new MediaUploadFile(file, content)]), cancellationToken))[0];
+            await media.UpdateAsync(asset.Id, new MediaAssetChanges { Title = title, Alt = alt, Tags = [MediaTag] }, cancellationToken);
+            found[file] = new MediaRef(asset.Id);
+
+            if (file == WelcomeHeroFile)
+            {
+                using (context.InLocale(BlogSample.SecondLocale))
+                {
+                    await media.UpdateAsync(asset.Id, new MediaAssetChanges { Alt = "La bannière de bienvenue de FluentCMS" }, cancellationToken);
+                }
+            }
+        }
+
+        return found;
+    }
+
+    private static async Task SeedSettingsAsync(SeedContext context, MediaRef logo, CancellationToken cancellationToken)
     {
         var settings = context.Get<ISettings<BlogSettings>>();
         var current = await settings.GetAsync(context.Site, cancellationToken);
@@ -140,10 +188,11 @@ public class BlogSeeder : ISeeder
 
         current.SiteName = "The FluentCMS blog";
         current.Description = "Notes on typed content and headless publishing.";
+        current.Logo = logo.Id;
         await settings.SetAsync(context.Site, current, cancellationToken);
     }
 
-    private static async Task SeedWelcomeAsync(SeedContext context, IContentService<Article> articles, bool first, Ref<Author> author, RefList<Tag> tags, CancellationToken cancellationToken)
+    private static async Task SeedWelcomeAsync(SeedContext context, IContentService<Article> articles, bool first, Ref<Author> author, RefList<Tag> tags, MediaRef hero, CancellationToken cancellationToken)
     {
         var welcome = await EnsureAsync(
             articles,
@@ -155,11 +204,12 @@ public class BlogSeeder : ISeeder
                 Body = Text("FluentCMS is a headless CMS for .NET."),
                 Author = author,
                 Tags = tags,
+                Hero = hero,
                 Category = ArticleCategory.News,
                 PublishedOn = context.Time.GetUtcNow(),
                 Sections =
                 [
-                    new HeroBlock { Heading = "Welcome", Subheading = "A headless CMS for .NET" },
+                    new HeroBlock { Heading = "Welcome", Subheading = "A headless CMS for .NET", Image = hero },
                     new QuoteBlock { Text = "Content is data first.", Attribution = "The FluentCMS team" },
                 ],
                 Seo = new Seo { MetaTitle = "Welcome to FluentCMS", MetaDescription = "What FluentCMS is and who it is for." },
@@ -190,6 +240,7 @@ public class BlogSeeder : ISeeder
                             Body = Text("FluentCMS est un CMS headless pour .NET."),
                             Author = source.Author,
                             Tags = source.Tags,
+                            Hero = source.Hero,
                             Category = source.Category,
                             PublishedOn = source.PublishedOn,
                             Sections = source.Sections,
@@ -219,9 +270,9 @@ public class BlogSeeder : ISeeder
         await PublishIfDraftAsync(articles, welcome, first, cancellationToken);
     }
 
-    private static async Task<Ref<Author>> EnsureAuthorAsync(IContentService<Author> authors, bool first, string slug, string name, string bio, CancellationToken cancellationToken)
+    private static async Task<Ref<Author>> EnsureAuthorAsync(IContentService<Author> authors, bool first, string slug, string name, string bio, MediaRef avatar, CancellationToken cancellationToken)
     {
-        var author = await EnsureAsync(authors, slug, () => new Author { Name = name, Slug = slug, Bio = Text(bio) }, cancellationToken);
+        var author = await EnsureAsync(authors, slug, () => new Author { Name = name, Slug = slug, Bio = Text(bio), Avatar = avatar }, cancellationToken);
         await PublishIfDraftAsync(authors, author, first, cancellationToken);
         return new Ref<Author>(author.Entry.Id);
     }

@@ -29,6 +29,10 @@ internal abstract class FormatRenderer(
     protected string? ResolveMediaUrl(MediaNode media) =>
         SafeUrl.OrNull(options.MediaUrlResolver?.Invoke(media.MediaId));
 
+    // The node's own text wins; the asset's is for a node that has none.
+    protected string MediaAlt(MediaNode media) =>
+        string.IsNullOrEmpty(media.Alt) ? options.MediaAltResolver?.Invoke(media.MediaId) ?? string.Empty : media.Alt;
+
     protected static List<RichTextMark> SortMarks(IReadOnlyList<RichTextMark> marks) =>
         [.. marks.OrderBy(Rank)];
 

@@ -25,7 +25,10 @@ internal sealed class FluentCmsOperationTransformer : IOpenApiOperationTransform
         var segments = Local(path, surface);
 
         operation.Tags = new HashSet<OpenApiTagReference> { new(Tag(segments), document) };
-        operation.OperationId ??= (description.HttpMethod ?? "get").ToLowerInvariant() + string.Concat(segments.Select(Name));
+        // A plugin's Delivery route may share its path with a Management one, as /media/{id} does, so it is named as the
+        // Delivery content routes are, deliveryListArticle.
+        var method = (description.HttpMethod ?? "get").ToLowerInvariant();
+        operation.OperationId ??= (surface == ContentPaths.Delivery ? "delivery" + ContentPaths.Pascal(method) : method) + string.Concat(segments.Select(Name));
         operation.Security = Security(surface, document);
 
         // The bridge reads the site and the locale on every route; beside content only the site changes the answer.
@@ -77,6 +80,7 @@ internal sealed class FluentCmsOperationTransformer : IOpenApiOperationTransform
         return char.ToUpperInvariant(words[0]) + words[1..];
     }
 
+    // A parameter is named without its constraint, so {id:guid} is ById.
     private static string Name(string segment) =>
-        segment.StartsWith('{') ? "By" + ContentPaths.Pascal(segment.Trim('{', '}', '?')) : ContentPaths.Pascal(segment);
+        segment.StartsWith('{') ? "By" + ContentPaths.Pascal(segment.Trim('{', '}', '*').Split(':', '=')[0].TrimEnd('?')) : ContentPaths.Pascal(segment);
 }

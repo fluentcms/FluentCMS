@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using FluentCMS.Settings;
 
@@ -14,4 +15,8 @@ public sealed class BlogSettings
 
     [Range(1, 100)]
     public int ArticlesPerPage { get; set; } = 10;
+
+    // A setting has no field type, so the logo is the id of its asset rather than a media field.
+    [Description("The id of the media asset of the logo.")]
+    public Guid? Logo { get; set; }
 }

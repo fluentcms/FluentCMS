@@ -72,13 +72,14 @@ internal sealed class PopulateNode
 
 internal abstract record OutputNode(string Name);
 
-internal sealed record ValueOutput(string Name, int Column, Func<object?, object?> Read) : OutputNode(Name);
+// Inside is the field of a block list or repeated component whose references a populate path resolves.
+internal sealed record ValueOutput(string Name, int Column, Func<object?, object?> Read, SchemaField? Inside = null) : OutputNode(Name);
 
 // A single component, flattened into columns of the entry.
 internal sealed record GroupOutput(string Name, IReadOnlyList<OutputNode> Children) : OutputNode(Name);
 
-// Plan is null when the relation stays a reference.
-internal sealed record ReferenceOutput(string Name, StoredField Stored, string ApiPath, EntryPlan? Plan) : OutputNode(Name);
+// Plan is null when the relation stays a reference. Resolve is for a target that is no content type, which a resolver populates.
+internal sealed record ReferenceOutput(string Name, StoredField Stored, string ApiPath, EntryPlan? Plan, bool Resolve = false) : OutputNode(Name);
 
 // Which columns a query reads for an entry and how they become a ContentDocument. Field permissions apply here:
 // a field the principal cannot read is left out, not blanked, at every level.
@@ -166,12 +167,20 @@ internal sealed class EntryPlan
         var stored = _query.Paths.Field(Type, apiPath);
         if (kind == FieldStorageKind.Reference)
         {
-            return new ReferenceOutput(field.Name, stored, apiPath, ChildPlan(stored, apiPath, select, populate, level));
+            var resolve = _query.Schema.FindContentType(EntryPaths.ReferenceTarget(field)) is null && Populates(apiPath, populate, level);
+            return new ReferenceOutput(field.Name, stored, apiPath, ChildPlan(stored, apiPath, select, populate, level), resolve);
         }
 
         var owner = Expression.Property(Row, stored.Localized ? nameof(QueryRow.Localized) : nameof(QueryRow.Shared));
-        return new ValueOutput(field.Name, AddColumn(QueryExpressions.Column(owner, stored.Column, stored.ClrType!)), Reader(stored));
+        var inside = HoldsReferences(field) && Populates(apiPath, populate, level) ? field : null;
+        return new ValueOutput(field.Name, AddColumn(QueryExpressions.Column(owner, stored.Column, stored.ClrType!)), Reader(stored), inside);
     }
+
+    public static bool HoldsReferences(SchemaField field) =>
+        field.FieldType == FieldTypeNames.Blocks || (field.FieldType == FieldTypeNames.Component && field.Multiple);
+
+    private bool Populates(string apiPath, PopulateNode populate, int level) =>
+        populate.Child(apiPath) is not null && level < _query.Options.MaxPopulateDepth;
 
     private EntryPlan? ChildPlan(StoredField stored, string apiPath, SelectNode select, PopulateNode populate, int level)
     {

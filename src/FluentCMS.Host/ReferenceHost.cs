@@ -32,7 +32,8 @@ public static class ReferenceHost
         var blog = UsesBlogSample(configuration[SampleVariable]);
         var file = configuration[SchemaVariable];
 
-        builder.Services.AddSingleton(BuildSchema(file, blog));
+        // Built with the registry of the container, so that a schema file can use the field types of plugins, such as media.
+        builder.Services.AddSingleton(services => BuildSchema(file, blog, services.GetRequiredService<IFieldTypeRegistry>()));
         ProtectKeyRing(builder.Services, configuration);
         builder.Services.AddFluentCms(cms =>
         {
@@ -55,6 +56,9 @@ public static class ReferenceHost
         });
 
         var app = builder.Build();
+
+        // Now rather than at first use, so that an invalid schema file stops the host before it starts.
+        app.Services.GetRequiredService<SchemaModel>();
         app.UseFluentCms();
         app.MapFluentCms();
 
@@ -71,9 +75,9 @@ public static class ReferenceHost
     };
 
     // A file that is there but invalid stops the host with the FCMS12xx codes of SchemaBuilder.
-    private static SchemaModel BuildSchema(string? file, bool blog)
+    private static SchemaModel BuildSchema(string? file, bool blog, IFieldTypeRegistry fieldTypes)
     {
-        var schema = new SchemaBuilder();
+        var schema = new SchemaBuilder(fieldTypes);
         if (blog)
         {
             foreach (var type in BlogSample.ContentTypes)

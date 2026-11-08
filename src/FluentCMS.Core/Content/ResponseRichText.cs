@@ -1,13 +1,15 @@
 using System.Text.Json.Nodes;
 using FluentCMS.Content;
 using FluentCMS.Core.Content.Query;
+using FluentCMS.Core.ProseMirror;
 using FluentCMS.Core.Schema.FieldTypes;
 using FluentCMS.Schema;
 
 namespace FluentCMS.Core.Content;
 
 // Applies ContentQuery.RichTextFormat to what a read returns: rich text becomes the rendered text, at every level and
-// in populated entries. Stored JSON is the default and needs nothing.
+// in populated entries. Stored JSON is the default and needs nothing. A media node gets its URL and, where it has none,
+// its alternative text from the resolver of media, asked once for every node of the read.
 internal sealed class ResponseRichText(SchemaModel schema, IRichTextRenderer renderer)
 {
     private const string Json = "json";
@@ -23,45 +25,87 @@ internal sealed class ResponseRichText(SchemaModel schema, IRichTextRenderer ren
         }
     }
 
-    public void Apply(SchemaType type, ContentDocument entry, string format)
+    public async Task ApplyAsync(SchemaType type, IReadOnlyCollection<ContentDocument> entries, string format, ReferenceResolvers resolvers, string locale, CancellationToken cancellationToken)
+    {
+        RichTextRenderOptions? options = null;
+        if (resolvers.Find(RichTextNodeTypes.Media) is { } media)
+        {
+            HashSet<Guid> ids = [];
+            foreach (var entry in entries)
+            {
+                Walk(type, entry, document =>
+                {
+                    if (document.Json.Contains(RichTextNodeTypes.Media, StringComparison.Ordinal))
+                    {
+                        ids.UnionWith(RichTextReferenceExtractor.Extract(document).Media.Select(found => found.Id));
+                    }
+                });
+            }
+
+            if (ids.Count > 0)
+            {
+                var resolved = await media.ResolveAsync(ids, locale, cancellationToken);
+                options = new RichTextRenderOptions
+                {
+                    MediaUrlResolver = id => resolved.GetValueOrDefault(id)?.Url,
+                    MediaAltResolver = id => resolved.GetValueOrDefault(id)?.Text,
+                };
+            }
+        }
+
+        foreach (var entry in entries)
+        {
+            Walk(type, entry, document => renderer.Render(document, format, options));
+        }
+    }
+
+    // Replaces every rich text value with what render makes of it.
+    private void Walk(SchemaType type, ContentDocument entry, Func<RichText, object?> render)
     {
         foreach (var field in type.Fields)
         {
             if (entry.TryGetValue(field.Name, out var value) && value is not null)
             {
-                entry[field.Name] = Render(field, value, format);
+                entry[field.Name] = Render(field, value, render);
             }
         }
     }
 
-    private object? Render(SchemaField field, object value, string format)
+    private void Walk(SchemaType type, ContentDocument entry, Action<RichText> visit) =>
+        Walk(type, entry, document =>
+        {
+            visit(document);
+            return document;
+        });
+
+    private object? Render(SchemaField field, object value, Func<RichText, object?> render)
     {
         switch (value)
         {
             case RichText document:
-                return renderer.Render(document, format);
+                return render(document);
             case ContentDocument inner when field.Relation is { } relation && schema.FindContentType(relation.Target) is { } target:
-                Apply(target, inner, format);
+                Walk(target, inner, render);
                 return inner;
             case IEnumerable<ContentDocument> many when field.Relation is { } relation && schema.FindContentType(relation.Target) is { } target:
                 foreach (var item in many)
                 {
-                    Apply(target, item, format);
+                    Walk(target, item, render);
                 }
 
                 return value;
             case ContentDocument group when field.FieldType == FieldTypeNames.Component && schema.FindComponent((string)field.Settings[FieldSettings.Component]) is { } component:
-                Apply(component, group, format);
+                Walk(component, group, render);
                 return group;
             case JsonNode node:
-                RenderInside(field, node, format);
+                RenderInside(field, node, render);
                 return node;
             default:
                 return value;
         }
     }
 
-    private void RenderInside(SchemaField field, JsonNode node, string format)
+    private void RenderInside(SchemaField field, JsonNode node, Func<RichText, object?> render)
     {
         foreach (var item in node is JsonArray items ? items.OfType<JsonObject>() : node is JsonObject single ? [single] : [])
         {
@@ -77,10 +121,15 @@ internal sealed class ResponseRichText(SchemaModel schema, IRichTextRenderer ren
                 switch (item[inner.Name])
                 {
                     case JsonObject document when inner.FieldType == FieldTypeNames.RichText:
-                        item[inner.Name] = renderer.Render(new RichText(EntryJson.Text(document)), format);
+                        var rendered = render(new RichText(EntryJson.Text(document)));
+                        if (rendered is string text)
+                        {
+                            item[inner.Name] = text;
+                        }
+
                         break;
                     case { } value:
-                        RenderInside(inner, value, format);
+                        RenderInside(inner, value, render);
                         break;
                 }
             }

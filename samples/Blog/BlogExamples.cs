@@ -11,13 +11,17 @@ public static class BlogExamples
     private const string DotnetId = "0193a5f2-6c1e-7d3a-9b1f-2a4c6e8f0b01";
     private const string HeadlessId = "0193a5f2-6c1e-7d3a-9b1f-2a4c6e8f0b02";
     private const string WelcomeId = "0193a5f2-6c1e-7d3a-9b1f-2a4c6e8f0c01";
+    private const string WelcomeHeroId = "0193a5f2-6c1e-7d3a-9b1f-2a4c6e8f0d01";
+    private const string AdaAvatarId = "0193a5f2-6c1e-7d3a-9b1f-2a4c6e8f0d02";
+    private const string FirstScreenshotId = "0193a5f2-6c1e-7d3a-9b1f-2a4c6e8f0d03";
+    private const string SecondScreenshotId = "0193a5f2-6c1e-7d3a-9b1f-2a4c6e8f0d04";
     private const string Moment = "2026-01-15T09:00:00Z";
 
-    public static JsonObject Hero => new() { ["type"] = "hero", ["heading"] = "Welcome", ["subheading"] = "A headless CMS for .NET" };
+    public static JsonObject Hero => new() { ["type"] = "hero", ["heading"] = "Welcome", ["subheading"] = "A headless CMS for .NET", ["image"] = WelcomeHeroId };
 
     public static JsonObject Quote => new() { ["type"] = "quote", ["text"] = "Content is data first.", ["attribution"] = "The FluentCMS team" };
 
-    public static JsonObject Gallery => new() { ["type"] = "gallery", ["caption"] = "Screenshots", ["columns"] = 2 };
+    public static JsonObject Gallery => new() { ["type"] = "gallery", ["caption"] = "Screenshots", ["columns"] = 2, ["images"] = new JsonArray(FirstScreenshotId, SecondScreenshotId) };
 
     public static JsonObject Seo => new() { ["metaTitle"] = "Welcome to FluentCMS", ["metaDescription"] = "What FluentCMS is and who it is for." };
 
@@ -28,6 +32,7 @@ public static class BlogExamples
         ["body"] = Text("FluentCMS is a headless CMS for .NET."),
         ["author"] = AdaId,
         ["tags"] = new JsonArray(DotnetId, HeadlessId),
+        ["hero"] = WelcomeHeroId,
         ["sections"] = new JsonArray(Hero, Quote),
         ["seo"] = Seo,
         ["category"] = "news",
@@ -40,6 +45,7 @@ public static class BlogExamples
         ["name"] = "Ada Lovelace",
         ["slug"] = BlogSeeder.AdaSlug,
         ["bio"] = Text("Writes about analytical engines and typed content."),
+        ["avatar"] = AdaAvatarId,
     });
 
     public static JsonObject Tag => Entry(DotnetId, "", new() { ["name"] = "dotnet", ["slug"] = BlogSeeder.DotnetSlug });

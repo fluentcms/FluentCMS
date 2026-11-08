@@ -159,7 +159,7 @@ internal sealed partial class MarkdownRenderer(
 
     private string Media(MediaNode media)
     {
-        var alt = (media.Alt ?? string.Empty).Replace('\n', ' ');
+        var alt = MediaAlt(media).Replace('\n', ' ');
         alt = alt.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("[", "\\[", StringComparison.Ordinal).Replace("]", "\\]", StringComparison.Ordinal);
         var destination = ResolveMediaUrl(media)?.Trim() ?? $"fcms:media/{media.MediaId}";
         return $"![{alt}]({Destination(destination)}{Title(media.Title)})";

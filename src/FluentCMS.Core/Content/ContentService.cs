@@ -44,6 +44,7 @@ internal sealed partial class ContentService(
     EntryComposer composer,
     ContentEntryMapper mapper,
     ResponseRichText richText,
+    ReferenceResolvers resolvers,
     IEnumerable<IEntryChangeSink> sinks,
     IEnumerable<IEntryChangeStager> stagers,
     EventBuffer events,
@@ -342,10 +343,7 @@ internal sealed partial class ContentService(
 
         if (!ResponseRichText.IsJson(query.RichTextFormat))
         {
-            foreach (var entry in found)
-            {
-                richText.Apply(type, entry, query.RichTextFormat!);
-            }
+            await richText.ApplyAsync(type, found, query.RichTextFormat!, resolvers, locale, cancellationToken);
         }
 
         return new PagedResult<ContentDocument>(found, page?.Total, page?.Page, page?.PageSize ?? found.Count, page?.NextCursor);
@@ -387,6 +385,7 @@ internal sealed partial class ContentService(
     {
         var byEntry = await fallback.ReadAllAsync(type.Name, query with { Fallback = LocaleFallback.None }, ids, site, cancellationToken);
         List<ContentDocument> items = [];
+        Dictionary<string, List<ContentDocument>> byLocale = new(StringComparer.Ordinal);
         foreach (var id in ids)
         {
             var map = byEntry[id];
@@ -394,15 +393,27 @@ internal sealed partial class ContentService(
             {
                 var entry = (ContentDocument)value!;
                 access.OmitUnreadable(entry, type, new AccessTarget(type.Scope == ContentScope.Global ? operation.Site : site, code));
-                if (!ResponseRichText.IsJson(query.RichTextFormat))
+                if (!byLocale.TryGetValue(code, out var entries))
                 {
-                    richText.Apply(type, entry, query.RichTextFormat!);
+                    entries = [];
+                    byLocale[code] = entries;
                 }
+
+                entries.Add(entry);
             }
 
             if (map.Count > 0)
             {
                 items.Add(new ContentDocument { ["id"] = id, ["locales"] = map });
+            }
+        }
+
+        // Rendered per locale, so that the media of every entry in one locale is resolved at once.
+        if (!ResponseRichText.IsJson(query.RichTextFormat))
+        {
+            foreach (var (code, entries) in byLocale)
+            {
+                await richText.ApplyAsync(type, entries, query.RichTextFormat!, resolvers, code, cancellationToken);
             }
         }
 
@@ -1010,10 +1021,11 @@ internal sealed partial class ContentService(
             write.Operation,
             ValidationMode.Draft,
             cancellationToken,
-            (context, token) =>
+            async (context, token) =>
             {
                 checkedUnique = true;
-                return new ValueTask(store.CheckUniqueAsync(write.Type, working, id, write.Site, write.Locale, context, token));
+                await store.CheckUniqueAsync(write.Type, working, id, write.Site, write.Locale, context, token);
+                await resolvers.CheckAddedAsync(store, write.Type, working, save.Stored, context, token);
             });
 
         var errors = await ReportableAsync(write, result.Errors, now, sent, save, cancellationToken);
@@ -1023,6 +1035,7 @@ internal sealed partial class ContentService(
         {
             var context = new ValidationContext(write.Type, values, write.Operation, ValidationMode.Draft, entry);
             await store.CheckUniqueAsync(write.Type, working, id, write.Site, write.Locale, context, cancellationToken);
+            await resolvers.CheckAddedAsync(store, write.Type, working, save.Stored, context, cancellationToken);
             errors = await ReportableAsync(write, context.Errors, now, sent, save, cancellationToken);
         }
 
