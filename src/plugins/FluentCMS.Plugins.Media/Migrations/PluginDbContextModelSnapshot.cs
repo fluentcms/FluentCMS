@@ -182,6 +182,77 @@ namespace FluentCMS.Plugins.Media.Migrations
 
                     b.ToTable("cms_media_folder", (string)null);
                 });
+
+            modelBuilder.Entity("FluentCMS.Plugins.Media.Preset", b =>
+                {
+                    b.Property<Guid>("SiteId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("site_id");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Params")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("params");
+
+                    b.HasKey("SiteId", "Name");
+
+                    b.ToTable("cms_media_preset", (string)null);
+                });
+
+            modelBuilder.Entity("FluentCMS.Plugins.Media.SigningKey", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("id");
+
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("key");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("cms_media_signing_key", (string)null);
+                });
+
+            modelBuilder.Entity("FluentCMS.Plugins.Media.Variant", b =>
+                {
+                    b.Property<Guid>("AssetId")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("asset_id");
+
+                    b.Property<string>("ParamsHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("params_hash");
+
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("created_at");
+
+                    b.Property<long>("Size")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("size");
+
+                    b.Property<string>("StorageKey")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("storage_key");
+
+                    b.HasKey("AssetId", "ParamsHash");
+
+                    b.ToTable("cms_media_variant", (string)null);
+                });
 #pragma warning restore 612, 618
         }
     }

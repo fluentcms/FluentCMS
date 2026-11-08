@@ -73,10 +73,49 @@ internal sealed class Folder
     public string Path { get; set; } = "";
 }
 
+// A transformed image of an asset, in the asset's storage under StorageKey. ParamsHash is the SHA-256 of the transform as
+// resolved, the asset's checksum included, so a request under any file name, or with a preset that resolves alike, finds it.
+internal sealed class Variant
+{
+    public Guid AssetId { get; set; }
+
+    public string ParamsHash { get; set; } = "";
+
+    public string StorageKey { get; set; } = "";
+
+    public long Size { get; set; }
+
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
+// A named set of transform parameters of a site. Params is a JSON object of the query's names and values, such as
+// {"w":"1200","fit":"cover"}.
+internal sealed class Preset
+{
+    public Guid SiteId { get; set; }
+
+    public string Name { get; set; } = "";
+
+    public string Params { get; set; } = "{}";
+}
+
+// The one signing key of the instance, protected by Data Protection, in the row whose id is MediaSigning.KeyId.
+internal sealed class SigningKey
+{
+    public int Id { get; set; }
+
+    public string Key { get; set; } = "";
+
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
 internal sealed class MediaModel : IPluginModelContributor
 {
     public const string AssetTable = "cms_media_asset";
     public const string FolderTable = "cms_media_folder";
+    public const string VariantTable = "cms_media_variant";
+    public const string PresetTable = "cms_media_preset";
+    public const string SigningKeyTable = "cms_media_signing_key";
 
     public const int FileNameMaxLength = 255;
     public const int StorageProviderMaxLength = 64;
@@ -138,6 +177,35 @@ internal sealed class MediaModel : IPluginModelContributor
             // Two folders at the root share a null parent, which the index does not compare, so the service checks those.
             folder.HasIndex(item => new { item.SiteId, item.ParentId, item.Name }).IsUnique().HasDatabaseName("ux_cms_media_folder_site_parent_name");
             folder.HasIndex(item => new { item.SiteId, item.Path }).HasDatabaseName("ix_cms_media_folder_site_path");
+        });
+
+        modelBuilder.Entity<Variant>(variant =>
+        {
+            variant.ToTable(VariantTable);
+            variant.HasKey(item => new { item.AssetId, item.ParamsHash });
+            variant.Property(item => item.AssetId).HasColumnName("asset_id");
+            variant.Property(item => item.ParamsHash).HasColumnName("params_hash").HasMaxLength(64).IsRequired();
+            variant.Property(item => item.StorageKey).HasColumnName("storage_key").HasMaxLength(StorageKeyMaxLength).IsRequired();
+            variant.Property(item => item.Size).HasColumnName("size");
+            variant.Property(item => item.CreatedAt).HasColumnName("created_at");
+        });
+
+        modelBuilder.Entity<Preset>(preset =>
+        {
+            preset.ToTable(PresetTable);
+            preset.HasKey(item => new { item.SiteId, item.Name });
+            preset.Property(item => item.SiteId).HasColumnName("site_id");
+            preset.Property(item => item.Name).HasColumnName("name").HasMaxLength(ImageQuery.PresetNameMaxLength).IsRequired();
+            preset.Property(item => item.Params).HasColumnName("params").IsRequired();
+        });
+
+        modelBuilder.Entity<SigningKey>(key =>
+        {
+            key.ToTable(SigningKeyTable);
+            key.HasKey(item => item.Id);
+            key.Property(item => item.Id).HasColumnName("id").ValueGeneratedNever();
+            key.Property(item => item.Key).HasColumnName("key").IsRequired();
+            key.Property(item => item.CreatedAt).HasColumnName("created_at");
         });
     }
 }

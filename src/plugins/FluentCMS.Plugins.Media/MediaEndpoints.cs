@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using FluentCMS.Content;
 using FluentCMS.Media;
 using Microsoft.AspNetCore.Builder;
@@ -5,6 +7,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Options;
+using Microsoft.Net.Http.Headers;
 
 namespace FluentCMS.Plugins.Media;
 
@@ -17,10 +20,16 @@ internal sealed record FolderRename(string? Name);
 internal sealed record FolderMove(Guid? ParentId);
 
 // /api/management/v1/media. The service checks the media permissions for the site of the request; an upload reads the
-// multipart body here, bounded by FluentCms:Media:MaxRequestBodySize, and hands its files to the service.
+// multipart body here, bounded by FluentCms:Media:MaxRequestBodySize, and hands its files to the service. Presets are
+// read and written with enum values as camel case names, as the parameters of a URL name them.
 internal static class MediaEndpoints
 {
     public const string RootFolder = "root";
+
+    private static readonly JsonSerializerOptions PresetJson = new(JsonSerializerDefaults.Web)
+    {
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
+    };
 
     public static RouteGroupBuilder MapMediaEndpoints(this RouteGroupBuilder group)
     {
@@ -77,6 +86,58 @@ internal static class MediaEndpoints
             await media.DeleteFolderAsync(id, cancellationToken);
             return Results.NoContent();
         });
+
+        group.MapGet("/presets", async (IMediaService media, CancellationToken cancellationToken) =>
+            Results.Json(new { items = await media.ListPresetsAsync(cancellationToken) }, PresetJson));
+
+        group.MapPut("/presets/{name}", async (string name, HttpRequest request, IMediaService media, CancellationToken cancellationToken) =>
+        {
+            MediaImageOptions? options;
+            try
+            {
+                options = await JsonSerializer.DeserializeAsync<MediaImageOptions>(request.Body, PresetJson, cancellationToken);
+            }
+            catch (JsonException exception)
+            {
+                throw Invalid(exception.Path is { Length: > 2 } path ? path[2..] : "", "The body is a JSON object of the parameters of the preset.");
+            }
+
+            return Results.Json(await media.SetPresetAsync(name, options ?? throw Invalid("", "The body is a JSON object of the parameters of the preset."), cancellationToken), PresetJson);
+        });
+
+        group.MapDelete("/presets/{name}", async (string name, IMediaService media, CancellationToken cancellationToken) =>
+        {
+            await media.DeletePresetAsync(name, cancellationToken);
+            return Results.NoContent();
+        });
+
+        return group;
+    }
+
+    // /media/{id}/{fileName}, outside the APIs and open to anyone: the signature of the URL is the authority, and the file
+    // name is there for the reader and is ignored. The transform says whether the type depends on Accept.
+    public static RouteGroupBuilder MapImageEndpoints(this RouteGroupBuilder group)
+    {
+        group.MapGet("/{id:guid}/{fileName}", async (Guid id, HttpContext context, MediaTransforms transforms, IOptions<MediaOptions> options, CancellationToken cancellationToken) =>
+        {
+            var request = context.Request;
+            var query = request.Query.SelectMany(pair => pair.Value.Select(value => new KeyValuePair<string, string?>(pair.Key, value)));
+            var accepted = request.GetTypedHeaders().Accept
+                .Where(type => type.Quality is not 0)
+                .Select(type => type.MediaType.Value)
+                .OfType<string>()
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var image = await transforms.TransformAsync(id, query, accepted, cancellationToken);
+
+            var headers = context.Response.Headers;
+            headers.CacheControl = options.Value.CacheControl;
+            if (image.VariesByAccept)
+            {
+                headers.Append(HeaderNames.Vary, HeaderNames.Accept);
+            }
+
+            return Results.Stream(image.Content, image.MimeType, entityTag: new EntityTagHeaderValue(image.ETag));
+        }).AllowAnonymous();
 
         return group;
     }

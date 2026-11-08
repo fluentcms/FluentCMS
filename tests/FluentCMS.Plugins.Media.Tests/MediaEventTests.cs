@@ -38,7 +38,7 @@ public sealed class MediaEventTests
         await using var scope = media.Services.CreateAsyncScope();
         var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>();
         var applied = await database.Database.GetAppliedMigrationsAsync(Token);
-        applied.Select(migration => migration[15..]).ShouldBe(["InitialMedia"]);
+        applied.Select(migration => migration[15..]).ShouldBe(["InitialMedia", "MediaTransforms"]);
         database.Database.HasPendingModelChanges().ShouldBeFalse();
         using var design = new MediaDbContextFactory().CreateDbContext([]);
         design.Database.HasPendingModelChanges().ShouldBeFalse();
