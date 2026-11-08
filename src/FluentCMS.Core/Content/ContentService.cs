@@ -676,7 +676,14 @@ internal sealed partial class ContentService(
 
                 var sharedChanged = type.Localized && type.Fields.Any(field => !field.Localizable && !JsonNode.DeepEquals(fields[field.Name], EntryJson.ToNode(stored[field.Name])));
                 var next = expectedVersion + 1;
-                var status = document.Status == EntryStatus.Published ? EntryStatus.Modified : document.Status;
+                var status = document.Status;
+                if (document.PublishedVersion is not null)
+                {
+                    // A Published entry's draft is what is published, so only a Modified one needs the published state read.
+                    var published = document.Status == EntryStatus.Published ? stored : await store.ReadAsync(type, document, ContentState.Published, cancellationToken);
+                    status = SameFields(type, fields, published) ? EntryStatus.Published : EntryStatus.Modified;
+                }
+
                 if (addsLocale)
                 {
                     document.DraftVersion = next;
@@ -696,7 +703,7 @@ internal sealed partial class ContentService(
                 await store.WriteDraftAsync(type, document, isNewDocument: addsLocale, rows, working, fields, write.Operation.Origin, write.Operation.ClientId, cancellationToken);
                 if (sharedChanged)
                 {
-                    await store.MarkOtherLocalesModifiedAsync(id, document.Locale, cancellationToken);
+                    await RecomputeOtherLocalesAsync(write, documents, document, cancellationToken);
                 }
 
                 // A write may not take an entry out of the reach of the rule that let the principal change it. With no

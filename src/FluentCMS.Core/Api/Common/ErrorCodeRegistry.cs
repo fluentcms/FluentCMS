@@ -113,6 +113,7 @@ public static class ErrorCodeRegistry
         Invalid(ValidationErrorCodes.Custom, "Validation rule failed"),
         Invalid(ValidationErrorCodes.RequiredByCondition, "Value required by a condition"),
         Invalid(ValidationErrorCodes.NotUnique, "Value not unique"),
+        Invalid(ValidationErrorCodes.EmptySlug, "No slug from the source"),
 
         // 22xx query
         BadQuery(QueryErrorCodes.InvalidParameter, "Invalid query parameter"),

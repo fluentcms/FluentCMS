@@ -83,10 +83,23 @@ internal sealed class EntryCanonicalizer(SchemaModel schema)
             if (into[field.Name] is null or "" && Source(owner, field) is { } source && into.GetValueOrDefault(source.Name) is string text)
             {
                 into[field.Name] = mayDerive(owner, source)
-                    ? SlugFieldType.Slugify(text, FieldLengths.Max(field))
+                    ? Derive(field, source, text, prefix + field.Name, errors)
                     : stored?.GetValueOrDefault(field.Name) ?? into[field.Name];
             }
         }
+    }
+
+    // Text with no letter or digit gives no slug. For a required slug the save says so, rather than leave it to Required
+    // at publish; an optional slug may stay empty.
+    private static string Derive(SchemaField field, SchemaField source, string text, string path, List<ValidationError> errors)
+    {
+        var slug = SlugFieldType.Slugify(text, FieldLengths.Max(field));
+        if (slug.Length == 0 && field.Required && !string.IsNullOrWhiteSpace(text))
+        {
+            errors.Add(new ValidationError(path, ValidationErrorCodes.EmptySlug, $"No slug can be made from {source.Name}, which has no letter or digit. Send the slug."));
+        }
+
+        return slug;
     }
 
     private static SchemaField? Source(SchemaType owner, SchemaField field) =>

@@ -5,6 +5,7 @@ using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
+using FluentCMS.Core.Tests.Schema;
 using FluentCMS.Data.Tests.Authorization;
 using FluentCMS.Hooks;
 using FluentCMS.Publishing;
@@ -97,6 +98,47 @@ public sealed class ContentServiceWriteTests : IDisposable
         shared["views"].ShouldBeNull();
 
         entry["title"].ShouldBe("");
+    }
+
+    [Fact]
+    public async Task ATitleInAnotherScriptGivesASlugThatIsStoredAsItIsAndPublishes()
+    {
+        var entry = await _database.CreateAsync(Editor, Titled("Привет, мир"));
+        var id = IdOf(entry);
+
+        entry["slug"].ShouldBe("привет-мир");
+        _database.Row("cms_article_i18n", id, "en")["slug"].ShouldBe("привет-мир");
+
+        var read = (await _database.GetAsync(Editor, id))!;
+        read["title"] = "日本語";
+        (await _database.UpdateAsync(Editor, id, read, 1))["slug"].ShouldBe("привет-мир");
+        (await _database.PublishAsync(Editor, id)).Entry["slug"].ShouldBe("привет-мир");
+    }
+
+    [Fact]
+    public async Task ATitleWithNoLetterOrDigitIsRefusedAtSaveForARequiredSlug()
+    {
+        var schema = SampleSchema.NewBuilder()
+            .AddCollection("note", type => type
+                .Field("title", "text")
+                .Field("slug", "slug", field => field.Required().Setting(FieldSettings.Source, "title")))
+            .Build();
+        using var database = new ServiceDatabase(schema: schema);
+
+        var refused = await Should.ThrowAsync<ValidationException>(() => database.CreateAsync(Editor, Titled("!!! ???"), "note"));
+
+        var error = refused.Errors.ShouldHaveSingleItem();
+        error.Path.ShouldBe("slug");
+        error.Code.ShouldBe(ValidationErrorCodes.EmptySlug);
+
+        (await database.CreateAsync(Editor, new() { ["title"] = "!!! ???", ["slug"] = "questions" }, "note"))["slug"].ShouldBe("questions");
+        (await database.CreateAsync(Editor, Titled("   "), "note"))["slug"].ShouldBe("");
+    }
+
+    [Fact]
+    public async Task AnOptionalSlugThatTheTitleCannotGiveStaysEmpty()
+    {
+        (await _database.CreateAsync(Editor, Titled("!!! ???")))["slug"].ShouldBe("");
     }
 
     [Fact]
@@ -678,7 +720,8 @@ public sealed class ContentServiceWriteTests : IDisposable
         var entry = await _database.CreateAsync(Editor, Titled("Hello"));
         var id = IdOf(entry);
         await _database.UpdateAsync(Editor, id, Titled("Bonjour"), 0, locale: "fr");
-        _database.Read(context => context.Documents.Where(document => document.DocumentId == id).ExecuteUpdate(set => set.SetProperty(document => document.Status, EntryStatus.Published)));
+        await _database.PublishAsync(Editor, id);
+        await _database.PublishAsync(Editor, id, "fr");
 
         await _database.PatchAsync(Editor, id, new() { ["subtitle"] = "Sub" }, 1);
         StatusOf(id, "fr").ShouldBe(EntryStatus.Published);
@@ -688,9 +731,11 @@ public sealed class ContentServiceWriteTests : IDisposable
         StatusOf(id, "fr").ShouldBe(EntryStatus.Modified);
 
         // Adding a locale that changes a shared field counts too.
-        _database.Read(context => context.Documents.Where(document => document.DocumentId == id).ExecuteUpdate(set => set.SetProperty(document => document.Status, EntryStatus.Published)));
+        await _database.PublishAsync(Editor, id);
+        StatusOf(id, "fr").ShouldBe(EntryStatus.Published);
         await _database.UpdateAsync(Editor, id, new() { ["title"] = "Salut", ["views"] = 9 }, 0, locale: "fr-CA");
         StatusOf(id, "en").ShouldBe(EntryStatus.Modified);
+        StatusOf(id, "fr").ShouldBe(EntryStatus.Modified);
     }
 
     private EntryStatus StatusOf(Guid id, string locale) =>
