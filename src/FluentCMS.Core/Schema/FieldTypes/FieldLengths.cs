@@ -21,7 +21,7 @@ internal static class FieldLengths
         FieldTypeNames.Slug => Slug,
         FieldTypeNames.Url => Url,
         FieldTypeNames.Email => Email,
-        FieldTypeNames.Select => SettingValues.List(field, FieldSettings.Options).Select(option => option.Length).Append(Select).Max(),
+        FieldTypeNames.Select => Select,
         _ => null,
     };
 }

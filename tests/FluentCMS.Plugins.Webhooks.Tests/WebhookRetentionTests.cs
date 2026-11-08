@@ -1,3 +1,4 @@
+using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Jobs;
 using Microsoft.EntityFrameworkCore;
@@ -26,6 +27,14 @@ public sealed class WebhookRetentionTests
         (await RunDueJobsAsync(host)).ShouldBe(1);
 
         (await DeliveriesAsync(host)).Select(delivery => delivery.CreatedAt).ShouldBe([now - TimeSpan.FromDays(29), now]);
+    }
+
+    [Fact]
+    public async Task TheRetentionJobHasAnAttemptTimeout()
+    {
+        await using var host = Host();
+
+        host.Services.GetRequiredService<JobRegistry>().Find(WebhookRetentionJob.Type)!.AttemptTimeout.ShouldBe(WebhookRetentionJob.AttemptTimeout);
     }
 
     [Fact]

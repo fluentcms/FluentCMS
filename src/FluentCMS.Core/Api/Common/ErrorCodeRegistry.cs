@@ -256,6 +256,8 @@ public static class ErrorCodeRegistry
         new(JobErrorCodes.JobNotFound, StatusCodes.Status404NotFound, "Job not found"),
         new(JobErrorCodes.NotDeadLettered, StatusCodes.Status409Conflict, "Job not dead-lettered"),
         new(JobErrorCodes.NotCancellable, StatusCodes.Status409Conflict, "Job cannot be cancelled"),
+        new(EventErrorCodes.DeliveryNotFound, StatusCodes.Status404NotFound, "Event delivery not found"),
+        new(EventErrorCodes.DeliveryNotFailed, StatusCodes.Status409Conflict, "Event delivery not failed"),
         new(LocaleErrorCodes.LocaleNotFound, StatusCodes.Status404NotFound, "Locale not found"),
         new(LocaleErrorCodes.LocaleInUse, StatusCodes.Status409Conflict, "Locale in use"),
         new(LocaleErrorCodes.LocaleExists, StatusCodes.Status409Conflict, "Locale exists"),

@@ -273,6 +273,29 @@ public sealed class ContentServiceWriteTests : IDisposable
     }
 
     [Fact]
+    public async Task TheRowsOfAnEntryComeOldestFirstWhateverTheOrderOfTheirIds()
+    {
+        var id = IdOf(await _database.CreateAsync(Editor, Titled("Hello")));
+        await _database.UpdateAsync(Editor, id, Titled("Bonjour"), 0, locale: "fr");
+        var created = _database.Read(context => context.Documents.Single(document => document.DocumentId == id && document.Locale == "en")).CreatedAt;
+
+        // One of the two orders goes against the order of the ids, whichever that is.
+        async Task<IEnumerable<string>> OldestFirstWhenAsync(string younger)
+        {
+            _database.Read(context => context.Documents
+                .Where(document => document.DocumentId == id)
+                .ExecuteUpdate(set => set.SetProperty(document => document.CreatedAt, document => document.Locale == younger ? created.AddDays(1) : created)));
+
+            using var scope = _database.Database.NewScope();
+            var rows = await scope.ServiceProvider.GetRequiredService<EntryStore>().DocumentsAsync(ServiceDatabase.Schema.FindContentType("article")!, id, SiteA, trashed: false, Token);
+            return rows.Select(row => row.Locale);
+        }
+
+        (await OldestFirstWhenAsync("en")).ShouldBe(["fr", "en"]);
+        (await OldestFirstWhenAsync("fr")).ShouldBe(["en", "fr"]);
+    }
+
+    [Fact]
     public async Task TheVersionSwapLetsOnlyOneOfTwoContextsAdvance()
     {
         var entry = await _database.CreateAsync(Editor, Titled("Start"));

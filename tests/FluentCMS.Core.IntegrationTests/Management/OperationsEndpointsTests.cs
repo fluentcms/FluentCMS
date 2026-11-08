@@ -3,6 +3,8 @@ using System.Net.Http.Headers;
 using FluentCMS.Activity;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Sites;
+using FluentCMS.Core.Storage;
+using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Events;
 using FluentCMS.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -11,7 +13,8 @@ using Xunit;
 
 namespace FluentCMS.Core.IntegrationTests.Management;
 
-// Jobs, the activity log and /me over HTTP on SQLite (#2786), and the refusal of every group to a caller without its permission.
+// Jobs, failed event deliveries, the activity log and /me over HTTP on SQLite (#2786), and the refusal of every group to a
+// caller without its permission.
 public sealed class OperationsEndpointsTests(AdminFixture fixture) : IClassFixture<AdminFixture>
 {
     [Fact]
@@ -51,6 +54,62 @@ public sealed class OperationsEndpointsTests(AdminFixture fixture) : IClassFixtu
 
         (await fixture.PostAsync($"jobs/{id}/cancel")).Json["code"]!.GetValue<string>().ShouldBe("FCMS3134");
         (await fixture.GetAsync("jobs/dead-letter")).Json["items"]!.AsArray().ShouldContain(item => item!["id"]!.GetValue<string>() == id);
+    }
+
+    [Fact]
+    public async Task AFailedEventDeliveryIsListedRetriedAndRemovedWithAnActivityRowForEach()
+    {
+        var handler = $"acme.{Guid.NewGuid():N}";
+        var retried = await FailedDeliveryAsync(handler);
+        var removed = await FailedDeliveryAsync(handler);
+
+        var listed = await fixture.GetAsync("events/dead-letter?pageSize=100");
+        listed.Status.ShouldBe(HttpStatusCode.OK, listed.Body?.ToJsonString());
+        var item = listed.Json["items"]!.AsArray().Single(item => item!["id"]!.GetValue<string>() == retried.ToString("D"))!;
+        item["handler"]!.GetValue<string>().ShouldBe(handler);
+        item["lastError"]!.GetValue<string>().ShouldBe("Down.");
+        item.AsObject().ContainsKey("payload").ShouldBeFalse();
+
+        (await fixture.PostAsync($"events/dead-letter/{retried:D}/retry")).Status.ShouldBe(HttpStatusCode.NoContent);
+        (await fixture.PostAsync($"events/dead-letter/{retried:D}/retry")).Json["code"]!.GetValue<string>().ShouldBe("FCMS3139");
+        (await fixture.DeleteAsync($"events/dead-letter/{retried:D}")).Json["code"]!.GetValue<string>().ShouldBe("FCMS3139");
+        (await fixture.DeleteAsync($"events/dead-letter/{removed:D}")).Status.ShouldBe(HttpStatusCode.NoContent);
+        var gone = await fixture.DeleteAsync($"events/dead-letter/{removed:D}");
+        gone.Status.ShouldBe(HttpStatusCode.NotFound);
+        gone.Json["code"]!.GetValue<string>().ShouldBe("FCMS3138");
+        (await fixture.PostAsync($"events/dead-letter/{Guid.NewGuid():D}/retry")).Json["code"]!.GetValue<string>().ShouldBe("FCMS3138");
+
+        var activity = await fixture.GetAsync($"activity?action=event_delivery.*&targetType=event_delivery");
+        var rows = activity.Json["items"]!.AsArray().Where(row => row!["targetLabel"]!.GetValue<string>() == handler).ToList();
+        rows.Select(row => (row!["action"]!.GetValue<string>(), row["targetId"]!.GetValue<string>()))
+            .ShouldBe([("event_delivery.retried", retried.ToString("D")), ("event_delivery.removed", removed.ToString("D"))], ignoreOrder: true);
+    }
+
+    // For the failed deliveries of a plugin that was removed: one request, and one activity row with the count.
+    [Fact]
+    public async Task TheFailedDeliveriesOfOneHandlerArePurgedTogether()
+    {
+        var handler = $"gone.{Guid.NewGuid():N}";
+        var other = $"kept.{Guid.NewGuid():N}";
+        await FailedDeliveryAsync(handler);
+        await FailedDeliveryAsync(handler);
+        var kept = await FailedDeliveryAsync(other);
+
+        var purged = await fixture.DeleteAsync($"events/dead-letter?handler={handler}");
+        purged.Status.ShouldBe(HttpStatusCode.OK, purged.Body?.ToJsonString());
+        purged.Json["handler"]!.GetValue<string>().ShouldBe(handler);
+        purged.Json["removed"]!.GetValue<int>().ShouldBe(2);
+        (await fixture.DeleteAsync($"events/dead-letter?handler={handler}")).Json["removed"]!.GetValue<int>().ShouldBe(0);
+
+        var missing = await fixture.DeleteAsync("events/dead-letter");
+        missing.Status.ShouldBe(HttpStatusCode.UnprocessableEntity, missing.Body?.ToJsonString());
+        missing.Json["code"]!.GetValue<string>().ShouldBe("FCMS2101");
+
+        (await fixture.GetAsync("events/dead-letter?pageSize=100")).Json["items"]!.AsArray().ShouldContain(item => item!["id"]!.GetValue<string>() == kept.ToString("D"));
+        var activity = await fixture.GetAsync($"activity?action=event_delivery.purged&targetId={handler}");
+        var row = activity.Json["items"]!.AsArray().ShouldHaveSingleItem()!;
+        row["targetType"]!.GetValue<string>().ShouldBe("event_handler");
+        row["details"]!["removed"]!.GetValue<string>().ShouldBe("2");
     }
 
     [Fact]
@@ -117,6 +176,7 @@ public sealed class OperationsEndpointsTests(AdminFixture fixture) : IClassFixtu
     [InlineData("settings/unknown")]
     [InlineData("jobs")]
     [InlineData("jobs/dead-letter")]
+    [InlineData("events/dead-letter")]
     [InlineData("activity")]
     public async Task EachGroupRefusesACallerWithoutItsPermission(string path)
     {
@@ -168,6 +228,31 @@ public sealed class OperationsEndpointsTests(AdminFixture fixture) : IClassFixtu
         (await fixture.PatchAsync($"sites/{DefaultSite.Id:D}", """{ "name": "X" }""", reader)).Status.ShouldBe(HttpStatusCode.Forbidden);
         (await fixture.PutAsync("settings/mail", """{ "host": "x", "port": 1 }""", reader, "\"0\"")).Status.ShouldBe(HttpStatusCode.Forbidden);
         (await fixture.PostAsync($"jobs/{id}/retry", client: reader)).Status.ShouldBe(HttpStatusCode.Forbidden);
+        (await fixture.PostAsync($"events/dead-letter/{id}/retry", client: reader)).Status.ShouldBe(HttpStatusCode.Forbidden);
+        (await fixture.DeleteAsync($"events/dead-letter/{id}", reader)).Status.ShouldBe(HttpStatusCode.Forbidden);
+        (await fixture.DeleteAsync("events/dead-letter?handler=x", reader)).Status.ShouldBe(HttpStatusCode.Forbidden);
         (await fixture.PostAsync($"users/{id}/deactivate", client: reader)).Status.ShouldBe(HttpStatusCode.Forbidden);
+    }
+
+    private async Task<Guid> FailedDeliveryAsync(string handler)
+    {
+        await using var scope = fixture.Host.Services.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+        var row = new OutboxMessage
+        {
+            EventId = Guid.CreateVersion7(),
+            EventType = "Acme.Thing",
+            Handler = handler,
+            Payload = "{}",
+            OccurredAt = DateTimeOffset.UtcNow,
+            Sequence = DateTimeOffset.UtcNow.Ticks,
+            Status = OutboxStatus.Failed,
+            Attempts = 8,
+            AvailableAt = DateTimeOffset.UtcNow,
+            LastError = "Down.",
+        };
+        context.Add(row);
+        await context.SaveChangesAsync(TestContext.Current.CancellationToken);
+        return row.Id;
     }
 }

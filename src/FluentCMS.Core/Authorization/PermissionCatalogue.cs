@@ -18,7 +18,7 @@ public sealed class PermissionCatalogue
         (CorePermissions.RolesManage, "Create and edit roles and their grants."),
         (CorePermissions.ApiKeysManage, "Create and revoke API keys."),
         (CorePermissions.SitesManage, "Create and edit sites and their locales."),
-        (CorePermissions.JobsManage, "See, retry and cancel background jobs."),
+        (CorePermissions.JobsManage, "See, retry and cancel background jobs, and retry or remove failed event deliveries."),
         (CorePermissions.ActivityRead, "Read the activity log."),
         (CorePermissions.SchemaRead, "Read the content schema."),
         (CorePermissions.PluginsManage, "Enable and disable plugins per site."),

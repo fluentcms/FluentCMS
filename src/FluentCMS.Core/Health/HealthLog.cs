@@ -14,4 +14,7 @@ internal static partial class HealthLog
 
     [LoggerMessage(EventId = 9103, Level = LogLevel.Warning, Message = "The job runner has not started on this instance.")]
     public static partial void JobRunnerNotStarted(ILogger logger);
+
+    [LoggerMessage(EventId = 9104, Level = LogLevel.Warning, Message = "The oldest pending job of the queue {Queue} has waited {Age}; the limit is {Limit}.")]
+    public static partial void JobQueueBehind(ILogger logger, string queue, TimeSpan age, TimeSpan limit);
 }

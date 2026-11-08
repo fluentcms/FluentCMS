@@ -12,6 +12,10 @@ public sealed class HealthOptions
     // above that. Timeout.InfiniteTimeSpan leaves the runner out of the check, for an instance that runs no jobs.
     public TimeSpan JobRunnerHeartbeatTimeout { get; set; } = TimeSpan.FromMinutes(2);
 
+    // How long the oldest pending job of a queue, due and held by no worker, may have waited before the job runner check
+    // reports Degraded, which keeps the instance in rotation. Timeout.InfiniteTimeSpan reports the ages without a limit.
+    public TimeSpan PendingJobAgeLimit { get; set; } = TimeSpan.FromMinutes(15);
+
     internal void Validate()
     {
         if (JobRunnerHeartbeatTimeout != Timeout.InfiniteTimeSpan && JobRunnerHeartbeatTimeout <= TimeSpan.Zero)
@@ -19,6 +23,13 @@ public sealed class HealthOptions
             throw new FluentCmsConfigurationException(
                 HostErrorCodes.InvalidOption,
                 $"{nameof(JobRunnerHeartbeatTimeout)} is {JobRunnerHeartbeatTimeout}; it must be positive, or Timeout.InfiniteTimeSpan for no check.");
+        }
+
+        if (PendingJobAgeLimit != Timeout.InfiniteTimeSpan && PendingJobAgeLimit <= TimeSpan.Zero)
+        {
+            throw new FluentCmsConfigurationException(
+                HostErrorCodes.InvalidOption,
+                $"{nameof(PendingJobAgeLimit)} is {PendingJobAgeLimit}; it must be positive, or Timeout.InfiniteTimeSpan for no limit.");
         }
     }
 }

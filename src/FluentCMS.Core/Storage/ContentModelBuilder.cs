@@ -28,7 +28,7 @@ internal sealed class ContentModelBuilder(SchemaModel schema, IStorageConvention
         modelBuilder.SharedTypeEntity<Dictionary<string, object>>(table, entity =>
         {
             entity.ToTable(table);
-            entity.Property<Guid>(StorageNames.Id).HasValueGenerator<GuidV7ValueGenerator>();
+            conventions.ConfigureKey(entity.Property<Guid>(StorageNames.Id));
             entity.HasKey(StorageNames.Id);
             entity.Property<Guid>(StorageNames.DocumentId);
             entity.Property(type.Scope == ContentScope.Global ? typeof(Guid?) : typeof(Guid), StorageNames.SiteId);

@@ -19,4 +19,7 @@ internal static partial class PluginLog
 
     [LoggerMessage(EventId = 9234, Level = LogLevel.Error, Message = "Could not read which plugins are disabled per site; no plugin's handler ran for it and outbox deliveries wait for a later drain.")]
     public static partial void StateUnavailable(ILogger logger, Exception exception);
+
+    [LoggerMessage(EventId = 9235, Level = LogLevel.Error, Message = "Could not read which plugins are disabled per site, so job {JobId} ({Type}) did not run; it waits for a later run without using an attempt.")]
+    public static partial void JobDeferred(ILogger logger, Exception exception, Guid jobId, string type);
 }

@@ -1,4 +1,6 @@
 using FluentCMS.Core.DependencyInjection;
+using FluentCMS.Core.Events;
+using FluentCMS.Core.Health;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Storage;
@@ -152,6 +154,40 @@ public sealed class JobRunnerTests : IDisposable
         await runner.StopAsync(Token);
 
         most.ShouldBe(2);
+    }
+
+    // The manual clock does not move, so no poll comes and only the wake can start the second job.
+    [Fact]
+    public async Task AJobEnqueuedOnThisInstanceWakesAnIdleWorkerBeforeItsPoll()
+    {
+        var instance = ManualInstance();
+        var scheduler = instance.GetRequiredService<IJobScheduler>();
+        var runner = instance.GetRequiredService<IJobRunner>();
+        var first = await scheduler.EnqueueAsync<ProbeJob, ProbePayload>(new ProbePayload("first"), cancellationToken: Token);
+        await runner.StartAsync(Token);
+        await Eventually.HoldsAsync(() => _fixture.Job(first).Status == JobStatus.Succeeded);
+
+        var second = await scheduler.EnqueueAsync<ProbeJob, ProbePayload>(new ProbePayload("second"), cancellationToken: Token);
+        await Eventually.HoldsAsync(() => _fixture.Job(second).Status == JobStatus.Succeeded);
+
+        await StopAsync(runner);
+    }
+
+    // A wake already signalled is taken at once, and the manual clock never ends the wait otherwise.
+    [Fact]
+    public async Task AJobScheduledForLaterOrOnAQueueWithoutWorkersHereWakesNoWorker()
+    {
+        var instance = ManualInstance();
+        var wake = instance.GetRequiredService<JobWake>();
+        var scheduler = instance.GetRequiredService<IJobScheduler>();
+
+        await scheduler.ScheduleAsync<ProbeJob, ProbePayload>(new ProbePayload("later"), JobFixture.Start + TimeSpan.FromMinutes(1), cancellationToken: Token);
+        await scheduler.EnqueueAsync<ProbeJob, ProbePayload>(new ProbePayload("elsewhere"), new JobOptions { Queue = "no-workers" }, Token);
+        var waiting = wake.WaitAsync(JobRunnerOptions.DefaultQueue, TimeSpan.FromHours(1), _fixture.Clock, Token);
+
+        waiting.IsCompleted.ShouldBeFalse();
+        await scheduler.EnqueueAsync<ProbeJob, ProbePayload>(new ProbePayload("now"), cancellationToken: Token);
+        (await waiting.WaitAsync(TimeSpan.FromSeconds(60), Token)).ShouldBeTrue();
     }
 
     [Fact]
@@ -328,6 +364,28 @@ public sealed class JobRunnerTests : IDisposable
             () => _fixture.Clock.Advance(options.MaintenanceInterval));
 
         await Eventually.CompletesAsync(runner.StopAsync(Token), WakeTheLoops);
+    }
+
+    [Fact]
+    public async Task AMaintenanceTurnMeasuresTheOldestPendingJobOfEveryQueue()
+    {
+        await _fixture.EnqueueAsync("stuck", new JobOptions { Queue = "no-workers" });
+        await _fixture.Scheduler.ScheduleAsync<ProbeJob, ProbePayload>(new ProbePayload("later"), JobFixture.Start + TimeSpan.FromHours(1), new JobOptions { Queue = "later" }, Token);
+        _fixture.Clock.Advance(TimeSpan.FromMinutes(20));
+        var instance = ManualInstance();
+        var pulse = instance.GetRequiredService<JobRunnerPulse>();
+        var runner = instance.GetRequiredService<IJobRunner>();
+
+        await runner.StartAsync(Token);
+        await Eventually.HoldsAsync(() => pulse.OldestPending.ContainsKey("no-workers"));
+        await StopAsync(runner);
+
+        pulse.OldestPending.ShouldBe(new Dictionary<string, TimeSpan>
+        {
+            [JobRunnerOptions.DefaultQueue] = TimeSpan.Zero,
+            [OutboxDrainJob.Queue] = TimeSpan.Zero,
+            ["no-workers"] = TimeSpan.FromMinutes(20),
+        }, ignoreOrder: true);
     }
 
     [Fact]

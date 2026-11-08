@@ -4,6 +4,7 @@ using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
+using FluentCMS.Core.Tests.Schema;
 using FluentCMS.Data.Tests.Sqlite;
 using FluentCMS.Jobs;
 using FluentCMS.Sites;
@@ -490,6 +491,34 @@ public sealed class JobExecutionTests : IDisposable
 
         text.ShouldBe("System.InvalidOperationException: number *** code *** token *** rate *** *** *** rejected");
         JobErrorText.ForLog(failure, Payload).ShouldNotContain("4111111111111111");
+    }
+
+    [Fact]
+    public void TheNamesOfTheSchemasTypesAndFieldsAreKept()
+    {
+        var schema = SampleSchema.NewBuilder()
+            .AddBlock("hero", block => block.Field("heading", "text"))
+            .AddCollection("article", type => type.Field("headline", "text"))
+            .Build();
+        var failure = new InvalidOperationException("Content type 'article' has no field 'headline' in block 'hero'; token s3cret-value");
+
+        var text = JobErrorText.ForStorage(failure, """{"t":"article","f":"headline","b":"hero","s":"s3cret-value"}""", JobErrorText.NamesOf(schema));
+
+        JobErrorText.NamesOf(schema).ShouldBe(["article", "headline", "hero", "heading"], ignoreOrder: true);
+        text.ShouldBe("System.InvalidOperationException: Content type 'article' has no field 'headline' in block 'hero'; token ***");
+    }
+
+    [Fact]
+    public async Task AFailureStoresTheNamesOfTheSchemaThatItsPayloadHolds()
+    {
+        var schema = SampleSchema.NewBuilder().AddCollection("article", type => type.Field("headline", "text")).Build();
+        var instance = _fixture.NewInstance(cms: cms => cms.Services.AddSingleton(schema));
+        _fixture.Probe.Behavior = (payload, _) => throw new InvalidOperationException($"Content type '{payload.Key}' refused {payload.Secret}");
+        var id = await _fixture.EnqueueAsync("article", secret: "s3cret-value");
+
+        (await instance.GetRequiredService<JobExecutor>().RunNextAsync(Queue, Owner, TestContext.Current.CancellationToken)).ShouldBeTrue();
+
+        _fixture.Job(id).LastError.ShouldBe("System.InvalidOperationException: Content type 'article' refused ***");
     }
 
     [Fact]

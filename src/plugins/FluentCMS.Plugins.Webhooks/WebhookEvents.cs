@@ -52,3 +52,10 @@ public sealed record WebhookCreatedEvent(Guid WebhookId, string Name) : CmsEvent
 public sealed record WebhookUpdatedEvent(Guid WebhookId, string Name, bool SecretChanged) : CmsEvent;
 
 public sealed record WebhookDeletedEvent(Guid WebhookId, string Name) : CmsEvent;
+
+// A delivery whose last attempt failed, so that nothing more is sent of it. Event is the name of the event it carried.
+// A ping or a redelivery, which is tried once, raises none.
+public sealed record WebhookDeadEvent(Guid WebhookId, string Name, Guid DeliveryId, string Event, int Attempts) : CmsEvent;
+
+// A webhook that WebhooksOptions.DisableAfter turned off, because every attempt to it since FailingSince failed.
+public sealed record WebhookDisabledEvent(Guid WebhookId, string Name, DateTimeOffset FailingSince) : CmsEvent;

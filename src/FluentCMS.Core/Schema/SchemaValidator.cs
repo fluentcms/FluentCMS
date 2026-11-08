@@ -301,6 +301,14 @@ internal sealed class SchemaValidator(IFieldTypeRegistry fieldTypes)
                     Report(SchemaErrorCodes.InvalidField, $"select field {location} needs at least one option, and no option twice");
                 }
 
+                // The column keeps its width when an option is added, because schema sync never alters a column.
+                var width = field.MaxLength ?? FieldLengths.Select;
+                if (!field.Multiple && options.FirstOrDefault(option => option.Length > width) is { } longer)
+                {
+                    var limit = field.MaxLength is null ? $"{width}, unless the field sets a larger maximum length" : $"the field's maximum length of {width}";
+                    Report(SchemaErrorCodes.InvalidField, $"option '{longer}' of select field {location} has {longer.Length} characters; an option has at most {limit}");
+                }
+
                 break;
 
             case FieldTypeNames.Decimal:

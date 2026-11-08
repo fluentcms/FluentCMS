@@ -21,4 +21,8 @@ public interface IStorageConventions
 
     // A JSON column of an [Indexed] field, such as a GIN index on PostgreSQL.
     void ConfigureJsonIndex(EntityTypeBuilder entity, string column);
+
+    // Every Guid id that EF generates, on system and content tables: its value generator, whose values should rise in
+    // the order the provider sorts its uuid type, so that inserts append to the primary key. An id the code sets stays.
+    void ConfigureKey(PropertyBuilder key);
 }

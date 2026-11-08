@@ -155,7 +155,7 @@ SQL Server 2019 and 2025:
 - Filtered unique indexes, including whether a bound `state` can use them.
 - Migration generation, compilation and application, including system migrations.
 - `READPAST` job claiming.
-- `uniqueidentifier` ordering of v7 values, and the `datetimeoffset` mapping.
+- `uniqueidentifier` ordering of generated keys (see [SQL Server keys](#sql-server-keys)), and the `datetimeoffset` mapping.
 
 Across providers:
 
@@ -167,6 +167,14 @@ Also not covered on SQLite:
 
 - `cms_version`, the plugin migration stream and `Database:SchemaSync = Auto`.
 - File databases, concurrent writers, and query performance at volume.
+
+## SQL Server keys
+
+Added for [#2879](https://github.com/fluentcms/FluentCMS/issues/2879) of the review of 7 Nov 2026 ([#2847](https://github.com/fluentcms/FluentCMS/issues/2847)), without a database.
+
+SQL Server sorts `uniqueidentifier` by its last six bytes first, and those are random in a v7 value, so v7 keys would land all over a clustered primary key and an `ORDER BY id` tiebreak would not follow creation. Generated keys therefore come from `IStorageConventions.ConfigureKey`. SQLite and PostgreSQL keep `Guid.CreateVersion7()`, and SQL Server uses EF Core's `SequentialGuidValueGenerator`, which rises within a process. A value generator is not in the model snapshot, so no migration changes.
+
+Before the switch, the one place in .NET that ordered generated ids by value, the rows of an entry in `EntryStore.DocumentsAsync`, moved into the query and onto `created_at`. Keyset cursors compare `document_id` in SQL. `document_id` and the other ids that the code sets itself stay v7 on every provider. #2711 measures what that costs SQL Server's indexes, with the rest of the list above.
 
 ## Where the evidence lives now
 
