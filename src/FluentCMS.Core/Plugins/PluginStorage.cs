@@ -95,7 +95,11 @@ internal sealed class PluginStorage(RegisteredPlugin plugin)
         var assembly = Migrations ?? plugin.Type.Assembly;
         var history = HistoryTable;
 
-        services.AddDbContext<PluginDbContext<TPlugin>>(options => Configure(options, provider, contributors, assembly, history));
+        services.AddDbContext<PluginDbContext<TPlugin>>((container, options) =>
+        {
+            Configure(options, provider, contributors, assembly, history);
+            options.AddInterceptors(container.GetRequiredService<PluginTransactions>());
+        });
 
         if (Migrations is not null)
         {

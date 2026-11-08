@@ -170,6 +170,16 @@ public sealed class EventContextTests
         var seen = new Seen();
         var lifetime = new FakeLifetime();
         using var request = new CancellationTokenSource();
+        bool? afterRequest = null;
+        bool? afterShutdown = null;
+        seen.Behavior = async (_, _) =>
+        {
+            var token = seen.Tokens.Last();
+            await request.CancelAsync();
+            afterRequest = token.IsCancellationRequested;
+            await lifetime.Stopping.CancelAsync();
+            afterShutdown = token.IsCancellationRequested;
+        };
         using var database = new ServiceDatabase(EventRegistrations.With(seen, cms =>
         {
             cms.Services.AddSingleton<IHostApplicationLifetime>(lifetime);
@@ -177,13 +187,9 @@ public sealed class EventContextTests
         }));
 
         await database.AsAsync(Editor, services => services.GetRequiredService<IContentService>().CreateAsync("article", Titled("T"), request.Token));
-        await request.CancelAsync();
 
-        var token = seen.Tokens.Single();
-        token.ShouldBe(lifetime.Stopping.Token);
-        token.IsCancellationRequested.ShouldBeFalse();
-        await lifetime.Stopping.CancelAsync();
-        token.IsCancellationRequested.ShouldBeTrue();
+        afterRequest.ShouldBe(false);
+        afterShutdown.ShouldBe(true);
     }
 
     [Fact]

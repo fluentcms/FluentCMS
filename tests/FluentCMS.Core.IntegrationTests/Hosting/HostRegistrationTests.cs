@@ -83,6 +83,8 @@ public sealed class HostRegistrationTests : IAsyncDisposable
     [InlineData("FluentCms:Query:DefaultPageSize", "500", "FCMS1101")]
     [InlineData("FluentCms:Jobs:PollInterval", "-00:00:05", "FCMS2506")]
     [InlineData("FluentCms:Events:Outbox:BatchSize", "0", "FCMS2603")]
+    [InlineData("FluentCms:Events:Handlers:Timeout", "00:00:00", "FCMS1101")]
+    [InlineData("FluentCms:Events:Handlers:SlowThreshold", "-00:00:01", "FCMS1101")]
     [InlineData("FluentCms:Activity:PruneSchedule", "never", "FCMS2701")]
     [InlineData("FluentCms:Security:Cors:Delivery:AllowedOrigins:0", "*", "FCMS1101")]
     [InlineData("FluentCms:Security:Cors:Management:AllowedOrigins:0", "https://*.example.com", "FCMS1101")]

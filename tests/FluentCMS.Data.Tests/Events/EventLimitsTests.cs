@@ -1,14 +1,18 @@
+using System.Collections.Concurrent;
+using System.Diagnostics.Metrics;
 using FluentCMS.Content;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Events;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
+using FluentCMS.Core.Telemetry;
 using FluentCMS.Data.Tests.Content;
 using FluentCMS.Data.Tests.Jobs;
 using FluentCMS.Events;
 using FluentCMS.Hooks;
 using FluentCMS.Sites;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -90,6 +94,92 @@ public sealed class EventLimitsTests
     private sealed class DeadHandler(Seen seen) : IEventHandler<JobDeadLetteredEvent>
     {
         public ValueTask HandleAsync(JobDeadLetteredEvent message, CancellationToken cancellationToken) => seen.HeardAsync("dead-in-process", message, null, cancellationToken);
+    }
+
+    private sealed class SlowPing(Seen seen) : IEventHandler<Ping>
+    {
+        public ValueTask HandleAsync(Ping message, CancellationToken cancellationToken) => seen.HeardAsync("slow-ping", message, null, cancellationToken);
+    }
+
+    // Ignores its token and, once the test lets it go, touches the scope of the request that raised the event, as one that
+    // kept HttpContext.RequestServices would.
+    private sealed class LateHandler(LateGate gate) : IEventHandler<EntryDraftSavedEvent>
+    {
+        public async ValueTask HandleAsync(EntryDraftSavedEvent message, CancellationToken cancellationToken)
+        {
+            await gate.Release.Task;
+            try
+            {
+                gate.Request!.GetRequiredService<IContentService>();
+            }
+            finally
+            {
+                gate.Touched.TrySetResult();
+            }
+        }
+    }
+
+    private sealed class LateGate
+    {
+        public IServiceProvider? Request { get; set; }
+
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource Touched { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    }
+
+    // Ignores its token and holds a query of its context open, past the timeout, until the test lets it go.
+    [HookOrder(-1)]
+    private sealed class BusyContext(CmsDbContext context, Overlap overlap) : IEventHandler<EntryDraftSavedEvent>
+    {
+        public async ValueTask HandleAsync(EntryDraftSavedEvent message, CancellationToken cancellationToken)
+        {
+            try
+            {
+                await context.Database.OpenConnectionAsync(CancellationToken.None);
+                ((SqliteConnection)context.Database.GetDbConnection()).CreateFunction("held", () =>
+                {
+                    overlap.Release!.Wait(Token);
+                    return 1L;
+                });
+                overlap.Held = (await context.Database.SqlQueryRaw<long>("SELECT held() AS Value").ToListAsync(CancellationToken.None)).Single();
+            }
+            finally
+            {
+                // Its scope is disposed only after this returns, and Windows cannot delete the test's file while the connection is open.
+                await context.Database.CloseConnectionAsync();
+                overlap.Done.TrySetResult();
+            }
+        }
+    }
+
+    [HookOrder(1)]
+    private sealed class ReadsContext(CmsDbContext context, Overlap overlap) : IEventHandler<EntryDraftSavedEvent>
+    {
+        public async ValueTask HandleAsync(EntryDraftSavedEvent message, CancellationToken cancellationToken)
+        {
+            try
+            {
+                overlap.Read = (await context.Database.SqlQueryRaw<long>("SELECT 1 AS Value").ToListAsync(cancellationToken)).Single();
+            }
+            finally
+            {
+                overlap.ReadDone.TrySetResult();
+            }
+        }
+    }
+
+    private sealed class Overlap
+    {
+        public ManualResetEventSlim? Release { get; set; }
+
+        public long? Held { get; set; }
+
+        public long? Read { get; set; }
+
+        public TaskCompletionSource Done { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource ReadDone { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
     }
 
     [Fact]
@@ -240,18 +330,16 @@ public sealed class EventLimitsTests
         using var fixture = new JobFixture();
         var seen = new Seen();
         var logs = new RecordingLogs();
-        using var gate = new ManualResetEventSlim();
-        seen.Behavior = (_, _) =>
-        {
-            gate.Wait(Token);
-            return Task.CompletedTask;
-        };
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        seen.Behavior = (_, _) => gate.Task;
         using var instance = fixture.Database.CreateServices(configure: cms =>
         {
             cms.Services.AddSingleton(seen);
             cms.Services.AddSingleton<ILoggerProvider>(logs);
             cms.Events.AddHandler<JobDeadLetteredEvent, DeadHandler>();
             cms.Events.Outbox.JobEventTimeout = TimeSpan.FromMilliseconds(200);
+            // The bound under test is the job worker's; on a busy runner the handler's own one could otherwise end it first.
+            cms.Events.Handlers.Timeout = TimeSpan.FromMinutes(1);
         });
         var id = fixture.AddRow("no-such-job", "{}", maxAttempts: 1);
 
@@ -264,8 +352,188 @@ public sealed class EventLimitsTests
         }
         finally
         {
+            gate.TrySetResult();
+        }
+    }
+
+    [Fact]
+    public async Task AnInProcessHandlerThatBlocksDoesNotHoldTheWriteBeyondItsTimeout()
+    {
+        var seen = new Seen();
+        var logs = new RecordingLogs();
+        using var gate = new ManualResetEventSlim();
+        seen.Behavior = (_, _) =>
+        {
+            gate.Wait(Token);
+            return Task.CompletedTask;
+        };
+        using var database = new ServiceDatabase(EventRegistrations.With(seen, cms =>
+        {
+            cms.Services.AddSingleton<ILoggerProvider>(logs);
+            cms.Events.AddHandler<EntryDraftSavedEvent, SavedHandler>();
+            cms.Events.Handlers.Timeout = TimeSpan.FromMilliseconds(200);
+        }));
+
+        try
+        {
+            var entry = await database.CreateAsync(Editor, Titled("T")).WaitAsync(TimeSpan.FromSeconds(10), Token);
+
+            database.Versions(IdOf(entry)).Count.ShouldBe(1);
+            logs.Count("HandlerAbandoned").ShouldBe(1);
+            logs.Count("HandlerFailed").ShouldBe(0);
+        }
+        finally
+        {
             gate.Set();
         }
+    }
+
+    [Fact]
+    public async Task AnInProcessHandlerThatOutlivesItsTimeoutHasItsTokenCancelledAndDoesNotHoldThePublish()
+    {
+        var seen = new Seen();
+        var logs = new RecordingLogs();
+        var stopped = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        seen.Behavior = async (_, _) =>
+        {
+            try
+            {
+                await Task.Delay(Timeout.Infinite, seen.Tokens.Last());
+            }
+            finally
+            {
+                stopped.TrySetResult();
+            }
+        };
+        using var database = new ServiceDatabase(EventRegistrations.With(seen, cms =>
+        {
+            cms.Services.AddSingleton<ILoggerProvider>(logs);
+            cms.Events.AddHandler<Ping, PingHandler>();
+            cms.Events.Handlers.Timeout = TimeSpan.FromMilliseconds(200);
+        }));
+
+        await database.AsAsync(Editor, async services =>
+        {
+            await services.GetRequiredService<IEventBus>().PublishAsync(new Ping("hangs"), Token);
+            return true;
+        }).WaitAsync(TimeSpan.FromSeconds(10), Token);
+        await stopped.Task.WaitAsync(TimeSpan.FromSeconds(10), Token);
+
+        seen.Tokens.Single().IsCancellationRequested.ShouldBeTrue();
+        logs.Count("HandlerAbandoned").ShouldBe(1);
+        logs.Count("AbandonedHandlerFailed").ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task AnAbandonedHandlerThatTouchesTheEndedScopeOfItsRequestFailsQuietly()
+    {
+        var logs = new RecordingLogs();
+        var gate = new LateGate();
+        using var database = new ServiceDatabase(cms =>
+        {
+            cms.Services.AddSingleton(gate);
+            cms.Services.AddSingleton<ILoggerProvider>(logs);
+            cms.Events.AddHandler<EntryDraftSavedEvent, LateHandler>();
+            cms.Events.Handlers.Timeout = TimeSpan.FromMilliseconds(200);
+        });
+
+        await database.AsAsync(Editor, services =>
+        {
+            gate.Request = services;
+            return services.GetRequiredService<IContentService>().CreateAsync("article", Titled("T"), Token);
+        }).WaitAsync(TimeSpan.FromSeconds(10), Token);
+        gate.Release.SetResult();
+        await gate.Touched.Task.WaitAsync(TimeSpan.FromSeconds(10), Token);
+        for (var attempt = 0; attempt < 100 && logs.Count("AbandonedHandlerFailed") == 0; attempt++)
+        {
+            await Task.Delay(50, Token);
+        }
+
+        logs.Count("HandlerAbandoned").ShouldBe(1);
+        logs.Count("AbandonedHandlerFailed").ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task AnAbandonedHandlerThatKeepsUsingItsContextBreaksNeitherTheNextHandlerNorTheResponse()
+    {
+        var logs = new RecordingLogs();
+        using var release = new ManualResetEventSlim();
+        var overlap = new Overlap { Release = release };
+        using var database = new ServiceDatabase(cms =>
+        {
+            cms.Services.AddSingleton(overlap);
+            cms.Services.AddSingleton<ILoggerProvider>(logs);
+            cms.Events.AddHandler<EntryDraftSavedEvent, BusyContext>();
+            cms.Events.AddHandler<EntryDraftSavedEvent, ReadsContext>();
+            cms.Events.Handlers.Timeout = TimeSpan.FromSeconds(1);
+        });
+
+        try
+        {
+            var entry = await database.CreateAsync(Editor, Titled("T")).WaitAsync(TimeSpan.FromSeconds(30), Token);
+
+            entry["title"].ShouldBe("T");
+            overlap.Held.ShouldBeNull();
+        }
+        finally
+        {
+            release.Set();
+        }
+
+        // On a busy runner the reader can outlive the same timeout and be left running as well, so it is awaited here rather
+        // than assumed to have finished within the response.
+        await Task.WhenAll(overlap.Done.Task, overlap.ReadDone.Task).WaitAsync(TimeSpan.FromSeconds(30), Token);
+        overlap.Held.ShouldBe(1);
+        overlap.Read.ShouldBe(1);
+        logs.Count("HandlerAbandoned").ShouldBeInRange(1, 2);
+        logs.Count("HandlerFailed").ShouldBe(0);
+        logs.Count("AbandonedHandlerFailed").ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task ASlowInProcessHandlerIsLoggedAndItsDurationRecorded()
+    {
+        var seen = new Seen();
+        var logs = new RecordingLogs();
+        var durations = new ConcurrentQueue<(double Seconds, string? Event, string? Outcome)>();
+        using var listener = new MeterListener
+        {
+            InstrumentPublished = (instrument, meter) =>
+            {
+                if (instrument.Meter.Name == FluentCmsTelemetry.Name && instrument.Name == FluentCmsTelemetry.Instruments.EventHandlerDuration)
+                {
+                    meter.EnableMeasurementEvents(instrument);
+                }
+            },
+        };
+        listener.SetMeasurementEventCallback<double>((_, value, tags, _) =>
+        {
+            if (Tag(tags, FluentCmsTelemetry.Tags.Handler) == typeof(SlowPing).FullName)
+            {
+                durations.Enqueue((value, Tag(tags, FluentCmsTelemetry.Tags.Operation), Tag(tags, FluentCmsTelemetry.Tags.Outcome)));
+            }
+        });
+        listener.Start();
+        seen.Behavior = (_, _) => Task.Delay(300, Token);
+        using var database = new ServiceDatabase(EventRegistrations.With(seen, cms =>
+        {
+            cms.Services.AddSingleton<ILoggerProvider>(logs);
+            cms.Events.AddHandler<Ping, SlowPing>();
+            cms.Events.Handlers.SlowThreshold = TimeSpan.FromMilliseconds(100);
+        }));
+
+        await database.AsAsync(Editor, async services =>
+        {
+            await services.GetRequiredService<IEventBus>().PublishAsync(new Ping("slow"), Token);
+            return true;
+        });
+
+        logs.Count("HandlerSlow").ShouldBe(1);
+        logs.Count("HandlerAbandoned").ShouldBe(0);
+        var duration = durations.ShouldHaveSingleItem();
+        duration.Event.ShouldBe(nameof(Ping));
+        duration.Outcome.ShouldBe("succeeded");
+        duration.Seconds.ShouldBeGreaterThan(0.2);
     }
 
     [Fact]
@@ -372,4 +640,17 @@ public sealed class EventLimitsTests
     [InlineData("nothing to hide here", "nothing to hide here")]
     public void AUrlIsReducedToItsHostAndTheValueOfASecretKeyIsMasked(string text, string expected) =>
         SecretScrubber.Of(text).ShouldBe(expected);
+
+    private static string? Tag(ReadOnlySpan<KeyValuePair<string, object?>> tags, string key)
+    {
+        foreach (var tag in tags)
+        {
+            if (tag.Key == key)
+            {
+                return tag.Value?.ToString();
+            }
+        }
+
+        return null;
+    }
 }
