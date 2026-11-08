@@ -1,7 +1,9 @@
 using FluentCMS.Content;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.Localization;
+using FluentCMS.Core.Storage;
 using FluentCMS.Schema;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
@@ -60,7 +62,7 @@ public sealed class ContentServiceReadTests : IDisposable
         french["title"].ShouldBe("In French");
         french["locale"].ShouldBe("fr");
 
-        (await _database.AsAsync(Editor, services => services.GetRequiredService<IContentService>().CountAsync("article", null, QueryStatus.Draft, Token), locale: "en", site: SiteB)).ShouldBe(1);
+        (await _database.AsAsync(Editor, services => services.GetRequiredService<IContentService>().CountAsync("article", new CountOptions { Status = QueryStatus.Draft }, Token), locale: "en", site: SiteB)).ShouldBe(1);
     }
 
     [Fact]
@@ -226,10 +228,26 @@ public sealed class ContentServiceReadTests : IDisposable
         (await Count(Editor, null)).ShouldBe(3);
         (await Count(ann, null)).ShouldBe(2);
         (await Count(ann, new FieldFilter("views", FilterOperator.Equal, 1L))).ShouldBe(1);
-        (await _database.AsAsync(Editor, services => services.GetRequiredService<IContentService>().CountAsync("article", null, QueryStatus.Published, Token))).ShouldBe(0);
+        (await _database.AsAsync(Editor, services => services.GetRequiredService<IContentService>().CountAsync("article", null, Token))).ShouldBe(0);
 
         Task<long> Count(Principal principal, ContentFilter? filter) =>
-            _database.AsAsync(principal, services => services.GetRequiredService<IContentService>().CountAsync("article", filter, QueryStatus.Draft, Token));
+            _database.AsAsync(principal, services => services.GetRequiredService<IContentService>().CountAsync("article", new CountOptions { Filter = filter, Status = QueryStatus.Draft }, Token));
+    }
+
+    [Fact]
+    public async Task CountSendsTheCountAloneWithNoPageAndNoReferenceRead()
+    {
+        var trips = new RoundTrips();
+        using var database = new ServiceDatabase(cms => cms.Services.ConfigureDbContext<CmsDbContext>(options => options.AddInterceptors(trips)));
+        var author = IdOf(await database.CreateAsync(Editor, new() { ["name"] = "Ann" }, "author"));
+        await database.CreateAsync(Editor, new() { ["title"] = "One", ["author"] = author });
+        await database.CreateAsync(Editor, new() { ["title"] = "Two", ["author"] = author });
+
+        var count = await trips.CountAsync(() => database.AsAsync(Editor, services => services.GetRequiredService<IContentService>().CountAsync("article", new CountOptions { Status = QueryStatus.Draft }, Token)));
+
+        count.ShouldBe(2);
+        var reads = trips.Sent.Where(sql => sql.Contains("\"cms_document\"", StringComparison.Ordinal) || sql.Contains("\"cms_reference\"", StringComparison.Ordinal)).ToList();
+        reads.ShouldHaveSingleItem().ShouldContain("COUNT(");
     }
 
     [Fact]

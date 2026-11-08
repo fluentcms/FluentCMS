@@ -27,7 +27,7 @@ public sealed class SchemaField
     /// <summary>Whether the field has a database index.</summary>
     public bool Indexed { get; internal init; }
 
-    /// <summary>Whether the field is included in full-text search.</summary>
+    /// <summary>Whether the field is marked for full-text search, which the search index reads (<see cref="Providers.ISearchIndex"/>).</summary>
     public bool Searchable { get; internal init; }
 
     /// <summary>Whether clients cannot change the value.</summary>

@@ -13,7 +13,9 @@ public interface IRichTextNodeRenderer
     /// <summary>Renders the node.</summary>
     /// <param name="context">The node and the format.</param>
     /// <returns>
-    /// The output, inserted as is, so a renderer for HTML encodes its own text. Return
+    /// The output, inserted as is into the HTML or Markdown, so the renderer escapes for the format
+    /// everything it writes from <see cref="IRichTextNodeContext.Attributes"/>: they hold what the author
+    /// typed, or the block data of a typed inline block, and are not escaped for it. Return
     /// <see langword="null"/> to use the built in output, for example for a format it does not support.
     /// </returns>
     string? Render(IRichTextNodeContext context);

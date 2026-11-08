@@ -646,7 +646,7 @@ public sealed class OutboxFailureTests
         rows["acme-new"].Status.ShouldBe(OutboxStatus.Pending);
         logs.Count("Orphaned").ShouldBe(1);
 
-        var dead = await database.Database.Services.GetRequiredService<IEventDeadLetters>().ListAsync(cancellationToken: Token);
+        var dead = await database.Database.Services.GetRequiredService<IEventDeadLetters>().ListAsync(0, 50, Token);
         dead.ShouldHaveSingleItem().Handler.ShouldBe("acme-old");
     }
 
@@ -662,7 +662,7 @@ public sealed class OutboxFailureTests
         await DrainAsync(database.Database.Services);
         var dead = database.Database.Services.GetRequiredService<IEventDeadLetters>();
 
-        var failed = await dead.ListAsync(cancellationToken: Token);
+        var failed = await dead.ListAsync(0, 50, Token);
 
         failed.Count.ShouldBe(2);
         failed.ShouldAllBe(item => item.Handler == "saved-outbox" && item.Attempts == 2 && item.LastError != null);
@@ -674,7 +674,7 @@ public sealed class OutboxFailureTests
         (await dead.RemoveAsync(failed[1].Id, Token)).ShouldBeFalse();
 
         (await DrainAsync(database.Database.Services)).ShouldBe(1);
-        (await dead.ListAsync(cancellationToken: Token)).ShouldBeEmpty();
+        (await dead.ListAsync(0, 50, Token)).ShouldBeEmpty();
         database.Rows().ShouldHaveSingleItem().Status.ShouldBe(OutboxStatus.Delivered);
     }
 

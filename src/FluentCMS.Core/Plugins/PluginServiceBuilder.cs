@@ -174,7 +174,7 @@ internal sealed class PluginServiceBuilder(FluentCmsBuilder cms, RegisteredPlugi
         return this;
     }
 
-    public IPluginServiceBuilder AddJob<TJob, TPayload>(string type, TimeSpan? attemptTimeout = null)
+    public IPluginServiceBuilder AddJob<TJob, TPayload>(string type, TimeSpan? attemptTimeout)
         where TJob : class, IJob<TPayload>
     {
         cms.Jobs.AddJob<TJob, TPayload>(type, attemptTimeout);

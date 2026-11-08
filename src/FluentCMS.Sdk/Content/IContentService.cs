@@ -115,27 +115,26 @@ public interface IContentService
     /// </summary>
     /// <param name="type">The name of the content type.</param>
     /// <param name="id">The id of the entry.</param>
-    /// <param name="locale">The locale, or <see langword="null"/> for that of the operation.</param>
-    /// <param name="expectedVersion">The version that was reviewed, or <see langword="null"/> for whatever the draft holds.</param>
+    /// <param name="options">The locale, or that of the operation, and the version that was reviewed, or whatever the draft holds; <see langword="null"/> for both.</param>
     /// <param name="cancellationToken">A token to cancel the work.</param>
     /// <returns>The entry with its system fields, without what the principal may not read, and the warnings.</returns>
     /// <exception cref="ContentAccessDeniedException">The principal may not publish entries of the type in the locale, or the draft changes a field its grant does not cover.</exception>
     /// <exception cref="EntryNotFoundException">The entry has no row in the locale, is in the trash, or the principal may not reach it.</exception>
     /// <exception cref="VersionConflictException">The stored version is not the expected one.</exception>
     /// <exception cref="ValidationException">The draft is not valid to publish, or a reference is refused by the type's policy.</exception>
-    Task<PublishResult<ContentDocument>> PublishAsync(string type, Guid id, string? locale = null, int? expectedVersion = null, CancellationToken cancellationToken = default);
+    Task<PublishResult<ContentDocument>> PublishAsync(string type, Guid id, LocaleWriteOptions? options = null, CancellationToken cancellationToken = default);
 
     /// <summary>Withdraws the published state of one locale. The draft stays.</summary>
     /// <param name="type">The name of the content type.</param>
     /// <param name="id">The id of the entry.</param>
-    /// <param name="locale">The locale, or <see langword="null"/> for that of the operation.</param>
+    /// <param name="options">The locale, or <see langword="null"/> for that of the operation.</param>
     /// <param name="cancellationToken">A token to cancel the work.</param>
     /// <returns>The entry with its system fields, without what the principal may not read.</returns>
     /// <exception cref="ContentAccessDeniedException">The principal may not unpublish the whole entry in the locale.</exception>
     /// <exception cref="EntryNotFoundException">The entry has no row in the locale, is in the trash, or the principal may not reach it.</exception>
     /// <exception cref="VersionConflictException">Another write published or withdrew this locale first.</exception>
     /// <exception cref="ValidationException">The entry is not published in the locale.</exception>
-    Task<ContentDocument> UnpublishAsync(string type, Guid id, string? locale = null, CancellationToken cancellationToken = default);
+    Task<ContentDocument> UnpublishAsync(string type, Guid id, LocaleOptions? options = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Schedules a publish or an unpublish of one locale, or moves the one already scheduled for that action to the new time. It needs the permission, row rule,
@@ -146,61 +145,60 @@ public interface IContentService
     /// <param name="type">The name of the content type.</param>
     /// <param name="id">The id of the entry.</param>
     /// <param name="request">What to do and when.</param>
-    /// <param name="locale">The locale, or <see langword="null"/> for that of the operation.</param>
+    /// <param name="options">The locale, or <see langword="null"/> for that of the operation.</param>
     /// <param name="cancellationToken">A token to cancel the work.</param>
     /// <returns>The schedule.</returns>
     /// <exception cref="ContentAccessDeniedException">The principal may not publish or unpublish entries of the type in the locale, or the entry changes a field its grant does not cover.</exception>
     /// <exception cref="EntryNotFoundException">The entry has no row in the locale, is in the trash, or the principal may not reach it.</exception>
     /// <exception cref="ValidationException">The time is not in the future, the time zone is unknown, the time does not exist in the zone, or a reference is refused by the type's policy.</exception>
-    Task<ScheduleInfo> ScheduleAsync(string type, Guid id, ScheduleRequest request, string? locale = null, CancellationToken cancellationToken = default);
+    Task<ScheduleInfo> ScheduleAsync(string type, Guid id, ScheduleRequest request, LocaleOptions? options = null, CancellationToken cancellationToken = default);
 
     /// <summary>Cancels the schedule of one action in one locale. The same permission is needed as for scheduling it.</summary>
     /// <param name="type">The name of the content type.</param>
     /// <param name="id">The id of the entry.</param>
     /// <param name="action">The action whose schedule is cancelled.</param>
-    /// <param name="locale">The locale, or <see langword="null"/> for that of the operation.</param>
+    /// <param name="options">The locale, or <see langword="null"/> for that of the operation.</param>
     /// <param name="cancellationToken">A token to cancel the work.</param>
     /// <returns>A task that completes when the schedule is cancelled.</returns>
     /// <exception cref="ContentAccessDeniedException">The principal may not publish or unpublish entries of the type in the locale.</exception>
     /// <exception cref="EntryNotFoundException">The entry has no row in the locale, is in the trash, or the principal may not reach it.</exception>
     /// <exception cref="ValidationException">The action has no schedule in the locale.</exception>
-    Task CancelScheduleAsync(string type, Guid id, ScheduleAction action, string? locale = null, CancellationToken cancellationToken = default);
+    Task CancelScheduleAsync(string type, Guid id, ScheduleAction action, LocaleOptions? options = null, CancellationToken cancellationToken = default);
 
     /// <summary>Puts the published values back in the draft of one locale, as a new version. A field the principal may not write stays as the draft holds it, so the entry then stays modified.</summary>
     /// <param name="type">The name of the content type.</param>
     /// <param name="id">The id of the entry.</param>
-    /// <param name="locale">The locale, or <see langword="null"/> for that of the operation.</param>
-    /// <param name="expectedVersion">The version being discarded, or <see langword="null"/> for whatever the draft holds.</param>
+    /// <param name="options">The locale, or that of the operation, and the version being discarded, or whatever the draft holds; <see langword="null"/> for both.</param>
     /// <param name="cancellationToken">A token to cancel the work.</param>
     /// <returns>The entry with its system fields, without what the principal may not read.</returns>
     /// <exception cref="ContentAccessDeniedException">The principal may not update entries of the type in the locale, or may write a field it may not read.</exception>
     /// <exception cref="EntryNotFoundException">The entry has no row in the locale, is in the trash, or the principal may not reach it.</exception>
     /// <exception cref="VersionConflictException">The stored version is not the expected one.</exception>
     /// <exception cref="ValidationException">The entry is not published in the locale, or a hook left a value that is not valid.</exception>
-    Task<ContentDocument> DiscardDraftAsync(string type, Guid id, string? locale = null, int? expectedVersion = null, CancellationToken cancellationToken = default);
+    Task<ContentDocument> DiscardDraftAsync(string type, Guid id, LocaleWriteOptions? options = null, CancellationToken cancellationToken = default);
 
     /// <summary>Lists the versions of an entry in one locale, newest first. They are for those who manage content: a Delivery principal, even with a preview key, may not read them.</summary>
     /// <param name="type">The name of the content type.</param>
     /// <param name="id">The id of the entry.</param>
-    /// <param name="locale">The locale, or <see langword="null"/> for that of the operation.</param>
+    /// <param name="options">The locale, or <see langword="null"/> for that of the operation.</param>
     /// <param name="cancellationToken">A token to cancel the work.</param>
     /// <returns>The versions, without their values.</returns>
     /// <exception cref="ValidationException">The type does not exist or the principal may not read it in the locale; the two read the same.</exception>
     /// <exception cref="ContentAccessDeniedException">The principal may read the type but does not manage content.</exception>
     /// <exception cref="EntryNotFoundException">The entry has no row in the locale, is in the trash, or the principal may not reach it.</exception>
-    Task<IReadOnlyList<VersionInfo>> GetVersionsAsync(string type, Guid id, string? locale = null, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<VersionInfo>> GetVersionsAsync(string type, Guid id, LocaleOptions? options = null, CancellationToken cancellationToken = default);
 
     /// <summary>Reads the values of one version, without what the principal may not read today, whatever it could when the version was saved.</summary>
     /// <param name="type">The name of the content type.</param>
     /// <param name="id">The id of the entry.</param>
     /// <param name="number">The number of the version.</param>
-    /// <param name="locale">The locale, or <see langword="null"/> for that of the operation.</param>
+    /// <param name="options">The locale, or <see langword="null"/> for that of the operation.</param>
     /// <param name="cancellationToken">A token to cancel the work.</param>
     /// <returns>The version, or <see langword="null"/> when there is no such version.</returns>
     /// <exception cref="ValidationException">The type does not exist or the principal may not read it in the locale; the two read the same.</exception>
     /// <exception cref="ContentAccessDeniedException">The principal may read the type but does not manage content.</exception>
     /// <exception cref="EntryNotFoundException">The entry has no row in the locale, is in the trash, or the principal may not reach it.</exception>
-    Task<ContentDocument?> GetVersionAsync(string type, Guid id, int number, string? locale = null, CancellationToken cancellationToken = default);
+    Task<ContentDocument?> GetVersionAsync(string type, Guid id, int number, LocaleOptions? options = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Makes a version the draft, as a new version and under the draft rules. It is a write of the principal's: a field it may
@@ -209,37 +207,35 @@ public interface IContentService
     /// <param name="type">The name of the content type.</param>
     /// <param name="id">The id of the entry.</param>
     /// <param name="number">The number of the version.</param>
-    /// <param name="locale">The locale, or <see langword="null"/> for that of the operation.</param>
-    /// <param name="expectedVersion">The version being replaced, or <see langword="null"/> for whatever the draft holds.</param>
+    /// <param name="options">The locale, or that of the operation, and the version being replaced, or whatever the draft holds; <see langword="null"/> for both.</param>
     /// <param name="cancellationToken">A token to cancel the work.</param>
     /// <returns>The entry with its system fields, without what the principal may not read.</returns>
     /// <exception cref="ContentAccessDeniedException">The principal may not update entries of the type in the locale, or may write a field it may not read.</exception>
     /// <exception cref="EntryNotFoundException">The entry or the version does not exist in the locale, or the principal may not reach it.</exception>
     /// <exception cref="VersionConflictException">The stored version is not the expected one.</exception>
     /// <exception cref="ValidationException">The values are not valid for a draft today.</exception>
-    Task<ContentDocument> RestoreVersionAsync(string type, Guid id, int number, string? locale = null, int? expectedVersion = null, CancellationToken cancellationToken = default);
+    Task<ContentDocument> RestoreVersionAsync(string type, Guid id, int number, LocaleWriteOptions? options = null, CancellationToken cancellationToken = default);
 
     /// <summary>Compares two versions field by field, with blocks and rich text compared as trees, over what the principal may read of them.</summary>
     /// <param name="type">The name of the content type.</param>
     /// <param name="id">The id of the entry.</param>
     /// <param name="fromVersion">The number of the earlier version.</param>
     /// <param name="toVersion">The number of the later version.</param>
-    /// <param name="locale">The locale, or <see langword="null"/> for that of the operation.</param>
+    /// <param name="options">The locale, or <see langword="null"/> for that of the operation.</param>
     /// <param name="cancellationToken">A token to cancel the work.</param>
     /// <returns>The differences.</returns>
     /// <exception cref="ValidationException">The type does not exist or the principal may not read it in the locale; the two read the same.</exception>
     /// <exception cref="ContentAccessDeniedException">The principal may read the type but does not manage content.</exception>
     /// <exception cref="EntryNotFoundException">The entry or a version does not exist in the locale, or the principal may not reach it.</exception>
-    Task<IReadOnlyList<VersionChange>> DiffAsync(string type, Guid id, int fromVersion, int toVersion, string? locale = null, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<VersionChange>> DiffAsync(string type, Guid id, int fromVersion, int toVersion, LocaleOptions? options = null, CancellationToken cancellationToken = default);
 
     /// <summary>Counts the entries that match a filter in the site and locale of the operation.</summary>
     /// <param name="type">The name of the content type.</param>
-    /// <param name="filter">The filter, or <see langword="null"/> for every entry.</param>
-    /// <param name="status">Which state of the entries to count.</param>
+    /// <param name="options">The filter and the state of the entries to count, or <see langword="null"/> for every published entry.</param>
     /// <param name="cancellationToken">A token to cancel the work.</param>
     /// <returns>The number of entries the principal may read.</returns>
     /// <exception cref="ValidationException">The filter is not valid, or the principal may not read the type or its drafts.</exception>
-    Task<long> CountAsync(string type, ContentFilter? filter = null, QueryStatus status = QueryStatus.Published, CancellationToken cancellationToken = default);
+    Task<long> CountAsync(string type, CountOptions? options = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Runs one operation on many entries. Each entry goes through the single call, with its permissions, rules, hooks, validation,
@@ -264,6 +260,16 @@ public interface IContentService
 public interface IContentService<T>
     where T : ContentItem
 {
+    /// <summary>The name of the content type of <typeparamref name="T"/>.</summary>
+    string Type { get; }
+
+    /// <summary>
+    /// The document service this one maps to and from, in the same operation. The members that do not map an entry go through
+    /// it by default, so an implementation of this interface, such as a fake or a wrapper, writes them once, on the
+    /// <see cref="IContentService"/> it returns here; a member added later that does not map an entry does the same.
+    /// </summary>
+    IContentService Documents { get; }
+
     /// <summary>Reads one entry.</summary>
     /// <param name="id">The id of the entry.</param>
     /// <param name="options">What to read, or <see langword="null"/> for the published entry in the locale of the operation. A class cannot hold every locale or rendered rich text, so these are refused.</param>
@@ -317,7 +323,8 @@ public interface IContentService<T>
     /// <returns>A task that completes when the entry is in the trash.</returns>
     /// <exception cref="ContentAccessDeniedException">The principal may not delete the entry in every one of its locales.</exception>
     /// <exception cref="EntryNotFoundException">The entry does not exist, is in the trash already, or the principal may not reach it.</exception>
-    Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
+    Task DeleteAsync(Guid id, CancellationToken cancellationToken = default) =>
+        Documents.DeleteAsync(Type, id, cancellationToken);
 
     /// <summary>Brings an entry, in all its locales, back from the trash.</summary>
     /// <param name="id">The id of the entry.</param>
@@ -331,42 +338,47 @@ public interface IContentService<T>
     Task<PagedResult<T>> QueryTrashAsync(ContentQuery query, CancellationToken cancellationToken = default);
 
     /// <inheritdoc cref="IContentService.PurgeAsync"/>
-    Task PurgeAsync(Guid id, CancellationToken cancellationToken = default);
+    Task PurgeAsync(Guid id, CancellationToken cancellationToken = default) =>
+        Documents.PurgeAsync(Type, id, cancellationToken);
 
     /// <inheritdoc cref="IContentService.PublishAsync"/>
-    Task<PublishResult<T>> PublishAsync(Guid id, string? locale = null, int? expectedVersion = null, CancellationToken cancellationToken = default);
+    Task<PublishResult<T>> PublishAsync(Guid id, LocaleWriteOptions? options = null, CancellationToken cancellationToken = default);
 
     /// <inheritdoc cref="IContentService.UnpublishAsync"/>
-    Task<T> UnpublishAsync(Guid id, string? locale = null, CancellationToken cancellationToken = default);
+    Task<T> UnpublishAsync(Guid id, LocaleOptions? options = null, CancellationToken cancellationToken = default);
 
     /// <inheritdoc cref="IContentService.ScheduleAsync"/>
-    Task<ScheduleInfo> ScheduleAsync(Guid id, ScheduleRequest request, string? locale = null, CancellationToken cancellationToken = default);
+    Task<ScheduleInfo> ScheduleAsync(Guid id, ScheduleRequest request, LocaleOptions? options = null, CancellationToken cancellationToken = default) =>
+        Documents.ScheduleAsync(Type, id, request, options, cancellationToken);
 
     /// <inheritdoc cref="IContentService.CancelScheduleAsync"/>
-    Task CancelScheduleAsync(Guid id, ScheduleAction action, string? locale = null, CancellationToken cancellationToken = default);
+    Task CancelScheduleAsync(Guid id, ScheduleAction action, LocaleOptions? options = null, CancellationToken cancellationToken = default) =>
+        Documents.CancelScheduleAsync(Type, id, action, options, cancellationToken);
 
     /// <inheritdoc cref="IContentService.DiscardDraftAsync"/>
-    Task<T> DiscardDraftAsync(Guid id, string? locale = null, int? expectedVersion = null, CancellationToken cancellationToken = default);
+    Task<T> DiscardDraftAsync(Guid id, LocaleWriteOptions? options = null, CancellationToken cancellationToken = default);
 
     /// <inheritdoc cref="IContentService.GetVersionsAsync"/>
-    Task<IReadOnlyList<VersionInfo>> GetVersionsAsync(Guid id, string? locale = null, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<VersionInfo>> GetVersionsAsync(Guid id, LocaleOptions? options = null, CancellationToken cancellationToken = default) =>
+        Documents.GetVersionsAsync(Type, id, options, cancellationToken);
 
     /// <inheritdoc cref="IContentService.GetVersionAsync"/>
-    Task<T?> GetVersionAsync(Guid id, int number, string? locale = null, CancellationToken cancellationToken = default);
+    Task<T?> GetVersionAsync(Guid id, int number, LocaleOptions? options = null, CancellationToken cancellationToken = default);
 
     /// <inheritdoc cref="IContentService.RestoreVersionAsync"/>
-    Task<T> RestoreVersionAsync(Guid id, int number, string? locale = null, int? expectedVersion = null, CancellationToken cancellationToken = default);
+    Task<T> RestoreVersionAsync(Guid id, int number, LocaleWriteOptions? options = null, CancellationToken cancellationToken = default);
 
     /// <inheritdoc cref="IContentService.DiffAsync"/>
-    Task<IReadOnlyList<VersionChange>> DiffAsync(Guid id, int fromVersion, int toVersion, string? locale = null, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<VersionChange>> DiffAsync(Guid id, int fromVersion, int toVersion, LocaleOptions? options = null, CancellationToken cancellationToken = default) =>
+        Documents.DiffAsync(Type, id, fromVersion, toVersion, options, cancellationToken);
 
     /// <summary>Counts the entries that match a filter in the site and locale of the operation.</summary>
-    /// <param name="filter">The filter, or <see langword="null"/> for every entry.</param>
-    /// <param name="status">Which state of the entries to count.</param>
+    /// <param name="options">The filter and the state of the entries to count, or <see langword="null"/> for every published entry.</param>
     /// <param name="cancellationToken">A token to cancel the work.</param>
     /// <returns>The number of entries the principal may read.</returns>
     /// <exception cref="ValidationException">The filter is not valid, or the principal may not read the type or its drafts.</exception>
-    Task<long> CountAsync(ContentFilter? filter = null, QueryStatus status = QueryStatus.Published, CancellationToken cancellationToken = default);
+    Task<long> CountAsync(CountOptions? options = null, CancellationToken cancellationToken = default) =>
+        Documents.CountAsync(Type, options, cancellationToken);
 
     /// <summary>
     /// Runs one operation on many entries, as <see cref="IContentService.BulkAsync"/> does. The entries to create are documents,
@@ -378,5 +390,6 @@ public interface IContentService<T>
     /// <exception cref="ValidationException">The request is not valid, its filter is not valid or may not be read, or the filter selects more entries than the cap. Nothing was written.</exception>
     /// <exception cref="ContentAccessDeniedException">The principal may not perform the operation on entries of the type. Nothing was written.</exception>
     /// <exception cref="InvalidOperationException">The call is inside a transaction, where one entry that fails could undo the others.</exception>
-    Task<BulkResult> BulkAsync(BulkRequest request, CancellationToken cancellationToken = default);
+    Task<BulkResult> BulkAsync(BulkRequest request, CancellationToken cancellationToken = default) =>
+        Documents.BulkAsync(Type, request, cancellationToken);
 }

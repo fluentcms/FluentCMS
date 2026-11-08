@@ -164,12 +164,6 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
         return affected == 1;
     }
 
-    // The draft of the shared row changed under the other locales, so their published state no longer equals it.
-    public Task MarkOtherLocalesModifiedAsync(Guid id, string locale, CancellationToken cancellationToken) =>
-        context.Documents
-            .Where(document => document.DocumentId == id && document.Locale != locale && document.Status == EntryStatus.Published)
-            .ExecuteUpdateAsync(set => set.SetProperty(document => document.Status, EntryStatus.Modified), cancellationToken);
-
     public Task SetTrashedAsync(Guid id, DateTimeOffset? at, Guid? by, CancellationToken cancellationToken) =>
         context.Documents.IgnoreQueryFilters()
             .Where(document => document.DocumentId == id)

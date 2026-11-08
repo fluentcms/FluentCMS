@@ -147,7 +147,7 @@ public sealed class ContentRoundTripTests : IDisposable
         await _trips.CountAsync(() => _database.PublishAsync(principal, id, type: "post"));
         var publish = _trips.Count;
 
-        await _trips.CountAsync(() => _database.AsAsync(principal, services => services.GetRequiredService<IContentService>().ScheduleAsync("post", id, new ScheduleRequest(ScheduleAction.Publish, DateTime.UtcNow.AddDays(1)), null, Token)));
+        await _trips.CountAsync(() => _database.AsAsync(principal, services => services.GetRequiredService<IContentService>().ScheduleAsync("post", id, ScheduleRequest.At(ScheduleAction.Publish, DateTimeOffset.UtcNow.AddDays(1)), null, Token)));
         var schedule = _trips.Count;
 
         await _trips.CountAsync(() => _database.DiffAsync(principal, id, 1, 2, type: "post"));

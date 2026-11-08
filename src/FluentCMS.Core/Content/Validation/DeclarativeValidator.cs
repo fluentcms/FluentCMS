@@ -30,7 +30,8 @@ internal sealed class DeclarativeValidator(SchemaModel model, ContentEntryMapper
     {
         foreach (var field in type.Fields)
         {
-            // A hidden field is not part of the entry, whatever it holds.
+            // A field its condition hides is not checked, by these rules or a custom validator, whatever it holds. A save keeps
+            // its value, so that it is still there when the condition shows it again (spec 4.2).
             if (field.VisibleWhen is not null && !ConditionEvaluator.Evaluate(field.VisibleWhen, values))
             {
                 continue;

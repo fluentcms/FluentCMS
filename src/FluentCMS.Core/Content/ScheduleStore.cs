@@ -74,17 +74,23 @@ internal sealed class ScheduleStore(CmsDbContext context)
     }
 
     // Null when nothing was pending, or another writer cancelled or ran it first.
-    public async Task<ScheduleRow?> CancelAsync(Guid documentId, string locale, string action, DateTimeOffset at, CancellationToken cancellationToken)
+    public async Task<ScheduleRow?> CancelAsync(Guid documentId, string locale, string action, DateTimeOffset at, CancellationToken cancellationToken) =>
+        await PendingAsync(documentId, locale, action, cancellationToken) is { } pending
+            && await EndPendingAsync(pending, ScheduleRow.Cancelled, at, null, cancellationToken)
+                ? pending
+                : null;
+
+    // Ends a pending schedule before it runs, with its job and its mirror. False when another writer ended or ran it first.
+    public async Task<bool> EndPendingAsync(ScheduleRow pending, string status, DateTimeOffset at, string? error, CancellationToken cancellationToken)
     {
-        if (await PendingAsync(documentId, locale, action, cancellationToken) is not { } pending
-            || !await CloseAsync(pending.Id, null, ScheduleRow.Cancelled, at, null, cancellationToken))
+        if (!await CloseAsync(pending.Id, null, status, at, error, cancellationToken))
         {
-            return null;
+            return false;
         }
 
         await RemoveJobAsync(pending.JobId, cancellationToken);
-        await SetMirrorAsync(documentId, locale, action, null, cancellationToken);
-        return pending;
+        await SetMirrorAsync(pending.DocumentId, pending.Locale, pending.Action, null, cancellationToken);
+        return true;
     }
 
     // Ends a pending schedule, and only that one: false when it is not pending any more or, given a job, is no longer its

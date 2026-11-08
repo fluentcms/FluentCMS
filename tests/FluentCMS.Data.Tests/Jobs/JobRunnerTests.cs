@@ -351,7 +351,7 @@ public sealed class JobRunnerTests : IDisposable
     [Fact]
     public async Task ARunnerSweepsAndFiresOnItsOwn()
     {
-        await _fixture.Scheduler.AddRecurringAsync<ProbeJob, ProbePayload>("r", "* * * * *", new ProbePayload("recurring"), cancellationToken: Token);
+        await _fixture.Scheduler.AddRecurringAsync<ProbeJob, ProbePayload>("r", "* * * * *", new ProbePayload("recurring"), queue: null, cancellationToken: Token);
         var stuck = await _fixture.EnqueueAsync("stuck", new JobOptions { MaxAttempts = 1, Queue = "no-workers" });
         await _fixture.Store.ClaimAsync("no-workers", "dead", TestContext.Current.CancellationToken);
 

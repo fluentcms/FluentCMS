@@ -19,7 +19,10 @@ namespace FluentCMS.Core.Content;
 // read and restored as this principal may today, not as it was saved.
 internal sealed partial class ContentService
 {
-    public async Task<PublishResult<ContentDocument>> PublishAsync(string type, Guid id, string? locale = null, int? expectedVersion = null, CancellationToken cancellationToken = default)
+    public Task<PublishResult<ContentDocument>> PublishAsync(string type, Guid id, LocaleWriteOptions? options = null, CancellationToken cancellationToken = default) =>
+        PublishAsync(type, id, options?.Locale, options?.ExpectedVersion, cancellationToken);
+
+    internal async Task<PublishResult<ContentDocument>> PublishAsync(string type, Guid id, string? locale, int? expectedVersion, CancellationToken cancellationToken)
     {
         using var span = Span("publish", type);
 
@@ -87,7 +90,10 @@ internal sealed partial class ContentService
         return new PublishResult<ContentDocument>(await RespondAsync(write, row), warnings);
     }
 
-    public async Task<ContentDocument> UnpublishAsync(string type, Guid id, string? locale = null, CancellationToken cancellationToken = default)
+    public Task<ContentDocument> UnpublishAsync(string type, Guid id, LocaleOptions? options = null, CancellationToken cancellationToken = default) =>
+        UnpublishAsync(type, id, options?.Locale, cancellationToken);
+
+    internal async Task<ContentDocument> UnpublishAsync(string type, Guid id, string? locale, CancellationToken cancellationToken)
     {
         using var span = Span("unpublish", type);
 
@@ -123,7 +129,10 @@ internal sealed partial class ContentService
         return await RespondAsync(write, row);
     }
 
-    public async Task<ContentDocument> DiscardDraftAsync(string type, Guid id, string? locale = null, int? expectedVersion = null, CancellationToken cancellationToken = default)
+    public Task<ContentDocument> DiscardDraftAsync(string type, Guid id, LocaleWriteOptions? options = null, CancellationToken cancellationToken = default) =>
+        DiscardDraftAsync(type, id, options?.Locale, options?.ExpectedVersion, cancellationToken);
+
+    internal async Task<ContentDocument> DiscardDraftAsync(string type, Guid id, string? locale, int? expectedVersion, CancellationToken cancellationToken)
     {
         using var span = Span("discard-draft", type);
 
@@ -163,11 +172,13 @@ internal sealed partial class ContentService
 
                 await WriteOverDraftAsync(write, id, document, rows, working, fields, JsonNode.DeepEquals(fields, publishedFields) ? EntryStatus.Published : EntryStatus.Modified, "Discarded the draft.", cancellationToken);
                 await RecomputeOtherLocalesAsync(write, documents, document, cancellationToken);
+                var skipped = await SkipStalePublishesAsync(write, documents, document, cancellationToken);
                 await ThrowIfOutOfReachAsync(write, ContentOperation.Update, id, cancellationToken);
 
                 EntryStore.ApplySystem(working, document);
                 await hooks.RunAsync(HookKind.AfterUpdate, write.Type, write.Operation, working, ContentCopy.Of(stored), cancellationToken);
                 _pending.Add(new EntryChange(EntryChangeKind.DraftDiscarded, write.Type.Name, id, document.Locale, document.DraftVersion, write.Operation));
+                _pending.AddRange(skipped);
                 return document;
             },
             cancellationToken);
@@ -197,7 +208,10 @@ internal sealed partial class ContentService
         return values;
     }
 
-    public async Task<IReadOnlyList<VersionInfo>> GetVersionsAsync(string type, Guid id, string? locale = null, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<VersionInfo>> GetVersionsAsync(string type, Guid id, LocaleOptions? options = null, CancellationToken cancellationToken = default) =>
+        GetVersionsAsync(type, id, options?.Locale, cancellationToken);
+
+    internal async Task<IReadOnlyList<VersionInfo>> GetVersionsAsync(string type, Guid id, string? locale, CancellationToken cancellationToken)
     {
         using var span = Span("versions", type);
 
@@ -207,7 +221,10 @@ internal sealed partial class ContentService
         return await store.VersionsAsync(id, document.Locale, cancellationToken);
     }
 
-    public async Task<ContentDocument?> GetVersionAsync(string type, Guid id, int number, string? locale = null, CancellationToken cancellationToken = default)
+    public Task<ContentDocument?> GetVersionAsync(string type, Guid id, int number, LocaleOptions? options = null, CancellationToken cancellationToken = default) =>
+        GetVersionAsync(type, id, number, options?.Locale, cancellationToken);
+
+    internal async Task<ContentDocument?> GetVersionAsync(string type, Guid id, int number, string? locale, CancellationToken cancellationToken)
     {
         using var span = Span("version", type);
 
@@ -241,7 +258,10 @@ internal sealed partial class ContentService
         return entry;
     }
 
-    public async Task<ContentDocument> RestoreVersionAsync(string type, Guid id, int number, string? locale = null, int? expectedVersion = null, CancellationToken cancellationToken = default)
+    public Task<ContentDocument> RestoreVersionAsync(string type, Guid id, int number, LocaleWriteOptions? options = null, CancellationToken cancellationToken = default) =>
+        RestoreVersionAsync(type, id, number, options?.Locale, options?.ExpectedVersion, cancellationToken);
+
+    internal async Task<ContentDocument> RestoreVersionAsync(string type, Guid id, int number, string? locale, int? expectedVersion, CancellationToken cancellationToken)
     {
         using var span = Span("restore-version", type);
 
@@ -284,11 +304,13 @@ internal sealed partial class ContentService
                 var message = string.Create(CultureInfo.InvariantCulture, $"Restored version {number}.");
                 await WriteOverDraftAsync(write, id, document, rows, working, fields, status, message, cancellationToken);
                 await RecomputeOtherLocalesAsync(write, documents, document, cancellationToken);
+                var skipped = await SkipStalePublishesAsync(write, documents, document, cancellationToken);
                 await ThrowIfOutOfReachAsync(write, ContentOperation.Update, id, cancellationToken);
 
                 EntryStore.ApplySystem(working, document);
                 await hooks.RunAsync(HookKind.AfterUpdate, write.Type, write.Operation, working, ContentCopy.Of(stored), cancellationToken);
                 _pending.Add(new EntryChange(EntryChangeKind.VersionRestored, write.Type.Name, id, document.Locale, document.DraftVersion, write.Operation));
+                _pending.AddRange(skipped);
                 return document;
             },
             cancellationToken);
@@ -296,7 +318,10 @@ internal sealed partial class ContentService
         return await RespondAsync(write, row);
     }
 
-    public async Task<IReadOnlyList<VersionChange>> DiffAsync(string type, Guid id, int fromVersion, int toVersion, string? locale = null, CancellationToken cancellationToken = default)
+    public Task<IReadOnlyList<VersionChange>> DiffAsync(string type, Guid id, int fromVersion, int toVersion, LocaleOptions? options = null, CancellationToken cancellationToken = default) =>
+        DiffAsync(type, id, fromVersion, toVersion, options?.Locale, cancellationToken);
+
+    internal async Task<IReadOnlyList<VersionChange>> DiffAsync(string type, Guid id, int fromVersion, int toVersion, string? locale, CancellationToken cancellationToken)
     {
         using var span = Span("diff", type);
 
@@ -674,6 +699,10 @@ internal sealed partial class ContentService
 
     private static bool SameFields(SchemaType type, ContentDocument left, ContentDocument right) =>
         JsonNode.DeepEquals(EntryJson.Fields(type, left), EntryJson.Fields(type, right));
+
+    // fields is EntryJson.Fields of the one side; the other is compared field by field rather than copied whole.
+    private static bool SameFields(SchemaType type, JsonObject fields, ContentDocument entry) =>
+        type.Fields.All(field => JsonNode.DeepEquals(fields[field.Name], EntryJson.ToNode(entry.GetValueOrDefault(field.Name))));
 
     private async Task<JsonObject> ReadableFieldsOfAsync(WriteScope write, ContentVersion version, CancellationToken cancellationToken)
     {

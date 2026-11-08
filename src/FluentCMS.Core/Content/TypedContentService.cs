@@ -6,13 +6,18 @@ using FluentCMS.Schema;
 
 namespace FluentCMS.Core.Content;
 
-// One code path: every operation is the document service's, with the class mapped on the way in and out. A class has a
-// property for every system field, so it reads the two a document leaves out, as far as the principal may read them.
+// One code path: every operation is the document service's, with the class mapped on the way in and out; those that map
+// no entry are the interface's default members over Documents. A class has a property for every system field, so it reads
+// the two a document leaves out, as far as the principal may read them.
 internal sealed class TypedContentService<T>(ContentService documents, SchemaModel schema, ContentEntryMapper mapper) : IContentService<T>
     where T : ContentItem
 {
     private readonly string _type = schema.FindContentType(typeof(T))?.Name
         ?? throw new InvalidOperationException($"{typeof(T)} is not a content type of the schema.");
+
+    public string Type => _type;
+
+    public IContentService Documents => documents;
 
     public async Task<T?> GetAsync(Guid id, GetOptions? options = null, CancellationToken cancellationToken = default)
     {
@@ -50,9 +55,6 @@ internal sealed class TypedContentService<T>(ContentService documents, SchemaMod
     public async Task<T> PatchAsync(Guid id, ContentDocument patch, int expectedVersion, CancellationToken cancellationToken = default) =>
         await ReadBackAsync(await documents.PatchAsync(_type, id, patch, expectedVersion, cancellationToken));
 
-    public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default) =>
-        documents.DeleteAsync(_type, id, cancellationToken);
-
     public async Task<T> RestoreAsync(Guid id, CancellationToken cancellationToken = default) =>
         await ReadBackAsync(await documents.RestoreAsync(_type, id, cancellationToken));
 
@@ -65,44 +67,23 @@ internal sealed class TypedContentService<T>(ContentService documents, SchemaMod
         return new PagedResult<T>(page.Items.Select(Map).ToList(), page.Total, page.Page, page.PageSize, page.NextCursor);
     }
 
-    public Task PurgeAsync(Guid id, CancellationToken cancellationToken = default) =>
-        documents.PurgeAsync(_type, id, cancellationToken);
-
-    public async Task<PublishResult<T>> PublishAsync(Guid id, string? locale = null, int? expectedVersion = null, CancellationToken cancellationToken = default)
+    public async Task<PublishResult<T>> PublishAsync(Guid id, LocaleWriteOptions? options = null, CancellationToken cancellationToken = default)
     {
-        var published = await documents.PublishAsync(_type, id, locale, expectedVersion, cancellationToken);
-        return new PublishResult<T>(await ReadBackAsync(published.Entry, locale), published.Warnings);
+        var published = await documents.PublishAsync(_type, id, options, cancellationToken);
+        return new PublishResult<T>(await ReadBackAsync(published.Entry, options?.Locale), published.Warnings);
     }
 
-    public async Task<T> UnpublishAsync(Guid id, string? locale = null, CancellationToken cancellationToken = default) =>
-        await ReadBackAsync(await documents.UnpublishAsync(_type, id, locale, cancellationToken), locale);
+    public async Task<T> UnpublishAsync(Guid id, LocaleOptions? options = null, CancellationToken cancellationToken = default) =>
+        await ReadBackAsync(await documents.UnpublishAsync(_type, id, options, cancellationToken), options?.Locale);
 
-    public Task<ScheduleInfo> ScheduleAsync(Guid id, ScheduleRequest request, string? locale = null, CancellationToken cancellationToken = default) =>
-        documents.ScheduleAsync(_type, id, request, locale, cancellationToken);
+    public async Task<T> DiscardDraftAsync(Guid id, LocaleWriteOptions? options = null, CancellationToken cancellationToken = default) =>
+        await ReadBackAsync(await documents.DiscardDraftAsync(_type, id, options, cancellationToken), options?.Locale);
 
-    public Task CancelScheduleAsync(Guid id, ScheduleAction action, string? locale = null, CancellationToken cancellationToken = default) =>
-        documents.CancelScheduleAsync(_type, id, action, locale, cancellationToken);
+    public async Task<T?> GetVersionAsync(Guid id, int number, LocaleOptions? options = null, CancellationToken cancellationToken = default) =>
+        await documents.GetVersionAsync(_type, id, number, options, cancellationToken) is { } entry ? Map(entry) : null;
 
-    public async Task<T> DiscardDraftAsync(Guid id, string? locale = null, int? expectedVersion = null, CancellationToken cancellationToken = default) =>
-        await ReadBackAsync(await documents.DiscardDraftAsync(_type, id, locale, expectedVersion, cancellationToken), locale);
-
-    public Task<IReadOnlyList<VersionInfo>> GetVersionsAsync(Guid id, string? locale = null, CancellationToken cancellationToken = default) =>
-        documents.GetVersionsAsync(_type, id, locale, cancellationToken);
-
-    public async Task<T?> GetVersionAsync(Guid id, int number, string? locale = null, CancellationToken cancellationToken = default) =>
-        await documents.GetVersionAsync(_type, id, number, locale, cancellationToken) is { } entry ? Map(entry) : null;
-
-    public async Task<T> RestoreVersionAsync(Guid id, int number, string? locale = null, int? expectedVersion = null, CancellationToken cancellationToken = default) =>
-        await ReadBackAsync(await documents.RestoreVersionAsync(_type, id, number, locale, expectedVersion, cancellationToken), locale);
-
-    public Task<IReadOnlyList<VersionChange>> DiffAsync(Guid id, int fromVersion, int toVersion, string? locale = null, CancellationToken cancellationToken = default) =>
-        documents.DiffAsync(_type, id, fromVersion, toVersion, locale, cancellationToken);
-
-    public Task<long> CountAsync(ContentFilter? filter = null, QueryStatus status = QueryStatus.Published, CancellationToken cancellationToken = default) =>
-        documents.CountAsync(_type, filter, status, cancellationToken);
-
-    public Task<BulkResult> BulkAsync(BulkRequest request, CancellationToken cancellationToken = default) =>
-        documents.BulkAsync(_type, request, cancellationToken);
+    public async Task<T> RestoreVersionAsync(Guid id, int number, LocaleWriteOptions? options = null, CancellationToken cancellationToken = default) =>
+        await ReadBackAsync(await documents.RestoreVersionAsync(_type, id, number, options, cancellationToken), options?.Locale);
 
     private T Map(ContentDocument entry) => (T)mapper.ToEntry(typeof(T), entry);
 

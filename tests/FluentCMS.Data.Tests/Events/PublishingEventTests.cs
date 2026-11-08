@@ -140,13 +140,13 @@ public sealed class PublishingEventTests
         database.Rows().Count.ShouldBe(before + 1);
     }
 
-    private static Task Publish(IContentService service, Guid id) => service.PublishAsync("article", id, null, null, Token);
+    private static Task Publish(IContentService service, Guid id) => service.PublishAsync("article", id, null, Token);
 
     private static Task Unpublish(IContentService service, Guid id) => service.UnpublishAsync("article", id, null, Token);
 
-    private static Task Discard(IContentService service, Guid id) => service.DiscardDraftAsync("article", id, null, null, Token);
+    private static Task Discard(IContentService service, Guid id) => service.DiscardDraftAsync("article", id, null, Token);
 
-    private static Task Restore(IContentService service, Guid id) => service.RestoreVersionAsync("article", id, 1, null, null, Token);
+    private static Task Restore(IContentService service, Guid id) => service.RestoreVersionAsync("article", id, 1, null, Token);
 
     [Fact]
     public Task APublishThatCommitsIsToldAndStaged() => CommittedAsync<EntryPublishedEvent>(Publish, 2);

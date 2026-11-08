@@ -464,7 +464,7 @@ public sealed class PublishingAccessTests : IDisposable
     public async Task APartialDiscardLeavesHiddenValuesAtEveryDepth()
     {
         var id = IdOf(await _database.AsAsync(Principal.System, services => services.GetRequiredService<IContentService>().CreateAsync("article", Secretive("One", "published-top", heading: "H1", inner: "published-block"), Token), origin: Origin.Seed));
-        await _database.AsAsync(Principal.System, services => services.GetRequiredService<IContentService>().PublishAsync("article", id, null, null, Token), origin: Origin.Seed);
+        await _database.AsAsync(Principal.System, services => services.GetRequiredService<IContentService>().PublishAsync("article", id, null, Token), origin: Origin.Seed);
         var draft = Secretive("Two", "draft-top", heading: "H2", inner: "draft-block");
         draft["seo"] = new ContentDocument { ["metaTitle"] = "Meta2", ["internal"] = "draft-group" };
         await _database.AsAsync(Principal.System, services => services.GetRequiredService<IContentService>().UpdateAsync("article", id, draft, 1, Token), origin: Origin.Seed);
@@ -577,7 +577,7 @@ public sealed class PublishingAccessTests : IDisposable
     {
         var id = await SecretiveEntryAsync();
 
-        await _database.AsAsync(Principal.System, services => services.GetRequiredService<IContentService>().RestoreVersionAsync("article", id, 1, null, null, Token), origin: Origin.Seed);
+        await _database.AsAsync(Principal.System, services => services.GetRequiredService<IContentService>().RestoreVersionAsync("article", id, 1, null, Token), origin: Origin.Seed);
 
         var row = _database.Row("cms_article", id);
         row["secret"].ShouldBe("s1");
@@ -801,16 +801,16 @@ public sealed class PublishingAccessTests : IDisposable
         var scheduler = new Principal(PrincipalKind.AdminUser, Guid.CreateVersion7(), "Scheduler");
         var id = IdOf(await _database.CreateAsync(Editor, Titled("One")));
 
-        await InJob(scheduler, service => service.PublishAsync("article", id, null, null, Token));
+        await InJob(scheduler, service => service.PublishAsync("article", id, null, Token));
         _database.Document(id).UpdatedBy.ShouldBe(scheduler.Id);
 
         await _database.PatchAsync(Editor, id, Titled("Two"), 1);
-        await InJob(scheduler, service => service.RestoreVersionAsync("article", id, 1, null, null, Token));
+        await InJob(scheduler, service => service.RestoreVersionAsync("article", id, 1, null, Token));
         _database.Document(id).UpdatedBy.ShouldBe(scheduler.Id);
         _database.Versions(id)[^1].AuthorId.ShouldBe(scheduler.Id);
 
         await _database.PatchAsync(Editor, id, Titled("Three"), 3);
-        await InJob(scheduler, service => service.DiscardDraftAsync("article", id, null, null, Token));
+        await InJob(scheduler, service => service.DiscardDraftAsync("article", id, null, Token));
         _database.Versions(id)[^1].AuthorId.ShouldBe(scheduler.Id);
 
         await InJob(scheduler, service => service.UnpublishAsync("article", id, null, Token));
@@ -822,7 +822,7 @@ public sealed class PublishingAccessTests : IDisposable
         {
             var accessor = services.GetRequiredService<IOperationContextAccessor>();
             accessor.Current = accessor.Current! with { Actor = Editor };
-            return services.GetRequiredService<IContentService>().PublishAsync("article", id, null, null, Token);
+            return services.GetRequiredService<IContentService>().PublishAsync("article", id, null, Token);
         }));
     }
 
@@ -846,7 +846,7 @@ public sealed class PublishingAccessTests : IDisposable
     {
         var id = IdOf(await _database.CreateAsync(Editor, Titled("One")));
         var before = _database.Trace(id);
-        await Should.ThrowAsync<EntryNotFoundException>(() => _database.AsAsync(Editor, services => services.GetRequiredService<IContentService>().PublishAsync("article", id, null, null, Token), site: SiteB));
+        await Should.ThrowAsync<EntryNotFoundException>(() => _database.AsAsync(Editor, services => services.GetRequiredService<IContentService>().PublishAsync("article", id, null, Token), site: SiteB));
         await Should.ThrowAsync<EntryNotFoundException>(() => _database.AsAsync(Editor, services => services.GetRequiredService<IContentService>().GetVersionsAsync("article", id, null, Token), site: SiteB));
         await Should.ThrowAsync<EntryNotFoundException>(() => _database.PublishAsync(Editor, id, type: "author"));
         _database.Trace(id).ShouldBe(before);

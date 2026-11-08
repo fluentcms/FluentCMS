@@ -6,6 +6,7 @@ using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Tests.Schema;
 using FluentCMS.Data.Tests.Sqlite;
+using FluentCMS.Providers;
 using FluentCMS.Publishing;
 using FluentCMS.Schema;
 using Microsoft.EntityFrameworkCore;
@@ -68,8 +69,8 @@ internal sealed class QueryDatabase : IDisposable
             .Field("link", "url")
             .Field("summary", "longText")
             .Field("region", "text")
-            .Field("author", "relation", field => field.Relation("author"))
-            .Field("tags", "relation", field => field.Multiple().Relation("tag", ordered: true))
+            .Field("author", "relation", field => field.Relation("author", "articles", false))
+            .Field("tags", "relation", field => field.Multiple().Relation("tag", null, true))
             .Field("related", "relation", field => field.Multiple().Relation("article"))
             .Field("sponsor", "relation", field => field.Localizable().Relation("author"))
             .Field("hero", "media")
@@ -106,12 +107,13 @@ internal sealed class QueryDatabase : IDisposable
     // Another process on the same database file, with its own container.
     public ServiceProvider NewInstance(Action<FluentCmsBuilder>? configure = null) => _database.CreateServices(_schema, configure);
 
-    public ContentQueryEngine Engine(IContentQueryAccess? access = null, ContentQueryOptions? options = null) => new(
+    public ContentQueryEngine Engine(IContentQueryAccess? access = null, ContentQueryOptions? options = null, ISearchIndex? search = null) => new(
         Context,
         _schema,
         Services.GetRequiredService<IJsonSqlDialect>(),
         access ?? new OpenContentQueryAccess(),
-        options ?? new ContentQueryOptions());
+        options ?? new ContentQueryOptions(),
+        search ?? Services.GetRequiredService<ISearchIndex>());
 
     public Guid AddArticle(string title, Dictionary<string, object?>? values = null, string locale = "en", short state = ContentState.Published, Guid? id = null, Guid? site = null, Guid? createdBy = null)
     {
@@ -254,8 +256,8 @@ internal sealed class QueryDatabase : IDisposable
         context.SaveChanges();
     }
 
-    public Task<ContentQueryResult> RunAsync(string queryString, IContentQueryAccess? access = null, ContentQueryOptions? options = null, string type = "article") =>
-        Engine(access, options).ExecuteAsync(type, BracketQueryParser.Parse(queryString), TestContext.Current.CancellationToken);
+    public Task<ContentQueryResult> RunAsync(string queryString, IContentQueryAccess? access = null, ContentQueryOptions? options = null, string type = "article", ISearchIndex? search = null) =>
+        Engine(access, options, search).ExecuteAsync(type, BracketQueryParser.Parse(queryString), TestContext.Current.CancellationToken);
 
     public void Dispose()
     {

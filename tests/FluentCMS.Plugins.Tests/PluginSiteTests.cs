@@ -177,7 +177,7 @@ public sealed class PluginSiteTests
         failed.LastError!.ShouldContain("'sample.note-added'");
         failed.LastError!.ShouldContain("'sample'");
         failed.LastError!.ShouldContain(docs.ToString("D"));
-        (await host.Services.GetRequiredService<IEventDeadLetters>().ListAsync(cancellationToken: Token)).ShouldContain(item => item.Id == failed.Id);
+        (await host.Services.GetRequiredService<IEventDeadLetters>().ListAsync(0, 50, Token)).ShouldContain(item => item.Id == failed.Id);
     }
 
     // As the drain does with a delivery: the job did not run, so it uses no attempt, and it waits one poll before it is tried again.

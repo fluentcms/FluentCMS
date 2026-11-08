@@ -31,7 +31,7 @@ public class SchemaValidationTests
                 .Localized()
                 .Field("title", "text", field => field.Localizable().Required())
                 .Field("slug", "slug", field => field.Setting(FieldSettings.Source, "title"))
-                .Field("author", "relation", field => field.Relation("author", "articles")))
+                .Field("author", "relation", field => field.Relation("author", "articles", false)))
             .Build();
 
         model.ContentTypes.Select(type => type.Name).ShouldBe(["article", "author"]);
@@ -231,8 +231,8 @@ public class SchemaValidationTests
     public void ReverseRelationNameDeclaredTwiceIsFCMS1209()
     {
         var builder = WithAuthor(new SchemaBuilder())
-            .AddCollection("article", type => type.Field("author", "relation", field => field.Relation("author", "works")))
-            .AddCollection("book", type => type.Field("writer", "relation", field => field.Relation("author", "works")));
+            .AddCollection("article", type => type.Field("author", "relation", field => field.Relation("author", "works", false)))
+            .AddCollection("book", type => type.Field("writer", "relation", field => field.Relation("author", "works", false)));
 
         ShouldReportOnly(builder, "FCMS1209", "reverse relation name 'works' on author is declared by both article.author and book.writer");
     }
@@ -241,7 +241,7 @@ public class SchemaValidationTests
     public void ReverseRelationNameThatIsAFieldOfTheTargetIsFCMS1209()
     {
         var builder = WithAuthor(new SchemaBuilder())
-            .AddCollection("article", type => type.Field("author", "relation", field => field.Relation("author", "name")));
+            .AddCollection("article", type => type.Field("author", "relation", field => field.Relation("author", "name", false)));
 
         ShouldReportOnly(builder, "FCMS1209", "reverse relation name 'name' of article.author is also a field of author");
     }
@@ -252,8 +252,8 @@ public class SchemaValidationTests
         var model = WithAuthor(new SchemaBuilder())
             .AddCollection("editor", type => type.Field("name", "text"))
             .AddCollection("article", type => type
-                .Field("author", "relation", field => field.Relation("author", "articles"))
-                .Field("editor", "relation", field => field.Relation("editor", "articles")))
+                .Field("author", "relation", field => field.Relation("author", "articles", false))
+                .Field("editor", "relation", field => field.Relation("editor", "articles", false)))
             .Build();
 
         model.FindContentType("author")!.ReverseRelations.Single().Name.ShouldBe("articles");
@@ -401,7 +401,7 @@ public class SchemaValidationTests
     public void ReverseRelationNameThatIsNotCamelCaseIsFCMS1214()
     {
         var builder = WithAuthor(new SchemaBuilder())
-            .AddCollection("article", type => type.Field("author", "relation", field => field.Relation("author", "My Articles")));
+            .AddCollection("article", type => type.Field("author", "relation", field => field.Relation("author", "My Articles", false)));
 
         ShouldReportOnly(builder, "FCMS1214", "reverse relation name 'My Articles'");
     }

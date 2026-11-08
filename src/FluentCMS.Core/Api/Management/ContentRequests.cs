@@ -25,9 +25,14 @@ internal static class ContentRequests
         var zone = body.TryGetProperty("timeZone", out var zoneValue) && zoneValue.ValueKind != JsonValueKind.Null
             ? zoneValue.ValueKind == JsonValueKind.String ? zoneValue.GetString() : Invalid<string>("timeZone", "The time zone is a string, such as Europe/Berlin.", errors)
             : null;
-        var at = body.TryGetProperty("at", out var atValue) ? Moment(atValue, zone is not null, errors) : Missing<DateTime>("at", errors);
+        var (instant, localTime) = body.TryGetProperty("at", out var atValue) ? Moment(atValue, zone is not null, errors) : Missing<(DateTimeOffset, DateTime)>("at", errors);
 
-        return errors.Count > 0 ? throw new ValidationException(errors) : new ScheduleRequest(action, at, zone);
+        if (errors.Count > 0)
+        {
+            throw new ValidationException(errors);
+        }
+
+        return zone is null ? ScheduleRequest.At(action, instant) : ScheduleRequest.AtLocalTime(action, localTime, zone);
     }
 
     public static ScheduleAction Action(string action) =>
@@ -124,22 +129,23 @@ internal static class ContentRequests
         _ => Invalid<int?>(path, $"'{path}' is a whole number.", errors),
     };
 
-    private static DateTime Moment(JsonElement value, bool inZone, List<ValidationError> errors)
+    // The text decides which: the reader gives a time written without an offset the unspecified kind, and one with an offset another.
+    private static (DateTimeOffset Instant, DateTime LocalTime) Moment(JsonElement value, bool inZone, List<ValidationError> errors)
     {
         if (value.ValueKind != JsonValueKind.String || !value.TryGetDateTime(out var parsed))
         {
-            return Invalid<DateTime>("at", "The time is an ISO 8601 date and time, such as 2027-03-01T09:00:00Z.", errors);
+            return Invalid<(DateTimeOffset, DateTime)>("at", "The time is an ISO 8601 date and time, such as 2027-03-01T09:00:00Z.", errors);
         }
 
         var hasOffset = parsed.Kind != DateTimeKind.Unspecified;
         if (inZone)
         {
-            return hasOffset ? Invalid<DateTime>("at", "A time in a time zone is the wall-clock time there, without an offset.", errors) : parsed;
+            return hasOffset ? Invalid<(DateTimeOffset, DateTime)>("at", "A time in a time zone is the wall-clock time there, without an offset.", errors) : (default, parsed);
         }
 
         return hasOffset && value.TryGetDateTimeOffset(out var instant)
-            ? instant.UtcDateTime
-            : Invalid<DateTime>("at", "A time without a time zone needs an offset, such as Z.", errors);
+            ? (instant, default)
+            : Invalid<(DateTimeOffset, DateTime)>("at", "A time without a time zone needs an offset, such as Z.", errors);
     }
 
     private static ScheduleAction ActionOf(JsonElement value, string path, List<ValidationError> errors) =>

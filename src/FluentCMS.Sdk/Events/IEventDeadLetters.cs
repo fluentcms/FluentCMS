@@ -21,7 +21,7 @@ public interface IEventDeadLetters
     /// <param name="limit">The most deliveries to return.</param>
     /// <param name="cancellationToken">Cancels the read.</param>
     /// <returns>The deliveries.</returns>
-    Task<IReadOnlyList<FailedEventDelivery>> ListAsync(int offset = 0, int limit = 50, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<FailedEventDelivery>> ListAsync(int offset, int limit, CancellationToken cancellationToken = default);
 
     /// <summary>Queues a failed delivery to run again now, with a fresh set of attempts.</summary>
     /// <param name="id">The id of the delivery.</param>

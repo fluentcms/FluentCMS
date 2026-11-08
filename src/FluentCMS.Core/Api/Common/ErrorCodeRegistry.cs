@@ -113,6 +113,7 @@ public static class ErrorCodeRegistry
         Invalid(ValidationErrorCodes.Custom, "Validation rule failed"),
         Invalid(ValidationErrorCodes.RequiredByCondition, "Value required by a condition"),
         Invalid(ValidationErrorCodes.NotUnique, "Value not unique"),
+        Invalid(ValidationErrorCodes.EmptySlug, "No slug from the source"),
 
         // 22xx query
         BadQuery(QueryErrorCodes.InvalidParameter, "Invalid query parameter"),
@@ -124,6 +125,8 @@ public static class ErrorCodeRegistry
         BadQuery(QueryErrorCodes.LimitExceeded, "Query limit exceeded"),
         BadQuery(QueryErrorCodes.NotARelation, "Not a relation"),
         new(QueryErrorCodes.DraftNotAllowed, StatusCodes.Status403Forbidden, "Drafts not allowed"),
+        BadQuery(QueryErrorCodes.ReverseRelation, "Reverse relation not queryable"),
+        BadQuery(QueryErrorCodes.NoSearchIndex, "No search index"),
 
         // 23xx sites and locales
         new(SiteErrorCodes.SiteNotFound, StatusCodes.Status404NotFound, "Site not found"),

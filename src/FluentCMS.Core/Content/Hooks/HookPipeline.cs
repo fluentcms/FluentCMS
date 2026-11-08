@@ -20,6 +20,10 @@ public sealed class HookPipeline(IServiceProvider services)
 {
     private static readonly ConcurrentDictionary<Type, int> Orders = new();
 
+    // The hooks of a scope do not change, so each kind is resolved and ordered once per content class and scope, not on every
+    // call. A hook registered as transient therefore lives as long as the scope, as a scoped one does.
+    private readonly Dictionary<(HookKind Kind, Type? ClrType), List<BoundHook>> _resolved = [];
+
     public async ValueTask RunAsync(
         HookKind kind,
         SchemaType type,
@@ -29,8 +33,19 @@ public sealed class HookPipeline(IServiceProvider services)
         CancellationToken cancellationToken) =>
         await RunAsync(kind, type, operation, entry, previous, beforeFirst: null, cancellationToken);
 
+    // For an operation on every locale of the entry, while entry holds the values of one of them.
+    internal async ValueTask RunAsync(
+        HookKind kind,
+        SchemaType type,
+        OperationContext operation,
+        ContentDocument entry,
+        ContentDocument? previous,
+        IReadOnlyList<string> locales,
+        CancellationToken cancellationToken) =>
+        await RunAsync(kind, type, operation, entry, previous, beforeFirst: null, cancellationToken, locales);
+
     // Whether a hook ran. beforeFirst runs just before the first hook does, while the entry is still as it was given, so that
-    // a caller compares with it only when there is something to compare.
+    // a caller compares with it only when there is something to compare. Without locales the operation is on the entry's own.
     internal async ValueTask<bool> RunAsync(
         HookKind kind,
         SchemaType type,
@@ -38,13 +53,19 @@ public sealed class HookPipeline(IServiceProvider services)
         ContentDocument entry,
         ContentDocument? previous,
         Action? beforeFirst,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IReadOnlyList<string>? locales = null)
     {
         ArgumentNullException.ThrowIfNull(type);
         ArgumentNullException.ThrowIfNull(operation);
         ArgumentNullException.ThrowIfNull(entry);
 
-        var hooks = Resolve(kind, type);
+        if (!_resolved.TryGetValue((kind, type.ClrType), out var hooks))
+        {
+            hooks = Resolve(kind, type);
+            _resolved[(kind, type.ClrType)] = hooks;
+        }
+
         if (hooks.Count > 0 && services.GetService(typeof(PluginState)) is PluginState plugins)
         {
             hooks = await plugins.EnabledAsync(hooks, hook => hook.ImplementationType, operation.Site.Value, cancellationToken);
@@ -67,6 +88,7 @@ public sealed class HookPipeline(IServiceProvider services)
             operation,
             mutable ? entry : ContentCopy.Of(entry),
             previous,
+            locales ?? (entry.GetValueOrDefault("locale") is string locale ? [locale] : []),
             services.GetService(typeof(IHookEntryMapper)) as IHookEntryMapper);
 
         var first = true;
@@ -122,6 +144,7 @@ public sealed class HookPipeline(IServiceProvider services)
         OperationContext operation,
         ContentDocument entry,
         ContentDocument? previous,
+        IReadOnlyList<string> locales,
         IHookEntryMapper? mapper)
     {
         private object? _previousEntry;
@@ -138,7 +161,7 @@ public sealed class HookPipeline(IServiceProvider services)
             if (typeof(T) == typeof(ContentDocument))
             {
                 mapped = null;
-                return new HookContext<T>(operation, (T)(object)entry, (T?)(object?)previous, _changedPaths);
+                return new HookContext<T>(operation, (T)(object)entry, (T?)(object?)previous, _changedPaths) { Locales = locales };
             }
 
             var map = RequireMapper();
@@ -148,7 +171,7 @@ public sealed class HookPipeline(IServiceProvider services)
                 _previousEntry ??= map.ToEntry(clrType!, previous);
             }
 
-            return new HookContext<T>(operation, (T)mapped, (T?)_previousEntry, _changedPaths);
+            return new HookContext<T>(operation, (T)mapped, (T?)_previousEntry, _changedPaths) { Locales = locales };
         }
 
         public void WriteBack(object mapped) => RequireMapper().CopyTo(mapped, entry);

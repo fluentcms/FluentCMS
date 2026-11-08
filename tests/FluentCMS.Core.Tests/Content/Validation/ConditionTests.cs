@@ -130,6 +130,8 @@ public class ConditionTests
         ConditionEvaluator.Evaluate(Condition.Field("labels").Equals("c"), values).ShouldBeFalse();
         ConditionEvaluator.Evaluate(Condition.Field("labels").In("c", "a"), values).ShouldBeTrue();
         ConditionEvaluator.Evaluate(Condition.Field("labels").Equals(null), Values(("labels", Array.Empty<string>()))).ShouldBeTrue();
+        ConditionEvaluator.Evaluate(Condition.Field("labels").In("c", null), Values(("labels", Array.Empty<string>()))).ShouldBeTrue();
+        ConditionEvaluator.Evaluate(Condition.Field("labels").In("c", null), values).ShouldBeFalse();
     }
 
     [Fact]

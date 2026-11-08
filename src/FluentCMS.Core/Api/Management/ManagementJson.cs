@@ -78,9 +78,9 @@ internal static class ManagementJson
             json["warnings"] = Warnings(item.Warnings);
         }
 
-        if (item.Problem is { } exception)
+        if (item.Problem is { } problem)
         {
-            json["problem"] = JsonSerializer.SerializeToNode(ProblemWriter.Details(ProblemMapper.Map(exception, authenticated, codes)), JsonSerializerOptions.Web);
+            json["problem"] = JsonSerializer.SerializeToNode(ProblemWriter.Details(ProblemMapper.Map(problem, authenticated, codes)), JsonSerializerOptions.Web);
         }
 
         return json;

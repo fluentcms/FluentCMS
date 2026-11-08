@@ -3,45 +3,77 @@ namespace FluentCMS.Schema;
 /// <summary>Sets the options of one field of a type defined without a class.</summary>
 public interface IFieldBuilder
 {
+    /// <summary>The same as <c>Required(true)</c>.</summary>
+    /// <returns>This builder.</returns>
+    IFieldBuilder Required() => Required(true);
+
     /// <summary>Sets whether a value is required to publish.</summary>
     /// <param name="required">Whether the field is required.</param>
     /// <returns>This builder.</returns>
-    IFieldBuilder Required(bool required = true);
+    IFieldBuilder Required(bool required);
+
+    /// <summary>The same as <c>Unique(true)</c>.</summary>
+    /// <returns>This builder.</returns>
+    IFieldBuilder Unique() => Unique(true);
 
     /// <summary>Sets whether the value must be unique among published entries.</summary>
     /// <param name="unique">Whether the field is unique.</param>
     /// <returns>This builder.</returns>
-    IFieldBuilder Unique(bool unique = true);
+    IFieldBuilder Unique(bool unique);
+
+    /// <summary>The same as <c>Indexed(true)</c>.</summary>
+    /// <returns>This builder.</returns>
+    IFieldBuilder Indexed() => Indexed(true);
 
     /// <summary>Sets whether the field has a database index.</summary>
     /// <param name="indexed">Whether the field is indexed.</param>
     /// <returns>This builder.</returns>
-    IFieldBuilder Indexed(bool indexed = true);
+    IFieldBuilder Indexed(bool indexed);
+
+    /// <summary>The same as <c>Searchable(true)</c>.</summary>
+    /// <returns>This builder.</returns>
+    IFieldBuilder Searchable() => Searchable(true);
 
     /// <summary>Sets whether the field is included in full-text search.</summary>
     /// <param name="searchable">Whether the field is searchable.</param>
     /// <returns>This builder.</returns>
-    IFieldBuilder Searchable(bool searchable = true);
+    IFieldBuilder Searchable(bool searchable);
+
+    /// <summary>The same as <c>IsReadOnly(true)</c>.</summary>
+    /// <returns>This builder.</returns>
+    IFieldBuilder IsReadOnly() => IsReadOnly(true);
 
     /// <summary>Sets whether clients cannot change the value.</summary>
     /// <param name="isReadOnly">Whether the field is read-only.</param>
     /// <returns>This builder.</returns>
-    IFieldBuilder IsReadOnly(bool isReadOnly = true);
+    IFieldBuilder IsReadOnly(bool isReadOnly);
+
+    /// <summary>The same as <c>Hidden(true)</c>.</summary>
+    /// <returns>This builder.</returns>
+    IFieldBuilder Hidden() => Hidden(true);
 
     /// <summary>Sets whether the field is left out of responses and forms.</summary>
     /// <param name="hidden">Whether the field is hidden.</param>
     /// <returns>This builder.</returns>
-    IFieldBuilder Hidden(bool hidden = true);
+    IFieldBuilder Hidden(bool hidden);
+
+    /// <summary>The same as <c>Localizable(true)</c>.</summary>
+    /// <returns>This builder.</returns>
+    IFieldBuilder Localizable() => Localizable(true);
 
     /// <summary>Sets whether the value differs per locale. The type must be localized.</summary>
     /// <param name="localizable">Whether the field is localizable.</param>
     /// <returns>This builder.</returns>
-    IFieldBuilder Localizable(bool localizable = true);
+    IFieldBuilder Localizable(bool localizable);
+
+    /// <summary>The same as <c>Multiple(true)</c>.</summary>
+    /// <returns>This builder.</returns>
+    IFieldBuilder Multiple() => Multiple(true);
 
     /// <summary>Sets whether the field holds a list, such as a multi select, a to-many relation or a repeatable component.</summary>
     /// <param name="multiple">Whether the field holds a list.</param>
     /// <returns>This builder.</returns>
-    IFieldBuilder Multiple(bool multiple = true);
+    IFieldBuilder Multiple(bool multiple);
 
     /// <summary>Limits the number of characters.</summary>
     /// <param name="min">The least number, or <see langword="null"/> for no limit.</param>
@@ -61,14 +93,9 @@ public interface IFieldBuilder
     IFieldBuilder Pattern(string pattern);
 
     /// <summary>Sets the hints that tell the admin how to present the field.</summary>
-    /// <param name="label">The label.</param>
-    /// <param name="help">The help text.</param>
-    /// <param name="placeholder">The placeholder.</param>
-    /// <param name="group">The group of fields the field is shown with.</param>
-    /// <param name="tab">The tab the field is shown on.</param>
-    /// <param name="width">The width in columns of a twelve-column grid, or 0 to leave it to the admin.</param>
+    /// <param name="display">The label, help text, placeholder, group, tab and width of the field; a width of 0 leaves it to the admin.</param>
     /// <returns>This builder.</returns>
-    IFieldBuilder Display(string? label = null, string? help = null, string? placeholder = null, string? group = null, string? tab = null, int width = 0);
+    IFieldBuilder Display(FieldDisplayDescription display);
 
     /// <summary>Sets the value a new entry starts with.</summary>
     /// <param name="value">A string, boolean, number, enum member, list of strings or <see langword="null"/>.</param>
@@ -90,12 +117,17 @@ public interface IFieldBuilder
     /// <returns>This builder.</returns>
     IFieldBuilder RequiredWhen(Condition condition);
 
+    /// <summary>Sets the target of a relation field, with no reverse side and without keeping the order of the related entries.</summary>
+    /// <param name="target">The name of the content type the relation points to.</param>
+    /// <returns>This builder.</returns>
+    IFieldBuilder Relation(string target) => Relation(target, null, false);
+
     /// <summary>Sets the target of a relation field.</summary>
     /// <param name="target">The name of the content type the relation points to.</param>
     /// <param name="reverse">The name of the reverse side on the target type, or <see langword="null"/> for none.</param>
     /// <param name="ordered">Whether the order of the related entries is kept.</param>
     /// <returns>This builder.</returns>
-    IFieldBuilder Relation(string target, string? reverse = null, bool ordered = false);
+    IFieldBuilder Relation(string target, string? reverse, bool ordered);
 
     /// <summary>Sets a setting of the field type, keyed as in <see cref="FieldSettings"/> for the built-in types.</summary>
     /// <param name="name">The key.</param>

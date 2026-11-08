@@ -9,6 +9,17 @@ public abstract record ContentFilter
     private protected ContentFilter()
     {
     }
+
+    private protected static int HashOf(IReadOnlyList<ContentFilter> filters)
+    {
+        var hash = new HashCode();
+        foreach (var filter in filters)
+        {
+            hash.Add(filter);
+        }
+
+        return hash.ToHashCode();
+    }
 }
 
 /// <summary>A condition on one field.</summary>
@@ -43,9 +54,9 @@ public sealed record And(params IReadOnlyList<ContentFilter> Filters) : ContentF
     /// <returns><see langword="true"/> if the nodes are equal.</returns>
     public bool Equals(And? other) => other is not null && Filters.SequenceEqual(other.Filters);
 
-    /// <summary>Gets a hash code of the number of conditions.</summary>
+    /// <summary>Gets a hash code of the conditions in order.</summary>
     /// <returns>The hash code.</returns>
-    public override int GetHashCode() => Filters.Count;
+    public override int GetHashCode() => HashOf(Filters);
 }
 
 /// <summary>At least one condition holds.</summary>
@@ -58,9 +69,9 @@ public sealed record Or(params IReadOnlyList<ContentFilter> Filters) : ContentFi
     /// <returns><see langword="true"/> if the nodes are equal.</returns>
     public bool Equals(Or? other) => other is not null && Filters.SequenceEqual(other.Filters);
 
-    /// <summary>Gets a hash code of the number of conditions.</summary>
+    /// <summary>Gets a hash code of the conditions in order.</summary>
     /// <returns>The hash code.</returns>
-    public override int GetHashCode() => Filters.Count;
+    public override int GetHashCode() => HashOf(Filters);
 }
 
 /// <summary>The condition does not hold.</summary>

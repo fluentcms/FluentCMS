@@ -408,7 +408,7 @@ internal sealed class SchemaJsonReader(SchemaBuilder builder)
             };
         }
 
-        return ok && Add(steps, f => f.Display(label, help, placeholder, group, tab, width));
+        return ok && Add(steps, f => f.Display(new FieldDisplayDescription { Label = label, Help = help, Placeholder = placeholder, Group = group, Tab = tab, Width = width }));
     }
 
     internal Condition? ReadCondition(JsonElement element, string path)
