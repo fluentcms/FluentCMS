@@ -1,12 +1,16 @@
+using System.Collections.Frozen;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using FluentCMS.Core.Storage.Entities;
+using FluentCMS.Schema;
 
 namespace FluentCMS.Core.Jobs;
 
 // An exception message can quote the job's input, so every string, number and property name of the payload is taken
-// out of what is stored and logged. This cannot catch a secret the job has encoded or derived.
+// out of what is stored and logged, except the values that are names of the schema's types and fields, which are not
+// secret and which an error such as "Content type 'article' not found" is no use without. This cannot catch a secret the
+// job has encoded or derived.
 internal static class JobErrorText
 {
     private const string Redacted = "***";
@@ -15,14 +19,14 @@ internal static class JobErrorText
     // A shorter value is matched only as a whole word, since inside a word it is more likely chance than a quote.
     private const int AnywhereFromLength = 4;
 
-    public static string ForStorage(Exception exception, string payload)
+    public static string ForStorage(Exception exception, string payload, IReadOnlySet<string>? kept = null)
     {
         if (exception is JobInvocationException)
         {
             return Cap(exception.Message);
         }
 
-        var values = ValuesOf(payload);
+        var values = ValuesOf(payload, kept);
         var text = new StringBuilder();
         for (var current = exception; current is not null; current = current.InnerException)
         {
@@ -32,7 +36,13 @@ internal static class JobErrorText
         return Cap(text.ToString());
     }
 
-    public static string ForLog(Exception exception, string payload) => Scrub(exception.ToString(), ValuesOf(payload));
+    public static string ForLog(Exception exception, string payload, IReadOnlySet<string>? kept = null) => Scrub(exception.ToString(), ValuesOf(payload, kept));
+
+    // The names of the content types, components and blocks of the schema, and of their fields.
+    public static FrozenSet<string> NamesOf(SchemaModel schema) =>
+        schema.ContentTypes.Concat(schema.Components).Concat(schema.Blocks)
+            .SelectMany(type => type.Fields.Select(field => field.Name).Prepend(type.Name))
+            .ToFrozenSet(StringComparer.Ordinal);
 
     public static string Cap(string text)
     {
@@ -63,7 +73,7 @@ internal static class JobErrorText
     }
 
     // The longest first, so that a value inside another does not leave the rest of it behind.
-    private static List<string> ValuesOf(string payload)
+    private static List<string> ValuesOf(string payload, IReadOnlySet<string>? kept)
     {
         var values = new List<string>();
         try
@@ -76,7 +86,7 @@ internal static class JobErrorText
             values.Add(payload);
         }
 
-        return [.. values.Where(value => value.Length > 0).Distinct(StringComparer.Ordinal).OrderByDescending(value => value.Length)];
+        return [.. values.Where(value => value.Length > 0 && kept?.Contains(value) != true).Distinct(StringComparer.Ordinal).OrderByDescending(value => value.Length)];
     }
 
     private static void Collect(JsonElement element, List<string> values)

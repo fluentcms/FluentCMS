@@ -50,6 +50,32 @@ public sealed class WebhookManagementTests
     }
 
     [Fact]
+    public async Task DeletingAWebhookRemovesItsLogInOneTransactionAndStillWritesItsActivityRow()
+    {
+        await using var receiver = await TestReceiver.StartAsync();
+        await using var host = Host();
+        using var client = await AdminAsync(host);
+        var id = Id(await CreateAsync(client, new { name = "builds", url = receiver.Url().ToString(), events = new List<string> { "content.published" } }));
+        using (var pinged = await client.PostAsync(new Uri($"{Root}/{id:D}/ping", UriKind.Relative), null, Token))
+        {
+            pinged.StatusCode.ShouldBe(HttpStatusCode.Accepted);
+        }
+
+        await PumpAsync(host);
+        (await DeliveriesAsync(host)).ShouldHaveSingleItem().WebhookId.ShouldBe(id);
+
+        using var deleted = await client.DeleteAsync(new Uri($"{Root}/{id:D}", UriKind.Relative), Token);
+        await PumpAsync(host);
+        using var activity = await client.GetAsync(new Uri($"/api/management/v1/activity?action=webhook.deleted&targetId={id:D}", UriKind.Relative), Token);
+
+        deleted.StatusCode.ShouldBe(HttpStatusCode.NoContent, await TextAsync(deleted));
+        receiver.Requests.ShouldHaveSingleItem();
+        (await DeliveriesAsync(host)).ShouldBeEmpty();
+        var row = JsonNode.Parse(await TextAsync(activity))!["items"]!.AsArray().ShouldHaveSingleItem()!;
+        (row["targetType"]!.GetValue<string>(), row["targetLabel"]!.GetValue<string>()).ShouldBe(("webhook", "builds"));
+    }
+
+    [Fact]
     public async Task TheSecretIsInNoResponseAfterCreateAndInNoEventActivityRowOrLogLine()
     {
         const string secret = "s3cr3t-value-that-must-not-leak";

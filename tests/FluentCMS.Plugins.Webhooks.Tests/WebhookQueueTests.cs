@@ -109,6 +109,24 @@ public sealed class WebhookQueueTests
         receiver.Release();
     }
 
+    // With an hour between polls, only the wakes of the outbox kick and of the delivery's enqueue can send it in time.
+    [Fact]
+    public async Task AnIdleInstanceSendsADeliveryAtOnceRatherThanAtItsNextPoll()
+    {
+        await using var receiver = await TestReceiver.StartAsync();
+        await using var host = new FluentCmsTestHost()
+            .WithContentTypes<Article, Page>()
+            .WithServices(services => services.PostConfigure<WebhooksOptions>(options => options.AllowPrivateNetworks = true))
+            .Configure(cms => cms.Jobs.Options.PollInterval = TimeSpan.FromHours(1));
+        using var client = await AdminAsync(host);
+        await CreateAsync(client, new { name = "builds", url = receiver.Url().ToString(), events = new List<string> { "content.published" } });
+        var articles = host.As(await host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token)).Content<Article>();
+
+        await articles.PublishAsync((await articles.CreateAsync(new Article { Title = "Now" }, Token)).Id, cancellationToken: Token);
+
+        await receiver.ArrivedAsync(1).WaitAsync(Patience, Token);
+    }
+
     [Fact]
     public async Task TwoDeliveriesToOneWebhookNeverRunAtOnce()
     {

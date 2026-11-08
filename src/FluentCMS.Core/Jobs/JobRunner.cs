@@ -1,4 +1,5 @@
 using FluentCMS.Core.Health;
+using FluentCMS.Core.Telemetry;
 using FluentCMS.Jobs;
 using Microsoft.Extensions.Logging;
 
@@ -10,6 +11,7 @@ internal sealed class JobRunner(
     RecurringJobs recurring,
     JobRunnerOptions options,
     JobRunnerPulse pulse,
+    JobWake wake,
     TimeProvider time,
     ILogger<JobRunner> logger) : IJobRunner, IDisposable
 {
@@ -128,7 +130,7 @@ internal sealed class JobRunner(
                 JobLog.WorkerFailed(logger, exception, queue);
             }
 
-            if (!worked && !await WaitAsync(options.PollInterval))
+            if (!worked && !await wake.WaitAsync(queue, options.PollInterval, time, _stopping.Token))
             {
                 return;
             }
@@ -142,12 +144,26 @@ internal sealed class JobRunner(
             pulse.Beat(time.GetUtcNow());
             await MaintainAsync(() => recurring.FireDueAsync(_stopping.Token));
             await MaintainAsync(store.SweepAsync);
+            await MaintainAsync(MeasureAsync);
 
             if (!await WaitAsync(options.MaintenanceInterval))
             {
                 return;
             }
         }
+    }
+
+    // Every queue of this instance's options is reported, at zero when nothing of it waits, so that its series goes on.
+    private async Task MeasureAsync()
+    {
+        var oldest = await store.OldestDueAsync(_stopping.Token);
+        var now = time.GetUtcNow();
+        var ages = options.Queues.Keys.Union(oldest.Keys, StringComparer.Ordinal).ToDictionary(
+            queue => queue,
+            queue => oldest.TryGetValue(queue, out var runAt) && runAt < now ? now - runAt : TimeSpan.Zero,
+            StringComparer.Ordinal);
+        pulse.Measure(ages);
+        FluentCmsTelemetry.RecordJobQueueAges(ages);
     }
 
     private async Task MaintainAsync(Func<Task> step)

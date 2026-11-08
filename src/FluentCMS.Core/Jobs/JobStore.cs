@@ -245,14 +245,27 @@ internal sealed class JobStore(
         return true;
     }
 
+    // The run_at of the oldest job of each queue that a worker could claim now, whether or not any instance serves it.
+    public async Task<Dictionary<string, DateTimeOffset>> OldestDueAsync(CancellationToken cancellationToken)
+    {
+        await using var scope = scopes.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
+
+        return await Due(context, time.GetUtcNow())
+            .GroupBy(row => row.Queue)
+            .Select(queue => new { Queue = queue.Key, Oldest = queue.Min(row => row.RunAt) })
+            .ToDictionaryAsync(queue => queue.Queue, queue => queue.Oldest, StringComparer.Ordinal, cancellationToken);
+    }
+
     private static Task<bool> AnyDueAsync(SystemDbContext context, string queue, DateTimeOffset now, CancellationToken cancellationToken) =>
-        context.Set<Job>().AnyAsync(
-            row => row.Queue == queue
-                && (row.Status == JobStatus.Pending || row.Status == JobStatus.Running)
-                && row.RunAt <= now
-                && row.Attempts < row.MaxAttempts
-                && (row.LeaseUntil == null || row.LeaseUntil < now),
-            cancellationToken);
+        Due(context, now).AnyAsync(row => row.Queue == queue, cancellationToken);
+
+    private static IQueryable<Job> Due(SystemDbContext context, DateTimeOffset now) =>
+        context.Set<Job>().AsNoTracking().Where(row =>
+            (row.Status == JobStatus.Pending || row.Status == JobStatus.Running)
+            && row.RunAt <= now
+            && row.Attempts < row.MaxAttempts
+            && (row.LeaseUntil == null || row.LeaseUntil < now));
 
     private static IQueryable<Job> Stuck(SystemDbContext context, DateTimeOffset now) =>
         context.Set<Job>().Where(row =>
