@@ -28,4 +28,13 @@ internal static partial class MediaLog
 
     [LoggerMessage(EventId = 9267, Level = LogLevel.Warning, Message = "The schedule of the media variant cleanup could not be stored; it is tried again.")]
     public static partial void CleanupNotScheduled(ILogger logger, Exception exception);
+
+    [LoggerMessage(EventId = 9268, Level = LogLevel.Warning, Message = "The file {Key} of the {Storage} storage, left by the media asset {AssetId} when its file was replaced, could not be deleted; it holds no asset and can be removed.")]
+    public static partial void ReplacedNotDeleted(ILogger logger, Guid assetId, string storage, string key, Exception? exception);
+
+    [LoggerMessage(EventId = 9269, Level = LogLevel.Warning, Message = "The file {Key} of the {Storage} storage, of the media asset {AssetId}, deleted longer ago than the retention, could not be deleted; the cleanup tries again on its next run.")]
+    public static partial void AssetNotPurged(ILogger logger, Guid assetId, string storage, string key, Exception? exception);
+
+    [LoggerMessage(EventId = 9270, Level = LogLevel.Information, Message = "The cleanup purged {Count} media assets deleted longer ago than the retention.")]
+    public static partial void AssetsPurged(ILogger logger, int count);
 }

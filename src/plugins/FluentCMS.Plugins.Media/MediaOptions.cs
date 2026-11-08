@@ -7,8 +7,8 @@ using Microsoft.Net.Http.Headers;
 namespace FluentCMS.Plugins.Media;
 
 // Bound from FluentCms:Media. What is the instance's, since the storage is one for every site: where the local disk keeps
-// the files, the largest request body an upload may send, and how transform URLs are signed and cached. The rules of
-// uploads and the limits of transforms are each site's, in MediaSettings.
+// the files, the largest request body an upload may send, how transform URLs are signed and cached, and how long a deleted
+// asset keeps its bytes. The rules of uploads and the limits of transforms are each site's, in MediaSettings.
 public sealed class MediaOptions
 {
     public const string Section = "FluentCms:Media";
@@ -24,8 +24,11 @@ public sealed class MediaOptions
     // Base64 of at least 32 bytes. Set, it replaces the key the plugin generates; changing it invalidates every signed URL.
     public string? SigningKey { get; set; }
 
-    // The Cache-Control of a transformed image.
+    // The Cache-Control of a transformed image and of the original file of a public asset.
     public string CacheControl { get; set; } = "public, max-age=86400";
+
+    // How long after its delete the daily cleanup removes an asset's bytes and its row.
+    public TimeSpan DeletedRetention { get; set; } = TimeSpan.FromDays(30);
 
     internal byte[]? SigningKeyBytes => string.IsNullOrEmpty(SigningKey) ? null : Convert.FromBase64String(SigningKey);
 
@@ -33,7 +36,35 @@ public sealed class MediaOptions
         !string.IsNullOrWhiteSpace(Local?.Root)
         && MaxRequestBodySize > 0
         && (string.IsNullOrEmpty(SigningKey) || (Convert.TryFromBase64String(SigningKey, new byte[SigningKey.Length], out var length) && length >= MediaSigning.KeyLength))
-        && !string.IsNullOrWhiteSpace(CacheControl) && CacheControlHeaderValue.TryParse(CacheControl, out _);
+        && !string.IsNullOrWhiteSpace(CacheControl) && CacheControlHeaderValue.TryParse(CacheControl, out _)
+        && DeletedRetention > TimeSpan.Zero;
+}
+
+// The Cache-Control of the Delivery API, FluentCms:Delivery:Cache:CacheControl, which core checks, so that the media route
+// says what content says: as written to a caller without credentials, private to one with them. With the output cache off,
+// nothing is evicted, as nothing was stored.
+internal sealed class DeliveryCacheControl
+{
+    public const string Section = "FluentCms:Delivery:Cache";
+
+    private string? _private;
+
+    public string CacheControl { get; set; } = "public, max-age=60, stale-while-revalidate=300";
+
+    public bool OutputCache { get; set; } = true;
+
+    public string Shared => CacheControl.Trim();
+
+    public string Private => _private ??= PrivateOf(CacheControl);
+
+    private static string PrivateOf(string cacheControl)
+    {
+        var value = CacheControlHeaderValue.Parse(cacheControl);
+        value.Public = false;
+        value.Private = true;
+        value.SharedMaxAge = null;
+        return value.ToString();
+    }
 }
 
 public sealed class LocalStorageOptions

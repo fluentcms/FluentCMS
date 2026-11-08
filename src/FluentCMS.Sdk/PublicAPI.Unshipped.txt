@@ -218,6 +218,21 @@ FluentCMS.Content.ContentQuery.Sort.get -> System.Collections.Generic.IReadOnlyL
 FluentCMS.Content.ContentQuery.Sort.init -> void
 FluentCMS.Content.ContentQuery.Status.get -> FluentCMS.Content.QueryStatus?
 FluentCMS.Content.ContentQuery.Status.init -> void
+FluentCMS.Content.ContentReference
+FluentCMS.Content.ContentReference.<Clone>$() -> FluentCMS.Content.ContentReference!
+FluentCMS.Content.ContentReference.ContentReference(string! Type, System.Guid EntryId, FluentCMS.Content.QueryStatus Status, string? Locale, string! Field) -> void
+FluentCMS.Content.ContentReference.Deconstruct(out string! Type, out System.Guid EntryId, out FluentCMS.Content.QueryStatus Status, out string? Locale, out string! Field) -> void
+FluentCMS.Content.ContentReference.EntryId.get -> System.Guid
+FluentCMS.Content.ContentReference.EntryId.init -> void
+FluentCMS.Content.ContentReference.Equals(FluentCMS.Content.ContentReference? other) -> bool
+FluentCMS.Content.ContentReference.Field.get -> string!
+FluentCMS.Content.ContentReference.Field.init -> void
+FluentCMS.Content.ContentReference.Locale.get -> string?
+FluentCMS.Content.ContentReference.Locale.init -> void
+FluentCMS.Content.ContentReference.Status.get -> FluentCMS.Content.QueryStatus
+FluentCMS.Content.ContentReference.Status.init -> void
+FluentCMS.Content.ContentReference.Type.get -> string!
+FluentCMS.Content.ContentReference.Type.init -> void
 FluentCMS.Content.EntryNotFoundException
 FluentCMS.Content.EntryNotFoundException.EntryNotFoundException(string! type, System.Guid id) -> void
 FluentCMS.Content.EntryNotFoundException.Id.get -> System.Guid
@@ -265,6 +280,10 @@ FluentCMS.Content.GetOptions.Select.get -> System.Collections.Generic.IReadOnlyL
 FluentCMS.Content.GetOptions.Select.init -> void
 FluentCMS.Content.GetOptions.Status.get -> FluentCMS.Content.QueryStatus
 FluentCMS.Content.GetOptions.Status.init -> void
+FluentCMS.Content.IContentReferences
+FluentCMS.Content.IContentReferences.CountAsync(string! targetType, System.Guid targetId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
+FluentCMS.Content.IContentReferences.FindAsync(string! targetType, System.Guid targetId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<FluentCMS.Content.ContentReference!>!>!
+FluentCMS.Content.IContentReferences.RemoveAsync(string! targetType, System.Guid targetId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<int>!
 FluentCMS.Content.IContentService
 FluentCMS.Content.IContentService.BulkAsync(string! type, FluentCMS.Content.BulkRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.BulkResult!>!
 FluentCMS.Content.IContentService.CancelScheduleAsync(string! type, System.Guid id, FluentCMS.Publishing.ScheduleAction action, string? locale = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
@@ -799,6 +818,14 @@ FluentCMS.Events.MediaAssetMovedEvent.Equals(FluentCMS.Events.MediaAssetMovedEve
 FluentCMS.Events.MediaAssetMovedEvent.MediaAssetMovedEvent(System.Guid AssetId, System.Guid? FolderId, string! FileName, System.Guid? PreviousFolderId) -> void
 FluentCMS.Events.MediaAssetMovedEvent.PreviousFolderId.get -> System.Guid?
 FluentCMS.Events.MediaAssetMovedEvent.PreviousFolderId.init -> void
+FluentCMS.Events.MediaAssetReplacedEvent
+FluentCMS.Events.MediaAssetReplacedEvent.Deconstruct(out System.Guid AssetId, out System.Guid? FolderId, out string! FileName, out string! MimeType, out long Size) -> void
+FluentCMS.Events.MediaAssetReplacedEvent.Equals(FluentCMS.Events.MediaAssetReplacedEvent? other) -> bool
+FluentCMS.Events.MediaAssetReplacedEvent.MediaAssetReplacedEvent(System.Guid AssetId, System.Guid? FolderId, string! FileName, string! MimeType, long Size) -> void
+FluentCMS.Events.MediaAssetReplacedEvent.MimeType.get -> string!
+FluentCMS.Events.MediaAssetReplacedEvent.MimeType.init -> void
+FluentCMS.Events.MediaAssetReplacedEvent.Size.get -> long
+FluentCMS.Events.MediaAssetReplacedEvent.Size.init -> void
 FluentCMS.Events.MediaAssetUpdatedEvent
 FluentCMS.Events.MediaAssetUpdatedEvent.Deconstruct(out System.Guid AssetId, out System.Guid? FolderId, out string! FileName) -> void
 FluentCMS.Events.MediaAssetUpdatedEvent.Equals(FluentCMS.Events.MediaAssetUpdatedEvent? other) -> bool
@@ -1061,20 +1088,24 @@ FluentCMS.Media.IImageProcessor.CanEncode(string! mimeType) -> bool
 FluentCMS.Media.IImageProcessor.IdentifyAsync(System.IO.Stream! image, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Media.ImageHeader?>!
 FluentCMS.Media.IImageProcessor.ProcessAsync(System.IO.Stream! image, FluentCMS.Media.ImageTransform! transform, System.IO.Stream! output, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 FluentCMS.Media.IMediaResolver
-FluentCMS.Media.IMediaResolver.ResolveAsync(System.Collections.Generic.IReadOnlyCollection<System.Guid>! ids, string? locale = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyDictionary<System.Guid, FluentCMS.Media.ResolvedMedia!>!>!
+FluentCMS.Media.IMediaResolver.ResolveAsync(System.Collections.Generic.IReadOnlyCollection<System.Guid>! ids, string? locale = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyDictionary<System.Guid, FluentCMS.Media.MediaDelivery!>!>!
 FluentCMS.Media.IMediaService
 FluentCMS.Media.IMediaService.CreateFolderAsync(string! name, System.Guid? parentId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Media.MediaFolder!>!
-FluentCMS.Media.IMediaService.DeleteAsync(System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+FluentCMS.Media.IMediaService.DeleteAsync(System.Guid id, bool force = false, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 FluentCMS.Media.IMediaService.DeleteFolderAsync(System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 FluentCMS.Media.IMediaService.DeletePresetAsync(string! name, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+FluentCMS.Media.IMediaService.DeliverAsync(System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Media.MediaDelivery!>!
 FluentCMS.Media.IMediaService.GetAsync(System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Media.MediaAsset!>!
+FluentCMS.Media.IMediaService.GetDownloadUrlAsync(System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Media.MediaDownloadUrl!>!
 FluentCMS.Media.IMediaService.GetImageUrlAsync(FluentCMS.Media.MediaAsset! asset, FluentCMS.Media.MediaImageOptions? options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<string!>!
+FluentCMS.Media.IMediaService.GetUsageAsync(System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<FluentCMS.Content.ContentReference!>!>!
 FluentCMS.Media.IMediaService.ListAsync(FluentCMS.Media.MediaQuery! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Content.PagedResult<FluentCMS.Media.MediaAsset!>!>!
 FluentCMS.Media.IMediaService.ListFoldersAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<FluentCMS.Media.MediaFolder!>!>!
 FluentCMS.Media.IMediaService.ListPresetsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<FluentCMS.Media.MediaPreset!>!>!
 FluentCMS.Media.IMediaService.MoveAsync(System.Guid id, System.Guid? folderId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Media.MediaAsset!>!
 FluentCMS.Media.IMediaService.MoveFolderAsync(System.Guid id, System.Guid? parentId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Media.MediaFolder!>!
 FluentCMS.Media.IMediaService.RenameFolderAsync(System.Guid id, string! name, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Media.MediaFolder!>!
+FluentCMS.Media.IMediaService.ReplaceAsync(System.Guid id, FluentCMS.Media.MediaUploadFile! file, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Media.MediaAsset!>!
 FluentCMS.Media.IMediaService.SetPresetAsync(string! name, FluentCMS.Media.MediaImageOptions! options, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Media.MediaPreset!>!
 FluentCMS.Media.IMediaService.UpdateAsync(System.Guid id, FluentCMS.Media.MediaAssetChanges! changes, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Media.MediaAsset!>!
 FluentCMS.Media.IMediaService.UploadAsync(FluentCMS.Media.MediaUpload! upload, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<FluentCMS.Media.MediaAsset!>!>!
@@ -1173,6 +1204,24 @@ FluentCMS.Media.MediaAssetChanges.Tags.get -> System.Collections.Generic.IReadOn
 FluentCMS.Media.MediaAssetChanges.Tags.init -> void
 FluentCMS.Media.MediaAssetChanges.Title.get -> string?
 FluentCMS.Media.MediaAssetChanges.Title.init -> void
+FluentCMS.Media.MediaDelivery
+FluentCMS.Media.MediaDelivery.<Clone>$() -> FluentCMS.Media.MediaDelivery!
+FluentCMS.Media.MediaDelivery.Asset.get -> FluentCMS.Media.MediaAsset!
+FluentCMS.Media.MediaDelivery.Asset.init -> void
+FluentCMS.Media.MediaDelivery.Deconstruct(out FluentCMS.Media.MediaAsset! Asset, out FluentCMS.Media.MediaUrls? Urls) -> void
+FluentCMS.Media.MediaDelivery.Equals(FluentCMS.Media.MediaDelivery? other) -> bool
+FluentCMS.Media.MediaDelivery.MediaDelivery(FluentCMS.Media.MediaAsset! Asset, FluentCMS.Media.MediaUrls? Urls) -> void
+FluentCMS.Media.MediaDelivery.Urls.get -> FluentCMS.Media.MediaUrls?
+FluentCMS.Media.MediaDelivery.Urls.init -> void
+FluentCMS.Media.MediaDownloadUrl
+FluentCMS.Media.MediaDownloadUrl.<Clone>$() -> FluentCMS.Media.MediaDownloadUrl!
+FluentCMS.Media.MediaDownloadUrl.Deconstruct(out string! Url, out System.DateTimeOffset ExpiresAt) -> void
+FluentCMS.Media.MediaDownloadUrl.Equals(FluentCMS.Media.MediaDownloadUrl? other) -> bool
+FluentCMS.Media.MediaDownloadUrl.ExpiresAt.get -> System.DateTimeOffset
+FluentCMS.Media.MediaDownloadUrl.ExpiresAt.init -> void
+FluentCMS.Media.MediaDownloadUrl.MediaDownloadUrl(string! Url, System.DateTimeOffset ExpiresAt) -> void
+FluentCMS.Media.MediaDownloadUrl.Url.get -> string!
+FluentCMS.Media.MediaDownloadUrl.Url.init -> void
 FluentCMS.Media.MediaFocalPoint
 FluentCMS.Media.MediaFocalPoint.Deconstruct(out double X, out double Y) -> void
 FluentCMS.Media.MediaFocalPoint.Equals(FluentCMS.Media.MediaFocalPoint other) -> bool
@@ -1280,17 +1329,17 @@ FluentCMS.Media.MediaUploadFile.Equals(FluentCMS.Media.MediaUploadFile? other) -
 FluentCMS.Media.MediaUploadFile.FileName.get -> string!
 FluentCMS.Media.MediaUploadFile.FileName.init -> void
 FluentCMS.Media.MediaUploadFile.MediaUploadFile(string! FileName, System.IO.Stream! Content) -> void
-FluentCMS.Media.ResolvedMedia
-FluentCMS.Media.ResolvedMedia.<Clone>$() -> FluentCMS.Media.ResolvedMedia!
-FluentCMS.Media.ResolvedMedia.Asset.get -> FluentCMS.Media.MediaAsset!
-FluentCMS.Media.ResolvedMedia.Asset.init -> void
-FluentCMS.Media.ResolvedMedia.Deconstruct(out FluentCMS.Media.MediaAsset! Asset) -> void
-FluentCMS.Media.ResolvedMedia.Equals(FluentCMS.Media.ResolvedMedia? other) -> bool
-FluentCMS.Media.ResolvedMedia.PresetUrls.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
-FluentCMS.Media.ResolvedMedia.PresetUrls.init -> void
-FluentCMS.Media.ResolvedMedia.ResolvedMedia(FluentCMS.Media.MediaAsset! Asset) -> void
-FluentCMS.Media.ResolvedMedia.Url.get -> string?
-FluentCMS.Media.ResolvedMedia.Url.init -> void
+FluentCMS.Media.MediaUrls
+FluentCMS.Media.MediaUrls.<Clone>$() -> FluentCMS.Media.MediaUrls!
+FluentCMS.Media.MediaUrls.Deconstruct(out string! Original, out System.Collections.Generic.IReadOnlyDictionary<string!, string!>! Presets, out string? Template) -> void
+FluentCMS.Media.MediaUrls.Equals(FluentCMS.Media.MediaUrls? other) -> bool
+FluentCMS.Media.MediaUrls.MediaUrls(string! Original, System.Collections.Generic.IReadOnlyDictionary<string!, string!>! Presets, string? Template) -> void
+FluentCMS.Media.MediaUrls.Original.get -> string!
+FluentCMS.Media.MediaUrls.Original.init -> void
+FluentCMS.Media.MediaUrls.Presets.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+FluentCMS.Media.MediaUrls.Presets.init -> void
+FluentCMS.Media.MediaUrls.Template.get -> string?
+FluentCMS.Media.MediaUrls.Template.init -> void
 FluentCMS.Plugins.FluentCmsPluginAttribute
 FluentCMS.Plugins.FluentCmsPluginAttribute.DependsOn.get -> string![]!
 FluentCMS.Plugins.FluentCmsPluginAttribute.DependsOn.set -> void
@@ -2045,18 +2094,34 @@ const FluentCMS.Schema.FieldSettings.Scale = "scale" -> string!
 const FluentCMS.Schema.FieldSettings.Source = "source" -> string!
 const FluentCMS.Schema.RichTextFormats.Html = "html" -> string!
 const FluentCMS.Schema.RichTextFormats.Markdown = "markdown" -> string!
+override FluentCMS.Content.ContentReference.Equals(object? obj) -> bool
+override FluentCMS.Content.ContentReference.GetHashCode() -> int
+override FluentCMS.Content.ContentReference.ToString() -> string!
+override FluentCMS.Events.MediaAssetReplacedEvent.<Clone>$() -> FluentCMS.Events.MediaAssetReplacedEvent!
+override FluentCMS.Events.MediaAssetReplacedEvent.Equals(object? obj) -> bool
+override FluentCMS.Events.MediaAssetReplacedEvent.GetHashCode() -> int
+override FluentCMS.Events.MediaAssetReplacedEvent.ToString() -> string!
 override FluentCMS.Media.ImageHeader.Equals(object? obj) -> bool
 override FluentCMS.Media.ImageHeader.GetHashCode() -> int
 override FluentCMS.Media.ImageHeader.ToString() -> string!
 override FluentCMS.Media.ImageTransform.Equals(object? obj) -> bool
 override FluentCMS.Media.ImageTransform.GetHashCode() -> int
 override FluentCMS.Media.ImageTransform.ToString() -> string!
+override FluentCMS.Media.MediaDelivery.Equals(object? obj) -> bool
+override FluentCMS.Media.MediaDelivery.GetHashCode() -> int
+override FluentCMS.Media.MediaDelivery.ToString() -> string!
+override FluentCMS.Media.MediaDownloadUrl.Equals(object? obj) -> bool
+override FluentCMS.Media.MediaDownloadUrl.GetHashCode() -> int
+override FluentCMS.Media.MediaDownloadUrl.ToString() -> string!
 override FluentCMS.Media.MediaImageOptions.Equals(object? obj) -> bool
 override FluentCMS.Media.MediaImageOptions.GetHashCode() -> int
 override FluentCMS.Media.MediaImageOptions.ToString() -> string!
 override FluentCMS.Media.MediaPreset.Equals(object? obj) -> bool
 override FluentCMS.Media.MediaPreset.GetHashCode() -> int
 override FluentCMS.Media.MediaPreset.ToString() -> string!
+override FluentCMS.Media.MediaUrls.Equals(object? obj) -> bool
+override FluentCMS.Media.MediaUrls.GetHashCode() -> int
+override FluentCMS.Media.MediaUrls.ToString() -> string!
 override abstract FluentCMS.Events.MediaAssetEvent.<Clone>$() -> FluentCMS.Events.MediaAssetEvent!
 override FluentCMS.Activity.ActivityEntry.Equals(object? obj) -> bool
 override FluentCMS.Activity.ActivityEntry.GetHashCode() -> int
@@ -2344,9 +2409,6 @@ override FluentCMS.Media.MediaUpload.ToString() -> string!
 override FluentCMS.Media.MediaUploadFile.Equals(object? obj) -> bool
 override FluentCMS.Media.MediaUploadFile.GetHashCode() -> int
 override FluentCMS.Media.MediaUploadFile.ToString() -> string!
-override FluentCMS.Media.ResolvedMedia.Equals(object? obj) -> bool
-override FluentCMS.Media.ResolvedMedia.GetHashCode() -> int
-override FluentCMS.Media.ResolvedMedia.ToString() -> string!
 override FluentCMS.Providers.EmailMessage.Equals(object? obj) -> bool
 override FluentCMS.Providers.EmailMessage.GetHashCode() -> int
 override FluentCMS.Providers.EmailMessage.ToString() -> string!
@@ -2439,6 +2501,7 @@ override sealed FluentCMS.Events.LoginSucceededEvent.Equals(FluentCMS.Events.Cms
 override sealed FluentCMS.Events.MediaAssetDeletedEvent.Equals(FluentCMS.Events.MediaAssetEvent? other) -> bool
 override sealed FluentCMS.Events.MediaAssetEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
 override sealed FluentCMS.Events.MediaAssetMovedEvent.Equals(FluentCMS.Events.MediaAssetEvent? other) -> bool
+override sealed FluentCMS.Events.MediaAssetReplacedEvent.Equals(FluentCMS.Events.MediaAssetEvent? other) -> bool
 override sealed FluentCMS.Events.MediaAssetUpdatedEvent.Equals(FluentCMS.Events.MediaAssetEvent? other) -> bool
 override sealed FluentCMS.Events.MediaAssetUploadedEvent.Equals(FluentCMS.Events.MediaAssetEvent? other) -> bool
 override sealed FluentCMS.Events.PluginDisabledEvent.Equals(FluentCMS.Events.CmsEvent? other) -> bool
@@ -2474,6 +2537,8 @@ static FluentCMS.Content.ContentFilter.operator !=(FluentCMS.Content.ContentFilt
 static FluentCMS.Content.ContentFilter.operator ==(FluentCMS.Content.ContentFilter? left, FluentCMS.Content.ContentFilter? right) -> bool
 static FluentCMS.Content.ContentQuery.operator !=(FluentCMS.Content.ContentQuery? left, FluentCMS.Content.ContentQuery? right) -> bool
 static FluentCMS.Content.ContentQuery.operator ==(FluentCMS.Content.ContentQuery? left, FluentCMS.Content.ContentQuery? right) -> bool
+static FluentCMS.Content.ContentReference.operator !=(FluentCMS.Content.ContentReference? left, FluentCMS.Content.ContentReference? right) -> bool
+static FluentCMS.Content.ContentReference.operator ==(FluentCMS.Content.ContentReference? left, FluentCMS.Content.ContentReference? right) -> bool
 static FluentCMS.Content.FieldFilter.operator !=(FluentCMS.Content.FieldFilter? left, FluentCMS.Content.FieldFilter? right) -> bool
 static FluentCMS.Content.FieldFilter.operator ==(FluentCMS.Content.FieldFilter? left, FluentCMS.Content.FieldFilter? right) -> bool
 static FluentCMS.Content.GetOptions.operator !=(FluentCMS.Content.GetOptions? left, FluentCMS.Content.GetOptions? right) -> bool
@@ -2567,6 +2632,8 @@ static FluentCMS.Events.MediaAssetEvent.operator !=(FluentCMS.Events.MediaAssetE
 static FluentCMS.Events.MediaAssetEvent.operator ==(FluentCMS.Events.MediaAssetEvent? left, FluentCMS.Events.MediaAssetEvent? right) -> bool
 static FluentCMS.Events.MediaAssetMovedEvent.operator !=(FluentCMS.Events.MediaAssetMovedEvent? left, FluentCMS.Events.MediaAssetMovedEvent? right) -> bool
 static FluentCMS.Events.MediaAssetMovedEvent.operator ==(FluentCMS.Events.MediaAssetMovedEvent? left, FluentCMS.Events.MediaAssetMovedEvent? right) -> bool
+static FluentCMS.Events.MediaAssetReplacedEvent.operator !=(FluentCMS.Events.MediaAssetReplacedEvent? left, FluentCMS.Events.MediaAssetReplacedEvent? right) -> bool
+static FluentCMS.Events.MediaAssetReplacedEvent.operator ==(FluentCMS.Events.MediaAssetReplacedEvent? left, FluentCMS.Events.MediaAssetReplacedEvent? right) -> bool
 static FluentCMS.Events.MediaAssetUpdatedEvent.operator !=(FluentCMS.Events.MediaAssetUpdatedEvent? left, FluentCMS.Events.MediaAssetUpdatedEvent? right) -> bool
 static FluentCMS.Events.MediaAssetUpdatedEvent.operator ==(FluentCMS.Events.MediaAssetUpdatedEvent? left, FluentCMS.Events.MediaAssetUpdatedEvent? right) -> bool
 static FluentCMS.Events.MediaAssetUploadedEvent.operator !=(FluentCMS.Events.MediaAssetUploadedEvent? left, FluentCMS.Events.MediaAssetUploadedEvent? right) -> bool
@@ -2614,6 +2681,10 @@ static FluentCMS.Media.MediaAsset.operator !=(FluentCMS.Media.MediaAsset? left, 
 static FluentCMS.Media.MediaAsset.operator ==(FluentCMS.Media.MediaAsset? left, FluentCMS.Media.MediaAsset? right) -> bool
 static FluentCMS.Media.MediaAssetChanges.operator !=(FluentCMS.Media.MediaAssetChanges? left, FluentCMS.Media.MediaAssetChanges? right) -> bool
 static FluentCMS.Media.MediaAssetChanges.operator ==(FluentCMS.Media.MediaAssetChanges? left, FluentCMS.Media.MediaAssetChanges? right) -> bool
+static FluentCMS.Media.MediaDelivery.operator !=(FluentCMS.Media.MediaDelivery? left, FluentCMS.Media.MediaDelivery? right) -> bool
+static FluentCMS.Media.MediaDelivery.operator ==(FluentCMS.Media.MediaDelivery? left, FluentCMS.Media.MediaDelivery? right) -> bool
+static FluentCMS.Media.MediaDownloadUrl.operator !=(FluentCMS.Media.MediaDownloadUrl? left, FluentCMS.Media.MediaDownloadUrl? right) -> bool
+static FluentCMS.Media.MediaDownloadUrl.operator ==(FluentCMS.Media.MediaDownloadUrl? left, FluentCMS.Media.MediaDownloadUrl? right) -> bool
 static FluentCMS.Media.MediaFocalPoint.operator !=(FluentCMS.Media.MediaFocalPoint left, FluentCMS.Media.MediaFocalPoint right) -> bool
 static FluentCMS.Media.MediaFocalPoint.operator ==(FluentCMS.Media.MediaFocalPoint left, FluentCMS.Media.MediaFocalPoint right) -> bool
 static FluentCMS.Media.MediaFolder.operator !=(FluentCMS.Media.MediaFolder? left, FluentCMS.Media.MediaFolder? right) -> bool
@@ -2633,8 +2704,8 @@ static FluentCMS.Media.MediaUpload.operator !=(FluentCMS.Media.MediaUpload? left
 static FluentCMS.Media.MediaUpload.operator ==(FluentCMS.Media.MediaUpload? left, FluentCMS.Media.MediaUpload? right) -> bool
 static FluentCMS.Media.MediaUploadFile.operator !=(FluentCMS.Media.MediaUploadFile? left, FluentCMS.Media.MediaUploadFile? right) -> bool
 static FluentCMS.Media.MediaUploadFile.operator ==(FluentCMS.Media.MediaUploadFile? left, FluentCMS.Media.MediaUploadFile? right) -> bool
-static FluentCMS.Media.ResolvedMedia.operator !=(FluentCMS.Media.ResolvedMedia? left, FluentCMS.Media.ResolvedMedia? right) -> bool
-static FluentCMS.Media.ResolvedMedia.operator ==(FluentCMS.Media.ResolvedMedia? left, FluentCMS.Media.ResolvedMedia? right) -> bool
+static FluentCMS.Media.MediaUrls.operator !=(FluentCMS.Media.MediaUrls? left, FluentCMS.Media.MediaUrls? right) -> bool
+static FluentCMS.Media.MediaUrls.operator ==(FluentCMS.Media.MediaUrls? left, FluentCMS.Media.MediaUrls? right) -> bool
 static FluentCMS.Providers.EmailMessage.operator !=(FluentCMS.Providers.EmailMessage? left, FluentCMS.Providers.EmailMessage? right) -> bool
 static FluentCMS.Providers.EmailMessage.operator ==(FluentCMS.Providers.EmailMessage? left, FluentCMS.Providers.EmailMessage? right) -> bool
 static FluentCMS.Publishing.PublishResult<T>.operator !=(FluentCMS.Publishing.PublishResult<T>? left, FluentCMS.Publishing.PublishResult<T>? right) -> bool

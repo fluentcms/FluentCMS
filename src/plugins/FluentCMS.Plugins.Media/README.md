@@ -1,6 +1,6 @@
 # FluentCMS.Plugins.Media
 
-Assets and folders for the sites of an instance: uploads whose type is read from their bytes, metadata with alternative text and captions per locale, file storage on the local disk, signed image transforms with stored variants and presets, and the `media` field type for content. The media is managed under `/api/management/v1/media`, and images are served at `/media/{id}/{fileName}`. Section 5.1 of the [backend technical specification](../../../docs/planning/backend-technical-spec.md) has the full design.
+Assets and folders for the sites of an instance: uploads whose type is read from their bytes, metadata with alternative text and captions per locale, file storage on the local disk, signed image transforms with stored variants and presets, usage, replace, private downloads, and the `media` field type for content. The media is managed under `/api/management/v1/media`, clients read it at `/api/delivery/v1/media/{id}`, images are served at `/media/{id}/{fileName}` and original files at `/media/{id}/original/{fileName}`. Section 5.1 of the [backend technical specification](../../../docs/planning/backend-technical-spec.md) has the full design.
 
 ## Options
 
@@ -12,7 +12,8 @@ The instance's options are in `FluentCms:Media`:
 | `MaxRequestBodySize` | `268435456` | The largest upload request, in bytes. A site's `MaxRequestSize` above it is cut to it. |
 | `RequireSignedUrls` | `true` | `false` serves unsigned transform URLs, for a setup where every client is trusted. The startup report lists `media-unsigned-urls` in Production. |
 | `SigningKey` | none | The base64 of at least 32 bytes that signs transform URLs. Left out, the plugin generates one key (see below). |
-| `CacheControl` | `public, max-age=86400` | The `Cache-Control` of a transformed image. |
+| `CacheControl` | `public, max-age=86400` | The `Cache-Control` of a transformed image and of the original file of a public asset. |
+| `DeletedRetention` | `30.00:00:00` | How long a deleted asset keeps its file and its row before the daily cleanup purges them. |
 
 ## Site settings
 
@@ -29,6 +30,7 @@ The rules of uploads are each site's, in the settings area `media` (`settings.me
 | `maxTransformHeight` | 4096 | The largest height a transform asks for, in pixels. |
 | `maxTransformOperations` | 6 | The most parameters a transform has, its preset's included; `fx` and `fy` count as one. |
 | `maxSourcePixels` | 50000000 | The most pixels an image may have to be transformed, every frame of an animation counted, read from its header before it is decoded. |
+| `downloadUrlSeconds` | 300 | How long a download URL works, from 10 seconds to a day. |
 
 A type comes from the first bytes of the file, never from its name or `Content-Type`. Executables are always refused, by their signature (Windows, ELF, Mach-O, a shebang script) and by an executable or script extension.
 
@@ -83,6 +85,44 @@ var url = await media.GetImageUrlAsync(asset, new MediaImageOptions { Width = 12
 // /media/0193a0c2-.../hero.jpg?w=1200&h=630&fit=cover&f=auto&sig=...
 ```
 
+## Delivery API
+
+`GET /api/delivery/v1/media/{id}` answers an asset's metadata, with `alt` and `caption` in the request's locale, and its URLs, relative to the base of the CMS:
+
+```json
+{
+  "id": "0193a0c2-...", "fileName": "hero.jpg", "mimeType": "image/jpeg", "size": 48213, "width": 1600, "height": 900,
+  "title": "Harbour", "locale": "en", "alt": "Boats in a harbour", "caption": null, "credit": null, "tags": [],
+  "focalPoint": { "x": 0.5, "y": 0.4 }, "isPrivate": false, "createdAt": "...", "updatedAt": "...",
+  "urls": {
+    "original": "/media/0193a0c2-.../original/hero.jpg?sig=...",
+    "presets": { "hero": "/media/0193a0c2-.../hero.jpg?preset=hero&sig=..." },
+    "template": null
+  }
+}
+```
+
+The URLs are signed. `presets` has one transform URL for each preset of the site, for an image the processor reads, and `template`, only where `RequireSignedUrls` is `false`, is a transform URL whose `{w}`, `{h}`, `{fit}`, `{q}` and `{f}` a client fills in or leaves out. The answer has the cache headers of content: an `ETag`, the `Cache-Control` of `FluentCms:Delivery:Cache`, and a copy in the output cache that a change to the asset or to the site's presets evicts. A private asset is answered, without URLs, only to a caller whose `media.read` reaches its folder; the anonymous caller and Delivery keys hold no permission but reading content, so they never read one.
+
+## Usage, delete and replace
+
+`GET /api/management/v1/media/{id}/usage` lists the entries whose fields, blocks or rich text refer to the asset, as `{ "items": [{ "type", "entryId", "status", "locale", "field" }] }`, without the entries, locales and fields the caller cannot read. Entries in the trash are left out.
+
+`DELETE /api/management/v1/media/{id}` refuses an asset that entries refer to (`FCMS1594`, 409). `?force=true` deletes it anyway and removes the references, so the fields that held it read as empty. A deleted asset keeps its file until `DeletedRetention` has passed, when the daily cleanup purges the file and the row.
+
+`POST /api/management/v1/media/{id}/replace` with a `multipart/form-data` body of one file replaces the file of an asset (`media.update`). The file passes the checks of an upload. The id, the metadata and the references stay, the variants of the old file are removed, and `media.replaced` is raised.
+
+## Original files and private downloads
+
+`GET /media/{id}/original/{fileName}` sends a file as it was stored, with `X-Content-Type-Options: nosniff`, and an SVG with a `Content-Security-Policy` that runs nothing. Without `exp`, it serves a public asset with a signature that the Delivery API's `urls.original` carries. A private asset is served only by a download URL:
+
+```bash
+curl -X POST -H "Authorization: ApiKey $KEY" https://cms.example.com/api/management/v1/media/$ID/download-url
+# { "url": "/media/.../original/plan.pdf?exp=1762600000&sig=...", "expiresAt": "..." }
+```
+
+It needs `media.read` in the asset's folder. The URL serves the file as an attachment that no cache keeps until `downloadUrlSeconds` have passed, and is refused after that (`FCMS1595`, 403).
+
 ## Presets
 
 `PUT /api/management/v1/media/presets/{name}` creates or replaces a preset of the site, `GET /api/management/v1/media/presets` lists them and `DELETE` removes one. A name is lower-case letters, digits and hyphens. The body has the parameters by their full names:
@@ -97,7 +137,7 @@ A signed URL with `preset=hero` then serves that size.
 
 A signature is the HMAC-SHA256 of the asset id and the URL's parameters, sorted by name, without `sig`, `site` and the file name. The key is `FluentCms:Media:SigningKey` when it is set. Otherwise the plugin generates one 256-bit key at its first start, and stores it in `cms_media_signing_key`, protected by Data Protection. Instances that start together share one key, created under a lock. Data Protection protects the key only at rest, so signed URLs keep working when its key ring rotates.
 
-Replacing the key invalidates every URL signed before, in content and in CDN caches. To replace it, set `SigningKey`, or delete the row of `cms_media_signing_key`, and restart every instance. Keep the Data Protection key ring in backups: without the key that protected the signing key, the instance cannot read it, and only setting `SigningKey` or deleting the row brings transforms back.
+Download URLs and the URLs of original files are signed with the same key. Replacing the key invalidates every URL signed before, in content and in CDN caches. To replace it, set `SigningKey`, or delete the row of `cms_media_signing_key`, and restart every instance. Keep the Data Protection key ring in backups: without the key that protected the signing key, the instance cannot read it, and only setting `SigningKey` or deleting the row brings transforms back.
 
 ## Media fields
 
@@ -111,7 +151,7 @@ public MediaRef? Hero { get; set; }
 public MediaRefList Gallery { get; set; } = [];
 ```
 
-A write sends asset ids and refuses one that is no asset of the site, or is deleted, with `FCMS2112`. A filter finds entries by asset id with `eq` and `in`, such as `filter[hero][eq]={id}`. A read gives `{ "id", "type": "media" }`, and `populate=hero` gives the asset: its file name, type, size, width and height, title, alternative text and caption in the locale of the read, credit, focal point, `url` and the URL of each preset in `presets`. `populate=sections` does the same for the media of a block list or a repeated component, and `populate=*` for all of them. A caller needs `media.read`, within its folders, to see an asset populated; one it cannot read is null, and a private asset has no URL. With `richText=html` or `markdown`, a media node of rich text is written with the asset's URL and, when the node has no `alt`, the asset's alternative text. Other plugins read assets the same way through `IMediaResolver`.
+A write sends asset ids and refuses one that is no asset of the site, or is deleted, with `FCMS2112`. A filter finds entries by asset id with `eq` and `in`, such as `filter[hero][eq]={id}`. A read gives `{ "id", "type": "media" }`, and `populate=hero` gives the asset: its file name, type, size, width and height, title, alternative text and caption in the locale of the read, credit, focal point, and `urls` as the Delivery API gives them (`original`, `presets` and, where unsigned URLs are served, `template`). `populate=sections` does the same for the media of a block list or a repeated component, and `populate=*` for all of them. A caller needs `media.read`, within its folders, to see an asset populated; one it cannot read is null, and a private asset has `urls` null. With `richText=html` or `markdown`, a media node of rich text is written with the URL of the asset's original file and, when the node has no `alt`, the asset's alternative text. Other plugins read assets the same way through `IMediaResolver`.
 
 Without the plugin, a type with a media field stops the host with `FCMS1203`.
 

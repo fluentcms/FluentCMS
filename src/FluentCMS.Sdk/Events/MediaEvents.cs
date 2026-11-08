@@ -32,3 +32,11 @@ public sealed record MediaAssetMovedEvent(Guid AssetId, Guid? FolderId, string F
 /// <param name="FolderId">The folder it was in, or <see langword="null"/> for the root.</param>
 /// <param name="FileName">The name of its file.</param>
 public sealed record MediaAssetDeletedEvent(Guid AssetId, Guid? FolderId, string FileName) : MediaAssetEvent(AssetId, FolderId, FileName);
+
+/// <summary>The file of an asset was replaced; its id and metadata stay, and its variants are gone.</summary>
+/// <param name="AssetId">The id of the asset.</param>
+/// <param name="FolderId">The folder it is in, or <see langword="null"/> for the root.</param>
+/// <param name="FileName">The name of its new file.</param>
+/// <param name="MimeType">The MIME type read from the new bytes.</param>
+/// <param name="Size">The length of the new file in bytes.</param>
+public sealed record MediaAssetReplacedEvent(Guid AssetId, Guid? FolderId, string FileName, string MimeType, long Size) : MediaAssetEvent(AssetId, FolderId, FileName);

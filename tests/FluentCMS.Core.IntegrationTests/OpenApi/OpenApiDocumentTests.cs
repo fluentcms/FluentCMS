@@ -247,6 +247,10 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
         operationIds.ShouldContain("deliveryListArticle");
         operationIds.ShouldContain("publishArticle");
         operationIds.ShouldContain("getUsersById");
+
+        // The media plugin, which the Blog sample brings, has /media/{id} in both groups.
+        operationIds.ShouldContain("deliveryGetMediaById");
+        operationIds.ShouldContain("getMediaById");
     }
 
     // A Delivery read also answers HEAD, which HTTP gives every GET, so the document describes the GET alone.
@@ -418,7 +422,7 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
         Resolve(Paths[$"{Management}/roles/{{id}}"]!["put"]!["requestBody"]!["content"]!["application/json"]!["schema"]!)["properties"]!.AsObject().ContainsKey("siteId").ShouldBeFalse();
         var grant = Resolve(role["properties"]!["grants"]!["items"]!);
         grant["properties"]!["constraints"]!.ToJsonString().ShouldContain("#/components/schemas/GrantConstraints");
-        Schemas["GrantConstraints"]!["properties"]!.AsObject().Select(item => item.Key).ShouldBe(["sites", "locales", "fields", "rowRule"]);
+        Schemas["GrantConstraints"]!["properties"]!.AsObject().Select(item => item.Key).ShouldBe(["sites", "locales", "fields", "rowRule", "resources"]);
         Response(create, "201")["properties"]!["builtIn"]!["type"]!.GetValue<string>().ShouldBe("boolean");
 
         var key = Response(Paths[$"{Management}/api-keys"]!["post"]!, "201");

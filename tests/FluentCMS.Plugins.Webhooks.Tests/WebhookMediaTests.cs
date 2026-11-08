@@ -40,4 +40,26 @@ public sealed class WebhookMediaTests
             .ShouldBe((asset, folder, "photo.jpg"));
         body["links"]!["management"]!.GetValue<string>().ShouldBe($"api/management/v1/media/{asset:D}");
     }
+
+    [Fact]
+    public async Task AReplacedAssetIsDeliveredAsMediaReplaced()
+    {
+        await using var receiver = await TestReceiver.StartAsync();
+        await using var host = Host();
+        using var client = await AdminAsync(host);
+        await CreateAsync(client, new { name = "media", url = receiver.Url().ToString(), events = new List<string> { "media.replaced" } });
+        var asset = Guid.CreateVersion7();
+
+        await using (var scope = host.Services.CreateAsyncScope())
+        using (SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Job, new SiteId(DefaultSite.Id)))
+        {
+            await scope.ServiceProvider.GetRequiredService<IEventBus>().PublishAsync(new MediaAssetReplacedEvent(asset, null, "new.png", "image/png", 20), Token);
+        }
+
+        await PumpAsync(host);
+
+        var request = receiver.Requests.ShouldHaveSingleItem();
+        request.Headers[WebhookSender.EventHeader].ShouldBe("media.replaced");
+        Guid.Parse(JsonNode.Parse(request.Body)!["data"]!["assetId"]!.GetValue<string>()).ShouldBe(asset);
+    }
 }

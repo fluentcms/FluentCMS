@@ -24,7 +24,7 @@ internal sealed class MediaPermissions : IPermissionProvider
     [
         new Permission(Read, "List and read the assets and folders of a site. A grant limited to folders reaches those and their subfolders."),
         new Permission(Upload, "Upload assets into the folders of a site."),
-        new Permission(Update, "Change the metadata of assets and move them between folders."),
+        new Permission(Update, "Change the metadata of assets, replace their files and move them between folders."),
         new Permission(Delete, "Delete assets."),
         new Permission(ManageFolders, "Create, rename, move and delete folders."),
         new Permission(ManagePresets, "Create, change and delete the image presets of a site. A grant limited to folders gives none of it."),
@@ -36,7 +36,8 @@ internal sealed class MediaPermissions : IPermissionProvider
 // found; the root is reached only by a grant with no folder limit, and the presets of the site only by such a grant of
 // media.presets.manage. Uploads are read to a temporary file, where their type, size, checksum and image size are found,
 // and only when every file of a request passes are they written to the storage, then recorded; a file written for a
-// request that fails is deleted again.
+// request that fails is deleted again. A replace writes its file under a key of its own, so that the old file serves until
+// the row names the new one; the old file and the variants are deleted after.
 internal sealed class MediaService(
     PluginDbContext<MediaPlugin> database,
     IPermissionChecker permissions,
@@ -47,9 +48,14 @@ internal sealed class MediaService(
     IOptions<MediaOptions> options,
     IImageProcessor processor,
     MediaSigning signing,
+    IContentReferences references,
+    MediaCache cache,
     TimeProvider time,
     ILogger<MediaService> logger) : IMediaService
 {
+    // The target type of an asset in cms_reference.
+    public const string ReferenceTarget = "media";
+
     public const int MaxPageSize = 100;
     public const int AltMaxLength = 1000;
     public const int CaptionMaxLength = 2000;
@@ -346,12 +352,25 @@ internal sealed class MediaService(
         return Info(asset, operation.Locale);
     }
 
-    public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    // The references go before the asset, so that a delete that fails between the two is tried again rather than leaving
+    // references to an asset that is gone; whether an entry refers to it is asked across sites, as an id is unique.
+    // A request that read the old row of a replaced asset just before the save may find its file gone and answer 404.
+    public async Task DeleteAsync(Guid id, bool force = false, CancellationToken cancellationToken = default)
     {
         var operation = Operation();
         var site = operation.Site;
         var reach = await ReachAsync(MediaPermissions.Delete, site, cancellationToken);
         var asset = await FindAssetAsync(site, id, reach, tracked: true, cancellationToken);
+
+        if (force)
+        {
+            await references.RemoveAsync(ReferenceTarget, id, cancellationToken);
+        }
+        else if (await references.CountAsync(ReferenceTarget, id, cancellationToken) > 0)
+        {
+            // No count: it takes in entries the caller may not read.
+            throw new PluginException(MediaErrorCodes.AssetInUse, $"Entries refer to the asset {id:D}; take it out of them, or delete it with force=true, which removes it from them.");
+        }
 
         var now = time.GetUtcNow();
         asset.DeletedAt = now;
@@ -359,6 +378,103 @@ internal sealed class MediaService(
         asset.UpdatedBy = operation.AuditPrincipal.Id;
         await database.SaveChangesAsync(cancellationToken);
         await events.PublishAsync(new MediaAssetDeletedEvent(asset.Id, asset.FolderId, asset.FileName), cancellationToken);
+    }
+
+    public async Task<MediaAsset> ReplaceAsync(Guid id, MediaUploadFile file, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(file);
+
+        var operation = Operation();
+        var site = operation.Site;
+        var reach = await ReachAsync(MediaPermissions.Update, site, cancellationToken);
+        var asset = await FindAssetAsync(site, id, reach, tracked: true, cancellationToken);
+        var rules = await settings.GetAsync(site, cancellationToken);
+        var prepared = await PrepareAsync(file, 0, rules, Math.Min(rules.MaxRequestSize, options.Value.MaxRequestBodySize), cancellationToken);
+        string? written = null;
+        try
+        {
+            var key = $"{site.Value:N}/{id:N}/original-{Guid.CreateVersion7():N}{prepared.Type.Extension}";
+            prepared.Content.Position = 0;
+            await storage.WriteAsync(key, prepared.Content, cancellationToken);
+            written = key;
+
+            var (oldStorage, oldKey) = (asset.StorageProvider, asset.StorageKey);
+            var variants = await database.Set<Variant>().Where(variant => variant.AssetId == id).ToListAsync(cancellationToken);
+            database.RemoveRange(variants);
+            asset.FileName = prepared.FileName;
+            asset.StorageProvider = storage.Name;
+            asset.StorageKey = key;
+            asset.MimeType = prepared.Type.MimeType;
+            asset.Size = prepared.Size;
+            asset.Checksum = prepared.Checksum;
+            asset.Width = prepared.Dimensions?.Width;
+            asset.Height = prepared.Dimensions?.Height;
+            asset.Duration = null;
+            asset.UpdatedAt = time.GetUtcNow();
+            asset.UpdatedBy = operation.AuditPrincipal.Id;
+            await database.SaveChangesAsync(cancellationToken);
+            written = null;
+
+            foreach (var stale in variants.Select(variant => variant.StorageKey).Prepend(oldKey))
+            {
+                await ForgetReplacedAsync(id, oldStorage, stale);
+            }
+
+            await events.PublishAsync(new MediaAssetReplacedEvent(asset.Id, asset.FolderId, asset.FileName, asset.MimeType, asset.Size), cancellationToken);
+            return Info(asset, operation.Locale);
+        }
+        finally
+        {
+            await prepared.Content.DisposeAsync();
+            if (written is not null)
+            {
+                await ForgetAsync(written);
+            }
+        }
+    }
+
+    public async Task<IReadOnlyList<ContentReference>> GetUsageAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var site = Operation().Site;
+        var reach = await ReachAsync(MediaPermissions.Read, site, cancellationToken);
+        await FindAssetAsync(site, id, reach, tracked: false, cancellationToken);
+        return await references.FindAsync(ReferenceTarget, id, cancellationToken);
+    }
+
+    public async Task<MediaDownloadUrl> GetDownloadUrlAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var site = Operation().Site;
+        var reach = await ReachAsync(MediaPermissions.Read, site, cancellationToken);
+        var asset = await FindAssetAsync(site, id, reach, tracked: false, cancellationToken);
+        var rules = await settings.GetAsync(site, cancellationToken);
+        var expires = time.GetUtcNow().ToUnixTimeSeconds() + rules.DownloadUrlSeconds;
+        return new MediaDownloadUrl(await MediaOriginals.UrlAsync(signing, id, asset.FileName, expires, cancellationToken), DateTimeOffset.FromUnixTimeSeconds(expires));
+    }
+
+    // A private asset is its folder's, so the reach of media.read decides, as for the management routes; one out of reach
+    // is not found, which says no more than an id that is no asset.
+    public async Task<MediaDelivery> DeliverAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var operation = Operation();
+        var site = operation.Site;
+        var asset = await database.Set<Asset>().AsNoTracking().FirstOrDefaultAsync(item => item.Id == id && item.SiteId == site.Value && item.DeletedAt == null, cancellationToken)
+            ?? throw AssetNotFound(id);
+        if (!asset.IsPrivate)
+        {
+            return new MediaDelivery(Info(asset, operation.Locale), await UrlsAsync(asset, cancellationToken));
+        }
+
+        FolderReach reach;
+        try
+        {
+            reach = await ReachAsync(MediaPermissions.Read, site, cancellationToken);
+        }
+        catch (PermissionDeniedException)
+        {
+            throw AssetNotFound(id);
+        }
+
+        return reach.Includes(asset.FolderId) ? new MediaDelivery(Info(asset, operation.Locale), null) : throw AssetNotFound(id);
     }
 
     public async Task<IReadOnlyList<MediaFolder>> ListFoldersAsync(CancellationToken cancellationToken = default)
@@ -531,6 +647,7 @@ internal sealed class MediaService(
                 .ExecuteUpdateAsync(item => item.SetProperty(row => row.Params, parameters), CancellationToken.None);
         }
 
+        await cache.EvictAsync([MediaCache.Presets(site.Value)], CancellationToken.None);
         return new MediaPreset(name, MediaTransforms.PresetOptions(new Preset { Params = parameters }));
     }
 
@@ -542,6 +659,8 @@ internal sealed class MediaService(
         {
             throw new PluginException(MediaErrorCodes.PresetNotFound, $"The site has no media preset '{name}'.");
         }
+
+        await cache.EvictAsync([MediaCache.Presets(site.Value)], CancellationToken.None);
     }
 
     // Presets are the site's, so a grant limited to folders does not reach them.
@@ -563,10 +682,38 @@ internal sealed class MediaService(
     {
         var assets = tracked ? database.Set<Asset>() : database.Set<Asset>().AsNoTracking();
         var asset = await assets.FirstOrDefaultAsync(asset => asset.Id == id && asset.SiteId == site.Value && asset.DeletedAt == null, cancellationToken);
-        return asset is not null && reach.Includes(asset.FolderId)
-            ? asset
-            : throw new PluginException(MediaErrorCodes.AssetNotFound, $"The site has no media asset {id:D}.");
+        return asset is not null && reach.Includes(asset.FolderId) ? asset : throw AssetNotFound(id);
     }
+
+    private static PluginException AssetNotFound(Guid id) => new(MediaErrorCodes.AssetNotFound, $"The site has no media asset {id:D}.");
+
+    // The original of a public asset, signed without an expiry, and for an image the processor reads, the presets of the
+    // site and, where unsigned URLs are served, a template. A caller that resolves many assets reads the preset names once.
+    internal async Task<MediaUrls> UrlsAsync(Asset asset, CancellationToken cancellationToken, IReadOnlyList<string>? presetNames = null)
+    {
+        var original = await MediaOriginals.UrlAsync(signing, asset.Id, asset.FileName, null, cancellationToken);
+        Dictionary<string, string> presets = new(StringComparer.Ordinal);
+        string? template = null;
+        if (processor.CanDecode(asset.MimeType))
+        {
+            var info = Info(asset, "");
+            var names = presetNames ?? await PresetNamesAsync(asset.SiteId, cancellationToken);
+            foreach (var name in names.Order(StringComparer.Ordinal))
+            {
+                presets[name] = await GetImageUrlAsync(info, new MediaImageOptions { Preset = name }, cancellationToken);
+            }
+
+            if (!options.Value.RequireSignedUrls)
+            {
+                template = $"/media/{asset.Id:D}/{Uri.EscapeDataString(asset.FileName)}?{ImageQuery.Width}={{w}}&{ImageQuery.Height}={{h}}&{ImageQuery.Fit}={{fit}}&{ImageQuery.Quality}={{q}}&{ImageQuery.Format}={{f}}";
+            }
+        }
+
+        return new MediaUrls(original, presets, template);
+    }
+
+    internal Task<List<string>> PresetNamesAsync(Guid site, CancellationToken cancellationToken) =>
+        database.Set<Preset>().AsNoTracking().Where(preset => preset.SiteId == site).Select(preset => preset.Name).ToListAsync(cancellationToken);
 
     private async Task<Folder> FindFolderAsync(SiteId site, Guid id, FolderReach reach, bool tracked, CancellationToken cancellationToken)
     {
@@ -679,6 +826,25 @@ internal sealed class MediaService(
         {
             await content.DisposeAsync();
             throw;
+        }
+    }
+
+    // A file in a storage other than this instance's stays where it is until storage plugins can name theirs (#2836).
+    private async Task ForgetReplacedAsync(Guid id, string provider, string key)
+    {
+        if (provider != storage.Name)
+        {
+            MediaLog.ReplacedNotDeleted(logger, id, provider, key, null);
+            return;
+        }
+
+        try
+        {
+            await storage.DeleteAsync(key, CancellationToken.None);
+        }
+        catch (Exception exception)
+        {
+            MediaLog.ReplacedNotDeleted(logger, id, provider, key, exception);
         }
     }
 

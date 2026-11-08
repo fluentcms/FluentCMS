@@ -6,16 +6,15 @@ using Microsoft.EntityFrameworkCore;
 namespace FluentCMS.Plugins.Media;
 
 // The assets of the site of the current operation that the caller reaches with media.read, as content shows them. A caller
-// with no grant of it reaches none. A public asset has the signed URL of its file and, when the processor reads its type,
-// one per preset of the site; a private one has none, since only a signed download serves it.
+// with no grant of it reaches none. A public asset has the URLs the Delivery API gives it; a private one has none, since
+// only a download URL serves it.
 internal sealed class MediaResolver(
     PluginDbContext<MediaPlugin> database,
     IPermissionChecker permissions,
     IOperationContextAccessor operations,
-    IMediaService media,
-    IImageProcessor processor) : IMediaResolver
+    MediaService media) : IMediaResolver
 {
-    public async Task<IReadOnlyDictionary<Guid, ResolvedMedia>> ResolveAsync(IReadOnlyCollection<Guid> ids, string? locale = null, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyDictionary<Guid, MediaDelivery>> ResolveAsync(IReadOnlyCollection<Guid> ids, string? locale = null, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(ids);
 
@@ -23,7 +22,7 @@ internal sealed class MediaResolver(
         var site = operation.Site;
         if (ids.Count == 0)
         {
-            return new Dictionary<Guid, ResolvedMedia>();
+            return new Dictionary<Guid, MediaDelivery>();
         }
 
         FolderReach reach;
@@ -33,7 +32,7 @@ internal sealed class MediaResolver(
         }
         catch (PermissionDeniedException)
         {
-            return new Dictionary<Guid, ResolvedMedia>();
+            return new Dictionary<Guid, MediaDelivery>();
         }
 
         var wanted = ids.Distinct().ToList();
@@ -43,33 +42,12 @@ internal sealed class MediaResolver(
             .Where(asset => reach.Includes(asset.FolderId))
             .ToList();
 
-        List<string>? presets = null;
-        if (assets.Any(asset => !asset.IsPrivate && processor.CanDecode(asset.MimeType)))
-        {
-            presets = await database.Set<Preset>().AsNoTracking().Where(preset => preset.SiteId == site.Value).Select(preset => preset.Name).ToListAsync(cancellationToken);
-            presets.Sort(StringComparer.Ordinal);
-        }
-
-        Dictionary<Guid, ResolvedMedia> resolved = [];
+        var presets = assets.Any(asset => !asset.IsPrivate) ? await media.PresetNamesAsync(site.Value, cancellationToken) : [];
+        Dictionary<Guid, MediaDelivery> resolved = [];
         foreach (var asset in assets)
         {
-            var info = MediaService.Info(asset, locale ?? operation.Locale);
-            if (asset.IsPrivate)
-            {
-                resolved[asset.Id] = new ResolvedMedia(info);
-                continue;
-            }
-
-            Dictionary<string, string> urls = new(StringComparer.Ordinal);
-            if (presets is not null && processor.CanDecode(asset.MimeType))
-            {
-                foreach (var name in presets)
-                {
-                    urls[name] = await media.GetImageUrlAsync(info, new MediaImageOptions { Preset = name }, cancellationToken);
-                }
-            }
-
-            resolved[asset.Id] = new ResolvedMedia(info) { Url = await media.GetImageUrlAsync(info, null, cancellationToken), PresetUrls = urls };
+            var urls = asset.IsPrivate ? null : await media.UrlsAsync(asset, cancellationToken, presets);
+            resolved[asset.Id] = new MediaDelivery(MediaService.Info(asset, locale ?? operation.Locale), urls);
         }
 
         return resolved;
@@ -77,15 +55,16 @@ internal sealed class MediaResolver(
 }
 
 // Lets core populate media fields, and the media nodes of rich text, through IMediaResolver, and check the assets a write
-// names. What population returns is the asset's metadata in the locale of the read and its URLs; who uploaded it is left out.
+// names. What population returns is the asset's metadata in the locale of the read and the URLs of the Delivery API; who
+// uploaded it, its folder and its tags are left out.
 internal sealed class MediaReferenceResolver(IMediaResolver media, PluginDbContext<MediaPlugin> database, IOperationContextAccessor operations) : IReferenceResolver
 {
-    public string TargetType => MediaFieldType.TypeName;
+    public string TargetType => MediaService.ReferenceTarget;
 
     public async Task<IReadOnlyDictionary<Guid, ResolvedReference>> ResolveAsync(IReadOnlyCollection<Guid> ids, string locale, CancellationToken cancellationToken = default)
     {
         var resolved = await media.ResolveAsync(ids, string.IsNullOrEmpty(locale) ? null : locale, cancellationToken);
-        return resolved.ToDictionary(pair => pair.Key, pair => new ResolvedReference(Document(pair.Value)) { Url = pair.Value.Url, Text = pair.Value.Asset.Alt });
+        return resolved.ToDictionary(pair => pair.Key, pair => new ResolvedReference(Document(pair.Value)) { Url = pair.Value.Urls?.Original, Text = pair.Value.Asset.Alt });
     }
 
     public async Task<IReadOnlySet<Guid>> FindMissingAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default)
@@ -101,19 +80,25 @@ internal sealed class MediaReferenceResolver(IMediaResolver media, PluginDbConte
         return wanted.Except(found).ToHashSet();
     }
 
-    private static ContentDocument Document(ResolvedMedia resolved)
+    private static ContentDocument Document(MediaDelivery resolved)
     {
         var asset = resolved.Asset;
-        ContentDocument presets = [];
-        foreach (var (name, url) in resolved.PresetUrls)
+        ContentDocument? urls = null;
+        if (resolved.Urls is { } given)
         {
-            presets[name] = url;
+            ContentDocument presets = [];
+            foreach (var (name, url) in given.Presets)
+            {
+                presets[name] = url;
+            }
+
+            urls = new ContentDocument { ["original"] = given.Original, ["presets"] = presets, ["template"] = given.Template };
         }
 
         return new ContentDocument
         {
             ["id"] = asset.Id,
-            ["type"] = MediaFieldType.TypeName,
+            ["type"] = MediaService.ReferenceTarget,
             ["fileName"] = asset.FileName,
             ["mimeType"] = asset.MimeType,
             ["size"] = asset.Size,
@@ -124,8 +109,7 @@ internal sealed class MediaReferenceResolver(IMediaResolver media, PluginDbConte
             ["caption"] = asset.Caption,
             ["credit"] = asset.Credit,
             ["focalPoint"] = asset.FocalPoint is { } point ? new ContentDocument { ["x"] = point.X, ["y"] = point.Y } : null,
-            ["url"] = resolved.Url,
-            ["presets"] = presets,
+            ["urls"] = urls,
         };
     }
 }

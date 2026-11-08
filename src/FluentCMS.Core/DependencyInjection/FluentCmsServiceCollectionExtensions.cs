@@ -211,6 +211,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddScoped<ContentService>();
         services.TryAddScoped<IContentService>(serviceProvider => serviceProvider.GetRequiredService<ContentService>());
         services.TryAddScoped(typeof(IContentService<>), typeof(TypedContentService<>));
+        services.TryAddScoped<IContentReferences, ContentReferences>();
 
         services.AddFluentCmsOptions(JobsSection, JobErrorCodes.InvalidRunnerOptions, builder.Jobs.Options, jobs => jobs.Validate());
         services.AddSingleton<JobRegistry>();

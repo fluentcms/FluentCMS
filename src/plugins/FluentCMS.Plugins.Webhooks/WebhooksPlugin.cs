@@ -60,6 +60,7 @@ public sealed class WebhooksPlugin : IPlugin
         Subscribe<CacheInvalidatedEvent>(plugin);
         Subscribe<MediaAssetUploadedEvent>(plugin);
         Subscribe<MediaAssetUpdatedEvent>(plugin);
+        Subscribe<MediaAssetReplacedEvent>(plugin);
         Subscribe<MediaAssetMovedEvent>(plugin);
         Subscribe<MediaAssetDeletedEvent>(plugin);
     }

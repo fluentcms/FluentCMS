@@ -118,7 +118,7 @@ public sealed class BlogSampleTests(BlogFixture fixture) : IClassFixture<BlogFix
 
         var hero = english.ShouldNotBeNull()["hero"].ShouldBeOfType<ContentDocument>();
         hero["alt"].ShouldBe("The FluentCMS welcome banner");
-        hero["url"].ShouldBeOfType<string>().ShouldStartWith($"/media/{welcome.Hero!.Value.Id:D}/{BlogSeeder.WelcomeHeroFile}?sig=");
+        hero["urls"].ShouldBeOfType<ContentDocument>()["original"].ShouldBeOfType<string>().ShouldStartWith($"/media/{welcome.Hero!.Value.Id:D}/original/{BlogSeeder.WelcomeHeroFile}?sig=");
         french.ShouldNotBeNull()["hero"].ShouldBeOfType<ContentDocument>()["alt"].ShouldBe("La bannière de bienvenue de FluentCMS");
     }
 

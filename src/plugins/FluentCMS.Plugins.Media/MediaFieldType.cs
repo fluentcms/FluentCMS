@@ -12,7 +12,7 @@ namespace FluentCMS.Plugins.Media;
 // single field coerces to a Guid, or null for an empty one, and a list to a Guid[] in order, as a relation does.
 internal sealed class MediaFieldType : IFieldType
 {
-    public const string TypeName = "media";
+    public const string TypeName = MediaService.ReferenceTarget;
 
     private const string IdKey = "id";
 
@@ -149,12 +149,21 @@ internal sealed class MediaFieldType : IFieldType
                         ["y"] = new JsonObject { ["type"] = "number", ["minimum"] = 0, ["maximum"] = 1 },
                     },
                 },
-                ["url"] = Text("The signed URL of the file, relative to the base of the CMS; null for a private asset."),
-                ["presets"] = new JsonObject
+                ["urls"] = new JsonObject
                 {
-                    ["type"] = "object",
-                    ["description"] = "The signed URL of each image preset of the site, by name.",
-                    ["additionalProperties"] = new JsonObject { ["type"] = "string" },
+                    ["type"] = new JsonArray("object", "null"),
+                    ["description"] = "The URLs of the asset, as the Delivery API of media gives them; null for a private asset.",
+                    ["properties"] = new JsonObject
+                    {
+                        ["original"] = new JsonObject { ["type"] = "string", ["description"] = "The signed URL of the original file, relative to the base of the CMS." },
+                        ["presets"] = new JsonObject
+                        {
+                            ["type"] = "object",
+                            ["description"] = "The signed transform URL of each image preset of the site, by name.",
+                            ["additionalProperties"] = new JsonObject { ["type"] = "string" },
+                        },
+                        ["template"] = Text("A transform URL with {w}, {h}, {fit}, {q} and {f} to fill in, only where unsigned URLs are served."),
+                    },
                 },
             },
             ["required"] = new JsonArray(IdKey, "type"),
