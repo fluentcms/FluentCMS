@@ -178,7 +178,7 @@ internal sealed partial class HtmlRenderer(
             tag.Append(" src=\"").Append(EscapeAttribute(url.Trim())).Append('"');
         }
 
-        tag.Append(" alt=\"").Append(EscapeAttribute(media.Alt ?? string.Empty)).Append('"');
+        tag.Append(" alt=\"").Append(EscapeAttribute(MediaAlt(media))).Append('"');
         if (!string.IsNullOrEmpty(media.Title))
         {
             tag.Append(" title=\"").Append(EscapeAttribute(media.Title)).Append('"');

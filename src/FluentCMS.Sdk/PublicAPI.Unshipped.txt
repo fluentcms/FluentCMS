@@ -314,6 +314,10 @@ FluentCMS.Content.IFieldValidator<TField>.ValidateAsync(TField? value, FluentCMS
 FluentCMS.Content.IOperationContextAccessor
 FluentCMS.Content.IOperationContextAccessor.Current.get -> FluentCMS.Content.OperationContext?
 FluentCMS.Content.IOperationContextAccessor.Current.set -> void
+FluentCMS.Content.IReferenceResolver
+FluentCMS.Content.IReferenceResolver.FindMissingAsync(System.Collections.Generic.IReadOnlyCollection<System.Guid>! ids, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlySet<System.Guid>!>!
+FluentCMS.Content.IReferenceResolver.ResolveAsync(System.Collections.Generic.IReadOnlyCollection<System.Guid>! ids, string! locale, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyDictionary<System.Guid, FluentCMS.Content.ResolvedReference!>!>!
+FluentCMS.Content.IReferenceResolver.TargetType.get -> string!
 FluentCMS.Content.LocaleFallback
 FluentCMS.Content.LocaleFallback.Chain = 0 -> FluentCMS.Content.LocaleFallback
 FluentCMS.Content.LocaleFallback.None = 1 -> FluentCMS.Content.LocaleFallback
@@ -397,6 +401,17 @@ FluentCMS.Content.PrincipalKind.System = 5 -> FluentCMS.Content.PrincipalKind
 FluentCMS.Content.QueryStatus
 FluentCMS.Content.QueryStatus.Draft = 1 -> FluentCMS.Content.QueryStatus
 FluentCMS.Content.QueryStatus.Published = 0 -> FluentCMS.Content.QueryStatus
+FluentCMS.Content.ResolvedReference
+FluentCMS.Content.ResolvedReference.<Clone>$() -> FluentCMS.Content.ResolvedReference!
+FluentCMS.Content.ResolvedReference.Deconstruct(out FluentCMS.Content.ContentDocument! Value) -> void
+FluentCMS.Content.ResolvedReference.Equals(FluentCMS.Content.ResolvedReference? other) -> bool
+FluentCMS.Content.ResolvedReference.ResolvedReference(FluentCMS.Content.ContentDocument! Value) -> void
+FluentCMS.Content.ResolvedReference.Text.get -> string?
+FluentCMS.Content.ResolvedReference.Text.init -> void
+FluentCMS.Content.ResolvedReference.Url.get -> string?
+FluentCMS.Content.ResolvedReference.Url.init -> void
+FluentCMS.Content.ResolvedReference.Value.get -> FluentCMS.Content.ContentDocument!
+FluentCMS.Content.ResolvedReference.Value.init -> void
 FluentCMS.Content.SortField
 FluentCMS.Content.SortField.<Clone>$() -> FluentCMS.Content.SortField!
 FluentCMS.Content.SortField.Deconstruct(out string! Path, out bool Descending) -> void
@@ -1045,6 +1060,8 @@ FluentCMS.Media.IImageProcessor.CanDecode(string! mimeType) -> bool
 FluentCMS.Media.IImageProcessor.CanEncode(string! mimeType) -> bool
 FluentCMS.Media.IImageProcessor.IdentifyAsync(System.IO.Stream! image, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Media.ImageHeader?>!
 FluentCMS.Media.IImageProcessor.ProcessAsync(System.IO.Stream! image, FluentCMS.Media.ImageTransform! transform, System.IO.Stream! output, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+FluentCMS.Media.IMediaResolver
+FluentCMS.Media.IMediaResolver.ResolveAsync(System.Collections.Generic.IReadOnlyCollection<System.Guid>! ids, string? locale = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyDictionary<System.Guid, FluentCMS.Media.ResolvedMedia!>!>!
 FluentCMS.Media.IMediaService
 FluentCMS.Media.IMediaService.CreateFolderAsync(string! name, System.Guid? parentId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<FluentCMS.Media.MediaFolder!>!
 FluentCMS.Media.IMediaService.DeleteAsync(System.Guid id, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
@@ -1263,6 +1280,17 @@ FluentCMS.Media.MediaUploadFile.Equals(FluentCMS.Media.MediaUploadFile? other) -
 FluentCMS.Media.MediaUploadFile.FileName.get -> string!
 FluentCMS.Media.MediaUploadFile.FileName.init -> void
 FluentCMS.Media.MediaUploadFile.MediaUploadFile(string! FileName, System.IO.Stream! Content) -> void
+FluentCMS.Media.ResolvedMedia
+FluentCMS.Media.ResolvedMedia.<Clone>$() -> FluentCMS.Media.ResolvedMedia!
+FluentCMS.Media.ResolvedMedia.Asset.get -> FluentCMS.Media.MediaAsset!
+FluentCMS.Media.ResolvedMedia.Asset.init -> void
+FluentCMS.Media.ResolvedMedia.Deconstruct(out FluentCMS.Media.MediaAsset! Asset) -> void
+FluentCMS.Media.ResolvedMedia.Equals(FluentCMS.Media.ResolvedMedia? other) -> bool
+FluentCMS.Media.ResolvedMedia.PresetUrls.get -> System.Collections.Generic.IReadOnlyDictionary<string!, string!>!
+FluentCMS.Media.ResolvedMedia.PresetUrls.init -> void
+FluentCMS.Media.ResolvedMedia.ResolvedMedia(FluentCMS.Media.MediaAsset! Asset) -> void
+FluentCMS.Media.ResolvedMedia.Url.get -> string?
+FluentCMS.Media.ResolvedMedia.Url.init -> void
 FluentCMS.Plugins.FluentCmsPluginAttribute
 FluentCMS.Plugins.FluentCmsPluginAttribute.DependsOn.get -> string![]!
 FluentCMS.Plugins.FluentCmsPluginAttribute.DependsOn.set -> void
@@ -1766,6 +1794,8 @@ FluentCMS.Schema.RichTextFormats
 FluentCMS.Schema.RichTextRenderOptions
 FluentCMS.Schema.RichTextRenderOptions.EntryUrlResolver.get -> System.Func<string!, System.Guid, string?>?
 FluentCMS.Schema.RichTextRenderOptions.EntryUrlResolver.init -> void
+FluentCMS.Schema.RichTextRenderOptions.MediaAltResolver.get -> System.Func<System.Guid, string?>?
+FluentCMS.Schema.RichTextRenderOptions.MediaAltResolver.init -> void
 FluentCMS.Schema.RichTextRenderOptions.MediaUrlResolver.get -> System.Func<System.Guid, string?>?
 FluentCMS.Schema.RichTextRenderOptions.MediaUrlResolver.init -> void
 FluentCMS.Schema.RichTextRenderOptions.RichTextRenderOptions() -> void
@@ -1981,6 +2011,7 @@ const FluentCMS.Content.ValidationErrorCodes.NotUnique = "FCMS2111" -> string!
 const FluentCMS.Content.ValidationErrorCodes.PatternMismatch = "FCMS2106" -> string!
 const FluentCMS.Content.ValidationErrorCodes.Required = "FCMS2101" -> string!
 const FluentCMS.Content.ValidationErrorCodes.RequiredByCondition = "FCMS2110" -> string!
+const FluentCMS.Content.ValidationErrorCodes.UnknownReference = "FCMS2112" -> string!
 const FluentCMS.Diagnostics.FluentCmsHealthCheckTags.Live = "live" -> string!
 const FluentCMS.Diagnostics.FluentCmsHealthCheckTags.Ready = "ready" -> string!
 const FluentCMS.Events.LoginFailureReasons.InvalidCredentials = "invalid_credentials" -> string!
@@ -2083,6 +2114,9 @@ override FluentCMS.Content.PageRequest.ToString() -> string!
 override FluentCMS.Content.Principal.Equals(object? obj) -> bool
 override FluentCMS.Content.Principal.GetHashCode() -> int
 override FluentCMS.Content.Principal.ToString() -> string!
+override FluentCMS.Content.ResolvedReference.Equals(object? obj) -> bool
+override FluentCMS.Content.ResolvedReference.GetHashCode() -> int
+override FluentCMS.Content.ResolvedReference.ToString() -> string!
 override FluentCMS.Content.SortField.Equals(object? obj) -> bool
 override FluentCMS.Content.SortField.GetHashCode() -> int
 override FluentCMS.Content.SortField.ToString() -> string!
@@ -2310,6 +2344,9 @@ override FluentCMS.Media.MediaUpload.ToString() -> string!
 override FluentCMS.Media.MediaUploadFile.Equals(object? obj) -> bool
 override FluentCMS.Media.MediaUploadFile.GetHashCode() -> int
 override FluentCMS.Media.MediaUploadFile.ToString() -> string!
+override FluentCMS.Media.ResolvedMedia.Equals(object? obj) -> bool
+override FluentCMS.Media.ResolvedMedia.GetHashCode() -> int
+override FluentCMS.Media.ResolvedMedia.ToString() -> string!
 override FluentCMS.Providers.EmailMessage.Equals(object? obj) -> bool
 override FluentCMS.Providers.EmailMessage.GetHashCode() -> int
 override FluentCMS.Providers.EmailMessage.ToString() -> string!
@@ -2451,6 +2488,8 @@ static FluentCMS.Content.PageRequest.operator !=(FluentCMS.Content.PageRequest? 
 static FluentCMS.Content.PageRequest.operator ==(FluentCMS.Content.PageRequest? left, FluentCMS.Content.PageRequest? right) -> bool
 static FluentCMS.Content.Principal.Anonymous.get -> FluentCMS.Content.Principal!
 static FluentCMS.Content.Principal.System.get -> FluentCMS.Content.Principal!
+static FluentCMS.Content.ResolvedReference.operator !=(FluentCMS.Content.ResolvedReference? left, FluentCMS.Content.ResolvedReference? right) -> bool
+static FluentCMS.Content.ResolvedReference.operator ==(FluentCMS.Content.ResolvedReference? left, FluentCMS.Content.ResolvedReference? right) -> bool
 static FluentCMS.Content.SortField.operator !=(FluentCMS.Content.SortField? left, FluentCMS.Content.SortField? right) -> bool
 static FluentCMS.Content.SortField.operator ==(FluentCMS.Content.SortField? left, FluentCMS.Content.SortField? right) -> bool
 static FluentCMS.Content.SystemOperation.Allows(FluentCMS.Content.Origin origin) -> bool
@@ -2594,6 +2633,8 @@ static FluentCMS.Media.MediaUpload.operator !=(FluentCMS.Media.MediaUpload? left
 static FluentCMS.Media.MediaUpload.operator ==(FluentCMS.Media.MediaUpload? left, FluentCMS.Media.MediaUpload? right) -> bool
 static FluentCMS.Media.MediaUploadFile.operator !=(FluentCMS.Media.MediaUploadFile? left, FluentCMS.Media.MediaUploadFile? right) -> bool
 static FluentCMS.Media.MediaUploadFile.operator ==(FluentCMS.Media.MediaUploadFile? left, FluentCMS.Media.MediaUploadFile? right) -> bool
+static FluentCMS.Media.ResolvedMedia.operator !=(FluentCMS.Media.ResolvedMedia? left, FluentCMS.Media.ResolvedMedia? right) -> bool
+static FluentCMS.Media.ResolvedMedia.operator ==(FluentCMS.Media.ResolvedMedia? left, FluentCMS.Media.ResolvedMedia? right) -> bool
 static FluentCMS.Providers.EmailMessage.operator !=(FluentCMS.Providers.EmailMessage? left, FluentCMS.Providers.EmailMessage? right) -> bool
 static FluentCMS.Providers.EmailMessage.operator ==(FluentCMS.Providers.EmailMessage? left, FluentCMS.Providers.EmailMessage? right) -> bool
 static FluentCMS.Publishing.PublishResult<T>.operator !=(FluentCMS.Publishing.PublishResult<T>? left, FluentCMS.Publishing.PublishResult<T>? right) -> bool

@@ -32,7 +32,7 @@ public sealed class BlogOpenApiFixture : IAsyncLifetime
     {
         var app = _host.Build(
             Environments.Development,
-            configure: builder => builder.Services.AddSingleton(BlogSchema()),
+            configure: builder => builder.Services.AddSingleton(services => BlogSchema(services.GetRequiredService<IFieldTypeRegistry>())),
             pipeline: app =>
             {
                 app.UseFluentCms();
@@ -53,9 +53,10 @@ public sealed class BlogOpenApiFixture : IAsyncLifetime
         await _host.DisposeAsync();
     }
 
-    public static SchemaModel BlogSchema()
+    // With the registry of the container, which knows the media field type of the plugin.
+    public static SchemaModel BlogSchema(IFieldTypeRegistry fieldTypes)
     {
-        var builder = new SchemaBuilder();
+        var builder = new SchemaBuilder(fieldTypes);
         foreach (var type in BlogSample.ContentTypes)
         {
             builder.AddContentType(type);

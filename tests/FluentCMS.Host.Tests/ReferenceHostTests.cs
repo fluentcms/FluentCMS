@@ -157,10 +157,35 @@ public sealed class ReferenceHostTests : IAsyncDisposable
         Operator.InsecureDefaults(await Operator.ReportAsync(_host)).ShouldContain("schema-sync-outside-development");
     }
 
+    // The schema is built with the field types of the container, so the plugins' are known.
+    [Fact]
+    public void ASchemaFileCanUseTheMediaFieldTypeOfThePlugin()
+    {
+        var file = _host.WriteFile("schema.json", """
+            {
+              "collections": [
+                {
+                  "name": "page",
+                  "fields": [
+                    { "name": "hero", "type": "media" },
+                    { "name": "gallery", "type": "media", "multiple": true }
+                  ]
+                }
+              ]
+            }
+            """);
+
+        var app = _host.Build(new() { [ReferenceHost.SchemaVariable] = file });
+
+        var page = app.Services.GetRequiredService<SchemaModel>().FindContentType("page").ShouldNotBeNull();
+        (page.FindField("hero")!.FieldType, page.FindField("hero")!.Multiple).ShouldBe(("media", false));
+        (page.FindField("gallery")!.FieldType, page.FindField("gallery")!.Multiple).ShouldBe(("media", true));
+    }
+
     [Theory]
     [InlineData("{ \"collections\": [ ", "FCMS1213")]
     [InlineData("{ \"pages\": [] }", "FCMS1213")]
-    [InlineData("{ \"collections\": [ { \"name\": \"page\", \"fields\": [ { \"name\": \"hero\", \"type\": \"media\" } ] } ] }", "FCMS1203")]
+    [InlineData("{ \"collections\": [ { \"name\": \"page\", \"fields\": [ { \"name\": \"hero\", \"type\": \"colour\" } ] } ] }", "FCMS1203")]
     [InlineData("{ \"collections\": [ { \"name\": \"page\", \"fields\": [ { \"name\": \"author\", \"type\": \"relation\", \"target\": \"person\" } ] } ] }", "FCMS1204")]
     public void AnInvalidSchemaFileStopsTheHostWithItsCode(string json, string code)
     {

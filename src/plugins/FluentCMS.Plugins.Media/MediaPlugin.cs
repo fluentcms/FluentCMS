@@ -1,4 +1,5 @@
 using FluentCMS.Activity;
+using FluentCMS.Content;
 using FluentCMS.Diagnostics;
 using FluentCMS.Events;
 using FluentCMS.Media;
@@ -23,12 +24,15 @@ public sealed class MediaPlugin : IPlugin
                 options => options.IsValid(),
                 $"{MediaOptions.Section}: Local:Root must name a directory, MaxRequestBodySize must be positive, SigningKey must be the base64 of at least {MediaSigning.KeyLength} bytes when set, and CacheControl a Cache-Control value.");
         plugin.Services.AddScoped<IMediaService, MediaService>();
+        plugin.Services.AddScoped<IMediaResolver, MediaResolver>();
+        plugin.Services.AddScoped<IReferenceResolver, MediaReferenceResolver>();
         plugin.Services.AddScoped<MediaTransforms>();
         plugin.Services.AddSingleton<MediaSigning>();
         plugin.Services.AddSingleton<IInsecureDefaultSource, MediaInsecureDefaults>();
         plugin.Services.AddHostedService<MediaStartup>();
 
         plugin
+            .AddFieldType<MediaFieldType>()
             .AddProviderSlot<IFileStorage, LocalFileStorage>()
             .AddProviderSlot<IImageProcessor, SkiaImageProcessor>()
             .AddPermissions<MediaPermissions>()

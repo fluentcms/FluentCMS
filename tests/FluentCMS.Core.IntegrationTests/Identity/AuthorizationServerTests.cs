@@ -16,6 +16,7 @@ using FluentCMS.Core.Identity.Oidc;
 using FluentCMS.Core.IntegrationTests.Testing;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
+using FluentCMS.Plugins.Media;
 using FluentCMS.Testing;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -362,8 +363,11 @@ public sealed partial class AuthorizationServerTests : IAsyncDisposable
         claims.GetProperty("email").GetString().ShouldBe(editor.Email);
     }
 
+    // The media plugin, which the Blog sample brings into this project, is given a signing key, so that only the authorization
+    // server makes the Data Protection key ring.
     private static FluentCmsTestHost NewHost(bool withServiceClient = true) => new FluentCmsTestHost()
         .WithContentTypes<Note>()
+        .WithServices(services => services.PostConfigure<MediaOptions>(media => media.SigningKey = Convert.ToBase64String(new byte[32])))
         .Configure(cms =>
         {
             if (withServiceClient)

@@ -10,6 +10,7 @@ using FluentCMS.Seeding;
 using FluentCMS.Settings;
 using FluentCMS.Sites;
 using FluentCMS.Core.Sites;
+using FluentCMS.Media;
 using FluentCMS.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,6 +28,7 @@ public sealed class BlogFixture : IAsyncLifetime
 
     public static FluentCmsTestHost NewHost() => new FluentCmsTestHost()
         .WithContentTypes([.. BlogSample.ContentTypes])
+        .WithMediaDirectory()
         .Configure(cms => cms.AddBlogSample());
 
     public async ValueTask InitializeAsync()
@@ -83,6 +85,41 @@ public sealed class BlogSampleTests(BlogFixture fixture) : IClassFixture<BlogFix
         welcome.Category.ShouldBe(ArticleCategory.News);
         welcome.Sections.Select(section => section.GetType()).ShouldBe([typeof(HeroBlock), typeof(QuoteBlock)]);
         welcome.Seo.MetaTitle.ShouldBe("Welcome to FluentCMS");
+    }
+
+    [Fact]
+    public async Task TheMediaFieldsReferToTheUploadedImages()
+    {
+        var images = (await Admin.RunAsync<IMediaService, PagedResult<MediaAsset>>(media => media.ListAsync(new MediaQuery { Tag = BlogSeeder.MediaTag }, Token))).Items
+            .ToDictionary(asset => asset.FileName, asset => new MediaRef(asset.Id));
+        var articles = (await Admin.Content<Article>().QueryAsync(new ContentQuery { Status = QueryStatus.Draft }, Token)).Items;
+        var authors = (await Admin.Content<Author>().QueryAsync(new ContentQuery { Status = QueryStatus.Draft }, Token)).Items;
+        var settings = await Admin.RunAsync<ISettings<BlogSettings>, BlogSettings>(async blog => await blog.GetAsync(new SiteId(DefaultSite.Id), Token));
+
+        images.Keys.Order().ShouldBe([BlogSeeder.AdaAvatarFile, BlogSeeder.GraceAvatarFile, BlogSeeder.LogoFile, BlogSeeder.FirstScreenshotFile, BlogSeeder.SecondScreenshotFile, BlogSeeder.WelcomeHeroFile]);
+        var welcome = articles.Single(article => article.Slug == BlogSeeder.WelcomeSlug);
+        welcome.Hero.ShouldBe(images[BlogSeeder.WelcomeHeroFile]);
+        welcome.Sections.OfType<HeroBlock>().Single().Image.ShouldBe(images[BlogSeeder.WelcomeHeroFile]);
+        articles.Single(article => article.Slug == BlogSeeder.TourSlug).Sections.OfType<GalleryBlock>().Single().Images
+            .ShouldBe([images[BlogSeeder.FirstScreenshotFile], images[BlogSeeder.SecondScreenshotFile]]);
+        authors.Single(author => author.Slug == BlogSeeder.AdaSlug).Avatar.ShouldBe(images[BlogSeeder.AdaAvatarFile]);
+        authors.Single(author => author.Slug == BlogSeeder.GraceSlug).Avatar.ShouldBe(images[BlogSeeder.GraceAvatarFile]);
+        settings.Logo.ShouldBe(images[BlogSeeder.LogoFile].Id);
+    }
+
+    [Fact]
+    public async Task ThePopulatedHeroHasItsAltTextInTheLocaleOfTheRead()
+    {
+        var welcome = (await Admin.Content<Article>().QueryAsync(new ContentQuery { Status = QueryStatus.Published }, Token)).Items
+            .Single(article => article.Slug == BlogSeeder.WelcomeSlug);
+
+        var english = await Admin.Content().GetAsync("article", welcome.Id, new GetOptions { Populate = ["hero"] }, Token);
+        var french = await Admin.In(BlogSample.SecondLocale).Content().GetAsync("article", welcome.Id, new GetOptions { Populate = ["hero"] }, Token);
+
+        var hero = english.ShouldNotBeNull()["hero"].ShouldBeOfType<ContentDocument>();
+        hero["alt"].ShouldBe("The FluentCMS welcome banner");
+        hero["url"].ShouldBeOfType<string>().ShouldStartWith($"/media/{welcome.Hero!.Value.Id:D}/{BlogSeeder.WelcomeHeroFile}?sig=");
+        french.ShouldNotBeNull()["hero"].ShouldBeOfType<ContentDocument>()["alt"].ShouldBe("La bannière de bienvenue de FluentCMS");
     }
 
     [Fact]
@@ -153,6 +190,7 @@ public sealed class BlogSampleTests(BlogFixture fixture) : IClassFixture<BlogFix
 
         settings.SiteName.ShouldBe("The FluentCMS blog");
         settings.ArticlesPerPage.ShouldBe(10);
+        settings.Logo.ShouldNotBeNull();
     }
 
     [Fact]
@@ -180,6 +218,11 @@ public sealed class BlogSampleTests(BlogFixture fixture) : IClassFixture<BlogFix
         host.Services.GetServices<IHostedService>().ShouldNotContain(service => service is SeedStartupService);
     }
 
-    private Task<(int Documents, int Versions)> CountRowsAsync() => Admin.RunAsync<CmsDbContext, (int, int)>(async context =>
-        (await context.Documents.IgnoreQueryFilters().CountAsync(), await context.Set<ContentVersion>().CountAsync()));
+    private async Task<(int Documents, int Versions, long Images)> CountRowsAsync()
+    {
+        var (documents, versions) = await Admin.RunAsync<CmsDbContext, (int, int)>(async context =>
+            (await context.Documents.IgnoreQueryFilters().CountAsync(), await context.Set<ContentVersion>().CountAsync()));
+        var images = await Admin.RunAsync<IMediaService, PagedResult<MediaAsset>>(media => media.ListAsync(new MediaQuery(), Token));
+        return (documents, versions, images.Total ?? 0);
+    }
 }

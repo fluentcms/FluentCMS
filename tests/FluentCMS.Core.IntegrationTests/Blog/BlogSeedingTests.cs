@@ -33,6 +33,7 @@ public sealed class BlogSeedingTests
     {
         var host = new FluentCmsTestHost()
             .WithContentTypes([.. BlogSample.ContentTypes])
+            .WithMediaDirectory()
             .Configure(cms =>
             {
                 cms.AddBlogSample();
@@ -459,6 +460,7 @@ public sealed class BlogSeedingTests
     {
         await using var host = new FluentCmsTestHost()
             .WithContentTypes([.. BlogSample.ContentTypes])
+            .WithMediaDirectory()
             .WithServices(services => services.AddScoped(provider =>
                 GoneOnStateSteps.Wrap(ActivatorUtilities.CreateInstance<TypedContentService<Article>>(provider))))
             .Configure(cms =>
@@ -552,6 +554,7 @@ public sealed class BlogSeedingTests
 
     private static FluentCmsTestHost Bumpable(VersionBox box) => new FluentCmsTestHost()
         .WithContentTypes([.. BlogSample.ContentTypes])
+        .WithMediaDirectory()
         .WithServices(services => services.AddSingleton(box))
         .Configure(cms =>
         {

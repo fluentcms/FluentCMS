@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>Media for FluentCMS: folders, uploads checked by their bytes, metadata per locale, file storage on the local disk, and signed image transforms.</Description>
+    <Description>Media for FluentCMS: folders, uploads checked by their bytes, metadata per locale, file storage on the local disk, signed image transforms, and the media field type.</Description>
   </PropertyGroup>
 
   <ItemGroup>
