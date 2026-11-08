@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json.Nodes;
+using FluentCMS.Core.Events;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Sites;
 using FluentCMS.Testing;
@@ -26,7 +27,13 @@ public sealed class ManagementFixture : IAsyncLifetime
 
     public FluentCmsTestHost Host { get; } = new FluentCmsTestHost()
         .WithContentTypes<Page, Person>()
-        .Configure(cms => cms.Jobs.Options.PollInterval = TimeSpan.FromDays(1));
+        .Configure(cms =>
+        {
+            cms.Jobs.Options.PollInterval = TimeSpan.FromDays(1);
+            // Enqueueing wakes the host's own workers, so the queues the tests drive by hand have none.
+            cms.Jobs.Options.Queues[JobRunnerOptions.DefaultQueue] = 0;
+            cms.Jobs.Options.Queues[OutboxDrainJob.Queue] = 0;
+        });
 
     public HttpClient Editor { get; private set; } = null!;
 

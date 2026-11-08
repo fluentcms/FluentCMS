@@ -112,7 +112,14 @@ public sealed class PluginSiteTests
     public async Task ADeliveryRecordedBeforeThePluginWasDisabledWaitsAndIsDeliveredOnceItIsEnabledAgain()
     {
         var calls = new PluginCalls();
-        await using var host = new FluentCmsTestHost().WithServices(services => services.AddSingleton(calls));
+        // The publish wakes the host's own workers, which would deliver the row before the plugin is disabled.
+        await using var host = new FluentCmsTestHost()
+            .WithServices(services => services.AddSingleton(calls))
+            .Configure(cms =>
+            {
+                cms.Jobs.Options.Queues[JobRunnerOptions.DefaultQueue] = 0;
+                cms.Jobs.Options.Queues[OutboxDrainJob.Queue] = 0;
+            });
         var docs = await CreateSiteAsync(host);
         await PublishAsync(host, docs, "before");
         await DisableAsync(host, docs);
@@ -127,7 +134,6 @@ public sealed class PluginSiteTests
         await EnableAsync(host, docs);
         host.Time.Advance(host.Services.GetRequiredService<OutboxOptions>().MissingHandlerDelay);
 
-        // Moving the clock wakes the job runner too, which may be the one to deliver it.
         var delivered = waiting;
         for (var attempt = 0; attempt < 50 && delivered.Status != OutboxStatus.Delivered; attempt++)
         {
