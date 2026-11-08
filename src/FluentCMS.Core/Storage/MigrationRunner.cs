@@ -1,5 +1,6 @@
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Plugins;
+using FluentCMS.Providers;
 using FluentCMS.Schema;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -26,6 +27,7 @@ public sealed class MigrationRunner(
     IDataProvider provider,
     SchemaModel schema,
     IEnumerable<IPluginMigrations> plugins,
+    IDistributedLock locks,
     ILogger<MigrationRunner> logger,
     IOptions<DatabaseOptions>? databaseOptions = null,
     IHostEnvironment? environment = null,
@@ -35,6 +37,8 @@ public sealed class MigrationRunner(
     public const string ContentStream = "content";
 
     private const string ApplyPending = $"set {DatabaseOptions.MigrateOnStartupKey} to true to apply the pending migrations";
+
+    internal const string SchemaSyncLock = "fluentcms:schema-sync";
 
     private static readonly Stream System = new(SystemStream, services => services.GetRequiredService<SystemDbContext>());
     private static readonly Stream Content = new(ContentStream, services => services.GetRequiredService<CmsDbContext>());
@@ -223,11 +227,22 @@ public sealed class MigrationRunner(
         await using var scope = scopes.CreateAsyncScope();
         await using var context = new CmsDbContext(scope.ServiceProvider.GetRequiredService<DbContextOptions<CmsDbContext>>().WithSchema(target));
 
-        var diff = await ContentSchemaDiff.CompareAsync(context, provider.SchemaReader, PluginTablePrefixes(scope.ServiceProvider), cancellationToken);
+        var prefixes = PluginTablePrefixes(scope.ServiceProvider);
+        var diff = await ContentSchemaDiff.CompareAsync(context, provider.SchemaReader, prefixes, cancellationToken);
         if (diff.Additive.Count > 0)
         {
-            var commands = context.GetService<IMigrationsSqlGenerator>().Generate(diff.Additive, context.GetService<IDesignTimeModel>().Model);
-            await context.GetService<IMigrationCommandExecutor>().ExecuteNonQueryAsync(commands, context.GetService<IRelationalConnection>(), cancellationToken);
+            // Nodes that start together diff the same database, and the second to create a table would fail on it. The
+            // lock waits for the first, and the diff taken under it leaves out what the first applied.
+            await using var held = await locks.TryAcquireAsync(SchemaSyncLock, Timeout.InfiniteTimeSpan, cancellationToken)
+                ?? throw new InvalidOperationException($"The lock {SchemaSyncLock} was not taken.");
+            using var guarded = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, held.Lost);
+
+            diff = await ContentSchemaDiff.CompareAsync(context, provider.SchemaReader, prefixes, guarded.Token);
+            if (diff.Additive.Count > 0)
+            {
+                var commands = context.GetService<IMigrationsSqlGenerator>().Generate(diff.Additive, context.GetService<IDesignTimeModel>().Model);
+                await context.GetService<IMigrationCommandExecutor>().ExecuteNonQueryAsync(commands, context.GetService<IRelationalConnection>(), guarded.Token);
+            }
         }
 
         var applied = diff.Additive.Select(Describe).ToList();

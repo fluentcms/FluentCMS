@@ -26,7 +26,7 @@ Then, in the host project:
 fluentcms migrations add AddSubtitle
 ```
 
-This builds the project and writes the migration to `Migrations/Content`. The runner looks for content migrations in the entry assembly; call `cms.UseContentMigrations(assembly)` inside `AddFluentCms` if they live elsewhere.
+This builds the project and writes the migration to `Migrations/Content`. The tool loads the host beside its own FluentCMS.Core and EF Core, so a host built against another version stops with both versions named, such as `MyHost could not be used by this fluentcms, which has FluentCMS.Core 1.2.0; the host has 1.3.0, so use fluentcms 1.3.0`. The runner looks for content migrations in the entry assembly; call `cms.UseContentMigrations(assembly)` inside `AddFluentCms` if they live elsewhere.
 
 The migrations are for the provider the factory names, and they carry its column types. Startup and `MigrationRunner.MigrateAsync` refuse a content or plugin set scaffolded for another provider with `FCMS1306`, before anything is applied:
 
@@ -75,6 +75,6 @@ With `Auto`, startup skips the content stream and applies additive changes by co
 | Check constraint of a new JSON column | Reported, because SQLite adds one only by rebuilding the table |
 | Dropped table, column or index; changed column type, nullability or index | Reported |
 
-Reported changes are logged as warnings and never applied. To get them, recreate the development database. A table under a plugin's prefix (`cms_{plugin}_`) belongs to that plugin's stream, so schema sync never reports it as a dropped table.
+Reported changes are logged as warnings and never applied. To get them, recreate the development database. Instances that start together on one database apply each change once: an instance with something to apply takes the `fluentcms:schema-sync` lock and compares again before it applies. A table under a plugin's prefix (`cms_{plugin}_`) belongs to that plugin's stream, so schema sync never reports it as a dropped table.
 
 A database that schema sync has changed has no content history, so the first migration of the content stream will not apply to it. Switch to `Off` on a new database.

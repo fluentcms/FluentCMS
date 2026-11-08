@@ -204,8 +204,7 @@ internal sealed partial class ContentService
         ArgumentNullException.ThrowIfNull(type);
 
         var (_, document) = await BeginVersionReadAsync(type, id, locale, cancellationToken);
-        var versions = await store.VersionsAsync(id, document.Locale, cancellationToken);
-        return [.. versions.Select(version => new VersionInfo(version.Number, version.Locale, version.StatusAfter, version.AuthorId, version.Origin, version.ClientId, version.Message, version.CreatedAt))];
+        return await store.VersionsAsync(id, document.Locale, cancellationToken);
     }
 
     public async Task<ContentDocument?> GetVersionAsync(string type, Guid id, int number, string? locale = null, CancellationToken cancellationToken = default)
