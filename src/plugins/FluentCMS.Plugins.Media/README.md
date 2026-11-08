@@ -1,6 +1,6 @@
 # FluentCMS.Plugins.Media
 
-Assets and folders for the sites of an instance: uploads whose type is read from their bytes, metadata with alternative text and captions per locale, and file storage on the local disk. The media is managed under `/api/management/v1/media`. Section 5.1 of the [backend technical specification](../../../docs/planning/backend-technical-spec.md) has the full design.
+Assets and folders for the sites of an instance: uploads whose type is read from their bytes, metadata with alternative text and captions per locale, file storage on the local disk, and signed image transforms with stored variants and presets. The media is managed under `/api/management/v1/media`, and images are served at `/media/{id}/{fileName}`. Section 5.1 of the [backend technical specification](../../../docs/planning/backend-technical-spec.md) has the full design.
 
 ## Options
 
@@ -10,6 +10,9 @@ The instance's options are in `FluentCms:Media`:
 | --- | --- | --- |
 | `Local:Root` | `App_Data/media` | The directory of the local storage, under the content root unless it is absolute. |
 | `MaxRequestBodySize` | `268435456` | The largest upload request, in bytes. A site's `MaxRequestSize` above it is cut to it. |
+| `RequireSignedUrls` | `true` | `false` serves unsigned transform URLs, for a setup where every client is trusted. The startup report lists `media-unsigned-urls` in Production. |
+| `SigningKey` | none | The base64 of at least 32 bytes that signs transform URLs. Left out, the plugin generates one key (see below). |
+| `CacheControl` | `public, max-age=86400` | The `Cache-Control` of a transformed image. |
 
 ## Site settings
 
@@ -22,6 +25,10 @@ The rules of uploads are each site's, in the settings area `media` (`settings.me
 | `maxFilesPerRequest` | 20 | The most files in one request. |
 | `allowedTypes` | every type below | The types a site accepts: `image/jpeg`, `image/png`, `image/gif`, `image/webp`, `image/avif`, `application/pdf`, `video/mp4`, `video/webm`, `audio/mpeg` and `audio/wav`. |
 | `svg` | `refuse` | `refuse` refuses every SVG; `sanitize` stores it without its scripts, event handlers, `foreignObject` and `javascript:` URLs. |
+| `maxTransformWidth` | 4096 | The largest width a transform asks for, in pixels. |
+| `maxTransformHeight` | 4096 | The largest height a transform asks for, in pixels. |
+| `maxTransformOperations` | 6 | The most parameters a transform has, its preset's included; `fx` and `fy` count as one. |
+| `maxSourcePixels` | 50000000 | The most pixels an image may have to be transformed, every frame of an animation counted, read from its header before it is decoded. |
 
 A type comes from the first bytes of the file, never from its name or `Content-Type`. Executables are always refused, by their signature (Windows, ELF, Mach-O, a shebang script) and by an executable or script extension.
 
@@ -37,11 +44,13 @@ A storage provider such as S3 or Azure Blob replaces the provider slot `IFileSto
 
 ## Permissions
 
-`media.read`, `media.upload`, `media.update`, `media.delete` and `media.folders.manage`. A grant can be limited to folders with the `resources` constraint, listing folder ids; it then reaches those folders and their subfolders only, and not the root:
+`media.read`, `media.upload`, `media.update`, `media.delete`, `media.folders.manage` and `media.presets.manage`. A grant can be limited to folders with the `resources` constraint, listing folder ids; it then reaches those folders and their subfolders only, and not the root:
 
 ```json
 { "permission": "media.*", "constraints": { "resources": ["0193a0c2-5f4e-7c1d-9a3b-2b8f6e1d4c70"] } }
 ```
+
+Presets are the site's, so only a grant of `media.presets.manage` without a folder limit changes them.
 
 ## Upload
 
@@ -49,4 +58,51 @@ A storage provider such as S3 or Azure Blob replaces the provider slot `IFileSto
 
 ```bash
 curl -H "Authorization: ApiKey $KEY" -F folderId=$FOLDER -F files=@photo.jpg -F files=@report.pdf https://cms.example.com/api/management/v1/media
+```
+
+## Image transforms
+
+`GET /media/{id}/{fileName}` serves an image of a public asset, resized and encoded as its query asks. It is open to anyone: the signature is the authority. The file name is there for the reader and is ignored, so `/media/{id}/hero.jpg` and `/media/{id}/x.webp` are the same image. A private or deleted asset is never served, even with a valid signature.
+
+| Parameter | Meaning |
+| --- | --- |
+| `w`, `h` | The width and height in pixels. With one of them, the other follows the aspect ratio. |
+| `fit` | With both: `contain` (the default) fits the image inside, `cover` fills them and crops around the focal point, `fill` stretches. |
+| `q` | The quality of JPEG and WebP, from 1 to 100; 80 by default. |
+| `f` | `auto`, `webp`, `avif`, `jpeg` or `png`; the asset's own type when left out. `auto` picks WebP when `Accept` lists it, AVIF only where the processor encodes it, and the asset's type otherwise, and answers with `Vary: Accept`. |
+| `fx`, `fy` | The focal point of a `cover`, from 0 to 1, given together; the asset's own focal point, or its centre, by default. |
+| `preset` | A preset of the site, whose parameters apply under those of the URL. |
+| `sig` | The signature. |
+
+A request over the limits of the site's media settings is refused with `FCMS1591` before the image is read. An image over `maxSourcePixels`, or whose side that follows the aspect ratio would be over the width or height limit, is refused from its header before it is decoded. Every result is stored as a variant in the asset's storage, so the same request, under any file name, is served from storage. The orientation of a photo is applied, and its EXIF, IPTC and XMP metadata are left out. A daily job, `media.variants.cleanup`, removes the variants of deleted assets.
+
+Host code and other plugins build a URL with `IMediaService.GetImageUrlAsync`:
+
+```csharp
+var url = await media.GetImageUrlAsync(asset, new MediaImageOptions { Width = 1200, Height = 630, Fit = ImageFit.Cover, Format = MediaImageFormat.Auto });
+// /media/0193a0c2-.../hero.jpg?w=1200&h=630&fit=cover&f=auto&sig=...
+```
+
+## Presets
+
+`PUT /api/management/v1/media/presets/{name}` creates or replaces a preset of the site, `GET /api/management/v1/media/presets` lists them and `DELETE` removes one. A name is lower-case letters, digits and hyphens. The body has the parameters by their full names:
+
+```bash
+curl -X PUT -H "Authorization: ApiKey $KEY" -H "Content-Type: application/json" -d '{"width":1200,"height":630,"fit":"cover","format":"auto"}' https://cms.example.com/api/management/v1/media/presets/hero
+```
+
+A signed URL with `preset=hero` then serves that size.
+
+## Signed URLs
+
+A signature is the HMAC-SHA256 of the asset id and the URL's parameters, sorted by name, without `sig`, `site` and the file name. The key is `FluentCms:Media:SigningKey` when it is set. Otherwise the plugin generates one 256-bit key at its first start, and stores it in `cms_media_signing_key`, protected by Data Protection. Instances that start together share one key, created under a lock. Data Protection protects the key only at rest, so signed URLs keep working when its key ring rotates.
+
+Replacing the key invalidates every URL signed before, in content and in CDN caches. To replace it, set `SigningKey`, or delete the row of `cms_media_signing_key`, and restart every instance. Keep the Data Protection key ring in backups: without the key that protected the signing key, the instance cannot read it, and only setting `SigningKey` or deleting the row brings transforms back.
+
+## ImageSharp
+
+The default `IImageProcessor` uses [SixLabors.ImageSharp](https://github.com/SixLabors/ImageSharp), which is under the [Six Labors Split License](https://github.com/SixLabors/ImageSharp/blob/main/LICENSE). It is free under the Apache License 2.0 for open source and source-available software, for a transitive dependency, and for companies with less than USD 1 million of annual gross revenue; others need a commercial license from Six Labors. ImageSharp 4 checks a Six Labors license key when the project that references it is built in Release, through `SixLaborsLicenseKey`, `SixLaborsLicenseFile` or a `sixlabors.lic` file. A host that does not want ImageSharp replaces the provider slot:
+
+```csharp
+builder.Services.AddFluentCms(cms => cms.Providers.Use<IImageProcessor, MyImageProcessor>());
 ```

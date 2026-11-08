@@ -18,6 +18,7 @@ internal sealed class MediaPermissions : IPermissionProvider
     public const string Update = "media.update";
     public const string Delete = "media.delete";
     public const string ManageFolders = "media.folders.manage";
+    public const string ManagePresets = "media.presets.manage";
 
     public IEnumerable<Permission> GetPermissions() =>
     [
@@ -26,14 +27,16 @@ internal sealed class MediaPermissions : IPermissionProvider
         new Permission(Update, "Change the metadata of assets and move them between folders."),
         new Permission(Delete, "Delete assets."),
         new Permission(ManageFolders, "Create, rename, move and delete folders."),
+        new Permission(ManagePresets, "Create, change and delete the image presets of a site. A grant limited to folders gives none of it."),
     ];
 }
 
 // The media of the site of the current operation. Each call checks its permission with IPermissionChecker. A grant limited
 // to folders reaches them and their subfolders (ADR 0004), and an asset or folder outside what the caller reaches is not
-// found; the root is reached only by a grant with no folder limit. Uploads are read to a temporary file, where their type,
-// size, checksum and image size are found, and only when every file of a request passes are they written to the storage,
-// then recorded; a file written for a request that fails is deleted again.
+// found; the root is reached only by a grant with no folder limit, and the presets of the site only by such a grant of
+// media.presets.manage. Uploads are read to a temporary file, where their type, size, checksum and image size are found,
+// and only when every file of a request passes are they written to the storage, then recorded; a file written for a
+// request that fails is deleted again.
 internal sealed class MediaService(
     PluginDbContext<MediaPlugin> database,
     IPermissionChecker permissions,
@@ -42,6 +45,8 @@ internal sealed class MediaService(
     IFileStorage storage,
     IEventBus events,
     IOptions<MediaOptions> options,
+    IImageProcessor processor,
+    MediaSigning signing,
     TimeProvider time,
     ILogger<MediaService> logger) : IMediaService
 {
@@ -450,6 +455,102 @@ internal sealed class MediaService(
 
         database.Remove(folder);
         await database.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<string> GetImageUrlAsync(MediaAsset asset, MediaImageOptions? options = null, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(asset);
+
+        var given = options ?? new MediaImageOptions();
+        List<ValidationError> errors = [];
+        ImageQuery.Check(errors, given, asQuery: false, allowPreset: true);
+        if (errors.Count > 0)
+        {
+            throw new ValidationException(errors);
+        }
+
+        var parameters = ImageQuery.Of(given);
+        var signature = await signing.SignAsync(ImageQuery.Canonical(asset.Id, parameters), cancellationToken);
+        var query = string.Join('&', parameters.Append(new(ImageQuery.Signature, signature)).Select(pair => $"{pair.Key}={Uri.EscapeDataString(pair.Value)}"));
+        return $"/media/{asset.Id:D}/{Uri.EscapeDataString(asset.FileName)}?{query}";
+    }
+
+    public async Task<IReadOnlyList<MediaPreset>> ListPresetsAsync(CancellationToken cancellationToken = default)
+    {
+        var site = Operation().Site;
+        await ReachAsync(MediaPermissions.Read, site, cancellationToken);
+        var presets = await database.Set<Preset>().AsNoTracking().Where(preset => preset.SiteId == site.Value).ToListAsync(cancellationToken);
+        return [.. presets.OrderBy(preset => preset.Name, StringComparer.Ordinal).Select(preset => new MediaPreset(preset.Name, MediaTransforms.PresetOptions(preset)))];
+    }
+
+    // The parameters are checked as a request's would be, against the limits of the site as they are now.
+    public async Task<MediaPreset> SetPresetAsync(string name, MediaImageOptions options, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+
+        var site = Operation().Site;
+        await ManagePresetsAsync(site, cancellationToken);
+        List<ValidationError> errors = [];
+        if (!ImageQuery.IsValidPresetName(name))
+        {
+            errors.Add(new ValidationError("name", MediaErrorCodes.InvalidField, $"A preset name has from 1 to {ImageQuery.PresetNameMaxLength} lower-case letters, digits and hyphens, and starts with a letter or digit."));
+        }
+
+        ImageQuery.Check(errors, options, asQuery: false, allowPreset: false);
+        if (options.Format == MediaImageFormat.Avif && !processor.CanEncode("image/avif"))
+        {
+            errors.Add(new ValidationError("format", MediaErrorCodes.InvalidField, "The image processor does not encode image/avif."));
+        }
+
+        if (errors.Count > 0)
+        {
+            throw new ValidationException(errors);
+        }
+
+        MediaTransforms.CheckLimits(options, await settings.GetAsync(site, cancellationToken));
+        var parameters = MediaTransforms.PresetParams(options);
+        var preset = await database.Set<Preset>().FirstOrDefaultAsync(item => item.SiteId == site.Value && item.Name == name, cancellationToken);
+        if (preset is null)
+        {
+            database.Add(new Preset { SiteId = site.Value, Name = name, Params = parameters });
+        }
+        else
+        {
+            preset.Params = parameters;
+        }
+
+        try
+        {
+            await database.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException) when (preset is null)
+        {
+            // Another writer created it first; this write replaces its parameters, as a second PUT would.
+            database.ChangeTracker.Clear();
+            await database.Set<Preset>().Where(item => item.SiteId == site.Value && item.Name == name)
+                .ExecuteUpdateAsync(item => item.SetProperty(row => row.Params, parameters), CancellationToken.None);
+        }
+
+        return new MediaPreset(name, MediaTransforms.PresetOptions(new Preset { Params = parameters }));
+    }
+
+    public async Task DeletePresetAsync(string name, CancellationToken cancellationToken = default)
+    {
+        var site = Operation().Site;
+        await ManagePresetsAsync(site, cancellationToken);
+        if (await database.Set<Preset>().Where(preset => preset.SiteId == site.Value && preset.Name == name).ExecuteDeleteAsync(cancellationToken) == 0)
+        {
+            throw new PluginException(MediaErrorCodes.PresetNotFound, $"The site has no media preset '{name}'.");
+        }
+    }
+
+    // Presets are the site's, so a grant limited to folders does not reach them.
+    private async Task ManagePresetsAsync(SiteId site, CancellationToken cancellationToken)
+    {
+        if (!(await ReachAsync(MediaPermissions.ManagePresets, site, cancellationToken)).IsAll)
+        {
+            throw new PermissionDeniedException(MediaPermissions.ManagePresets, site);
+        }
     }
 
     // Every folder and the root when a grant has no folder limit, otherwise the folders the grants name and their subfolders.

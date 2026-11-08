@@ -1,12 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>Media for FluentCMS: folders, uploads checked by their bytes, metadata per locale, and file storage on the local disk.</Description>
+    <Description>Media for FluentCMS: folders, uploads checked by their bytes, metadata per locale, file storage on the local disk, and signed image transforms.</Description>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="../../FluentCMS.Sdk/FluentCMS.Sdk.csproj" />
     <ProjectReference Include="../../FluentCMS.Plugins.Abstractions/FluentCMS.Plugins.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SixLabors.ImageSharp" />
   </ItemGroup>
 
   <ItemGroup>

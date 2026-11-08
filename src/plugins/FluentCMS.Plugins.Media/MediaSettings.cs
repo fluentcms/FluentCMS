@@ -3,8 +3,9 @@ using FluentCMS.Settings;
 
 namespace FluentCMS.Plugins.Media;
 
-// The rules of uploads in a site, in the settings area "media" (settings.media.manage). An SVG is governed by Svg alone,
-// since it can carry script; the allow-list holds the other types the plugin reads from bytes.
+// The rules of uploads and the limits of image transforms in a site, in the settings area "media" (settings.media.manage).
+// An SVG is governed by Svg alone, since it can carry script; the allow-list holds the other types the plugin reads from
+// bytes. A transform over a limit is refused before the image is read; MaxSourcePixels counts every frame of an animation.
 [Settings("media")]
 public sealed class MediaSettings : IValidatableObject
 {
@@ -20,6 +21,18 @@ public sealed class MediaSettings : IValidatableObject
     public List<string> AllowedTypes { get; set; } = [.. MediaTypes.Allowable.Select(type => type.MimeType)];
 
     public SvgHandling Svg { get; set; } = SvgHandling.Refuse;
+
+    [Range(1, 16384)]
+    public int MaxTransformWidth { get; set; } = 4096;
+
+    [Range(1, 16384)]
+    public int MaxTransformHeight { get; set; } = 4096;
+
+    [Range(1, 6)]
+    public int MaxTransformOperations { get; set; } = 6;
+
+    [Range(1, long.MaxValue)]
+    public long MaxSourcePixels { get; set; } = 50_000_000;
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {

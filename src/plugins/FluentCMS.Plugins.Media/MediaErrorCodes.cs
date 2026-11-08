@@ -13,4 +13,8 @@ internal static class MediaErrorCodes
     public const string FolderNameTaken = "FCMS1587";
     public const string FolderNotEmpty = "FCMS1588";
     public const string FolderCycle = "FCMS1589";
+    public const string SignatureInvalid = "FCMS1590";
+    public const string TransformLimit = "FCMS1591";
+    public const string NotTransformable = "FCMS1592";
+    public const string PresetNotFound = "FCMS1593";
 }

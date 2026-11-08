@@ -20,17 +20,22 @@ public sealed class MediaPlugin : IPlugin
         plugin.Services.AddOptions<MediaOptions>()
             .BindConfiguration(MediaOptions.Section)
             .Validate(
-                options => !string.IsNullOrWhiteSpace(options.Local?.Root) && options.MaxRequestBodySize > 0,
-                $"{MediaOptions.Section}: Local:Root must name a directory, and MaxRequestBodySize must be positive.");
+                options => options.IsValid(),
+                $"{MediaOptions.Section}: Local:Root must name a directory, MaxRequestBodySize must be positive, SigningKey must be the base64 of at least {MediaSigning.KeyLength} bytes when set, and CacheControl a Cache-Control value.");
         plugin.Services.AddScoped<IMediaService, MediaService>();
+        plugin.Services.AddScoped<MediaTransforms>();
+        plugin.Services.AddSingleton<MediaSigning>();
         plugin.Services.AddSingleton<IInsecureDefaultSource, MediaInsecureDefaults>();
+        plugin.Services.AddHostedService<MediaStartup>();
 
         plugin
             .AddProviderSlot<IFileStorage, LocalFileStorage>()
+            .AddProviderSlot<IImageProcessor, ImageSharpImageProcessor>()
             .AddPermissions<MediaPermissions>()
             .AddSettings<MediaSettings>()
             .AddModel<MediaModel>()
             .AddMigrations(typeof(MediaPlugin).Assembly)
+            .AddJob<MediaVariantCleanupJob, MediaVariantCleanupPayload>(MediaVariantCleanupJob.Type)
             .AddErrorCode(MediaErrorCodes.InvalidField, 422, "Invalid media request")
             .AddErrorCode(MediaErrorCodes.TypeNotAllowed, 415, "File type not allowed")
             .AddErrorCode(MediaErrorCodes.TooLarge, 413, "Upload too large")
@@ -41,13 +46,23 @@ public sealed class MediaPlugin : IPlugin
             .AddErrorCode(MediaErrorCodes.FolderNameTaken, 409, "Media folder name taken")
             .AddErrorCode(MediaErrorCodes.FolderNotEmpty, 409, "Media folder not empty")
             .AddErrorCode(MediaErrorCodes.FolderCycle, 409, "Media folder moved into itself")
+            .AddErrorCode(MediaErrorCodes.SignatureInvalid, 403, "Media URL signature invalid")
+            .AddErrorCode(MediaErrorCodes.TransformLimit, 422, "Image transform over a limit")
+            .AddErrorCode(MediaErrorCodes.NotTransformable, 415, "Media asset not transformable")
+            .AddErrorCode(MediaErrorCodes.PresetNotFound, 404, "Media preset not found")
             .AddActivity<MediaAssetUploadedEvent>("media.uploaded", uploaded => Activity("media.uploaded", uploaded, new Dictionary<string, string?> { ["mimeType"] = uploaded.MimeType, ["size"] = uploaded.Size.ToString(System.Globalization.CultureInfo.InvariantCulture) }))
             .AddActivity<MediaAssetUpdatedEvent>("media.updated", updated => Activity("media.updated", updated, null))
             .AddActivity<MediaAssetMovedEvent>("media.moved", moved => Activity("media.moved", moved, new Dictionary<string, string?> { ["from"] = moved.PreviousFolderId?.ToString("D"), ["to"] = moved.FolderId?.ToString("D") }))
             .AddActivity<MediaAssetDeletedEvent>("media.deleted", deleted => Activity("media.deleted", deleted, null));
     }
 
-    public void Configure(IPluginAppBuilder app) => app.MapManagement("/media").MapMediaEndpoints();
+    public void Configure(IPluginAppBuilder app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+
+        app.MapManagement("/media").MapMediaEndpoints();
+        app.MapGroup("/media").MapImageEndpoints();
+    }
 
     private static ActivityEntry Activity(string action, MediaAssetEvent asset, IReadOnlyDictionary<string, string?>? details) => new(action)
     {
