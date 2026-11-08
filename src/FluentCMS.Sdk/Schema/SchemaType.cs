@@ -55,7 +55,7 @@ public sealed class SchemaType
         }
     } = [];
 
-    /// <summary>The reverse sides of the relations that point to this type, ordered by name.</summary>
+    /// <summary>The reverse sides of the relations that point to this type, ordered by name. They are metadata only: a query path cannot name one.</summary>
     public IReadOnlyList<ReverseRelation> ReverseRelations { get; internal init; } = [];
 
     /// <summary>Finds a field by name.</summary>

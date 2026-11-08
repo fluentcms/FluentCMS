@@ -11,4 +11,6 @@ internal static class QueryErrorCodes
     public const string LimitExceeded = "FCMS2207";
     public const string NotARelation = "FCMS2208";
     public const string DraftNotAllowed = "FCMS2209";
+    public const string ReverseRelation = "FCMS2210";
+    public const string NoSearchIndex = "FCMS2211";
 }

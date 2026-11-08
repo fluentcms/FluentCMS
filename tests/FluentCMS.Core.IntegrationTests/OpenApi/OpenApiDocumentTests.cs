@@ -212,9 +212,11 @@ public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFix
         list.ShouldContain("#/components/parameters/sort-article");
         list.ShouldContain("#/components/parameters/populate");
         list.ShouldContain("#/components/parameters/cursor");
+        list.ShouldContain("#/components/parameters/q");
 
         var one = Paths["/api/delivery/v1/article/{id}"]!["get"]!["parameters"]!.AsArray().Select(item => item!["$ref"]?.GetValue<string>()).ToList();
         one.ShouldNotContain("#/components/parameters/filter-article");
+        one.ShouldNotContain("#/components/parameters/q");
         one.ShouldContain("#/components/parameters/fields");
     }
 

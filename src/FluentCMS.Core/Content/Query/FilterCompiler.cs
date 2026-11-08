@@ -107,6 +107,9 @@ internal sealed class FilterCompiler(QueryScope query)
                 return Json(filter, json, scope);
             case FieldPath { Rest.Length: 0 } column:
                 return Column(filter, column.Stored, scope);
+            case null when query.Paths.Reverse(scope.Type, filter.Path, scope.Trusted) is { } reverse:
+                query.Report(scope.ReportPath(filter), QueryErrorCodes.ReverseRelation, QueryPaths.ReverseMessage(scope.Type, scope.PathOf(filter), reverse));
+                return Fail();
             default:
                 query.Report(scope.ReportPath(filter), QueryErrorCodes.UnknownField, $"'{scope.PathOf(filter)}' is not a field of {scope.Type.Name} that can be read.");
                 return Fail();

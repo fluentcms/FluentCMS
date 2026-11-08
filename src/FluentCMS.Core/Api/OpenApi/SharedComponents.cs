@@ -175,6 +175,7 @@ internal static class SharedComponents
         yield return (BridgeLocale, Query("locale", String("A locale of the site, as the X-Cms-Locale header. A route beside content refuses one the site does not have and reads nothing by it.")));
         yield return ("status", Query("status", Enum(["published", "draft"]), "Delivery reads published entries and the Management API drafts unless this says otherwise. Delivery reads drafts only with a preview key or a token with the draft scope."));
         yield return ("fallback", Query("fallback", Enum(["none"]), "none reads only what the locale holds; otherwise empty fields come through the site's fallback chain."));
+        yield return ("q", Query("q", String(), "Text to search for. The search index finds the matching entries, and the filter, sort and page apply to them. Refused with FCMS2211 when the instance has no search index."));
         yield return ("fields", Query("fields", String(), "Comma-separated fields to return; a component's field is component.field."));
         yield return ("populate", Query("populate", String(), "Comma-separated relations to return as entries instead of ids, or * for all of them."));
         yield return ("depth", Query("depth", new JsonObject { ["type"] = "integer", ["minimum"] = 1 }, "How deep populate goes. Needs populate."));
