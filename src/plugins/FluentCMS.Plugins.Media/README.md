@@ -42,7 +42,48 @@ The local disk is allowed in Production, and the startup report lists `media-loc
 - backups must include that directory, beside the database;
 - a container needs the directory on a volume, or the files go with the container.
 
-A storage provider such as S3 or Azure Blob replaces the provider slot `IFileStorage`. Each asset records the storage it was written with, so assets written before a change stay where they are.
+A storage on S3 or Azure Blob (below) replaces the local disk for new uploads.
+
+## Storage on S3 or Azure Blob
+
+`FluentCMS.Plugins.Media.S3` and `FluentCMS.Plugins.Media.AzureBlob` put a bucket or a container in the provider slot `IFileStorage`, where new uploads go. Their options are read from the section given and checked at start:
+
+```csharp
+using FluentCMS.Plugins.Media.S3;
+
+cms.AddPlugin<MediaPlugin>(media => media.UseS3(builder.Configuration.GetSection("S3")));
+```
+
+| S3 key | Meaning |
+| --- | --- |
+| `Bucket` | The bucket. Required. |
+| `Endpoint` | An S3-compatible service, such as `http://minio:9000`. Left out, AWS in the region. |
+| `Region` | The AWS region. Left out, the AWS SDK's own (`AWS_REGION` or a profile); with `Endpoint`, the region requests are signed for, `us-east-1` by default. |
+| `KeyPrefix` | Put before every key, such as `media/`. |
+| `ForcePathStyle` | `true` addresses the bucket in the path, as most S3-compatible services need. |
+| `AccessKeyId`, `SecretAccessKey`, `SessionToken` | The access key, both parts or neither. Left out, the AWS SDK's default chain: the environment, a profile, or the role of the instance or task. |
+
+The credentials need `s3:GetObject`, `s3:PutObject`, `s3:DeleteObject` and `s3:ListBucket` on the bucket.
+
+```csharp
+using FluentCMS.Plugins.Media.AzureBlob;
+
+cms.AddPlugin<MediaPlugin>(media => media.UseAzureBlob(builder.Configuration.GetSection("AzureBlob")));
+```
+
+| Azure Blob key | Meaning |
+| --- | --- |
+| `ConnectionString`, `Container` | The connection string of the account and the name of the container. |
+| `ContainerUrl` | Instead of both: `https://{account}.blob.core.windows.net/{container}?{sas}`, with a SAS that grants read, write, delete and list. |
+| `KeyPrefix` | Put before every key, such as `media/`. |
+
+Managed identity is not supported, since it needs `Azure.Identity`.
+
+Objects stay private: keep the bucket's public access blocked and the container's access level private. Bytes leave through `/media` and signed URLs only, never from the bucket or container itself. A variant is stored beside its asset, in the same bucket or container.
+
+Each asset records the storage it was written with. An asset written on the local disk is still served, downloaded and transformed from `Local:Root` after the move, and its variants are written there; replacing it writes the new file to the new storage and deletes the old one from the disk. Keep that directory until its assets are gone. Moving from one cloud storage to another with older assets left behind is not covered.
+
+`/health/ready` includes the check `media-storage` of the storage in the slot: the local disk must take a file in its root, S3 must answer a `HEAD` of the bucket, and Azure Blob must list the container. It is Unhealthy when the bucket or container cannot be reached. A failure is described by its status and error code only, so no log line, health answer or startup report holds a credential.
 
 ## Permissions
 

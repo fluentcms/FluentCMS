@@ -18,7 +18,7 @@ internal sealed record OriginalFile(Stream Content, string MimeType, string Chec
 internal sealed class MediaOriginals(
     PluginDbContext<MediaPlugin> database,
     IOperationContextAccessor operations,
-    IFileStorage storage,
+    MediaStorage storages,
     MediaSigning signing,
     IOptions<MediaOptions> options,
     TimeProvider time)
@@ -78,13 +78,7 @@ internal sealed class MediaOriginals(
             .FirstOrDefaultAsync(item => item.Id == id && item.SiteId == site.Value && item.DeletedAt == null && (download || !item.IsPrivate), cancellationToken)
             ?? throw new PluginException(MediaErrorCodes.AssetNotFound, $"The site has no {(download ? "" : "public ")}media asset {id:D}.");
 
-        // An asset written with another storage is read through it once storage plugins can name theirs (#2836).
-        if (asset.StorageProvider != storage.Name)
-        {
-            throw new InvalidOperationException($"The media asset {asset.Id:D} is in the storage '{asset.StorageProvider}', and this instance has '{storage.Name}'.");
-        }
-
-        var content = await storage.OpenReadAsync(asset.StorageKey, cancellationToken)
+        var content = await storages.Of(asset.StorageProvider).OpenReadAsync(asset.StorageKey, cancellationToken)
             ?? throw new PluginException(MediaErrorCodes.AssetNotFound, $"The bytes of the media asset {asset.Id:D} are missing from the storage.");
         return new OriginalFile(content, asset.MimeType, asset.Checksum, asset.FileName, download);
     }

@@ -37,13 +37,14 @@ internal sealed class MediaPermissions : IPermissionProvider
 // media.presets.manage. Uploads are read to a temporary file, where their type, size, checksum and image size are found,
 // and only when every file of a request passes are they written to the storage, then recorded; a file written for a
 // request that fails is deleted again. A replace writes its file under a key of its own, so that the old file serves until
-// the row names the new one; the old file and the variants are deleted after.
+// the row names the new one; the old file and the variants are deleted after, from the storage the asset recorded. New files
+// go to the storage in the slot.
 internal sealed class MediaService(
     PluginDbContext<MediaPlugin> database,
     IPermissionChecker permissions,
     IOperationContextAccessor operations,
     ISettings<MediaSettings> settings,
-    IFileStorage storage,
+    MediaStorage storages,
     IEventBus events,
     IOptions<MediaOptions> options,
     IImageProcessor processor,
@@ -105,7 +106,7 @@ internal sealed class MediaService(
                 var id = Guid.CreateVersion7();
                 var key = $"{site.Value:N}/{id:N}/original{file.Type.Extension}";
                 file.Content.Position = 0;
-                await storage.WriteAsync(key, file.Content, cancellationToken);
+                await storages.Current.WriteAsync(key, file.Content, cancellationToken);
                 written.Add(key);
                 assets.Add(new Asset
                 {
@@ -113,7 +114,7 @@ internal sealed class MediaService(
                     SiteId = site.Value,
                     FolderId = upload.FolderId,
                     FileName = file.FileName,
-                    StorageProvider = storage.Name,
+                    StorageProvider = storages.Current.Name,
                     StorageKey = key,
                     MimeType = file.Type.MimeType,
                     Size = file.Size,
@@ -395,14 +396,14 @@ internal sealed class MediaService(
         {
             var key = $"{site.Value:N}/{id:N}/original-{Guid.CreateVersion7():N}{prepared.Type.Extension}";
             prepared.Content.Position = 0;
-            await storage.WriteAsync(key, prepared.Content, cancellationToken);
+            await storages.Current.WriteAsync(key, prepared.Content, cancellationToken);
             written = key;
 
             var (oldStorage, oldKey) = (asset.StorageProvider, asset.StorageKey);
             var variants = await database.Set<Variant>().Where(variant => variant.AssetId == id).ToListAsync(cancellationToken);
             database.RemoveRange(variants);
             asset.FileName = prepared.FileName;
-            asset.StorageProvider = storage.Name;
+            asset.StorageProvider = storages.Current.Name;
             asset.StorageKey = key;
             asset.MimeType = prepared.Type.MimeType;
             asset.Size = prepared.Size;
@@ -829,10 +830,9 @@ internal sealed class MediaService(
         }
     }
 
-    // A file in a storage other than this instance's stays where it is until storage plugins can name theirs (#2836).
     private async Task ForgetReplacedAsync(Guid id, string provider, string key)
     {
-        if (provider != storage.Name)
+        if (storages.Find(provider) is not { } storage)
         {
             MediaLog.ReplacedNotDeleted(logger, id, provider, key, null);
             return;
@@ -850,6 +850,7 @@ internal sealed class MediaService(
 
     private async Task ForgetAsync(string key)
     {
+        var storage = storages.Current;
         try
         {
             await storage.DeleteAsync(key, CancellationToken.None);

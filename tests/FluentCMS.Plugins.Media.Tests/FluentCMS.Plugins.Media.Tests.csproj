@@ -5,6 +5,8 @@
     <PackageReference Include="xunit.v3" />
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="Shouldly" />
+    <PackageReference Include="Testcontainers.Azurite" />
+    <PackageReference Include="Testcontainers.Minio" />
     <!-- For `dotnet ef migrations add`, which uses this project as the startup project of the plugin's stream. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
       <PrivateAssets>all</PrivateAssets>
@@ -15,6 +17,8 @@
   <ItemGroup>
     <ProjectReference Include="../../src/FluentCMS.Testing/FluentCMS.Testing.csproj" />
     <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.Media/FluentCMS.Plugins.Media.csproj" />
+    <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.Media.AzureBlob/FluentCMS.Plugins.Media.AzureBlob.csproj" />
+    <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.Media.S3/FluentCMS.Plugins.Media.S3.csproj" />
   </ItemGroup>
 
 </Project>
