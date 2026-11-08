@@ -30,18 +30,10 @@ jobs:
         with:
           globs: "**/*.md"
 
-  build-test:
-    name: Build and test (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    env:
-      # Issue pull requests run only the fast tests on Windows. Feature-branch pull requests,
-      # pushes to main, nightly and manual runs keep the full Windows suite.
-      FULL_TESTS: ${{ matrix.os == 'ubuntu-latest' || github.event_name != 'pull_request' || startsWith(github.head_ref, 'feature/') }}
+  build:
+    name: Build and check (ubuntu-latest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -60,7 +52,6 @@ jobs:
 
       # dotnet list exits 0 even when it finds a vulnerable package, so fail on its report.
       - name: Check vulnerable packages
-        if: matrix.os == 'ubuntu-latest'
         shell: bash
         run: |
           dotnet list FluentCMS.slnx package --vulnerable --include-transitive | tee "$RUNNER_TEMP/vulnerable-packages.txt"
@@ -68,6 +59,79 @@ jobs:
             echo "::error::Vulnerable NuGet packages found. Update them in Directory.Packages.props."
             exit 1
           fi
+
+      - name: Build
+        run: dotnet build -c Release --no-restore -warnaserror
+
+  test:
+    # Each shard builds only its own projects, so the critical path is the slowest shard rather than the whole suite.
+    name: Tests (${{ matrix.group }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - group: units
+            projects: tests/FluentCMS.Sdk.Tests tests/FluentCMS.Core.Tests tests/FluentCMS.Architecture.Tests
+          - group: integration
+            projects: tests/FluentCMS.Core.IntegrationTests
+          - group: plugins
+            projects: tests/FluentCMS.Plugins.Tests tests/FluentCMS.Plugins.Media.Tests tests/FluentCMS.Plugins.Webhooks.Tests tests/FluentCMS.Host.Tests
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: |
+            Directory.Packages.props
+            **/*.csproj
+
+      # Run every project of the shard even after one fails, so one run reports all failures.
+      - name: Test
+        shell: bash
+        run: |
+          status=0
+          for project in ${{ matrix.projects }}; do
+            dotnet test --project "$project" -c Release --report-xunit-trx --results-directory artifacts/test-results || status=1
+          done
+          exit $status
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: test-results-${{ matrix.group }}
+          path: artifacts/test-results
+          retention-days: 14
+
+  build-test-windows:
+    name: Build and test (windows-latest)
+    runs-on: windows-latest
+    timeout-minutes: 20
+    env:
+      # Issue pull requests run only the fast tests on Windows. Feature-branch pull requests,
+      # pushes to main, nightly and manual runs keep the full Windows suite.
+      FULL_TESTS: ${{ github.event_name != 'pull_request' || startsWith(github.head_ref, 'feature/') }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: |
+            Directory.Packages.props
+            **/*.csproj
+
+      - name: Restore
+        run: dotnet restore
 
       - name: Build
         run: dotnet build -c Release --no-restore -warnaserror
@@ -93,7 +157,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          name: test-results-${{ matrix.os }}
+          name: test-results-windows-latest
           path: artifacts/test-results
           retention-days: 14
 
