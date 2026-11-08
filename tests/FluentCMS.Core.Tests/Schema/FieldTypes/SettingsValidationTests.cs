@@ -10,6 +10,7 @@ namespace FluentCMS.Core.Tests.Schema.FieldTypes;
 public class SettingsValidationTests
 {
     private static readonly string[] Layers = ["a", "b"];
+    private static readonly string[] Tones = ["calm", "elevenchars"];
 
     private static SchemaError[] Errors(SchemaBuilder builder) =>
         Should.Throw<SchemaValidationException>(() => builder.Build()).Errors.ToArray();
@@ -94,6 +95,32 @@ public class SettingsValidationTests
 
         error.Code.ShouldBe("FCMS1211");
         error.Message.ShouldBe("setting 'options' of select field article.category must be a list of strings");
+    }
+
+    [Fact]
+    public void ASelectOptionLongerThanItsColumnIsRefused()
+    {
+        var longer = new string('x', 65);
+        var builder = new SchemaBuilder().AddCollection("article", type => type
+            .Field("category", "select", field => field.Setting(FieldSettings.Options, new[] { "news", longer }))
+            .Field("tone", "select", field => field.Length(null, 10).Setting(FieldSettings.Options, Tones)));
+
+        Errors(builder).Select(error => (error.Code, error.Message)).ShouldBe(
+        [
+            ("FCMS1211", $"option '{longer}' of select field article.category has 65 characters; an option has at most 64, unless the field sets a larger maximum length"),
+            ("FCMS1211", "option 'elevenchars' of select field article.tone has 11 characters; an option has at most the field's maximum length of 10"),
+        ]);
+    }
+
+    [Fact]
+    public void ALongerOptionNeedsAMaximumLengthOrAMultipleSelect()
+    {
+        var longer = new string('x', 80);
+
+        Should.NotThrow(() => new SchemaBuilder().AddCollection("article", type => type
+            .Field("category", "select", field => field.Length(null, 80).Setting(FieldSettings.Options, new[] { longer }))
+            .Field("labels", "select", field => field.Multiple().Setting(FieldSettings.Options, new[] { longer })))
+            .Build());
     }
 
     [Fact]

@@ -4,49 +4,49 @@ namespace FluentCMS.Core.Schema;
 
 internal sealed class FieldBuilder(FieldDraft draft) : IFieldBuilder
 {
-    public IFieldBuilder Required(bool required = true)
+    public IFieldBuilder Required(bool required)
     {
         draft.Required = required;
         return this;
     }
 
-    public IFieldBuilder Unique(bool unique = true)
+    public IFieldBuilder Unique(bool unique)
     {
         draft.Unique = unique;
         return this;
     }
 
-    public IFieldBuilder Indexed(bool indexed = true)
+    public IFieldBuilder Indexed(bool indexed)
     {
         draft.Indexed = indexed;
         return this;
     }
 
-    public IFieldBuilder Searchable(bool searchable = true)
+    public IFieldBuilder Searchable(bool searchable)
     {
         draft.Searchable = searchable;
         return this;
     }
 
-    public IFieldBuilder IsReadOnly(bool isReadOnly = true)
+    public IFieldBuilder IsReadOnly(bool isReadOnly)
     {
         draft.ReadOnly = isReadOnly;
         return this;
     }
 
-    public IFieldBuilder Hidden(bool hidden = true)
+    public IFieldBuilder Hidden(bool hidden)
     {
         draft.Hidden = hidden;
         return this;
     }
 
-    public IFieldBuilder Localizable(bool localizable = true)
+    public IFieldBuilder Localizable(bool localizable)
     {
         draft.Localizable = localizable;
         return this;
     }
 
-    public IFieldBuilder Multiple(bool multiple = true)
+    public IFieldBuilder Multiple(bool multiple)
     {
         draft.Multiple = multiple;
         return this;
@@ -73,11 +73,13 @@ internal sealed class FieldBuilder(FieldDraft draft) : IFieldBuilder
         return this;
     }
 
-    public IFieldBuilder Display(string? label = null, string? help = null, string? placeholder = null, string? group = null, string? tab = null, int width = 0)
+    public IFieldBuilder Display(FieldDisplayDescription display)
     {
-        draft.Display = label is null && help is null && placeholder is null && group is null && tab is null && width == 0
+        ArgumentNullException.ThrowIfNull(display);
+
+        draft.Display = display == new FieldDisplayDescription()
             ? null
-            : new FieldDisplay { Label = label, Help = help, Placeholder = placeholder, Group = group, Tab = tab, Width = width };
+            : new FieldDisplay { Label = display.Label, Help = display.Help, Placeholder = display.Placeholder, Group = display.Group, Tab = display.Tab, Width = display.Width };
         return this;
     }
 
@@ -108,7 +110,7 @@ internal sealed class FieldBuilder(FieldDraft draft) : IFieldBuilder
         return this;
     }
 
-    public IFieldBuilder Relation(string target, string? reverse = null, bool ordered = false)
+    public IFieldBuilder Relation(string target, string? reverse, bool ordered)
     {
         ArgumentException.ThrowIfNullOrEmpty(target);
         draft.Relation = new FieldRelation { Target = target, Reverse = reverse, Ordered = ordered };

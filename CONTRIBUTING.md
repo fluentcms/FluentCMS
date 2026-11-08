@@ -62,6 +62,8 @@ Work is planned in milestones, `M0 Foundation` first. The goal and exit criteria
 
 A new NuGet package or GitHub Action is named in its issue, with the version, before it is added, so that it is visible in review. Package versions live in `Directory.Packages.props`. The pull request that adds the dependency repeats it in a "Dependencies" paragraph.
 
+Workflows pin every action to a full commit SHA, with its version tag in a trailing comment. Dependabot proposes weekly updates for actions and NuGet packages, grouping minor and patch updates per ecosystem. CI fails when a direct or transitive package has a known vulnerability, and deprecated packages only raise a warning.
+
 ## Pull requests
 
 The description contains, in this order:

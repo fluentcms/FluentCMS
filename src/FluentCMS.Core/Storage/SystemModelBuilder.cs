@@ -95,11 +95,11 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         modelBuilder.Entity<RoleGrant>().HasData(RoleSeed.Permissions());
     }
 
-    private static void MapSite(EntityTypeBuilder<Site> entity)
+    private void MapSite(EntityTypeBuilder<Site> entity)
     {
         entity.ToTable(StorageNames.Site);
         MapColumnNames(entity);
-        entity.Property(site => site.Id).HasValueGenerator<GuidV7ValueGenerator>();
+        conventions.ConfigureKey(entity.Property(site => site.Id));
         entity.Property(site => site.Name).HasMaxLength(SiteNameLength);
         entity.Property(site => site.Slug).HasMaxLength(SlugLength);
         entity.Property(site => site.DefaultLocale).HasMaxLength(StorageNames.LocaleLength);
@@ -118,11 +118,11 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         entity.HasOne<Site>().WithMany().HasForeignKey(locale => locale.SiteId).OnDelete(DeleteBehavior.Cascade);
     }
 
-    private static void MapDocument(EntityTypeBuilder<Document> entity)
+    private void MapDocument(EntityTypeBuilder<Document> entity)
     {
         entity.ToTable(StorageNames.Document);
         MapColumnNames(entity);
-        entity.Property(document => document.Id).HasValueGenerator<GuidV7ValueGenerator>();
+        conventions.ConfigureKey(entity.Property(document => document.Id));
         entity.Property(document => document.Locale).HasMaxLength(StorageNames.LocaleLength);
         entity.Property(document => document.Type).HasMaxLength(NameLength);
         entity.Property(document => document.Status).HasConversion<string>().HasMaxLength(StatusLength);
@@ -144,11 +144,11 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         entity.HasQueryFilter(document => document.DeletedAt == null);
     }
 
-    private static void MapReference(EntityTypeBuilder<Reference> entity)
+    private void MapReference(EntityTypeBuilder<Reference> entity)
     {
         entity.ToTable(StorageNames.Reference);
         MapColumnNames(entity);
-        entity.Property(reference => reference.Id).HasValueGenerator<GuidV7ValueGenerator>();
+        conventions.ConfigureKey(entity.Property(reference => reference.Id));
         entity.Property(reference => reference.SourceType).HasMaxLength(NameLength);
         entity.Property(reference => reference.Locale).HasMaxLength(StorageNames.LocaleLength);
         entity.Property(reference => reference.Field).HasMaxLength(NameLength);
@@ -166,7 +166,7 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
     {
         entity.ToTable(StorageNames.Version);
         MapColumnNames(entity);
-        entity.Property(version => version.Id).HasValueGenerator<GuidV7ValueGenerator>();
+        conventions.ConfigureKey(entity.Property(version => version.Id));
         entity.Property(version => version.Locale).HasMaxLength(StorageNames.LocaleLength);
         entity.Property(version => version.StatusAfter).HasConversion<string>().HasMaxLength(StatusLength);
         entity.Property(version => version.Origin).HasConversion<string>().HasMaxLength(StatusLength);
@@ -177,11 +177,11 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
             .HasDatabaseName("uq_cms_version_document_locale_number");
     }
 
-    private static void MapRole(EntityTypeBuilder<Role> entity)
+    private void MapRole(EntityTypeBuilder<Role> entity)
     {
         entity.ToTable(StorageNames.Role);
         MapColumnNames(entity);
-        entity.Property(role => role.Id).HasValueGenerator<GuidV7ValueGenerator>();
+        conventions.ConfigureKey(entity.Property(role => role.Id));
         entity.Property(role => role.Name).HasMaxLength(RoleNameLength);
         entity.Property(role => role.Description).HasMaxLength(RoleDescriptionLength);
         entity.Property(role => role.PermissionsVersion).IsConcurrencyToken();
@@ -205,7 +205,7 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
     {
         entity.ToTable(StorageNames.RolePermission);
         MapColumnNames(entity);
-        entity.Property(grant => grant.Id).HasValueGenerator<GuidV7ValueGenerator>();
+        conventions.ConfigureKey(entity.Property(grant => grant.Id));
         entity.Property(grant => grant.Permission).HasMaxLength(PermissionLength);
         conventions.ConfigureJsonColumn(entity, entity.Property(grant => grant.Constraints));
 
@@ -214,11 +214,11 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
             .HasDatabaseName("ix_cms_role_permission_role_permission");
     }
 
-    private static void MapUser(EntityTypeBuilder<CmsUser> entity)
+    private void MapUser(EntityTypeBuilder<CmsUser> entity)
     {
         entity.ToTable(StorageNames.User);
         MapColumnNames(entity);
-        entity.Property(user => user.Id).HasValueGenerator<GuidV7ValueGenerator>();
+        conventions.ConfigureKey(entity.Property(user => user.Id));
         entity.Property(user => user.UserName).HasMaxLength(UserNameLength);
         entity.Property(user => user.NormalizedUserName).HasMaxLength(UserNameLength);
         entity.Property(user => user.Email).HasMaxLength(EmailLength);
@@ -289,7 +289,7 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
     {
         entity.ToTable(StorageNames.Invitation);
         MapColumnNames(entity);
-        entity.Property(invitation => invitation.Id).HasValueGenerator<GuidV7ValueGenerator>();
+        conventions.ConfigureKey(entity.Property(invitation => invitation.Id));
         entity.Property(invitation => invitation.Email).HasMaxLength(EmailLength);
         entity.Property(invitation => invitation.NormalizedEmail).HasMaxLength(EmailLength);
         entity.Property(invitation => invitation.TokenHash).HasMaxLength(HashLength);
@@ -308,7 +308,7 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
     {
         entity.ToTable(StorageNames.ApiKey);
         MapColumnNames(entity);
-        entity.Property(key => key.Id).HasValueGenerator<GuidV7ValueGenerator>();
+        conventions.ConfigureKey(entity.Property(key => key.Id));
         entity.Property(key => key.Name).HasMaxLength(KeyNameLength);
         entity.Property(key => key.Class).HasConversion(keyClass => ApiKeyFormat.Scope(keyClass), scope => ClassOf(scope)).HasMaxLength(StatusLength);
         entity.Property(key => key.KeyPrefix).HasMaxLength(ApiKeyFormat.LookupLength);
@@ -324,11 +324,11 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         entity.HasIndex(key => key.KeyHash).IsUnique().HasDatabaseName("uq_cms_api_key_key_hash");
     }
 
-    private static void MapOidc<T>(EntityTypeBuilder<T> entity, string table)
+    private void MapOidc<T>(EntityTypeBuilder<T> entity, string table)
         where T : class
     {
         entity.ToTable(table);
-        entity.Property("Id").HasValueGenerator<GuidV7ValueGenerator>();
+        conventions.ConfigureKey(entity.Property("Id"));
         foreach (var property in entity.Metadata.GetProperties())
         {
             property.SetColumnName(StorageNames.Column(property.Name));
@@ -341,20 +341,20 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
         }
     }
 
-    private static void MapSigningKey(EntityTypeBuilder<SigningKey> entity)
+    private void MapSigningKey(EntityTypeBuilder<SigningKey> entity)
     {
         entity.ToTable(StorageNames.SigningKey);
         MapColumnNames(entity);
-        entity.Property(key => key.Id).HasValueGenerator<GuidV7ValueGenerator>();
+        conventions.ConfigureKey(entity.Property(key => key.Id));
         entity.Property(key => key.Use).HasMaxLength(StatusLength);
         entity.Property(key => key.Algorithm).HasMaxLength(AlgorithmLength);
     }
 
-    private static void MapDataProtectionKey(EntityTypeBuilder<DataProtectionKey> entity)
+    private void MapDataProtectionKey(EntityTypeBuilder<DataProtectionKey> entity)
     {
         entity.ToTable(StorageNames.DataProtectionKey);
         MapColumnNames(entity);
-        entity.Property(key => key.Id).HasValueGenerator<GuidV7ValueGenerator>();
+        conventions.ConfigureKey(entity.Property(key => key.Id));
         entity.Property(key => key.FriendlyName).HasMaxLength(FriendlyNameLength);
     }
 
@@ -365,7 +365,7 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
     {
         entity.ToTable(StorageNames.Job);
         MapColumnNames(entity);
-        entity.Property(job => job.Id).HasValueGenerator<GuidV7ValueGenerator>();
+        conventions.ConfigureKey(entity.Property(job => job.Id));
         entity.Property(job => job.Type).HasMaxLength(JobTypeLength);
         entity.Property(job => job.Queue).HasMaxLength(QueueLength);
         entity.Property(job => job.Status).HasMaxLength(StatusLength);
@@ -421,7 +421,7 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
     {
         entity.ToTable(StorageNames.Outbox);
         MapColumnNames(entity);
-        entity.Property(message => message.Id).HasValueGenerator<GuidV7ValueGenerator>();
+        conventions.ConfigureKey(entity.Property(message => message.Id));
         entity.Property(message => message.EventType).HasMaxLength(EventTypeLength);
         entity.Property(message => message.Handler).HasMaxLength(HandlerLength);
         entity.Property(message => message.Status).HasMaxLength(StatusLength);
@@ -449,7 +449,7 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
     {
         entity.ToTable(StorageNames.Activity);
         MapColumnNames(entity);
-        entity.Property(row => row.Id).HasValueGenerator<GuidV7ValueGenerator>();
+        conventions.ConfigureKey(entity.Property(row => row.Id));
         entity.Property(row => row.ActorType).HasConversion<string>().HasMaxLength(StatusLength);
         entity.Property(row => row.ActorName).HasMaxLength(ActorNameLength);
         entity.Property(row => row.Origin).HasConversion<string>().HasMaxLength(StatusLength);
@@ -482,7 +482,7 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
     {
         entity.ToTable(StorageNames.Schedule);
         MapColumnNames(entity);
-        entity.Property(row => row.Id).HasValueGenerator<GuidV7ValueGenerator>();
+        conventions.ConfigureKey(entity.Property(row => row.Id));
         entity.Property(row => row.Locale).HasMaxLength(StorageNames.LocaleLength);
         entity.Property(row => row.Action).HasMaxLength(StatusLength);
         entity.Property(row => row.TimeZone).HasMaxLength(TimeZoneLength);
@@ -506,7 +506,7 @@ internal sealed class SystemModelBuilder(IStorageConventions conventions)
     {
         entity.ToTable(StorageNames.Setting);
         MapColumnNames(entity);
-        entity.Property(row => row.Id).HasValueGenerator<GuidV7ValueGenerator>();
+        conventions.ConfigureKey(entity.Property(row => row.Id));
         entity.Property(row => row.Key).HasMaxLength(SettingKeyLength);
         conventions.ConfigureJsonColumn(entity, entity.Property(row => row.Json));
 

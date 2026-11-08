@@ -146,8 +146,8 @@ public class BlogSeeder : ISeeder
             cancellationToken);
         if (!notes.InTrash && (first || notes.Created) && notes.Entry.Status == EntryStatus.Draft)
         {
-            var at = context.Time.GetUtcNow().UtcDateTime.Add(ScheduleDelay);
-            await ConvergeAsync(() => articles.ScheduleAsync(notes.Entry.Id, new ScheduleRequest(ScheduleAction.Publish, at), cancellationToken: cancellationToken));
+            var at = context.Time.GetUtcNow().Add(ScheduleDelay);
+            await ConvergeAsync(() => articles.ScheduleAsync(notes.Entry.Id, ScheduleRequest.At(ScheduleAction.Publish, at), cancellationToken: cancellationToken));
         }
     }
 
@@ -263,7 +263,7 @@ public class BlogSeeder : ISeeder
 
             if ((first || createdFrench) && french.Status == EntryStatus.Draft)
             {
-                await ConvergeAsync(() => articles.PublishAsync(french.Id, BlogSample.SecondLocale, cancellationToken: cancellationToken));
+                await ConvergeAsync(() => articles.PublishAsync(french.Id, new LocaleWriteOptions { Locale = BlogSample.SecondLocale }, cancellationToken));
             }
         }
 

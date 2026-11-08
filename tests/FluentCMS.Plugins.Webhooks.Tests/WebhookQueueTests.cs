@@ -101,12 +101,30 @@ public sealed class WebhookQueueTests
         await receiver.ArrivedAsync(2).WaitAsync(Patience, Token);
 
         var scheduled = await articles.CreateAsync(new Article { Title = "Scheduled" }, Token);
-        await articles.ScheduleAsync(scheduled.Id, new ScheduleRequest(ScheduleAction.Publish, host.Time.GetUtcNow().UtcDateTime.AddSeconds(30)), cancellationToken: Token);
+        await articles.ScheduleAsync(scheduled.Id, ScheduleRequest.At(ScheduleAction.Publish, host.Time.GetUtcNow().AddSeconds(30)), cancellationToken: Token);
         host.Time.Advance(TimeSpan.FromSeconds(30));
 
         await published.Of(scheduled.Id).WaitAsync(Patience, Token);
         receiver.Requests.Count.ShouldBe(2, "the receiver holds both workers of the webhooks queue, and the third delivery waits for one");
         receiver.Release();
+    }
+
+    // With an hour between polls, only the wakes of the outbox kick and of the delivery's enqueue can send it in time.
+    [Fact]
+    public async Task AnIdleInstanceSendsADeliveryAtOnceRatherThanAtItsNextPoll()
+    {
+        await using var receiver = await TestReceiver.StartAsync();
+        await using var host = new FluentCmsTestHost()
+            .WithContentTypes<Article, Page>()
+            .WithServices(services => services.PostConfigure<WebhooksOptions>(options => options.AllowPrivateNetworks = true))
+            .Configure(cms => cms.Jobs.Options.PollInterval = TimeSpan.FromHours(1));
+        using var client = await AdminAsync(host);
+        await CreateAsync(client, new { name = "builds", url = receiver.Url().ToString(), events = new List<string> { "content.published" } });
+        var articles = host.As(await host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token)).Content<Article>();
+
+        await articles.PublishAsync((await articles.CreateAsync(new Article { Title = "Now" }, Token)).Id, cancellationToken: Token);
+
+        await receiver.ArrivedAsync(1).WaitAsync(Patience, Token);
     }
 
     [Fact]

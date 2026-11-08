@@ -81,6 +81,20 @@ public sealed class ContentRoundTripTests : IDisposable
         _database.Versions(IdOf(created)).ShouldHaveSingleItem().Snapshot.ShouldContain($"\"id\":\"{block}\"");
     }
 
+    [Fact]
+    public async Task ListingVersionsLeavesTheSnapshotsInTheDatabase()
+    {
+        var id = IdOf(await _database.CreateAsync(Editor, new() { ["title"] = "Post" }, "post"));
+        await _database.UpdateAsync(Editor, id, new() { ["title"] = "Post two" }, 1, "post");
+
+        var versions = await _trips.CountAsync(() => _database.VersionsAsync(Editor, id, type: "post"));
+
+        versions.Select(version => version.Number).ShouldBe([2, 1]);
+        var read = _trips.Sent.Where(sql => sql.Contains("FROM \"cms_version\"", StringComparison.Ordinal)).ShouldHaveSingleItem();
+        read.ShouldContain("\"status_after\"");
+        read.ShouldNotContain("snapshot");
+    }
+
     private static async Task<int> CopiesAsync<T>(Func<Task<T>> work)
     {
         var copies = new StrongBox<int>();
@@ -133,7 +147,7 @@ public sealed class ContentRoundTripTests : IDisposable
         await _trips.CountAsync(() => _database.PublishAsync(principal, id, type: "post"));
         var publish = _trips.Count;
 
-        await _trips.CountAsync(() => _database.AsAsync(principal, services => services.GetRequiredService<IContentService>().ScheduleAsync("post", id, new ScheduleRequest(ScheduleAction.Publish, DateTime.UtcNow.AddDays(1)), null, Token)));
+        await _trips.CountAsync(() => _database.AsAsync(principal, services => services.GetRequiredService<IContentService>().ScheduleAsync("post", id, ScheduleRequest.At(ScheduleAction.Publish, DateTimeOffset.UtcNow.AddDays(1)), null, Token)));
         var schedule = _trips.Count;
 
         await _trips.CountAsync(() => _database.DiffAsync(principal, id, 1, 2, type: "post"));

@@ -26,7 +26,11 @@ public sealed class HookContext<T>
     /// <summary>Who performs the operation, from where, on which site and in which locale.</summary>
     public OperationContext Operation { get; }
 
-    /// <summary>The entry the operation works on. A before hook may change it, and the change is what gets stored.</summary>
+    /// <summary>
+    /// The entry the operation works on. A before hook may change it, and the change is what gets stored. An after hook gets a
+    /// copy of what was written: the write is done, so a change to the copy is discarded and never stored.
+    /// The type cannot say so, because a content class or a <see cref="ContentDocument"/> can always be written to.
+    /// </summary>
     public T Entry { get; }
 
     /// <summary>The stored state before the operation; <see langword="null"/> when an entry is created.</summary>
@@ -34,6 +38,13 @@ public sealed class HookContext<T>
 
     /// <summary>The paths of the fields that differ between <see cref="Previous"/> and <see cref="Entry"/>, such as <c>title</c>, <c>seo.metaTitle</c> or <c>sections[2].heading</c>. A list whose length changed is reported as the list.</summary>
     public IReadOnlyList<string> ChangedPaths { get; }
+
+    /// <summary>
+    /// The locales the operation acts on. A delete or a restore acts on every locale of the entry, while <see cref="Entry"/>
+    /// holds the values of one of them; any other operation acts on the one locale of <see cref="Entry"/>. A type that is
+    /// not localized has the one locale <c>""</c>, as in its events.
+    /// </summary>
+    public IReadOnlyList<string> Locales { get; init; } = [];
 
     /// <summary>Whether <see cref="Cancel"/> was called.</summary>
     public bool IsCancelled { get; private set; }

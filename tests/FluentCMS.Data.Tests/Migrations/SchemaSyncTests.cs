@@ -6,6 +6,7 @@ using FluentCMS.Data.PostgreSql;
 using FluentCMS.Data.Sqlite;
 using FluentCMS.Data.SqlServer;
 using FluentCMS.Data.Tests.Sqlite;
+using FluentCMS.Providers;
 using FluentCMS.Schema;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -240,6 +241,31 @@ public sealed class SchemaSyncTests : IDisposable
 
         (await Runner(host).SyncContentSchemaAsync(ArticleSchemas.WithSubtitle, Token)).Applied.ShouldNotBeEmpty();
         (await Runner(host).SyncContentSchemaAsync(ArticleSchemas.WithSubtitle, Token)).Applied.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task ASyncWaitsForAnotherNodeAndAppliesOnlyWhatIsStillMissing()
+    {
+        using var host = DevelopmentHost(ArticleSchemas.Titled);
+        await host.StartAsync(Token);
+
+        Task<SchemaSyncReport> sync;
+        await using (var other = await host.Services.GetRequiredService<IDistributedLock>().TryAcquireAsync(MigrationRunner.SchemaSyncLock, TimeSpan.Zero, Token))
+        {
+            other.ShouldNotBeNull();
+            sync = Runner(host).SyncContentSchemaAsync(ArticleSchemas.WithSubtitle, Token);
+            await Task.Delay(TimeSpan.FromSeconds(1), Token);
+            sync.IsCompleted.ShouldBeFalse();
+
+            // The node that holds the lock adds the column, which the waiting one would otherwise add a second time.
+            _database.Execute("alter table cms_article add column subtitle TEXT NULL");
+        }
+
+        var report = await sync;
+
+        report.Applied.ShouldBeEmpty();
+        report.NotApplied.ShouldBeEmpty();
+        _database.Columns("cms_article").ShouldContain("subtitle");
     }
 
     [Fact]

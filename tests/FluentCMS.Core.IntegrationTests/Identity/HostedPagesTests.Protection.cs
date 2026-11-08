@@ -191,9 +191,9 @@ public sealed partial class HostedPagesTests
             unknown.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         }
 
-        var rows = await ActivityAsync(host, "user.login_", count: 2);
-        Details(rows.Single(row => row.Action == "user.login_failed"))["reason"].ShouldBe(LoginFailureReasons.UnknownUser);
-        Details(rows.Single(row => row.Action == "user.login_succeeded"))["method"].ShouldBe(LoginMethods.External);
+        // Each action is awaited on its own: user.login_linked shares the prefix, and the rows arrive in any order.
+        Details((await ActivityAsync(host, "user.login_failed", count: 1)).Single())["reason"].ShouldBe(LoginFailureReasons.UnknownUser);
+        Details((await ActivityAsync(host, "user.login_succeeded", count: 1)).Single())["method"].ShouldBe(LoginMethods.External);
     }
 
     [Fact]

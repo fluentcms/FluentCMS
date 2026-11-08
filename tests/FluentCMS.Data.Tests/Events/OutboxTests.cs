@@ -1,14 +1,18 @@
+using System.Data.Common;
 using FluentCMS.Content;
 using FluentCMS.Core.Content.Hooks;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Events;
+using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Data.Tests.Content;
 using FluentCMS.Data.Tests.Jobs;
 using FluentCMS.Events;
 using FluentCMS.Jobs;
+using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Shouldly;
@@ -24,8 +28,33 @@ public sealed class OutboxTests
     private static Task<int> DrainAsync(IServiceProvider instance) =>
         instance.GetRequiredService<OutboxDrainer>().DrainAsync(Token);
 
-    private static Task<int> PruneAsync(IServiceProvider instance) =>
-        instance.GetRequiredService<OutboxDrainer>().DrainAsync(prune: true, Token);
+    private static async Task PruneAsync(IServiceProvider instance)
+    {
+        using var scope = instance.CreateScope();
+        var operation = new OperationContext(Principal.System, Origin.Job, new SiteId(Guid.Empty), "en", null, "prune", DateTimeOffset.UtcNow);
+        await scope.ServiceProvider.GetRequiredService<OutboxPruneJob>().ExecuteAsync(
+            new OutboxPrunePayload(),
+            new JobContext(Guid.CreateVersion7(), OutboxPruneJob.Type, JobRunnerOptions.DefaultQueue, 1, 3, operation, Token));
+    }
+
+    // The update that claims a batch is the only one on cms_outbox that does not name the attempts.
+    private sealed class ClaimCounter : DbCommandInterceptor
+    {
+        private int _claims;
+
+        public int Claims => Volatile.Read(ref _claims);
+
+        public override ValueTask<int> NonQueryExecutedAsync(DbCommand command, CommandExecutedEventData eventData, int result, CancellationToken cancellationToken = default)
+        {
+            var text = command.CommandText;
+            if (text.StartsWith("UPDATE", StringComparison.OrdinalIgnoreCase) && text.Contains("cms_outbox", StringComparison.Ordinal) && !text.Contains("attempts", StringComparison.Ordinal))
+            {
+                Interlocked.Increment(ref _claims);
+            }
+
+            return ValueTask.FromResult(result);
+        }
+    }
 
     [Fact]
     public async Task TheRowIsWrittenWithTheWriteAndNamesTheSameEventAsTheHandlersOfThisProcess()
@@ -134,6 +163,47 @@ public sealed class OutboxTests
         seen.Of<EntryDraftSavedEvent>().Select(heard => heard.EventId).Distinct().Count().ShouldBe(entries);
         seen.Deliveries.ShouldAllBe(delivery => delivery.Attempt == 1);
         database.Rows().ShouldAllBe(row => row.Status == OutboxStatus.Delivered);
+    }
+
+    // Each claim has an owner of its own, so a drain reads back only the rows its own claim won.
+    [Fact]
+    public async Task DrainsOfOneInstanceRunningTogetherDeliverEachEventOnce()
+    {
+        const int entries = 12;
+        var seen = new Seen();
+        seen.Behavior = async (_, _) => await Task.Delay(3);
+        using var database = new ServiceDatabase(EventRegistrations.Outbox(seen, cms => cms.Events.Outbox.BatchSize = 4));
+        for (var index = 0; index < entries; index++)
+        {
+            await database.CreateAsync(Editor, Titled($"T{index}"));
+        }
+
+        var delivered = await Task.WhenAll(Enumerable.Range(0, 3).Select(_ => Task.Run(() => DrainAsync(database.Database.Services), Token)));
+
+        delivered.Sum().ShouldBe(entries);
+        seen.Deliveries.Count.ShouldBe(entries);
+        seen.Deliveries.Select(delivery => delivery.Key).Distinct().Count().ShouldBe(entries);
+        database.Rows().ShouldAllBe(row => row.Status == OutboxStatus.Delivered);
+    }
+
+    [Fact]
+    public async Task ABatchIsClaimedWithOneStatement()
+    {
+        var seen = new Seen();
+        var claims = new ClaimCounter();
+        using var database = new ServiceDatabase(EventRegistrations.Outbox(seen, cms =>
+        {
+            cms.Events.Outbox.BatchSize = 3;
+            cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(claims));
+        }));
+        for (var index = 0; index < 6; index++)
+        {
+            await database.CreateAsync(Editor, Titled($"T{index}"));
+        }
+
+        (await DrainAsync(database.Database.Services)).ShouldBe(6);
+
+        claims.Claims.ShouldBe(2);
     }
 
     [Fact]
@@ -280,6 +350,65 @@ public sealed class OutboxTests
         database.Rows().ShouldBeEmpty();
     }
 
+    // Counted from when the row failed, not from when its event happened, so that a delivery that failed late stays as long.
+    [Fact]
+    public async Task FailedRowsStayUnlessAFailedRetentionIsSetAndThenGoThatLongAfterTheyFailed()
+    {
+        var seen = new Seen();
+        seen.Behavior = (_, _) => throw new InvalidOperationException("The endpoint is down.");
+        var clock = new ManualTimeProvider(JobFixture.Start);
+        using var database = new ServiceDatabase(EventRegistrations.Outbox(seen, cms =>
+        {
+            cms.Services.AddSingleton<TimeProvider>(clock);
+            cms.Events.Outbox.MaxAttempts = 1;
+        }));
+        await database.CreateAsync(Editor, Titled("T"));
+        clock.Advance(TimeSpan.FromDays(10));
+        await DrainAsync(database.Database.Services);
+        var failed = database.Rows().Single();
+        failed.Status.ShouldBe(OutboxStatus.Failed);
+        failed.AvailableAt.ShouldBe(clock.GetUtcNow());
+
+        using var keeping = database.Database.NewInstance(EventRegistrations.Outbox(seen, cms =>
+        {
+            cms.Services.AddSingleton<TimeProvider>(clock);
+            cms.Events.Outbox.FailedRetention = TimeSpan.FromDays(1);
+        }));
+        clock.Advance(TimeSpan.FromHours(23));
+        await PruneAsync(keeping);
+        database.Rows().ShouldHaveSingleItem();
+
+        clock.Advance(TimeSpan.FromDays(400));
+        await PruneAsync(database.Database.Services);
+        database.Rows().ShouldHaveSingleItem();
+
+        await PruneAsync(keeping);
+        database.Rows().ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task ThePruneRemovesInBatchesAndLeavesPendingRows()
+    {
+        var seen = new Seen();
+        using var database = new ServiceDatabase(EventRegistrations.Outbox(seen, cms =>
+        {
+            cms.Events.Outbox.Retention = TimeSpan.Zero;
+            cms.Events.Outbox.PruneBatchSize = 2;
+        }));
+        for (var index = 0; index < 5; index++)
+        {
+            await database.CreateAsync(Editor, Titled($"T{index}"));
+        }
+
+        await DrainAsync(database.Database.Services);
+        await database.CreateAsync(Editor, Titled("Pending"));
+        await Task.Delay(5, Token);
+
+        await PruneAsync(database.Database.Services);
+
+        database.Rows().ShouldHaveSingleItem().Status.ShouldBe(OutboxStatus.Pending);
+    }
+
     [Fact]
     public async Task ARunningJobRunnerDeliversAfterTheCommit()
     {
@@ -338,8 +467,14 @@ public sealed class OutboxTests
         recurring.Type.ShouldBe(OutboxDrainJob.Type);
         recurring.Cron.ShouldBe("* * * * *");
         recurring.Queue.ShouldBe(OutboxDrainJob.Queue);
-        recurring.Payload.ShouldContain("true");
+        recurring.Payload.ShouldBe("{}");
         recurring.Enabled.ShouldBeTrue();
+
+        var prune = database.Read(context => context.Set<RecurringJob>().AsNoTracking().Single(job => job.Name == OutboxPruneJob.RecurringName));
+        prune.Type.ShouldBe(OutboxPruneJob.Type);
+        prune.Cron.ShouldBe("0 * * * *");
+        prune.Queue.ShouldBe(JobRunnerOptions.DefaultQueue);
+        prune.Enabled.ShouldBeTrue();
     }
 
     [Fact]
@@ -377,7 +512,7 @@ public sealed class OutboxTests
         clock.Advance(TimeSpan.FromSeconds(30));
         await Eventually.CompletesAsync(schedule.ExecuteTask!, () => clock.Advance(TimeSpan.FromSeconds(30)));
 
-        database.Read(context => context.Set<RecurringJob>().AsNoTracking().Count()).ShouldBe(1);
+        database.Read(context => context.Set<RecurringJob>().AsNoTracking().Count()).ShouldBe(2);
     }
 
     [Fact]

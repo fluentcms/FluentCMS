@@ -247,7 +247,7 @@ public sealed class ApiKeyBoundaryTests : IDisposable
         read.ShouldNotBeNull()["author"].ShouldBeNull();
 
         await ShouldBeHiddenAsync(() => AsAsync(bound, content => content.QueryAsync("article", new ContentQuery { Filter = new FieldFilter("author.name", FilterOperator.Equal, "Ann") }, Token)));
-        await ShouldBeHiddenAsync(() => AsAsync(bound, content => content.CountAsync("author", null, QueryStatus.Published, Token)));
+        await ShouldBeHiddenAsync(() => AsAsync(bound, content => content.CountAsync("author", null, Token)));
         await ShouldBeHiddenAsync(() => AsAsync(bound, content => content.GetAsync("author", author, null, Token)));
         await Should.ThrowAsync<ContentAccessDeniedException>(() => AsAsync(bound, content => content.BulkAsync("author", new BulkRequest { Operation = BulkOperation.Delete, Items = [new BulkItem(author)] }, Token)));
     }
@@ -264,10 +264,10 @@ public sealed class ApiKeyBoundaryTests : IDisposable
 
         (await AsAsync(bound, content => content.QueryAsync("article", new ContentQuery(), Token), SiteA)).Items.ShouldBeEmpty();
         await Should.ThrowAsync<ValidationException>(() => AsAsync(bound, content => content.QueryAsync("article", new ContentQuery { Site = SiteB }, Token), SiteA));
-        await ShouldBeHiddenAsync(() => AsAsync(bound, content => content.CountAsync("article", null, QueryStatus.Published, Token), SiteB));
+        await ShouldBeHiddenAsync(() => AsAsync(bound, content => content.CountAsync("article", null, Token), SiteB));
         var bulk = await AsAsync(bound, content => content.BulkAsync("article", new BulkRequest { Operation = BulkOperation.Unpublish, Items = [new BulkItem(inB)] }, Token), SiteA);
         bulk.Items.ShouldHaveSingleItem().Status.ShouldBe(BulkItemStatus.Failed);
-        await Should.ThrowAsync<ContentAccessDeniedException>(() => AsAsync(bound, content => content.ScheduleAsync("article", inB, new ScheduleRequest(ScheduleAction.Unpublish, IdentityFixture.Start.UtcDateTime.AddDays(1)), cancellationToken: Token), SiteB));
+        await Should.ThrowAsync<ContentAccessDeniedException>(() => AsAsync(bound, content => content.ScheduleAsync("article", inB, ScheduleRequest.At(ScheduleAction.Unpublish, IdentityFixture.Start.AddDays(1)), cancellationToken: Token), SiteB));
 
         (await AsAsync(bound, content => content.GetAsync("tag", tag, null, Token), SiteA)).ShouldNotBeNull();
         await ShouldBeHiddenAsync(() => AsAsync(bound, content => content.GetAsync("tag", tag, null, Token), SiteB));
@@ -287,7 +287,7 @@ public sealed class ApiKeyBoundaryTests : IDisposable
         await Should.ThrowAsync<ContentAccessDeniedException>(() => AsAsync(key, content => content.PublishAsync("article", id, cancellationToken: Token)));
         await Should.ThrowAsync<ContentAccessDeniedException>(() => AsAsync(key, content => content.PatchAsync("article", id, new ContentDocument { ["title"] = "y" }, 1, Token)));
         await Should.ThrowAsync<ContentAccessDeniedException>(() => AsAsync(key, content => content.BulkAsync("article", new BulkRequest { Operation = BulkOperation.Delete, Items = [new BulkItem(id)] }, Token)));
-        await Should.ThrowAsync<ContentAccessDeniedException>(() => AsAsync(key, content => content.ScheduleAsync("article", id, new ScheduleRequest(ScheduleAction.Publish, IdentityFixture.Start.UtcDateTime.AddDays(1)), cancellationToken: Token)));
+        await Should.ThrowAsync<ContentAccessDeniedException>(() => AsAsync(key, content => content.ScheduleAsync("article", id, ScheduleRequest.At(ScheduleAction.Publish, IdentityFixture.Start.AddDays(1)), cancellationToken: Token)));
         _fixture.Database.Document(id).Status.ShouldBe(EntryStatus.Draft);
     }
 

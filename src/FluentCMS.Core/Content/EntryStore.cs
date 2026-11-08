@@ -35,8 +35,8 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
             rows = rows.Where(document => document.SiteId == siteId);
         }
 
-        var found = await rows.ToListAsync(cancellationToken);
-        return [.. found.OrderBy(document => document.Id)];
+        // Not by id alone: a generated id is time-ordered on SQLite and PostgreSQL only, and .NET orders it differently from SQL Server.
+        return await rows.OrderBy(document => document.CreatedAt).ThenBy(document => document.Id).ToListAsync(cancellationToken);
     }
 
     public Task<bool> AnyEntryAsync(SchemaType type, SiteId site, CancellationToken cancellationToken)
@@ -163,12 +163,6 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
 
         return affected == 1;
     }
-
-    // The draft of the shared row changed under the other locales, so their published state no longer equals it.
-    public Task MarkOtherLocalesModifiedAsync(Guid id, string locale, CancellationToken cancellationToken) =>
-        context.Documents
-            .Where(document => document.DocumentId == id && document.Locale != locale && document.Status == EntryStatus.Published)
-            .ExecuteUpdateAsync(set => set.SetProperty(document => document.Status, EntryStatus.Modified), cancellationToken);
 
     public Task SetTrashedAsync(Guid id, DateTimeOffset? at, Guid? by, CancellationToken cancellationToken) =>
         context.Documents.IgnoreQueryFilters()
@@ -378,14 +372,13 @@ internal sealed class EntryStore(CmsDbContext context, SchemaModel schema)
             .Where(document => document.DocumentId == id && document.Locale == locale)
             .ExecuteUpdateAsync(set => set.SetProperty(document => document.Status, status), cancellationToken);
 
-    public async Task<List<ContentVersion>> VersionsAsync(Guid id, string locale, CancellationToken cancellationToken)
-    {
-        var versions = await context.Versions.AsNoTracking()
+    // Without the snapshot, the large column of cms_version.
+    public Task<List<VersionInfo>> VersionsAsync(Guid id, string locale, CancellationToken cancellationToken) =>
+        context.Versions.AsNoTracking()
             .Where(version => version.DocumentId == id && version.Locale == locale)
+            .OrderByDescending(version => version.Number)
+            .Select(version => new VersionInfo(version.Number, version.Locale, version.StatusAfter, version.AuthorId, version.Origin, version.ClientId, version.Message, version.CreatedAt))
             .ToListAsync(cancellationToken);
-
-        return [.. versions.OrderByDescending(version => version.Number)];
-    }
 
     public Task<ContentVersion?> VersionAsync(Guid id, string locale, int number, CancellationToken cancellationToken) =>
         context.Versions.AsNoTracking()

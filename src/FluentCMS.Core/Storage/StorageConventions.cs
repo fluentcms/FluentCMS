@@ -24,4 +24,7 @@ public class StorageConventions : IStorageConventions
     public virtual void ConfigureJsonIndex(EntityTypeBuilder entity, string column)
     {
     }
+
+    // A v7 value sorts by time as text (SQLite) and as bytes (PostgreSQL).
+    public virtual void ConfigureKey(PropertyBuilder key) => key.HasValueGenerator<GuidV7ValueGenerator>();
 }

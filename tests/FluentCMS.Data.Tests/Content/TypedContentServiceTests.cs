@@ -47,13 +47,13 @@ public sealed class TypedContentServiceTests : IDisposable
     public async Task ASchedulePutThroughTheTypedServiceIsTheOneTheDocumentServiceKeeps()
     {
         var tag = await AsAsync<Tag, Tag>(Editor, service => service.CreateAsync(new Tag { Name = "Net Core" }, Token));
-        var runAt = DateTime.UtcNow.AddDays(1);
+        var runAt = DateTimeOffset.UtcNow.AddDays(1);
 
-        var info = await AsAsync<Tag, ScheduleInfo>(Editor, service => service.ScheduleAsync(tag.Id, new ScheduleRequest(ScheduleAction.Publish, runAt), null, Token));
+        var info = await AsAsync<Tag, ScheduleInfo>(Editor, service => service.ScheduleAsync(tag.Id, ScheduleRequest.At(ScheduleAction.Publish, runAt), null, Token));
 
         info.Action.ShouldBe(ScheduleAction.Publish);
         info.Version.ShouldBe(1);
-        _database.Read(context => context.Set<ScheduleRow>().Single(row => row.DocumentId == tag.Id)).RunAtUtc.UtcDateTime.ShouldBe(runAt);
+        _database.Read(context => context.Set<ScheduleRow>().Single(row => row.DocumentId == tag.Id)).RunAtUtc.ShouldBe(runAt);
 
         await AsAsync<Tag, object?>(Editor, async service =>
         {
@@ -120,7 +120,7 @@ public sealed class TypedContentServiceTests : IDisposable
         page.Items.ShouldHaveSingleItem().Title.ShouldBe("Changed");
         page.Total.ShouldBe(1);
 
-        (await AsAsync<Article, long>(Editor, service => service.CountAsync(null, QueryStatus.Draft, Token))).ShouldBe(1);
+        (await AsAsync<Article, long>(Editor, service => service.CountAsync(new CountOptions { Status = QueryStatus.Draft }, Token))).ShouldBe(1);
 
         var patched = await AsAsync<Article, Article>(Editor, service => service.PatchAsync(read.Id, new() { ["videoUrl"] = null }, 2, Token));
         patched.VideoUrl.ShouldBeNull();

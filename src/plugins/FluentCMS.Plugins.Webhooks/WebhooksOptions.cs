@@ -24,6 +24,10 @@ public sealed class WebhooksOptions
 
     // How long the secret a rotation replaces keeps signing deliveries beside the new one. Zero ends it at the rotation.
     public TimeSpan SecretOverlap { get; set; } = TimeSpan.FromHours(24);
+
+    // Disables a webhook when a delivery to it dies and every attempt to it for at least this long has failed. Unset, the
+    // default, never disables one. The delivery log is the record of the attempts, so it is at most Retention.
+    public TimeSpan? DisableAfter { get; set; }
 }
 
 internal sealed class WebhookInsecureDefaults(IOptions<WebhooksOptions> options, IHostEnvironment environment) : IInsecureDefaultSource

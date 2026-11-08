@@ -1,3 +1,4 @@
+using System.Text;
 using FluentCMS.Core.Schema.FieldTypes;
 using Shouldly;
 using Xunit;
@@ -27,10 +28,72 @@ public class SlugifyTests
     }
 
     [Theory]
+    [InlineData("你好", "你好")]
+    [InlineData("日本語のタイトル", "日本語のタイトル")]
+    [InlineData("コーヒー 2026", "コーヒー-2026")]
+    [InlineData("한국어 제목", "한국어-제목")]
+    [InlineData("𠮷野家", "𠮷野家")]
+    [InlineData("Привет, Мир!", "привет-мир")]
+    [InlineData("Ελληνικά", "ελληνικα")]
+    [InlineData("مرحبا بالعالم", "مرحبا-بالعالم")]
+    [InlineData("١٢٣ أرقام", "١٢٣-ارقام")]
+    [InlineData("Hello 世界, Мир", "hello-世界-мир")]
+    [InlineData("Azərbaycan", "azərbaycan")]
+    [InlineData("x\U0001D400y", "x-y")]
+    public void KeepsTheLettersAndDigitsOfEveryScript(string source, string expected)
+    {
+        var slug = SlugFieldType.Slugify(source);
+
+        slug.ShouldBe(expected);
+        TestFields.Coerce("slug", slug).ShouldBe(expected);
+    }
+
+    [Theory]
+    [InlineData("école", "ecole")]
+    [InlineData("Ёлка", "елка")]
+    [InlineData("مَرْحَبًا", "مرحبا")]
+    [InlineData("שָׁלוֹם", "שלום")]
+    [InlineData("हिन्दी", "हनद")]
+    [InlineData("a⃝b", "ab")]
+    [InlineData("مـرحـبا", "مرحبا")]
+    [InlineData("aboutㅤ", "about")]
+    [InlineData("한ﾠ국", "한국")]
+    public void CombiningMarksAndFillersAreDroppedInEveryScript(string source, string expected)
+    {
+        var slug = SlugFieldType.Slugify(source);
+
+        slug.ShouldBe(expected);
+        TestFields.Coerce("slug", slug).ShouldBe(expected);
+    }
+
+    [Fact]
+    public void EveryLetterOrDigitGivesASlugTheFieldAcceptsAndThatSlugifiesToItself()
+    {
+        var type = TestFields.Type("slug");
+        var field = TestFields.Field("slug");
+        List<string> failures = [];
+        for (var value = 0; value <= 0x10FFFF; value++)
+        {
+            if (!Rune.TryCreate(value, out var rune) || !Rune.IsLetterOrDigit(rune))
+            {
+                continue;
+            }
+
+            var slug = SlugFieldType.Slugify(rune.ToString());
+            if (slug.Length > 0 && (SlugFieldType.Slugify(slug) != slug || !type.TryCoerce(slug, field, out _, out _)))
+            {
+                failures.Add($"U+{value:X4}");
+            }
+        }
+
+        failures.ShouldBeEmpty();
+    }
+
+    [Theory]
     [InlineData("")]
     [InlineData("   ")]
     [InlineData("!!!")]
-    [InlineData("你好")]
+    [InlineData("🎉 ✨")]
     public void ASourceWithoutLettersOrDigitsGivesAnEmptySlug(string source)
     {
         SlugFieldType.Slugify(source).ShouldBe("");
@@ -43,6 +106,7 @@ public class SlugifyTests
     [InlineData("hello-world", 11, "hello-world")]
     [InlineData("hello-world", 50, "hello-world")]
     [InlineData("hello-world", 0, "")]
+    [InlineData("𠮷𠮷", 3, "𠮷")]
     public void TheMaximumLengthBoundsTheSlugWithoutATrailingHyphen(string source, int maxLength, string expected)
     {
         SlugFieldType.Slugify(source, maxLength).ShouldBe(expected);

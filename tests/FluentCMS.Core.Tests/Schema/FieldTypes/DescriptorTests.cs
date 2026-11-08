@@ -47,7 +47,7 @@ public class DescriptorTests
         { "dateTime", """{"type":"string","format":"date-time"}""" },
         { "email", """{"type":"string","format":"email"}""" },
         { "url", """{"type":"string","format":"uri"}""" },
-        { "slug", """{"type":"string","pattern":"^[a-z0-9]+(?:-[a-z0-9]+)*$"}""" },
+        { "slug", """{"type":"string","pattern":"^[\\p{Ll}\\p{Lm}\\p{Lo}\\p{Nd}]+(?:-[\\p{Ll}\\p{Lm}\\p{Lo}\\p{Nd}]+)*$"}""" },
         { "select", """{"type":"string","enum":["news","opinion"]}""" },
         { "json", "{}" },
         { "relation", """{"type":"string","format":"uuid"}""" },
@@ -128,7 +128,7 @@ public class DescriptorTests
     {
         var field = TestFields.Field("slug", f => f.Length(null, 80).Pattern("^a"));
 
-        JsonNode.DeepEquals(TestFields.Type("slug").OpenApiSchema(field), JsonNode.Parse("""{"type":"string","pattern":"^[a-z0-9]+(?:-[a-z0-9]+)*$","maxLength":80}""")).ShouldBeTrue();
+        JsonNode.DeepEquals(TestFields.Type("slug").OpenApiSchema(field), JsonNode.Parse("""{"type":"string","pattern":"^[\\p{Ll}\\p{Lm}\\p{Lo}\\p{Nd}]+(?:-[\\p{Ll}\\p{Lm}\\p{Lo}\\p{Nd}]+)*$","maxLength":80}""")).ShouldBeTrue();
     }
 
     [Fact]

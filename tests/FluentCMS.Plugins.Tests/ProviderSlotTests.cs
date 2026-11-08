@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json.Nodes;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Caching;
+using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Diagnostics;
 using FluentCMS.Core.Identity;
@@ -31,6 +32,7 @@ public sealed class ProviderSlotTests
         host.Services.GetRequiredService<IDistributedCache>().ShouldBeOfType<MemoryDistributedCache>();
         host.Services.GetRequiredService<IEmailSender>().ShouldBeOfType<LogEmailSender>();
         host.Services.GetRequiredService<IDistributedLock>().ShouldBeOfType<DatabaseDistributedLock>();
+        host.Services.GetRequiredService<ISearchIndex>().ShouldBeOfType<NoSearchIndex>();
 
         // The framework's in-memory output cache store is internal, so it is known by its name.
         var store = host.Services.GetRequiredService<IOutputCacheStore>().GetType().FullName!;
@@ -42,6 +44,7 @@ public sealed class ProviderSlotTests
             (typeof(IDistributedLock).FullName!, typeof(DatabaseDistributedLock).FullName!, "default"),
             (typeof(IDistributedCache).FullName!, typeof(MemoryDistributedCache).FullName!, "default"),
             (typeof(IOutputCacheStore).FullName!, store, "default"),
+            (typeof(ISearchIndex).FullName!, typeof(NoSearchIndex).FullName!, "default"),
         ];
         using var response = await host.AsKey(key).GetAsync(new Uri("/api/management/v1/system/diagnostics", UriKind.Relative), Token);
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -58,18 +61,21 @@ public sealed class ProviderSlotTests
             .Use<IEmailSender, HostSender>()
             .Use<IDistributedLock, HostLock>()
             .Use<IDistributedCache, HostCache>()
-            .Use<IOutputCacheStore, HostOutputCacheStore>());
+            .Use<IOutputCacheStore, HostOutputCacheStore>()
+            .Use<ISearchIndex, HostSearchIndex>());
 
         host.Services.GetRequiredService<IEmailSender>().ShouldBeOfType<HostSender>();
         host.Services.GetRequiredService<IDistributedLock>().ShouldBeOfType<HostLock>();
         host.Services.GetRequiredService<IDistributedCache>().ShouldBeOfType<HostCache>();
         host.Services.GetRequiredService<IOutputCacheStore>().ShouldBeOfType<HostOutputCacheStore>();
+        host.Services.GetRequiredService<ISearchIndex>().ShouldBeOfType<HostSearchIndex>();
         Report(host).Select(slot => (slot.Implementation, slot.Source)).ShouldBe(
         [
             (typeof(HostSender).FullName, "host"),
             (typeof(HostLock).FullName, "host"),
             (typeof(HostCache).FullName, "host"),
             (typeof(HostOutputCacheStore).FullName, "host"),
+            (typeof(HostSearchIndex).FullName, "host"),
         ]);
     }
 
@@ -267,6 +273,12 @@ public sealed class ProviderSlotTests
         public ValueTask<byte[]?> GetAsync(string key, CancellationToken cancellationToken) => ValueTask.FromResult<byte[]?>(null);
 
         public ValueTask SetAsync(string key, byte[] value, string[]? tags, TimeSpan validFor, CancellationToken cancellationToken) => ValueTask.CompletedTask;
+    }
+
+    public sealed class HostSearchIndex : ISearchIndex
+    {
+        public Task<IReadOnlyList<Guid>> SearchAsync(SearchRequest request, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<Guid>>([]);
     }
 
     public sealed class HostLock : IDistributedLock

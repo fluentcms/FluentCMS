@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using FluentCMS.Content;
 using FluentCMS.Publishing;
 using FluentCMS.Schema;
@@ -61,11 +63,27 @@ public sealed class VersionDiffTests : IDisposable
         removed.Kind.ShouldBe(VersionChangeKind.Removed);
         removed.After.ShouldBeNull();
 
-        var other = (await DiffOfAsync(
+        // Another block takes the place of the hero, with an id of its own.
+        var other = await DiffOfAsync(
             new() { ["sections"] = new object[] { Hero("One") } },
-            new() { ["sections"] = new object[] { Quote("One") } })).ShouldHaveSingleItem();
-        other.Path.ShouldBe("sections[0]");
-        other.Kind.ShouldBe(VersionChangeKind.Changed);
+            new() { ["sections"] = new object[] { Quote("One") } });
+        other.Select(change => (change.Path, change.Kind)).ShouldBe([("sections[0]", VersionChangeKind.Added), ("sections[0]", VersionChangeKind.Removed)]);
+        other[0].After!["type"]!.GetValue<string>().ShouldBe("quote");
+        other[1].Before!["type"]!.GetValue<string>().ShouldBe("hero");
+    }
+
+    [Fact]
+    public async Task BlocksPairByTheirIdsSoABlockInsertedAtTheTopIsOneChange()
+    {
+        var id = IdOf(await _database.CreateAsync(Editor, new() { ["title"] = "Ids", ["sections"] = new object[] { Hero("One"), Hero("Two") } }));
+        var sections = JsonNode.Parse(JsonSerializer.Serialize((await _database.GetAsync(Editor, id))!["sections"]))!.AsArray();
+        sections[1]!["heading"] = "Changed";
+        sections.Insert(0, new JsonObject { ["type"] = "quote", ["text"] = "New" });
+        await _database.PatchAsync(Editor, id, new() { ["sections"] = sections }, 1);
+
+        var changes = await _database.DiffAsync(Editor, id, 1, 2);
+
+        changes.Select(change => (change.Path, change.Kind)).ShouldBe([("sections[0]", VersionChangeKind.Added), ("sections[2].heading", VersionChangeKind.Changed)]);
     }
 
     [Fact]

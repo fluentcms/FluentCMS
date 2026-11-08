@@ -50,6 +50,26 @@ internal static class ProblemMapper
         _ => Known(ApiErrorCodes.InternalError, "An unexpected error occurred."),
     };
 
+    // The problem of one entry of a bulk result, which carries the code the single call's problem would have; a code the
+    // catalogue does not know is a hook's, as in Map.
+    public static ApiProblem Map(BulkProblem problem, bool authenticated, ErrorCodeCatalogue? codes = null)
+    {
+        ArgumentNullException.ThrowIfNull(problem);
+
+        var catalogue = codes ?? ErrorCodeCatalogue.Core;
+        if (problem.Errors.Count > 0)
+        {
+            return FromErrors(problem.Errors, catalogue);
+        }
+
+        return problem.Code switch
+        {
+            ApiErrorCodes.Forbidden => Denied(problem.Message, authenticated),
+            ApiErrorCodes.VersionConflict => Known(ApiErrorCodes.VersionConflict, problem.Message) with { Current = problem.Current },
+            _ => Refused(problem.Code, problem.Message, "Rejected by a hook", catalogue),
+        };
+    }
+
     public static ApiProblem Known(string code, string detail)
     {
         var info = ErrorCodeRegistry.Find(code)!;
@@ -60,9 +80,12 @@ internal static class ProblemMapper
     private static ApiProblem Denied(string detail, bool authenticated) =>
         Known(authenticated ? ApiErrorCodes.Forbidden : ApiErrorCodes.Unauthorized, detail);
 
-    private static ApiProblem FromValidation(ValidationException exception, ErrorCodeCatalogue catalogue)
+    private static ApiProblem FromValidation(ValidationException exception, ErrorCodeCatalogue catalogue) =>
+        FromErrors(exception.Errors, catalogue);
+
+    private static ApiProblem FromErrors(IReadOnlyList<ValidationError> validationErrors, ErrorCodeCatalogue catalogue)
     {
-        var errors = exception.Errors.Select(error => new ProblemError(error.Path, error.Code, error.Message)).ToList();
+        var errors = validationErrors.Select(error => new ProblemError(error.Path, error.Code, error.Message)).ToList();
         var codes = errors.Select(error => error.Code).Distinct().ToList();
         var code = codes.Count == 1 ? codes[0] : ApiErrorCodes.ValidationFailed;
 

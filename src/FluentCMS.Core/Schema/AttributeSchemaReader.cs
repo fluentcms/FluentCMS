@@ -404,7 +404,7 @@ internal sealed class AttributeSchemaReader(SchemaBuilder builder)
                     steps.Add(f => f.Pattern(expression.Pattern));
                     break;
                 case DisplayAttribute display:
-                    steps.Add(f => f.Display(display.Label, display.Help, display.Placeholder, display.Group, display.Tab, display.Width));
+                    steps.Add(f => f.Display(new FieldDisplayDescription { Label = display.Label, Help = display.Help, Placeholder = display.Placeholder, Group = display.Group, Tab = display.Tab, Width = display.Width }));
                     break;
                 case DefaultValueAttribute defaultValue:
                     steps.Add(f => f.DefaultValue(defaultValue.Value));

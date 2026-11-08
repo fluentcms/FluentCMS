@@ -2,6 +2,7 @@ using FluentCMS.Core.Storage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Microsoft.EntityFrameworkCore.ValueGeneration;
 
 namespace FluentCMS.Data.SqlServer;
 
@@ -33,6 +34,10 @@ public sealed class SqlServerStorageConventions(bool nativeJson = false) : Stora
 
     public override void ConfigureTextColumn(EntityTypeBuilder entity, PropertyBuilder column) =>
         column.UseCollation(BinaryCollation);
+
+    // uniqueidentifier sorts by its last six bytes first, where a v7 value is random, so v7 keys would land all over the
+    // clustered index. These rise within a process, which is what the index needs; nothing compares ids for time order.
+    public override void ConfigureKey(PropertyBuilder key) => key.HasValueGenerator<SequentialGuidValueGenerator>();
 
     private sealed class UtcConverter() : ValueConverter<DateTimeOffset, DateTimeOffset>(
         value => value.ToUniversalTime(),

@@ -470,7 +470,7 @@ public sealed class ReferenceIntegrityTests : IDisposable
         var trashed = await TrashedAuthorAsync(_warning);
         var id = await ArticleAsync(_warning, new() { ["title"] = "One", ["author"] = trashed });
 
-        var result = await _warning.AsAsync(Principal.System, services => Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IContentService>(services).PublishAsync("article", id, null, null, Token), origin: Origin.Job);
+        var result = await _warning.AsAsync(Principal.System, services => Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<IContentService>(services).PublishAsync("article", id, null, Token), origin: Origin.Job);
 
         result.Warnings.ShouldHaveSingleItem().TargetId.ShouldBe(trashed);
     }

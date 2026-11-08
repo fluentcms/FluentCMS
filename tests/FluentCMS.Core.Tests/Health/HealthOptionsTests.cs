@@ -26,5 +26,16 @@ public class HealthOptionsTests
 
     [Fact]
     public void NoLimitCanBeAskedForWithAnInfiniteTimeout() =>
-        new HealthOptions { JobRunnerHeartbeatTimeout = Timeout.InfiniteTimeSpan }.Validate();
+        new HealthOptions { JobRunnerHeartbeatTimeout = Timeout.InfiniteTimeSpan, PendingJobAgeLimit = Timeout.InfiniteTimeSpan }.Validate();
+
+    [Fact]
+    public void ThePendingJobAgeLimitDefaultsToFifteenMinutesAndMustBePositive()
+    {
+        new HealthOptions().PendingJobAgeLimit.ShouldBe(TimeSpan.FromMinutes(15));
+
+        var exception = Should.Throw<FluentCmsConfigurationException>(new HealthOptions { PendingJobAgeLimit = TimeSpan.Zero }.Validate);
+
+        exception.Code.ShouldBe("FCMS1101");
+        exception.Detail.ShouldStartWith(nameof(HealthOptions.PendingJobAgeLimit));
+    }
 }

@@ -114,6 +114,7 @@ public static class ErrorCodeRegistry
         Invalid(ValidationErrorCodes.Custom, "Validation rule failed"),
         Invalid(ValidationErrorCodes.RequiredByCondition, "Value required by a condition"),
         Invalid(ValidationErrorCodes.NotUnique, "Value not unique"),
+        Invalid(ValidationErrorCodes.EmptySlug, "No slug from the source"),
         Invalid(ValidationErrorCodes.UnknownReference, "Reference not found"),
 
         // 22xx query
@@ -126,6 +127,8 @@ public static class ErrorCodeRegistry
         BadQuery(QueryErrorCodes.LimitExceeded, "Query limit exceeded"),
         BadQuery(QueryErrorCodes.NotARelation, "Not a relation"),
         new(QueryErrorCodes.DraftNotAllowed, StatusCodes.Status403Forbidden, "Drafts not allowed"),
+        BadQuery(QueryErrorCodes.ReverseRelation, "Reverse relation not queryable"),
+        BadQuery(QueryErrorCodes.NoSearchIndex, "No search index"),
 
         // 23xx sites and locales
         new(SiteErrorCodes.SiteNotFound, StatusCodes.Status404NotFound, "Site not found"),
@@ -255,6 +258,8 @@ public static class ErrorCodeRegistry
         new(JobErrorCodes.JobNotFound, StatusCodes.Status404NotFound, "Job not found"),
         new(JobErrorCodes.NotDeadLettered, StatusCodes.Status409Conflict, "Job not dead-lettered"),
         new(JobErrorCodes.NotCancellable, StatusCodes.Status409Conflict, "Job cannot be cancelled"),
+        new(EventErrorCodes.DeliveryNotFound, StatusCodes.Status404NotFound, "Event delivery not found"),
+        new(EventErrorCodes.DeliveryNotFailed, StatusCodes.Status409Conflict, "Event delivery not failed"),
         new(LocaleErrorCodes.LocaleNotFound, StatusCodes.Status404NotFound, "Locale not found"),
         new(LocaleErrorCodes.LocaleInUse, StatusCodes.Status409Conflict, "Locale in use"),
         new(LocaleErrorCodes.LocaleExists, StatusCodes.Status409Conflict, "Locale exists"),

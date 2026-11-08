@@ -44,6 +44,56 @@ public sealed class OutboxFailureTests
             Armed ? throw new InvalidOperationException("The database went away at the commit.") : ValueTask.FromResult(result);
     }
 
+    // Holds its delivery past the cut-off, then uses the scope it was built in and records what that did.
+    private sealed class ScopeProbe
+    {
+        private readonly TaskCompletionSource _gate = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource<Exception?> _used = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task<Exception?> Used => _used.Task;
+
+        public ScopeMarker? Marker { get; set; }
+
+        public void Release() => _gate.SetResult();
+
+        public async ValueTask HoldThenUseAsync(IServiceProvider services, CancellationToken cancellationToken)
+        {
+            await _gate.Task;
+            try
+            {
+                cancellationToken.IsCancellationRequested.ShouldBeTrue();
+                await services.GetRequiredService<SystemDbContext>().Set<OutboxMessage>().CountAsync(CancellationToken.None);
+                _used.SetResult(null);
+            }
+            catch (Exception exception)
+            {
+                _used.SetResult(exception);
+            }
+        }
+    }
+
+    private sealed class ScopeMarker : IAsyncDisposable
+    {
+        private readonly TaskCompletionSource _disposed = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task Disposed => _disposed.Task;
+
+        public ValueTask DisposeAsync()
+        {
+            _disposed.TrySetResult();
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    private sealed class ProbingOutbox(ScopeProbe probe, ScopeMarker marker, IServiceProvider services) : IOutboxEventHandler<EntryDraftSavedEvent>
+    {
+        public ValueTask HandleAsync(EntryDraftSavedEvent message, EventDelivery delivery, CancellationToken cancellationToken)
+        {
+            probe.Marker = marker;
+            return probe.HoldThenUseAsync(services, cancellationToken);
+        }
+    }
+
     private sealed class PoisoningHandler(CmsDbContext context) : IEventHandler<EntryDraftSavedEvent>
     {
         public ValueTask HandleAsync(EntryDraftSavedEvent message, CancellationToken cancellationToken)
@@ -372,6 +422,37 @@ public sealed class OutboxFailureTests
         logs.Count("HandOffAbandoned").ShouldBe(0);
     }
 
+    // The delivery is settled as failed at the cut-off, while the handler goes on; its scope and token go only once it ends.
+    [Fact]
+    public async Task AHandlerCutOffMidwayKeepsItsScopeUntilItEnds()
+    {
+        var probe = new ScopeProbe();
+        var logs = new RecordingLogs();
+        using var database = new ServiceDatabase(EventRegistrations.With(new Seen(), cms =>
+        {
+            cms.Events.AddOutboxHandler<EntryDraftSavedEvent, ProbingOutbox>("probe");
+            cms.Events.Outbox.DeliveryTimeout = TimeSpan.FromMilliseconds(100);
+            cms.Events.Outbox.MaxAttempts = 1;
+            cms.Services.AddSingleton(probe);
+            cms.Services.AddScoped<ScopeMarker>();
+            cms.Services.AddSingleton<ILoggerProvider>(logs);
+        }));
+        await database.CreateAsync(Editor, Titled("T"));
+        var drainer = database.Database.Services.GetRequiredService<OutboxDrainer>();
+
+        // Inline, so that the handler starts before its cut-off is armed.
+        drainer.HandOff = work => work();
+        (await drainer.DrainAsync(Token)).ShouldBe(0);
+
+        logs.Count("DeliveryAbandoned").ShouldBe(1);
+        database.Rows().Single().Status.ShouldBe(OutboxStatus.Failed);
+        probe.Marker.ShouldNotBeNull().Disposed.IsCompleted.ShouldBeFalse();
+
+        probe.Release();
+        (await probe.Used.WaitAsync(TimeSpan.FromSeconds(30), Token)).ShouldBeNull();
+        await probe.Marker.Disposed.WaitAsync(TimeSpan.FromSeconds(30), Token);
+    }
+
     [Fact]
     public async Task AHandlerTheCutOffComesBeforeUsesNoAttemptAndIsDeliveredOnTheNextDrain()
     {
@@ -534,6 +615,41 @@ public sealed class OutboxFailureTests
         logs.Count("HandlerMissing").ShouldBe(1);
     }
 
+    // A row of a plugin that is gone is moved to the dead-letter list once it is old enough, and never deleted unseen.
+    [Fact]
+    public async Task ARowWhoseHandlerIsStillMissingAfterOrphanAfterIsLeftAsFailedNamingTheHandler()
+    {
+        var logs = new RecordingLogs();
+        using var database = new ServiceDatabase(EventRegistrations.With(new Seen(), Fast(cms =>
+        {
+            cms.Events.Outbox.OrphanAfter = TimeSpan.FromDays(7);
+            cms.Services.AddSingleton<ILoggerProvider>(logs);
+        })));
+        var now = DateTimeOffset.UtcNow;
+        database.Read(context =>
+        {
+            context.AddRange(
+                new OutboxMessage { EventId = Guid.CreateVersion7(), EventType = "Acme.Thing", Handler = "acme-old", Payload = "{}", OccurredAt = now.AddDays(-8), Sequence = 1, AvailableAt = now.AddMinutes(-1) },
+                new OutboxMessage { EventId = Guid.CreateVersion7(), EventType = "Acme.Thing", Handler = "acme-new", Payload = "{}", OccurredAt = now.AddDays(-6), Sequence = 2, AvailableAt = now.AddMinutes(-1) });
+            return context.SaveChanges();
+        });
+
+        await DrainAsync(database.Database.Services);
+
+        var rows = database.Rows().ToDictionary(row => row.Handler);
+        var old = rows["acme-old"];
+        old.Status.ShouldBe(OutboxStatus.Failed);
+        old.Attempts.ShouldBe(0);
+        old.LeaseOwner.ShouldBeNull();
+        old.LastError!.ShouldContain("'acme-old'");
+        old.AvailableAt.ShouldBeGreaterThanOrEqualTo(now);
+        rows["acme-new"].Status.ShouldBe(OutboxStatus.Pending);
+        logs.Count("Orphaned").ShouldBe(1);
+
+        var dead = await database.Database.Services.GetRequiredService<IEventDeadLetters>().ListAsync(0, 50, Token);
+        dead.ShouldHaveSingleItem().Handler.ShouldBe("acme-old");
+    }
+
     [Fact]
     public async Task AFailedDeliveryCanBeListedRetriedAndRemoved()
     {
@@ -546,7 +662,7 @@ public sealed class OutboxFailureTests
         await DrainAsync(database.Database.Services);
         var dead = database.Database.Services.GetRequiredService<IEventDeadLetters>();
 
-        var failed = await dead.ListAsync(cancellationToken: Token);
+        var failed = await dead.ListAsync(0, 50, Token);
 
         failed.Count.ShouldBe(2);
         failed.ShouldAllBe(item => item.Handler == "saved-outbox" && item.Attempts == 2 && item.LastError != null);
@@ -558,7 +674,7 @@ public sealed class OutboxFailureTests
         (await dead.RemoveAsync(failed[1].Id, Token)).ShouldBeFalse();
 
         (await DrainAsync(database.Database.Services)).ShouldBe(1);
-        (await dead.ListAsync(cancellationToken: Token)).ShouldBeEmpty();
+        (await dead.ListAsync(0, 50, Token)).ShouldBeEmpty();
         database.Rows().ShouldHaveSingleItem().Status.ShouldBe(OutboxStatus.Delivered);
     }
 
@@ -589,8 +705,9 @@ public sealed class OutboxFailureTests
         OutboxErrorText.Of(new InvalidOperationException(new string('x', 5000)), "{}").Length.ShouldBe(Job.LastErrorMaxLength);
     }
 
+    // The prune is a job of its own, run hourly, so that the table is not walked for old rows on every drain.
     [Fact]
-    public async Task OnlyARunWithPruneRemovesOldDeliveredRows()
+    public async Task TheDrainLeavesOldDeliveredRowsToThePrune()
     {
         var seen = new Seen();
         using var database = new ServiceDatabase(EventRegistrations.With(seen, Fast(cms => cms.Events.Outbox.Retention = TimeSpan.Zero)));
@@ -599,14 +716,12 @@ public sealed class OutboxFailureTests
         await Task.Delay(5, Token);
 
         await DrainAsync(database.Database.Services);
-        database.Rows().Count.ShouldBe(1);
 
-        await database.Database.Services.GetRequiredService<OutboxDrainer>().DrainAsync(prune: true, Token);
-        database.Rows().ShouldBeEmpty();
+        database.Rows().ShouldHaveSingleItem().Status.ShouldBe(OutboxStatus.Delivered);
     }
 
     private static Task<int> DrainWithAsync(IServiceProvider instance, CancellationToken token) =>
-        instance.GetRequiredService<OutboxDrainer>().DrainAsync(prune: false, token);
+        instance.GetRequiredService<OutboxDrainer>().DrainAsync(token);
 
     // As if the workers that hold these rows had stopped renewing.
     private static void ExpireLeases(ServiceDatabase database) =>

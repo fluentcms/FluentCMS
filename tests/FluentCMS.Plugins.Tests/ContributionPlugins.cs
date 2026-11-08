@@ -194,7 +194,7 @@ public sealed class FakeServiceBuilder : IPluginServiceBuilder
         where TSlot : class
         where TDefault : class, TSlot => this;
 
-    public IPluginServiceBuilder AddJob<TJob, TPayload>(string type, TimeSpan? attemptTimeout = null)
+    public IPluginServiceBuilder AddJob<TJob, TPayload>(string type, TimeSpan? attemptTimeout)
         where TJob : class, FluentCMS.Jobs.IJob<TPayload> => this;
 
     public IPluginServiceBuilder AddJobQueue(string name, Func<IServiceProvider, int> workers) => this;

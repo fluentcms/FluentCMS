@@ -36,6 +36,9 @@ public static class ValidationErrorCodes
     /// <summary>Another entry in the same site and locale holds the value of a unique field, as a draft or published.</summary>
     public const string NotUnique = "FCMS2111";
 
+    /// <summary>A required slug was to be made from its source field, whose text has no letter or digit to make it from.</summary>
+    public const string EmptySlug = "FCMS2112";
+
     /// <summary>A reference names a target that does not exist in the site, such as a media asset that was never uploaded or is deleted.</summary>
-    public const string UnknownReference = "FCMS2112";
+    public const string UnknownReference = "FCMS2113";
 }

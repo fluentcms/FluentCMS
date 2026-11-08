@@ -217,6 +217,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddSingleton<JobRegistry>();
         services.AddSingleton<JobStore>();
         services.AddSingleton<JobExecutor>();
+        services.AddSingleton<JobWake>();
         services.AddSingleton<RecurringJobs>();
         services.AddSingleton<JobFactory>();
         services.TryAddSingleton<IJobEventSink, BusJobEventSink>();
@@ -242,6 +243,7 @@ public static class FluentCmsServiceCollectionExtensions
         builder.Events.Outbox.Validate();
         builder.Jobs.Options.Queues.TryAdd(OutboxDrainJob.Queue, 1);
         builder.Jobs.AddJob<OutboxDrainJob, OutboxDrainPayload>(OutboxDrainJob.Type);
+        builder.Jobs.AddJob<OutboxPruneJob, OutboxPrunePayload>(OutboxPruneJob.Type, OutboxPruneJob.AttemptTimeout);
         services.AddFluentCmsOptions(OutboxSection, EventErrorCodes.InvalidOutboxOptions, builder.Events.Outbox, outbox => outbox.Validate());
         builder.Events.Handlers.Validate();
         services.AddFluentCmsOptions(EventHandlerOptions.Section, HostErrorCodes.InvalidOption, builder.Events.Handlers, handlers => handlers.Validate());
@@ -249,6 +251,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddSingleton<OutboxKick>();
         services.AddSingleton<OutboxRows>();
         services.TryAddSingleton<IEventDeadLetters, OutboxDeadLetters>();
+        services.AddScoped<EventAdministration>();
         services.AddSingleton<OutboxDrainer>();
         services.AddHostedService<OutboxScheduleService>();
         services.AddScoped<EventDispatcher>();
@@ -273,6 +276,7 @@ public static class FluentCmsServiceCollectionExtensions
 
         services.AddOutputCache();
         builder.Providers.Default(MemoryOutputCacheStore());
+        builder.Providers.Default<ISearchIndex, NoSearchIndex>();
         OutputCacheEviction.Register(builder.Events, () => builder.DeliveryCache.OutputCache);
 
         services.AddSingleton(builder.Seeding);

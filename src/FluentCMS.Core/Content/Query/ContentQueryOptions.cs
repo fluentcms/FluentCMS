@@ -14,6 +14,11 @@ public sealed class ContentQueryOptions
     [Range(1, int.MaxValue)]
     public int MaxPageSize { get; init; } = 100;
 
+    // The most entries a page or an offset may skip. The database reads every skipped row and throws it away, so a deep
+    // offset costs as much as reading that far; a cursor seeks instead. 10,000 is a hundred pages of the largest size.
+    [Range(0, int.MaxValue)]
+    public int MaxOffset { get; init; } = 10_000;
+
     // Also caps the relation hops of a filter or selection path.
     [Range(0, int.MaxValue)]
     public int MaxPopulateDepth { get; init; } = 3;
@@ -25,6 +30,11 @@ public sealed class ContentQueryOptions
     // Entries inlined by population in one query, at every level: a page of 100 entries multiplies at each depth.
     [Range(1, int.MaxValue)]
     public int MaxPopulatedEntries { get; init; } = 1000;
+
+    // The most entries a search asks the index for: a list with q is the best of these matches that the rest of the
+    // query lets through.
+    [Range(1, int.MaxValue)]
+    public int MaxSearchResults { get; init; } = 1000;
 
     internal void Validate()
     {

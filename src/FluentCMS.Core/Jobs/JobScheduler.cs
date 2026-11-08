@@ -4,12 +4,14 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace FluentCMS.Core.Jobs;
 
-// Writes through a context of its own, so that enqueuing never saves what a caller has tracked on its own context.
+// Writes through a context of its own, so that enqueuing never saves what a caller has tracked on its own context. A job
+// due now wakes an idle worker of its queue on this instance.
 internal sealed class JobScheduler(
     IServiceScopeFactory scopes,
     JobRegistry registry,
     RecurringJobs recurring,
     JobFactory jobs,
+    JobWake wake,
     TimeProvider time) : IJobScheduler
 {
     public const int TypeMaxLength = 128;
@@ -23,7 +25,7 @@ internal sealed class JobScheduler(
         where TJob : class, IJob<TPayload> =>
         AddAsync<TJob, TPayload>(payload, runAt, jobOptions, cancellationToken);
 
-    public Task AddRecurringAsync<TJob, TPayload>(string name, string cron, TPayload payload, string? queue = null, CancellationToken cancellationToken = default)
+    public Task AddRecurringAsync<TJob, TPayload>(string name, string cron, TPayload payload, string? queue, CancellationToken cancellationToken = default)
         where TJob : class, IJob<TPayload>
     {
         ArgumentNullException.ThrowIfNull(payload);
@@ -40,6 +42,11 @@ internal sealed class JobScheduler(
         var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
         context.Add(job);
         await context.SaveChangesAsync(cancellationToken);
+
+        if (job.RunAt <= time.GetUtcNow())
+        {
+            wake.Signal(job.Queue);
+        }
 
         return job.Id;
     }

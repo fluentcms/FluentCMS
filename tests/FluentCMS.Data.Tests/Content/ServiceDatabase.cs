@@ -61,7 +61,7 @@ internal sealed class ServiceDatabase : IDisposable
             .Field("issued", "date")
             .Field("price", "decimal")
             .Field("author", "relation", field => field.Relation("author"))
-            .Field("tags", "relation", field => field.Multiple().Relation("tag", ordered: true))
+            .Field("tags", "relation", field => field.Multiple().Relation("tag", null, true))
             .Field("hero", "media")
             .Field("sections", "blocks", field => field.Setting(FieldSettings.Blocks, new[] { "hero", "quote" }))
             .Field("seo", "component", field => field.Setting(FieldSettings.Component, "seo"))

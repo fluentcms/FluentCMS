@@ -1,3 +1,4 @@
+using System.Data.Common;
 using System.Net;
 using System.Text;
 using System.Text.Json.Nodes;
@@ -16,6 +17,7 @@ using FluentCMS.Plugins.Sample;
 using FluentCMS.Sites;
 using FluentCMS.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
@@ -110,7 +112,14 @@ public sealed class PluginSiteTests
     public async Task ADeliveryRecordedBeforeThePluginWasDisabledWaitsAndIsDeliveredOnceItIsEnabledAgain()
     {
         var calls = new PluginCalls();
-        await using var host = new FluentCmsTestHost().WithServices(services => services.AddSingleton(calls));
+        // The publish wakes the host's own workers, which would deliver the row before the plugin is disabled.
+        await using var host = new FluentCmsTestHost()
+            .WithServices(services => services.AddSingleton(calls))
+            .Configure(cms =>
+            {
+                cms.Jobs.Options.Queues[JobRunnerOptions.DefaultQueue] = 0;
+                cms.Jobs.Options.Queues[OutboxDrainJob.Queue] = 0;
+            });
         var docs = await CreateSiteAsync(host);
         await PublishAsync(host, docs, "before");
         await DisableAsync(host, docs);
@@ -125,7 +134,6 @@ public sealed class PluginSiteTests
         await EnableAsync(host, docs);
         host.Time.Advance(host.Services.GetRequiredService<OutboxOptions>().MissingHandlerDelay);
 
-        // Moving the clock wakes the job runner too, which may be the one to deliver it.
         var delivered = waiting;
         for (var attempt = 0; attempt < 50 && delivered.Status != OutboxStatus.Delivered; attempt++)
         {
@@ -139,6 +147,79 @@ public sealed class PluginSiteTests
 
         delivered.Status.ShouldBe(OutboxStatus.Delivered);
         calls.All.ShouldContain("sample.outbox:before");
+    }
+
+    // Owed to the plugin for OrphanAfter only, so that a plugin left off for good leaves a dead letter, not a row claimed for ever.
+    [Fact]
+    public async Task ADeliveryWhosePluginStaysDisabledPastOrphanAfterIsLeftAsFailedNamingThePlugin()
+    {
+        await using var host = new FluentCmsTestHost().Configure(cms =>
+        {
+            cms.Jobs.Options.Queues[JobRunnerOptions.DefaultQueue] = 0;
+            cms.Jobs.Options.Queues[OutboxDrainJob.Queue] = 0;
+        });
+        var docs = await CreateSiteAsync(host);
+        await PublishAsync(host, docs, "before");
+        await DisableAsync(host, docs);
+        var drainer = host.Services.GetRequiredService<OutboxDrainer>();
+        var options = host.Services.GetRequiredService<OutboxOptions>();
+
+        host.Time.Advance(options.OrphanAfter - TimeSpan.FromMinutes(10));
+        await drainer.DrainAsync(Token);
+        (await OutboxRowAsync(host, "sample.note-added")).Status.ShouldBe(OutboxStatus.Pending);
+
+        host.Time.Advance(options.MissingHandlerDelay + TimeSpan.FromMinutes(10));
+        await drainer.DrainAsync(Token);
+
+        var failed = await OutboxRowAsync(host, "sample.note-added");
+        failed.Status.ShouldBe(OutboxStatus.Failed);
+        failed.Attempts.ShouldBe(0);
+        failed.LastError!.ShouldContain("'sample.note-added'");
+        failed.LastError!.ShouldContain("'sample'");
+        failed.LastError!.ShouldContain(docs.ToString("D"));
+        (await host.Services.GetRequiredService<IEventDeadLetters>().ListAsync(0, 50, Token)).ShouldContain(item => item.Id == failed.Id);
+    }
+
+    // As the drain does with a delivery: the job did not run, so it uses no attempt, and it waits one poll before it is tried again.
+    [Fact]
+    public async Task AJobWhosePluginStateCannotBeReadWaitsWithoutUsingAnAttempt()
+    {
+        var fault = new PluginStateFault();
+        await using var host = new FluentCmsTestHost().Configure(cms =>
+        {
+            cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(fault));
+            cms.Jobs.Options.Queues[JobRunnerOptions.DefaultQueue] = 0;
+            cms.Jobs.Options.Queues[SampleNoteJob.Queue] = 0;
+            cms.Jobs.Options.Queues[OutboxDrainJob.Queue] = 0;
+        });
+        var docs = await CreateSiteAsync(host);
+        var id = await host.Services.GetRequiredService<IJobScheduler>().EnqueueAsync<SampleNoteJob, SampleNotePayload>(new SampleNotePayload("deferred"), new JobOptions { Site = new SiteId(docs) }, Token);
+        var before = await JobAsync(host, id);
+        var executor = host.Services.GetRequiredService<JobExecutor>();
+
+        // Armed first, so that no read in between caches the state again.
+        fault.Armed = true;
+        host.Services.GetRequiredService<PluginState>().Invalidate();
+        (await executor.RunNextAsync(before.Queue, "test", Token)).ShouldBeTrue();
+        fault.Armed = false;
+
+        var released = await JobAsync(host, id);
+        released.Status.ShouldBe(JobStatus.Pending);
+        (released.MaxAttempts - released.Attempts).ShouldBe(before.MaxAttempts - before.Attempts);
+        released.RunAt.ShouldBe(host.Time.GetUtcNow() + host.Services.GetRequiredService<JobRunnerOptions>().PollInterval);
+        await using (var scope = host.Services.CreateAsyncScope())
+        {
+            (await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<JobAttempt>().AsNoTracking().SingleAsync(attempt => attempt.JobId == id, Token))
+                .Outcome.ShouldBe(JobAttemptOutcome.Released);
+        }
+
+        (await executor.RunNextAsync(before.Queue, "test", Token)).ShouldBeFalse();
+        host.Time.Advance(host.Services.GetRequiredService<JobRunnerOptions>().PollInterval);
+        (await executor.RunNextAsync(before.Queue, "test", Token)).ShouldBeTrue();
+
+        (await JobAsync(host, id)).Status.ShouldBe(JobStatus.Succeeded);
+        await using var read = host.Services.CreateAsyncScope();
+        (await read.ServiceProvider.GetRequiredService<PluginDbContext<SamplePlugin>>().Set<SampleNote>().Select(note => note.Text).ToListAsync(Token)).ShouldBe(["deferred"]);
     }
 
     [Fact]
@@ -286,6 +367,23 @@ public sealed class PluginSiteTests
     {
         await using var scope = host.Services.CreateAsyncScope();
         return await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<OutboxMessage>().AsNoTracking().SingleAsync(message => message.Handler == handler, Token);
+    }
+
+    private static async Task<Job> JobAsync(FluentCmsTestHost host, Guid id)
+    {
+        await using var scope = host.Services.CreateAsyncScope();
+        return await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<Job>().AsNoTracking().SingleAsync(job => job.Id == id, Token);
+    }
+
+    // Fails the read of which plugins are disabled per site while it is armed.
+    private sealed class PluginStateFault : DbCommandInterceptor
+    {
+        public volatile bool Armed;
+
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default) =>
+            Armed && command.CommandText.Contains("cms_plugin_site", StringComparison.Ordinal)
+                ? throw new InvalidOperationException("The database went away.")
+                : ValueTask.FromResult(result);
     }
 
     private static async Task RunJobsAsync(FluentCmsTestHost host)

@@ -12,12 +12,10 @@ public sealed record BulkItemResult(int Index, Guid? Id, BulkItemStatus Status)
     public int? Version { get; init; }
 
     /// <summary>
-    /// Why the operation failed: the exception the single call would have thrown, such as <see cref="EntryNotFoundException"/>,
-    /// <see cref="ContentAccessDeniedException"/>, <see cref="VersionConflictException"/>, <see cref="ValidationException"/> or
-    /// <see cref="Hooks.HookRejectedException"/>. An entry the principal may not reach fails as one that does not exist. Any other
-    /// failure is an <see cref="InvalidOperationException"/> that says nothing of its cause, which the host logs.
+    /// Why the operation failed, or <see langword="null"/> when it did not: the problem the single call would have answered for
+    /// the exception it threw. An entry the principal may not reach fails as one that does not exist.
     /// </summary>
-    public Exception? Problem { get; init; }
+    public BulkProblem? Problem { get; init; }
 
     /// <summary>What a reader of a published entry will miss, for <see cref="BulkOperation.Publish"/>.</summary>
     public IReadOnlyList<PublishWarning> Warnings { get; init; } = [];

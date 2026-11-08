@@ -5,6 +5,7 @@ using FluentCMS.Content;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Telemetry;
+using FluentCMS.Providers;
 using FluentCMS.Schema;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,10 +14,11 @@ namespace FluentCMS.Core.Content.Query;
 // Runs a ContentQuery. IContentService (#2693) is its caller, and resolves the locale and site first. Bad input is a
 // ValidationException, before anything runs. RichTextFormat and Fallback are carried, not applied: this returns the
 // stored rich text and the requested locale's values. LocaleFallbackReader fills the fields that fall back.
-internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schema, IJsonSqlDialect dialect, IContentQueryAccess access, ContentQueryOptions options, ReferenceResolvers resolvers)
+internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schema, IJsonSqlDialect dialect, IContentQueryAccess access, ContentQueryOptions options, ISearchIndex search, ReferenceResolvers resolvers)
 {
     private const string All = "*";
     private const string EveryLocale = "all";
+    private const int MaxSearchLength = 256;
 
     internal sealed record CompiledQuery(
         QueryScope Scope,
@@ -28,7 +30,16 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         int[] KeyColumns,
         int PageSize,
         int? PageNumber,
-        bool WithTotal);
+        bool WithTotal,
+        SearchHits? Hits);
+
+    // The ids the index found, which the compiled query reads as a parameter when it runs.
+    internal sealed class SearchHits(SearchRequest request)
+    {
+        public SearchRequest Request { get; } = request;
+
+        public Guid[] Ids { get; set; } = [];
+    }
 
     public Task<ContentQueryResult> ExecuteAsync(string typeName, ContentQuery query, CancellationToken cancellationToken = default) =>
         ExecuteAsync(typeName, query, everySystemField: false, cancellationToken);
@@ -48,17 +59,48 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
     public Task<ContentQueryResult> ExecuteWithRuleAsync(string typeName, ContentQuery query, ContentFilter? rule, CancellationToken cancellationToken) =>
         ExecuteAsync(typeName, query, everySystemField: false, trashed: false, cancellationToken, rule);
 
+    // The number of entries a list would have, with the filter, the row rule and the site of a list, and no page or reference read.
+    public async Task<long> CountAsync(string typeName, ContentQuery query, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+
+        var compiled = Compile(await access.ForQueryAsync(query.Site, query.Locale ?? "", cancellationToken), typeName, query with { Page = null, Cursor = null });
+        return await TimedAsync(compiled, async () =>
+        {
+            await SearchAsync(compiled, cancellationToken);
+            return await compiled.Filtered.LongCountAsync(cancellationToken);
+        });
+    }
+
     private async Task<ContentQueryResult> ExecuteAsync(string typeName, ContentQuery query, bool everySystemField, bool trashed, CancellationToken cancellationToken, ContentFilter? rule = null)
     {
         ArgumentNullException.ThrowIfNull(query);
 
         var compiled = Compile(await access.ForQueryAsync(query.Site, query.Locale ?? "", cancellationToken), typeName, query, everySystemField, trashed, rule);
+        return await TimedAsync(compiled, async () =>
+        {
+            await SearchAsync(compiled, cancellationToken);
+            return await RunAsync(compiled, cancellationToken);
+        });
+    }
 
-        // Timed from here, so that a query refused as invalid is not recorded, and tagged with the type the schema resolved.
+    // Asked once the query is known to be valid, so that a refused query costs no search.
+    private async Task SearchAsync(CompiledQuery compiled, CancellationToken cancellationToken)
+    {
+        if (compiled.Hits is { } hits)
+        {
+            var ids = await search.SearchAsync(hits.Request, cancellationToken);
+            hits.Ids = [.. ids.Take(hits.Request.Limit)];
+        }
+    }
+
+    // Timed from here, so that a query refused as invalid is not recorded, and tagged with the type the schema resolved.
+    private static async Task<T> TimedAsync<T>(CompiledQuery compiled, Func<Task<T>> run)
+    {
         var started = Stopwatch.GetTimestamp();
         try
         {
-            return await RunAsync(compiled, cancellationToken);
+            return await run();
         }
         finally
         {
@@ -134,6 +176,13 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
             rows = rows.Where(Lambda(new FilterCompiler(scope).Rule(type, rule, row), row));
         }
 
+        var hits = Search(scope, type, query);
+        if (hits is not null)
+        {
+            var ids = Expression.Property(Expression.Constant(hits), nameof(SearchHits.Ids));
+            rows = rows.Where(Lambda(Expression.Call(typeof(Enumerable), nameof(Enumerable.Contains), [typeof(Guid)], ids, QueryExpressions.DocumentId(row)), row));
+        }
+
         var select = everySystemField && query.Select.Count == 0 ? SelectNode.EverythingWithSystem : Selection(scope, type, query.Select);
         var plan = new EntryPlan(scope, type, select, Population(scope, type, query), level: 0, isRoot: true, row);
         var keys = SortKeys.Build(scope, type, query.Sort, row);
@@ -157,7 +206,40 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
 
         // One row more than the page tells whether another page follows, without a count.
         var page = skip > 0 ? ordered.Skip(skip).Take(size + 1) : ordered.Take(size + 1);
-        return new(scope, type, rows, page.Select(plan.Projection()), plan, keys, keyColumns, size, number, withTotal);
+        return new(scope, type, rows, page.Select(plan.Projection()), plan, keys, keyColumns, size, number, withTotal, hits);
+    }
+
+    // The index finds the entries; the query keeps its filter, row rule, site, locale, status and sort.
+    private SearchHits? Search(QueryScope scope, SchemaType type, ContentQuery query)
+    {
+        if (query.Search is not { } text)
+        {
+            return null;
+        }
+
+        if (search is NoSearchIndex)
+        {
+            scope.Report("q", QueryErrorCodes.NoSearchIndex, "Searching needs a search index, and none is registered. Add the search plugin or fill the ISearchIndex provider slot.");
+        }
+        else if (string.IsNullOrWhiteSpace(text))
+        {
+            scope.Report("q", QueryErrorCodes.InvalidValue, "A search needs a text to search for.");
+        }
+        else if (text.Length > MaxSearchLength)
+        {
+            scope.Report("q", QueryErrorCodes.LimitExceeded, $"A search text has at most {MaxSearchLength} characters.");
+        }
+        else
+        {
+            return new SearchHits(new SearchRequest(type.Name, text, options.MaxSearchResults)
+            {
+                Locale = type.Localized ? scope.Locale : "",
+                Site = type.Scope == ContentScope.Site ? scope.Site : null,
+                Status = query.Status ?? QueryStatus.Published,
+            });
+        }
+
+        return null;
     }
 
     private static Expression<Func<QueryRow, bool>> Lambda(Expression body, ParameterExpression row) => Expression.Lambda<Func<QueryRow, bool>>(body, row);
@@ -195,9 +277,12 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         }
 
         var skip = page.Number is { } number ? (number - 1L) * size : page.Offset ?? 0L;
-        if (skip > int.MaxValue)
+        if (skip > options.MaxOffset)
         {
-            scope.Report("page", QueryErrorCodes.LimitExceeded, "The page is too far into the list.");
+            scope.Report(
+                page.Number is null ? "offset" : "page",
+                QueryErrorCodes.LimitExceeded,
+                $"A page may skip at most {options.MaxOffset} entries. Read further with the cursor of the previous page.");
             skip = 0;
         }
 
@@ -214,9 +299,13 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         var root = new SelectNode();
         foreach (var path in paths)
         {
-            if (CheckSelection(scope, type, path, 0))
+            if (CheckSelection(scope, type, path, 0, out var reverse))
             {
                 root.Add(path.Split('.'));
+            }
+            else if (reverse is (var owner, var relation))
+            {
+                scope.Report("fields", QueryErrorCodes.ReverseRelation, QueryPaths.ReverseMessage(owner, path, relation));
             }
             else
             {
@@ -227,15 +316,20 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         return root;
     }
 
-    private bool CheckSelection(QueryScope scope, SchemaType type, string path, int hops)
+    // reverse is the reverse side the path names where it stops resolving, and the type that has it.
+    private bool CheckSelection(QueryScope scope, SchemaType type, string path, int hops, out (SchemaType Owner, ReverseRelation Relation)? reverse)
     {
+        reverse = null;
         switch (scope.Paths.Resolve(type, path))
         {
             case SystemPath or GroupPath or FieldPath { Rest.Length: 0 }:
                 return true;
             case FieldPath { Stored.Kind: FieldStorageKind.Reference, Stored.Field.Relation: { } relation } hop when hops < options.MaxPopulateDepth:
                 var target = schema.FindContentType(relation.Target);
-                return target is not null && scope.Access.CanReadType(target) && CheckSelection(scope, target, string.Join('.', hop.Rest), hops + 1);
+                return target is not null && scope.Access.CanReadType(target) && CheckSelection(scope, target, string.Join('.', hop.Rest), hops + 1, out reverse);
+            case null when scope.Paths.Reverse(type, path) is { } named:
+                reverse = (type, named);
+                return false;
             default:
                 return false;
         }
@@ -276,9 +370,11 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         var resolved = scope.Paths.Resolve(type, path);
         if (resolved is not FieldPath field)
         {
-            return resolved is null
-                ? (QueryErrorCodes.UnknownField, $"'{path}' is not a field of {type.Name} that can be read.")
-                : (QueryErrorCodes.NotARelation, $"'{path}' of {type.Name} is not a relation.");
+            return resolved is not null
+                ? (QueryErrorCodes.NotARelation, $"'{path}' of {type.Name} is not a relation.")
+                : scope.Paths.Reverse(type, path) is { } reverse
+                    ? (QueryErrorCodes.ReverseRelation, QueryPaths.ReverseMessage(type, path, reverse))
+                    : (QueryErrorCodes.UnknownField, $"'{path}' is not a field of {type.Name} that can be read.");
         }
 
         // A block list or a repeated component is named to populate the references inside it.

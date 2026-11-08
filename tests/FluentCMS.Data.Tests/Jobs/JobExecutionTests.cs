@@ -4,6 +4,7 @@ using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
+using FluentCMS.Core.Tests.Schema;
 using FluentCMS.Data.Tests.Sqlite;
 using FluentCMS.Jobs;
 using FluentCMS.Sites;
@@ -133,18 +134,18 @@ public sealed class JobExecutionTests : IDisposable
         var letters = _fixture.Services.GetRequiredService<IJobDeadLetters>();
         var token = TestContext.Current.CancellationToken;
 
-        var listed = (await letters.ListAsync(cancellationToken: token)).ShouldHaveSingleItem();
+        var listed = (await letters.ListAsync(0, 50, token)).ShouldHaveSingleItem();
         listed.Id.ShouldBe(id);
         listed.Type.ShouldBe(JobFixture.ProbeType);
         listed.Attempts.ShouldBe(1);
         listed.LastError.ShouldNotBeNull().ShouldContain("It broke.");
         listed.DeadLetteredAt.ShouldBe(JobFixture.Start);
-        (await letters.ListAsync(offset: 1, cancellationToken: token)).ShouldBeEmpty();
+        (await letters.ListAsync(1, 50, token)).ShouldBeEmpty();
 
         (await letters.RetryAsync(Guid.CreateVersion7(), token)).ShouldBeFalse();
         (await letters.RetryAsync(id, token)).ShouldBeTrue();
         (await letters.RetryAsync(id, token)).ShouldBeFalse("it is no longer dead-lettered");
-        (await letters.ListAsync(cancellationToken: token)).ShouldBeEmpty();
+        (await letters.ListAsync(0, 50, token)).ShouldBeEmpty();
 
         _fixture.Probe.Behavior = (_, _) => Task.CompletedTask;
         (await RunNextAsync()).ShouldBeTrue();
@@ -490,6 +491,34 @@ public sealed class JobExecutionTests : IDisposable
 
         text.ShouldBe("System.InvalidOperationException: number *** code *** token *** rate *** *** *** rejected");
         JobErrorText.ForLog(failure, Payload).ShouldNotContain("4111111111111111");
+    }
+
+    [Fact]
+    public void TheNamesOfTheSchemasTypesAndFieldsAreKept()
+    {
+        var schema = SampleSchema.NewBuilder()
+            .AddBlock("hero", block => block.Field("heading", "text"))
+            .AddCollection("article", type => type.Field("headline", "text"))
+            .Build();
+        var failure = new InvalidOperationException("Content type 'article' has no field 'headline' in block 'hero'; token s3cret-value");
+
+        var text = JobErrorText.ForStorage(failure, """{"t":"article","f":"headline","b":"hero","s":"s3cret-value"}""", JobErrorText.NamesOf(schema));
+
+        JobErrorText.NamesOf(schema).ShouldBe(["article", "headline", "hero", "heading"], ignoreOrder: true);
+        text.ShouldBe("System.InvalidOperationException: Content type 'article' has no field 'headline' in block 'hero'; token ***");
+    }
+
+    [Fact]
+    public async Task AFailureStoresTheNamesOfTheSchemaThatItsPayloadHolds()
+    {
+        var schema = SampleSchema.NewBuilder().AddCollection("article", type => type.Field("headline", "text")).Build();
+        var instance = _fixture.NewInstance(cms: cms => cms.Services.AddSingleton(schema));
+        _fixture.Probe.Behavior = (payload, _) => throw new InvalidOperationException($"Content type '{payload.Key}' refused {payload.Secret}");
+        var id = await _fixture.EnqueueAsync("article", secret: "s3cret-value");
+
+        (await instance.GetRequiredService<JobExecutor>().RunNextAsync(Queue, Owner, TestContext.Current.CancellationToken)).ShouldBeTrue();
+
+        _fixture.Job(id).LastError.ShouldBe("System.InvalidOperationException: Content type 'article' refused ***");
     }
 
     [Fact]

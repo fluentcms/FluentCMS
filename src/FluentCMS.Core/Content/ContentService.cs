@@ -55,7 +55,12 @@ internal sealed partial class ContentService(
     TimeProvider time,
     ILogger<ContentService> logger) : IContentService
 {
+    // The state of the write in progress, which BulkAsync also reads to tell what its last entry did. It holds because a
+    // scope's service runs one write at a time: a hook that calls back runs in the flow of that write and joins it, and a
+    // write from any other flow while one runs throws (OneAtATimeAsync) rather than mixing the changes of the two.
     private readonly List<EntryChange> _pending = [];
+    private readonly AsyncLocal<object?> _writeOfFlow = new();
+    private object? _write;
     private bool _ownsTransaction;
     private int _savepoints;
     private int _commits;
@@ -101,7 +106,10 @@ internal sealed partial class ContentService(
         return ReadAsync(type, query, null, everySystemField, cancellationToken);
     }
 
-    public async Task<long> CountAsync(string type, ContentFilter? filter = null, QueryStatus status = QueryStatus.Published, CancellationToken cancellationToken = default)
+    public Task<long> CountAsync(string type, CountOptions? options = null, CancellationToken cancellationToken = default) =>
+        CountAsync(type, options?.Filter, options?.Status ?? QueryStatus.Published, cancellationToken);
+
+    internal async Task<long> CountAsync(string type, ContentFilter? filter, QueryStatus status, CancellationToken cancellationToken)
     {
         using var span = Span("count", type);
 
@@ -111,7 +119,6 @@ internal sealed partial class ContentService(
         var query = new ContentQuery
         {
             Filter = filter,
-            Page = new PageRequest { Size = 1, WithTotal = true },
             Select = ["id"],
             Status = status,
             Site = operation.Site,
@@ -119,7 +126,7 @@ internal sealed partial class ContentService(
             Fallback = LocaleFallback.None,
         };
 
-        return (await engine.ExecuteAsync(type, query, cancellationToken)).Total ?? 0;
+        return await engine.CountAsync(type, query, cancellationToken);
     }
 
     public async Task<ContentDocument> CreateAsync(string type, ContentDocument entry, CancellationToken cancellationToken = default)
@@ -222,9 +229,10 @@ internal sealed partial class ContentService(
                 var (documents, row, stored) = await ReachAllLocalesAsync(write, ContentOperation.Delete, id, trashed: false, cancellationToken);
 
                 var working = ContentCopy.Of(stored);
-                await hooks.RunAsync(HookKind.BeforeDelete, write.Type, write.Operation, working, ContentCopy.Of(stored), cancellationToken);
+                var locales = LocalesOf(documents);
+                await hooks.RunAsync(HookKind.BeforeDelete, write.Type, write.Operation, working, ContentCopy.Of(stored), locales, cancellationToken);
                 await store.SetTrashedAsync(id, write.Operation.Timestamp, write.Operation.AuditPrincipal.Id, cancellationToken);
-                await hooks.RunAsync(HookKind.AfterDelete, write.Type, write.Operation, working, ContentCopy.Of(stored), cancellationToken);
+                await hooks.RunAsync(HookKind.AfterDelete, write.Type, write.Operation, working, ContentCopy.Of(stored), locales, cancellationToken);
 
                 _pending.AddRange(documents.Select(document => new EntryChange(EntryChangeKind.Trashed, write.Type.Name, id, document.Locale, document.DraftVersion, write.Operation)));
                 return row;
@@ -245,9 +253,10 @@ internal sealed partial class ContentService(
                 var (documents, row, stored) = await ReachAllLocalesAsync(write, ContentOperation.Restore, id, trashed: true, cancellationToken);
 
                 var working = ContentCopy.Of(stored);
-                await hooks.RunAsync(HookKind.BeforeRestore, write.Type, write.Operation, working, ContentCopy.Of(stored), cancellationToken);
+                var locales = LocalesOf(documents);
+                await hooks.RunAsync(HookKind.BeforeRestore, write.Type, write.Operation, working, ContentCopy.Of(stored), locales, cancellationToken);
                 await store.SetTrashedAsync(id, null, null, cancellationToken);
-                await hooks.RunAsync(HookKind.AfterRestore, write.Type, write.Operation, working, ContentCopy.Of(stored), cancellationToken);
+                await hooks.RunAsync(HookKind.AfterRestore, write.Type, write.Operation, working, ContentCopy.Of(stored), locales, cancellationToken);
 
                 _pending.AddRange(documents.Select(document => new EntryChange(EntryChangeKind.Restored, write.Type.Name, id, document.Locale, document.DraftVersion, write.Operation)));
                 return row;
@@ -456,9 +465,37 @@ internal sealed partial class ContentService(
         return new WriteScope(operation, type, operation.Site, resolved, target, permissions, new FieldAccess(permissions, schema));
     }
 
+    // A flow joins only the write it started, so work it left running after that write cannot join a later one.
+    private async Task<T> OneAtATimeAsync<T>(Func<Task<T>> write)
+    {
+        if (Volatile.Read(ref _write) is { } running && ReferenceEquals(_writeOfFlow.Value, running))
+        {
+            return await write();
+        }
+
+        var mine = new object();
+        if (Interlocked.CompareExchange(ref _write, mine, null) is not null)
+        {
+            throw new InvalidOperationException("The content service of this scope is already running a write from another flow. A scope runs one operation at a time; give each concurrent operation a scope of its own.");
+        }
+
+        try
+        {
+            _writeOfFlow.Value = mine;
+            return await write();
+        }
+        finally
+        {
+            Interlocked.Exchange(ref _write, null);
+        }
+    }
+
     // Runs writes as one transaction and tells the sink what committed. A write inside another transaction takes a
     // savepoint, so that one that fails leaves nothing behind for that transaction to commit. Internal for #2703.
-    internal async Task<T> InTransactionAsync<T>(Func<Task<T>> work, CancellationToken cancellationToken)
+    internal Task<T> InTransactionAsync<T>(Func<Task<T>> work, CancellationToken cancellationToken) =>
+        OneAtATimeAsync(() => TransactAsync(work, cancellationToken));
+
+    private async Task<T> TransactAsync<T>(Func<Task<T>> work, CancellationToken cancellationToken)
     {
         if (context.Database.CurrentTransaction is { } outer)
         {
@@ -687,7 +724,14 @@ internal sealed partial class ContentService(
 
                 var sharedChanged = type.Localized && type.Fields.Any(field => !field.Localizable && !JsonNode.DeepEquals(fields[field.Name], EntryJson.ToNode(stored[field.Name])));
                 var next = expectedVersion + 1;
-                var status = document.Status == EntryStatus.Published ? EntryStatus.Modified : document.Status;
+                var status = document.Status;
+                if (document.PublishedVersion is not null)
+                {
+                    // A Published entry's draft is what is published, so only a Modified one needs the published state read.
+                    var published = document.Status == EntryStatus.Published ? stored : await store.ReadAsync(type, document, ContentState.Published, cancellationToken);
+                    status = SameFields(type, fields, published) ? EntryStatus.Published : EntryStatus.Modified;
+                }
+
                 if (addsLocale)
                 {
                     document.DraftVersion = next;
@@ -707,8 +751,10 @@ internal sealed partial class ContentService(
                 await store.WriteDraftAsync(type, document, isNewDocument: addsLocale, rows, working, fields, write.Operation.Origin, write.Operation.ClientId, cancellationToken);
                 if (sharedChanged)
                 {
-                    await store.MarkOtherLocalesModifiedAsync(id, document.Locale, cancellationToken);
+                    await RecomputeOtherLocalesAsync(write, documents, document, cancellationToken);
                 }
+
+                var skipped = await SkipStalePublishesAsync(write, sharedChanged ? documents : [document], document, cancellationToken);
 
                 // A write may not take an entry out of the reach of the rule that let the principal change it. With no
                 // rule there is nothing to ask: the write has not moved the entry out of its site.
@@ -720,6 +766,7 @@ internal sealed partial class ContentService(
                 EntryStore.ApplySystem(working, document);
                 await hooks.RunAsync(HookKind.AfterUpdate, type, write.Operation, working, ContentCopy.Of(stored), cancellationToken);
                 _pending.Add(new EntryChange(EntryChangeKind.DraftSaved, type.Name, id, document.Locale, document.DraftVersion, write.Operation));
+                _pending.AddRange(skipped);
                 return document;
             },
             cancellationToken);
@@ -1100,6 +1147,8 @@ internal sealed partial class ContentService(
         var row = documents.Find(document => document.Locale == write.DocumentLocale) ?? documents[0];
         return (documents, row, await store.ReadAsync(write.Type, row, ContentState.Draft, cancellationToken));
     }
+
+    private static List<string> LocalesOf(List<Document> documents) => [.. documents.Select(document => document.Locale).Order(StringComparer.Ordinal)];
 
     private async Task<VersionConflictException> ConflictAsync(WriteScope write, Guid id, int expected, int current, CancellationToken cancellationToken) =>
         new(expected, current, await ReadDraftOrNullAsync(write, id, write.Locale, LocaleFallback.None, cancellationToken));

@@ -53,7 +53,7 @@ internal sealed class MediaStartup(
             {
                 try
                 {
-                    await scheduler.AddRecurringAsync<MediaVariantCleanupJob, MediaVariantCleanupPayload>(MediaVariantCleanupJob.Type, MediaVariantCleanupJob.Schedule, new MediaVariantCleanupPayload(), cancellationToken: stoppingToken);
+                    await scheduler.AddRecurringAsync<MediaVariantCleanupJob, MediaVariantCleanupPayload>(MediaVariantCleanupJob.Type, MediaVariantCleanupJob.Schedule, new MediaVariantCleanupPayload(), queue: null, cancellationToken: stoppingToken);
                     scheduled = true;
                 }
                 catch (Exception exception) when (!stoppingToken.IsCancellationRequested)

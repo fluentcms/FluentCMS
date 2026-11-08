@@ -57,4 +57,16 @@ internal static partial class EventLog
 
     [LoggerMessage(EventId = 9610, Level = LogLevel.Error, Message = "The drain of the outbox hit an error.")]
     public static partial void DrainFailed(ILogger logger, Exception exception);
+
+    [LoggerMessage(EventId = 9619, Level = LogLevel.Error, Message = "Outbox delivery {Id} to {Handler} waited longer than {OrphanAfter} for its handler or the handler's plugin, so it is left as failed.")]
+    public static partial void Orphaned(ILogger logger, Guid id, string handler, TimeSpan orphanAfter);
+
+    [LoggerMessage(EventId = 9620, Level = LogLevel.Warning, Message = "The handler of outbox delivery {Id} to {Handler} failed after it was abandoned; the delivery was settled already.")]
+    public static partial void AbandonedDeliveryFailed(ILogger logger, Exception exception, Guid id, string handler);
+
+    [LoggerMessage(EventId = 9621, Level = LogLevel.Warning, Message = "The scope of outbox delivery {Id} to {Handler} failed while it was disposed.")]
+    public static partial void DeliveryScopeFailed(ILogger logger, Exception exception, Guid id, string handler);
+
+    [LoggerMessage(EventId = 9622, Level = LogLevel.Information, Message = "The prune of the outbox removed {Delivered} delivered and {Failed} failed rows.")]
+    public static partial void Pruned(ILogger logger, int delivered, int failed);
 }

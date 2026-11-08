@@ -34,11 +34,11 @@ public sealed class SchedulingTests : IDisposable
     {
         var id = await _fixture.DraftAsync();
 
-        var winter = await _fixture.ScheduleAsync(Editor, id, new ScheduleRequest(ScheduleAction.Publish, new DateTime(2027, 3, 27, 12, 0, 0, DateTimeKind.Unspecified), "Europe/Berlin"));
+        var winter = await _fixture.ScheduleAsync(Editor, id, ScheduleRequest.AtLocalTime(ScheduleAction.Publish, new DateTime(2027, 3, 27, 12, 0, 0, DateTimeKind.Unspecified), "Europe/Berlin"));
         winter.RunAt.ShouldBe(new DateTimeOffset(2027, 3, 27, 11, 0, 0, TimeSpan.Zero));
         winter.TimeZone.ShouldBe("Europe/Berlin");
 
-        var summer = await _fixture.ScheduleAsync(Editor, id, new ScheduleRequest(ScheduleAction.Publish, new DateTime(2027, 3, 29, 12, 0, 0, DateTimeKind.Unspecified), "Europe/Berlin"));
+        var summer = await _fixture.ScheduleAsync(Editor, id, ScheduleRequest.AtLocalTime(ScheduleAction.Publish, new DateTime(2027, 3, 29, 12, 0, 0, DateTimeKind.Unspecified), "Europe/Berlin"));
         var instant = new DateTimeOffset(2027, 3, 29, 10, 0, 0, TimeSpan.Zero);
         summer.RunAt.ShouldBe(instant);
 
@@ -427,7 +427,7 @@ public sealed class SchedulingTests : IDisposable
         var theirs = await _fixture.DraftAsync("Theirs");
         var own = OwnPublisher();
         var past = At(Start.AddHours(-1));
-        var badZone = new ScheduleRequest(ScheduleAction.Publish, new DateTime(2027, 5, 1, 8, 0, 0, DateTimeKind.Unspecified), "Nowhere/Atlantis");
+        var badZone = ScheduleRequest.AtLocalTime(ScheduleAction.Publish, new DateTime(2027, 5, 1, 8, 0, 0, DateTimeKind.Unspecified), "Nowhere/Atlantis");
 
         foreach (var request in new[] { past, badZone })
         {
@@ -657,21 +657,25 @@ public sealed class SchedulingTests : IDisposable
     }
 
     [Fact]
-    public async Task APublishTakesTheDraftThatWasScheduledAndSkipsWhenItHasBeenSavedSince()
+    public async Task SavingTheDraftSkipsItsScheduledPublishAtOnceAndThePublishThenTakesTheDraftScheduledAgain()
     {
         var updater = WithRole(_fixture.RoleWith("content.article.read", "content.article.update"));
         var id = await _fixture.DraftAsync();
         await _fixture.ScheduleAsync(Editor, id, At(Start.AddHours(1)));
         await Database.PatchAsync(updater, id, new() { ["title"] = "Changed by someone else" }, 1);
 
-        _fixture.AdvanceTo(Start.AddHours(1));
-        (await _fixture.RunDueAsync()).ShouldBeTrue();
-
         var row = _fixture.Schedules(id).Single();
         row.Status.ShouldBe(ScheduleRow.Skipped);
         row.Error.ShouldNotBeNull().ShouldContain(ContentErrorCodes.ScheduledDraftChanged);
-        Database.Document(id).Status.ShouldBe(EntryStatus.Draft);
+        row.CompletedAt.ShouldNotBeNull();
         Database.Document(id).SchedulePublishAt.ShouldBeNull();
+        _fixture.Jobs().ShouldBeEmpty();
+        var skipped = _fixture.Seen.Of<EntryScheduleCancelledEvent>().ShouldHaveSingleItem();
+        (skipped.Action, skipped.Version, skipped.Locale).ShouldBe(("publish", 1, "en"));
+
+        _fixture.AdvanceTo(Start.AddHours(1));
+        (await _fixture.RunDueAsync()).ShouldBeFalse();
+        Database.Document(id).Status.ShouldBe(EntryStatus.Draft);
         _fixture.Seen.Of<EntryPublishedEvent>().ShouldBeEmpty();
 
         var again = await _fixture.ScheduleAsync(Editor, id, At(Start.AddHours(2)));
@@ -683,6 +687,46 @@ public sealed class SchedulingTests : IDisposable
     }
 
     [Fact]
+    public async Task DiscardingTheDraftAndRestoringAVersionSkipTheScheduledPublishToo()
+    {
+        var id = await _fixture.PublishedAsync("Live");
+        await Database.PatchAsync(Editor, id, new() { ["title"] = "Draft" }, 1);
+        await _fixture.ScheduleAsync(Editor, id, At(Start.AddHours(1)));
+
+        await Database.DiscardAsync(Editor, id);
+        _fixture.Schedules(id).Single().Status.ShouldBe(ScheduleRow.Skipped);
+
+        await Database.PatchAsync(Editor, id, new() { ["title"] = "Draft again" }, 3);
+        await _fixture.ScheduleAsync(Editor, id, At(Start.AddHours(1)));
+        await Database.RestoreVersionAsync(Editor, id, 1);
+
+        _fixture.Schedules(id).Select(row => row.Status).ShouldBe([ScheduleRow.Skipped, ScheduleRow.Skipped]);
+        _fixture.Schedules(id).ShouldAllBe(row => row.Error!.StartsWith(ContentErrorCodes.ScheduledDraftChanged, StringComparison.Ordinal));
+        _fixture.Jobs().ShouldBeEmpty();
+        Database.Document(id).SchedulePublishAt.ShouldBeNull();
+        _fixture.Seen.Of<EntryScheduleCancelledEvent>().Count().ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task ASaveLeavesAScheduledUnpublishAndASaveThatFailsLeavesTheScheduledPublish()
+    {
+        var published = await _fixture.PublishedAsync("Live");
+        await _fixture.ScheduleAsync(Editor, published, At(Start.AddHours(1), ScheduleAction.Unpublish));
+        await Database.PatchAsync(Editor, published, new() { ["title"] = "Live again" }, 1);
+
+        var draft = await _fixture.DraftAsync("Draft");
+        await _fixture.ScheduleAsync(Editor, draft, At(Start.AddHours(1)));
+        await Should.ThrowAsync<VersionConflictException>(() => Database.PatchAsync(Editor, draft, new() { ["title"] = "Stale" }, 7));
+        await Should.ThrowAsync<ValidationException>(() => Database.PatchAsync(Editor, draft, new() { ["views"] = 5000 }, 1));
+
+        _fixture.Schedules(published).Single().Status.ShouldBe(ScheduleRow.Pending);
+        _fixture.Schedules(draft).Single().Status.ShouldBe(ScheduleRow.Pending);
+        Database.Document(draft).SchedulePublishAt.ShouldBe(Start.AddHours(1));
+        _fixture.Jobs().Count.ShouldBe(2);
+        _fixture.Seen.Of<EntryScheduleCancelledEvent>().ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task AFieldSharedByEveryLocaleSavedThroughAnotherLocaleStopsTheScheduledPublish()
     {
         var updater = WithRole(_fixture.RoleWith("content.article.read", "content.article.update"));
@@ -690,9 +734,32 @@ public sealed class SchedulingTests : IDisposable
         await Database.UpdateAsync(Editor, id, new() { ["title"] = "Un" }, 0, locale: "fr");
         await _fixture.ScheduleAsync(Editor, id, At(Start.AddHours(1)), "en");
 
-        // views is not localizable, so this text goes out with the English publish although its draft version stays.
+        // views is not localizable, so this text would go out with the English publish although its draft version stays.
         await Database.PatchAsync(updater, id, new() { ["views"] = 900 }, 1, locale: "fr");
         Database.Document(id, "en").DraftVersion.ShouldBe(1);
+
+        var row = _fixture.Schedules(id).Single();
+        row.Status.ShouldBe(ScheduleRow.Skipped);
+        row.Error.ShouldNotBeNull().ShouldContain(ContentErrorCodes.ScheduledDraftChanged);
+        row.SharedHash.ShouldNotBeNull();
+        Database.Document(id, "en").SchedulePublishAt.ShouldBeNull();
+        _fixture.Seen.Of<EntryScheduleCancelledEvent>().ShouldHaveSingleItem().Locale.ShouldBe("en");
+
+        _fixture.AdvanceTo(Start.AddHours(1));
+        (await _fixture.RunDueAsync()).ShouldBeFalse();
+        Database.Document(id, "en").Status.ShouldBe(EntryStatus.Draft);
+        _fixture.Seen.Of<EntryPublishedEvent>().ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task TheJobStillSkipsAPublishWhoseSharedFieldsMovedWithoutASave()
+    {
+        var id = await _fixture.DraftAsync();
+        await Database.UpdateAsync(Editor, id, new() { ["title"] = "Un" }, 0, locale: "fr");
+        await _fixture.ScheduleAsync(Editor, id, At(Start.AddHours(1)), "en");
+
+        // Written past the service, so no save was there to skip the schedule.
+        Database.Read(context => context.Database.ExecuteSqlRaw("UPDATE cms_article SET views = 900 WHERE state = 0"));
 
         _fixture.AdvanceTo(Start.AddHours(1));
         (await _fixture.RunDueAsync()).ShouldBeTrue();
@@ -700,9 +767,7 @@ public sealed class SchedulingTests : IDisposable
         var row = _fixture.Schedules(id).Single();
         row.Status.ShouldBe(ScheduleRow.Skipped);
         row.Error.ShouldNotBeNull().ShouldContain(ContentErrorCodes.ScheduledDraftChanged);
-        row.SharedHash.ShouldNotBeNull();
         Database.Document(id, "en").Status.ShouldBe(EntryStatus.Draft);
-        Database.Document(id, "en").SchedulePublishAt.ShouldBeNull();
         _fixture.Seen.Of<EntryPublishedEvent>().ShouldBeEmpty();
     }
 
@@ -736,7 +801,7 @@ public sealed class SchedulingTests : IDisposable
 
         await _fixture.ScheduleAsync(Editor, id, At(Start.AddHours(2)), "en");
 
-        _fixture.Schedules(id).Single().SharedHash.ShouldNotBe(before);
+        _fixture.Schedules(id).Single(row => row.Status == ScheduleRow.Pending).SharedHash.ShouldNotBe(before);
         _fixture.AdvanceTo(Start.AddHours(2));
         (await _fixture.RunDueAsync()).ShouldBeTrue();
         Database.Document(id, "en").Status.ShouldBe(EntryStatus.Published);
@@ -886,8 +951,8 @@ public sealed class SchedulingTests : IDisposable
         var before = Database.Trace(id);
 
         await Should.ThrowAsync<ValidationException>(() => _fixture.ScheduleAsync(Editor, id, At(Start.AddHours(-1))));
-        await Should.ThrowAsync<ValidationException>(() => _fixture.ScheduleAsync(Editor, id, new ScheduleRequest(ScheduleAction.Publish, new DateTime(2027, 5, 1), "Nowhere/Atlantis")));
-        await Should.ThrowAsync<ValidationException>(() => _fixture.ScheduleAsync(Editor, id, new ScheduleRequest((ScheduleAction)7, Start.UtcDateTime.AddDays(1))));
+        await Should.ThrowAsync<ValidationException>(() => _fixture.ScheduleAsync(Editor, id, ScheduleRequest.AtLocalTime(ScheduleAction.Publish, new DateTime(2027, 5, 1), "Nowhere/Atlantis")));
+        await Should.ThrowAsync<ValidationException>(() => _fixture.ScheduleAsync(Editor, id, ScheduleRequest.At((ScheduleAction)7, Start.AddDays(1))));
 
         _fixture.Schedules(id).ShouldBeEmpty();
         _fixture.Jobs().ShouldBeEmpty();
@@ -953,6 +1018,24 @@ public sealed class SchedulingTests : IDisposable
             rows.Single(row => row.Action == "content.schedule_cancelled").Details!.ShouldContain("\"schedule\":\"publish\"");
             rows.ShouldAllBe(row => row.Details == null || !row.Details.Contains("Secret"));
             _fixture.Seen.Of<EntryScheduledEvent>().Select(item => item.At).ShouldBe([Start.AddHours(1), Start.AddHours(2)]);
+        }
+
+        [Fact]
+        public async Task ASaveThatSkipsAScheduledPublishLeavesACancelledRowNamingTheEditor()
+        {
+            var user = _fixture.Publisher();
+            var id = await _fixture.DraftAsync("Secret title");
+            await _fixture.ScheduleAsync(user, id, At(Start.AddHours(1)));
+            await _fixture.Database.PatchAsync(Editor, id, new() { ["title"] = "Secret two" }, 1);
+            await _fixture.Database.DrainAsync();
+
+            var row = _fixture.Database.ActivityRows().Single(item => item.Action == "content.schedule_cancelled");
+
+            row.ActorId.ShouldBe(Editor.Id);
+            (row.TargetType, row.TargetId, row.Locale).ShouldBe(("article", id.ToString("D"), "en"));
+            row.Details!.ShouldContain("\"schedule\":\"publish\"");
+            row.Details!.ShouldContain("\"version\":\"1\"");
+            row.Details!.ShouldNotContain("Secret");
         }
 
         [Fact]

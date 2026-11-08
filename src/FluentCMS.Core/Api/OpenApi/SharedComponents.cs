@@ -175,6 +175,7 @@ internal static class SharedComponents
         yield return (BridgeLocale, Query("locale", String("A locale of the site, as the X-Cms-Locale header. A route beside content refuses one the site does not have and reads nothing by it.")));
         yield return ("status", Query("status", Enum(["published", "draft"]), "Delivery reads published entries and the Management API drafts unless this says otherwise. Delivery reads drafts only with a preview key or a token with the draft scope."));
         yield return ("fallback", Query("fallback", Enum(["none"]), "none reads only what the locale holds; otherwise empty fields come through the site's fallback chain."));
+        yield return ("q", Query("q", String(), "Text to search for. The search index finds the matching entries, and the filter, sort and page apply to them. Refused with FCMS2211 when the instance has no search index."));
         yield return ("fields", Query("fields", String(), "Comma-separated fields to return; a component's field is component.field."));
         yield return ("populate", Query("populate", String(), "Comma-separated relations to return as entries instead of ids, or * for all of them."));
         yield return ("depth", Query("depth", new JsonObject { ["type"] = "integer", ["minimum"] = 1 }, "How deep populate goes. Needs populate."));
@@ -183,8 +184,8 @@ internal static class SharedComponents
         yield return ("pageSize", Query("pageSize", new JsonObject { ["type"] = "integer", ["minimum"] = 1 }));
         yield return ("offset", Query("offset", new JsonObject { ["type"] = "integer", ["minimum"] = 0 }, "How many entries to skip, with limit."));
         yield return ("limit", Query("limit", new JsonObject { ["type"] = "integer", ["minimum"] = 1 }));
-        yield return ("cursor", Query("cursor", String(), "The nextCursor of the previous page."));
-        yield return ("withTotal", Query("withTotal", new JsonObject { ["type"] = "boolean" }, "false leaves the total out, which saves a count."));
+        yield return ("cursor", Query("cursor", String(), "The nextCursor of the previous page, sent back as it came. A cursor is neither opaque nor signed, and its form may change, so do not read or build one."));
+        yield return ("withTotal", Query("withTotal", new JsonObject { ["type"] = "boolean" }, "Whether the list carries its total, which costs a count. Delivery counts only with true, the Management API unless it is false."));
         yield return ("if-match", Header("If-Match", required: true, "The version read, as its ETag, such as \"7\"; \"0\" adds a locale the entry does not have."));
         yield return ("if-match-optional", Header("If-Match", required: false, "The version read, as its ETag, such as \"7\". Without it, or with *, the current version is used."));
     }
