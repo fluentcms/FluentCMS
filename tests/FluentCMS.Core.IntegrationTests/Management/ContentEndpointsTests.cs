@@ -50,6 +50,8 @@ public sealed class ContentEndpointsTests(ManagementFixture fixture) : IClassFix
         var list = await fixture.GetAsync("page?filter[section][eq]=drafts");
         list.Status.ShouldBe(HttpStatusCode.OK);
         list.Json["items"]!.AsArray().Select(item => item!["id"]!.GetValue<string>()).ShouldBe([id]);
+        list.Json["total"]!.GetValue<long>().ShouldBe(1);
+        (await fixture.GetAsync("page?filter[section][eq]=drafts&withTotal=false")).Json.AsObject().ContainsKey("total").ShouldBeFalse();
 
         var entry = await fixture.GetAsync($"page/{id}");
         entry.Json["status"]!.GetValue<string>().ShouldBe("draft");

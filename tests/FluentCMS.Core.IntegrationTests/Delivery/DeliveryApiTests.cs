@@ -24,7 +24,7 @@ public sealed class DeliveryApiTests(DeliveryFixture fixture) : IClassFixture<De
 
         status.ShouldBe(HttpStatusCode.OK);
         Slugs(body).ShouldBe([Welcome, Typed], ignoreOrder: true);
-        body["total"]!.GetValue<long>().ShouldBe(2);
+        body.AsObject().ContainsKey("total").ShouldBeFalse();
         body["page"]!.GetValue<int>().ShouldBe(1);
         body["pageSize"]!.GetValue<int>().ShouldBe(20);
 
@@ -69,7 +69,7 @@ public sealed class DeliveryApiTests(DeliveryFixture fixture) : IClassFixture<De
     [Fact]
     public async Task PagesOffsetsAndCursorsWalkTheList()
     {
-        var (_, page) = await fixture.GetAsync("article?sort=title&page=2&pageSize=1");
+        var (_, page) = await fixture.GetAsync("article?sort=title&page=2&pageSize=1&withTotal=true");
         Slugs(page).ShouldBe([Welcome]);
         page["page"]!.GetValue<int>().ShouldBe(2);
         page["total"]!.GetValue<long>().ShouldBe(2);

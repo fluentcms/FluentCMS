@@ -20,6 +20,8 @@ public sealed class ContentServiceHookTests
         public List<string> Calls { get; } = [];
 
         public List<IReadOnlyList<string>> ChangedPaths { get; } = [];
+
+        public List<string> Locales { get; } = [];
     }
 
     private sealed class EveryHook(Log log, ServiceDatabase? database = null) :
@@ -37,6 +39,7 @@ public sealed class ContentServiceHookTests
         {
             log.Calls.Add(name);
             log.ChangedPaths.Add(context.ChangedPaths);
+            log.Locales.Add(string.Join(',', context.Locales));
             _ = database;
             return ValueTask.CompletedTask;
         }
@@ -92,6 +95,26 @@ public sealed class ContentServiceHookTests
         await database.DeleteAsync(Editor, IdOf(entry));
         await database.RestoreAsync(Editor, IdOf(entry));
         log.Calls.ShouldBe(["BeforeDelete", "AfterDelete", "BeforeRestore", "AfterRestore"]);
+    }
+
+    [Fact]
+    public async Task DeleteAndRestoreHooksSeeEveryLocaleOfTheEntryAndTheOtherHooksTheirOwnLocale()
+    {
+        var log = new Log();
+        using var database = new ServiceDatabase(cms => RegisterEvery(cms.Services, new EveryHook(log)));
+        var id = IdOf(await database.CreateAsync(Editor, Titled("Hello")));
+        await database.UpdateAsync(Editor, id, Titled("Bonjour"), 0, locale: "fr");
+        var author = IdOf(await database.CreateAsync(Editor, new() { ["name"] = "Ann" }, "author"));
+        log.Calls.Clear();
+        log.Locales.Clear();
+
+        await database.DeleteAsync(Editor, id, locale: "fr");
+        await database.RestoreAsync(Editor, id, locale: "fr");
+        await database.PatchAsync(Editor, id, new() { ["subtitle"] = "Sous" }, 1, locale: "fr");
+        await database.DeleteAsync(Editor, author, "author");
+
+        log.Calls.ShouldBe(["BeforeDelete", "AfterDelete", "BeforeRestore", "AfterRestore", "BeforeValidate", "BeforeUpdate", "AfterUpdate", "BeforeDelete", "AfterDelete"]);
+        log.Locales.ShouldBe(["en,fr", "en,fr", "en,fr", "en,fr", "fr", "fr", "fr", "", ""]);
     }
 
     private sealed class Cancel(string kind) :

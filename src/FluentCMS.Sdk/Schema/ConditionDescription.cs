@@ -3,6 +3,9 @@ namespace FluentCMS.Schema;
 /// <summary>
 /// A <see cref="Condition"/> as data a client can evaluate against the sibling fields of an entry. Values are strings,
 /// booleans, numbers or <see langword="null"/>; an enum member is its camelCase name, as a select field stores it.
+/// A field that holds a list, such as a multiple select, equals a value it contains, and an empty list equals
+/// <see langword="null"/>, for <c>Equal</c> and <c>In</c> alike, so <c>In</c> holds when the list shares a value with
+/// <see cref="Values"/>. A field the entry does not have is <see langword="null"/>. The server evaluates conditions this way.
 /// </summary>
 public sealed record ConditionDescription
 {

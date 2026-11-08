@@ -21,6 +21,8 @@ namespace FluentCMS.Core.Content;
 // that scheduled it, after checking again that this principal may still do what it asked.
 internal sealed partial class ContentService
 {
+    private const string DraftChanged = ContentErrorCodes.ScheduledDraftChanged + ": the draft changed after it was scheduled.";
+
     public async Task<ScheduleInfo> ScheduleAsync(string type, Guid id, ScheduleRequest request, string? locale = null, CancellationToken cancellationToken = default)
     {
         using var span = Span("schedule", type);
@@ -184,7 +186,7 @@ internal sealed partial class ContentService
             && (document.DraftVersion != row.Version
                 || (row.SharedHash is not null && SharedHashOf(type, await store.ReadAsync(type, document, ContentState.Draft, cancellationToken)) != row.SharedHash)))
         {
-            return await EndAsync(row, jobId, ScheduleRow.Skipped, $"{ContentErrorCodes.ScheduledDraftChanged}: the draft changed after it was scheduled.", cancellationToken);
+            return await EndAsync(row, jobId, ScheduleRow.Skipped, DraftChanged, cancellationToken);
         }
 
         if (action == ScheduleAction.Publish ? document.Status == EntryStatus.Published : document.PublishedVersion is null)
@@ -268,6 +270,35 @@ internal sealed partial class ContentService
         {
             throw new ValidationException(errors);
         }
+    }
+
+    // A publish scheduled for a draft that has moved since would be skipped when it is due (FCMS2409), so the write that moves
+    // the draft skips it now and the mirror stops showing a publish that will not happen. Another locale's publish stops only
+    // when the fields every locale shares changed, asked as the job asks it. documents are the entry's rows as this
+    // transaction read them before the write, of every locale when the shared fields may have changed.
+    private async Task<List<EntryChange>> SkipStalePublishesAsync(WriteScope write, IEnumerable<Document> documents, Document document, CancellationToken cancellationToken)
+    {
+        List<EntryChange> skipped = [];
+        foreach (var scheduled in documents.Where(item => item.SchedulePublishAt is not null))
+        {
+            if (await schedules.PendingAsync(scheduled.DocumentId, scheduled.Locale, ScheduleRow.Publish, cancellationToken) is not { } pending)
+            {
+                continue;
+            }
+
+            if (scheduled.Locale != document.Locale
+                && (pending.SharedHash is null || pending.SharedHash == SharedHashOf(write.Type, await store.ReadAsync(write.Type, scheduled, ContentState.Draft, cancellationToken))))
+            {
+                continue;
+            }
+
+            if (await schedules.EndPendingAsync(pending, ScheduleRow.Skipped, write.Operation.Timestamp, DraftChanged, cancellationToken))
+            {
+                skipped.Add(new EntryChange(EntryChangeKind.ScheduleCancelled, write.Type.Name, pending.DocumentId, pending.Locale, pending.Version, write.Operation) { ScheduleAction = pending.Action });
+            }
+        }
+
+        return skipped;
     }
 
     private async Task<ScheduleOutcome> EndAsync(ScheduleRow row, Guid jobId, string status, string reason, CancellationToken cancellationToken)

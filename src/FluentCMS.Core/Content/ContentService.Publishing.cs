@@ -163,11 +163,13 @@ internal sealed partial class ContentService
 
                 await WriteOverDraftAsync(write, id, document, rows, working, fields, JsonNode.DeepEquals(fields, publishedFields) ? EntryStatus.Published : EntryStatus.Modified, "Discarded the draft.", cancellationToken);
                 await RecomputeOtherLocalesAsync(write, documents, document, cancellationToken);
+                var skipped = await SkipStalePublishesAsync(write, documents, document, cancellationToken);
                 await ThrowIfOutOfReachAsync(write, ContentOperation.Update, id, cancellationToken);
 
                 EntryStore.ApplySystem(working, document);
                 await hooks.RunAsync(HookKind.AfterUpdate, write.Type, write.Operation, working, ContentCopy.Of(stored), cancellationToken);
                 _pending.Add(new EntryChange(EntryChangeKind.DraftDiscarded, write.Type.Name, id, document.Locale, document.DraftVersion, write.Operation));
+                _pending.AddRange(skipped);
                 return document;
             },
             cancellationToken);
@@ -285,11 +287,13 @@ internal sealed partial class ContentService
                 var message = string.Create(CultureInfo.InvariantCulture, $"Restored version {number}.");
                 await WriteOverDraftAsync(write, id, document, rows, working, fields, status, message, cancellationToken);
                 await RecomputeOtherLocalesAsync(write, documents, document, cancellationToken);
+                var skipped = await SkipStalePublishesAsync(write, documents, document, cancellationToken);
                 await ThrowIfOutOfReachAsync(write, ContentOperation.Update, id, cancellationToken);
 
                 EntryStore.ApplySystem(working, document);
                 await hooks.RunAsync(HookKind.AfterUpdate, write.Type, write.Operation, working, ContentCopy.Of(stored), cancellationToken);
                 _pending.Add(new EntryChange(EntryChangeKind.VersionRestored, write.Type.Name, id, document.Locale, document.DraftVersion, write.Operation));
+                _pending.AddRange(skipped);
                 return document;
             },
             cancellationToken);

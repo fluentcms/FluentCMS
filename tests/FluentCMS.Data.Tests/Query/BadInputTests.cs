@@ -211,6 +211,26 @@ public sealed class BadInputTests : IDisposable
     public async Task APageTooFarIntoTheListIsRejected() =>
         (await Rejected("page=2147483647&pageSize=100")).Code.ShouldBe(QueryErrorCodes.LimitExceeded);
 
+    [Fact]
+    public async Task APageOrOffsetThatSkipsMoreThanTheMaximumIsRejectedAndPointsAtCursors()
+    {
+        new ContentQueryOptions().MaxOffset.ShouldBe(10_000);
+        await _database.RunAsync("locale=en&offset=10000");
+        (await Rejected("offset=10001")).Path.ShouldBe("offset");
+
+        var options = new ContentQueryOptions { MaxOffset = 4 };
+        await _database.RunAsync("locale=en&offset=4", options: options);
+        await _database.RunAsync("locale=en&page=3&pageSize=2", options: options);
+        await _database.RunAsync("locale=en&limit=100", options: options);
+
+        foreach (var (query, path) in new[] { ("offset=5", "offset"), ("page=2&pageSize=5", "page"), ("page=4&pageSize=2", "page") })
+        {
+            var error = (await Should.ThrowAsync<ValidationException>(() => _database.RunAsync($"locale=en&{query}", options: options))).Errors.Single();
+            (error.Path, error.Code).ShouldBe((path, QueryErrorCodes.LimitExceeded), query);
+            error.Message.ShouldContain("cursor");
+        }
+    }
+
     [Theory]
     [InlineData("notbase64!!!")]
     [InlineData("e30")]

@@ -22,6 +22,8 @@ public sealed class ContentServiceWriteTests : IDisposable
 {
     private const string Body = """{"content":[{"content":[{"text":"Hi","type":"text"}],"type":"paragraph"}],"type":"doc"}""";
     private const string CanonicalBody = """{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Hi"}]}]}""";
+    private static readonly string[] Clip = ["news", "video"];
+    private static readonly string[] News = ["news"];
 
     private readonly ServiceDatabase _database = new();
 
@@ -791,5 +793,26 @@ public sealed class ContentServiceWriteTests : IDisposable
         var role = database.Database.AddRoleForTest("Regional", ("content.article.create", new PermissionConstraints { RowRule = "nothing" }));
         await Should.ThrowAsync<ContentAccessDeniedException>(() => database.CreateAsync(WithRole(role), Titled("Refused")));
         recorder.Changes.ShouldBeEmpty();
+    }
+
+    // Keep and skip (spec 4.2): a field its condition hides is not checked and keeps its value. A list holds a value it contains.
+    [Fact]
+    public async Task AFieldItsConditionHidesIsNotCheckedAndKeepsItsValue()
+    {
+        var model = SampleSchema.NewBuilder()
+            .AddCollection("clip", type => type
+                .Field("labels", "select", field => field.Multiple().Setting(FieldSettings.Options, Clip))
+                .Field("url", "text", field => field.Length(null, 5).VisibleWhen(Condition.Field("labels").Equals("video"))))
+            .Build();
+        using var database = new ServiceDatabase(schema: model);
+
+        var hidden = IdOf(await database.CreateAsync(Editor, new() { ["labels"] = News, ["url"] = "far too long" }, "clip"));
+        await database.PatchAsync(Editor, hidden, new() { ["labels"] = Array.Empty<string>() }, 1, "clip");
+        (await database.GetAsync(Editor, hidden, type: "clip"))!["url"].ShouldBe("far too long");
+
+        var shown = await Should.ThrowAsync<ValidationException>(() => database.CreateAsync(Editor, new() { ["labels"] = Clip, ["url"] = "far too long" }, "clip"));
+        shown.Errors.ShouldHaveSingleItem().ShouldSatisfyAllConditions(
+            error => error.Path.ShouldBe("url"),
+            error => error.Code.ShouldBe(ValidationErrorCodes.MaxLength));
     }
 }

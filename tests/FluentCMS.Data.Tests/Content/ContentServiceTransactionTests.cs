@@ -3,6 +3,7 @@ using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Storage;
 using FluentCMS.Data.Tests.Authorization;
+using FluentCMS.Hooks;
 using FluentCMS.Schema;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -206,5 +207,55 @@ public sealed class ContentServiceTransactionTests
         recorder.Changes.Clear();
         await database.RestoreAsync(Editor, id);
         recorder.Changes.Select(change => (change.Kind, change.Locale)).ShouldBe([(EntryChangeKind.Restored, "en"), (EntryChangeKind.Restored, "fr")], ignoreOrder: true);
+    }
+
+    // Holds the first update inside its transaction until the test lets it go.
+    private sealed class Gate : IBeforeUpdateHook<ContentDocument>
+    {
+        public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public async ValueTask BeforeUpdateAsync(HookContext<ContentDocument> context, CancellationToken cancellationToken)
+        {
+            Entered.TrySetResult();
+            await Release.Task.WaitAsync(cancellationToken);
+        }
+    }
+
+    [Fact]
+    public async Task AWriteFromAnotherFlowWhileTheScopesServiceIsWritingThrowsAndTheFirstWriteIsUntouched()
+    {
+        var gate = new Gate();
+        var recorder = new Recorder();
+        using var database = new ServiceDatabase(cms =>
+        {
+            cms.Services.AddSingleton<IBeforeUpdateHook<ContentDocument>>(gate);
+            cms.Services.AddSingleton<IEntryChangeSink>(recorder);
+        });
+        var first = IdOf(await database.CreateAsync(Editor, Titled("One")));
+        var second = IdOf(await database.CreateAsync(Editor, Titled("Two")));
+        recorder.Changes.Clear();
+
+        var saved = await database.AsAsync(Editor, async services =>
+        {
+            var content = services.GetRequiredService<IContentService>();
+            var running = content.PatchAsync("article", first, new() { ["subtitle"] = "A" }, 1, Token);
+            await gate.Entered.Task;
+
+            var refused = await Should.ThrowAsync<InvalidOperationException>(() => content.PatchAsync("article", second, new() { ["subtitle"] = "B" }, 1, Token));
+            refused.Message.ShouldContain("one operation at a time");
+            await Should.ThrowAsync<InvalidOperationException>(() => content.BulkAsync("article", new BulkRequest { Operation = BulkOperation.Delete, Items = [new BulkItem(second)] }, Token));
+
+            gate.Release.TrySetResult();
+            var result = await running;
+
+            // The scope writes again once that write has ended.
+            await content.PatchAsync("article", second, new() { ["subtitle"] = "B" }, 1, Token);
+            return result;
+        });
+
+        saved["subtitle"].ShouldBe("A");
+        recorder.Changes.Select(change => (change.Kind, change.Id)).ShouldBe([(EntryChangeKind.DraftSaved, first), (EntryChangeKind.DraftSaved, second)]);
     }
 }

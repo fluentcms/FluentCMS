@@ -81,6 +81,7 @@ public sealed class HostRegistrationTests : IAsyncDisposable
     [Theory]
     [InlineData("FluentCms:Query:MaxPageSize", "0", "FCMS1101")]
     [InlineData("FluentCms:Query:DefaultPageSize", "500", "FCMS1101")]
+    [InlineData("FluentCms:Query:MaxOffset", "-1", "FCMS1101")]
     [InlineData("FluentCms:Jobs:PollInterval", "-00:00:05", "FCMS2506")]
     [InlineData("FluentCms:Events:Outbox:BatchSize", "0", "FCMS2603")]
     [InlineData("FluentCms:Events:Handlers:Timeout", "00:00:00", "FCMS1101")]
