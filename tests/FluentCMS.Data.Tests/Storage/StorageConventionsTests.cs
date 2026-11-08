@@ -51,6 +51,20 @@ public class StorageConventionsTests
     }
 
     [Fact]
+    public void ADateIsKeptToTheMicrosecondAndAParameterIsCutAsTheColumn()
+    {
+        using var database = NewDatabase();
+        using var context = database.CreateCreatedContext();
+        var written = new DateTimeOffset(2026, 1, 1, 12, 0, 0, TimeSpan.FromHours(5)).AddTicks(1_234_567);
+        context.Rows("cms_article").Add(Row(written));
+        context.SaveChanges();
+        context.ChangeTracker.Clear();
+
+        context.Rows("cms_article").Select(row => EF.Property<DateTimeOffset?>(row, "published_on")).Single().ShouldBe(written.AddTicks(-7));
+        context.Rows("cms_article").Count(row => EF.Property<DateTimeOffset?>(row, "published_on") == written).ShouldBe(1);
+    }
+
+    [Fact]
     public void JsonColumnHookReachesContentAndSystemColumns()
     {
         using var database = NewDatabase();

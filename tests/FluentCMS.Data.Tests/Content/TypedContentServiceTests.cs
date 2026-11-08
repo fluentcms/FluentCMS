@@ -1,5 +1,6 @@
 using FluentCMS.Content;
 using FluentCMS.Core.Authorization;
+using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Tests.Schema;
 using FluentCMS.Core.Tests.Schema.Samples;
@@ -53,7 +54,7 @@ public sealed class TypedContentServiceTests : IDisposable
 
         info.Action.ShouldBe(ScheduleAction.Publish);
         info.Version.ShouldBe(1);
-        _database.Read(context => context.Set<ScheduleRow>().Single(row => row.DocumentId == tag.Id)).RunAtUtc.ShouldBe(runAt);
+        _database.Read(context => context.Set<ScheduleRow>().Single(row => row.DocumentId == tag.Id)).RunAtUtc.ShouldBe(StorageConventions.ToMicroseconds(runAt));
 
         await AsAsync<Tag, object?>(Editor, async service =>
         {

@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Text.Json.Nodes;
 using FluentCMS.Content;
+using FluentCMS.Core.Content;
 using FluentCMS.Core.Content.Query;
 using FluentCMS.Localization;
 using FluentCMS.Schema;
@@ -204,7 +205,7 @@ internal sealed class LocaleFallbackReader(ContentQueryEngine engine, SchemaMode
     {
         null => true,
         string text => text.Length == 0,
-        RichText richText => richText == RichText.Empty,
+        RichText richText => EntryJson.SameDocument(richText, RichText.Empty),
         JsonArray array => array.Count == 0,
         ICollection collection => collection.Count == 0,
         _ => false,

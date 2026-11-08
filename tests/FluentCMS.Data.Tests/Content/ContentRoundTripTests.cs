@@ -79,7 +79,7 @@ public sealed class ContentRoundTripTests : IDisposable
 
         copies.ShouldBeLessThanOrEqualTo(2);
         var block = (string)((JsonArray)created!["cards"]!)[0]!["id"]!;
-        _database.Versions(IdOf(created)).ShouldHaveSingleItem().Snapshot.ShouldContain($"\"id\":\"{block}\"");
+        StoredJson.Parse(_database.Versions(IdOf(created)).ShouldHaveSingleItem().Snapshot)["cards"]![0]!["id"]!.GetValue<string>().ShouldBe(block);
     }
 
     [Fact]

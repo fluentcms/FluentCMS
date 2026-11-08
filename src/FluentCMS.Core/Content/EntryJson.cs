@@ -112,6 +112,25 @@ internal static class EntryJson
 
     public static bool Same(object? left, object? right) => JsonNode.DeepEquals(ToNode(left), ToNode(right));
 
+    // A provider may give back other text for the same document, such as jsonb with its keys reordered and spaced, so two
+    // documents are the same when they hold the same JSON. One that cannot be read is only the same as its own text.
+    public static bool SameDocument(RichText left, RichText right)
+    {
+        if (string.Equals(left.Json, right.Json, StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        try
+        {
+            return JsonNode.DeepEquals(JsonDepth.Parse(left.Json), JsonDepth.Parse(right.Json));
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+
     public static JsonNode? ToNode(object? value) => value switch
     {
         null => null,

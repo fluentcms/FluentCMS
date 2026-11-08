@@ -82,13 +82,13 @@ internal sealed class DatabaseDistributedLock(IServiceScopeFactory scopes, TimeP
             }
         }
 
-        if (current.Owner is not null && current.LeaseUntil >= now)
+        if (current.Owner is not null && current.LeaseUntil > now)
         {
             return null;
         }
 
         var taken = await context.Set<LockRow>()
-            .Where(row => row.Name == name && (row.Owner == null || row.LeaseUntil == null || row.LeaseUntil < now))
+            .Where(row => row.Name == name && (row.Owner == null || row.LeaseUntil == null || row.LeaseUntil <= now))
             .ExecuteUpdateAsync(
                 row => row
                     .SetProperty(column => column.Owner, holder)

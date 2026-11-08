@@ -80,18 +80,31 @@ public class DeclarativeRuleTests
         var model = ValidationFixtures.Model(thing => thing
             .Field("category", "select", f => f.Setting(FieldSettings.Options, new[] { "news", "video" }))
             .Field("videoUrl", "text", f => f
-                .Length(null, 5)
+                .Length(3, 5)
                 .Required()
                 .VisibleWhen(Condition.Field("category").Equals("video"))));
 
-        var tooLong = new Dictionary<string, object?> { ["category"] = "news", ["videoUrl"] = "far too long" };
-        var shown = new Dictionary<string, object?> { ["category"] = "video", ["videoUrl"] = "far too long" };
+        var tooShort = new Dictionary<string, object?> { ["category"] = "news", ["videoUrl"] = "ab" };
+        var shown = new Dictionary<string, object?> { ["category"] = "video", ["videoUrl"] = "ab" };
 
-        (await ValidationFixtures.ValidateAsync(model, "thing", tooLong, ValidationMode.Publish)).IsValid.ShouldBeTrue();
-        ValidationFixtures.Describe(await ValidationFixtures.ValidateAsync(model, "thing", shown, ValidationMode.Publish)).ShouldBe(["videoUrl|FCMS2103"]);
+        (await ValidationFixtures.ValidateAsync(model, "thing", tooShort, ValidationMode.Publish)).IsValid.ShouldBeTrue();
+        ValidationFixtures.Describe(await ValidationFixtures.ValidateAsync(model, "thing", shown, ValidationMode.Publish)).ShouldBe(["videoUrl|FCMS2102"]);
 
         var missing = new Dictionary<string, object?> { ["category"] = "news" };
         (await ValidationFixtures.ValidateAsync(model, "thing", missing, ValidationMode.Publish)).IsValid.ShouldBeTrue();
+    }
+
+    // A save keeps a hidden value, so it must still fit the column that stores it.
+    [Fact]
+    public async Task AHiddenFieldLongerThanItsColumnIsReported()
+    {
+        var model = ValidationFixtures.Model(thing => thing
+            .Field("category", "select", f => f.Setting(FieldSettings.Options, new[] { "news", "video" }))
+            .Field("videoUrl", "text", f => f.Length(null, 5).VisibleWhen(Condition.Field("category").Equals("video"))));
+
+        var tooLong = new Dictionary<string, object?> { ["category"] = "news", ["videoUrl"] = "far too long" };
+
+        ValidationFixtures.Describe(await ValidationFixtures.ValidateAsync(model, "thing", tooLong, ValidationMode.Draft)).ShouldBe(["videoUrl|FCMS2103"]);
     }
 
     [Fact]

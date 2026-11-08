@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace FluentCMS.Data.PostgreSql;
 
 // Equality is jsonb containment (@>): it keeps the JSON type, so a number never equals the text '12', does not
-// throw on an unexpected shape, and is what a GIN index on the column serves. Not yet run on a database (#2711).
+// throw on an unexpected shape, and is what a GIN index on the column serves.
 public sealed class PostgreSqlJsonDialect : IJsonSqlDialect
 {
     private const string BlockTypeField = "type";
@@ -106,11 +106,15 @@ public sealed class PostgreSqlJsonDialect : IJsonSqlDialect
     private static MethodCallExpression BlockOfType(Expression blockType) =>
         Expression.Call(ObjectOfText, Key(BlockTypeField), blockType);
 
-    private static MethodCallExpression Contains(Expression json, Expression contained) => Expression.Call(
-        JsonContains,
-        Expression.Property(null, typeof(EF), nameof(EF.Functions)),
-        Expression.Convert(json, typeof(object)),
-        Expression.Convert(contained, typeof(object)));
+    // A NULL column makes @> NULL, which a negated filter would drop. It is false, so that a NOT keeps a row without the
+    // value, as on SQLite.
+    private static BinaryExpression Contains(Expression json, Expression contained) => Expression.AndAlso(
+        Expression.NotEqual(json, Expression.Constant(null, json.Type)),
+        Expression.Call(
+            JsonContains,
+            Expression.Property(null, typeof(EF), nameof(EF.Functions)),
+            Expression.Convert(json, typeof(object)),
+            Expression.Convert(contained, typeof(object))));
 
     private static ConstantExpression Key(string field) => Expression.Constant(JsonScalar.CheckField(field));
 

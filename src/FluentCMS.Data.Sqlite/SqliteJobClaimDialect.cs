@@ -28,7 +28,7 @@ public sealed class SqliteJobClaimDialect : IJobClaimDialect
                     AND status IN ('pending', 'running')
                     AND run_at <= {now}
                     AND attempts < max_attempts
-                    AND (lease_until IS NULL OR lease_until < {now})
+                    AND (lease_until IS NULL OR lease_until <= {now})
                 ORDER BY priority DESC, run_at, id
                 LIMIT 1 OFFSET {unreadable}
                 """).ToListAsync(cancellationToken);
@@ -55,7 +55,7 @@ public sealed class SqliteJobClaimDialect : IJobClaimDialect
                     AND status IN ('pending', 'running')
                     AND run_at <= {now}
                     AND attempts < max_attempts
-                    AND (lease_until IS NULL OR lease_until < {now})
+                    AND (lease_until IS NULL OR lease_until <= {now})
                 """, cancellationToken);
 
             if (claimed == 1)
