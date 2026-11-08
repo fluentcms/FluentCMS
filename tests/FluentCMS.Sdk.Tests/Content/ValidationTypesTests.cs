@@ -55,7 +55,7 @@ public class ValidationTypesTests
             .Select(field => (string)field.GetRawConstantValue()!)
             .ToList();
 
-        codes.Count.ShouldBe(11);
+        codes.Count.ShouldBe(12);
         codes.Distinct().Count().ShouldBe(codes.Count);
         codes.ShouldAllBe(code => code.StartsWith("FCMS21", StringComparison.Ordinal) && code.Length == 8);
     }

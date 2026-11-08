@@ -1,6 +1,6 @@
 # FluentCMS.Plugins.Media
 
-Assets and folders for the sites of an instance: uploads whose type is read from their bytes, metadata with alternative text and captions per locale, file storage on the local disk, signed image transforms with stored variants and presets, usage, replace and private downloads. The media is managed under `/api/management/v1/media`, clients read it at `/api/delivery/v1/media/{id}`, images are served at `/media/{id}/{fileName}` and original files at `/media/{id}/original/{fileName}`. Section 5.1 of the [backend technical specification](../../../docs/planning/backend-technical-spec.md) has the full design.
+Assets and folders for the sites of an instance: uploads whose type is read from their bytes, metadata with alternative text and captions per locale, file storage on the local disk, signed image transforms with stored variants and presets, usage, replace, private downloads, and the `media` field type for content. The media is managed under `/api/management/v1/media`, clients read it at `/api/delivery/v1/media/{id}`, images are served at `/media/{id}/{fileName}` and original files at `/media/{id}/original/{fileName}`. Section 5.1 of the [backend technical specification](../../../docs/planning/backend-technical-spec.md) has the full design.
 
 ## Options
 
@@ -138,6 +138,22 @@ A signed URL with `preset=hero` then serves that size.
 A signature is the HMAC-SHA256 of the asset id and the URL's parameters, sorted by name, without `sig`, `site` and the file name. The key is `FluentCms:Media:SigningKey` when it is set. Otherwise the plugin generates one 256-bit key at its first start, and stores it in `cms_media_signing_key`, protected by Data Protection. Instances that start together share one key, created under a lock. Data Protection protects the key only at rest, so signed URLs keep working when its key ring rotates.
 
 Download URLs and the URLs of original files are signed with the same key. Replacing the key invalidates every URL signed before, in content and in CDN caches. To replace it, set `SigningKey`, or delete the row of `cms_media_signing_key`, and restart every instance. Keep the Data Protection key ring in backups: without the key that protected the signing key, the instance cannot read it, and only setting `SigningKey` or deleting the row brings transforms back.
+
+## Media fields
+
+The plugin adds the `media` field type. A content class marks a `MediaRef?` or a `MediaRefList` with `[Media]`, and a schema file uses `"type": "media"`, with `"multiple": true` for a list:
+
+```csharp
+[Media]
+public MediaRef? Hero { get; set; }
+
+[Media]
+public MediaRefList Gallery { get; set; } = [];
+```
+
+A write sends asset ids and refuses one that is no asset of the site, or is deleted, with `FCMS2112`. A filter finds entries by asset id with `eq` and `in`, such as `filter[hero][eq]={id}`. A read gives `{ "id", "type": "media" }`, and `populate=hero` gives the asset: its file name, type, size, width and height, title, alternative text and caption in the locale of the read, credit, focal point, and `urls` as the Delivery API gives them (`original`, `presets` and, where unsigned URLs are served, `template`). `populate=sections` does the same for the media of a block list or a repeated component, and `populate=*` for all of them. A caller needs `media.read`, within its folders, to see an asset populated; one it cannot read is null, and a private asset has `urls` null. With `richText=html` or `markdown`, a media node of rich text is written with the URL of the asset's original file and, when the node has no `alt`, the asset's alternative text. Other plugins read assets the same way through `IMediaResolver`.
+
+Without the plugin, a type with a media field stops the host with `FCMS1203`.
 
 ## SkiaSharp
 

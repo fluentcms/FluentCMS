@@ -17,7 +17,8 @@ public static class BlogSample
         typeof(GalleryBlock),
     ];
 
-    // Registers the settings, the seed set and the OpenAPI examples. The content types still go to the schema, from ContentTypes.
+    // Registers the settings, the seed set and the OpenAPI examples. The content types still go to the schema, from ContentTypes,
+    // and their media fields need the media plugin, which a host that references this project discovers.
     public static FluentCmsBuilder AddBlogSample(this FluentCmsBuilder cms)
     {
         ArgumentNullException.ThrowIfNull(cms);

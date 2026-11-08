@@ -7,6 +7,8 @@
   <ItemGroup>
     <ProjectReference Include="../../src/FluentCMS.Sdk/FluentCMS.Sdk.csproj" />
     <ProjectReference Include="../../src/FluentCMS.Core/FluentCMS.Core.csproj" />
+    <!-- The media fields need the media field type; a host that references the sample discovers the plugin. -->
+    <ProjectReference Include="../../src/plugins/FluentCMS.Plugins.Media/FluentCMS.Plugins.Media.csproj" />
   </ItemGroup>
 
 </Project>

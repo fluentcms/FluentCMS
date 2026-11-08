@@ -672,38 +672,11 @@ internal sealed class MediaService(
         }
     }
 
-    // Every folder and the root when a grant has no folder limit, otherwise the folders the grants name and their subfolders.
-    // No grant at all is a refusal.
-    private async Task<FolderReach> ReachAsync(string permission, SiteId site, CancellationToken cancellationToken)
-    {
-        var resources = await permissions.ResourcesAsync(permission, site, cancellationToken);
-        if (resources is null)
-        {
-            return FolderReach.All;
-        }
-
-        if (resources.Count == 0)
-        {
-            throw new PermissionDeniedException(permission, site);
-        }
-
-        var named = resources.Select(resource => Guid.TryParse(resource, out var id) ? id : (Guid?)null).OfType<Guid>().ToList();
-        var paths = await database.Set<Folder>().AsNoTracking()
-            .Where(folder => folder.SiteId == site.Value && named.Contains(folder.Id))
-            .Select(folder => folder.Path)
-            .ToListAsync(cancellationToken);
-
-        HashSet<Guid> folders = [];
-        foreach (var path in paths)
-        {
-            folders.UnionWith(await SubtreeAsync(site, path, cancellationToken));
-        }
-
-        return new FolderReach(folders);
-    }
+    private Task<FolderReach> ReachAsync(string permission, SiteId site, CancellationToken cancellationToken) =>
+        FolderReach.OfAsync(database, permissions, permission, site, cancellationToken);
 
     private Task<List<Guid>> SubtreeAsync(SiteId site, string path, CancellationToken cancellationToken) =>
-        database.Set<Folder>().AsNoTracking().Where(folder => folder.SiteId == site.Value && folder.Path.StartsWith(path)).Select(folder => folder.Id).ToListAsync(cancellationToken);
+        FolderReach.SubtreeAsync(database, site, path, cancellationToken);
 
     private async Task<Asset> FindAssetAsync(SiteId site, Guid id, FolderReach reach, bool tracked, CancellationToken cancellationToken)
     {
@@ -715,8 +688,8 @@ internal sealed class MediaService(
     private static PluginException AssetNotFound(Guid id) => new(MediaErrorCodes.AssetNotFound, $"The site has no media asset {id:D}.");
 
     // The original of a public asset, signed without an expiry, and for an image the processor reads, the presets of the
-    // site and, where unsigned URLs are served, a template.
-    private async Task<MediaUrls> UrlsAsync(Asset asset, CancellationToken cancellationToken)
+    // site and, where unsigned URLs are served, a template. A caller that resolves many assets reads the preset names once.
+    internal async Task<MediaUrls> UrlsAsync(Asset asset, CancellationToken cancellationToken, IReadOnlyList<string>? presetNames = null)
     {
         var original = await MediaOriginals.UrlAsync(signing, asset.Id, asset.FileName, null, cancellationToken);
         Dictionary<string, string> presets = new(StringComparer.Ordinal);
@@ -724,7 +697,7 @@ internal sealed class MediaService(
         if (processor.CanDecode(asset.MimeType))
         {
             var info = Info(asset, "");
-            var names = await database.Set<Preset>().AsNoTracking().Where(preset => preset.SiteId == asset.SiteId).Select(preset => preset.Name).ToListAsync(cancellationToken);
+            var names = presetNames ?? await PresetNamesAsync(asset.SiteId, cancellationToken);
             foreach (var name in names.Order(StringComparer.Ordinal))
             {
                 presets[name] = await GetImageUrlAsync(info, new MediaImageOptions { Preset = name }, cancellationToken);
@@ -738,6 +711,9 @@ internal sealed class MediaService(
 
         return new MediaUrls(original, presets, template);
     }
+
+    internal Task<List<string>> PresetNamesAsync(Guid site, CancellationToken cancellationToken) =>
+        database.Set<Preset>().AsNoTracking().Where(preset => preset.SiteId == site).Select(preset => preset.Name).ToListAsync(cancellationToken);
 
     private async Task<Folder> FindFolderAsync(SiteId site, Guid id, FolderReach reach, bool tracked, CancellationToken cancellationToken)
     {
@@ -924,7 +900,7 @@ internal sealed class MediaService(
     private OperationContext Operation() =>
         operations.Current ?? throw new InvalidOperationException("The media of a site is managed inside an operation, which names the site.");
 
-    private static MediaAsset Info(Asset asset, string locale) => new()
+    internal static MediaAsset Info(Asset asset, string locale) => new()
     {
         Id = asset.Id,
         SiteId = asset.SiteId,
@@ -964,4 +940,37 @@ internal sealed class FolderReach(IReadOnlySet<Guid>? folders)
     public IReadOnlySet<Guid> Folders => folders ?? throw new InvalidOperationException("Every folder is reached.");
 
     public bool Includes(Guid? folder) => folders is null || (folder is { } id && folders.Contains(id));
+
+    // Every folder and the root when a grant has no folder limit, otherwise the folders the grants name and their subfolders.
+    // No grant at all is a refusal.
+    public static async Task<FolderReach> OfAsync(PluginDbContext<MediaPlugin> database, IPermissionChecker permissions, string permission, SiteId site, CancellationToken cancellationToken)
+    {
+        var resources = await permissions.ResourcesAsync(permission, site, cancellationToken);
+        if (resources is null)
+        {
+            return All;
+        }
+
+        if (resources.Count == 0)
+        {
+            throw new PermissionDeniedException(permission, site);
+        }
+
+        var named = resources.Select(resource => Guid.TryParse(resource, out var id) ? id : (Guid?)null).OfType<Guid>().ToList();
+        var paths = await database.Set<Folder>().AsNoTracking()
+            .Where(folder => folder.SiteId == site.Value && named.Contains(folder.Id))
+            .Select(folder => folder.Path)
+            .ToListAsync(cancellationToken);
+
+        HashSet<Guid> folders = [];
+        foreach (var path in paths)
+        {
+            folders.UnionWith(await SubtreeAsync(database, site, path, cancellationToken));
+        }
+
+        return new FolderReach(folders);
+    }
+
+    public static Task<List<Guid>> SubtreeAsync(PluginDbContext<MediaPlugin> database, SiteId site, string path, CancellationToken cancellationToken) =>
+        database.Set<Folder>().AsNoTracking().Where(folder => folder.SiteId == site.Value && folder.Path.StartsWith(path)).Select(folder => folder.Id).ToListAsync(cancellationToken);
 }
