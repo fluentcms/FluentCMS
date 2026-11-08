@@ -214,6 +214,7 @@ public static class FluentCmsServiceCollectionExtensions
         services.AddSingleton<JobRegistry>();
         services.AddSingleton<JobStore>();
         services.AddSingleton<JobExecutor>();
+        services.AddSingleton<JobWake>();
         services.AddSingleton<RecurringJobs>();
         services.AddSingleton<JobFactory>();
         services.TryAddSingleton<IJobEventSink, BusJobEventSink>();

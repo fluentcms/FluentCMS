@@ -6,6 +6,7 @@ using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Telemetry;
 using FluentCMS.Jobs;
+using FluentCMS.Schema;
 using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,11 +24,14 @@ internal sealed class JobExecutor(
     IServiceScopeFactory scopes,
     IOperationContextAccessor operation,
     JobRunnerOptions options,
+    SchemaModel schema,
     TimeProvider time,
     ILogger<JobExecutor> logger)
 {
     private static readonly TimeSpan FirstSettleRetry = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan LastSettleRetry = TimeSpan.FromSeconds(30);
+
+    private readonly IReadOnlySet<string> _schemaNames = JobErrorText.NamesOf(schema);
 
     private enum Invocation
     {
@@ -116,7 +120,7 @@ internal sealed class JobExecutor(
         catch (OperationCanceledException) when (timedOut() is { } limit)
         {
             Record(job, started, "failed");
-            var error = JobErrorText.ForStorage(TimedOut(limit), job.Payload);
+            var error = JobErrorText.ForStorage(TimedOut(limit), job.Payload, _schemaNames);
             JobLog.AttemptFailed(logger, job.Id, job.Type, job.Attempt, error);
             settle = () => store.FailAsync(job, error);
         }
@@ -129,8 +133,8 @@ internal sealed class JobExecutor(
         catch (Exception exception)
         {
             Record(job, started, "failed");
-            JobLog.AttemptFailed(logger, job.Id, job.Type, job.Attempt, JobErrorText.ForLog(exception, job.Payload));
-            var error = JobErrorText.ForStorage(exception, job.Payload);
+            JobLog.AttemptFailed(logger, job.Id, job.Type, job.Attempt, JobErrorText.ForLog(exception, job.Payload, _schemaNames));
+            var error = JobErrorText.ForStorage(exception, job.Payload, _schemaNames);
             settle = () => store.FailAsync(job, error);
         }
 

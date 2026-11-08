@@ -62,6 +62,17 @@ public sealed class LockedKeyManagerTests
         locks.Released.ShouldBe(0);
     }
 
+    [Fact]
+    public void TheThreadDataProtectionBlocksWaitsForTheLockOnlyBriefly()
+    {
+        var locks = new FakeLock(grants: true);
+
+        Manager(new FakeKeyManager(), defaultKey: null, locks).CreateNewKey(Now, Now + TimeSpan.FromDays(90));
+
+        locks.Waited.ShouldBe(LockedKeyManager.Wait);
+        LockedKeyManager.Wait.ShouldBeLessThanOrEqualTo(TimeSpan.FromSeconds(10));
+    }
+
     private static LockedKeyManager Manager(FakeKeyManager inner, IKey? defaultKey, FakeLock locks) =>
         new(inner, new FakeResolver(defaultKey), locks, NullLogger<LockedKeyManager>.Instance);
 
@@ -119,8 +130,11 @@ public sealed class LockedKeyManagerTests
 
         public int Released { get; private set; }
 
+        public TimeSpan? Waited { get; private set; }
+
         public Task<IDistributedLockHandle?> TryAcquireAsync(string name, TimeSpan timeout, CancellationToken cancellationToken = default)
         {
+            Waited = timeout;
             if (!grants)
             {
                 return Task.FromResult<IDistributedLockHandle?>(null);

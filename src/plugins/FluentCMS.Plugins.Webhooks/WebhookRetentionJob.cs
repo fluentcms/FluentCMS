@@ -15,6 +15,10 @@ internal sealed class WebhookRetentionJob(PluginDbContext<WebhooksPlugin> databa
     public const string Schedule = "15 4 * * *";
     public const int BatchSize = 500;
 
+    // Stops a large prune from holding a worker for good. The batches before it are committed, so the attempt that the
+    // runner retries goes on where it stopped.
+    public static readonly TimeSpan AttemptTimeout = TimeSpan.FromMinutes(10);
+
     public async Task ExecuteAsync(WebhookRetentionPayload payload, JobContext context)
     {
         var cutoff = time.GetUtcNow() - options.Value.Retention;

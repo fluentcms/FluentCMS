@@ -1,3 +1,4 @@
+using System.Globalization;
 using FluentCMS.Activity;
 using FluentCMS.Diagnostics;
 using FluentCMS.Events;
@@ -20,8 +21,9 @@ public sealed class WebhooksPlugin : IPlugin
         plugin.Services.AddOptions<WebhooksOptions>()
             .BindConfiguration(WebhooksOptions.Section)
             .Validate(
-                options => options.Timeout > TimeSpan.Zero && options.Timeout <= TimeSpan.FromMinutes(5) && options.Retention > TimeSpan.Zero && options.Workers >= 0 && options.SecretOverlap >= TimeSpan.Zero,
-                $"{WebhooksOptions.Section}: Timeout must be positive and at most five minutes, Retention positive, and Workers and SecretOverlap not negative.");
+                options => options.Timeout > TimeSpan.Zero && options.Timeout <= TimeSpan.FromMinutes(5) && options.Retention > TimeSpan.Zero && options.Workers >= 0 && options.SecretOverlap >= TimeSpan.Zero
+                    && (options.DisableAfter is null || (options.DisableAfter > TimeSpan.Zero && options.DisableAfter <= options.Retention)),
+                $"{WebhooksOptions.Section}: Timeout must be positive and at most five minutes, Retention positive, Workers and SecretOverlap not negative, and DisableAfter, when set, positive and at most Retention.");
         plugin.Services.AddSingleton<WebhookSender>();
         plugin.Services.AddSingleton<WebhookSigning>();
         plugin.Services.AddScoped<WebhookService>();
@@ -35,7 +37,7 @@ public sealed class WebhooksPlugin : IPlugin
             .AddMigrations(typeof(WebhooksPlugin).Assembly)
             .AddJob<WebhookDeliveryJob, WebhookAttempt>(WebhookDeliveryJob.Type)
             .AddJobQueue(WebhookDeliveryJob.Queue, services => services.GetRequiredService<IOptions<WebhooksOptions>>().Value.Workers)
-            .AddJob<WebhookRetentionJob, WebhookRetentionPayload>(WebhookRetentionJob.Type)
+            .AddJob<WebhookRetentionJob, WebhookRetentionPayload>(WebhookRetentionJob.Type, WebhookRetentionJob.AttemptTimeout)
             .AddErrorCode(WebhookErrorCodes.InvalidField, 422, "Invalid webhook")
             .AddErrorCode(WebhookErrorCodes.InvalidUrl, 422, "Invalid webhook URL")
             .AddErrorCode(WebhookErrorCodes.PrivateAddress, 422, "Webhook URL is not public")
@@ -43,9 +45,16 @@ public sealed class WebhooksPlugin : IPlugin
             .AddErrorCode(WebhookErrorCodes.NotFound, 404, "Webhook not found")
             .AddErrorCode(WebhookErrorCodes.DeliveryNotFound, 404, "Webhook delivery not found")
             .AddErrorCode(WebhookErrorCodes.NameTaken, 409, "Webhook name taken")
-            .AddActivity<WebhookCreatedEvent>("webhook.created", created => Activity("webhook.created", created.WebhookId, created.Name, null))
-            .AddActivity<WebhookUpdatedEvent>("webhook.updated", updated => Activity("webhook.updated", updated.WebhookId, updated.Name, updated.SecretChanged))
-            .AddActivity<WebhookDeletedEvent>("webhook.deleted", deleted => Activity("webhook.deleted", deleted.WebhookId, deleted.Name, null));
+            .AddActivity<WebhookCreatedEvent>("webhook.created", created => Activity("webhook.created", created.WebhookId, created.Name))
+            .AddActivity<WebhookUpdatedEvent>("webhook.updated", updated => Activity("webhook.updated", updated.WebhookId, updated.Name, new() { ["secretChanged"] = updated.SecretChanged ? "true" : "false" }))
+            .AddActivity<WebhookDeletedEvent>("webhook.deleted", deleted => Activity("webhook.deleted", deleted.WebhookId, deleted.Name))
+            .AddActivity<WebhookDeadEvent>("webhook.delivery_dead", dead => Activity("webhook.delivery_dead", dead.WebhookId, dead.Name, new()
+            {
+                ["deliveryId"] = dead.DeliveryId.ToString("D"),
+                ["event"] = dead.Event,
+                ["attempts"] = dead.Attempts.ToString(CultureInfo.InvariantCulture),
+            }))
+            .AddActivity<WebhookDisabledEvent>("webhook.disabled", disabled => Activity("webhook.disabled", disabled.WebhookId, disabled.Name, new() { ["failingSince"] = disabled.FailingSince.ToString("O", CultureInfo.InvariantCulture) }));
 
         Subscribe<EntryDraftSavedEvent>(plugin);
         Subscribe<EntryPublishedEvent>(plugin);
@@ -66,11 +75,11 @@ public sealed class WebhooksPlugin : IPlugin
         where TEvent : CmsEvent =>
         plugin.AddOutboxHandler<TEvent, WebhookEventHandler<TEvent>>("webhooks." + WebhookEvents.Names[typeof(TEvent)]);
 
-    private static ActivityEntry Activity(string action, Guid webhookId, string name, bool? secretChanged) => new(action)
+    private static ActivityEntry Activity(string action, Guid webhookId, string name, Dictionary<string, string?>? details = null) => new(action)
     {
         TargetType = "webhook",
         TargetId = webhookId.ToString("D"),
         TargetLabel = name,
-        Details = secretChanged is { } changed ? new Dictionary<string, string?> { ["secretChanged"] = changed ? "true" : "false" } : null,
+        Details = details,
     };
 }

@@ -34,4 +34,7 @@ internal static partial class WebhookLog
 
     [LoggerMessage(EventId = 9249, Level = LogLevel.Error, Message = "Could not protect the headers of the webhooks stored before headers were protected; they stay readable in the database until it succeeds or the webhook is saved.")]
     public static partial void HeadersNotProtected(ILogger logger, Exception exception);
+
+    [LoggerMessage(EventId = 9250, Level = LogLevel.Warning, Message = "Webhook {WebhookId} was disabled: every attempt to it since {FailingSince:u} failed.")]
+    public static partial void Disabled(ILogger logger, Guid webhookId, DateTimeOffset failingSince);
 }

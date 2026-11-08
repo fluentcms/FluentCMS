@@ -1,3 +1,5 @@
+using FluentCMS.Content;
+using FluentCMS.Events;
 using FluentCMS.Jobs;
 using FluentCMS.Sites;
 using Microsoft.EntityFrameworkCore;
@@ -12,12 +14,14 @@ internal sealed record WebhookAttempt(Guid WebhookId, Guid DeliveryId, Guid Even
 
 // Claims an attempt with a pending row before sending it, so that a repeat of the job or a second job for the attempt sends
 // nothing, and so that one attempt of a webhook is sent at a time. Then it records the result and schedules the next attempt
-// itself, on the plugin's schedule rather than the runner's backoff, so the job fails only when the database does.
+// itself, on the plugin's schedule rather than the runner's backoff, so the job fails only when the database does. A
+// delivery that dies raises WebhookDeadEvent, and may disable its webhook (DisableAfter).
 internal sealed class WebhookDeliveryJob(
     PluginDbContext<WebhooksPlugin> database,
     WebhookSender sender,
     WebhookSigning signing,
     IJobScheduler scheduler,
+    IEventBus events,
     IOptions<WebhooksOptions> options,
     TimeProvider time,
     ILogger<WebhookDeliveryJob> logger) : IJob<WebhookAttempt>
@@ -61,7 +65,7 @@ internal sealed class WebhookDeliveryJob(
         }
 
         var state = result.Succeeded ? DeliveryStates.Succeeded : retryAt is null ? DeliveryStates.Dead : DeliveryStates.Failed;
-        await database.Set<WebhookDelivery>()
+        var recorded = await database.Set<WebhookDelivery>()
             .Where(item => item.Id == claim && item.State == DeliveryStates.Pending)
             .ExecuteUpdateAsync(
                 item => item
@@ -84,6 +88,13 @@ internal sealed class WebhookDeliveryJob(
             default:
                 WebhookLog.Dead(logger, webhook.Id, attempt.DeliveryId, attempt.Attempt, attempt.Event, result.Error);
                 break;
+        }
+
+        // A row that another job took over in the meantime is that job's to report. Not cancelled, since a run again finds
+        // the row recorded and would report nothing.
+        if (state == DeliveryStates.Dead && recorded == 1 && !attempt.Manual)
+        {
+            await DiedAsync(webhook, attempt.DeliveryId, attempt.Event, attempt.Attempt, CancellationToken.None);
         }
     }
 
@@ -188,7 +199,51 @@ internal sealed class WebhookDeliveryJob(
         if (taken == 1)
         {
             WebhookLog.TakenOver(logger, abandoned.WebhookId, abandoned.DeliveryId, abandoned.Attempt, abandoned.CreatedAt);
+            if (state == DeliveryStates.Dead && !abandoned.Manual)
+            {
+                await DiedAsync(webhook, abandoned.DeliveryId, abandoned.Event, abandoned.Attempt, CancellationToken.None);
+            }
         }
+    }
+
+    private async Task DiedAsync(Webhook webhook, Guid deliveryId, string name, int attempts, CancellationToken cancellationToken)
+    {
+        await events.PublishAsync(new WebhookDeadEvent(webhook.Id, webhook.Name, deliveryId, name, attempts), cancellationToken);
+        if (options.Value.DisableAfter is not { } after || await FailingSinceAsync(webhook, cancellationToken) is not { } since)
+        {
+            return;
+        }
+
+        var now = time.GetUtcNow();
+        if (since > now - after)
+        {
+            return;
+        }
+
+        // Only a webhook still enabled, so that of two deliveries that die at once one reports it.
+        var disabled = await database.Set<Webhook>()
+            .Where(item => item.Id == webhook.Id && item.Enabled)
+            .ExecuteUpdateAsync(item => item.SetProperty(row => row.Enabled, false).SetProperty(row => row.UpdatedAt, now).SetProperty(row => row.UpdatedBy, Principal.System.Id), cancellationToken);
+        if (disabled == 1)
+        {
+            WebhookLog.Disabled(logger, webhook.Id, since);
+            await events.PublishAsync(new WebhookDisabledEvent(webhook.Id, webhook.Name, since), cancellationToken);
+        }
+    }
+
+    // The claim of the first attempt that failed after the webhook's last success and its last change, so that a webhook
+    // turned back on, or pointed somewhere else, starts afresh; null while its last attempt succeeded. A ping or a
+    // redelivery counts like any other attempt.
+    private async Task<DateTimeOffset?> FailingSinceAsync(Webhook webhook, CancellationToken cancellationToken)
+    {
+        var attempts = database.Set<WebhookDelivery>().AsNoTracking().Where(item => item.WebhookId == webhook.Id);
+        var failures = attempts.Where(item => (item.State == DeliveryStates.Failed || item.State == DeliveryStates.Dead) && item.CreatedAt >= webhook.UpdatedAt);
+        if (await attempts.Where(item => item.State == DeliveryStates.Succeeded).OrderByDescending(item => item.CreatedAt).Select(item => (DateTimeOffset?)item.CreatedAt).FirstOrDefaultAsync(cancellationToken) is { } succeeded)
+        {
+            failures = failures.Where(item => item.CreatedAt > succeeded);
+        }
+
+        return await failures.OrderBy(item => item.CreatedAt).Select(item => (DateTimeOffset?)item.CreatedAt).FirstOrDefaultAsync(cancellationToken);
     }
 
     private async Task DeferAsync(WebhookAttempt attempt, Webhook webhook, DateTimeOffset at, CancellationToken cancellationToken)

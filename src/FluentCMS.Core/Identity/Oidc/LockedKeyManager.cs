@@ -17,8 +17,10 @@ internal sealed class LockedKeyManager(IKeyManager inner, IDefaultKeyResolver re
 
     private const string Work = "making a Data Protection key";
 
-    // Long enough for a holder that stopped without releasing the lock to lose its lease.
-    private static readonly TimeSpan Wait = TimeSpan.FromSeconds(45);
+    // Data Protection's call blocks a thread for this wait, so it covers a live holder, which makes its key in well under
+    // a second, and not one that stopped without releasing the lock: past it, a key is made without the lock, as
+    // before the lock existed.
+    public static readonly TimeSpan Wait = TimeSpan.FromSeconds(10);
 
     // A key made this recently was made by an instance that raced this one, within the clock skew Data Protection allows
     // between instances. An older one was in the ring the caller read, so the caller asked for a new key on purpose.

@@ -162,15 +162,25 @@ internal sealed partial class WebhookService(
         return Info(webhook);
     }
 
-    // The webhook, then its delivery log. A retry already scheduled finds no webhook and sends nothing; an attempt that was
-    // running as the log went is left to the retention job.
+    // The webhook and its delivery log, in one transaction. A retry already scheduled finds no webhook and sends nothing; an
+    // attempt that was running as the log went is left to the retention job. The event follows the commit, since a publish
+    // inside the plugin's transaction is refused, and only the delete that removed the webhook raises it.
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken)
     {
         var site = await RequireAsync(cancellationToken);
         var webhook = await FindAsync(site, id, tracked: false, cancellationToken);
 
-        await database.Set<Webhook>().Where(item => item.Id == webhook.Id).ExecuteDeleteAsync(cancellationToken);
-        await database.Set<WebhookDelivery>().Where(delivery => delivery.WebhookId == webhook.Id).ExecuteDeleteAsync(cancellationToken);
+        await using (var transaction = await database.Database.BeginTransactionAsync(cancellationToken))
+        {
+            if (await database.Set<Webhook>().Where(item => item.Id == webhook.Id).ExecuteDeleteAsync(cancellationToken) == 0)
+            {
+                throw new PluginException(WebhookErrorCodes.NotFound, $"The site has no webhook {id:D}.");
+            }
+
+            await database.Set<WebhookDelivery>().Where(delivery => delivery.WebhookId == webhook.Id).ExecuteDeleteAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+        }
+
         await events.PublishAsync(new WebhookDeletedEvent(webhook.Id, webhook.Name), cancellationToken);
     }
 
