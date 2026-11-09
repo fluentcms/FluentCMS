@@ -22,8 +22,7 @@ using Xunit;
 
 namespace FluentCMS.Core.IntegrationTests.Api;
 
-[Xunit.Collection(ProcessEnvironment.Collection)]
-public sealed class HttpProtectionTests : IAsyncDisposable
+public sealed class HttpProtectionTests(CmsWebHosts hosts) : IClassFixture<CmsWebHosts>, IAsyncDisposable
 {
     private const string DeliveryPath = "/api/delivery/v1/probe";
     private const string ManagementPath = "/api/management/v1/probe";
@@ -579,9 +578,18 @@ public sealed class HttpProtectionTests : IAsyncDisposable
         return client.SendAsync(request, Token);
     }
 
+    // A rate limit counts what each test sends, so a host with limits of its own is the test's alone.
     private async Task<HttpClient> Start(Dictionary<string, string?>? settings = null, bool content = false)
     {
-        var app = _host.Build(
+        _app = settings?.Keys.Any(key => key.StartsWith("FluentCms:RateLimits:", StringComparison.Ordinal)) == true
+            ? await StartAsync(_host, settings, content)
+            : await hosts.StartAsync(CmsWebHosts.SetUp(Environments.Development, settings, content), host => StartAsync(host, settings, content));
+        return _app.GetTestClient();
+    }
+
+    private static async Task<WebApplication> StartAsync(CmsWebHost host, Dictionary<string, string?>? settings, bool content)
+    {
+        var app = host.Build(
             Environments.Development,
             settings,
             builder =>
@@ -634,9 +642,8 @@ public sealed class HttpProtectionTests : IAsyncDisposable
                 }
             });
 
-        _app = app;
         await app.StartAsync(Token);
-        return app.GetTestClient();
+        return app;
     }
 
     private static async Task<IResult> QueryNotes(IOperationContextAccessor accessor, IContentService<Note> notes, TimeProvider time, int? size, int? depth, int? nodes)

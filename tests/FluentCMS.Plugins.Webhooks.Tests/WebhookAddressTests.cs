@@ -13,7 +13,7 @@ namespace FluentCMS.Plugins.Webhooks.Tests;
 
 // The target URL rules of #2837: https outside Development, no address that is not public, at save and at connect time, and
 // no redirect followed.
-public sealed class WebhookAddressTests
+public sealed class WebhookAddressTests(GuardedWebhookFixture hosts) : IClassFixture<GuardedWebhookFixture>
 {
     [Theory]
     [InlineData("127.0.0.1")]
@@ -86,7 +86,7 @@ public sealed class WebhookAddressTests
     [InlineData("http://localhost:9/hooks")]
     public async Task ATargetThatIsNotPublicIsRefusedWhenItIsSaved(string url)
     {
-        await using var host = Host(allowPrivateNetworks: false);
+        var host = await hosts.HostAsync();
         using var client = await AdminAsync(host);
 
         using var response = await client.PostAsJsonAsync(new Uri("/api/management/v1/webhooks", UriKind.Relative), new { name = "inside", url, events = new List<string> { "content.published" } }, Token);
@@ -101,7 +101,7 @@ public sealed class WebhookAddressTests
     public async Task ADeliveryToAnAddressThatIsNotPublicFailsWithoutARequestLeavingTheHost()
     {
         await using var receiver = await TestReceiver.StartAsync();
-        await using var host = Host(allowPrivateNetworks: false);
+        var host = await hosts.HostAsync();
         using var client = await AdminAsync(host);
         var webhook = await CreateAsync(client, new { name = "rebound", url = "https://example.com/hooks", events = new List<string> { "content.published" } });
         await PointAtAsync(host, Id(webhook), receiver.Url());
@@ -111,7 +111,7 @@ public sealed class WebhookAddressTests
         await PumpAsync(host);
 
         receiver.Requests.ShouldBeEmpty();
-        var attempt = (await DeliveriesAsync(host)).ShouldHaveSingleItem();
+        var attempt = (await DeliveriesAsync(host, Id(webhook))).ShouldHaveSingleItem();
         attempt.State.ShouldBe(DeliveryStates.Dead);
         attempt.StatusCode.ShouldBeNull();
         attempt.Error.ShouldBe(WebhookAddresses.NotPublic);
@@ -123,6 +123,7 @@ public sealed class WebhookAddressTests
         await using var receiver = await TestReceiver.StartAsync();
         await using var inside = await TestReceiver.StartAsync();
         receiver.RedirectTo = inside.Url("/latest/meta-data").ToString();
+        // The receivers are on loopback, which the class's host refuses.
         await using var host = Host();
         using var client = await AdminAsync(host);
         var webhook = await CreateAsync(client, new { name = "moved", url = receiver.Url().ToString(), events = new List<string> { "content.published" } });
@@ -152,7 +153,7 @@ public sealed class WebhookAddressTests
     [Fact]
     public async Task TheHostAsksThePluginForItsInsecureDefaults()
     {
-        await using var host = Host();
+        var host = await hosts.HostAsync();
 
         host.Services.GetServices<IInsecureDefaultSource>().ShouldContain(source => source is WebhookInsecureDefaults);
     }
@@ -177,3 +178,6 @@ public sealed class WebhookAddressTests
         public Microsoft.Extensions.FileProviders.IFileProvider ContentRootFileProvider { get; set; } = new Microsoft.Extensions.FileProviders.NullFileProvider();
     }
 }
+
+// A host that refuses the addresses that are not public, as production does.
+public sealed class GuardedWebhookFixture() : WebhookFixture(Host(allowPrivateNetworks: false));

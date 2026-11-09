@@ -32,7 +32,7 @@ using Xunit;
 namespace FluentCMS.Plugins.Tests;
 
 // The contributions of #2829, through the sample plugin that every host of these tests discovers.
-public sealed class PluginContributionTests
+public sealed class PluginContributionTests(PluginContributionFixture fixture) : IClassFixture<PluginContributionFixture>
 {
     private static readonly CancellationToken Token = TestContext.Current.CancellationToken;
 
@@ -77,7 +77,7 @@ public sealed class PluginContributionTests
     [Fact]
     public async Task ThePluginsTablesJoinTheRuntimeModelOutsideItsMigrations()
     {
-        await using var host = new FluentCmsTestHost();
+        var host = fixture.Host;
 
         await using var scope = host.Services.CreateAsyncScope();
         var model = scope.ServiceProvider.GetRequiredService<CmsDbContext>().GetService<IDesignTimeModel>().Model;
@@ -116,7 +116,7 @@ public sealed class PluginContributionTests
     [Fact]
     public async Task SchemaSyncLeavesThePluginsTableAloneAndRecordsTheSchema()
     {
-        await using var host = new FluentCmsTestHost();
+        var host = fixture.Host;
         var runner = host.Services.GetRequiredService<MigrationRunner>();
 
         var report = await runner.SyncContentSchemaAsync(cancellationToken: Token);
@@ -214,7 +214,7 @@ public sealed class PluginContributionTests
     [Fact]
     public async Task TheManagementEndpointRefusesACallerWithoutTheManagementScope()
     {
-        await using var host = new FluentCmsTestHost();
+        var host = fixture.Host;
         var delivery = await host.CreateApiKeyAsync(ApiKeyClass.Delivery, BuiltInRoles.SuperAdminName, cancellationToken: Token);
         var notes = new Uri("/api/management/v1/sample/notes", UriKind.Relative);
 
@@ -229,7 +229,7 @@ public sealed class PluginContributionTests
     [Fact]
     public async Task ARefusalThePluginThrowsHasThePluginsCodeAndStatus()
     {
-        await using var host = new FluentCmsTestHost();
+        var host = fixture.Host;
         var key = await host.CreateApiKeyAsync(ApiKeyClass.Management, BuiltInRoles.SuperAdminName, cancellationToken: Token);
         using var client = host.AsKey(key);
         var notes = new Uri("/api/management/v1/sample/notes", UriKind.Relative);
@@ -267,7 +267,7 @@ public sealed class PluginContributionTests
     [Fact]
     public async Task ThePermissionsOfAPluginAreListedAndGrantable()
     {
-        await using var host = new FluentCmsTestHost();
+        var host = fixture.Host;
         var key = await host.CreateApiKeyAsync(ApiKeyClass.Management, BuiltInRoles.SuperAdminName, cancellationToken: Token);
         using var client = host.AsKey(key);
 
@@ -288,6 +288,7 @@ public sealed class PluginContributionTests
     [Fact]
     public async Task ThePluginsSettingsAreReadAndWrittenThroughTheirArea()
     {
+        // The settings are read before any write, at their first version.
         await using var host = new FluentCmsTestHost();
         var key = await host.CreateApiKeyAsync(ApiKeyClass.Management, BuiltInRoles.SuperAdminName, cancellationToken: Token);
         using var client = host.AsKey(key);
@@ -309,15 +310,7 @@ public sealed class PluginContributionTests
     [Fact]
     public async Task ThePluginsJobRunsAndItsEventReachesItsOutboxHandlerAndTheActivityLog()
     {
-        var calls = new PluginCalls();
-        // The test runs the job and drains the outbox itself; the host's own workers would race it for the job on a slow runner.
-        await using var host = new FluentCmsTestHost()
-            .WithServices(services => services.AddSingleton(calls))
-            .Configure(cms =>
-            {
-                cms.Jobs.Options.Queues[JobRunnerOptions.DefaultQueue] = 0;
-                cms.Jobs.Options.Queues[OutboxDrainJob.Queue] = 0;
-            });
+        var host = fixture.Host;
         var admin = host.As(await host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token));
 
         await host.Services.GetRequiredService<IJobScheduler>().EnqueueAsync<SampleNoteJob, SampleNotePayload>(new SampleNotePayload("from a job"), cancellationToken: Token);
@@ -327,20 +320,15 @@ public sealed class PluginContributionTests
         }
 
         await using var read = host.Services.CreateAsyncScope();
-        (await read.ServiceProvider.GetRequiredService<PluginDbContext<SamplePlugin>>().Set<SampleNote>().Select(note => note.Text).ToListAsync(Token)).ShouldBe(["from a job"]);
+        var added = (await read.ServiceProvider.GetRequiredService<PluginDbContext<SamplePlugin>>().Set<SampleNote>().Where(note => note.Text == "from a job").ToListAsync(Token)).ShouldHaveSingleItem();
 
-        IReadOnlyList<ActivityItem> items = [];
-        for (var attempt = 0; attempt < 50 && (items.Count == 0 || !calls.All.Contains("sample.outbox:from a job")); attempt++)
+        // No worker drains the outbox, so once it is drained the handler has run and the activity row is written.
+        while (await host.Services.GetRequiredService<OutboxDrainer>().DrainAsync(Token) > 0)
         {
-            await host.Services.GetRequiredService<OutboxDrainer>().DrainAsync(Token);
-            items = (await admin.RunAsync<IActivityQuery, PagedResult<ActivityItem>>(query => query.QueryAsync(null, null, Token))).Items;
-            if (items.Count == 0)
-            {
-                await Task.Delay(100, Token);
-            }
         }
 
-        calls.All.ShouldContain("sample.outbox:from a job");
+        var items = (await admin.RunAsync<IActivityQuery, PagedResult<ActivityItem>>(query => query.QueryAsync(new ActivityFilter { TargetId = added.Id.ToString() }, null, Token))).Items;
+        fixture.Calls.All.ShouldContain("sample.outbox:from a job");
         var item = items.ShouldHaveSingleItem();
         item.Action.ShouldBe("sample.note_added");
         item.TargetLabel.ShouldBe("from a job");
@@ -351,8 +339,8 @@ public sealed class PluginContributionTests
     [Fact]
     public async Task APublishInsideATransactionOnThePluginsContextIsRefusedAndLeavesNoOutboxRow()
     {
-        var calls = new PluginCalls();
-        await using var host = new FluentCmsTestHost().WithServices(services => services.AddSingleton(calls));
+        var host = fixture.Host;
+        var calls = fixture.Calls;
 
         await using (var scope = host.Services.CreateAsyncScope())
         {
@@ -373,8 +361,10 @@ public sealed class PluginContributionTests
         }
 
         await using var read = host.Services.CreateAsyncScope();
-        (await read.ServiceProvider.GetRequiredService<PluginDbContext<SamplePlugin>>().Set<SampleNote>().CountAsync(Token)).ShouldBe(0);
-        var rows = await read.ServiceProvider.GetRequiredService<SystemDbContext>().Set<OutboxMessage>().AsNoTracking().ToListAsync(Token);
+        (await read.ServiceProvider.GetRequiredService<PluginDbContext<SamplePlugin>>().Set<SampleNote>().CountAsync(note => note.Text == "rolled back", Token)).ShouldBe(0);
+        var rows = await read.ServiceProvider.GetRequiredService<SystemDbContext>().Set<OutboxMessage>().AsNoTracking()
+            .Where(row => row.Payload.Contains("rolled back") || row.Payload.Contains("after the transaction"))
+            .ToListAsync(Token);
         rows.ShouldNotBeEmpty();
         rows.ShouldAllBe(row => row.Payload.Contains("after the transaction"));
         calls.All.ShouldContain("sample.event:after the transaction");

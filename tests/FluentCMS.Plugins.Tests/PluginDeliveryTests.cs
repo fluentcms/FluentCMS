@@ -8,6 +8,7 @@ using FluentCMS.Core.Events;
 using FluentCMS.Core.Identity.ApiKeys;
 using FluentCMS.Core.Plugins;
 using FluentCMS.Core.Sites;
+using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Sites;
 using FluentCMS.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -19,7 +20,7 @@ namespace FluentCMS.Plugins.Tests;
 
 // What a plugin's MapDelivery group gets from core (#2888): what core's Delivery group has, through the sample plugin's
 // /api/delivery/v1/sample routes.
-public sealed class PluginDeliveryTests
+public sealed class PluginDeliveryTests(PluginDeliveryFixture fixture) : IClassFixture<PluginDeliveryFixture>
 {
     private const string AllowedOrigin = "https://site.example.com";
     private const string Greeting = "/api/delivery/v1/sample/greeting";
@@ -46,15 +47,15 @@ public sealed class PluginDeliveryTests
     [Fact]
     public async Task TheGroupRunsInTheSiteAndLocaleTheRequestNames()
     {
-        await using var host = new FluentCmsTestHost();
+        var host = fixture.Host;
         var docs = await CreateSiteAsync(host, "fr");
         using var client = host.CreateClient();
 
-        var named = await JsonAsync(await SendAsync(client, Greeting, ("X-Cms-Site", "docs")));
-        using var locale = await SendAsync(client, Greeting + "?site=docs&locale=de");
+        var named = await JsonAsync(await SendAsync(client, Greeting, ("X-Cms-Site", docs.Slug)));
+        using var locale = await SendAsync(client, Greeting + $"?site={docs.Slug}&locale=de");
         using var missing = await SendAsync(client, Greeting + "?site=nowhere");
 
-        named["site"]!.GetValue<Guid>().ShouldBe(docs);
+        named["site"]!.GetValue<Guid>().ShouldBe(docs.Id);
         named["locale"]!.GetValue<string>().ShouldBe("fr");
         locale.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
         (await CodeAsync(locale)).ShouldBe("FCMS2312");
@@ -62,20 +63,22 @@ public sealed class PluginDeliveryTests
         (await CodeAsync(missing)).ShouldBe("FCMS2301");
     }
 
-    // A credential that is sent and refused is never read as anonymous, as on core's Delivery routes.
+    // A credential that is sent and refused is never read as anonymous, as on core's Delivery routes. The copy is kept in a
+    // site of the test's own, so that no other test is answered from it.
     [Fact]
     public async Task TheDeliveryOutputCacheKeepsTheAnswerUnlessTheEndpointOptsOutAndARefusedKeyIsA401()
     {
-        await using var host = new FluentCmsTestHost();
+        var host = fixture.Host;
+        var site = ("X-Cms-Site", (await CreateSiteAsync(host, "en")).Slug);
         using var client = host.CreateClient();
         using var wrongKey = host.CreateClient();
         wrongKey.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("ApiKey", ApiKeyFormat.Generate(KeyClass.Delivery));
 
-        var first = await ServedAsync(client, Greeting);
-        var second = await ServedAsync(client, Greeting);
+        var first = await ServedAsync(client, Greeting, site);
+        var second = await ServedAsync(client, Greeting, site);
         var fresh = await ServedAsync(client, "/api/delivery/v1/sample/fresh");
         var again = await ServedAsync(client, "/api/delivery/v1/sample/fresh");
-        using var refused = await wrongKey.GetAsync(new Uri(Greeting, UriKind.Relative), Token);
+        using var refused = await SendAsync(wrongKey, Greeting, site);
 
         second.ShouldBe(first);
         again.ShouldBe(fresh + 1);
@@ -113,35 +116,27 @@ public sealed class PluginDeliveryTests
     [Fact]
     public async Task ACopyOfTheAnswerGoesWhenThePluginIsDisabledInItsSite()
     {
-        await using var host = new FluentCmsTestHost();
+        var host = fixture.Host;
         var docs = await CreateSiteAsync(host, "en");
         using var client = host.CreateClient();
-        var kept = await ServedAsync(client, Greeting, ("X-Cms-Site", "docs"));
-        (await ServedAsync(client, Greeting, ("X-Cms-Site", "docs"))).ShouldBe(kept);
+        var kept = await ServedAsync(client, Greeting, ("X-Cms-Site", docs.Slug));
+        (await ServedAsync(client, Greeting, ("X-Cms-Site", docs.Slug))).ShouldBe(kept);
 
         await using (var scope = host.Services.CreateAsyncScope())
         {
             using var system = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, new SiteId(DefaultSite.Id));
-            await scope.ServiceProvider.GetRequiredService<PluginAdministration>().SetEnabledAsync("sample", docs, false, Token);
+            await scope.ServiceProvider.GetRequiredService<PluginAdministration>().SetEnabledAsync("sample", docs.Id, false, Token);
         }
 
-        // The eviction runs through the outbox, which the job runner may be draining too.
-        var status = HttpStatusCode.OK;
-        for (var attempt = 0; attempt < 50 && status == HttpStatusCode.OK; attempt++)
+        // The eviction runs through the outbox, which no worker drains, so the copy is gone once it is drained.
+        while (await host.Services.GetRequiredService<OutboxDrainer>().DrainAsync(Token) > 0)
         {
-            await host.Services.GetRequiredService<OutboxDrainer>().DrainAsync(Token);
-            using var answer = await SendAsync(client, Greeting, ("X-Cms-Site", "docs"));
-            status = answer.StatusCode;
-            if (status == HttpStatusCode.OK)
-            {
-                await Task.Delay(100, Token);
-            }
         }
 
-        using var refused = await SendAsync(client, Greeting, ("X-Cms-Site", "docs"));
+        using var refused = await SendAsync(client, Greeting, ("X-Cms-Site", docs.Slug));
         using var served = await SendAsync(client, Greeting);
 
-        status.ShouldBe(HttpStatusCode.NotFound);
+        refused.StatusCode.ShouldBe(HttpStatusCode.NotFound);
         (await CodeAsync(refused)).ShouldBe("FCMS1550");
         served.StatusCode.ShouldBe(HttpStatusCode.OK);
     }
@@ -175,10 +170,11 @@ public sealed class PluginDeliveryTests
         exception.Message.ShouldContain("MapDelivery");
     }
 
-    private static async Task<Guid> CreateSiteAsync(FluentCmsTestHost host, string locale)
+    // A site of the test's own, since the tests share a host.
+    private static async Task<Site> CreateSiteAsync(FluentCmsTestHost host, string locale)
     {
         await using var scope = host.Services.CreateAsyncScope();
-        return (await scope.ServiceProvider.GetRequiredService<SiteManager>().CreateAsync("Docs", "docs", locale, Token)).Id;
+        return await scope.ServiceProvider.GetRequiredService<SiteManager>().CreateAsync("Docs", $"docs-{Guid.NewGuid():N}", locale, Token);
     }
 
     private static async Task<HttpResponseMessage> SendAsync(HttpClient client, string path, params (string Name, string Value)[] headers)

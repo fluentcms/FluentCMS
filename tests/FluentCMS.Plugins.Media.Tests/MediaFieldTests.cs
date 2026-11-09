@@ -15,7 +15,7 @@ using static FluentCMS.Plugins.Media.Tests.MediaHost;
 
 namespace FluentCMS.Plugins.Media.Tests;
 
-public sealed class MediaFieldTests
+public sealed class MediaFieldTests(StoryHost media) : IClassFixture<StoryHost>
 {
     private const string Stories = "/api/management/v1/content/story";
 
@@ -28,10 +28,8 @@ public sealed class MediaFieldTests
     }
 
     [Fact]
-    public async Task WithThePluginATypeWithASingleAndAListOfMediaStarts()
+    public void WithThePluginATypeWithASingleAndAListOfMediaStarts()
     {
-        await using var media = StoryHost();
-
         var story = media.Services.GetRequiredService<SchemaModel>().FindContentType("story").ShouldNotBeNull();
 
         (story.FindField("hero")!.FieldType, story.FindField("hero")!.Multiple).ShouldBe(("media", false));
@@ -41,7 +39,6 @@ public sealed class MediaFieldTests
     [Fact]
     public async Task AWriteStoresItsMediaAsReferencesAtEveryDepth()
     {
-        await using var media = StoryHost();
         using var admin = await media.AdminAsync();
         var hero = await AssetAsync(admin, "hero.png");
         var other = await AssetAsync(admin, "other.png");
@@ -67,7 +64,6 @@ public sealed class MediaFieldTests
     [Fact]
     public async Task AWriteRefusesAnAssetThatDoesNotExistOrIsDeleted()
     {
-        await using var media = StoryHost();
         using var admin = await media.AdminAsync();
         var deleted = await AssetAsync(admin, "gone.png");
         using (var removed = await admin.DeleteAsync(new Uri($"{Root}/{deleted:D}", UriKind.Relative), Token))
@@ -89,7 +85,6 @@ public sealed class MediaFieldTests
     [Fact]
     public async Task AnEntryWhoseAssetWasDeletedSinceCanStillBeSaved()
     {
-        await using var media = StoryHost();
         using var admin = await media.AdminAsync();
         var hero = await AssetAsync(admin, "hero.png");
         var created = await CreateAsync(admin, Story(hero, body: Body(hero), banner: hero));
@@ -113,7 +108,6 @@ public sealed class MediaFieldTests
     [Fact]
     public async Task EqualAndInFiltersOnAMediaFieldFindTheEntries()
     {
-        await using var media = StoryHost();
         using var admin = await media.AdminAsync();
         var first = await AssetAsync(admin, "first.png");
         var second = await AssetAsync(admin, "second.png");
@@ -129,7 +123,6 @@ public sealed class MediaFieldTests
     [Fact]
     public async Task PopulateReturnsTheAssetInTheRequestLocaleWithUrlsThatServeIt()
     {
-        await using var media = StoryHost();
         await media.AddLocaleAsync("fr");
         using var admin = await media.AdminAsync();
         var hero = await AssetAsync(admin, "hero.png", Transforms.Bands(40, 20));
@@ -167,7 +160,6 @@ public sealed class MediaFieldTests
     [Fact]
     public async Task AnAssetTheCallerCannotReadPopulatesAsNullAndAPrivateOneWithoutAUrl()
     {
-        await using var media = StoryHost();
         using var admin = await media.AdminAsync();
         var team = await FolderAsync(admin, "team");
         var inside = await AssetAsync(admin, "inside.png", folderId: team);
@@ -198,7 +190,6 @@ public sealed class MediaFieldTests
     [Fact]
     public async Task RichTextMediaAndBlockImagesResolveThroughTheResolver()
     {
-        await using var media = StoryHost();
         using var admin = await media.AdminAsync();
         var image = await AssetAsync(admin, "photo.png");
         await PatchAsync(admin, $"{Root}/{image:D}", new { alt = "A <b> & \"quote\"" });
@@ -224,7 +215,6 @@ public sealed class MediaFieldTests
     [Fact]
     public async Task AMediaFieldShowsInTheUsageOfItsAssetAndHoldsBackItsDelete()
     {
-        await using var media = StoryHost();
         using var admin = await media.AdminAsync();
         var hero = await AssetAsync(admin, "hero.png");
         var id = Id(await CreateAsync(admin, Story(hero, [hero], body: Body(hero), banner: hero)));
@@ -257,19 +247,11 @@ public sealed class MediaFieldTests
     [Fact]
     public async Task APopulatePathIntoABlockListGoesNoFurther()
     {
-        await using var media = StoryHost();
         using var admin = await media.AdminAsync();
 
         using var response = await admin.GetAsync(new Uri($"{Stories}?populate=sections.image", UriKind.Relative), Token);
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest, await response.Content.ReadAsStringAsync(Token));
-    }
-
-    private static MediaHost StoryHost()
-    {
-        var media = new MediaHost();
-        media.Host.WithContentTypes(typeof(Story), typeof(BannerBlock));
-        return media;
     }
 
     private static async Task<Guid> AssetAsync(HttpClient admin, string name, byte[]? bytes = null, Guid? folderId = null) =>

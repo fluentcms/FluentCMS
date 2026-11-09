@@ -10,7 +10,6 @@ using Xunit;
 
 namespace FluentCMS.Core.IntegrationTests.Identity;
 
-[Xunit.Collection(ProcessEnvironment.Collection)]
 public sealed class EmailOptionsTests : IAsyncDisposable
 {
     private static readonly CancellationToken Token = TestContext.Current.CancellationToken;

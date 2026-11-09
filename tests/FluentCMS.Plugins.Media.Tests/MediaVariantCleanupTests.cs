@@ -5,6 +5,7 @@ using FluentCMS.Jobs;
 using FluentCMS.Media;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Shouldly;
 using Xunit;
 using static FluentCMS.Plugins.Media.Tests.MediaHost;
@@ -12,12 +13,11 @@ using static FluentCMS.Plugins.Media.Tests.Transforms;
 
 namespace FluentCMS.Plugins.Media.Tests;
 
-public sealed class MediaVariantCleanupTests
+public sealed class MediaVariantCleanupTests(MediaHost media) : IClassFixture<MediaHost>
 {
     [Fact]
     public async Task TheCleanupRemovesTheVariantsOfDeletedAssetsFromTheStorageAndTheTable()
     {
-        await using var media = new MediaHost();
         using var admin = await media.AdminAsync();
         using var anonymous = media.Host.CreateClient();
         var kept = await UploadAsync(admin, Bands(40, 20));
@@ -36,7 +36,7 @@ public sealed class MediaVariantCleanupTests
             delete.StatusCode.ShouldBe(HttpStatusCode.NoContent);
         }
 
-        var before = await VariantsAsync(media);
+        var before = await VariantsAsync(kept, deleted);
         await media.Services.GetRequiredService<IJobScheduler>().EnqueueAsync<MediaVariantCleanupJob, MediaVariantCleanupPayload>(new MediaVariantCleanupPayload(), cancellationToken: Token);
         await using (var scope = media.Services.CreateAsyncScope())
         {
@@ -46,7 +46,7 @@ public sealed class MediaVariantCleanupTests
             }
         }
 
-        var after = await VariantsAsync(media);
+        var after = await VariantsAsync(kept, deleted);
         before.Count.ShouldBe(4);
         after.Select(variant => variant.AssetId).ShouldBe([kept.Id, kept.Id]);
         var storage = media.Services.GetRequiredService<IFileStorage>();
@@ -61,7 +61,6 @@ public sealed class MediaVariantCleanupTests
     [Fact]
     public async Task AVariantInAnotherStorageKeepsItsRowAndTheRestAreRemoved()
     {
-        await using var media = new MediaHost();
         using var admin = await media.AdminAsync();
         using var anonymous = media.Host.CreateClient();
         var foreign = await UploadAsync(admin, Bands(40, 20));
@@ -93,13 +92,12 @@ public sealed class MediaVariantCleanupTests
             }
         }
 
-        (await VariantsAsync(media)).Select(variant => variant.AssetId).ShouldBe([foreign.Id]);
+        (await VariantsAsync(foreign, local)).Select(variant => variant.AssetId).ShouldBe([foreign.Id]);
     }
 
     [Fact]
     public async Task TheCleanupPurgesTheAssetsDeletedLongerAgoThanTheRetentionWithTheirFiles()
     {
-        await using var media = new MediaHost();
         using var admin = await media.AdminAsync();
         using var anonymous = media.Host.CreateClient();
         var old = await UploadAsync(admin, Bands(8, 8));
@@ -125,9 +123,10 @@ public sealed class MediaVariantCleanupTests
         }
 
         await using var check = media.Services.CreateAsyncScope();
-        var left = await check.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>().Set<Asset>().AsNoTracking().Select(asset => asset.Id).ToListAsync(Token);
+        Guid[] own = [old.Id, recent.Id, kept.Id];
+        var left = await check.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>().Set<Asset>().AsNoTracking().Where(asset => own.Contains(asset.Id)).Select(asset => asset.Id).ToListAsync(Token);
         left.ShouldBe([recent.Id, kept.Id], ignoreOrder: true);
-        (await VariantsAsync(media)).ShouldBeEmpty();
+        (await VariantsAsync(old, recent, kept)).ShouldBeEmpty();
         Directory.EnumerateFiles(Path.Combine(media.StorageRoot, old.SiteId.ToString("N"), old.Id.ToString("N"))).ShouldBeEmpty();
         Directory.EnumerateFiles(Path.Combine(media.StorageRoot, recent.SiteId.ToString("N"), recent.Id.ToString("N"))).Count().ShouldBe(1);
     }
@@ -135,28 +134,23 @@ public sealed class MediaVariantCleanupTests
     [Fact]
     public async Task TheCleanupRunsDailyOnceTheHostHasStarted()
     {
-        await using var media = new MediaHost();
+        // The schedule is stored by the media startup, which runs once the host has started and then ends.
+        await media.Services.GetServices<IHostedService>().OfType<MediaStartup>().Single().ExecuteTask!.WaitAsync(TimeSpan.FromSeconds(30), Token);
 
-        RecurringJob? schedule = null;
-        for (var attempt = 0; attempt < 400 && schedule is null; attempt++)
-        {
-            await using var scope = media.Services.CreateAsyncScope();
-            schedule = await scope.ServiceProvider.GetRequiredService<Core.Storage.SystemDbContext>().Set<RecurringJob>()
-                .AsNoTracking()
-                .FirstOrDefaultAsync(job => job.Name == MediaVariantCleanupJob.Type, Token);
-            if (schedule is null)
-            {
-                await Task.Delay(50, Token);
-            }
-        }
+        await using var scope = media.Services.CreateAsyncScope();
+        var schedule = await scope.ServiceProvider.GetRequiredService<Core.Storage.SystemDbContext>().Set<RecurringJob>()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(job => job.Name == MediaVariantCleanupJob.Type, Token);
 
         schedule.ShouldNotBeNull();
         (schedule.Type, schedule.Cron).ShouldBe((MediaVariantCleanupJob.Type, MediaVariantCleanupJob.Schedule));
     }
 
-    private static async Task<List<Variant>> VariantsAsync(MediaHost media)
+    private async Task<List<Variant>> VariantsAsync(params MediaAsset[] assets)
     {
+        var ids = assets.Select(asset => asset.Id).ToList();
         await using var scope = media.Services.CreateAsyncScope();
-        return await scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>().Set<Variant>().AsNoTracking().OrderBy(variant => variant.AssetId).ToListAsync(Token);
+        return await scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>().Set<Variant>().AsNoTracking()
+            .Where(variant => ids.Contains(variant.AssetId)).OrderBy(variant => variant.AssetId).ToListAsync(Token);
     }
 }

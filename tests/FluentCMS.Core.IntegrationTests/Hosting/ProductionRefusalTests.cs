@@ -13,7 +13,6 @@ using Xunit;
 namespace FluentCMS.Core.IntegrationTests.Hosting;
 
 // The refusals of an unset public origin and an unencrypted key ring. CmsWebHost lifts both, so each test sets what it is about.
-[Xunit.Collection(ProcessEnvironment.Collection)]
 public sealed class ProductionRefusalTests : IAsyncDisposable
 {
     private const string AllowRequestOrigin = "FluentCms:Security:AllowRequestOrigin";

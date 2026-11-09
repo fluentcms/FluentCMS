@@ -9,15 +9,14 @@ using static FluentCMS.Plugins.Media.Tests.MediaHost;
 
 namespace FluentCMS.Plugins.Media.Tests;
 
-public sealed class MediaFolderTests
+public sealed class MediaFolderTests(MediaHost media) : IClassFixture<MediaHost>
 {
     [Fact]
     public async Task FoldersNestAndMoveWithTheirSubfoldersAndAssets()
     {
-        await using var media = new MediaHost();
         using var client = await media.AdminAsync();
-        var archive = await FolderAsync(client, "archive");
-        var photos = await FolderAsync(client, "photos");
+        var archive = await FolderAsync(client, Unique("archive"));
+        var photos = await FolderAsync(client, Unique("photos"));
         var summer = await FolderAsync(client, "summer", photos);
         var beach = await FolderAsync(client, "beach", summer);
         var asset = Id((await UploadedAsync(client, beach, ("sand.jpg", Files.Jpeg(1, 1)))).Single()!);
@@ -40,16 +39,17 @@ public sealed class MediaFolderTests
     [Fact]
     public async Task AFolderCannotMoveIntoItselfTakeATakenNameOrBeDeletedWhileItHoldsAnything()
     {
-        await using var media = new MediaHost();
         using var client = await media.AdminAsync();
-        var photos = await FolderAsync(client, "photos");
+        var photosName = Unique("photos");
+        var otherName = Unique("other");
+        var photos = await FolderAsync(client, photosName);
         var summer = await FolderAsync(client, "summer", photos);
-        await FolderAsync(client, "other");
+        await FolderAsync(client, otherName);
 
         using var cycle = await client.PostAsJsonAsync(new Uri($"{Root}/folders/{photos:D}/move", UriKind.Relative), new { parentId = summer }, Token);
         using var self = await client.PostAsJsonAsync(new Uri($"{Root}/folders/{photos:D}/move", UriKind.Relative), new { parentId = photos }, Token);
-        using var taken = await client.PostAsJsonAsync(new Uri($"{Root}/folders", UriKind.Relative), new { name = "photos" }, Token);
-        using var renamedOnto = await client.PatchAsJsonAsync(new Uri($"{Root}/folders/{photos:D}", UriKind.Relative), new { name = "other" }, Token);
+        using var taken = await client.PostAsJsonAsync(new Uri($"{Root}/folders", UriKind.Relative), new { name = photosName }, Token);
+        using var renamedOnto = await client.PatchAsJsonAsync(new Uri($"{Root}/folders/{photos:D}", UriKind.Relative), new { name = otherName }, Token);
         using var notEmpty = await client.DeleteAsync(new Uri($"{Root}/folders/{photos:D}", UriKind.Relative), Token);
         using var invalid = await client.PostAsJsonAsync(new Uri($"{Root}/folders", UriKind.Relative), new { name = "a/b" }, Token);
 
@@ -72,11 +72,10 @@ public sealed class MediaFolderTests
     [Fact]
     public async Task AGrantLimitedToAFolderListsAndUploadsOnlyThereAndInItsSubfolders()
     {
-        await using var media = new MediaHost();
         using var admin = await media.AdminAsync();
-        var team = await FolderAsync(admin, "team");
+        var team = await FolderAsync(admin, Unique("team"));
         var drafts = await FolderAsync(admin, "drafts", team);
-        var other = await FolderAsync(admin, "other");
+        var other = await FolderAsync(admin, Unique("other"));
         var inTeam = Id((await UploadedAsync(admin, team, ("a.png", Files.Png(1, 1)))).Single()!);
         var inOther = Id((await UploadedAsync(admin, other, ("b.png", Files.Png(1, 1)))).Single()!);
         await UploadedAsync(admin, null, ("c.png", Files.Png(1, 1)));
@@ -106,7 +105,6 @@ public sealed class MediaFolderTests
     [Fact]
     public async Task ACallerWithoutAMediaPermissionIsRefused()
     {
-        await using var media = new MediaHost();
         using var admin = await media.AdminAsync();
         var asset = Id((await UploadedAsync(admin, null, ("a.png", Files.Png(1, 1)))).Single()!);
         using var reader = await media.ClientWithAsync(admin, new { permission = "media.read" });

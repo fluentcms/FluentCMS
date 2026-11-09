@@ -25,14 +25,14 @@ using Xunit;
 namespace FluentCMS.Plugins.Tests;
 
 // Per-site enablement of #2830, through the sample plugin, disabled in a second site and left on in the default one.
-public sealed class PluginSiteTests
+public sealed class PluginSiteTests(PluginSiteFixture fixture) : IClassFixture<PluginSiteFixture>
 {
     private static readonly CancellationToken Token = TestContext.Current.CancellationToken;
 
     [Fact]
     public async Task ADisabledPluginAnswers404OnItsEndpointsInThatSiteFromTheNextRequestAndKeepsServingAnother()
     {
-        await using var host = new FluentCmsTestHost();
+        var host = fixture.Host;
         var docs = await CreateSiteAsync(host);
         using var admin = await AdminAsync(host);
 
@@ -56,7 +56,7 @@ public sealed class PluginSiteTests
     [Fact]
     public async Task AnAnonymousCallerIsRefusedBeforeTheDisabledPluginAnswers404()
     {
-        await using var host = new FluentCmsTestHost();
+        var host = fixture.Host;
         var docs = await CreateSiteAsync(host);
         using var admin = await AdminAsync(host);
         (await SetStatusAsync(admin, docs, enabled: false)).ShouldBe(HttpStatusCode.OK);
@@ -75,23 +75,24 @@ public sealed class PluginSiteTests
     [Fact]
     public async Task InTheDisabledSiteItsHooksHandlersAndJobsDoNotRunWhileOtherSitesAreUnaffected()
     {
-        var calls = new PluginCalls();
-        await using var host = new FluentCmsTestHost().WithContentTypes<Note>().WithServices(services => services.AddSingleton(calls));
+        var host = fixture.Host;
+        var calls = fixture.Calls;
         var docs = await CreateSiteAsync(host);
         await DisableAsync(host, docs);
         (await host.Services.GetRequiredService<IPluginState>().IsEnabledAsync("sample", new SiteId(docs), Token)).ShouldBeFalse();
         var editor = await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+        var hooks = calls.All.Count(call => call == "sample.hook");
 
         await host.As(editor).In(new SiteId(docs)).Content<Note>().CreateAsync(new Note { Title = "in docs" }, Token);
-        calls.All.ShouldNotContain("sample.hook");
+        calls.All.Count(call => call == "sample.hook").ShouldBe(hooks);
         await host.As(editor).Content<Note>().CreateAsync(new Note { Title = "in default" }, Token);
-        calls.All.Count(call => call == "sample.hook").ShouldBe(1);
+        calls.All.Count(call => call == "sample.hook").ShouldBe(hooks + 1);
 
         await PublishAsync(host, docs, "raised in docs");
         await PublishAsync(host, DefaultSite.Id, "raised in default");
         calls.All.ShouldNotContain("sample.event:raised in docs");
         calls.All.ShouldContain("sample.event:raised in default");
-        (await OutboxAsync(host, "sample.note-added")).ShouldBe([DefaultSite.Id]);
+        (await OutboxAsync(host, "sample.note-added", "raised in docs", "raised in default")).ShouldBe([DefaultSite.Id]);
 
         var scheduler = host.Services.GetRequiredService<IJobScheduler>();
         var skipped = await scheduler.EnqueueAsync<SampleNoteJob, SampleNotePayload>(new SampleNotePayload("job in docs"), new JobOptions { Site = new SiteId(docs) }, Token);
@@ -103,7 +104,10 @@ public sealed class PluginSiteTests
         var jobs = scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<Job>().AsNoTracking();
         (await jobs.SingleAsync(job => job.Id == skipped, Token)).Status.ShouldBe(JobStatus.Succeeded);
         (await jobs.SingleAsync(job => job.Id == ran, Token)).Status.ShouldBe(JobStatus.Succeeded);
-        (await scope.ServiceProvider.GetRequiredService<PluginDbContext<SamplePlugin>>().Set<SampleNote>().Select(note => note.Text).ToListAsync(Token))
+        (await scope.ServiceProvider.GetRequiredService<PluginDbContext<SamplePlugin>>().Set<SampleNote>()
+                .Where(note => note.Text == "job in docs" || note.Text == "job in default")
+                .Select(note => note.Text)
+                .ToListAsync(Token))
             .ShouldBe(["job in default"]);
     }
 
@@ -111,15 +115,8 @@ public sealed class PluginSiteTests
     [Fact]
     public async Task ADeliveryRecordedBeforeThePluginWasDisabledWaitsAndIsDeliveredOnceItIsEnabledAgain()
     {
-        var calls = new PluginCalls();
-        // The publish wakes the host's own workers, which would deliver the row before the plugin is disabled.
-        await using var host = new FluentCmsTestHost()
-            .WithServices(services => services.AddSingleton(calls))
-            .Configure(cms =>
-            {
-                cms.Jobs.Options.Queues[JobRunnerOptions.DefaultQueue] = 0;
-                cms.Jobs.Options.Queues[OutboxDrainJob.Queue] = 0;
-            });
+        var host = fixture.Host;
+        var calls = fixture.Calls;
         var docs = await CreateSiteAsync(host);
         await PublishAsync(host, docs, "before");
         await DisableAsync(host, docs);
@@ -127,25 +124,19 @@ public sealed class PluginSiteTests
         await host.Services.GetRequiredService<OutboxDrainer>().DrainAsync(Token);
 
         calls.All.ShouldNotContain("sample.outbox:before");
-        var waiting = await OutboxRowAsync(host, "sample.note-added");
+        var waiting = await OutboxRowAsync(host, docs, "sample.note-added");
         (waiting.Status, waiting.Attempts).ShouldBe((OutboxStatus.Pending, 0));
         waiting.AvailableAt.ShouldBeGreaterThan(host.Time.GetUtcNow());
 
         await EnableAsync(host, docs);
         host.Time.Advance(host.Services.GetRequiredService<OutboxOptions>().MissingHandlerDelay);
 
-        var delivered = waiting;
-        for (var attempt = 0; attempt < 50 && delivered.Status != OutboxStatus.Delivered; attempt++)
+        // No worker drains the outbox, so the delivery is made by the time the drain finds nothing due.
+        while (await host.Services.GetRequiredService<OutboxDrainer>().DrainAsync(Token) > 0)
         {
-            await host.Services.GetRequiredService<OutboxDrainer>().DrainAsync(Token);
-            delivered = await OutboxRowAsync(host, "sample.note-added");
-            if (delivered.Status != OutboxStatus.Delivered)
-            {
-                await Task.Delay(100, Token);
-            }
         }
 
-        delivered.Status.ShouldBe(OutboxStatus.Delivered);
+        (await OutboxRowAsync(host, docs, "sample.note-added")).Status.ShouldBe(OutboxStatus.Delivered);
         calls.All.ShouldContain("sample.outbox:before");
     }
 
@@ -153,25 +144,21 @@ public sealed class PluginSiteTests
     [Fact]
     public async Task ADeliveryWhosePluginStaysDisabledPastOrphanAfterIsLeftAsFailedNamingThePlugin()
     {
-        await using var host = new FluentCmsTestHost().Configure(cms =>
-        {
-            cms.Jobs.Options.Queues[JobRunnerOptions.DefaultQueue] = 0;
-            cms.Jobs.Options.Queues[OutboxDrainJob.Queue] = 0;
-        });
+        var host = fixture.Host;
         var docs = await CreateSiteAsync(host);
-        await PublishAsync(host, docs, "before");
+        await PublishAsync(host, docs, "before it stays off");
         await DisableAsync(host, docs);
         var drainer = host.Services.GetRequiredService<OutboxDrainer>();
         var options = host.Services.GetRequiredService<OutboxOptions>();
 
         host.Time.Advance(options.OrphanAfter - TimeSpan.FromMinutes(10));
         await drainer.DrainAsync(Token);
-        (await OutboxRowAsync(host, "sample.note-added")).Status.ShouldBe(OutboxStatus.Pending);
+        (await OutboxRowAsync(host, docs, "sample.note-added")).Status.ShouldBe(OutboxStatus.Pending);
 
         host.Time.Advance(options.MissingHandlerDelay + TimeSpan.FromMinutes(10));
         await drainer.DrainAsync(Token);
 
-        var failed = await OutboxRowAsync(host, "sample.note-added");
+        var failed = await OutboxRowAsync(host, docs, "sample.note-added");
         failed.Status.ShouldBe(OutboxStatus.Failed);
         failed.Attempts.ShouldBe(0);
         failed.LastError!.ShouldContain("'sample.note-added'");
@@ -225,8 +212,9 @@ public sealed class PluginSiteTests
     [Fact]
     public async Task ThePluginListHasEveryPluginWithItsManifestContributionsAndEnablementPerSite()
     {
-        await using var host = new FluentCmsTestHost();
-        var docs = await CreateSiteAsync(host);
+        var host = fixture.Host;
+        var slug = NewSlug();
+        var docs = await CreateSiteAsync(host, slug);
         using var admin = await AdminAsync(host);
         (await SetStatusAsync(admin, docs, enabled: false)).ShouldBe(HttpStatusCode.OK);
 
@@ -242,8 +230,10 @@ public sealed class PluginSiteTests
         Strings(contributions["jobs"]!).ShouldBe([SampleNoteJob.Type]);
         contributions["endpoints"]!.AsArray().Select(endpoint => $"{endpoint!["method"]!.GetValue<string>()} {endpoint["route"]!.GetValue<string>()}")
             .ShouldBe(["GET /api/delivery/v1/sample/fresh", "GET /api/delivery/v1/sample/greeting", "GET /api/management/v1/sample/notes", "POST /api/management/v1/sample/notes", "GET /sample/banner", "GET /sample/greeting"]);
-        sample["sites"]!.AsArray().Select(site => (site!["siteId"]!.GetValue<Guid>(), site["slug"]!.GetValue<string>(), site["enabled"]!.GetValue<bool>()))
-            .ShouldBe([(DefaultSite.Id, DefaultSite.Slug, true), (docs, "docs", false)]);
+        // The sites of the other tests are listed too.
+        sample["sites"]!.AsArray().Select(site => (Id: site!["siteId"]!.GetValue<Guid>(), Slug: site["slug"]!.GetValue<string>(), Enabled: site["enabled"]!.GetValue<bool>()))
+            .Where(site => site.Id == DefaultSite.Id || site.Id == docs)
+            .ShouldBe([(DefaultSite.Id, DefaultSite.Slug, true), (docs, slug, false)]);
 
         var inDocs = (await ListAsync(admin, docs)).Single(item => item!["name"]!.GetValue<string>() == "sample")!;
         inDocs["enabled"]!.GetValue<bool>().ShouldBeFalse();
@@ -252,7 +242,7 @@ public sealed class PluginSiteTests
     [Fact]
     public async Task ACallerWithoutPluginsManageReadsTheListForItsSiteOnly()
     {
-        await using var host = new FluentCmsTestHost();
+        var host = fixture.Host;
         var docs = await CreateSiteAsync(host);
         await DisableAsync(host, docs);
         var key = await host.CreateApiKeyAsync(ApiKeyClass.Management, BuiltInRoles.EditorName, cancellationToken: Token);
@@ -268,8 +258,9 @@ public sealed class PluginSiteTests
     [Fact]
     public async Task EnablingAndDisablingNeedPluginsManageForTheSiteAndRaiseTheirEventWithAnActivityRow()
     {
-        await using var host = new FluentCmsTestHost();
-        var docs = await CreateSiteAsync(host);
+        var host = fixture.Host;
+        var slug = NewSlug();
+        var docs = await CreateSiteAsync(host, slug);
         using var admin = await AdminAsync(host);
         using var role = await admin.PostAsync(
             new Uri("/api/management/v1/roles", UriKind.Relative),
@@ -284,22 +275,22 @@ public sealed class PluginSiteTests
         {
             disabled.StatusCode.ShouldBe(HttpStatusCode.OK, await disabled.Content.ReadAsStringAsync(Token));
             var body = JsonNode.Parse(await disabled.Content.ReadAsStringAsync(Token))!;
-            (body["siteId"]!.GetValue<Guid>(), body["slug"]!.GetValue<string>(), body["enabled"]!.GetValue<bool>()).ShouldBe((docs, "docs", false));
+            (body["siteId"]!.GetValue<Guid>(), body["slug"]!.GetValue<string>(), body["enabled"]!.GetValue<bool>()).ShouldBe((docs, slug, false));
         }
 
         (await SetStatusAsync(manager, docs, enabled: false)).ShouldBe(HttpStatusCode.OK);
         (await SetStatusAsync(manager, docs, enabled: true)).ShouldBe(HttpStatusCode.OK);
         (await SetStatusAsync(manager, docs, enabled: true)).ShouldBe(HttpStatusCode.OK);
 
-        var items = await ActivityAsync(host, docs, count: 2);
+        var items = await ActivityAsync(host, docs);
         items.Select(item => (item.Action, item.TargetId)).ShouldBe([("plugin.enabled", "sample"), ("plugin.disabled", "sample")], ignoreOrder: true);
-        (await ActivityAsync(host, DefaultSite.Id, count: 0)).ShouldBeEmpty();
+        (await ActivityAsync(host, DefaultSite.Id)).ShouldBeEmpty();
     }
 
     [Fact]
     public async Task AnUnknownPluginOrSiteOrAMissingStateIsRefused()
     {
-        await using var host = new FluentCmsTestHost();
+        var host = fixture.Host;
         using var admin = await AdminAsync(host);
 
         using var plugin = await SendAsync(admin, HttpMethod.Put, $"/api/management/v1/plugins/missing/sites/{DefaultSite.Id}", DefaultSite.Id, """{ "enabled": false }""");
@@ -316,21 +307,24 @@ public sealed class PluginSiteTests
     [Fact]
     public async Task ASitesRowsGoWithTheSite()
     {
-        await using var host = new FluentCmsTestHost();
+        var host = fixture.Host;
         var docs = await CreateSiteAsync(host);
         await DisableAsync(host, docs);
 
         await using var scope = host.Services.CreateAsyncScope();
         await scope.ServiceProvider.GetRequiredService<SiteManager>().DeleteAsync(docs, Token);
 
-        (await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<PluginSiteRow>().CountAsync(Token)).ShouldBe(0);
+        (await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<PluginSiteRow>().CountAsync(row => row.SiteId == docs, Token)).ShouldBe(0);
     }
 
-    private static async Task<Guid> CreateSiteAsync(FluentCmsTestHost host)
+    // A site of the test's own, since the tests share a host.
+    private static async Task<Guid> CreateSiteAsync(FluentCmsTestHost host, string? slug = null)
     {
         await using var scope = host.Services.CreateAsyncScope();
-        return (await scope.ServiceProvider.GetRequiredService<SiteManager>().CreateAsync("Docs", "docs", "en", Token)).Id;
+        return (await scope.ServiceProvider.GetRequiredService<SiteManager>().CreateAsync("Docs", slug ?? NewSlug(), "en", Token)).Id;
     }
+
+    private static string NewSlug() => $"docs-{Guid.NewGuid():N}";
 
     private static async Task<HttpClient> AdminAsync(FluentCmsTestHost host) =>
         host.AsKey(await host.CreateApiKeyAsync(ApiKeyClass.Management, BuiltInRoles.SuperAdminName, cancellationToken: Token));
@@ -354,19 +348,21 @@ public sealed class PluginSiteTests
         await scope.ServiceProvider.GetRequiredService<IEventBus>().PublishAsync(new SampleNoteAdded(Guid.CreateVersion7(), text) { Source = source }, Token);
     }
 
-    private static async Task<List<Guid?>> OutboxAsync(FluentCmsTestHost host, string handler)
+    // The sites of the handler's rows for the events that carried one of the texts.
+    private static async Task<List<Guid?>> OutboxAsync(FluentCmsTestHost host, string handler, params string[] texts)
+    {
+        await using var scope = host.Services.CreateAsyncScope();
+        var rows = await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<OutboxMessage>().AsNoTracking()
+            .Where(message => message.Handler == handler)
+            .ToListAsync(Token);
+        return [.. rows.Where(message => texts.Any(text => message.Payload.Contains(text, StringComparison.Ordinal))).Select(message => message.SiteId)];
+    }
+
+    private static async Task<OutboxMessage> OutboxRowAsync(FluentCmsTestHost host, Guid site, string handler)
     {
         await using var scope = host.Services.CreateAsyncScope();
         return await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<OutboxMessage>().AsNoTracking()
-            .Where(message => message.Handler == handler)
-            .Select(message => message.SiteId)
-            .ToListAsync(Token);
-    }
-
-    private static async Task<OutboxMessage> OutboxRowAsync(FluentCmsTestHost host, string handler)
-    {
-        await using var scope = host.Services.CreateAsyncScope();
-        return await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<OutboxMessage>().AsNoTracking().SingleAsync(message => message.Handler == handler, Token);
+            .SingleAsync(message => message.Handler == handler && message.SiteId == site, Token);
     }
 
     private static async Task<Job> JobAsync(FluentCmsTestHost host, Guid id)
@@ -394,23 +390,15 @@ public sealed class PluginSiteTests
         }
     }
 
-    // The activity rows are written by the outbox, so the outbox is drained until the expected number is there.
-    private static async Task<IReadOnlyList<ActivityItem>> ActivityAsync(FluentCmsTestHost host, Guid site, int count)
+    // The activity rows are written by the outbox, which no worker drains, so they are there once it is drained.
+    private static async Task<IReadOnlyList<ActivityItem>> ActivityAsync(FluentCmsTestHost host, Guid site)
     {
         var admin = host.As(await host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token)).In(new SiteId(site));
-        IReadOnlyList<ActivityItem> items = [];
-        for (var attempt = 0; attempt < (count == 0 ? 1 : 50) && items.Count < count; attempt++)
+        while (await host.Services.GetRequiredService<OutboxDrainer>().DrainAsync(Token) > 0)
         {
-            await host.Services.GetRequiredService<OutboxDrainer>().DrainAsync(Token);
-            items = [.. (await admin.RunAsync<IActivityQuery, PagedResult<ActivityItem>>(query => query.QueryAsync(null, null, Token))).Items
-                .Where(item => item.TargetType == "plugin")];
-            if (items.Count < count)
-            {
-                await Task.Delay(100, Token);
-            }
         }
 
-        return items;
+        return (await admin.RunAsync<IActivityQuery, PagedResult<ActivityItem>>(query => query.QueryAsync(new ActivityFilter { TargetType = "plugin" }, null, Token))).Items;
     }
 
     private static async Task<JsonArray> ListAsync(HttpClient client, Guid site)
