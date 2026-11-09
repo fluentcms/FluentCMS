@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Threading.RateLimiting;
 
 namespace FluentCMS.Core.Api.Common;
@@ -13,22 +12,22 @@ internal sealed class TokenBucketLimiter : RateLimiter
 {
     public static readonly TimeSpan Window = TimeSpan.FromMinutes(1);
 
+    // A partitioned limiter asks the policy for a request's partition and acquires from the partition's bucket next, in
+    // the same flow, so the record a policy names when it gives the partition is the one of the request the bucket counts.
+    private static readonly AsyncLocal<RateLimitRecord?> NextRecord = new();
+
     private readonly Lock _gate = new();
     private readonly TimeProvider _time;
-    private readonly ConcurrentDictionary<string, TokenBucketLimiter> _owner;
-    private readonly string _key;
     private readonly long _interval;
     private long _full;
     private long _last;
     private long _successful;
     private long _failed;
 
-    public TokenBucketLimiter(string key, int permitLimit, TimeProvider time, ConcurrentDictionary<string, TokenBucketLimiter> owner)
+    public TokenBucketLimiter(int permitLimit, TimeProvider time)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(permitLimit, 1);
 
-        _key = key;
-        _owner = owner;
         _time = time;
         Limit = permitLimit;
         _interval = Math.Max(1, Window.Ticks / permitLimit);
@@ -85,6 +84,8 @@ internal sealed class TokenBucketLimiter : RateLimiter
         }
     }
 
+    public static void RecordNextAcquireIn(RateLimitRecord? record) => NextRecord.Value = record;
+
     public override RateLimiterStatistics? GetStatistics()
     {
         lock (_gate)
@@ -111,10 +112,12 @@ internal sealed class TokenBucketLimiter : RateLimiter
             {
                 _full = start + (permitCount * _interval);
                 _successful++;
+                Record(now);
                 return new Lease(acquired: true, retryAfter: null);
             }
 
             _failed++;
+            Record(now);
             return new Lease(acquired: false, TimeSpan.FromTicks(Math.Max(1, wait)));
         }
     }
@@ -122,20 +125,14 @@ internal sealed class TokenBucketLimiter : RateLimiter
     protected override ValueTask<RateLimitLease> AcquireAsyncCore(int permitCount, CancellationToken cancellationToken) =>
         ValueTask.FromResult(AttemptAcquireCore(permitCount));
 
-    protected override void Dispose(bool disposing)
+    private void Record(long now)
     {
-        Release();
-        base.Dispose(disposing);
+        if (NextRecord.Value is { } record)
+        {
+            NextRecord.Value = null;
+            record.State = new RateLimitState(Limit, RemainingAt(now), Seconds(_full - now));
+        }
     }
-
-    // The partitioned limiter disposes an idle partition with DisposeAsync, which does not reach Dispose(true).
-    protected override ValueTask DisposeAsyncCore()
-    {
-        Release();
-        return base.DisposeAsyncCore();
-    }
-
-    private void Release() => _owner.TryRemove(new KeyValuePair<string, TokenBucketLimiter>(_key, this));
 
     private long Now()
     {
@@ -171,4 +168,12 @@ internal sealed class TokenBucketLimiter : RateLimiter
             return false;
         }
     }
+}
+
+// What a bucket held right after it granted or refused a request, which the RateLimit headers of its response report.
+internal readonly record struct RateLimitState(int Limit, int Remaining, int SecondsToReset);
+
+internal sealed class RateLimitRecord
+{
+    public RateLimitState? State { get; set; }
 }
