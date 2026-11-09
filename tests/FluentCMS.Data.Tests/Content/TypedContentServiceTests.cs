@@ -53,7 +53,7 @@ public sealed class TypedContentServiceTests : IDisposable
 
         info.Action.ShouldBe(ScheduleAction.Publish);
         info.Version.ShouldBe(1);
-        _database.Read(context => context.Set<ScheduleRow>().Single(row => row.DocumentId == tag.Id)).RunAtUtc.ShouldBe(runAt);
+        _database.Read(context => context.Set<ScheduleRow>().Single(row => row.DocumentId == tag.Id)).RunAtUtc.ShouldBe(new DateTimeOffset(runAt.Ticks / 10 * 10, runAt.Offset), "a date is kept to the microsecond");
 
         await AsAsync<Tag, object?>(Editor, async service =>
         {

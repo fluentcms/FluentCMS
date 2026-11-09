@@ -133,7 +133,7 @@ internal sealed class OutboxDrainer(
         context.Set<OutboxMessage>().Where(message =>
             message.Status == OutboxStatus.Pending
             && message.AvailableAt <= now
-            && (message.LeaseUntil == null || message.LeaseUntil < now));
+            && (message.LeaseUntil == null || message.LeaseUntil <= now));
 
     private static IQueryable<OutboxMessage> Held(SystemDbContext context, OutboxMessage message) =>
         context.Set<OutboxMessage>().Where(row =>

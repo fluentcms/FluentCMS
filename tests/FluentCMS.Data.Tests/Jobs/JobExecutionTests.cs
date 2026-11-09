@@ -206,7 +206,7 @@ public sealed class JobExecutionTests : IDisposable
         job.Status.ShouldBe(JobStatus.DeadLettered);
         job.LeaseOwner.ShouldBeNull();
         job.LeaseUntil.ShouldBeNull();
-        job.CompletedAt.ShouldBe(_fixture.Clock.GetUtcNow());
+        job.CompletedAt.ShouldBe(StorageConventions.ToMicroseconds(_fixture.Clock.GetUtcNow()));
         job.LastError.ShouldNotBeNull();
         _fixture.ShouldHaveRecorded(id, (1, JobAttemptOutcome.LeaseExpired));
         _fixture.Events.DeadLettered.ShouldHaveSingleItem().JobId.ShouldBe(id);

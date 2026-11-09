@@ -205,14 +205,20 @@ internal sealed class EntryPlan
 
         if (stored.Field.FieldType == FieldTypeNames.RichText)
         {
-            return value => value is string json ? HiddenFields.Remove(_query.Schema, new RichText(json)) : null;
+            return value => value is string json ? HiddenFields.Remove(_query.Schema, Ordered(new RichText(json))) : null;
         }
 
         return value =>
         {
-            var node = value is string json ? JsonDepth.Parse(json) : null;
+            var node = value is string json ? Ordered(stored.Field, JsonDepth.Parse(json)) : null;
             HiddenFields.Remove(_query.Schema, node, stored.Field);
             return node;
         };
     }
+
+    private RichText Ordered(RichText document) =>
+        _query.Context.ReordersJson ? StoredOrder.Of(_query.Schema, document) : document;
+
+    private JsonNode? Ordered(SchemaField field, JsonNode? node) =>
+        _query.Context.ReordersJson ? StoredOrder.Of(_query.Schema, field, node) : node;
 }
