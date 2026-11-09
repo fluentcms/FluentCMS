@@ -183,51 +183,57 @@ public sealed class EventLimitsTests
         public TaskCompletionSource ReadDone { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
     }
 
+    // Each delivery of the first instance takes 20 seconds on the clock, so the lease of its batch runs out while it delivers
+    // the fourth row. The second instance claims the four rows left then, and the first, finding them taken when their turn
+    // comes, moves on without using an attempt.
     [Fact]
     public async Task HealthyEventsAreNeverFailedBecauseWorkersClaimedThemAndRanOutOfLeaseBeforeTheirTurn()
     {
         const int entries = 8;
-        var seen = new Seen();
-        seen.Behavior = async (_, _) => await Task.Delay(120);
+        var clock = new ManualTimeProvider(JobFixture.Start);
+        var first = new Seen();
+        var second = new Seen();
+        var secondHolds = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         void Tight(FluentCmsBuilder cms)
         {
+            cms.Services.AddSingleton<TimeProvider>(clock);
             cms.Events.Outbox.BatchSize = entries;
             cms.Events.Outbox.MaxAttempts = 3;
-            cms.Events.Outbox.LeaseDuration = TimeSpan.FromMilliseconds(400);
-            cms.Events.Outbox.DeliveryTimeout = TimeSpan.FromMilliseconds(300);
+            cms.Events.Outbox.LeaseDuration = TimeSpan.FromMinutes(1);
+            cms.Events.Outbox.DeliveryTimeout = TimeSpan.FromSeconds(30);
         }
 
-        using var database = new ServiceDatabase(Registrations(seen, Tight));
+        using var database = new ServiceDatabase(Registrations(first, Tight));
         for (var index = 0; index < entries; index++)
         {
             await database.CreateAsync(Editor, Titled($"T{index}"));
         }
 
-        using var second = database.Database.NewInstance(Registrations(seen, Tight));
-        using var third = database.Database.NewInstance(Registrations(seen, Tight));
-
-        await Task.WhenAll(
-            Task.Run(() => DrainAsync(database.Database.Services), Token),
-            Task.Run(async () =>
-            {
-                await Task.Delay(250, Token);
-                return await DrainAsync(second);
-            }, Token),
-            Task.Run(async () =>
-            {
-                await Task.Delay(500, Token);
-                return await DrainAsync(third);
-            }, Token));
-
-        for (var round = 0; round < 20 && database.Rows().Any(row => row.Status == OutboxStatus.Pending); round++)
+        using var other = database.Database.NewInstance(Registrations(second, Tight));
+        Task<int>? otherDrain = null;
+        first.Behavior = async (_, _) =>
         {
-            await Task.Delay(100, Token);
-            await DrainAsync(database.Database.Services);
-        }
+            clock.Advance(TimeSpan.FromSeconds(20));
+            if (first.Deliveries.Count == 4)
+            {
+                otherDrain = Task.Run(() => DrainAsync(other), Token);
+                await secondHolds.Task.WaitAsync(TimeSpan.FromSeconds(30), Token);
+            }
+        };
+        second.Behavior = async (_, _) =>
+        {
+            secondHolds.TrySetResult();
+            await release.Task;
+        };
 
-        var rows = database.Rows();
-        rows.ShouldAllBe(row => row.Status == OutboxStatus.Delivered);
-        seen.Of<EntryDraftSavedEvent>().Select(heard => heard.EventId).Distinct().Count().ShouldBe(entries);
+        (await DrainAsync(database.Database.Services)).ShouldBe(4);
+        release.SetResult();
+        (await otherDrain.ShouldNotBeNull()).ShouldBe(4);
+
+        database.Rows().ShouldAllBe(row => row.Status == OutboxStatus.Delivered && row.Attempts == 1);
+        first.Deliveries.Concat(second.Deliveries).Select(delivery => delivery.Key).Distinct().Count().ShouldBe(entries);
+        first.Of<EntryDraftSavedEvent>().Concat(second.Of<EntryDraftSavedEvent>()).Select(heard => heard.EventId).Distinct().Count().ShouldBe(entries);
     }
 
     [Fact]
@@ -295,16 +301,21 @@ public sealed class EventLimitsTests
     {
         var seen = new Seen();
         var logs = new RecordingLogs();
+        var clock = new ManualTimeProvider(JobFixture.Start);
+        var timeout = TimeSpan.FromMilliseconds(100);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         using var gate = new ManualResetEventSlim();
         seen.Behavior = (_, _) =>
         {
+            entered.TrySetResult();
             gate.Wait(Token);
             return Task.CompletedTask;
         };
         using var database = new ServiceDatabase(Registrations(seen, cms =>
         {
+            cms.Services.AddSingleton<TimeProvider>(clock);
             cms.Services.AddSingleton<ILoggerProvider>(logs);
-            cms.Events.Outbox.DeliveryTimeout = TimeSpan.FromMilliseconds(100);
+            cms.Events.Outbox.DeliveryTimeout = timeout;
             cms.Events.Outbox.LeaseDuration = TimeSpan.FromSeconds(30);
             cms.Events.Outbox.MaxAttempts = 1;
         }));
@@ -312,7 +323,10 @@ public sealed class EventLimitsTests
 
         try
         {
-            await DrainAsync(database.Database.Services).WaitAsync(TimeSpan.FromSeconds(10), Token);
+            // The cut-off comes from the clock once the handler is in, so a slow thread pool cannot give the attempt back.
+            var drain = DrainAsync(database.Database.Services);
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(30), Token);
+            await Eventually.CompletesAsync(drain, () => clock.Advance(timeout));
 
             var row = database.Rows().Single();
             row.Status.ShouldBe(OutboxStatus.Failed);
@@ -331,22 +345,32 @@ public sealed class EventLimitsTests
         using var fixture = new JobFixture();
         var seen = new Seen();
         var logs = new RecordingLogs();
+        var timeout = TimeSpan.FromMilliseconds(200);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        seen.Behavior = (_, _) => gate.Task;
+        seen.Behavior = (_, _) =>
+        {
+            entered.TrySetResult();
+            return gate.Task;
+        };
         using var instance = fixture.Database.CreateServices(configure: cms =>
         {
+            cms.Services.AddSingleton<TimeProvider>(fixture.Clock);
             cms.Services.AddSingleton(seen);
             cms.Services.AddSingleton<ILoggerProvider>(logs);
             cms.Events.AddHandler<JobDeadLetteredEvent, DeadHandler>();
-            cms.Events.Outbox.JobEventTimeout = TimeSpan.FromMilliseconds(200);
-            // The bound under test is the job worker's; on a busy runner the handler's own one could otherwise end it first.
+            cms.Events.Outbox.JobEventTimeout = timeout;
+            // The bound under test is the job worker's; the handler's own one is longer.
             cms.Events.Handlers.Timeout = TimeSpan.FromMinutes(1);
         });
         var id = fixture.AddRow("no-such-job", "{}", maxAttempts: 1);
 
         try
         {
-            await instance.GetRequiredService<JobExecutor>().RunNextAsync("default", "worker", Token).WaitAsync(TimeSpan.FromSeconds(10), Token);
+            // The events go out one after the other, so the clock moves only once the last one is with its handler.
+            var run = instance.GetRequiredService<JobExecutor>().RunNextAsync("default", "worker", Token);
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(30), Token);
+            await Eventually.CompletesAsync(run, () => fixture.Clock.Advance(timeout));
 
             fixture.Job(id).Status.ShouldBe(JobStatus.DeadLettered);
             logs.Count("DispatchAbandoned").ShouldBe(1);
@@ -445,10 +469,7 @@ public sealed class EventLimitsTests
         }).WaitAsync(TimeSpan.FromSeconds(10), Token);
         gate.Release.SetResult();
         await gate.Touched.Task.WaitAsync(TimeSpan.FromSeconds(10), Token);
-        for (var attempt = 0; attempt < 100 && logs.Count("AbandonedHandlerFailed") == 0; attempt++)
-        {
-            await Task.Delay(50, Token);
-        }
+        await Eventually.HoldsAsync(() => logs.Count("AbandonedHandlerFailed") >= 1);
 
         logs.Count("HandlerAbandoned").ShouldBe(1);
         logs.Count("AbandonedHandlerFailed").ShouldBe(1);
@@ -515,9 +536,15 @@ public sealed class EventLimitsTests
             }
         });
         listener.Start();
-        seen.Behavior = (_, _) => Task.Delay(300, Token);
+        var clock = new ManualTimeProvider(JobFixture.Start);
+        seen.Behavior = (_, _) =>
+        {
+            clock.Advance(TimeSpan.FromMilliseconds(300));
+            return Task.CompletedTask;
+        };
         using var database = new ServiceDatabase(EventRegistrations.With(seen, cms =>
         {
+            cms.Services.AddSingleton<TimeProvider>(clock);
             cms.Services.AddSingleton<ILoggerProvider>(logs);
             cms.Events.AddHandler<Ping, SlowPing>();
             cms.Events.Handlers.SlowThreshold = TimeSpan.FromMilliseconds(100);
@@ -534,7 +561,7 @@ public sealed class EventLimitsTests
         var duration = durations.ShouldHaveSingleItem();
         duration.Event.ShouldBe(nameof(Ping));
         duration.Outcome.ShouldBe("succeeded");
-        duration.Seconds.ShouldBeGreaterThan(0.2);
+        duration.Seconds.ShouldBe(TimeSpan.FromMilliseconds(300).TotalSeconds);
     }
 
     [Fact]

@@ -105,7 +105,7 @@ public sealed class DistributedLockTests : IAsyncDisposable
 
                 var now = Interlocked.Increment(ref inside);
                 InterlockedMax(ref most, now);
-                await Task.Delay(TimeSpan.FromMilliseconds(20), Token);
+                (await RowAsync(_first)).Owner.ShouldNotBeNull();
                 Interlocked.Decrement(ref inside);
             }
         }

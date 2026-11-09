@@ -711,10 +711,15 @@ public sealed class OutboxFailureTests
     public async Task TheDrainLeavesOldDeliveredRowsToThePrune()
     {
         var seen = new Seen();
-        using var database = new ServiceDatabase(EventRegistrations.With(seen, Fast(cms => cms.Events.Outbox.Retention = TimeSpan.Zero)));
+        var clock = new ManualTimeProvider(JobFixture.Start);
+        using var database = new ServiceDatabase(EventRegistrations.With(seen, Fast(cms =>
+        {
+            cms.Services.AddSingleton<TimeProvider>(clock);
+            cms.Events.Outbox.Retention = TimeSpan.Zero;
+        })));
         await database.CreateAsync(Editor, Titled("T"));
         await DrainAsync(database.Database.Services);
-        await Task.Delay(5, Token);
+        clock.Advance(TimeSpan.FromSeconds(1));
 
         await DrainAsync(database.Database.Services);
 

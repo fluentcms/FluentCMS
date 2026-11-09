@@ -12,6 +12,7 @@ using FluentCMS.Providers;
 using FluentCMS.Settings;
 using FluentCMS.Testing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Shouldly;
 using Xunit;
 
@@ -63,6 +64,9 @@ public sealed class AdminFixture : IAsyncLifetime
 
     public HttpClient Admin { get; private set; } = null!;
 
+    // What the host logged as an error, so that a 500 carries the exception that caused it.
+    public ErrorLog Errors { get; } = new();
+
     public AdminFixture()
     {
         Host = new FluentCmsTestHost()
@@ -70,6 +74,7 @@ public sealed class AdminFixture : IAsyncLifetime
             .WithServices(services =>
             {
                 services.AddSingleton<IEmailSender>(Email);
+                services.AddSingleton<ILoggerProvider>(Errors);
 
                 // Every test signs users in through /connect, which the auth limit would soon refuse.
                 services.Configure<RateLimitOptions>(limits =>
@@ -139,8 +144,9 @@ public sealed class AdminFixture : IAsyncLifetime
 
     public async Task<string> CreateRoleAsync(string json, HttpClient? client = null)
     {
+        var before = Errors.Count;
         var created = await PostAsync("roles", json, client);
-        created.Status.ShouldBe(HttpStatusCode.Created, created.Body?.ToJsonString());
+        created.Status.ShouldBe(HttpStatusCode.Created, $"{created.Body?.ToJsonString()}{Errors.Since(before)}");
         return created.Json["id"]!.GetValue<string>();
     }
 
@@ -171,5 +177,36 @@ public sealed class AdminFixture : IAsyncLifetime
     {
         var link = message.TextBody.Split('\n').Single(line => line.Contains("token=", StringComparison.Ordinal));
         return Uri.UnescapeDataString(new Uri(link.Trim()).Query.Split("token=")[1]);
+    }
+}
+
+public sealed class ErrorLog : ILoggerProvider
+{
+    private readonly ConcurrentQueue<string> _errors = new();
+
+    public ILogger CreateLogger(string categoryName) => new Logger(categoryName, _errors);
+
+    public int Count => _errors.Count;
+
+    public string Since(int count) => string.Concat(_errors.Skip(count));
+
+    public void Dispose()
+    {
+    }
+
+    private sealed class Logger(string category, ConcurrentQueue<string> errors) : ILogger
+    {
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => logLevel >= LogLevel.Error;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            if (IsEnabled(logLevel))
+            {
+                errors.Enqueue($"{Environment.NewLine}{category}: {formatter(state, exception)}{Environment.NewLine}{exception}");
+            }
+        }
     }
 }

@@ -28,6 +28,29 @@ public sealed class OutboxTests
     private static Task<int> DrainAsync(IServiceProvider instance) =>
         instance.GetRequiredService<OutboxDrainer>().DrainAsync(Token);
 
+    // Each drain claims a batch while the drains before it hold theirs, then all of them carry on at once and share out the
+    // rows that are left.
+    private static async Task<int[]> DrainTogetherAsync(Seen seen, params IServiceProvider[] instances)
+    {
+        using var holding = new SemaphoreSlim(0);
+        var go = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        seen.Behavior = async (_, _) =>
+        {
+            holding.Release();
+            await go.Task;
+        };
+
+        List<Task<int>> drains = [];
+        foreach (var instance in instances)
+        {
+            drains.Add(Task.Run(() => DrainAsync(instance), Token));
+            (await holding.WaitAsync(TimeSpan.FromSeconds(30), Token)).ShouldBeTrue();
+        }
+
+        go.SetResult();
+        return await Task.WhenAll(drains);
+    }
+
     private static async Task PruneAsync(IServiceProvider instance)
     {
         using var scope = instance.CreateScope();
@@ -143,20 +166,16 @@ public sealed class OutboxTests
     {
         const int entries = 12;
         var seen = new Seen();
-        seen.Behavior = async (_, _) => await Task.Delay(3);
-        using var database = new ServiceDatabase(EventRegistrations.Outbox(seen, cms => cms.Events.Outbox.BatchSize = 4));
+        using var database = new ServiceDatabase(EventRegistrations.Outbox(seen, cms => cms.Events.Outbox.BatchSize = 2));
         for (var index = 0; index < entries; index++)
         {
             await database.CreateAsync(Editor, Titled($"T{index}"));
         }
 
-        using var second = database.Database.NewInstance(EventRegistrations.Outbox(seen, cms => cms.Events.Outbox.BatchSize = 4));
-        using var third = database.Database.NewInstance(EventRegistrations.Outbox(seen, cms => cms.Events.Outbox.BatchSize = 4));
+        using var second = database.Database.NewInstance(EventRegistrations.Outbox(seen, cms => cms.Events.Outbox.BatchSize = 2));
+        using var third = database.Database.NewInstance(EventRegistrations.Outbox(seen, cms => cms.Events.Outbox.BatchSize = 2));
 
-        var delivered = await Task.WhenAll(
-            Task.Run(() => DrainAsync(database.Database.Services), Token),
-            Task.Run(() => DrainAsync(second), Token),
-            Task.Run(() => DrainAsync(third), Token));
+        var delivered = await DrainTogetherAsync(seen, database.Database.Services, second, third);
 
         delivered.Sum().ShouldBe(entries);
         seen.Deliveries.Select(delivery => delivery.Key).Distinct().Count().ShouldBe(entries);
@@ -171,14 +190,14 @@ public sealed class OutboxTests
     {
         const int entries = 12;
         var seen = new Seen();
-        seen.Behavior = async (_, _) => await Task.Delay(3);
-        using var database = new ServiceDatabase(EventRegistrations.Outbox(seen, cms => cms.Events.Outbox.BatchSize = 4));
+        using var database = new ServiceDatabase(EventRegistrations.Outbox(seen, cms => cms.Events.Outbox.BatchSize = 2));
         for (var index = 0; index < entries; index++)
         {
             await database.CreateAsync(Editor, Titled($"T{index}"));
         }
 
-        var delivered = await Task.WhenAll(Enumerable.Range(0, 3).Select(_ => Task.Run(() => DrainAsync(database.Database.Services), Token)));
+        var instance = database.Database.Services;
+        var delivered = await DrainTogetherAsync(seen, instance, instance, instance);
 
         delivered.Sum().ShouldBe(entries);
         seen.Deliveries.Count.ShouldBe(entries);
@@ -390,8 +409,10 @@ public sealed class OutboxTests
     public async Task ThePruneRemovesInBatchesAndLeavesPendingRows()
     {
         var seen = new Seen();
+        var clock = new ManualTimeProvider(JobFixture.Start);
         using var database = new ServiceDatabase(EventRegistrations.Outbox(seen, cms =>
         {
+            cms.Services.AddSingleton<TimeProvider>(clock);
             cms.Events.Outbox.Retention = TimeSpan.Zero;
             cms.Events.Outbox.PruneBatchSize = 2;
         }));
@@ -402,7 +423,7 @@ public sealed class OutboxTests
 
         await DrainAsync(database.Database.Services);
         await database.CreateAsync(Editor, Titled("Pending"));
-        await Task.Delay(5, Token);
+        clock.Advance(TimeSpan.FromSeconds(1));
 
         await PruneAsync(database.Database.Services);
 
