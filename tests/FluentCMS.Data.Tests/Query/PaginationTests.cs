@@ -150,7 +150,10 @@ public sealed class PaginationTests : IDisposable
         var first = Add("A");
         var second = Add("B");
 
-        (await _database.RunAsync("sort=-id&locale=en")).Items.Select(item => (Guid)item["id"]!).ShouldBe([second, first]);
+        // In the provider's order of ids, which on SQL Server is not the order the v7 ids were made in.
+        var byId = Ids(await _database.RunAsync("sort=id&locale=en"));
+        byId.ShouldBe([first, second], ignoreOrder: true);
+        Ids(await _database.RunAsync("sort=-id&locale=en")).ShouldBe(byId.AsEnumerable().Reverse());
         Titles(await _database.RunAsync("sort=seo.metaTitle,title&locale=en")).ShouldBe(["A", "B"]);
         Titles(await _database.RunAsync("sort=-createdAt,title&locale=en")).Length.ShouldBe(2);
     }

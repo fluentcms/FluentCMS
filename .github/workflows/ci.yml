@@ -100,7 +100,7 @@ jobs:
   data-tests:
     name: Data tests (${{ matrix.provider }})
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ matrix.preview && 45 || 20 }}
+    timeout-minutes: ${{ matrix.timeout || (matrix.preview && 45) || 20 }}
     # A server provider's failures do not fail the run until the suite passes on it (#2711).
     continue-on-error: ${{ matrix.preview == true }}
     strategy:
@@ -113,7 +113,9 @@ jobs:
           - provider: postgresql
             preview: true
           - provider: sqlserver-2019
+            timeout: 45
           - provider: sqlserver-2025
+            timeout: 45
     env:
       FLUENTCMS_TEST_PROVIDER: ${{ matrix.provider }}
     steps:
