@@ -82,7 +82,7 @@ internal sealed class QueryDatabase : IDisposable
             .Field("secret", "text", field => field.Hidden()))
         .Build();
 
-    private readonly TestDatabase _database = TestDatabase.Create();
+    private readonly TestDatabase _database = TestDatabase.Create(forSystemTables: true);
     private readonly SchemaModel _schema;
     private readonly ServiceProvider _services;
     private readonly IServiceScope _scope;

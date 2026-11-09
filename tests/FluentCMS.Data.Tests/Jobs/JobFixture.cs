@@ -160,7 +160,7 @@ internal sealed class JobFixture : IDisposable
         }
     }
 
-    public TestDatabase Database { get; } = TestDatabase.Create();
+    public TestDatabase Database { get; } = TestDatabase.Create(forSystemTables: true);
 
     public ManualTimeProvider Clock { get; } = new(Start);
 

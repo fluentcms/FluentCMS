@@ -55,6 +55,8 @@ internal sealed partial class ContentService(
     TimeProvider time,
     ILogger<ContentService> logger) : IContentService
 {
+    internal const int DeadlockReruns = 5;
+
     // The state of the write in progress, which BulkAsync also reads to tell what its last entry did. It holds because a
     // scope's service runs one write at a time: a hook that calls back runs in the flow of that write and joins it, and a
     // write from any other flow while one runs throws (OneAtATimeAsync) rather than mixing the changes of the two.
@@ -503,20 +505,34 @@ internal sealed partial class ContentService(
         }
 
         var tracked = TrackerSnapshot.Take(context);
-        try
+        var keyRerun = false;
+        for (var deadlocks = 0; ; )
         {
-            return await InOwnTransactionAsync(work, cancellationToken);
-        }
-        catch (Exception exception) when (provider.IsUniqueViolation(exception) || provider.IsDeadlock(exception))
-        {
-            // Another writer committed the same key between this write's checks and its insert, or deadlocked with this
-            // one and won, which only a database that does not serialise writers lets happen. Run once more, on the
-            // context as it was: the checks then see that writer and refuse as they would have had it come first
-            // (spec 4.4). A write joined to this one runs again with it.
-            tracked.Restore();
-            return await InOwnTransactionAsync(work, cancellationToken);
+            try
+            {
+                return await InOwnTransactionAsync(work, cancellationToken);
+            }
+            catch (Exception exception) when (!keyRerun && provider.IsUniqueViolation(exception))
+            {
+                // Another writer committed the same key between this write's checks and its insert, which only a database
+                // that does not serialise writers lets happen. Run once more, on the context as it was: the checks then
+                // see that writer and refuse as they would have had it come first (spec 4.4). A write joined to this one
+                // runs again with it.
+                keyRerun = true;
+                tracked.Restore();
+            }
+            catch (Exception exception) when (deadlocks < DeadlockReruns && provider.IsDeadlock(exception))
+            {
+                // Another writer deadlocked with this one and won. The writers that met can meet again on the rerun, so a
+                // victim runs again a few times, each after a jittered pause, which lets one of them commit (#2959).
+                tracked.Restore();
+                await PauseAfterDeadlockAsync(++deadlocks, cancellationToken);
+            }
         }
     }
+
+    private static Task PauseAfterDeadlockAsync(int deadlocks, CancellationToken cancellationToken) =>
+        Task.Delay(TimeSpan.FromMilliseconds(20 * deadlocks * (1 + Random.Shared.NextDouble())), cancellationToken);
 
     private async Task<T> InOwnTransactionAsync<T>(Func<Task<T>> work, CancellationToken cancellationToken)
     {
@@ -1158,10 +1174,24 @@ internal sealed partial class ContentService(
         new(expected, current, await ReadDraftOrNullAsync(write, id, write.Locale, LocaleFallback.None, cancellationToken));
 
     // A principal may hold a write without the read. It still gets the id and the version, which it needs for its next
-    // write. The write has committed by now, so a cancelled caller does not turn it into a failure.
-    private async Task<ContentDocument> RespondAsync(WriteScope write, Document row) =>
-        await ReadDraftOrNullAsync(write, row.DocumentId, write.Locale, LocaleFallback.None, CancellationToken.None)
-            ?? new ContentDocument { ["id"] = row.DocumentId, ["version"] = row.DraftVersion };
+    // write. A write in a transaction of its own has committed by now, so neither a cancelled caller nor a deadlock the read
+    // loses to another writer turns it into a failure: the read runs again (#2959). In the caller's transaction the deadlock
+    // has ended that transaction, which is the caller's to handle.
+    private async Task<ContentDocument> RespondAsync(WriteScope write, Document row)
+    {
+        for (var deadlocks = 0; ; )
+        {
+            try
+            {
+                return await ReadDraftOrNullAsync(write, row.DocumentId, write.Locale, LocaleFallback.None, CancellationToken.None)
+                    ?? new ContentDocument { ["id"] = row.DocumentId, ["version"] = row.DraftVersion };
+            }
+            catch (Exception exception) when (deadlocks < DeadlockReruns && context.Database.CurrentTransaction is null && provider.IsDeadlock(exception))
+            {
+                await PauseAfterDeadlockAsync(++deadlocks, CancellationToken.None);
+            }
+        }
+    }
 
     private async Task<ContentDocument?> ReadDraftOrNullAsync(WriteScope write, Guid id, string locale, LocaleFallback fallbacks, CancellationToken cancellationToken)
     {
