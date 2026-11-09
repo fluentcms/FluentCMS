@@ -6,6 +6,7 @@ using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Tests.Schema;
 using FluentCMS.Data.Tests.Activity;
 using FluentCMS.Data.Tests.Events;
+using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Events;
 using FluentCMS.Hooks;
 using FluentCMS.Schema;
@@ -206,7 +207,7 @@ public sealed class LostInsertTests
         (error.Path, error.Code).ShouldBe((path, code));
     }
 
-    [Fact]
+    [SqliteFact("a lost insert faked with SQLite's error")]
     public async Task ASingletonCreateThatLosesAtTheInsertIsRefusedAsTheWinnersEntryExists()
     {
         using var setup = Start();
@@ -226,7 +227,7 @@ public sealed class LostInsertTests
         ShouldBeHeardOnce(setup, note => note == Note("create", winner, "Winner"));
     }
 
-    [Fact]
+    [SqliteFact("a lost insert faked with SQLite's error")]
     public async Task ASingletonCreateThatLosesAtTheInsertWithNoWinnerIsWrittenOnce()
     {
         using var setup = Start();
@@ -242,7 +243,7 @@ public sealed class LostInsertTests
         ShouldBeHeardOnce(setup, note => note.EndsWith(":Again", StringComparison.Ordinal));
     }
 
-    [Fact]
+    [SqliteFact("a lost insert faked with SQLite's error")]
     public async Task ALocaleAddThatLosesAtTheInsertConflictsWithTheWinnersLocale()
     {
         using var setup = Start();
@@ -265,7 +266,7 @@ public sealed class LostInsertTests
         ShouldBeHeardOnce(setup, note => note == Note("update", id, "Gagnant"));
     }
 
-    [Fact]
+    [SqliteFact("a lost insert faked with SQLite's error")]
     public async Task ALocaleAddThatLosesAtTheInsertWithNoWinnerIsWrittenOnce()
     {
         using var setup = Start();
@@ -286,7 +287,7 @@ public sealed class LostInsertTests
     }
 
     // An empty value is what an unfinished draft holds, so both drafts may hold it, and the published state has room for one.
-    [Fact]
+    [SqliteFact("a lost insert faked with SQLite's error")]
     public async Task APublishThatLosesAtTheInsertIsRefusedAsTheWinnerPublishedTheValue()
     {
         using var setup = Start(Pages);
@@ -308,7 +309,7 @@ public sealed class LostInsertTests
         ShouldBeHeardOnce(setup, note => note == Note("publish", winner, null));
     }
 
-    [Fact]
+    [SqliteFact("a lost insert faked with SQLite's error")]
     public async Task APublishThatLosesAtTheInsertWithNoWinnerIsWrittenOnce()
     {
         using var setup = Start(Pages);

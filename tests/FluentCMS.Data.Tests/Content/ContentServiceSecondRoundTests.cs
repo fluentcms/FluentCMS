@@ -7,9 +7,11 @@ using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Tests.Schema;
 using FluentCMS.Core.Tests.Schema.Samples;
 using FluentCMS.Data.Tests.Authorization;
+using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Data.Tests.Query;
 using FluentCMS.Publishing;
 using FluentCMS.Schema;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -106,14 +108,27 @@ public sealed class ContentServiceRulesAcrossFieldsTests
 
 public sealed class ContentServiceSentValueTests : IDisposable
 {
-    private readonly ServiceDatabase _database = new();
+    // The stored value breaks a rule its column does not enforce, so that every provider keeps it.
+    private static readonly SchemaModel Model = SampleSchema.NewBuilder()
+        .AddComponent("seo", component => component
+            .Field("metaTitle", "text", field => field.Length(5, 40))
+            .Field("image", "media"))
+        .AddBlock("hero", block => block.Field("heading", "text", field => field.Length(null, 10)))
+        .AddCollection("article", type => type
+            .Localized()
+            .Field("title", "text", field => field.Required().Localizable())
+            .Field("sections", "blocks", field => field.Setting(FieldSettings.Blocks, new[] { "hero" }))
+            .Field("seo", "component", field => field.Setting(FieldSettings.Component, "seo")))
+        .Build();
+
+    private readonly ServiceDatabase _database = new(schema: Model);
 
     public void Dispose() => _database.Dispose();
 
-    private async Task<(Guid Id, Principal Writer)> TooLongStoredTitleAsync()
+    private async Task<(Guid Id, Principal Writer)> TooShortStoredTitleAsync()
     {
         var id = IdOf(await _database.CreateAsync(Editor, new() { ["title"] = "T", ["seo"] = new ContentDocument { ["metaTitle"] = "short" } }));
-        _database.Read(context => context.Rows("cms_article").Where(row => EF.Property<Guid>(row, "document_id") == id).ExecuteUpdate(set => set.SetProperty(row => EF.Property<string?>(row, "seo_meta_title"), "a stored value much too long")));
+        _database.Read(context => context.Rows("cms_article").Where(row => EF.Property<Guid>(row, "document_id") == id).ExecuteUpdate(set => set.SetProperty(row => EF.Property<string?>(row, "seo_meta_title"), "abc")));
         var role = _database.Database.AddRoleForTest("WriteOnly", ("content.article.read", new PermissionConstraints { Fields = ["title"] }), ("content.article.update", null));
         return (id, WithRole(role));
     }
@@ -129,25 +144,25 @@ public sealed class ContentServiceSentValueTests : IDisposable
     [MemberData(nameof(PatchesOfAnotherFieldOfTheComponent))]
     public async Task APatchIntoAComponentDoesNotHearOfAStoredValueItDidNotSend(object seo)
     {
-        var (id, writer) = await TooLongStoredTitleAsync();
+        var (id, writer) = await TooShortStoredTitleAsync();
 
         var patched = await _database.PatchAsync(writer, id, new() { ["seo"] = seo }, 1);
 
         patched["version"].ShouldBe(2);
-        _database.Row("cms_article", id)["seo_meta_title"].ShouldBe("a stored value much too long");
+        _database.Row("cms_article", id)["seo_meta_title"].ShouldBe("abc");
     }
 
     [Fact]
     public async Task AValueSentInsideAComponentIsReported()
     {
-        var (id, writer) = await TooLongStoredTitleAsync();
+        var (id, writer) = await TooShortStoredTitleAsync();
 
-        foreach (var guess in new[] { "a stored value much too long", "another value much too long" })
+        foreach (var guess in new[] { "abc", "abcd" })
         {
             (await Should.ThrowAsync<ValidationException>(() => _database.PatchAsync(writer, id, new() { ["seo"] = new ContentDocument { ["metaTitle"] = guess } }, 1)))
                 .Errors.ShouldHaveSingleItem().ShouldSatisfyAllConditions(
                     error => error.Path.ShouldBe("seo.metaTitle"),
-                    error => error.Code.ShouldBe(ValidationErrorCodes.MaxLength));
+                    error => error.Code.ShouldBe(ValidationErrorCodes.MinLength));
         }
     }
 
@@ -257,7 +272,7 @@ public sealed class ContentServiceFallbackEchoTests : IDisposable
             },
             locale: "fr");
 
-        database.Row("cms_article_i18n", created.Id, "fr")["body"].ShouldBe(RichText.Empty.Json);
+        database.Row("cms_article_i18n", created.Id, "fr")["body"].ShouldBeJson(RichText.Empty.Json);
     }
 }
 
@@ -624,6 +639,9 @@ public sealed class ContentServiceJoinedTransactionTests
                 transaction.SupportsSavepoints.ShouldBeFalse();
                 await service.CreateAsync("article", Titled("One"), Token);
                 await Should.ThrowAsync<ValidationException>(() => service.CreateAsync("article", new() { ["views"] = 5000 }, Token));
+
+                // As a hook that caught the failure would carry on: the write must not commit outside the transaction.
+                await Should.ThrowAsync<InvalidOperationException>(() => service.CreateAsync("article", Titled("Two"), Token));
                 await Should.ThrowAsync<InvalidOperationException>(() => transaction.CommitAsync(Token));
             }
 
@@ -631,6 +649,19 @@ public sealed class ContentServiceJoinedTransactionTests
         });
 
         database.Footprint().ShouldBe(before);
+    }
+
+    // The test above stands in for a SQL Server connection with MARS, on which EF takes no savepoints.
+    [SqlServerFact("MARS, with which EF takes no savepoints")]
+    public async Task OnSqlServerWithMarsATransactionHasNoSavepoints()
+    {
+        using var database = TestDatabase.Create();
+        var mars = new SqlConnectionStringBuilder(database.ConnectionString) { MultipleActiveResultSets = true }.ConnectionString;
+        await using var context = new DbContext(new DbContextOptionsBuilder().UseSqlServer(mars).Options);
+
+        await using var transaction = await context.Database.BeginTransactionAsync(Token);
+
+        transaction.SupportsSavepoints.ShouldBeFalse();
     }
 
     [Fact]

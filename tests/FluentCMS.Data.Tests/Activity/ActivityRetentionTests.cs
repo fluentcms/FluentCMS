@@ -6,6 +6,7 @@ using FluentCMS.Core.ActivityLog;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Data.Tests.Content;
+using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Jobs;
 using FluentCMS.Core.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
@@ -188,7 +189,7 @@ public sealed class ActivityRetentionTests
         Kept(database).ShouldBe(["old"]);
     }
 
-    [Fact]
+    [SqliteFact("SQLite's query plans")]
     public async Task EveryBatchOfThePruneIsAnIndexSearchWithNoSort()
     {
         var plans = new List<string>();

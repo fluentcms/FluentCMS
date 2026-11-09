@@ -1,6 +1,7 @@
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Tests.Schema;
+using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Publishing;
 using FluentCMS.Schema;
 using Microsoft.Data.Sqlite;
@@ -80,7 +81,7 @@ public sealed class ConventionsTests : IDisposable
         return (string)command.ExecuteScalar()!;
     }
 
-    [Fact]
+    [SqliteFact("the SQLite storage conventions")]
     public void ContentDatesCompareAndSortAcrossOffsets()
     {
         AddPost(Latest);
@@ -98,7 +99,7 @@ public sealed class ConventionsTests : IDisposable
         ColumnType(Post, "published_on").ShouldBe("INTEGER");
     }
 
-    [Fact]
+    [SqliteFact("the SQLite storage conventions")]
     public void SystemDatesCompareAndSortAcrossOffsets()
     {
         _context.Documents.AddRange(NewDocument(Latest), NewDocument(Earliest), NewDocument(Middle));
@@ -112,7 +113,7 @@ public sealed class ConventionsTests : IDisposable
         ColumnType("cms_version", "created_at").ShouldBe("INTEGER");
     }
 
-    [Fact]
+    [SqliteFact("the SQLite storage conventions")]
     public void ADateReadsBackAsTheSameInstantInUtc()
     {
         _context.Documents.Add(NewDocument(Earliest));
@@ -124,7 +125,7 @@ public sealed class ConventionsTests : IDisposable
         read.Offset.ShouldBe(TimeSpan.Zero);
     }
 
-    [Fact]
+    [SqliteFact("the SQLite storage conventions")]
     public void AContentJsonColumnRejectsMalformedJson()
     {
         AddPost(Middle, "{not json");
@@ -133,7 +134,7 @@ public sealed class ConventionsTests : IDisposable
         exception.InnerException.ShouldBeOfType<SqliteException>().SqliteExtendedErrorCode.ShouldBe(CheckConstraintFailed);
     }
 
-    [Fact]
+    [SqliteFact("the SQLite storage conventions")]
     public void ASystemJsonColumnRejectsMalformedJson()
     {
         _context.Versions.Add(new ContentVersion { DocumentId = Guid.CreateVersion7(), Number = 1, Snapshot = "{not json", CreatedAt = Middle });
@@ -142,7 +143,7 @@ public sealed class ConventionsTests : IDisposable
         exception.InnerException.ShouldBeOfType<SqliteException>().SqliteExtendedErrorCode.ShouldBe(CheckConstraintFailed);
     }
 
-    [Fact]
+    [SqliteFact("the SQLite storage conventions")]
     public void AJsonColumnAcceptsValidJsonAndNull()
     {
         AddPost(Middle, """{"a":1}""");

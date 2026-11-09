@@ -68,7 +68,7 @@ public class ContentModelTests
 
         var key = Index(table, "uq_cms_article_document_state");
         key.IsUnique.ShouldBeTrue();
-        IndexColumns(key).ShouldBe(["document_id", "state"]);
+        IndexColumns(key).ShouldBe(["document_id", "state", "site_id"]);
 
         var indexed = Index(table, "ix_cms_article_category");
         indexed.IsUnique.ShouldBeFalse();
@@ -98,7 +98,7 @@ public class ContentModelTests
 
         var key = Index(table, "uq_cms_article_i18n_document_locale_state");
         key.IsUnique.ShouldBeTrue();
-        IndexColumns(key).ShouldBe(["document_id", "locale", "state"]);
+        IndexColumns(key).ShouldBe(["document_id", "locale", "state", "site_id"]);
 
         var slug = Index(table, "ux_cms_article_i18n_slug");
         slug.IsUnique.ShouldBeTrue();
@@ -164,6 +164,35 @@ public class ContentModelTests
         var slug = Index(table, "ux_cms_tag_slug");
         slug.GetFilter().ShouldBe("state = 1");
         IndexColumns(slug).ShouldBe(["slug"]);
+    }
+
+    [Fact]
+    public void EveryUniqueKeyOfASiteScopedTableHoldsTheSite()
+    {
+        var schema = SampleSchema.NewBuilder().AddSchemaJson("""
+            { "collections": [
+                { "name": "page", "localized": true, "fields": [
+                  { "name": "path", "type": "slug", "unique": true },
+                  { "name": "title", "type": "text", "localizable": true, "unique": true } ] },
+                { "name": "term", "scope": "global", "localized": true, "fields": [ { "name": "label", "type": "text", "localizable": true, "unique": true } ] } ],
+              "singletons": [
+                { "name": "home", "localized": true, "fields": [ { "name": "title", "type": "text", "localizable": true } ] },
+                { "name": "brand", "scope": "global", "fields": [ { "name": "name", "type": "text" } ] } ] }
+            """).Build();
+        var model = ModelOf(schema);
+
+        foreach (var table in new[] { "cms_page", "cms_page_i18n", "cms_home", "cms_home_i18n" })
+        {
+            Table(model, table).GetIndexes().Where(index => index.IsUnique).ShouldAllBe(index => IndexColumns(index).Contains("site_id"), table);
+        }
+
+        foreach (var table in new[] { "cms_term", "cms_term_i18n", "cms_brand" })
+        {
+            Table(model, table).GetIndexes().ShouldAllBe(index => !IndexColumns(index).Contains("site_id"), table);
+        }
+
+        IndexColumns(Index(Table(model, "cms_home"), "uq_cms_home_document_state")).ShouldBe(["document_id", "state", "site_id"]);
+        IndexColumns(Index(Table(model, "cms_term_i18n"), "uq_cms_term_i18n_document_locale_state")).ShouldBe(["document_id", "locale", "state"]);
     }
 
     [Fact]

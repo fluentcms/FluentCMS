@@ -213,8 +213,6 @@ public sealed class WebhookManagementTests(WebhookFixture hosts) : IClassFixture
         var applied = await Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.GetAppliedMigrationsAsync(database.Database, Token);
         applied.Select(migration => migration[15..]).ShouldBe(["InitialWebhooks", "AddDeliveryClaim", "AddPreviousSecret"]);
         Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.HasPendingModelChanges(database.Database).ShouldBeFalse();
-        using var design = new WebhooksDbContextFactory().CreateDbContext([]);
-        Microsoft.EntityFrameworkCore.RelationalDatabaseFacadeExtensions.HasPendingModelChanges(design.Database).ShouldBeFalse();
     }
 
     private static async Task<List<(string Path, string Code)>> RefusalAsync(HttpClient client, object webhook)

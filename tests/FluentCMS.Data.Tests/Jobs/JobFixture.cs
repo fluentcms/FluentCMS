@@ -5,7 +5,7 @@ using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
-using FluentCMS.Data.Tests.Sqlite;
+using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Events;
 using FluentCMS.Jobs;
 using Microsoft.EntityFrameworkCore;
@@ -146,12 +146,21 @@ internal sealed class JobFixture : IDisposable
 
     public JobFixture()
     {
-        Services = NewInstance();
-        using var scope = Services.CreateScope();
-        scope.ServiceProvider.GetRequiredService<SystemDbContext>().Database.Migrate();
+        try
+        {
+            Services = NewInstance();
+            using var scope = Services.CreateScope();
+            scope.ServiceProvider.GetRequiredService<SystemDbContext>().Database.Migrate();
+        }
+        catch
+        {
+            // xunit disposes no test class whose constructor throws, and the database would outlive the test.
+            Dispose();
+            throw;
+        }
     }
 
-    public SqliteFileDatabase Database { get; } = new();
+    public TestDatabase Database { get; } = TestDatabase.Create();
 
     public ManualTimeProvider Clock { get; } = new(Start);
 

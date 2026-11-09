@@ -1,3 +1,5 @@
+using FluentCMS.Core.Storage;
+
 namespace FluentCMS.Testing;
 
 // Only the wall clock is controlled. Timers and delays stay real, so a background loop that waits on this provider keeps
@@ -6,8 +8,9 @@ public sealed class ControllableTimeProvider(DateTimeOffset start) : TimeProvide
 {
     private long _utcTicks = start.UtcTicks;
 
+    // On a whole microsecond, as every provider stores a DateTimeOffset, so the time a test wrote reads back equal.
     public ControllableTimeProvider()
-        : this(DateTimeOffset.UtcNow)
+        : this(StorageConventions.ToMicroseconds(DateTimeOffset.UtcNow))
     {
     }
 

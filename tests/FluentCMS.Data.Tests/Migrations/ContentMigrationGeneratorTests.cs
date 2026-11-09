@@ -3,9 +3,11 @@ using FluentCMS.Core.Tests.Schema;
 using FluentCMS.Data.PostgreSql;
 using FluentCMS.Data.Sqlite;
 using FluentCMS.Data.SqlServer;
-using FluentCMS.Data.Tests.Sqlite;
+using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Schema;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations.Operations;
 using Shouldly;
 using Xunit;
 
@@ -13,7 +15,7 @@ namespace FluentCMS.Data.Tests.Migrations;
 
 public sealed class ContentMigrationGeneratorTests : IDisposable
 {
-    private readonly SqliteFileDatabase _database = new();
+    private readonly TestDatabase _database = TestDatabase.Create();
 
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
@@ -64,7 +66,7 @@ public sealed class ContentMigrationGeneratorTests : IDisposable
     {
         var migrations = GeneratedMigrations.CompileFirst(ArticleSchemas.Titled);
 
-        using (var checking = ContentMigrations.CreateContext(new SqliteDataProvider("Data Source=:memory:"), ArticleSchemas.WithSubtitle, migrations))
+        using (var checking = ContentMigrations.CreateContext(TestProvider.Offline(), ArticleSchemas.WithSubtitle, migrations))
         {
             checking.Database.HasPendingModelChanges().ShouldBeTrue();
         }
@@ -111,5 +113,31 @@ public sealed class ContentMigrationGeneratorTests : IDisposable
         migration.MigrationCode.ShouldContain("name: \"cms_article\"");
         migration.MigrationCode.ShouldContain("type: \"uniqueidentifier\"");
         migration.MigrationCode.ShouldNotContain("cms_document");
+    }
+
+    [Theory]
+    [InlineData("sqlite")]
+    [InlineData("postgresql")]
+    [InlineData("sqlserver")]
+    public void EveryProvidersMigrationHoldsTheSiteInTheUniqueKeysOfASiteScopedType(string name)
+    {
+        IDataProvider provider = name switch
+        {
+            "sqlite" => new SqliteDataProvider("Data Source=:memory:"),
+            "postgresql" => new PostgreSqlDataProvider("Host=localhost;Database=never_opened"),
+            _ => new SqlServerDataProvider("Server=localhost;Database=never_opened"),
+        };
+        var schema = SampleSchema.FromClasses().Build();
+        var migrations = GeneratedMigrations.CompileFirst(schema, provider: provider);
+        var migration = (Migration)Activator.CreateInstance(migrations.GetTypes().Single(type => type.IsSubclassOf(typeof(Migration))))!;
+
+        var keys = migration.UpOperations.OfType<CreateIndexOperation>().Where(index => index.IsUnique).ToList();
+        var global = schema.ContentTypes.Where(type => type.Scope == ContentScope.Global).SelectMany(type => new[] { StorageNames.Table(type), StorageNames.LocaleTable(type) }).ToHashSet();
+
+        keys.ShouldContain(index => index.Name == "uq_cms_article_document_state" && index.Columns.SequenceEqual(new[] { "document_id", "state", "site_id" }));
+        keys.ShouldContain(index => index.Name == "uq_cms_article_i18n_document_locale_state" && index.Columns.SequenceEqual(new[] { "document_id", "locale", "state", "site_id" }));
+        keys.Where(index => !global.Contains(index.Table)).ShouldAllBe(index => index.Columns.Contains("site_id"));
+        keys.Where(index => global.Contains(index.Table)).ShouldNotBeEmpty();
+        keys.Where(index => global.Contains(index.Table)).ShouldAllBe(index => !index.Columns.Contains("site_id"));
     }
 }

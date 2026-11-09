@@ -4,6 +4,7 @@ using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Storage;
+using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Jobs;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Data.Tests.Activity;
@@ -814,7 +815,7 @@ public sealed class SchedulingTests : IDisposable
         public override ValueTask<int> NonQueryExecutedAsync(DbCommand command, CommandExecutedEventData eventData, int result, CancellationToken cancellationToken = default)
         {
             if (Armed
-                && command.CommandText.Contains("UPDATE \"cms_schedule\"", StringComparison.Ordinal)
+                && TestProvider.IsUpdateOf(command.CommandText, "cms_schedule")
                 && command.Parameters.Cast<DbParameter>().Any(parameter => parameter.Value is ScheduleRow.Executed))
             {
                 // Another writer's save, as if it landed between the checks and the publish.
@@ -1014,8 +1015,7 @@ public sealed class SchedulingTests : IDisposable
 
             rows.Select(row => row.Action).Order(StringComparer.Ordinal).ShouldBe(["content.schedule_cancelled", "content.scheduled", "content.scheduled"]);
             rows.ShouldAllBe(row => row.ActorId == user.Id && row.TargetType == "article" && row.TargetId == id.ToString("D") && row.Locale == "en");
-            rows.Where(row => row.Action == "content.scheduled").Select(row => row.Details).ShouldAllBe(details => details!.Contains("\"schedule\":\"publish\""));
-            rows.Single(row => row.Action == "content.schedule_cancelled").Details!.ShouldContain("\"schedule\":\"publish\"");
+            rows.Select(row => (string)StoredJson.Parse(row.Details)["schedule"]!).ShouldAllBe(schedule => schedule == "publish");
             rows.ShouldAllBe(row => row.Details == null || !row.Details.Contains("Secret"));
             _fixture.Seen.Of<EntryScheduledEvent>().Select(item => item.At).ShouldBe([Start.AddHours(1), Start.AddHours(2)]);
         }
@@ -1033,8 +1033,9 @@ public sealed class SchedulingTests : IDisposable
 
             row.ActorId.ShouldBe(Editor.Id);
             (row.TargetType, row.TargetId, row.Locale).ShouldBe(("article", id.ToString("D"), "en"));
-            row.Details!.ShouldContain("\"schedule\":\"publish\"");
-            row.Details!.ShouldContain("\"version\":\"1\"");
+            var details = StoredJson.Parse(row.Details);
+            ((string?)details["schedule"]).ShouldBe("publish");
+            ((string?)details["version"]).ShouldBe("1");
             row.Details!.ShouldNotContain("Secret");
         }
 

@@ -14,7 +14,7 @@ using Xunit;
 
 namespace FluentCMS.Data.Tests.Content;
 
-// The real service on a real SQLite file, with sites A and B that list en, fr and fr-CA. Every call is a request of its
+// The real service on the database of the run, with sites A and B that list en, fr and fr-CA. Every call is a request of its
 // own: a new scope, so a new DbContext, under the operation the entry point would set.
 internal sealed class ServiceDatabase : IDisposable
 {
@@ -75,18 +75,26 @@ internal sealed class ServiceDatabase : IDisposable
     public ServiceDatabase(Action<FluentCmsBuilder>? configure = null, SchemaModel? schema = null)
     {
         Database = new QueryDatabase(configure, schema ?? Schema);
-
-        var context = Database.Context;
-        foreach (var (site, slug) in new[] { (QueryDatabase.SiteA, "a"), (QueryDatabase.SiteB, "b") })
+        try
         {
-            context.Add(new Site { Id = site, Name = slug, Slug = slug, DefaultLocale = "en", CreatedAt = DateTimeOffset.UtcNow });
-            context.AddRange(
-                new SiteLocale { SiteId = site, Code = "en", Position = 0, Enabled = true },
-                new SiteLocale { SiteId = site, Code = "fr", Position = 1, Enabled = true },
-                new SiteLocale { SiteId = site, Code = "fr-CA", Position = 2, Enabled = true });
-        }
+            var context = Database.Context;
+            foreach (var (site, slug) in new[] { (QueryDatabase.SiteA, "a"), (QueryDatabase.SiteB, "b") })
+            {
+                context.Add(new Site { Id = site, Name = slug, Slug = slug, DefaultLocale = "en", CreatedAt = DateTimeOffset.UtcNow });
+                context.AddRange(
+                    new SiteLocale { SiteId = site, Code = "en", Position = 0, Enabled = true },
+                    new SiteLocale { SiteId = site, Code = "fr", Position = 1, Enabled = true },
+                    new SiteLocale { SiteId = site, Code = "fr-CA", Position = 2, Enabled = true });
+            }
 
-        context.SaveChanges();
+            context.SaveChanges();
+        }
+        catch
+        {
+            // xunit disposes no test class whose constructor throws, and the database would outlive the test.
+            Database.Dispose();
+            throw;
+        }
     }
 
     public QueryDatabase Database { get; }

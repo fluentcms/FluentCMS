@@ -4,8 +4,8 @@ using FluentCMS.Core.Content.Query;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
+using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Data.Tests.Query;
-using FluentCMS.Data.Tests.Sqlite;
 using FluentCMS.Schema;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -776,7 +776,7 @@ public sealed class EvaluatorTests : IDisposable
     [Fact]
     public void ARuleThatDoesNotFitTheSchemaStopsTheHost()
     {
-        using var database = new SqliteFileDatabase();
+        using var database = TestDatabase.Create();
         using var services = database.CreateServices(QueryDatabase.Schema, cms => cms.Authorization
             .AddRowRule<Regional>("bad", ctx => article => article.Missing == "x"));
 

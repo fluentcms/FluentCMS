@@ -1,121 +1,42 @@
 using System.Data.Common;
 using System.Reflection;
-using FluentCMS.Core.Authorization;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Storage;
 using FluentCMS.Data.Sqlite;
-using FluentCMS.Schema;
+using FluentCMS.Data.Tests.Providers;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 
 namespace FluentCMS.Data.Tests.Sqlite;
 
 // A database file of its own, reached through the real package. Pooling is off so that the file can be deleted.
 // writeAheadLog false is the provider of a host that keeps the rollback journal.
-internal sealed class SqliteFileDatabase(bool writeAheadLog = true) : IDisposable
+internal sealed class SqliteFileDatabase(bool writeAheadLog = true) : TestDatabase
 {
     private readonly DirectoryInfo _directory = Directory.CreateTempSubdirectory("fluentcms-data-tests-");
 
-    public string ConnectionString => $"Data Source={Path.Combine(_directory.FullName, "cms.db")};Pooling=False";
+    public override string ConnectionString => $"Data Source={Path.Combine(_directory.FullName, "cms.db")};Pooling=False";
 
-    public void UseSqlite(FluentCmsBuilder cms) => cms.UseDataProvider(new UnflushedSqliteProvider(new SqliteDataProvider(ConnectionString, writeAheadLog)));
+    public override void UseProvider(FluentCmsBuilder cms) => cms.UseDataProvider(new UnflushedSqliteProvider(new SqliteDataProvider(ConnectionString, writeAheadLog)));
 
-    public ServiceProvider CreateServices(SchemaModel? schema = null, Action<FluentCmsBuilder>? configure = null)
-    {
-        var services = new ServiceCollection();
-        if (schema is not null)
-        {
-            services.AddSingleton(schema);
-        }
+    public override void UseDriver(DbContextOptionsBuilder options, Assembly migrationsAssembly, string historyTable) =>
+        options.UseSqlite(ConnectionString, sqlite => sqlite.MigrationsAssembly(migrationsAssembly).MigrationsHistoryTable(historyTable));
 
-        // These tests name a principal's roles in its roles claim. A test of stored users registers UserPrincipalRoles in configure.
-        services.AddSingleton<IPrincipalRoles, ClaimPrincipalRoles>();
-        services.AddFluentCms(cms =>
-        {
-            UseSqlite(cms);
-            cms.Activity.Enabled = false;
-            cms.DeliveryCache.OutputCache = false;
-            configure?.Invoke(cms);
-        });
-        return services.BuildServiceProvider();
-    }
+    // From the model, which is quicker than the migrations; SystemMigrationTests applies those.
+    public override void CreateSystemTables(SystemDbContext context) => context.Database.EnsureCreated();
 
-    // A real host, so that startup runs the way it does in an application. Nothing is started yet.
-    public IHost CreateHost(
-        SchemaModel schema,
-        string environment,
-        Assembly? contentMigrations = null,
-        Dictionary<string, string?>? settings = null,
-        Action<IServiceCollection>? services = null,
-        Action<FluentCmsBuilder>? configure = null)
-    {
-        var builder = Host.CreateEmptyApplicationBuilder(new HostApplicationBuilderSettings { EnvironmentName = environment });
-        // These hosts sign no tokens and send no links, so Production may start with the key the authorization server would
-        // generate, no public origin and the key ring unencrypted.
-        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
-        {
-            ["FluentCms:Security:AllowGeneratedSigningKey"] = "true",
-            ["FluentCms:Security:AllowRequestOrigin"] = "true",
-            ["FluentCms:Security:AllowUnencryptedKeyRing"] = "true",
-        });
-        builder.Configuration.AddInMemoryCollection(settings ?? []);
-        builder.Services.AddSingleton(schema);
-        services?.Invoke(builder.Services);
-        builder.Services.AddFluentCms(cms =>
-        {
-            UseSqlite(cms);
-            cms.UseContentMigrations(contentMigrations ?? typeof(CmsDbContext).Assembly);
+    public override void UseJournalMode(string journalMode) => Execute($"PRAGMA journal_mode = {journalMode}");
 
-            // Their outbox handlers start a schedule in the background, which a test that disposes the host without stopping it leaves running against a file it then deletes.
-            cms.Activity.Enabled = false;
-            cms.DeliveryCache.OutputCache = false;
-            configure?.Invoke(cms);
-        });
-
-        return builder.Build();
-    }
-
-    public List<string> Tables() =>
+    public override List<string> Tables() =>
         ReadStrings("select name from sqlite_master where type = 'table' and name not like 'sqlite_%' order by name");
 
-    public List<string> Columns(string table) =>
+    public override List<string> Columns(string table) =>
         ReadStrings($"select name from pragma_table_info('{table}') order by name");
 
-    public List<string> ReadStrings(string sql)
-    {
-        using var connection = new SqliteConnection(ConnectionString);
-        connection.Open();
-        using var command = connection.CreateCommand();
-#pragma warning disable CA2100 // Constants of the tests.
-        command.CommandText = sql;
-#pragma warning restore CA2100
-        using var reader = command.ExecuteReader();
+    public override void Dispose() => _directory.Delete(recursive: true);
 
-        var values = new List<string>();
-        while (reader.Read())
-        {
-            values.Add(reader.GetString(0));
-        }
-
-        return values;
-    }
-
-    public void Execute(string sql)
-    {
-        using var connection = new SqliteConnection(ConnectionString);
-        connection.Open();
-        using var command = connection.CreateCommand();
-#pragma warning disable CA2100 // Constants of the tests.
-        command.CommandText = sql;
-#pragma warning restore CA2100
-        command.ExecuteNonQuery();
-    }
-
-    public void Dispose() => _directory.Delete(recursive: true);
+    protected override DbConnection NewConnection() => new SqliteConnection(ConnectionString);
 
     // A commit of a file database waits for the disk to flush, and the tests seed rows and create tables one commit at a time, which is most of what they cost on a Windows runner. The locks behave the same without it, and the file is deleted after the test.
     private sealed class UnflushedSqliteProvider(SqliteDataProvider inner) : IDataProvider
@@ -137,6 +58,8 @@ internal sealed class SqliteFileDatabase(bool writeAheadLog = true) : IDisposabl
         public IDatabaseSchemaReader SchemaReader => inner.SchemaReader;
 
         public bool IsUniqueViolation(Exception exception) => inner.IsUniqueViolation(exception);
+
+        public bool IsDeadlock(Exception exception) => inner.IsDeadlock(exception);
 
         public void ConfigureContentMigrations(DbContextOptionsBuilder options, Assembly migrationsAssembly)
         {

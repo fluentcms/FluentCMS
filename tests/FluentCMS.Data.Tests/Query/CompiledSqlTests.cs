@@ -1,5 +1,6 @@
 using FluentCMS.Content;
 using FluentCMS.Core.Content.Query;
+using FluentCMS.Data.Tests.Providers;
 using Microsoft.EntityFrameworkCore;
 using Shouldly;
 using Xunit;
@@ -16,7 +17,7 @@ public sealed class CompiledSqlTests : IDisposable
     private string Sql(string queryString, IContentQueryAccess? access = null)
     {
         var text = _database.Engine(access).Compile("article", BracketQueryParser.Parse(queryString)).Rows.ToQueryString();
-        return string.Join('\n', text.Split('\n').Where(line => !line.StartsWith(".param", StringComparison.Ordinal)));
+        return string.Join('\n', text.Split('\n').Where(line => !line.StartsWith(TestProvider.ParameterLinePrefix, StringComparison.Ordinal)));
     }
 
     [Theory]
@@ -72,7 +73,7 @@ public sealed class CompiledSqlTests : IDisposable
         count.ShouldBe(0);
     }
 
-    [Theory]
+    [SqliteTheory("the SQL text that SQLite is sent")]
     [InlineData("status=published", "\"state\" = 1")]
     [InlineData("status=draft", "\"state\" = 0")]
     public void TheStateIsInlinedAsALiteral(string status, string expected)
@@ -83,7 +84,7 @@ public sealed class CompiledSqlTests : IDisposable
         sql.ShouldNotContain("@state");
     }
 
-    [Fact]
+    [SqliteFact("the SQL text that SQLite is sent")]
     public void ARelationPathIsANestedExistsThroughTheReferenceTable()
     {
         var sql = Sql("filter[author.name][eq]=Ann&locale=en");
@@ -95,7 +96,7 @@ public sealed class CompiledSqlTests : IDisposable
         sql.ShouldContain("\"field\" = 'author'");
     }
 
-    [Fact]
+    [SqliteFact("the SQL text that SQLite is sent")]
     public void ARowRuleIsPartOfTheOneQuery()
     {
         var access = new QueryAccess();
@@ -107,7 +108,7 @@ public sealed class CompiledSqlTests : IDisposable
         sql.ShouldContain("\"views\" > @");
     }
 
-    [Fact]
+    [SqliteFact("the SQL text that SQLite is sent")]
     public void ASelectionReadsOnlyTheColumnsItNeeds()
     {
         var sql = Sql("fields=title&sort=views&locale=en");
@@ -118,7 +119,7 @@ public sealed class CompiledSqlTests : IDisposable
         sql.ShouldNotContain("\"secret\"");
     }
 
-    [Fact]
+    [SqliteFact("the SQL text that SQLite is sent")]
     public void AHiddenFieldIsNeverRead() =>
         Sql("locale=en").ShouldNotContain("\"secret\"");
 }

@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using FluentCMS.Content;
 using FluentCMS.Core.ProseMirror;
 using FluentCMS.Core.Schema.FieldTypes;
+using FluentCMS.Core.Storage;
 using FluentCMS.Schema;
 
 namespace FluentCMS.Core.Content.Validation;
@@ -31,9 +32,11 @@ internal sealed class DeclarativeValidator(SchemaModel model, ContentEntryMapper
         foreach (var field in type.Fields)
         {
             // A field its condition hides is not checked, by these rules or a custom validator, whatever it holds. A save keeps
-            // its value, so that it is still there when the condition shows it again (spec 4.2).
+            // its value, so that it is still there when the condition shows it again (spec 4.2), and so it must fit its column.
             if (field.VisibleWhen is not null && !ConditionEvaluator.Evaluate(field.VisibleWhen, values))
             {
+                values.TryGetValue(field.Name, out var hidden);
+                CheckColumnLength(field, prefix + field.Name, hidden, context);
                 continue;
             }
 
@@ -103,6 +106,35 @@ internal sealed class DeclarativeValidator(SchemaModel model, ContentEntryMapper
         if (FieldLengths.Max(field) is { } max && length > max)
         {
             context.AddError(path, ValidationErrorCodes.MaxLength, $"Must have at most {max} {unit}, has {length}.");
+        }
+    }
+
+    // A text stored in a column of the entry's table, and each such field of a single component flattened into it.
+    private void CheckColumnLength(SchemaField field, string path, object? value, ValidationContext context)
+    {
+        if (field.FieldType == ValidatedFieldTypes.Component && !field.Multiple)
+        {
+            if (field.Settings.TryGetValue(FieldSettings.Component, out var name)
+                && model.FindComponent((string)name) is { } component
+                && FieldValue.ReadInstance(value) is { } values)
+            {
+                foreach (var inner in component.Fields)
+                {
+                    values.TryGetValue(inner.Name, out var innerValue);
+                    CheckColumnLength(inner, $"{path}.{inner.Name}", innerValue, context);
+                }
+            }
+
+            return;
+        }
+
+        if (value is string text
+            && FieldStorage.ByPath(model, context.Type).TryGetValue(path, out var stored)
+            && stored.Kind == FieldStorageKind.Column
+            && stored.MaxLength is { } max
+            && text.Length > max)
+        {
+            context.AddError(path, ValidationErrorCodes.MaxLength, $"Must have at most {max} characters, has {text.Length}.");
         }
     }
 

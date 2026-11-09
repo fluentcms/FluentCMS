@@ -115,7 +115,7 @@ internal sealed class PluginStorage(RegisteredPlugin plugin)
     public static void Configure(DbContextOptionsBuilder options, IDataProvider provider, PluginModels contributors, Assembly migrations, string history)
     {
         provider.ConfigurePluginMigrations(options, migrations, history);
-        PluginModelOptionsExtension.Use(options, contributors.Contributors, provider.Conventions.ConfigureConventions, $"{provider.Conventions.CacheKey}|{contributors.Key}");
+        PluginModelOptionsExtension.Use(options, contributors.Contributors, builder => StorageConventions.Configure(provider.Conventions, builder), $"{provider.Conventions.CacheKey}|{contributors.Key}");
         options.ReplaceService<IModelCacheKeyFactory, CmsModelCacheKeyFactory>();
     }
 

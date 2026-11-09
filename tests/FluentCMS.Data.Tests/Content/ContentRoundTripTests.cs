@@ -5,6 +5,7 @@ using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Tests.Schema;
+using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Publishing;
 using FluentCMS.Schema;
 using Microsoft.EntityFrameworkCore;
@@ -78,7 +79,7 @@ public sealed class ContentRoundTripTests : IDisposable
 
         copies.ShouldBeLessThanOrEqualTo(2);
         var block = (string)((JsonArray)created!["cards"]!)[0]!["id"]!;
-        _database.Versions(IdOf(created)).ShouldHaveSingleItem().Snapshot.ShouldContain($"\"id\":\"{block}\"");
+        StoredJson.Parse(_database.Versions(IdOf(created)).ShouldHaveSingleItem().Snapshot)["cards"]![0]!["id"]!.GetValue<string>().ShouldBe(block);
     }
 
     [Fact]
@@ -90,8 +91,8 @@ public sealed class ContentRoundTripTests : IDisposable
         var versions = await _trips.CountAsync(() => _database.VersionsAsync(Editor, id, type: "post"));
 
         versions.Select(version => version.Number).ShouldBe([2, 1]);
-        var read = _trips.Sent.Where(sql => sql.Contains("FROM \"cms_version\"", StringComparison.Ordinal)).ShouldHaveSingleItem();
-        read.ShouldContain("\"status_after\"");
+        var read = _trips.Sent.Where(sql => sql.Contains($"FROM {TestProvider.Quote("cms_version")}", StringComparison.Ordinal)).ShouldHaveSingleItem();
+        read.ShouldContain(TestProvider.Quote("status_after"));
         read.ShouldNotContain("snapshot");
     }
 

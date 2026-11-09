@@ -5,7 +5,7 @@ using FluentCMS.Core.Schema;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Tests.Schema;
-using FluentCMS.Data.Tests.Sqlite;
+using FluentCMS.Data.Tests.Providers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -22,7 +22,7 @@ public sealed class SchemaHistoryTests : IDisposable
 
     private static readonly Dictionary<string, string?> NoMigrationOnStartup = new() { ["FluentCms:Database:MigrateOnStartup"] = "false" };
 
-    private readonly SqliteFileDatabase _database = new();
+    private readonly TestDatabase _database = TestDatabase.Create();
 
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
@@ -114,7 +114,7 @@ public sealed class SchemaHistoryTests : IDisposable
         (await RowsAsync(host)).ShouldHaveSingleItem().Hash.ShouldBe(SchemaSnapshot.Of(ArticleSchemas.Titled).Hash);
     }
 
-    [Fact]
+    [SqliteFact("schema sync, which only SQLite supports")]
     public async Task DevelopmentSyncRecordsTheSchemaOnceAndNoMore()
     {
         using var host = _database.CreateHost(ArticleSchemas.Titled, Environments.Development);
@@ -215,7 +215,7 @@ public sealed class SchemaHistoryTests : IDisposable
 
         var warning = logs.Warnings.ShouldHaveSingleItem();
         warning.ShouldContain("not recorded");
-        warning.ShouldContain("SqliteException");
+        warning.ShouldContain(TestProvider.DriverException);
     }
 
     [Fact]
@@ -231,7 +231,7 @@ public sealed class SchemaHistoryTests : IDisposable
 
         var warning = logs.Warnings.ShouldHaveSingleItem();
         warning.ShouldContain("could not be compared");
-        warning.ShouldContain("SqliteException");
+        warning.ShouldContain(TestProvider.DriverException);
     }
 
     [Fact]
@@ -241,12 +241,16 @@ public sealed class SchemaHistoryTests : IDisposable
         await StartAndStopAsync(_database.CreateHost(ArticleSchemas.Titled, Production, migrations));
         _database.Execute("delete from cms_schema_history");
 
-        var hosts = Enumerable.Range(0, 4).Select(_ => _database.CreateHost(ArticleSchemas.Titled, Production, migrations, NoMigrationOnStartup)).ToList();
+        var logs = new CapturedLogs();
+        var hosts = Enumerable.Range(0, 4).Select(_ => _database.CreateHost(ArticleSchemas.Titled, Production, migrations, NoMigrationOnStartup, Capture(logs))).ToList();
         try
         {
             await Task.WhenAll(hosts.Select(host => Task.Run(() => host.Services.GetRequiredService<MigrationRunner>().MigrateAsync(Token))));
 
             (await RowsAsync(hosts[0])).Count.ShouldBe(1);
+
+            // A node that a server failed (a deadlock, a serialization failure) read again, rather than giving up.
+            logs.Warnings.ShouldNotContain(message => message.Contains("was not recorded", StringComparison.Ordinal), string.Join(Environment.NewLine, logs.Warnings));
         }
         finally
         {
@@ -254,7 +258,7 @@ public sealed class SchemaHistoryTests : IDisposable
         }
     }
 
-    [Fact]
+    [SqliteFact("schema sync, which only SQLite supports")]
     public async Task ARuntimeSyncIsRecorded()
     {
         using var host = _database.CreateHost(ArticleSchemas.Titled, Environments.Development);

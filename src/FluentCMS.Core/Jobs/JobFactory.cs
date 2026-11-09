@@ -1,4 +1,3 @@
-using System.Text.Json;
 using FluentCMS.Content;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Jobs;
@@ -34,7 +33,7 @@ internal sealed class JobFactory(JobRegistry registry, IOperationContextAccessor
         };
     }
 
-    public static string Serialize<TPayload>(TPayload payload) => JsonSerializer.Serialize(payload, JobJson.Options);
+    public static string Serialize<TPayload>(TPayload payload) => JobJson.Serialize(payload);
 
     public static string CheckedQueue(string? queue)
     {

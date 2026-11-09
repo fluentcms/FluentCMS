@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace FluentCMS.Data.PostgreSql;
 
-// Not yet run on a database (#2711).
 public sealed class PostgreSqlJobClaimDialect : IJobClaimDialect
 {
     public async Task<Guid?> ClaimAsync(DatabaseFacade database, JobClaim claim, CancellationToken cancellationToken = default)
@@ -23,7 +22,7 @@ public sealed class PostgreSqlJobClaimDialect : IJobClaimDialect
                     AND status IN ('pending', 'running')
                     AND run_at <= {now}
                     AND attempts < max_attempts
-                    AND (lease_until IS NULL OR lease_until < {now})
+                    AND (lease_until IS NULL OR lease_until <= {now})
                 ORDER BY priority DESC, run_at, id
                 LIMIT 1
                 FOR UPDATE SKIP LOCKED)

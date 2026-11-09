@@ -83,11 +83,26 @@ internal sealed class SchemaHistory(IServiceScopeFactory scopes, TimeProvider ti
                 await TryRecordAsync(snapshot, cancellationToken);
                 return;
             }
-            catch (Exception exception) when (attempt < Attempts && exception is DbException or DbUpdateException)
+            catch (Exception exception) when (attempt < Attempts && IsDatabaseFailure(exception))
             {
-                await Task.Delay(TimeSpan.FromMilliseconds(25 * attempt), cancellationToken);
+                // Jittered, so that nodes the server failed together do not meet again at the same moment.
+                await Task.Delay(TimeSpan.FromMilliseconds(25 * attempt * (1 + Random.Shared.NextDouble())), cancellationToken);
             }
         }
+    }
+
+    // EF's execution strategy on SQL Server and PostgreSQL wraps a deadlock as a transient failure, an InvalidOperationException.
+    private static bool IsDatabaseFailure(Exception exception)
+    {
+        for (Exception? current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is DbException or DbUpdateException)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private async Task TryRecordAsync(SchemaSnapshot snapshot, CancellationToken cancellationToken)

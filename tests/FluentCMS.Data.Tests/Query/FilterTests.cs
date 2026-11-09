@@ -8,7 +8,7 @@ using static FluentCMS.Data.Tests.Query.QueryDatabase;
 
 namespace FluentCMS.Data.Tests.Query;
 
-// Every operator on SQLite, reached through the bracket grammar so that text operands are coerced as they will be
+// Every operator on the database of the run, reached through the bracket grammar so that text operands are coerced as they will be
 // from a client. Alpha and Beta have values; Gamma has none.
 public sealed class FilterTests : IDisposable
 {

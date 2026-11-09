@@ -6,6 +6,7 @@ using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Data.Tests.Content;
 using FluentCMS.Data.Tests.Jobs;
+using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Events;
 using FluentCMS.Hooks;
 using Microsoft.EntityFrameworkCore;
@@ -112,7 +113,7 @@ public sealed class OutboxFailureTests
 
         public override ValueTask<int> NonQueryExecutedAsync(DbCommand command, CommandExecutedEventData eventData, int result, CancellationToken cancellationToken = default)
         {
-            if (result == 1 && command.CommandText.Contains("cms_outbox", StringComparison.Ordinal) && command.CommandText.Contains("\"attempts\" + 1", StringComparison.Ordinal))
+            if (result == 1 && command.CommandText.Contains("cms_outbox", StringComparison.Ordinal) && command.CommandText.Contains($"{TestProvider.Quote("attempts")} + 1", StringComparison.Ordinal))
             {
                 Interlocked.Increment(ref _count);
             }

@@ -1,4 +1,5 @@
 using System.Reflection;
+using FluentCMS.Core.Plugins;
 using FluentCMS.Core.Storage;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -32,6 +33,9 @@ public sealed class SqliteDataProvider(string connectionString, bool writeAheadL
     public bool IsUniqueViolation(Exception exception) =>
         (exception as SqliteException ?? exception.InnerException as SqliteException) is { SqliteExtendedErrorCode: raw.SQLITE_CONSTRAINT_UNIQUE or raw.SQLITE_CONSTRAINT_PRIMARYKEY };
 
+    // A writer takes the lock at BEGIN IMMEDIATE and holds it to the end, so writers queue and never deadlock.
+    public bool IsDeadlock(Exception exception) => false;
+
     public void ConfigureContentMigrations(DbContextOptionsBuilder options, Assembly migrationsAssembly) =>
         options.UseSqlite(connectionString, sqlite => sqlite
             .MigrationsAssembly(migrationsAssembly)
@@ -42,7 +46,8 @@ public sealed class SqliteDataProvider(string connectionString, bool writeAheadL
         options.UseSqlite(connectionString, sqlite => sqlite
             .MigrationsAssembly(migrationsAssembly)
             .MigrationsHistoryTable(historyTable))
-            .AddInterceptors(_interceptors);
+            .AddInterceptors(_interceptors)
+            .UsePluginMigrationSet(PluginMigrationSets.Sqlite);
 
     public void ConfigureSystemMigrations(DbContextOptionsBuilder options) =>
         options.UseSqlite(connectionString, sqlite => sqlite

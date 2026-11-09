@@ -479,7 +479,7 @@ internal sealed class ContentEntryMapper(SchemaModel schema) : IHookEntryMapper
     private static bool IsEmpty(object? value) => value switch
     {
         null or "" => true,
-        RichText document => document == RichText.Empty,
+        RichText document => EntryJson.IsEmptyDocument(document),
         ContentDocument group => group.Values.All(IsEmpty),
         ICollection list => list.Count == 0,
         _ => false,

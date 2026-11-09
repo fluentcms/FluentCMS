@@ -44,7 +44,8 @@ internal sealed class JobStore(
         // One transaction, so that a failure here does not use up an attempt of a job that never ran.
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
 
-        var leaseUntil = now + options.LeaseDuration;
+        // The dialect writes it with its own SQL, which no converter of the model sees.
+        var leaseUntil = StorageConventions.ToMicroseconds(now + options.LeaseDuration);
         if (await dialect.ClaimAsync(context.Database, new JobClaim(queue, owner, now, leaseUntil), cancellationToken) is not { } id)
         {
             return null;
@@ -87,7 +88,7 @@ internal sealed class JobStore(
         await using var scope = scopes.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<SystemDbContext>();
 
-        var until = time.GetUtcNow() + options.LeaseDuration;
+        var until = StorageConventions.ToMicroseconds(time.GetUtcNow() + options.LeaseDuration);
         var renewed = await Held(context, job).ExecuteUpdateAsync(row => row.SetProperty(column => column.LeaseUntil, until));
 
         return renewed == 1 ? until : null;
@@ -267,18 +268,20 @@ internal sealed class JobStore(
     private static Task<bool> AnyDueAsync(SystemDbContext context, string queue, DateTimeOffset now, CancellationToken cancellationToken) =>
         Due(context, now).AnyAsync(row => row.Queue == queue, cancellationToken);
 
+    // A lease has ended once now reaches lease_until. Both sides are kept to the microsecond, where <= is still exact and
+    // < would hold a lease up to a microsecond longer.
     private static IQueryable<Job> Due(SystemDbContext context, DateTimeOffset now) =>
         context.Set<Job>().AsNoTracking().Where(row =>
             (row.Status == JobStatus.Pending || row.Status == JobStatus.Running)
             && row.RunAt <= now
             && row.Attempts < row.MaxAttempts
-            && (row.LeaseUntil == null || row.LeaseUntil < now));
+            && (row.LeaseUntil == null || row.LeaseUntil <= now));
 
     private static IQueryable<Job> Stuck(SystemDbContext context, DateTimeOffset now) =>
         context.Set<Job>().Where(row =>
             (row.Status == JobStatus.Pending || row.Status == JobStatus.Running)
             && row.Attempts >= row.MaxAttempts
-            && (row.LeaseUntil == null || row.LeaseUntil < now));
+            && (row.LeaseUntil == null || row.LeaseUntil <= now));
 
     private static IQueryable<Job> Held(SystemDbContext context, ClaimedJob job) =>
         context.Set<Job>().Where(row =>

@@ -26,12 +26,16 @@ public interface IDataProvider
     // what a writer gets that lost a race to the row its checks found free (spec 4.4).
     bool IsUniqueViolation(Exception exception);
 
+    // Whether the database ended the transaction as the victim of a deadlock, which it asks to be run again.
+    bool IsDeadlock(Exception exception);
+
     // Points the options of CmsDbContext at the database, with the host's content migrations and their history table.
     void ConfigureContentMigrations(DbContextOptionsBuilder options, Assembly migrationsAssembly);
 
     // The same, for SystemDbContext: adds the assembly that holds the system migrations and their history table.
     void ConfigureSystemMigrations(DbContextOptionsBuilder options);
 
-    // The same, for the context of a plugin's stream, with its assembly and its history table cms_{plugin}__migrations.
+    // The same, for the context of a plugin's stream, with its assembly and its history table cms_{plugin}__migrations, and
+    // UsePluginMigrationSet with the name of the provider's set in that assembly.
     void ConfigurePluginMigrations(DbContextOptionsBuilder options, Assembly migrationsAssembly, string historyTable);
 }

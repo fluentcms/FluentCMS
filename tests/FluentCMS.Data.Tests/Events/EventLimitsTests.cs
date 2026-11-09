@@ -9,6 +9,7 @@ using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Telemetry;
 using FluentCMS.Data.Tests.Content;
 using FluentCMS.Data.Tests.Jobs;
+using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Events;
 using FluentCMS.Hooks;
 using FluentCMS.Sites;
@@ -453,7 +454,7 @@ public sealed class EventLimitsTests
         logs.Count("AbandonedHandlerFailed").ShouldBe(1);
     }
 
-    [Fact]
+    [SqliteFact("a query held open by a SQLite function")]
     public async Task AnAbandonedHandlerThatKeepsUsingItsContextBreaksNeitherTheNextHandlerNorTheResponse()
     {
         var logs = new RecordingLogs();

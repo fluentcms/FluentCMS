@@ -94,12 +94,13 @@ public sealed partial class BlockIdTests : IDisposable
         string[] ids = [(string)cards[0]!["id"]!, (string)cards[1]!["id"]!, (string)cards[1]!["items"]![0]!["id"]!];
         ids.ShouldAllBe(value => AssignedId().IsMatch(value));
         ids.Distinct().Count().ShouldBe(3);
-        cards[0]!.AsObject().Select(pair => pair.Key).Take(2).ShouldBe(["type", "id"]);
         var inline = (string)Stored(id, "body")["content"]![0]!["content"]![1]!["attrs"]!["id"]!;
         AssignedId().IsMatch(inline).ShouldBeTrue();
 
+        // A provider may store the keys in its own order; a read gives them in the order a write puts them.
         var read = (await _database.GetAsync(Editor, id))!;
         JsonNode.DeepEquals(Json(read["cards"]), cards).ShouldBeTrue();
+        Json(read["cards"])[0]!.AsObject().Select(pair => pair.Key).Take(2).ShouldBe(["type", "id"]);
         Json(read["body"])["content"]![0]!["content"]![1]!["attrs"]!["id"]!.GetValue<string>().ShouldBe(inline);
     }
 

@@ -1,10 +1,9 @@
 using System.Reflection;
 using FluentCMS.Cli;
+using FluentCMS.Data.Tests.Providers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using FluentCMS.Core.Storage;
-using FluentCMS.Data.Sqlite;
-using FluentCMS.Data.Tests.Sqlite;
 using FluentCMS.Schema;
 using Microsoft.EntityFrameworkCore.Design;
 using Shouldly;
@@ -17,7 +16,7 @@ public sealed class MigrationsAddCommandTests : IDisposable
 {
     private static readonly string HostAssembly = typeof(MigrationsAddCommandTests).Assembly.Location;
 
-    private readonly SqliteFileDatabase _database = new();
+    private readonly TestDatabase _database = TestDatabase.Create();
     private readonly DirectoryInfo _project = Directory.CreateTempSubdirectory("fluentcms-cli-tests-");
     private readonly DirectoryInfo _hosts = Directory.CreateTempSubdirectory("fluentcms-cli-hosts-");
     private readonly StringWriter _output = new();
@@ -73,7 +72,7 @@ public sealed class MigrationsAddCommandTests : IDisposable
         await host.StartAsync(Token);
 
         _database.Tables().ShouldContain("cms_article");
-        _database.ReadStrings("select MigrationId from cms_content__migrations").ShouldHaveSingleItem().ShouldEndWith("_Initial");
+        _database.ReadStrings("select \"MigrationId\" from cms_content__migrations").ShouldHaveSingleItem().ShouldEndWith("_Initial");
     }
 
     [Fact]
@@ -192,6 +191,6 @@ public sealed class MigrationsAddCommandTests : IDisposable
         }
 
         public CmsDbContext CreateDbContext(string[] args) =>
-            ContentMigrations.CreateContext(new SqliteDataProvider("Data Source=:memory:"), Schema, Migrations);
+            ContentMigrations.CreateContext(TestProvider.Offline(), Schema, Migrations);
     }
 }

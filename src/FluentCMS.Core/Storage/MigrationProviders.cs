@@ -1,3 +1,4 @@
+using FluentCMS.Core.Plugins;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
@@ -33,6 +34,18 @@ internal static class MigrationProviders
             .Where(model => model.GetEntityTypes().Any())
             .Select(Of)
             .FirstOrDefault(scaffolded => scaffolded != own);
+    }
+
+    // Why the context's migrations cannot run on its provider, or null: they were scaffolded for another, or the plugin's
+    // assembly holds sets per provider and none for this one.
+    public static string? RefusalOf(DbContext context)
+    {
+        var sets = context.GetService<IMigrationsAssembly>() as PluginMigrationsAssembly;
+        var missing = sets is { HasSet: false } ? $"has no set in a namespace ending in .{sets.Set}" : null;
+
+        return ForeignTo(context) is { } other
+            ? missing is null ? $"was scaffolded for {other}" : $"was scaffolded for {other} and {missing}"
+            : sets is { PerProvider: true } ? missing : null;
     }
 
     public static string Of(IReadOnlyModel model) =>

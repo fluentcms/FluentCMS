@@ -20,7 +20,5 @@ public static class SqlServerJsonFunctions
 {
     public static IQueryable<SqlServerJsonEntry> OpenJson(string? json) => throw new NotSupportedException();
 
-    public static long? TryBigint(string? value) => throw new NotSupportedException();
-
     public static decimal? TryDecimal(string? value) => throw new NotSupportedException();
 }

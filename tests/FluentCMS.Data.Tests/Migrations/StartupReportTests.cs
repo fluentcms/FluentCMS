@@ -1,7 +1,7 @@
 using FluentCMS.Core.Diagnostics;
 using FluentCMS.Core.Schema;
 using FluentCMS.Core.Tests.Schema;
-using FluentCMS.Data.Tests.Sqlite;
+using FluentCMS.Data.Tests.Providers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Shouldly;
@@ -15,13 +15,13 @@ public sealed class StartupReportTests : IDisposable
 
     private static readonly Dictionary<string, string?> NoMigrationOnStartup = new() { ["FluentCms:Database:MigrateOnStartup"] = "false" };
 
-    private readonly SqliteFileDatabase _database = new();
+    private readonly TestDatabase _database = TestDatabase.Create();
 
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
     public void Dispose() => _database.Dispose();
 
-    [Fact]
+    [SqliteFact("schema sync, which only SQLite supports")]
     public async Task ContentMigrationsThatSchemaSyncLeavesAloneArePending()
     {
         using var host = _database.CreateHost(ArticleSchemas.Titled, Environments.Development, GeneratedMigrations.CompileFirst(ArticleSchemas.Titled));

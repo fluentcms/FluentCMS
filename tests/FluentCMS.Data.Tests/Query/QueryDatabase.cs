@@ -6,7 +6,7 @@ using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Tests.Schema;
-using FluentCMS.Data.Tests.Sqlite;
+using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Providers;
 using FluentCMS.Publishing;
 using FluentCMS.Schema;
@@ -82,7 +82,7 @@ internal sealed class QueryDatabase : IDisposable
             .Field("secret", "text", field => field.Hidden()))
         .Build();
 
-    private readonly SqliteFileDatabase _database = new();
+    private readonly TestDatabase _database = TestDatabase.Create();
     private readonly SchemaModel _schema;
     private readonly ServiceProvider _services;
     private readonly IServiceScope _scope;
@@ -90,13 +90,22 @@ internal sealed class QueryDatabase : IDisposable
     public QueryDatabase(Action<FluentCmsBuilder>? configure = null, SchemaModel? schema = null)
     {
         _schema = schema ?? Schema;
-        _services = _database.CreateServices(_schema, configure);
-        _scope = _services.CreateScope();
-        Context = _scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+        try
+        {
+            _services = _database.CreateServices(_schema, configure);
+            _scope = _services.CreateScope();
+            Context = _scope.ServiceProvider.GetRequiredService<CmsDbContext>();
 
-        // EnsureCreated on CmsDbContext would skip the system tables, because they are excluded from its migrations.
-        Services.GetRequiredService<SystemDbContext>().Database.EnsureCreated();
-        Context.GetService<IRelationalDatabaseCreator>().CreateTables();
+            // Creating the tables of CmsDbContext would skip the system tables, because they are excluded from its migrations.
+            _database.CreateSystemTables(Services.GetRequiredService<SystemDbContext>());
+            Context.GetService<IRelationalDatabaseCreator>().CreateTables();
+        }
+        catch
+        {
+            // xunit disposes no test class whose constructor throws, and the database would outlive the test.
+            Dispose();
+            throw;
+        }
     }
 
     public CmsDbContext Context { get; }
@@ -263,8 +272,8 @@ internal sealed class QueryDatabase : IDisposable
 
     public void Dispose()
     {
-        _scope.Dispose();
-        _services.Dispose();
+        _scope?.Dispose();
+        _services?.Dispose();
         _database.Dispose();
     }
 

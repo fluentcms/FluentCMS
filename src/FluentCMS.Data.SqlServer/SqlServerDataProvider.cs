@@ -1,11 +1,12 @@
 using System.Reflection;
+using FluentCMS.Core.Plugins;
 using FluentCMS.Core.Storage;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace FluentCMS.Data.SqlServer;
 
-public sealed class SqlServerDataProvider(string connectionString, bool nativeJson = false) : IDataProvider
+public sealed class SqlServerDataProvider(string connectionString) : IDataProvider
 {
     public string Name => "SQL Server";
 
@@ -13,7 +14,7 @@ public sealed class SqlServerDataProvider(string connectionString, bool nativeJs
 
     public bool SupportsSchemaSync => false;
 
-    public IStorageConventions Conventions { get; } = new SqlServerStorageConventions(nativeJson);
+    public IStorageConventions Conventions { get; } = new SqlServerStorageConventions();
 
     public IJsonSqlDialect JsonDialect { get; } = new SqlServerJsonDialect();
 
@@ -25,18 +26,36 @@ public sealed class SqlServerDataProvider(string connectionString, bool nativeJs
     public bool IsUniqueViolation(Exception exception) =>
         (exception as SqlException ?? exception.InnerException as SqlException) is { Number: 2601 or 2627 };
 
+    // EF's execution strategy wraps a deadlock met in SaveChanges as a transient failure, so the whole chain is read.
+    public bool IsDeadlock(Exception exception)
+    {
+        for (Exception? current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is SqlException { Number: 1205 })
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public void ConfigureContentMigrations(DbContextOptionsBuilder options, Assembly migrationsAssembly) =>
         options.UseSqlServer(connectionString, sqlServer => sqlServer
             .MigrationsAssembly(migrationsAssembly)
-            .MigrationsHistoryTable(CmsDbContext.HistoryTable));
+            .MigrationsHistoryTable(CmsDbContext.HistoryTable))
+            .AddInterceptors(EndedTransactionGuard.Instance);
 
     public void ConfigurePluginMigrations(DbContextOptionsBuilder options, Assembly migrationsAssembly, string historyTable) =>
         options.UseSqlServer(connectionString, sqlServer => sqlServer
             .MigrationsAssembly(migrationsAssembly)
-            .MigrationsHistoryTable(historyTable));
+            .MigrationsHistoryTable(historyTable))
+            .UsePluginMigrationSet(PluginMigrationSets.SqlServer)
+            .AddInterceptors(EndedTransactionGuard.Instance);
 
     public void ConfigureSystemMigrations(DbContextOptionsBuilder options) =>
         options.UseSqlServer(connectionString, sqlServer => sqlServer
             .MigrationsAssembly(typeof(SqlServerDataProvider).Assembly)
-            .MigrationsHistoryTable(SystemDbContext.HistoryTable));
+            .MigrationsHistoryTable(SystemDbContext.HistoryTable))
+            .AddInterceptors(EndedTransactionGuard.Instance);
 }
