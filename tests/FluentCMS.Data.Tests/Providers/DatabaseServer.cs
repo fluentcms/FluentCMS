@@ -66,11 +66,6 @@ public sealed class DatabaseServer : IAsyncLifetime
 
     public async ValueTask DisposeAsync()
     {
-        if (TestProvider.IsSqlServer)
-        {
-            await SqlServerPool.StopAsync();
-        }
-
         _adminConnectionString = null;
         if (_container is not null)
         {
