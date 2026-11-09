@@ -19,7 +19,7 @@ public sealed class SqlServerJobClaimDialect : IJobClaimDialect
                     AND status IN ('pending', 'running')
                     AND run_at <= {claim.Now}
                     AND attempts < max_attempts
-                    AND (lease_until IS NULL OR lease_until < {claim.Now})
+                    AND (lease_until IS NULL OR lease_until <= {claim.Now})
                 ORDER BY priority DESC, run_at, id)
             UPDATE next_job
             SET status = {JobClaimStatus.Running}, lease_owner = {claim.Owner}, lease_until = {claim.LeaseUntil}, attempts = attempts + 1
