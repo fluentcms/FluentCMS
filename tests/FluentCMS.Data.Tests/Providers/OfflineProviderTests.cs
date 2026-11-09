@@ -185,7 +185,7 @@ public partial class OfflineProviderTests
         using var scope = services.CreateScope();
         var database = scope.ServiceProvider.GetRequiredService<SystemDbContext>().Database;
 
-        database.GetMigrations().Count().ShouldBe(17);
+        database.GetMigrations().Count().ShouldBe(18);
         database.HasPendingModelChanges().ShouldBeFalse();
     }
 
