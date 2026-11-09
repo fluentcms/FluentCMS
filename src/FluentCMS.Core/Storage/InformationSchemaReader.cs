@@ -4,7 +4,7 @@ using System.Globalization;
 namespace FluentCMS.Core.Storage;
 
 // Reads tables and columns from the standard views. No indexes: startup validation needs only the columns, and
-// schema sync, which compares indexes, runs on SQLite only. Never run on a server until #2711.
+// schema sync, which compares indexes, runs on SQLite only.
 public sealed class InformationSchemaReader(string currentSchemaExpression) : IDatabaseSchemaReader
 {
     public async Task<DatabaseSchema> ReadAsync(DbConnection connection, CancellationToken cancellationToken = default)

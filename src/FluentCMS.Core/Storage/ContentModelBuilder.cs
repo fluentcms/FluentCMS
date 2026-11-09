@@ -35,14 +35,18 @@ internal sealed class ContentModelBuilder(SchemaModel schema, IStorageConvention
             entity.Property<short>(StorageNames.State);
 
             string[] scopeAndState = [.. Scope(type, hasLocale), StorageNames.State];
+
+            // PostgreSQL wants the partition key in every unique key of a partitioned table. Last, so that the reads and
+            // deletes by document_id alone still seek it.
+            string[] site = type.Scope == ContentScope.Global ? [] : [StorageNames.SiteId];
             if (hasLocale)
             {
                 entity.Property<string>(StorageNames.Locale).HasMaxLength(StorageNames.LocaleLength).IsRequired();
-                entity.HasIndex(StorageNames.DocumentId, StorageNames.Locale, StorageNames.State).IsUnique().HasDatabaseName($"uq_{table}_document_locale_state");
+                entity.HasIndex([StorageNames.DocumentId, StorageNames.Locale, StorageNames.State, .. site]).IsUnique().HasDatabaseName($"uq_{table}_document_locale_state");
             }
             else
             {
-                entity.HasIndex(StorageNames.DocumentId, StorageNames.State).IsUnique().HasDatabaseName($"uq_{table}_document_state");
+                entity.HasIndex([StorageNames.DocumentId, StorageNames.State, .. site]).IsUnique().HasDatabaseName($"uq_{table}_document_state");
 
                 // Every entry has one shared row per state, whatever its locales, so this holds a singleton to one entry
                 // per site. A trashed one keeps its rows and so its place, as the check before the insert counts it.

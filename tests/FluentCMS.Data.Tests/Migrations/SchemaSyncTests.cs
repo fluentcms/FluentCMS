@@ -167,6 +167,21 @@ public sealed class SchemaSyncTests : IDisposable
     }
 
     [SqliteFact("schema sync, which only SQLite supports")]
+    public async Task AKeyMadeBeforeItHeldTheSiteIsReportedAsChanged()
+    {
+        await StartAndStopAsync(ArticleSchemas.Titled);
+        _database.Execute("drop index uq_cms_article_document_state; create unique index uq_cms_article_document_state on cms_article (document_id, state)");
+
+        using var host = DevelopmentHost(ArticleSchemas.Titled);
+        await host.StartAsync(Token);
+
+        var report = await Runner(host).SyncContentSchemaAsync(cancellationToken: Token);
+
+        report.Applied.ShouldBeEmpty();
+        report.NotApplied.ShouldBe(["change index uq_cms_article_document_state on table cms_article"]);
+    }
+
+    [SqliteFact("schema sync, which only SQLite supports")]
     public async Task ARequiredColumnWithNoDefaultIsReportedAndNotApplied()
     {
         await StartAndStopAsync(ArticleSchemas.Titled);
