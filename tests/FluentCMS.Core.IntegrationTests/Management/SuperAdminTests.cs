@@ -6,6 +6,7 @@ using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Caching;
 using FluentCMS.Core.Events;
 using FluentCMS.Core.Identity;
+using FluentCMS.Core.IntegrationTests.Testing;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Providers;
@@ -151,10 +152,12 @@ public sealed class SuperAdminTests : IAsyncDisposable
     {
         var file = Path.Combine(_directory.FullName, $"{change}.db");
         var arrivals = new Arrivals();
-        await using var first = NewHost(file, arrivals);
+        var firstLock = CommandSignals.OfLock(SuperAdminGuard.LockName);
+        var secondLock = CommandSignals.OfLock(SuperAdminGuard.LockName);
+        await using var first = NewHost(file, arrivals, firstLock);
         var ada = await first.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token);
         var bob = await first.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token);
-        await using var second = NewHost(file, arrivals);
+        await using var second = NewHost(file, arrivals, secondLock);
         using var asAda = await first.AsUserAsync(ada);
         using var asBob = await second.AsUserAsync(bob);
 
@@ -167,9 +170,14 @@ public sealed class SuperAdminTests : IAsyncDisposable
         await using (var held = await locks.TryAcquireAsync(SuperAdminGuard.LockName, TimeSpan.Zero, Token))
         {
             held.ShouldNotBeNull();
+            firstLock.Reads.Forget();
+            secondLock.Reads.Forget();
             removals = [Task.Run(() => Remove(asAda, bob.Id), Token), Task.Run(() => Remove(asBob, ada.Id), Token)];
             await arrivals.Both.WaitAsync(Patience, Token);
-            await Task.Delay(TimeSpan.FromMilliseconds(300), Token);
+
+            // Two reads of the row on each instance: each found the lock held, waited, and looked again.
+            await firstLock.Reads.NextAsync(2, Patience);
+            await secondLock.Reads.NextAsync(2, Patience);
             removals.ShouldAllBe(removal => !removal.IsCompleted);
         }
 
@@ -179,7 +187,7 @@ public sealed class SuperAdminTests : IAsyncDisposable
         (await HoldersAsync(first)).ShouldHaveSingleItem().ShouldBeOneOf(ada.Id, bob.Id);
     }
 
-    private static FluentCmsTestHost NewHost(string? file = null, Arrivals? arrivals = null)
+    private static FluentCmsTestHost NewHost(string? file = null, Arrivals? arrivals = null, CommandSignals? commands = null)
     {
         var host = new FluentCmsTestHost().WithServices(services =>
         {
@@ -189,6 +197,10 @@ public sealed class SuperAdminTests : IAsyncDisposable
                 services.AddSingleton<IDistributedLock>(provider => new ArrivalsLock(ActivatorUtilities.CreateInstance<DatabaseDistributedLock>(provider), arrivals));
             }
         });
+        if (commands is not null)
+        {
+            host.Configure(cms => cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(commands)));
+        }
 
         return file is null ? host : host.UseSqlite(file);
     }

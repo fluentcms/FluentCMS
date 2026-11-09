@@ -27,7 +27,13 @@ internal static class Transforms
         return media;
     }
 
-    public static ProcessorCalls Calls(MediaHost media) => media.Services.GetRequiredService<ProcessorCalls>();
+    // The calls the processor gets from now on, since the tests of a class share the host.
+    public static Func<(int Identified, int Processed)> CallsFrom(MediaHost media)
+    {
+        var calls = media.Services.GetRequiredService<ProcessorCalls>();
+        var (identified, processed) = (calls.Identified, calls.Processed);
+        return () => (calls.Identified - identified, calls.Processed - processed);
+    }
 
     // Four bands from left to right, a quarter of the width each: red, green, blue and yellow.
     public static byte[] Bands(int width, int height, SKEncodedImageFormat format = SKEncodedImageFormat.Png)
@@ -114,6 +120,27 @@ internal static class Transforms
         }
 
         return $"{parts[0]}?{string.Join('&', pairs.Select(pair => $"{pair[0]}={pair[1]}"))}";
+    }
+}
+
+// The hosts the transform tests share, each started on its first use: one as configured by default, one whose image
+// processor counts its calls, and one that serves unsigned URLs. A test reads only the calls its own requests made.
+public sealed class TransformHosts : IAsyncDisposable
+{
+    public TransformHosts() =>
+        UnsignedUrls.Host.WithServices(services => services.PostConfigure<MediaOptions>(options => options.RequireSignedUrls = false));
+
+    public MediaHost Media { get; } = new();
+
+    public MediaHost Recording { get; } = Transforms.RecordingHost();
+
+    public MediaHost UnsignedUrls { get; } = new();
+
+    public async ValueTask DisposeAsync()
+    {
+        await Media.DisposeAsync();
+        await Recording.DisposeAsync();
+        await UnsignedUrls.DisposeAsync();
     }
 }
 

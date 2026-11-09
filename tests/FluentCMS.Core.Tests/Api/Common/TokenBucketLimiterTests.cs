@@ -137,8 +137,9 @@ public sealed class TokenBucketLimiterTests
     [Fact]
     public async Task APartitionedLimiterReleasesAnIdlePartitionOnceItsBucketIsFull()
     {
+        var released = new Releases(3);
         using var partitioned = PartitionedRateLimiter.Create<string, string>(key =>
-            RateLimitPartition.Get(key, name => Create(name, limit: 1)));
+            RateLimitPartition.Get(key, name => new Releasing(Create(name, limit: 1), released)));
         foreach (var key in new[] { "a", "b", "c" })
         {
             partitioned.AttemptAcquire(key).Dispose();
@@ -148,11 +149,7 @@ public sealed class TokenBucketLimiterTests
         _time.Advance(TokenBucketLimiter.Window + TimeSpan.FromMinutes(1));
 
         // The partitioned limiter looks for idle partitions every few seconds on its own timer.
-        var until = DateTime.UtcNow.AddSeconds(40);
-        while (!_owner.IsEmpty && DateTime.UtcNow < until)
-        {
-            await Task.Delay(500, TestContext.Current.CancellationToken);
-        }
+        await released.All.Task.WaitAsync(TimeSpan.FromSeconds(40), TestContext.Current.CancellationToken);
 
         _owner.ShouldBeEmpty();
     }
@@ -183,6 +180,51 @@ public sealed class TokenBucketLimiterTests
         var limiter = new TokenBucketLimiter(key, limit, _time, _owner);
         _owner[key] = limiter;
         return limiter;
+    }
+
+    private sealed class Releases(int partitions)
+    {
+        private int _left = partitions;
+
+        public TaskCompletionSource All { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public void One()
+        {
+            if (Interlocked.Decrement(ref _left) == 0)
+            {
+                All.TrySetResult();
+            }
+        }
+    }
+
+    // A partition that says when the partitioned limiter lets it go, which it does with DisposeAsync.
+    private sealed class Releasing(TokenBucketLimiter inner, Releases releases) : RateLimiter
+    {
+        public override TimeSpan? IdleDuration => inner.IdleDuration;
+
+        public override RateLimiterStatistics? GetStatistics() => inner.GetStatistics();
+
+        protected override RateLimitLease AttemptAcquireCore(int permitCount) => inner.AttemptAcquire(permitCount);
+
+        protected override ValueTask<RateLimitLease> AcquireAsyncCore(int permitCount, CancellationToken cancellationToken) =>
+            inner.AcquireAsync(permitCount, cancellationToken);
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                inner.Dispose();
+            }
+
+            base.Dispose(disposing);
+        }
+
+        protected override async ValueTask DisposeAsyncCore()
+        {
+            await inner.DisposeAsync();
+            await base.DisposeAsyncCore();
+            releases.One();
+        }
     }
 
     private sealed class ClockProvider : TimeProvider

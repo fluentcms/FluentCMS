@@ -21,8 +21,7 @@ public sealed partial class HostedPagesTests
     [Fact]
     public async Task TheRemoteSignOutOfAProviderEndsTheAdminSessionItMadeAndNoOther()
     {
-        using var idp = new FakeOidcProvider();
-        await using var host = SsoHost(idp);
+        var (idp, host) = (_idp, _sso);
         host.Services.GetRequiredService<IOptionsMonitor<OpenIdConnectOptions>>().Get(Corp).SignOutScheme.ShouldBe(IdentityConstants.ApplicationScheme);
 
         using var sso = new HostedPagesBrowser(host);
@@ -55,13 +54,12 @@ public sealed partial class HostedPagesTests
         using var idp = new FakeOidcProvider();
         var quiet = FakeIdentity.Of("quiet@corp.example") with { EmailVerified = null };
 
-        await using (var host = SsoHost(idp))
+        using (var browser = new HostedPagesBrowser(_sso))
         {
-            using var browser = new HostedPagesBrowser(host);
-            using var back = await SignInWithProviderAsync(browser, idp, quiet);
+            using var back = await SignInWithProviderAsync(browser, _idp, quiet);
             using var page = await browser.FollowAsync(back);
             (await page.Content.ReadAsStringAsync(Token)).ShouldContain("is not linked to a user here");
-            await using var scope = host.Services.CreateAsyncScope();
+            await using var scope = _sso.Services.CreateAsyncScope();
             (await scope.ServiceProvider.GetRequiredService<CmsUserManager>().FindByEmailAsync(quiet.Email!)).ShouldBeNull();
         }
 
@@ -84,7 +82,7 @@ public sealed partial class HostedPagesTests
     [Fact]
     public async Task AWrongRecoveryCodeCountsTowardsTheLockout()
     {
-        await using var host = TwoFactorHost();
+        var host = _host;
         var editor = await CreateUserAsync(host);
         var (_, codes) = await EnableTwoFactorAsync(host, editor);
         using var browser = new HostedPagesBrowser(host, "10.2.8.1");
@@ -112,7 +110,7 @@ public sealed partial class HostedPagesTests
             (await users.CountRecoveryCodesAsync(stored)).ShouldBe(TwoFactorService.RecoveryCodeCount);
         }
 
-        var failures = await ActivityAsync(host, "user.login_failed", count: 6);
+        var failures = await ActivityAsync(host, "user.login_failed", count: 6, of: row => row.TargetId == editor.Id.ToString("D"));
         failures.Count(row => Details(row)["method"] == LoginMethods.RecoveryCode && Details(row)["reason"] == LoginFailureReasons.InvalidCredentials).ShouldBe(4);
         failures.Count(row => Details(row)["method"] == LoginMethods.RecoveryCode && Details(row)["reason"] == LoginFailureReasons.LockedOut).ShouldBe(2);
     }
@@ -146,7 +144,7 @@ public sealed partial class HostedPagesTests
     [Fact]
     public async Task TheTimeOfASignInOutlastsTheRenewalsOfItsCookie()
     {
-        await using var host = TwoFactorHost();
+        var host = _host;
         var editor = await CreateUserAsync(host);
         using var browser = new HostedPagesBrowser(host);
         await SignInAsync(browser, editor.Email);

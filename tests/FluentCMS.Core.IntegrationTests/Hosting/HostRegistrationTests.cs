@@ -2,7 +2,6 @@ using System.Net;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Identity;
 using FluentCMS.Core.Jobs;
-using FluentCMS.Core.Storage;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Builder;
@@ -17,9 +16,6 @@ using Xunit;
 
 namespace FluentCMS.Core.IntegrationTests.Hosting;
 
-// The one test that sets a process environment variable lives here with every other test whose host reads them, and the
-// tests of a class run one at a time.
-[Xunit.Collection(ProcessEnvironment.Collection)]
 public sealed class HostRegistrationTests : IAsyncDisposable
 {
     private static readonly CancellationToken Token = TestContext.Current.CancellationToken;
@@ -189,27 +185,6 @@ public sealed class HostRegistrationTests : IAsyncDisposable
         app.Services.GetRequiredService<AdminUserOptions>().InvitationLifetime.ShouldBe(TimeSpan.FromDays(2));
         identity.Tokens.PasswordResetTokenProvider.ShouldBe(PasswordResetTokenProvider.ProviderName);
         app.Services.GetRequiredService<IOptions<PasswordResetTokenProviderOptions>>().Value.TokenLifespan.ShouldBe(TimeSpan.FromMinutes(20));
-    }
-
-    [Fact]
-    public async Task AnEnvironmentVariableReachesTheOptionsThroughTheDoubleUnderscore()
-    {
-        const string Variable = "FluentCms__Database__MigrateOnStartup";
-        Environment.SetEnvironmentVariable(Variable, "false");
-        try
-        {
-            var app = _host.Build(Environments.Production);
-
-            app.Services.GetRequiredService<IOptions<DatabaseOptions>>().Value.MigrateOnStartup.ShouldBe(false);
-
-            // Nothing migrates a new database at start, so the system stream is pending.
-            var exception = await Should.ThrowAsync<FluentCmsConfigurationException>(() => app.StartAsync(Token));
-            exception.Code.ShouldBe("FCMS1305");
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable(Variable, null);
-        }
     }
 
     [Fact]

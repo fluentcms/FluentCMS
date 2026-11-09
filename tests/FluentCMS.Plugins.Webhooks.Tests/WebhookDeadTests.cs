@@ -11,14 +11,14 @@ using static FluentCMS.Plugins.Webhooks.Tests.WebhookTesting;
 
 namespace FluentCMS.Plugins.Webhooks.Tests;
 
-public sealed class WebhookDeadTests
+public sealed class WebhookDeadTests(WebhookFixture hosts, DisablingWebhookFixture disabling) : IClassFixture<WebhookFixture>, IClassFixture<DisablingWebhookFixture>
 {
     [Fact]
     public async Task ADeadDeliveryIsAnActivityRowAndLeavesTheWebhookEnabledByDefault()
     {
         await using var receiver = await TestReceiver.StartAsync();
         receiver.Status = 500;
-        await using var host = Host();
+        var host = await hosts.HostAsync();
         using var client = await AdminAsync(host);
         var id = Id(await CreateAsync(client, new { name = "flaky", url = receiver.Url().ToString(), events = new List<string> { "content.published" } }));
 
@@ -31,14 +31,14 @@ public sealed class WebhookDeadTests
 
         await PumpAsync(host);
 
-        var delivery = (await DeliveriesAsync(host)).First(attempt => attempt.State == DeliveryStates.Dead && !attempt.Manual);
-        var dead = (await ActivityAsync(client, "webhook.delivery_dead")).ShouldHaveSingleItem("a ping that fails is tried once and raises nothing");
+        var delivery = (await DeliveriesAsync(host, id)).First(attempt => attempt.State == DeliveryStates.Dead && !attempt.Manual);
+        var dead = (await ActivityAsync(client, "webhook.delivery_dead", id)).ShouldHaveSingleItem("a ping that fails is tried once and raises nothing");
         (dead["targetId"]!.GetValue<string>(), dead["targetLabel"]!.GetValue<string>()).ShouldBe((id.ToString("D"), "flaky"));
         var details = dead["details"]!;
         (details["deliveryId"]!.GetValue<string>(), details["event"]!.GetValue<string>(), details["attempts"]!.GetValue<string>())
             .ShouldBe((delivery.DeliveryId.ToString("D"), "content.published", "6"));
         (await EnabledAsync(client, id)).ShouldBeTrue();
-        (await ActivityAsync(client, "webhook.disabled")).ShouldBeEmpty();
+        (await ActivityAsync(client, "webhook.disabled", id)).ShouldBeEmpty();
     }
 
     [Fact]
@@ -46,13 +46,13 @@ public sealed class WebhookDeadTests
     {
         await using var receiver = await TestReceiver.StartAsync();
         receiver.Status = 500;
-        await using var host = Host().WithServices(services => services.PostConfigure<WebhooksOptions>(options => options.DisableAfter = TimeSpan.FromDays(2)));
+        var host = await disabling.HostAsync();
         using var client = await AdminAsync(host);
         var id = Id(await CreateAsync(client, new { name = "gone", url = receiver.Url().ToString(), events = new List<string> { "content.published" } }));
 
         await PublishAsync(host, "First");
         await RetryUntilDeadAsync(host);
-        var failingSince = (await DeliveriesAsync(host))[0].CreatedAt;
+        var failingSince = (await DeliveriesAsync(host, id))[0].CreatedAt;
 
         (await EnabledAsync(client, id)).ShouldBeTrue("its attempts have failed for about a day, less than DisableAfter");
 
@@ -61,8 +61,8 @@ public sealed class WebhookDeadTests
         await RetryUntilDeadAsync(host);
 
         (await EnabledAsync(client, id)).ShouldBeFalse();
-        (await ActivityAsync(client, "webhook.delivery_dead")).Count.ShouldBe(2);
-        var disabled = (await ActivityAsync(client, "webhook.disabled")).ShouldHaveSingleItem();
+        (await ActivityAsync(client, "webhook.delivery_dead", id)).Count.ShouldBe(2);
+        var disabled = (await ActivityAsync(client, "webhook.disabled", id)).ShouldHaveSingleItem();
         (disabled["targetId"]!.GetValue<string>(), disabled["details"]!["failingSince"]!.GetValue<string>()).ShouldBe((id.ToString("D"), failingSince.ToString("O")));
 
         await PublishAsync(host, "Third");
@@ -96,7 +96,7 @@ public sealed class WebhookDeadTests
         host.Time.Advance(WebhookDeliveryJob.Retries[^1]);
         await PumpAsync(host);
 
-        (await ActivityAsync(client, "webhook.delivery_dead")).ShouldHaveSingleItem();
+        (await ActivityAsync(client, "webhook.delivery_dead", id)).ShouldHaveSingleItem();
         (await EnabledAsync(client, id)).ShouldBeTrue("the ping succeeded less than DisableAfter before the delivery died");
     }
 
@@ -105,7 +105,7 @@ public sealed class WebhookDeadTests
     {
         await using var receiver = await TestReceiver.StartAsync();
         receiver.Status = 500;
-        await using var host = Host().WithServices(services => services.PostConfigure<WebhooksOptions>(options => options.DisableAfter = TimeSpan.FromDays(2)));
+        var host = await disabling.HostAsync();
         using var client = await AdminAsync(host);
         var url = receiver.Url().ToString();
         var id = Id(await CreateAsync(client, new { name = "moved", url, events = new List<string> { "content.published" } }));
@@ -122,14 +122,14 @@ public sealed class WebhookDeadTests
         await RetryUntilDeadAsync(host);
 
         (await EnabledAsync(client, id)).ShouldBeTrue("its attempts have failed for about a day since the change, less than DisableAfter");
-        (await ActivityAsync(client, "webhook.disabled")).ShouldBeEmpty();
+        (await ActivityAsync(client, "webhook.disabled", id)).ShouldBeEmpty();
     }
 
     [Fact]
     public async Task ALastAttemptTakenOverAsAbandonedRaisesTheDeadEvent()
     {
         await using var receiver = await TestReceiver.StartAsync();
-        await using var host = Host();
+        var host = await hosts.HostAsync();
         using var client = await AdminAsync(host);
         var id = Id(await CreateAsync(client, new { name = "crashed", url = receiver.Url().ToString(), events = new List<string> { "content.published" } }));
         var claim = new WebhookDelivery
@@ -159,8 +159,8 @@ public sealed class WebhookDeadTests
 
         await PumpAsync(host);
 
-        (await DeliveriesAsync(host)).Single(delivery => delivery.Id == claim.Id).State.ShouldBe(DeliveryStates.Dead);
-        var dead = (await ActivityAsync(client, "webhook.delivery_dead")).ShouldHaveSingleItem();
+        (await DeliveriesAsync(host, id)).Single(delivery => delivery.Id == claim.Id).State.ShouldBe(DeliveryStates.Dead);
+        var dead = (await ActivityAsync(client, "webhook.delivery_dead", id)).ShouldHaveSingleItem();
         (dead["details"]!["deliveryId"]!.GetValue<string>(), dead["details"]!["attempts"]!.GetValue<string>()).ShouldBe((claim.DeliveryId.ToString("D"), "6"));
     }
 
@@ -194,9 +194,12 @@ public sealed class WebhookDeadTests
         return JsonNode.Parse(await TextAsync(response))!["enabled"]!.GetValue<bool>();
     }
 
-    private static async Task<List<JsonNode>> ActivityAsync(HttpClient client, string action)
+    private static async Task<List<JsonNode>> ActivityAsync(HttpClient client, string action, Guid webhook)
     {
-        using var response = await client.GetAsync(new Uri($"/api/management/v1/activity?action={action}", UriKind.Relative), Token);
+        using var response = await client.GetAsync(new Uri($"/api/management/v1/activity?action={action}&targetId={webhook:D}", UriKind.Relative), Token);
         return [.. JsonNode.Parse(await TextAsync(response))!["items"]!.AsArray().Select(item => item!)];
     }
 }
+
+// Disables a webhook whose attempts have all failed for two days, more than the day its first delivery takes to die.
+public sealed class DisablingWebhookFixture() : WebhookFixture(Host().WithServices(services => services.PostConfigure<WebhooksOptions>(options => options.DisableAfter = TimeSpan.FromDays(2))));

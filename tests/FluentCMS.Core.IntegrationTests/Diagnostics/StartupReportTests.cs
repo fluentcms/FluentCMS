@@ -6,6 +6,7 @@ using FluentCMS.Core.Authorization;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Diagnostics;
 using FluentCMS.Core.IntegrationTests.Hosting;
+using FluentCMS.Core.IntegrationTests.Testing;
 using FluentCMS.Core.Storage;
 using FluentCMS.Sites;
 using FluentCMS.Testing;
@@ -21,14 +22,13 @@ using Xunit;
 
 namespace FluentCMS.Core.IntegrationTests.Diagnostics;
 
-[Xunit.Collection(ProcessEnvironment.Collection)]
-public sealed class StartupReportTests : IAsyncDisposable
+// A report says what its host's set-up is and the endpoint only reads it, so the tests that do not set a host up of their own
+// share one, and those of one web host set-up share that.
+public sealed class StartupReportTests(CmsWebHosts webHosts, NoteHostFixture fixture) : IClassFixture<CmsWebHosts>, IClassFixture<NoteHostFixture>
 {
     private static readonly CancellationToken Token = TestContext.Current.CancellationToken;
 
-    private readonly CmsWebHost _host = new();
-
-    public ValueTask DisposeAsync() => _host.DisposeAsync();
+    private readonly FluentCmsTestHost _shared = fixture.Host;
 
     [Fact]
     public async Task TheReportIsLoggedOncePerStartWithTheProviderMigrationsAndInsecureDefaults()
@@ -85,8 +85,7 @@ public sealed class StartupReportTests : IAsyncDisposable
     [Fact]
     public async Task ProductionNamesTheDefaultsItCouldNotRefuse()
     {
-        var app = _host.Build(Environments.Production);
-        await app.StartAsync(Token);
+        var app = await StartAsync(Environments.Production);
 
         var report = app.Services.GetRequiredService<StartupReportHolder>().Current!;
 
@@ -101,8 +100,7 @@ public sealed class StartupReportTests : IAsyncDisposable
     [Fact]
     public async Task TurningTheRedirectOnClearsItsEntry()
     {
-        var app = _host.Build(Environments.Production, new Dictionary<string, string?> { ["FluentCms:ReverseProxy:HttpsRedirection:Enabled"] = "true", ["FluentCms:ReverseProxy:HttpsRedirection:Port"] = "443" });
-        await app.StartAsync(Token);
+        var app = await StartAsync(Environments.Production, new Dictionary<string, string?> { ["FluentCms:ReverseProxy:HttpsRedirection:Enabled"] = "true", ["FluentCms:ReverseProxy:HttpsRedirection:Port"] = "443" });
 
         app.Services.GetRequiredService<StartupReportHolder>().Current!.InsecureDefaults.Select(item => item.Id).ShouldNotContain("https-redirection-off");
     }
@@ -114,8 +112,7 @@ public sealed class StartupReportTests : IAsyncDisposable
     [InlineData("cms.example.com;*", true)]
     public async Task AllowedHostsIsReportedInProductionOnlyWhenItAcceptsAnyHost(string allowedHosts, bool reported)
     {
-        var app = _host.Build(Environments.Production, new Dictionary<string, string?> { ["AllowedHosts"] = allowedHosts });
-        await app.StartAsync(Token);
+        var app = await StartAsync(Environments.Production, new Dictionary<string, string?> { ["AllowedHosts"] = allowedHosts });
 
         var insecure = app.Services.GetRequiredService<StartupReportHolder>().Current!.InsecureDefaults.Select(item => item.Id).ToList();
 
@@ -132,8 +129,7 @@ public sealed class StartupReportTests : IAsyncDisposable
     [Fact]
     public async Task AllowedHostsIsNotReportedOutsideProduction()
     {
-        var app = _host.Build(Environments.Staging);
-        await app.StartAsync(Token);
+        var app = await StartAsync(Environments.Staging);
 
         app.Services.GetRequiredService<StartupReportHolder>().Current!.InsecureDefaults.Select(item => item.Id).ShouldNotContain("allowed-hosts-any");
     }
@@ -141,8 +137,7 @@ public sealed class StartupReportTests : IAsyncDisposable
     [Fact]
     public async Task AMissingPublicOriginIsReportedInProduction()
     {
-        var app = _host.Build(Environments.Production, new Dictionary<string, string?> { ["AllowedHosts"] = "cms.example.com" });
-        await app.StartAsync(Token);
+        var app = await StartAsync(Environments.Production, new Dictionary<string, string?> { ["AllowedHosts"] = "cms.example.com" });
 
         var insecure = app.Services.GetRequiredService<StartupReportHolder>().Current!.InsecureDefaults.Single(item => item.Id == "public-origin-unset");
         insecure.Message.ShouldContain("FluentCms:PublicOrigin");
@@ -151,8 +146,7 @@ public sealed class StartupReportTests : IAsyncDisposable
     [Fact]
     public async Task APublicOriginClearsItsEntry()
     {
-        var app = _host.Build(Environments.Production, new Dictionary<string, string?> { ["FluentCms:PublicOrigin"] = "https://cms.example.com" });
-        await app.StartAsync(Token);
+        var app = await StartAsync(Environments.Production, new Dictionary<string, string?> { ["FluentCms:PublicOrigin"] = "https://cms.example.com" });
 
         app.Services.GetRequiredService<StartupReportHolder>().Current!.InsecureDefaults.Select(item => item.Id).ShouldNotContain("public-origin-unset");
     }
@@ -160,8 +154,7 @@ public sealed class StartupReportTests : IAsyncDisposable
     [Fact]
     public async Task AMissingPublicOriginIsNotReportedOutsideProduction()
     {
-        var app = _host.Build(Environments.Staging);
-        await app.StartAsync(Token);
+        var app = await StartAsync(Environments.Staging);
 
         app.Services.GetRequiredService<StartupReportHolder>().Current!.InsecureDefaults.Select(item => item.Id).ShouldNotContain("public-origin-unset");
     }
@@ -169,14 +162,13 @@ public sealed class StartupReportTests : IAsyncDisposable
     [Fact]
     public async Task ForwardedHeadersTrustedFromEveryAddressAreReported()
     {
-        var app = _host.Build(
+        var app = await StartAsync(
             Environments.Production,
             new Dictionary<string, string?>
             {
                 ["FluentCms:ReverseProxy:ForwardedHeaders:Enabled"] = "true",
                 ["FluentCms:ReverseProxy:ForwardedHeaders:KnownNetworks:0"] = "0.0.0.0/0",
             });
-        await app.StartAsync(Token);
 
         app.Services.GetRequiredService<StartupReportHolder>().Current!.InsecureDefaults.Select(item => item.Id).ShouldContain("forwarded-headers-trust-any");
     }
@@ -184,7 +176,7 @@ public sealed class StartupReportTests : IAsyncDisposable
     [Fact]
     public async Task TheReportHoldsNoConnectionStringOrKey()
     {
-        await using var host = new FluentCmsTestHost();
+        var host = _shared;
         var key = await host.CreateApiKeyAsync(ApiKeyClass.Management, BuiltInRoles.SuperAdminName, cancellationToken: Token);
 
         using var response = await host.AsKey(key).GetAsync(new Uri("/api/management/v1/system/diagnostics", UriKind.Relative), Token);
@@ -200,7 +192,7 @@ public sealed class StartupReportTests : IAsyncDisposable
     [Fact]
     public async Task DiagnosticsIsRefusedWithoutACredentialAndWithoutThePermission()
     {
-        await using var host = new FluentCmsTestHost();
+        var host = _shared;
         var editor = await host.CreateApiKeyAsync(ApiKeyClass.Management, BuiltInRoles.EditorName, cancellationToken: Token);
 
         using var anonymous = await host.CreateClient().GetAsync(new Uri("/api/management/v1/system/diagnostics", UriKind.Relative), Token);
@@ -231,7 +223,7 @@ public sealed class StartupReportTests : IAsyncDisposable
     [Fact]
     public async Task ADeliveryKeyDoesNotReachDiagnosticsWhateverItsRoleGrants()
     {
-        await using var host = new FluentCmsTestHost();
+        var host = _shared;
         var key = await host.CreateApiKeyAsync(ApiKeyClass.Delivery, BuiltInRoles.SuperAdminName, cancellationToken: Token);
 
         using var response = await host.AsKey(key).GetAsync(new Uri("/api/management/v1/system/diagnostics", UriKind.Relative), Token);
@@ -242,7 +234,7 @@ public sealed class StartupReportTests : IAsyncDisposable
     [Fact]
     public async Task ARoleOfOneSiteDoesNotReachDiagnostics()
     {
-        await using var host = new FluentCmsTestHost();
+        var host = _shared;
         await using (var scope = host.Services.CreateAsyncScope())
         {
             var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
@@ -262,7 +254,7 @@ public sealed class StartupReportTests : IAsyncDisposable
     [Fact]
     public async Task AKeyBoundToASiteDoesNotReachDiagnostics()
     {
-        await using var host = new FluentCmsTestHost();
+        var host = _shared;
         var role = await host.CreateRoleAsync("operator", [CorePermissions.SystemRead], Token);
         string secret;
         await using (var scope = host.Services.CreateAsyncScope())
@@ -313,32 +305,45 @@ public sealed class StartupReportTests : IAsyncDisposable
     [Fact]
     public async Task DiagnosticsIs503BeforeTheReportExists()
     {
-        await using var host = new FluentCmsTestHost();
+        var host = _shared;
         var key = await host.CreateApiKeyAsync(ApiKeyClass.Management, BuiltInRoles.SuperAdminName, cancellationToken: Token);
         var holder = host.Services.GetRequiredService<StartupReportHolder>();
         var report = holder.Current;
         holder.Set(null);
 
-        using var response = await host.AsKey(key).GetAsync(new Uri("/api/management/v1/system/diagnostics", UriKind.Relative), Token);
-        holder.Set(report);
+        try
+        {
+            using var response = await host.AsKey(key).GetAsync(new Uri("/api/management/v1/system/diagnostics", UriKind.Relative), Token);
 
-        response.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
-        (await Code(response)).ShouldBe("FCMS3106");
+            response.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
+            (await Code(response)).ShouldBe("FCMS3106");
+        }
+        finally
+        {
+            // The other tests of the class read the report of this host.
+            holder.Set(report);
+        }
     }
 
     [Fact]
     public async Task DiagnosticsChecksThePermissionBeforeItAdmitsThereIsNoReport()
     {
-        await using var host = new FluentCmsTestHost();
+        var host = _shared;
         var editor = await host.CreateApiKeyAsync(ApiKeyClass.Management, BuiltInRoles.EditorName, cancellationToken: Token);
         var holder = host.Services.GetRequiredService<StartupReportHolder>();
         var report = holder.Current;
         holder.Set(null);
 
-        using var response = await host.AsKey(editor).GetAsync(new Uri("/api/management/v1/system/diagnostics", UriKind.Relative), Token);
-        holder.Set(report);
+        try
+        {
+            using var response = await host.AsKey(editor).GetAsync(new Uri("/api/management/v1/system/diagnostics", UriKind.Relative), Token);
 
-        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+            response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        }
+        finally
+        {
+            holder.Set(report);
+        }
     }
 
     [Fact]
@@ -347,6 +352,14 @@ public sealed class StartupReportTests : IAsyncDisposable
         CorePermissions.SystemRead.ShouldBe("system.read");
         CorePermissions.Fixed.ShouldContain(CorePermissions.SystemRead);
     }
+
+    private Task<WebApplication> StartAsync(string environment, Dictionary<string, string?>? settings = null) =>
+        webHosts.StartAsync(CmsWebHosts.SetUp(environment, settings), async host =>
+        {
+            var app = host.Build(environment, settings);
+            await app.StartAsync(Token);
+            return app;
+        });
 
     private sealed class ThrowingCheck : IProductionStartupCheck
     {

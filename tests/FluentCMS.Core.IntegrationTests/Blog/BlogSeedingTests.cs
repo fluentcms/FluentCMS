@@ -4,6 +4,7 @@ using FluentCMS.Content;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.DependencyInjection;
+using FluentCMS.Core.IntegrationTests.Testing;
 using FluentCMS.Core.Seeding;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
@@ -319,14 +320,19 @@ public sealed class BlogSeedingTests
     {
         var gate = new Gate();
         var counter = new SeedCounter();
-        await using var host = Gated(gate, counter);
+        var settings = CommandSignals.OfTable(StorageNames.Setting);
+        await using var host = Gated(gate, counter)
+            .Configure(cms => cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(settings)));
         _ = host.Services;
 
         var slow = Task.Run(() => RunAsync(host), Token);
         await gate.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10), Token);
 
+        // A renewal under way may have read the clock before it moved; the one after it has not.
         host.Time.Advance(TimeSpan.FromMilliseconds(500));
-        await WaitForAsync(host, state => state.Claim?.At == host.Time.GetUtcNow());
+        settings.Writes.Forget();
+        await settings.Writes.NextAsync(2, TimeSpan.FromSeconds(10));
+        (await StateAsync(host)).Claim.ShouldNotBeNull().At.ShouldBe(host.Time.GetUtcNow());
         host.Time.Advance(TimeSpan.FromMilliseconds(500));
 
         await RunAsync(host);
@@ -523,20 +529,6 @@ public sealed class BlogSeedingTests
             change(state);
             return true;
         }, Token);
-    }
-
-    private static async Task WaitForAsync(FluentCmsTestHost host, Func<SeedingState, bool> condition)
-    {
-        var deadline = DateTime.UtcNow.AddSeconds(10);
-        while (!condition(await StateAsync(host)))
-        {
-            if (DateTime.UtcNow > deadline)
-            {
-                throw new TimeoutException("The seeding state did not reach the expected shape.");
-            }
-
-            await Task.Delay(50, Token);
-        }
     }
 
     private static FluentCmsTestHost Gated(Gate gate, SeedCounter counter, TimeSpan? claimTimeout = null) => new FluentCmsTestHost()
