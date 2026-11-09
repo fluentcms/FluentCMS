@@ -265,8 +265,8 @@ internal static class SqlServerPool
              COMMIT;
             DECLARE @statistics nvarchar(max) = N'';
             SELECT @statistics += N'UPDATE STATISTICS ' + QUOTENAME(OBJECT_SCHEMA_NAME(s.object_id)) + N'.' + QUOTENAME(OBJECT_NAME(s.object_id)) + N' (' + QUOTENAME(s.name) + N') WITH FULLSCAN;'
-            FROM sys.stats s JOIN sys.tables t ON t.object_id = s.object_id
-            WHERE t.is_ms_shipped = 0 AND STATS_DATE(s.object_id, s.stats_id) IS NOT NULL;
+            FROM sys.stats s JOIN sys.tables t ON t.object_id = s.object_id CROSS APPLY sys.dm_db_stats_properties(s.object_id, s.stats_id) p
+            WHERE t.is_ms_shipped = 0 AND (p.modification_counter > 0 OR p.rows <> (SELECT SUM(rows) FROM sys.partitions WHERE object_id = s.object_id AND index_id IN (0, 1)));
             EXEC sp_executesql @statistics;
             ALTER DATABASE SCOPED CONFIGURATION CLEAR PROCEDURE_CACHE;
             """).ToString();
