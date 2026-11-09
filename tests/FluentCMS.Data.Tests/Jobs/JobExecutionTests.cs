@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Text.Json.Nodes;
 using FluentCMS.Content;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Jobs;
@@ -302,6 +304,7 @@ public sealed class JobExecutionTests : IDisposable
     [InlineData("null")]
     public async Task APayloadThatDoesNotDeserializeFailsTheAttemptWithAClearError(string payload)
     {
+        Assert.SkipWhen(TestProvider.IsSqlServer && payload == "null", "SQL Server's ISJSON check refuses a payload that is not an object or an array, so no such row can be stored.");
         var id = _fixture.AddRow(JobFixture.ProbeType, payload, maxAttempts: 1);
 
         (await RunNextAsync()).ShouldBeTrue();
@@ -312,6 +315,35 @@ public sealed class JobExecutionTests : IDisposable
         job.LastError.ShouldNotContain("secret-in-a-bad-payload");
         _fixture.Probe.Runs.ShouldBeEmpty();
         _fixture.Attempts(id).ShouldHaveSingleItem().Error.ShouldBe(job.LastError);
+    }
+
+    // SQL Server's ISJSON check refuses a bare scalar, so one is stored in an object, and the job still gets its value.
+    [Fact]
+    public async Task AScalarPayloadIsStoredInAnObjectAndTheJobGetsItsValue()
+    {
+        var seen = new ConcurrentQueue<object>();
+        var instance = _fixture.NewInstance(cms: builder =>
+        {
+            builder.Services.AddSingleton(seen);
+            builder.Jobs.AddJob<ScalarJob<int>, int>("scalar-number");
+            builder.Jobs.AddJob<ScalarJob<string>, string>("scalar-text");
+        });
+        var scheduler = instance.GetRequiredService<IJobScheduler>();
+
+        var number = await scheduler.EnqueueAsync<ScalarJob<int>, int>(12, cancellationToken: TestContext.Current.CancellationToken);
+        var text = await scheduler.EnqueueAsync<ScalarJob<string>, string>("twelve", cancellationToken: TestContext.Current.CancellationToken);
+
+        JsonNode.Parse(_fixture.Job(number).Payload)!["value"]!.GetValue<int>().ShouldBe(12);
+        JsonNode.Parse(_fixture.Job(text).Payload)!["value"]!.GetValue<string>().ShouldBe("twelve");
+
+        var executor = instance.GetRequiredService<JobExecutor>();
+        while (await executor.RunNextAsync(Queue, Owner, TestContext.Current.CancellationToken))
+        {
+        }
+
+        seen.ShouldBe([12, "twelve"], ignoreOrder: true);
+        _fixture.Job(number).Status.ShouldBe(JobStatus.Succeeded);
+        _fixture.Job(text).Status.ShouldBe(JobStatus.Succeeded);
     }
 
     [Fact]
@@ -637,5 +669,14 @@ public sealed class JobExecutionTests : IDisposable
     private sealed class UnregisteredJob : IJob<ProbePayload>
     {
         public Task ExecuteAsync(ProbePayload payload, JobContext context) => Task.CompletedTask;
+    }
+
+    private sealed class ScalarJob<T>(ConcurrentQueue<object> seen) : IJob<T>
+    {
+        public Task ExecuteAsync(T payload, JobContext context)
+        {
+            seen.Enqueue(payload!);
+            return Task.CompletedTask;
+        }
     }
 }

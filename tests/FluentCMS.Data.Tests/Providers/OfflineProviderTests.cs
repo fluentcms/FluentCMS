@@ -44,7 +44,7 @@ public partial class OfflineProviderTests
 
     private static ServiceProvider PostgreSql(SchemaModel? schema = null) => Host(cms => cms.UsePostgreSql("Host=localhost;Database=never_opened"), schema);
 
-    private static ServiceProvider SqlServer(bool nativeJson = false, SchemaModel? schema = null) => Host(cms => cms.UseSqlServer("Server=localhost;Database=never_opened", nativeJson), schema);
+    private static ServiceProvider SqlServer(SchemaModel? schema = null) => Host(cms => cms.UseSqlServer("Server=localhost;Database=never_opened"), schema);
 
     private static ServiceProvider Host(Action<FluentCmsBuilder> provider, SchemaModel? schema) =>
         new ServiceCollection().AddSingleton(schema ?? Schema).AddFluentCms(provider).BuildServiceProvider();
@@ -158,17 +158,6 @@ public partial class OfflineProviderTests
     }
 
     [Fact]
-    public void SqlServerCanUseTheNativeJsonType()
-    {
-        using var services = SqlServer(nativeJson: true);
-        using var scope = services.CreateScope();
-        var model = DesignModel(scope.ServiceProvider);
-
-        ColumnType(model, "cms_post", "metadata").ShouldBe("json");
-        model.FindEntityType("cms_post")!.GetCheckConstraints().ShouldBeEmpty();
-    }
-
-    [Fact]
     public void NeitherProviderMigratesOnStartupByDefault()
     {
         using var postgreSql = PostgreSql();
@@ -276,8 +265,9 @@ public partial class OfflineProviderTests
         Sql(services, (dialect, row) => dialect.AnyBlock(Sections(row), Bind("hero"), block => dialect.ScalarEquals(block, "heading", JsonScalarType.Text, Bind("x"))))
             .ShouldContain("COLLATE Latin1_General_100_BIN2");
 
+        // A whole number compares as a decimal, so that a stored 12.0 matches.
         Sql(services, (dialect, row) => dialect.ScalarEquals(Metadata(row), "minutes", JsonScalarType.WholeNumber, Bind(12L)))
-            .ShouldContain("TRY_CONVERT(bigint, ");
+            .ShouldContain("TRY_CONVERT(decimal(38,18), ");
         Sql(services, (dialect, row) => dialect.ScalarEquals(Metadata(row), "rating", JsonScalarType.DecimalNumber, Bind(4.5m)))
             .ShouldContain("TRY_CONVERT(decimal(38,18), ");
         Sql(services, (dialect, row) => dialect.ScalarEquals(Metadata(row), "featured", JsonScalarType.Boolean, Bind(true)))
@@ -354,21 +344,6 @@ public partial class OfflineProviderTests
             stored.Offset.ShouldBe(TimeSpan.Zero);
             stored.ShouldBe(local);
         }
-    }
-
-    [Fact]
-    public void TheSystemModelIsSeparatePerSqlServerJsonMode()
-    {
-        using var text = SqlServer();
-        using var native = SqlServer(nativeJson: true);
-        using var textScope = text.CreateScope();
-        using var nativeScope = native.CreateScope();
-
-        var textModel = textScope.ServiceProvider.GetRequiredService<SystemDbContext>().GetService<IDesignTimeModel>().Model;
-        var nativeModel = nativeScope.ServiceProvider.GetRequiredService<SystemDbContext>().GetService<IDesignTimeModel>().Model;
-
-        ColumnType(textModel, typeof(ContentVersion).FullName!, nameof(ContentVersion.Snapshot)).ShouldBe("nvarchar(max)");
-        ColumnType(nativeModel, typeof(ContentVersion).FullName!, nameof(ContentVersion.Snapshot)).ShouldBe("json");
     }
 
     [Fact]

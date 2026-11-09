@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace FluentCMS.Data.SqlServer;
 
-// Not yet run on a database (#2711).
 public sealed class SqlServerJobClaimDialect : IJobClaimDialect
 {
     public async Task<Guid?> ClaimAsync(DatabaseFacade database, JobClaim claim, CancellationToken cancellationToken = default)
@@ -20,7 +19,7 @@ public sealed class SqlServerJobClaimDialect : IJobClaimDialect
                     AND status IN ('pending', 'running')
                     AND run_at <= {claim.Now}
                     AND attempts < max_attempts
-                    AND (lease_until IS NULL OR lease_until < {claim.Now})
+                    AND (lease_until IS NULL OR lease_until <= {claim.Now})
                 ORDER BY priority DESC, run_at, id)
             UPDATE next_job
             SET status = {JobClaimStatus.Running}, lease_owner = {claim.Owner}, lease_until = {claim.LeaseUntil}, attempts = attempts + 1

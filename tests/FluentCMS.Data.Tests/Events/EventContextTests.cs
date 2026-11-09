@@ -4,6 +4,7 @@ using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Data.Tests.Content;
 using FluentCMS.Data.Tests.Jobs;
+using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Events;
 using FluentCMS.Hooks;
 using FluentCMS.Jobs;
@@ -330,7 +331,7 @@ public sealed class EventContextTests
 
         faults.Fail(command =>
         {
-            if (command.CommandText.StartsWith("INSERT", StringComparison.Ordinal) && command.CommandText.Contains("cms_outbox", StringComparison.Ordinal))
+            if (TestProvider.IsInsertInto(command.CommandText, "cms_outbox"))
             {
                 Interlocked.Increment(ref attempts);
                 return true;

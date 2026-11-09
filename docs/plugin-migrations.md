@@ -26,7 +26,7 @@ Once an assembly has a set under any provider's name, a migration outside those 
 
 The PostgreSQL and SQL Server sets call their provider's model builder extensions, such as `UseIdentityByDefaultColumns`. The plugin references `Npgsql.EntityFrameworkCore.PostgreSQL` and `Microsoft.EntityFrameworkCore.SqlServer` with `PrivateAssets="all"`, so it compiles them while its package depends on neither provider. A host loads a set, and the provider assembly it calls, only when it runs on that provider. The plugin also references `System.Security.Cryptography.Pkcs` the same way, as `FluentCMS.Data.SqlServer` does, because `Microsoft.Data.SqlClient` brings a vulnerable version.
 
-On SQL Server, the set is the `nvarchar(max)` form that core's system migrations use. `UseSqlServer(nativeJson: true)` (SQL Server 2025) changes only the columns that core maps with `IStorageConventions.ConfigureJsonColumn`, and a plugin's model has no such column: the webhooks and media plugins keep their JSON in text columns. So the one SQL Server set applies with or without `nativeJson`, and the tests check both.
+On SQL Server, the set is the `nvarchar(max)` form that core's system migrations use, on 2019 and 2025 alike: the webhooks and media plugins keep their JSON in text columns.
 
 ## The design-time factory
 

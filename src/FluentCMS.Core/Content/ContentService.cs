@@ -507,12 +507,12 @@ internal sealed partial class ContentService(
         {
             return await InOwnTransactionAsync(work, cancellationToken);
         }
-        catch (Exception exception) when (provider.IsUniqueViolation(exception))
+        catch (Exception exception) when (provider.IsUniqueViolation(exception) || provider.IsDeadlock(exception))
         {
-            // Another writer committed the same key between this write's checks and its insert, which only a database
-            // that does not serialise writers lets happen. Run once more, on the context as it was: the checks then
-            // see that writer and refuse as they would have had it come first (spec 4.4). A write joined to this one
-            // runs again with it.
+            // Another writer committed the same key between this write's checks and its insert, or deadlocked with this
+            // one and won, which only a database that does not serialise writers lets happen. Run once more, on the
+            // context as it was: the checks then see that writer and refuse as they would have had it come first
+            // (spec 4.4). A write joined to this one runs again with it.
             tracked.Restore();
             return await InOwnTransactionAsync(work, cancellationToken);
         }
@@ -581,14 +581,18 @@ internal sealed partial class ContentService(
             events.Truncate(buffered);
 
             // Without a savepoint the failed write's rows cannot be undone alone, and the transaction must not be
-            // able to commit them, so all of it goes. SQL Server with MARS reports none: #2711.
-            if (outer.SupportsSavepoints)
+            // able to commit them, so all of it goes. SQL Server with MARS reports none. The rollback goes to the
+            // driver's transaction, so that EF still holds it, ended: a write the caller goes on with then fails, as
+            // its commit does, rather than running and committing on its own (#2711). A transaction the database
+            // ended itself, as SQL Server ends a deadlock victim's, has nothing left to roll back.
+            var driver = outer.GetDbTransaction();
+            if (driver.Connection is not null && outer.SupportsSavepoints)
             {
                 await outer.RollbackToSavepointAsync(savepoint, CancellationToken.None);
             }
-            else
+            else if (driver.Connection is not null)
             {
-                await outer.RollbackAsync(CancellationToken.None);
+                await driver.RollbackAsync(CancellationToken.None);
             }
 
             throw;

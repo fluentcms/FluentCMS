@@ -815,7 +815,7 @@ public sealed class SchedulingTests : IDisposable
         public override ValueTask<int> NonQueryExecutedAsync(DbCommand command, CommandExecutedEventData eventData, int result, CancellationToken cancellationToken = default)
         {
             if (Armed
-                && command.CommandText.Contains($"UPDATE {TestProvider.Quote("cms_schedule")}", StringComparison.Ordinal)
+                && TestProvider.IsUpdateOf(command.CommandText, "cms_schedule")
                 && command.Parameters.Cast<DbParameter>().Any(parameter => parameter.Value is ScheduleRow.Executed))
             {
                 // Another writer's save, as if it landed between the checks and the publish.

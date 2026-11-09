@@ -151,7 +151,7 @@ PostgreSQL 15:
 SQL Server 2019 and 2025:
 
 - `JSON_VALUE` and `OPENJSON` for the same filters.
-- 2019 versus 2025 JSON behaviour, including `nvarchar(max)` versus the `json` type.
+- 2019 versus 2025 JSON behaviour: settled in [SQL Server JSON](#sql-server-json), `nvarchar(max)` on both.
 - Filtered unique indexes, including whether a bound `state` can use them.
 - Migration generation, compilation and application, including system migrations.
 - `READPAST` job claiming.
@@ -175,6 +175,14 @@ Added for [#2879](https://github.com/fluentcms/FluentCMS/issues/2879) of the rev
 SQL Server sorts `uniqueidentifier` by its last six bytes first, and those are random in a v7 value, so v7 keys would land all over a clustered primary key and an `ORDER BY id` tiebreak would not follow creation. Generated keys therefore come from `IStorageConventions.ConfigureKey`. SQLite and PostgreSQL keep `Guid.CreateVersion7()`, and SQL Server uses EF Core's `SequentialGuidValueGenerator`, which rises within a process. A value generator is not in the model snapshot, so no migration changes.
 
 Before the switch, the one place in .NET that ordered generated ids by value, the rows of an entry in `EntryStore.DocumentsAsync`, moved into the query and onto `created_at`. Keyset cursors compare `document_id` in SQL. `document_id` and the other ids that the code sets itself stay v7 on every provider. #2711 measures what that costs SQL Server's indexes, with the rest of the list above.
+
+## SQL Server JSON
+
+Added for [#2711](https://github.com/fluentcms/FluentCMS/issues/2711), after the provider matrix ran the data tests on SQL Server 2019 and 2025.
+
+SQL Server stores JSON as `nvarchar(max)` with a `CHECK (ISJSON(col) = 1)` constraint on every version, 2025 included, and filters go through `OPENJSON`, which reads the text on both. 1.0 has no option for the native `json` type of SQL Server 2025: `UseSqlServer(nativeJson: true)` is removed. The option mapped the JSON columns as `json` while the one SQL Server system migration set creates `nvarchar(max)`, so every migrated 2025 database stopped with `PendingModelChangesWarning`, and nearly all of the 1126 failures of the first 2025 run came from that. A second system migration set, and a second set for every content and plugin stream, would cost more than the type gives a 1.0 that filters one level deep.
+
+Native `json` can return later as an opt-in with migration sets of its own, and a way to move an existing database between the two forms.
 
 ## Where the evidence lives now
 

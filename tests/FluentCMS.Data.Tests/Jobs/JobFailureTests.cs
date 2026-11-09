@@ -438,7 +438,16 @@ public sealed class JobFailureTests : IDisposable
         var second = _fixture.NewInstance(configure: options => options.Queues[Queue] = 1).GetRequiredService<IJobRunner>();
         await second.StartAsync(Token);
 
-        await Eventually.HoldsAsync(() => _fixture.Job(id).Status == JobStatus.Succeeded, () => _fixture.Clock.Advance(Beat));
+        // The first runner stops a heartbeat before its lease ends, which is a minute of real time and not the few
+        // milliseconds between two nudges, so the clock waits there until it has stopped.
+        var stopBy = JobFixture.Start + Lease - Beat;
+        await Eventually.HoldsAsync(() => _fixture.Job(id).Status == JobStatus.Succeeded, () =>
+        {
+            if (_fixture.Clock.GetUtcNow() < stopBy || Volatile.Read(ref active) == 0)
+            {
+                _fixture.Clock.Advance(Beat);
+            }
+        });
 
         _fixture.Job(id).Attempts.ShouldBe(2);
         _fixture.Probe.Runs.Count.ShouldBe(2);
