@@ -7,7 +7,7 @@ using static FluentCMS.Plugins.Media.Tests.MediaHost;
 
 namespace FluentCMS.Plugins.Media.Tests;
 
-public sealed class MediaMetadataTests
+public sealed class MediaMetadataTests(MediaHost media) : IClassFixture<MediaHost>
 {
     private static readonly string[] SeaTags = ["sea", "boats", "sea"];
     private static readonly string[] QuotedTags = ["a\"b"];
@@ -16,7 +16,6 @@ public sealed class MediaMetadataTests
     [Fact]
     public async Task MetadataIsChangedAndReadBackWithAltAndCaptionInTheRequestedLocale()
     {
-        await using var media = new MediaHost();
         await media.AddLocaleAsync("fr");
         using var client = await media.AdminAsync();
         var id = Id((await UploadedAsync(client, null, ("photo.jpg", Files.Jpeg(10, 10)))).Single()!);
@@ -47,7 +46,6 @@ public sealed class MediaMetadataTests
     [Fact]
     public async Task InvalidMetadataIsRefusedField()
     {
-        await using var media = new MediaHost();
         using var client = await media.AdminAsync();
         var id = Id((await UploadedAsync(client, null, ("photo.jpg", Files.Jpeg(10, 10)))).Single()!);
 
@@ -60,7 +58,6 @@ public sealed class MediaMetadataTests
     [Fact]
     public async Task TheListFiltersByFolderTypeAndTagAndADeletedAssetIsGone()
     {
-        await using var media = new MediaHost();
         using var client = await media.AdminAsync();
         var photos = await FolderAsync(client, "photos");
         var summer = await FolderAsync(client, "summer", photos);
@@ -69,14 +66,18 @@ public sealed class MediaMetadataTests
         var inSummer = Id((await UploadedAsync(client, summer, ("b.jpg", Files.Jpeg(1, 1)))).Single()!);
         await PatchAsync(client, $"{Root}/{inSummer:D}", new { tags = BeachTags });
 
-        (await IdsAsync(client, "")).ShouldBe([inSummer, inPhotos, root]);
-        (await IdsAsync(client, "?folder=root")).ShouldBe([root]);
+        // The host is shared: a list is read for this test's assets alone, and the page relies on them being the newest.
+        List<Guid> own = [inSummer, inPhotos, root];
+        async Task<List<Guid>> OwnAsync(string query) => [.. (await IdsAsync(client, query)).Where(own.Contains)];
+
+        (await OwnAsync("")).ShouldBe([inSummer, inPhotos, root]);
+        (await OwnAsync("?folder=root")).ShouldBe([root]);
         (await IdsAsync(client, $"?folder={photos:D}")).ShouldBe([inPhotos]);
         (await IdsAsync(client, $"?folder={photos:D}&subfolders=true")).ShouldBe([inSummer, inPhotos]);
-        (await IdsAsync(client, "?type=image/*")).ShouldBe([inSummer, inPhotos]);
-        (await IdsAsync(client, "?type=application/pdf")).ShouldBe([root]);
-        (await IdsAsync(client, "?tag=beach")).ShouldBe([inSummer]);
-        (await IdsAsync(client, "?tag=bea")).ShouldBeEmpty();
+        (await OwnAsync("?type=image/*")).ShouldBe([inSummer, inPhotos]);
+        (await OwnAsync("?type=application/pdf")).ShouldBe([root]);
+        (await OwnAsync("?tag=beach")).ShouldBe([inSummer]);
+        (await OwnAsync("?tag=bea")).ShouldBeEmpty();
         (await IdsAsync(client, "?pageSize=1&page=2")).ShouldBe([inPhotos]);
 
         using var deleted = await client.DeleteAsync(new Uri($"{Root}/{inPhotos:D}", UriKind.Relative), Token);
@@ -84,7 +85,7 @@ public sealed class MediaMetadataTests
         deleted.StatusCode.ShouldBe(HttpStatusCode.NoContent);
         gone.StatusCode.ShouldBe(HttpStatusCode.NotFound);
         (await CodeAsync(gone)).ShouldBe(MediaErrorCodes.AssetNotFound);
-        (await IdsAsync(client, "")).ShouldBe([inSummer, root]);
+        (await OwnAsync("")).ShouldBe([inSummer, root]);
     }
 
     private static async Task<List<Guid>> IdsAsync(HttpClient client, string query) =>

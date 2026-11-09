@@ -29,7 +29,7 @@ using Xunit;
 
 namespace FluentCMS.Core.IntegrationTests.Identity;
 
-public sealed partial class AuthorizationServerTests : IAsyncDisposable
+public sealed partial class AuthorizationServerTests(AuthorizationServerFixture hosts) : IClassFixture<AuthorizationServerFixture>
 {
     private const string TestClientId = FluentCmsTestHost.OAuthClientId;
     private const string ServiceClientId = "billing";
@@ -37,9 +37,7 @@ public sealed partial class AuthorizationServerTests : IAsyncDisposable
 
     private static readonly CancellationToken Token = TestContext.Current.CancellationToken;
 
-    private readonly FluentCmsTestHost _host = NewHost();
-
-    public ValueTask DisposeAsync() => _host.DisposeAsync();
+    private readonly FluentCmsTestHost _host = hosts.Host;
 
     [Fact]
     public async Task APublicClientGetsATokenWithPkceAndItsRefreshTokenRotates()
@@ -364,12 +362,14 @@ public sealed partial class AuthorizationServerTests : IAsyncDisposable
     }
 
     // The media plugin, which the Blog sample brings into this project, is given a signing key, so that only the authorization
-    // server makes the Data Protection key ring.
-    private static FluentCmsTestHost NewHost(bool withServiceClient = true) => new FluentCmsTestHost()
+    // server makes the Data Protection key ring. No worker drains the outbox: a test does, so that the activity rows are there
+    // when it reads them.
+    internal static FluentCmsTestHost NewHost(bool withServiceClient = true) => new FluentCmsTestHost()
         .WithContentTypes<Note>()
         .WithServices(services => services.PostConfigure<MediaOptions>(media => media.SigningKey = Convert.ToBase64String(new byte[32])))
         .Configure(cms =>
         {
+            cms.Jobs.Options.Queues[OutboxDrainJob.Queue] = 0;
             if (withServiceClient)
             {
                 cms.Clients.Applications[ServiceClientId] = new ClientRegistration
@@ -478,20 +478,13 @@ public sealed partial class AuthorizationServerTests : IAsyncDisposable
 
     private static async Task<ActivityRow> ActivityAsync(FluentCmsTestHost host, Guid actor)
     {
-        for (var attempt = 0; attempt < 50; attempt++)
+        while (await host.Services.GetRequiredService<OutboxDrainer>().DrainAsync(Token) > 0)
         {
-            await host.Services.GetRequiredService<OutboxDrainer>().DrainAsync(Token);
-            await using var scope = host.Services.CreateAsyncScope();
-            var row = await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<ActivityRow>().AsNoTracking()
-                .FirstOrDefaultAsync(row => row.ActorId == actor, Token);
-            if (row is not null)
-            {
-                return row;
-            }
-
-            await Task.Delay(100, Token);
         }
 
-        throw new ShouldAssertException("No activity row was written.");
+        await using var scope = host.Services.CreateAsyncScope();
+        var row = await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<ActivityRow>().AsNoTracking()
+            .FirstOrDefaultAsync(row => row.ActorId == actor, Token);
+        return row.ShouldNotBeNull("No activity row was written.");
     }
 }

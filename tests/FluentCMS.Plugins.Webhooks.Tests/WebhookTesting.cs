@@ -11,6 +11,7 @@ using FluentCMS.Core.Jobs;
 using FluentCMS.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Shouldly;
 using Xunit;
@@ -18,9 +19,12 @@ using Xunit;
 namespace FluentCMS.Plugins.Webhooks.Tests;
 
 // A host whose job runner has no workers, so that a test runs the outbox and the jobs itself, and the clock moves only
-// when the test moves it.
+// when the test moves it. Its maintenance runs once, at the start, so that no recurring job the moved clock made due joins
+// the jobs a test runs.
 internal static class WebhookTesting
 {
+    private static readonly TimeSpan Patience = TimeSpan.FromSeconds(30);
+
     public static CancellationToken Token => TestContext.Current.CancellationToken;
 
     public static FluentCmsTestHost Host(bool allowPrivateNetworks = true, LogCapture? logs = null) =>
@@ -36,6 +40,7 @@ internal static class WebhookTesting
             })
             .Configure(cms =>
             {
+                cms.Jobs.Options.MaintenanceInterval = TimeSpan.FromDays(1);
                 cms.Jobs.Options.Queues[JobRunnerOptions.DefaultQueue] = 0;
                 cms.Jobs.Options.Queues[OutboxDrainJob.Queue] = 0;
                 cms.Jobs.Options.Queues[WebhookDeliveryJob.Queue] = 0;
@@ -106,14 +111,20 @@ internal static class WebhookTesting
         }
     }
 
-    public static async Task<List<WebhookDelivery>> DeliveriesAsync(FluentCmsTestHost host)
+    // The attempts to the webhook, or to every webhook of a host the test has to itself.
+    public static async Task<List<WebhookDelivery>> DeliveriesAsync(FluentCmsTestHost host, Guid? webhook = null)
     {
         await using var scope = host.Services.CreateAsyncScope();
         return await scope.ServiceProvider.GetRequiredService<PluginDbContext<WebhooksPlugin>>().Set<WebhookDelivery>()
             .AsNoTracking()
+            .Where(delivery => webhook == null || delivery.WebhookId == webhook)
             .OrderBy(delivery => delivery.CreatedAt).ThenBy(delivery => delivery.Attempt)
             .ToListAsync(Token);
     }
+
+    // Completes when the steps the plugin takes once the host has started are done.
+    public static async Task StartedAsync(FluentCmsTestHost host) =>
+        await host.Services.GetServices<IHostedService>().OfType<WebhookStartup>().Single().ExecuteTask!.WaitAsync(Patience, Token);
 
     // What a receiver does, as the plugin's README has it: refuse a timestamp more than five minutes from its own clock,
     // recompute the HMAC over t + "." + body, and accept the body when any v1 matches, compared in constant time.

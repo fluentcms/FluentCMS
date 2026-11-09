@@ -21,15 +21,13 @@ using TestKeyClass = FluentCMS.Testing.ApiKeyClass;
 
 namespace FluentCMS.Core.IntegrationTests.Health;
 
-public sealed class HealthEndpointsTests : IAsyncDisposable
+public sealed class HealthEndpointsTests(NoteHostFixture fixture) : IClassFixture<NoteHostFixture>
 {
     private const string Detailed = "/api/management/v1/system/health";
 
     private static readonly CancellationToken Token = TestContext.Current.CancellationToken;
 
-    private readonly FluentCmsTestHost _host = new FluentCmsTestHost().WithContentTypes<Note>();
-
-    public ValueTask DisposeAsync() => _host.DisposeAsync();
+    private readonly FluentCmsTestHost _host = fixture.Host;
 
     [Fact]
     public async Task LiveAndReadyNeedNoAuthenticationAndAreHealthyOnSqlite()
@@ -74,13 +72,16 @@ public sealed class HealthEndpointsTests : IAsyncDisposable
     [Fact]
     public async Task ReadyIsUnhealthyWhenTheDatabaseIsUnreachableAndLiveStaysHealthy()
     {
-        await using var host = new FluentCmsTestHost().UseSqlite((string?)null).WithContentTypes<Note>();
+        var outage = new Outage();
+        await using var host = new FluentCmsTestHost()
+            .WithContentTypes<Note>()
+            .Configure(cms => cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(outage)));
         using var client = host.CreateClient();
         using var before = await client.GetAsync(new Uri("/health/ready", UriKind.Relative), Token);
         before.StatusCode.ShouldBe(HttpStatusCode.OK);
 
-        // The file goes away under the running host, and the next connection finds an empty database.
-        await DeleteDatabaseAsync(host);
+        // The database stops answering under the running host.
+        outage.Down = true;
 
         using var ready = await client.GetAsync(new Uri("/health/ready", UriKind.Relative), Token);
         using var live = await client.GetAsync(new Uri("/health/live", UriKind.Relative), Token);
@@ -202,35 +203,30 @@ public sealed class HealthEndpointsTests : IAsyncDisposable
         return created.Secret;
     }
 
-    private static async Task DeleteDatabaseAsync(FluentCmsTestHost host)
-    {
-        string file;
-        await using (var scope = host.Services.CreateAsyncScope())
-        {
-            var connection = scope.ServiceProvider.GetRequiredService<SystemDbContext>().Database.GetConnectionString();
-            file = new SqliteConnectionStringBuilder(connection).DataSource;
-        }
-
-        for (var attempt = 0; attempt < 50; attempt++)
-        {
-            try
-            {
-                File.Delete(file);
-                return;
-            }
-            catch (IOException)
-            {
-                await Task.Delay(100, Token);
-            }
-        }
-
-        throw new InvalidOperationException("The database file stayed in use.");
-    }
-
     private sealed class LeakyCheck : IHealthCheck
     {
         public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default) =>
             throw new InvalidOperationException("Server=db.internal;Password=hunter2;");
+    }
+
+    // Once down, every connection the system tables open fails as an unreachable SQLite file does.
+    private sealed class Outage : DbConnectionInterceptor
+    {
+        private volatile bool _down;
+
+        public bool Down
+        {
+            get => _down;
+            set => _down = value;
+        }
+
+        public override InterceptionResult ConnectionOpening(DbConnection connection, ConnectionEventData eventData, InterceptionResult result) =>
+            Down ? throw Unreachable() : result;
+
+        public override ValueTask<InterceptionResult> ConnectionOpeningAsync(DbConnection connection, ConnectionEventData eventData, InterceptionResult result, CancellationToken cancellationToken = default) =>
+            Down ? throw Unreachable() : ValueTask.FromResult(result);
+
+        private static SqliteException Unreachable() => new("unable to open database file", 14);
     }
 
     // Counts the queries of the API key table, which is what an API key lookup reads.

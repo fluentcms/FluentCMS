@@ -25,7 +25,6 @@ using Xunit;
 namespace FluentCMS.Core.IntegrationTests.Delivery;
 
 // FluentCms:Delivery:Cache as a host configures it, and the output cache as a host that uses it for itself sees it.
-[Xunit.Collection(ProcessEnvironment.Collection)]
 public sealed class DeliveryCacheHostTests : IAsyncDisposable
 {
     private static readonly CancellationToken Token = TestContext.Current.CancellationToken;

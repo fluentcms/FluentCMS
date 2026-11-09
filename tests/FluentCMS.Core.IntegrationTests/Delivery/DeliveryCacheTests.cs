@@ -4,8 +4,8 @@ using System.Globalization;
 using System.Net;
 using System.Text;
 using System.Text.Json.Nodes;
-using System.Threading.Channels;
 using FluentCMS.Content;
+using FluentCMS.Core.Api.Common;
 using FluentCMS.Core.Api.Delivery;
 using FluentCMS.Core.Authorization;
 using FluentCMS.Core.Events;
@@ -15,6 +15,7 @@ using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Telemetry;
 using FluentCMS.Events;
 using FluentCMS.Schema;
+using FluentCMS.Sites;
 using FluentCMS.Testing;
 using Microsoft.AspNetCore.OutputCaching;
 using Microsoft.EntityFrameworkCore;
@@ -24,57 +25,49 @@ using Xunit;
 
 namespace FluentCMS.Core.IntegrationTests.Delivery;
 
-// The cache headers and the output cache of the Delivery API, on a host per test so that what one test caches cannot
-// answer another. The server keeps a copy for ten minutes here, so only an eviction explains a fresh read.
-public sealed class DeliveryCacheTests : IAsyncLifetime
+// The cache headers and the output cache of the Delivery API. The tests share a host, and each reads a site of its own, so
+// that what one test caches cannot answer another.
+public sealed class DeliveryCacheTests(DeliveryCacheFixture fixture) : IClassFixture<DeliveryCacheFixture>, IAsyncLifetime
 {
     private const string PrivateCacheControl = "max-age=60, private, stale-while-revalidate=300";
 
-    private static readonly string SiteTag = $"site:{DefaultSite.Id:D}";
-
     private static readonly CancellationToken Token = TestContext.Current.CancellationToken;
 
-    private readonly Invalidations _invalidations = new();
-    private readonly FluentCmsTestHost _host;
+    private readonly FluentCmsTestHost _host = fixture.Host;
+    private readonly DeliveryCacheFixture.Evictions _invalidations = fixture.Invalidations;
+    private Guid _site;
+    private Guid _publicRole;
     private HttpClient _client = null!;
     private TestActor _editor = null!;
     private Note _first = null!;
 
-    public DeliveryCacheTests()
-    {
-        _host = new FluentCmsTestHost()
-            .WithContentTypes<Note, Memo, Topic>()
-            .WithServices(services =>
-            {
-                TestScheme.Add(services);
-                services.AddSingleton(_invalidations);
-                services.PostConfigure<DeliveryCacheOptions>(cache => cache.OutputCacheDuration = TimeSpan.FromMinutes(10));
-            })
-            .Configure(cms => cms.Events.AddHandler<CacheInvalidatedEvent, InvalidationRecorder>());
-    }
+    private string SiteTag => $"site:{_site:D}";
 
     public async ValueTask InitializeAsync()
     {
         await using (var scope = _host.Services.CreateAsyncScope())
         {
+            _site = (await scope.ServiceProvider.GetRequiredService<SiteManager>().CreateAsync("Cache", $"cache-{Guid.NewGuid():N}", DefaultSite.Locale, Token)).Id;
             var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+            _publicRole = (await context.Set<Role>().SingleAsync(role => role.SiteId == _site && role.Name == BuiltInRoles.PublicName, Token)).Id;
             context.Set<RoleGrant>().AddRange(
-                new RoleGrant { Id = Guid.CreateVersion7(), RoleId = DefaultSite.PublicRole, Permission = "content.note.read" },
-                new RoleGrant { Id = Guid.CreateVersion7(), RoleId = DefaultSite.PublicRole, Permission = "content.topic.read" });
+                new RoleGrant { Id = Guid.CreateVersion7(), RoleId = _publicRole, Permission = "content.note.read" },
+                new RoleGrant { Id = Guid.CreateVersion7(), RoleId = _publicRole, Permission = "content.topic.read" });
             await context.SaveChangesAsync(Token);
         }
 
-        // A change to a role's grants evicts its site, and the next eviction a test waits for is its own.
-        (await InvalidatedAsync()).ShouldBe([SiteTag]);
-        _editor = _host.As(await _host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token));
+        // A change to a role's grants evicts its site; that and whatever an earlier test left are not this test's to wait for.
+        await DrainAsync();
+        _invalidations.Forget();
+        _editor = _host.As(await _host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token)).In(new SiteId(_site));
         _first = await PublishedAsync(new Note { Title = "First", Slug = "first" });
-        _client = _host.CreateClient();
+        _client = OfTheSite(_host.CreateClient());
     }
 
-    public async ValueTask DisposeAsync()
+    public ValueTask DisposeAsync()
     {
         _client.Dispose();
-        await _host.DisposeAsync();
+        return ValueTask.CompletedTask;
     }
 
     // No date in a body moves when an entry leaves a list or a role changes what the caller reads, so none is sent.
@@ -144,7 +137,15 @@ public sealed class DeliveryCacheTests : IAsyncLifetime
     public async Task ARepeatedRequestIsServedFromTheOutputCache()
     {
         ConcurrentBag<string?> lookups = [];
-        using var listener = ListenToCacheLookups(lookups);
+        var both = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var listener = ListenToCacheLookups(result =>
+        {
+            lookups.Add(result);
+            if (lookups.Contains("miss") && lookups.Contains("hit"))
+            {
+                both.TrySetResult();
+            }
+        });
 
         var first = await GetAsync($"note/{_first.Id}");
         var second = await GetAsync($"note/{_first.Id}");
@@ -156,7 +157,7 @@ public sealed class DeliveryCacheTests : IAsyncLifetime
         second.CacheControl.ShouldBe(first.CacheControl);
 
         // A lookup is counted when its response completes, which can be after the client has read it.
-        SpinWait.SpinUntil(() => lookups.Contains("miss") && lookups.Contains("hit"), TimeSpan.FromSeconds(10)).ShouldBeTrue();
+        await both.Task.WaitAsync(TimeSpan.FromSeconds(10), Token);
     }
 
     [Fact]
@@ -261,7 +262,7 @@ public sealed class DeliveryCacheTests : IAsyncLifetime
     public async Task EachEvictionRaisesCacheInvalidatedEventWithTheTags()
     {
         var notes = _editor.Content<Note>();
-        string[] tags = [$"entry:{_first.Id:D}", $"type:{DefaultSite.Id:D}:note"];
+        string[] tags = [$"entry:{_first.Id:D}", $"type:{_site:D}:note"];
 
         await notes.UnpublishAsync(_first.Id, cancellationToken: Token);
         (await InvalidatedAsync()).ShouldBe(tags);
@@ -284,7 +285,7 @@ public sealed class DeliveryCacheTests : IAsyncLifetime
         await using (var scope = _host.Services.CreateAsyncScope())
         {
             var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
-            context.Remove(await context.Set<RoleGrant>().SingleAsync(grant => grant.RoleId == DefaultSite.PublicRole && grant.Permission == "content.note.read", Token));
+            context.Remove(await context.Set<RoleGrant>().SingleAsync(grant => grant.RoleId == _publicRole && grant.Permission == "content.note.read", Token));
             await context.SaveChangesAsync(Token);
         }
 
@@ -299,7 +300,7 @@ public sealed class DeliveryCacheTests : IAsyncLifetime
         var memos = _editor.Content<Memo>();
         await memos.PublishAsync((await memos.CreateAsync(new Memo { Title = "Memo" }, Token)).Id, cancellationToken: Token);
         await InvalidatedAsync();
-        using var editor = _host.AsKey(await _host.CreateApiKeyAsync(ApiKeyClass.Delivery, BuiltInRoles.EditorName, cancellationToken: Token));
+        using var editor = OfTheSite(_host.AsKey(await _host.CreateApiKeyAsync(ApiKeyClass.Delivery, BuiltInRoles.EditorName, cancellationToken: Token)));
         await SendAsync(editor, "memo");
         (await SendAsync(editor, "memo")).FromCache.ShouldBeTrue();
 
@@ -310,7 +311,7 @@ public sealed class DeliveryCacheTests : IAsyncLifetime
             await context.SaveChangesAsync(Token);
         }
 
-        (await InvalidatedAsync()).ShouldBe([SiteTag]);
+        (await InvalidatedAsync()).ShouldBe([.. Sites().Select(site => $"site:{site:D}")], ignoreOrder: true);
         (await SendAsync(editor, "memo")).FromCache.ShouldBeFalse();
     }
 
@@ -343,8 +344,8 @@ public sealed class DeliveryCacheTests : IAsyncLifetime
         var memos = _editor.Content<Memo>();
         await memos.PublishAsync((await memos.CreateAsync(new Memo { Title = "Memo" }, Token)).Id, cancellationToken: Token);
         await InvalidatedAsync();
-        using var editor = _host.AsKey(await _host.CreateApiKeyAsync(ApiKeyClass.Delivery, BuiltInRoles.EditorName, cancellationToken: Token));
-        using var reader = _host.AsKey(await _host.CreateApiKeyAsync(ApiKeyClass.Delivery, BuiltInRoles.PublicName, cancellationToken: Token));
+        using var editor = OfTheSite(_host.AsKey(await _host.CreateApiKeyAsync(ApiKeyClass.Delivery, BuiltInRoles.EditorName, cancellationToken: Token)));
+        using var reader = OfTheSite(_host.AsKey(await _host.CreateApiKeyAsync(ApiKeyClass.Delivery, BuiltInRoles.PublicName, cancellationToken: Token)));
 
         var first = await SendAsync(editor, "memo");
         var again = await SendAsync(editor, "memo");
@@ -422,11 +423,30 @@ public sealed class DeliveryCacheTests : IAsyncLifetime
         return created;
     }
 
-    // The tags of the next eviction, after asking for the outbox to be delivered now rather than when the runner gets to it.
+    // The tags of the next eviction, once the outbox is delivered.
     private async Task<IReadOnlyList<string>> InvalidatedAsync()
     {
-        await _host.Services.GetRequiredService<OutboxDrainer>().DrainAsync(Token);
+        await DrainAsync();
         return await _invalidations.NextAsync(Token);
+    }
+
+    private async Task DrainAsync()
+    {
+        while (await _host.Services.GetRequiredService<OutboxDrainer>().DrainAsync(Token) > 0)
+        {
+        }
+    }
+
+    private HttpClient OfTheSite(HttpClient client)
+    {
+        client.DefaultRequestHeaders.Add(RequestBridge.SiteHeader, _site.ToString("D"));
+        return client;
+    }
+
+    private List<Guid> Sites()
+    {
+        using var scope = _host.Services.CreateScope();
+        return [.. scope.ServiceProvider.GetRequiredService<CmsDbContext>().Set<Site>().Select(site => site.Id)];
     }
 
     private Task<Reply> GetAsync(string path, params (string Name, string Value)[] headers) => SendAsync(_client, path, headers);
@@ -465,7 +485,7 @@ public sealed class DeliveryCacheTests : IAsyncLifetime
 
     private static string[] Titles(Reply reply) => [.. reply.Json["items"]!.AsArray().Select(item => item!["title"]!.GetValue<string>())];
 
-    private static MeterListener ListenToCacheLookups(ConcurrentBag<string?> lookups)
+    private static MeterListener ListenToCacheLookups(Action<string?> lookedUp)
     {
         var listener = new MeterListener
         {
@@ -488,7 +508,7 @@ public sealed class DeliveryCacheTests : IAsyncLifetime
 
             if (cache == DeliveryOutputCachePolicy.CacheName)
             {
-                lookups.Add(result);
+                lookedUp(result);
             }
         });
         listener.Start();
@@ -498,24 +518,5 @@ public sealed class DeliveryCacheTests : IAsyncLifetime
     private sealed record Reply(HttpStatusCode Status, string? ETag, DateTimeOffset? LastModified, string? CacheControl, string? Vary, bool FromCache, long? ContentLength, string Body)
     {
         public JsonNode Json => JsonNode.Parse(Body)!;
-    }
-
-    private sealed class Invalidations
-    {
-        private readonly Channel<IReadOnlyList<string>> _tags = Channel.CreateUnbounded<IReadOnlyList<string>>();
-
-        public ValueTask AddAsync(IReadOnlyList<string> tags) => _tags.Writer.WriteAsync(tags);
-
-        public async Task<IReadOnlyList<string>> NextAsync(CancellationToken cancellationToken)
-        {
-            using var limit = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            limit.CancelAfter(TimeSpan.FromSeconds(30));
-            return await _tags.Reader.ReadAsync(limit.Token);
-        }
-    }
-
-    private sealed class InvalidationRecorder(Invalidations invalidations) : IEventHandler<CacheInvalidatedEvent>
-    {
-        public ValueTask HandleAsync(CacheInvalidatedEvent message, CancellationToken cancellationToken) => invalidations.AddAsync(message.Tags);
     }
 }

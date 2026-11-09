@@ -14,7 +14,7 @@ using static FluentCMS.Plugins.Webhooks.Tests.WebhookTesting;
 
 namespace FluentCMS.Plugins.Webhooks.Tests;
 
-public sealed class WebhookDeliveryTests
+public sealed class WebhookDeliveryTests(WebhookFixture hosts) : IClassFixture<WebhookFixture>
 {
     private const string Secret = "a-secret-of-the-receiver-1234";
 
@@ -22,9 +22,9 @@ public sealed class WebhookDeliveryTests
     public async Task PublishingASubscribedEntrySendsOneSignedPostWithThePayload()
     {
         await using var receiver = await TestReceiver.StartAsync();
-        await using var host = Host();
+        var host = await hosts.HostAsync();
         using var client = await AdminAsync(host);
-        await CreateAsync(client, new { name = "builds", url = receiver.Url().ToString(), events = new List<string> { "content.published" }, types = new List<string> { "article" }, secret = Secret });
+        var webhook = Id(await CreateAsync(client, new { name = "builds", url = receiver.Url().ToString(), events = new List<string> { "content.published" }, types = new List<string> { "article" }, secret = Secret }));
         var user = await host.CreateUserAsync(BuiltInRoles.SuperAdminName, "editor", Token);
         var articles = host.As(user).Content<Article>();
 
@@ -36,7 +36,7 @@ public sealed class WebhookDeliveryTests
         request.Method.ShouldBe("POST");
         request.Headers["Content-Type"].ShouldStartWith("application/json");
         request.Headers[WebhookSender.EventHeader].ShouldBe("content.published");
-        var delivery = (await DeliveriesAsync(host)).ShouldHaveSingleItem();
+        var delivery = (await DeliveriesAsync(host, webhook)).ShouldHaveSingleItem();
         request.Headers[WebhookSender.DeliveryHeader].ShouldBe(delivery.DeliveryId.ToString("D"));
         var signature = request.Headers[WebhookSender.SignatureHeader];
         Signatures(signature).ShouldBe(1);
@@ -69,10 +69,10 @@ public sealed class WebhookDeliveryTests
     public async Task AnEventOfAnotherNameTypeOrSiteSendsNothing()
     {
         await using var receiver = await TestReceiver.StartAsync();
-        await using var host = Host();
+        var host = await hosts.HostAsync();
         using var client = await AdminAsync(host);
         var url = receiver.Url().ToString();
-        await CreateAsync(client, new { name = "articles", url, events = new List<string> { "content.published" }, types = new List<string> { "article" } });
+        var articles = await CreateAsync(client, new { name = "articles", url, events = new List<string> { "content.published" }, types = new List<string> { "article" } });
         var other = await CreateAsync(client, new { name = "other site", url, events = new List<string> { "content.published", "content.draft_saved" } });
         await using (var scope = host.Services.CreateAsyncScope())
         {
@@ -89,7 +89,8 @@ public sealed class WebhookDeliveryTests
         await PumpAsync(host);
 
         receiver.Requests.ShouldBeEmpty();
-        (await DeliveriesAsync(host)).ShouldBeEmpty();
+        (await DeliveriesAsync(host, Id(articles))).ShouldBeEmpty();
+        (await DeliveriesAsync(host, Id(other))).ShouldBeEmpty();
     }
 
     [Fact]
@@ -97,9 +98,9 @@ public sealed class WebhookDeliveryTests
     {
         await using var receiver = await TestReceiver.StartAsync();
         receiver.Status = 503;
-        await using var host = Host();
+        var host = await hosts.HostAsync();
         using var client = await AdminAsync(host);
-        await CreateAsync(client, new { name = "flaky", url = receiver.Url().ToString(), events = new List<string> { "content.published" } });
+        var webhook = Id(await CreateAsync(client, new { name = "flaky", url = receiver.Url().ToString(), events = new List<string> { "content.published" } }));
         var articles = host.As(await host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token)).Content<Article>();
         await articles.PublishAsync((await articles.CreateAsync(new Article { Title = "Flaky" }, Token)).Id, cancellationToken: Token);
 
@@ -116,7 +117,7 @@ public sealed class WebhookDeliveryTests
         host.Time.Advance(TimeSpan.FromDays(3));
         (await RunDueJobsAsync(host)).ShouldBe(0);
 
-        var attempts = await DeliveriesAsync(host);
+        var attempts = await DeliveriesAsync(host, webhook);
         attempts.Select(attempt => attempt.Attempt).ShouldBe(Enumerable.Range(1, 6));
         attempts.Select(attempt => attempt.DeliveryId).Distinct().ShouldHaveSingleItem();
         attempts.ShouldAllBe(attempt => attempt.StatusCode == 503 && attempt.DurationMs >= 0 && attempt.ResponseExcerpt == "receiver failed");
@@ -141,7 +142,7 @@ public sealed class WebhookDeliveryTests
     {
         await using var receiver = await TestReceiver.StartAsync();
         receiver.Status = 500;
-        await using var host = Host();
+        var host = await hosts.HostAsync();
         using var client = await AdminAsync(host);
         var url = receiver.Url().ToString();
         var webhook = await CreateAsync(client, new { name = "paused", url, events = new List<string> { "content.published" } });
@@ -155,7 +156,7 @@ public sealed class WebhookDeliveryTests
         (await RunDueJobsAsync(host)).ShouldBe(1);
 
         receiver.Requests.Count.ShouldBe(1);
-        var attempt = (await DeliveriesAsync(host)).ShouldHaveSingleItem();
+        var attempt = (await DeliveriesAsync(host, Id(webhook))).ShouldHaveSingleItem();
         (attempt.State, attempt.NextRetryAt).ShouldBe((DeliveryStates.Dead, (DateTimeOffset?)null));
     }
 
@@ -163,14 +164,14 @@ public sealed class WebhookDeliveryTests
     public async Task RedeliverSendsADeliveryAgainAndPingSendsATestEventOnceEach()
     {
         await using var receiver = await TestReceiver.StartAsync();
-        await using var host = Host();
+        var host = await hosts.HostAsync();
         using var client = await AdminAsync(host);
         var webhook = await CreateAsync(client, new { name = "builds", url = receiver.Url().ToString(), events = new List<string> { "content.published" } });
         var root = $"/api/management/v1/webhooks/{Id(webhook):D}";
         var articles = host.As(await host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token)).Content<Article>();
         await articles.PublishAsync((await articles.CreateAsync(new Article { Title = "Again" }, Token)).Id, cancellationToken: Token);
         await PumpAsync(host);
-        var first = (await DeliveriesAsync(host)).ShouldHaveSingleItem();
+        var first = (await DeliveriesAsync(host, Id(webhook))).ShouldHaveSingleItem();
 
         using var redeliver = await client.PostAsync(new Uri($"{root}/deliveries/{first.DeliveryId:D}/redeliver", UriKind.Relative), null, Token);
         redeliver.StatusCode.ShouldBe(HttpStatusCode.Accepted, await TextAsync(redeliver));
@@ -182,7 +183,7 @@ public sealed class WebhookDeliveryTests
         host.Time.Advance(TimeSpan.FromDays(2));
         (await RunDueJobsAsync(host)).ShouldBe(0, "a manual delivery is tried once");
 
-        var deliveries = await DeliveriesAsync(host);
+        var deliveries = await DeliveriesAsync(host, Id(webhook));
         deliveries.Count.ShouldBe(3);
         var redelivered = Id(JsonNode.Parse(await TextAsync(redeliver))!, "deliveryId");
         var pingedId = Id(JsonNode.Parse(await TextAsync(ping))!, "deliveryId");
@@ -202,7 +203,7 @@ public sealed class WebhookDeliveryTests
 
         using var deleted = await client.DeleteAsync(new Uri(root, UriKind.Relative), Token);
         deleted.StatusCode.ShouldBe(HttpStatusCode.NoContent);
-        (await DeliveriesAsync(host)).ShouldBeEmpty("the log goes with its webhook");
+        (await DeliveriesAsync(host, Id(webhook))).ShouldBeEmpty("the log goes with its webhook");
     }
 
     [Fact]

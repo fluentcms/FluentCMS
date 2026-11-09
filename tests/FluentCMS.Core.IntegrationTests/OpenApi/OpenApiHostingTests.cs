@@ -17,7 +17,6 @@ using Xunit;
 namespace FluentCMS.Core.IntegrationTests.OpenApi;
 
 // Where MapFluentCmsOpenApi puts the document and the UI, and when it leaves them out.
-[Xunit.Collection(ProcessEnvironment.Collection)]
 public sealed partial class OpenApiHostingTests : IAsyncDisposable
 {
     private static readonly CancellationToken Token = TestContext.Current.CancellationToken;

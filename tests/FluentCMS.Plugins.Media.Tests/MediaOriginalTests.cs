@@ -8,16 +8,15 @@ using static FluentCMS.Plugins.Media.Tests.Transforms;
 
 namespace FluentCMS.Plugins.Media.Tests;
 
-public sealed class MediaOriginalTests
+public sealed class MediaOriginalTests(MediaHost media) : IClassFixture<MediaHost>
 {
     [Fact]
     public async Task ADownloadUrlServesAPrivateFileUntilItExpiresAndIsRefusedAfter()
     {
-        await using var media = new MediaHost();
-        await media.ConfigureAsync(settings => settings.DownloadUrlSeconds = 60);
+        await using var lifetime = await media.ConfigureAsync(settings => settings.DownloadUrlSeconds = 60);
         using var admin = await media.AdminAsync();
         using var anonymous = media.Host.CreateClient();
-        var team = await FolderAsync(admin, "team");
+        var team = await FolderAsync(admin, Unique("team"));
         var pdf = Files.Pdf();
         var asset = Id((await UploadedAsync(admin, team, ("plan.pdf", pdf))).Single()!);
         (await admin.PatchAsJsonAsync(new Uri($"{Root}/{asset:D}", UriKind.Relative), new { isPrivate = true }, Token)).Dispose();
@@ -48,10 +47,9 @@ public sealed class MediaOriginalTests
     [Fact]
     public async Task ACallerWhoCannotReadTheFolderGetsNoDownloadUrl()
     {
-        await using var media = new MediaHost();
         using var admin = await media.AdminAsync();
-        var team = await FolderAsync(admin, "team");
-        var other = await FolderAsync(admin, "other");
+        var team = await FolderAsync(admin, Unique("team"));
+        var other = await FolderAsync(admin, Unique("other"));
         var asset = Id((await UploadedAsync(admin, other, ("plan.pdf", Files.Pdf()))).Single()!);
         using var editor = await media.ClientWithAsync(admin, new { permission = "media.read", constraints = new { resources = new[] { team.ToString("D") } } });
         using var nobody = await media.ClientWithAsync(admin, new { permission = "schema.read" });
@@ -67,7 +65,6 @@ public sealed class MediaOriginalTests
     [Fact]
     public async Task TheOriginalOfAPublicAssetIsServedSignedAndNeverThatOfAPrivateOrDeletedOne()
     {
-        await using var media = new MediaHost();
         using var admin = await media.AdminAsync();
         using var anonymous = media.Host.CreateClient();
         var bytes = Bands(8, 8);
@@ -101,8 +98,7 @@ public sealed class MediaOriginalTests
     [Fact]
     public async Task AnSvgIsServedWithAPolicyThatRunsNothingAndNosniff()
     {
-        await using var media = new MediaHost();
-        await media.ConfigureAsync(settings => settings.Svg = SvgHandling.Sanitize);
+        await using var sanitised = await media.ConfigureAsync(settings => settings.Svg = SvgHandling.Sanitize);
         using var admin = await media.AdminAsync();
         using var anonymous = media.Host.CreateClient();
         var asset = Id((await UploadedAsync(admin, null, ("logo.svg", Files.Svg("""<rect width="10" height="10"/>""")))).Single()!);

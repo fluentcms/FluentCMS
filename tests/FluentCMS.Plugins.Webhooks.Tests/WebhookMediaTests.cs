@@ -11,13 +11,13 @@ using static FluentCMS.Plugins.Webhooks.Tests.WebhookTesting;
 namespace FluentCMS.Plugins.Webhooks.Tests;
 
 // The media plugin's events are the SDK's, so a webhook subscribes to them whether or not the plugin is in the host.
-public sealed class WebhookMediaTests
+public sealed class WebhookMediaTests(WebhookFixture hosts) : IClassFixture<WebhookFixture>
 {
     [Fact]
     public async Task AMediaEventIsDeliveredWithTheAssetAndItsManagementLink()
     {
         await using var receiver = await TestReceiver.StartAsync();
-        await using var host = Host();
+        var host = await hosts.HostAsync();
         using var client = await AdminAsync(host);
         await CreateAsync(client, new { name = "media", url = receiver.Url().ToString(), events = new List<string> { "media.uploaded", "media.moved" }, types = new List<string> { "article" } });
         var asset = Guid.CreateVersion7();
@@ -45,7 +45,7 @@ public sealed class WebhookMediaTests
     public async Task AReplacedAssetIsDeliveredAsMediaReplaced()
     {
         await using var receiver = await TestReceiver.StartAsync();
-        await using var host = Host();
+        var host = await hosts.HostAsync();
         using var client = await AdminAsync(host);
         await CreateAsync(client, new { name = "media", url = receiver.Url().ToString(), events = new List<string> { "media.replaced" } });
         var asset = Guid.CreateVersion7();

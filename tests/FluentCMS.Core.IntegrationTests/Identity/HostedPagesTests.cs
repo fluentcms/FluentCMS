@@ -1,4 +1,5 @@
 using System.Buffers.Text;
+using System.Linq.Expressions;
 using System.Net;
 using System.Security.Cryptography;
 using System.Text;
@@ -27,7 +28,7 @@ using Xunit;
 namespace FluentCMS.Core.IntegrationTests.Identity;
 
 // The hosted pages, driven the way a browser drives them, against the real authorize and token endpoints.
-public sealed partial class HostedPagesTests : IAsyncDisposable
+public sealed partial class HostedPagesTests : IClassFixture<HostedPagesFixture>
 {
     private const string Password = "Correct-Horse-Battery-9";
     private const string NewPassword = "A-New-Longer-Passphrase-7";
@@ -37,15 +38,18 @@ public sealed partial class HostedPagesTests : IAsyncDisposable
 
     private static readonly CancellationToken Token = TestContext.Current.CancellationToken;
 
-    private readonly CapturedEmails _emails = new();
+    private readonly CapturedEmails _emails;
     private readonly FluentCmsTestHost _host;
+    private readonly FluentCmsTestHost _sso;
+    private readonly FakeOidcProvider _idp;
 
-    public HostedPagesTests()
+    public HostedPagesTests(HostedPagesFixture hosts)
     {
-        _host = NewHost(_emails);
+        _emails = hosts.Emails;
+        _host = hosts.Host;
+        _sso = hosts.Sso;
+        _idp = hosts.Idp;
     }
-
-    public ValueTask DisposeAsync() => _host.DisposeAsync();
 
     [Fact]
     public async Task AUserSignsInOnTheLoginPageAndTheAuthorizeRequestCompletesWithACode()
@@ -93,7 +97,7 @@ public sealed partial class HostedPagesTests : IAsyncDisposable
             right.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         }
 
-        var rows = await ActivityAsync(_host, "user.login_", count: 3);
+        var rows = await ActivityAsync(_host, "user.login_", count: 3, of: row => row.Ip == "10.1.0.7");
 
         var failed = rows.Single(row => row.Action == "user.login_failed" && row.TargetId is not null);
         failed.TargetType.ShouldBe("user");
@@ -136,7 +140,7 @@ public sealed partial class HostedPagesTests : IAsyncDisposable
         locked.StatusCode.ShouldBe(HttpStatusCode.OK);
         (await locked.Content.ReadAsStringAsync(Token)).ShouldContain("Sign-in failed.");
 
-        var rows = await ActivityAsync(_host, "user.login_failed", count: 6);
+        var rows = await ActivityAsync(_host, "user.login_failed", count: 6, of: row => row.TargetId == editor.Id.ToString("D"));
         rows.Count(row => Details(row)["reason"] == LoginFailureReasons.LockedOut).ShouldBeGreaterThanOrEqualTo(1);
     }
 
@@ -226,12 +230,13 @@ public sealed partial class HostedPagesTests : IAsyncDisposable
     public async Task ForgotPasswordAnswersAnUnknownAddressTheSameAndSendsNothing()
     {
         using var browser = new HostedPagesBrowser(_host);
+        var before = _emails.Count;
 
         using var sent = await browser.SubmitAsync("/account/forgot-password", new Dictionary<string, string> { ["Input.Email"] = "nobody@example.com" });
 
         sent.StatusCode.ShouldBe(HttpStatusCode.OK);
         (await sent.Content.ReadAsStringAsync(Token)).ShouldContain("is on its way");
-        _emails.Sent.ShouldBeEmpty();
+        _emails.Count.ShouldBe(before);
     }
 
     [Fact]
@@ -386,7 +391,7 @@ public sealed partial class HostedPagesTests : IAsyncDisposable
             browser.HasCookie(".AspNetCore.Identity.Application").ShouldBeTrue();
         }
 
-        var rows = await ActivityAsync(_host, "user.login_", count: 3);
+        var rows = await ActivityAsync(_host, "user.login_", count: 3, of: row => row.TargetId == editor.Id.ToString("D"));
         rows.Where(row => row.Action == "user.login_succeeded").Select(row => Details(row)["method"]).ShouldBe([LoginMethods.TwoFactor, LoginMethods.RecoveryCode], ignoreOrder: true);
         rows.Single(row => row.Action == "user.login_failed").Ip.ShouldBe("10.1.0.2");
     }
@@ -476,12 +481,14 @@ public sealed partial class HostedPagesTests : IAsyncDisposable
     [Fact]
     public async Task BrandingSettingsChangeTheLogoColoursAndNameOnThePages()
     {
-        using var browser = new HostedPagesBrowser(_host);
+        // The instance's branding is every other test's too.
+        await using var host = NewHost(new CapturedEmails());
+        using var browser = new HostedPagesBrowser(host);
         var standard = await browser.PageAsync("/account/login");
         standard.ShouldContain("<p>FluentCMS</p>");
         standard.ShouldContain($"--fcms-primary: {BrandingSettings.DefaultPrimaryColor};");
 
-        await using (var scope = _host.Services.CreateAsyncScope())
+        await using (var scope = host.Services.CreateAsyncScope())
         {
             using var operation = SystemOperation.Begin(scope.ServiceProvider.GetRequiredService<IOperationContextAccessor>(), Origin.Cli, new SiteId(DefaultSite.Id));
             await scope.ServiceProvider.GetRequiredService<ISettings<BrandingSettings>>().SetDefaultAsync(
@@ -513,15 +520,20 @@ public sealed partial class HostedPagesTests : IAsyncDisposable
 
     private static readonly Uri OAuthBase = HostedPagesBrowser.OAuthBase;
 
-    private static FluentCmsTestHost NewHost(CapturedEmails emails) => new FluentCmsTestHost()
+    // No worker drains the outbox: a test does, so that the activity rows are there when it reads them.
+    internal static FluentCmsTestHost NewHost(CapturedEmails emails) => new FluentCmsTestHost()
         .WithServices(services => services.AddSingleton<IEmailSender>(emails))
-        .Configure(cms => cms.Clients.Applications[ThirdPartyClientId] = new ClientRegistration
+        .Configure(cms =>
         {
-            DisplayName = "Agent Tool",
-            RedirectUris = { ThirdPartyRedirectUri },
-            PostLogoutRedirectUris = { ThirdPartySignedOutUri },
-            Scopes = { "openid", "profile", "management" },
-            RequireConsent = true,
+            cms.Jobs.Options.Queues[OutboxDrainJob.Queue] = 0;
+            cms.Clients.Applications[ThirdPartyClientId] = new ClientRegistration
+            {
+                DisplayName = "Agent Tool",
+                RedirectUris = { ThirdPartyRedirectUri },
+                PostLogoutRedirectUris = { ThirdPartySignedOutUri },
+                Scopes = { "openid", "profile", "management" },
+                RequireConsent = true,
+            };
         });
 
     private static async Task<TestUser> CreateUserAsync(FluentCmsTestHost host, string role = BuiltInRoles.EditorName)
@@ -562,24 +574,20 @@ public sealed partial class HostedPagesTests : IAsyncDisposable
     private static Dictionary<string, string?> Details(ActivityRow row) =>
         JsonSerializer.Deserialize<Dictionary<string, string?>>(row.Details ?? "{}")!;
 
-    private static async Task<List<ActivityRow>> ActivityAsync(FluentCmsTestHost host, string actionPrefix, int count)
+    // The rows once the outbox is delivered. On a shared host a test picks its own, by its users or addresses.
+    private static async Task<List<ActivityRow>> ActivityAsync(FluentCmsTestHost host, string actionPrefix, int count, Expression<Func<ActivityRow, bool>>? of = null)
     {
-        for (var attempt = 0; attempt < 50; attempt++)
+        while (await host.Services.GetRequiredService<OutboxDrainer>().DrainAsync(Token) > 0)
         {
-            await host.Services.GetRequiredService<OutboxDrainer>().DrainAsync(Token);
-            await using var scope = host.Services.CreateAsyncScope();
-            var rows = await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<ActivityRow>().AsNoTracking()
-                .Where(row => row.Action.StartsWith(actionPrefix))
-                .ToListAsync(Token);
-            if (rows.Count >= count)
-            {
-                return rows;
-            }
-
-            await Task.Delay(100, Token);
         }
 
-        throw new ShouldAssertException($"Fewer than {count} activity rows of {actionPrefix} were written.");
+        await using var scope = host.Services.CreateAsyncScope();
+        var rows = await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<ActivityRow>().AsNoTracking()
+            .Where(row => row.Action.StartsWith(actionPrefix))
+            .Where(of ?? (row => true))
+            .ToListAsync(Token);
+        rows.Count.ShouldBeGreaterThanOrEqualTo(count, $"activity rows of {actionPrefix}");
+        return rows;
     }
 
     // RFC 6238 with Identity's parameters: SHA-1, 30 second steps, six digits.
@@ -664,9 +672,20 @@ public sealed partial class HostedPagesTests : IAsyncDisposable
         }
     }
 
-    private sealed class CapturedEmails : IEmailSender
+    internal sealed class CapturedEmails : IEmailSender
     {
         public List<EmailMessage> Sent { get; } = [];
+
+        public int Count
+        {
+            get
+            {
+                lock (Sent)
+                {
+                    return Sent.Count;
+                }
+            }
+        }
 
         public Task SendAsync(EmailMessage message, CancellationToken cancellationToken = default)
         {

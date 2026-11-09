@@ -10,14 +10,13 @@ using static FluentCMS.Plugins.Media.Tests.Transforms;
 
 namespace FluentCMS.Plugins.Media.Tests;
 
-public sealed class MediaDeliveryTests
+public sealed class MediaDeliveryTests(MediaHost media) : IClassFixture<MediaHost>
 {
     private const string Delivery = "/api/delivery/v1/media";
 
     [Fact]
     public async Task TheDeliveryRouteReturnsTheMetadataInTheRequestLocaleWithSignedUrlsAndTheCacheHeadersOfContent()
     {
-        await using var media = new MediaHost();
         await media.AddLocaleAsync("fr");
         using var admin = await media.AdminAsync();
         using var anonymous = media.Host.CreateClient();
@@ -53,7 +52,6 @@ public sealed class MediaDeliveryTests
     [Fact]
     public async Task AnUpdateOfTheAssetEvictsTheCachedResponseAndAPresetChangeEvictsItAtOnce()
     {
-        await using var media = new MediaHost();
         using var admin = await media.AdminAsync();
         using var anonymous = media.Host.CreateClient();
         var asset = await UploadAsync(admin, Bands(8, 8), "bands.png");
@@ -69,7 +67,7 @@ public sealed class MediaDeliveryTests
         first["title"].ShouldBeNull();
         cached["title"].ShouldBeNull();
         evicted["title"]!.GetValue<string>().ShouldBe("Changed");
-        evicted["urls"]!["presets"]!.AsObject().Count.ShouldBe(0);
+        evicted["urls"]!["presets"]!.AsObject().ContainsKey("hero").ShouldBeFalse();
         withPreset["urls"]!["presets"]!["hero"]!.GetValue<string>().ShouldContain("preset=hero");
     }
 
@@ -93,7 +91,6 @@ public sealed class MediaDeliveryTests
     [Fact]
     public async Task APrivateAssetIsHiddenFromACallerWhoCannotReadItsFolderAndHasNoUrls()
     {
-        await using var media = new MediaHost();
         using var admin = await media.AdminAsync();
         using var anonymous = media.Host.CreateClient();
         var team = await FolderAsync(admin, "team");

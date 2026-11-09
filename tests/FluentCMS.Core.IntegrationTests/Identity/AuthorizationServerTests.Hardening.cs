@@ -194,13 +194,14 @@ public sealed partial class AuthorizationServerTests
     [Fact]
     public async Task TheDataProtectionKeyRingIsMadeOnFirstUseNotAtStart()
     {
-        _ = _host.Services;
-        DataProtectionKeys(_host).ShouldBe(0);
+        await using var host = NewHost();
+        _ = host.Services;
+        DataProtectionKeys(host).ShouldBe(0);
 
-        var editor = await _host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
-        await _host.SignInAsync(editor);
+        var editor = await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
+        await host.SignInAsync(editor);
 
-        DataProtectionKeys(_host).ShouldBeGreaterThan(0);
+        DataProtectionKeys(host).ShouldBeGreaterThan(0);
     }
 
     [Fact]
