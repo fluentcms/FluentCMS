@@ -25,6 +25,7 @@ internal static class SqlServerPool
 
     private static readonly ConcurrentBag<string> Migrated = [];
     private static readonly ConcurrentBag<string> Emptied = [];
+    private static readonly ConcurrentDictionary<Task, byte> Cleaning = new();
 
     private static string _templateSchema = "";
     private static string _reset = "";
@@ -68,6 +69,7 @@ internal static class SqlServerPool
         return name;
     }
 
+    // The rename ends the test's hold on the database at once; the test then goes on while the server cleans it up.
     public static void Release(string admin, string name)
     {
         var renamed = $"t_{Guid.NewGuid():N}";
@@ -77,17 +79,33 @@ internal static class SqlServerPool
             return;
         }
 
-        if (TryReset(admin, renamed))
+        var cleaning = Task.Factory.StartNew(() => CleanUp(admin, renamed), CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+        Cleaning.TryAdd(cleaning, 0);
+        cleaning.ContinueWith(done => Cleaning.TryRemove(done, out _), TaskScheduler.Default);
+    }
+
+    public static Task StopAsync() => Task.WhenAll(Cleaning.Keys);
+
+    private static void CleanUp(string admin, string name)
+    {
+        if (TryReset(admin, name))
         {
-            Migrated.Add(renamed);
+            Migrated.Add(name);
         }
-        else if (TryEmpty(admin, renamed))
+        else if (TryEmpty(admin, name))
         {
-            Emptied.Add(renamed);
+            Emptied.Add(name);
         }
         else
         {
-            Drop(admin, renamed);
+            try
+            {
+                Drop(admin, name);
+            }
+            catch (SqlException)
+            {
+                // Left on the server, which goes with the container.
+            }
         }
     }
 
