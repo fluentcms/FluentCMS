@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>Experimental: the PostgreSQL data provider for FluentCMS, not yet validated against a database. Storage conventions, JSON filters, job claiming and the system migrations.</Description>
+    <Description>The PostgreSQL data provider for FluentCMS: storage conventions, JSON filters, job claiming and the system migrations.</Description>
   </PropertyGroup>
 
   <ItemGroup>
