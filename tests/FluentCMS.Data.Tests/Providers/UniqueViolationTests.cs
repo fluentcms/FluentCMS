@@ -38,10 +38,10 @@ public class UniqueViolationTests
         command.ExecuteNonQuery();
     }
 
-    private static PostgresException PostgreSqlError(string sqlState) => new("duplicate key value", "ERROR", "ERROR", sqlState);
+    internal static PostgresException PostgreSqlError(string sqlState) => new("duplicate key value", "ERROR", "ERROR", sqlState);
 
     // SqlClient has no public way to make one, so this takes the internal path the driver itself uses.
-    private static SqlException SqlServerError(int number)
+    internal static SqlException SqlServerError(int number)
     {
         var constructor = typeof(SqlError).GetConstructors(BindingFlags.Instance | BindingFlags.NonPublic).MaxBy(candidate => candidate.GetParameters().Length)!;
         var arguments = constructor.GetParameters()

@@ -16,7 +16,7 @@ namespace FluentCMS.Data.Tests.Sites;
 
 public sealed class SiteTests : IDisposable
 {
-    private readonly TestDatabase _database = TestDatabase.Create();
+    private readonly TestDatabase _database = TestDatabase.Create(forSystemTables: true);
     private readonly ServiceProvider _services;
 
     public SiteTests()

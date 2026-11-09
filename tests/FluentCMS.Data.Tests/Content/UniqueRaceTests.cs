@@ -1,11 +1,15 @@
+using System.Data.Common;
 using FluentCMS.Content;
 using FluentCMS.Core.Content;
 using FluentCMS.Core.Sites;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Core.Tests.Schema;
+using FluentCMS.Data.Tests.Providers;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 using Shouldly;
 using Xunit;
 using static FluentCMS.Data.Tests.Content.ServiceDatabase;
@@ -66,13 +70,33 @@ public sealed class UniqueRaceTests : IDisposable
         (error.Path, error.Code).ShouldBe((path, code));
     }
 
+    // A failure names what each loser met, down to the database's own error.
     private static void ShouldHaveOneWinner(List<Exception?> outcomes, Action<Exception?> loser)
     {
-        outcomes.Count(outcome => outcome is null).ShouldBe(1);
+        var met = $"The losers met:{Environment.NewLine}{string.Join(Environment.NewLine, outcomes.OfType<Exception>().Select(Describe))}";
+        outcomes.Count(outcome => outcome is null).ShouldBe(1, met);
         foreach (var outcome in outcomes.Where(outcome => outcome is not null))
         {
-            loser(outcome);
+            try
+            {
+                loser(outcome);
+            }
+            catch (ShouldAssertException exception)
+            {
+                throw new ShouldAssertException($"{exception.Message}{Environment.NewLine}{met}", exception);
+            }
         }
+    }
+
+    private static string Describe(Exception outcome)
+    {
+        List<string> chain = [];
+        for (Exception? exception = outcome; exception is not null; exception = exception.InnerException)
+        {
+            chain.Add($"{exception.GetType().Name}: {exception.Message}");
+        }
+
+        return string.Join(" <- ", chain);
     }
 
     [Fact]
@@ -280,6 +304,104 @@ public sealed class UniqueRaceTests : IDisposable
         }));
 
         attempts.ShouldBe(2);
+        _database.Read(context => context.Documents.Count()).ShouldBe(0);
+    }
+
+    // The error a deadlock victim gets from the server of the run. SQLite serialises writers, so they never deadlock.
+    private static Exception Deadlock()
+    {
+        Assert.SkipWhen(TestProvider.IsSqlite, "SQLite serialises writers, so they never deadlock.");
+        return TestProvider.IsPostgreSql
+            ? UniqueViolationTests.PostgreSqlError(PostgresErrorCodes.DeadlockDetected)
+            : UniqueViolationTests.SqlServerError(1205);
+    }
+
+    // Fails the first read after a write commits with a deadlock, as another writer's transaction can.
+    private sealed class DeadlockAfterCommit(Exception deadlock) : DbCommandInterceptor, IEntryChangeSink
+    {
+        private int _armed;
+
+        public int Thrown { get; private set; }
+
+        public ValueTask PublishAsync(EntryChange change, CancellationToken cancellationToken)
+        {
+            Volatile.Write(ref _armed, 1);
+            return ValueTask.CompletedTask;
+        }
+
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
+        {
+            if (Interlocked.Exchange(ref _armed, 0) == 1)
+            {
+                Thrown++;
+                throw deadlock;
+            }
+
+            return ValueTask.FromResult(result);
+        }
+    }
+
+    // The write has committed when its response is read, so a deadlock that read loses does not turn it into a failure.
+    [Fact]
+    public async Task AWriteWhoseResponseReadDeadlocksSucceedsWithTheResponse()
+    {
+        var afterCommit = new DeadlockAfterCommit(Deadlock());
+        using var database = new ServiceDatabase(cms =>
+        {
+            cms.Services.AddSingleton<IEntryChangeSink>(afterCommit);
+            cms.Services.ConfigureDbContext<CmsDbContext>(options => options.AddInterceptors(afterCommit));
+        });
+
+        var created = await database.CreateAsync(Editor, new() { ["title"] = "Hello" });
+
+        afterCommit.Thrown.ShouldBe(1);
+        created["title"].ShouldBe("Hello");
+        database.Read(context => context.Documents.Count()).ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task AWriteThatDeadlocksRunsAgainUntilItCommits()
+    {
+        var deadlock = Deadlock();
+        var attempts = 0;
+
+        var id = await _database.AsAsync(Editor, async services =>
+        {
+            var service = services.GetRequiredService<ContentService>();
+            return await service.InTransactionAsync(
+                async () =>
+                {
+                    var created = await service.CreateAsync("article", new() { ["title"] = $"Attempt {++attempts}" }, Token);
+                    return attempts <= ContentService.DeadlockReruns ? throw deadlock : IdOf(created);
+                },
+                Token);
+        });
+
+        attempts.ShouldBe(ContentService.DeadlockReruns + 1);
+        _database.Read(context => context.Documents.Select(document => document.DocumentId).ToList()).ShouldBe([id]);
+    }
+
+    [Fact]
+    public async Task AWriteThatKeepsDeadlockingFailsWithTheDeadlock()
+    {
+        var deadlock = Deadlock();
+        var attempts = 0;
+
+        var thrown = await Should.ThrowAsync<Exception>(() => _database.AsAsync(Editor, async services =>
+        {
+            var service = services.GetRequiredService<ContentService>();
+            return await service.InTransactionAsync<bool>(
+                async () =>
+                {
+                    attempts++;
+                    await service.CreateAsync("article", new() { ["title"] = "Again" }, Token);
+                    throw deadlock;
+                },
+                Token);
+        }));
+
+        thrown.ShouldBeSameAs(deadlock);
+        attempts.ShouldBe(ContentService.DeadlockReruns + 1);
         _database.Read(context => context.Documents.Count()).ShouldBe(0);
     }
 

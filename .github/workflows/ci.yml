@@ -164,18 +164,18 @@ jobs:
   data-tests:
     name: Data tests (${{ matrix.provider }})
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ matrix.timeout || 20 }}
+    timeout-minutes: 20
     strategy:
       fail-fast: false
+      # The tests start each server in a container through Testcontainers. SQLite and PostgreSQL run in every run. SQL Server
+      # 2025 runs on pushes to main, on pull requests from feature/* branches and where FULL_TESTS holds (the nightly and
+      # manual runs); SQL Server 2019 runs only where FULL_TESTS holds.
       matrix:
-        provider: [sqlite]
-        # The tests start each server in a container through Testcontainers.
-        include:
-          - provider: postgresql
-          - provider: sqlserver-2019
-            timeout: 45
-          - provider: sqlserver-2025
-            timeout: 45
+        provider: >-
+          ${{ fromJSON(
+          (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '["sqlite", "postgresql", "sqlserver-2019", "sqlserver-2025"]'
+          || (github.event_name == 'push' || startsWith(github.head_ref, 'feature/')) && '["sqlite", "postgresql", "sqlserver-2025"]'
+          || '["sqlite", "postgresql"]') }}
     env:
       FLUENTCMS_TEST_PROVIDER: ${{ matrix.provider }}
     steps:

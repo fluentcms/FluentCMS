@@ -18,7 +18,9 @@ internal abstract class TestDatabase : IDisposable
 {
     public abstract string ConnectionString { get; }
 
-    public static TestDatabase Create() => TestProvider.IsSqlite ? new SqliteFileDatabase() : DatabaseServer.NewDatabase();
+    // forSystemTables: the test applies the system migrations first, which on SQL Server the database then already holds.
+    public static TestDatabase Create(bool forSystemTables = false) =>
+        TestProvider.IsSqlite ? new SqliteFileDatabase() : DatabaseServer.NewDatabase(forSystemTables);
 
     // The provider as a host registers it.
     public abstract void UseProvider(FluentCmsBuilder cms);
