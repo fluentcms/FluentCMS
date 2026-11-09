@@ -176,7 +176,7 @@ PostgreSQL 15:
 
 | Item | Result |
 | --- | --- |
-| `jsonb` filters and GIN indexes | Verified. Equality is `jsonb` containment (`@>`), which keeps the JSON type, and block presence reads `jsonb_array_elements`. The content migrations create the GIN index of an `[Indexed]` JSON field; whether the planner uses it was not measured. |
+| `jsonb` filters and GIN indexes | Verified. Equality is `jsonb` containment (`@>`), which keeps the JSON type, and block presence reads `jsonb_array_elements`. An `[Indexed]` JSON field gets a GIN index, which the PostgreSQL migration script carries (`Providers/OfflineProviderTests`); whether the planner uses it was not measured. |
 | Partial unique indexes | Enforced, races included. The compiler inlines `state` (spec 4.4), so a query names the predicate of the index as written. Plans were not read on PostgreSQL. |
 | Migrations | Verified. Every test database is built by the system migrations, and the content migrations are scaffolded, compiled and applied for PostgreSQL. |
 | `SKIP LOCKED` claiming | Verified by the job runner, failure and lease tests, two runners included. |

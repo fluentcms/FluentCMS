@@ -93,13 +93,13 @@ FLUENTCMS_TEST_PROVIDER=postgresql dotnet test --project tests/FluentCMS.Data.Te
 
 The S3 and Azure Blob media storage tests run MinIO and Azurite through Testcontainers and need Docker with Linux containers; without it they are skipped, and the test output says why.
 
-To run a host on PostgreSQL, or media on S3, `compose.yaml` starts PostgreSQL 15 and MinIO at the versions the tests use, on `localhost` only, with their data in volumes. It is for development, not production. The passwords default to `fluentcms`; set `FLUENTCMS_POSTGRES_PASSWORD` and `FLUENTCMS_MINIO_PASSWORD` to change them.
+To run a host on PostgreSQL, or media on S3, `compose.yaml` starts PostgreSQL 15 and MinIO at the versions the tests use, on `localhost` only, with their data in volumes. It is for development, not production. The passwords default to `fluentcms`; set `FLUENTCMS_POSTGRES_PASSWORD` and `FLUENTCMS_MINIO_PASSWORD` to change them. PostgreSQL takes its password when it creates the volume, so set it before the first start or delete the volume.
 
 ```bash
 docker compose up -d
 ```
 
-The reference host then runs on PostgreSQL with `FluentCms__Database__Provider=PostgreSql`, `ConnectionStrings__FluentCms=Host=localhost;Database=fluentcms;Username=fluentcms;Password=fluentcms` and `FluentCms__Database__MigrateOnStartup=true`. MinIO answers S3 on `http://localhost:9000` and serves its console on `http://localhost:9001`, where you create the bucket that `media.UseS3` names (`ForcePathStyle` true). `docker compose down` stops both and keeps the data; add `-v` to delete it.
+The reference host then runs on PostgreSQL with `FluentCms__Database__Provider=PostgreSql`, `ConnectionStrings__FluentCms=Host=127.0.0.1;Database=fluentcms;Username=fluentcms;Password=fluentcms` and `FluentCms__Database__MigrateOnStartup=true`. The reference host keeps media on the local disk; a host of your own that calls `media.UseS3` can use MinIO, which answers S3 on `http://127.0.0.1:9000` (`ForcePathStyle` true) and serves its console on `http://127.0.0.1:9001`, where you create the bucket. `docker compose down` stops both and keeps the data; add `-v` to delete it.
 
 During implementation, run the test project or test class affected by the change. Before opening an issue pull request, into a feature branch or `main`, run the fast checks once:
 

@@ -38,7 +38,7 @@ internal sealed class ContentModelBuilder(SchemaModel schema, IStorageConvention
 
             // PostgreSQL wants the partition key in every unique key of a partitioned table. Last, so that the reads and
             // deletes by document_id alone still seek it.
-            string[] site = type.Scope == ContentScope.Global ? [] : [StorageNames.SiteId];
+            var site = Scope(type, hasLocale: false);
             if (hasLocale)
             {
                 entity.Property<string>(StorageNames.Locale).HasMaxLength(StorageNames.LocaleLength).IsRequired();
