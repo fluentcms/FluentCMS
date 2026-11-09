@@ -57,9 +57,12 @@ public sealed class DatabaseServer : IAsyncLifetime
         _adminConnectionString = _container.GetConnectionString();
 
         // SQL Server's way of not flushing: a commit does not wait for the log. Every database it creates takes it from model.
+        // READ_COMMITTED_SNAPSHOT is on in every database, as the system migrations leave it (ADR 0005), so that a reused
+        // database is the same as a new one; SqlServerSnapshotTests turn it off to test the migration that turns it on.
         if (TestProvider.IsSqlServer)
         {
             Run(new SqlConnection(_adminConnectionString), "ALTER DATABASE model SET DELAYED_DURABILITY = FORCED");
+            Run(new SqlConnection(_adminConnectionString), "ALTER DATABASE model SET READ_COMMITTED_SNAPSHOT ON");
             SqlServerPool.Start(_adminConnectionString);
         }
     }

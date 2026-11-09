@@ -190,7 +190,8 @@ SQL Server 2019 and 2025:
 | 2019 versus 2025 JSON | `nvarchar(max)` on both; see [SQL Server JSON](#sql-server-json). |
 | Filtered unique indexes | Enforced on both, with `IS NOT NULL` for a nullable column (spec 4.3). Plans were not read. |
 | Migrations | Verified on both. One SQL Server set serves both versions. |
-| `READPAST` claiming | Verified. Under `UPDLOCK, READPAST` the claim is an ordered seek of `ix_cms_job_claim` with no sort, so a claimer stops at the first row it can lock (`Jobs/JobClaimPlanTests`). |
+| `READPAST` claiming | Verified. Under `UPDLOCK, READPAST` the claim is an ordered seek of `ix_cms_job_claim` with no sort, so a claimer stops at the first row it can lock (`Jobs/JobClaimPlanTests`). It keeps both hints with `READ_COMMITTED_SNAPSHOT` on. |
+| Reads | `READ_COMMITTED_SNAPSHOT` is on, so reads take no locks, as on PostgreSQL. The system migrations turn it on ([ADR 0005](0005-sql-server-read-committed-snapshot.md)). |
 | `uniqueidentifier` and `datetimeoffset` | Generated keys are sequential ([SQL Server keys](#sql-server-keys)), and the paging tests take the provider's own id order. `datetimeoffset` is written in UTC and to the microsecond. |
 
 Across providers:
@@ -214,6 +215,7 @@ Still not verified:
 - **A `DateTimeOffset` is kept to the microsecond on every provider.** `timestamptz` keeps microseconds, so a value did not round-trip to the tick on PostgreSQL. `StorageConventions.Configure`, which every context applies, cuts each `DateTimeOffset` to the microsecond in front of the provider's own converter, on SQLite and SQL Server as well, so a value reads back the same everywhere. Values written with raw SQL, such as leases, go through the same cut (`StorageConventions.ToMicroseconds`).
 - **A lease has ended once `lease_until <= now`.** Npgsql cuts a parameter to the microsecond, so with `<` a lease stayed taken one tick after it ended. The job queue, the outbox, the distributed lock and the three claim dialects use `<=`.
 - **SQL Server has no native `json` in 1.0**, as [SQL Server JSON](#sql-server-json) records.
+- **SQL Server reads row versions.** Its locking reads deadlocked with writes, so the system migrations turn `READ_COMMITTED_SNAPSHOT` on, as [ADR 0005](0005-sql-server-read-committed-snapshot.md) records.
 
 ## SQL Server keys
 
