@@ -259,7 +259,17 @@ internal static class SqlServerPool
             script.Append(table.Reseed is not null ? $" SET IDENTITY_INSERT [{table.Name}] ON;{insert} SET IDENTITY_INSERT [{table.Name}] OFF;" : insert);
         }
 
-        return script.Append(" COMMIT;").ToString();
+        // A new database has no plans and no statistics yet. Plans and statistics left by earlier tests would plan this
+        // test's queries for their rows instead.
+        return script.Append("""
+             COMMIT;
+            DECLARE @statistics nvarchar(max) = N'';
+            SELECT @statistics += N'UPDATE STATISTICS ' + QUOTENAME(OBJECT_SCHEMA_NAME(s.object_id)) + N'.' + QUOTENAME(OBJECT_NAME(s.object_id)) + N' (' + QUOTENAME(s.name) + N') WITH FULLSCAN;'
+            FROM sys.stats s JOIN sys.tables t ON t.object_id = s.object_id
+            WHERE t.is_ms_shipped = 0 AND STATS_DATE(s.object_id, s.stats_id) IS NOT NULL;
+            EXEC sp_executesql @statistics;
+            ALTER DATABASE SCOPED CONFIGURATION CLEAR PROCEDURE_CACHE;
+            """).ToString();
     }
 
     // Every object, column, index, constraint, type and schema a test could have changed, without the names SQL Server
