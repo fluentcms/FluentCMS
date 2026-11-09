@@ -114,9 +114,9 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 20
     env:
-      # Issue pull requests run only the fast tests on Windows. Feature-branch pull requests,
-      # pushes to main, nightly and manual runs keep the full Windows suite.
-      FULL_TESTS: ${{ github.event_name != 'pull_request' || startsWith(github.head_ref, 'feature/') }}
+      # Pull requests and pushes to main run only the fast tests on Windows, because the Linux shards
+      # already run the full suite. Only the nightly and manual runs run the full suite on Windows.
+      FULL_TESTS: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -235,3 +235,29 @@ jobs:
           path: artifacts/packages
           if-no-files-found: error
           retention-days: 7
+
+  # Nobody watches the nightly run, which is the only one that runs the full Windows suite, so a failure opens an issue.
+  nightly-report:
+    name: Report nightly failure
+    needs: [markdown, build, test, build-test-windows, data-tests, pack]
+    if: failure() && github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Open or update the nightly failure issue
+        shell: bash
+        run: |
+          title="Nightly CI failed"
+          body="The scheduled CI run failed: $RUN_URL"
+          number=$(gh issue list --state open --search "\"$title\" in:title" --json number,title --jq "[.[] | select(.title == \"$title\")][0].number // empty")
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body "$body"
+          else
+            gh issue create --title "$title" --body "$body"
+          fi
