@@ -288,7 +288,8 @@ public sealed class PluginContributionTests(PluginContributionFixture fixture) :
     [Fact]
     public async Task ThePluginsSettingsAreReadAndWrittenThroughTheirArea()
     {
-        var host = fixture.Host;
+        // The settings are read before any write, at their first version.
+        await using var host = new FluentCmsTestHost();
         var key = await host.CreateApiKeyAsync(ApiKeyClass.Management, BuiltInRoles.SuperAdminName, cancellationToken: Token);
         using var client = host.AsKey(key);
         var area = new Uri("/api/management/v1/settings/sample", UriKind.Relative);

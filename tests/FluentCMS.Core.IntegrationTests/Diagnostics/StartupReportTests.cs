@@ -311,11 +311,18 @@ public sealed class StartupReportTests(CmsWebHosts webHosts, NoteHostFixture fix
         var report = holder.Current;
         holder.Set(null);
 
-        using var response = await host.AsKey(key).GetAsync(new Uri("/api/management/v1/system/diagnostics", UriKind.Relative), Token);
-        holder.Set(report);
+        try
+        {
+            using var response = await host.AsKey(key).GetAsync(new Uri("/api/management/v1/system/diagnostics", UriKind.Relative), Token);
 
-        response.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
-        (await Code(response)).ShouldBe("FCMS3106");
+            response.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
+            (await Code(response)).ShouldBe("FCMS3106");
+        }
+        finally
+        {
+            // The other tests of the class read the report of this host.
+            holder.Set(report);
+        }
     }
 
     [Fact]
@@ -327,10 +334,16 @@ public sealed class StartupReportTests(CmsWebHosts webHosts, NoteHostFixture fix
         var report = holder.Current;
         holder.Set(null);
 
-        using var response = await host.AsKey(editor).GetAsync(new Uri("/api/management/v1/system/diagnostics", UriKind.Relative), Token);
-        holder.Set(report);
+        try
+        {
+            using var response = await host.AsKey(editor).GetAsync(new Uri("/api/management/v1/system/diagnostics", UriKind.Relative), Token);
 
-        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+            response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        }
+        finally
+        {
+            holder.Set(report);
+        }
     }
 
     [Fact]

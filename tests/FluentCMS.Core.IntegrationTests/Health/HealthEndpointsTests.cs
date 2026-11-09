@@ -89,6 +89,9 @@ public sealed class HealthEndpointsTests(NoteHostFixture fixture) : IClassFixtur
         ready.StatusCode.ShouldBe(HttpStatusCode.ServiceUnavailable);
         (await ready.Content.ReadAsStringAsync(Token)).ShouldBe("Unhealthy");
         live.StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        // Back up, so that the host stops as it would after an outage.
+        outage.Down = false;
     }
 
     [Fact]

@@ -330,8 +330,8 @@ public sealed class FluentCmsTestHostTests(NoteHostFixture fixture) : IClassFixt
         {
         }
 
-        var items = (await actor.RunAsync<IActivityQuery, PagedResult<ActivityItem>>(query => query.QueryAsync(null, null, Token))).Items;
-        var item = items.Where(item => item.ActorId == editor.Id).ShouldHaveSingleItem();
+        var items = (await actor.RunAsync<IActivityQuery, PagedResult<ActivityItem>>(query => query.QueryAsync(new ActivityFilter { ActorId = editor.Id }, null, Token))).Items;
+        var item = items.ShouldHaveSingleItem();
         item.Action.ShouldBe("content.draft_saved");
         item.ActorId.ShouldBe(editor.Id);
         item.Origin.ShouldBe(Origin.Admin);
