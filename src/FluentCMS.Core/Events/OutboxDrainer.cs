@@ -359,7 +359,10 @@ internal sealed class OutboxDrainer(
             return;
         }
 
-        _ = run.ContinueWith(
+        // Its token is cancelled here, before its delivery is settled, since the timer of its own limit can fire after the
+        // cut-off on a busy machine.
+        var told = attempt.CancelAsync();
+        _ = Task.WhenAll(run, told).ContinueWith(
             async ended =>
             {
                 if (ended.Exception?.InnerException is { } exception and not OperationCanceledException)

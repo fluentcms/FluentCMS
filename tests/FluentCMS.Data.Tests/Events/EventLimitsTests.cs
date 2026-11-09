@@ -418,11 +418,15 @@ public sealed class EventLimitsTests
     {
         var seen = new Seen();
         var logs = new RecordingLogs();
+        var clock = new ManualTimeProvider(JobFixture.Start);
+        var timeout = TimeSpan.FromMilliseconds(200);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var stopped = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         seen.Behavior = async (_, _) =>
         {
             try
             {
+                entered.TrySetResult();
                 await Task.Delay(Timeout.Infinite, seen.Tokens.Last());
             }
             finally
@@ -432,19 +436,23 @@ public sealed class EventLimitsTests
         };
         using var database = new ServiceDatabase(EventRegistrations.With(seen, cms =>
         {
+            cms.Services.AddSingleton<TimeProvider>(clock);
             cms.Services.AddSingleton<ILoggerProvider>(logs);
             cms.Events.AddHandler<Ping, PingHandler>();
-            cms.Events.Handlers.Timeout = TimeSpan.FromMilliseconds(200);
+            cms.Events.Handlers.Timeout = timeout;
         }));
 
-        await database.AsAsync(Editor, async services =>
+        var publish = database.AsAsync(Editor, async services =>
         {
             await services.GetRequiredService<IEventBus>().PublishAsync(new Ping("hangs"), Token);
             return true;
-        }).WaitAsync(TimeSpan.FromSeconds(10), Token);
-        await stopped.Task.WaitAsync(TimeSpan.FromSeconds(10), Token);
+        });
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(30), Token);
+        await Eventually.CompletesAsync(publish, () => clock.Advance(timeout));
 
+        // Cancelled at the cut-off, before the publish goes on.
         seen.Tokens.Single().IsCancellationRequested.ShouldBeTrue();
+        await stopped.Task.WaitAsync(TimeSpan.FromSeconds(10), Token);
         logs.Count("HandlerAbandoned").ShouldBe(1);
         logs.Count("AbandonedHandlerFailed").ShouldBe(0);
     }
