@@ -19,7 +19,7 @@ public sealed class RoleTests : IDisposable
     private static readonly Guid SiteA = Guid.Parse("0192e0a0-0000-7000-8000-0000000000a1");
     private static readonly Guid SiteB = Guid.Parse("0192e0a0-0000-7000-8000-0000000000b2");
 
-    private readonly TestDatabase _database = TestDatabase.Create();
+    private readonly TestDatabase _database = TestDatabase.Create(forSystemTables: true);
     private readonly ServiceProvider _services;
 
     public RoleTests()
