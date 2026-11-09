@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Net;
 using System.Threading.RateLimiting;
 using FluentCMS.Core.Api.Common;
@@ -10,12 +9,11 @@ namespace FluentCMS.Core.Tests.Api.Common;
 public sealed class TokenBucketLimiterTests
 {
     private readonly ClockProvider _time = new();
-    private readonly ConcurrentDictionary<string, TokenBucketLimiter> _owner = new();
 
     [Fact]
     public void ALimiterGrantsItsLimitAtOnceAndThenOnePermitPerShareOfTheMinute()
     {
-        var limiter = Create("a", limit: 2);
+        var limiter = Create(limit: 2);
 
         limiter.AttemptAcquire().IsAcquired.ShouldBeTrue();
         limiter.AttemptAcquire().IsAcquired.ShouldBeTrue();
@@ -40,7 +38,7 @@ public sealed class TokenBucketLimiterTests
     [Fact]
     public void ABurstAtTheTurnOfAMinuteIsNotLetThroughTwice()
     {
-        var limiter = Create("a", limit: 60);
+        var limiter = Create(limit: 60);
         _time.Advance(TimeSpan.FromSeconds(59));
 
         Enumerable.Range(0, 60).Count(_ => limiter.AttemptAcquire().IsAcquired).ShouldBe(60);
@@ -54,7 +52,7 @@ public sealed class TokenBucketLimiterTests
     [Fact]
     public void TheBucketFillsAgainOverAMinuteAndHoldsNoMoreThanTheLimit()
     {
-        var limiter = Create("a", limit: 3);
+        var limiter = Create(limit: 3);
         Enumerable.Range(0, 3).Count(_ => limiter.AttemptAcquire().IsAcquired).ShouldBe(3);
 
         _time.Advance(TokenBucketLimiter.Window * 5);
@@ -66,7 +64,7 @@ public sealed class TokenBucketLimiterTests
     [Fact]
     public void AClockThatMovesBackKeepsTheBucketAsItWas()
     {
-        var limiter = Create("a", limit: 1);
+        var limiter = Create(limit: 1);
         limiter.AttemptAcquire().IsAcquired.ShouldBeTrue();
 
         _time.Advance(TimeSpan.FromHours(-1));
@@ -80,7 +78,7 @@ public sealed class TokenBucketLimiterTests
     [Fact]
     public void AskingForNoPermitsSaysWhetherOneIsThere()
     {
-        var limiter = Create("a", limit: 1);
+        var limiter = Create(limit: 1);
 
         limiter.AttemptAcquire(0).IsAcquired.ShouldBeTrue();
         limiter.Remaining.ShouldBe(1);
@@ -89,9 +87,26 @@ public sealed class TokenBucketLimiterTests
     }
 
     [Fact]
+    public void ABucketRecordsWhatItHoldsAfterCountingTheRequestThatNamedTheRecord()
+    {
+        var limiter = Create(limit: 2);
+        var granted = new RateLimitRecord();
+        var refused = new RateLimitRecord();
+
+        TokenBucketLimiter.RecordNextAcquireIn(granted);
+        limiter.AttemptAcquire().IsAcquired.ShouldBeTrue();
+        limiter.AttemptAcquire().IsAcquired.ShouldBeTrue();
+        TokenBucketLimiter.RecordNextAcquireIn(refused);
+        limiter.AttemptAcquire().IsAcquired.ShouldBeFalse();
+
+        granted.State.ShouldBe(new RateLimitState(Limit: 2, Remaining: 1, SecondsToReset: 30));
+        refused.State.ShouldBe(new RateLimitState(Limit: 2, Remaining: 0, SecondsToReset: 60));
+    }
+
+    [Fact]
     public void ALimiterIsNotIdleUntilItsBucketIsFullAndIsIdleForTheTimeSince()
     {
-        var limiter = Create("a", limit: 2);
+        var limiter = Create(limit: 2);
         limiter.AttemptAcquire();
 
         limiter.IdleDuration.ShouldBeNull();
@@ -104,54 +119,20 @@ public sealed class TokenBucketLimiterTests
     }
 
     [Fact]
-    public async Task DisposeAsyncReleasesTheLimiterBecauseThatIsHowAnIdlePartitionIsDisposed()
-    {
-        var limiter = Create("a", limit: 1);
-
-        await limiter.DisposeAsync();
-
-        _owner.ShouldBeEmpty();
-    }
-
-    [Fact]
-    public void DisposeReleasesTheLimiter()
-    {
-        var limiter = Create("a", limit: 1);
-
-        limiter.Dispose();
-
-        _owner.ShouldBeEmpty();
-    }
-
-    [Fact]
-    public void AReplacedLimiterIsNotRemovedByTheOldOnesDisposal()
-    {
-        var old = Create("a", limit: 1);
-        var current = Create("a", limit: 1);
-
-        old.Dispose();
-
-        _owner["a"].ShouldBeSameAs(current);
-    }
-
-    [Fact]
     public async Task APartitionedLimiterReleasesAnIdlePartitionOnceItsBucketIsFull()
     {
         var released = new Releases(3);
         using var partitioned = PartitionedRateLimiter.Create<string, string>(key =>
-            RateLimitPartition.Get(key, name => new Releasing(Create(name, limit: 1), released)));
+            RateLimitPartition.Get(key, _ => new Releasing(Create(limit: 1), released)));
         foreach (var key in new[] { "a", "b", "c" })
         {
             partitioned.AttemptAcquire(key).Dispose();
         }
 
-        _owner.Count.ShouldBe(3);
         _time.Advance(TokenBucketLimiter.Window + TimeSpan.FromMinutes(1));
 
         // The partitioned limiter looks for idle partitions every few seconds on its own timer.
         await released.All.Task.WaitAsync(TimeSpan.FromSeconds(40), TestContext.Current.CancellationToken);
-
-        _owner.ShouldBeEmpty();
     }
 
     [Theory]
@@ -175,12 +156,7 @@ public sealed class TokenBucketLimiterTests
         ClientAddress.Partition(null).ShouldBe("unknown");
     }
 
-    private TokenBucketLimiter Create(string key, int limit)
-    {
-        var limiter = new TokenBucketLimiter(key, limit, _time, _owner);
-        _owner[key] = limiter;
-        return limiter;
-    }
+    private TokenBucketLimiter Create(int limit) => new(limit, _time);
 
     private sealed class Releases(int partitions)
     {

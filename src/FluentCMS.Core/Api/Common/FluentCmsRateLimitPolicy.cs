@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
@@ -16,11 +15,11 @@ internal static class RateLimitPolicyNames
 }
 
 // One policy of the ASP.NET Core rate limiter, a token bucket per caller. Responses carry the IETF draft fields
-// RateLimit-Limit, RateLimit-Remaining and RateLimit-Reset (seconds until the bucket is full), and a refused request also
-// Retry-After (seconds until the next request is let through).
+// RateLimit-Limit, RateLimit-Remaining and RateLimit-Reset (seconds until the bucket is full), as the bucket was right after
+// it counted the request, and a refused request also Retry-After (seconds until the next request is let through). They are
+// not read from the bucket when the response starts, since the partitioned limiter may have disposed it by then.
 internal abstract class FluentCmsRateLimitPolicy : IRateLimiterPolicy<string>
 {
-    private readonly ConcurrentDictionary<string, TokenBucketLimiter> _limiters = new();
     private readonly object _stateKey = new();
     private readonly object _countedKey = new();
     private readonly TimeProvider _time;
@@ -33,7 +32,7 @@ internal abstract class FluentCmsRateLimitPolicy : IRateLimiterPolicy<string>
         DefaultLimit = defaultLimit;
         _time = time;
         _reportsHeaders = reportsHeaders;
-        _createDefault = key => Create(key, defaultLimit);
+        _createDefault = _ => new TokenBucketLimiter(defaultLimit, time);
         _writeHeaders = WriteHeaders;
     }
 
@@ -51,11 +50,7 @@ internal abstract class FluentCmsRateLimitPolicy : IRateLimiterPolicy<string>
             return RateLimitPartition.GetNoLimiter(key);
         }
 
-        if (httpContext.Items.TryAdd(_stateKey, key) && _reportsHeaders)
-        {
-            httpContext.Response.OnStarting(_writeHeaders, httpContext);
-        }
-
+        TokenBucketLimiter.RecordNextAcquireIn(_reportsHeaders ? Record(httpContext) : null);
         return RateLimitPartition.Get(key, limit == DefaultLimit ? _createDefault : Factory(limit));
     }
 
@@ -67,24 +62,32 @@ internal abstract class FluentCmsRateLimitPolicy : IRateLimiterPolicy<string>
     protected static string Address(HttpContext context) => ApiCaller.Address(context);
 
     // Apart from GetPartition, whose every call would otherwise allocate the closure.
-    private Func<string, RateLimiter> Factory(int limit) => key => Create(key, limit);
+    private Func<string, RateLimiter> Factory(int limit) => _ => new TokenBucketLimiter(limit, _time);
 
-    private TokenBucketLimiter Create(string key, int limit)
+    // The rate limiter asks again for the partition of a request it refused, to wait for a permit, and the request keeps
+    // the one record.
+    private RateLimitRecord Record(HttpContext context)
     {
-        var limiter = new TokenBucketLimiter(key, limit, _time, _limiters);
-        _limiters[key] = limiter;
-        return limiter;
+        if (context.Items.TryGetValue(_stateKey, out var known))
+        {
+            return (RateLimitRecord)known!;
+        }
+
+        var record = new RateLimitRecord();
+        context.Items[_stateKey] = record;
+        context.Response.OnStarting(_writeHeaders, context);
+        return record;
     }
 
     private Task WriteHeaders(object state)
     {
         var context = (HttpContext)state;
-        if (context.Items.TryGetValue(_stateKey, out var key) && _limiters.TryGetValue((string)key!, out var limiter))
+        if (context.Items.TryGetValue(_stateKey, out var record) && record is RateLimitRecord { State: { } bucket })
         {
             var headers = context.Response.Headers;
-            headers["RateLimit-Limit"] = limiter.Limit.ToString(CultureInfo.InvariantCulture);
-            headers["RateLimit-Remaining"] = limiter.Remaining.ToString(CultureInfo.InvariantCulture);
-            headers["RateLimit-Reset"] = limiter.SecondsToReset.ToString(CultureInfo.InvariantCulture);
+            headers["RateLimit-Limit"] = bucket.Limit.ToString(CultureInfo.InvariantCulture);
+            headers["RateLimit-Remaining"] = bucket.Remaining.ToString(CultureInfo.InvariantCulture);
+            headers["RateLimit-Reset"] = bucket.SecondsToReset.ToString(CultureInfo.InvariantCulture);
         }
 
         return Task.CompletedTask;
@@ -94,19 +97,10 @@ internal abstract class FluentCmsRateLimitPolicy : IRateLimiterPolicy<string>
     {
         var http = context.HttpContext;
 
-        int seconds;
-        if (http.Items.TryGetValue(_stateKey, out var key) && _limiters.TryGetValue((string)key!, out var limiter))
-        {
-            seconds = limiter.SecondsToRetry;
-        }
-        else if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
-        {
-            seconds = Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds));
-        }
-        else
-        {
-            seconds = (int)TokenBucketLimiter.Window.TotalSeconds;
-        }
+        // The bucket that refused the request says when the next one is let through.
+        var seconds = context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter)
+            ? Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds))
+            : (int)TokenBucketLimiter.Window.TotalSeconds;
 
         http.Response.Headers.RetryAfter = seconds.ToString(CultureInfo.InvariantCulture);
         await ProblemWriter.WriteAsync(
