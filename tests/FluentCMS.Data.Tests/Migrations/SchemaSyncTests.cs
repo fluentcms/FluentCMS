@@ -1,3 +1,5 @@
+using System.Data.Common;
+using System.Threading.Channels;
 using FluentCMS.Core.DependencyInjection;
 using FluentCMS.Core.Diagnostics;
 using FluentCMS.Core.Storage;
@@ -9,6 +11,7 @@ using FluentCMS.Data.Tests.Providers;
 using FluentCMS.Data.Tests.Sqlite;
 using FluentCMS.Providers;
 using FluentCMS.Schema;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -262,15 +265,22 @@ public sealed class SchemaSyncTests : IDisposable
     [SqliteFact("schema sync, which only SQLite supports")]
     public async Task ASyncWaitsForAnotherNodeAndAppliesOnlyWhatIsStillMissing()
     {
-        using var host = DevelopmentHost(ArticleSchemas.Titled);
+        var reads = new LockReads();
+        using var host = _database.CreateHost(
+            ArticleSchemas.Titled,
+            Environments.Development,
+            configure: cms => cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(reads)));
         await host.StartAsync(Token);
 
         Task<SchemaSyncReport> sync;
         await using (var other = await host.Services.GetRequiredService<IDistributedLock>().TryAcquireAsync(MigrationRunner.SchemaSyncLock, TimeSpan.Zero, Token))
         {
             other.ShouldNotBeNull();
+            reads.Watching = true;
             sync = Runner(host).SyncContentSchemaAsync(ArticleSchemas.WithSubtitle, Token);
-            await Task.Delay(TimeSpan.FromSeconds(1), Token);
+
+            // Two reads of the lock's row: the sync found the lock held, waited, and looked again.
+            await reads.NextAsync(2);
             sync.IsCompleted.ShouldBeFalse();
 
             // The node that holds the lock adds the column, which the waiting one would otherwise add a second time.
@@ -414,6 +424,35 @@ public sealed class SchemaSyncTests : IDisposable
             {
                 _messages.Add(formatter(state, exception));
             }
+        }
+    }
+
+    // Signals each read of the row of the schema sync lock, which a node waiting for the lock repeats while another holds it.
+    private sealed class LockReads : DbCommandInterceptor
+    {
+        private readonly Channel<bool> _reads = Channel.CreateUnbounded<bool>();
+
+        public volatile bool Watching;
+
+        public async Task NextAsync(int count)
+        {
+            for (var read = 0; read < count; read++)
+            {
+                await _reads.Reader.ReadAsync(Token).AsTask().WaitAsync(TimeSpan.FromSeconds(30), Token);
+            }
+        }
+
+        public override ValueTask<DbDataReader> ReaderExecutedAsync(DbCommand command, CommandExecutedEventData eventData, DbDataReader result, CancellationToken cancellationToken = default)
+        {
+            if (Watching
+                && command.CommandText.TrimStart().StartsWith("SELECT", StringComparison.OrdinalIgnoreCase)
+                && command.CommandText.Contains("\"cms_lock\"", StringComparison.Ordinal)
+                && command.Parameters.Cast<DbParameter>().Any(parameter => Equals(parameter.Value, MigrationRunner.SchemaSyncLock)))
+            {
+                _reads.Writer.TryWrite(true);
+            }
+
+            return ValueTask.FromResult(result);
         }
     }
 }

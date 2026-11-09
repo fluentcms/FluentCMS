@@ -323,13 +323,7 @@ public sealed class TrashPurgeJobTests
         await service.StartAsync(Token);
         scheduler.Added.ShouldBe(0);
 
-        for (var tick = 0; tick < 200 && scheduler.Added == 0; tick++)
-        {
-            clock.Advance(TimeSpan.FromSeconds(30));
-            await Task.Delay(10, Token);
-        }
-
-        await service.ExecuteTask!.WaitAsync(TimeSpan.FromSeconds(10), Token);
+        await Eventually.CompletesAsync(service.ExecuteTask!, () => clock.Advance(TimeSpan.FromSeconds(30)));
         await service.StopAsync(Token);
 
         scheduler.Added.ShouldBe(1);

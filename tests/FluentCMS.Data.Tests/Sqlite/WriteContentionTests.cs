@@ -1,8 +1,10 @@
+using System.Data.Common;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Data.Tests.Providers;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 using Xunit;
@@ -21,11 +23,12 @@ public abstract class WriteContentionTests : IDisposable
 
     private readonly SqliteFileDatabase _database;
     private readonly ServiceProvider _services;
+    private readonly Commits _commits = new();
 
     protected WriteContentionTests(bool writeAheadLog)
     {
         _database = new SqliteFileDatabase(writeAheadLog);
-        _services = _database.CreateServices();
+        _services = _database.CreateServices(configure: cms => cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(_commits)));
         using var scope = _services.CreateScope();
         scope.ServiceProvider.GetRequiredService<SystemDbContext>().Database.Migrate();
 
@@ -58,9 +61,10 @@ public abstract class WriteContentionTests : IDisposable
             command.ExecuteScalar();
         }
 
+        // The reader lets go once the save is committing, which in the rollback journal waits for it.
         var release = Task.Run(async () =>
         {
-            await Task.Delay(500, TestContext.Current.CancellationToken);
+            await _commits.Committing.WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken);
             transaction.Commit();
         }, TestContext.Current.CancellationToken);
 
@@ -106,23 +110,48 @@ public abstract class WriteContentionTests : IDisposable
         _database.ReadStrings("select name from cms_site where is_default = 1").ShouldBe(["Renamed"]);
     }
 
+    private sealed class Commits : DbTransactionInterceptor
+    {
+        private readonly TaskCompletionSource _committing = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task Committing => _committing.Task;
+
+        public override ValueTask<InterceptionResult> TransactionCommittingAsync(DbTransaction transaction, TransactionEventData eventData, InterceptionResult result, CancellationToken cancellationToken = default)
+        {
+            _committing.TrySetResult();
+            return ValueTask.FromResult(result);
+        }
+    }
+
     // Two readers, each holding the database for 100 ms and starting 50 ms after the other, so that there is always one.
+    // These waits are the load under test: Microsoft.Data.Sqlite retries a busy statement on the real clock, so readers that
+    // keep coming have to hold the database for real time.
     private sealed class Readers : IDisposable
     {
         private readonly CancellationTokenSource _stop = new();
+        private readonly CountdownEvent _reading = new(2);
         private readonly Task[] _loops;
 
         public Readers(string connectionString)
         {
             _loops = [Loop(connectionString, TimeSpan.Zero), Loop(connectionString, TimeSpan.FromMilliseconds(50))];
-            Thread.Sleep(200);
+            try
+            {
+                _reading.Wait(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken).ShouldBeTrue();
+            }
+            catch
+            {
+                Dispose();
+                throw;
+            }
         }
 
         public void Dispose()
         {
             _stop.Cancel();
-            Task.WaitAll(_loops);
+            Task.WaitAll(_loops.Where(loop => !loop.IsFaulted).ToArray());
             _stop.Dispose();
+            _reading.Dispose();
         }
 
         private Task Loop(string connectionString, TimeSpan offset) => Task.Run(async () =>
@@ -130,6 +159,7 @@ public abstract class WriteContentionTests : IDisposable
             await Task.Delay(offset);
             using var connection = new SqliteConnection(connectionString);
             connection.Open();
+            var first = true;
             while (!_stop.IsCancellationRequested)
             {
                 using var transaction = connection.BeginTransaction(deferred: true);
@@ -137,6 +167,12 @@ public abstract class WriteContentionTests : IDisposable
                 command.Transaction = transaction;
                 command.CommandText = "SELECT count(*) FROM cms_job";
                 command.ExecuteScalar();
+                if (first)
+                {
+                    first = false;
+                    _reading.Signal();
+                }
+
                 await Task.Delay(100);
                 transaction.Commit();
             }

@@ -1,11 +1,14 @@
 namespace FluentCMS.Data.Tests.Jobs;
 
-// A clock that moves only when a test says so, and fires the timers that fall due as it moves.
+// A clock that moves only when a test says so, and fires the timers that fall due as it moves. Elapsed time is measured on
+// it too.
 internal sealed class ManualTimeProvider(DateTimeOffset start) : TimeProvider
 {
     private readonly Lock _lock = new();
     private readonly List<ManualTimer> _timers = [];
     private DateTimeOffset _now = start;
+
+    public override long TimestampFrequency => TimeSpan.TicksPerSecond;
 
     public override DateTimeOffset GetUtcNow()
     {
@@ -14,6 +17,8 @@ internal sealed class ManualTimeProvider(DateTimeOffset start) : TimeProvider
             return _now;
         }
     }
+
+    public override long GetTimestamp() => GetUtcNow().UtcTicks;
 
     public void Advance(TimeSpan by)
     {

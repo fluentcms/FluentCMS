@@ -237,7 +237,7 @@ The spike project was a throwaway. #2736 deleted it after the real provider test
 
 | Finding | Tests now |
 | --- | --- |
-| Property bags: round trip, omitted columns, one-column update, per-schema model, build time | `Storage/ContentRowTests`, `Storage/ContentModelTests`, `Storage/ModelCacheTests`, `Storage/ModelBuildTimeTests` |
+| Property bags: round trip, omitted columns, one-column update, per-schema model, a model of 50 types | `Storage/ContentRowTests`, `Storage/ContentModelTests`, `Storage/ModelCacheTests`, `Storage/LargeModelTests` |
 | JSON filters: block presence, scalar paths, containment, type-aware comparison, one-level paths, malformed JSON | `Query/JsonFilterTests`, `Sqlite/ConventionsTests`, `Query/FilterTests`, `Query/CompiledSqlTests` |
 | JSON block filter is a full scan | `Storage/QueryPlanTests` |
 | Partial unique indexes: enforced, scoped by site and locale, global types, empty locale | `Storage/ContentRowTests`, `Storage/ContentModelTests`, `Storage/SystemModelTests` |
