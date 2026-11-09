@@ -12,13 +12,11 @@ using static FluentCMS.Plugins.Media.Tests.Transforms;
 
 namespace FluentCMS.Plugins.Media.Tests;
 
-public sealed class MediaReplaceTests
+public sealed class MediaReplaceTests(PostHost media) : IClassFixture<PostHost>
 {
     [Fact]
     public async Task AReplaceKeepsTheIdMetadataAndReferencesAndTheNextTransformServesTheNewFile()
     {
-        await using var media = new MediaHost();
-        media.Host.WithContentTypes<Post, Secret>();
         using var admin = await media.AdminAsync();
         using var anonymous = media.Host.CreateClient();
         var asset = await UploadAsync(admin, Bands(40, 20), "bands.png");
@@ -39,7 +37,7 @@ public sealed class MediaReplaceTests
         using var after = await FetchAsync(anonymous, url);
         using var served = Decode((await ImageAsync(after)).Bytes);
         await media.DrainOutboxAsync();
-        var activity = (await GetAsync(admin, "/api/management/v1/activity?targetType=media&action=media.replaced"))["items"]!.AsArray();
+        var activity = (await GetAsync(admin, $"/api/management/v1/activity?targetType=media&targetId={asset.Id:D}&action=media.replaced"))["items"]!.AsArray();
 
         Id(replaced).ShouldBe(asset.Id);
         replaced["fileName"]!.GetValue<string>().ShouldBe("blue.png");
@@ -59,7 +57,6 @@ public sealed class MediaReplaceTests
     [Fact]
     public async Task AReplaceRunsTheChecksOfAnUploadAndLeavesTheAssetAsItWas()
     {
-        await using var media = new MediaHost();
         using var admin = await media.AdminAsync();
         var asset = await UploadAsync(admin, Bands(8, 8), "bands.png");
         using var reader = await media.ClientWithAsync(admin, new { permission = "media.read" });

@@ -11,7 +11,7 @@ using static FluentCMS.Plugins.Webhooks.Tests.WebhookTesting;
 
 namespace FluentCMS.Plugins.Webhooks.Tests;
 
-public sealed class WebhookQueueTests
+public sealed class WebhookQueueTests(WebhookFixture hosts) : IClassFixture<WebhookFixture>
 {
     private static readonly TimeSpan Patience = TimeSpan.FromSeconds(30);
 
@@ -39,7 +39,7 @@ public sealed class WebhookQueueTests
     {
         await using var receiver = await TestReceiver.StartAsync();
         receiver.Status = 500;
-        await using var host = Host();
+        var host = await hosts.HostAsync();
         using var client = await AdminAsync(host);
         var webhook = await CreateAsync(client, new { name = "builds", url = receiver.Url().ToString(), events = new List<string> { "content.published" } });
         var articles = host.As(await host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token)).Content<Article>();
@@ -53,7 +53,7 @@ public sealed class WebhookQueueTests
         (await RunNextAsync(host, WebhookDeliveryJob.Queue)).ShouldBeTrue();
 
         var root = $"/api/management/v1/webhooks/{Id(webhook):D}";
-        var first = (await DeliveriesAsync(host))[0];
+        var first = (await DeliveriesAsync(host, Id(webhook)))[0];
         using (await client.PostAsync(new Uri($"{root}/deliveries/{first.DeliveryId:D}/redeliver", UriKind.Relative), null, Token))
         using (await client.PostAsync(new Uri($"{root}/ping", UriKind.Relative), null, Token))
         {
@@ -132,9 +132,9 @@ public sealed class WebhookQueueTests
     {
         await using var receiver = await TestReceiver.StartAsync();
         receiver.Hold();
-        await using var host = Host();
+        var host = await hosts.HostAsync();
         using var client = await AdminAsync(host);
-        await CreateAsync(client, new { name = "slow", url = receiver.Url().ToString(), events = new List<string> { "content.published" } });
+        var webhook = Id(await CreateAsync(client, new { name = "slow", url = receiver.Url().ToString(), events = new List<string> { "content.published" } }));
         var articles = host.As(await host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token)).Content<Article>();
         await articles.PublishAsync((await articles.CreateAsync(new Article { Title = "One" }, Token)).Id, cancellationToken: Token);
         await articles.PublishAsync((await articles.CreateAsync(new Article { Title = "Two" }, Token)).Id, cancellationToken: Token);
@@ -145,7 +145,7 @@ public sealed class WebhookQueueTests
         waited.ShouldBeTrue();
         await receiver.Entered.WaitAsync(Patience, Token);
         receiver.Requests.Count.ShouldBe(1);
-        var pending = (await DeliveriesAsync(host)).ShouldHaveSingleItem();
+        var pending = (await DeliveriesAsync(host, webhook)).ShouldHaveSingleItem();
         pending.State.ShouldBe(DeliveryStates.Pending);
 
         receiver.Release();
@@ -160,7 +160,7 @@ public sealed class WebhookQueueTests
 
         receiver.Requests.Count.ShouldBe(2);
         receiver.MostOpen.ShouldBe(1);
-        var deliveries = await DeliveriesAsync(host);
+        var deliveries = await DeliveriesAsync(host, webhook);
         deliveries.Count.ShouldBe(2);
         deliveries.ShouldAllBe(delivery => delivery.State == DeliveryStates.Succeeded);
         deliveries.Select(delivery => delivery.DeliveryId).Distinct().Count().ShouldBe(2);
@@ -172,7 +172,7 @@ public sealed class WebhookQueueTests
         await using var slow = await TestReceiver.StartAsync();
         slow.Hold();
         await using var fast = await TestReceiver.StartAsync();
-        await using var host = Host();
+        var host = await hosts.HostAsync();
         using var client = await AdminAsync(host);
         await CreateAsync(client, new { name = "slow", url = slow.Url().ToString(), events = new List<string> { "content.published" } });
         await CreateAsync(client, new { name = "fast", url = fast.Url().ToString(), events = new List<string> { "content.published" } });

@@ -27,8 +27,7 @@ namespace FluentCMS.Core.IntegrationTests.Api;
 
 // The protections that depend on how the host is set up: which authentication schemes it has, what limits it already set,
 // and whether it called UseFluentCms at all.
-[Xunit.Collection(ProcessEnvironment.Collection)]
-public sealed class HttpProtectionHardeningTests : IAsyncDisposable
+public sealed class HttpProtectionHardeningTests(CmsWebHosts hosts) : IClassFixture<CmsWebHosts>, IAsyncDisposable
 {
     private const string DeliveryPath = "/api/delivery/v1/probe";
 
@@ -504,12 +503,27 @@ public sealed class HttpProtectionHardeningTests : IAsyncDisposable
         return client.SendAsync(request, Token);
     }
 
+    // A rate limit counts what each test sends, and the authentication calls are counted too, so only a host with neither
+    // limits nor schemes of its own is shared.
     private async Task<HttpClient> Start(
         Dictionary<string, string?>? settings = null,
         Action<IServiceCollection>? authentication = null,
         Action<WebApplication>? pipeline = null)
     {
-        var app = _host.Build(
+        var shared = authentication is null && pipeline is null && settings?.Keys.Any(key => key.StartsWith("FluentCms:RateLimits:", StringComparison.Ordinal)) != true;
+        _app = shared
+            ? await hosts.StartAsync(CmsWebHosts.SetUp(Environments.Development, settings), host => StartAsync(host, settings, null, null))
+            : await StartAsync(_host, settings, authentication, pipeline);
+        return _app.GetTestClient();
+    }
+
+    private static async Task<WebApplication> StartAsync(
+        CmsWebHost host,
+        Dictionary<string, string?>? settings,
+        Action<IServiceCollection>? authentication,
+        Action<WebApplication>? pipeline)
+    {
+        var app = host.Build(
             Environments.Development,
             settings,
             builder =>
@@ -568,9 +582,8 @@ public sealed class HttpProtectionHardeningTests : IAsyncDisposable
                 app.MapGet("/page", () => "page").AsHostedPages();
             }));
 
-        _app = app;
         await app.StartAsync(Token);
-        return app.GetTestClient();
+        return app;
     }
 
     private sealed record Payload(string Text);

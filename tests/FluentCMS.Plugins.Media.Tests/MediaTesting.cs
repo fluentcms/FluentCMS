@@ -22,16 +22,22 @@ using Xunit;
 namespace FluentCMS.Plugins.Media.Tests;
 
 // A host whose local storage is a directory of its own, removed with it, and whose job runner has no workers, so that a
-// test runs the outbox itself.
-internal sealed class MediaHost : IAsyncDisposable
+// test runs the outbox itself. The tests of a class share one, each with assets, folders, presets and keys of its own.
+public class MediaHost : IAsyncDisposable
 {
     public const string Root = "/api/management/v1/media";
 
     private readonly DirectoryInfo _directory = Directory.CreateTempSubdirectory("fluentcms-media-");
 
     public MediaHost()
+        : this([])
+    {
+    }
+
+    internal MediaHost(params Type[] contentTypes)
     {
         Host = new FluentCmsTestHost()
+            .WithContentTypes(contentTypes)
             .WithServices(services => services.PostConfigure<MediaOptions>(options => options.Local.Root = _directory.FullName))
             .Configure(cms =>
             {
@@ -60,18 +66,19 @@ internal sealed class MediaHost : IAsyncDisposable
         return Host.AsKey(await Host.CreateApiKeyAsync(ApiKeyClass.Management, name, cancellationToken: Token));
     }
 
-    public async Task ConfigureAsync(Action<MediaSettings> change)
+    // The tests of a host share the default site's media settings, so a change lasts until the result is disposed.
+    public async Task<IAsyncDisposable> ConfigureAsync(Action<MediaSettings> change)
     {
-        await using var scope = Services.CreateAsyncScope();
-        var services = scope.ServiceProvider;
-        using (SystemOperation.Begin(services.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, new SiteId(DefaultSite.Id)))
+        var before = await SetSettingsAsync(current =>
         {
-            var media = services.GetRequiredService<ISettings<MediaSettings>>();
-            var current = await media.GetAsync(new SiteId(DefaultSite.Id), Token);
             change(current);
-            await media.SetAsync(new SiteId(DefaultSite.Id), current, Token);
-        }
+            return current;
+        });
+        return new SettingsRestore(this, before);
     }
+
+    // A name of the test's own, since a folder or preset name is taken once in a site.
+    public static string Unique(string name) => $"{name}-{Guid.NewGuid():N}";
 
     public async Task AddLocaleAsync(string code)
     {
@@ -111,6 +118,7 @@ internal sealed class MediaHost : IAsyncDisposable
     {
         await Host.DisposeAsync();
         _directory.Delete(recursive: true);
+        GC.SuppressFinalize(this);
     }
 
     public static async Task<HttpResponseMessage> UploadAsync(HttpClient client, Guid? folderId, params (string Name, byte[] Bytes)[] files)
@@ -164,7 +172,32 @@ internal sealed class MediaHost : IAsyncDisposable
         JsonNode.Parse(await response.Content.ReadAsStringAsync(Token))?["code"]?.GetValue<string>();
 
     public static Guid Id(JsonNode node, string name = "id") => Guid.Parse(node[name]!.GetValue<string>());
+
+    // Writes the settings that the function makes of the current ones, and returns the ones before.
+    private async Task<MediaSettings> SetSettingsAsync(Func<MediaSettings, MediaSettings> change)
+    {
+        await using var scope = Services.CreateAsyncScope();
+        var services = scope.ServiceProvider;
+        using (SystemOperation.Begin(services.GetRequiredService<IOperationContextAccessor>(), Origin.Seed, new SiteId(DefaultSite.Id)))
+        {
+            var media = services.GetRequiredService<ISettings<MediaSettings>>();
+            var before = await media.GetAsync(new SiteId(DefaultSite.Id), Token);
+            await media.SetAsync(new SiteId(DefaultSite.Id), change(await media.GetAsync(new SiteId(DefaultSite.Id), Token)), Token);
+            return before;
+        }
+    }
+
+    private sealed class SettingsRestore(MediaHost media, MediaSettings before) : IAsyncDisposable
+    {
+        public async ValueTask DisposeAsync() => await media.SetSettingsAsync(_ => before);
+    }
 }
+
+// The media host with the types whose fields hold media, for the media field tests.
+public sealed class StoryHost() : MediaHost(typeof(Story), typeof(BannerBlock));
+
+// The media host with types whose entries refer to assets by rows written straight into cms_reference.
+public sealed class PostHost() : MediaHost(typeof(Post), typeof(Secret));
 
 // Files that carry the headers of their format, enough for detection and for the image size, and nothing else.
 internal static class Files

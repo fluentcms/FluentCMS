@@ -11,8 +11,7 @@ using Xunit;
 
 namespace FluentCMS.Core.IntegrationTests.Hosting;
 
-[Xunit.Collection(ProcessEnvironment.Collection)]
-public sealed class ReverseProxyTests : IAsyncDisposable
+public sealed class ReverseProxyTests(CmsWebHosts hosts) : IClassFixture<CmsWebHosts>, IAsyncDisposable
 {
     private const string Proxy = "10.0.0.1";
     private const string Section = "FluentCms:ReverseProxy:";
@@ -362,9 +361,19 @@ public sealed class ReverseProxyTests : IAsyncDisposable
         return await response.Content.ReadAsStringAsync(Token);
     }
 
+    // A test that names a host starts that one; a rate limit counts what each test sends, so a host with one is the test's
+    // alone. Any other set-up is shared.
     private async Task<HttpClient> Start(string environment, Dictionary<string, string?>? settings = null, CmsWebHost? host = null)
     {
-        var app = (host ?? _host).Build(
+        var app = host is null && settings?.Keys.Any(key => key.StartsWith("FluentCms:RateLimits:", StringComparison.Ordinal)) != true
+            ? await hosts.StartAsync(CmsWebHosts.SetUp(environment, settings), shared => StartAsync(shared, environment, settings))
+            : await StartAsync(host ?? _host, environment, settings);
+        return app.GetTestClient();
+    }
+
+    private static async Task<WebApplication> StartAsync(CmsWebHost host, string environment, Dictionary<string, string?>? settings)
+    {
+        var app = host.Build(
             environment,
             settings,
             builder =>
@@ -394,7 +403,7 @@ public sealed class ReverseProxyTests : IAsyncDisposable
             });
 
         await app.StartAsync(Token);
-        return app.GetTestClient();
+        return app;
     }
 
     private static class HeaderNames

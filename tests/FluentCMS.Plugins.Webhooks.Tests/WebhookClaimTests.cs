@@ -13,7 +13,7 @@ using static FluentCMS.Plugins.Webhooks.Tests.WebhookTesting;
 
 namespace FluentCMS.Plugins.Webhooks.Tests;
 
-public sealed class WebhookClaimTests
+public sealed class WebhookClaimTests(WebhookFixture hosts) : IClassFixture<WebhookFixture>
 {
     private static readonly TimeSpan Patience = TimeSpan.FromSeconds(30);
 
@@ -64,7 +64,7 @@ public sealed class WebhookClaimTests
     {
         await using var receiver = await TestReceiver.StartAsync();
         receiver.Hold();
-        await using var host = Host();
+        var host = await hosts.HostAsync();
         using var client = await AdminAsync(host);
         var webhook = Id(await CreateAsync(client, new { name = "builds", url = receiver.Url().ToString(), events = new List<string> { "content.published" } }));
         var attempt = new WebhookAttempt(webhook, Guid.CreateVersion7(), Guid.CreateVersion7(), "content.published", 1, Manual: false, """{"id":1}""");
@@ -87,7 +87,7 @@ public sealed class WebhookClaimTests
         (await RunDueJobsAsync(host)).ShouldBe(1);
 
         receiver.Requests.Count.ShouldBe(1);
-        var row = (await DeliveriesAsync(host)).ShouldHaveSingleItem();
+        var row = (await DeliveriesAsync(host, webhook)).ShouldHaveSingleItem();
         (row.DeliveryId, row.Attempt, row.State).ShouldBe((attempt.DeliveryId, 1, DeliveryStates.Succeeded));
     }
 
@@ -95,7 +95,7 @@ public sealed class WebhookClaimTests
     public async Task AnAbandonedClaimIsTakenOverAndItsDeliveryGoesOn()
     {
         await using var receiver = await TestReceiver.StartAsync();
-        await using var host = Host();
+        var host = await hosts.HostAsync();
         using var client = await AdminAsync(host);
         var webhook = Id(await CreateAsync(client, new { name = "builds", url = receiver.Url().ToString(), events = new List<string> { "content.published" } }));
         var crashed = await ClaimAsync(host, webhook, manual: false);
@@ -113,7 +113,7 @@ public sealed class WebhookClaimTests
         (await RunDueJobsAsync(host)).ShouldBe(1);
         var request = receiver.Requests.ShouldHaveSingleItem();
         request.Headers[WebhookSender.DeliveryHeader].ShouldNotBe(crashed.DeliveryId.ToString("D"));
-        var taken = (await DeliveriesAsync(host)).Single(delivery => delivery.Id == crashed.Id);
+        var taken = (await DeliveriesAsync(host, webhook)).Single(delivery => delivery.Id == crashed.Id);
         (taken.State, taken.Error).ShouldBe((DeliveryStates.Failed, WebhookDeliveryJob.Interrupted));
         taken.NextRetryAt.ShouldNotBeNull();
 
@@ -124,7 +124,7 @@ public sealed class WebhookClaimTests
         receiver.Requests.Count.ShouldBe(2);
         receiver.Requests[1].Headers[WebhookSender.DeliveryHeader].ShouldBe(crashed.DeliveryId.ToString("D"));
         receiver.Requests[1].Body.ShouldBe(crashed.RequestBody);
-        var deliveries = await DeliveriesAsync(host);
+        var deliveries = await DeliveriesAsync(host, webhook);
         deliveries.Where(delivery => delivery.DeliveryId == crashed.DeliveryId).Select(delivery => (delivery.Attempt, delivery.State))
             .ShouldBe([(1, DeliveryStates.Failed), (2, DeliveryStates.Succeeded)]);
         deliveries.ShouldNotContain(delivery => delivery.State == DeliveryStates.Pending);
@@ -134,7 +134,7 @@ public sealed class WebhookClaimTests
     public async Task AnAbandonedPingIsDeadAndNotTriedAgain()
     {
         await using var receiver = await TestReceiver.StartAsync();
-        await using var host = Host();
+        var host = await hosts.HostAsync();
         using var client = await AdminAsync(host);
         var webhook = Id(await CreateAsync(client, new { name = "builds", url = receiver.Url().ToString(), events = new List<string> { "content.published" } }));
         var crashed = await ClaimAsync(host, webhook, manual: true);
@@ -147,7 +147,7 @@ public sealed class WebhookClaimTests
         (await RunDueJobsAsync(host)).ShouldBe(0);
 
         receiver.Requests.ShouldHaveSingleItem().Headers[WebhookSender.EventHeader].ShouldBe("ping");
-        var taken = (await DeliveriesAsync(host)).Single(delivery => delivery.Id == crashed.Id);
+        var taken = (await DeliveriesAsync(host, webhook)).Single(delivery => delivery.Id == crashed.Id);
         (taken.State, taken.Error, taken.NextRetryAt).ShouldBe((DeliveryStates.Dead, WebhookDeliveryJob.Interrupted, (DateTimeOffset?)null));
     }
 

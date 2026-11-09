@@ -29,8 +29,8 @@ public sealed partial class HostedPagesTests
     [Fact]
     public async Task AFirstSignInThroughAGenericOidcProviderCreatesTheUserWithTheDefaultRoleAndTheHostIssuesAToken()
     {
-        using var idp = new FakeOidcProvider();
-        await using var host = SsoHost(idp);
+        var (idp, host) = (_idp, _sso);
+        var tokenRequests = idp.TokenRequests;
         using var browser = new HostedPagesBrowser(host, "10.3.0.1");
         var request = AuthorizeRequest.For(FluentCmsTestHost.OAuthClientId, FluentCmsTestHost.OAuthRedirectUri);
 
@@ -42,7 +42,7 @@ public sealed partial class HostedPagesTests
         callback.Headers.Location!.OriginalString.ShouldStartWith("/account/external-login?");
         using var done = await browser.FollowAsync(callback);
         var tokens = await request.ExchangeAsync(host, done);
-        idp.TokenRequests.ShouldBe(1);
+        idp.TokenRequests.ShouldBe(tokenRequests + 1);
 
         var user = await LinkedUserAsync(host, Corp, ada.Subject);
         user.Email.ShouldBe("ada@corp.example");
@@ -60,8 +60,8 @@ public sealed partial class HostedPagesTests
         }
 
         // Each action is awaited on its own: the rows of one prefix arrive in any order.
-        (await ActivityAsync(host, "user.created", count: 1)).Single().TargetId.ShouldBe(user.Id.ToString("D"));
-        var logins = await ActivityAsync(host, "user.login_succeeded", count: 2);
+        (await ActivityAsync(host, "user.created", count: 1, of: row => row.TargetId == user.Id.ToString("D"))).ShouldHaveSingleItem();
+        var logins = await ActivityAsync(host, "user.login_succeeded", count: 2, of: row => row.Ip == "10.3.0.1");
         logins.ShouldAllBe(row => row.TargetId == user.Id.ToString("D") && row.Ip == "10.3.0.1");
         logins.Count(row => Details(row)["method"] == LoginMethods.External).ShouldBe(2);
     }
@@ -243,10 +243,9 @@ public sealed partial class HostedPagesTests
     [Fact]
     public async Task AnAddressThatBelongsToAUserNotLinkedToTheProviderIsNotTakenOver()
     {
-        using var idp = new FakeOidcProvider();
-        await using var host = SsoHost(idp);
+        var (idp, host) = (_idp, _sso);
         var editor = await CreateUserAsync(host);
-        using var browser = new HostedPagesBrowser(host);
+        using var browser = new HostedPagesBrowser(host, "10.3.2.1");
 
         // Even an address the provider verified, without LinkExistingUsers.
         using var back = await SignInWithProviderAsync(browser, idp, FakeIdentity.Of(editor.Email) with { EmailVerified = true });
@@ -261,7 +260,7 @@ public sealed partial class HostedPagesTests
             (await users.GetLoginsAsync((await users.FindByIdAsync(editor.Id.ToString()))!)).ShouldBeEmpty();
         }
 
-        var failed = (await ActivityAsync(host, "user.login_failed", count: 1)).Single();
+        var failed = (await ActivityAsync(host, "user.login_failed", count: 1, of: row => row.Ip == "10.3.2.1")).Single();
         Details(failed)["method"].ShouldBe(LoginMethods.External);
         Details(failed)["reason"].ShouldBe(LoginFailureReasons.NotAllowed);
         failed.TargetId.ShouldBeNull();
@@ -270,9 +269,8 @@ public sealed partial class HostedPagesTests
     [Fact]
     public async Task AnAddressTheProviderHasNotVerifiedCreatesNoUser()
     {
-        using var idp = new FakeOidcProvider();
-        await using var host = SsoHost(idp);
-        using var browser = new HostedPagesBrowser(host);
+        var (idp, host) = (_idp, _sso);
+        using var browser = new HostedPagesBrowser(host, "10.3.2.2");
 
         using var back = await SignInWithProviderAsync(browser, idp, FakeIdentity.Of("someone-else@corp.example") with { EmailVerified = false });
         using var page = await browser.FollowAsync(back);
@@ -283,7 +281,7 @@ public sealed partial class HostedPagesTests
             (await scope.ServiceProvider.GetRequiredService<CmsUserManager>().FindByEmailAsync("someone-else@corp.example")).ShouldBeNull();
         }
 
-        Details((await ActivityAsync(host, "user.login_failed", count: 1)).Single())["reason"].ShouldBe(LoginFailureReasons.NotAllowed);
+        Details((await ActivityAsync(host, "user.login_failed", count: 1, of: row => row.Ip == "10.3.2.2")).Single())["reason"].ShouldBe(LoginFailureReasons.NotAllowed);
     }
 
     [Fact]
@@ -309,8 +307,8 @@ public sealed partial class HostedPagesTests
     [Fact]
     public async Task AProviderErrorGoesBackToTheLoginPageAsAFailedSignIn()
     {
-        using var idp = new FakeOidcProvider();
-        await using var host = SsoHost(idp);
+        var (idp, host) = (_idp, _sso);
+        var tokenRequests = idp.TokenRequests;
         using var browser = new HostedPagesBrowser(host, "10.3.0.5");
         var request = AuthorizeRequest.For(FluentCmsTestHost.OAuthClientId, FluentCmsTestHost.OAuthRedirectUri);
 
@@ -323,9 +321,9 @@ public sealed partial class HostedPagesTests
         query["Status"].ToString().ShouldBe("external-failed");
         query["ReturnUrl"].ToString().ShouldBe(request.Url);
         (await browser.PageAsync(login)).ShouldContain("did not complete");
-        idp.TokenRequests.ShouldBe(0);
+        idp.TokenRequests.ShouldBe(tokenRequests);
 
-        var failed = (await ActivityAsync(host, "user.login_failed", count: 1)).Single();
+        var failed = (await ActivityAsync(host, "user.login_failed", count: 1, of: row => row.Ip == "10.3.0.5")).Single();
         Details(failed)["method"].ShouldBe(LoginMethods.External);
         failed.Ip.ShouldBe("10.3.0.5");
     }
@@ -414,7 +412,10 @@ public sealed partial class HostedPagesTests
     }
 
     private FluentCmsTestHost SsoHost(FakeOidcProvider idp, Action<SsoProvider>? configure = null, bool disableLocalLogin = false) =>
-        NewHost(_emails)
+        SsoHost(_emails, idp, configure, disableLocalLogin);
+
+    internal static FluentCmsTestHost SsoHost(CapturedEmails emails, FakeOidcProvider idp, Action<SsoProvider>? configure = null, bool disableLocalLogin = false) =>
+        NewHost(emails)
             .WithServices(services =>
             {
                 services.PostConfigure<RateLimitOptions>(limits => limits.Auth.PermitLimit = 10_000);

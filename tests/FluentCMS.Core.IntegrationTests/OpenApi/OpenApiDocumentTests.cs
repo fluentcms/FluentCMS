@@ -66,7 +66,6 @@ public sealed class BlogOpenApiFixture : IAsyncLifetime
     }
 }
 
-[Xunit.Collection(ProcessEnvironment.Collection)]
 public sealed class OpenApiDocumentTests(BlogOpenApiFixture fixture) : IClassFixture<BlogOpenApiFixture>
 {
     private const string Management = "/api/management/v1";

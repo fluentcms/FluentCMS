@@ -19,7 +19,7 @@ public sealed partial class HostedPagesTests
     [Fact]
     public async Task AnAdminWhoSignedInWithASecondFactorResetsAnotherUsersTwoFactorAndEndsItsSessions()
     {
-        await using var host = TwoFactorHost();
+        var host = _host;
         var admin = await CreateUserAsync(host, BuiltInRoles.SuperAdminName);
         var (adminKey, _) = await EnableTwoFactorAsync(host, admin);
         using var asAdmin = (await SignInWithSecondFactorAsync(host, admin, adminKey, "10.2.9.1")).Client;
@@ -66,7 +66,7 @@ public sealed partial class HostedPagesTests
             authorize.Headers.Location!.OriginalString.ShouldStartWith("/account/enable-two-factor?ReturnUrl=");
         }
 
-        var row = (await ActivityAsync(host, "user.two_factor_reset", count: 1)).ShouldHaveSingleItem();
+        var row = (await ActivityAsync(host, "user.two_factor_reset", count: 1, of: row => row.TargetId == user.Id.ToString("D"))).ShouldHaveSingleItem();
         row.TargetType.ShouldBe("user");
         row.TargetId.ShouldBe(user.Id.ToString("D"));
         row.ActorId.ShouldBe(admin.Id);
@@ -77,7 +77,7 @@ public sealed partial class HostedPagesTests
     [Fact]
     public async Task AResetIsRefusedWithoutASecondFactorWithoutReachOverTheUsersRolesAndOnOneself()
     {
-        await using var host = TwoFactorHost();
+        var host = _host;
         var admin = await CreateUserAsync(host, BuiltInRoles.SuperAdminName);
         var (adminKey, _) = await EnableTwoFactorAsync(host, admin);
         using var withSecondFactor = (await SignInWithSecondFactorAsync(host, admin, adminKey, "10.2.10.1")).Client;

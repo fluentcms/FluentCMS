@@ -1,4 +1,5 @@
 using FluentCMS.Core.Caching;
+using FluentCMS.Core.IntegrationTests.Testing;
 using FluentCMS.Core.Storage;
 using FluentCMS.Core.Storage.Entities;
 using FluentCMS.Providers;
@@ -21,14 +22,15 @@ public sealed class DistributedLockTests : IAsyncDisposable
     private static readonly TimeSpan Patience = TimeSpan.FromSeconds(30);
 
     private readonly DirectoryInfo _directory = Directory.CreateTempSubdirectory("fluentcms-lock-");
+    private readonly CommandSignals _commands = CommandSignals.OfLock(Name);
     private readonly FluentCmsTestHost _first;
     private readonly FluentCmsTestHost _second;
 
     public DistributedLockTests()
     {
         var file = Path.Combine(_directory.FullName, "cms.db");
-        _first = new FluentCmsTestHost().UseSqlite(file);
-        _second = new FluentCmsTestHost().UseSqlite(file);
+        _first = Watched(new FluentCmsTestHost().UseSqlite(file), _commands);
+        _second = Watched(new FluentCmsTestHost().UseSqlite(file), _commands);
     }
 
     public async ValueTask DisposeAsync()
@@ -74,8 +76,11 @@ public sealed class DistributedLockTests : IAsyncDisposable
         var winner = attempts.Single(held => held is not null)!;
         var other = attempts[0] is null ? first : second;
 
+        _commands.Reads.Forget();
         var waiting = other.TryAcquireAsync(Name, Patience, Token);
-        await Task.Delay(TimeSpan.FromMilliseconds(300), Token);
+
+        // Two reads of the row: the waiter found the lock held, waited, and looked again.
+        await _commands.Reads.NextAsync(2, Patience);
         waiting.IsCompleted.ShouldBeFalse();
 
         await winner.DisposeAsync();
@@ -149,16 +154,19 @@ public sealed class DistributedLockTests : IAsyncDisposable
     [Fact]
     public async Task AHolderRenewsItsLease()
     {
-        await using var host = new FluentCmsTestHost();
+        var commands = CommandSignals.OfLock(Name);
+        await using var host = Watched(new FluentCmsTestHost(), commands);
         var locks = ShortLease(host);
         await using var held = await locks.TryAcquireAsync(Name, TimeSpan.Zero, Token);
         held.ShouldNotBeNull();
         var first = (await RowAsync(host)).LeaseUntil!.Value;
 
+        // A renewal under way may have read the clock before it moved; the one after it has not.
         host.Time.Advance(TimeSpan.FromSeconds(1));
-        var renewed = await EventuallyAsync(async () => (await RowAsync(host)).LeaseUntil > first);
+        commands.Writes.Forget();
+        await commands.Writes.NextAsync(2, Patience);
 
-        renewed.ShouldBeTrue();
+        (await RowAsync(host)).LeaseUntil!.Value.ShouldBeGreaterThan(first);
         (await locks.TryAcquireAsync(Name, TimeSpan.Zero, Token)).ShouldBeNull();
         held.Lost.IsCancellationRequested.ShouldBeFalse();
     }
@@ -179,7 +187,13 @@ public sealed class DistributedLockTests : IAsyncDisposable
                 .ExecuteUpdateAsync(row => row.SetProperty(column => column.Owner, Crashed), Token);
         }
 
-        (await EventuallyAsync(() => Task.FromResult(held.Lost.IsCancellationRequested))).ShouldBeTrue();
+        var lost = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using (held.Lost.Register(() => lost.TrySetResult()))
+        {
+            await lost.Task.WaitAsync(Patience, Token);
+        }
+
+        held.Lost.IsCancellationRequested.ShouldBeTrue();
 
         await held.DisposeAsync();
         (await RowAsync(host)).Owner.ShouldBe(Crashed);
@@ -218,20 +232,8 @@ public sealed class DistributedLockTests : IAsyncDisposable
         return await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<LockRow>().AsNoTracking().SingleAsync(row => row.Name == Name, Token);
     }
 
-    private static async Task<bool> EventuallyAsync(Func<Task<bool>> condition)
-    {
-        for (var attempt = 0; attempt < 100; attempt++)
-        {
-            if (await condition())
-            {
-                return true;
-            }
-
-            await Task.Delay(TimeSpan.FromMilliseconds(50), Token);
-        }
-
-        return false;
-    }
+    private static FluentCmsTestHost Watched(FluentCmsTestHost host, CommandSignals commands) =>
+        host.Configure(cms => cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(commands)));
 
     private static void InterlockedMax(ref int target, int value)
     {
