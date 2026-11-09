@@ -207,7 +207,11 @@ public sealed class DeliveryCacheHostTests : IAsyncDisposable
                 configure(builder);
             },
             pipeline: pipeline,
-            cms: cms => cms.UseContentMigrations(typeof(CmsDbContext).Assembly),
+            cms: cms =>
+            {
+                cms.UseContentMigrations(typeof(CmsDbContext).Assembly);
+                cms.Jobs.Options.Queues[OutboxDrainJob.Queue] = 0;
+            },
             endpoints: endpoints);
         await app.StartAsync(Token);
 
@@ -216,6 +220,12 @@ public sealed class DeliveryCacheHostTests : IAsyncDisposable
             var context = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
             context.Set<RoleGrant>().Add(new RoleGrant { Id = Guid.CreateVersion7(), RoleId = DefaultSite.PublicRole, Permission = "content.note.read" });
             await context.SaveChangesAsync(Token);
+        }
+
+        // The grant evicts the site's copies through the outbox. A worker would deliver that whenever it gets to it, which on
+        // a busy machine can fall between a read that stores a copy and the next, so the test delivers it before any read.
+        while (await app.Services.GetRequiredService<OutboxDrainer>().DrainAsync(Token) > 0)
+        {
         }
 
         return app.GetTestClient();

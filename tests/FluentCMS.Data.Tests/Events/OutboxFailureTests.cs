@@ -156,6 +156,49 @@ public sealed class OutboxFailureTests
         }
     }
 
+    // Never fires the timer of a CancellationTokenSource, whose state is the source itself, as a busy timer queue can leave the
+    // timer of a handler's own limit behind its cut-off.
+    private sealed class LateLimits(TimeProvider clock) : TimeProvider
+    {
+        private int _held;
+
+        // So that the test fails, rather than passes for nothing, once no limit timer is held back.
+        public int Held => Volatile.Read(ref _held);
+
+        public override long TimestampFrequency => clock.TimestampFrequency;
+
+        public override DateTimeOffset GetUtcNow() => clock.GetUtcNow();
+
+        public override long GetTimestamp() => clock.GetTimestamp();
+
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+        {
+            if (state is not CancellationTokenSource)
+            {
+                return clock.CreateTimer(callback, state, dueTime, period);
+            }
+
+            Interlocked.Increment(ref _held);
+            return clock.CreateTimer(callback, state, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+        }
+    }
+
+    // Whether the handler's token was cancelled when the drain wrote the failure of its delivery.
+    private sealed class ToldAtSettle(Seen seen) : DbCommandInterceptor
+    {
+        public bool? Told { get; private set; }
+
+        public override ValueTask<int> NonQueryExecutedAsync(DbCommand command, CommandExecutedEventData eventData, int result, CancellationToken cancellationToken = default)
+        {
+            if (result == 1 && !seen.Tokens.IsEmpty && command.CommandText.Contains("cms_outbox", StringComparison.Ordinal) && command.CommandText.Contains(TestProvider.Quote("last_error"), StringComparison.Ordinal))
+            {
+                Told = seen.Tokens.Single().IsCancellationRequested;
+            }
+
+            return ValueTask.FromResult(result);
+        }
+    }
+
     // Holds back every work item the drain hands off, as a starved thread pool would, until the test lets them all run late.
     private sealed class HeldHandOffs
     {
@@ -452,6 +495,46 @@ public sealed class OutboxFailureTests
         probe.Release();
         (await probe.Used.WaitAsync(TimeSpan.FromSeconds(30), Token)).ShouldBeNull();
         await probe.Marker.Disposed.WaitAsync(TimeSpan.FromSeconds(30), Token);
+    }
+
+    [Fact]
+    public async Task AHandlerCutOffIsToldBeforeItsDeliveryIsSettledThoughTheTimerOfItsOwnLimitIsLate()
+    {
+        var seen = new Seen();
+        var clock = new ManualTimeProvider(JobFixture.Start);
+        var timeout = TimeSpan.FromSeconds(30);
+        var limits = new LateLimits(clock);
+        var settles = new ToldAtSettle(seen);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        seen.Behavior = (_, _) =>
+        {
+            entered.TrySetResult();
+            return gate.Task;
+        };
+        using var database = new ServiceDatabase(EventRegistrations.With(seen, Fast(cms =>
+        {
+            cms.Services.AddSingleton<TimeProvider>(limits);
+            cms.Services.ConfigureDbContext<SystemDbContext>(options => options.AddInterceptors(settles));
+            cms.Events.Outbox.DeliveryTimeout = timeout;
+            cms.Events.Outbox.MaxAttempts = 1;
+        })));
+        await database.CreateAsync(Editor, Titled("T"));
+
+        try
+        {
+            var drain = DrainAsync(database.Database.Services);
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(30), Token);
+            await Eventually.CompletesAsync(drain, () => clock.Advance(timeout));
+
+            limits.Held.ShouldBeGreaterThan(0);
+            database.Rows().Single().Status.ShouldBe(OutboxStatus.Failed);
+            settles.Told.ShouldBe(true);
+        }
+        finally
+        {
+            gate.TrySetResult();
+        }
     }
 
     [Fact]

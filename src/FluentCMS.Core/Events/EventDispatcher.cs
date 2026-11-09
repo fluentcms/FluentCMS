@@ -142,14 +142,17 @@ internal sealed class EventDispatcher(
     }
 
     // A cooperative handler stops at its token. One that does not is left to end on its own, and whatever it does then,
-    // such as touching the scope of a request that has ended, is logged and never thrown.
-    private void Abandon(Task run, CancellationTokenSource bound, AsyncServiceScope scope, string handler, string eventType, Guid eventId) =>
+    // such as touching the scope of a request that has ended, is logged and never thrown. The token is cancelled at the
+    // cut-off, before the next handler runs, not whenever a busy thread pool gets to the work item.
+    private void Abandon(Task run, CancellationTokenSource bound, AsyncServiceScope scope, string handler, string eventType, Guid eventId)
+    {
+        var told = bound.CancelAsync();
         _ = Task.Run(
             async () =>
             {
                 try
                 {
-                    await Task.WhenAll(bound.CancelAsync(), run);
+                    await Task.WhenAll(told, run);
                 }
                 catch (OperationCanceledException)
                 {
@@ -165,6 +168,7 @@ internal sealed class EventDispatcher(
                 }
             },
             CancellationToken.None);
+    }
 
     // A scoped service that throws on disposal must not reach the caller either.
     private async Task DisposeAsync(AsyncServiceScope scope, string eventType, Guid eventId)
