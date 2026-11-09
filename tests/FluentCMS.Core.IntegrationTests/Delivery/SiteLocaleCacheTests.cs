@@ -148,6 +148,19 @@ public sealed class SiteLocaleCacheTests : IAsyncLifetime
         (await GetAsync("fr-CA")).FromCache.ShouldBeFalse();
     }
 
+    // A delivered eviction would be done by the time the drain returns.
+    [Fact]
+    public async Task AChangeThatChangesNothingKeepsTheCopies()
+    {
+        await CachedAsync("fr-CA");
+
+        await SitesAsync(sites => sites.UpdateLocaleAsync(DefaultSite.Id, "fr", new SiteLocaleChange { Enabled = true }, Token));
+        await EnsureLocaleAsync("fr");
+        await _host.Services.GetRequiredService<OutboxDrainer>().DrainAsync(Token);
+
+        (await GetAsync("fr-CA")).FromCache.ShouldBeTrue();
+    }
+
     // Read twice, so the second answer is the cached copy.
     private async Task<Reply> CachedAsync(string locale)
     {
