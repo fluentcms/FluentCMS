@@ -143,7 +143,7 @@ public sealed class DistributedLockTests : IAsyncDisposable
         taken.ShouldNotBeNull();
         var row = await RowAsync(host);
         row.Owner.ShouldNotBe(Crashed);
-        row.LeaseUntil.ShouldBe(host.Time.GetUtcNow() + TimeSpan.FromSeconds(30));
+        row.LeaseUntil.ShouldBe(StorageConventions.ToMicroseconds(host.Time.GetUtcNow() + TimeSpan.FromSeconds(30)));
     }
 
     [Fact]

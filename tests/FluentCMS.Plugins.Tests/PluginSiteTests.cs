@@ -206,7 +206,7 @@ public sealed class PluginSiteTests
         var released = await JobAsync(host, id);
         released.Status.ShouldBe(JobStatus.Pending);
         (released.MaxAttempts - released.Attempts).ShouldBe(before.MaxAttempts - before.Attempts);
-        released.RunAt.ShouldBe(host.Time.GetUtcNow() + host.Services.GetRequiredService<JobRunnerOptions>().PollInterval);
+        released.RunAt.ShouldBe(StorageConventions.ToMicroseconds(host.Time.GetUtcNow() + host.Services.GetRequiredService<JobRunnerOptions>().PollInterval));
         await using (var scope = host.Services.CreateAsyncScope())
         {
             (await scope.ServiceProvider.GetRequiredService<SystemDbContext>().Set<JobAttempt>().AsNoTracking().SingleAsync(attempt => attempt.JobId == id, Token))

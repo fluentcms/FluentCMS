@@ -1,5 +1,6 @@
 using FluentCMS.Core.Jobs;
 using FluentCMS.Core.Storage.Entities;
+using FluentCMS.Core.Storage;
 using FluentCMS.Jobs;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,7 +16,7 @@ public sealed class WebhookRetentionTests
     public async Task TheRetentionJobRemovesTheAttemptsOlderThanThirtyDays()
     {
         await using var host = Host();
-        var now = host.Time.GetUtcNow();
+        var now = StorageConventions.ToMicroseconds(host.Time.GetUtcNow());
         await using (var scope = host.Services.CreateAsyncScope())
         {
             var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<WebhooksPlugin>>();
