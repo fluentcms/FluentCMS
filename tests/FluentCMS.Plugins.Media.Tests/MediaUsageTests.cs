@@ -10,15 +10,13 @@ using static FluentCMS.Plugins.Media.Tests.MediaHost;
 
 namespace FluentCMS.Plugins.Media.Tests;
 
-public sealed class MediaUsageTests
+public sealed class MediaUsageTests(PostHost media) : IClassFixture<PostHost>
 {
     private static readonly string[] ReadableFields = ["title", "hero", "content"];
 
     [Fact]
     public async Task UsageListsTheFieldsBlocksAndRichTextThatReferToTheAssetWithoutWhatTheCallerCannotRead()
     {
-        await using var media = new MediaHost();
-        media.Host.WithContentTypes<Post, Secret>();
         using var admin = await media.AdminAsync();
         var asset = Id((await UploadedAsync(admin, null, ("hero.png", Files.Png(4, 4)))).Single()!);
         var other = Id((await UploadedAsync(admin, null, ("other.png", Files.Png(4, 4)))).Single()!);
@@ -55,7 +53,6 @@ public sealed class MediaUsageTests
     [Fact]
     public async Task UsageOfAnAssetOutsideTheCallersFoldersIsNotFound()
     {
-        await using var media = new MediaHost();
         using var admin = await media.AdminAsync();
         var team = await FolderAsync(admin, "team");
         var asset = Id((await UploadedAsync(admin, null, ("a.png", Files.Png(1, 1)))).Single()!);
@@ -70,8 +67,6 @@ public sealed class MediaUsageTests
     [Fact]
     public async Task DeletingAReferencedAssetIsRefusedAndForceDeletesItAndItsReferences()
     {
-        await using var media = new MediaHost();
-        media.Host.WithContentTypes<Post, Secret>();
         using var admin = await media.AdminAsync();
         var asset = Id((await UploadedAsync(admin, null, ("hero.png", Files.Png(4, 4)))).Single()!);
         var post = await EntryAsync(admin, "post", "Harbour");
@@ -101,8 +96,6 @@ public sealed class MediaUsageTests
     [Fact]
     public async Task OnlyAReferenceFromTheTrashDoesNotHoldTheDeleteBack()
     {
-        await using var media = new MediaHost();
-        media.Host.WithContentTypes<Post, Secret>();
         using var admin = await media.AdminAsync();
         var asset = Id((await UploadedAsync(admin, null, ("hero.png", Files.Png(4, 4)))).Single()!);
         var trashed = await EntryAsync(admin, "post", "Gone");
@@ -118,15 +111,13 @@ public sealed class MediaUsageTests
     [Fact]
     public async Task TheReferenceReaderRefusesAContentTypeAsATarget()
     {
-        await using var media = new MediaHost();
-        media.Host.WithContentTypes<Post, Secret>();
-
         await using var scope = media.Services.CreateAsyncScope();
         var references = scope.ServiceProvider.GetRequiredService<FluentCMS.Content.IContentReferences>();
+        var rows = await scope.ServiceProvider.GetRequiredService<CmsDbContext>().References.CountAsync(Token);
 
         await Should.ThrowAsync<ArgumentException>(() => references.RemoveAsync("post", Guid.NewGuid(), Token));
         await Should.ThrowAsync<ArgumentException>(() => references.CountAsync("", Guid.NewGuid(), Token));
-        (await scope.ServiceProvider.GetRequiredService<CmsDbContext>().References.CountAsync(Token)).ShouldBe(0);
+        (await scope.ServiceProvider.GetRequiredService<CmsDbContext>().References.CountAsync(Token)).ShouldBe(rows);
     }
 
     private static List<(string Type, Guid Entry, string Status, string Field)> Usage(JsonNode body) =>

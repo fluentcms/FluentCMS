@@ -22,7 +22,7 @@ public sealed partial class HostedPagesTests
     [Fact]
     public async Task AUserEnrolsAnAuthenticatorThroughMeAndIsChallengedAtTheNextLogin()
     {
-        await using var host = TwoFactorHost();
+        var host = _host;
         var editor = await CreateUserAsync(host);
         var before = await host.SignInAsync(editor);
         using var client = await host.AsUserAsync(editor);
@@ -72,7 +72,7 @@ public sealed partial class HostedPagesTests
     [Fact]
     public async Task ARecoveryCodeSignsInOnceAndIsThenSpent()
     {
-        await using var host = TwoFactorHost();
+        var host = _host;
         var editor = await CreateUserAsync(host);
         var (_, codes) = await EnableTwoFactorAsync(host, editor);
 
@@ -101,7 +101,7 @@ public sealed partial class HostedPagesTests
     [Fact]
     public async Task AUserWhoseRoleRequiresTwoFactorAndHasNoneIsRefusedASessionUntilEnrolled()
     {
-        await using var host = TwoFactorHost();
+        var host = _host;
         using var admin = await host.AsUserAsync(await host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token));
         var role = await GuardedRoleAsync(admin);
         var user = await CreateUserAsync(host);
@@ -143,7 +143,7 @@ public sealed partial class HostedPagesTests
     [Fact]
     public async Task ATokenIssuedAfterTheChallengeCarriesTheMfaReference()
     {
-        await using var host = TwoFactorHost();
+        var host = _host;
         var secured = await CreateUserAsync(host);
         var (key, _) = await EnableTwoFactorAsync(host, secured);
         var plain = await CreateUserAsync(host);
@@ -179,7 +179,7 @@ public sealed partial class HostedPagesTests
     [Fact]
     public async Task ARememberedDeviceDoesNotPassARoleThatRequiresTwoFactor()
     {
-        await using var host = TwoFactorHost();
+        var host = _host;
         using var admin = await host.AsUserAsync(await host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token));
         var editor = await CreateUserAsync(host);
         var (key, _) = await EnableTwoFactorAsync(host, editor);
@@ -239,7 +239,7 @@ public sealed partial class HostedPagesTests
     [Fact]
     public async Task AFlagWithoutAKeySendsTheUserToEnrolRatherThanRoundTheSignIn()
     {
-        await using var host = TwoFactorHost();
+        var host = _host;
         using var admin = await host.AsUserAsync(await host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token));
         var editor = await CreateUserAsync(host);
         (await AdminFixture.SendAsync(admin, HttpMethod.Put, $"users/{editor.Id:D}/roles/{await GuardedRoleAsync(admin)}")).Status.ShouldBe(HttpStatusCode.OK);
@@ -261,7 +261,7 @@ public sealed partial class HostedPagesTests
     [Fact]
     public async Task TheSecondFactorOutlastsTheStampCheckOfTheCookie()
     {
-        await using var host = TwoFactorHost();
+        var host = _host;
         using var admin = await host.AsUserAsync(await host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token));
         var editor = await CreateUserAsync(host);
         var (key, _) = await EnableTwoFactorAsync(host, editor);
@@ -284,7 +284,8 @@ public sealed partial class HostedPagesTests
     [Fact]
     public async Task RolesSayWhetherTheyRequireTwoFactorAndSuperAdminMayRequireIt()
     {
-        await using var host = TwoFactorHost();
+        // Super Admin comes to require two-factor, which would hold back every other test's Super Admin.
+        await using var host = NewTwoFactorHost();
         using var admin = await host.AsUserAsync(await host.CreateUserAsync(BuiltInRoles.SuperAdminName, cancellationToken: Token));
 
         var created = await AdminFixture.SendAsync(admin, HttpMethod.Post, "roles", """{ "name": "Guarded", "requireTwoFactor": true, "grants": [ { "permission": "schema.read" } ] }""");
@@ -318,7 +319,7 @@ public sealed partial class HostedPagesTests
     [Fact]
     public async Task TurningTwoFactorOffOrReplacingTheRecoveryCodesTakesACode()
     {
-        await using var host = TwoFactorHost();
+        var host = _host;
         var editor = await CreateUserAsync(host);
         var (key, codes) = await EnableTwoFactorAsync(host, editor);
         using var client = await host.AsUserAsync(editor);
@@ -350,8 +351,8 @@ public sealed partial class HostedPagesTests
         (await AdminFixture.SendAsync(asKey, HttpMethod.Get, "me/two-factor")).Status.ShouldBe(HttpStatusCode.Forbidden);
     }
 
-    // Each test signs in many times from few addresses, more than the auth limit allows in a minute.
-    private FluentCmsTestHost TwoFactorHost() =>
+    // A test signs in many times from few addresses, more than the auth limit allows in a minute.
+    private FluentCmsTestHost NewTwoFactorHost() =>
         NewHost(_emails).WithServices(services => services.PostConfigure<RateLimitOptions>(limits => limits.Auth.PermitLimit = 10_000));
 
     private static async Task<(string Key, IReadOnlyList<string> Codes)> EnableTwoFactorAsync(FluentCmsTestHost host, TestUser user)

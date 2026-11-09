@@ -13,14 +13,14 @@ using static FluentCMS.Plugins.Webhooks.Tests.WebhookTesting;
 
 namespace FluentCMS.Plugins.Webhooks.Tests;
 
-public sealed class WebhookManagementTests
+public sealed class WebhookManagementTests(WebhookFixture hosts) : IClassFixture<WebhookFixture>
 {
     private const string Root = "/api/management/v1/webhooks";
 
     [Fact]
     public async Task AWebhookIsCreatedReadChangedAndDeleted()
     {
-        await using var host = Host();
+        var host = await hosts.HostAsync();
         using var client = await AdminAsync(host);
 
         var created = await CreateAsync(client, new { name = "builds", url = "https://example.com/hooks", events = new List<string> { "content.published", "cache.invalidated" }, headers = new Dictionary<string, string> { ["X-Build"] = "site" } });
@@ -40,7 +40,7 @@ public sealed class WebhookManagementTests
         stored["name"]!.GetValue<string>().ShouldBe("builds");
         stored["headers"]!["X-Build"]!.GetValue<string>().ShouldBe(WebhookService.RedactedValue);
         stored.AsObject().ContainsKey("secret").ShouldBeFalse();
-        JsonNode.Parse(await TextAsync(list))!["items"]!.AsArray().ShouldHaveSingleItem()!["id"]!.GetValue<string>().ShouldBe(id.ToString("D"));
+        JsonNode.Parse(await TextAsync(list))!["items"]!.AsArray().ShouldContain(item => item!["id"]!.GetValue<string>() == id.ToString("D"));
         changed.StatusCode.ShouldBe(HttpStatusCode.OK, await TextAsync(changed));
         var update = JsonNode.Parse(await TextAsync(changed))!;
         (update["name"]!.GetValue<string>(), update["enabled"]!.GetValue<bool>(), update["types"]!.AsArray().Single()!.GetValue<string>()).ShouldBe(("deploys", false, "article"));
@@ -53,7 +53,7 @@ public sealed class WebhookManagementTests
     public async Task DeletingAWebhookRemovesItsLogInOneTransactionAndStillWritesItsActivityRow()
     {
         await using var receiver = await TestReceiver.StartAsync();
-        await using var host = Host();
+        var host = await hosts.HostAsync();
         using var client = await AdminAsync(host);
         var id = Id(await CreateAsync(client, new { name = "builds", url = receiver.Url().ToString(), events = new List<string> { "content.published" } }));
         using (var pinged = await client.PostAsync(new Uri($"{Root}/{id:D}/ping", UriKind.Relative), null, Token))
@@ -62,7 +62,7 @@ public sealed class WebhookManagementTests
         }
 
         await PumpAsync(host);
-        (await DeliveriesAsync(host)).ShouldHaveSingleItem().WebhookId.ShouldBe(id);
+        (await DeliveriesAsync(host, id)).ShouldHaveSingleItem().WebhookId.ShouldBe(id);
 
         using var deleted = await client.DeleteAsync(new Uri($"{Root}/{id:D}", UriKind.Relative), Token);
         await PumpAsync(host);
@@ -70,7 +70,7 @@ public sealed class WebhookManagementTests
 
         deleted.StatusCode.ShouldBe(HttpStatusCode.NoContent, await TextAsync(deleted));
         receiver.Requests.ShouldHaveSingleItem();
-        (await DeliveriesAsync(host)).ShouldBeEmpty();
+        (await DeliveriesAsync(host, id)).ShouldBeEmpty();
         var row = JsonNode.Parse(await TextAsync(activity))!["items"]!.AsArray().ShouldHaveSingleItem()!;
         (row["targetType"]!.GetValue<string>(), row["targetLabel"]!.GetValue<string>()).ShouldBe(("webhook", "builds"));
     }
@@ -136,7 +136,7 @@ public sealed class WebhookManagementTests
     [Fact]
     public async Task TheEndpointsNeedWebhooksManageForTheSite()
     {
-        await using var host = Host();
+        var host = await hosts.HostAsync();
         using var admin = await AdminAsync(host);
         await host.CreateRoleAsync("hook-keeper", [WebhookPermissions.Manage], Token);
         await host.CreateRoleAsync("reader", ["content.article.read"], Token);
@@ -170,7 +170,7 @@ public sealed class WebhookManagementTests
     [Fact]
     public async Task AWebhookThatCannotBeSavedIsRefusedWithItsCodes()
     {
-        await using var host = Host();
+        var host = await hosts.HostAsync();
         using var client = await AdminAsync(host);
         await CreateAsync(client, new { name = "builds", url = "https://example.com/hooks", events = new List<string> { "content.published" } });
 
@@ -206,7 +206,7 @@ public sealed class WebhookManagementTests
     [Fact]
     public async Task TheStreamsMigrationAppliesAndMatchesTheModel()
     {
-        await using var host = Host();
+        var host = await hosts.HostAsync();
 
         await using var scope = host.Services.CreateAsyncScope();
         var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<WebhooksPlugin>>();

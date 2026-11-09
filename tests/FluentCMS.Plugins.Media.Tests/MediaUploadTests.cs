@@ -10,16 +10,16 @@ using static FluentCMS.Plugins.Media.Tests.MediaHost;
 
 namespace FluentCMS.Plugins.Media.Tests;
 
-public sealed class MediaUploadTests
+public sealed class MediaUploadTests(MediaHost media) : IClassFixture<MediaHost>
 {
     [Fact]
     public async Task AJpegAPngAndAPdfBecomeThreeAssetsWhoseBytesTheLocalStorageHolds()
     {
-        await using var media = new MediaHost();
         using var client = await media.AdminAsync();
         var jpeg = Files.Jpeg(640, 480);
         var png = Files.Png(32, 16);
         var pdf = Files.Pdf();
+        var files = StoredFiles();
 
         var items = await UploadedAsync(client, null, ("photo.jpg", jpeg), ("C:\\Users\\me\\icon.png", png), ("report.pdf", pdf));
 
@@ -29,7 +29,8 @@ public sealed class MediaUploadTests
         Describe(items[2]!).ShouldBe(("report.pdf", "application/pdf", pdf.LongLength, Sha256(pdf), (int?)null, (int?)null));
 
         await using var scope = media.Services.CreateAsyncScope();
-        var assets = await scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>().Set<Asset>().AsNoTracking().ToListAsync(Token);
+        var ids = items.Select(item => Id(item!)).ToList();
+        var assets = await scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>().Set<Asset>().AsNoTracking().Where(asset => ids.Contains(asset.Id)).ToListAsync(Token);
         var storage = scope.ServiceProvider.GetRequiredService<IFileStorage>().ShouldBeOfType<LocalFileStorage>();
         List<string> stored = [];
         foreach (var asset in assets)
@@ -43,13 +44,12 @@ public sealed class MediaUploadTests
 
         stored.ShouldBe([Sha256(jpeg), Sha256(png), Sha256(pdf)], ignoreOrder: true);
         assets.ShouldAllBe(asset => asset.StorageKey.StartsWith(asset.SiteId.ToString("N") + "/", StringComparison.Ordinal));
-        Directory.EnumerateFiles(media.StorageRoot, "*", SearchOption.AllDirectories).Count().ShouldBe(3);
+        StoredFiles().Except(files).Count().ShouldBe(3);
     }
 
     [Fact]
     public async Task TheSizeOfGifAndWebPImagesIsReadFromTheirHeaders()
     {
-        await using var media = new MediaHost();
         using var client = await media.AdminAsync();
 
         var items = await UploadedAsync(client, null, ("a.gif", Files.Gif(7, 9)), ("b.webp", Files.WebPExtended(300, 200)));
@@ -61,8 +61,9 @@ public sealed class MediaUploadTests
     [Fact]
     public async Task BytesOfNoAllowedTypeAreRefusedWhateverTheNameAndNothingIsStored()
     {
-        await using var media = new MediaHost();
         using var client = await media.AdminAsync();
+        var total = (await GetAsync(client, Root))["total"]!.GetValue<long>();
+        var files = StoredFiles();
 
         using var executable = await UploadAsync(client, null, ("holiday.jpg", Files.WindowsExecutable()));
         using var shebang = await UploadAsync(client, null, ("run.png", Encoding.ASCII.GetBytes("#!/bin/sh\nrm -rf /\n")));
@@ -77,16 +78,15 @@ public sealed class MediaUploadTests
         text.StatusCode.ShouldBe(HttpStatusCode.UnsupportedMediaType);
         (await CodeAsync(text)).ShouldBe(MediaErrorCodes.TypeNotAllowed);
         (await CodeAsync(mixed)).ShouldBe(MediaErrorCodes.Executable);
-        (await GetAsync(client, Root))["total"]!.GetValue<long>().ShouldBe(0);
-        Directory.EnumerateFiles(media.StorageRoot, "*", SearchOption.AllDirectories).ShouldBeEmpty();
+        (await GetAsync(client, Root))["total"]!.GetValue<long>().ShouldBe(total);
+        StoredFiles().ShouldBe(files, ignoreOrder: true);
     }
 
     [Fact]
     public async Task AFileOverTheLimitAndATypeOffTheSitesListAreRefused()
     {
-        await using var media = new MediaHost();
         using var client = await media.AdminAsync();
-        await media.ConfigureAsync(settings =>
+        await using var limits = await media.ConfigureAsync(settings =>
         {
             settings.MaxFileSize = 100;
             settings.AllowedTypes = ["image/png"];
@@ -105,10 +105,9 @@ public sealed class MediaUploadTests
     [Fact]
     public async Task TheFilesOfARequestTogetherAreHeldToTheRequestLimit()
     {
-        await using var media = new MediaHost();
         using var client = await media.AdminAsync();
         var png = Files.Png(1, 1);
-        await media.ConfigureAsync(settings => settings.MaxRequestSize = png.Length * 2);
+        await using var limit = await media.ConfigureAsync(settings => settings.MaxRequestSize = png.Length * 2);
 
         using var refused = await UploadAsync(client, null, ("a.png", png), ("b.png", png), ("c.png", png));
         using var accepted = await UploadAsync(client, null, ("a.png", png), ("b.png", png));
@@ -120,18 +119,18 @@ public sealed class MediaUploadTests
     [Fact]
     public async Task AnSvgWithAScriptIsRefusedByDefaultAndSanitisedWhenTheSettingsSaySo()
     {
-        await using var media = new MediaHost();
         using var client = await media.AdminAsync();
         var svg = Files.Svg("""<script>alert(1)</script><rect width="5" height="5" onclick="alert(2)"/><a xlink:href="javascript:alert(3)"><circle r="1"/></a><foreignObject><div xmlns="http://www.w3.org/1999/xhtml">x</div></foreignObject>""");
+        var svgs = StoredFiles("*.svg");
 
         using var refused = await UploadAsync(client, null, ("logo.svg", svg));
-        await media.ConfigureAsync(settings => settings.Svg = SvgHandling.Sanitize);
+        await using var sanitised = await media.ConfigureAsync(settings => settings.Svg = SvgHandling.Sanitize);
         var stored = (await UploadedAsync(client, null, ("logo.svg", svg))).Single()!;
 
         refused.StatusCode.ShouldBe(HttpStatusCode.UnsupportedMediaType);
         (await CodeAsync(refused)).ShouldBe(MediaErrorCodes.SvgRefused);
         stored["mimeType"]!.GetValue<string>().ShouldBe("image/svg+xml");
-        var file = Directory.EnumerateFiles(media.StorageRoot, "*.svg", SearchOption.AllDirectories).ShouldHaveSingleItem();
+        var file = StoredFiles("*.svg").Except(svgs).ShouldHaveSingleItem();
         var text = await File.ReadAllTextAsync(file, Token);
         text.ShouldContain("<rect");
         text.ShouldContain("<circle");
@@ -145,7 +144,6 @@ public sealed class MediaUploadTests
     [Fact]
     public async Task AnUploadNeedsFilesAndAFolderOfTheSite()
     {
-        await using var media = new MediaHost();
         using var client = await media.AdminAsync();
 
         using var none = await client.PostAsync(new Uri(Root, UriKind.Relative), new MultipartFormDataContent { { new StringContent("x"), "title" } }, Token);
@@ -164,4 +162,6 @@ public sealed class MediaUploadTests
         item["height"]?.GetValue<int>());
 
     private static string Sha256(byte[] bytes) => Convert.ToHexStringLower(SHA256.HashData(bytes));
+
+    private List<string> StoredFiles(string pattern = "*") => [.. Directory.EnumerateFiles(media.StorageRoot, pattern, SearchOption.AllDirectories)];
 }

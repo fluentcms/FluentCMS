@@ -7,12 +7,11 @@ using static FluentCMS.Plugins.Media.Tests.MediaHost;
 
 namespace FluentCMS.Plugins.Media.Tests;
 
-public sealed class MediaEventTests
+public sealed class MediaEventTests(MediaHost media) : IClassFixture<MediaHost>
 {
     [Fact]
     public async Task EachUploadUpdateMoveAndDeleteRaisesItsEventAndWritesAnActivityRow()
     {
-        await using var media = new MediaHost();
         using var client = await media.AdminAsync();
         var folder = await FolderAsync(client, "photos");
         var id = Id((await UploadedAsync(client, null, ("photo.jpg", Files.Jpeg(4, 4)))).Single()!);
@@ -22,7 +21,7 @@ public sealed class MediaEventTests
         (await client.DeleteAsync(new Uri($"{Root}/{id:D}", UriKind.Relative), Token)).Dispose();
 
         await media.DrainOutboxAsync();
-        var rows = (await GetAsync(client, "/api/management/v1/activity?targetType=media"))["items"]!.AsArray();
+        var rows = (await GetAsync(client, $"/api/management/v1/activity?targetType=media&targetId={id:D}"))["items"]!.AsArray();
 
         rows.Select(row => row!["action"]!.GetValue<string>()).ShouldBe(["media.deleted", "media.moved", "media.updated", "media.uploaded"]);
         rows.ShouldAllBe(row => row!["targetId"]!.GetValue<string>() == id.ToString("D") && row["targetLabel"]!.GetValue<string>() == "photo.jpg");
@@ -33,8 +32,6 @@ public sealed class MediaEventTests
     [Fact]
     public async Task TheStreamsMigrationAppliesAndMatchesTheModel()
     {
-        await using var media = new MediaHost();
-
         await using var scope = media.Services.CreateAsyncScope();
         var database = scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>();
         var applied = await database.Database.GetAppliedMigrationsAsync(Token);

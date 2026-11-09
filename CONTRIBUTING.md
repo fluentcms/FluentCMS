@@ -24,17 +24,17 @@ Thank you for your interest. FluentCMS is starting over, so there is little to b
 
 ### What CI runs
 
-An issue pull request into `main` runs every test project on Linux, the data jobs, Markdown lint and packaging. The data jobs run the data tests on SQLite, PostgreSQL 15, SQL Server 2019 and SQL Server 2025; a server provider's job does not fail the run until the suite passes on it ([#2711](https://github.com/fluentcms/FluentCMS/issues/2711)). On Windows it builds the whole solution and runs the SDK unit, core unit and architecture tests. The full Windows suite runs for pull requests from `feature/*` branches, on every push to `main`, nightly and on manual runs, so a Windows-only failure shows up there rather than on the issue pull request.
+The `CI` workflow builds the whole solution on Linux and runs every test project there in three shards (units, integration, plugins and host), plus the data jobs, Markdown lint and packaging. The data jobs run the data tests on SQLite, PostgreSQL 15, SQL Server 2019 and SQL Server 2025. This runs for every pull request into `main` and every push to it. On Windows the same runs build the whole solution and run only the SDK unit, core unit and architecture tests. The full Windows suite runs nightly and on manual runs, so a Windows-only failure shows up in the nightly run rather than on a pull request. A failed nightly run opens an issue titled `Nightly CI failed`, or adds a comment to it while it is open.
 
 ### Feature branches and validation
 
 For a batch of related issues, create a branch such as `feature/media` from `main`. Each issue branches from it and opens its pull request back into it. The `Feature CI` workflow builds the whole solution on Linux and Windows and runs SDK unit tests, core unit tests, architecture tests and Markdown lint. Integration, data, host and plugin tests, and packaging, run in full CI.
 
-Merge the issue pull requests into the feature branch as they pass review and fast checks. When the batch is ready, open one pull request from the feature branch into `main`. The `CI` workflow automatically runs all test projects on Linux and Windows, the data jobs, Markdown lint and packaging. Fix any failures on the feature branch and push again; the full checks rerun. Keep the feature branch current with `main` and rerun validation after incorporating changes from it. A passing run from before a change does not validate the updated code.
+Merge the issue pull requests into the feature branch as they pass review and fast checks. When the batch is ready, open one pull request from the feature branch into `main`. The `CI` workflow automatically runs all test projects on Linux, the fast tests on Windows, the data jobs, Markdown lint and packaging. Fix any failures on the feature branch and push again; the full checks rerun. Keep the feature branch current with `main` and rerun validation after incorporating changes from it. A passing run from before a change does not validate the updated code.
 
-The fast checks have different names from the full checks required by `main`. Keep `main` protected by `Markdown lint`, `Build and test (ubuntu-latest)`, `Build and test (windows-latest)`, `Data tests (sqlite)` and `Pack`. For protected feature branches, require `Feature markdown lint`, `Fast checks (ubuntu-latest)` and `Fast checks (windows-latest)` instead.
+The fast checks have different names from the full checks required by `main`. Keep `main` protected by `Markdown lint`, `Build and check (ubuntu-latest)`, `Tests (units)`, `Tests (integration)`, `Tests (plugins)`, `Build and test (windows-latest)`, `Data tests (sqlite)` and `Pack`. A repository ruleset on `feature/**` requires `Feature markdown lint`, `Fast checks (ubuntu-latest)` and `Fast checks (windows-latest)` instead, so auto-merge works on pull requests into feature branches too.
 
-To check the combined work before opening the final pull request, go to **Actions → CI → Run workflow**, choose the feature branch and select **Run workflow**. This runs the full suite on that branch whenever needed. The workflow must first be present on `main` for GitHub to show the manual trigger, and the selected branch must contain the updated workflow. Manual runs provide early feedback; the pull request into `main` still runs its own full validation, including the proposed merge with `main`.
+To check the combined work before opening the final pull request, go to **Actions → CI → Run workflow**, choose the feature branch and select **Run workflow**. This runs the full suite on that branch, including every test project on Windows, whenever needed. The workflow must first be present on `main` for GitHub to show the manual trigger, and the selected branch must contain the updated workflow. Manual runs provide early feedback; the pull request into `main` still runs its own validation, including the proposed merge with `main`, but not the full Windows suite.
 
 List the included issues with `Closes #<issue-number>` in the final pull request into `main`, so GitHub closes them when the batch reaches the default branch. A pull request targeting a feature branch does not close them on merge.
 
@@ -92,6 +92,14 @@ FLUENTCMS_TEST_PROVIDER=postgresql dotnet test --project tests/FluentCMS.Data.Te
 ```
 
 The S3 and Azure Blob media storage tests run MinIO and Azurite through Testcontainers and need Docker with Linux containers; without it they are skipped, and the test output says why.
+
+To run a host on PostgreSQL, or media on S3, `compose.yaml` starts PostgreSQL 15 and MinIO at the versions the tests use, on `localhost` only, with their data in volumes. It is for development, not production. The passwords default to `fluentcms`; set `FLUENTCMS_POSTGRES_PASSWORD` and `FLUENTCMS_MINIO_PASSWORD` to change them. PostgreSQL takes its password when it creates the volume, so set it before the first start or delete the volume.
+
+```bash
+docker compose up -d
+```
+
+The reference host then runs on PostgreSQL with `FluentCms__Database__Provider=PostgreSql`, `ConnectionStrings__FluentCms=Host=127.0.0.1;Database=fluentcms;Username=fluentcms;Password=fluentcms` and `FluentCms__Database__MigrateOnStartup=true`. The reference host keeps media on the local disk; a host of your own that calls `media.UseS3` can use MinIO, which answers S3 on `http://127.0.0.1:9000` (`ForcePathStyle` true) and serves its console on `http://127.0.0.1:9001`, where you create the bucket. `docker compose down` stops both and keeps the data; add `-v` to delete it.
 
 During implementation, run the test project or test class affected by the change. Before opening an issue pull request, into a feature branch or `main`, run the fast checks once:
 

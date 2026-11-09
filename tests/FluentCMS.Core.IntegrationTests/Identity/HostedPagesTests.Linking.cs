@@ -74,10 +74,9 @@ public sealed partial class HostedPagesTests
     [Fact]
     public async Task AnInvitationIsNotAcceptedThroughAProviderWhoseAddressIsAnotherOrNotVerified()
     {
-        using var idp = new FakeOidcProvider();
-        await using var host = SsoHost(idp);
+        var (idp, host) = (_idp, _sso);
         var link = await InviteAsync(host, "grace@corp.example");
-        using var browser = new HostedPagesBrowser(host);
+        using var browser = new HostedPagesBrowser(host, "10.3.2.3");
         (await browser.PageAsync(link.PathAndQuery)).ShouldContain("Input.Password");
 
         using (var other = await AcceptWithProviderAsync(browser, idp, link, FakeIdentity.Of("mallory@corp.example")))
@@ -101,7 +100,7 @@ public sealed partial class HostedPagesTests
 
         // The invitation can still be accepted, and the failures are failed sign-ins.
         (await browser.PageAsync(link.PathAndQuery)).ShouldContain("grace@corp.example");
-        (await ActivityAsync(host, "user.login_failed", count: 2)).ShouldAllBe(row => Details(row)["reason"] == LoginFailureReasons.NotAllowed);
+        (await ActivityAsync(host, "user.login_failed", count: 2, of: row => row.Ip == "10.3.2.3")).ShouldAllBe(row => Details(row)["reason"] == LoginFailureReasons.NotAllowed);
     }
 
     [Fact]
@@ -269,8 +268,7 @@ public sealed partial class HostedPagesTests
     [Fact]
     public async Task AUserRemovesItsOwnLoginsThroughMeButNotItsLastWayToSignIn()
     {
-        using var idp = new FakeOidcProvider();
-        await using var host = SsoHost(idp);
+        var host = _sso;
         var me = await host.CreateUserAsync(BuiltInRoles.EditorName, cancellationToken: Token);
         await AddLoginAsync(host, me.Id, Corp, "sub-me");
         await AddLoginAsync(host, me.Id, "gone", "sub-old");
@@ -292,7 +290,7 @@ public sealed partial class HostedPagesTests
 
         (await AdminFixture.SendAsync(client, HttpMethod.Delete, $"me/logins/{Corp}")).Status.ShouldBe(HttpStatusCode.NoContent);
         (await LoginsAsync(host, me.Id)).ShouldBeEmpty();
-        (await ActivityAsync(host, "user.login_unlinked", count: 2)).ShouldAllBe(row => row.TargetId == me.Id.ToString("D"));
+        (await ActivityAsync(host, "user.login_unlinked", count: 2, of: row => row.TargetId == me.Id.ToString("D"))).Count.ShouldBe(2);
 
         var key = await host.CreateApiKeyAsync(ApiKeyClass.Management, BuiltInRoles.SuperAdminName, cancellationToken: Token);
         using var keyClient = host.AsKey(key);
@@ -351,8 +349,8 @@ public sealed partial class HostedPagesTests
     [Fact]
     public async Task AProviderErrorDuringAnInvitationGoesBackToTheInvitation()
     {
-        using var idp = new FakeOidcProvider();
-        await using var host = SsoHost(idp);
+        var (idp, host) = (_idp, _sso);
+        var tokenRequests = idp.TokenRequests;
         var link = await InviteAsync(host, "kim@corp.example");
         using var browser = new HostedPagesBrowser(host);
 
@@ -362,7 +360,7 @@ public sealed partial class HostedPagesTests
         var page = await back.Content.ReadAsStringAsync(Token);
         page.ShouldContain("did not complete");
         page.ShouldContain("kim@corp.example");
-        idp.TokenRequests.ShouldBe(0);
+        idp.TokenRequests.ShouldBe(tokenRequests);
     }
 
     private async Task<Uri> InviteAsync(FluentCmsTestHost host, string address)

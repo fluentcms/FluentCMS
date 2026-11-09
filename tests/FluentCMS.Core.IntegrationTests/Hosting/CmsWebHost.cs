@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace FluentCMS.Core.IntegrationTests.Hosting;
 
@@ -27,6 +28,8 @@ internal sealed class CmsWebHost : IAsyncDisposable
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = environment });
         builder.WebHost.UseTestServer();
+        // The console would get every command the database runs; a test that reads the log adds a provider of its own.
+        builder.Logging.ClearProviders();
 
         // These hosts send no links; a test of the public origin or key ring refusal sets the flag back to false.
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>

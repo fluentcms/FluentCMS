@@ -1,0 +1,37 @@
+# Services for local development: PostgreSQL and MinIO, at the versions the tests run. Not for production.
+name: fluentcms
+
+services:
+  postgres:
+    # postgres:15.19, the image of the data tests on PostgreSQL.
+    image: postgres@sha256:1aac5b49cefd627f02816141ca4ad012d6cc19460dfe02a9b5168a105be3fc53
+    environment:
+      POSTGRES_DB: fluentcms
+      POSTGRES_USER: fluentcms
+      POSTGRES_PASSWORD: ${FLUENTCMS_POSTGRES_PASSWORD:-fluentcms}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fluentcms -d fluentcms"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    # The MinIO community build of the media storage tests, RELEASE.2026-08-04T00-00-00Z.
+    image: pgsty/minio@sha256:b6bfe7239bfc83fb90d31612d9704d86039dd714f7904b3f1ad68f211e602372
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${FLUENTCMS_MINIO_USER:-fluentcms}
+      MINIO_ROOT_PASSWORD: ${FLUENTCMS_MINIO_PASSWORD:-fluentcms}
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - minio:/data
+
+volumes:
+  postgres:
+  minio:

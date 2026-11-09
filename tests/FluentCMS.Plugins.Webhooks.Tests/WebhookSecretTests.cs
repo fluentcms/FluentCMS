@@ -145,14 +145,8 @@ public sealed class WebhookSecretTests
             }
 
             await using var after = Host().UseSqlite(file);
-            var raw = await RawAsync(after, "headers", started);
-            for (var round = 0; round < 400 && raw!.StartsWith('{'); round++)
-            {
-                await Task.Delay(50, Token);
-                raw = await RawAsync(after, "headers", started);
-            }
-
-            raw!.ShouldNotStartWith("{", customMessage: "the start protects them");
+            await StartedAsync(after);
+            (await RawAsync(after, "headers", started))!.ShouldNotStartWith("{", customMessage: "the start protects them");
             var again = after.As(await after.CreateUserAsync(BuiltInRoles.SuperAdminName, "second", Token)).Content<Article>();
             await again.PublishAsync((await again.CreateAsync(new Article { Title = "Protected" }, Token)).Id, cancellationToken: Token);
             await PumpAsync(after);

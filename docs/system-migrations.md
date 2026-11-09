@@ -28,4 +28,4 @@ Do this in the pull request that changes `SystemModelBuilder`, such as one that 
 
 A migration that changes the grants of a seeded role also raises `permissions_version` of that role, with `migrationBuilder.Sql` and relative to its current value, because the seed cannot say what a live role has reached and the evaluator's cache is keyed on the stamp. Add the statement to the scaffolded `Up` and `Down`.
 
-Do not edit a migration that has shipped. The PostgreSQL and SQL Server migrations have never been applied to a database; [#2711](https://github.com/fluentcms/FluentCMS/issues/2711) validates them.
+Do not edit a migration that has shipped. Every data test database on PostgreSQL and SQL Server is built by these migrations, so CI applies them on PostgreSQL 15 and SQL Server 2019 and 2025 ([#2711](https://github.com/fluentcms/FluentCMS/issues/2711)).

@@ -8,26 +8,26 @@ using static FluentCMS.Plugins.Media.Tests.Transforms;
 
 namespace FluentCMS.Plugins.Media.Tests;
 
-public sealed class MediaPresetTests
+public sealed class MediaPresetTests(MediaHost media) : IClassFixture<MediaHost>
 {
     private const string Presets = $"{Root}/presets";
 
     [Fact]
     public async Task APresetIsStoredListedAppliedByAUrlAndDeleted()
     {
-        await using var media = new MediaHost();
         using var admin = await media.AdminAsync();
         using var anonymous = media.Host.CreateClient();
         var asset = await UploadAsync(admin, Bands(400, 200));
+        var name = Unique("hero");
 
-        using var put = await admin.PutAsJsonAsync(new Uri($"{Presets}/hero", UriKind.Relative), new { width = 120, height = 60, fit = "fill", format = "png" }, Token);
+        using var put = await admin.PutAsJsonAsync(new Uri($"{Presets}/{name}", UriKind.Relative), new { width = 120, height = 60, fit = "fill", format = "png" }, Token);
         var stored = await JsonAsync(put);
         var listed = (await GetAsync(admin, Presets))["items"]!.AsArray();
-        using var hero = await FetchAsync(anonymous, await UrlAsync(media, asset, new MediaImageOptions { Preset = "hero" }));
-        using var narrower = await FetchAsync(anonymous, await UrlAsync(media, asset, new MediaImageOptions { Preset = "hero", Width = 30 }));
+        using var hero = await FetchAsync(anonymous, await UrlAsync(media, asset, new MediaImageOptions { Preset = name }));
+        using var narrower = await FetchAsync(anonymous, await UrlAsync(media, asset, new MediaImageOptions { Preset = name, Width = 30 }));
 
-        (stored["name"]!.GetValue<string>(), stored["options"]!["width"]!.GetValue<int>(), stored["options"]!["fit"]!.GetValue<string>(), stored["options"]!["format"]!.GetValue<string>()).ShouldBe(("hero", 120, "fill", "png"));
-        listed.Select(item => item!["name"]!.GetValue<string>()).ShouldBe(["hero"]);
+        (stored["name"]!.GetValue<string>(), stored["options"]!["width"]!.GetValue<int>(), stored["options"]!["fit"]!.GetValue<string>(), stored["options"]!["format"]!.GetValue<string>()).ShouldBe((name, 120, "fill", "png"));
+        listed.Select(item => item!["name"]!.GetValue<string>()).ShouldContain(name);
         var (type, bytes) = await ImageAsync(hero);
         type.ShouldBe("image/png");
         using (var image = Decode(bytes))
@@ -40,9 +40,9 @@ public sealed class MediaPresetTests
             (image.Width, image.Height).ShouldBe((30, 60));
         }
 
-        using var delete = await admin.DeleteAsync(new Uri($"{Presets}/hero", UriKind.Relative), Token);
-        using var gone = await FetchAsync(anonymous, await UrlAsync(media, asset, new MediaImageOptions { Preset = "hero" }));
-        using var again = await admin.DeleteAsync(new Uri($"{Presets}/hero", UriKind.Relative), Token);
+        using var delete = await admin.DeleteAsync(new Uri($"{Presets}/{name}", UriKind.Relative), Token);
+        using var gone = await FetchAsync(anonymous, await UrlAsync(media, asset, new MediaImageOptions { Preset = name }));
+        using var again = await admin.DeleteAsync(new Uri($"{Presets}/{name}", UriKind.Relative), Token);
 
         delete.StatusCode.ShouldBe(HttpStatusCode.NoContent);
         gone.StatusCode.ShouldBe(HttpStatusCode.NotFound);
@@ -53,7 +53,6 @@ public sealed class MediaPresetTests
     [Fact]
     public async Task APutReplacesThePresetWhoseChangeMakesANewVariant()
     {
-        await using var media = new MediaHost();
         using var admin = await media.AdminAsync();
         using var anonymous = media.Host.CreateClient();
         var asset = await UploadAsync(admin, Bands(400, 200));
@@ -86,16 +85,17 @@ public sealed class MediaPresetTests
     [Fact]
     public async Task APresetIsCheckedAgainstTheRangesAndTheLimitsOfTheSite()
     {
-        await using var media = new MediaHost();
         using var admin = await media.AdminAsync();
-        await media.ConfigureAsync(settings => settings.MaxTransformWidth = 500);
+        await using var limits = await media.ConfigureAsync(settings => settings.MaxTransformWidth = 500);
+        var name = Unique("hero");
+        var stored = await NamesAsync(admin);
 
         using var badName = await admin.PutAsJsonAsync(new Uri($"{Presets}/Hero_1", UriKind.Relative), new { width = 10 }, Token);
-        using var nested = await admin.PutAsJsonAsync(new Uri($"{Presets}/hero", UriKind.Relative), new { preset = "other" }, Token);
-        using var quality = await admin.PutAsJsonAsync(new Uri($"{Presets}/hero", UriKind.Relative), new { quality = 0 }, Token);
-        using var fit = await admin.PutAsJsonAsync(new Uri($"{Presets}/hero", UriKind.Relative), new { fit = "crop" }, Token);
-        using var avif = await admin.PutAsJsonAsync(new Uri($"{Presets}/hero", UriKind.Relative), new { format = "avif" }, Token);
-        using var wide = await admin.PutAsJsonAsync(new Uri($"{Presets}/hero", UriKind.Relative), new { width = 501 }, Token);
+        using var nested = await admin.PutAsJsonAsync(new Uri($"{Presets}/{name}", UriKind.Relative), new { preset = "other" }, Token);
+        using var quality = await admin.PutAsJsonAsync(new Uri($"{Presets}/{name}", UriKind.Relative), new { quality = 0 }, Token);
+        using var fit = await admin.PutAsJsonAsync(new Uri($"{Presets}/{name}", UriKind.Relative), new { fit = "crop" }, Token);
+        using var avif = await admin.PutAsJsonAsync(new Uri($"{Presets}/{name}", UriKind.Relative), new { format = "avif" }, Token);
+        using var wide = await admin.PutAsJsonAsync(new Uri($"{Presets}/{name}", UriKind.Relative), new { width = 501 }, Token);
 
         foreach (var (response, path) in (IEnumerable<(HttpResponseMessage, string)>)[(badName, "name"), (nested, "preset"), (quality, "quality"), (fit, "fit"), (avif, "format")])
         {
@@ -105,32 +105,35 @@ public sealed class MediaPresetTests
 
         wide.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
         (await CodeAsync(wide)).ShouldBe(MediaErrorCodes.TransformLimit);
-        (await GetAsync(admin, Presets))["items"]!.AsArray().ShouldBeEmpty();
+        (await NamesAsync(admin)).ShouldBe(stored);
     }
 
     [Fact]
     public async Task PresetsNeedTheirPermissionWithoutAFolderLimitAndReadingThemNeedsMediaRead()
     {
-        await using var media = new MediaHost();
         using var admin = await media.AdminAsync();
         var folder = await FolderAsync(admin, "Team");
         using var reader = await media.ClientWithAsync(admin, new { permission = "media.read" });
         using var limited = await media.ClientWithAsync(admin, new { permission = "media.*", constraints = new { resources = new[] { folder.ToString("D") } } });
         using var manager = await media.ClientWithAsync(admin, new { permission = "media.presets.manage" });
         using var nobody = await media.ClientWithAsync(admin, new { permission = "schema.read" });
+        var name = Unique("hero");
 
-        using var readerPut = await reader.PutAsJsonAsync(new Uri($"{Presets}/hero", UriKind.Relative), new { width = 10 }, Token);
-        using var limitedPut = await limited.PutAsJsonAsync(new Uri($"{Presets}/hero", UriKind.Relative), new { width = 10 }, Token);
-        using var managerPut = await manager.PutAsJsonAsync(new Uri($"{Presets}/hero", UriKind.Relative), new { width = 10 }, Token);
+        using var readerPut = await reader.PutAsJsonAsync(new Uri($"{Presets}/{name}", UriKind.Relative), new { width = 10 }, Token);
+        using var limitedPut = await limited.PutAsJsonAsync(new Uri($"{Presets}/{name}", UriKind.Relative), new { width = 10 }, Token);
+        using var managerPut = await manager.PutAsJsonAsync(new Uri($"{Presets}/{name}", UriKind.Relative), new { width = 10 }, Token);
         using var readerList = await reader.GetAsync(new Uri(Presets, UriKind.Relative), Token);
         using var nobodyList = await nobody.GetAsync(new Uri(Presets, UriKind.Relative), Token);
-        using var limitedDelete = await limited.DeleteAsync(new Uri($"{Presets}/hero", UriKind.Relative), Token);
+        using var limitedDelete = await limited.DeleteAsync(new Uri($"{Presets}/{name}", UriKind.Relative), Token);
 
         readerPut.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
         limitedPut.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
         managerPut.StatusCode.ShouldBe(HttpStatusCode.OK);
-        (await JsonAsync(readerList))["items"]!.AsArray().Count.ShouldBe(1);
+        (await JsonAsync(readerList))["items"]!.AsArray().Select(item => item!["name"]!.GetValue<string>()).ShouldContain(name);
         nobodyList.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
         limitedDelete.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
     }
+
+    private static async Task<List<string>> NamesAsync(HttpClient client) =>
+        [.. (await GetAsync(client, Presets))["items"]!.AsArray().Select(item => item!["name"]!.GetValue<string>())];
 }

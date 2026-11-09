@@ -12,12 +12,12 @@ using static FluentCMS.Plugins.Media.Tests.Transforms;
 
 namespace FluentCMS.Plugins.Media.Tests;
 
-public sealed class MediaTransformTests
+public sealed class MediaTransformTests(TransformHosts hosts) : IClassFixture<TransformHosts>
 {
     [Fact]
     public async Task ASignedUrlReturnsTheImageResizedFittedAndEncodedAtTheQualityAndFormatAsked()
     {
-        await using var media = new MediaHost();
+        var media = hosts.Media;
         using var admin = await media.AdminAsync();
         using var anonymous = media.Host.CreateClient();
         var asset = await UploadAsync(admin, Bands(400, 200));
@@ -64,7 +64,7 @@ public sealed class MediaTransformTests
     [Fact]
     public async Task AUrlWithoutASignatureOrWithAWrongOneIsRefused()
     {
-        await using var media = new MediaHost();
+        var media = hosts.Media;
         using var admin = await media.AdminAsync();
         using var anonymous = media.Host.CreateClient();
         var asset = await UploadAsync(admin, Bands(400, 200));
@@ -86,8 +86,7 @@ public sealed class MediaTransformTests
     [Fact]
     public async Task UnsignedUrlsAreServedWhenSignaturesAreNotRequired()
     {
-        await using var media = new MediaHost();
-        media.Host.WithServices(services => services.PostConfigure<MediaOptions>(options => options.RequireSignedUrls = false));
+        var media = hosts.UnsignedUrls;
         using var admin = await media.AdminAsync();
         using var anonymous = media.Host.CreateClient();
         var asset = await UploadAsync(admin, Bands(400, 200));
@@ -101,7 +100,7 @@ public sealed class MediaTransformTests
     [Fact]
     public async Task AutoPicksWebPFromAcceptAndOtherwiseTheOriginalTypeAndVariesByAccept()
     {
-        await using var media = new MediaHost();
+        var media = hosts.Media;
         using var admin = await media.AdminAsync();
         using var anonymous = media.Host.CreateClient();
         var asset = await UploadAsync(admin, Bands(400, 200));
@@ -140,7 +139,7 @@ public sealed class MediaTransformTests
     [Fact]
     public async Task TheDefaultProcessorRefusesAvifAndAutoNeverPicksIt()
     {
-        await using var media = new MediaHost();
+        var media = hosts.Media;
         using var admin = await media.AdminAsync();
         using var anonymous = media.Host.CreateClient();
         var asset = await UploadAsync(admin, Bands(400, 200));
@@ -156,7 +155,8 @@ public sealed class MediaTransformTests
     [Fact]
     public async Task ARepeatedRequestUnderAnyFileNameIsServedFromTheStoredVariant()
     {
-        await using var media = RecordingHost();
+        var media = hosts.Recording;
+        var calls = CallsFrom(media);
         using var admin = await media.AdminAsync();
         using var anonymous = media.Host.CreateClient();
         var asset = await UploadAsync(admin, Bands(400, 200));
@@ -175,9 +175,9 @@ public sealed class MediaTransformTests
         (served.Type, Convert.ToHexString(served.Bytes)).ShouldBe((made.Type, Convert.ToHexString(made.Bytes)));
         second.Headers.ETag.ShouldBe(first.Headers.ETag);
         notModified.StatusCode.ShouldBe(HttpStatusCode.NotModified);
-        Calls(media).Processed.ShouldBe(1);
+        calls().Processed.ShouldBe(1);
         await using var scope = media.Services.CreateAsyncScope();
-        var variant = await scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>().Set<Variant>().AsNoTracking().SingleAsync(Token);
+        var variant = await scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>().Set<Variant>().AsNoTracking().SingleAsync(item => item.AssetId == asset.Id, Token);
         variant.AssetId.ShouldBe(asset.Id);
         variant.Size.ShouldBe(made.Bytes.LongLength);
         variant.StorageKey.ShouldStartWith($"{asset.SiteId:N}/{asset.Id:N}/");
@@ -188,7 +188,7 @@ public sealed class MediaTransformTests
     [Fact]
     public async Task CoverKeepsTheFocalPointInTheCropAndFxAndFyOverrideIt()
     {
-        await using var media = new MediaHost();
+        var media = hosts.Media;
         using var admin = await media.AdminAsync();
         using var anonymous = media.Host.CreateClient();
         var asset = await UploadAsync(admin, Bands(400, 100));
@@ -215,7 +215,7 @@ public sealed class MediaTransformTests
     [Fact]
     public async Task APhotoIsTurnedAsItsExifSaysAndAGifBecomesAPng()
     {
-        await using var media = new MediaHost();
+        var media = hosts.Media;
         using var admin = await media.AdminAsync();
         using var anonymous = media.Host.CreateClient();
         var turned = await UploadAsync(admin, TurnedJpeg(400, 100), "turned.jpg");
@@ -244,11 +244,12 @@ public sealed class MediaTransformTests
     [Fact]
     public async Task ARequestOverTheLimitsIsRefusedBeforeTheImageIsRead()
     {
-        await using var media = RecordingHost();
+        var media = hosts.Recording;
+        var calls = CallsFrom(media);
         using var admin = await media.AdminAsync();
         using var anonymous = media.Host.CreateClient();
         var asset = await UploadAsync(admin, Bands(400, 200));
-        await media.ConfigureAsync(settings =>
+        await using var limits = await media.ConfigureAsync(settings =>
         {
             settings.MaxTransformWidth = 100;
             settings.MaxTransformHeight = 50;
@@ -267,17 +268,18 @@ public sealed class MediaTransformTests
         }
 
         within.StatusCode.ShouldBe(HttpStatusCode.OK);
-        (Calls(media).Identified, Calls(media).Processed).ShouldBe((1, 1));
+        calls().ShouldBe((1, 1));
     }
 
     [Fact]
     public async Task ASideThatFollowsTheAspectRatioIsHeldToTheLimitsBeforeTheImageIsDecoded()
     {
-        await using var media = RecordingHost();
+        var media = hosts.Recording;
+        var calls = CallsFrom(media);
         using var admin = await media.AdminAsync();
         using var anonymous = media.Host.CreateClient();
         var tall = await UploadAsync(admin, Bands(20, 400));
-        await media.ConfigureAsync(settings => settings.MaxTransformHeight = 1000);
+        await using var limits = await media.ConfigureAsync(settings => settings.MaxTransformHeight = 1000);
 
         using var over = await FetchAsync(anonymous, await UrlAsync(media, tall, new MediaImageOptions { Width = 60 }));
         using var within = await FetchAsync(anonymous, await UrlAsync(media, tall, new MediaImageOptions { Width = 40 }));
@@ -289,17 +291,18 @@ public sealed class MediaTransformTests
             (image.Width, image.Height).ShouldBe((40, 800));
         }
 
-        Calls(media).Processed.ShouldBe(1);
+        calls().Processed.ShouldBe(1);
     }
 
     [Fact]
     public async Task AnImageOverTheSourcePixelsIsRefusedFromItsHeaderBeforeItIsDecoded()
     {
-        await using var media = RecordingHost();
+        var media = hosts.Recording;
+        var calls = CallsFrom(media);
         using var admin = await media.AdminAsync();
         using var anonymous = media.Host.CreateClient();
         var asset = await UploadAsync(admin, Bands(400, 200));
-        await media.ConfigureAsync(settings => settings.MaxSourcePixels = 400 * 200 - 1);
+        await using var limits = await media.ConfigureAsync(settings => settings.MaxSourcePixels = 400 * 200 - 1);
         var url = await UrlAsync(media, asset, new MediaImageOptions { Width = 10 });
 
         using var recorded = await FetchAsync(anonymous, url);
@@ -307,6 +310,7 @@ public sealed class MediaTransformTests
         {
             // An asset whose size was not read at upload is held to the header that the processor reads.
             await scope.ServiceProvider.GetRequiredService<PluginDbContext<MediaPlugin>>().Set<Asset>()
+                .Where(item => item.Id == asset.Id)
                 .ExecuteUpdateAsync(item => item.SetProperty(row => row.Width, (int?)null).SetProperty(row => row.Height, (int?)null), Token);
         }
 
@@ -315,13 +319,13 @@ public sealed class MediaTransformTests
         recorded.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
         declared.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
         (await CodeAsync(declared)).ShouldBe(MediaErrorCodes.TransformLimit);
-        (Calls(media).Identified, Calls(media).Processed).ShouldBe((1, 0));
+        calls().ShouldBe((1, 0));
     }
 
     [Fact]
     public async Task APrivateOrDeletedAssetIsNeverServedEvenWithAValidSignature()
     {
-        await using var media = new MediaHost();
+        var media = hosts.Media;
         using var admin = await media.AdminAsync();
         using var anonymous = media.Host.CreateClient();
         var hidden = await UploadAsync(admin, Bands(40, 20));
@@ -354,7 +358,7 @@ public sealed class MediaTransformTests
     [Fact]
     public async Task AFileTheProcessorCannotReadIsRefused()
     {
-        await using var media = new MediaHost();
+        var media = hosts.Media;
         using var admin = await media.AdminAsync();
         using var anonymous = media.Host.CreateClient();
         var pdf = await UploadAsync(admin, Files.Pdf(), "report.pdf");
@@ -372,8 +376,7 @@ public sealed class MediaTransformTests
     [Fact]
     public async Task AnUnknownRepeatedOrInvalidParameterIsRefused()
     {
-        await using var media = new MediaHost();
-        media.Host.WithServices(services => services.PostConfigure<MediaOptions>(options => options.RequireSignedUrls = false));
+        var media = hosts.UnsignedUrls;
         using var admin = await media.AdminAsync();
         using var anonymous = media.Host.CreateClient();
         var asset = await UploadAsync(admin, Bands(40, 20));

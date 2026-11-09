@@ -2,11 +2,11 @@
 
 ## Status
 
-Accepted. Confirmed on SQLite only. PostgreSQL and SQL Server stay unverified until [#2711](https://github.com/fluentcms/FluentCMS/issues/2711); see [Not verified](#not-verified).
+Accepted. Confirmed on SQLite by the spike, and on PostgreSQL 15, SQL Server 2019 and SQL Server 2025 by [#2711](https://github.com/fluentcms/FluentCMS/issues/2711); see [Verified on the server providers](#verified-on-the-server-providers).
 
 ## Date
 
-2026-11-02
+2026-11-02, updated 2026-11-08 with the results of #2711.
 
 ## Context
 
@@ -136,9 +136,9 @@ These were required, and [#2722](https://github.com/fluentcms/FluentCMS/pull/272
 | 4.4 Compilation | Inline `state` as a literal and bind every user value as a parameter, using a member read on a holder object. | A bare expression constant becomes a SQL literal. SQLite does not need the inlined `state`, but it matches the index predicate as written and #2711 can check it on the other providers. |
 | 4.4 Pagination | State that a v7 `document_id` gives a stable final sort key, not creation order within a millisecond. | Measured above. |
 
-## Not verified
+## Not verified at the time
 
-All of these are deferred to #2711, and any of them could change this record.
+The spike left these to #2711. [Verified on the server providers](#verified-on-the-server-providers) has the results.
 
 PostgreSQL 15:
 
@@ -151,11 +151,11 @@ PostgreSQL 15:
 SQL Server 2019 and 2025:
 
 - `JSON_VALUE` and `OPENJSON` for the same filters.
-- 2019 versus 2025 JSON behaviour: settled in [SQL Server JSON](#sql-server-json), `nvarchar(max)` on both.
+- 2019 versus 2025 JSON behaviour.
 - Filtered unique indexes, including whether a bound `state` can use them.
 - Migration generation, compilation and application, including system migrations.
 - `READPAST` job claiming.
-- `uniqueidentifier` ordering of generated keys (see [SQL Server keys](#sql-server-keys)), and the `datetimeoffset` mapping.
+- `uniqueidentifier` ordering of generated keys, and the `datetimeoffset` mapping.
 
 Across providers:
 
@@ -168,13 +168,60 @@ Also not covered on SQLite:
 - `cms_version`, the plugin migration stream and `Database:SchemaSync = Auto`.
 - File databases, concurrent writers, and query performance at volume.
 
+## Verified on the server providers
+
+Added for #2711. `tests/FluentCMS.Data.Tests` runs on the provider that `FLUENTCMS_TEST_PROVIDER` names, with a container per run through Testcontainers and a database per test: PostgreSQL 15.19, SQL Server 2019 CU32 and SQL Server 2025 CU10. The suite passes on all three and on SQLite, in the `Data tests` jobs of CI ([run 42550863497](https://github.com/fluentcms/FluentCMS/actions/runs/42550863497)). A server run skips the 80 tests of SQLite itself, such as its journal modes and query plans.
+
+PostgreSQL 15:
+
+| Item | Result |
+| --- | --- |
+| `jsonb` filters and GIN indexes | Verified. Equality is `jsonb` containment (`@>`), which keeps the JSON type, and block presence reads `jsonb_array_elements`. An `[Indexed]` JSON field gets a GIN index, which the PostgreSQL migration script carries (`Providers/OfflineProviderTests`); whether the planner uses it was not measured. |
+| Partial unique indexes | Enforced, races included. The compiler inlines `state` (spec 4.4), so a query names the predicate of the index as written. Plans were not read on PostgreSQL. |
+| Migrations | Verified. Every test database is built by the system migrations, and the content migrations are scaffolded, compiled and applied for PostgreSQL. |
+| `SKIP LOCKED` claiming | Verified by the job runner, failure and lease tests, two runners included. |
+| `uuid`, `timestamptz` and `numeric` | `uuid` compares bytewise, so v7 values sort by time across milliseconds, and keyset paging passes. `timestamptz` keeps microseconds, which led to the second decision below. `numeric` compares and sorts as the filter and sort tests expect. |
+
+SQL Server 2019 and 2025:
+
+| Item | Result |
+| --- | --- |
+| `JSON_VALUE` and `OPENJSON` | Verified on both. A whole number compares through `TRY_CONVERT(decimal(38,18), ...)`, because `TRY_CONVERT(bigint, '12.0')` is null. |
+| 2019 versus 2025 JSON | `nvarchar(max)` on both; see [SQL Server JSON](#sql-server-json). |
+| Filtered unique indexes | Enforced on both, with `IS NOT NULL` for a nullable column (spec 4.3). Plans were not read. |
+| Migrations | Verified on both. One SQL Server set serves both versions. |
+| `READPAST` claiming | Verified. Under `UPDLOCK, READPAST` the claim is an ordered seek of `ix_cms_job_claim` with no sort, so a claimer stops at the first row it can lock (`Jobs/JobClaimPlanTests`). |
+| `uniqueidentifier` and `datetimeoffset` | Generated keys are sequential ([SQL Server keys](#sql-server-keys)), and the paging tests take the provider's own id order. `datetimeoffset` is written in UTC and to the microsecond. |
+
+Across providers:
+
+| Item | Result |
+| --- | --- |
+| Identical filters | Verified: the filter and JSON filter tests pass unchanged on all four. Content text columns have a binary collation on SQL Server (spec 4.3), and a negated JSON filter keeps rows that lack the path on PostgreSQL as on SQLite. |
+| `IJsonSqlDialect` on PostgreSQL | It fits: the PostgreSQL dialect maps `jsonb` functions and containment through it. |
+| A migration lock table | Not needed. SQL Server takes an application lock (`sp_getapplock` on `__EFMigrationsLock`) and PostgreSQL locks the stream's history table, so `__EFMigrationsLock` is SQLite's alone. Four nodes that migrate at once record one schema history row on every provider. |
+
+On SQLite, the real code covers what the spike did not: `cms_version`, the plugin streams and schema sync (`Content/VersionDiffTests`, the plugin test projects, `Migrations/SchemaSyncTests`), and file databases and concurrent writers (`Sqlite/JournalModeTests`, `Sqlite/WriteContentionTests`).
+
+Still not verified:
+
+- Query performance at volume on any provider, and what the v7 ids that the code sets cost SQL Server's indexes.
+- The PostgreSQL and SQL Server migration sets of the webhooks, media and sample plugins in CI. Offline tests check them against their models and the SQLite sets, and the plugin tests run on SQLite. The webhooks and media sets were applied by hand, through the reference host, to PostgreSQL 15.19 and SQL Server 2025 CU10.
+
+### Decisions from the provider runs
+
+- **`jsonb` stays, and reads come back in write order.** PostgreSQL rewrites `jsonb` text: spaces after `:` and `,`, and keys in its own order. Rich text now compares as JSON (`EntryJson.SameDocument`). A provider whose JSON reads back as other text (`IStorageConventions.ReordersJson`, true on PostgreSQL) has each value put back in the form a write gives it (`StoredOrder`): a block's `type` and `id` first and then its fields in schema order, a reference as `id` and `type`, and rich text as `RichTextSerializer` writes it. A `json` field keeps the order it is read in.
+- **A `DateTimeOffset` is kept to the microsecond on every provider.** `timestamptz` keeps microseconds, so a value did not round-trip to the tick on PostgreSQL. `StorageConventions.Configure`, which every context applies, cuts each `DateTimeOffset` to the microsecond in front of the provider's own converter, on SQLite and SQL Server as well, so a value reads back the same everywhere. Values written with raw SQL, such as leases, go through the same cut (`StorageConventions.ToMicroseconds`).
+- **A lease has ended once `lease_until <= now`.** Npgsql cuts a parameter to the microsecond, so with `<` a lease stayed taken one tick after it ended. The job queue, the outbox, the distributed lock and the three claim dialects use `<=`.
+- **SQL Server has no native `json` in 1.0**, as [SQL Server JSON](#sql-server-json) records.
+
 ## SQL Server keys
 
 Added for [#2879](https://github.com/fluentcms/FluentCMS/issues/2879) of the review of 7 Nov 2026 ([#2847](https://github.com/fluentcms/FluentCMS/issues/2847)), without a database.
 
 SQL Server sorts `uniqueidentifier` by its last six bytes first, and those are random in a v7 value, so v7 keys would land all over a clustered primary key and an `ORDER BY id` tiebreak would not follow creation. Generated keys therefore come from `IStorageConventions.ConfigureKey`. SQLite and PostgreSQL keep `Guid.CreateVersion7()`, and SQL Server uses EF Core's `SequentialGuidValueGenerator`, which rises within a process. A value generator is not in the model snapshot, so no migration changes.
 
-Before the switch, the one place in .NET that ordered generated ids by value, the rows of an entry in `EntryStore.DocumentsAsync`, moved into the query and onto `created_at`. Keyset cursors compare `document_id` in SQL. `document_id` and the other ids that the code sets itself stay v7 on every provider. #2711 measures what that costs SQL Server's indexes, with the rest of the list above.
+Before the switch, the one place in .NET that ordered generated ids by value, the rows of an entry in `EntryStore.DocumentsAsync`, moved into the query and onto `created_at`. Keyset cursors compare `document_id` in SQL. `document_id` and the other ids that the code sets itself stay v7 on every provider. #2711 ran the suite on SQL Server with them, but did not measure what they cost its indexes.
 
 ## SQL Server JSON
 
@@ -191,7 +238,7 @@ The spike project was a throwaway. #2736 deleted it after the real provider test
 | Finding | Tests now |
 | --- | --- |
 | Property bags: round trip, omitted columns, one-column update, per-schema model, build time | `Storage/ContentRowTests`, `Storage/ContentModelTests`, `Storage/ModelCacheTests`, `Storage/ModelBuildTimeTests` |
-| JSON filters: block presence, scalar paths, containment, type-aware comparison, one-level paths, malformed JSON | `Sqlite/JsonFilterTests`, `Sqlite/ConventionsTests`, `Query/FilterTests`, `Query/CompiledSqlTests` |
+| JSON filters: block presence, scalar paths, containment, type-aware comparison, one-level paths, malformed JSON | `Query/JsonFilterTests`, `Sqlite/ConventionsTests`, `Query/FilterTests`, `Query/CompiledSqlTests` |
 | JSON block filter is a full scan | `Storage/QueryPlanTests` |
 | Partial unique indexes: enforced, scoped by site and locale, global types, empty locale | `Storage/ContentRowTests`, `Storage/ContentModelTests`, `Storage/SystemModelTests` |
 | Query plans of the partial index and of the reference target index | `Storage/QueryPlanTests` |
@@ -212,4 +259,4 @@ Follow-up work:
 - [x] Apply the specification changes above. Done in [#2722](https://github.com/fluentcms/FluentCMS/pull/2722) for [#2721](https://github.com/fluentcms/FluentCMS/issues/2721).
 - [x] Build on them in [#2688](https://github.com/fluentcms/FluentCMS/issues/2688) (model, [#2729](https://github.com/fluentcms/FluentCMS/pull/2729)), [#2689](https://github.com/fluentcms/FluentCMS/issues/2689) (JSON dialect and SQLite conventions, [#2737](https://github.com/fluentcms/FluentCMS/pull/2737)), [#2690](https://github.com/fluentcms/FluentCMS/issues/2690) (migration streams, [#2739](https://github.com/fluentcms/FluentCMS/pull/2739)) and [#2692](https://github.com/fluentcms/FluentCMS/issues/2692) (query compiler, [#2740](https://github.com/fluentcms/FluentCMS/pull/2740)).
 - [x] Delete `tests/FluentCMS.Storage.Spike.Tests` once #2688 lands. Done in [#2736](https://github.com/fluentcms/FluentCMS/issues/2736).
-- [ ] Run the [Not verified](#not-verified) list in #2711 and update this record with the results.
+- [x] Run the [Not verified](#not-verified-at-the-time) list in #2711 and update this record with the results. Done in [Verified on the server providers](#verified-on-the-server-providers).
