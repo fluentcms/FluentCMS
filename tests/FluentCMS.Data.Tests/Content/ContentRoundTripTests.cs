@@ -53,20 +53,59 @@ public sealed class ContentRoundTripTests : IDisposable
         .Build();
 
     [Fact]
-    public async Task ATypicalUpdateMakesEighteenRoundTripsAndCopiesTheEntryTwice()
+    public async Task ATypicalUpdateMakesTwelveRoundTripsAndCopiesTheEntryTwice()
     {
         var id = await PostAsync(Editor, await AuthorsAsync(Editor, 2));
         var read = (await _database.GetAsync(Editor, id, type: "post"))!;
         read["title"] = "Post two";
         read["views"] = 2L;
 
-        var copies = await CopiesAsync(() => _trips.CountAsync(() => _database.UpdateAsync(Editor, id, read, 1, "post")));
+        ContentDocument? answer = null;
+        var copies = await CopiesAsync(async () => answer = await _trips.CountAsync(() => _database.UpdateAsync(Editor, id, read, 1, "post")));
 
-        // Three to resolve the locale and the grants, begin, ten in the transaction, commit, and three to read the answer.
-        _trips.Count.ShouldBeLessThanOrEqualTo(18, string.Join('\n', _trips.Sent));
+        // One for the grants, begin, eight in the transaction, commit, and the row of the answer. The read the principal
+        // is shown is made of the draft rows and references just read and one readable-targets query, and the answer
+        // reuses the references written and the targets found readable.
+        _trips.Count.ShouldBeLessThanOrEqualTo(12, string.Join('\n', _trips.Sent));
         copies.ShouldBeLessThanOrEqualTo(2);
-        (await _database.GetAsync(Editor, id, type: "post"))!["title"].ShouldBe("Post two");
+        answer!["title"].ShouldBe("Post two");
+        Json(answer).ShouldBe(Json(await _database.GetAsync(Editor, id, type: "post")));
     }
+
+    [Fact]
+    public async Task AnUpdateThatAddsATargetAnswersWhatAReadShows()
+    {
+        var authors = await AuthorsAsync(Editor, 3);
+        var id = await PostAsync(Editor, authors[..2]);
+        var read = (await _database.GetAsync(Editor, id, type: "post"))!;
+        read["authors"] = authors.ToArray();
+
+        var answer = await _database.UpdateAsync(Editor, id, read, 1, "post");
+
+        Json(answer).ShouldBe(Json(await _database.GetAsync(Editor, id, type: "post")));
+        Json(answer)!.ShouldContain(authors[2].ToString());
+    }
+
+    [Fact]
+    public async Task AnUpdateUnderARowRuleAnswersWhatAReadShows()
+    {
+        var role = _database.Database.AddRoleForTest(
+            "Own posts",
+            ("content.post.*", new PermissionConstraints { RowRule = BuiltInRoles.OwnEntriesRule }),
+            ("content.tag.read", null),
+            ("content.author.*", null));
+        var principal = WithRole(role, Guid.CreateVersion7());
+        var id = await PostAsync(principal, await AuthorsAsync(principal, 2));
+        var read = (await _database.GetAsync(principal, id, type: "post"))!;
+        read["title"] = "Post two";
+
+        var answer = await _database.UpdateAsync(principal, id, read, 1, "post");
+
+        answer["title"].ShouldBe("Post two");
+        Json(answer).ShouldBe(Json(await _database.GetAsync(principal, id, type: "post")));
+    }
+
+    private static string? Json(ContentDocument? entry) => EntryJson.ToNode(entry)?.ToJsonString();
 
     [Fact]
     public async Task ACreateThatGivesItsBlocksIdsCopiesTheEntryTwice()

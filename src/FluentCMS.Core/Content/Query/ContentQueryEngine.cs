@@ -49,6 +49,10 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
     public Task<ContentQueryResult> ExecuteAsync(string typeName, ContentQuery query, bool everySystemField, CancellationToken cancellationToken) =>
         ExecuteAsync(typeName, query, everySystemField, trashed: false, cancellationToken);
 
+    // A read by id of an entry the caller has already read or written some of. The query is compiled and checked as any other.
+    public Task<ContentQueryResult> ExecuteAsync(string typeName, ContentQuery query, bool everySystemField, KnownEntry? known, CancellationToken cancellationToken) =>
+        ExecuteAsync(typeName, query, everySystemField, trashed: false, cancellationToken, known: known);
+
     // Reads the entries in the trash as drafts. Whoever calls this has decided that the principal may look at the trash;
     // what a draft read is limited by still holds.
     public Task<ContentQueryResult> ExecuteTrashAsync(string typeName, ContentQuery query, bool everySystemField, CancellationToken cancellationToken) =>
@@ -72,7 +76,7 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         });
     }
 
-    private async Task<ContentQueryResult> ExecuteAsync(string typeName, ContentQuery query, bool everySystemField, bool trashed, CancellationToken cancellationToken, ContentFilter? rule = null)
+    private async Task<ContentQueryResult> ExecuteAsync(string typeName, ContentQuery query, bool everySystemField, bool trashed, CancellationToken cancellationToken, ContentFilter? rule = null, KnownEntry? known = null)
     {
         ArgumentNullException.ThrowIfNull(query);
 
@@ -80,7 +84,7 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         return await TimedAsync(compiled, async () =>
         {
             await SearchAsync(compiled, cancellationToken);
-            return await RunAsync(compiled, cancellationToken);
+            return await RunAsync(compiled, cancellationToken, known);
         });
     }
 
@@ -110,10 +114,10 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         }
     }
 
-    private async Task<ContentQueryResult> RunAsync(CompiledQuery compiled, CancellationToken cancellationToken)
+    private async Task<ContentQueryResult> RunAsync(CompiledQuery compiled, CancellationToken cancellationToken, KnownEntry? known = null)
     {
         long? total = compiled.WithTotal ? await compiled.Filtered.LongCountAsync(cancellationToken) : null;
-        var rows = await compiled.Rows.ToListAsync(cancellationToken);
+        var rows = KnownRow(compiled, known) is { } row ? [row] : await compiled.Rows.ToListAsync(cancellationToken);
 
         var hasMore = rows.Count > compiled.PageSize;
         if (hasMore)
@@ -122,9 +126,9 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         }
 
         var entries = rows.Select(row => Materialize(compiled.Plan, row, new ContentDocument(), parent: null)).ToList();
-        var readable = new ReadableTargets();
+        var readable = known?.Readable ?? new ReadableTargets();
         var resolvable = new ResolvableReferences(schema, resolvers);
-        await FillReferencesAsync(compiled.Scope, compiled.Plan, entries, readable, resolvable, cancellationToken);
+        await FillReferencesAsync(compiled.Scope, compiled.Plan, entries, readable, resolvable, cancellationToken, known?.References);
         await FilterNestedTargetsAsync(compiled.Scope, compiled.Type, entries, readable, cancellationToken);
         await resolvable.ResolveAsync(compiled.Scope.Locale, cancellationToken);
 
@@ -133,6 +137,12 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
 
         return new(entries.Select(entry => entry.Document).ToList(), total, compiled.PageNumber, compiled.PageSize, nextCursor);
     }
+
+    // The query reads one entry by id, which is the caller's to match with the row, and has nothing else to filter it by.
+    private static object?[]? KnownRow(CompiledQuery compiled, KnownEntry? known) =>
+        known?.Row is { } row && compiled.Hits is null && !compiled.WithTotal && !compiled.Scope.ReachesTrash && compiled.Scope.Access.RowRule(compiled.Type) is null
+            ? InMemoryProjection.Run(compiled.Plan.Projection(), row)
+            : null;
 
     // Separate from running it, so that a test can read the SQL.
     internal CompiledQuery Compile(string typeName, ContentQuery query) => Compile(access, typeName, query);
@@ -455,7 +465,8 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
     private static bool IsAbsent(GroupOutput group, ContentDocument document) =>
         group.Children.All(child => child is ValueOutput) && document.Values.All(value => value is null or JsonArray { Count: 0 });
 
-    private async Task FillReferencesAsync(QueryScope query, EntryPlan plan, List<Materialized> entries, ReadableTargets readable, ResolvableReferences resolvable, CancellationToken cancellationToken)
+    // knownReferences are those of the one root entry, when its reader has them.
+    private async Task FillReferencesAsync(QueryScope query, EntryPlan plan, List<Materialized> entries, ReadableTargets readable, ResolvableReferences resolvable, CancellationToken cancellationToken, IReadOnlyList<Reference>? knownReferences = null)
     {
         foreach (var (value, holder) in entries.SelectMany(entry => entry.Inside))
         {
@@ -472,14 +483,16 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         var fields = outputs.Select(output => output.ApiPath).ToList();
         var typeName = plan.Type.Name;
         var locale = query.Locale;
-        var references = await context.References.AsNoTracking()
-            .Where(reference => reference.SourceType == typeName
-                && reference.State == EF.Constant(query.State)
-                && sources.Contains(reference.SourceDocumentId)
-                && fields.Contains(reference.Field)
-                && (reference.Locale == "" || reference.Locale == locale))
-            .OrderBy(reference => reference.Position)
-            .ToListAsync(cancellationToken);
+        var references = knownReferences is not null
+            ? [.. knownReferences.Where(reference => fields.Contains(reference.Field)).OrderBy(reference => reference.Position)]
+            : await context.References.AsNoTracking()
+                .Where(reference => reference.SourceType == typeName
+                    && reference.State == EF.Constant(query.State)
+                    && sources.Contains(reference.SourceDocumentId)
+                    && fields.Contains(reference.Field)
+                    && (reference.Locale == "" || reference.Locale == locale))
+                .OrderBy(reference => reference.Position)
+                .ToListAsync(cancellationToken);
 
         var bySource = references.ToLookup(reference => (reference.SourceDocumentId, reference.Field, reference.Locale));
 
@@ -681,46 +694,5 @@ internal sealed class ContentQueryEngine(CmsDbContext context, SchemaModel schem
         }
 
         await FillReferencesAsync(query, plan, children, readable, resolvable, cancellationToken);
-    }
-
-    // What one run has found readable of each target type. The answer for a type depends on the scope of the run, which
-    // every level shares, and not on the other ids asked with it; null is every target of the type.
-    private sealed class ReadableTargets
-    {
-        private readonly Dictionary<SchemaType, (HashSet<Guid> Asked, HashSet<Guid>? Readable)> _byType = [];
-
-        public bool TryAnswer(SchemaType target, List<Guid> ids, out HashSet<Guid>? readable, out List<Guid> unknown)
-        {
-            if (!_byType.TryGetValue(target, out var known))
-            {
-                readable = null;
-                unknown = ids;
-                return false;
-            }
-
-            readable = known.Readable;
-            unknown = known.Readable is null ? [] : [.. ids.Where(id => !known.Asked.Contains(id))];
-            return unknown.Count == 0;
-        }
-
-        public HashSet<Guid>? Add(SchemaType target, List<Guid> ids, HashSet<Guid>? readable)
-        {
-            if (!_byType.TryGetValue(target, out var known))
-            {
-                _byType[target] = ([.. ids], readable);
-                return readable;
-            }
-
-            known.Asked.UnionWith(ids);
-            if (readable is null || known.Readable is null)
-            {
-                // A type the scope does not limit answers null whatever the ids, so the two cannot differ.
-                _byType[target] = (known.Asked, null);
-                return null;
-            }
-
-            known.Readable.UnionWith(readable);
-            return known.Readable;
-        }
     }
 }

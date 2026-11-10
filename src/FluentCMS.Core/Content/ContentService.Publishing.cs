@@ -287,7 +287,7 @@ internal sealed partial class ContentService
                 var working = Prepare(write, composed, document, stored);
                 if (!isSystem)
                 {
-                    var shown = await ReadShownAsync(write, id, documents, addsLocale: false, cancellationToken);
+                    var shown = await ReadShownAsync(write, id, documents, addsLocale: false, known: null, cancellationToken);
                     composer.CarryProtected(write.Type, stored, working, includingGroups: true, await UnseenNestedTargetsAsync(write, stored, shown, cancellationToken));
                     await KeepUnreadableTargetsAsync(write, stored, shown, working, isPatch: false, cancellationToken);
                 }
